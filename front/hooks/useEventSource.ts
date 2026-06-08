@@ -101,6 +101,20 @@ export function useEventSource(
   // We use a counter to trigger reconnects when the counter changes.
   const [reconnectCounter, setReconnectCounter] = useState(0);
 
+  // A new uniqueId designates a new logical stream (e.g. a manual stream
+  // reload): restart from the full history instead of resuming from the
+  // previous stream's cursor, and clear the per-stream error state. Guarded
+  // render-time adjustment, same pattern as deriving state from prop changes.
+  const lastUniqueId = useRef(uniqueId);
+  if (lastUniqueId.current !== uniqueId) {
+    lastUniqueId.current = uniqueId;
+    lastEvent.current = null;
+    reconnectAttempts.current = 0;
+    if (isError) {
+      setIsError(null);
+    }
+  }
+
   // Store the reconnect timeout reference to clear it when needed.
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 

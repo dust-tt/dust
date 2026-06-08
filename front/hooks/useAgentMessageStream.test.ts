@@ -910,4 +910,208 @@ describe("useAgentMessageStream", () => {
       },
     ]);
   });
+
+  it("converges to identical steps when history replays across a remount", () => {
+    let currentMessage = makeInitialMessageStreamState(
+      makeLightAgentMessage({ content: null, chainOfThought: null })
+    );
+    let onEventCallback: ((event: string) => void) | null = null;
+
+    mockUseVirtuosoMethods.mockReturnValue(
+      makeVirtuosoMethodsMock(
+        (
+          updater: (message: typeof currentMessage) => typeof currentMessage
+        ) => {
+          currentMessage = updater(currentMessage);
+          return [currentMessage];
+        }
+      )
+    );
+
+    mockUseEventSource.mockImplementation(
+      (
+        _buildURL: unknown,
+        callback: (event: string) => void
+      ): { isError: null } => {
+        onEventCallback = callback;
+        return { isError: null };
+      }
+    );
+
+    const action = makeStreamAction();
+
+    // The exact same history (same event ids) is what the server replays on
+    // every reconnect: lastEventId-less subscriptions read from the start of
+    // the Redis stream.
+    const replayHistory = () => {
+      act(() => {
+        onEventCallback!(
+          JSON.stringify({
+            eventId: "1-0",
+            data: {
+              type: "generation_tokens",
+              created: Date.now(),
+              configurationId: "agent_123",
+              messageId: currentMessage.sId,
+              text: "Let me look this up.",
+              classification: "chain_of_thought",
+            },
+          })
+        );
+        onEventCallback!(
+          JSON.stringify({
+            eventId: "2-0",
+            data: {
+              type: "tool_params",
+              created: Date.now(),
+              configurationId: "agent_123",
+              messageId: currentMessage.sId,
+              action,
+              runIds: ["llm_trace_123"],
+              step: 0,
+            },
+          })
+        );
+        onEventCallback!(
+          JSON.stringify({
+            eventId: "3-0",
+            data: {
+              type: "agent_action_success",
+              created: Date.now(),
+              configurationId: "agent_123",
+              messageId: currentMessage.sId,
+              action: {
+                ...action,
+                status: "succeeded",
+                executionDurationMs: 1000,
+              },
+              step: 0,
+            },
+          })
+        );
+      });
+    };
+
+    const { unmount } = renderHook(() =>
+      useAgentMessageStream({
+        agentMessage: currentMessage,
+        conversationId: "conv_123",
+        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+        owner: mockOwner,
+        streamId: "stream_123",
+      })
+    );
+    replayHistory();
+
+    const stepsAfterFirstPass = currentMessage.streaming.inlineActivitySteps;
+    expect(stepsAfterFirstPass).toEqual([
+      {
+        type: "thinking",
+        content: "Let me look this up.",
+        id: "thinking-toolparams-2-0",
+      },
+      {
+        type: "action",
+        label: "Search",
+        id: `action-${action.id}`,
+        actionId: action.sId,
+        internalMCPServerName: action.internalMCPServerName,
+        toolName: action.toolName ?? null,
+      },
+    ]);
+
+    // Remount (e.g. Virtuoso unmounting the item off-viewport): the Virtuoso
+    // message state is retained, but all hook refs (seenEventIds included)
+    // start fresh and the server replays the full history.
+    unmount();
+    renderHook(() =>
+      useAgentMessageStream({
+        agentMessage: currentMessage,
+        conversationId: "conv_123",
+        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+        owner: mockOwner,
+        streamId: "stream_123",
+      })
+    );
+    replayHistory();
+
+    // Idempotent: no duplicated steps, ids unchanged.
+    expect(currentMessage.streaming.inlineActivitySteps).toEqual(
+      stepsAfterFirstPass
+    );
+  });
+
+  it("re-processes replayed events after a streamId change (manual stream reload)", () => {
+    let currentMessage = makeInitialMessageStreamState(
+      makeLightAgentMessage({ content: null, chainOfThought: null })
+    );
+    let onEventCallback: ((event: string) => void) | null = null;
+
+    mockUseVirtuosoMethods.mockReturnValue(
+      makeVirtuosoMethodsMock(
+        (
+          updater: (message: typeof currentMessage) => typeof currentMessage
+        ) => {
+          currentMessage = updater(currentMessage);
+          return [currentMessage];
+        }
+      )
+    );
+
+    mockUseEventSource.mockImplementation(
+      (
+        _buildURL: unknown,
+        callback: (event: string) => void
+      ): { isError: null } => {
+        onEventCallback = callback;
+        return { isError: null };
+      }
+    );
+
+    const { rerender } = renderHook(
+      ({ streamId }: { streamId: string }) =>
+        useAgentMessageStream({
+          agentMessage: currentMessage,
+          conversationId: "conv_123",
+          isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+          owner: mockOwner,
+          streamId,
+        }),
+      { initialProps: { streamId: "stream_123" } }
+    );
+
+    const sendCoT = () => {
+      act(() => {
+        onEventCallback!(
+          JSON.stringify({
+            eventId: "1-0",
+            data: {
+              type: "generation_tokens",
+              created: Date.now(),
+              configurationId: "agent_123",
+              messageId: currentMessage.sId,
+              text: "Thinking hard.",
+              classification: "chain_of_thought",
+            },
+          })
+        );
+      });
+    };
+
+    sendCoT();
+    expect(currentMessage.chainOfThought).toBe("Thinking hard.");
+
+    // Manual reload (reloadMessage in AgentMessage): the message is reset to
+    // its initial stream state and a new streamId forces a fresh stream that
+    // replays the same history (same event ids).
+    currentMessage = makeInitialMessageStreamState(
+      makeLightAgentMessage({ content: null, chainOfThought: null })
+    );
+    rerender({ streamId: "stream_123-retry-1" });
+    sendCoT();
+
+    // Without the per-stream reset, seenEventIds drops the replayed event and
+    // the message stays blank ("Thinking" forever) until a page reload.
+    expect(currentMessage.chainOfThought).toBe("Thinking hard.");
+  });
 });

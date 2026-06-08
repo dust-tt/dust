@@ -263,6 +263,11 @@ export function appendThinkingStep(
   cotContent: string,
   id: string
 ): InlineActivityStep[] {
+  // Replay idempotence: ids derive from the originating event id, so a
+  // replayed event maps to the same id and must not duplicate the step.
+  if (steps.some((step) => step.id === id)) {
+    return steps;
+  }
   for (let i = steps.length - 1; i >= 0; i--) {
     const step = steps[i];
     if (step.type === "thinking") {
@@ -280,6 +285,10 @@ function appendContentStep(
   textContent: string,
   id: string
 ): InlineActivityStep[] {
+  // Replay idempotence: see appendThinkingStep.
+  if (steps.some((step) => step.id === id)) {
+    return steps;
+  }
   return [...steps, { type: "content", content: textContent, id }];
 }
 
@@ -379,9 +388,11 @@ export function useAgentMessageStream({
   // retry creates a new agentMessage.sId. Within a single mount,
   // `useEventSource` reconnects on every server-side "done" frame and on
   // network errors using `lastEventId`; if the server replays an event we
-  // already saw (e.g. just past the cursor boundary), the handlers downstream
-  // are not idempotent — inline activity step IDs are built from `Date.now()`
-  // and same-millisecond re-processing produces duplicate React keys.
+  // already saw (e.g. just past the cursor boundary), this short-circuits the
+  // re-processing. Step appends are additionally idempotent (ids derive from
+  // event ids), so replays that cross hook remounts — where this set starts
+  // empty but the Virtuoso message state is retained — converge instead of
+  // duplicating steps.
   const seenEventIds = useRef<Set<string>>(new Set());
 
   // Once a terminal event (agent_message_success, agent_error, etc.) is
@@ -429,6 +440,28 @@ export function useAgentMessageStream({
   // the new content. Null means normal (non-retry) accumulation mode.
   const retryCoTBuffer = useRef<string | null>(null);
 
+  // `streamId` changes when the stream is manually reloaded (e.g.
+  // `reloadMessage` in AgentMessage after a stream error): the new stream
+  // replays the event history from scratch, so all per-stream state must be
+  // reset. Without this, `seenEventIds` silently drops every replayed event
+  // against the freshly reset message (message stuck on "Thinking" until a
+  // page reload) and the terminal latch can prevent the new connection
+  // entirely. Guarded render-time adjustment, same pattern as deriving state
+  // from prop changes.
+  const lastStreamId = useRef(streamId);
+  if (lastStreamId.current !== streamId) {
+    lastStreamId.current = streamId;
+    seenEventIds.current = new Set();
+    isStreamTerminated.current = false;
+    lastClassification.current = null;
+    lastCoTTraceId.current = null;
+    retryCoTBuffer.current = null;
+    chainOfThought.current = agentMessage.chainOfThought ?? "";
+    content.current = agentMessage.content ?? "";
+    isFreshMountWithContent.current =
+      shouldStream && (!!agentMessage.content || !!agentMessage.chainOfThought);
+  }
+
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
       if (isStreamTerminated.current) {
@@ -462,6 +495,11 @@ export function useAgentMessageStream({
         }
         seenEventIds.current.add(eventPayload.eventId);
       }
+      // Deterministic suffix for inline activity step ids, derived from the
+      // SSE event id (Redis stream id): stable across replays and remounts,
+      // so re-processing an event upserts instead of duplicating. Falls back
+      // to a timestamp for events without an id.
+      const eventIdSuffix = eventPayload.eventId || String(Date.now());
       const eventType = eventPayload.data.type;
       switch (eventType) {
         case "end-of-stream":
@@ -545,7 +583,7 @@ export function useAgentMessageStream({
                   chainOfThought,
                   content,
                   steps: m.streaming.inlineActivitySteps,
-                  suffix: `pre-${Date.now()}`,
+                  suffix: `pre-${eventIdSuffix}`,
                   retryCoTBuffer,
                 });
                 return {
@@ -664,7 +702,7 @@ export function useAgentMessageStream({
               chainOfThought,
               content,
               steps: m.streaming.inlineActivitySteps,
-              suffix: `toolparams-${Date.now()}`,
+              suffix: `toolparams-${eventIdSuffix}`,
               retryCoTBuffer,
             });
             return {
@@ -734,7 +772,7 @@ export function useAgentMessageStream({
               chainOfThought,
               content,
               steps: m.streaming.inlineActivitySteps,
-              suffix: `error-${Date.now()}`,
+              suffix: `error-${eventIdSuffix}`,
               retryCoTBuffer,
             });
             return {
@@ -779,7 +817,7 @@ export function useAgentMessageStream({
               chainOfThought,
               content,
               steps: m.streaming.inlineActivitySteps,
-              suffix: `cancel-${Date.now()}`,
+              suffix: `cancel-${eventIdSuffix}`,
               retryCoTBuffer,
             });
             return {
@@ -825,7 +863,7 @@ export function useAgentMessageStream({
               ? appendThinkingStep(
                   m.streaming.inlineActivitySteps,
                   cotAtSuccess,
-                  `thinking-final-${Date.now()}`
+                  `thinking-final-${eventIdSuffix}`
                 )
               : m.streaming.inlineActivitySteps;
             // When no tokens streamed after the last tool call (e.g. the agent
