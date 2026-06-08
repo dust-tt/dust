@@ -2,6 +2,7 @@ import {
   DEEP_DIVE_DESC,
   DEEP_DIVE_NAME,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
+import type { Authenticator } from "@app/lib/auth";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
@@ -31,12 +32,44 @@ import {
 } from "@app/types/assistant/models/openai";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
+export const GLOBAL_AGENT_AUDIENCES = [
+  "everyone",
+  "builders",
+  "admins",
+] as const;
+export type GlobalAgentAudience = (typeof GLOBAL_AGENT_AUDIENCES)[number];
+
 type AgentMetadata = {
   sId: string;
   name: string;
   description: string;
   pictureUrl: string;
+  audience?: GlobalAgentAudience;
 };
+
+export function canRoleSeeAudience(
+  audience: GlobalAgentAudience,
+  auth: Authenticator
+): boolean {
+  switch (audience) {
+    case "everyone":
+      return true;
+    case "builders":
+      return auth.isBuilder();
+    case "admins":
+      return auth.isAdmin();
+    default:
+      return assertNever(audience);
+  }
+}
+
+export function canRoleSeeGlobalAgent(
+  sId: GLOBAL_AGENTS_SID,
+  auth: Authenticator
+): boolean {
+  const { audience = "everyone" } = getGlobalAgentMetadata(sId);
+  return canRoleSeeAudience(audience, auth);
+}
 
 export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
   switch (sId) {

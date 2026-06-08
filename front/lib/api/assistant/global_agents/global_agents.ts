@@ -85,6 +85,7 @@ import {
   _getNotionGlobalAgent,
   _getSlackGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/retired_managed";
+import { canRoleSeeGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import {
   buildSidekickContext,
   type SidekickContext,
@@ -1482,6 +1483,10 @@ export async function getGlobalAgents(
 
     return !customModelFlag || flags.includes(customModelFlag);
   });
+
+  agentsIdsToFetch = agentsIdsToFetch.filter(
+    (sId) => !isGlobalAgentId(sId) || canRoleSeeGlobalAgent(sId, auth)
+  );
 
   const sidekickContext =
     variant === "full"
