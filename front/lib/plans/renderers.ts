@@ -16,6 +16,8 @@ export function renderPlanFromModel({
         isSlackBotAllowed: plan.isSlackbotAllowed,
         maxMessages: plan.maxMessages,
         maxMessagesTimeframe: plan.maxMessagesTimeframe,
+        maxAwuCredits: plan.maxAwuCredits,
+        maxAwuCreditsTimeframe: plan.maxAwuCreditsTimeframe,
         isDeepDiveAllowed: plan.isDeepDiveAllowed,
       },
       connections: {

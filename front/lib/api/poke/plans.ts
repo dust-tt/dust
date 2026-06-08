@@ -1,4 +1,8 @@
-import type { PlanType } from "@app/types/plan";
+import {
+  MAX_AWU_CREDITS_TIMEFRAMES,
+  MAX_MESSAGE_TIMEFRAMES,
+  type PlanType,
+} from "@app/types/plan";
 import { z } from "zod";
 
 export const PlanTypeSchema = z.object({
@@ -8,7 +12,9 @@ export const PlanTypeSchema = z.object({
     assistant: z.object({
       isSlackBotAllowed: z.boolean(),
       maxMessages: z.number(),
-      maxMessagesTimeframe: z.enum(["day", "lifetime"]),
+      maxMessagesTimeframe: z.enum(MAX_MESSAGE_TIMEFRAMES),
+      maxAwuCredits: z.number(),
+      maxAwuCreditsTimeframe: z.enum(MAX_AWU_CREDITS_TIMEFRAMES),
       isDeepDiveAllowed: z.boolean(),
     }),
     capabilities: z.object({

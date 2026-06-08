@@ -10,6 +10,21 @@ export function isMaxMessagesTimeframeType(
   return (MAX_MESSAGE_TIMEFRAMES as unknown as string[]).includes(value);
 }
 
+export const MAX_AWU_CREDITS_TIMEFRAMES = [
+  "day",
+  "week",
+  "month",
+  "lifetime",
+] as const;
+export type MaxAwuCreditsTimeframeType =
+  (typeof MAX_AWU_CREDITS_TIMEFRAMES)[number];
+
+export function isMaxAwuCreditsTimeframeType(
+  value: string
+): value is MaxAwuCreditsTimeframeType {
+  return (MAX_AWU_CREDITS_TIMEFRAMES as unknown as string[]).includes(value);
+}
+
 /**
  *  Expresses limits for usage of the product
  * Any positive number enforces the limit, -1 means no limit.
@@ -29,6 +44,8 @@ export type LimitsType = {
     isSlackBotAllowed: boolean;
     maxMessages: number;
     maxMessagesTimeframe: MaxMessagesTimeframeType;
+    maxAwuCredits: number;
+    maxAwuCreditsTimeframe: MaxAwuCreditsTimeframeType;
     isDeepDiveAllowed: boolean;
   };
   connections: ManageDataSourcesLimitsType;

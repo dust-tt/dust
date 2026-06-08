@@ -39,6 +39,8 @@ function createMockPlan(code: string): PlanType {
         isSlackBotAllowed: false,
         maxMessages: 1000,
         maxMessagesTimeframe: "day",
+        maxAwuCredits: 1000,
+        maxAwuCreditsTimeframe: "day",
         isDeepDiveAllowed: false,
       },
       connections: {

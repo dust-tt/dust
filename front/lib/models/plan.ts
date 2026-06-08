@@ -2,10 +2,14 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
+  MaxAwuCreditsTimeframeType,
   MaxMessagesTimeframeType,
   SubscriptionStatusType,
 } from "@app/types/plan";
-import { SUBSCRIPTION_STATUSES } from "@app/types/plan";
+import {
+  MAX_AWU_CREDITS_TIMEFRAMES,
+  SUBSCRIPTION_STATUSES,
+} from "@app/types/plan";
 import type {
   CreationOptional,
   ForeignKey,
@@ -26,6 +30,8 @@ export class PlanModel extends BaseModel<PlanModel> {
   // workspace limitations
   declare maxMessages: number;
   declare maxMessagesTimeframe: MaxMessagesTimeframeType;
+  declare maxAwuCredits: number;
+  declare maxAwuCreditsTimeframe: MaxAwuCreditsTimeframeType;
   declare isDeepDiveAllowed: boolean;
   declare maxUsersInWorkspace: number;
   // Cap on simultaneously-active `free` seats in this workspace. `-1` =
@@ -92,6 +98,19 @@ PlanModel.init(
     maxMessagesTimeframe: {
       type: DataTypes.ENUM("day", "lifetime"),
       allowNull: false,
+    },
+    maxAwuCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: -1,
+    },
+    maxAwuCreditsTimeframe: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "lifetime",
+      validate: {
+        isIn: [MAX_AWU_CREDITS_TIMEFRAMES],
+      },
     },
     isDeepDiveAllowed: {
       type: DataTypes.BOOLEAN,
