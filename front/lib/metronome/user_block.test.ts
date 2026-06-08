@@ -135,13 +135,13 @@ describe("isUserBlocked", () => {
     expect(blocked).toBe("credits_exhausted");
   });
 
-  it("still blocks a capped 'user_seat' user via their per-user cap when the pool is depleted", async () => {
+  it("returns 'credits_exhausted' when the pool is depleted and the user is also capped", async () => {
     redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
     redisValues.set("metronome:user_credit_state:ws_test:u_test", "capped");
 
     const blocked = await isUserBlocked("ws_test", "u_test");
 
-    expect(blocked).toBe("user_cap_reached");
+    expect(blocked).toBe("credits_exhausted");
   });
 
   it("falls back to DB on cold cache and repopulates both flags", async () => {
