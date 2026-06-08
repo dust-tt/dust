@@ -87,6 +87,7 @@ import {
   WEB_SEARCH_BROWSE_SERVER,
   WEB_SEARCH_BROWSE_SERVER_NAME,
 } from "@app/lib/api/actions/servers/web_search_browse/metadata";
+import { WORKSPACE_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
 import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import type {
   InternalMCPServerDefinitionType,
@@ -216,6 +217,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "ask_user_question",
   "wakeups",
   "plan_mode",
+  "workspace_analytics",
 ] as const;
 
 export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
@@ -1134,6 +1136,21 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: FILES_SERVER,
+  },
+  workspace_analytics: {
+    id: 1035,
+    // Gated by the workspace_analytics feature flag (off by default) and hidden
+    // from the builder tool-picker; the skill wires it by name. Data access is
+    // enforced per-tool via auth.isAdmin().
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) =>
+      !featureFlags.includes("workspace_analytics"),
+    isPreview: false,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: WORKSPACE_ANALYTICS_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
