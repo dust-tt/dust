@@ -1223,6 +1223,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
+  async updateUserEditedInputs(
+    userEditedInputs: Record<string, unknown> | null
+  ): Promise<[affectedCount: number]> {
+    return this.update({
+      userEditedInputs,
+    });
+  }
+
   static async deleteByAgentMessageId(
     auth: Authenticator,
     params: {
