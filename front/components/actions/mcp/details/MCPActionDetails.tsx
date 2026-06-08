@@ -164,12 +164,16 @@ function MCPActionDetailsInner({
   messageStatus,
 }: MCPActionDetailsProps) {
   const {
-    params,
+    params: originalParams,
     status,
     output: baseOutput,
     internalMCPServerName,
     toolName,
   } = action;
+  const params = {
+    ...originalParams,
+    ...(action.userEditedInputs ?? {}),
+  };
 
   const [output, setOutput] = useState(baseOutput);
 
@@ -373,7 +377,7 @@ function MCPActionDetailsInner({
     return (
       <MCPSkillAuthoringUpdateActionDetails
         owner={owner}
-        action={{ ...action, output }}
+        action={{ ...action, params, output }}
         displayContext={displayContext}
         lastNotification={lastNotification}
         messageStatus={messageStatus}
@@ -419,7 +423,7 @@ function MCPActionDetailsInner({
       lastNotification={lastNotification}
       messageStatus={messageStatus}
       displayContext={displayContext}
-      action={{ ...action, output }}
+      action={{ ...action, params, output }}
     />
   );
 }

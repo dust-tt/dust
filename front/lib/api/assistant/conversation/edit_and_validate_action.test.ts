@@ -182,6 +182,14 @@ describe("editAndValidateAction", () => {
     expect(action.userEditedInputs).toEqual({
       subject: "New subject",
     });
+    expect(action.toJSON().params).toEqual({
+      subject: "Old subject",
+      to: "user@example.com",
+      body: "Hello",
+    });
+    expect(action.toJSON().userEditedInputs).toEqual({
+      subject: "New subject",
+    });
     expect(action.status).toBe("ready_allowed_explicitly");
 
     const stepContentValue = await reloadStepContentValue(stepContentId);
