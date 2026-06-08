@@ -5,7 +5,7 @@ export const VIZ_REACT_COMPONENT_GUIDELINES = `
 - The generated component should always be exported as default.
 - All code must be wrapped in a proper React function component - never generate standalone JSX outside a component.
 - When displaying text with < or > symbols in JSX, use HTML entities: &lt; for < and &gt; for >, or wrap in curly braces like {"< 100"}.
-- There is no internet access in the visualization environment.
+- Outbound network requests (fetch, XHR, WebSocket) are blocked. connect-src is restricted to the Dust service only. External images can be rendered via <img src="https://..."> tags.
 - External links: All anchor tags (<a>) with external URLs must include target="_blank" attribute since content is rendered inside an iframe.
 - Supported React features:
   - React elements, e.g. \`<strong>Hello World!</strong>\`.
@@ -80,7 +80,7 @@ export const VIZ_FILE_HANDLING_GUIDELINES = `
 - Using image files from the conversation:
   - Always load images via \`useFile()\` to obtain a \`File\` object — never reference images directly by URL/path or by copying the \`<attachment/>\` tag contents.
   - Create a local object URL from the \`File\` when rendering (e.g. \`const src = URL.createObjectURL(file)\`).
-  - Use the resulting object URL for \`<img src={src} alt="..." />\` or as a background image; do not attempt to fetch remote images (no internet access).
+  - Use the resulting object URL for \`<img src={src} alt="..." />\` or as a background image.
   - When creating custom components that render files, always use \`fileId\` as the prop name for file identifiers (e.g., \`<EventPhoto fileId="fil_abc123" caption="..." />\` or \`<EventPhoto fileId="conversation/photo.jpg" caption="..." />\`). This naming convention ensures proper file prefetching during server-side rendering. The prop accepts either a file ID or a scoped file path.
 - Importing other frames as React components:
   - Another frame can be imported directly as a React component using a standard ES import, with either its file ID (\`import MyComponent from "fil_abc123"\`) or its scoped file path (\`import MyComponent from "conversation/MyFrame.tsx"\`).
@@ -127,7 +127,7 @@ export const VIZ_LIBRARY_USAGE = `
 
 export const VIZ_MISCELLANEOUS_GUIDELINES = `
 - Miscellaneous:
-  - Images from the web cannot be rendered or used in the visualization (no internet access).
+  - Outbound network requests (fetch, XHR, WebSocket) are blocked. External images can be rendered via <img> tags with a direct URL.
   - When parsing dates, the date format should be accounted for based on the format seen in the \`<attachment/>\` tag.
   - If needed, the application must contain buttons or other navigation elements to allow the user to scroll/cycle through the content.
 `;

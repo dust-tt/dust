@@ -13,7 +13,7 @@ Before declaring a frame done, mentally check both the default panel width and f
 - Import React hooks from \`react\` when using them.
 - Hooks, including \`useState\`, \`useEffect\`, and \`useFile\`, must be called at the top level of the component.
 - \`React.createElement\` is not supported.
-- There is no internet access in the frame environment.
+- Outbound network requests (fetch, XHR, WebSocket) are blocked. connect-src is restricted to the Dust service only. External images can be rendered via <img src="https://..."> tags.
 - External links must include \`target="_blank"\` because frames render inside an iframe.
 - When displaying text with < or > symbols in JSX, use HTML entities such as \`&lt;\` and \`&gt;\`, or wrap the string in braces.
 
@@ -100,7 +100,7 @@ The same decision rule applies regardless of where the data came from:
 - Never use bare \`conversation/filename\` or \`pod/filename\` paths. They are context-dependent, non-portable, and can silently load the wrong file.
 - Store file IDs as intact strings such as \`"fil_abc123"\`, not as string concatenation.
 - \`file.text()\` is async. Await it inside \`useEffect\`; never call it directly in render logic.
-- For images, always load with \`useFile\`, create a local object URL with \`URL.createObjectURL(file)\`, and render that URL in \`<img>\` or background styles. Do not fetch remote images.
+- For images from the conversation, load with \`useFile\`, create a local object URL with \`URL.createObjectURL(file)\`, and render that URL in \`<img>\` or background styles. External images can be rendered directly via \`<img src="https://...">\`.
 - Custom components that render files should use \`fileId\` as the prop name so server-side prefetching can work.
 - Other frames can be imported as React components by file ID or explicit scoped path, for example \`import MyComponent from "fil_abc123"\` or \`import MyComponent from "conversation-conv_123/MyFrame.tsx"\`. Transitive imports are supported.
 - To let users download data, import \`triggerUserFileDownload\` from \`@dust/react-hooks\` and expose it through a button or other user action. Never auto-trigger downloads.
