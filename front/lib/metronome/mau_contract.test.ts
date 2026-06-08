@@ -7,10 +7,17 @@ vi.mock("@app/lib/metronome/client", () => ({
   updateSubscriptionQuantity: vi.fn(),
 }));
 
-vi.mock("@app/lib/metronome/constants", () => ({
-  getProductMauId: () => "mau-product",
-  getProductMauTierIds: () => ["mau-tier-1", "mau-tier-2", "mau-tier-3"],
-}));
+vi.mock("@app/lib/metronome/constants", async () => {
+  const actual = await vi.importActual<
+    typeof import("@app/lib/metronome/constants")
+  >("@app/lib/metronome/constants");
+
+  return {
+    ...actual,
+    getProductMauId: () => "mau-product",
+    getProductMauTierIds: () => ["mau-tier-1", "mau-tier-2", "mau-tier-3"],
+  };
+});
 
 // CachedContract has many required fields the function doesn't read; cast
 // partial fixtures through `unknown` so the test stays focused on the
