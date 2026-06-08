@@ -12,7 +12,7 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
-import { Clipboard, DataTable, Edit04, Eye, Trash01 } from "@dust-tt/sparkle";
+import { DataTable, Edit04, Eye, Trash01 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
@@ -209,22 +209,6 @@ export function SkillsTable({
                   onClick: (e: React.MouseEvent) => {
                     e.stopPropagation();
                     onSkillClick(skill);
-                  },
-                  kind: "item" as const,
-                },
-                {
-                  label: "Customize (New)",
-                  icon: Clipboard,
-                  disabled: !skill.isExtendable,
-                  onClick: (e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    void router.push(
-                      getSkillBuilderRoute(
-                        owner.sId,
-                        "new",
-                        `extends=${skill.sId}`
-                      )
-                    );
                   },
                   kind: "item" as const,
                 },

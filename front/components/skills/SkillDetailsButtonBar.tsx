@@ -1,11 +1,9 @@
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
-import { useAppRouter } from "@app/lib/platform";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import type { SkillWithoutInstructionsAndToolsWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  Clipboard,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
@@ -27,10 +25,9 @@ export function SkillDetailsButtonBar({
   owner,
   onClose,
 }: SkillDetailsButtonBarProps) {
-  const router = useAppRouter();
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
 
-  if (!skill.canWrite && !skill.isExtendable) {
+  if (!skill.canWrite) {
     return null;
   }
 
@@ -60,22 +57,6 @@ export function SkillDetailsButtonBar({
             <Button icon={DotsHorizontal} size="sm" variant="ghost" />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            {skill.isExtendable && (
-              <DropdownMenuItem
-                label="Customize (New)"
-                icon={Clipboard}
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  await router.push(
-                    getSkillBuilderRoute(
-                      owner.sId,
-                      "new",
-                      `extends=${skill.sId}`
-                    )
-                  );
-                }}
-              />
-            )}
             {skill.canWrite && (
               <DropdownMenuItem
                 label="Archive"
