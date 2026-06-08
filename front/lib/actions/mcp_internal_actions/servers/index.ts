@@ -78,6 +78,7 @@ import { default as valtownServer } from "@app/lib/api/actions/servers/val_town"
 import { default as vantaServer } from "@app/lib/api/actions/servers/vanta";
 import { default as wakeupsServer } from "@app/lib/api/actions/servers/wakeups";
 import { default as webSearchBrowseServer } from "@app/lib/api/actions/servers/web_search_browse";
+import { default as workspaceAnalyticsServer } from "@app/lib/api/actions/servers/workspace_analytics";
 import { default as zendeskServer } from "@app/lib/api/actions/servers/zendesk";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -242,6 +243,8 @@ export async function getInternalMCPServer(
       return frontServer(auth, agentLoopContext);
     case "zendesk":
       return zendeskServer(auth, agentLoopContext);
+    case "workspace_analytics":
+      return workspaceAnalyticsServer(auth, agentLoopContext);
     case "skill_management":
       return skillManagementServer(auth, agentLoopContext);
     case "skill_authoring":

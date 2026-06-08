@@ -129,6 +129,7 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   monday: "advanced",
   notion: "advanced",
   openai_usage: "advanced",
+  workspace_analytics: "advanced",
   outlook_calendar: "advanced",
   outlook: "advanced",
   productboard: "advanced",

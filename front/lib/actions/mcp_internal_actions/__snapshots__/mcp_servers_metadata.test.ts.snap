@@ -700,6 +700,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "webbrowser": "never_ask",
     "websearch": "never_ask",
   },
+  "workspace_analytics": {
+    "get_top_agents": "never_ask",
+  },
   "zendesk": {
     "draft_reply": "low",
     "get_ticket": "never_ask",
