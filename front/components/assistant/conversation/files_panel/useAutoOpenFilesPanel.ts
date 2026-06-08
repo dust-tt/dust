@@ -18,13 +18,9 @@ export function useAutoOpenFilesPanel({
 }: UseAutoOpenFilesPanelProps) {
   const { openPanel, currentPanel } = useConversationSidePanelContext();
 
-  const hasAutoOpenedRef = React.useRef(false);
-
-  // Reset per message so a new message can trigger auto-open again.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  React.useEffect(() => {
-    hasAutoOpenedRef.current = false;
-  }, [agentMessage.sId]);
+  // Stores the sId of the last message that triggered auto-open, so the comparison itself encodes
+  // "already opened for this message" without a separate reset effect.
+  const autoOpenedForRef = React.useRef<string | null>(null);
 
   const regularGeneratedFiles = React.useMemo(
     () =>
@@ -38,11 +34,17 @@ export function useAutoOpenFilesPanel({
     if (
       regularGeneratedFiles.length > 0 &&
       isLastMessage &&
-      !hasAutoOpenedRef.current &&
+      autoOpenedForRef.current !== agentMessage.sId &&
       currentPanel !== "files"
     ) {
-      hasAutoOpenedRef.current = true;
+      autoOpenedForRef.current = agentMessage.sId;
       openPanel({ type: "files" });
     }
-  }, [regularGeneratedFiles, isLastMessage, openPanel, currentPanel]);
+  }, [
+    regularGeneratedFiles,
+    isLastMessage,
+    agentMessage.sId,
+    openPanel,
+    currentPanel,
+  ]);
 }
