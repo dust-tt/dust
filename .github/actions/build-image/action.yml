@@ -164,10 +164,13 @@ runs:
           fi
         fi
 
-        # Override NEXT_PUBLIC_DUST_APP_URL for front-edge
+        # Override NEXT_PUBLIC_DUST_APP_URL for *-edge components (the .env.edge
+        # files don't set it; only .env.prod does). marketing-edge needs it for
+        # the same reason as front-edge: `next build` inlines it into the
+        # client bundle at compile time.
         # Apply the same sanitization Cloudflare Pages uses for branch aliases:
         # lowercase, replace non-alphanumeric with '-', collapse multiple '-', trim '-', truncate to 28 chars.
-        if [[ "$COMPONENT" == "front-edge" ]]; then
+        if [[ "$COMPONENT" == "front-edge" || "$COMPONENT" == "marketing-edge" ]]; then
           CF_BRANCH=$(echo "${{ github.ref_name }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-28 | sed 's/-$//')
           echo "🏗️ Setting build arg NEXT_PUBLIC_DUST_APP_URL=https://${CF_BRANCH}--app.preview.dust.tt"
           build_args+=("--build-arg NEXT_PUBLIC_DUST_APP_URL=https://${CF_BRANCH}--app.preview.dust.tt")
