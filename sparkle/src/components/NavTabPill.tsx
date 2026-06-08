@@ -63,6 +63,7 @@ const NavTabPillTrigger = React.forwardRef<
       "disabled:s-pointer-events-none disabled:s-opacity-100",
       "data-[state=active]:s-overflow-hidden data-[state=active]:s-shrink",
       "s-transition-[padding] s-duration-200 motion-reduce:s-transition-none",
+      "s-touch-hitbox",
       className
     );
 
