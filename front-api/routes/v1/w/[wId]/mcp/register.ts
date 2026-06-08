@@ -2,6 +2,7 @@ import {
   MCPServerInstanceLimitError,
   registerMCPServer,
 } from "@app/lib/api/actions/mcp/client_side_registry";
+import { maybePersistDustDesktopClientSideMCPServerRegistration } from "@app/lib/api/actions/mcp/dust_desktop";
 import type { RegisterMCPResponseType } from "@dust-tt/client";
 import { PublicRegisterMCPRequestBodySchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
@@ -111,6 +112,11 @@ app.post(
         },
       });
     }
+
+    await maybePersistDustDesktopClientSideMCPServerRegistration(auth, {
+      serverName,
+      serverId: registration.value.serverId,
+    });
 
     return ctx.json(registration.value);
   }

@@ -2741,6 +2741,61 @@
         }
       }
     },
+    "/api/v1/w/{wId}/mcp/deregister": {
+      "post": {
+        "summary": "Deregister a client-side MCP server",
+        "description": "[Documentation](https://docs.dust.tt/docs/client-side-mcp-server)\nRemove a previously registered client-side MCP server registration.\n",
+        "tags": [
+          "MCP"
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "description": "ID of the workspace",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "serverId"
+                ],
+                "properties": {
+                  "serverId": {
+                    "type": "string",
+                    "description": "The ID of the registered MCP server"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Server deregistered successfully"
+          },
+          "401": {
+            "description": "Unauthorized. Invalid or missing authentication token."
+          },
+          "403": {
+            "description": "Forbidden. User does not have access to the workspace."
+          }
+        }
+      }
+    },
     "/api/v1/w/{wId}/mcp/heartbeat": {
       "post": {
         "summary": "Update heartbeat for a client-side MCP server",
