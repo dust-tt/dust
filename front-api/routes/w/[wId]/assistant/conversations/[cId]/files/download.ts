@@ -99,7 +99,10 @@ app.post(
 
     const readStream = bucket.file(normalizedPath).createReadStream();
     readStream.on("error", (err) =>
-      logger.error({ err, filePath: normalizedPath }, "Error streaming conversation file")
+      logger.error(
+        { err, filePath: normalizedPath },
+        "Error streaming conversation file"
+      )
     );
     return new Response(readableToReadableStream(readStream), {
       status: 200,

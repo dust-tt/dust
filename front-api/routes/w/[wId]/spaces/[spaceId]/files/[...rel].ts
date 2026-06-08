@@ -15,8 +15,8 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { APIErrorResponse } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { isString } from "@app/types/shared/utils/general";
+import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -130,7 +130,10 @@ app.get(
     const contentType = contentTypeResult.value ?? "application/octet-stream";
     const readStream = bucket.file(normalizedGcsPath).createReadStream();
     readStream.on("error", (err) =>
-      logger.error({ err, gcsPath: normalizedGcsPath }, "Error streaming project file (GCS)")
+      logger.error(
+        { err, gcsPath: normalizedGcsPath },
+        "Error streaming project file (GCS)"
+      )
     );
     return new Response(readableToReadableStream(readStream), {
       status: 200,

@@ -96,7 +96,10 @@ app.get("/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
   const contentType = contentTypeResult.value ?? "application/octet-stream";
   const readStream = bucket.file(normalizedGcsPath).createReadStream();
   readStream.on("error", (err) =>
-    logger.error({ err, gcsPath: normalizedGcsPath }, "Error streaming conversation file (GCS)")
+    logger.error(
+      { err, gcsPath: normalizedGcsPath },
+      "Error streaming conversation file (GCS)"
+    )
   );
   return new Response(readableToReadableStream(readStream), {
     status: 200,

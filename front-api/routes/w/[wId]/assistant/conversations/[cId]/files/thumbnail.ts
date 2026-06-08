@@ -132,7 +132,10 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
 
   const readStream = bucket.file(normalizedPath).createReadStream();
   readStream.on("error", (err) =>
-    logger.error({ err, filePath: normalizedPath }, "Error streaming thumbnail (GCS)")
+    logger.error(
+      { err, filePath: normalizedPath },
+      "Error streaming thumbnail (GCS)"
+    )
   );
   return new Response(readableToReadableStream(readStream), {
     status: 200,
