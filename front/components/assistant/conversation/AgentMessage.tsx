@@ -53,6 +53,7 @@ import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
+import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
 import type { FetchConversationMessageResponseLight } from "@app/lib/api/assistant/messages";
 import config from "@app/lib/api/config";
@@ -78,7 +79,6 @@ import type {
 } from "@app/types/assistant/mentions";
 import { isActiveWakeUp } from "@app/types/assistant/wakeups";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
-import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   isInteractiveContentType,
   isSupportedImageContentType,
@@ -1377,9 +1377,7 @@ function AgentMessageContent({
         <AgentMessageInteractiveContentGeneratedFiles
           files={interactiveFiles}
         />
-        {allImages.length > 0 && (
-          <InteractiveImageGrid images={allImages} />
-        )}
+        {allImages.length > 0 && <InteractiveImageGrid images={allImages} />}
 
         {agentMessage.content !== null &&
           agentMessage.content !== "" &&

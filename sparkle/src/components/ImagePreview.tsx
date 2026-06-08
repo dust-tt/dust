@@ -1,11 +1,11 @@
 import { Button } from "@sparkle/components/Button";
 import { ImageGenerationPlaceholder } from "@sparkle/components/ImageGenerationPlaceholder";
 import { ImageWrapper } from "@sparkle/components/ImageWrapper";
-import { Spinner } from "@sparkle/components/Spinner";
 import {
   downloadFile,
   ImageZoomDialog,
 } from "@sparkle/components/ImageZoomDialog";
+import { Spinner } from "@sparkle/components/Spinner";
 import { Download01, XClose } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
