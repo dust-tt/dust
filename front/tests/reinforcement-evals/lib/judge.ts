@@ -51,8 +51,8 @@ IMPORTANT: You must include both REASONING: and SCORE: labels. The score MUST ap
 ## General Evaluation Checklist (apply to all scenarios)
 
 1. **Correct Tool Usage**: Did the analyst call edit_skill with the right fields?
-   - instructionEdits for instruction improvements (search-and-replace edits)
-   - Inline <tool> tag additions/removals inside instructionEdits for tool reference changes
+   - instructionEdits for instruction improvements and tool reference changes
+   - Tool reference changes must add/remove inline <tool id="..." name="..."/> tags in instructionEdits content
    - toolEdits should not be used in final edit_skill calls
 2. **Suggestion Quality**: Are the suggestions specific, actionable, and well-reasoned?
    - Does the analysis field explain WHY the change is needed?
@@ -65,8 +65,8 @@ IMPORTANT: You must include both REASONING: and SCORE: labels. The score MUST ap
    - Are the old_string values accurate matches of the existing instructions?
    - Would the new_string replacements meaningfully improve the skill?
 5. **If tool reference changes are present**:
-   - Is the correct inline <tool> tag used?
-   - Is the add/remove behavior appropriate?
+   - Is the correct inline <tool id="..." name="..."/> tag added/removed in the edited instruction content?
+   - Is the add/remove behavior appropriate for the conversation evidence?
    - Does the analysis explain the use case?
 
 Provide your evaluation using the REASONING: and SCORE: format described above.`;
