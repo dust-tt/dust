@@ -20,6 +20,18 @@ const getTopAgentsSchema = {
     .describe("Maximum number of agents to return (default 25, max 100)."),
 };
 
+const getTopUsersSchema = {
+  ...timeWindowSchemaShape,
+  ...usageFilterSchema,
+  limit: z
+    .number()
+    .int()
+    .positive()
+    .max(100)
+    .optional()
+    .describe("Maximum number of users to return (default 25, max 100)."),
+};
+
 export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
   get_top_agents: {
     description:
@@ -33,6 +45,20 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Retrieving top agents",
       done: "Retrieved top agents",
+    },
+  },
+  get_top_users: {
+    description:
+      "Return the workspace's most active users over a time window (defaults " +
+      "to the current calendar month), ranked by number of messages sent, " +
+      "with the count of distinct agents each used. Each row includes the " +
+      "user's id. Optionally filter by source (context_origin), agent, or " +
+      "user. Use this to answer who the most active users are. Admin-only.",
+    schema: getTopUsersSchema,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving top users",
+      done: "Retrieved top users",
     },
   },
 });

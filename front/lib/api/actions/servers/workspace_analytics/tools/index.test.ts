@@ -25,6 +25,7 @@ function createTestExtra(auth: Authenticator) {
 describe("workspace_analytics tools", () => {
   it.each([
     "get_top_agents",
+    "get_top_users",
   ])("%s refuses non-admin callers", async (toolName) => {
     const workspace = await WorkspaceFactory.basic();
     await GroupFactory.defaults(workspace);
