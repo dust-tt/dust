@@ -68,6 +68,14 @@ export function isGeneralExceptionError(err: unknown): err is GraphError {
   );
 }
 
+// A "... is not found" message indicates the targeted SharePoint site host
+// (e.g. "tenant.sharepoint.com") no longer exists, e.g. "Target
+// 'tenant.sharepoint.com' is not found.". The status code varies, so we match on
+// the message. The site is gone for good, so the sync should skip it gracefully.
+export function isSiteNotFoundError(err: unknown): err is GraphError {
+  return err instanceof GraphError && err.message.includes("is not found");
+}
+
 // "Billing Policy Not Found Or Invalid" errors indicate a Microsoft 365
 // billing/licensing misconfiguration on the customer's tenant. These are not
 // actionable on our side and should be skipped gracefully.
