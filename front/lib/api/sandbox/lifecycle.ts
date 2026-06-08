@@ -1,3 +1,4 @@
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   ensureSandboxEgressOnExec,
   prepareSandboxEgressBeforeMount,
@@ -9,7 +10,6 @@ import {
 } from "@app/lib/api/sandbox/instrumentation";
 import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import type { ConversationType } from "@app/types/assistant/conversation";
