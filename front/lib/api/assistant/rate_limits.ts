@@ -6,8 +6,11 @@ import {
   getRateLimiterCount,
   getTimeframeSecondsFromLiteral,
 } from "@app/lib/utils/rate_limiter";
-import type { MaxMessagesTimeframeType } from "@app/types/plan";
-import type { LightWorkspaceType } from "@app/types/user";
+import type {
+  MaxAwuCreditsTimeframeType,
+  MaxMessagesTimeframeType,
+} from "@app/types/plan";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 export type GetTrialMessageUsageResponseType = {
   count: number;
@@ -59,6 +62,14 @@ export const makeAgentMentionsRateLimitKeyForWorkspace = (
   maxMessagesTimeframe: MaxMessagesTimeframeType
 ) => {
   return `workspace:${owner.id}:agent_message_count:${maxMessagesTimeframe}`;
+};
+
+export const makeFairUseAwuCreditsRateLimitKeyForUser = (
+  owner: LightWorkspaceType,
+  user: UserType,
+  maxAwuCreditsTimeframe: MaxAwuCreditsTimeframeType
+) => {
+  return `workspace:${owner.id}:user:${user.id}:fair_use_awu_credit_count:${maxAwuCreditsTimeframe}`;
 };
 
 export const makeProgrammaticUsageRateLimitKeyForWorkspace = (
