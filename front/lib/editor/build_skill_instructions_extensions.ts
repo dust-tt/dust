@@ -99,7 +99,10 @@ export function buildSkillInstructionsExtensions(
     BlockIdExtension,
     KnowledgeNodeWithView.configure({ readOnly: isReadOnly }),
     ToolNodeWithView.configure({ onToolDetails }),
-    SkillNode.configure({ onSkillDetails: onSkillNodeDetails }),
+    SkillNode.configure({
+      onSkillDetails: onSkillNodeDetails,
+      removable: !isReadOnly,
+    }),
   ];
 
   baseExtensions.push(

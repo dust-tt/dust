@@ -9,7 +9,7 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { NodeViewProps } from "@tiptap/react";
 import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 interface ToolNodeWithViewOptions {
   onToolDetails?: (tool: MCPServerViewType) => void;
@@ -59,7 +59,12 @@ function useToolNodeDisplay(attrs: ToolNodeAttributes) {
   }, [attrs.mcpServerViewId, attrs.toolIcon, attrs.toolName, ctx]);
 }
 
-function ToolNodeView({ node, onToolDetails }: ToolNodeViewProps) {
+function ToolNodeView({
+  deleteNode,
+  editor,
+  node,
+  onToolDetails,
+}: ToolNodeViewProps) {
   const attrs: ToolNodeAttributes = {
     mcpServerViewId: node.attrs.mcpServerViewId,
     toolIcon: node.attrs.toolIcon,
@@ -70,16 +75,21 @@ function ToolNodeView({ node, onToolDetails }: ToolNodeViewProps) {
     display.kind === "tool" && display.view && onToolDetails
       ? () => onToolDetails(display.view)
       : undefined;
+  const handleRemove = useCallback(() => {
+    deleteNode();
+  }, [deleteNode]);
+  const onRemove = editor.isEditable ? handleRemove : undefined;
 
   return (
     <NodeViewWrapper className="inline-flex align-middle">
       {display.kind === "error" ? (
-        <ToolErrorChip title={display.title} />
+        <ToolErrorChip title={display.title} onRemove={onRemove} />
       ) : (
         <ToolChip
           title={display.title}
           toolIcon={display.toolIcon}
           onClick={handleClick}
+          onRemove={onRemove}
         />
       )}
     </NodeViewWrapper>

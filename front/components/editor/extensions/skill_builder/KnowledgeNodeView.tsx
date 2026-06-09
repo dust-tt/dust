@@ -1,6 +1,6 @@
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import {
-  KnowledgeChip,
+  InlineKnowledgeChip,
   KnowledgeErrorChip,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
 import type { KnowledgeNodeAttributes } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
@@ -24,6 +24,7 @@ import { useSpaceDataSourceView, useSpaces } from "@app/lib/swr/spaces";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
+  Chip,
   cn,
   DoubleIcon,
   DropdownMenu,
@@ -128,21 +129,19 @@ export function KnowledgeDisplayComponent({
   // Show loading state while fetching node data or waiting for upgrade to full item.
   if (isFetchingNode || (needsFetch && !isFullKnowledgeItem(item))) {
     return (
-      <span
-        className={cn(
-          "inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1",
-          "text-sm text-gray-600"
-        )}
-      >
+      <Chip label={item.label} color="white" size="xs">
         <Spinner size="xs" />
-        <span>{item.label}</span>
-      </span>
+      </Chip>
     );
   }
 
   // At this point we must have a full item with node data.
   return (
-    <KnowledgeChip node={item.node} onRemove={onRemove} title={item.label} />
+    <InlineKnowledgeChip
+      node={item.node}
+      onRemove={onRemove}
+      title={item.label}
+    />
   );
 }
 

@@ -16,11 +16,13 @@ interface SkillNodeComponentProps {
     };
   };
   onDetails?: (skillId: string) => void;
+  onRemove?: () => void;
 }
 
 export function SkillNodeComponent({
   node,
   onDetails,
+  onRemove,
 }: SkillNodeComponentProps) {
   if (node.attrs.skillUnavailable === true) {
     return (
@@ -36,6 +38,7 @@ export function SkillNodeComponent({
                 icon={AlertCircle}
                 color="warning"
                 size="xs"
+                onRemove={onRemove}
               />
             </span>
           }
@@ -57,6 +60,7 @@ export function SkillNodeComponent({
         icon={getSkillIcon(skillIcon)}
         color="white"
         onClick={handleClick}
+        onRemove={onRemove}
         size="xs"
       />
     </NodeViewWrapper>
