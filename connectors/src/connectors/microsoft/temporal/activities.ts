@@ -244,7 +244,18 @@ export async function getRootNodesToSyncFromResources(
             name: node.name,
           };
         } catch (error) {
-          if (error instanceof GraphError && error.statusCode === 404) {
+          if (
+            (error instanceof GraphError && error.statusCode === 404) ||
+            isSiteNotFoundError(error)
+          ) {
+            logger.warn(
+              {
+                connectorId,
+                internalId: resource.internalId,
+                error: normalizeError(error).message,
+              },
+              "Root resource not found, skipping"
+            );
             return null;
           }
           if (isAccessBlockedError(error)) {
@@ -329,6 +340,11 @@ export async function getRootNodesToSyncFromResources(
           { error: error.message },
           "Billing policy error from Microsoft, skipping sites-root"
         );
+      } else if (isSiteNotFoundError(error)) {
+        logger.warn(
+          { error: error.message },
+          "SharePoint site target not found, skipping sites-root"
+        );
       } else {
         throw error;
       }
@@ -351,8 +367,11 @@ export async function getRootNodesToSyncFromResources(
               nextLink
             );
           } catch (error) {
-            if (isItemNotFoundError(error)) {
-              logger.warn({ sitePath }, "Site not found, skipping drives");
+            if (isItemNotFoundError(error) || isSiteNotFoundError(error)) {
+              logger.warn(
+                { sitePath, error: normalizeError(error).message },
+                "Site not found, skipping drives"
+              );
               return { results: [] };
             }
             if (isAccessBlockedError(error)) {
