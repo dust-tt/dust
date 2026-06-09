@@ -12,7 +12,11 @@ const config: StorybookConfig = {
     { from: "./assets", to: "/brand" },
   ],
 
-  addons: ["@storybook/addon-themes", "@chromatic-com/storybook"],
+  addons: [
+    "@storybook/addon-themes",
+    "@chromatic-com/storybook",
+    "@storybook/addon-docs",
+  ],
 
   viteFinal: async (config) => {
     config.resolve = {
