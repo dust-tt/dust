@@ -12,6 +12,9 @@ import { Worker } from "@temporalio/worker";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 import { QUEUE_NAME } from "./config";
 
+// Must match the deployment's terminationGracePeriodSeconds minus 10s buffer.
+const SHUTDOWN_GRACE_TIME_MS = 70 * 1_000;
+
 export async function runProjectTaskWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
 
@@ -30,6 +33,7 @@ export async function runProjectTaskWorker() {
     maxConcurrentActivityTaskExecutions: 16,
     connection,
     namespace,
+    shutdownGraceTime: SHUTDOWN_GRACE_TIME_MS,
     interceptors: {
       activityInbound: [
         (ctx: Context) => {
