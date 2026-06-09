@@ -229,12 +229,8 @@ app.get(
         const itemCurrency = creditTypeIdToCurrency(item.credit_type.id);
         return !!currency && !!itemCurrency && itemCurrency === currency;
       })
-      .filter((item) => item.total >= 0)
-      .filter(
-        (item) =>
-          !item.applied_commit_or_credit ||
-          item.applied_commit_or_credit?.type !== "CREDIT"
-      )
+      .filter((item) => item.total >= 0.01)
+      .filter((item) => !item.applied_commit_or_credit)
       .map((item) => {
         const itemCurrency = creditTypeIdToCurrency(item.credit_type.id);
         return {
