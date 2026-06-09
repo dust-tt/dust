@@ -1,7 +1,8 @@
 import { PhoneNumberCodeInput } from "@app/components/trial/PhoneNumberCodeInput";
 import { PhoneNumberInput } from "@app/components/trial/PhoneNumberInput";
 import config from "@app/lib/api/config";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { CP_FREE_PLAN_CREDITS } from "@app/lib/client/subscription";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   CODE_LENGTH,
@@ -10,21 +11,40 @@ import {
   RESEND_COOLDOWN_SECONDS,
 } from "@app/lib/plans/trial/phone";
 import { useAppRouter } from "@app/lib/platform";
+import { useKillSwitches } from "@app/lib/swr/kill";
 import { useAuthContext, useVerifyData } from "@app/lib/swr/workspaces";
-import { Button, DustLogoSquare, Page, Spinner } from "@dust-tt/sparkle";
+import {
+  ActionSparklesIcon,
+  Button,
+  DustLogoSquare,
+  Icon,
+  Page,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { Turnstile } from "@marsidev/react-turnstile";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Country } from "react-phone-number-input";
 
-type Step = "captcha" | "phone" | "code";
+type Step = "captcha" | "phone" | "code" | "done";
 
 export function VerifyPage() {
   const { workspace } = useAuth();
   const router = useAppRouter();
+  const { hasFeature } = useFeatureFlags();
+  const { killSwitches } = useKillSwitches();
   const { mutateAuthContext } = useAuthContext({
     workspaceId: workspace.sId,
   });
+
+  // Same gate as the one that routes to /select-subscription (see
+  // `isMetronomeCheckoutEnabled` and SubscribePage): the credit-priced checkout
+  // flow gets the new phone verification copy and a welcome screen at the end.
+  const isMetronomeEnabled =
+    hasFeature("metronome_billing") ||
+    !killSwitches?.includes("global_disable_metronome_billing");
+  const isMetronomeCheckout =
+    isMetronomeEnabled && hasFeature("metronome_cp_checkout");
 
   const {
     verifyData,
@@ -74,6 +94,10 @@ export function VerifyPage() {
       inputRefs.current[0]?.focus();
     }
   }, [step]);
+
+  const goToWorkspace = useCallback(() => {
+    void router.push(`/w/${workspace.sId}/conversation/new?welcome=true`);
+  }, [router, workspace.sId]);
 
   const handleSendCode = async () => {
     setPhoneError(null);
@@ -191,7 +215,13 @@ export function VerifyPage() {
       // (canUseProduct is now true) and doesn't redirect back to /trial.
       await mutateAuthContext();
 
-      void router.push(`/w/${workspace.sId}/conversation/new?welcome=true`);
+      // With the credit-priced checkout flow we show a welcome screen before
+      // entering the workspace instead of redirecting there directly.
+      if (isMetronomeCheckout) {
+        setStep("done");
+      } else {
+        goToWorkspace();
+      }
     } catch {
       setPhoneError("Network error. Please try again.");
     } finally {
@@ -283,6 +313,15 @@ export function VerifyPage() {
     );
   }
 
+  if (step === "done") {
+    return (
+      <WelcomeStep
+        credits={CP_FREE_PLAN_CREDITS}
+        onStartBuilding={goToWorkspace}
+      />
+    );
+  }
+
   if (step === "captcha") {
     return (
       <CaptchaStep
@@ -328,6 +367,7 @@ export function VerifyPage() {
 
   return (
     <PhoneInputStep
+      isMetronome={isMetronomeCheckout}
       phoneNumber={phoneNumber}
       countryCode={countryCode}
       error={phoneError}
@@ -340,6 +380,7 @@ export function VerifyPage() {
 }
 
 interface PhoneInputStepProps {
+  isMetronome: boolean;
   phoneNumber: string;
   countryCode: Country;
   error: string | null;
@@ -350,6 +391,7 @@ interface PhoneInputStepProps {
 }
 
 function PhoneInputStep({
+  isMetronome,
   phoneNumber,
   countryCode,
   error,
@@ -363,15 +405,29 @@ function PhoneInputStep({
       <div className="flex h-full flex-col justify-center">
         <Page.Horizontal>
           <Page.Vertical sizing="grow" gap="lg">
-            <Page.Header
-              title="Phone number"
-              icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
-            />
-            <p className="-mt-4 text-muted-foreground dark:text-muted-foreground-night">
-              To start your free trial, we need to verify your account with an
-              SMS code. <br />
-              Your number will only be used for this verification.
-            </p>
+            {isMetronome ? (
+              <div className="flex flex-col gap-2">
+                <h1 className="text-2xl font-bold text-foreground dark:text-foreground-night">
+                  Verify your phone
+                </h1>
+                <p className="text-muted-foreground dark:text-muted-foreground-night">
+                  We verify your number once to keep free credits fair. We won't
+                  text you otherwise.
+                </p>
+              </div>
+            ) : (
+              <>
+                <Page.Header
+                  title="Phone number"
+                  icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
+                />
+                <p className="-mt-4 text-muted-foreground dark:text-muted-foreground-night">
+                  To start your free trial, we need to verify your account with
+                  an SMS code. <br />
+                  Your number will only be used for this verification.
+                </p>
+              </>
+            )}
 
             <div className="flex w-full max-w-xl flex-col gap-4">
               <div className="flex w-full flex-col gap-2">
@@ -538,6 +594,44 @@ function CaptchaStep({
             </div>
           </Page.Vertical>
         </Page.Horizontal>
+      </div>
+    </Page>
+  );
+}
+
+interface WelcomeStepProps {
+  credits: number;
+  onStartBuilding: () => void;
+}
+
+function WelcomeStep({ credits, onStartBuilding }: WelcomeStepProps) {
+  return (
+    <Page>
+      <div className="flex h-full flex-col items-center justify-center">
+        <div className="flex max-w-xl flex-col items-center gap-6 text-center">
+          <Icon
+            visual={ActionSparklesIcon}
+            size="lg"
+            className="text-highlight-500"
+          />
+          <h1 className="text-4xl font-bold text-foreground dark:text-foreground-night">
+            You're in. Welcome to Dust.
+          </h1>
+          <p className="text-lg text-muted-foreground dark:text-muted-foreground-night">
+            You've got{" "}
+            <span className="font-bold text-foreground dark:text-foreground-night">
+              {credits.toLocaleString()} credits
+            </span>{" "}
+            to explore, they never expire, so take your time. Let's put them to
+            work.
+          </p>
+          <Button
+            variant="highlight"
+            size="md"
+            label="Start building"
+            onClick={onStartBuilding}
+          />
+        </div>
       </div>
     </Page>
   );
