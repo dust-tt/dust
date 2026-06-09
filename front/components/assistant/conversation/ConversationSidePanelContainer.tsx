@@ -43,9 +43,7 @@ export default function ConversationSidePanelContainer({
     <>
       {!!conversation && (
         <ResizableHandle
-          withHandle={
-            currentPanel && !isMobile && !isFullScreen
-          }
+          withHandle={currentPanel && !isMobile && !isFullScreen}
           disabled={!currentPanel || isMobile || isFullScreen}
           className="z-50"
         />

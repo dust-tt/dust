@@ -113,16 +113,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.classList.toggle("s-dark", nextIsDark);
 
     if (nextIsDark) {
-      document.body.classList.remove("bg-app-background");
-      document.body.classList.add(
-        "bg-app-background-night",
-      );
+      document.body.classList.remove("bg-background");
+      document.body.classList.add("bg-background-night");
     } else {
       document.body.classList.remove(
-        "bg-app-background-night",
+        "bg-background-night",
         "text-foreground-night"
       );
-      document.body.classList.add("bg-app-background");
+      document.body.classList.add("bg-background");
     }
     restoreAnimation();
   }, []);

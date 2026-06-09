@@ -603,12 +603,8 @@ module.exports = {
             night: colors.rose[800],
           },
         },
-        background: { DEFAULT: colors.white, night: colors.gray[950] },
-        "app-background": {
-          DEFAULT: customColors.stone[50],
-          night: colors.gray[900], // to be updated
-        },
-        content: {
+        background: { DEFAULT: customColors.stone[50], night: colors.gray[900] },
+        panel: {
           background: {
             DEFAULT: "#FFF",
             night: colors.gray[950],

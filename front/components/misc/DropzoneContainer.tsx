@@ -1,6 +1,6 @@
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import { cn, DropzoneOverlay } from "@dust-tt/sparkle";
+import { DropzoneOverlay } from "@dust-tt/sparkle";
 import { useDropzone } from "react-dropzone";
 
 interface DropzoneContainerProps {
