@@ -688,6 +688,7 @@ export async function syncFiles({
   );
   const client = await getMicrosoftClient(connector.connectionId);
 
+  let childrenListed = false;
   try {
     const childrenResult = await getFilesAndFolders(
       logger,
@@ -696,6 +697,7 @@ export async function syncFiles({
       nextPageLink,
       (providerConfig.allowedSensitivityLabels ?? []).length > 0
     );
+    childrenListed = true;
 
     const children = childrenResult.results;
 
@@ -852,8 +854,9 @@ export async function syncFiles({
     // synced, so skip it instead of throwing, which would otherwise wedge the
     // workflow in an infinite retry loop.
     if (
-      (e instanceof GraphError && e.statusCode === 404) ||
-      isSiteNotFoundError(e)
+      !childrenListed &&
+      ((e instanceof GraphError && e.statusCode === 404) ||
+        isSiteNotFoundError(e))
     ) {
       logger.warn(
         {
