@@ -51,15 +51,23 @@ const BATCH_PAYLOAD_BUILD_CONCURRENCY = 10;
 /**
  * Maps prompt tiers to Anthropic system blocks with cache breakpoints.
  *
- * Each non-empty tier becomes a separate text block. Cache breakpoints are placed
+ * Anthropic allows at most 4 cache breakpoints per request (system + messages combined).
+ * Automatic caching (top-level cache_control on the request) consumes one slot.
+ * The full 4-slot budget across the request is:
+ *
+ *  Slot 1 – system: instructions block    (1h TTL, stable per agent config), only targets some global agents
+ *  Slot 2 – system: shared context block  (5min TTL, shared across callers)
+ *  Slot 3 – messages[0]: equipped skills  (5min TTL, stable per agent within a workspace;
+ *                                          set in conversation_to_anthropic.ts when name="system")
+ *  Slot 4 – automatic cache_control       (5min TTL, auto-placed at last cacheable message block;
+ *                                          added as top-level field in buildStreamRequestPayload)
+ *
+ * Each non-empty system tier becomes a separate text block. Breakpoints are placed
  * between tiers so that stable prefixes can be reused even when later tiers change:
  *  1. Instructions      – long TTL (1h), stable per agent config.
  *  2. Shared context    – default ephemeral (5min), shared across callers.
- *  3. Ephemeral context – no breakpoint needed (last block).
+ *  3. Ephemeral context – no breakpoint (covered by automatic caching as last block).
  *
- * IMPORTANT: Anthropic allows at most 4 cache breakpoints per request (system + messages combined).
- * This function uses up to 2 (instructions + shared context).
- * The remaining budget is for the global + conversation message breakpoints.
  * /!\ Do not add breakpoints here without auditing total usage across the request.
  */
 function buildSystemBlocks(
@@ -147,7 +155,7 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       conversation.messages,
       (msg, index) =>
         toMessage(msg, {
-          isLast: index === conversation.messages.length - 1,
+          isFirst: index === 0,
           omittedThinking: this.omittedThinking,
           convertToBase64: this.useVertex,
         }),

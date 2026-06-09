@@ -169,7 +169,7 @@ async function functionMessage(
 
 async function userMessage(
   message: UserMessageTypeModel,
-  { isLast, convertToBase64 }: { isLast: boolean; convertToBase64: boolean }
+  { isFirst, convertToBase64 }: { isFirst: boolean; convertToBase64: boolean }
 ): Promise<MessageParam> {
   const content = await concurrentExecutor(
     message.content,
@@ -177,8 +177,9 @@ async function userMessage(
     { concurrency: 10 }
   );
 
-  // Add cache_control to the last content block if this is the last message.
-  if (isLast && content.length > 0) {
+  // Cache the equipped skills list (messages[0], name="system") for cross-conversation reuse.
+  // The last message's cache is handled by the top-level automatic cache_control on the request.
+  if (isFirst && message.name === "system" && content.length > 0) {
     content[content.length - 1].cache_control = { type: "ephemeral" };
   }
 
@@ -209,15 +210,15 @@ function assistantMessage(
 export async function toMessage(
   message: ModelMessageTypeMultiActionsWithoutContentFragment,
   {
-    isLast,
+    isFirst,
     omittedThinking,
     convertToBase64,
   }: {
-    isLast: boolean;
+    isFirst: boolean;
     omittedThinking: boolean;
     convertToBase64?: boolean;
   } = {
-    isLast: false,
+    isFirst: false,
     omittedThinking: false,
     convertToBase64: false,
   }
@@ -225,7 +226,7 @@ export async function toMessage(
   switch (message.role) {
     case "user":
       return userMessage(message, {
-        isLast,
+        isFirst,
         convertToBase64: convertToBase64 ?? false,
       });
     case "function":
