@@ -1,4 +1,8 @@
 import { createPlugin } from "@app/lib/api/poke/types";
+import type {
+  WebBrowseProvider,
+  WebSearchProvider,
+} from "@app/lib/api/workspace";
 import { updateWorkspaceMetadata } from "@app/lib/api/workspace";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -38,19 +42,8 @@ export const setWebProvidersPlugin = createPlugin({
       return new Err(new Error("Cannot find workspace."));
     }
 
-    const webSearchProvider = args.webSearchProvider[0];
-    const webBrowseProvider = args.webBrowseProvider[0];
-
-    if (webSearchProvider !== "exa" && webSearchProvider !== "firecrawl") {
-      return new Err(new Error("Invalid or missing webSearchProvider value."));
-    }
-    if (
-      webBrowseProvider !== "exa" &&
-      webBrowseProvider !== "firecrawl" &&
-      webBrowseProvider !== "spider"
-    ) {
-      return new Err(new Error("Invalid or missing webBrowseProvider value."));
-    }
+    const webSearchProvider = args.webSearchProvider[0] as WebSearchProvider;
+    const webBrowseProvider = args.webBrowseProvider[0] as WebBrowseProvider;
 
     const result = await updateWorkspaceMetadata(workspace, {
       webSearchProvider,

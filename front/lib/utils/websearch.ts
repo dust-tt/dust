@@ -239,25 +239,26 @@ const exaSearch = async ({
   }
   const exa = new Exa(exaApiKey);
 
+  let res;
   try {
-    const res = await exa.search(query, {
+    res = await exa.search(query, {
       numResults: num ?? 10,
       contents: {
         highlights: true,
       },
     });
-
-    const results: SearchResultItem[] = res.results.map((result) => ({
-      title: result.title ?? result.url ?? "Untitled result",
-      link: result.url,
-      snippet: result.highlights?.[0] ?? "",
-    }));
-
-    return new Ok(results);
   } catch (error) {
     logger.error({ error }, "Unexpected error on Exa search");
     return new Err(normalizeError(error));
   }
+
+  const results: SearchResultItem[] = res.results.map((result) => ({
+    title: result.title ?? result.url ?? "Untitled result",
+    link: result.url,
+    snippet: result.highlights?.[0] ?? "",
+  }));
+
+  return new Ok(results);
 };
 
 /**

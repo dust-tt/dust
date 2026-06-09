@@ -4,7 +4,7 @@ import { untrustedFetch } from "@app/lib/egress/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { dustManagedServiceCredentials } from "@app/types/api/credentials";
-import { errorToString } from "@app/types/shared/utils/error_utils";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type {
   ErrorResponse,
   ScrapeParams,
@@ -137,7 +137,7 @@ const fetchPdf = async (
   } catch (error) {
     logger.error({ url, error }, "[Firecrawl] Unexpected error");
     return {
-      error: `Failed to fetch PDF: ${errorToString(error)}`,
+      error: normalizeError(error).message,
       status: 500,
       url,
     };
@@ -340,7 +340,7 @@ const browseUrlFirecrawl = async (
       "[Firecrawl] Error scraping URL"
     );
     return {
-      error: `Unexpected error: ${errorToString(error)}`,
+      error: normalizeError(error).message,
       status: 500,
       url: url,
     };
@@ -490,7 +490,7 @@ const browseUrlSpider = async (
     );
 
     return {
-      error: `Unexpected network error: ${errorToString(error)}`,
+      error: normalizeError(error).message,
       status: 500,
       url,
     };
@@ -509,7 +509,7 @@ const browseUrlSpider = async (
       "[Spider] Failed to parse JSON response"
     );
     return {
-      error: `Failed to parse Spider response: ${errorToString(error)}`,
+      error: normalizeError(error).message,
       status: res.status || 500,
       url,
     };
@@ -618,50 +618,52 @@ const browseUrlExa = async (
 
   const exa = new Exa(credentials.EXA_API_KEY);
 
+  let result;
   try {
-    const result = await exa.getContents([url], {
+    result = await exa.getContents([url], {
       text: true,
       extras: { links: options?.links ? 10 : 0 },
     });
-    const content = result.results?.[0];
-
-    if (!content) {
-      logger.error({ url }, "[Exa] Empty scrape response");
-      return {
-        error: "No content found in Exa response",
-        status: 500,
-        url,
-      };
-    }
-
-    if (!content.text) {
-      logger.error({ url }, "[Exa] No text content in response");
-      return {
-        error: "No text content found in Exa response",
-        status: 500,
-        url,
-      };
-    }
-
-    return {
-      markdown: content.text,
-      title: content.title ?? undefined,
-      description: undefined,
-      status: 200,
-      url: content.url ?? url,
-      links: options?.links ? content.extras?.links : undefined,
-    };
   } catch (error) {
     logger.error(
       { error, url },
       "[Exa] Network or fetch error while scraping URL"
     );
     return {
-      error: `Unexpected network error: ${errorToString(error)}`,
+      error: normalizeError(error).message,
       status: 500,
       url,
     };
   }
+
+  const content = result.results?.[0];
+
+  if (!content) {
+    logger.error({ url }, "[Exa] Empty scrape response");
+    return {
+      error: "No content found in Exa response",
+      status: 500,
+      url,
+    };
+  }
+
+  if (!content.text) {
+    logger.error({ url }, "[Exa] No text content in response");
+    return {
+      error: "No text content found in Exa response",
+      status: 500,
+      url,
+    };
+  }
+
+  return {
+    markdown: content.text,
+    title: content.title ?? undefined,
+    description: undefined,
+    status: 200,
+    url: content.url ?? url,
+    links: options?.links ? content.extras?.links : undefined,
+  };
 };
 
 /**

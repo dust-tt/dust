@@ -514,6 +514,9 @@ type WorkspaceKillSwitchValue =
   | typeof WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE
   | WorkspaceConversationKillSwitchValue;
 
+export type WebSearchProvider = "exa" | "firecrawl";
+export type WebBrowseProvider = "exa" | "firecrawl" | "spider";
+
 export interface WorkspaceMetadata {
   maintenance?: "relocation" | "relocation-done";
   killSwitched?: WorkspaceKillSwitchValue;
@@ -535,8 +538,8 @@ export interface WorkspaceMetadata {
   sandboxAllowAgentEgressRequests?: boolean;
   reinforcementCapMicroUsd?: number;
   selfImprovementCapPerSkillMicroUsd?: number;
-  webSearchProvider?: "exa" | "firecrawl";
-  webBrowseProvider?: "exa" | "firecrawl" | "spider";
+  webSearchProvider?: WebSearchProvider;
+  webBrowseProvider?: WebBrowseProvider;
 }
 
 export async function updateWorkspaceMetadata(
