@@ -1,9 +1,9 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { CouponModel } from "@app/lib/resources/storage/models/coupons";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
 
 export class CouponRedemptionModel extends WorkspaceAwareModel<CouponRedemptionModel> {
   declare createdAt: CreationOptional<Date>;

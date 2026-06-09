@@ -167,9 +167,14 @@
         "connectors/src/resources/storage/models/**/*.ts",
         "front/lib/models/**/*.ts",
         "front/lib/resources/storage/models/**/*.ts",
-        "front/lib/resources/storage/wrappers/**/*.ts"
+        "front/lib/resources/storage/wrappers/**/*.ts",
+        "!front/lib/resources/storage/data_types.ts",
+        "!connectors/src/resources/storage/data_types.ts"
       ],
-      "plugins": ["./.grit/patterns/tooLongIndexName.grit"]
+      "plugins": [
+        "./.grit/patterns/tooLongIndexName.grit",
+        "./.grit/patterns/noSequelizeDataTypesImport.grit"
+      ]
     },
     {
       "includes": ["cli/dust-cli/**", "sparkle/**"],

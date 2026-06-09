@@ -1,5 +1,9 @@
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { FileModel } from "@app/lib/resources/storage/models/files";
@@ -13,7 +17,6 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import isNil from "lodash/isNil";
 import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
-import { DataTypes } from "sequelize";
 
 const SKILL_MODEL_ATTRIBUTES = {
   createdAt: {
@@ -31,23 +34,23 @@ const SKILL_MODEL_ATTRIBUTES = {
     allowNull: false,
   },
   name: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: false,
   },
   agentFacingDescription: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: false,
   },
   userFacingDescription: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: true,
   },
   instructions: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: false,
   },
   instructionsHtml: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: true,
   },
   requestedSpaceIds: {
@@ -55,11 +58,11 @@ const SKILL_MODEL_ATTRIBUTES = {
     allowNull: false,
   },
   icon: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: true,
   },
   extendedSkillId: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: true,
   },
   source: {
@@ -345,7 +348,7 @@ SkillFileAttachmentModel.init(
       },
     },
     fileName: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
   },

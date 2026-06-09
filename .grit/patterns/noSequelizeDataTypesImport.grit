@@ -1,0 +1,15 @@
+engine biome(1.0)
+language js
+
+// Disallows importing DataTypes directly from "sequelize".
+// Use DataTypes and DANGEROUSLY_UNBOUNDED_TEXT from
+// "@app/lib/resources/storage/data_types" instead — this wrapper removes
+// the unbounded TEXT type and forces an explicit opt-in for unbounded columns.
+`import { $specs } from "sequelize"` as $import where {
+    $specs <: contains `DataTypes`,
+    register_diagnostic(
+        span = $import,
+        message = "Do not import DataTypes from 'sequelize' directly. Use DataTypes (and DANGEROUSLY_UNBOUNDED_TEXT if needed) from '@app/lib/resources/storage/data_types' instead.",
+        severity = "error"
+    )
+}

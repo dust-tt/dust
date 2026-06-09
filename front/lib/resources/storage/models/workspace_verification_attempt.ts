@@ -1,7 +1,7 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes, Op } from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional } from "sequelize";
-import { DataTypes, Op } from "sequelize";
 
 export class WorkspaceVerificationAttemptModel extends WorkspaceAwareModel<WorkspaceVerificationAttemptModel> {
   declare createdAt: CreationOptional<Date>;

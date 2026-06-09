@@ -1,9 +1,9 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { RoleType } from "@app/types/user";
 import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
 
 export class MembershipInvitationModel extends WorkspaceAwareModel<MembershipInvitationModel> {
   declare createdAt: CreationOptional<Date>;

@@ -1,4 +1,8 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
 import type { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
@@ -11,7 +15,6 @@ import type {
 } from "@app/types/content_fragment";
 import type { ContentNodeType } from "@app/types/core/content_node";
 import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
 
 export class ContentFragmentModel extends WorkspaceAwareModel<ContentFragmentModel> {
   declare createdAt: CreationOptional<Date>;
@@ -61,7 +64,7 @@ ContentFragmentModel.init(
       allowNull: false,
     },
     title: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     contentType: {
@@ -69,7 +72,7 @@ ContentFragmentModel.init(
       allowNull: false,
     },
     sourceUrl: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     textBytes: {

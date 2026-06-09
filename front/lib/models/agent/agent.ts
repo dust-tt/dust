@@ -1,5 +1,9 @@
 import type { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -15,7 +19,6 @@ import type {
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
 
 /**
  * Agent configuration
@@ -95,19 +98,19 @@ AgentConfigurationModel.init(
       defaultValue: "workspace",
     },
     name: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     description: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     instructions: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     instructionsHtml: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     providerId: {
@@ -158,7 +161,7 @@ AgentConfigurationModel.init(
       defaultValue: false,
     },
     pictureUrl: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     reinforcement: {

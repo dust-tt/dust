@@ -1,4 +1,5 @@
 import { connectorsSequelize } from "@connectors/resources/storage";
+import { DataTypes } from "@connectors/resources/storage/data_types";
 import { BaseModel } from "@connectors/resources/storage/wrappers/base";
 import type {
   ConnectorErrorType,
@@ -6,7 +7,6 @@ import type {
 } from "@connectors/types";
 import type { ConnectorProvider } from "@dust-tt/client";
 import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
 
 export interface ConnectorMetadata {
   rateLimited?: { at: Date } | null;

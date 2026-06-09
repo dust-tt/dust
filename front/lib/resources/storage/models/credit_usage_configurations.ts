@@ -1,8 +1,8 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
 
 /*
  * Workspace-level configuration for AWU credit purchases. Distinct from

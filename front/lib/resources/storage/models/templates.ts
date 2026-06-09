@@ -1,4 +1,8 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import type { AssistantCreativityLevel } from "@app/types/assistant/builder";
 import type {
@@ -12,7 +16,6 @@ import type {
 } from "@app/types/assistant/templates";
 import type { TimeframeUnit } from "@app/types/shared/utils/time_frame";
 import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
 
 export class TemplateModel extends BaseModel<TemplateModel> {
   declare createdAt: CreationOptional<Date>;
@@ -57,10 +60,10 @@ TemplateModel.init(
       defaultValue: DataTypes.NOW,
     },
     userFacingDescription: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
     },
     agentFacingDescription: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
     },
     backgroundColor: {
       type: DataTypes.STRING,
@@ -79,10 +82,10 @@ TemplateModel.init(
       allowNull: false,
     },
     presetDescription: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
     },
     presetInstructions: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
     },
     presetTemperature: {
       type: DataTypes.STRING,
@@ -110,13 +113,13 @@ TemplateModel.init(
       allowNull: true,
     },
     helpInstructions: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
     },
     helpActions: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
     },
     sidekickInstructions: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
     },
     tags: {
       type: DataTypes.ARRAY(DataTypes.STRING),

@@ -1,4 +1,13 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  type CreationOptional,
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+  type ForeignKey,
+  literal,
+  type NonAttribute,
+  Op,
+} from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
@@ -9,14 +18,6 @@ import type {
   FileUseCase,
   FileUseCaseMetadata,
 } from "@app/types/files";
-import {
-  type CreationOptional,
-  DataTypes,
-  type ForeignKey,
-  literal,
-  type NonAttribute,
-  Op,
-} from "sequelize";
 
 export class FileModel extends WorkspaceAwareModel<FileModel> {
   declare createdAt: CreationOptional<Date>;
@@ -79,7 +80,7 @@ FileModel.init(
       defaultValue: null,
     },
     snippet: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
       defaultValue: null,
     },

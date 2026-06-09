@@ -1,11 +1,14 @@
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
 
 export class DataSourceModel extends SoftDeletableWorkspaceAwareModel<DataSourceModel> {
   declare id: CreationOptional<number>;
@@ -55,7 +58,7 @@ DataSourceModel.init(
       allowNull: false,
     },
     description: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
     },
     assistantDefaultSelected: {
       type: DataTypes.BOOLEAN,

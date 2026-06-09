@@ -1,6 +1,11 @@
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+  Op,
+} from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
@@ -10,7 +15,6 @@ import type {
   SkillSuggestionState,
 } from "@app/types/suggestions/skill_suggestion";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes, Op } from "sequelize";
 
 export class SkillSuggestionModel extends WorkspaceAwareModel<SkillSuggestionModel> {
   declare createdAt: CreationOptional<Date>;
@@ -61,7 +65,7 @@ SkillSuggestionModel.init(
       allowNull: false,
     },
     analysis: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     title: {
