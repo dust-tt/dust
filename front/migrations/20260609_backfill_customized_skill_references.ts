@@ -156,11 +156,10 @@ async function backfillCustomizedSkillReferencesForWorkspace(
   }
 
   // Bound by the current legacy skills found above; uses the skill_versions
-  // (workspaceId, skillConfigurationId) index, with extendedSkillId as residual filter.
+  // (workspaceId, skillConfigurationId) index.
   const versionRowsWhere: WhereOptions<SkillVersionModel> = {
     workspaceId: workspace.id,
     skillConfigurationId: { [Op.in]: skills.map((skill) => skill.id) },
-    extendedSkillId: { [Op.ne]: null },
   };
   const versionRows = await SkillVersionModel.findAll({
     attributes: [
@@ -248,10 +247,8 @@ async function backfillCustomizedSkillReferencesForWorkspace(
     let missingVersionBaseSkillId: string | null = null;
 
     for (const versionRow of versionRowsForSkill) {
-      const versionExtendedSkillId = versionRow.extendedSkillId;
-      if (versionExtendedSkillId === null) {
-        throw new Error("Expected skill version to have an extendedSkillId.");
-      }
+      const versionExtendedSkillId =
+        versionRow.extendedSkillId ?? extendedSkillId;
 
       const versionBaseSkill = baseSkillById.get(versionExtendedSkillId);
       if (!versionBaseSkill || !versionBaseSkill.isExtendable) {
