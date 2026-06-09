@@ -1674,6 +1674,7 @@ export async function addPaymentGatedCommitToContract({
   invoiceCreditTypeId,
   invoiceTimestamp,
   priority,
+  applicableProducTags,
   name,
   uniquenessKey,
   stripeInvoiceMetadata,
@@ -1690,6 +1691,7 @@ export async function addPaymentGatedCommitToContract({
   invoiceCreditTypeId: string;
   invoiceTimestamp: Date;
   priority: number;
+  applicableProducTags: string[];
   name: string;
   uniquenessKey: string;
   stripeInvoiceMetadata: Record<string, string>;
@@ -1705,7 +1707,7 @@ export async function addPaymentGatedCommitToContract({
           type: "PREPAID",
           name,
           priority,
-          applicable_product_tags: ["usage"],
+          applicable_product_tags: applicableProducTags,
           access_schedule: {
             credit_type_id: accessCreditTypeId,
             schedule_items: [
@@ -2223,7 +2225,6 @@ export async function createMetronomeCredit({
   name,
   idempotencyKey,
   applicableProductTags,
-  applicableProductIds,
   priority,
 }: {
   metronomeCustomerId: string;
@@ -2235,7 +2236,6 @@ export async function createMetronomeCredit({
   name: string;
   idempotencyKey: string;
   applicableProductTags?: string[];
-  applicableProductIds?: string[];
   priority: number;
 }): Promise<Result<{ id: string } | null, Error>> {
   // Metronome requires dates on hour boundaries — round down start, round up end.
@@ -2250,9 +2250,6 @@ export async function createMetronomeCredit({
       priority,
       ...(applicableProductTags
         ? { applicable_product_tags: applicableProductTags }
-        : {}),
-      ...(applicableProductIds
-        ? { applicable_product_ids: applicableProductIds }
         : {}),
       access_schedule: {
         credit_type_id: creditTypeId,

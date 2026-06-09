@@ -223,6 +223,10 @@ export const getProductSeatSubscriptionCommitId = () =>
 export const AWU_PRIORITY_SEAT_ALLOCATION = 200;
 export const AWU_PRIORITY_PURCHASED_COMMIT = 300;
 
+// Seat commit/credit priorities
+export const SEAT_PRIORITY_SUBSCRIPTION_COMMIT = 300;
+export const SEAT_PRIORITY_COUPON_CREDIT = 300;
+
 // tier product accessors — ordered array for indexed access.
 export const MAX_MAU_TIERS = 6;
 

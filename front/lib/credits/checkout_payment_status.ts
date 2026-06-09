@@ -20,6 +20,8 @@ export const CheckoutPaymentSchema = z.object({
   billingPeriod: CheckoutBillingPeriodSchema,
   currency: z.enum(["usd", "eur"]),
   initialAmountCents: z.number(),
+  metronomePackageAlias: z.string(),
+  planCode: z.string(),
   couponCode: z.string().optional(),
   couponRedemptionId: z.string().optional(),
   uniquenessKey: z.string(),
@@ -69,7 +71,7 @@ export async function getCheckoutPaymentStatus({
     const parsed = CheckoutPaymentSchema.safeParse(JSON.parse(raw));
     if (!parsed.success) {
       logger.warn(
-        { workspaceId, contractId },
+        { workspaceId, contractId, error: parsed.error },
         "[Checkout Payment Status] Stored payment failed schema validation"
       );
       return null;

@@ -30,6 +30,10 @@ import type {
 } from "@app/lib/api/auth_context";
 import type { GetBillingInfoResponseBody } from "@app/lib/api/billing/info";
 import type { GetBillingInvoicesResponseBody } from "@app/lib/api/billing/invoices";
+import type {
+  GetBusinessActivationResponseBody,
+  PostBusinessActivationResponseBody,
+} from "@app/lib/api/checkout/business_activation";
 import type { PostCheckoutPaymentResponseBody } from "@app/lib/api/checkout/payment";
 import type { GetPreparePaymentResponseBody } from "@app/lib/api/checkout/prepare_payment";
 import type { GetMetronomeContractResponseBody } from "@app/lib/api/credits/metronome_contract";
@@ -1208,16 +1212,25 @@ export function useCreateCheckoutSession({
     async ({
       billingPeriod,
       couponCode,
+      seatType,
+      targetUserId,
     }: {
       billingPeriod: BillingPeriod;
       couponCode?: string;
+      seatType?: "pro" | "max";
+      targetUserId?: string;
     }): Promise<PostSubscriptionResponseBody | null> => {
       setIsCreating(true);
       try {
         const res = await clientFetch(`/api/w/${workspaceId}/subscriptions`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ billingPeriod, couponCode }),
+          body: JSON.stringify({
+            billingPeriod,
+            couponCode,
+            seatType,
+            targetUserId,
+          }),
         });
         if (!res.ok) {
           sendNotification({
@@ -1237,6 +1250,78 @@ export function useCreateCheckoutSession({
   );
 
   return { createSession, isCreating };
+}
+
+export function useCheckBusinessActivation({
+  workspaceId,
+  contractId,
+  disabled,
+  pollIntervalMs = 0,
+}: {
+  workspaceId: string;
+  contractId: string | null;
+  disabled?: boolean;
+  pollIntervalMs?: number;
+}) {
+  const { fetcher } = useFetcher();
+  const statusFetcher: Fetcher<GetBusinessActivationResponseBody> = fetcher;
+
+  const url =
+    disabled || !contractId
+      ? null
+      : `/api/w/${workspaceId}/subscriptions/checkout/business-activation?contract_id=${contractId}`;
+
+  const { data, error } = useSWRWithDefaults(url, statusFetcher, {
+    refreshInterval: pollIntervalMs,
+    revalidateOnFocus: false,
+  });
+
+  return {
+    checkoutPayment: data?.checkoutPayment ?? null,
+    isCheckoutPaymentLoading: !error && !data && !disabled && !!contractId,
+    isCheckoutPaymentError: !!error,
+  };
+}
+
+export function useInitiateBusinessActivation({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const [isInitiating, setIsInitiating] = useState(false);
+
+  const initiateBusinessActivation = useCallback(
+    async ({
+      setupSessionId,
+    }: {
+      setupSessionId: string;
+    }): Promise<PostBusinessActivationResponseBody | null> => {
+      setIsInitiating(true);
+      try {
+        const res = await clientFetch(
+          `/api/w/${workspaceId}/subscriptions/checkout/business-activation`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ setupSessionId }),
+          }
+        );
+        if (!res.ok) {
+          try {
+            return await res.json();
+          } catch {
+            return null;
+          }
+        }
+        return await res.json();
+      } finally {
+        setIsInitiating(false);
+      }
+    },
+    [workspaceId]
+  );
+
+  return { initiateBusinessActivation, isInitiating };
 }
 
 export function usePreparePayment({

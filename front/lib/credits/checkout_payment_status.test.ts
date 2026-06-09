@@ -34,6 +34,8 @@ const BASE_INPUT = {
   billingPeriod: "monthly" as const,
   currency: "usd" as const,
   initialAmountCents: 3000,
+  metronomePackageAlias: "business-usd",
+  planCode: "CP_BUSINESS_PLAN",
   uniquenessKey: "checkout-payment-ws_test-contract_abc",
 };
 
