@@ -63,7 +63,7 @@ export function Navigation({
     >
       {isMobile ? (
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-          <div className="fixed left-0 top-0 z-40 flex h-12 shrink-0 items-center gap-x-4 px-2 overflow-y">
+          <div className="fixed left-0 top-0 z-40 flex h-12 shrink-0 items-center gap-x-4 px-2">
             <SheetTrigger asChild>
               <Button
                 variant="ghost"
