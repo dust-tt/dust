@@ -17,8 +17,22 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "WIP/HoveringBar",
+  title: "Lab/HoveringBar",
   component: HoveringBar,
+  parameters: {
+    docs: {
+      description: {
+        component: `A compact floating toolbar that groups contextual actions, typically surfaced over a selection or hovered element (e.g. a rich-text formatting bar). Compose it from **Button** children and insert **HoveringBar.Separator** to visually group related actions; the bar handles overflow gracefully when space is tight.
+
+**When to use**
+- For inline, contextual action clusters such as text-formatting controls or selection menus.
+
+**Guidelines**
+- Use icon **Button**s with the \`ghost-secondary\` variant for a quiet, toolbar-appropriate look, and add \`tooltip\` for icon-only actions.
+- Separate logical groups with **HoveringBar.Separator** rather than spacing alone.`,
+      },
+    },
+  },
 } satisfies Meta<typeof HoveringBar>;
 
 export default meta;

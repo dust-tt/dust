@@ -5,8 +5,23 @@ import { Button, FlexSplitButton } from "../index_with_tw_base";
 import { ArrowUp, ChevronDown } from "@sparkle/icons/v2-stroke";
 
 const meta: Meta<React.ComponentProps<typeof FlexSplitButton>> = {
-  title: "Primitives/SplitButton",
+  title: "Actions/SplitButton",
   component: FlexSplitButton,
+  parameters: {
+    docs: {
+      description: {
+        component: `A primary action paired with an attached secondary affordance. **FlexSplitButton** renders a labelled button (with \`label\`, \`icon\`, \`variant\`, and an \`isLoading\` state) joined to a \`splitAction\` — typically a chevron **Button** that opens a menu of related options.
+
+**When to use**
+- When one action is the obvious default but a few related variants should be one click away (e.g. "Send" + send options).
+
+**Guidelines**
+- Match the \`variant\` of the main button and the \`splitAction\` button so they read as one control.
+- Keep the main \`label\` as the most common action; relegate alternatives to the split menu.
+- For a set of equally-weighted related actions, use **ButtonGroup** instead.`,
+      },
+    },
+  },
 };
 
 export default meta;

@@ -8,8 +8,22 @@ import { File02, Folder } from "@sparkle/icons/v2-stroke";
 import { MessageDotsCircle } from "@sparkle/icons/v2-stroke";
 
 const meta = {
-  title: "Primitives/DoubleIcon",
+  title: "Data Display/DoubleIcon",
   component: DoubleIcon,
+  parameters: {
+    docs: {
+      description: {
+        component: `Overlays a small **secondaryIcon** badge on the corner of a **mainIcon**, supporting a range of **sizes** (\`sm\`, \`md\`, \`lg\`, \`xl\`). Typically used to combine a content-type glyph with a source/provider logo.
+
+**When to use**
+- To show a piece of content alongside its origin (e.g. a document with its connector logo).
+
+**Guidelines**
+- Keep the **mainIcon** as the subject and the **secondaryIcon** as a small qualifier such as a provider logo.
+- For a single glyph use **Icon**; for an entity image use **Avatar**.`,
+      },
+    },
+  },
 } satisfies Meta<typeof DoubleIcon>;
 
 export default meta;

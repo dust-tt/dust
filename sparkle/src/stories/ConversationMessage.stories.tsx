@@ -24,7 +24,7 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Conversation/ConversationMessage",
+  title: "Product/Conversation/ConversationMessage",
   parameters: {
     docs: {
       description: {

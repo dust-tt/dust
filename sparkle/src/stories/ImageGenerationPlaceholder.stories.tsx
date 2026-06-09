@@ -5,8 +5,22 @@ import { Button } from "../index_with_tw_base";
 import { ImageGenerationPlaceholder } from "../index_with_tw_base";
 
 const meta = {
-  title: "Effects/ImageGenerationPlaceholder",
+  title: "Effects & Motion/ImageGenerationPlaceholder",
   component: ImageGenerationPlaceholder,
+  parameters: {
+    docs: {
+      description: {
+        component: `A square placeholder that shows an animated "generating" state and then smoothly reveals the finished image once it loads. Pass **src** (and **alt**) to transition from the loading shimmer to the image, control the dimensions with **size**, and customize the loading text with **label**.
+
+**When to use**
+- While an image is being generated or fetched asynchronously and you want a graceful reveal rather than a layout jump.
+
+**Guidelines**
+- Render with no **src** to show the generating state, then set **src** when the asset is ready to trigger the reveal.
+- Keep a stable **size** so surrounding layout does not shift when the image appears; for generic indeterminate waits use the **Spinner** instead.`,
+      },
+    },
+  },
 } satisfies Meta<typeof ImageGenerationPlaceholder>;
 
 export default meta;

@@ -4,9 +4,24 @@ import React from "react";
 import { ButtonsSwitch, ButtonsSwitchList } from "../index_with_tw_base";
 
 const meta = {
-  title: "Components/ButtonsSwitch",
+  title: "Actions/ButtonsSwitch",
   component: ButtonsSwitchList,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `A segmented, single-select toggle. **ButtonsSwitchList** is the container that owns the selected value (\`defaultValue\` for uncontrolled, plus \`size\` of \`xs\` / \`sm\` / \`md\`); each option is a **ButtonsSwitch** identified by its \`value\` and rendered with a \`label\`.
+
+**When to use**
+- To switch between a small set of mutually exclusive views or modes (e.g. "Time range" vs "Version").
+
+**Guidelines**
+- Keep options to a few short, parallel labels; this is not a substitute for a long list.
+- Always render **ButtonsSwitch** items inside a **ButtonsSwitchList** so selection state is managed correctly.
+- For triggering actions rather than selecting a mode, use **Button** or **ButtonGroup**.`,
+      },
+    },
+  },
 } satisfies Meta<typeof ButtonsSwitchList>;
 
 export default meta;

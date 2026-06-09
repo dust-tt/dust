@@ -4,8 +4,22 @@ import React from "react";
 import { AspectRatio } from "../index_with_tw_base";
 
 const meta = {
-  title: "Layouts/AspectRatio",
+  title: "Layout/AspectRatio",
   component: AspectRatio,
+  parameters: {
+    docs: {
+      description: {
+        component: `Constrains its children to a fixed width-to-height **ratio** (e.g. \`16 / 9\`, \`4 / 3\`), so the box resizes responsively while keeping proportions.
+
+**When to use**
+- To reserve consistent space for media (images, video, embeds, previews) and prevent layout shift.
+
+**Guidelines**
+- Pass **ratio** as a number division (\`16 / 9\`) rather than a decimal for readability.
+- Add \`s-overflow-hidden\` on the container and let the media fill it so it crops cleanly to the ratio.`,
+      },
+    },
+  },
 } satisfies Meta;
 
 export default meta;

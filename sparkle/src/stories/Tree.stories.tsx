@@ -25,8 +25,22 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Components/Tree",
+  title: "Data Display/Tree",
   component: Tree,
+  parameters: {
+    docs: {
+      description: {
+        component: `A hierarchical, expandable list. **Tree** wraps a set of **Tree.Item** nodes, each taking a **label**, optional **visual** icon, and nested children. Items support a **type** (\`node\` / \`leaf\`), optional **checkbox** for multi-selection, per-item actions, and an \`isLoading\` state on a child **Tree** for lazy expansion.
+
+**When to use**
+- To browse nested structures such as folders, data sources, or document hierarchies.
+
+**Guidelines**
+- Provide a **visual** to distinguish node kinds (e.g. folders vs. leaves), and use \`type="leaf"\` for terminal items.
+- For lazily loaded branches, render a child \`<Tree isLoading />\` until data arrives rather than blocking the whole tree.`,
+      },
+    },
+  },
 } satisfies Meta<typeof Tree>;
 
 export default meta;

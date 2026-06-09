@@ -10,8 +10,22 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Primitives/ContainerWithTopBar",
+  title: "Layout/ContainerWithTopBar",
   component: ContainerWithTopBar,
+  parameters: {
+    docs: {
+      description: {
+        component: `A bordered surface with a sticky **topBar** slot (typically a toolbar) above its **children**, sharing a single focus ring so the bar and body read as one focusable unit.
+
+**When to use**
+- For editors or panels that need a persistent action bar above scrollable or editable content.
+
+**Guidelines**
+- Put grouped controls (e.g. **Button** icons) in the **topBar**; keep the main work area in children.
+- For a plain centered page wrapper without a toolbar, use **Container** instead.`,
+      },
+    },
+  },
 } satisfies Meta<typeof ContainerWithTopBar>;
 
 export default meta;

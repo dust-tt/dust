@@ -9,10 +9,23 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Components/SearchInput",
+  title: "Forms & Inputs/SearchInput",
   component: SearchInput,
   parameters: {
     layout: "padded",
+    docs: {
+      description: {
+        component: `A search-specific text field with a built-in search icon and clear affordance, wired through a simplified **value** / **onChange** (string) contract. The companion **SearchInputWithPopover** adds a results dropdown with keyboard navigation, custom **renderItem**, an optional **onSelectAll**, sticky top/bottom content, item counts, and a **noResults** state.
+
+**When to use**
+- For freeform search or filter input, optionally surfacing live results in an attached popover.
+
+**Guidelines**
+- **onChange** receives the raw string value (not a DOM event), so manage the query in state directly.
+- Reach for **SearchInputWithPopover** when results should appear inline; supply **renderItem** and handle selection via **onItemSelect**.
+- For generic short text or number entry use **Input**; for multi-line input use **TextArea**.`,
+      },
+    },
   },
   argTypes: {
     placeholder: {

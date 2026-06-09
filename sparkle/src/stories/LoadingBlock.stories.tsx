@@ -4,7 +4,22 @@ import React from "react";
 import { LoadingBlock } from "@sparkle/components";
 
 const meta = {
-  title: "Primitives/LoadingBlock",
+  title: "Feedback & Status/LoadingBlock",
+  parameters: {
+    docs: {
+      description: {
+        component: `A skeleton placeholder that animates a subtle shimmer while content loads. Size and shape it entirely through **className** (e.g. \`s-h-4 s-w-[250px]\`, \`s-rounded-full\`), composing several blocks to mirror the layout of the content being fetched.
+
+**When to use**
+- To reserve space and signal loading for content whose shape is known ahead of time (cards, avatars, text lines).
+
+**Guidelines**
+- Match each block's dimensions and rounding to the real element it stands in for, so the swap feels seamless.
+- For an indeterminate spinner with no known layout, use a **Spinner** or **SpinnerBrand** instead.
+- For an empty result rather than a loading state, use an **EmptyCTA**.`,
+      },
+    },
+  },
 } satisfies Meta;
 
 export default meta;

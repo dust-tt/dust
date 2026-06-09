@@ -6,9 +6,26 @@ import { Input } from "../index_with_tw_base";
 const MESSAGE_STATUSES = ["info", "default", "error"] as const;
 
 const meta = {
-  title: "Primitives/Input",
+  title: "Forms & Inputs/Input",
   component: Input,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `A single-line text field for short, freeform input such as a name, email, or search term. Inputs support an optional **label**, a helper or error **message** with status colouring, and the standard HTML input **type**s.
+
+**When to use**
+- To collect a short piece of text or a number from the user.
+- Inside forms, search bars, and settings panels.
+
+**Guidelines**
+- Always provide a **label** so the field is understandable and accessible; placeholders are examples, not labels.
+- Surface validation with **isError** and a **message** set to \`messageStatus="error"\`.
+- Use **messageStatus="info"** for neutral helper text (constraints, formats, hints).
+- For multi-line input use **TextArea**; for search-specific affordances use **SearchInput**.`,
+      },
+    },
+  },
   argTypes: {
     placeholder: {
       control: "text",

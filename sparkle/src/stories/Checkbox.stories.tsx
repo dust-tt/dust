@@ -23,10 +23,25 @@ type ExtendedCheckboxProps = CheckboxProps & {
 };
 
 const meta = {
-  title: "Primitives/Checkbox",
+  title: "Forms & Inputs/Checkbox",
   component: Checkbox as React.ComponentType<ExtendedCheckboxProps>,
   parameters: {
     layout: "centered",
+    docs: {
+      description: {
+        component: `Lets users turn an individual option on or off, or pick several options from a list. The checkbox supports **checked**, **unchecked**, and an indeterminate (**partial**) state, with optional inline **text** and **description**.
+
+**When to use**
+- For independent on/off options, or to select multiple items from a set.
+- For a "select all" control whose children are partially selected (use the **partial** state).
+
+**Guidelines**
+- For a single choice among mutually exclusive options, use **RadioGroup** instead.
+- For a setting that takes effect immediately, consider **SliderToggle**.
+- Reserve the **partial** state for a parent that controls a partially-selected group.
+- Always associate a label (via **text** or a **Label** with \`htmlFor\`) for clarity and accessibility.`,
+      },
+    },
   },
   argTypes: {
     size: {

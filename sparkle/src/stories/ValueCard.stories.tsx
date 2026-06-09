@@ -7,10 +7,22 @@ import { ComposableCard, ValueCard } from "../components/ValueCard";
 import { ThumbsUp } from "@sparkle/icons/v2-stroke";
 
 const meta: Meta<typeof ValueCard> = {
-  title: "Modules/ValueCard",
+  title: "Data Display/ValueCard",
   component: ValueCard,
   parameters: {
     layout: "padded",
+    docs: {
+      description: {
+        component: `A compact metric card surfacing a single value with a **title**, optional **subtitle**, and a **content** slot for the figure (number, icon, trend). Supports an **isLoading** state that shows a spinner. For bespoke layouts, compose the parts directly with **ComposableCard** (Header, Title, Subtitle, Content).
+
+**When to use**
+- On dashboards and overviews to highlight a key metric or KPI.
+
+**Guidelines**
+- Keep **content** to a single primary figure; pair it with a small **Icon** for context rather than crowding the card.
+- Use **ComposableCard** when you need a non-standard arrangement of the title, subtitle, and content.`,
+      },
+    },
   },
   argTypes: {
     className: {

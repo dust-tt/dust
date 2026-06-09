@@ -8,6 +8,13 @@ import { Icon } from "../index_with_tw_base";
 const meta = {
   title: "Assets/Icons/Used in Product",
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `The curated subset of v2 stroke icons actually used across the Dust product. Treat this as the recommended palette to keep the product's iconography consistent; reach for the full **All Icons** catalog only when nothing here fits.`,
+      },
+    },
+  },
 } satisfies Meta;
 
 export default meta;

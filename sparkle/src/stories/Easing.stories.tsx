@@ -2,9 +2,14 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 const meta = {
-  title: "Theme/Easing",
+  title: "Foundations/Motion",
   parameters: {
     layout: "centered",
+    docs: {
+      description: {
+        component: `The custom easing curves available as Tailwind utilities (e.g. \`s-ease-out-cubic\`). Default to **Ease Out** for user-initiated transitions, use **Ease In-Out** for elements moving or morphing in place, and avoid **Ease In** for UI since the slow start feels unresponsive. Press Play on any row to preview the curve.`,
+      },
+    },
   },
 } satisfies Meta;
 

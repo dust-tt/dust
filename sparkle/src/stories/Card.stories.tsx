@@ -20,9 +20,26 @@ import {
 import { Brackets } from "@sparkle/icons/v2-stroke";
 
 const meta = {
-  title: "Primitives/Card",
+  title: "Data Display/Card",
   component: Card,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `A container that groups related content onto a single, optionally interactive surface. Cards support **primary** / **secondary** / **tertiary** variants, **sizes**, **selected** and **disabled** states, a pulsing attention state, and an **action** slot. Use **CardGrid** to lay several out responsively.
+
+**When to use**
+- As selectable options or entry points (tools, data sources, agents).
+- To group a small unit of related content into a tappable surface.
+
+**Guidelines**
+- When a card represents a single action, make the whole card clickable rather than nesting a button.
+- Use **selected** for single- or multi-select grids; pair with **CardGrid** for layout.
+- Reserve **isPulsing** for drawing attention to one element at a time.
+- Put dismiss/secondary controls in the **action** slot (e.g. a **CardActionButton**).`,
+      },
+    },
+  },
   argTypes: {
     variant: {
       options: CARD_VARIANTS,

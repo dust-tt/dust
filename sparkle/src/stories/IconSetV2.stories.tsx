@@ -8,6 +8,13 @@ import { Icon } from "../index_with_tw_base";
 const meta = {
   title: "Assets/Icons/All Icons",
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `The complete v2 stroke icon set (\`@sparkle/icons/v2-stroke\`). Use this exhaustive grid to find any available icon by name, then render it via the **Icon** component or a component's \`icon\` prop.`,
+      },
+    },
+  },
 } satisfies Meta;
 
 export default meta;

@@ -4,9 +4,24 @@ import React from "react";
 import { ListGroup, ListItem, ListItemSection } from "../index_with_tw_base";
 
 const meta = {
-  title: "List/ListItem",
+  title: "Lists/ListItem",
   component: ListItem,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `A low-level, generic list row that wraps arbitrary children with consistent padding, an optional bottom **separator**, and a hover background when **onClick** is provided. Control vertical alignment with **itemsAlignment** (\`start\` / \`center\`), the divider with **hasSeparator** / **hasSeparatorIfLast**, and hover scoping with **groupName**.
+
+**When to use**
+- As the base building block for custom list rows, or to render simple clickable rows without bespoke styling.
+
+**Guidelines**
+- Wrap rows in **ListGroup** and use **ListItemSection** for group headers (e.g. \`Today\`, \`Yesterday\`).
+- Set \`hasSeparator={false}\` on the last row, or use **hasSeparatorIfLast**, to avoid a trailing divider.
+- For richer purpose-built rows prefer **ContextItem**, **ConversationListItem**, or **UniversalSearchItem**, which are built on top of this primitive.`,
+      },
+    },
+  },
   argTypes: {
     hasSeparator: {
       control: "boolean",

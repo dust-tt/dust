@@ -35,9 +35,25 @@ const DefaultButtons = ({
 );
 
 const meta = {
-  title: "Primitives/ButtonGroup",
+  title: "Actions/ButtonGroup",
   component: ButtonGroup,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `Groups related **Button**s into a single cohesive control. It lays them out **horizontal** or **vertical** (\`orientation\`), can merge their borders into a segmented control (\`removeGaps\`), and propagates a \`disabled\` state to every child. Use **ButtonGroupDropdown** as a child to attach an overflow menu (e.g. a split-button affordance).
+
+**When to use**
+- To present a set of closely related actions as one unit (e.g. a toolbar segment).
+- To build a split button by pairing a primary **Button** with a **ButtonGroupDropdown** for secondary options.
+
+**Guidelines**
+- Keep all child **Button**s on the same \`variant\` and \`size\` for visual consistency.
+- Use \`removeGaps\` for a segmented look; keep gaps when the actions are independent.
+- For a single button with an attached chevron menu, prefer **SplitButton** (\`FlexSplitButton\`) instead.`,
+      },
+    },
+  },
   argTypes: {
     orientation: {
       description: "Stack buttons horizontally or vertically",

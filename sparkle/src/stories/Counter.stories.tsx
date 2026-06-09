@@ -5,8 +5,23 @@ import { expect } from "storybook/test";
 import { Counter } from "../components/Counter";
 
 const meta = {
-  title: "Primitives/Counter",
+  title: "Data Display/Counter",
   component: Counter,
+  parameters: {
+    docs: {
+      description: {
+        component: `A small numeric badge that communicates a count — unread items, pending actions, or results. Available in several **sizes** and **variants**, and can be embedded inside a **Button** via **isInButton**.
+
+**When to use**
+- To show a count attached to an item, tab, or button.
+
+**Guidelines**
+- Use it for counts, not arbitrary text.
+- Cap large values for legibility (e.g. show "99+").
+- Match the **variant** to the surrounding control; use **highlight** or **warning** only to draw attention.`,
+      },
+    },
+  },
   args: {
     value: 4,
     size: "sm",

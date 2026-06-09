@@ -5,10 +5,22 @@ import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
 import { Separator } from "@sparkle/components/Separator";
 
 const meta = {
-  title: "Primitives/ScrollArea",
+  title: "Layout/ScrollArea",
   component: ScrollArea,
   parameters: {
     layout: "centered",
+    docs: {
+      description: {
+        component: `A styled, cross-browser scroll container that replaces the native scrollbar with a custom **ScrollBar**. Render a **ScrollBar** child with an **orientation** (\`vertical\` / \`horizontal\`); the bar supports compact and classic styles.
+
+**When to use**
+- To give bounded, scrollable regions (lists, panels, popovers) a consistent scrollbar across browsers.
+
+**Guidelines**
+- Constrain the **ScrollArea** with an explicit height or width so it actually scrolls.
+- Include a **ScrollBar** per scrolling axis; many layout wrappers like **Container** already embed a ScrollArea, so avoid nesting another.`,
+      },
+    },
   },
   tags: ["autodocs"],
 } satisfies Meta<typeof ScrollArea>;

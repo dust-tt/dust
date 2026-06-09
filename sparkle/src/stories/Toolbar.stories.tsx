@@ -172,9 +172,24 @@ function handleOverlayClose(
 ): void {}
 
 const meta = {
-  title: "Components/Toolbar",
+  title: "Navigation/Toolbar",
   component: Toolbar,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `A formatting toolbar for rich-text editing, typically driving a text editor's commands. Use **variant** \`inline\` to sit within the editor flow or \`overlay\` for a floating bubble menu, with an optional \`onClose\` and a **scroll** flag for horizontally scrollable actions. **ToolbarContent** lays out actions as **groups** with separators; **ToolbarIcon** renders an icon button (with \`active\`, \`tooltip\`, \`size\`) and **ToolbarLink** provides a link-insertion control with its own dialog state.
+
+**When to use**
+- To present text-formatting controls (bold, italic, lists, code, links) for an editor.
+
+**Guidelines**
+- Group related actions in **ToolbarContent**'s \`groups\` so separators fall in sensible places.
+- Set the \`active\` prop on **ToolbarIcon** to reflect the formatting applied at the current selection.
+- For general page-level actions rather than text formatting, use a **Bar** or **HoveringBar**.`,
+      },
+    },
+  },
   argTypes: {
     variant: {
       options: TOOLBAR_VARIANTS,

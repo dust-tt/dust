@@ -10,11 +10,24 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "List/UniversalSearchItem",
+  title: "Lists/UniversalSearchItem",
   component: UniversalSearchItem,
   tags: ["autodocs"],
   parameters: {
     layout: "padded",
+    docs: {
+      description: {
+        component: `A result row for a universal/global search, pairing a leading **visual** (icon or avatar) with a **title** and optional **description** snippet. Highlights the active result with **selected**, toggles its divider with **hasSeparator**, and opens the result via **onClick**.
+
+**When to use**
+- To render heterogeneous search results (documents, conversations, people) in a single global search list.
+
+**Guidelines**
+- **title** accepts a React node, so compose multiple spans (e.g. an author plus a snippet) and let long text truncate.
+- Drive **selected** from keyboard navigation to show the highlighted result.
+- Group rows in **ListGroup**; this component is built on **ListItem**, so reach for that primitive for non-search rows.`,
+      },
+    },
   },
 } satisfies Meta<typeof UniversalSearchItem>;
 

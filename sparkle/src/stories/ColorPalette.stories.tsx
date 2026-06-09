@@ -4,7 +4,14 @@ import React from "react";
 import { cn } from "@sparkle/lib";
 
 const meta = {
-  title: "Theme/Colors",
+  title: "Foundations/Colors",
+  parameters: {
+    docs: {
+      description: {
+        component: `The Sparkle color system: UI primitives, semantic tokens (\`primary\`, \`highlight\`, \`success\`, \`warning\`, \`info\`), an extended product palette, brand/marketing colors, and structural backgrounds. Reference these via Tailwind classes (e.g. \`s-bg-primary-500\`) rather than hard-coded hex values, and prefer semantic tokens over raw families so components stay theme-aware. Toggle the theme in the toolbar to preview light and dark (\`-night\`) values.`,
+      },
+    },
+  },
 } satisfies Meta;
 
 export default meta;

@@ -15,10 +15,24 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Conversation/ActionBlock",
+  title: "Product/Conversation/ActionBlock",
   component: ActionCardBlock,
   parameters: {
     layout: "fullscreen",
+    docs: {
+      description: {
+        component: `An inline, actionable card rendered inside an agent message to propose a change and let the user accept or reject it. Built on **ActionCardBlock**, it tracks a \`state\` (\`active\`, \`disabled\`, \`accepted\`, \`rejected\`) and swaps in \`acceptedTitle\` / \`rejectedTitle\` once resolved, with **cardVariant** (\`highlight\`, \`warning\`, \`secondary\`), a **size** (\`default\` / \`compact\`), and **actionsPosition** (\`header\` / \`footer\`) for the accept/reject buttons.
+
+**When to use**
+- To surface an agent suggestion that needs explicit approval (enable a tool, rename an agent, invite editors) directly in the conversation flow.
+- When a request needs an "always allow" affordance via \`hasCheck\` / \`checkLabel\`.
+
+**Guidelines**
+- Wire \`onClickAccept\` / \`onClickReject\` to advance \`state\`; label buttons with the action (\`applyLabel\` / \`rejectLabel\`) rather than generic "OK".
+- Put optional detail behind \`collapsibleContent\` with a \`collapsibleLabel\` instead of crowding the \`description\`; render rich detail with **Markdown**.
+- For a non-actionable, display-only tool card in the agent builder, use **ActionCard** instead.`,
+      },
+    },
   },
 } satisfies Meta<typeof ActionCardBlock>;
 

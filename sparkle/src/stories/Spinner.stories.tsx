@@ -7,9 +7,24 @@ const SPINNER_SIZES = ["xs", "sm", "md", "lg", "xl", "2xl"] as const;
 const SPINNER_VARIANTS = ["mono", "color", "light", "dark", "rose300"] as const;
 
 const meta = {
-  title: "Primitives/Spinner",
+  title: "Feedback & Status/Spinner",
   component: Spinner,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `Indicates that content is loading or an action is in progress. Choose a **size** to match the surrounding context and a **variant** to suit the background — **mono** automatically adapts to light and dark themes.
+
+**When to use**
+- For indeterminate waits where no progress percentage is available.
+
+**Guidelines**
+- For loading state inside a button, use the Button's **isLoading** prop instead of a standalone spinner.
+- Pick **mono** when you want the spinner to follow the current theme; use **color** on neutral surfaces.
+- For long waits, pair the spinner with explanatory text.`,
+      },
+    },
+  },
   argTypes: {
     size: {
       options: SPINNER_SIZES,
