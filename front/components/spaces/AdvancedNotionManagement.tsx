@@ -20,6 +20,20 @@ import {
 import type { CellContext } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
 
+// Notion content can be reached through several domains: the classic notion.so,
+// published sites on notion.site, and the newer notion.com (e.g. app.notion.com).
+const VALID_NOTION_HOSTS = ["notion.so", "notion.site", "notion.com"];
+
+function isValidNotionUrl(url: string): boolean {
+  if (!URL.canParse(url)) {
+    return false;
+  }
+  const { hostname } = new URL(url);
+  return VALID_NOTION_HOSTS.some(
+    (host) => hostname === host || hostname.endsWith(`.${host}`)
+  );
+}
+
 interface TableData {
   url: string;
   timestamp: number;
@@ -73,14 +87,10 @@ export function AdvancedNotionManagement({
         setError("You must enter at least one URL");
         return false;
       }
-      if (
-        !urls.every((url) => url.includes("notion.so") && URL.canParse(url))
-      ) {
+      if (!urls.every((url) => isValidNotionUrl(url))) {
         setError(
           `Invalid Notion URL format: ${
-            urls.filter(
-              (url) => !url.includes("notion.so") || !URL.canParse(url)
-            )[0]
+            urls.filter((url) => !isValidNotionUrl(url))[0]
           }`
         );
         return false;
@@ -180,7 +190,7 @@ export function AdvancedNotionManagement({
       return;
     }
 
-    if (!statusUrl.includes("notion.so") || !URL.canParse(statusUrl)) {
+    if (!isValidNotionUrl(statusUrl)) {
       sendNotification({
         type: "error",
         title: "Invalid URL",
@@ -448,7 +458,7 @@ export function AdvancedNotionManagement({
             columns={columns}
             data={lastSyncedUrls.map((url) => ({
               ...url,
-              url: url.url.replace(/^.*?notion\.so\//, ""),
+              url: url.url.replace(/^.*?notion\.(so|site|com)\//, ""),
             }))}
           />
         </>
