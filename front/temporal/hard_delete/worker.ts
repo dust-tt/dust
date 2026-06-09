@@ -12,6 +12,9 @@ import { Worker } from "@temporalio/worker";
 
 import { QUEUE_NAME } from "./config";
 
+// Must match the deployment's terminationGracePeriodSeconds minus 10s buffer.
+const SHUTDOWN_GRACE_TIME_MS = 70 * 1_000;
+
 export async function runHardDeleteWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const worker = await Worker.create({
@@ -25,6 +28,7 @@ export async function runHardDeleteWorker() {
     maxConcurrentActivityTaskExecutions: 32,
     connection,
     namespace,
+    shutdownGraceTime: SHUTDOWN_GRACE_TIME_MS,
     interceptors: {
       activityInbound: [
         (ctx: Context) => {

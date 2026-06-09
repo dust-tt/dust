@@ -8,6 +8,9 @@ import { Worker } from "@temporalio/worker";
 
 import { QUEUE_NAME } from "./config";
 
+// Must match the deployment's terminationGracePeriodSeconds minus 10s buffer.
+const SHUTDOWN_GRACE_TIME_MS = 70 * 1_000;
+
 export async function runUpsertQueueWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
 
@@ -22,6 +25,7 @@ export async function runUpsertQueueWorker() {
     maxConcurrentActivityTaskExecutions: 32,
     connection,
     namespace,
+    shutdownGraceTime: SHUTDOWN_GRACE_TIME_MS,
     interceptors: {
       activity: [
         (ctx: Context) => {

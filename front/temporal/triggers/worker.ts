@@ -11,6 +11,9 @@ import { Worker } from "@temporalio/worker";
 import * as activities from "./activities";
 import { QUEUE_NAME } from "./config";
 
+// Must match the deployment's terminationGracePeriodSeconds minus 10s buffer.
+const SHUTDOWN_GRACE_TIME_MS = 70 * 1_000;
+
 export async function runAgentTriggerWorker() {
   const { connection, namespace } = await getTemporalAgentWorkerConnection();
 
@@ -25,6 +28,7 @@ export async function runAgentTriggerWorker() {
     maxConcurrentActivityTaskExecutions: 2,
     connection,
     namespace,
+    shutdownGraceTime: SHUTDOWN_GRACE_TIME_MS,
     interceptors: {
       activityInbound: [
         (ctx: Context) => {
