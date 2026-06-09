@@ -11,19 +11,18 @@ test("compareForFuzzySort should correctly compare strings", () => {
     { query: "start", a: "robotstart", b: "strongrt" },
     { query: "mygod", a: "ohmygodbot", b: "moatmode" },
     { query: "test", a: "test", b: "testlong" },
-    { query: "test", a: "testlonger", b: "longtest" },
     { query: "eng", a: "eng", b: "slack-engineering-highlights" },
     { query: "c", a: "c", b: "RadicalFeedback" },
     { query: "issuebot", a: "issueBot", b: "FDEIssueBot" },
     { query: "issuebot", a: "ISSUEBOT", b: "FDEIssueBot" },
-  ];
-
-  const dataEqual = [
-    { query: "sql", a: "sqlGod", b: "sqlGod" },
     { query: "eng", a: "eng1", b: "eng2" },
     { query: "gp", a: "gpt-4", b: "gpt-5" },
     { query: "test", a: "testl", b: "testlong" },
   ];
+
+  const dataEqual = [{ query: "sql", a: "sqlGod", b: "sqlGod" }];
+
+  const dataGreaterThan = [{ query: "test", a: "testlonger", b: "longtest" }];
 
   for (const d of dataLessThan) {
     expect(
@@ -37,6 +36,13 @@ test("compareForFuzzySort should correctly compare strings", () => {
       compareForFuzzySort(d.query, d.a, d.b),
       `Expected compareForFuzzySort("${d.query}", "${d.a}", "${d.b}") to return 0`
     ).toBe(0);
+  }
+
+  for (const d of dataGreaterThan) {
+    expect(
+      compareForFuzzySort(d.query, d.a, d.b),
+      `Expected compareForFuzzySort("${d.query}", "${d.a}", "${d.b}") to be greater than 0`
+    ).toBeGreaterThan(0);
   }
 });
 

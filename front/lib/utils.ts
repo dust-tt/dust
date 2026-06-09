@@ -254,8 +254,7 @@ export function subFilter(a: string, b: string) {
 
 /**
  * Compares two strings for fuzzy sorting against a query
- * First sort by substring, then by spread of subfilter, then by first index of subfilter, then length, then by
- * lexicographic order
+ * First sort by substring, then by spread of subfilter, then exact match, then lexicographic order.
  */
 export function compareForFuzzySort(query: string, a: string, b: string) {
   const normalizedQuery = query.toLowerCase();
@@ -289,12 +288,6 @@ export function compareForFuzzySort(query: string, a: string, b: string) {
     return spreadA - spreadB;
   }
 
-  const subFilterLastIndexA = subFilterLastIndex(normalizedQuery, normalizedA);
-  const subFilterLastIndexB = subFilterLastIndex(normalizedQuery, normalizedB);
-  if (subFilterLastIndexA !== subFilterLastIndexB) {
-    return subFilterLastIndexA - subFilterLastIndexB;
-  }
-
   const isExactMatchA = normalizedA === normalizedQuery;
   const isExactMatchB = normalizedB === normalizedQuery;
   if (isExactMatchA && !isExactMatchB) {
@@ -304,7 +297,7 @@ export function compareForFuzzySort(query: string, a: string, b: string) {
     return 1;
   }
 
-  return 0;
+  return normalizedA.localeCompare(normalizedB);
 }
 
 export function filterAndSortAgents(

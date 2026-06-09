@@ -40,10 +40,7 @@ export function sortSlashCommandCapabilityMatches<
 >({ items, normalizedQuery }: { items: T[]; normalizedQuery: string }): T[] {
   return items.toSorted((a, b) => {
     if (normalizedQuery.length > 0) {
-      return (
-        compareForFuzzySort(normalizedQuery, a.sortName, b.sortName) ||
-        a.sortName.localeCompare(b.sortName)
-      );
+      return compareForFuzzySort(normalizedQuery, a.sortName, b.sortName);
     }
 
     return a.sortName.localeCompare(b.sortName);
