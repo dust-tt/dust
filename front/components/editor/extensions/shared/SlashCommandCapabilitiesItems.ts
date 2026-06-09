@@ -68,6 +68,11 @@ export function getSkillSlashCommandItem(
   { sectionLabel }: { sectionLabel?: string } = {}
 ): SlashCommand {
   const isDustProvided = isDustProvidedSkill(skill);
+  const tooltipDescription = isDustProvided
+    ? skill.userFacingDescription
+      ? `${skill.userFacingDescription}\n\n${DUST_PROVIDED_SKILL_LABEL}`
+      : DUST_PROVIDED_SKILL_LABEL
+    : skill.userFacingDescription;
 
   return {
     action: SELECT_SKILL_SLASH_COMMAND_ACTION,
@@ -79,13 +84,9 @@ export function getSkillSlashCommandItem(
     id: skill.sId,
     label: skill.name,
     sectionLabel,
-    tooltip: isDustProvided
-      ? { description: DUST_PROVIDED_SKILL_LABEL }
-      : skill.userFacingDescription
-        ? {
-            description: skill.userFacingDescription,
-          }
-        : undefined,
+    tooltip: tooltipDescription
+      ? { description: tooltipDescription }
+      : undefined,
   };
 }
 

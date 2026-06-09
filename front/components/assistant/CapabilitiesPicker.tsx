@@ -484,6 +484,11 @@ export function CapabilitiesPicker({
       for (const skill of skills) {
         const description = skill.userFacingDescription;
         const isDustProvided = isDustProvidedSkill(skill);
+        const tooltip = isDustProvided
+          ? description
+            ? `${description}\n\n${DUST_PROVIDED_SKILL_LABEL}`
+            : DUST_PROVIDED_SKILL_LABEL
+          : description || undefined;
 
         if (
           !matchesCapabilityPickerSearchQuery({
@@ -503,9 +508,7 @@ export function CapabilitiesPicker({
           label: skill.name,
           sortName: skill.name.toLowerCase(),
           description,
-          tooltip: isDustProvided
-            ? DUST_PROVIDED_SKILL_LABEL
-            : description || undefined,
+          tooltip,
         });
       }
 
