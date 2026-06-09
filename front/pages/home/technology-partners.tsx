@@ -18,11 +18,21 @@ import {
   Button,
   Check,
   Code02,
+  GcalLogo,
+  GithubLogo,
   Globe01,
+  GmailLogo,
+  HubspotLogo,
   Icon,
+  LinearLogo,
   MessageChatSquare,
+  NotionLogo,
+  Plus,
   Rocket02,
+  SalesforceLogo,
+  SlackLogo,
   ThumbsUp,
+  VantaLogo,
 } from "@dust-tt/sparkle";
 import type { GetStaticProps } from "next";
 import { useRouter } from "next/router";
@@ -34,7 +44,6 @@ const PARTNER_FORM_URL =
   "https://share-eu1.hsforms.com/2FctvfmFxRQqllduT_JmlTA2dzwm3";
 const MCP_DOCS_URL = "https://docs.dust.tt/docs/remote-mcp-server";
 const GITHUB_URL = "https://github.com/dust-tt/dust";
-const COMMUNITY_SLACK_URL = "https://dust-community.tightknit.community/join";
 
 // Shared centered content column, matching /home/partner.
 const COL_CLASSES = classNames(
@@ -63,19 +72,19 @@ interface ValueCard {
 const WHY_PARTNER: ValueCard[] = [
   {
     title: "Be discoverable",
-    desc: "Your logo lives inside the Dust app where users browse apps — and on the public marketplace.",
+    desc: "Your logo lives inside the Dust app where users browse apps, and on the public marketplace.",
     color: "blue",
     icon: Globe01,
   },
   {
     title: "Plug & play",
-    desc: "One MCP URL is all it takes. No deploys, no engineering on either side once your server is live.",
+    desc: "One MCP URL is all it takes to get started and let Dust call tools in your app.",
     color: "green",
     icon: ActionSparklesIcon,
   },
   {
     title: "Grow together",
-    desc: "From listed to Alliance — a clear graduation path with shared upside as traction proves out.",
+    desc: "From listed to Alliance, a clear graduation path with shared upside as traction proves out.",
     color: "rose",
     icon: ThumbsUp,
   },
@@ -105,11 +114,11 @@ const BUILD_CARDS: BuildCard[] = [
   },
   {
     title: "Get help",
-    desc: "Public Slack community, quickstart guides, and co-build sessions with our team.",
+    desc: "A direct line to our partner team, quickstart guides, and co-build sessions to get you live.",
     color: "rose",
     icon: MessageChatSquare,
-    href: COMMUNITY_SLACK_URL,
-    cta: "Join the community",
+    href: PARTNER_FORM_URL,
+    cta: "Get in touch",
   },
 ];
 
@@ -203,12 +212,12 @@ const HOW_IT_WORKS = [
   {
     step: "03",
     title: "List",
-    desc: "Your logo goes live inside the Dust app and on the public marketplace. You're now Tier 3 (Community).",
+    desc: "Your logo goes live inside the Dust app and on the public marketplace.",
   },
   {
     step: "04",
     title: "Grow",
-    desc: "Show traction, and we go deeper — Tier 2 (Growth) and Tier 1 (Alliance).",
+    desc: "Based on traction and customer overlap, we can mutually agree to invest in more co-selling!",
   },
 ];
 
@@ -225,13 +234,30 @@ const TESTIMONIALS = [
     quote:
       "Dust is the most impactful software we've adopted since building Clay.",
     name: "Everett Berry",
-    role: "Clay",
+    role: "Head of GTM Engineering at Clay",
   },
   {
     quote: "We used to do the work. Now we build the agents that do it.",
     name: "Shashank Khanna",
-    role: "Vanta",
+    role: "GTM Innovation at Vanta",
   },
+];
+
+// A sample of the 50+ apps already listed on the Dust marketplace. Logos come
+// from the Sparkle platform logo set (the same ones used on /integrations).
+const MARKETPLACE_LOGOS: {
+  name: string;
+  logo: ComponentType<{ className?: string }>;
+}[] = [
+  { name: "Salesforce", logo: SalesforceLogo },
+  { name: "HubSpot", logo: HubspotLogo },
+  { name: "Notion", logo: NotionLogo },
+  { name: "GitHub", logo: GithubLogo },
+  { name: "Linear", logo: LinearLogo },
+  { name: "Slack", logo: SlackLogo },
+  { name: "Gmail", logo: GmailLogo },
+  { name: "Google Calendar", logo: GcalLogo },
+  { name: "Vanta", logo: VantaLogo },
 ];
 
 export const getStaticProps: GetStaticProps = async () => {
@@ -263,21 +289,13 @@ export default function TechnologyPartnersNextJS() {
               "flex flex-col gap-6 pt-8 md:pt-12"
             )}
           >
-            <span className="inline-flex w-fit items-center gap-2 rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-              <Icon
-                visual={ActionSparklesIcon}
-                size="xs"
-                className="text-blue-500"
-              />
-              Dust App Partner Program
-            </span>
             <H1 mono className="text-foreground">
               Become a Dust technology partner
             </H1>
             <P size="lg" className="max-w-2xl text-muted-foreground">
-              List your app on Dust and get discovered by thousands of AI agent
-              users — then grow into a deeper partnership as your traction
-              proves out.
+              List your app on Dust and get discovered by thousands of users of
+              our AI agents, or enable new agentic capabilities into your
+              platform.
             </P>
             <div className="flex flex-col gap-4 sm:flex-row">
               <Button
@@ -337,8 +355,8 @@ export default function TechnologyPartnersNextJS() {
           <div className={COL_CLASSES}>
             <H2 className="mb-2 text-foreground">Build your app on Dust</H2>
             <P size="md" className="mb-8 max-w-2xl text-muted-foreground">
-              Everything you need to launch — MCP basics, real examples, direct
-              help.
+              Everything you need to launch, from MCP basics to real examples
+              and direct help.
             </P>
             <div className="grid gap-4 sm:grid-cols-3 lg:gap-6">
               {BUILD_CARDS.map((d) => {
@@ -388,10 +406,10 @@ export default function TechnologyPartnersNextJS() {
         <Grid>
           <div className={COL_CLASSES}>
             <div className="mb-8">
-              <H2 className="text-foreground">The partner program</H2>
+              <H2 className="text-foreground">Our app partner program</H2>
               <P size="md" className="mt-2 max-w-2xl text-muted-foreground">
-                Three tiers, one path. Community is the entry — show traction
-                and we move up to Growth and Alliance together.
+                From assistance to launch your app, all the way to a co-sell
+                motion.
               </P>
             </div>
 
@@ -532,10 +550,13 @@ export default function TechnologyPartnersNextJS() {
           </div>
         </Grid>
 
-        {/* ─────────── What partners say ─────────── */}
+        {/* ─────────── What app partners say (+ marketplace logos) ─────────── */}
         <Grid>
           <div className={COL_CLASSES}>
-            <H2 className="mb-8 text-foreground">What partners say</H2>
+            <H2 className="text-foreground">What app partners say</H2>
+            <P size="md" className="mb-8 mt-2 max-w-2xl text-muted-foreground">
+              Join more than 50 apps already on the Dust marketplace.
+            </P>
             <div className="grid gap-5 sm:grid-cols-3">
               {TESTIMONIALS.map((t) => (
                 <figure
@@ -556,6 +577,28 @@ export default function TechnologyPartnersNextJS() {
                 </figure>
               ))}
             </div>
+
+            {/* A few of the apps already listed, plus a nudge to add your own. */}
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              {MARKETPLACE_LOGOS.map((l) => (
+                <div
+                  key={l.name}
+                  title={l.name}
+                  className="flex h-12 w-12 items-center justify-center rounded-xl border border-border bg-background"
+                >
+                  <Icon visual={l.logo} size="lg" />
+                </div>
+              ))}
+              <a
+                href={PARTNER_FORM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="List your app"
+                className="flex h-12 w-12 items-center justify-center rounded-xl border border-dashed border-border text-muted-foreground transition-colors hover:border-foreground hover:text-foreground"
+              >
+                <Icon visual={Plus} size="md" />
+              </a>
+            </div>
           </div>
         </Grid>
 
@@ -567,7 +610,7 @@ export default function TechnologyPartnersNextJS() {
           >
             <H2 className="mb-2 text-foreground">How it works</H2>
             <P size="md" className="mb-8 max-w-2xl text-muted-foreground">
-              From a first conversation to a featured launch — together, step by
+              From a first conversation to a featured launch. Together, step by
               step.
             </P>
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -591,8 +634,9 @@ export default function TechnologyPartnersNextJS() {
         {/* ─────────── Final CTA (shared component) ─────────── */}
         <FinalCTASection
           config={{
-            title: "Ready to be discovered by agent users?",
-            subtitle: "Share your app and we'll take it from there.",
+            title: "Let's unlock multiplayer AI, together",
+            subtitle:
+              "Our shared customers do their best work when their agents can reach the apps they rely on, like yours.",
             primaryCTA: { label: "List your app", href: PARTNER_FORM_URL },
             secondaryCTA: { label: "Read the docs", href: MCP_DOCS_URL },
           }}
