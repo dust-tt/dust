@@ -16,7 +16,7 @@ import { useEffect, useState } from "react";
 const storyModules = import.meta.glob("./stories/*.tsx", { eager: true });
 
 // Extract story names and components (exclude TemplateSelection - only reachable via dropdown in Pods)
-const DISABLED_STORIES = new Set(["AdminGovernance", "AdminGovernanceV2"]);
+const DISABLED_STORIES = new Set(["AdminGovernance"]);
 
 const stories = Object.entries(storyModules)
   .map(([path, module]: [string, any]) => {

@@ -5,7 +5,6 @@ import {
   ButtonsSwitch,
   ButtonsSwitchList,
   Card,
-  MessageChatSquare,
   Checkbox,
   Chip,
   Code01,
@@ -22,6 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Fingerprint04,
+  Folder,
   Globe01,
   Input,
   Key01,
@@ -42,17 +42,20 @@ import {
   Toggle01Left,
   Tool01,
   Shield01,
-  LayersThree01,
-  Package,
-  CodeSquare01,
   Sheet,
   SheetContent,
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  LayoutLeft,
+  NavTabPill,
+  NavTabPillContent,
+  NavTabPillList,
+  NavTabPillTrigger,
+  IntersectDust,
+  Planet,
   SidebarLayout,
   type SidebarLayoutRef,
-  SpaceOpen,
   Tabs,
   TabsContent,
   TabsList,
@@ -60,7 +63,30 @@ import {
   TextArea,
   Users01,
   XClose,
+  CloudArrowLeftRight,
+  Lightning01,
+  ShapesPlus,
 } from "@dust-tt/sparkle";
+import {
+  AmplitudeLogo,
+  AsanaLogo,
+  AshbyLogo,
+  AttioLogo,
+  BigQueryLogo,
+  ConfluenceLogo,
+  FathomLogo,
+  GithubLogo,
+  GongLogo,
+  DriveLogo,
+  IntercomLogo,
+  JiraLogo,
+  LinearLogo,
+  MicrosoftLogo,
+  NotionLogo,
+  SlackLogo,
+  SnowflakeLogo,
+  ZendeskLogo,
+} from "@dust-tt/sparkle/logo/platforms";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo, useRef, useState } from "react";
 
@@ -483,6 +509,154 @@ const INITIAL_GOVERNANCE: GovernanceSetting[] = [
     description: "Publish Skills workspace-wide for all members to use",
     scope: "disabled",
     groups: [],
+  },
+];
+
+// ─── Spaces sidebar data ──────────────────────────────────────────────────────
+
+const OPEN_SPACES = ["Company Data", "GTM", "ProjectManagement", "Shell_Space"];
+const RESTRICTED_SPACES_MEMBER = [
+  "Adèle",
+  "Alex's test space",
+  "Alexandre",
+  "AlexTest With a Very long space name",
+  "aubin",
+  "aubin 2",
+];
+const RESTRICTED_SPACES_NO_ACCESS = [
+  "Abboud's Space",
+  "Adrien",
+  "alban",
+  "Ambra",
+  "Amelie",
+  "Anas",
+  "Anya",
+  "ap",
+  "Area Leads",
+  "Ben",
+];
+
+// ─── Connections data ─────────────────────────────────────────────────────────
+
+interface ConnectionRow {
+  name: string;
+  usedBy: number;
+  lastSync: string;
+  managedByAvatar: string;
+  delegates: string[];
+  logo: React.ComponentType<{ className?: string }>;
+  configured: boolean;
+  onClick?: () => void;
+}
+
+const INITIAL_CONNECTIONS: Omit<ConnectionRow, "onClick">[] = [
+  {
+    name: "BigQuery",
+    usedBy: 43,
+    lastSync: "12min ago",
+    managedByAvatar: "OL",
+    delegates: [],
+    logo: BigQueryLogo,
+    configured: true,
+  },
+  {
+    name: "Confluence",
+    usedBy: 117,
+    lastSync: "7min ago",
+    managedByAvatar: "FR",
+    delegates: [],
+    logo: ConfluenceLogo,
+    configured: true,
+  },
+  {
+    name: "GitHub",
+    usedBy: 254,
+    lastSync: "<1m ago",
+    managedByAvatar: "GH",
+    delegates: [],
+    logo: GithubLogo,
+    configured: true,
+  },
+  {
+    name: "Gong",
+    usedBy: 0,
+    lastSync: "—",
+    managedByAvatar: "",
+    delegates: [],
+    logo: GongLogo,
+    configured: false,
+  },
+  {
+    name: "Google Drive",
+    usedBy: 442,
+    lastSync: "1min ago",
+    managedByAvatar: "OL",
+    delegates: [],
+    logo: DriveLogo,
+    configured: true,
+  },
+  {
+    name: "Intercom",
+    usedBy: 116,
+    lastSync: "14min ago",
+    managedByAvatar: "IN",
+    delegates: [],
+    logo: IntercomLogo,
+    configured: true,
+  },
+  {
+    name: "Microsoft",
+    usedBy: 113,
+    lastSync: "2min ago",
+    managedByAvatar: "MS",
+    delegates: [],
+    logo: MicrosoftLogo,
+    configured: true,
+  },
+  {
+    name: "Notion",
+    usedBy: 533,
+    lastSync: "<1m ago",
+    managedByAvatar: "OL",
+    delegates: [],
+    logo: NotionLogo,
+    configured: true,
+  },
+  {
+    name: "Slack",
+    usedBy: 393,
+    lastSync: "<1m ago",
+    managedByAvatar: "OL",
+    delegates: [],
+    logo: SlackLogo,
+    configured: true,
+  },
+  {
+    name: "Slack (community)",
+    usedBy: 124,
+    lastSync: "11m ago",
+    managedByAvatar: "SC",
+    delegates: [],
+    logo: SlackLogo,
+    configured: true,
+  },
+  {
+    name: "Snowflake",
+    usedBy: 233,
+    lastSync: "3h ago",
+    managedByAvatar: "SW",
+    delegates: [],
+    logo: SnowflakeLogo,
+    configured: true,
+  },
+  {
+    name: "Zendesk",
+    usedBy: 121,
+    lastSync: "17min ago",
+    managedByAvatar: "ZD",
+    delegates: [],
+    logo: ZendeskLogo,
+    configured: true,
   },
 ];
 
@@ -952,7 +1126,7 @@ function PeoplePage({
     <Page>
       <Page.Header
         title="People"
-        description="Verify your domain, manage team individual, groups and their permissions."
+        description="Manage team members and workspace roles."
         icon={Users01}
       />
       <Tabs
@@ -1070,12 +1244,14 @@ function PeoplePage({
           <div className="s-flex s-flex-col s-gap-4 s-flex-1 s-overflow-auto s-px-6 s-py-4">
             <Page.Vertical gap="xs">
               <Label>Email addresses (comma or newline separated):</Label>
-              <TextArea
-                placeholder="Email addresses, comma or newline separated"
-                value={inviteEmails}
-                onChange={(e) => setInviteEmails(e.target.value)}
-                minRows={4}
-              />
+              <div className="s-w-full">
+                <TextArea
+                  placeholder="Email addresses, comma or newline separated"
+                  value={inviteEmails}
+                  onChange={(e) => setInviteEmails(e.target.value)}
+                  minRows={4}
+                />
+              </div>
             </Page.Vertical>
             <Page.Vertical gap="xs">
               <Label>Role</Label>
@@ -2112,7 +2288,6 @@ function DistributionBar({
   );
 }
 
-const months = ["Apr 1", "Apr 8", "Apr 15", "Apr 22", "Apr 29"];
 const MESSAGES_DATA = [
   120, 145, 160, 190, 220, 240, 265, 290, 310, 330, 355, 370, 390, 410, 430,
   450, 465, 480, 500, 510, 525, 540, 555, 565, 580, 590, 610, 625, 635, 650,
@@ -2784,6 +2959,1166 @@ function ModelProvidersPage() {
   );
 }
 
+// ─── Spaces Sidebar Nav ───────────────────────────────────────────────────────
+
+function SpacesSidebarNav({
+  onConnectionsClick,
+  onToolsClick,
+  onTriggersClick,
+  role,
+}: {
+  onConnectionsClick: () => void;
+  onToolsClick: () => void;
+  onTriggersClick: () => void;
+  role: Role;
+}) {
+  return (
+    <ScrollArea className="s-flex-1">
+      <ScrollBar orientation="vertical" size="minimal" />
+      <NavigationList className="s-px-2 s-py-2">
+        <NavigationListCollapsibleSection label="Administration" defaultOpen>
+          <NavigationListItem
+            icon={CloudArrowLeftRight}
+            label="Connections"
+            onClick={onConnectionsClick}
+          />
+          <NavigationListItem
+            icon={ShapesPlus}
+            label="Tools"
+            onClick={onToolsClick}
+          />
+          <NavigationListItem
+            icon={Lightning01}
+            label="Triggers"
+            onClick={onTriggersClick}
+          />
+        </NavigationListCollapsibleSection>
+
+        <NavigationListCollapsibleSection label="Open Spaces" defaultOpen>
+          {OPEN_SPACES.map((s) => (
+            <NavigationListItem
+              key={s}
+              icon={Globe01}
+              label={s}
+              onClick={() => {}}
+            />
+          ))}
+        </NavigationListCollapsibleSection>
+
+        <NavigationListCollapsibleSection label="Restricted Spaces" defaultOpen>
+          {RESTRICTED_SPACES_MEMBER.map((s) => (
+            <NavigationListItem
+              key={s}
+              icon={Lock01}
+              label={s}
+              onClick={() => {}}
+            />
+          ))}
+          {(role === "super_admin" || role === "admin") &&
+            RESTRICTED_SPACES_NO_ACCESS.map((s) => (
+              <div key={s} className="s-opacity-50">
+                <NavigationListItem
+                  icon={Lock01}
+                  label={s}
+                  onClick={() => {}}
+                />
+              </div>
+            ))}
+        </NavigationListCollapsibleSection>
+      </NavigationList>
+    </ScrollArea>
+  );
+}
+
+// ─── Manage Connection Sheet ──────────────────────────────────────────────────
+
+function ManageConnectionSheet({
+  connection,
+  open,
+  onClose,
+  onUpdateDelegates,
+}: {
+  connection: ConnectionRow | null;
+  open: boolean;
+  onClose: () => void;
+  onUpdateDelegates: (name: string, delegates: string[]) => void;
+}) {
+  const handleSave = () => {
+    if (connection) {
+      onUpdateDelegates(connection.name, connection.delegates);
+    }
+    onClose();
+  };
+
+  if (!connection) return null;
+
+  return (
+    <Sheet open={open} onOpenChange={onClose}>
+      <SheetContent side="right" size="lg">
+        <SheetHeader>
+          <SheetTitle>Manage {connection.name} connection</SheetTitle>
+        </SheetHeader>
+        <div className="s-flex s-flex-col s-gap-6 s-px-6 s-py-4 s-flex-1 s-overflow-auto">
+          {/* Edit / Delete */}
+          <div className="s-flex s-gap-2">
+            <Button variant="outline" size="sm" label="Edit connection" />
+            <Button variant="warning" size="sm" label="Delete connection" />
+          </div>
+
+          {/* Connection options */}
+          <Page.Vertical gap="sm">
+            <Page.SectionHeader title="Connection options" />
+            <div className="s-flex s-w-full s-items-center s-justify-between s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4">
+              <div className="s-flex s-flex-col s-gap-0.5">
+                <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                  Use descriptions
+                </span>
+                <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  Your tables and columns description set in {connection.name}{" "}
+                  will be used to describe the schemas to Agents.
+                </span>
+              </div>
+              <SliderToggle selected={true} onClick={() => {}} />
+            </div>
+          </Page.Vertical>
+
+          {/* Select tables */}
+          <Page.Vertical gap="sm">
+            <Page.SectionHeader title="Select tables" />
+            <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
+              {["or1g1n-186209", "dust-dev"].map((table, i) => (
+                <div
+                  key={table}
+                  className="s-flex s-items-center s-gap-3 s-px-4 s-py-3"
+                >
+                  <Checkbox checked={i === 1} onCheckedChange={() => {}} />
+                  <span className="s-text-sm s-text-foreground dark:s-text-foreground-night">
+                    {table}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Page.Vertical>
+        </div>
+        <SheetFooter
+          leftButtonProps={{
+            label: "Cancel",
+            onClick: onClose,
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Save",
+            onClick: handleSave,
+            variant: "primary",
+          }}
+        />
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// ─── Connections Page ─────────────────────────────────────────────────────────
+
+function ConnectionsPage({
+  connections,
+  onManage,
+  onOpenDetail,
+  role,
+}: {
+  connections: ConnectionRow[];
+  onManage: (conn: ConnectionRow) => void;
+  onOpenDetail: (conn: ConnectionRow) => void;
+  role: Role;
+}) {
+  const [search, setSearch] = useState("");
+  const [requestTarget, setRequestTarget] = useState<ConnectionRow | null>(
+    null
+  );
+  const [requestMessage, setRequestMessage] = useState("");
+  const [requestedIds, setRequestedIds] = useState<string[]>([]);
+  const [configureTarget, setConfigureTarget] = useState<ConnectionRow | null>(
+    null
+  );
+
+  const canManage = role === "super_admin" || role === "admin";
+
+  const columns = useMemo<ColumnDef<ConnectionRow>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        header: "Name",
+        meta: { className: "s-w-full" },
+        cell: (info) => {
+          const row = info.row.original;
+          const Logo = row.logo;
+          return (
+            <DataTable.CellContent>
+              <div className="s-flex s-items-center s-gap-3">
+                <div className="s-h-6 s-w-6 s-shrink-0">
+                  <Logo className="s-h-6 s-w-6" />
+                </div>
+                <span className="s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                  {row.name}
+                </span>
+              </div>
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        accessorKey: "usedBy",
+        header: "Used By",
+        meta: { className: "s-w-28" },
+        cell: (info) => {
+          return (
+            <DataTable.CellContent>
+              <div className="s-flex s-items-center s-gap-1 s-text-muted-foreground dark:s-text-muted-foreground-night">
+                <Users01 className="s-h-3.5 s-w-3.5" />
+                <span>{info.getValue() as number}</span>
+              </div>
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        accessorKey: "managedByAvatar",
+        header: "Managed By",
+        meta: { className: "s-w-28" },
+        cell: (info) => {
+          return (
+            <DataTable.CellContent>
+              <Avatar name={info.getValue() as string} size="xs" isRounded />
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        accessorKey: "lastSync",
+        header: "Last Sync",
+        meta: { className: "s-w-32" },
+        cell: (info) => {
+          return (
+            <DataTable.CellContent>
+              <span className="s-text-muted-foreground dark:s-text-muted-foreground-night s-whitespace-nowrap">
+                {info.getValue() as string}
+              </span>
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        id: "action",
+        header: "",
+        meta: { className: "s-w-36" },
+        cell: (info: { row: { original: ConnectionRow } }) => {
+          const row = info.row.original;
+          const requested = requestedIds.includes(row.name);
+          if (canManage) {
+            return (
+              <DataTable.CellContent>
+                {row.configured ? (
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    icon={Settings01}
+                    label="Manage"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onManage(row);
+                    }}
+                  />
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="xs"
+                    label="Configure"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConfigureTarget(row);
+                    }}
+                  />
+                )}
+              </DataTable.CellContent>
+            );
+          }
+          return (
+            <DataTable.CellContent>
+              {requested ? (
+                <Chip label="Requested" size="xs" color="warning" />
+              ) : (
+                <Button
+                  variant="outline"
+                  size="xs"
+                  label="Request access"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRequestTarget(row);
+                  }}
+                />
+              )}
+            </DataTable.CellContent>
+          );
+        },
+      },
+    ],
+    [role, onManage, requestedIds, canManage]
+  );
+
+  const rows = connections
+    .filter(
+      (c) => !search || c.name.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => (a.configured === b.configured ? 0 : a.configured ? -1 : 1))
+    .map((c) => ({
+      ...c,
+      onClick: canManage ? () => onOpenDetail(c) : undefined,
+    }));
+
+  return (
+    <div className="s-flex s-flex-col s-h-full">
+      <Page>
+        <div className="s-w-full">
+          <SearchInput
+            name="search-connections"
+            placeholder="Search in Connections"
+            value={search}
+            onChange={setSearch}
+          />
+        </div>
+        <div className="s-flex s-w-full s-items-center s-justify-between">
+          <div className="s-flex s-items-center s-gap-2">
+            <CloudArrowLeftRight className="s-h-4 s-w-4 s-text-foreground dark:s-text-foreground-night" />
+            <span className="s-heading-base s-text-foreground dark:s-text-foreground-night">
+              Connections
+            </span>
+          </div>
+        </div>
+        <DataTable data={rows} columns={columns} className="s-w-full" />
+      </Page>
+
+      {/* Request Access Sheet */}
+      <Sheet
+        open={!!requestTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRequestTarget(null);
+            setRequestMessage("");
+          }
+        }}
+      >
+        <SheetContent size="lg">
+          <SheetHeader>
+            <SheetTitle>Request access to {requestTarget?.name}</SheetTitle>
+          </SheetHeader>
+          <div className="s-flex s-flex-col s-gap-5 s-p-5">
+            {requestTarget && (
+              <div className="s-flex s-items-center s-gap-3 s-rounded-xl s-bg-muted-background dark:s-bg-muted-background-night s-p-4">
+                <div className="s-h-8 s-w-8 s-shrink-0">
+                  <requestTarget.logo className="s-h-8 s-w-8" />
+                </div>
+                <div className="s-flex s-flex-col">
+                  <span className="s-heading-sm s-text-foreground dark:s-text-foreground-night">
+                    {requestTarget.name}
+                  </span>
+                  <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    {requestTarget.usedBy} users · Last sync{" "}
+                    {requestTarget.lastSync}
+                  </span>
+                </div>
+              </div>
+            )}
+            <div className="s-flex s-flex-col s-gap-2">
+              <Label>Why do you need access?</Label>
+              <TextArea
+                placeholder="Explain why your team needs access to this data source..."
+                value={requestMessage}
+                onChange={(e) => setRequestMessage(e.target.value)}
+                minRows={4}
+              />
+              <Page.P variant="secondary" size="sm">
+                Your request will be sent to the Super Admin for approval.
+              </Page.P>
+            </div>
+          </div>
+          <SheetFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: () => {
+                setRequestTarget(null);
+                setRequestMessage("");
+              },
+            }}
+            rightButtonProps={{
+              label: "Send request",
+              variant: "primary",
+              disabled: !requestMessage.trim(),
+              onClick: () => {
+                if (requestTarget) {
+                  setRequestedIds((prev) => [...prev, requestTarget.name]);
+                }
+                setRequestTarget(null);
+                setRequestMessage("");
+              },
+            }}
+          />
+        </SheetContent>
+      </Sheet>
+
+      {/* Configure Connection Sheet */}
+      <Sheet
+        open={!!configureTarget}
+        onOpenChange={(open) => {
+          if (!open) setConfigureTarget(null);
+        }}
+      >
+        <SheetContent size="lg">
+          <SheetHeader>
+            <SheetTitle>
+              Configure{configureTarget ? ` ${configureTarget.name}` : ""}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="s-flex s-flex-col s-gap-5 s-px-6 s-py-4">
+            {configureTarget && (
+              <div className="s-flex s-items-center s-gap-3 s-rounded-xl s-bg-muted-background dark:s-bg-muted-background-night s-p-4">
+                <configureTarget.logo className="s-h-8 s-w-8 s-shrink-0" />
+                <div className="s-flex s-flex-col">
+                  <span className="s-heading-sm s-text-foreground dark:s-text-foreground-night">
+                    {configureTarget.name}
+                  </span>
+                  <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    Not configured yet
+                  </span>
+                </div>
+              </div>
+            )}
+            <div className="s-flex s-items-start s-justify-between s-gap-4 s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4">
+              <div className="s-flex s-flex-col s-gap-1">
+                <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                  Set up yourself
+                </span>
+                <Page.P variant="secondary" size="sm">
+                  Connect your account and configure the data source directly.
+                </Page.P>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                label="Set up"
+                onClick={() => setConfigureTarget(null)}
+              />
+            </div>
+          </div>
+          <SheetFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: () => setConfigureTarget(null),
+            }}
+            rightButtonProps={{
+              label: "Done",
+              variant: "primary",
+              onClick: () => setConfigureTarget(null),
+            }}
+          />
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+// ─── Connection Detail Page ───────────────────────────────────────────────────
+
+interface FolderRow {
+  id: string;
+  name: string;
+  lastUpdated: string;
+  onClick?: () => void;
+}
+
+const CONNECTION_FOLDERS: Record<string, FolderRow[]> = {
+  BigQuery: [
+    { id: "f1", name: "dust-dev", lastUpdated: "Mar 10, 2026" },
+    { id: "f2", name: "or1g1n-186209", lastUpdated: "Oct 29, 2025" },
+  ],
+  default: [
+    { id: "f1", name: "Main folder", lastUpdated: "Jun 1, 2026" },
+    { id: "f2", name: "Archive", lastUpdated: "Apr 15, 2026" },
+  ],
+};
+
+function ConnectionDetailPage({
+  connectionId,
+  onBack,
+  role,
+}: {
+  connectionId: string;
+  onBack: () => void;
+  role: Role;
+}) {
+  const [managingConn, setManagingConn] = useState<ConnectionRow | null>(null);
+  const connection = INITIAL_CONNECTIONS.find((c) => c.name === connectionId);
+  if (!connection) return null;
+  const Logo = connection.logo;
+  const folders = (
+    CONNECTION_FOLDERS[connection.name] ?? CONNECTION_FOLDERS.default
+  ).map((f) => ({ ...f, onClick: () => {} }));
+
+  const canManage = role === "super_admin" || role === "admin";
+
+  const folderColumns = useMemo<ColumnDef<FolderRow>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        header: "Name",
+        meta: { className: "s-w-full" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <div className="s-flex s-items-center s-gap-2">
+              <Folder className="s-h-4 s-w-4 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+              <span className="s-font-medium s-text-foreground dark:s-text-foreground-night">
+                {info.getValue() as string}
+              </span>
+            </div>
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        accessorKey: "lastUpdated",
+        header: "Last Updated",
+        meta: { className: "s-w-40" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <span className="s-text-muted-foreground dark:s-text-muted-foreground-night">
+              {info.getValue() as string}
+            </span>
+          </DataTable.CellContent>
+        ),
+      },
+    ],
+    []
+  );
+
+  return (
+    <>
+      <Page>
+        {/* Breadcrumb */}
+        <div className="s-flex s-items-center s-gap-1.5 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+          <button
+            type="button"
+            className="s-hover:underline s-cursor-pointer"
+            onClick={onBack}
+          >
+            Connections
+          </button>
+          <span>/</span>
+          <div className="s-flex s-items-center s-gap-1.5 s-font-medium s-text-foreground dark:s-text-foreground-night">
+            <Logo className="s-h-4 s-w-4" />
+            <span>{connection.name}</span>
+          </div>
+        </div>
+
+        <div className="s-flex s-items-center s-justify-between">
+          <Page.SectionHeader title={connection.name} />
+          {canManage && (
+            <Button
+              variant="primary"
+              size="sm"
+              icon={Settings01}
+              label={`Manage ${connection.name}`}
+              onClick={() => setManagingConn(connection as ConnectionRow)}
+            />
+          )}
+        </div>
+
+        <DataTable
+          data={folders}
+          columns={folderColumns}
+          className="s-w-full"
+        />
+      </Page>
+      <ManageConnectionSheet
+        connection={managingConn}
+        open={!!managingConn}
+        onClose={() => setManagingConn(null)}
+        onUpdateDelegates={() => setManagingConn(null)}
+      />
+    </>
+  );
+}
+
+// ─── Tools Page ───────────────────────────────────────────────────────────────
+
+interface M1ToolRow {
+  id: string;
+  name: string;
+  description: string;
+  usedBy: number;
+  availability: "Workspace" | "Personal";
+  account?: string;
+  byAvatar: string;
+  byName: string;
+  lastUpdated: string;
+  color: string;
+  initial: string;
+  onClick?: () => void;
+}
+
+const M1_TOOLS_DATA: M1ToolRow[] = [
+  {
+    id: "airtable",
+    name: "Airtable",
+    description: "Call a tool to answer a question.",
+    usedBy: 0,
+    availability: "Personal",
+    account: "Adèle",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Jun, 2026",
+    color: "#F82B60",
+    initial: "⊞",
+  },
+  {
+    id: "apollo-gtm",
+    name: "Apollo Gtm",
+    description: "Call this tool to search people",
+    usedBy: 15,
+    availability: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Jun, 2026",
+    color: "#F82B60",
+    initial: "⊞",
+  },
+  {
+    id: "asana",
+    name: "Asana",
+    description: "Call a tool to answer a question.",
+    usedBy: 0,
+    availability: "Workspace",
+    account: "Personal",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Jun, 2026",
+    color: "#FC636B",
+    initial: "◉",
+  },
+  {
+    id: "ashby",
+    name: "Ashby",
+    description: "Access and manage Ashby ATS data.",
+    usedBy: 51,
+    availability: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=14",
+    byName: "Aubin",
+    lastUpdated: "Nov, 2025",
+    color: "#5B6BFF",
+    initial: "A",
+  },
+  {
+    id: "attio",
+    name: "Attio",
+    description: "Attio is the CRM for modern go-to-market teams.",
+    usedBy: 1,
+    availability: "Workspace",
+    account: "Personal",
+    byAvatar: "https://i.pravatar.cc/150?img=7",
+    byName: "Marie",
+    lastUpdated: "Jun, 2026",
+    color: "#1C1C1C",
+    initial: "A",
+  },
+  {
+    id: "bitly",
+    name: "Bitly",
+    description: "Call a tool to answer a question.",
+    usedBy: 0,
+    availability: "Workspace",
+    account: "Shared",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Jun, 2026",
+    color: "#EE6123",
+    initial: "@",
+  },
+  {
+    id: "brand-fetch",
+    name: "Brand Fetch",
+    description: "Call a tool to answer a question.",
+    usedBy: 5,
+    availability: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Jun, 2026",
+    color: "#00B8D9",
+    initial: "⊞",
+  },
+];
+
+const ADD_TOOLS_LIST: {
+  name: string;
+  logo: React.ComponentType<{ className?: string }> | null;
+  color?: string;
+}[] = [
+  { name: "Amplitude", logo: AmplitudeLogo },
+  { name: "Asana", logo: AsanaLogo },
+  { name: "Ashby", logo: AshbyLogo },
+  { name: "Attio", logo: AttioLogo },
+  { name: "BigQuery", logo: BigQueryLogo },
+  { name: "Confluence", logo: ConfluenceLogo },
+  { name: "Google Drive", logo: DriveLogo },
+  { name: "Gong", logo: GongLogo },
+  { name: "Intercom", logo: IntercomLogo },
+  { name: "Jira", logo: JiraLogo },
+  { name: "Linear", logo: LinearLogo },
+  { name: "Microsoft", logo: MicrosoftLogo },
+  { name: "Notion", logo: NotionLogo },
+  { name: "Slack", logo: SlackLogo },
+  { name: "Snowflake", logo: SnowflakeLogo },
+  { name: "Zendesk", logo: ZendeskLogo },
+];
+
+function ToolsPage({ role }: { role: Role }) {
+  const [search, setSearch] = useState("");
+  const [toolsSearch, setToolsSearch] = useState("");
+  const filteredAddTools = ADD_TOOLS_LIST.filter((t) =>
+    t.name.toLowerCase().includes(toolsSearch.toLowerCase())
+  );
+  const filtered = M1_TOOLS_DATA.filter(
+    (t) =>
+      t.name.toLowerCase().includes(search.toLowerCase()) ||
+      t.description.toLowerCase().includes(search.toLowerCase())
+  );
+  const columns = useMemo<ColumnDef<M1ToolRow>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        header: "Name",
+        meta: { className: "s-w-full" },
+        cell: (info) => {
+          const row = info.row.original;
+          return (
+            <DataTable.CellContent>
+              <div className="s-flex s-items-center s-gap-3">
+                <div
+                  className="s-flex s-h-6 s-w-6 s-shrink-0 s-items-center s-justify-center s-rounded-md s-text-white s-text-xs"
+                  style={{ backgroundColor: row.color }}
+                />
+                <div className="s-flex s-min-w-0 s-flex-col">
+                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                    {row.name}
+                  </span>
+                  <span className="s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    {row.description}
+                  </span>
+                </div>
+              </div>
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        accessorKey: "usedBy",
+        header: "Used By",
+        meta: { className: "s-w-28" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <div className="s-flex s-items-center s-gap-1 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <Users01 className="s-h-4 s-w-4" />
+              <span>{info.getValue() as number}</span>
+            </div>
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        accessorKey: "availability",
+        header: "Availability",
+        meta: { className: "s-w-32" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              {info.getValue() as string}
+            </span>
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        accessorKey: "account",
+        header: "Account",
+        meta: { className: "s-w-40" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              {(info.getValue() as string | undefined) ?? ""}
+            </span>
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        accessorKey: "byName",
+        header: "By",
+        meta: { className: "s-w-12" },
+        cell: (info) => {
+          const row = info.row.original;
+          return (
+            <DataTable.CellContent>
+              <Avatar
+                visual={row.byAvatar}
+                name={row.byName}
+                size="xs"
+                isRounded
+              />
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        accessorKey: "lastUpdated",
+        header: "Last Updated",
+        meta: { className: "s-w-32" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              {info.getValue() as string}
+            </span>
+          </DataTable.CellContent>
+        ),
+      },
+    ],
+    []
+  );
+  const canAddMcp = role === "super_admin" || role === "admin";
+  return (
+    <Page>
+      <div className="s-w-full">
+        <SearchInput
+          name="search-tools"
+          placeholder="Search in Tools"
+          value={search}
+          onChange={setSearch}
+        />
+      </div>
+      <div className="s-flex s-w-full s-items-center s-justify-between">
+        <div className="s-flex s-items-center s-gap-2">
+          <ShapesPlus className="s-h-4 s-w-4 s-text-foreground dark:s-text-foreground-night" />
+          <span className="s-heading-base s-text-foreground dark:s-text-foreground-night">
+            Tools
+          </span>
+        </div>
+        <DropdownMenu
+          onOpenChange={(open) => {
+            if (!open) setToolsSearch("");
+          }}
+        >
+          <DropdownMenuTrigger asChild>
+            <Button icon={Plus} label="Add Tools" variant="primary" size="sm" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="s-w-[420px]"
+            dropdownHeaders={
+              <div className="s-flex s-items-center s-gap-2 s-p-2 s-border-b s-border-border dark:s-border-border-night">
+                <div className="s-flex-1">
+                  <SearchInput
+                    name="tools-search"
+                    placeholder="Search tools..."
+                    value={toolsSearch}
+                    onChange={setToolsSearch}
+                  />
+                </div>
+                <Button
+                  icon={Plus}
+                  label="Add MCP Server"
+                  variant="primary"
+                  size="sm"
+                  disabled={!canAddMcp}
+                  tooltip={
+                    !canAddMcp
+                      ? "Only Super Admins and Operators can add MCP servers."
+                      : undefined
+                  }
+                />
+              </div>
+            }
+          >
+            {filteredAddTools.map((tool) => (
+              <DropdownMenuItem
+                key={tool.name}
+                label={tool.name}
+                icon={
+                  <div className="s-flex s-h-10 s-w-10 s-shrink-0 s-items-center s-justify-center s-overflow-hidden s-rounded-xl s-border s-border-border dark:s-border-border-night">
+                    {tool.logo ? (
+                      <tool.logo className="s-h-8 s-w-8" />
+                    ) : (
+                      <div
+                        className="s-h-10 s-w-10 s-rounded-xl"
+                        style={{ backgroundColor: tool.color ?? "#888" }}
+                      />
+                    )}
+                  </div>
+                }
+              />
+            ))}
+            {filteredAddTools.length === 0 && (
+              <div className="s-px-3 s-py-4 s-text-center s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                No tools found
+              </div>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      <DataTable data={filtered} columns={columns} />
+    </Page>
+  );
+}
+
+// ─── Triggers Page ────────────────────────────────────────────────────────────
+
+interface M1TriggerRow {
+  id: string;
+  name: string;
+  description?: string;
+  provider: "Custom" | "Github" | "Zendesk" | "Slack";
+  usedBy: number;
+  access: string;
+  byAvatar: string;
+  byName: string;
+  lastUpdated: string;
+  onClick?: () => void;
+}
+
+const M1_TRIGGERS_DATA: M1TriggerRow[] = [
+  {
+    id: "jiratest",
+    name: "JiraTest",
+    provider: "Custom",
+    usedBy: 0,
+    access: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Oct, 2025",
+  },
+  {
+    id: "alban-test",
+    name: "Alban Test",
+    provider: "Github",
+    usedBy: 0,
+    access: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=33",
+    byName: "Alban",
+    lastUpdated: "Oct, 2025",
+  },
+  {
+    id: "freshservice",
+    name: "FreshserviceTest",
+    provider: "Custom",
+    usedBy: 1,
+    access: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Oct, 2025",
+  },
+  {
+    id: "github-issues",
+    name: "Github (dust-tt/dust issues)",
+    provider: "Github",
+    usedBy: 0,
+    access: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Oct, 2025",
+  },
+  {
+    id: "zendesk-test",
+    name: "Zendesk test Fabien",
+    description: "Testing zendesk connection with d3v-dust",
+    provider: "Zendesk",
+    usedBy: 1,
+    access: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=7",
+    byName: "Fabien",
+    lastUpdated: "Oct, 2025",
+  },
+];
+
+const ADD_SOURCES_LIST: {
+  name: string;
+  logo: React.ComponentType<{ className?: string }> | null;
+  adminOnly?: boolean;
+}[] = [
+  { name: "Fathom", logo: FathomLogo },
+  { name: "GitHub", logo: GithubLogo },
+  { name: "Jira", logo: JiraLogo },
+  { name: "Linear", logo: LinearLogo },
+  { name: "Zendesk", logo: ZendeskLogo },
+  { name: "Custom Webhook", logo: null, adminOnly: true },
+];
+
+function TriggersPage({ role }: { role: Role }) {
+  const [search, setSearch] = useState("");
+  const filtered = M1_TRIGGERS_DATA.filter((t) =>
+    t.name.toLowerCase().includes(search.toLowerCase())
+  );
+  const canAddCustom = role === "super_admin" || role === "admin";
+  const columns = useMemo<ColumnDef<M1TriggerRow>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        header: "Name",
+        meta: { className: "s-w-full" },
+        cell: (info) => {
+          const row = info.row.original;
+          const ProviderLogo =
+            row.provider === "Github"
+              ? GithubLogo
+              : row.provider === "Zendesk"
+                ? ZendeskLogo
+                : null;
+          return (
+            <DataTable.CellContent>
+              <div className="s-flex s-items-center s-gap-3">
+                <div className="s-flex s-h-6 s-w-6 s-shrink-0 s-items-center s-justify-center s-rounded-full s-border s-border-border dark:s-border-border-night s-bg-muted-background dark:s-bg-muted-background-night">
+                  {ProviderLogo ? (
+                    <ProviderLogo className="s-h-4 s-w-4" />
+                  ) : (
+                    <Globe01 className="s-h-3.5 s-w-3.5 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                  )}
+                </div>
+                <div className="s-flex s-min-w-0 s-flex-col">
+                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                    {row.name}
+                  </span>
+                  {row.description && (
+                    <span className="s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                      {row.description}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        accessorKey: "provider",
+        header: "Provider",
+        meta: { className: "s-w-24" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              {info.getValue() as string}
+            </span>
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        accessorKey: "usedBy",
+        header: "Used By",
+        meta: { className: "s-w-24" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <div className="s-flex s-items-center s-gap-1 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <Users01 className="s-h-4 s-w-4" />
+              <span>{info.getValue() as number}</span>
+            </div>
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        accessorKey: "access",
+        header: "Access",
+        meta: { className: "s-w-32" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              {info.getValue() as string}
+            </span>
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        accessorKey: "byName",
+        header: "By",
+        meta: { className: "s-w-12" },
+        cell: (info) => {
+          const row = info.row.original;
+          return (
+            <DataTable.CellContent>
+              <Avatar
+                visual={row.byAvatar}
+                name={row.byName}
+                size="xs"
+                isRounded
+              />
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        accessorKey: "lastUpdated",
+        header: "Last Updated",
+        meta: { className: "s-w-32" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              {info.getValue() as string}
+            </span>
+          </DataTable.CellContent>
+        ),
+      },
+    ],
+    []
+  );
+  return (
+    <Page>
+      <div className="s-w-full">
+        <SearchInput
+          name="search-triggers"
+          placeholder="Search in Triggers"
+          value={search}
+          onChange={setSearch}
+        />
+      </div>
+      <div className="s-flex s-w-full s-items-center s-justify-between">
+        <div className="s-flex s-items-center s-gap-2">
+          <Lightning01 className="s-h-4 s-w-4 s-text-foreground dark:s-text-foreground-night" />
+          <span className="s-heading-base s-text-foreground dark:s-text-foreground-night">
+            Triggers
+          </span>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              icon={Plus}
+              label="Add Source"
+              variant="primary"
+              size="sm"
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {ADD_SOURCES_LIST.map((source) => {
+              const isDisabled = source.adminOnly && !canAddCustom;
+              return (
+                <DropdownMenuItem
+                  key={source.name}
+                  label={source.name}
+                  icon={source.logo ?? Globe01}
+                  disabled={isDisabled}
+                />
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      <Page.P variant="secondary" size="sm">
+        Here you can add new trigger sources to your workspace. Once created,
+        those sources can be used in the Agent Builder to trigger Agents.
+      </Page.P>
+      <DataTable data={filtered} columns={columns} />
+    </Page>
+  );
+}
+
 // ─── Locked Page ─────────────────────────────────────────────────────────────
 
 function LockedPage({ pageLabel, role }: { pageLabel: string; role: Role }) {
@@ -2858,6 +4193,15 @@ export default function AdminGovernanceV2() {
   const sidebarRef = useRef<SidebarLayoutRef>(null);
   const [role, setRole] = useState<Role>("super_admin");
   const [activePage, setActivePage] = useState<AdminPage>("people");
+  const [activeTab, setActiveTab] = useState<"chat" | "spaces" | "admin">(
+    "admin"
+  );
+  const [spacesPage, setSpacesPage] = useState<
+    "connections" | "tools" | "triggers"
+  >("connections");
+  const [selectedConnectionId, setSelectedConnectionId] = useState<
+    string | null
+  >(null);
   const [lockedItem, setLockedItem] = useState<{
     label: string;
     requiredRoles: string[];
@@ -2866,25 +4210,65 @@ export default function AdminGovernanceV2() {
   const [groups, setGroups] = useState<GroupRow[]>(GROUPS);
   const [governance, setGovernance] =
     useState<GovernanceSetting[]>(INITIAL_GOVERNANCE);
+  const [connections, setConnections] = useState<ConnectionRow[]>([
+    ...INITIAL_CONNECTIONS,
+  ]);
+  const [managingConn, setManagingConn] = useState<ConnectionRow | null>(null);
 
   const access = ROLE_ACCESS[role];
   const effectivePage = access.includes(activePage)
     ? activePage
     : (access[0] ?? "people");
 
-  // Matches Projects.tsx sidebar structure exactly
   const sidebar = (
-    <div className="s-flex s-h-full s-flex-col s-border-r s-border-border s-bg-muted-background dark:s-border-border-night dark:s-bg-muted-background-night">
-      <Tabs value="admin" className="s-flex s-min-h-0 s-flex-1 s-flex-col">
-        <TabsList className="s-mt-3 s-px-2">
-          <TabsTrigger value="chat" label="Chat" icon={MessageChatSquare} />
-          <TabsTrigger value="spaces" label="Spaces" icon={SpaceOpen} />
-          <TabsTrigger value="admin" icon={Settings01} />
-        </TabsList>
+    <div className="s-flex s-h-full s-flex-col s-border-r s-border-border s-bg-app-background dark:s-border-border-night dark:s-bg-app-background-night">
+      <NavTabPill
+        value={activeTab}
+        onValueChange={(v) => {
+          setActiveTab(v as typeof activeTab);
+          if (v === "spaces") setSpacesPage("connections");
+        }}
+        className="s-flex s-min-h-0 s-flex-1 s-flex-col"
+      >
+        <NavTabPillList className="s-px-3 s-pt-3 s-pb-1">
+          <NavTabPillTrigger value="chat" icon={IntersectDust}>
+            Chat
+          </NavTabPillTrigger>
+          <NavTabPillTrigger value="spaces" icon={Planet}>
+            Spaces
+          </NavTabPillTrigger>
+          <NavTabPillTrigger value="admin" icon={Settings01}>
+            Admin
+          </NavTabPillTrigger>
+          <div className="s-flex s-flex-grow s-justify-end">
+            <NavTabPillTrigger
+              value="collapse"
+              icon={LayoutLeft}
+              onClick={() => sidebarRef.current?.toggle()}
+            />
+          </div>
+        </NavTabPillList>
 
-        <TabsContent
+        {/* Spaces sidebar */}
+        <NavTabPillContent
+          value="spaces"
+          className="data-[state=active]:s-flex s-min-h-0 s-flex-1 s-flex-col"
+        >
+          <SpacesSidebarNav
+            role={role}
+            onConnectionsClick={() => {
+              setSpacesPage("connections");
+              setSelectedConnectionId(null);
+            }}
+            onToolsClick={() => setSpacesPage("tools")}
+            onTriggersClick={() => setSpacesPage("triggers")}
+          />
+        </NavTabPillContent>
+
+        {/* Admin sidebar */}
+        <NavTabPillContent
           value="admin"
-          className="s-flex s-min-h-0 s-flex-1 s-flex-col"
+          className="data-[state=active]:s-flex s-min-h-0 s-flex-1 s-flex-col"
         >
           <ScrollArea className="s-flex-1">
             <ScrollBar orientation="vertical" size="minimal" />
@@ -2929,8 +4313,14 @@ export default function AdminGovernanceV2() {
               ))}
             </NavigationList>
           </ScrollArea>
-        </TabsContent>
-      </Tabs>
+        </NavTabPillContent>
+
+        {/* Chat sidebar (empty) */}
+        <NavTabPillContent
+          value="chat"
+          className="data-[state=active]:s-flex s-min-h-0 s-flex-1 s-flex-col"
+        />
+      </NavTabPill>
 
       {/* Bottom bar — matches Projects.tsx exactly */}
       <div className="s-flex s-h-14 s-items-center s-justify-between s-gap-2 s-border-t s-border-border s-pl-1 s-pr-2 dark:s-border-border-night">
@@ -2977,8 +4367,40 @@ export default function AdminGovernanceV2() {
   const content = (
     <ScrollArea className="s-h-full s-bg-background dark:s-bg-background-night">
       <ScrollBar orientation="vertical" size="minimal" />
-      <div key={effectivePage} className="ag-page-in">
-        {effectivePage === "people" ? (
+      <div
+        key={
+          activeTab === "admin"
+            ? effectivePage
+            : `${activeTab}-${spacesPage}-${selectedConnectionId ?? ""}`
+        }
+        className="ag-page-in"
+      >
+        {activeTab === "spaces" ? (
+          selectedConnectionId ? (
+            <ConnectionDetailPage
+              connectionId={selectedConnectionId}
+              role={role}
+              onBack={() => setSelectedConnectionId(null)}
+            />
+          ) : spacesPage === "connections" ? (
+            <ConnectionsPage
+              connections={connections}
+              role={role}
+              onManage={(conn) => setManagingConn(conn)}
+              onOpenDetail={(conn) => setSelectedConnectionId(conn.name)}
+            />
+          ) : spacesPage === "tools" ? (
+            <ToolsPage role={role} />
+          ) : (
+            <TriggersPage role={role} />
+          )
+        ) : activeTab === "chat" ? (
+          <PlaceholderPage
+            title="Chat"
+            description="Chat interface coming soon."
+            icon={Settings01}
+          />
+        ) : effectivePage === "people" ? (
           <PeoplePage
             role={role}
             members={members}
@@ -2988,12 +4410,6 @@ export default function AdminGovernanceV2() {
             onNavigate={(page) => setActivePage(page as AdminPage)}
             defaultTab="members"
             onTabChange={() => {}}
-          />
-        ) : effectivePage === "roles" ? (
-          <PlaceholderPage
-            title="Role Assignment"
-            description="Assign roles to members directly or via groups."
-            icon={LayersThree01}
           />
         ) : effectivePage === "capabilities" ? (
           <GovernancePage
@@ -3055,6 +4471,17 @@ export default function AdminGovernanceV2() {
   return (
     <>
       <style>{ANIMATION_CSS}</style>
+
+      <ManageConnectionSheet
+        connection={managingConn}
+        open={!!managingConn}
+        onClose={() => setManagingConn(null)}
+        onUpdateDelegates={(name, delegates) => {
+          setConnections(
+            connections.map((c) => (c.name === name ? { ...c, delegates } : c))
+          );
+        }}
+      />
 
       {/* Locked section dialog */}
       <Dialog
