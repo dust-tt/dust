@@ -12,6 +12,7 @@
  * Requires: METRONOME_API_KEY env var
  */
 
+import { baseUniquenessKey } from "@app/lib/metronome/alerts";
 import { DEFAULT_ALERT_UNIQUENESS_KEYS } from "@app/lib/metronome/alerts/default_alerts";
 import { getMetronomeClient } from "@app/lib/metronome/client";
 import {
@@ -54,6 +55,13 @@ if (!process.env.METRONOME_API_KEY) {
 }
 
 const EXECUTE = process.argv.includes("--execute");
+// Archive the existing account-level default pool alerts before syncing so
+// `syncAlerts` recreates them with the current `custom_field_filters` from the
+// code (`upsertMetronomeAlert`-style filter changes don't otherwise propagate —
+// `syncAlerts` no-ops on a 409). Use after changing POOL_CREDIT_AND_COMMIT_FILTERS.
+const RECREATE_POOL_DEFAULTS = process.argv.includes(
+  "--recreate-pool-defaults"
+);
 
 const client = getMetronomeClient();
 
@@ -1524,17 +1532,29 @@ interface AlertDef {
   }>;
 }
 
-// Filter that excludes the "excess" recurring credit from
-// contract-credit-balance alerts. The inverse marker ("pool") is stamped on
-// workspace-pool recurring credits in the package definitions; excess credits
-// get "excess" so they don't match this filter.
-const POOL_CONTRACT_CREDIT_FILTER: NonNullable<
+// Filters that keep only workspace-pool balances in contract-credit-and-commit
+// balance alerts: one per entity, since a ContractCredit-only filter drops
+// commits from the balance. Both filters use the SAME key/value — Metronome
+// rejects an alert whose custom_field_filters use different key/value pairs per
+// entity type. The ContractCredit filter excludes excess recurring credits
+// (stamped "excess") and unstamped per-seat credits; the Commit filter includes
+// AWU commits stamped "pool" by the commit webhook handlers. (The single-filter
+// ContractCreditOrCommit equivalent is gated behind Metronome's
+// `ff:alert-specifiers-enabled` feature flag, so we use two per-entity filters.)
+const POOL_CREDIT_AND_COMMIT_FILTERS: NonNullable<
   AlertDef["custom_field_filters"]
->[number] = {
-  entity: "ContractCredit",
-  key: CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
-  value: CONTRACT_CREDIT_TYPE_POOL,
-};
+> = [
+  {
+    entity: "ContractCredit",
+    key: CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+    value: CONTRACT_CREDIT_TYPE_POOL,
+  },
+  {
+    entity: "Commit",
+    key: CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+    value: CONTRACT_CREDIT_TYPE_POOL,
+  },
+];
 
 // Default alerts applied to all customers (no `customer_id` set on create):
 // fire when AWU credit / contract-credit / commit balance reaches thresholds.
@@ -1545,7 +1565,7 @@ const ALERTS: AlertDef[] = [
     threshold: 0,
     uniqueness_key: DEFAULT_ALERT_UNIQUENESS_KEYS.poolEmpty,
     credit_type: "AWU",
-    custom_field_filters: [POOL_CONTRACT_CREDIT_FILTER],
+    custom_field_filters: POOL_CREDIT_AND_COMMIT_FILTERS,
   },
   {
     name: "Default: Low balance 100 credits (AWU)",
@@ -1553,7 +1573,7 @@ const ALERTS: AlertDef[] = [
     threshold: 100,
     uniqueness_key: DEFAULT_ALERT_UNIQUENESS_KEYS.poolLow,
     credit_type: "AWU",
-    custom_field_filters: [POOL_CONTRACT_CREDIT_FILTER],
+    custom_field_filters: POOL_CREDIT_AND_COMMIT_FILTERS,
   },
   {
     name: "Default: Critical balance 10 credits (AWU)",
@@ -1561,7 +1581,7 @@ const ALERTS: AlertDef[] = [
     threshold: 10,
     uniqueness_key: DEFAULT_ALERT_UNIQUENESS_KEYS.poolCritical,
     credit_type: "AWU",
-    custom_field_filters: [POOL_CONTRACT_CREDIT_FILTER],
+    custom_field_filters: POOL_CREDIT_AND_COMMIT_FILTERS,
   },
   {
     // Seat exhaustion: fires at 0 remaining seat balance. Allocation-independent
@@ -1595,6 +1615,65 @@ const ALERTS: AlertDef[] = [
   },
 ];
 
+// The account-level default pool alerts. Archiving these (which releases their
+// uniqueness keys) lets `syncAlerts` recreate them with the current filter.
+const POOL_DEFAULT_ALERT_KEYS: string[] = [
+  DEFAULT_ALERT_UNIQUENESS_KEYS.poolEmpty,
+  DEFAULT_ALERT_UNIQUENESS_KEYS.poolLow,
+  DEFAULT_ALERT_UNIQUENESS_KEYS.poolCritical,
+];
+
+// Archive the account-level default pool alerts so the subsequent `syncAlerts`
+// recreates them with the current `custom_field_filters`. Default alerts carry
+// no `customer_id`, and the SDK only lists alerts per customer — but a default
+// alert is evaluated against (and returned for) every customer, so we probe one
+// customer's alert list to discover them, then archive by id (which releases
+// the uniqueness key globally).
+async function archivePoolDefaultAlerts(): Promise<void> {
+  console.log("\n=== Archiving default pool alerts (for recreation) ===");
+
+  let probeCustomerId: string | undefined;
+  for await (const customer of client.v1.customers.list()) {
+    probeCustomerId = customer.id;
+    break;
+  }
+  if (!probeCustomerId) {
+    console.log(
+      "  ! No Metronome customer found to probe alerts from — skipping. " +
+        "Default alerts can only be enumerated via a customer's alert list."
+    );
+    return;
+  }
+
+  let matched = 0;
+  for await (const entry of client.v1.customers.alerts.list({
+    customer_id: probeCustomerId,
+    alert_statuses: ["ENABLED", "DISABLED"],
+  })) {
+    const key = entry.alert.uniqueness_key;
+    if (!key || !POOL_DEFAULT_ALERT_KEYS.includes(baseUniquenessKey(key))) {
+      continue;
+    }
+    matched++;
+    console.log(
+      `  ! ${EXECUTE ? "Archiving" : "[DRYRUN] Would archive"} default pool alert: ${entry.alert.name} (${entry.alert.id}, uniqueness_key="${key}")`
+    );
+    if (EXECUTE) {
+      await client.v1.alerts.archive({
+        id: entry.alert.id,
+        release_uniqueness_key: true,
+      });
+    }
+  }
+
+  if (matched === 0) {
+    console.log(
+      `  (no existing default pool alerts found for probe customer ${probeCustomerId} — ` +
+        `syncAlerts will create them fresh with the current filter)`
+    );
+  }
+}
+
 async function syncAlerts(): Promise<void> {
   console.log("\n=== Syncing Alerts ===");
 
@@ -1602,9 +1681,13 @@ async function syncAlerts(): Promise<void> {
     const creditTypeId =
       desired.credit_type === "AWU" ? getCreditTypeAwuId() : undefined;
 
+    const filterDesc = desired.custom_field_filters
+      ? ` custom_field_filters=${JSON.stringify(desired.custom_field_filters)}`
+      : "";
+
     if (!EXECUTE) {
       console.log(
-        `  + [DRYRUN] Would create alert: ${desired.name} (${desired.alert_type}, threshold=${desired.threshold})`
+        `  + [DRYRUN] Would create alert: ${desired.name} (${desired.alert_type}, threshold=${desired.threshold})${filterDesc}`
       );
       continue;
     }
@@ -1622,13 +1705,17 @@ async function syncAlerts(): Promise<void> {
         ...(desired.seat_filter ? { seat_filter: desired.seat_filter } : {}),
       });
       const id = (created as { data: { id: string } }).data.id;
-      console.log(`  + Created: ${desired.name} → ${id}`);
+      console.log(`  + Created: ${desired.name} → ${id}${filterDesc}`);
     } catch (err) {
-      // Metronome returns 409 when uniqueness_key already exists.
+      // Metronome returns 409 when uniqueness_key already exists. The existing
+      // alert is NOT updated — its custom_field_filters stay whatever they were
+      // at creation. To apply changed filters, archive the alert first (for the
+      // pool defaults: re-run with --recreate-pool-defaults).
       const status = (err as { status?: number })?.status;
       if (status === 409) {
         console.log(
-          `  ✓ ${desired.name} — already exists (uniqueness_key="${desired.uniqueness_key}")`
+          `  ✓ ${desired.name} — already exists (uniqueness_key="${desired.uniqueness_key}"), NOT updated (existing filters kept). ` +
+            `Re-run with --recreate-pool-defaults --execute to apply current filters to pool defaults.`
         );
       } else {
         throw err;
@@ -1653,6 +1740,9 @@ async function main(): Promise<void> {
   const productsMutated = await syncProducts();
   await syncRateCards();
   await syncPackages();
+  if (RECREATE_POOL_DEFAULTS) {
+    await archivePoolDefaultAlerts();
+  }
   await syncAlerts();
 
   // Drop the cached `productId → seatType` map so live processes pick up
