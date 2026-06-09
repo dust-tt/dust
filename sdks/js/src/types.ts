@@ -2250,9 +2250,14 @@ export type GetConversationResponseType = z.infer<
   typeof GetConversationResponseSchema
 >;
 
-export const PatchConversationRequestSchema = z.object({
-  read: z.boolean(),
-});
+export const PatchConversationRequestSchema = z.union([
+  z.object({
+    read: z.boolean(),
+  }),
+  z.object({
+    title: z.string(),
+  }),
+]);
 
 export type PatchConversationRequestType = z.infer<
   typeof PatchConversationRequestSchema

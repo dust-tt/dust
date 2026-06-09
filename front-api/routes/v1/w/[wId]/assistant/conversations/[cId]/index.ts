@@ -1,4 +1,5 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import type { PatchConversationResponseBody } from "@app/lib/api/assistant/conversation/types";
 import { addBackwardCompatibleConversationFields } from "@app/lib/api/v1/backward_compatibility";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -80,8 +81,8 @@ const app = publicApiApp();
  *       500:
  *         description: Internal Server Error.
  *   patch:
- *     summary: Update conversation read status
- *     description: Mark a conversation as read or unread in the workspace identified by {wId}.
+ *     summary: Update a conversation
+ *     description: Update a conversation's title or mark it as read or unread in the workspace identified by {wId}.
  *     tags:
  *       - Conversations
  *     security:
@@ -104,13 +105,22 @@ const app = publicApiApp();
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               read:
- *                 type: boolean
+ *             oneOf:
+ *               - type: object
+ *                 required:
+ *                   - read
+ *                 properties:
+ *                   read:
+ *                     type: boolean
+ *               - type: object
+ *                 required:
+ *                   - title
+ *                 properties:
+ *                   title:
+ *                     type: string
  *     responses:
  *       200:
- *         description: Conversation marked as read successfully.
+ *         description: Conversation updated successfully.
  *         content:
  *           application/json:
  *             schema:
@@ -195,16 +205,32 @@ app.patch(
       return apiErrorForConversation(ctx, conversationRes.error);
     }
 
-    const { read } = ctx.req.valid("json");
-    if (read) {
-      await ConversationResource.markAsReadForAuthUser(auth, {
-        conversation: conversationRes.value,
-      });
-    } else {
-      await ConversationResource.markAsUnreadForAuthUser(auth, {
-        conversation: conversationRes.value,
-      });
+    const data = ctx.req.valid("json");
+    if ("read" in data) {
+      if (data.read) {
+        await ConversationResource.markAsReadForAuthUser(auth, {
+          conversation: conversationRes.value,
+        });
+      } else {
+        await ConversationResource.markAsUnreadForAuthUser(auth, {
+          conversation: conversationRes.value,
+        });
+      }
+      return ctx.json({ success: true });
     }
+
+    const titleUpdateRes = await updateConversationTitle(auth, {
+      conversationId: conversationRes.value.sId,
+      title: data.title,
+    });
+    if (titleUpdateRes.isErr()) {
+      return apiErrorForConversation(ctx, titleUpdateRes.error);
+    }
+
+    await ConversationResource.markAsReadForAuthUser(auth, {
+      conversation: conversationRes.value,
+    });
+
     return ctx.json({ success: true });
   }
 );
