@@ -219,16 +219,26 @@ app.get(
 
     const currency = creditTypeIdToCurrency(invoice.credit_type.id);
 
-    const lineItems = invoice.line_items.map((item) => ({
-      name: item.name,
-      type: item.type,
-      quantity: typeof item.quantity === "number" ? item.quantity : null,
-      unitPriceCents:
-        typeof item.unit_price === "number" && currency
-          ? amountCents(item.unit_price, currency)
-          : null,
-      totalCents: currency ? amountCents(item.total, currency) : item.total,
-    }));
+    const fiatOnly = ctx.req.query("fiatOnly") === "true";
+    const fiatCreditTypeIds = new Set([CREDIT_TYPE_USD_ID, CREDIT_TYPE_EUR_ID]);
+
+    const lineItems = invoice.line_items
+      .filter((item) => !fiatOnly || fiatCreditTypeIds.has(item.credit_type.id))
+      .map((item) => {
+        const itemCurrency = creditTypeIdToCurrency(item.credit_type.id);
+        return {
+          name: item.name,
+          type: item.type,
+          quantity: typeof item.quantity === "number" ? item.quantity : null,
+          unitPriceCents:
+            typeof item.unit_price === "number" && itemCurrency
+              ? amountCents(item.unit_price, itemCurrency)
+              : null,
+          totalCents: itemCurrency
+            ? amountCents(item.total, itemCurrency)
+            : item.total,
+        };
+      });
 
     return ctx.json({ currency, lineItems });
   }

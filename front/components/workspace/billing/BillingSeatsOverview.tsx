@@ -1,3 +1,7 @@
+import {
+  SEAT_TYPE_ICONS,
+  seatTypeAvatarColors,
+} from "@app/components/workspace/billing/seatTypeUtils";
 import type { SeatTypeInfo } from "@app/lib/api/credits/seat_plan";
 import { useMembersSeats, useSeatPlan } from "@app/lib/swr/credits";
 import {
@@ -7,42 +11,7 @@ import {
 } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
-import {
-  Avatar,
-  Cube01,
-  Hexagon01,
-  Icon,
-  SeatMax,
-  Spinner,
-  User01,
-} from "@dust-tt/sparkle";
-import type React from "react";
-
-const SEAT_TYPE_ICONS: Record<string, React.ComponentType> = {
-  free: Hexagon01,
-  pro: Cube01,
-  max: SeatMax,
-};
-
-function seatTypeAvatarColors(seatType: MembershipSeatType) {
-  switch (seatType) {
-    case "free":
-      return {
-        backgroundColor: "bg-gray-100",
-        iconColor: "text-gray-600",
-      };
-    case "max":
-      return {
-        backgroundColor: "bg-golden-100",
-        iconColor: "text-golden-600",
-      };
-    default:
-      return {
-        backgroundColor: "bg-blue-100",
-        iconColor: "text-blue-600",
-      };
-  }
-}
+import { Avatar, Cube01, Icon, Spinner, User01 } from "@dust-tt/sparkle";
 
 function seatTypeGroup(seatType: MembershipSeatType): MembershipSeatType {
   switch (seatType) {

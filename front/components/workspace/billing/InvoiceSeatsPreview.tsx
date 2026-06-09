@@ -1,16 +1,19 @@
+import {
+  SEAT_TYPE_ICONS,
+  seatTypeAvatarColors,
+} from "@app/components/workspace/billing/seatTypeUtils";
+import { SEAT_PRODUCT_YEARLY_SUFFIX } from "@app/lib/metronome/constants";
+import {
+  FREE_SEAT_PRODUCT_NAME,
+  MAX_SEAT_PRODUCT_NAME,
+  PRO_SEAT_PRODUCT_NAME,
+} from "@app/lib/metronome/setup_common";
 import { useMetronomeInvoiceLines } from "@app/lib/swr/workspaces";
+import type { MembershipSeatType } from "@app/types/memberships";
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
-import {
-  ChevronDown,
-  ChevronRight,
-  cn,
-  DataTable,
-  Icon,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Avatar, cn, DataTable, Spinner } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useState } from "react";
 
 function formatAmount(cents: number, currency: string): string {
   const locale = currency.toUpperCase() === "USD" ? "en-US" : "fr-FR";
@@ -32,14 +35,20 @@ interface InvoiceRow {
   quantity: string;
   cost: string;
   subtotal: string;
-  isGroupRow?: boolean;
-  isExpanded?: boolean;
-  isSubRow?: boolean;
   isNegative?: boolean;
   isBold?: boolean;
   onClick?: () => void;
   menuItems?: never[];
 }
+
+// Maps Metronome product names (monthly and yearly variants) to seat group type.
+const PRODUCT_NAME_TO_SEAT_TYPE: Record<string, MembershipSeatType> = {
+  [FREE_SEAT_PRODUCT_NAME]: "free",
+  [PRO_SEAT_PRODUCT_NAME]: "pro",
+  [PRO_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX]: "pro",
+  [MAX_SEAT_PRODUCT_NAME]: "max",
+  [MAX_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX]: "max",
+};
 
 function buildColumns(currency: string): ColumnDef<InvoiceRow>[] {
   return [
@@ -49,21 +58,21 @@ function buildColumns(currency: string): ColumnDef<InvoiceRow>[] {
       enableSorting: false,
       meta: { className: "w-1/2" },
       cell: ({ row }) => {
-        const { isGroupRow, isExpanded, isSubRow, name } = row.original;
+        const { name } = row.original;
+        const seatType = PRODUCT_NAME_TO_SEAT_TYPE[name];
+        const avatarColors = seatType ? seatTypeAvatarColors(seatType) : null;
         return (
-          <div className={cn("flex items-center gap-1", isSubRow && "pl-6")}>
-            {isGroupRow && (
-              <Icon
-                visual={isExpanded ? ChevronDown : ChevronRight}
+          <div className="flex items-center gap-1">
+            {seatType && avatarColors && (
+              <Avatar
+                icon={SEAT_TYPE_ICONS[seatType]}
                 size="xs"
-                className="shrink-0 text-muted-foreground dark:text-muted-foreground-night"
+                backgroundColor={avatarColors.backgroundColor}
+                iconColor={avatarColors.iconColor}
               />
             )}
             <span
-              className={cn(
-                "text-sm",
-                (isGroupRow || row.original.isBold) && "font-semibold"
-              )}
+              className={cn("text-sm", row.original.isBold && "font-semibold")}
             >
               {name}
             </span>
@@ -102,7 +111,7 @@ function buildColumns(currency: string): ColumnDef<InvoiceRow>[] {
         <span
           className={cn(
             "block text-right text-sm",
-            (row.original.isGroupRow || row.original.isBold) && "font-semibold",
+            row.original.isBold && "font-semibold",
             row.original.isNegative
               ? "text-success-600 dark:text-success-500"
               : undefined
@@ -123,9 +132,8 @@ export function InvoiceSeatsPreview({
     useMetronomeInvoiceLines({
       workspaceId: owner.sId,
       disabled: !subscription.metronomeContractId,
+      fiatOnly: true,
     });
-
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   if (isMetronomeInvoiceLinesLoading) {
     return (
@@ -141,77 +149,13 @@ export function InvoiceSeatsPreview({
 
   const currency = invoiceLines.currency?.toUpperCase() ?? "USD";
 
-  // Separate negative lines (not grouped) from positive ones (grouped by name).
-  const positiveItems = invoiceLines.lineItems.filter(
-    (item) => item.totalCents >= 0
-  );
-  const negativeItems = invoiceLines.lineItems.filter(
-    (item) => item.totalCents < 0
+  const totalCents = invoiceLines.lineItems.reduce(
+    (sum, item) => sum + item.totalCents,
+    0
   );
 
-  const groups = new Map<
-    string,
-    {
-      quantity: number | null;
-      unitPriceCents: number | null;
-      totalCents: number;
-    }[]
-  >();
-  for (const item of positiveItems) {
-    const existing = groups.get(item.name) ?? [];
-    existing.push({
-      quantity: item.quantity,
-      unitPriceCents: item.unitPriceCents,
-      totalCents: item.totalCents,
-    });
-    groups.set(item.name, existing);
-  }
-
-  const rows: InvoiceRow[] = [];
-
-  for (const [name, items] of groups) {
-    const groupTotal = items.reduce((sum, i) => sum + i.totalCents, 0);
-    const isExpanded = expandedGroups.has(name);
-
-    rows.push({
-      name,
-      quantity: "",
-      cost: "",
-      subtotal: formatAmount(groupTotal, currency),
-      isGroupRow: true,
-      isExpanded,
-      onClick: () => {
-        setExpandedGroups((prev) => {
-          const next = new Set(prev);
-          if (next.has(name)) {
-            next.delete(name);
-          } else {
-            next.add(name);
-          }
-          return next;
-        });
-      },
-    });
-
-    if (isExpanded) {
-      for (const item of items) {
-        rows.push({
-          name,
-          quantity:
-            item.quantity !== null ? item.quantity.toLocaleString() : "—",
-          cost:
-            item.unitPriceCents !== null
-              ? formatAmount(item.unitPriceCents, currency)
-              : "—",
-          subtotal: formatAmount(item.totalCents, currency),
-          isSubRow: true,
-        });
-      }
-    }
-  }
-
-  for (const item of negativeItems) {
-    rows.push({
+  const rows: InvoiceRow[] = [
+    ...invoiceLines.lineItems.map((item) => ({
       name: item.name,
       quantity: item.quantity !== null ? item.quantity.toLocaleString() : "—",
       cost:
@@ -219,21 +163,16 @@ export function InvoiceSeatsPreview({
           ? formatAmount(item.unitPriceCents, currency)
           : "—",
       subtotal: formatAmount(item.totalCents, currency),
-      isNegative: true,
-    });
-  }
-
-  const totalCents = invoiceLines.lineItems.reduce(
-    (sum, item) => sum + item.totalCents,
-    0
-  );
-  rows.push({
-    name: "Total",
-    quantity: "",
-    cost: "",
-    subtotal: formatAmount(totalCents, currency),
-    isBold: true,
-  });
+      isNegative: item.totalCents < 0,
+    })),
+    {
+      name: "Total",
+      quantity: "",
+      cost: "",
+      subtotal: formatAmount(totalCents, currency),
+      isBold: true,
+    },
+  ];
 
   return (
     <DataTable
