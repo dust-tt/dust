@@ -727,6 +727,26 @@ export async function setMetronomeContractCreditCustomFields({
   }
 }
 
+/** Set custom field values on a Metronome commit. */
+export async function setMetronomeCommitCustomFields({
+  commitId,
+  customFields,
+}: {
+  commitId: string;
+  customFields: Record<string, string>;
+}): Promise<Result<void, Error>> {
+  try {
+    await getMetronomeClient().v1.customFields.setValues({
+      entity: "commit",
+      entity_id: commitId,
+      custom_fields: customFields,
+    });
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Contract management
 // ---------------------------------------------------------------------------
@@ -2026,11 +2046,12 @@ export async function listMetronomeBalances(
         : {}),
       ...(includeArchived ? { include_archived: true } : {}),
     })) {
-      // Mirror the default ContractCredit alert filter: include only
+      // Mirror the pool balance alert filter for credits: include only
       // credits explicitly tagged DUST_CONTRACT_CREDIT_TYPE=pool. Excess
       // credits (tagged "excess") and per-seat / unstamped credits are
       // excluded — they're not part of the workspace pool balance the
-      // alert tracks. Commits are not stamped and pass through unchanged.
+      // alert tracks. Commits always pass through here (the alert counts
+      // them via the ContractCreditOrCommit filter).
       if (
         onlyPoolCredits &&
         entry.type === "CREDIT" &&

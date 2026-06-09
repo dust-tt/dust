@@ -54,6 +54,7 @@ import {
   getMetronomeContractById,
   getMetronomeCredit,
   listMetronomeContracts,
+  setMetronomeCommitCustomFields,
   setMetronomeContractCreditCustomFields,
   updateMetronomeCreditSegmentAmount,
 } from "@app/lib/metronome/client";
@@ -247,6 +248,56 @@ async function stampContractCreditType({
   logger.info(
     { workspaceId, customerId, contractId, creditId, value, eventType },
     `[Metronome Webhook] ${eventType}: stamped DUST_CONTRACT_CREDIT_TYPE`
+  );
+  return new Ok(undefined);
+}
+
+// Stamp `DUST_CONTRACT_CREDIT_TYPE=pool` on an AWU commit so the pool balance
+// alert's Commit filter counts it alongside pool credits. The key is shared with
+// contract credits — Metronome requires every entity in an alert's
+// custom_field_filters to use the same key/value. Idempotent — bails if already
+// stamped. Commits have no excess or per-seat variants (unlike contract credits),
+// so AWU commits are always "pool"; non-AWU commits (e.g. programmatic USD)
+// belong to other pools and are left unstamped.
+async function stampCommitCreditType({
+  workspaceId,
+  commit,
+  commitCustomFields,
+  eventType,
+}: {
+  workspaceId: string;
+  commit: Commit;
+  commitCustomFields?: Record<string, string> | null;
+  eventType: string;
+}): Promise<Result<void, ProcessMetronomeWebhookError>> {
+  if (
+    commitCustomFields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY] ||
+    commit.custom_fields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]
+  ) {
+    return new Ok(undefined);
+  }
+
+  if (commit.access_schedule?.credit_type?.id !== getCreditTypeAwuId()) {
+    return new Ok(undefined);
+  }
+
+  const setResult = await setMetronomeCommitCustomFields({
+    commitId: commit.id,
+    customFields: {
+      [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]: CONTRACT_CREDIT_TYPE_POOL,
+    },
+  });
+  if (setResult.isErr()) {
+    return new Err(
+      new ProcessMetronomeWebhookError(
+        "processing_failed",
+        `Error stamping commit custom field: ${setResult.error.message}`
+      )
+    );
+  }
+  logger.info(
+    { workspaceId, commitId: commit.id, eventType },
+    `[Metronome Webhook] ${eventType}: stamped DUST_CONTRACT_CREDIT_TYPE=pool on commit`
   );
   return new Ok(undefined);
 }
@@ -1034,7 +1085,6 @@ export async function processMetronomeWebhook({
     case "alerts.usage_threshold_reached":
     case "alerts.usage_threshold_resolved":
     case "commit.archive":
-    case "commit.create":
     case "commit.segment.end":
     case "contract.archive":
     case "contract.create":
@@ -1061,6 +1111,34 @@ export async function processMetronomeWebhook({
         },
         "[Metronome Webhook] contract.edit: invalidated active-contract cache"
       );
+      break;
+    }
+
+    case "commit.create": {
+      const { customer_id: metronomeCustomerId, commit_id: commitId } = event;
+      const commitResult = await getMetronomeCommit({
+        metronomeCustomerId,
+        commitId,
+      });
+      if (commitResult.isErr()) {
+        return new Err(
+          new ProcessMetronomeWebhookError(
+            "processing_failed",
+            `Error fetching commit: ${commitResult.error.message}`
+          )
+        );
+      }
+      if (commitResult.value) {
+        const stampResult = await stampCommitCreditType({
+          workspaceId: workspace.sId,
+          commit: commitResult.value,
+          commitCustomFields: event.commit_custom_fields,
+          eventType: "commit.create",
+        });
+        if (stampResult.isErr()) {
+          return stampResult;
+        }
+      }
       break;
     }
 
@@ -1205,6 +1283,15 @@ export async function processMetronomeWebhook({
           metronomeCustomerId,
           commitOrCredit: commitResult.value,
         });
+        const stampResult = await stampCommitCreditType({
+          workspaceId: workspace.sId,
+          commit: commitResult.value,
+          commitCustomFields: event.commit_custom_fields,
+          eventType: event.type,
+        });
+        if (stampResult.isErr()) {
+          return stampResult;
+        }
       }
       break;
     }
