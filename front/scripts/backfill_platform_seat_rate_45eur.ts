@@ -14,6 +14,8 @@ import {
   CREDIT_TYPE_EUR_ID,
   getProductWorkspaceSeatId,
 } from "@app/lib/metronome/constants";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { makeScript } from "./helpers";
@@ -166,8 +168,40 @@ async function applyRateOverrideForCustomer(
   }
 }
 
-makeScript({}, async ({ execute }, logger) => {
-  for (const customerId of METRONOME_CUSTOMER_IDS) {
-    await applyRateOverrideForCustomer(customerId, execute, logger);
+makeScript(
+  {
+    workspaceId: {
+      type: "string" as const,
+      description: "Workspace sId to process — must be in the hardcoded list",
+      required: false,
+    },
+  },
+  async ({ workspaceId, execute }, logger) => {
+    let customerIds: string[];
+
+    if (workspaceId) {
+      const workspace = await WorkspaceResource.fetchById(workspaceId);
+      if (!workspace) {
+        throw new Error(`Workspace not found: ${workspaceId}`);
+      }
+      const { metronomeCustomerId } = renderLightWorkspaceType({ workspace });
+      if (!metronomeCustomerId) {
+        throw new Error(
+          `Workspace ${workspaceId} has no Metronome customer ID`
+        );
+      }
+      if (!METRONOME_CUSTOMER_IDS.includes(metronomeCustomerId)) {
+        throw new Error(
+          `Metronome customer ID ${metronomeCustomerId} (workspace ${workspaceId}) is not in the target list`
+        );
+      }
+      customerIds = [metronomeCustomerId];
+    } else {
+      customerIds = METRONOME_CUSTOMER_IDS;
+    }
+
+    for (const customerId of customerIds) {
+      await applyRateOverrideForCustomer(customerId, execute, logger);
+    }
   }
-});
+);
