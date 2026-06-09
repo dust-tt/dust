@@ -702,6 +702,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "websearch": "never_ask",
   },
   "workspace_analytics": {
+    "get_agent_details": "never_ask",
     "get_top_agents": "never_ask",
     "get_top_users": "never_ask",
   },
