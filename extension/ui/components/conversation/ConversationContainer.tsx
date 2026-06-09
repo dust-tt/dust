@@ -120,7 +120,7 @@ export const ConversationContainer = ({
           {/* Hamburger button overlaid in the pl-14 area of AppLayoutTitle header */}
           <div
             className={cn(
-              "absolute left-0 top-0 z-10 flex shrink-0 items-center px-2 h-title",
+              "absolute left-0 top-0 z-10 flex shrink-0 items-center px-2 h-title"
             )}
           >
             <Button
