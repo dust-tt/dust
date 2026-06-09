@@ -1,11 +1,16 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
+import {
+  SkillConfigurationModel,
+  SkillDataSourceConfigurationModel,
+} from "@app/lib/models/skill";
+import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
+import { backfillCustomizedSkillReferencesForWorkspace } from "@app/lib/resources/skill/customized_skill_references_backfill";
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
@@ -19,6 +24,7 @@ import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import type { Logger } from "pino";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("SkillResource", () => {
@@ -1030,6 +1036,126 @@ describe("SkillResource", () => {
           icon: parentSkill.icon,
         },
       ]);
+    });
+
+    it("backfills customized skills into global skill references", async () => {
+      const legacySkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Legacy Customized Frames Skill",
+        instructions: "Run the custom frame workflow.",
+        instructionsHtml: "<p>Run the custom frame workflow.</p>",
+      });
+      await SkillConfigurationModel.update(
+        { extendedSkillId: "frames" },
+        {
+          hooks: false,
+          silent: true,
+          where: {
+            id: legacySkill.id,
+            workspaceId: testContext.workspace.id,
+          },
+        }
+      );
+
+      const logger = {
+        error: vi.fn(),
+        info: vi.fn(),
+      } as unknown as Logger;
+
+      const dryRunStats = await backfillCustomizedSkillReferencesForWorkspace(
+        testContext.workspace,
+        { execute: false },
+        logger
+      );
+
+      expect(dryRunStats).toMatchObject({
+        changed: 1,
+        errors: 0,
+        processed: 1,
+      });
+
+      const skillAfterDryRun = await SkillConfigurationModel.findOne({
+        where: {
+          id: legacySkill.id,
+          workspaceId: testContext.workspace.id,
+        },
+      });
+      if (skillAfterDryRun === null) {
+        throw new Error("Expected legacy skill to exist after dry run.");
+      }
+      expect(skillAfterDryRun.extendedSkillId).toBe("frames");
+      expect(skillAfterDryRun.instructions).toBe(
+        "Run the custom frame workflow."
+      );
+
+      const referencesAfterDryRun = await SkillReferenceModel.findAll({
+        where: {
+          workspaceId: testContext.workspace.id,
+          parentSkillId: legacySkill.id,
+          childCustomSkillId: null,
+          childGlobalSkillId: "frames",
+        },
+      });
+      expect(referencesAfterDryRun).toHaveLength(0);
+
+      const executeStats = await backfillCustomizedSkillReferencesForWorkspace(
+        testContext.workspace,
+        { execute: true },
+        logger
+      );
+      expect(executeStats).toMatchObject({
+        changed: 1,
+        errors: 0,
+        processed: 1,
+      });
+
+      const migratedSkill = await SkillConfigurationModel.findOne({
+        where: {
+          id: legacySkill.id,
+          workspaceId: testContext.workspace.id,
+        },
+      });
+      if (migratedSkill === null) {
+        throw new Error("Expected migrated skill to exist.");
+      }
+      expect(migratedSkill.extendedSkillId).toBeNull();
+      expect(migratedSkill.instructions).toContain(
+        'This skill is a customization of <skill id="frames" name="Create Frames"'
+      );
+      expect(migratedSkill.instructionsHtml).toContain(
+        '<skill id="frames" name="Create Frames"'
+      );
+
+      const references = await SkillReferenceModel.findAll({
+        where: {
+          workspaceId: testContext.workspace.id,
+          parentSkillId: legacySkill.id,
+          childCustomSkillId: null,
+          childGlobalSkillId: "frames",
+        },
+      });
+      expect(references).toHaveLength(1);
+
+      const secondExecuteStats =
+        await backfillCustomizedSkillReferencesForWorkspace(
+          testContext.workspace,
+          { execute: true },
+          logger
+        );
+      expect(secondExecuteStats).toMatchObject({
+        changed: 0,
+        errors: 0,
+        processed: 0,
+      });
+
+      const referencesAfterSecondRun = await SkillReferenceModel.findAll({
+        where: {
+          workspaceId: testContext.workspace.id,
+          parentSkillId: legacySkill.id,
+          childCustomSkillId: null,
+          childGlobalSkillId: "frames",
+        },
+      });
+      expect(referencesAfterSecondRun).toHaveLength(1);
     });
 
     it("drops missing same-workspace nested skill references", async () => {

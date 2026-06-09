@@ -11,6 +11,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { prependBaseSkillReference } from "@app/lib/skills/customization";
 import logger from "@app/logger/logger";
 import {
   SKILL_REINFORCEMENT_MODES,
@@ -343,7 +344,20 @@ app.post(
       });
     }
 
-    const referencedSkillIds = uniq(body.referencedSkillIds ?? []);
+    const { instructions, instructionsHtml } = extendedSkill
+      ? prependBaseSkillReference({
+          baseSkill: extendedSkill,
+          instructions: body.instructions,
+          instructionsHtml: body.instructionsHtml,
+        })
+      : {
+          instructions: body.instructions,
+          instructionsHtml: body.instructionsHtml,
+        };
+    const referencedSkillIds = uniq([
+      ...(body.referencedSkillIds ?? []),
+      ...(extendedSkill ? [extendedSkill.sId] : []),
+    ]);
     const featureFlags = await getFeatureFlags(auth);
 
     // Validate file attachments if provided (gated behind sandbox_tools).
@@ -392,7 +406,7 @@ app.post(
     if (!icon) {
       const iconResult = await getSkillIconSuggestion(auth, {
         name,
-        instructions: body.instructions,
+        instructions,
         agentFacingDescription: body.agentFacingDescription,
       });
       if (iconResult.isOk()) {
@@ -413,11 +427,11 @@ app.post(
         name,
         agentFacingDescription: body.agentFacingDescription,
         userFacingDescription: body.userFacingDescription,
-        instructions: body.instructions,
-        instructionsHtml: body.instructionsHtml,
+        instructions,
+        instructionsHtml,
         editedBy: user.id,
         requestedSpaceIds,
-        extendedSkillId: body.extendedSkillId,
+        extendedSkillId: null,
         icon,
         source: body.source ?? "web_app",
         sourceMetadata: body.sourceMetadata ?? null,
