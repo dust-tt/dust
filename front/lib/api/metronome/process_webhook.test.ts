@@ -31,7 +31,7 @@ import { mockCustomerAlert } from "@app/tests/utils/mocks/metronome";
 import { PlanFactory } from "@app/tests/utils/PlanFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
-import type { ContractV2 } from "@metronome/sdk/resources";
+import type { Commit, ContractV2 } from "@metronome/sdk/resources";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { processMetronomeWebhook } from "./process_webhook";
@@ -975,17 +975,23 @@ describe("processMetronomeWebhook — commit.create DUST_CONTRACT_CREDIT_TYPE st
       commit_id: COMMIT_ID,
       commit_custom_fields: commitCustomFields,
       customer_id: METRONOME_CUSTOMER_ID,
-    } as MetronomeWebhookEvent;
+    };
   }
 
   function commit(
     creditTypeId: string,
     customFields: Record<string, string> | null = null
-  ) {
+  ): Commit {
     return {
       id: COMMIT_ID,
+      created_at: new Date().toISOString(),
+      product: { id: "prod_test", name: "Test Product" },
+      type: "PREPAID",
       custom_fields: customFields ?? undefined,
-      access_schedule: { credit_type: { id: creditTypeId } },
+      access_schedule: {
+        schedule_items: [],
+        credit_type: { id: creditTypeId, name: "AWU" },
+      },
     };
   }
 
@@ -998,7 +1004,7 @@ describe("processMetronomeWebhook — commit.create DUST_CONTRACT_CREDIT_TYPE st
   it("stamps an unstamped AWU commit as pool", async () => {
     const workspace = await setupMetronomeWorkspaceResource();
     vi.mocked(getMetronomeCommit).mockResolvedValue(
-      new Ok(commit(getCreditTypeAwuId()) as never)
+      new Ok(commit(getCreditTypeAwuId()))
     );
 
     const result = await processMetronomeWebhook({
@@ -1018,7 +1024,7 @@ describe("processMetronomeWebhook — commit.create DUST_CONTRACT_CREDIT_TYPE st
   it("does not stamp a non-AWU commit", async () => {
     const workspace = await setupMetronomeWorkspaceResource();
     vi.mocked(getMetronomeCommit).mockResolvedValue(
-      new Ok(commit("non_awu_credit_type") as never)
+      new Ok(commit("non_awu_credit_type"))
     );
 
     const result = await processMetronomeWebhook({
@@ -1036,7 +1042,7 @@ describe("processMetronomeWebhook — commit.create DUST_CONTRACT_CREDIT_TYPE st
       new Ok(
         commit(getCreditTypeAwuId(), {
           [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]: CONTRACT_CREDIT_TYPE_POOL,
-        }) as never
+        })
       )
     );
 
