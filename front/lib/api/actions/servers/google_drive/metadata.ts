@@ -333,6 +333,24 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       done: "Create Google presentation",
     },
   },
+  create_folder: {
+    description:
+      "Create a new Google Drive folder. Optionally specify a parent folder to create it in.",
+    schema: {
+      name: z.string().describe("The name of the new folder."),
+      parentId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the parent folder to create the folder in. If not provided, creates in the user's root Drive. Use the search_files tool with `mimeType = 'application/vnd.google-apps.folder'` to find folder IDs."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Creating Google Drive folder",
+      done: "Create Google Drive folder",
+    },
+  },
   copy_file: {
     description:
       "Copy an existing Google Drive file (Doc, Sheet, or Presentation). " +

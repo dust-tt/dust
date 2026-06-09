@@ -227,6 +227,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "copy_file": "low",
     "create_comment": "low",
     "create_document": "low",
+    "create_folder": "low",
     "create_presentation": "low",
     "create_reply": "low",
     "create_spreadsheet": "low",

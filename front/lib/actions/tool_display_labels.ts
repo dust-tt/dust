@@ -590,6 +590,13 @@ function getDynamicToolDisplayLabels({
           done: `Create “${t}”`,
         };
       }
+      if (toolName === "create_folder" && isString(inputs.name)) {
+        const t = truncateQuery(inputs.name);
+        return {
+          running: `Creating folder “${t}”`,
+          done: `Create folder “${t}”`,
+        };
+      }
       if (toolName === "get_worksheet" && isString(inputs.range)) {
         const range = truncateQuery(inputs.range);
         return {

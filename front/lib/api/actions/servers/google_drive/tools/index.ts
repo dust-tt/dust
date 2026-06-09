@@ -841,6 +841,40 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
   },
 
+  create_folder: async ({ name, parentId }, { authInfo }) => {
+    const drive = await getDriveClient(authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+    try {
+      const res = await drive.files.create({
+        requestBody: {
+          name,
+          mimeType: "application/vnd.google-apps.folder",
+          ...(parentId ? { parents: [parentId] } : {}),
+        },
+        fields: "id, name, webViewLink",
+        supportsAllDrives: true,
+      });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              folderId: res.data.id,
+              name: res.data.name,
+              url: res.data.webViewLink,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      return handleDriveAccessError(err, authInfo);
+    }
+  },
+
   copy_file: async (
     { fileId, name, parentId, capabilities },
     { authInfo, agentLoopContext }
