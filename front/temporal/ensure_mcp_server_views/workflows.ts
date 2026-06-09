@@ -15,13 +15,12 @@ const {
   heartbeatTimeout: "5 minutes",
 });
 
-export type EnsureMCPServerViewsWorkflowArgs =
-  activities.EnsureMCPServerViewsWorkflowTrigger & {
-    lastProcessedWorkspaceModelId?: number;
-    batchSize?: number;
-    concurrency?: number;
-    summary?: activities.EnsureMCPServerViewsWorkflowSummary;
-  };
+export type EnsureMCPServerViewsWorkflowArgs = {
+  lastProcessedWorkspaceModelId?: number;
+  batchSize?: number;
+  concurrency?: number;
+  summary?: activities.EnsureMCPServerViewsWorkflowSummary;
+};
 
 const INITIAL_SUMMARY: activities.EnsureMCPServerViewsWorkflowSummary = {
   scannedWorkspacesCount: 0,
@@ -35,9 +34,6 @@ export async function ensureMCPServerViewsWorkflow({
   lastProcessedWorkspaceModelId = 0,
   batchSize = DEFAULT_WORKSPACE_BATCH_SIZE,
   concurrency = DEFAULT_WORKSPACE_CONCURRENCY,
-  triggeringFeature,
-  previousRolloutPercentage,
-  rolloutPercentage,
   summary = INITIAL_SUMMARY,
 }: EnsureMCPServerViewsWorkflowArgs = {}): Promise<activities.EnsureMCPServerViewsWorkflowSummary> {
   const processBatchResult =
@@ -69,9 +65,6 @@ export async function ensureMCPServerViewsWorkflow({
         processBatchResult.lastScannedWorkspaceModelId,
       batchSize,
       concurrency,
-      triggeringFeature,
-      previousRolloutPercentage,
-      rolloutPercentage,
       summary: nextSummary,
     });
   }

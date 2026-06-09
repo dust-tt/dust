@@ -7,7 +7,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import {
   errorToString,
@@ -19,12 +18,6 @@ import {
   DEFAULT_WORKSPACE_CONCURRENCY,
   MAX_FAILURE_SAMPLES,
 } from "./activity_config";
-
-export type EnsureMCPServerViewsWorkflowTrigger = {
-  triggeringFeature?: WhitelistableFeature;
-  previousRolloutPercentage?: number;
-  rolloutPercentage?: number;
-};
 
 export type EnsureMCPServerViewsForWorkspaceBatchActivityArgs = {
   lastProcessedWorkspaceModelId?: ModelId;
