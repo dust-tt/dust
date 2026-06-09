@@ -257,7 +257,27 @@ export async function createPaymentGatedBusinessActivation({
     uniquenessKey,
   });
 
-  // Step 6: create payment-gated commit.
+  // Step 6: zero-amount fast path — no invoice to create, activate immediately.
+  if (effectiveAmountCents === 0) {
+    await handleSubscriptionActivationSuccess({
+      workspace,
+      contractId: metronomeContractId,
+      invoiceId: "free-activation",
+    });
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        metronomeContractId,
+        seatType,
+        billingPeriod,
+        currency,
+      },
+      "[Business Activation] Zero-amount activation — skipped payment-gated commit, activated directly"
+    );
+    return new Ok({ activationPending: true, contractId: metronomeContractId });
+  }
+
+  // Step 7: create payment-gated commit.
   // Access side: fiat credit that offsets the first period's seat subscription invoice.
   // Invoice side: same amount charged to the customer via Stripe.
   const fiatCreditTypeId = CURRENCY_TO_CREDIT_TYPE_ID[currency];
