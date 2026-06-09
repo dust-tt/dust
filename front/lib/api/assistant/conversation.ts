@@ -48,6 +48,7 @@ import {
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
 import {
   buildAuditLogTarget,
+  deriveAgentTriggerType,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
@@ -1061,6 +1062,15 @@ export async function postUserMessage(
     agentMessages,
   });
 
+  // Run-correlation and lineage fields shared by every agent invoked by this
+  // user message. `agentMessage.sId` is the durable run id (1:1 with an agent
+  // execution); sub-agent runs (run_agent / handover) carry the parent agent
+  // message id via `agenticMessageData` (the function parameter).
+  const triggerType = deriveAgentTriggerType(
+    agenticMessageData,
+    conversation.triggerId
+  );
+
   // Emit agent.executed for each agent being invoked.
   for (const agentMessage of agentMessages) {
     void emitAuditLogEvent({
@@ -1073,9 +1083,15 @@ export async function postUserMessage(
       metadata: {
         conversation_id: conversation.sId,
         agent_name: agentMessage.configuration.name,
+        agent_message_id: agentMessage.sId,
         origin: context.origin,
+        trigger_type: triggerType,
+        depth: String(conversation.depth),
         ...(conversation.triggerId
           ? { trigger_id: conversation.triggerId }
+          : {}),
+        ...(agenticMessageData
+          ? { parent_agent_message_id: agenticMessageData.originMessageId }
           : {}),
         initiating_user_id: auth.user()?.sId ?? "unknown",
         initiating_user_email: auth.user()?.email ?? "unknown",

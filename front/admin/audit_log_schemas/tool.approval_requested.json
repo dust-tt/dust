@@ -1,5 +1,5 @@
 {
-  "action": "tool.executed",
+  "action": "tool.approval_requested",
   "targets": [
     {
       "type": "workspace"
@@ -13,15 +13,13 @@
   ],
   "metadata": {
     "tool_name": "string",
-    "tool_type": "string",
     "mcp_server_name": "string",
+    "stake_level": "string",
     "conversation_id": "string",
     "agent_message_id": "string",
-    "trigger_id": "string",
-    "accessed_data_source_ids": "string",
-    "accessed_table_ids": "string",
-    "actor_type": "string",
+    "action_id": "string",
     "initiating_user_id": "string",
-    "initiating_user_email": "string"
+    "initiating_user_email": "string",
+    "actor_type": "string"
   }
 }
