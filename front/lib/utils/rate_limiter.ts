@@ -23,7 +23,6 @@ type RateLimiterArgs = {
   maxPerTimeframe: number;
   timeframeSeconds: number;
   incrementBy?: number;
-  readOnly?: boolean;
 };
 
 export async function rateLimiter({
@@ -32,7 +31,6 @@ export async function rateLimiter({
   timeframeSeconds,
   logger,
   incrementBy = 1,
-  readOnly = false,
 }: RateLimiterArgs): Promise<number> {
   const now = new Date();
   const redisKey = makeRateLimiterKey(key);
@@ -53,7 +51,6 @@ export async function rateLimiter({
     local window_seconds = tonumber(ARGV[1])
     local limit = tonumber(ARGV[2])
     local increment_by = tonumber(ARGV[3])
-    local read_only = ARGV[4] == '1'
 
     -- Use Redis server time to avoid client clock skew
     local t = redis.call('TIME') -- { seconds, microseconds }
@@ -66,19 +63,10 @@ export async function rateLimiter({
 
     local count = redis.call('ZCOUNT', key, trim_before, '+inf')
 
-    if read_only then
-      local remaining = limit - count
-      if remaining > 0 then
-        return remaining
-      else
-        return 0
-      end
-    end
-
     if count + increment_by <= limit then
       -- Allow: record one entry per consumed unit at now_ms.
       for i = 1, increment_by do
-        redis.call('ZADD', key, now_ms, ARGV[4 + i])
+        redis.call('ZADD', key, now_ms, ARGV[3 + i])
       end
       -- Keep the key around a bit longer than the window to allow trims
       local ttl_ms = window_ms + 60000
@@ -94,16 +82,13 @@ export async function rateLimiter({
 
   try {
     const redis = await getRedisStreamClient({ origin: "rate_limiter" });
-    const values = readOnly
-      ? []
-      : Array.from({ length: incrementBy }, () => uuidv4());
+    const values = Array.from({ length: incrementBy }, () => uuidv4());
     const remaining = (await redis.eval(luaScript, {
       keys: [redisKey],
       arguments: [
         timeframeSeconds.toString(),
         maxPerTimeframe.toString(),
         incrementBy.toString(),
-        readOnly ? "1" : "0",
         ...values,
       ],
     })) as number;
@@ -115,7 +100,7 @@ export async function rateLimiter({
       tags
     );
 
-    if (!readOnly && remaining <= 0) {
+    if (remaining <= 0) {
       getStatsDClient().increment("ratelimiter.exceeded.count", 1, tags);
     }
 
@@ -128,7 +113,6 @@ export async function rateLimiter({
         maxPerTimeframe,
         timeframeSeconds,
         incrementBy,
-        readOnly,
         error: e,
       },
       `RateLimiter error`
