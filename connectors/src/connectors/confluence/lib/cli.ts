@@ -271,7 +271,7 @@ export const confluence = async ({
         hasChildren,
         hasReadRestrictions: hasReadRestrictions ?? true,
         status: page.status,
-        title: page.title,
+        title: page.title ?? "Untitled",
       };
     }
 
