@@ -1,4 +1,3 @@
-import { maybePersistDustDesktopClientSideMCPServerRegistration } from "@app/lib/api/actions/mcp/dust_desktop";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
@@ -144,11 +143,6 @@ export async function registerMCPServer(
     now + MCP_SERVER_REGISTRATION_TTL_SECONDS * 1000
   ).toISOString();
 
-  await maybePersistDustDesktopClientSideMCPServerRegistration(auth, {
-    serverName,
-    serverId,
-  });
-
   return new Ok({
     expiresAt,
     serverId,
@@ -239,11 +233,6 @@ export async function updateMCPServerHeartbeat(
     return null;
   }
 
-  await maybePersistDustDesktopClientSideMCPServerRegistration(auth, {
-    serverName: result.serverName,
-    serverId: result.serverId,
-  });
-
   const expiresAt = new Date(
     now + MCP_SERVER_REGISTRATION_TTL_SECONDS * 1000
   ).toISOString();
@@ -274,6 +263,7 @@ export async function deregisterMCPServer(
     { origin: "mcp_client_side_request" },
     async (redis) => redis.del(key)
   );
+
   return deleted === 1;
 }
 

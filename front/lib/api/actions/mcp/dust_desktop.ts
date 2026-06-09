@@ -1,3 +1,8 @@
+import {
+  getBaseServerId,
+  getMCPServerIdFromServerName,
+  validateMCPServerAccess,
+} from "@app/lib/api/actions/mcp/client_side_registry";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { slugify } from "@app/types/shared/utils/string_utils";
@@ -30,6 +35,15 @@ export function isDustDesktopClientSideMCPServerName(
   );
 }
 
+export function isDustDesktopClientSideMCPServerId(serverId: string): boolean {
+  return (
+    getBaseServerId(serverId) ===
+    getMCPServerIdFromServerName({
+      serverName: DUST_DESKTOP_CLIENT_SIDE_MCP_SERVER_NAME,
+    })
+  );
+}
+
 /**
  * Persist the latest Dust Desktop client-side MCP server id for the current user
  * in this workspace. No-op unless the feature flag is enabled.
@@ -40,7 +54,7 @@ export async function maybePersistDustDesktopClientSideMCPServerRegistration(
     serverName,
     serverId,
   }: {
-    serverName: string;
+    serverName?: string;
     serverId: string;
   }
 ): Promise<void> {
@@ -48,15 +62,13 @@ export async function maybePersistDustDesktopClientSideMCPServerRegistration(
   if (!user) {
     return;
   }
-  if (!isDustDesktopClientSideMCPServerName(serverName)) {
-    return;
-  }
 
-  const hasDustDesktopFeatureFlag = await hasFeatureFlag(
-    auth,
-    DUST_DESKTOP_FEATURE_FLAG
-  );
-  if (!hasDustDesktopFeatureFlag) {
+  const isDustDesktop =
+    (serverName !== undefined &&
+      isDustDesktopClientSideMCPServerName(serverName)) ||
+    isDustDesktopClientSideMCPServerId(serverId);
+
+  if (!isDustDesktop) {
     return;
   }
 
@@ -70,6 +82,54 @@ export async function maybePersistDustDesktopClientSideMCPServerRegistration(
     ),
     auth.getNonNullableWorkspace().id
   );
+}
+
+/**
+ * Remove persisted Dust Desktop MCP metadata when a server instance is deregistered.
+ */
+export async function clearDustDesktopClientSideMCPServerRegistration(
+  auth: Authenticator,
+  { serverId }: { serverId: string }
+): Promise<void> {
+  if (!isDustDesktopClientSideMCPServerId(serverId)) {
+    return;
+  }
+
+  const user = auth.user();
+  if (!user) {
+    return;
+  }
+
+  const workspaceModelId = auth.getNonNullableWorkspace().id;
+  const metadataRow = await user.getMetadata(
+    DUST_DESKTOP_MCP_SERVER_METADATA_KEY,
+    workspaceModelId
+  );
+  if (!metadataRow) {
+    return;
+  }
+
+  let metadata: DustDesktopMcpServerMetadata;
+  try {
+    const parsed = DustDesktopMcpServerMetadataSchema.safeParse(
+      JSON.parse(metadataRow.value)
+    );
+    if (!parsed.success) {
+      return;
+    }
+    metadata = parsed.data;
+  } catch {
+    return;
+  }
+
+  if (metadata.serverId !== serverId) {
+    return;
+  }
+
+  await user.deleteMetadata({
+    key: DUST_DESKTOP_MCP_SERVER_METADATA_KEY,
+    workspaceId: workspaceModelId,
+  });
 }
 
 /**
@@ -114,6 +174,13 @@ export async function getActiveDustDesktopClientSideMCPServerId(
   }
 
   if (Date.now() - metadata.updatedAt > DUST_DESKTOP_MCP_SERVER_TTL_MS) {
+    return null;
+  }
+
+  const isRegistered = await validateMCPServerAccess(auth, {
+    serverId: metadata.serverId,
+  });
+  if (!isRegistered) {
     return null;
   }
 
