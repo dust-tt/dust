@@ -23,8 +23,8 @@ import {
 import {
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
+  GPT_5_4_MINI_MODEL_CONFIG,
   GPT_5_5_MODEL_CONFIG,
-  GPT_5_MINI_MODEL_CONFIG,
   GPT_5_NANO_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
   O1_MODEL_CONFIG,
@@ -120,7 +120,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.GPT5_MINI,
         name: "gpt5-mini",
-        description: GPT_5_MINI_MODEL_CONFIG.description,
+        description: GPT_5_4_MINI_MODEL_CONFIG.description,
         pictureUrl: "https://dust.tt/static/systemavatar/gpt5_avatar_full.png",
       };
     case GLOBAL_AGENTS_SID.O1:
