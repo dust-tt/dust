@@ -1,5 +1,6 @@
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
+import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
 import type { Authenticator } from "@app/lib/auth";
 import {
   intelligenceAwuFromRunUsages,
@@ -10,6 +11,10 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import {
+  getTimeframeSecondsFromLiteral,
+  rateLimiter,
+} from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 
@@ -101,6 +106,29 @@ export async function computeAndStoreAgentMessageCredits(
     agentMessageModelId,
     costCredits,
   });
+
+  const user = auth.user();
+  const plan = auth.plan();
+  if (user && plan && costCredits !== null && costCredits > 0) {
+    const { maxAwuCredits, maxAwuCreditsTimeframe } = plan.limits.assistant;
+    if (maxAwuCredits !== -1) {
+      // We use rateLimiter infrastructure to enforce the fair use but ignore failure here since
+      // this is run post message execution. The next agent loop will be stopped if we dropped to 0.
+      await rateLimiter({
+        key: makeFairUseAwuCreditsRateLimitKeyForUser(
+          auth.getNonNullableWorkspace(),
+          user.toJSON(),
+          maxAwuCreditsTimeframe
+        ),
+        maxPerTimeframe: maxAwuCredits,
+        timeframeSeconds: getTimeframeSecondsFromLiteral(
+          maxAwuCreditsTimeframe
+        ),
+        incrementBy: costCredits,
+        logger,
+      });
+    }
+  }
 
   return costCredits;
 }
