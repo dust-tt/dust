@@ -164,7 +164,7 @@ export function ConversationFilesPanel({
   if (!hasSandbox) {
     return (
       <>
-        <div className="flex h-container flex-col">
+        <div className="flex h-panel flex-col">
           <AppLayoutTitle>
             <div className="flex h-full items-center justify-between">
               <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
@@ -193,7 +193,7 @@ export function ConversationFilesPanel({
 
   return (
     <>
-      <div className="flex h-container flex-col">
+      <div className="flex h-panel flex-col">
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}

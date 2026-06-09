@@ -158,7 +158,7 @@ function ConversationInnerLayout({
           className="flex h-full w-full flex-1"
         >
           <ResizablePanel defaultSize={100}>
-            <div className="flex h-container flex-col">
+            <div className="flex flex-col h-panel">
               {activeConversationId && !conversationError && (
                 <ConversationTitle owner={owner} />
               )}

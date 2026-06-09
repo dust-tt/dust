@@ -42,7 +42,7 @@ function AppContentInnerWrapper({
   return (
     <div
       className={cn(
-        "my-2 mr-2 rounded-xl flex-1 bg-panel-background dark:bg-panel-background-night border border-border dark:border-border-night overflow-hidden",
+        "my-2 mr-2 rounded-xl flex-1 bg-panel-background dark:bg-panel-background-night border border-border dark:border-border-night overflow-hidden h-panel",
         !isNavigationBarOpen && !isFullScreen && "ml-5",
         isFullScreen && "ml-2"
       )}
@@ -97,7 +97,7 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
 
       <div
         className={cn(
-          "relative flex h-dvh w-full flex-1 flex-col overflow-hidden",
+          "relative flex h-dvh w-full flex-1 flex-col overflow-x-hidden",
           "bg-app-background text-foreground",
           "dark:bg-app-background-night dark:text-foreground-night"
         )}
@@ -115,7 +115,7 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
           {/* Temporary measure to preserve title existence on smaller screens.
            * Page has no title, prepend empty AppLayoutTitle. */}
           {!hasTitleBar && (
-            <div className="flex min-h-0 flex-1 flex-col h-container">
+            <div className="flex min-h-0 flex-1 flex-col h-panel">
               <ScrollArea>
                 <AppLayoutTitle />
                 {contentWidth ? (

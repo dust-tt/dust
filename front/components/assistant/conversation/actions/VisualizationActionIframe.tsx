@@ -436,7 +436,7 @@ export const VisualizationActionIframe = forwardRef<
               />
             </div>
           ) : (
-            <div className="relative flex h-container w-full shrink-0 items-center justify-center">
+            <div className="relative flex h-panel w-full shrink-0 items-center justify-center">
               {codeFullyGenerated && !isErrored && (
                 <div
                   style={
@@ -465,7 +465,7 @@ export const VisualizationActionIframe = forwardRef<
               )}
 
               {isErrored && !retryClicked && !isPublic && (
-                <div className="flex h-container w-full items-center justify-center p-6">
+                <div className="flex h-panel w-full items-center justify-center p-6">
                   <ContentMessage
                     title="Visualization failed"
                     variant="warning"

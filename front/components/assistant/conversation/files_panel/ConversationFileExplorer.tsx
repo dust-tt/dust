@@ -58,7 +58,7 @@ export function ConversationFileExplorer({
   );
 
   return (
-    <div className="flex h-container min-h-0 flex-col">
+    <div className="flex h-panel min-h-0 flex-col">
       <AppLayoutTitle>
         <div className="flex h-full items-center justify-between gap-2">
           {isPod ? (

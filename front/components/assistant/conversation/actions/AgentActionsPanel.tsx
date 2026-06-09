@@ -459,7 +459,7 @@ function AgentSingleActionPanel({
   }
 
   return (
-    <div className="flex h-container flex-col bg-panel-background dark:bg-panel-background-night">
+    <div className="flex h-panel flex-col bg-panel-background dark:bg-panel-background-night">
       <AgentActionsPanelHeader
         title="Tool detail"
         closeIcon={closeIcon}

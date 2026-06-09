@@ -12,7 +12,7 @@ module.exports = {
     extend: {
       height: {
         title: "3rem",
-        container: "var(--panel-height)", // defined in global.css,
+        panel: "var(--panel-height)", // defined in global.css,
       },
       fontWeight: {
         medium: "450",
