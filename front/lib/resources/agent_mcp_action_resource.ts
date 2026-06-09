@@ -755,14 +755,26 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     }>
   ): Promise<AgentMCPActionOutputItemModel[]> {
     const outputItems = await AgentMCPActionOutputItemModel.bulkCreate(
-      contents.map((c) => ({
-        agentMCPActionId: this.id,
-        // Write content to DB (kept during migration period to ease rollback).
-        content: c.content,
-        citations: getCitationsFromToolOutput([c.content]),
-        fileId: c.fileId,
-        workspaceId: this.workspaceId,
-      }))
+      contents.map((c) => {
+        const { generatedFilePath, generatedFileContentType } =
+          isToolGeneratedFilePath(c.content)
+            ? {
+                generatedFilePath: c.content.resource.path,
+                generatedFileContentType: c.content.resource.contentType,
+              }
+            : { generatedFilePath: null, generatedFileContentType: null };
+
+        return {
+          agentMCPActionId: this.id,
+          // Write content to DB (kept during migration period to ease rollback).
+          content: c.content,
+          citations: getCitationsFromToolOutput([c.content]),
+          fileId: c.fileId,
+          workspaceId: this.workspaceId,
+          generatedFilePath,
+          generatedFileContentType,
+        };
+      })
     );
 
     const gcsResult = await batchWriteContentsToGcs(
@@ -1105,6 +1117,19 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
                     filePath: o.content.resource.path,
                     title: o.content.resource.title,
                     contentType: o.content.resource.contentType,
+                    snippet: null,
+                    hidden: false,
+                  };
+                }
+
+                // Fallback for light rendering (ignoreContent: true excludes the content column).
+                if (o.generatedFilePath && o.generatedFileContentType) {
+                  const filePath = o.generatedFilePath;
+                  return {
+                    fileId: null,
+                    filePath,
+                    title: filePath.split("/").pop() ?? filePath,
+                    contentType: o.generatedFileContentType,
                     snippet: null,
                     hidden: false,
                   };
