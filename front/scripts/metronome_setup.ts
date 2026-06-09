@@ -1423,6 +1423,15 @@ const CUSTOM_FIELD_KEYS: Array<{
     entity: "contract_credit",
     key: CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
   },
+  // Same key on commits: AWU commits are stamped "pool" so the pool balance
+  // alert's Commit filter counts them alongside pool credits (a ContractCredit-
+  // only filter drops commits). The key must be shared with the contract_credit
+  // registration above — Metronome requires every entity in an alert's
+  // custom_field_filters to use the same key/value.
+  {
+    entity: "commit",
+    key: CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+  },
   // Stamped on each seat-style product (Workspace / Pro / Max / Free).
   // Runtime code reads `product.custom_fields.DUST_SEAT_TYPE` (cached in
   // Redis) instead of comparing product names/IDs, which change on every
