@@ -70,7 +70,9 @@ const ConfluencePageCodec = t.intersection([
 const SearchBaseContentCodec = t.type({
   id: t.string,
   status: t.string,
-  title: t.string,
+  // Some Confluence search results can have a null or missing title. The
+  // sync only needs titles when fetching full pages, not when building refs.
+  title: t.union([t.string, t.null, t.undefined]),
 
   // Version info.
   version: t.type({
@@ -96,7 +98,7 @@ const SearchBaseContentCodec = t.type({
     t.type({
       id: t.string,
       type: t.string,
-      title: t.union([t.undefined, t.string]),
+      title: t.union([t.string, t.null, t.undefined]),
     })
   ),
 });
