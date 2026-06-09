@@ -7,6 +7,7 @@ import {
   getWorkspaceProgrammaticCreditStatus,
   isUserAwuWarned,
   isUserBlocked,
+  isWorkspaceBalanceThresholdReached,
 } from "@app/lib/metronome/user_block";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -31,15 +32,21 @@ app.get(
         awuStatus: "normal",
         poolCreditState: "active",
         programmaticCreditStatus: "active",
+        balanceThresholdReached: false,
       });
     }
 
-    const [poolCreditState, blockedReason, programmaticState] =
-      await Promise.all([
-        getWorkspaceCreditPoolStatus(workspace.sId),
-        isUserBlocked(workspace.sId, user.sId),
-        getWorkspaceProgrammaticCreditStatus(workspace.sId),
-      ]);
+    const [
+      poolCreditState,
+      blockedReason,
+      programmaticState,
+      balanceThresholdReached,
+    ] = await Promise.all([
+      getWorkspaceCreditPoolStatus(workspace.sId),
+      isUserBlocked(workspace.sId, user.sId),
+      getWorkspaceProgrammaticCreditStatus(workspace.sId),
+      isWorkspaceBalanceThresholdReached(workspace.sId),
+    ]);
 
     let awuStatus: GetWorkspaceUsageStatusResponseBody["awuStatus"] = "normal";
     if (blockedReason === "user_cap_reached") {
@@ -58,7 +65,12 @@ app.get(
       programmaticCreditStatus = "warned";
     }
 
-    return ctx.json({ awuStatus, poolCreditState, programmaticCreditStatus });
+    return ctx.json({
+      awuStatus,
+      poolCreditState,
+      programmaticCreditStatus,
+      balanceThresholdReached,
+    });
   }
 );
 

@@ -206,12 +206,17 @@ interface UsageStatusBannerProps {
 }
 
 function UsageStatusBanner({ owner }: UsageStatusBannerProps) {
-  const { awuStatus, poolCreditState, programmaticCreditStatus } =
-    useWorkspaceUsageStatus({ owner });
+  const {
+    awuStatus,
+    poolCreditState,
+    programmaticCreditStatus,
+    balanceThresholdReached,
+  } = useWorkspaceUsageStatus({ owner });
 
   // Pool balance and programmatic cap banners are only shown to admins who
   // manage workspace credits. The AWU cap banner is shown to any user subject
-  // to a per-user usage cap. All can be displayed at the same time.
+  // to a per-user usage cap. At most one banner is shown at a time (see the
+  // priority selection below).
   //
   // The low/critical pool states are internal throttling signals and are not
   // surfaced. Admins are alerted when the pool is fully depleted (agents
@@ -238,72 +243,89 @@ function UsageStatusBanner({ owner }: UsageStatusBannerProps) {
   const showAwuBanner = awuStatus !== "normal";
   const showProgrammaticBanner =
     isAdmin(owner) && programmaticCreditStatus !== "active";
+  // The admin-configured balance-threshold warning is only relevant before the
+  // pool is depleted/overage — those states have their own (stronger) banner.
+  const showBalanceThresholdBanner =
+    isAdmin(owner) &&
+    balanceThresholdReached &&
+    !isPoolDepleted &&
+    !isPoolOverage;
 
-  if (!showPoolBanner && !showAwuBanner && !showProgrammaticBanner) {
+  // Only a single usage banner is shown at a time, picked by priority. The
+  // pool banner takes precedence over the lower-severity balance-threshold
+  // warning, which is why "Your credit balance is running low" never shows
+  // alongside it.
+  const manageCreditsFooter = (
+    <LinkWrapper href={`/w/${owner.sId}/usage`} className="underline">
+      Manage credits
+    </LinkWrapper>
+  );
+
+  const banner = ((): StatusBannerProps | null => {
+    if (showPoolBanner) {
+      return {
+        variant: isPoolDepleted ? "danger" : "warning",
+        title: isPoolDepleted
+          ? "Your workspace is out of credits"
+          : "Your workspace has used all its credits",
+        description: isPoolDepleted
+          ? "Your workspace has run out of credits. Agents are blocked until you top up."
+          : "Your workspace has used all of its included credits and is now billed pay-as-you-go. Top up to avoid overage charges.",
+        footer: manageCreditsFooter,
+      };
+    }
+
+    if (showAwuBanner) {
+      return {
+        variant: awuStatus === "blocked" ? "danger" : "warning",
+        title:
+          awuStatus === "blocked"
+            ? "You've reached your usage limit"
+            : "You've used 80% of your usage limit",
+        description:
+          awuStatus === "blocked"
+            ? "You can no longer run agents. Contact your admin to increase your limit."
+            : "Contact your admin to increase your limit before you are blocked.",
+      };
+    }
+
+    if (showProgrammaticBanner) {
+      return {
+        variant: programmaticCreditStatus === "depleted" ? "danger" : "warning",
+        title:
+          programmaticCreditStatus === "depleted"
+            ? "Programmatic API cap reached"
+            : "Programmatic API cap at 80%",
+        description:
+          programmaticCreditStatus === "depleted"
+            ? "Your workspace has exhausted its monthly programmatic API credit cap. Programmatic API calls are blocked until the billing cycle resets or the cap is raised."
+            : "Your workspace has used 80% of its monthly programmatic API credit cap. Consider raising the cap to avoid interruptions.",
+        footer: (
+          <LinkWrapper href={`/w/${owner.sId}/usage`} className="underline">
+            Manage usage
+          </LinkWrapper>
+        ),
+      };
+    }
+
+    if (showBalanceThresholdBanner) {
+      return {
+        variant: "warning",
+        title: "Your credit balance is running low",
+        description:
+          "Your workspace's remaining credit balance has dropped below the threshold you set. Top up to avoid running out of credits.",
+        footer: manageCreditsFooter,
+      };
+    }
+
+    return null;
+  })();
+
+  if (!banner) {
     return null;
   }
 
-  return (
-    <>
-      {showPoolBanner && (
-        <StatusBanner
-          variant={isPoolDepleted ? "danger" : "warning"}
-          title={
-            isPoolDepleted
-              ? "Your workspace is out of credits"
-              : "Your workspace has used all its credits"
-          }
-          description={
-            isPoolDepleted
-              ? "Your workspace has run out of credits. Agents are blocked until you top up."
-              : "Your workspace has used all of its included credits and is now billed pay-as-you-go. Top up to avoid overage charges."
-          }
-          footer={
-            <LinkWrapper href={`/w/${owner.sId}/usage`} className="underline">
-              Manage credits
-            </LinkWrapper>
-          }
-        />
-      )}
-      {showAwuBanner && (
-        <StatusBanner
-          variant={awuStatus === "blocked" ? "danger" : "warning"}
-          title={
-            awuStatus === "blocked"
-              ? "You've reached your usage limit"
-              : "You've used 80% of your usage limit"
-          }
-          description={
-            awuStatus === "blocked"
-              ? "You can no longer run agents. Contact your admin to increase your limit."
-              : "Contact your admin to increase your limit before you are blocked."
-          }
-        />
-      )}
-      {showProgrammaticBanner && (
-        <StatusBanner
-          variant={
-            programmaticCreditStatus === "depleted" ? "danger" : "warning"
-          }
-          title={
-            programmaticCreditStatus === "depleted"
-              ? "Programmatic API cap reached"
-              : "Programmatic API cap at 80%"
-          }
-          description={
-            programmaticCreditStatus === "depleted"
-              ? "Your workspace has exhausted its monthly programmatic API credit cap. Programmatic API calls are blocked until the billing cycle resets or the cap is raised."
-              : "Your workspace has used 80% of its monthly programmatic API credit cap. Consider raising the cap to avoid interruptions."
-          }
-          footer={
-            <LinkWrapper href={`/w/${owner.sId}/usage`} className="underline">
-              Manage usage
-            </LinkWrapper>
-          }
-        />
-      )}
-    </>
-  );
+  return <StatusBanner {...banner} />;
 }
 
 export function SidebarBanners() {
