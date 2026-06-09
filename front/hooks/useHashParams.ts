@@ -47,7 +47,8 @@ export const useHashParam = (
   key: string,
   defaultValue?: string
 ): [string | undefined, Setter] => {
-  // Hold the internal value for the search param defined by "key" in the hash.
+  // Source of truth for this key's value. Bundled with `options` so the URL-sync
+  // effect knows whether to replaceState or pushState.
   const [innerValue, setInnerValue] = useState<{
     val: string | undefined;
     options: SetterOptions;
@@ -59,7 +60,8 @@ export const useHashParam = (
     options: DEFAULT_OPTIONS,
   });
 
-  // Listen to hash/popstate changes and sync the internal value.
+  // URL → state: sync innerValue when the hash changes externally (browser
+  // back/forward, another useHashParam instance, or direct location.hash writes).
   useEffect(() => {
     const onHashChange = () => {
       const hash = getHashFromUrl(getUrlFromLocation(window.location));
@@ -89,7 +91,8 @@ export const useHashParam = (
     };
   }, [key, defaultValue]);
 
-  // Listen to innerValue changes and update the hash in the URL if there is a mismatch.
+  // State → URL: when innerValue changes (via setValue), write it to the URL
+  // and notify other useHashParam instances via a manual hashchange event.
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
@@ -119,12 +122,15 @@ export const useHashParam = (
         window.history.pushState(window.history.state, "", newUrl);
       }
 
-      // pushState/replaceState don't fire hashchange, so notify other
-      // useHashParam instances manually.
+      // pushState/replaceState don't fire hashchange natively, so dispatch
+      // manually so other useHashParam instances (watching different keys)
+      // pick up the change via the first effect.
       window.dispatchEvent(new HashChangeEvent("hashchange"));
     }
   }, [innerValue, key]);
 
+  // Public setter: accepts a value or updater function, updates innerValue
+  // which triggers the state→URL effect above.
   const setValue = useCallback<Setter>(
     (newValue?: string | Updater, options: SetterOptions = DEFAULT_OPTIONS) => {
       const newInnerValue =
@@ -143,6 +149,8 @@ export const useHashParam = (
     [defaultValue, key]
   );
 
+  // Uses `||` intentionally: empty string falls back to defaultValue, matching
+  // the behavior where "" triggers searchParams.delete(key) in the effect.
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return [innerValue.val || defaultValue, setValue];
 };
