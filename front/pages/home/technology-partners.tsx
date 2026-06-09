@@ -2,11 +2,14 @@
 import {
   FullWidthSection,
   Grid,
-  H1,
   H2,
   P,
 } from "@app/components/home/ContentComponents";
 import { FinalCTASection } from "@app/components/home/content/Competitor/FinalCTASection";
+import {
+  HomeReveal,
+  HomeRevealStyles,
+} from "@app/components/home/content/Product/HomeReveal";
 import { DustDecoration } from "@app/components/home/DustDecoration";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
@@ -260,6 +263,28 @@ const MARKETPLACE_LOGOS: {
   { name: "Vanta", logo: VantaLogo },
 ];
 
+interface SectionHeaderProps {
+  title: string;
+  subtitle?: string;
+}
+
+// Section header matching the homepage rhythm: a sans-serif heading with tight
+// tracking and an optional lead, revealed on scroll.
+function SectionHeader({ title, subtitle }: SectionHeaderProps) {
+  return (
+    <HomeReveal className="mb-10 flex flex-col gap-4">
+      <H2 className="text-balance font-semibold leading-[1.08] tracking-[-0.03em] text-foreground">
+        {title}
+      </H2>
+      {subtitle ? (
+        <P size="md" className="max-w-2xl leading-[1.6] text-muted-foreground">
+          {subtitle}
+        </P>
+      ) : null}
+    </HomeReveal>
+  );
+}
+
 export const getStaticProps: GetStaticProps = async () => {
   return {
     props: {
@@ -280,47 +305,57 @@ export default function TechnologyPartnersNextJS() {
         pathname={router.asPath}
       />
 
-      <div className="flex w-full flex-col gap-12 pb-16">
-        {/* ─────────── Hero (left-aligned, dust.tt-style) ─────────── */}
+      <div className="flex w-full flex-col gap-16 pb-20 md:gap-24">
+        <HomeRevealStyles />
+        {/* ─────────── Hero (left-aligned, homepage-style) ─────────── */}
         <Grid>
           <div
             className={classNames(
               COL_CLASSES,
-              "flex flex-col gap-6 pt-8 md:pt-12"
+              "flex flex-col items-start gap-6 pt-8 md:pt-12"
             )}
           >
-            <H1 mono className="text-foreground">
-              Become a Dust technology partner
-            </H1>
-            <P size="lg" className="max-w-2xl text-muted-foreground">
-              List your app on Dust and get discovered by thousands of users of
-              our AI agents, or enable new agentic capabilities into your
-              platform.
-            </P>
-            <div className="flex flex-col gap-4 sm:flex-row">
-              <Button
-                href={PARTNER_FORM_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                variant="highlight"
+            <HomeReveal>
+              <h1 className="m-0 max-w-[18ch] text-balance text-[clamp(40px,4.6vw,64px)] font-semibold leading-[0.98] tracking-[-0.04em] text-foreground">
+                Become a Dust technology partner
+              </h1>
+            </HomeReveal>
+            <HomeReveal delay={80}>
+              <P
                 size="md"
-                icon={Rocket02}
-                label="List your app"
-              />
-              <Button
-                href="#how-it-works"
-                variant="outline"
-                size="md"
-                label="How it works"
-              />
-            </div>
+                className="max-w-[560px] leading-[1.6] text-muted-foreground"
+              >
+                List your app on Dust and get discovered by thousands of users
+                of our AI agents, or enable new agentic capabilities into your
+                platform.
+              </P>
+            </HomeReveal>
+            <HomeReveal delay={160}>
+              <div className="flex flex-col gap-4 sm:flex-row">
+                <Button
+                  href={PARTNER_FORM_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  variant="highlight"
+                  size="md"
+                  icon={Rocket02}
+                  label="List your app"
+                />
+                <Button
+                  href="#how-it-works"
+                  variant="outline"
+                  size="md"
+                  label="How it works"
+                />
+              </div>
+            </HomeReveal>
           </div>
         </Grid>
 
         {/* ─────────── Why partner with Dust ─────────── */}
         <Grid>
           <div className={COL_CLASSES}>
-            <H2 className="mb-8 text-foreground">Why partner with Dust</H2>
+            <SectionHeader title="Why partner with Dust" />
             <div className="grid gap-4 sm:grid-cols-3 lg:gap-6">
               {WHY_PARTNER.map((v) => {
                 const colors = CARD_COLORS[v.color];
@@ -353,11 +388,10 @@ export default function TechnologyPartnersNextJS() {
         {/* ─────────── Build your app on Dust ─────────── */}
         <Grid>
           <div className={COL_CLASSES}>
-            <H2 className="mb-2 text-foreground">Build your app on Dust</H2>
-            <P size="md" className="mb-8 max-w-2xl text-muted-foreground">
-              Everything you need to launch, from MCP basics to real examples
-              and direct help.
-            </P>
+            <SectionHeader
+              title="Build your app on Dust"
+              subtitle="Everything you need to launch, from MCP basics to real examples and direct help."
+            />
             <div className="grid gap-4 sm:grid-cols-3 lg:gap-6">
               {BUILD_CARDS.map((d) => {
                 const colors = CARD_COLORS[d.color];
@@ -405,13 +439,10 @@ export default function TechnologyPartnersNextJS() {
         {/* ─────────── The partner program (tiers + details table) ─────────── */}
         <Grid>
           <div className={COL_CLASSES}>
-            <div className="mb-8">
-              <H2 className="text-foreground">Our app partner program</H2>
-              <P size="md" className="mt-2 max-w-2xl text-muted-foreground">
-                From assistance to launch your app, all the way to a co-sell
-                motion.
-              </P>
-            </div>
+            <SectionHeader
+              title="Our app partner program"
+              subtitle="From assistance to launch your app, all the way to a co-sell motion."
+            />
 
             <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
               {PUBLIC_TIERS.map((t) => {
@@ -553,10 +584,10 @@ export default function TechnologyPartnersNextJS() {
         {/* ─────────── What app partners say (+ marketplace logos) ─────────── */}
         <Grid>
           <div className={COL_CLASSES}>
-            <H2 className="text-foreground">What app partners say</H2>
-            <P size="md" className="mb-8 mt-2 max-w-2xl text-muted-foreground">
-              Join more than 50 apps already on the Dust marketplace.
-            </P>
+            <SectionHeader
+              title="What app partners say"
+              subtitle="Join more than 50 apps already on the Dust marketplace."
+            />
             <div className="grid gap-5 sm:grid-cols-3">
               {TESTIMONIALS.map((t) => (
                 <figure
@@ -608,11 +639,10 @@ export default function TechnologyPartnersNextJS() {
             id="how-it-works"
             className="mx-auto max-w-5xl px-6 py-12 md:py-16"
           >
-            <H2 className="mb-2 text-foreground">How it works</H2>
-            <P size="md" className="mb-8 max-w-2xl text-muted-foreground">
-              From a first conversation to a featured launch. Together, step by
-              step.
-            </P>
+            <SectionHeader
+              title="How it works"
+              subtitle="From a first conversation to a featured launch. Together, step by step."
+            />
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {HOW_IT_WORKS.map((s) => (
                 <div key={s.step} className="rounded-2xl bg-background p-6">
