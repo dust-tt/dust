@@ -13,6 +13,13 @@ const TrialPage = withSuspense(
   () => import("@dust-tt/front/components/pages/onboarding/TrialPage"),
   "TrialPage"
 );
+const SelectSubscriptionPage = withSuspense(
+  () =>
+    import(
+      "@dust-tt/front/components/pages/onboarding/SelectSubscriptionPage"
+    ),
+  "SelectSubscriptionPage"
+);
 const TrialEndedPage = withSuspense(
   () => import("@dust-tt/front/components/pages/onboarding/TrialEndedPage"),
   "TrialEndedPage"
@@ -46,6 +53,11 @@ export const onboardingRoutes: RouteObject[] = [
   {
     path: "trial",
     element: <TrialPage />,
+    handle: { requireCanUseProduct: false },
+  },
+  {
+    path: "select-subscription",
+    element: <SelectSubscriptionPage />,
     handle: { requireCanUseProduct: false },
   },
   {

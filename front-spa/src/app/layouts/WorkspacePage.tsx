@@ -1,4 +1,5 @@
 import { AppAuthContextLayout } from "@dust-tt/front/components/sparkle/AppAuthContextLayout";
+import { useKillSwitches } from "@dust-tt/front/lib/swr/kill";
 import { useAuthContext } from "@dust-tt/front/lib/swr/workspaces";
 import { AuthErrorPage } from "@spa/app/components/AuthErrorPage";
 import { useAppReadyContext } from "@spa/app/contexts/AppReadyContext";
@@ -26,6 +27,7 @@ export function WorkspacePage({ children }: WorkspacePageProps) {
   const { authContext, isAuthenticated, authContextError } = useAuthContext({
     workspaceId: wId,
   });
+  const { killSwitches } = useKillSwitches();
 
   const signalAppReady = useAppReadyContext();
 
@@ -50,9 +52,21 @@ export function WorkspacePage({ children }: WorkspacePageProps) {
 
   // Paywall enforcement: redirect when canUseProduct is false
   // and the current route requires canUseProduct (via route handle).
-  // Mirrors the Next.js session.ts logic: redirect to /trial if eligible, /subscribe otherwise.
+  // Mirrors the Next.js session.ts logic: redirect to the trial / plan
+  // selection page if eligible, /subscribe otherwise.
   if (!canUseProduct && isRequireCanUseProduct) {
-    const target = authContext.isEligibleForTrial ? "trial" : "subscribe";
+    const isMetronomeEnabled =
+      authContext.featureFlags.includes("metronome_billing") ||
+      !killSwitches?.includes("global_disable_metronome_billing");
+    const isMetronomeCheckout =
+      isMetronomeEnabled &&
+      authContext.featureFlags.includes("metronome_cp_checkout");
+
+    const target = authContext.isEligibleForTrial
+      ? isMetronomeCheckout
+        ? "select-subscription"
+        : "trial"
+      : "subscribe";
     return <Navigate to={`/w/${wId}/${target}`} replace />;
   }
 

@@ -1,3 +1,4 @@
+import { isMetronomeCheckoutEnabled } from "@app/lib/api/subscription";
 import { getUserWithWorkspaces } from "@app/lib/api/user";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { Authenticator, getSession } from "@app/lib/auth";
@@ -189,10 +190,15 @@ export function makeGetServerSidePropsRequirementsWrapper<
 
         const redirectTrialPage = await isWorkspaceEligibleForTrial(auth!);
         if (redirectTrialPage) {
+          // With the Metronome credit-priced checkout flow, the trial page is
+          // replaced by the new plan selection page.
+          const metronomeCheckout = await isMetronomeCheckoutEnabled(auth!);
           return {
             redirect: {
               permanent: false,
-              destination: `/w/${context.query.wId}/trial`,
+              destination: metronomeCheckout
+                ? `/w/${context.query.wId}/select-subscription`
+                : `/w/${context.query.wId}/trial`,
             },
           };
         }
