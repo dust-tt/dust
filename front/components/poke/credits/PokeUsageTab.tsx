@@ -304,12 +304,8 @@ function PokeCreditPoolCard({ owner }: PokeCreditPoolCardProps) {
     );
   }
 
-  const {
-    totalActiveCredits,
-    totalRemainingCredits,
-    resetDate,
-    overageCredits,
-  } = awuPoolSummary;
+  const { totalActiveCredits, totalRemainingCredits, overageCredits } =
+    awuPoolSummary;
   const consumed = Math.max(0, totalActiveCredits - totalRemainingCredits);
   const consumedPct =
     totalActiveCredits > 0
@@ -337,17 +333,6 @@ function PokeCreditPoolCard({ owner }: PokeCreditPoolCardProps) {
         <span>{formatCredits(totalRemainingCredits)} credits remaining</span>
         {overageCredits !== null && overageCredits > 0 && (
           <span>{formatCredits(overageCredits)} overage credits</span>
-        )}
-        {resetDate && (
-          <span>
-            Resets{" "}
-            {new Date(resetDate).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-              timeZone: "UTC",
-            })}
-          </span>
         )}
       </div>
     </div>

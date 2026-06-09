@@ -140,7 +140,6 @@ function UsageSection({ owner }: { owner: WorkspaceType }) {
     totalRemainingCredits,
     totalActiveCredits,
     overageCredits,
-    resetDate,
     isAwuPoolSummaryLoading,
     isAwuPoolSummaryError,
   } = useAwuPoolSummary({ workspaceId: owner.sId });
@@ -217,15 +216,6 @@ function UsageSection({ owner }: { owner: WorkspaceType }) {
                 <span>{formatCredits(overageCredits)} overage credits</span>
               ) : (
                 <span />
-              )}
-              {resetDate && (
-                <span>
-                  Resets{" "}
-                  {new Date(resetDate).toLocaleDateString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </span>
               )}
             </div>
             {myUsage && myUsage.memberUsageLimit !== null && (
