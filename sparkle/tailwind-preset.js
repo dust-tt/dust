@@ -226,7 +226,7 @@ const typographyPlugin = plugin(function ({ addComponents, theme }) {
     fontSize: theme(`fontSize.${size}[0]`),
     lineHeight: theme(`fontSize.${size}[1].lineHeight`),
     letterSpacing: theme(`fontSize.${size}[1].letterSpacing`),
-    fontWeight: "550",
+    fontWeight: "500",
   });
   const headingHeavy = (size) => ({
     fontSize: theme(`fontSize.${size}[0]`),
