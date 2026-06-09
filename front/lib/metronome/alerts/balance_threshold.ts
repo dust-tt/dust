@@ -58,6 +58,11 @@ export async function upsertMetronomeBalanceThresholdAlert({
         key: CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
         value: CONTRACT_CREDIT_TYPE_POOL,
       },
+      {
+        entity: "Commit",
+        key: CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+        value: CONTRACT_CREDIT_TYPE_POOL,
+      },
     ],
   });
   if (upsertResult.isErr()) {
