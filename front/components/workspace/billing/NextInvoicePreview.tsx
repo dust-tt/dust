@@ -9,6 +9,7 @@ import {
   FREE_SEAT_PRODUCT_NAME,
   MAX_SEAT_PRODUCT_NAME,
   PRO_SEAT_PRODUCT_NAME,
+  WORKSPACE_SEAT_PRODUCT_NAME,
 } from "@app/lib/metronome/setup_common";
 import { useMetronomeInvoiceLines } from "@app/lib/swr/workspaces";
 import type { SubscriptionType } from "@app/types/plan";
@@ -55,6 +56,8 @@ const PRODUCT_NAME_TO_SEAT_TYPE: Record<string, string> = {
   [PRO_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX]: "pro",
   [MAX_SEAT_PRODUCT_NAME]: "max",
   [MAX_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX]: "max",
+  [WORKSPACE_SEAT_PRODUCT_NAME]: "workspace",
+  [WORKSPACE_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX]: "workspace",
   [OVERAGE_NAME]: "overage",
 };
 

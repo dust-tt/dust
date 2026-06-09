@@ -1,5 +1,6 @@
 import {
   CoinsStacked01,
+  Database01,
   LayerSingle,
   LayersThree01,
   LayersTwo01,
@@ -10,6 +11,7 @@ export const SEAT_TYPE_ICONS: Record<string, ComponentType> = {
   free: LayerSingle,
   pro: LayersTwo01,
   max: LayersThree01,
+  workspace: Database01,
   overage: CoinsStacked01,
 };
 
@@ -21,6 +23,11 @@ export function seatTypeAvatarColors(seatType: string) {
       return {
         backgroundColor: "bg-golden-100",
         iconColor: "text-golden-600",
+      };
+    case "workspace":
+      return {
+        backgroundColor: "bg-green-100",
+        iconColor: "text-green-600",
       };
     default:
       return { backgroundColor: "bg-gray-100", iconColor: "text-gray-600" };
