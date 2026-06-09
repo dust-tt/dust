@@ -92,7 +92,7 @@ export function getSkillAvatarIcon(
   }
 
   return ({ className, size, ...props }) => {
-    const avatarSize = size ?? "sm";
+    const avatarSize = size ?? (className ? "xxs" : "sm");
     const badgeSize = size ?? (className ? "xxs" : "sm");
 
     return React.createElement(ResourceAvatarWithBadge, {
