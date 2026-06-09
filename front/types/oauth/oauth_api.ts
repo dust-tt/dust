@@ -148,7 +148,13 @@ export class OAuthAPI {
     return this._resultFromResponse(response);
   }
 
-  async getAccessToken({ connectionId }: { connectionId: string }): Promise<
+  async getAccessToken({
+    connectionId,
+    forceRefresh = false,
+  }: {
+    connectionId: string;
+    forceRefresh?: boolean;
+  }): Promise<
     OAuthAPIResponse<{
       connection: OAuthConnectionType;
       access_token: string;
@@ -156,8 +162,15 @@ export class OAuthAPI {
       scrubbed_raw_json: unknown;
     }>
   > {
+    const params = new URLSearchParams();
+    if (forceRefresh) {
+      params.set("force_refresh", "true");
+    }
+    const query = params.toString();
     const response = await this._fetchWithError(
-      `${this._url}/connections/${connectionId}/access_token`
+      `${this._url}/connections/${connectionId}/access_token${
+        query ? `?${query}` : ""
+      }`
     );
     return this._resultFromResponse(response);
   }
