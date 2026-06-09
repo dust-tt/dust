@@ -13,6 +13,7 @@ import {
 import { useAppRouter } from "@app/lib/platform";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import { useAuthContext, useVerifyData } from "@app/lib/swr/workspaces";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   ActionSparklesIcon,
   Button,
@@ -313,70 +314,70 @@ export function VerifyPage() {
     );
   }
 
-  if (step === "done") {
-    return (
-      <WelcomeStep
-        credits={CP_FREE_PLAN_CREDITS}
-        onStartBuilding={goToWorkspace}
-      />
-    );
+  switch (step) {
+    case "done":
+      return (
+        <WelcomeStep
+          credits={CP_FREE_PLAN_CREDITS}
+          onStartBuilding={goToWorkspace}
+        />
+      );
+    case "captcha":
+      return (
+        <CaptchaStep
+          captchaKey={captchaKey}
+          siteKey={config.getTurnstileSiteKey()}
+          error={phoneError}
+          onSuccess={(token) => {
+            setCaptchaToken(token);
+            setPhoneError(null);
+            setStep("phone");
+          }}
+          onExpire={() => {
+            setCaptchaToken(null);
+          }}
+          onError={() => {
+            setCaptchaToken(null);
+            setPhoneError(
+              "Captcha could not load. Please refresh and try again."
+            );
+          }}
+        />
+      );
+    case "code":
+      return (
+        <CodeVerificationStep
+          maskedPhone={maskPhoneNumber(phoneNumber)}
+          code={code}
+          error={phoneError}
+          resendCooldown={resendCooldown}
+          inputRefs={inputRefs}
+          isLoading={isLoading}
+          onCodeChange={handleCodeChange}
+          onCodeKeyDown={handleCodeKeyDown}
+          onCodePaste={handleCodePaste}
+          onBack={handleBack}
+          onResend={handleSendCode}
+          onVerify={handleVerifyCode}
+        />
+      );
+    case "phone":
+      return (
+        <PhoneInputStep
+          isMetronome={isMetronomeCheckout}
+          phoneNumber={phoneNumber}
+          countryCode={countryCode}
+          error={phoneError}
+          isLoading={isLoading}
+          onPhoneNumberChange={handlePhoneNumberChange}
+          onCountryCodeChange={handleCountryCodeChange}
+          onSubmit={handleSendCode}
+        />
+      );
+    default:
+      assertNeverAndIgnore(step);
+      return null;
   }
-
-  if (step === "captcha") {
-    return (
-      <CaptchaStep
-        captchaKey={captchaKey}
-        siteKey={config.getTurnstileSiteKey()}
-        error={phoneError}
-        onSuccess={(token) => {
-          setCaptchaToken(token);
-          setPhoneError(null);
-          setStep("phone");
-        }}
-        onExpire={() => {
-          setCaptchaToken(null);
-        }}
-        onError={() => {
-          setCaptchaToken(null);
-          setPhoneError(
-            "Captcha could not load. Please refresh and try again."
-          );
-        }}
-      />
-    );
-  }
-
-  if (step === "code") {
-    return (
-      <CodeVerificationStep
-        maskedPhone={maskPhoneNumber(phoneNumber)}
-        code={code}
-        error={phoneError}
-        resendCooldown={resendCooldown}
-        inputRefs={inputRefs}
-        isLoading={isLoading}
-        onCodeChange={handleCodeChange}
-        onCodeKeyDown={handleCodeKeyDown}
-        onCodePaste={handleCodePaste}
-        onBack={handleBack}
-        onResend={handleSendCode}
-        onVerify={handleVerifyCode}
-      />
-    );
-  }
-
-  return (
-    <PhoneInputStep
-      isMetronome={isMetronomeCheckout}
-      phoneNumber={phoneNumber}
-      countryCode={countryCode}
-      error={phoneError}
-      isLoading={isLoading}
-      onPhoneNumberChange={handlePhoneNumberChange}
-      onCountryCodeChange={handleCountryCodeChange}
-      onSubmit={handleSendCode}
-    />
-  );
 }
 
 interface PhoneInputStepProps {
