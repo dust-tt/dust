@@ -44,7 +44,7 @@ function AppContentInnerWrapper({
       className={cn(
         "my-2 mr-2 rounded-xl flex-1 bg-content-background dark:bg-content-background-night border border-border dark:border-border-night overflow-hidden",
         !isNavigationBarOpen && !isFullScreen && "ml-5",
-        isFullScreen && "ml-2",
+        isFullScreen && "ml-2"
       )}
       style={{
         boxShadow:
