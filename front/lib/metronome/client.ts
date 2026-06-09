@@ -24,6 +24,7 @@ import type {
 } from "@metronome/sdk/resources/v1/customers";
 import type { ContractEditParams } from "@metronome/sdk/resources/v2/contracts";
 import type { IncomingHttpHeaders } from "http";
+import { z } from "zod";
 import type {
   MetronomeBalance,
   MetronomeEvent,
@@ -2301,6 +2302,16 @@ export async function createMetronomeCredit({
   }
 }
 
+// The SDK types ContractEditResponse as { data: { id } } but the actual payload
+// includes edit.add_credits[].id — this schema parses the undocumented fields.
+const CONTRACT_EDIT_WITH_CREDITS_RESPONSE_SCHEMA = z.object({
+  data: z.object({
+    edit: z.object({
+      add_credits: z.array(z.object({ id: z.string() })),
+    }),
+  }),
+});
+
 /**
  * Add a credit grant to a Metronome contract.
  * Uses v2.contracts.edit with add_credits, so uniqueness_key applies to the
@@ -2363,11 +2374,12 @@ export async function addCreditToContract({
     });
 
     // The SDK types ContractEditResponse as { data: { id } } but the actual
-    // payload includes edit.add_credits[].id — cast to extract the credit id.
-    const raw = response as unknown as {
-      data: { edit: { add_credits: Array<{ id: string }> } };
-    };
-    const creditId = raw.data.edit.add_credits[0]?.id ?? null;
+    // payload includes edit.add_credits[].id — parse at runtime to extract it.
+    const parsed =
+      CONTRACT_EDIT_WITH_CREDITS_RESPONSE_SCHEMA.safeParse(response);
+    const creditId = parsed.success
+      ? (parsed.data.data.edit.add_credits[0]?.id ?? null)
+      : null;
 
     logger.info(
       {
