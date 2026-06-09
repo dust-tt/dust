@@ -849,11 +849,14 @@ export async function syncFiles({
         nextLink: undefined,
       };
     }
-    // A 404 means the synced drive/folder was deleted upstream ("404 FILE NOT
-    // FOUND"), or the hosting SharePoint site is gone ("Target
-    // '<tenant>.sharepoint.com' is not found."). The resource can no longer be
-    // synced, so skip it instead of throwing, which would otherwise wedge the
-    // workflow in an infinite retry loop.
+    // A 404 while listing children means the synced drive/folder was deleted
+    // upstream ("404 FILE NOT FOUND"), or the hosting SharePoint site is gone
+    // ("Target '<tenant>.sharepoint.com' is not found."). The resource can no
+    // longer be synced, so skip it instead of throwing, which would otherwise
+    // wedge the workflow in an infinite retry loop.
+    // The childrenListed gate keeps this catch at the parent-listing boundary:
+    // a child file disappearing later during syncOneFile is local to that file
+    // and should not short-circuit the whole page.
     if (
       !childrenListed &&
       ((e instanceof GraphError && e.statusCode === 404) ||
