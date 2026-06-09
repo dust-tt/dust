@@ -256,7 +256,6 @@ export function useAwuPoolSummary({
   return {
     totalRemainingCredits: data?.totalRemainingCredits ?? 0,
     totalActiveCredits: data?.totalActiveCredits ?? 0,
-    resetDate: data?.resetDate ?? "",
     overageCredits: data?.overageCredits ?? null,
     overageAmountCents: data?.overageAmountCents ?? null,
     overageCurrency: data?.overageCurrency ?? null,
