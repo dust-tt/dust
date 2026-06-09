@@ -470,7 +470,6 @@ function _getDustLikeGlobalAgent(
       "skill-authoring",
       "go-deep",
       "mention_users",
-      "sandbox",
       "projects",
       "plan_mode",
       "support",
