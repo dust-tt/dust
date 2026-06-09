@@ -1,0 +1,321 @@
+import {
+  Grid,
+  H1,
+  H2,
+  H3,
+  P,
+  Strong,
+} from "@marketing/components/home/ContentComponents";
+import { PEOPLE } from "@marketing/components/home/content/shared/team";
+import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
+import LandingLayout from "@marketing/components/home/LandingLayout";
+import { PageMetadata } from "@marketing/components/home/PageMetadata";
+import { classNames } from "@marketing/lib/utils";
+import {
+  ArrowRight,
+  Button,
+  Div3D,
+  GithubMonoLogo,
+  Hover3D,
+  Icon,
+  LinkedinLogo,
+  Separator,
+} from "@dust-tt/sparkle";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
+
+export async function getStaticProps() {
+  return {
+    props: {
+      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+    },
+  };
+}
+
+const Person = ({ handle }: { handle: string }) => {
+  const person = PEOPLE[handle];
+  return (
+    <div className="flex flex-col gap-2 rounded-lg p-2 transition-colors hover:bg-gray-50 sm:flex-row">
+      <img
+        src={person.image}
+        alt={person.name}
+        className="h-12 w-12 rounded-xl sm:mt-1 sm:h-10 sm:w-10"
+      />
+      <div className="flex flex-col gap-1">
+        <div className="copy-base text-foreground">
+          <strong>{person.name}</strong>
+        </div>
+        <div className="copy-sm text-muted-foreground">{person.title}</div>
+        <div className="flex flex-row gap-2 pt-1">
+          {person.linkedIn && (
+            <a href={person.linkedIn} target="_blank">
+              <Icon
+                size="xs"
+                visual={LinkedinLogo}
+                className="text-muted-foreground hover:text-foreground"
+              />
+            </a>
+          )}
+          {person.github && (
+            <a href={person.github} target="_blank">
+              <Icon
+                size="xs"
+                visual={GithubMonoLogo}
+                className="text-muted-foreground hover:text-foreground"
+              />
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const INVESTORS: { name: string; title: string }[] = [
+  { name: "Konstantine Buhler", title: "Partner, Sequoia Capital" },
+  { name: "Nat Friedman", title: "AI Grant" },
+  { name: "Ross Fubini", title: "Partner, XYZ Ventures" },
+  { name: "Pietro Bezza", title: "Partner, Connect Ventures" },
+  { name: "Olivier Pomel", title: "CEO, Datadog" },
+  { name: "Charles Gorintin", title: "CTO, Alan" },
+  { name: "Matthieu Rouif", title: "CEO, Photoroom" },
+  { name: "Eléonore Crespo", title: "CEO, Pigment" },
+  { name: "Mathilde Colin", title: "CEO, Front" },
+  { name: "Howie Liu", title: "CEO, Airtable" },
+  { name: "Julien Chaumond", title: "CTO, HuggingFace" },
+  { name: "Igor Babuschkin", title: "AI researcher" },
+];
+
+const Investor = ({ name, title }: { name: string; title: string }) => {
+  return (
+    <div className="flex flex-col gap-0">
+      <div className="copy-base text-foreground">
+        <strong>{name}</strong>
+      </div>
+      <div className="copy-sm text-muted-foreground">{title}</div>
+    </div>
+  );
+};
+
+const VideoPlayer = () => {
+  return (
+    <div className="relative w-full rounded-2xl pt-[56.20%]">
+      {" "}
+      {/* 16:9 aspect ratio */}
+      <iframe
+        src="https://fast.wistia.net/embed/iframe/5rngajfoj9?seo=true&videoFoam=true&autoPlay=true"
+        title="Dust product tour"
+        allow="autoplay; fullscreen"
+        frameBorder="0"
+        className="absolute inset-0 h-full w-full overflow-hidden rounded-2xl"
+      ></iframe>
+    </div>
+  );
+};
+
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+export default function About() {
+  const router = useRouter();
+
+  return (
+    <>
+      <PageMetadata
+        title="About Dust: Our Mission to Transform How Work Gets Done"
+        description="Dust is building the AI operating system for the enterprise. Meet our team, learn our operating principles, and discover our vision for AI-driven companies."
+        pathname={router.asPath}
+      />
+      <div className="container flex w-full flex-col gap-16 px-6 pb-24 md:gap-24">
+        <div
+          className={classNames("flex w-full flex-col justify-end gap-4 pt-24")}
+        >
+          <H3 className="text-center text-muted-foreground">About us</H3>
+          <div className="flex flex-row justify-center">
+            <H1
+              mono
+              className="max-w-2xl text-center text-5xl font-medium md:text-6xl lg:text-7xl"
+            >
+              Our mission is to transform how work gets done
+            </H1>
+          </div>
+          <div className="flex flex-row justify-center pt-4">
+            <div className="max-w-4xl">
+              <Hover3D depth={-20} perspective={1000} className="relative">
+                <Div3D depth={-10} className="absolute top-0">
+                  <img src="/static/landing/about/2.png" />
+                </Div3D>
+                <Div3D depth={40}>
+                  <img src="/static/landing/about/1.png" />
+                </Div3D>
+                <Div3D depth={70} className="absolute top-0">
+                  <img src="/static/landing/about/3.png" />
+                </Div3D>
+              </Hover3D>
+            </div>
+          </div>
+        </div>
+
+        <Grid>
+          <div
+            className={classNames(
+              "flex flex-col gap-8 xl:flex-row xl:items-start",
+              "col-span-12 col-start-1 md:col-span-10 md:col-start-2"
+            )}
+          >
+            <div className="flex w-full flex-row xl:max-w-lg">
+              <H2>We're crafting the AI operating system for the enterprise</H2>
+            </div>
+            <div className="flex w-full flex-col gap-2 xl:max-w-xl">
+              <P>
+                We're building Dust to serve as the operating system for
+                AI-driven companies.
+              </P>
+              <P>
+                Like Windows provided universal UI primitives that made
+                applications more productive, we provide universal AI primitives
+                that make enterprise workflows more intelligent.
+              </P>
+              <P>
+                Our infrastructure connects models to company data, turning raw
+                AI capabilities into agents that do real work. Success isn't
+                about training bigger models - it's about connecting them to how
+                work actually happens. When we're done, work won't be the same.
+              </P>
+            </div>
+          </div>
+        </Grid>
+
+        <Grid>
+          <Separator className="col-span-10 col-start-2" />
+        </Grid>
+
+        <Grid>
+          <div
+            className={classNames(
+              "flex flex-col items-start gap-6",
+              "col-span-12 col-start-1 md:col-span-10 md:col-start-2"
+            )}
+          >
+            <H2>Our operating principles</H2>
+            <div className="flex w-full flex-col gap-2">
+              <P>
+                Our{" "}
+                <Link
+                  className="underline"
+                  href="https://docs.google.com/document/d/1YIRfpUvh8hHzt-TnvAn1qHnz_F65b-OC8o_1b1kg8IU/edit?usp=sharing"
+                  target="_blank"
+                >
+                  operating principles
+                </Link>{" "}
+                are philosophical razors that we use daily.
+              </P>
+            </div>
+            <div className="flex flex-col">
+              <P>
+                <Strong>We have ambition and we're optimistic.</Strong> When
+                we're done, work won't be the same. Think R2D2, not Skynet.
+              </P>
+              <P>
+                <Strong>We move fast.</Strong> See it, say it, solve it. We edit
+                the company, default to action and bend the arc of our industry.
+              </P>
+              <P>
+                <Strong>We operate with greatness.</Strong> We put users first.
+                We apply 80/20 except when 20/80 is crucial.
+              </P>
+              <P>
+                <Strong>We act as one team.</Strong> High-trust, high-energy,
+                low-ego. We build serious things without taking ourselves too
+                seriously.
+              </P>
+            </div>
+            <div className="flex flex-col">
+              <P>
+                These principles guide our decisions and actions. If they
+                resonate with you, we'd love to hear from you.
+              </P>
+            </div>
+
+            <div className="pt-4">
+              <Link href="/jobs" shallow={true}>
+                <Button
+                  variant="highlight"
+                  size="md"
+                  label="We're hiring"
+                  icon={ArrowRight}
+                />
+              </Link>
+            </div>
+          </div>
+        </Grid>
+
+        <Grid>
+          <div
+            className={classNames(
+              "flex flex-col items-start gap-6",
+              "col-span-12 col-start-1 md:col-span-10 md:col-start-2"
+            )}
+          >
+            <VideoPlayer />
+          </div>
+        </Grid>
+
+        <Grid>
+          <div className="col-span-12 col-start-1 md:col-span-10 md:col-start-2">
+            <div className="grid grid-cols-2 justify-items-center gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {Object.keys(PEOPLE).map((handle) => (
+                <div key={handle} className="w-full">
+                  <Person handle={handle} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </Grid>
+
+        <Grid>
+          <Separator className="col-span-12 col-start-1 md:col-span-10 md:col-start-2" />
+        </Grid>
+
+        <div className="flex flex-col gap-8">
+          <Grid>
+            <div
+              className={classNames(
+                "flex flex-col items-start gap-6",
+                "col-span-12 col-start-1 md:col-span-10 md:col-start-2"
+              )}
+            >
+              <H2>Built for enterprise, backed by experts</H2>
+              <div className="flex w-full flex-col gap-2">
+                <P>
+                  We're backed by investors who've built and scaled enterprise
+                  infrastructure. Our investors include leading venture firms
+                  and founders who understand what it takes to transform how
+                  companies operate.
+                </P>
+              </div>
+            </div>
+          </Grid>
+
+          <Grid>
+            <div className="col-span-12 col-start-1 grid grid-cols-10 gap-x-2 gap-y-8 md:col-span-10 md:col-start-2">
+              {INVESTORS.map((investor) => (
+                <div
+                  key={investor.name}
+                  className={classNames(
+                    "col-span-5 md:col-span-3 xl:col-span-2"
+                  )}
+                >
+                  <Investor name={investor.name} title={investor.title} />
+                </div>
+              ))}
+            </div>
+          </Grid>
+        </div>
+      </div>
+    </>
+  );
+}
+
+About.getLayout = (page: ReactElement, pageProps: LandingLayoutProps) => {
+  return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
+};
