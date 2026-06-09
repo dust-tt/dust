@@ -11,7 +11,6 @@ export { SKILL_NODE_TYPE };
 
 interface SkillNodeOptions {
   onSkillDetails?: (skillId: string) => void;
-  removable?: boolean;
 }
 
 // Interactive variant of SkillNode that adds the React node view. The
@@ -22,7 +21,6 @@ export const SkillNode = SkillNodeBase.extend<SkillNodeOptions>({
     return {
       ...this.parent?.(),
       onSkillDetails: undefined,
-      removable: false,
     };
   },
 
@@ -33,11 +31,7 @@ export const SkillNode = SkillNodeBase.extend<SkillNodeOptions>({
           attrs: props.node.attrs,
         }}
         onDetails={this.options.onSkillDetails}
-        onRemove={
-          this.options.removable && props.editor.isEditable
-            ? props.deleteNode
-            : undefined
-        }
+        onRemove={props.editor.isEditable ? props.deleteNode : undefined}
       />
     ));
   },
