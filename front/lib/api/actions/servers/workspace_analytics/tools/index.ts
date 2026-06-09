@@ -4,6 +4,7 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { workspaceAdminGuard } from "@app/lib/actions/mcp_internal_actions/utils";
 import { WORKSPACE_ANALYTICS_TOOLS_METADATA } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
 import { resolveTimeWindow } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { fetchTopAgents } from "@app/lib/api/assistant/observability/top_agents";
 import { fetchTopUsers } from "@app/lib/api/assistant/observability/top_users";
 import { Err, Ok } from "@app/types/shared/result";
@@ -119,6 +120,48 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
         text:
           `Top users for ${label} (${tz}), most active first:\n` +
           lines.join("\n"),
+      },
+    ]);
+  },
+
+  get_agent_details: async ({ agentId }, { auth }) => {
+    const denied = workspaceAdminGuard(auth);
+    if (denied) {
+      return new Err(denied);
+    }
+
+    const agents = await getAgentConfigurations(auth, {
+      agentIds: [agentId],
+      variant: "full",
+    });
+    const agent = agents[0];
+
+    if (!agent) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text:
+            `No agent found with id ${agentId} (it may be archived or not ` +
+            "accessible).",
+        },
+      ]);
+    }
+
+    const toolNames = agent.actions.map((action) => action.name).join(", ");
+    const skillNames = (agent.skills ?? []).join(", ");
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text:
+          `Agent ${agent.name} [${agent.sId}]\n` +
+          `- Description: ${agent.description}\n` +
+          `- Scope: ${agent.scope}\n` +
+          `- Model: ${agent.model.providerId}/${agent.model.modelId}\n` +
+          `- Skills: ${skillNames || "none"}\n` +
+          `- Tools: ${toolNames || "none"}\n\n` +
+          "Instructions (full system prompt):\n" +
+          `${agent.instructions ?? "(no instructions)"}`,
       },
     ]);
   },

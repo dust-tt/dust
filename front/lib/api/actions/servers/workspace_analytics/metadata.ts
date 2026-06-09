@@ -32,6 +32,14 @@ const getTopUsersSchema = {
     .describe("Maximum number of users to return (default 25, max 100)."),
 };
 
+const getAgentDetailsSchema = {
+  agentId: z
+    .string()
+    .describe(
+      "The agent's id (sId), as returned by get_top_agents or other tools."
+    ),
+};
+
 export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
   get_top_agents: {
     description:
@@ -59,6 +67,20 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Retrieving top users",
       done: "Retrieved top users",
+    },
+  },
+  get_agent_details: {
+    description:
+      "Return an agent's full configuration: name, description, scope, model, " +
+      "equipped skills and tools, and its complete instructions (system " +
+      "prompt). Use this after a usage tool to explain what a heavily-used " +
+      "agent actually does. Takes the agent id returned by other tools. " +
+      "Admin-only.",
+    schema: getAgentDetailsSchema,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving agent details",
+      done: "Retrieved agent details",
     },
   },
 });
