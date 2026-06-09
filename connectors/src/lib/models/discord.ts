@@ -1,7 +1,7 @@
 import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes } from "@connectors/resources/storage/data_types";
 
 export class DiscordConfigurationModel extends ConnectorBaseModel<DiscordConfigurationModel> {
   declare createdAt: CreationOptional<Date>;

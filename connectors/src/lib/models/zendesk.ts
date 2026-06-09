@@ -1,7 +1,7 @@
 import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@connectors/resources/storage/data_types";
 
 function throwOnUnsafeInteger(value: number | null) {
   if (value !== null && !Number.isSafeInteger(value)) {
@@ -167,7 +167,7 @@ ZendeskBrandModel.init(
       allowNull: false,
     },
     url: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     subdomain: {
@@ -239,15 +239,15 @@ ZendeskCategoryModel.init(
       validate: { throwOnUnsafeInteger },
     },
     name: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     description: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     url: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     permission: {
@@ -320,11 +320,11 @@ ZendeskArticleModel.init(
       validate: { throwOnUnsafeInteger },
     },
     name: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     url: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     permission: {
@@ -386,11 +386,11 @@ ZendeskTicketModel.init(
       defaultValue: DataTypes.NOW,
     },
     url: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     subject: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     ticketId: {

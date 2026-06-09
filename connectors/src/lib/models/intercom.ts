@@ -2,7 +2,7 @@ import type { IntercomSyncAllConversationsStatus } from "@connectors/connectors/
 import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@connectors/resources/storage/data_types";
 
 export const DEFAULT_CONVERSATIONS_SLIDING_WINDOW = 180;
 
@@ -194,7 +194,7 @@ IntercomCollectionModel.init(
       allowNull: false,
     },
     description: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     url: {

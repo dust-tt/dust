@@ -3,7 +3,7 @@ import { connectorsSequelize } from "@connectors/resources/storage";
 import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@connectors/resources/storage/data_types";
 
 export class GoogleDriveConfigModel extends ConnectorBaseModel<GoogleDriveConfigModel> {
   declare createdAt: CreationOptional<Date>;
@@ -127,7 +127,7 @@ GoogleDriveFilesModel.init(
       allowNull: false,
     },
     name: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
       defaultValue: "",
     },
@@ -181,11 +181,11 @@ GoogleDriveSheetModel.init(
       allowNull: false,
     },
     name: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     notUpsertedReason: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
   },

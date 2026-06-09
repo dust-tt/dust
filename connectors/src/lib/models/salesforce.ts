@@ -1,7 +1,7 @@
 import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@connectors/resources/storage/data_types";
 
 export class SalesforceConfigurationModel extends ConnectorBaseModel<SalesforceConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -52,23 +52,23 @@ SalesforceSyncedQueryModel.init(
       defaultValue: DataTypes.NOW,
     },
     rootNodeName: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     soql: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     titleTemplate: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     contentTemplate: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     tagsTemplate: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     lastSeenModifiedDate: {

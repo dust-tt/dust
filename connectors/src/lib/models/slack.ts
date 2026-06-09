@@ -6,7 +6,7 @@ import type {
   SlackbotWhitelistType,
 } from "@connectors/types";
 import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@connectors/resources/storage/data_types";
 
 export class SlackConfigurationModel extends ConnectorBaseModel<SlackConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -239,7 +239,7 @@ SlackChatBotMessageModel.init(
       allowNull: true,
     },
     message: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     slackUserId: {

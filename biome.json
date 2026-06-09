@@ -168,7 +168,8 @@
         "front/lib/models/**/*.ts",
         "front/lib/resources/storage/models/**/*.ts",
         "front/lib/resources/storage/wrappers/**/*.ts",
-        "!front/lib/resources/storage/data_types.ts"
+        "!front/lib/resources/storage/data_types.ts",
+        "!connectors/src/resources/storage/data_types.ts"
       ],
       "plugins": [
         "./.grit/patterns/tooLongIndexName.grit",
