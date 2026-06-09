@@ -2,6 +2,7 @@ import { createHono } from "@front-api/lib/hono";
 
 import { cors } from "./middlewares/cors";
 import { requestLogger } from "./middlewares/request_logger";
+import { spaRedirect } from "./middlewares/spa_redirect";
 import { unhandledErrorHandler } from "./middlewares/utils";
 import preStopApp from "./routes/[preStopSecret]";
 import { appStatusApp } from "./routes/app-status";
@@ -86,6 +87,7 @@ apiApp.route("/:preStopSecret", preStopApp);
 export const honoApp = createHono();
 honoApp.use("*", requestLogger);
 honoApp.use("*", cors);
+honoApp.use("*", spaRedirect);
 
 // Dust as MCP Server — inbound from remote clients (Inspector, Cursor, etc.).
 // Mounted at root level so /.well-known/* and /mcp are not under /api/.
