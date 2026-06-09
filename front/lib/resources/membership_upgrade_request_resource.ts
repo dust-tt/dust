@@ -156,10 +156,10 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
 
   static async fetchById(
     auth: Authenticator,
-    requestId: string
+    membershipUpgradeRequestId: string
   ): Promise<MembershipUpgradeRequestResource | null> {
     const workspace = auth.getNonNullableWorkspace();
-    const id = getResourceIdFromSId(requestId);
+    const id = getResourceIdFromSId(membershipUpgradeRequestId);
     if (!id) {
       return null;
     }
