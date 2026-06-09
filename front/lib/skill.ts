@@ -84,13 +84,13 @@ export function getSkillAvatarIcon(
         {
           className: cn(
             "pointer-events-none absolute bottom-0 right-0",
-            "flex h-2 w-2 items-center justify-center rounded-[2px]",
+            "flex h-2.5 w-2.5 items-center justify-center rounded-[2px]",
             "bg-background shadow-sm ring-1 ring-border",
             "dark:bg-background-night dark:ring-border-night"
           ),
         },
         React.createElement(DustLogoSquare, {
-          className: "h-1.5 w-1.5",
+          className: "h-2 w-2",
         })
       )
     );
