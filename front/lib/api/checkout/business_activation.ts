@@ -403,6 +403,7 @@ export async function handleSubscriptionActivationSuccess({
         const { creditTypeId, currency } = creditTypeResult.value;
         const creditResult = await createCouponCredit({
           metronomeCustomerId: workspace.metronomeCustomerId!,
+          metronomeContractId: contractId,
           coupon,
           redemptionId: redemption.sId,
           redeemedAt: redemption.redeemedAt,
