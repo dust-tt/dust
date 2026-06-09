@@ -92,9 +92,11 @@ export async function getMCPConnectionAccessToken(
   auth: Authenticator,
   {
     connectionId,
+    forceRefresh = false,
     localLogger = logger,
   }: {
     connectionId: string;
+    forceRefresh?: boolean;
     localLogger?: LoggerInterface;
   }
 ): Promise<
@@ -114,5 +116,6 @@ export async function getMCPConnectionAccessToken(
     config: apiConfig.getOAuthAPIConfig(),
     logger: localLogger,
     connectionId,
+    forceRefresh,
   });
 }

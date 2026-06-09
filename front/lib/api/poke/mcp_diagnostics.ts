@@ -1,3 +1,4 @@
+import url from "node:url";
 import {
   getMCPServerAdminAuthenticationReason,
   MCPServerPersonalAuthenticationRequiredError,
@@ -14,6 +15,7 @@ import {
   fetchRemoteServerMetaDataByServerId,
 } from "@app/lib/actions/mcp_metadata";
 import { getMCPConnectionAccessToken } from "@app/lib/actions/mcp_oauth_access_token";
+import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import config from "@app/lib/api/config";
 import {
@@ -22,6 +24,7 @@ import {
   type MCPDiagnosticSummary,
 } from "@app/lib/api/poke/mcp_diagnostics_types";
 import { Authenticator } from "@app/lib/auth";
+import { toGlobalResponse, untrustedFetch } from "@app/lib/egress/server";
 import { DustError } from "@app/lib/error";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
@@ -31,7 +34,19 @@ import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { OAuthAPIError } from "@app/types/oauth/oauth_api";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import {
+  discoverAuthorizationServerMetadata,
+  discoverOAuthProtectedResourceMetadata,
+  selectResourceURL,
+} from "@modelcontextprotocol/sdk/client/auth.js";
+import type {
+  AuthorizationServerMetadata,
+  OAuthProtectedResourceMetadata,
+} from "@modelcontextprotocol/sdk/shared/auth.js";
+import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
 import { z } from "zod";
 
 const MCPDiagnosticCheckNameSchema = z.enum(MCP_DIAGNOSTIC_CHECK_NAMES);
@@ -40,6 +55,8 @@ const DEFAULT_CHECKS: MCPDiagnosticCheckName[] = [
   "connection_inventory",
   "oauth_metadata",
   "oauth_token_fetch",
+  "oauth_force_refresh",
+  "oauth_discovery",
   "connect_list_tools",
   "sync_simulation",
 ];
@@ -60,7 +77,10 @@ type DiagnosticCheckResult = {
   details?: Record<string, unknown>;
 };
 
-type OAuthDiagnosticCheckName = "oauth_metadata" | "oauth_token_fetch";
+type OAuthDiagnosticCheckName =
+  | "oauth_metadata"
+  | "oauth_token_fetch"
+  | "oauth_force_refresh";
 
 export function createOAuthCheckSkippedNoUseCase(
   check: OAuthDiagnosticCheckName
@@ -339,38 +359,229 @@ async function runOAuthMetadataCheck(
 async function runOAuthTokenFetchCheck(
   auth: Authenticator,
   connectionId: string,
-  connectionType: MCPServerConnectionConnectionType
+  connectionType: MCPServerConnectionConnectionType,
+  {
+    forceRefresh = false,
+    check = "oauth_token_fetch",
+  }: {
+    forceRefresh?: boolean;
+    check?: "oauth_token_fetch" | "oauth_force_refresh";
+  } = {}
 ): Promise<DiagnosticCheckResult> {
   const startedAt = Date.now();
 
   const tokenRes = await getMCPConnectionAccessToken(auth, {
     connectionId,
+    forceRefresh,
     localLogger: logger,
   });
   const duration_ms = Date.now() - startedAt;
 
   if (tokenRes.isErr()) {
     return {
-      check: "oauth_token_fetch",
+      check,
       status: "error",
       duration_ms,
       connection_type: connectionType,
       error: serializeOAuthError(tokenRes.error),
+      details: forceRefresh ? { force_refresh: true } : undefined,
     };
   }
 
   const { access_token_expiry, scrubbed_raw_json } = tokenRes.value;
 
   return {
-    check: "oauth_token_fetch",
+    check,
     status: "ok",
     duration_ms,
     connection_type: connectionType,
     details: {
+      force_refresh: forceRefresh,
       token_length: tokenRes.value.access_token.length,
       expiry: expiryDiagnostics(access_token_expiry),
       has_scrubbed_refresh_token_hint: hasRefreshTokenHint(scrubbed_raw_json),
       scrubbed_raw_json,
+    },
+  };
+}
+
+function createMCPDiscoveryFetchFn(
+  customHeaders?: Record<string, string>
+): FetchLike {
+  return async (input, init?) => {
+    // @ts-expect-error - globalThis.RequestInit and undici.RequestInit are structurally
+    // compatible at runtime.
+    const response = await untrustedFetch(String(input), {
+      ...init,
+      headers: {
+        ...init?.headers,
+        ...customHeaders,
+      },
+    });
+    return toGlobalResponse(response);
+  };
+}
+
+/** Probe-only OAuth discovery for remote MCP servers (no dynamic client registration). */
+async function probeOAuthDiscovery({
+  serverUrl,
+  customHeaders,
+}: {
+  serverUrl: string;
+  customHeaders?: Record<string, string>;
+}): Promise<
+  Result<
+    {
+      server_url: string;
+      auth_server_url: string;
+      resource_url: string | null;
+      authorization_endpoint: string;
+      token_endpoint: string;
+      registration_endpoint: string | null;
+      token_endpoint_auth_methods_supported: string[] | null;
+      scopes_supported: string[] | null;
+      resource_metadata_authorization_servers: string[] | null;
+    },
+    DustError<"internal_error">
+  >
+> {
+  const fetchFn = createMCPDiscoveryFetchFn(customHeaders);
+
+  let authServerUrl = new URL("/", serverUrl);
+  let resourceMetadata: OAuthProtectedResourceMetadata | null = null;
+  try {
+    resourceMetadata = await discoverOAuthProtectedResourceMetadata(
+      serverUrl,
+      undefined,
+      fetchFn
+    );
+    if (resourceMetadata?.authorization_servers?.length) {
+      authServerUrl = new URL(resourceMetadata.authorization_servers[0]);
+    }
+  } catch (e) {
+    logger.info(
+      { error: e },
+      "Failed to discover OAuth protected resource metadata, continuing anyway"
+    );
+  }
+
+  let resource: URL | undefined;
+  try {
+    resource = await selectResourceURL(
+      serverUrl,
+      new MCPOAuthProvider(),
+      resourceMetadata ?? undefined
+    );
+  } catch (e) {
+    const error = normalizeError(e);
+    logger.info(
+      { error, serverUrl },
+      "Failed to select OAuth protected resource URL"
+    );
+    return new Err(
+      new DustError(
+        "internal_error",
+        `Failed to discover OAuth metadata for ${serverUrl}: ${error.message}`
+      )
+    );
+  }
+
+  let metadata: AuthorizationServerMetadata | undefined;
+  try {
+    metadata = await discoverAuthorizationServerMetadata(authServerUrl, {
+      fetchFn,
+    });
+    if (!metadata) {
+      return new Err(
+        new DustError("internal_error", "Failed to discover OAuth metadata")
+      );
+    }
+  } catch (e) {
+    logger.info(
+      { error: e, serverUrl },
+      "Failed to discover authorization server metadata"
+    );
+    return new Err(
+      new DustError("internal_error", "Failed to discover OAuth metadata")
+    );
+  }
+
+  const scopesSupported =
+    resourceMetadata?.scopes_supported ?? metadata.scopes_supported ?? null;
+
+  return new Ok({
+    server_url: serverUrl,
+    auth_server_url: authServerUrl.toString(),
+    resource_url: resource ? url.format(resource, { fragment: false }) : null,
+    authorization_endpoint: metadata.authorization_endpoint,
+    token_endpoint: metadata.token_endpoint,
+    registration_endpoint: metadata.registration_endpoint ?? null,
+    token_endpoint_auth_methods_supported:
+      metadata.token_endpoint_auth_methods_supported ?? null,
+    scopes_supported: scopesSupported,
+    resource_metadata_authorization_servers:
+      resourceMetadata?.authorization_servers ?? null,
+  });
+}
+
+async function runOAuthDiscoveryCheck(
+  auth: Authenticator,
+  mcpServerId: string
+): Promise<DiagnosticCheckResult> {
+  const startedAt = Date.now();
+
+  if (!isRemoteMCPServer(mcpServerId)) {
+    return {
+      check: "oauth_discovery",
+      status: "skipped",
+      message: "OAuth discovery probe only applies to remote MCP servers.",
+      details: { reason: "internal_server" },
+    };
+  }
+
+  const remoteServer = await RemoteMCPServerResource.fetchById(
+    auth,
+    mcpServerId
+  );
+
+  if (!remoteServer?.url) {
+    return {
+      check: "oauth_discovery",
+      status: "error",
+      duration_ms: Date.now() - startedAt,
+      error: {
+        layer: "dust",
+        message: "Remote MCP server has no URL configured.",
+      },
+    };
+  }
+
+  const discoveryRes = await probeOAuthDiscovery({
+    serverUrl: remoteServer.url,
+    customHeaders: remoteServer.customHeaders ?? undefined,
+  });
+  const duration_ms = Date.now() - startedAt;
+
+  if (discoveryRes.isErr()) {
+    return {
+      check: "oauth_discovery",
+      status: "error",
+      duration_ms,
+      error: {
+        layer: "dust",
+        code: discoveryRes.error.code,
+        message: discoveryRes.error.message,
+      },
+    };
+  }
+
+  return {
+    check: "oauth_discovery",
+    status: "ok",
+    duration_ms,
+    details: {
+      ...discoveryRes.value,
+      note: "Probe-only: no dynamic client registration (DCR) was performed.",
     },
   };
 }
@@ -523,7 +734,9 @@ export function deriveDiagnosticSummary(
 
   const inventory = checks.find((c) => c.check === "connection_inventory");
   const sync = checks.find((c) => c.check === "sync_simulation");
-  const tokenFetch = checks.find((c) => c.check === "oauth_token_fetch");
+  const tokenFetch = checks.find(
+    (c) => c.check === "oauth_token_fetch" || c.check === "oauth_force_refresh"
+  );
 
   if (
     inventory?.status === "warn" ||
@@ -542,13 +755,16 @@ export function deriveDiagnosticSummary(
       typeof tokenFetch.error?.code === "string"
         ? tokenFetch.error.code
         : "unknown";
+    const forceRefresh = tokenFetch.check === "oauth_force_refresh";
     return {
       overall: "failed",
       primary_issue: "oauth_token_refresh_failure",
       recommended_action:
         code === "token_revoked"
           ? "Reconnect the OAuth connection — the refresh token is revoked or expired."
-          : "Inspect OAuth refresh logs in core for this connectionId (provider error, timeout, or missing refresh_token in provider response).",
+          : forceRefresh
+            ? "Force refresh failed — inspect OAuth refresh logs in core for this connectionId (provider error, timeout, or missing refresh_token in provider response)."
+            : "Inspect OAuth refresh logs in core for this connectionId (provider error, timeout, or missing refresh_token in provider response). Run oauth_force_refresh to bypass the front cache and force a refresh.",
     };
   }
 
@@ -724,8 +940,15 @@ export async function runMCPDiagnostics(
       continue;
     }
 
+    if (checkName === "oauth_discovery") {
+      results.push(await runOAuthDiscoveryCheck(auth, mcpServerId));
+      continue;
+    }
+
     if (
-      (checkName === "oauth_metadata" || checkName === "oauth_token_fetch") &&
+      (checkName === "oauth_metadata" ||
+        checkName === "oauth_token_fetch" ||
+        checkName === "oauth_force_refresh") &&
       oAuthUseCase === null
     ) {
       results.push(createOAuthCheckSkippedNoUseCase(checkName));
@@ -737,6 +960,7 @@ export async function runMCPDiagnostics(
         if (
           checkName === "oauth_metadata" ||
           checkName === "oauth_token_fetch" ||
+          checkName === "oauth_force_refresh" ||
           checkName === "connect_list_tools"
         ) {
           results.push({
@@ -757,7 +981,11 @@ export async function runMCPDiagnostics(
         userId
       );
 
-      if (checkName === "oauth_metadata" || checkName === "oauth_token_fetch") {
+      if (
+        checkName === "oauth_metadata" ||
+        checkName === "oauth_token_fetch" ||
+        checkName === "oauth_force_refresh"
+      ) {
         const connectionRes = await MCPServerConnectionResource.findByMCPServer(
           checkAuth,
           {
@@ -811,7 +1039,10 @@ export async function runMCPDiagnostics(
           );
         } else {
           results.push(
-            await runOAuthTokenFetchCheck(checkAuth, connectionId, connType)
+            await runOAuthTokenFetchCheck(checkAuth, connectionId, connType, {
+              forceRefresh: checkName === "oauth_force_refresh",
+              check: checkName,
+            })
           );
         }
         continue;

@@ -6,6 +6,8 @@ export const MCP_DIAGNOSTIC_CHECK_NAMES = [
   "connection_inventory",
   "oauth_metadata",
   "oauth_token_fetch",
+  "oauth_force_refresh",
+  "oauth_discovery",
   "connect_list_tools",
   "sync_simulation",
 ] as const;

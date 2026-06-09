@@ -127,6 +127,25 @@ describe("deriveDiagnosticSummary", () => {
       primary_issue: "oauth_token_refresh_failure",
     });
   });
+
+  it("detects oauth force refresh failure", () => {
+    expect(
+      deriveDiagnosticSummary(
+        [
+          {
+            check: "oauth_force_refresh",
+            status: "error",
+            error: { code: "internal_error" },
+          },
+        ],
+        "platform_actions"
+      )
+    ).toMatchObject({
+      overall: "failed",
+      primary_issue: "oauth_token_refresh_failure",
+      recommended_action: expect.stringContaining("Force refresh failed"),
+    });
+  });
 });
 
 describe("parseMCPDiagnosticReport", () => {

@@ -13,17 +13,54 @@ import {
 import type { PluginResourceTarget } from "@app/types/poke/plugins";
 import {
   Button,
+  Clipboard,
+  ClipboardCheck,
   cn,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  IconButton,
   Markdown,
   Spinner,
+  useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { AlertCircle } from "lucide-react";
 import { useCallback, useState } from "react";
+
+function pluginResponseToCopyText(result: PluginResponse): string {
+  switch (result.display) {
+    case "json":
+      return JSON.stringify(result.value, null, 2);
+    case "markdown":
+    case "text":
+      return result.value;
+    case "textWithLink":
+      return `${result.value}\n${result.linkText}: ${result.link}`;
+  }
+}
+
+function PluginResultHeader({
+  isCopied,
+  onCopy,
+}: {
+  isCopied: boolean;
+  onCopy: () => void;
+}) {
+  return (
+    <div className="mb-2 flex items-center justify-between">
+      <div className="font-medium">Result:</div>
+      <IconButton
+        tooltip={isCopied ? "Copied!" : "Copy result"}
+        icon={isCopied ? ClipboardCheck : Clipboard}
+        size="xs"
+        variant="outline"
+        onClick={onCopy}
+      />
+    </div>
+  );
+}
 
 type ExecutePluginDialogProps = {
   onClose: () => void;
@@ -59,6 +96,14 @@ export function RunPluginDialog({
     pluginId: plugin.id,
     pluginResourceTarget,
   });
+
+  const [isCopied, copyToClipboard] = useCopyToClipboard();
+
+  const handleCopyResult = useCallback(() => {
+    if (result) {
+      void copyToClipboard(pluginResponseToCopyText(result));
+    }
+  }, [copyToClipboard, result]);
 
   const handleClose = () => {
     setError(null);
@@ -140,7 +185,10 @@ export function RunPluginDialog({
               )}
               {result && result.display === "json" && (
                 <div className="mb-4 mt-4">
-                  <div className="mb-2 font-medium">Result:</div>
+                  <PluginResultHeader
+                    isCopied={isCopied}
+                    onCopy={handleCopyResult}
+                  />
                   <div className="max-h-[400px] overflow-auto rounded-lg bg-gray-800 p-4">
                     <pre className="copy-sm whitespace-pre-wrap break-words font-mono text-gray-200">
                       {JSON.stringify(result.value, null, 2)}
@@ -150,7 +198,10 @@ export function RunPluginDialog({
               )}
               {result && result.display === "markdown" && (
                 <div className="mb-4 mt-4">
-                  <div className="mb-2 font-medium">Result:</div>
+                  <PluginResultHeader
+                    isCopied={isCopied}
+                    onCopy={handleCopyResult}
+                  />
                   <div className="max-h-[400px] overflow-auto rounded-lg bg-gray-800 p-4">
                     <Markdown
                       content={result.value}
