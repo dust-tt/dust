@@ -11,6 +11,7 @@ import {
   Building04,
   CreditCard01,
   File04,
+  Fingerprint04,
   FolderOpen,
   Globe01,
   IntersectDust,
@@ -21,7 +22,7 @@ import {
   Shapes,
   Stars02,
   Terminal,
-  User01,
+  Users01,
   Zap,
 } from "@dust-tt/sparkle";
 
@@ -82,6 +83,7 @@ export type SubNavigationAdminId =
   | "workspace"
   | "model_providers"
   | "members"
+  | "identity_and_provisioning"
   | "providers"
   | "api_keys"
   | "dev_secrets"
@@ -93,6 +95,7 @@ export type SubNavigationAdminId =
 
 export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   members: ["/w/[wId]/members"],
+  identity_and_provisioning: ["/w/[wId]/identity-and-provisioning"],
   workspace: ["/w/[wId]/workspace"],
   model_providers: ["/w/[wId]/model-providers"],
   analytics: ["/w/[wId]/analytics"],
@@ -201,6 +204,7 @@ export const getTopNavigationTabs = (
       isCurrent: (currentRoute) =>
         matchesRoutePattern(currentRoute, [
           "/w/[wId]/members",
+          "/w/[wId]/identity-and-provisioning",
           "/w/[wId]/workspace",
           "/w/[wId]/model-providers",
           "/w/[wId]/subscription",
@@ -249,10 +253,17 @@ export const subNavigationAdmin = ({
       menus: [
         {
           id: "members",
-          label: "People & Security",
-          icon: User01,
+          label: "People",
+          icon: Users01,
           href: `/w/${owner.sId}/members`,
           current: isCurrent("members"),
+        },
+        {
+          id: "identity_and_provisioning",
+          label: "Identity & Provisioning",
+          icon: Fingerprint04,
+          href: `/w/${owner.sId}/identity-and-provisioning`,
+          current: isCurrent("identity_and_provisioning"),
         },
         {
           id: "workspace",

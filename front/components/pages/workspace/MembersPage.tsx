@@ -8,8 +8,6 @@ import {
 } from "@app/components/members/MemberSelectionTable";
 import { MembersList } from "@app/components/members/MembersList";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
-import WorkspaceAccessPanel from "@app/components/workspace/WorkspaceAccessPanel";
-import { WorkspaceSection } from "@app/components/workspace/WorkspaceSection";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSearchMembers } from "@app/lib/swr/memberships";
@@ -32,7 +30,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  User01,
+  Users01,
 } from "@dust-tt/sparkle";
 import type { PaginationState } from "@tanstack/react-table";
 import { useCallback, useEffect, useState } from "react";
@@ -206,43 +204,36 @@ export function MembersPage() {
     <div className="mb-4">
       <Page.Vertical gap="lg" align="stretch">
         <Page.Header
-          title="People & Security"
-          icon={User01}
-          description="Verify your domain, manage team members and their permissions."
+          title="People"
+          icon={Users01}
+          description="Manage team members and their roles."
         />
-        <WorkspaceAccessPanel
-          workspaceVerifiedDomains={verifiedDomains}
-          owner={owner}
-          plan={plan}
-        />
-        <WorkspaceSection title="Members" icon={User01}>
-          <div className="flex flex-row gap-2">
-            <SearchInput
-              placeholder={
-                isProvisioningEnabled ? "Search" : "Search members (email)"
-              }
-              value={searchTerm}
-              name="search"
-              onChange={setSearchTerm}
-              className="w-full"
-            />
-            {isManualInvitationsEnabled && (
-              <InviteEmailButtonWithModal
-                owner={owner}
-                prefillText=""
-                perSeatPricing={perSeatPricing}
-                onInviteClick={onInviteClick}
-              />
-            )}
-          </div>
-          <WorkspaceMembersGroupsList
-            currentUser={user}
-            owner={owner}
-            searchTerm={searchTerm}
-            isProvisioningEnabled={isProvisioningEnabled}
-            isManualInvitationsEnabled={isManualInvitationsEnabled}
+        <div className="flex flex-row gap-2">
+          <SearchInput
+            placeholder={
+              isProvisioningEnabled ? "Search" : "Search members (email)"
+            }
+            value={searchTerm}
+            name="search"
+            onChange={setSearchTerm}
+            className="w-full"
           />
-        </WorkspaceSection>
+          {isManualInvitationsEnabled && (
+            <InviteEmailButtonWithModal
+              owner={owner}
+              prefillText=""
+              perSeatPricing={perSeatPricing}
+              onInviteClick={onInviteClick}
+            />
+          )}
+        </div>
+        <WorkspaceMembersGroupsList
+          currentUser={user}
+          owner={owner}
+          searchTerm={searchTerm}
+          isProvisioningEnabled={isProvisioningEnabled}
+          isManualInvitationsEnabled={isManualInvitationsEnabled}
+        />
         {inviteBlockedPopupReason && (
           <ReachedLimitPopup
             isAdmin={isAdmin(owner)}

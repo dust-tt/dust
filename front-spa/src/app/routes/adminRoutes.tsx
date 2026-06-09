@@ -50,6 +50,13 @@ const MembersPage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/MembersPage"),
   "MembersPage"
 );
+const WorkspaceIdentityProvisioningPage = withSuspense(
+  () =>
+    import(
+      "@dust-tt/front/components/pages/workspace/WorkspaceIdentityProvisioningPage.js"
+    ),
+  "WorkspaceIdentityProvisioningPage"
+);
 const ManageSubscriptionPage = withSuspense(
   () =>
     import(
@@ -91,6 +98,10 @@ export const adminRoutes: RouteObject[] = [
     element: <AdminRouterLayout />,
     children: [
       { path: "members", element: <MembersPage /> },
+      {
+        path: "identity-and-provisioning",
+        element: <WorkspaceIdentityProvisioningPage />,
+      },
       { path: "model-providers", element: <ModelProvidersPage /> },
       { path: "workspace", element: <WorkspaceSettingsPage /> },
       { path: "analytics", element: <AnalyticsPage /> },
