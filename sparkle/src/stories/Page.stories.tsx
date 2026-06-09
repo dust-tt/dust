@@ -42,7 +42,7 @@ export const PageSimpleExample = () => {
         action={{ label: "Action", size: "sm" }}
       />
       <Page.Layout direction="horizontal">
-        <div className="s-h-16 s-w-16 s-bg-brand" />
+        <div className="s-h-12 s-w-16 s-bg-brand" />
       </Page.Layout>
     </Page>
   );
