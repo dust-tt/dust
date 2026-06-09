@@ -5,8 +5,23 @@ import { expect } from "storybook/test";
 import { Checkbox, Label } from "../index_with_tw_base";
 
 const meta = {
-  title: "Primitives/Label",
+  title: "Forms & Inputs/Label",
   component: Label,
+  parameters: {
+    docs: {
+      description: {
+        component: `A short caption that names a form control or a piece of content. Associate it with a control via **htmlFor** so that clicking the label focuses the control — which is also better for accessibility. Use **isMuted** for secondary or optional captions.
+
+**When to use**
+- To label inputs, checkboxes, radio items, and other form controls.
+
+**Guidelines**
+- Always set **htmlFor** to the id of the control the label describes.
+- Keep labels short and noun-based ("Workspace name", not a full sentence).
+- Use **isMuted** to de-emphasise optional or helper labels.`,
+      },
+    },
+  },
 } satisfies Meta<typeof Label>;
 
 export default meta;

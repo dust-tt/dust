@@ -27,7 +27,22 @@ import {
 import { ConversationContainer } from "../components/ConversationMessage";
 
 const meta = {
-  title: "Conversation/ConversationMessages",
+  title: "Product/Conversation/ConversationMessages",
+  parameters: {
+    docs: {
+      description: {
+        component: `The building blocks for laying out a chat thread of user and agent messages. Compose each turn from **ConversationMessageContainer** (with \`messageType\` and \`type\` to distinguish user vs. agent), **ConversationMessageAvatar**, **ConversationMessageTitle** (name, timestamp, optional \`infoChip\` and \`completionStatus\`), and **ConversationMessageContent** (which accepts message body plus a \`citations\` array).
+
+**When to use**
+- To render a full conversation between people and agents, including attachments, citations, and action cards.
+
+**Guidelines**
+- Set both \`messageType\` and \`type\` on the container so user and agent messages are styled and aligned correctly.
+- Put **Markdown** in the content for agent text, pass source references through the \`citations\` prop (using **Citation**), and embed **AttachmentChip** or **ActionCardBlock** inline as needed.
+- Use \`completionStatus\` on the title for agent timing/approval states rather than inventing custom labels.`,
+      },
+    },
+  },
 } satisfies Meta;
 
 export default meta;

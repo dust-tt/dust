@@ -6,8 +6,23 @@ import { InteractiveImageGrid } from "@sparkle/components/InteractiveImageGrid";
 import { Citation } from "../index_with_tw_base";
 
 const meta = {
-  title: "Conversation/InteractiveImage",
+  title: "Product/Conversation/InteractiveImage",
   component: Citation,
+  parameters: {
+    docs: {
+      description: {
+        component: `A responsive grid that arranges one or many conversation images into an adaptive layout. Takes an \`images\` array (each with \`imageUrl\`, \`alt\`, \`title\`, optional \`downloadUrl\`, and an \`isLoading\` flag) and adjusts its columns to the container width and image count. Passing \`onClose\` makes images removable (showing an X on hover) instead of downloadable.
+
+**When to use**
+- To display a set of agent-generated or attached images together, including mixed loading and loaded states.
+
+**Guidelines**
+- Provide \`alt\` and \`title\` for every image; set \`isLoading\` for placeholders still being generated.
+- Choose between a download affordance (default, via \`downloadUrl\`) and a remove affordance (\`onClose\`) — they are mutually exclusive per the hover button shown.
+- For a single image with finer control over title position and zoom, use **ImagePreview** directly.`,
+      },
+    },
+  },
 } satisfies Meta<typeof Citation>;
 
 export default meta;

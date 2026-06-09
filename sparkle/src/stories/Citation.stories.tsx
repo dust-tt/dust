@@ -23,8 +23,24 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Conversation/Citation",
+  title: "Product/Conversation/Citation",
   component: Citation,
+  parameters: {
+    docs: {
+      description: {
+        component: `A clickable source reference shown alongside agent answers. **Citation** is a composable surface filled with **CitationIcons** (source logo / favicon via **FaviconIcon**, plus an optional **CitationIndex** for numbered references), **CitationTitle**, and **CitationDescription**; use **CitationImage** for image sources and a **CitationClose** \`action\` to make it dismissable. Wrap citations in **CitationGrid** for a responsive grid or its \`list\` \`variant\`.
+
+**When to use**
+- To attribute an agent's answer to a document, web page, Slack thread, or table.
+- As numbered inline references (via **CitationIndex**) that expand in a **Popover**.
+
+**Guidelines**
+- Always include **CitationIcons** so the source type is recognizable; add a **FaviconIcon** for web sources.
+- Lay out multiple citations with **CitationGrid** rather than ad-hoc flex; use the \`list\` variant for interactive-content references.
+- For a paginated, fixed-size set of link citations, use **PaginatedCitationsGrid**; for plain file attachments, use **AttachmentChip**.`,
+      },
+    },
+  },
 } satisfies Meta<typeof Citation>;
 
 export default meta;

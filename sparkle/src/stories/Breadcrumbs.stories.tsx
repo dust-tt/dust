@@ -4,8 +4,23 @@ import React from "react";
 import { Breadcrumbs, Building04, Folder, Home01 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Components/Breadcrumbs",
+  title: "Navigation/Breadcrumbs",
   component: Breadcrumbs,
+  parameters: {
+    docs: {
+      description: {
+        component: `Displays the user's location within a hierarchy as a trail of clickable segments. Driven by an **items** array, where each item has a \`label\` and optional \`icon\`, \`href\`, or \`onClick\`. Choose a **size** (\`xs\` or \`sm\`); long trails automatically collapse middle segments into an ellipsis menu and truncate overflowing labels.
+
+**When to use**
+- To show and navigate the path to the current page within a nested structure (spaces, folders, data sources).
+
+**Guidelines**
+- Make the last item the current location and leave it without an \`href\` so it renders as non-interactive.
+- Give intermediate items an \`href\` or \`onClick\` so users can jump back up the hierarchy.
+- For switching between sibling views rather than levels of depth, use **Tabs** instead.`,
+      },
+    },
+  },
   argTypes: {
     size: {
       control: "select",

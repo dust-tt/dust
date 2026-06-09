@@ -4,8 +4,23 @@ import React from "react";
 import { Button, SliderToggle } from "../index_with_tw_base";
 
 const meta = {
-  title: "Primitives/SliderToggle",
+  title: "Forms & Inputs/SliderToggle",
   component: SliderToggle,
+  parameters: {
+    docs: {
+      description: {
+        component: `A compact on/off switch for toggling a single setting that takes effect immediately. Reflects state via **selected**, can be **disabled**, and comes in **sm** and **xs** **size**s.
+
+**When to use**
+- For binary settings that apply instantly without a separate save action (e.g. enabling a feature in a settings row).
+
+**Guidelines**
+- Use **selected** as the source of truth and update it from the toggle handler.
+- For an option that is part of a form submitted later, or that needs an inline label and description, prefer **Checkbox**.
+- Pair with **SettingsList.Row** to align toggles with their title and description.`,
+      },
+    },
+  },
 } satisfies Meta<typeof SliderToggle>;
 
 export default meta;

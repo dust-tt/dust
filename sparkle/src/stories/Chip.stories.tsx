@@ -11,11 +11,26 @@ const ICONS = {
 } as const;
 
 const meta = {
-  title: "Primitives/Chip",
+  title: "Data Display/Chip",
   component: Chip,
   tags: ["autodocs"],
   parameters: {
     layout: "padded",
+    docs: {
+      description: {
+        component: `A compact, mostly read-only label for surfacing a status, category, or short piece of metadata. Chips come in several **sizes** and **colors** and can show a leading **icon**, a breathing "busy" animation (**isBusy**), become clickable, or expose a remove affordance (**onRemove**).
+
+**When to use**
+- To display statuses, tags, categories, or active filters.
+- To represent a transient processing state (e.g. "Thinking, Searching") with **isBusy**.
+
+**Guidelines**
+- Keep labels to one or two words.
+- Use **color** meaningfully — \`success\`, \`warning\`, and \`info\` should match their intent.
+- Add **onRemove** only when the chip represents something the user can dismiss (like a filter).
+- For a primary action, use a **Button**, not a chip.`,
+      },
+    },
   },
   argTypes: {
     size: {

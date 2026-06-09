@@ -4,8 +4,22 @@ import React from "react";
 import { Button, TruncatedContent } from "../index_with_tw_base";
 
 const meta = {
-  title: "Components/TruncatedContent",
+  title: "Data Display/TruncatedContent",
   component: TruncatedContent,
+  parameters: {
+    docs: {
+      description: {
+        component: `Clamps tall content to a collapsed height and reveals a show-more / show-less toggle when it overflows. Configure the overflow trigger with **thresholdPx** and the clamp height with **collapsedHeightPx**, customize the toggle text via **expandLabel** / **collapseLabel**, opt into a height transition with **animated** (and **animationDurationMs**), and pin extra controls with the **footer** slot.
+
+**When to use**
+- For long text or rich blocks (descriptions, transcripts) that should stay compact until expanded.
+
+**Guidelines**
+- Tune **thresholdPx** so short content renders fully without a redundant toggle.
+- Use the **footer** slot for actions that should remain visible regardless of expansion state.`,
+      },
+    },
+  },
 } satisfies Meta<typeof TruncatedContent>;
 
 export default meta;

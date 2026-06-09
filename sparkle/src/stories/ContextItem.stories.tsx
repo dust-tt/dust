@@ -23,8 +23,23 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "List/ContextItem",
+  title: "Lists/ContextItem",
   component: ContextItem,
+  parameters: {
+    docs: {
+      description: {
+        component: `A rich list row for representing a resource, connection, or agent, with a leading **visual**, a **title**, optional **subElement** metadata, free-form children (descriptions, chips), and a trailing **action**. Rows can be made interactive with **onClick** and can reveal their **action** only on hover via **hoverAction**.
+
+**When to use**
+- To list connected platforms, data sources, agents, or settings entries that each carry a visual, metadata, and an action.
+
+**Guidelines**
+- Compose rows inside **ContextItem.List**, and use the **ContextItem.Visual**, **ContextItem.Description**, and **ContextItem.SectionHeader** subcomponents for consistent layout.
+- Use **hoverAction** to keep rows clean and surface controls (e.g. Edit / Remove **Button**s) only on hover.
+- For a denser settings layout with a title, description, and a single control, prefer **SettingsList.Row**.`,
+      },
+    },
+  },
 } satisfies Meta<typeof ContextItem>;
 
 export default meta;

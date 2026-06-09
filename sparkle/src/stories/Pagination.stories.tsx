@@ -9,6 +9,7 @@ import { Pagination } from "@sparkle/components/Pagination";
 // fed back in — mirroring real callers and making the interaction play meaningful. The defaults
 // below seed the initial state; `render` replaces `setPagination` with the local state setter.
 const meta: Meta<typeof Pagination> = {
+  title: "Navigation/Pagination",
   component: Pagination,
   args: {
     rowCount: 95,
@@ -26,6 +27,20 @@ const meta: Meta<typeof Pagination> = {
     );
   },
   tags: ["ai-generated", "needs-work"],
+  parameters: {
+    docs: {
+      description: {
+        component: `A controlled pager for tabular or list data. It derives the page count from **rowCount** and the current **pagination** state (\`pageIndex\`/\`pageSize\`), and reports changes through **setPagination** — the caller owns the state. Shows a "showing X-Y of N" range summary, with **showPageButtons** toggling the numbered buttons, **disablePaginationNumbers** hiding them entirely, and **rowCountIsCapped** flagging an approximate total.
+
+**When to use**
+- To page through a large dataset rendered in chunks (e.g. a table backed by \`@tanstack/react-table\`).
+
+**Guidelines**
+- This component is controlled: store \`pagination\` in the parent and update it from \`setPagination\`.
+- Pass an accurate \`rowCount\`; set \`rowCountIsCapped\` when the total is a lower-bound estimate.`,
+      },
+    },
+  },
 };
 
 export default meta;

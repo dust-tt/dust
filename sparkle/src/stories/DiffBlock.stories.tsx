@@ -4,10 +4,23 @@ import React from "react";
 import { Button, DiffBlock, Eye } from "../index_with_tw_base";
 
 const meta = {
-  title: "Conversation/DiffBlock",
+  title: "Product/Conversation/DiffBlock",
   component: DiffBlock,
   parameters: {
     layout: "centered",
+    docs: {
+      description: {
+        component: `Renders a set of code edits as a line-by-line diff inside an agent message. Takes a \`changes\` array of \`{ old, new }\` string pairs (each may span multiple lines) and shows removals and additions; large diffs collapse to a preview, and an optional \`actions\` slot holds controls such as a "view changes" **Button**.
+
+**When to use**
+- To show edits an agent proposes or applied to code, contrasting the previous and new content.
+
+**Guidelines**
+- Group related edits into one \`changes\` array; multi-line hunks collapse automatically into a preview.
+- Use the \`actions\` slot for affordances like opening the full file rather than embedding controls in the diff body.
+- For plain (non-diff) code rendering, use **CodeBlock**.`,
+      },
+    },
   },
   decorators: [
     (Story) => (

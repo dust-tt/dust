@@ -16,8 +16,22 @@ import {
 import { MessageChatSquare } from "@sparkle/icons/v2-stroke";
 
 const meta = {
-  title: "Modules/Page",
+  title: "Layout/Page",
   component: Page,
+  parameters: {
+    docs: {
+      description: {
+        component: `A page-scaffolding namespace that stacks standardized content blocks with consistent spacing. Compose **Page.Header** (title, description, icon), **Page.SectionHeader** (with an optional **action** button), typography helpers **Page.P** / **Page.H**, and arrangement helpers **Page.Layout** (\`direction\`) and **Page.Div** for grouping. The root **Page** takes a **variant**.
+
+**When to use**
+- To build the vertical structure of a settings, detail, or overview page with uniform rhythm.
+
+**Guidelines**
+- Use **Page.Header** once at the top and **Page.SectionHeader** to delimit sections, attaching the primary section CTA via its **action** prop.
+- Reach for **Page.Layout** to lay child blocks horizontally or vertically rather than ad-hoc flex wrappers.`,
+      },
+    },
+  },
 } satisfies Meta<typeof Page>;
 
 export default meta;

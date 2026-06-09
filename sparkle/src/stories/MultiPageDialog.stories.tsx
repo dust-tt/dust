@@ -25,8 +25,24 @@ import {
 } from "@sparkle/icons/v2-stroke";
 
 const meta: Meta<typeof MultiPageDialogContent> = {
-  title: "Modules/MultiPageDialog",
+  title: "Overlays/MultiPageDialog",
   component: MultiPageDialogContent,
+  parameters: {
+    docs: {
+      description: {
+        component: `A modal dialog that hosts multiple **pages** in a single overlay, ideal for wizards and multi-step flows. Composed from **MultiPageDialogTrigger** and **MultiPageDialogContent**, it takes an array of \`pages\` (each with \`id\`, \`title\`, optional \`description\` / \`icon\`, \`content\`, and optional \`fixedContent\`) plus the current \`currentPageId\` and \`onPageChange\`. It supports \`size\` / \`height\`, configurable footer \`leftButton\` / \`centerButton\` / \`rightButton\`, custom \`footerContent\`, an \`isAlertDialog\` mode, and toggles for header and inline navigation.
+
+**When to use**
+- For multi-step wizards, setup flows, or tool/action validation prompts shown as a centered modal.
+- When the flow demands the user's focus and should block interaction with the page behind it.
+
+**Guidelines**
+- Drive paging yourself: control \`currentPageId\` and update it from the footer buttons' \`onClick\`.
+- Use \`isAlertDialog\` with \`hideCloseButton\` for confirmations that require an explicit choice.
+- For a side-anchored multi-step panel that keeps page context visible, use **MultiPageSheet** instead.`,
+      },
+    },
+  },
 };
 
 export default meta;

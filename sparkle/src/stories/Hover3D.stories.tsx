@@ -6,8 +6,22 @@ import { DustLogoSquare } from "@sparkle/logo/dust";
 import { Div3D, GithubLogo, Hover3D, Icon } from "../index_with_tw_base";
 
 const meta = {
-  title: "Components/Hover3D",
+  title: "Effects & Motion/Hover3D",
   component: Hover3D,
+  parameters: {
+    docs: {
+      description: {
+        component: `A container that tilts in 3D toward the cursor, with nested **Div3D** children that shift along the Z axis by their **depth** to create a parallax, layered effect. Tune the tilt with **perspective** and **depth**, and set **fullscreenSensible** to track the cursor across the whole viewport rather than just the element.
+
+**When to use**
+- For showcase or marketing surfaces (logos, feature cards, hero imagery) where playful depth adds delight.
+
+**Guidelines**
+- Wrap each layer in a **Div3D** and stagger their **depth** values to control how far each pops forward or recedes.
+- Reserve for non-essential decoration; keep it off dense, interactive UI where motion would distract.`,
+      },
+    },
+  },
 } satisfies Meta<typeof Hover3D>;
 
 export default meta;

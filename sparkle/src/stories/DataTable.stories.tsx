@@ -28,8 +28,24 @@ import {
 import { Folder } from "@sparkle/icons/v2-stroke";
 
 const meta = {
-  title: "Components/DataTable",
+  title: "Data Display/DataTable",
   component: DataTable,
+  parameters: {
+    docs: {
+      description: {
+        component: `A tabular data display built on TanStack Table. Columns are defined with \`columns\` (\`ColumnDef\`) and rendered with cell helpers like **DataTable.CellContent**, **DataTable.BasicCellContent**, and **DataTable.MoreButton**. Supports text **filter**, client- or server-side **sorting**, **pagination**, and **row selection** (multi via \`createSelectionColumn\`, single via \`createRadioSelectionColumn\`). For large or infinite datasets, use **ScrollableDataTable**, which virtualizes rows and supports \`onLoadMore\`.
+
+**When to use**
+- To list structured records (data sources, members, files) with sorting, filtering, or selection.
+- For very long or paginated server-side datasets, reach for **ScrollableDataTable**.
+
+**Guidelines**
+- Set \`getRowId\` when using row selection so selection state stays stable across re-renders.
+- Use \`columnsBreakpoints\` and per-column \`meta.className\` to progressively hide columns on narrow widths.
+- Prefer the provided cell components over custom cells to keep avatars, icons, and truncation consistent.`,
+      },
+    },
+  },
 } satisfies Meta<typeof DataTable>;
 
 export default meta;

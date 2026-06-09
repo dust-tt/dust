@@ -7,10 +7,23 @@ import { DriveLogo, NotionLogo } from "@sparkle/logo";
 import { File02, File04, Folder } from "@sparkle/icons/v2-stroke";
 
 const meta = {
-  title: "Conversation/AttachmentChip",
+  title: "Product/Conversation/AttachmentChip",
   component: AttachmentChip,
   parameters: {
     layout: "centered",
+    docs: {
+      description: {
+        component: `A compact, inline chip representing a file, document, or folder attached to a conversation message. Shows a truncated \`label\` with either a single \`icon\` or a **doubleIcon** (a main icon overlaid with a connector logo, e.g. a Drive folder), and supports an optional \`href\` link, an \`onRemove\` action, and a semantic \`color\`.
+
+**When to use**
+- To reference an attached document, image, or connected resource within a chat message.
+
+**Guidelines**
+- Provide a \`doubleIcon\` when the attachment comes from a connector (Notion, Drive) so its source is recognizable; use a single \`icon\` for plain files.
+- Keep \`label\` to the file name; long labels truncate automatically.
+- For richer source references with descriptions or images, use **Citation** instead.`,
+      },
+    },
   },
   tags: ["autodocs"],
 } satisfies Meta<typeof AttachmentChip>;

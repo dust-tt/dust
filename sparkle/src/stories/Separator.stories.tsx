@@ -5,8 +5,22 @@ import { expect } from "storybook/test";
 import { Separator } from "@sparkle/index_with_tw_base";
 
 const meta = {
-  title: "Primitives/Separator",
+  title: "Layout/Separator",
   component: Separator,
+  parameters: {
+    docs: {
+      description: {
+        component: `A thin dividing line for visually separating content, with an **orientation** (\`horizontal\` / \`vertical\`) and a **decorative** flag. When \`decorative\` is false it exposes \`role="separator"\` and \`aria-orientation\` for assistive tech; when true it is purely visual.
+
+**When to use**
+- To divide groups of related content, list items, or inline elements (e.g. between menu entries).
+
+**Guidelines**
+- Set **decorative={false}** only when the separation is meaningful to screen-reader users; otherwise leave it decorative.
+- Add spacing via margin utilities (e.g. \`s-my-4\`) rather than relying on the line itself.`,
+      },
+    },
+  },
 } satisfies Meta<typeof Separator>;
 
 export default meta;

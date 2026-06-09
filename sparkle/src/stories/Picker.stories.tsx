@@ -17,8 +17,22 @@ import { EmojiPicker } from "../index_with_tw_base";
 import { FaceSmile } from "@sparkle/icons/v2-stroke";
 
 const meta = {
-  title: "Components/Picker",
+  title: "Forms & Inputs/Picker",
   component: ColorPicker,
+  parameters: {
+    docs: {
+      description: {
+        component: `A family of grid-based selection pickers for choosing a visual token. **ColorPicker** presents a palette of **colors** with a **selectedColor** and **onColorSelect**; **IconPicker** lists named **icons** with **selectedIcon** and **onIconSelect**; **EmojiPicker** wraps emoji-mart for emoji selection via **onEmojiSelect**.
+
+**When to use**
+- To let users pick an accent colour, icon, or emoji when customising an entity (agent avatar, folder, label).
+
+**Guidelines**
+- These pickers render the grid only; mount them inside a **PopoverRoot** / **PopoverContent** triggered by a **Button** as shown in the stories.
+- Keep the current value in state and close the popover in the select callback for a single-pick interaction.`,
+      },
+    },
+  },
 } satisfies Meta<typeof ColorPicker>;
 
 export default meta;

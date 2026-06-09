@@ -71,9 +71,26 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Primitives/Dropdown",
+  title: "Forms & Inputs/Dropdown",
   component: DropdownMenu,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `A menu of actions or options revealed from a trigger — Sparkle's equivalent of an action or overflow menu. Built on Radix DropdownMenu, it composes from **DropdownMenuTrigger** and **DropdownMenuContent** and supports items with leading icons and keyboard shortcuts, checkbox and radio items, grouping with labels and separators, submenus, a searchbar/filter, and tag lists.
+
+**When to use**
+- To expose secondary or overflow actions tied to a control without cluttering the page.
+- To pick one value from a longer list than a **RadioGroup** comfortably shows.
+
+**Guidelines**
+- The trigger should be a button — wrap it with \`<DropdownMenuTrigger asChild>\`.
+- Keep item labels short and action-first; group related items and use a separator before destructive actions.
+- Use **DropdownMenuCheckboxItem** / **DropdownMenuRadioItem** to reflect selection state instead of plain items.
+- For a large, searchable dataset, use **DropdownMenuSearchbar** rather than an unbounded list.`,
+      },
+    },
+  },
 } satisfies Meta<typeof DropdownMenu>;
 
 export default meta;

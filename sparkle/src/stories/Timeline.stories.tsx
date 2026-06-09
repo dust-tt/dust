@@ -4,9 +4,23 @@ import React from "react";
 import { Card, Timeline } from "../index_with_tw_base";
 
 const meta = {
-  title: "Components/Timeline",
+  title: "Data Display/Timeline",
   component: Timeline,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `Displays a vertical sequence of events with connecting markers. Each **Timeline.Item** takes a **title**, optional **meta** and **description**, a **variant** (\`upcoming\`, \`current\`, \`complete\`) that styles its marker, and arbitrary children for richer content.
+
+**When to use**
+- To show ordered, time-based progressions such as version history, activity feeds, or process steps.
+
+**Guidelines**
+- Use the **variant** to convey state (\`complete\` for done, \`current\` for in-progress, \`upcoming\` for pending).
+- Keep item content focused; for grouped detail, nest **Card** elements inside the item as shown.`,
+      },
+    },
+  },
 } satisfies Meta<typeof Timeline>;
 
 export default meta;

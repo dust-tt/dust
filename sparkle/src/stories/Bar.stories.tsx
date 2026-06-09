@@ -15,8 +15,24 @@ import { Robot } from "@sparkle/icons/v2-stroke";
 import { MessageCircle01 } from "@sparkle/icons/v2-stroke";
 
 const meta = {
-  title: "Modules/Bar",
+  title: "Navigation/Bar",
   component: Bar,
+  parameters: {
+    docs: {
+      description: {
+        component: `A header or footer action bar that anchors a page, panel, or modal with a **title**, optional **description**, and \`leftActions\`/\`rightActions\` slots. Set **position** to \`top\` or \`bottom\`, and **variant** to \`full\` (spans the viewport) or \`default\` (scoped to its parent container, e.g. a resizable panel). **Bar.ButtonBar** provides ready-made action layouts via its own \`variant\` — \`close\`, \`back\`, \`validate\`, or \`conversation\`. **BarFooter** is the dedicated footer counterpart.
+
+**When to use**
+- To frame a page or panel with a persistent title and primary actions (save, close, navigate back).
+- To pin save/cancel controls to the bottom of a scrolling form or builder.
+
+**Guidelines**
+- Use \`variant="default"\` inside panels and sidebars so the bar stays scoped to its container instead of spanning the full width.
+- Reach for **Bar.ButtonBar** rather than hand-assembling buttons, so action layouts stay consistent.
+- For a floating, transient action surface over content, use a **HoveringBar** instead.`,
+      },
+    },
+  },
 } satisfies Meta<typeof Bar>;
 
 export default meta;

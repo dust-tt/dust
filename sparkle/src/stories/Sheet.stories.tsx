@@ -34,7 +34,22 @@ import {
 import { CloudArrowLeftRight, Star01 } from "@sparkle/icons/v2-stroke";
 
 const meta = {
-  title: "Layouts/Sheet",
+  title: "Overlays/Sheet",
+  parameters: {
+    docs: {
+      description: {
+        component: `A panel that slides in from an edge of the screen, built on Radix Dialog. It composes from **SheetTrigger**, **SheetContent** (with a \`side\` and \`size\`), **SheetHeader** (**SheetTitle**, **SheetDescription**), **SheetContainer** for the scrollable body, and **SheetFooter**, which renders up to three actions via \`leftButtonProps\`, \`rightButtonProps\`, and \`rightEndButtonProps\`.
+
+**When to use**
+- For secondary tasks, detail views, or forms that benefit from more room than a popover but shouldn't navigate away.
+
+**Guidelines**
+- Always give **SheetContent** a **SheetHeader** with a **SheetTitle** for context and accessibility.
+- Put scrollable body content inside **SheetContainer** and keep actions in **SheetFooter**.
+- For a multi-step flow inside a sheet, use **MultiPageSheet**; for a focus-blocking centered modal, use **Dialog**.`,
+      },
+    },
+  },
 } satisfies Meta;
 
 export default meta;

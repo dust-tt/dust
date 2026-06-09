@@ -14,6 +14,13 @@ type IconModule = {
 const meta = {
   title: "Assets/Icons",
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `Catalog of the Sparkle stroke icon set (\`@sparkle/icons/v2-stroke\`). Browse for the icon you need, then import it by name and render it through the **Icon** component (or pass it to a component's \`icon\` prop) rather than embedding raw SVGs.`,
+      },
+    },
+  },
 } satisfies Meta;
 
 export default meta;

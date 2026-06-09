@@ -6,9 +6,25 @@ import { Button, ImageZoomDialog } from "../index_with_tw_base";
 const SAMPLE_IMAGE = "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg";
 
 const meta: Meta<typeof ImageZoomDialog> = {
-  title: "Components/ImageZoomDialog",
+  title: "Overlays/ImageZoomDialog",
   component: ImageZoomDialog,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `A full-screen overlay for viewing an image at a larger size. It is controlled via \`open\` / \`onOpenChange\` and takes an \`image\` object (\`src\`, \`alt\`, \`title\`, optional \`downloadUrl\`, and an \`isLoading\` state). Pass an optional \`navigation\` object (\`onPrevious\`, \`onNext\`, \`hasPrevious\`, \`hasNext\`) to step through a gallery.
+
+**When to use**
+- To let users inspect an image (e.g. a generated or uploaded asset) at full resolution.
+- To browse a set of images with previous/next navigation.
+
+**Guidelines**
+- Provide a \`downloadUrl\` when the image should be savable; the dialog renders a download affordance.
+- Supply meaningful \`alt\` text for accessibility.
+- For non-image modal content, use **Dialog** or **Sheet** instead.`,
+      },
+    },
+  },
 };
 
 export default meta;

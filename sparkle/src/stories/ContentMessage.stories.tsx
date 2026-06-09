@@ -22,8 +22,24 @@ const ICONS = {
 } as const;
 
 const meta: Meta<ContentMessageStoryProps> = {
-  title: "Components/ContentMessage",
+  title: "Feedback & Status/ContentMessage",
   component: ContentMessage,
+  parameters: {
+    docs: {
+      description: {
+        component: `An inline, non-blocking message that communicates contextual information, feedback, or status without interrupting the user — an informational note, a warning, or a success confirmation. Available in multiple **variants** and **sizes**, with an optional **icon** and action; **ContentMessageInline** renders a compact single-line form.
+
+**When to use**
+- To show persistent, contextual information attached to a region of the page.
+- To explain a state ("This agent is read-only") or surface a non-urgent warning.
+
+**Guidelines**
+- Match the **variant** to the intent — \`warning\`, \`success\`, \`info\`.
+- For transient feedback after an action, use a **Notification** (toast) instead.
+- For a decision that must block the flow, use a **Dialog**.`,
+      },
+    },
+  },
   argTypes: {
     title: {
       control: "text",

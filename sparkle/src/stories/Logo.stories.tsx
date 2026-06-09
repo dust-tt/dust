@@ -16,8 +16,15 @@ import {
 } from "../logo/dust";
 
 const meta = {
-  title: "Assets/DustLogo",
+  title: "Assets/Logo",
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `The Dust logo assets (\`@sparkle/logo/dust\`): wordmark and square marks, including white, gray, and layered variants for 3D/parallax treatments. Import the variant that suits the background and context rather than recreating the mark. Reach for **DustLogoWhite** / **DustLogoSquareWhite** on dark surfaces.`,
+      },
+    },
+  },
 } satisfies Meta;
 
 export default meta;

@@ -4,8 +4,23 @@ import React from "react";
 import { CodeBlock } from "../index_with_tw_base";
 
 const meta: Meta<typeof CodeBlock> = {
-  title: "Conversation/CodeBlock",
+  title: "Product/Conversation/CodeBlock",
   component: CodeBlock,
+  parameters: {
+    docs: {
+      description: {
+        component: `Renders syntax-highlighted code from an agent message, either as an \`inline\` snippet or a full block. The language is derived from a \`className\` (e.g. \`language-typescript\`), and block code supports \`wrapLongLines\`, \`showLineNumber\`, and a \`surface\` \`variant\`.
+
+**When to use**
+- To display code returned by an agent — both inline tokens within prose and multi-line blocks.
+
+**Guidelines**
+- Set \`inline\` for short in-sentence snippets; leave it off for multi-line blocks.
+- Pass the language via \`className\` (\`language-<lang>\`) so highlighting matches the content.
+- Enable \`wrapLongLines\` for narrow containers; otherwise long lines scroll horizontally. This component backs the code rendering in **Markdown**.`,
+      },
+    },
+  },
   argTypes: {
     children: {
       description: "The code content to display",

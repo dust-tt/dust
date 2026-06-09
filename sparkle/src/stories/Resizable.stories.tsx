@@ -8,7 +8,21 @@ import {
 } from "../components/Resizable";
 
 const meta = {
-  title: "Layouts/Resizable",
+  title: "Layout/Resizable",
+  parameters: {
+    docs: {
+      description: {
+        component: `User-resizable split layouts built on react-resizable-panels. Wrap panels in a **ResizablePanelGroup** with a **direction** (\`horizontal\` / \`vertical\`), size each region with **ResizablePanel** (\`defaultSize\`), and insert a draggable **ResizableHandle** between them. Groups can be nested to create grids of resizable regions.
+
+**When to use**
+- For split views the user should rebalance, such as a sidebar plus main area or a list/detail pane.
+
+**Guidelines**
+- Give each **ResizablePanel** a \`defaultSize\` (percentages within a group) so the initial split is predictable.
+- Nest a **ResizablePanelGroup** inside a panel to combine horizontal and vertical splits.`,
+      },
+    },
+  },
 } satisfies Meta;
 
 export default meta;

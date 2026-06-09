@@ -26,9 +26,24 @@ const ICONS = {
 } as const;
 
 const meta = {
-  title: "Components/Avatar",
+  title: "Data Display/Avatar",
   component: Avatar,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `Represents a user, agent, or entity with an image, emoji, icon, or initials. Avatars support a range of **sizes**, busy and clickable states, and stacking via **AvatarSet**.
+
+**When to use**
+- To identify the author of a message, a workspace member, or an agent.
+
+**Guidelines**
+- Always provide a **name** so there is a sensible initials fallback when no image is available, and for accessibility.
+- Keep avatar **size** consistent within a given context (a list, a header).
+- For a group of people or entities, use **AvatarSet** rather than several loose avatars.`,
+      },
+    },
+  },
   argTypes: {
     size: {
       options: AVATAR_SIZES,

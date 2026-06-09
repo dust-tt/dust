@@ -14,8 +14,23 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Primitives/Popover",
+  title: "Overlays/Popover",
   component: Popover,
+  parameters: {
+    docs: {
+      description: {
+        component: `Floating content revealed from a trigger. Built on Radix Popover, it offers two APIs: the convenience **Popover** (pass \`trigger\` and \`content\`, with \`side\`, \`sideOffset\`, and \`fullWidth\`) and the composable **PopoverRoot** / **PopoverTrigger** / **PopoverContent** primitives for full control over layout. Content can host arbitrary elements — forms, an **EmojiPicker**, or a scrollable list via **ScrollArea**.
+
+**When to use**
+- To show contextual content (a small form, picker, or details) on demand without leaving the page.
+
+**Guidelines**
+- Reach for the all-in-one **Popover** for simple cases; drop to **PopoverRoot** + parts when you need custom structure.
+- For tall content, wrap it in a **ScrollArea** with a fixed height rather than letting the popover grow unbounded.
+- To anchor to an element other than the trigger, use **AnchoredPopover**; for a menu of actions, use **Dropdown**.`,
+      },
+    },
+  },
 } satisfies Meta<typeof Popover>;
 
 export default meta;

@@ -13,8 +13,24 @@ import {
 import { File04, Settings01, User01 } from "@sparkle/icons/v2-stroke";
 
 const meta: Meta<typeof MultiPageSheetContent> = {
-  title: "Modules/MultiPageSheet",
+  title: "Overlays/MultiPageSheet",
   component: MultiPageSheetContent,
+  parameters: {
+    docs: {
+      description: {
+        component: `A side **Sheet** that hosts multiple **pages**, combining a slide-in panel with step-based navigation. Built from **MultiPageSheetTrigger** and **MultiPageSheetContent**, it takes an array of \`pages\` (each with \`id\`, \`title\`, optional \`description\` / \`icon\`, \`content\`, optional per-page \`footerContent\`, and a \`noScroll\` flag), plus \`currentPageId\` / \`onPageChange\`. It supports \`size\`, an \`onSave\` callback, built-in \`showNavigation\` with \`disableNext\` / \`disableSave\` guards.
+
+**When to use**
+- For multi-step flows or detail panels that should keep the underlying page partially visible.
+- When a page hosts tall or scrollable content (e.g. a **ScrollableDataTable**) better suited to a wide side panel.
+
+**Guidelines**
+- Use \`disableNext\` / \`disableSave\` to gate progression until the current step is valid.
+- Set a page's \`noScroll\` when it manages its own internal scrolling (e.g. a data table).
+- For a focus-stealing centered modal flow, use **MultiPageDialog** instead.`,
+      },
+    },
+  },
 };
 
 export default meta;

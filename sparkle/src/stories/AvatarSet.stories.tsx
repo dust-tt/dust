@@ -4,8 +4,15 @@ import React from "react";
 import { Avatar } from "@sparkle/components";
 
 const meta = {
-  title: "Assets/AvatarSet",
+  title: "Assets/Avatars/AvatarSet",
   component: Avatar,
+  parameters: {
+    docs: {
+      description: {
+        component: `Catalog of the hosted "droid" avatar images available for assigning to agents and users. Each entry shows its filename and the URL to pass to the **Avatar** component's \`visual\` prop. Use these as default agent avatars when a custom image is not provided.`,
+      },
+    },
+  },
 } satisfies Meta<typeof Avatar>;
 
 export default meta;

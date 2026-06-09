@@ -13,9 +13,24 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Components/Tabs",
+  title: "Navigation/Tabs",
   component: Tabs,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `Switches between sibling views within the same region. Composed from **Tabs** (root, controlled via \`value\`/\`defaultValue\`), **TabsList**, **TabsTrigger** (with \`label\`, optional \`icon\`, and \`tooltip\` for icon-only triggers), and **TabsContent**. The list is a flex row, so spacers and extra controls can sit alongside the triggers.
+
+**When to use**
+- To organize related content into peer views the user toggles between without leaving the page.
+
+**Guidelines**
+- Pair each **TabsTrigger** with a **TabsContent** sharing the same \`value\`.
+- Provide a \`tooltip\` for icon-only triggers so they remain identifiable.
+- For pill-styled, sidebar-oriented section switching, use **NavTabPill** instead.`,
+      },
+    },
+  },
 } satisfies Meta<typeof Tabs>;
 
 export default meta;
