@@ -24,6 +24,7 @@ export const CLAUDE_4_5_OPUS_20251101_MODEL_ID =
 export const CLAUDE_OPUS_4_6_MODEL_ID = "claude-opus-4-6" as const;
 export const CLAUDE_OPUS_4_7_MODEL_ID = "claude-opus-4-7" as const;
 export const CLAUDE_OPUS_4_8_MODEL_ID = "claude-opus-4-8" as const;
+export const CLAUDE_FABLE_5_MODEL_ID = "claude-fable-5" as const;
 export const CLAUDE_SONNET_4_6_MODEL_ID = "claude-sonnet-4-6" as const;
 
 export const ANTHROPIC_TOKEN_COUNT_ADJUSTMENT = 1.3;
@@ -362,6 +363,53 @@ export const CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     featureFlag: "claude_4_5_opus_feature",
   },
   customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
+  disablePrefill: true,
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
+};
+// https://platform.claude.com/docs/en/about-claude/models/overview
+export const CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
+  modelId: CLAUDE_FABLE_5_MODEL_ID,
+  displayName: "Claude Fable 5",
+  contextSize: 400_000,
+  recommendedTopK: 16,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "Anthropic's Claude Fable 5 model, their most intelligent model, a new tier above Opus (200k context).",
+  shortDescription: "Anthropic's most powerful model.",
+  isLegacy: false,
+  isLatest: false,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportsResponseFormat: true,
+  // Fable 5 rejects an explicit `thinking: {type: "disabled"}` (400), so the
+  // minimum supported reasoning effort is medium (thinking always enabled).
+  supportedReasoningEfforts: {
+    none: false,
+    light: false,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "medium",
+  // Fable 5 shares the Opus 4.7/4.8 tokenizer (~555k words/1M tokens vs ~750k
+  // for anthropic_base). Ratio: 750/555 ≈ 1.35, applied on top of the base 1.3
+  // adjustment → 1.3 × 1.35 ≈ 1.75.
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT * 1.35,
+  supportsPromptCaching: true,
+  supportsBatchProcessing: true,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
+  customThinkingType: "auto",
+  availableIfOneOf: {
+    featureFlag: "claude_fable_5_feature",
+  },
+  customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
+  // Served from a separate Anthropic workspace (EAP), like the EAP custom
+  // models. Forces non-Vertex routing.
+  useEapKey: true,
   disablePrefill: true,
   regionalAvailability: {
     "us-central1": true,

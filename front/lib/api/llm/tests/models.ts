@@ -12,6 +12,7 @@ import {
   CLAUDE_4_5_SONNET_20250929_MODEL_ID,
   CLAUDE_4_OPUS_20250514_MODEL_ID,
   CLAUDE_4_SONNET_20250514_MODEL_ID,
+  CLAUDE_FABLE_5_MODEL_ID,
   CLAUDE_OPUS_4_6_MODEL_ID,
   CLAUDE_OPUS_4_7_MODEL_ID,
   CLAUDE_OPUS_4_8_MODEL_ID,
@@ -115,6 +116,10 @@ export const MODELS: Record<
     providerId: "anthropic",
   },
   [CLAUDE_OPUS_4_8_MODEL_ID]: {
+    runTest: false,
+    providerId: "anthropic",
+  },
+  [CLAUDE_FABLE_5_MODEL_ID]: {
     runTest: false,
     providerId: "anthropic",
   },
