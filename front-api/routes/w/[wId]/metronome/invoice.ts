@@ -8,6 +8,7 @@ import {
   getProductWorkspaceSeatId,
 } from "@app/lib/metronome/constants";
 import type {
+  GetMetronomeInvoiceLinesResponseBody,
   GetMetronomeInvoiceResponseBody,
   MetronomeInvoiceSummary,
 } from "@app/lib/metronome/invoice";
@@ -17,6 +18,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import type { Invoice } from "@metronome/sdk/resources/v1/customers";
 
 function creditTypeIdToCurrency(
   creditTypeId: string
@@ -33,6 +35,24 @@ function creditTypeIdToCurrency(
 function inferBillingPeriod(startMs: number, endMs: number): BillingPeriod {
   const spanDays = (endMs - startMs) / (1000 * 60 * 60 * 24);
   return spanDays > 60 ? "yearly" : "monthly";
+}
+
+function findCurrentInvoice(
+  invoices: Invoice[],
+  metronomeContractId: string
+): Invoice | undefined {
+  const nowMs = Date.now();
+  return invoices.find((inv) => {
+    if (inv.contract_id !== metronomeContractId) {
+      return false;
+    }
+    if (!inv.start_timestamp || !inv.end_timestamp) {
+      return false;
+    }
+    const startMs = new Date(inv.start_timestamp).getTime();
+    const endMs = new Date(inv.end_timestamp).getTime();
+    return startMs <= nowMs && nowMs < endMs;
+  });
 }
 
 // Mounted at /api/w/:wId/metronome/invoice.
@@ -57,8 +77,6 @@ app.get(
       return ctx.json({ invoice: null });
     }
 
-    const nowMs = Date.now();
-
     const invoicesResult =
       await listMetronomeDraftInvoices(metronomeCustomerId);
     if (invoicesResult.isErr()) {
@@ -71,17 +89,10 @@ app.get(
       });
     }
 
-    const invoice = invoicesResult.value.find((inv) => {
-      if (inv.contract_id !== metronomeContractId) {
-        return false;
-      }
-      if (!inv.start_timestamp || !inv.end_timestamp) {
-        return false;
-      }
-      const startMs = new Date(inv.start_timestamp).getTime();
-      const endMs = new Date(inv.end_timestamp).getTime();
-      return startMs <= nowMs && nowMs < endMs;
-    });
+    const invoice = findCurrentInvoice(
+      invoicesResult.value,
+      metronomeContractId
+    );
 
     if (!invoice || !invoice.start_timestamp || !invoice.end_timestamp) {
       return ctx.json({ invoice: null });
@@ -163,6 +174,63 @@ app.get(
     };
 
     return ctx.json({ invoice: summary });
+  }
+);
+
+/** @ignoreswagger */
+app.get(
+  "/lines",
+  ensureIsAdmin(),
+  async (ctx): HandlerResult<GetMetronomeInvoiceLinesResponseBody> => {
+    const auth = ctx.get("auth");
+
+    const subscription = auth.subscription();
+    const owner = auth.workspace();
+    if (!subscription || !owner) {
+      return ctx.json({ currency: null, lineItems: [] });
+    }
+
+    const { metronomeContractId } = subscription;
+    const { metronomeCustomerId } = owner;
+    if (!metronomeContractId || !metronomeCustomerId) {
+      return ctx.json({ currency: null, lineItems: [] });
+    }
+
+    const invoicesResult =
+      await listMetronomeDraftInvoices(metronomeCustomerId);
+    if (invoicesResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 502,
+        api_error: {
+          type: "internal_server_error",
+          message: `Failed to fetch Metronome draft invoices: ${invoicesResult.error.message}`,
+        },
+      });
+    }
+
+    const invoice = findCurrentInvoice(
+      invoicesResult.value,
+      metronomeContractId
+    );
+
+    if (!invoice) {
+      return ctx.json({ currency: null, lineItems: [] });
+    }
+
+    const currency = creditTypeIdToCurrency(invoice.credit_type.id);
+
+    const lineItems = invoice.line_items.map((item) => ({
+      name: item.name,
+      type: item.type,
+      quantity: typeof item.quantity === "number" ? item.quantity : null,
+      unitPriceCents:
+        typeof item.unit_price === "number" && currency
+          ? amountCents(item.unit_price, currency)
+          : null,
+      totalCents: currency ? amountCents(item.total, currency) : item.total,
+    }));
+
+    return ctx.json({ currency, lineItems });
   }
 );
 

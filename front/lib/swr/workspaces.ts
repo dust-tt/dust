@@ -59,7 +59,10 @@ import type {
 import type { GetWorkspaceAnalyticsResponse } from "@app/lib/api/workspace_analytics";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
-import type { GetMetronomeInvoiceResponseBody } from "@app/lib/metronome/invoice";
+import type {
+  GetMetronomeInvoiceLinesResponseBody,
+  GetMetronomeInvoiceResponseBody,
+} from "@app/lib/metronome/invoice";
 import type { GetVerifyResponseBody } from "@app/lib/plans/trial/index";
 import type { GetCouponValidateResponseBody } from "@app/lib/resources/coupon_resource";
 import type {
@@ -799,6 +802,34 @@ export function useMetronomeInvoice({
     isMetronomeInvoiceLoading: !error && !data && !disabled,
     isMetronomeInvoiceError: error,
     mutateMetronomeInvoice: mutate,
+  };
+}
+
+export function useMetronomeInvoiceLines({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const linesFetcher: Fetcher<GetMetronomeInvoiceLinesResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/metronome/invoice/lines`,
+    linesFetcher,
+    {
+      disabled,
+      revalidateOnFocus: false,
+      dedupingInterval: 60_000,
+    }
+  );
+
+  return {
+    invoiceLines: data ?? null,
+    isMetronomeInvoiceLinesLoading: !error && !data && !disabled,
+    isMetronomeInvoiceLinesError: error,
+    mutateMetronomeInvoiceLines: mutate,
   };
 }
 
