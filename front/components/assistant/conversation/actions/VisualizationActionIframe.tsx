@@ -465,7 +465,7 @@ export const VisualizationActionIframe = forwardRef<
               )}
 
               {isErrored && !retryClicked && !isPublic && (
-                <div className="flex h-full w-full items-center justify-center p-6">
+                <div className="flex h-container w-full items-center justify-center p-6">
                   <ContentMessage
                     title="Visualization failed"
                     variant="warning"

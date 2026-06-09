@@ -343,7 +343,7 @@ export function FrameRenderer({
 
   if (error) {
     return (
-      <div className="flex h-full flex-col">
+      <div className="flex h-container flex-col">
         <InteractiveContentHeader onClose={onClosePanel} />
         <CenteredState>
           <p className="text-warning-500">
@@ -355,7 +355,7 @@ export function FrameRenderer({
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-container flex-col">
       <InteractiveContentHeader onClose={onClosePanel}>
         <div className="flex w-full items-center justify-between">
           <Button
