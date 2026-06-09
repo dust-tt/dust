@@ -11,6 +11,7 @@ import {
   redeemCoupon,
   revokeCouponRedemption,
 } from "@app/lib/metronome/coupons";
+import { SEAT_TAG } from "@app/lib/metronome/setup_common";
 import { CouponRedemptionResource } from "@app/lib/resources/coupon_redemption_resource";
 import type { CouponResource } from "@app/lib/resources/coupon_resource";
 import { CouponResource as CouponResourceClass } from "@app/lib/resources/coupon_resource";
@@ -350,7 +351,7 @@ describe("createCouponCredit", () => {
       expect.objectContaining({
         idempotencyKey: `coupon-${REDEMPTION_ID}-0`,
         priority: 300,
-        applicableProductTags: ["seat"],
+        applicableProductTags: [SEAT_TAG],
         creditTypeId: CREDIT_TYPE_USD_ID,
         productId: "seat-subscription-credits-prod",
         amount: 1000,
