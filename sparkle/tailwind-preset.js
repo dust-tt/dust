@@ -608,7 +608,7 @@ module.exports = {
           DEFAULT: customColors.stone[50],
           night: colors.gray[900], // to be updated
         },
-        content: {
+        panel: {
           background: {
             DEFAULT: "#FFF",
             night: colors.gray[950],
