@@ -193,7 +193,7 @@ export function ConversationFilesPanel({
 
   return (
     <>
-      <div className="flex h-full flex-col">
+      <div className="flex h-container flex-col">
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
