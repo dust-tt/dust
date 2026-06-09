@@ -1,4 +1,8 @@
 import { connectorsSequelize } from "@connectors/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@connectors/resources/storage/data_types";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 import type {
   ConnectorPermission,
@@ -6,7 +10,6 @@ import type {
   SlackbotWhitelistType,
 } from "@connectors/types";
 import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@connectors/resources/storage/data_types";
 
 export class SlackConfigurationModel extends ConnectorBaseModel<SlackConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
