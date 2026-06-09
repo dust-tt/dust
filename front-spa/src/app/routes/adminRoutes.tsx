@@ -2,10 +2,6 @@ import { AdminRouterLayout } from "@spa/app/layouts/AdminRouterLayout";
 import { withSuspense } from "@spa/app/routes/withSuspense";
 import type { RouteObject } from "react-router-dom";
 
-const ProfilePage = withSuspense(
-  () => import("@dust-tt/front/components/pages/workspace/ProfilePage"),
-  "ProfilePage"
-);
 const AnalyticsPage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/AnalyticsPage"),
   "AnalyticsPage"
@@ -86,7 +82,6 @@ const BillingPage = withSuspense(
 );
 
 export const adminRoutes: RouteObject[] = [
-  { path: "me", element: <ProfilePage /> },
   {
     element: <AdminRouterLayout />,
     children: [

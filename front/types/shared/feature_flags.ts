@@ -301,10 +301,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Unified GCS-backed file explorer with folder hierarchy, replacing the two-tab files panel.",
     stage: "dust_only",
   },
-  user_settings_v2: {
-    description: "Enable the new user settings v2 experience",
-    stage: "dust_only",
-  },
   force_us_api_url: {
     description:
       "Force the SPA to use the regional API subdomain (us-api/eu-api.dust.tt) " +
