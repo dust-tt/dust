@@ -206,7 +206,10 @@ export async function createPaymentGatedBusinessActivation({
     if (validation.isErr()) {
       return new Err({ type: "invalid_coupon" });
     }
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const auth = userId
+      ? await Authenticator.fromUserIdAndWorkspaceId(userId, workspace.sId)
+      : await Authenticator.internalAdminForWorkspace(workspace.sId);
     const existing =
       await CouponRedemptionResource.findActiveOrPendingByCouponAndWorkspace(
         auth,
