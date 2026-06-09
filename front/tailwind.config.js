@@ -2,6 +2,8 @@
 const colors = require("tailwindcss/colors");
 const preset = require("@dust-tt/sparkle/tailwind-preset");
 
+const TITLE_HEIGHT = "3rem";
+
 module.exports = {
   presets: [preset],
   content: [
@@ -10,6 +12,15 @@ module.exports = {
   ],
   theme: {
     extend: {
+      height: {
+        title: TITLE_HEIGHT,
+        "container-with-title-mobile":
+          `calc(100dvh - ${TITLE_HEIGHT})`,
+        "container-with-title-desktop":
+          `calc(100dvh - ${TITLE_HEIGHT} - 0.5rem)`,
+        "container-without-title":
+          "calc(100dvh - 0.5rem)",
+      },
       fontWeight: {
         medium: "450",
         semibold: "550",

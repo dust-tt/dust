@@ -41,7 +41,7 @@ export const ConversationLayout = ({
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <SheetContent
           side="left"
-          className="flex w-full max-w-72 flex-1 bg-app-background dark:bg-app-background-night"
+          className="flex w-full max-w-72 flex-1"
         >
           <SheetHeader className="bg-muted-background p-0" hideButton>
             <SheetTitle className="hidden" />
