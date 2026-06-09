@@ -107,10 +107,15 @@ export const SEAT_TYPE_CUSTOM_FIELD_KEY = "DUST_SEAT_TYPE";
 // for Metronome Product '…'".
 export const STRIPE_PRODUCT_ID_CUSTOM_FIELD_KEY = "STRIPE_PRODUCT_ID";
 
-// Custom field stamped on contract credits / commits to identify whether they
-// belong to the workspace pool ("pool") or are excess-overage accounting
-// credits ("excess"). Default Metronome alerts filter on this field to
-// exclude excess credits from low-balance notifications.
+// Custom field stamped on contract credits AND commits to identify whether they
+// belong to the workspace pool ("pool") or are excess-overage accounting credits
+// ("excess"). The pool balance alert carries per-entity ContractCredit + Commit
+// filters that both match "pool", so pool credits and pool commits count toward
+// the balance while excess credits are excluded. The key must be shared across
+// both entities: Metronome rejects an alert whose custom_field_filters use
+// different key/value pairs per entity type ("must specify the same set of key
+// and value pairs for every entity type"). Commits only ever take "pool" (they
+// have no excess variant).
 export const CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY =
   "DUST_CONTRACT_CREDIT_TYPE";
 export const CONTRACT_CREDIT_TYPE_EXCESS = "excess";

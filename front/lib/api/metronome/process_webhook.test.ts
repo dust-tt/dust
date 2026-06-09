@@ -7,10 +7,17 @@ import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import * as defaultUserCapAlert from "@app/lib/metronome/alerts/spend_limits";
 import * as perUserAlerts from "@app/lib/metronome/alerts/spend_limits";
 import {
+  getMetronomeCommit,
   getMetronomeContractById,
   listMetronomeContracts,
+  setMetronomeCommitCustomFields,
 } from "@app/lib/metronome/client";
-import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
+import {
+  CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+  CONTRACT_CREDIT_TYPE_POOL,
+  getCreditTypeAwuId,
+  PLAN_CODE_CUSTOM_FIELD_KEY,
+} from "@app/lib/metronome/constants";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -24,7 +31,7 @@ import { mockCustomerAlert } from "@app/tests/utils/mocks/metronome";
 import { PlanFactory } from "@app/tests/utils/PlanFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
-import type { ContractV2 } from "@metronome/sdk/resources";
+import type { Commit, ContractV2 } from "@metronome/sdk/resources";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { processMetronomeWebhook } from "./process_webhook";
@@ -35,6 +42,8 @@ vi.mock(import("@app/lib/metronome/client"), async (importOriginal) => {
     ...actual,
     getMetronomeContractById: vi.fn(),
     listMetronomeContracts: vi.fn(),
+    getMetronomeCommit: vi.fn(),
+    setMetronomeCommitCustomFields: vi.fn(),
   };
 });
 
@@ -107,6 +116,7 @@ const OLD_CONTRACT_ID = "contract_old_xxx";
 const NEW_CONTRACT_ID = "contract_new_yyy";
 const ENT_PLAN_CODE = "ENT_TEST_PLAN";
 const USER_ID = "user_test_xxx";
+const COMMIT_ID = "commit_test_xxx";
 
 /** Build a contract event payload that matches the centralized webhook schema. */
 function contractEvent(
@@ -951,5 +961,97 @@ describe("processMetronomeWebhook — workspace-level spend threshold", () => {
     expect(result.isOk()).toBe(true);
     expect(dispatchPaygCapReached).not.toHaveBeenCalled();
     expect(dispatchPerUserCapResolved).not.toHaveBeenCalled();
+  });
+});
+
+describe("processMetronomeWebhook — commit.create DUST_CONTRACT_CREDIT_TYPE stamping", () => {
+  function commitCreateEvent(
+    commitCustomFields: Record<string, string> | null = null
+  ): MetronomeWebhookEvent {
+    return {
+      id: "evt_commit_create_xxx",
+      type: "commit.create",
+      timestamp: new Date().toISOString(),
+      commit_id: COMMIT_ID,
+      commit_custom_fields: commitCustomFields,
+      customer_id: METRONOME_CUSTOMER_ID,
+    };
+  }
+
+  function commit(
+    creditTypeId: string,
+    customFields: Record<string, string> | null = null
+  ): Commit {
+    return {
+      id: COMMIT_ID,
+      created_at: new Date().toISOString(),
+      product: { id: "prod_test", name: "Test Product" },
+      type: "PREPAID",
+      custom_fields: customFields ?? undefined,
+      access_schedule: {
+        schedule_items: [],
+        credit_type: { id: creditTypeId, name: "AWU" },
+      },
+    };
+  }
+
+  beforeEach(() => {
+    vi.mocked(setMetronomeCommitCustomFields).mockResolvedValue(
+      new Ok(undefined)
+    );
+  });
+
+  it("stamps an unstamped AWU commit as pool", async () => {
+    const workspace = await setupMetronomeWorkspaceResource();
+    vi.mocked(getMetronomeCommit).mockResolvedValue(
+      new Ok(commit(getCreditTypeAwuId()))
+    );
+
+    const result = await processMetronomeWebhook({
+      event: commitCreateEvent(),
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(setMetronomeCommitCustomFields).toHaveBeenCalledWith({
+      commitId: COMMIT_ID,
+      customFields: {
+        [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]: CONTRACT_CREDIT_TYPE_POOL,
+      },
+    });
+  });
+
+  it("does not stamp a non-AWU commit", async () => {
+    const workspace = await setupMetronomeWorkspaceResource();
+    vi.mocked(getMetronomeCommit).mockResolvedValue(
+      new Ok(commit("non_awu_credit_type"))
+    );
+
+    const result = await processMetronomeWebhook({
+      event: commitCreateEvent(),
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(setMetronomeCommitCustomFields).not.toHaveBeenCalled();
+  });
+
+  it("does not re-stamp a commit that already carries the field", async () => {
+    const workspace = await setupMetronomeWorkspaceResource();
+    vi.mocked(getMetronomeCommit).mockResolvedValue(
+      new Ok(
+        commit(getCreditTypeAwuId(), {
+          [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]: CONTRACT_CREDIT_TYPE_POOL,
+        })
+      )
+    );
+
+    const result = await processMetronomeWebhook({
+      event: commitCreateEvent(),
+      workspace,
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(setMetronomeCommitCustomFields).not.toHaveBeenCalled();
   });
 });
