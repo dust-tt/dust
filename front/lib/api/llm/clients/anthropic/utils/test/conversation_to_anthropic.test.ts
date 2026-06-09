@@ -90,6 +90,29 @@ describe("toMessage", () => {
       }
     });
 
+    it("should add cache_control to last user message when isLast (Vertex path)", async () => {
+      const userMessage = conversationMessages.find(
+        (msg) => msg.role === "user"
+      );
+      if (!userMessage) {
+        throw new Error("No user message found in test fixtures");
+      }
+
+      const result = await toMessage(userMessage, {
+        isFirst: false,
+        isLast: true,
+        omittedThinking: false,
+      });
+
+      if (Array.isArray(result.content) && result.content.length > 0) {
+        const lastBlock = result.content[result.content.length - 1];
+        expect(lastBlock).toHaveProperty("cache_control");
+        expect(lastBlock).toHaveProperty("cache_control.type", "ephemeral");
+      } else {
+        throw new Error("Expected content array with at least one element");
+      }
+    });
+
     it("should not add cache_control to non-user messages", async () => {
       const assistantMessage = conversationMessages.find(
         (msg) => msg.role === "assistant"

@@ -59,8 +59,11 @@ const BATCH_PAYLOAD_BUILD_CONCURRENCY = 10;
  *  Slot 2 – system: shared context block  (5min TTL, shared across callers)
  *  Slot 3 – messages[0]: equipped skills  (5min TTL, stable per agent within a workspace;
  *                                          set in conversation_to_anthropic.ts when name="system")
- *  Slot 4 – automatic cache_control       (5min TTL, auto-placed at last cacheable message block;
+ *  Slot 4 – Anthropic API: automatic cache_control (5min TTL, auto-placed at last cacheable block;
  *                                          added as top-level field in buildStreamRequestPayload)
+ *         – Vertex AI:     explicit last-message breakpoint (5min TTL; Vertex does not support
+ *                                          automatic caching, so the last message is marked
+ *                                          explicitly via isLast in buildBaseRequestPayload)
  *
  * Each non-empty system tier becomes a separate text block. Breakpoints are placed
  * between tiers so that stable prefixes can be reused even when later tiers change:
@@ -156,6 +159,9 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       (msg, index) =>
         toMessage(msg, {
           isFirst: index === 0,
+          // Vertex AI does not support automatic caching, so we need an explicit breakpoint on the
+          // last message. On the Anthropic API the top-level cache_control handles this.
+          isLast: this.useVertex && index === conversation.messages.length - 1,
           omittedThinking: this.omittedThinking,
           convertToBase64: this.useVertex,
         }),
