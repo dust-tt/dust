@@ -154,6 +154,7 @@ export async function syncOneFile({
   parentInternalId,
   startSyncTs,
   isBatchSync = false,
+  skipMissingFile = false,
   heartbeat,
 }: {
   connectorId: ModelId;
@@ -163,6 +164,7 @@ export async function syncOneFile({
   parentInternalId: string;
   startSyncTs: number;
   isBatchSync?: boolean;
+  skipMissingFile?: boolean;
   heartbeat: () => Promise<void>;
 }) {
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -252,8 +254,9 @@ export async function syncOneFile({
       )) as DriveItem;
     } catch (error) {
       if (
-        (error instanceof GraphError && error.statusCode === 404) ||
-        isSiteNotFoundError(error)
+        skipMissingFile &&
+        ((error instanceof GraphError && error.statusCode === 404) ||
+          isSiteNotFoundError(error))
       ) {
         localLogger.warn(
           { error: normalizeError(error).message },

@@ -727,6 +727,7 @@ export async function syncFiles({
           file: child,
           parentInternalId,
           startSyncTs,
+          skipMissingFile: true,
           heartbeat,
         }),
       { concurrency }
