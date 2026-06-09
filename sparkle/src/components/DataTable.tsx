@@ -60,6 +60,7 @@ declare module "@tanstack/react-table" {
     className?: string;
     tooltip?: string;
     sizeRatio?: number;
+    headerAlign?: "left" | "right" | "center";
   }
 }
 
@@ -246,7 +247,17 @@ export function DataTable<TData extends TBaseData>({
                       header.column.getCanSort() && "s-cursor-pointer"
                     )}
                   >
-                    <div className="s-flex s-items-center s-space-x-1 s-whitespace-nowrap">
+                    <div
+                      className={cn(
+                        "s-flex s-items-center s-space-x-1 s-whitespace-nowrap",
+                        header.column.columnDef.meta?.headerAlign === "right"
+                          ? "s-justify-end"
+                          : header.column.columnDef.meta?.headerAlign ===
+                              "center"
+                            ? "s-justify-center"
+                            : undefined
+                      )}
+                    >
                       {flexRender(
                         header.column.columnDef.header,
                         header.getContext()
@@ -784,7 +795,12 @@ DataTable.Head = function Head({
   return (
     <th
       className={cn(
-        "s-heading-xs s-py-2 s-pl-2 s-pr-3 s-text-left s-capitalize",
+        "s-heading-xs s-py-2 s-px-2 s-capitalize",
+        column.columnDef.meta?.headerAlign === "right"
+          ? "s-text-right"
+          : column.columnDef.meta?.headerAlign === "center"
+            ? "s-text-center"
+            : "s-text-left",
         "s-text-foreground dark:s-text-foreground-night",
         column.columnDef.meta?.className,
         className
@@ -1055,7 +1071,7 @@ DataTable.Cell = function Cell({
     <td
       className={cn(
         cellHeight,
-        "s-truncate s-pl-2",
+        "s-truncate s-px-2",
         column.columnDef.meta?.className,
         className
       )}

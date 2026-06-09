@@ -23,3 +23,16 @@ export type MetronomeInvoiceSummary = {
 export type GetMetronomeInvoiceResponseBody = {
   invoice: MetronomeInvoiceSummary | null;
 };
+
+export type MetronomeInvoiceLineItem = {
+  name: string;
+  type: string;
+  quantity: number | null;
+  unitPriceCents: number | null;
+  totalCents: number;
+};
+
+export type GetMetronomeInvoiceLinesResponseBody = {
+  currency: SupportedCurrency | null;
+  lineItems: MetronomeInvoiceLineItem[];
+};

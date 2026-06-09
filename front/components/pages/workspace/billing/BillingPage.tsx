@@ -2,26 +2,55 @@ import { BillingInformation } from "@app/components/workspace/billing/BillingInf
 import { BillingOverview } from "@app/components/workspace/billing/BillingOverview";
 import { BillingSeatsOverview } from "@app/components/workspace/billing/BillingSeatsOverview";
 import { BillingUpgrade } from "@app/components/workspace/billing/BillingUpgrade";
+import { NextInvoiceOverview } from "@app/components/workspace/billing/NextInvoiceOverview";
+import { NextInvoicePreview } from "@app/components/workspace/billing/NextInvoicePreview";
 import { RecentInvoices } from "@app/components/workspace/billing/RecentInvoices";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { CreditCard01, Page } from "@dust-tt/sparkle";
+import {
+  CreditCard01,
+  Page,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
 
 export function BillingPage() {
   const { workspace: owner, subscription } = useAuth();
-  // const router = useAppRouter();
 
   return (
     <Page.Vertical gap="xl" align="stretch">
       <Page.Header
         title="Billing"
         icon={CreditCard01}
-        description="Edit your subscription and billing information."
+        description="Change your subscription and edit your billing information."
       />
-      <BillingOverview owner={owner} subscription={subscription} />
-      <BillingSeatsOverview owner={owner} />
-      <BillingUpgrade owner={owner} subscription={subscription} />
-      <BillingInformation owner={owner} />
-      <RecentInvoices owner={owner} />
+      <Tabs defaultValue="billing-information">
+        <TabsList>
+          <TabsTrigger
+            value="billing-information"
+            label="Billing information"
+          />
+          <TabsTrigger value="invoices" label="Invoices" />
+        </TabsList>
+        <TabsContent value="billing-information">
+          <div className="flex flex-col mt-8 gap-8">
+            <div className="flex flex-col gap-4">
+              <BillingOverview owner={owner} subscription={subscription} />
+              <BillingSeatsOverview owner={owner} />
+            </div>
+            <BillingUpgrade owner={owner} subscription={subscription} />
+            <BillingInformation owner={owner} />
+          </div>
+        </TabsContent>
+        <TabsContent value="invoices">
+          <div className="flex flex-col mt-8 gap-8">
+            <NextInvoiceOverview owner={owner} subscription={subscription} />
+            <NextInvoicePreview owner={owner} subscription={subscription} />
+            <RecentInvoices owner={owner} />
+          </div>
+        </TabsContent>
+      </Tabs>
     </Page.Vertical>
   );
 }
