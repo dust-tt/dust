@@ -1,14 +1,20 @@
-import { createDataSourceFolder, upsertTable } from "@app/lib/api/data_sources";
+import {
+  createDataSourceFolder,
+  upsertDocument,
+  upsertTable,
+} from "@app/lib/api/data_sources";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { TABLE_PREFIX } from "@app/types/files";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { slugify } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
@@ -35,6 +41,12 @@ vi.mock(import("../data_sources"), async (importOriginal) => {
           },
         });
       }),
+    upsertDocument: vi.fn().mockImplementation(() => {
+      return new Ok({
+        document: {},
+        data_source: {},
+      });
+    }),
   };
 });
 
@@ -83,6 +95,8 @@ describe("processAndUpsertToDataSource", () => {
 
     // Reset mocks
     vi.clearAllMocks();
+    vi.mocked(getFileContent).mockReset();
+    vi.mocked(upsertDocument).mockReset();
   });
 
   it("should skip all processing for tool_output files with skipDataSourceIndexing", async () => {
@@ -112,6 +126,106 @@ describe("processAndUpsertToDataSource", () => {
     // No Qdrant indexing should have happened.
     expect(upsertTable).not.toHaveBeenCalled();
     expect(createDataSourceFolder).not.toHaveBeenCalled();
+  });
+
+  it("should keep over-quota text conversation files without indexing them", async () => {
+    const file = await FileFactory.create(auth, null, {
+      contentType: "text/plain",
+      fileName: "large-conversation-file.txt",
+      fileSize: 6 * 1024 * 1024,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: {
+        conversationId: "test-conversation-id",
+      },
+    });
+
+    const space = await SpaceFactory.global(workspace);
+    const datasourceView = await DataSourceViewFactory.folder(workspace, space);
+
+    vi.mocked(getFileContent).mockResolvedValue("large text content");
+    vi.mocked(upsertDocument).mockResolvedValue(
+      new Err(new DustError("data_source_quota_error", "File is too large."))
+    );
+
+    const result = await processAndUpsertToDataSource(
+      auth,
+      datasourceView.dataSource,
+      { file }
+    );
+
+    expect(result.isOk()).toBe(true);
+
+    const updatedFile = await FileResource.fetchById(auth, file.sId);
+    expect(updatedFile).not.toBeNull();
+    expect(updatedFile?.useCaseMetadata?.conversationId).toBe(
+      "test-conversation-id"
+    );
+    expect(updatedFile?.useCaseMetadata?.skipDataSourceIndexing).toBe(true);
+    expect(updatedFile?.snippet).toBe("Mocked snippet");
+  });
+
+  it("should keep data source quota errors fatal for non-conversation files", async () => {
+    const file = await FileFactory.create(auth, null, {
+      contentType: "text/plain",
+      fileName: "large-folder-file.txt",
+      fileSize: 6 * 1024 * 1024,
+      status: "ready",
+      useCase: "folders_document",
+    });
+
+    const space = await SpaceFactory.global(workspace);
+    const datasourceView = await DataSourceViewFactory.folder(workspace, space);
+
+    vi.mocked(getFileContent).mockResolvedValue("large text content");
+    vi.mocked(upsertDocument).mockResolvedValue(
+      new Err(new DustError("data_source_quota_error", "File is too large."))
+    );
+
+    const result = await processAndUpsertToDataSource(
+      auth,
+      datasourceView.dataSource,
+      { file }
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("data_source_quota_error");
+    }
+  });
+
+  it("should keep unrelated conversation indexing errors fatal", async () => {
+    const file = await FileFactory.create(auth, null, {
+      contentType: "text/plain",
+      fileName: "conversation-file.txt",
+      fileSize: 1000,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: {
+        conversationId: "test-conversation-id",
+      },
+    });
+
+    const space = await SpaceFactory.global(workspace);
+    const datasourceView = await DataSourceViewFactory.folder(workspace, space);
+
+    vi.mocked(getFileContent).mockResolvedValue("text content");
+    vi.mocked(upsertDocument).mockResolvedValue(
+      new Err(
+        new DustError("invalid_request_error", "Missing embedding API key.")
+      )
+    );
+
+    const result = await processAndUpsertToDataSource(
+      auth,
+      datasourceView.dataSource,
+      { file }
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("invalid_request_error");
+    }
   });
 
   it("should call upsertTable with the right parameters for a CSV file", async () => {
