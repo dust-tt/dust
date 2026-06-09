@@ -8,7 +8,7 @@ import {
   getMetronomeDefaultUserCapAlertForSeatType,
   getMetronomePerUserCap,
 } from "@app/lib/metronome/alerts/spend_limits";
-import { listMetronomeBalances } from "@app/lib/metronome/client";
+import { getNetBalance } from "@app/lib/metronome/client";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import { invalidateWorkspacePoolCredits } from "@app/lib/metronome/credit_balance";
 import { fetchLiveUserCreditInputs } from "@app/lib/metronome/live_user_credit_inputs";
@@ -37,7 +37,7 @@ import logger from "@app/logger/logger";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 
 /**
  * Resolve the effective pool credit limit for a user.
@@ -806,18 +806,7 @@ export async function syncPoolCreditStateFromBalance({
 export async function getWorkspacePoolAwuBalance(
   metronomeCustomerId: string
 ): Promise<Result<number, Error>> {
-  const balancesResult = await listMetronomeBalances(metronomeCustomerId);
-  if (balancesResult.isErr()) {
-    return new Err(balancesResult.error);
-  }
-
-  const awuCreditTypeId = getCreditTypeAwuId();
-  const awuBalance = balancesResult.value.reduce((sum, entry) => {
-    if (entry.access_schedule?.credit_type?.id !== awuCreditTypeId) {
-      return sum;
-    }
-    return sum + (entry.balance ?? 0);
-  }, 0);
-
-  return new Ok(awuBalance);
+  return getNetBalance(metronomeCustomerId, {
+    creditTypeId: getCreditTypeAwuId(),
+  });
 }
