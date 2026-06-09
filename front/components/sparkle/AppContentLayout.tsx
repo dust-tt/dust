@@ -11,7 +11,7 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import { isAdmin } from "@app/types/user";
-import { cn } from "@dust-tt/sparkle";
+import { cn, ScrollArea } from "@dust-tt/sparkle";
 import type React from "react";
 
 interface AppContentLayoutProps {
@@ -42,7 +42,7 @@ function AppContentInnerWrapper({
   return (
     <div
       className={cn(
-        "my-2 mr-2 ml-1 rounded-xl flex-1 overflow-y-scroll bg-content-background dark:bg-content-background-night border border-border dark:border-border-night",
+        "my-2 mr-2 ml-1 rounded-xl flex-1 bg-content-background dark:bg-content-background-night border border-border dark:border-border-night",
         !isNavigationBarOpen && !isFullScreen && "ml-5"
       )}
       style={{
@@ -114,7 +114,8 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
           {/* Temporary measure to preserve title existence on smaller screens.
            * Page has no title, prepend empty AppLayoutTitle. */}
           {!hasTitleBar && (
-            <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex min-h-0 flex-1 flex-col h-[calc(100dvh-0.5rem)]">
+              <ScrollArea>
               <AppLayoutTitle />
               {contentWidth ? (
                 <div
@@ -136,10 +137,11 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
               ) : (
                 children
               )}
+              </ScrollArea>
             </div>
           )}
           {hasTitleBar && (
-            <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
               {contentWidth ? (
                 <>
                   {title}

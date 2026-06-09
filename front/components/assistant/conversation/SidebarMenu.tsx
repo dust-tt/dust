@@ -103,6 +103,7 @@ import {
   XClose,
   Zap,
   ZapOff,
+  ScrollArea,
 } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -1564,9 +1565,10 @@ function NavigationListWithInbox({
   );
 
   return (
+    <ScrollArea>
     <div
       ref={scrollContainerRef}
-      className="dd-privacy-mask h-full w-full overflow-y-auto"
+      className="dd-privacy-mask h-full w-full"
     >
       <div className="flex flex-col gap-4">
         <AnimatePresence initial={false}>
@@ -1678,7 +1680,7 @@ function NavigationListWithInbox({
             {conversationsContent}
           </NavigationListCollapsibleSection>
         </NavigationList>
-      </div>
     </div>
+      </div></ScrollArea>
   );
 }
