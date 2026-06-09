@@ -46,6 +46,7 @@ export const KnowledgeNode = Node.create<KnowledgeNodeOptions>({
   inline: true,
   atom: false, // Make it editable.
   selectable: false, // Allow text cursor inside.
+  draggable: true,
 
   markdownTokenizer: {
     name: "knowledgeNode",
