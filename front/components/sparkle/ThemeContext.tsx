@@ -114,9 +114,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     if (nextIsDark) {
       document.body.classList.remove("bg-app-background");
-      document.body.classList.add(
-        "bg-app-background-night",
-      );
+      document.body.classList.add("bg-app-background-night");
     } else {
       document.body.classList.remove(
         "bg-app-background-night",
