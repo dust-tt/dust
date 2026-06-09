@@ -25,7 +25,6 @@ export default function ConversationSidePanelContainer({
   const [fullScreenHash] = useHashParam(FULL_SCREEN_HASH_PARAM);
   const isFullScreen = fullScreenHash === "true";
 
-
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -40,17 +39,17 @@ export default function ConversationSidePanelContainer({
     panelRef.current?.expand(DEFAULT_RIGHT_PANEL_SIZE);
   }, [currentPanel]);
 
-  console.log("!conversation", !conversation);
-
   return (
     <>
-    {
-      !!conversation && <ResizableHandle
-        withHandle={currentPanel && !isMobile && !isFullScreen && !!conversation}
-        disabled={!currentPanel || isMobile || isFullScreen || !conversation}
-        className="z-50"
-      />
-    }
+      {!!conversation && (
+        <ResizableHandle
+          withHandle={
+            currentPanel && !isMobile && !isFullScreen && !!conversation
+          }
+          disabled={!currentPanel || isMobile || isFullScreen || !conversation}
+          className="z-50"
+        />
+      )}
       {/* Panel Container - either Interactive Content or Actions */}
       <ResizablePanel
         ref={panelRef}
@@ -66,7 +65,7 @@ export default function ConversationSidePanelContainer({
         className={cn(
           // Smooth transition animation similar to sidebar
           "flex-0 overflow-hidden transition-all duration-300 ease-out",
-          (!currentPanel) && "hidden w-0 md:block",
+          !currentPanel && "hidden w-0 md:block",
           // On mobile: overlay full screen with absolute positioning.
           "md:relative",
           currentPanel &&
