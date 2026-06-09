@@ -53,7 +53,7 @@ export const MAX_SEAT_MONTHLY_AWU_CREDITS = 40000;
 // Per-seat AWU grant carried by the Free Seat subscription. Granted once
 // per seat on contract start and valid for the lifetime of the contract.
 // Never refilled.
-const FREE_SEAT_LIFETIME_AWU_CREDITS = 300;
+export const FREE_SEAT_LIFETIME_AWU_CREDITS = 300;
 
 export const NEW_METRICS: MetricDef[] = [
   // Tool invocation metric — counts tool uses, group keys cover both user and

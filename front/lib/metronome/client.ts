@@ -2213,6 +2213,173 @@ export async function updateMetronomeCreditSegmentAmount({
 }
 
 /**
+ * Add a one-time credit scoped to a single seat (user) on a contract via
+ * `v2.contracts.edit` (`add_credits`).
+ *
+ * The credit is scoped to one seat through a `user_id` presentation specifier:
+ * only usage tagged for that `userId` draws it down. This is how we express a
+ * per-seat credit that the recurring INDIVIDUAL credit mechanism cannot — a
+ * grant issued exactly once per seat, whenever that seat first appears, with no
+ * periodic refill. Idempotency is enforced through `uniquenessKey`: a repeated
+ * edit with the same key returns the existing edit (surfaced here as `Ok(null)`)
+ * rather than granting twice.
+ *
+ * `specifiers` is mutually exclusive with `applicable_product_ids` /
+ * `applicable_product_tags`, so the usage-product scope is passed as
+ * `product_tags` *inside* the specifier rather than as a top-level applicable
+ * filter.
+ */
+export async function addPerUserCreditToContract({
+  metronomeCustomerId,
+  metronomeContractId,
+  productId,
+  creditTypeId,
+  amount,
+  userId,
+  productTags,
+  startingAt,
+  endingBefore,
+  name,
+  priority,
+  uniquenessKey,
+  customFields,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  productId: string;
+  creditTypeId: string;
+  amount: number;
+  userId: string;
+  productTags: string[];
+  startingAt: Date;
+  endingBefore: Date;
+  name: string;
+  priority: number;
+  uniquenessKey: string;
+  customFields?: Record<string, string>;
+}): Promise<Result<{ editId: string } | null, Error>> {
+  // Metronome requires dates on hour boundaries — round down start, round up end.
+  const roundedStartingAt = floorToHourISO(startingAt);
+  const roundedEndingBefore = floorToHourISO(endingBefore);
+
+  try {
+    const response = await getMetronomeClient().v2.contracts.edit({
+      customer_id: metronomeCustomerId,
+      contract_id: metronomeContractId,
+      uniqueness_key: uniquenessKey,
+      add_credits: [
+        {
+          product_id: productId,
+          name,
+          priority,
+          ...(customFields ? { custom_fields: customFields } : {}),
+          access_schedule: {
+            credit_type_id: creditTypeId,
+            schedule_items: [
+              {
+                amount,
+                starting_at: roundedStartingAt,
+                ending_before: roundedEndingBefore,
+              },
+            ],
+          },
+          specifiers: [
+            {
+              presentation_group_values: { user_id: userId },
+              product_tags: productTags,
+            },
+          ],
+        },
+      ],
+    });
+
+    logger.info(
+      {
+        metronomeCustomerId,
+        metronomeContractId,
+        userId,
+        editId: response.data.id,
+        amount,
+      },
+      "[Metronome] Per-user seat credit added to contract"
+    );
+
+    return new Ok({ editId: response.data.id });
+  } catch (err) {
+    if (err instanceof ConflictError) {
+      // Idempotency key conflict — the per-user credit was already granted.
+      logger.info(
+        { metronomeCustomerId, metronomeContractId, userId, uniquenessKey },
+        "[Metronome] Per-user seat credit already exists (idempotent)"
+      );
+      return new Ok(null);
+    }
+
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, metronomeContractId, userId, amount },
+      "[Metronome] Failed to add per-user seat credit to contract"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Return the set of seat user sIds that already have a per-user credit on the
+ * contract, read from the `customFieldKey` custom field stamped at grant time.
+ *
+ * `covering_date` is intentionally dropped and archived credits are included so
+ * EXPIRED and archived grants still count — a per-user credit is once-ever, and
+ * a user whose grant has lapsed must not be re-credited. (The grant's
+ * `uniqueness_key` enforces this server-side regardless; this pre-check just
+ * avoids the redundant edit call.)
+ */
+export async function listContractPerUserCreditUserIds({
+  metronomeCustomerId,
+  metronomeContractId,
+  customFieldKey,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  customFieldKey: string;
+}): Promise<Result<Set<string>, Error>> {
+  if (!config.getMetronomeApiKey()) {
+    return new Ok(new Set());
+  }
+
+  const client = getMetronomeClient();
+
+  try {
+    const userIds = new Set<string>();
+    for await (const entry of client.v1.contracts.listBalances({
+      customer_id: metronomeCustomerId,
+      include_balance: false,
+      include_contract_balances: true,
+      include_archived: true,
+    })) {
+      if (
+        entry.type !== "CREDIT" ||
+        entry.contract?.id !== metronomeContractId
+      ) {
+        continue;
+      }
+      const userId = entry.custom_fields?.[customFieldKey];
+      if (userId) {
+        userIds.add(userId);
+      }
+    }
+    return new Ok(userIds);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, metronomeContractId },
+      "[Metronome] Failed to list per-user contract credits"
+    );
+    return new Err(error);
+  }
+}
+
+/**
  * Create a credit grant on a Metronome customer.
  * Used for monthly free programmatic credits on legacy plans.
  */

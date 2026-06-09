@@ -116,6 +116,13 @@ export const CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY =
 export const CONTRACT_CREDIT_TYPE_EXCESS = "excess";
 export const CONTRACT_CREDIT_TYPE_POOL = "pool";
 
+// Custom field stamped on per-seat credits, carrying the seat's user sId. Used
+// to look up which seats already have a per-user credit on a contract (so we
+// skip re-granting) — distinct from the credit name, which can be shared with
+// other credit kinds.
+export const PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY =
+  "DUST_PER_USER_CREDIT_USER";
+
 // Pricing/billable-metric group key that splits AWU usage into "user",
 // "programmatic", and "free" slices. Emitted on every usage event and used
 // by pricing rules, per-user reporting, and spend-threshold alerts.

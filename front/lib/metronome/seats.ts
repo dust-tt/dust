@@ -1,10 +1,18 @@
 import {
+  addPerUserCreditToContract,
   getMetronomeContractById,
   getMetronomeSubscriptionAssignedSeatIds,
   getMetronomeSubscriptionSeatState,
+  listContractPerUserCreditUserIds,
   updateSubscriptionQuantity,
   updateSubscriptionSeats,
 } from "@app/lib/metronome/client";
+import {
+  AWU_PRIORITY_SEAT_ALLOCATION,
+  getCreditTypeAwuId,
+  getProductSeatSubscriptionCreditsId,
+  PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY,
+} from "@app/lib/metronome/constants";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import {
   getAwuAllocationForSeatType,
@@ -14,6 +22,11 @@ import {
   getSeatTypeForSubscription,
   isMauContract,
 } from "@app/lib/metronome/seat_types";
+import {
+  FREE_SEAT_CREDIT_NAME,
+  USAGE_TAG,
+} from "@app/lib/metronome/setup_common";
+import { FREE_SEAT_LIFETIME_AWU_CREDITS } from "@app/lib/metronome/setup_new_pricing";
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -30,6 +43,7 @@ import { isMembershipSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
+import { addYears } from "date-fns";
 
 /**
  * Returns true if the contract is seat-billed (any subscription should be
@@ -423,6 +437,91 @@ export async function remapMembershipSeatTypesForContract({
  * - contract provisioning after creation or migration
  * - admin-driven seat-type changes (via `updateMembershipSeatAndTrack`)
  */
+// The free seat AWU grant is anchored on per-seat first-appearance, not on a
+// recurring schedule: a recurring INDIVIDUAL credit either refills every period
+// or closes its issuance window, so it can't grant "once per seat, ever,
+// whenever the seat is assigned". Instead we grant a standalone contract credit
+// scoped to the user via a `user_id` presentation specifier, idempotent on
+// (workspaceId, userId), valid for one year from the grant.
+//
+// `syncSeatCount` runs on every membership change and reconciles full state, so
+// it calls this for ALL currently-free users on each sync. We first list the
+// contract's existing per-user credits and skip users already granted — so a
+// steady-state sync makes a single read instead of one edit call per free user.
+// The grant's `uniqueness_key` still guards against double-granting on the race
+// between the read and a concurrent sync (a 409 returns `Ok(null)`). Listing
+// includes expired/archived credits so a lapsed grant is not re-issued. This
+// self-heals a grant that failed on a previous sync — a delta-only grant could
+// miss a user permanently once their seat is assigned. Best-effort: a failure
+// is logged but never fails (and retries) the seat reconciliation.
+async function grantFreeSeatCredits({
+  metronomeCustomerId,
+  contractId,
+  workspaceId,
+  userSIds,
+  startingAt,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  workspaceId: string;
+  userSIds: string[];
+  startingAt: Date;
+}): Promise<void> {
+  if (userSIds.length === 0) {
+    return;
+  }
+
+  // Skip users that already have a credit. On a read failure we fall back to
+  // attempting every user — the grant is still idempotent via its uniqueness
+  // key, so we never double-grant, only make redundant (no-op) edit calls.
+  const alreadyGranted = await listContractPerUserCreditUserIds({
+    metronomeCustomerId,
+    metronomeContractId: contractId,
+    customFieldKey: PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY,
+  });
+  if (alreadyGranted.isErr()) {
+    logger.warn(
+      { workspaceId, contractId, error: alreadyGranted.error },
+      "[Metronome] Could not list existing free seat credits; attempting all grants (idempotent)"
+    );
+  }
+  const grantedUserIds = alreadyGranted.isOk()
+    ? alreadyGranted.value
+    : new Set<string>();
+  const toGrant = userSIds.filter((userId) => !grantedUserIds.has(userId));
+  if (toGrant.length === 0) {
+    return;
+  }
+
+  await concurrentExecutor(
+    toGrant,
+    async (userId) => {
+      const result = await addPerUserCreditToContract({
+        metronomeCustomerId,
+        metronomeContractId: contractId,
+        productId: getProductSeatSubscriptionCreditsId(),
+        creditTypeId: getCreditTypeAwuId(),
+        amount: FREE_SEAT_LIFETIME_AWU_CREDITS,
+        userId,
+        productTags: [USAGE_TAG],
+        startingAt,
+        endingBefore: addYears(startingAt, 1),
+        name: FREE_SEAT_CREDIT_NAME,
+        priority: AWU_PRIORITY_SEAT_ALLOCATION,
+        uniquenessKey: `free-seat-credit:${workspaceId}:${userId}`,
+        customFields: { [PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY]: userId },
+      });
+      if (result.isErr()) {
+        logger.error(
+          { workspaceId, contractId, userId, error: result.error },
+          "[Metronome] Failed to grant free seat credit"
+        );
+      }
+    },
+    { concurrency: 4 }
+  );
+}
+
 export async function syncSeatCount({
   metronomeCustomerId,
   contractId,
@@ -628,6 +727,19 @@ export async function syncSeatCount({
             return new Err(result.error);
           }
           didMutateSeatData = didMutateSeatData || result.value;
+        }
+
+        // Per-seat AWU grant for free seats. Best-effort and idempotent:
+        // re-attempted for every current free user on each sync, deduped by the
+        // grant's uniqueness key (see `grantFreeSeatCredits`).
+        if (seatType === "free") {
+          await grantFreeSeatCredits({
+            metronomeCustomerId,
+            contractId,
+            workspaceId: workspace.sId,
+            userSIds: desiredSIdsAt(seatType, baseMs),
+            startingAt: new Date(baseMs),
+          });
         }
       } else {
         // QUANTITY_ONLY: only sync the "now" total. Scheduled changes within
