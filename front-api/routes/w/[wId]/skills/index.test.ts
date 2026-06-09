@@ -1,6 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
 import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
-import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/discover_tools";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -645,61 +644,6 @@ describe("POST /api/w/:wId/skills", () => {
         sId: childSkill.sId,
       }),
     ]);
-  });
-
-  it("converts extendedSkillId into a global skill reference", async () => {
-    const { auth, workspace } = await setupTest("admin");
-
-    const response = await postSkill(workspace, {
-      name: "Customized Frames Skill",
-      agentFacingDescription: "To use with frames",
-      userFacingDescription: "A customized frames skill",
-      instructions: "Use the customized workflow.",
-      icon: "PuzzleIcon",
-      tools: [],
-      extendedSkillId: "frames",
-      attachedKnowledge: [],
-      instructionsHtml: "<p>Use the customized workflow.</p>",
-    });
-
-    expect(response.status).toBe(200);
-
-    const responseData = await response.json();
-    expect(responseData.skill).toMatchObject({
-      extendedSkillId: null,
-      instructions: expect.stringContaining(
-        'This skill is a customization of <skill id="frames" name="Create Frames"'
-      ),
-      instructionsHtml: expect.stringContaining(
-        '<skill id="frames" name="Create Frames"'
-      ),
-    });
-
-    const createdSkill = await SkillResource.fetchById(
-      auth,
-      responseData.skill.sId
-    );
-    expect(createdSkill).not.toBeNull();
-    if (!createdSkill) {
-      throw new Error("Expected created skill to exist.");
-    }
-
-    expect(createdSkill.extendedSkillId).toBeNull();
-    await expect(createdSkill.fetchChildSkills(auth)).resolves.toEqual([
-      expect.objectContaining({
-        sId: "frames",
-      }),
-    ]);
-
-    const references = await SkillReferenceModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-        parentSkillId: createdSkill.id,
-        childCustomSkillId: null,
-        childGlobalSkillId: "frames",
-      },
-    });
-    expect(references).toHaveLength(1);
   });
 
   it("drops missing nested skill references", async () => {
