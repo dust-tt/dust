@@ -4152,8 +4152,8 @@ const NAV_SECTIONS: { title: string; items: NavSpec[] }[] = [
     title: "Workspace",
     items: [
       { id: "people", label: "People", icon: Users01 },
-      { id: "capabilities", label: "Governance", icon: Toggle01Left },
       { id: "identity", label: "Identity & provisioning", icon: Fingerprint04 },
+      { id: "capabilities", label: "Governance", icon: Toggle01Left },
       { id: "workspace", label: "Workspace Settings", icon: Tool01 },
       { id: "usage", label: "Usage", icon: PieChart01 },
       { id: "models", label: "Model Providers", icon: Server01 },
