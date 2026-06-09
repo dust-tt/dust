@@ -27,7 +27,14 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
-import { Button, Card, Lightbulb04, Page, XClose, ScrollArea } from "@dust-tt/sparkle";
+import {
+  Button,
+  Card,
+  Lightbulb04,
+  Page,
+  ScrollArea,
+  XClose,
+} from "@dust-tt/sparkle";
 import { useCallback, useContext, useEffect, useState } from "react";
 
 interface ConversationContainerProps {
@@ -269,6 +276,7 @@ export function ConversationContainerVirtuoso({
     body
   ) : (
     <div className="h-full">
-      <ScrollArea className="px-4 py-4 md:px-8">{body}</ScrollArea></div>
+      <ScrollArea className="px-4 py-4 md:px-8">{body}</ScrollArea>
+    </div>
   );
 }

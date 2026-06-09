@@ -116,27 +116,27 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
           {!hasTitleBar && (
             <div className="flex min-h-0 flex-1 flex-col h-[calc(100dvh-0.5rem)]">
               <ScrollArea>
-              <AppLayoutTitle />
-              {contentWidth ? (
-                <div
-                  className={cn(
-                    "flex h-full w-full flex-col items-center overflow-y-auto",
-                    contentWidth === "centered" ? "pt-4" : "pt-8",
-                    contentClassName
-                  )}
-                >
+                <AppLayoutTitle />
+                {contentWidth ? (
                   <div
                     className={cn(
-                      "flex w-full grow flex-col px-4 sm:px-8",
-                      contentWidth === "centered" && "max-w-4xl"
+                      "flex h-full w-full flex-col items-center overflow-y-auto",
+                      contentWidth === "centered" ? "pt-4" : "pt-8",
+                      contentClassName
                     )}
                   >
-                    {children}
+                    <div
+                      className={cn(
+                        "flex w-full grow flex-col px-4 sm:px-8",
+                        contentWidth === "centered" && "max-w-4xl"
+                      )}
+                    >
+                      {children}
+                    </div>
                   </div>
-                </div>
-              ) : (
-                children
-              )}
+                ) : (
+                  children
+                )}
               </ScrollArea>
             </div>
           )}

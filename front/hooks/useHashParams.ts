@@ -76,9 +76,7 @@ export const useHashParam = (
           defaultValue
         );
         setInnerValue((prev) =>
-          prev.val !== newVal
-            ? { val: newVal, options: DEFAULT_OPTIONS }
-            : prev
+          prev.val !== newVal ? { val: newVal, options: DEFAULT_OPTIONS } : prev
         );
       }
     };
@@ -125,13 +123,10 @@ export const useHashParam = (
       // useHashParam instances manually.
       window.dispatchEvent(new HashChangeEvent("hashchange"));
     }
-  }, [defaultValue, innerValue, key]);
+  }, [innerValue, key]);
 
   const setValue = useCallback<Setter>(
-    (
-      newValue?: string | Updater,
-      options: SetterOptions = DEFAULT_OPTIONS
-    ) => {
+    (newValue?: string | Updater, options: SetterOptions = DEFAULT_OPTIONS) => {
       const newInnerValue =
         typeof newValue === "function"
           ? newValue(

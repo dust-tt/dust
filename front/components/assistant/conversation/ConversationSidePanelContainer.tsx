@@ -1,14 +1,14 @@
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
+import { useHashParam } from "@app/hooks/useHashParams";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import type { LightWorkspaceType } from "@app/types/user";
 import { cn, ResizableHandle, ResizablePanel } from "@dust-tt/sparkle";
 import { useEffect, useRef } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
-import { useHashParam } from "@app/hooks/useHashParams";
-import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 
 interface ConversationSidePanelContainerProps {
   conversation?: ConversationWithoutContentType;
@@ -22,10 +22,8 @@ export default function ConversationSidePanelContainer({
   const { currentPanel, setPanelRef, onPanelClosed } =
     useConversationSidePanelContext();
   const panelRef = useRef<ImperativePanelHandle | null>(null);
-  const [fullScreenHash] = useHashParam(
-    FULL_SCREEN_HASH_PARAM
-  );
-    const isFullScreen = fullScreenHash === "true";
+  const [fullScreenHash] = useHashParam(FULL_SCREEN_HASH_PARAM);
+  const isFullScreen = fullScreenHash === "true";
 
   const isMobile = useIsMobile();
 
