@@ -587,9 +587,6 @@ export function _getDustAntHighGlobalAgent(
   });
 }
 
-// Claude Fable 5 does not support none/light reasoning efforts (an explicit
-// disabled thinking is rejected), so the base dust-lionel agent runs at
-// medium, the model's minimum.
 export function _getDustLionelGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs
@@ -598,7 +595,7 @@ export function _getDustLionelGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_LIONEL,
     name: "dust-lionel",
     preferredModelConfiguration: CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG,
-    preferredReasoningEffort: "medium",
+    preferredReasoningEffort: "light",
   });
 }
 

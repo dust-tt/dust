@@ -158,7 +158,7 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
 
     // Clamp the reasoning effort to the model's supported range. Some callers
     // default to "none" when no effort is set, but models like Claude Fable 5
-    // reject the explicit disabled thinking that none/light map to, so an
+    // reject the explicit disabled thinking that "none" maps to, so an
     // unsupported effort falls back to the model's minimum supported one.
     const supportedEfforts = this.modelConfig.supportedReasoningEfforts;
     const reasoningEffort: ReasoningEffort | null =

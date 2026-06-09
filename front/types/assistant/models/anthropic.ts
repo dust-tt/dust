@@ -386,15 +386,17 @@ export const CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   generationTokensCount: 64_000,
   supportsVision: true,
   supportsResponseFormat: true,
-  // Fable 5 rejects an explicit `thinking: {type: "disabled"}` (400), so the
-  // minimum supported reasoning effort is medium (thinking always enabled).
+  // Fable 5 rejects an explicit `thinking: {type: "disabled"}` (400), so
+  // "none" is unsupported and "light" relies on native light reasoning
+  // (adaptive thinking with low effort) instead of disabling thinking.
   supportedReasoningEfforts: {
     none: false,
-    light: false,
+    light: true,
     medium: true,
     high: true,
   },
   defaultReasoningEffort: "medium",
+  useNativeLightReasoning: true,
   // Fable 5 shares the Opus 4.7/4.8 tokenizer (~555k words/1M tokens vs ~750k
   // for anthropic_base). Ratio: 750/555 ≈ 1.35, applied on top of the base 1.3
   // adjustment → 1.3 × 1.35 ≈ 1.75.
