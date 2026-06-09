@@ -24,6 +24,7 @@ import type {
 } from "@metronome/sdk/resources/v1/customers";
 import type { ContractEditParams } from "@metronome/sdk/resources/v2/contracts";
 import type { IncomingHttpHeaders } from "http";
+import { z } from "zod";
 import type {
   MetronomeBalance,
   MetronomeEvent,
@@ -2296,6 +2297,169 @@ export async function createMetronomeCredit({
     logger.error(
       { error, metronomeCustomerId, name, idempotencyKey },
       "[Metronome] Failed to create credit grant"
+    );
+    return new Err(error);
+  }
+}
+
+// The SDK types ContractEditResponse as { data: { id } } but the actual payload
+// includes edit.add_credits[].id — this schema parses the undocumented fields.
+const CONTRACT_EDIT_WITH_CREDITS_RESPONSE_SCHEMA = z.object({
+  data: z.object({
+    edit: z.object({
+      add_credits: z.array(z.object({ id: z.string() })),
+    }),
+  }),
+});
+
+/**
+ * Add a credit grant to a Metronome contract.
+ * Uses v2.contracts.edit with add_credits, so uniqueness_key applies to the
+ * whole edit operation (not per-credit). On 409 the edit already exists and
+ * the credit is considered granted.
+ */
+export async function addCreditToContract({
+  metronomeCustomerId,
+  metronomeContractId,
+  productId,
+  creditTypeId,
+  amount,
+  startingAt,
+  endingBefore,
+  name,
+  uniquenessKey,
+  applicableProductTags,
+  priority,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  productId: string;
+  creditTypeId: string;
+  amount: number;
+  startingAt: string;
+  endingBefore: string;
+  name: string;
+  uniquenessKey: string;
+  applicableProductTags?: string[];
+  priority: number;
+}): Promise<Result<{ creditId: string } | null, Error>> {
+  const roundedStartingAt = floorToHourISO(new Date(startingAt));
+  const roundedEndingBefore = floorToHourISO(new Date(endingBefore));
+
+  try {
+    const response = await getMetronomeClient().v2.contracts.edit({
+      customer_id: metronomeCustomerId,
+      contract_id: metronomeContractId,
+      uniqueness_key: uniquenessKey,
+      add_credits: [
+        {
+          product_id: productId,
+          name,
+          priority,
+          ...(applicableProductTags && applicableProductTags.length > 0
+            ? { applicable_product_tags: applicableProductTags }
+            : {}),
+          access_schedule: {
+            credit_type_id: creditTypeId,
+            schedule_items: [
+              {
+                amount,
+                starting_at: roundedStartingAt,
+                ending_before: roundedEndingBefore,
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    // The SDK types ContractEditResponse as { data: { id } } but the actual
+    // payload includes edit.add_credits[].id — parse at runtime to extract it.
+    const parsed =
+      CONTRACT_EDIT_WITH_CREDITS_RESPONSE_SCHEMA.safeParse(response);
+    const creditId = parsed.success
+      ? (parsed.data.data.edit.add_credits[0]?.id ?? null)
+      : null;
+
+    logger.info(
+      {
+        metronomeCustomerId,
+        metronomeContractId,
+        creditId,
+        amount,
+        name,
+        uniquenessKey,
+      },
+      "[Metronome] Credit added to contract"
+    );
+
+    return new Ok(creditId ? { creditId } : null);
+  } catch (err) {
+    const error = normalizeError(err);
+    if (err instanceof ConflictError) {
+      // Idempotency key conflict — credit already granted, look it up via
+      // edit history so the caller can persist the existing credit id.
+      const existing = await findContractCreditByUniquenessKey({
+        metronomeCustomerId,
+        metronomeContractId,
+        uniquenessKey,
+      });
+      if (existing.isOk() && existing.value) {
+        logger.info(
+          {
+            metronomeCustomerId,
+            metronomeContractId,
+            uniquenessKey,
+            creditId: existing.value.creditId,
+          },
+          "[Metronome] Contract credit edit already exists (idempotent), reusing credit id"
+        );
+        return new Ok({ creditId: existing.value.creditId });
+      }
+      logger.info(
+        { metronomeCustomerId, metronomeContractId, uniquenessKey },
+        "[Metronome] Contract credit edit already exists (idempotent) but lookup did not find it"
+      );
+      return new Ok(null);
+    }
+
+    logger.error(
+      { error, metronomeCustomerId, metronomeContractId, name, uniquenessKey },
+      "[Metronome] Failed to add credit to contract"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Find a contract-level credit id by the edit's uniqueness_key.
+ * Used to recover the credit id after a 409 conflict on addCreditToContract.
+ */
+async function findContractCreditByUniquenessKey({
+  metronomeCustomerId,
+  metronomeContractId,
+  uniquenessKey,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  uniquenessKey: string;
+}): Promise<Result<{ creditId: string } | null, Error>> {
+  try {
+    const response = await getMetronomeClient().v2.contracts.getEditHistory({
+      customer_id: metronomeCustomerId,
+      contract_id: metronomeContractId,
+    });
+    logger.info({ response }, "findContractCreditByUniquenessKey response");
+    const match = response.data.find(
+      (edit) => edit.uniqueness_key === uniquenessKey
+    );
+    const creditId = match?.add_credits?.[0]?.id ?? null;
+    return new Ok(creditId ? { creditId } : null);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, metronomeContractId, uniquenessKey },
+      "[Metronome] Failed to look up contract credit by uniqueness key"
     );
     return new Err(error);
   }

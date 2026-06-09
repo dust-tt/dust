@@ -5,6 +5,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { metronomeAmount } from "@app/lib/metronome/amounts";
 import {
+  addCreditToContract,
   ceilToHourISO,
   createMetronomeCredit,
   floorToHourISO,
@@ -106,6 +107,7 @@ function getApplicableProductTagsForDiscountType(
 
 export async function createCouponCredit({
   metronomeCustomerId,
+  metronomeContractId,
   coupon,
   redemptionId,
   redeemedAt,
@@ -113,6 +115,7 @@ export async function createCouponCredit({
   currency,
 }: {
   metronomeCustomerId: string;
+  metronomeContractId?: string;
   coupon: CouponResource;
   redemptionId: string;
   redeemedAt: Date;
@@ -120,7 +123,7 @@ export async function createCouponCredit({
   currency: SupportedCurrency;
 }): Promise<Result<string[], Error>> {
   const durationMonths = coupon.durationMonths ?? 1;
-  const result = await createMetronomeCredit({
+  const sharedParams = {
     metronomeCustomerId,
     productId: getProductSeatSubscriptionCreditsId(),
     creditTypeId,
@@ -128,11 +131,27 @@ export async function createCouponCredit({
     startingAt: floorToHourISO(redeemedAt),
     endingBefore: ceilToHourISO(addMonths(redeemedAt, durationMonths)),
     name: `Coupon: ${coupon.code}`,
-    idempotencyKey: `coupon-${redemptionId}-0`,
     priority: SEAT_PRIORITY_COUPON_CREDIT,
     applicableProductTags: getApplicableProductTagsForDiscountType(
       coupon.discountType
     ),
+  };
+
+  if (metronomeContractId) {
+    const result = await addCreditToContract({
+      ...sharedParams,
+      metronomeContractId,
+      uniquenessKey: `coupon-${redemptionId}-0`,
+    });
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+    return new Ok(result.value !== null ? [result.value.creditId] : []);
+  }
+
+  const result = await createMetronomeCredit({
+    ...sharedParams,
+    idempotencyKey: `coupon-${redemptionId}-0`,
   });
 
   if (result.isErr()) {
