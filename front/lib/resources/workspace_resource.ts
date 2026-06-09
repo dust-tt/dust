@@ -84,6 +84,11 @@ type CachedWorkspaceData = {
   updatedAt: number;
 };
 
+export type WorkspaceModelIdBatchRow = {
+  workspaceModelId: ModelId;
+  workspaceId: string;
+};
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -447,6 +452,30 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       ...(order && { order: [["id", order]] }),
     });
     return workspaces.map((w) => w.id);
+  }
+
+  static async unsafeListWorkspaceIdBatchAfterModelId({
+    lastWorkspaceModelId,
+    limit,
+  }: {
+    lastWorkspaceModelId: ModelId;
+    limit: number;
+  }): Promise<WorkspaceModelIdBatchRow[]> {
+    const workspaces = await this.model.findAll({
+      attributes: ["id", "sId"],
+      where: {
+        id: {
+          [Op.gt]: lastWorkspaceModelId,
+        },
+      },
+      order: [["id", "ASC"]],
+      limit,
+    });
+
+    return workspaces.map((workspace) => ({
+      workspaceModelId: workspace.id,
+      workspaceId: workspace.sId,
+    }));
   }
 
   static async listModelIdsWithConversationsRetention(): Promise<ModelId[]> {
