@@ -36,7 +36,6 @@ interface InvoiceRow {
   quantity: string;
   cost: string;
   subtotal: string;
-  isNegative?: boolean;
   isBold?: boolean;
   isGroup?: boolean;
   isExpanded?: boolean;
@@ -77,7 +76,6 @@ function formatLineItem(
         ? `${formatAmount(item.unitPriceCents, currency)}${isOverage ? " / credit" : ""}`
         : "—",
     subtotal: formatAmount(item.totalCents, currency),
-    isNegative: item.totalCents < 0,
   };
 }
 
@@ -164,10 +162,7 @@ function buildColumns(currency: string): ColumnDef<InvoiceRow>[] {
         <span
           className={cn(
             "block text-right text-sm",
-            row.original.isBold && "font-semibold",
-            row.original.isNegative
-              ? "text-success-600 dark:text-success-500"
-              : undefined
+            !row.original.isChild ? "font-semibold" : ""
           )}
         >
           {row.original.subtotal}
