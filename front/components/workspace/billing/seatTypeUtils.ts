@@ -1,14 +1,19 @@
-import type { MembershipSeatType } from "@app/types/memberships";
-import { LayerSingle, LayersThree01, LayersTwo01 } from "@dust-tt/sparkle";
+import {
+  CoinsStacked01,
+  LayerSingle,
+  LayersThree01,
+  LayersTwo01,
+} from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
 export const SEAT_TYPE_ICONS: Record<string, ComponentType> = {
   free: LayerSingle,
   pro: LayersTwo01,
   max: LayersThree01,
+  overage: CoinsStacked01,
 };
 
-export function seatTypeAvatarColors(seatType: MembershipSeatType) {
+export function seatTypeAvatarColors(seatType: string) {
   switch (seatType) {
     case "pro":
       return { backgroundColor: "bg-blue-100", iconColor: "text-blue-600" };

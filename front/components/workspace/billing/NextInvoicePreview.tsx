@@ -11,14 +11,12 @@ import {
   PRO_SEAT_PRODUCT_NAME,
 } from "@app/lib/metronome/setup_common";
 import { useMetronomeInvoiceLines } from "@app/lib/swr/workspaces";
-import type { MembershipSeatType } from "@app/types/memberships";
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   ChevronDown,
   ChevronRight,
-  CoinsStacked01,
   cn,
   DataTable,
   Spinner,
@@ -47,39 +45,36 @@ interface InvoiceRow {
   menuItems?: never[];
 }
 
+const CREDITS_CONVERSION_NAME = "Credits (AWU) conversion";
+const OVERAGE_NAME = "Credit overage";
+
 // Maps Metronome product names (monthly and yearly variants) to seat group type.
-const PRODUCT_NAME_TO_SEAT_TYPE: Record<string, MembershipSeatType> = {
+const PRODUCT_NAME_TO_SEAT_TYPE: Record<string, string> = {
   [FREE_SEAT_PRODUCT_NAME]: "free",
   [PRO_SEAT_PRODUCT_NAME]: "pro",
   [PRO_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX]: "pro",
   [MAX_SEAT_PRODUCT_NAME]: "max",
   [MAX_SEAT_PRODUCT_NAME + SEAT_PRODUCT_YEARLY_SUFFIX]: "max",
+  [OVERAGE_NAME]: "overage",
 };
-
-const CREDITS_AWU_NAME = "Credits (AWU) conversion";
 
 function formatLineItem(
   item: MetronomeInvoiceLineItem,
   currency: string
 ): Omit<InvoiceRow, "isGroup" | "isExpanded" | "isChild" | "onClick"> {
-  const isCredits = item.name === CREDITS_AWU_NAME;
+  const isOverage = item.name === CREDITS_CONVERSION_NAME;
   return {
-    name: isCredits ? "Credit overage" : item.name,
+    name: isOverage ? OVERAGE_NAME : item.name,
     quantity:
       item.quantity !== null
-        ? isCredits
-          ? `${item.quantity.toLocaleString()} credits`
-          : item.quantity.toLocaleString()
+        ? `${item.quantity.toLocaleString()}${isOverage ? " credits" : ""}`
         : "—",
     cost:
       item.unitPriceCents !== null
-        ? isCredits
-          ? `${formatAmount(item.unitPriceCents, currency)} / credit`
-          : formatAmount(item.unitPriceCents, currency)
+        ? `${formatAmount(item.unitPriceCents, currency)}${isOverage ? " / credit" : ""}`
         : "—",
     subtotal: formatAmount(item.totalCents, currency),
     isNegative: item.totalCents < 0,
-    icon: isCredits ? CoinsStacked01 : undefined,
   };
 }
 
@@ -91,21 +86,14 @@ function buildColumns(currency: string): ColumnDef<InvoiceRow>[] {
       enableSorting: false,
       meta: { className: "w-1/2" },
       cell: ({ row }) => {
-        const { name, isGroup, isExpanded, isChild, icon: Icon } = row.original;
+        const { name, isGroup, isExpanded, isChild } = row.original;
         const seatType = PRODUCT_NAME_TO_SEAT_TYPE[name];
         const avatarColors = seatType ? seatTypeAvatarColors(seatType) : null;
 
         if (isGroup) {
           return (
             <div className="flex cursor-pointer items-center gap-1">
-              {Icon ? (
-                <Avatar
-                  icon={Icon}
-                  size="xs"
-                  backgroundColor="bg-gray-100"
-                  iconColor="text-gray-600"
-                />
-              ) : seatType && avatarColors ? (
+              {seatType && avatarColors ? (
                 <Avatar
                   icon={SEAT_TYPE_ICONS[seatType]}
                   size="xs"
@@ -125,14 +113,7 @@ function buildColumns(currency: string): ColumnDef<InvoiceRow>[] {
 
         return (
           <div className={cn("flex items-center gap-1", isChild && "pl-5")}>
-            {Icon ? (
-              <Avatar
-                icon={Icon}
-                size="xs"
-                backgroundColor="bg-gray-100"
-                iconColor="text-gray-600"
-              />
-            ) : seatType && avatarColors ? (
+            {seatType && avatarColors ? (
               <Avatar
                 icon={SEAT_TYPE_ICONS[seatType]}
                 size="xs"
@@ -249,7 +230,8 @@ export function NextInvoicePreview({
     } else {
       const subtotalCents = items.reduce((sum, i) => sum + i.totalCents, 0);
       const isExpanded = expandedGroups.has(name);
-      const displayName = name === CREDITS_AWU_NAME ? "Credit overage" : name;
+      const displayName =
+        name === CREDITS_CONVERSION_NAME ? OVERAGE_NAME : name;
       rows.push({
         name: displayName,
         quantity: "",
