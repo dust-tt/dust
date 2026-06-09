@@ -168,7 +168,6 @@ Score 3 if the suggestion provides clear, actionable instructions that would pre
     {
       scenarioId: "missing-tool",
       type: "analysis",
-      useInlineTools: true,
       skillConfigs: [
         {
           name: "Research Assistant",
@@ -221,7 +220,6 @@ Score 3 if the correct inline tool reference is suggested with a clear, well-rea
     {
       scenarioId: "unused-tool",
       type: "analysis",
-      useInlineTools: true,
       skillConfigs: [
         {
           name: "Code Review Helper",
@@ -287,7 +285,6 @@ Score 3 if the correct removal is suggested with a clear analysis referencing th
     {
       scenarioId: "instruction-and-tool-gap",
       type: "analysis",
-      useInlineTools: true,
       skillConfigs: [
         {
           name: "Bug Reporter",
@@ -433,7 +430,6 @@ Score 3 if the suggestion addresses both brand voice and remedy guidance with a 
     {
       scenarioId: "wrong-tool-order-linkedin-enrich",
       type: "analysis",
-      useInlineTools: true,
       skillConfigs: [
         {
           name: "Enrich user info with LinkedIn",

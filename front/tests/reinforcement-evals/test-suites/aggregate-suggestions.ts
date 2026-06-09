@@ -188,7 +188,6 @@ Score 3 if well-merged with all themes, clear structure, and analysis referencin
     {
       scenarioId: "merge-duplicate-tools",
       type: "aggregation",
-      useInlineTools: true,
       skillConfig: {
         name: "Engineering Helper",
         sId: "skill_engineering",
@@ -462,7 +461,6 @@ Score 3 if no edit_skill suggestion is created AND reject_suggestion is not call
     {
       scenarioId: "merge-description-edits-keep-tool-separate",
       type: "aggregation",
-      useInlineTools: true,
       skillConfig: {
         name: "Payment Issue Resolver",
         sId: "skill_payment_resolver",

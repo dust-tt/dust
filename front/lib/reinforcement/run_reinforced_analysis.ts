@@ -43,19 +43,14 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const REINFORCEMENT_SKILLS_AGENT_ID = "reinforcement";
 
 // Tool schemas for reinforced skills (exploration + terminal).
-function buildReinforcedSkillsToolDefinitions({
-  useInlineTools,
-}: {
-  useInlineTools: boolean;
-}): Record<
+function buildReinforcedSkillsToolDefinitions(): Record<
   string,
   { description: string; schema: z.ZodObject<z.ZodRawShape> }
 > {
   return {
     get_available_tools: {
-      description: useInlineTools
-        ? "Get the list of available tools (MCP servers) that can be referenced in skill instructions with inline <tool> tags."
-        : "Get the list of available tools (MCP servers) that can be added to skills.",
+      description:
+        "Get the list of available tools (MCP servers) that can be referenced in skill instructions with inline <tool> tags.",
       schema: z.object({}),
     },
     [DESCRIBE_MCP_TOOL_NAME]: {
@@ -84,10 +79,9 @@ function buildReinforcedSkillsToolDefinitions({
       }),
     },
     edit_skill: {
-      description: useInlineTools
-        ? "Suggest edits to a skill's instructions and/or agent-facing description."
-        : "Suggest edits to a skill's instructions and/or configured tools.",
-      schema: getEditSkillToolSchema({ useInlineTools }),
+      description:
+        "Suggest edits to a skill's instructions and/or agent-facing description.",
+      schema: getEditSkillToolSchema(),
     },
     reject_suggestion: {
       description:
@@ -106,28 +100,6 @@ function buildReinforcedSkillsToolDefinitions({
   };
 }
 
-function getToolEdits(data: Record<string, unknown>) {
-  const toolEdits = data.toolEdits;
-  if (!Array.isArray(toolEdits)) {
-    return undefined;
-  }
-
-  return toolEdits.filter(
-    (
-      edit
-    ): edit is {
-      action: "add" | "remove";
-      toolId: string;
-    } =>
-      edit !== null &&
-      typeof edit === "object" &&
-      "action" in edit &&
-      (edit.action === "add" || edit.action === "remove") &&
-      "toolId" in edit &&
-      typeof edit.toolId === "string"
-  );
-}
-
 const AGGREGATION_EXTRA_FIELDS: z.ZodRawShape = {
   sourceSuggestionIds: z
     .array(z.string())
@@ -139,13 +111,10 @@ const AGGREGATION_EXTRA_FIELDS: z.ZodRawShape = {
 };
 
 export function buildReinforcedSkillsSpecifications(
-  operationType: ReinforcedSkillsOperationType,
-  { useInlineTools = true }: { useInlineTools?: boolean } = {}
+  operationType: ReinforcedSkillsOperationType
 ): AgentActionSpecification[] {
   const isAggregation = operationType === "reinforcement_aggregate_suggestions";
-  const toolDefinitions = buildReinforcedSkillsToolDefinitions({
-    useInlineTools,
-  });
+  const toolDefinitions = buildReinforcedSkillsToolDefinitions();
 
   return ALL_TOOLS.filter((toolName) => {
     // reject_suggestion is only available during aggregation.
@@ -240,8 +209,7 @@ export function buildReinforcedSkillsLLMParams(
     systemPrompt: string;
     userMessage: string;
   },
-  operationType: ReinforcedSkillsOperationType,
-  { useInlineTools = true }: { useInlineTools?: boolean } = {}
+  operationType: ReinforcedSkillsOperationType
 ): LLMStreamParameters {
   return {
     conversation: {
@@ -254,9 +222,7 @@ export function buildReinforcedSkillsLLMParams(
       ],
     },
     prompt: systemPrompt,
-    specifications: buildReinforcedSkillsSpecifications(operationType, {
-      useInlineTools,
-    }),
+    specifications: buildReinforcedSkillsSpecifications(operationType),
   };
 }
 
@@ -270,19 +236,14 @@ export async function createReinforcedSkillsConversation(
     operationType,
     contextId,
     skillIds,
-    useInlineTools,
   }: {
     prompt: { systemPrompt: string; userMessage: string };
     operationType: ReinforcedSkillsOperationType;
     contextId: string;
     skillIds: string[];
-    useInlineTools?: boolean;
   }
 ): Promise<string> {
-  const resolvedUseInlineTools = useInlineTools ?? true;
-  const llmParams = buildReinforcedSkillsLLMParams(prompt, operationType, {
-    useInlineTools: resolvedUseInlineTools,
-  });
+  const llmParams = buildReinforcedSkillsLLMParams(prompt, operationType);
   const { conversation: llmConversation, ...llmParamsWithoutConversation } =
     llmParams;
   const writeResult = await writeBatchUserMessages(auth, {
@@ -341,7 +302,6 @@ export async function processSkillReinforcedEvents({
   contextId,
   conversation,
   eligibleSkillIds,
-  useInlineTools,
 }: {
   auth: Authenticator;
   events: LLMEvent[];
@@ -350,7 +310,6 @@ export async function processSkillReinforcedEvents({
   contextId: string;
   conversation?: ConversationResource;
   eligibleSkillIds: string[];
-  useInlineTools?: boolean;
 }): Promise<ProcessReinforcedSkillsEventsResult> {
   const errorEvents = events.filter((e) => e.type === "error");
   if (errorEvents.length > 0) {
@@ -394,7 +353,6 @@ export async function processSkillReinforcedEvents({
   const approvedSourceSuggestionIds: string[] = [];
   const successfulToolCalls: TerminalToolCallSuccess[] = [];
   const failedToolCalls: TerminalToolCallFailure[] = [];
-  const resolvedUseInlineTools = useInlineTools ?? true;
 
   for (const event of toolCallEvents) {
     const { id, name, arguments: args } = event.content;
@@ -408,7 +366,6 @@ export async function processSkillReinforcedEvents({
       contextId,
       conversation,
       eligibleSkillIds,
-      useInlineTools: resolvedUseInlineTools,
     });
     switch (result.type) {
       case "created": {
@@ -465,7 +422,6 @@ async function createSkillSuggestionsFromToolCall({
   contextId,
   conversation,
   eligibleSkillIds,
-  useInlineTools,
 }: {
   auth: Authenticator;
   toolName: string;
@@ -475,13 +431,10 @@ async function createSkillSuggestionsFromToolCall({
   contextId: string;
   conversation?: ConversationResource;
   eligibleSkillIds: string[];
-  useInlineTools: boolean;
 }): Promise<ToolCallResult> {
   switch (toolName) {
     case "edit_skill": {
-      const parsed = getEditSkillToolSchema({ useInlineTools }).safeParse(
-        actionArguments
-      );
+      const parsed = getEditSkillToolSchema().safeParse(actionArguments);
       if (!parsed.success) {
         logger.warn(
           { contextId, toolName, error: parsed.error },
@@ -515,20 +468,13 @@ async function createSkillSuggestionsFromToolCall({
 
       const hasInstructionEdits =
         (parsed.data.instructionEdits?.length ?? 0) > 0;
-      const toolEdits = useInlineTools ? undefined : getToolEdits(parsed.data);
-      const hasToolEdits = (toolEdits?.length ?? 0) > 0;
       const hasAgentFacingDescriptionEdit =
         parsed.data.agentFacingDescriptionEdit !== undefined;
-      if (
-        !hasInstructionEdits &&
-        !hasToolEdits &&
-        !hasAgentFacingDescriptionEdit
-      ) {
+      if (!hasInstructionEdits && !hasAgentFacingDescriptionEdit) {
         return {
           type: "error",
-          errorMessage: useInlineTools
-            ? "edit_skill requires at least one instruction edit or description edit."
-            : "edit_skill requires at least one instruction edit, tool edit, or description edit.",
+          errorMessage:
+            "edit_skill requires at least one instruction edit or description edit.",
         };
       }
 
@@ -544,7 +490,6 @@ async function createSkillSuggestionsFromToolCall({
         hasSuggestionSelfConflict(
           {
             instructionEdits: parsed.data.instructionEdits,
-            toolEdits,
             agentFacingDescriptionEdit: parsed.data.agentFacingDescriptionEdit,
           },
           skill.instructionsHtml
@@ -552,9 +497,8 @@ async function createSkillSuggestionsFromToolCall({
       ) {
         return {
           type: "error",
-          errorMessage: useInlineTools
-            ? "Suggestion has conflicting edits (overlapping block targets)."
-            : "Suggestion has conflicting edits (overlapping block targets or duplicate tool IDs).",
+          errorMessage:
+            "Suggestion has conflicting edits (overlapping block targets).",
         };
       }
 
@@ -584,7 +528,6 @@ async function createSkillSuggestionsFromToolCall({
           kind: "edit",
           suggestion: {
             instructionEdits: parsed.data.instructionEdits,
-            ...(toolEdits !== undefined ? { toolEdits } : {}),
             agentFacingDescriptionEdit: parsed.data.agentFacingDescriptionEdit,
           },
           analysis: parsed.data.analysis ?? null,

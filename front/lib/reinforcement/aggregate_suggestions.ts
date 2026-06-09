@@ -29,21 +29,15 @@ const AGGREGATION_ASSEMBLY_ORDER = [
 
 type AggregationSectionKey = (typeof AGGREGATION_ASSEMBLY_ORDER)[number];
 
-function getReinforcedSkillAggregationSections({
-  useInlineTools,
-}: {
-  useInlineTools: boolean;
-}): Record<AggregationSectionKey, string> {
-  return {
-    primary: `You improve a skill's configuration by consolidating many draft suggestions. Each draft was produced from a single conversation that used the skill.
+const REINFORCED_SKILL_AGGREGATION_SECTIONS: Record<
+  AggregationSectionKey,
+  string
+> = {
+  primary: `You improve a skill's configuration by consolidating many draft suggestions. Each draft was produced from a single conversation that used the skill.
 Your job is to produce a subset of the highest quality suggestions for the skill builder to review.
 
 You have access to the following tools:
-- edit_skill: ${
-      useInlineTools
-        ? "For suggesting instruction edits, inline tool reference changes, and/or agent-facing description changes for one skill."
-        : "For suggesting instruction edits, tool add/remove, and/or agent-facing description changes for one skill."
-    }
+- edit_skill: For suggesting instruction edits, inline tool reference changes, and/or agent-facing description changes for one skill.
 - reject_suggestion: For discarding source suggestions that are invalid, not actionable, or too similar to already declined suggestions. Do NOT reject minor but valid suggestions, simply ignore them.
 
 Your goal is to keep the most impactful suggestions. NEVER create more than 5 suggestions.
@@ -55,14 +49,10 @@ IMPORTANT: Both edit_skill and reject_suggestion are terminal calls — you will
 It is ok to simply call no tool if all suggestions are minor.
 `,
 
-    aggregation_rules: `
+  aggregation_rules: `
 Start by grouping suggestions by skill, then within each skill group by topic:
 - For instruction edits, group by coherent theme within the skill (e.g. tone, tool usage, formatting). Suggestions that address different topics MUST be kept as separate suggestions — do NOT merge unrelated topics into one suggestion.
-- ${
-      useInlineTools
-        ? "For inline tool reference changes, group by the target <tool> reference within each skill. Tool references are instruction edits, so NEVER output separate tool edits."
-        : "For tool changes, group by the target tool within each skill. NEVER create more than one suggestion per tool."
-    }
+- For inline tool reference changes, group by the target <tool> reference within each skill. Tool references are instruction edits, so NEVER output separate tool edits.
 - For agent-facing description edits, create AT MOST ONE description-edit suggestion per skill. When multiple drafts target the description, merge them into a single coherent replacement.
 NEVER create more than one suggestion per (skill, topic) pair.
 
@@ -81,17 +71,13 @@ Classify the groups in these 3 categories:
 
 You SHOULD ignore suggestions that only have minor impact and are only supported by a single conversation (don't reject them, do NOT call reject_suggestion, just take no action for these suggestions).
 
-There may be situations where suggestions are co-dependent. For example, there may be an instruction suggestion that requires ${
-      useInlineTools ? "adding an inline <tool> tag" : "a tool suggestion"
-    } to be effective. In this case, NEVER create one suggestion without the other.`,
+There may be situations where suggestions are co-dependent. For example, there may be an instruction suggestion that requires adding an inline <tool> tag to be effective. In this case, NEVER create one suggestion without the other.`,
 
-    suggestion_tool_calls: `
+  suggestion_tool_calls: `
 You are provided all of the attributes associated with a conversation suggestion. You MUST use these EXACT attributes to create the final suggestion.
-The ${
-      useInlineTools
-        ? 'exceptions are:\n- The "analysis", "title", and "sourceSuggestionIds" attributes; these MUST be newly authored for each final suggestion.\n- Legacy "toolEdits"; convert these into instruction edits that add or remove the corresponding inline <tool> tag. Do NOT include "toolEdits" in the final edit_skill call.'
-        : 'only exceptions are the "analysis", "title", and "sourceSuggestionIds" attributes; these MUST be newly authored for each final suggestion.'
-    }
+The exceptions are:
+- The "analysis", "title", and "sourceSuggestionIds" attributes; these MUST be newly authored for each final suggestion.
+- Legacy "toolEdits"; convert these into instruction edits that add or remove the corresponding inline <tool> tag. Do NOT include "toolEdits" in the final edit_skill call.
 
 For "analysis": Provide a user-facing explanation of why the suggestion is impactful and how many conversations support it. The end user does NOT care about the technical considerations behind your thought process.
 
@@ -99,17 +85,11 @@ For "title": You MUST provide a short, action-oriented, user-facing title that s
 
 For "sourceSuggestionIds": You MUST include the sIds of ALL the source suggestions that were consolidated into this final suggestion. Each suggestion has an sId attribute. Every final suggestion MUST reference at least one source suggestion.
 `,
-  };
-}
+};
 
-export function buildSkillAggregationSystemPrompt({
-  useInlineTools = true,
-}: {
-  useInlineTools?: boolean;
-} = {}): string {
-  const sections = getReinforcedSkillAggregationSections({ useInlineTools });
+export function buildSkillAggregationSystemPrompt(): string {
   return AGGREGATION_ASSEMBLY_ORDER.map((key) => {
-    const body = sections[key].trim();
+    const body = REINFORCED_SKILL_AGGREGATION_SECTIONS[key].trim();
     return `<${key}>\n${body}\n</${key}>`;
   }).join("\n\n");
 }
@@ -153,12 +133,11 @@ export function buildSkillAggregationPrompt(
   existingSuggestions: {
     pending: SkillSuggestionType[];
     rejected: SkillSuggestionType[];
-  },
-  { useInlineTools = true }: { useInlineTools?: boolean } = {}
+  }
 ): { systemPrompt: string; userMessage: string } {
-  const systemPrompt = buildSkillAggregationSystemPrompt({ useInlineTools });
+  const systemPrompt = buildSkillAggregationSystemPrompt();
 
-  let userMessage = `${formatSkillContext(skill, { useInlineTools })}
+  let userMessage = `${formatSkillContext(skill)}
 
 ## Synthetic suggestions from conversation analyses
 
@@ -187,13 +166,11 @@ interface SkillAggregationContext {
   skill: SkillResource;
   syntheticSuggestions: SkillSuggestionResource[];
   prompt: { systemPrompt: string; userMessage: string };
-  useInlineTools: boolean;
 }
 
 export async function loadSkillAggregationContext(
   auth: Authenticator,
-  skillId: string,
-  { useInlineTools }: { useInlineTools?: boolean } = {}
+  skillId: string
 ): Promise<SkillAggregationContext | null> {
   const syntheticSuggestions =
     await SkillSuggestionResource.listBySkillConfigurationId(auth, skillId, {
@@ -238,7 +215,6 @@ export async function loadSkillAggregationContext(
   );
 
   const skillType = skill.toJSON(auth);
-  const resolvedUseInlineTools = useInlineTools ?? true;
 
   const prompt = buildSkillAggregationPrompt(
     skillType,
@@ -246,15 +222,13 @@ export async function loadSkillAggregationContext(
     {
       pending: pendingSuggestions.map((s) => s.toJSON()),
       rejected: recentRejectedSuggestions.map((s) => s.toJSON()),
-    },
-    { useInlineTools: resolvedUseInlineTools }
+    }
   );
 
   return {
     skill,
     syntheticSuggestions,
     prompt,
-    useInlineTools: resolvedUseInlineTools,
   };
 }
 
@@ -276,8 +250,7 @@ export async function buildSkillAggregationBatchMap(
       "aggregation",
       buildReinforcedSkillsLLMParams(
         ctx.prompt,
-        "reinforcement_aggregate_suggestions",
-        { useInlineTools: ctx.useInlineTools }
+        "reinforcement_aggregate_suggestions"
       ),
     ],
   ]);
