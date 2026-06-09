@@ -42,7 +42,7 @@ function AppContentInnerWrapper({
   return (
     <div
       className={cn(
-        "m-2 rounded-xl flex-1 overflow-y-scroll bg-content-background dark:bg-content-background-night border border-border dark:border-border-night",
+        "my-2 mr-2 ml-1 rounded-xl flex-1 overflow-y-scroll bg-content-background dark:bg-content-background-night border border-border dark:border-border-night",
         !isNavigationBarOpen && !isFullScreen && "ml-5"
       )}
       style={{
@@ -81,7 +81,7 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
     useDesktopNavigation();
 
   return (
-    <div className="flex flex-row h-dvh">
+    <div className="flex flex-row sm:h-dvh h-full">
       <Navigation
         hideSidebar={hideSidebar}
         isNavigationBarOpen={isNavigationBarOpen}
