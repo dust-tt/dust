@@ -142,7 +142,7 @@ if (r.isErr()) {
       }
     }
   } catch (error) {
-    if (error instanceof Error && error.message.includes("AbortError")) {
+    if (error instanceof Error && error.name === "AbortError") {
       // Stream aborted
     } else {
       // Other error
