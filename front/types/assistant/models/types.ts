@@ -75,11 +75,16 @@ export const ModelConfigurationSchema = z.object({
   }),
   customThinkingType: z.enum(CUSTOM_THINKING_TYPES).optional(),
   customBetas: z.array(z.string()).optional(),
-  // Ordered list of fallback model ids. When set, the request is sent with a
-  // server-side fallback param so the provider retries against these models, in
-  // order, if the primary model refuses or is unavailable. Requires the relevant
-  // beta header (carried in customBetas) and provider-side enablement. Only
-  // consulted for Anthropic models; ignored for other providers.
+  // Ordered list of fallback model ids (3 max). When set, the streaming request
+  // carries the `fallbacks` param so the provider retries against these models,
+  // in order, when the primary model's safety classifiers decline the request
+  // (rate limits, overload and server errors are returned as-is). The client
+  // attaches the required server-side fallback beta header automatically. Each
+  // target must be an allowed fallback for the primary model and invokable with
+  // the same API key. Only consulted for Anthropic models; ignored for other
+  // providers and on Vertex AI, and never sent on batch requests (the Batches
+  // API rejects the param).
+  // https://platform.claude.com/docs/en/build-with-claude/refusals-and-fallback#server-side-fallback
   fallbackModels: z.array(z.string()).optional(),
   // If true, the model is served through the dedicated EAP (Early Access
   // Program) Anthropic API key (ANTHROPIC_EAP_API_KEY) instead of the

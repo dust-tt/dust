@@ -302,6 +302,12 @@ function* handleContentBlockStop(
   stateContainer: { state: StreamState },
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
+  // A null state here means the block's content_block_start was ignored (e.g.
+  // the server-side fallback boundary block, or a server tool block we don't
+  // use). Ignore the matching stop instead of failing the index validation.
+  if (stateContainer.state === null) {
+    return;
+  }
   validateContentBlockIndex(stateContainer.state, event);
   switch (stateContainer.state.accumulatorType) {
     case "text":
