@@ -22,12 +22,14 @@ const attachKnowledgeItem: SlashCommand = {
 };
 
 const skillSuggestion = ({
+  editedBy = 1,
   icon = null,
   requestedSpaceIds = [],
   userFacingDescription = "",
   ...skill
 }: Pick<SlashCommandSkillSuggestion, "name" | "sId"> &
   Partial<SlashCommandSkillSuggestion>): SlashCommandSkillSuggestion => ({
+  editedBy,
   icon,
   requestedSpaceIds,
   userFacingDescription,

@@ -1,9 +1,12 @@
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { DUST_PROVIDED_SKILL_LABEL } from "@app/lib/skill";
 import { describe, expect, it } from "vitest";
 
 import {
+  getSkillSlashCommandItem,
   getToolSlashCommandItem,
   matchesSlashCommandCapabilityQuery,
+  type SlashCommandSkillSuggestion,
   type SlashCommandToolSuggestion,
   sortSlashCommandCapabilityMatches,
 } from "./SlashCommandCapabilitiesItems";
@@ -52,6 +55,25 @@ function toolSuggestion({
   };
 }
 
+function skillSuggestion({
+  editedBy = 1,
+  icon = null,
+  requestedSpaceIds = [],
+  sId,
+  userFacingDescription = "Draft structured memos.",
+  name,
+}: Pick<SlashCommandSkillSuggestion, "name" | "sId"> &
+  Partial<SlashCommandSkillSuggestion>): SlashCommandSkillSuggestion {
+  return {
+    editedBy,
+    icon,
+    name,
+    requestedSpaceIds,
+    sId,
+    userFacingDescription,
+  };
+}
+
 describe("matchesSlashCommandCapabilityQuery", () => {
   it("matches capability labels with fuzzy slash query matching", () => {
     expect(
@@ -92,6 +114,36 @@ describe("sortSlashCommandCapabilityMatches", () => {
     });
 
     expect(result.map((item) => item.id)).toEqual(["longtest", "testlonger"]);
+  });
+});
+
+describe("getSkillSlashCommandItem", () => {
+  it("uses a Dust-provided tooltip for code-defined skills", () => {
+    const item = getSkillSlashCommandItem(
+      skillSuggestion({
+        editedBy: null,
+        name: "Create Frames",
+        sId: "frames",
+      })
+    );
+
+    expect(item.tooltip).toEqual({
+      description: DUST_PROVIDED_SKILL_LABEL,
+    });
+  });
+
+  it("keeps the description tooltip for user-created skills", () => {
+    const item = getSkillSlashCommandItem(
+      skillSuggestion({
+        name: "Create memo",
+        sId: "skill_create_memo",
+        userFacingDescription: "Draft structured memos.",
+      })
+    );
+
+    expect(item.tooltip).toEqual({
+      description: "Draft structured memos.",
+    });
   });
 });
 

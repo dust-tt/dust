@@ -5,7 +5,11 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { getSkillAvatarIcon } from "@app/lib/skill";
+import {
+  DUST_PROVIDED_SKILL_LABEL,
+  getSkillAvatarIcon,
+  isDustProvidedSkill,
+} from "@app/lib/skill";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 
@@ -14,7 +18,12 @@ export const SELECT_TOOL_SLASH_COMMAND_ACTION = "select-tool";
 
 export type SlashCommandSkillSuggestion = Pick<
   SkillWithoutInstructionsAndToolsType,
-  "icon" | "name" | "requestedSpaceIds" | "sId" | "userFacingDescription"
+  | "editedBy"
+  | "icon"
+  | "name"
+  | "requestedSpaceIds"
+  | "sId"
+  | "userFacingDescription"
 >;
 
 export type SlashCommandToolSuggestion = MCPServerViewType & {
@@ -58,21 +67,25 @@ export function getSkillSlashCommandItem(
   skill: SlashCommandSkillSuggestion,
   { sectionLabel }: { sectionLabel?: string } = {}
 ): SlashCommand {
+  const isDustProvided = isDustProvidedSkill(skill);
+
   return {
     action: SELECT_SKILL_SLASH_COMMAND_ACTION,
     data: {
       skill,
     },
     description: skill.userFacingDescription,
-    icon: getSkillAvatarIcon(skill.icon),
+    icon: getSkillAvatarIcon(skill.icon, { isDustProvided }),
     id: skill.sId,
     label: skill.name,
     sectionLabel,
-    tooltip: skill.userFacingDescription
-      ? {
-          description: skill.userFacingDescription,
-        }
-      : undefined,
+    tooltip: isDustProvided
+      ? { description: DUST_PROVIDED_SKILL_LABEL }
+      : skill.userFacingDescription
+        ? {
+            description: skill.userFacingDescription,
+          }
+        : undefined,
   };
 }
 
