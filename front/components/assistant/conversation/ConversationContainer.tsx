@@ -275,8 +275,6 @@ export function ConversationContainerVirtuoso({
   return activeConversationId ? (
     body
   ) : (
-    <div className="h-full">
-      <ScrollArea className="px-4 py-4 md:px-8">{body}</ScrollArea>
-    </div>
+      <ScrollArea className="grow px-4 md:px-8">{body}</ScrollArea>
   );
 }

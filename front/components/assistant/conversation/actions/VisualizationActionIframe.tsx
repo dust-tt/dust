@@ -436,7 +436,7 @@ export const VisualizationActionIframe = forwardRef<
               />
             </div>
           ) : (
-            <div className="relative flex h-dvh w-full shrink-0 items-center justify-center">
+            <div className="relative flex h-container w-full shrink-0 items-center justify-center">
               {codeFullyGenerated && !isErrored && (
                 <div
                   style={

@@ -1565,8 +1565,7 @@ function NavigationListWithInbox({
   );
 
   return (
-    <ScrollArea>
-      <div ref={scrollContainerRef} className="dd-privacy-mask h-full w-full">
+    <ScrollArea ref={scrollContainerRef} className="dd-privacy-mask h-full w-full">
         <div className="flex flex-col gap-4">
           <AnimatePresence initial={false}>
             {skillSuggestionConversations.length > 0 && (
@@ -1678,7 +1677,6 @@ function NavigationListWithInbox({
             </NavigationListCollapsibleSection>
           </NavigationList>
         </div>
-      </div>
     </ScrollArea>
   );
 }

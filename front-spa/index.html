@@ -78,6 +78,7 @@
         width: var(--loading-sidebar-width);
         border-right: 1px solid transparent;
         flex-shrink: 0;
+        display: none;
       }
       #loading-main {
         flex: 1;
@@ -85,13 +86,25 @@
         align-items: center;
         justify-content: center;
         background-color: rgb(255, 255, 255);
-        border: 1px solid rgb(238, 238, 239);
-        border-radius: 12px;
-        margin: 0.5rem;
-        margin-inline-start: 0;
-        box-shadow:
-          0 0 0 0.4px rgba(0, 0, 0, 0.02), 0 0 1px 1px rgba(0, 0, 0, 0.02);
       }
+
+      @media (min-width: 768px) {
+        #loading-main {
+          border: 1px solid rgb(238, 238, 239);
+          border-radius: 12px;
+          margin: 0.5rem;
+          margin-inline-start: 0;
+          box-shadow:
+            0 0 0 0.4px rgba(0, 0, 0, 0.02), 0 0 1px 1px rgba(0, 0, 0, 0.02);
+          }
+
+        #loading-sidebar {
+          display: block;
+        }
+      }
+
+
+
       #loading-spinner path {
         fill: #0f172a;
         animation: xs-svg-shape 2.24s ease-in-out infinite,
@@ -176,11 +189,8 @@
         background-color: rgb(17, 20, 24);
         border-color: rgb(42, 50, 65);
       }
-      @media (max-width: 1024px) {
-        #loading-sidebar {
-          display: none;
-        }
-      }
+      
+
     </style>
     <div id="root">
     </div>
