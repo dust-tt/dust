@@ -465,9 +465,7 @@ export function AgentMessage({
   });
 
   const isDeleted = agentMessage.visibility === "deleted";
-  const isCancelled = agentMessage.status === "cancelled";
   const isGracefullyStopped = agentMessage.status === "gracefully_stopped";
-  const isCancelledOrDeleted = isDeleted || isCancelled;
   const cancelMessage = useCancelMessage({ owner, conversationId });
 
   const references = useMemo(
@@ -1010,7 +1008,7 @@ export function AgentMessage({
     </ConversationMessageContent>
   );
 
-  const footerButtons = !isCancelledOrDeleted &&
+  const footerButtons = !isDeleted &&
     !isGracefullyStopped &&
     (alwaysVisibleButtons.length > 0 || hoverButtons.length > 0) && (
       <div className="flex items-center gap-2">
@@ -1408,13 +1406,19 @@ function AgentMessageContent({
             ))}
           </div>
         )}
-        {(agentMessage.status === "cancelled" ||
-          agentMessage.status === "interrupted") && (
+        {/*
+         * Cancelled messages render the standard message footer (feedback + full menu,
+         * including Retry), so we only show the "Generation stopped." note here.
+         */}
+        {agentMessage.status === "cancelled" && (
+          <div className="text-sm text-faint dark:text-faint-night">
+            Generation stopped.
+          </div>
+        )}
+        {agentMessage.status === "interrupted" && (
           <div className="flex flex-col gap-2">
             <div className="text-sm text-faint dark:text-faint-night">
-              {agentMessage.status === "interrupted"
-                ? "Skipped. Running your next message."
-                : "Generation stopped."}
+              Skipped. Running your next message.
             </div>
             <div>
               <ButtonGroupDropdown
