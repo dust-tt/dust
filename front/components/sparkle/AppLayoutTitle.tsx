@@ -17,7 +17,7 @@ export function AppLayoutTitle({ children, className }: AppLayoutTitleProps) {
         "bg-content-background dark:bg-content-background-night",
         "dark:border-separator-night",
         // When no children, only show on mobile for hamburger menu alignment.
-        !children && "block lg:hidden",
+        !children && "block md:hidden",
         className
       )}
     >
