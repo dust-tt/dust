@@ -169,7 +169,11 @@ async function functionMessage(
 
 async function userMessage(
   message: UserMessageTypeModel,
-  { isLast, convertToBase64 }: { isLast: boolean; convertToBase64: boolean }
+  {
+    isFirst,
+    isLast,
+    convertToBase64,
+  }: { isFirst: boolean; isLast: boolean; convertToBase64: boolean }
 ): Promise<MessageParam> {
   const content = await concurrentExecutor(
     message.content,
@@ -177,9 +181,17 @@ async function userMessage(
     { concurrency: 10 }
   );
 
-  // Add cache_control to the last content block if this is the last message.
-  if (isLast && content.length > 0) {
-    content[content.length - 1].cache_control = { type: "ephemeral" };
+  if (content.length > 0) {
+    // Cache the equipped skills list (messages[0], name="system") for cross-conversation reuse.
+    // The last message's cache is handled by the top-level automatic cache_control on the request.
+    if (isFirst && message.name === "system") {
+      content[content.length - 1].cache_control = { type: "ephemeral" };
+    }
+    // On Vertex AI, automatic caching is not supported, so we need an explicit breakpoint on the
+    // last message. On the Anthropic API this is handled by the top-level automatic cache_control.
+    if (isLast) {
+      content[content.length - 1].cache_control = { type: "ephemeral" };
+    }
   }
 
   return {
@@ -209,15 +221,17 @@ function assistantMessage(
 export async function toMessage(
   message: ModelMessageTypeMultiActionsWithoutContentFragment,
   {
-    isLast,
+    isFirst,
+    isLast = false,
     omittedThinking,
     convertToBase64,
   }: {
-    isLast: boolean;
+    isFirst: boolean;
+    isLast?: boolean;
     omittedThinking: boolean;
     convertToBase64?: boolean;
   } = {
-    isLast: false,
+    isFirst: false,
     omittedThinking: false,
     convertToBase64: false,
   }
@@ -225,6 +239,7 @@ export async function toMessage(
   switch (message.role) {
     case "user":
       return userMessage(message, {
+        isFirst,
         isLast,
         convertToBase64: convertToBase64 ?? false,
       });

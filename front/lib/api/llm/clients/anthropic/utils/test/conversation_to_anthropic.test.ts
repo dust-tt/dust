@@ -28,7 +28,7 @@ describe("toMessage", () => {
   });
 
   describe("cache_control", () => {
-    it("should not add cache_control when isLast is false", async () => {
+    it("should not add cache_control to a regular user message even when isFirst", async () => {
       const userMessage = conversationMessages.find(
         (msg) => msg.role === "user"
       );
@@ -37,11 +37,12 @@ describe("toMessage", () => {
       }
 
       const result = await toMessage(userMessage, {
-        isLast: false,
+        isFirst: true,
         omittedThinking: false,
       });
 
-      // Verify no cache_control is present
+      // Regular user messages (name !== "system") never get cache_control. Covered by automatic
+      // caching.
       if (Array.isArray(result.content)) {
         result.content.forEach((block) => {
           expect(block).not.toHaveProperty("cache_control");
@@ -49,7 +50,47 @@ describe("toMessage", () => {
       }
     });
 
-    it("should add cache_control to last content block when isLast is true", async () => {
+    it("should add cache_control to the equipped skills message when isFirst", async () => {
+      const skillsMessage = {
+        role: "user" as const,
+        name: "system",
+        content: [{ type: "text" as const, text: "Available skills: ..." }],
+      };
+
+      const result = await toMessage(skillsMessage, {
+        isFirst: true,
+        omittedThinking: false,
+      });
+
+      if (Array.isArray(result.content) && result.content.length > 0) {
+        const lastBlock = result.content[result.content.length - 1];
+        expect(lastBlock).toHaveProperty("cache_control");
+        expect(lastBlock).toHaveProperty("cache_control.type", "ephemeral");
+      } else {
+        throw new Error("Expected content array with at least one element");
+      }
+    });
+
+    it("should not add cache_control to the skills message when not isFirst", async () => {
+      const skillsMessage = {
+        role: "user" as const,
+        name: "system",
+        content: [{ type: "text" as const, text: "Available skills: ..." }],
+      };
+
+      const result = await toMessage(skillsMessage, {
+        isFirst: false,
+        omittedThinking: false,
+      });
+
+      if (Array.isArray(result.content)) {
+        result.content.forEach((block) => {
+          expect(block).not.toHaveProperty("cache_control");
+        });
+      }
+    });
+
+    it("should add cache_control to last user message when isLast (Vertex path)", async () => {
       const userMessage = conversationMessages.find(
         (msg) => msg.role === "user"
       );
@@ -58,11 +99,11 @@ describe("toMessage", () => {
       }
 
       const result = await toMessage(userMessage, {
+        isFirst: false,
         isLast: true,
         omittedThinking: false,
       });
 
-      // Verify cache_control is added to the last content block
       if (Array.isArray(result.content) && result.content.length > 0) {
         const lastBlock = result.content[result.content.length - 1];
         expect(lastBlock).toHaveProperty("cache_control");
@@ -81,11 +122,10 @@ describe("toMessage", () => {
       }
 
       const result = await toMessage(assistantMessage, {
-        isLast: true,
+        isFirst: true,
         omittedThinking: false,
       });
 
-      // Assistant messages should not have cache_control even if isLast is true
       if (Array.isArray(result.content)) {
         result.content.forEach((block) => {
           expect(block).not.toHaveProperty("cache_control");
@@ -112,7 +152,7 @@ describe("toMessage", () => {
             },
           ],
         },
-        { isLast: false, omittedThinking: false, convertToBase64: true }
+        { isFirst: false, omittedThinking: false, convertToBase64: true }
       );
 
       expect(result).toEqual({
@@ -147,7 +187,7 @@ describe("toMessage", () => {
             },
           ],
         },
-        { isLast: false, omittedThinking: false, convertToBase64: true }
+        { isFirst: false, omittedThinking: false, convertToBase64: true }
       );
 
       expect(result).toEqual({
