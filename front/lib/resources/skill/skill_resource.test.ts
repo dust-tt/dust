@@ -3,9 +3,10 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
   SkillConfigurationModel,
   SkillDataSourceConfigurationModel,
+  SkillVersionModel,
 } from "@app/lib/models/skill";
-import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
+import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -25,7 +26,16 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { Logger } from "pino";
+import type { CreationAttributes, WhereOptions } from "sequelize";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+type SkillVersionCreationAttributes =
+  CreationAttributes<SkillConfigurationModel> & {
+    fileAttachmentIds: number[];
+    mcpServerViewIds: number[];
+    skillConfigurationId: number;
+    version: number;
+  };
 
 describe("SkillResource", () => {
   let testContext: Awaited<ReturnType<typeof createResourceTest>>;
@@ -1055,6 +1065,32 @@ describe("SkillResource", () => {
           },
         }
       );
+      const versionWhere: WhereOptions<SkillVersionModel> = {
+        skillConfigurationId: legacySkill.id,
+        version: 1,
+        workspaceId: testContext.workspace.id,
+      };
+      const legacyVersion: SkillVersionCreationAttributes = {
+        workspaceId: testContext.workspace.id,
+        skillConfigurationId: legacySkill.id,
+        version: 1,
+        status: legacySkill.status,
+        name: legacySkill.name,
+        agentFacingDescription: legacySkill.agentFacingDescription,
+        userFacingDescription: legacySkill.userFacingDescription,
+        instructions: "Run the older custom frame workflow.",
+        instructionsHtml: "<p>Run the older custom frame workflow.</p>",
+        icon: legacySkill.icon,
+        requestedSpaceIds: legacySkill.requestedSpaceIds,
+        editedBy: testContext.user.id,
+        mcpServerViewIds: [],
+        fileAttachmentIds: [],
+        extendedSkillId: "frames",
+        source: null,
+        sourceMetadata: null,
+        isDefault: legacySkill.isDefault,
+      };
+      await SkillVersionModel.create(legacyVersion);
 
       const logger = {
         error: vi.fn(),
@@ -1085,6 +1121,19 @@ describe("SkillResource", () => {
       expect(skillAfterDryRun.extendedSkillId).toBe("frames");
       expect(skillAfterDryRun.instructions).toBe(
         "Run the custom frame workflow."
+      );
+
+      const versionAfterDryRun = await SkillVersionModel.findOne({
+        where: versionWhere,
+      });
+      if (versionAfterDryRun === null) {
+        throw new Error(
+          "Expected legacy skill version to exist after dry run."
+        );
+      }
+      expect(versionAfterDryRun.extendedSkillId).toBe("frames");
+      expect(versionAfterDryRun.instructions).toBe(
+        "Run the older custom frame workflow."
       );
 
       const referencesAfterDryRun = await SkillReferenceModel.findAll({
@@ -1122,6 +1171,20 @@ describe("SkillResource", () => {
         'This skill is a customization of <skill id="frames" name="Create Frames"'
       );
       expect(migratedSkill.instructionsHtml).toContain(
+        '<skill id="frames" name="Create Frames"'
+      );
+
+      const migratedVersion = await SkillVersionModel.findOne({
+        where: versionWhere,
+      });
+      if (migratedVersion === null) {
+        throw new Error("Expected migrated skill version to exist.");
+      }
+      expect(migratedVersion.extendedSkillId).toBeNull();
+      expect(migratedVersion.instructions).toContain(
+        'This skill is a customization of <skill id="frames" name="Create Frames"'
+      );
+      expect(migratedVersion.instructionsHtml).toContain(
         '<skill id="frames" name="Create Frames"'
       );
 

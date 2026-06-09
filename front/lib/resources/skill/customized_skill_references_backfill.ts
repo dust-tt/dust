@@ -1,5 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
-import { SkillConfigurationModel } from "@app/lib/models/skill";
+import {
+  SkillConfigurationModel,
+  SkillVersionModel,
+} from "@app/lib/models/skill";
 import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { prependBaseSkillReference } from "@app/lib/skills/customization";
@@ -9,7 +12,7 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import uniq from "lodash/uniq";
 import type { Logger } from "pino";
-import { Op } from "sequelize";
+import { Op, type WhereOptions } from "sequelize";
 
 const CUSTOMIZED_SKILL_STATUSES: SkillStatus[] = [
   "active",
@@ -72,8 +75,36 @@ export async function backfillCustomizedSkillReferencesForWorkspace(
     return stats;
   }
 
+  // Bound by the current legacy skills found above; uses the skill_versions
+  // (workspaceId, skillConfigurationId) index, with extendedSkillId as residual filter.
+  const versionRowsWhere: WhereOptions<SkillVersionModel> = {
+    workspaceId: workspace.id,
+    skillConfigurationId: { [Op.in]: skills.map((skill) => skill.id) },
+    extendedSkillId: { [Op.ne]: null },
+  };
+  const versionRows = await SkillVersionModel.findAll({
+    attributes: [
+      "id",
+      "skillConfigurationId",
+      "instructions",
+      "instructionsHtml",
+      "extendedSkillId",
+    ],
+    where: versionRowsWhere,
+  });
+  const versionRowsBySkillId = new Map<number, SkillVersionModel[]>();
+  for (const versionRow of versionRows) {
+    const rows =
+      versionRowsBySkillId.get(versionRow.skillConfigurationId) ?? [];
+    rows.push(versionRow);
+    versionRowsBySkillId.set(versionRow.skillConfigurationId, rows);
+  }
+
   const extendedSkillIds = uniq(
-    removeNulls(skills.map((s) => s.extendedSkillId))
+    removeNulls([
+      ...skills.map((s) => s.extendedSkillId),
+      ...versionRows.map((v) => v.extendedSkillId),
+    ])
   );
   const baseSkills = await SkillResource.fetchByIds(auth, extendedSkillIds);
   const baseSkillById = new Map(baseSkills.map((skill) => [skill.sId, skill]));
@@ -128,6 +159,52 @@ export async function backfillCustomizedSkillReferencesForWorkspace(
       instructions: skill.instructions,
       instructionsHtml: skill.instructionsHtml,
     });
+    const versionRowsForSkill = versionRowsBySkillId.get(skill.id) ?? [];
+    const versionUpdates: {
+      id: number;
+      instructions: string;
+      instructionsHtml: string | null;
+    }[] = [];
+    let missingVersionBaseSkillId: string | null = null;
+
+    for (const versionRow of versionRowsForSkill) {
+      const versionExtendedSkillId = versionRow.extendedSkillId;
+      if (versionExtendedSkillId === null) {
+        throw new Error("Expected skill version to have an extendedSkillId.");
+      }
+
+      const versionBaseSkill = baseSkillById.get(versionExtendedSkillId);
+      if (!versionBaseSkill || !versionBaseSkill.isExtendable) {
+        missingVersionBaseSkillId = versionExtendedSkillId;
+        break;
+      }
+
+      versionUpdates.push({
+        id: versionRow.id,
+        ...prependBaseSkillReference({
+          baseSkill: versionBaseSkill,
+          instructions: versionRow.instructions,
+          instructionsHtml: versionRow.instructionsHtml,
+        }),
+      });
+    }
+
+    if (missingVersionBaseSkillId !== null) {
+      stats.errors++;
+      logger.error(
+        {
+          skillId: SkillResource.modelIdToSId({
+            id: skill.id,
+            workspaceId: workspace.id,
+          }),
+          baseSkillId: missingVersionBaseSkillId,
+          workspaceId: workspace.sId,
+        },
+        "Could not resolve extendable base skill for customized skill version"
+      );
+      continue;
+    }
+
     const referenceKey = getGlobalReferenceKey({
       parentSkillId: skill.id,
       childGlobalSkillId: extendedSkillId,
@@ -144,6 +221,7 @@ export async function backfillCustomizedSkillReferencesForWorkspace(
         }),
         skillName: skill.name,
         baseSkillId: extendedSkillId,
+        versionRows: versionUpdates.length,
         workspaceId: workspace.sId,
       },
       execute
@@ -183,6 +261,27 @@ export async function backfillCustomizedSkillReferencesForWorkspace(
               childGlobalSkillId: extendedSkillId,
             },
             { transaction }
+          );
+        }
+
+        for (const versionUpdate of versionUpdates) {
+          const versionWhere: WhereOptions<SkillVersionModel> = {
+            id: versionUpdate.id,
+            skillConfigurationId: skill.id,
+            workspaceId: workspace.id,
+          };
+          await SkillVersionModel.update(
+            {
+              instructions: versionUpdate.instructions,
+              instructionsHtml: versionUpdate.instructionsHtml,
+              extendedSkillId: null,
+            },
+            {
+              hooks: false,
+              silent: true,
+              transaction,
+              where: versionWhere,
+            }
           );
         }
       });

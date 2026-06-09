@@ -69,5 +69,11 @@ makeScript(
         ? "Customized skill references backfill complete"
         : "Customized skill references backfill dry run complete"
     );
+
+    if (execute && totals.errors > 0) {
+      throw new Error(
+        `Customized skill references backfill completed with ${totals.errors} errors.`
+      );
+    }
   }
 );
