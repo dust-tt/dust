@@ -54,8 +54,8 @@ export const logsCommand = withEnvironment(
       return runInteractiveMode(env.name, serviceArg);
     }
 
-    // Determine target service (default to front-api).
-    let targetService: ServiceName = "front-api";
+    // Determine target service (default to the proxy — the public entry point)
+    let targetService: ServiceName = "proxy";
     if (serviceArg) {
       const result = validateServiceArg(serviceArg);
       if (!result.ok) return result;

@@ -136,7 +136,14 @@ async function destroySingleEnvironment(
   logger.info(`Destroying environment '${env.name}'...`);
   console.log();
 
-  const portServices: ServiceName[] = ["front-api", "core", "connectors", "oauth"];
+  const portServices: ServiceName[] = [
+    "proxy",
+    "front-api",
+    "marketing",
+    "core",
+    "connectors",
+    "oauth",
+  ];
   const servicePids = await Promise.all(portServices.map((service) => readPid(env.name, service)));
   const allowedPids = new Set(servicePids.filter((pid): pid is number => pid !== null));
 

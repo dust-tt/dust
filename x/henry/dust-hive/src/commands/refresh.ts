@@ -12,6 +12,7 @@ const WORKSPACE_DIRS = [
   "sdks/js",
   "front",
   "front-api",
+  "marketing",
   "connectors",
   "sparkle",
   "front-spa",

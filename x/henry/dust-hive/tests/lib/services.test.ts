@@ -7,6 +7,8 @@ describe("services", () => {
       expect(ALL_SERVICES).toContain("sparkle");
       expect(ALL_SERVICES).toContain("sdk");
       expect(ALL_SERVICES).toContain("front-api");
+      expect(ALL_SERVICES).toContain("marketing");
+      expect(ALL_SERVICES).toContain("proxy");
       expect(ALL_SERVICES).toContain("core");
       expect(ALL_SERVICES).toContain("oauth");
       expect(ALL_SERVICES).toContain("connectors");
@@ -16,8 +18,13 @@ describe("services", () => {
       expect(ALL_SERVICES).toContain("viz");
     });
 
-    it("has 10 services total", () => {
-      expect(ALL_SERVICES).toHaveLength(10);
+    it("does not contain the removed front service", () => {
+      // `front` (monolithic Next.js) was replaced by proxy + front-api + marketing.
+      expect(ALL_SERVICES).not.toContain("front" as ServiceName);
+    });
+
+    it("has 12 services total", () => {
+      expect(ALL_SERVICES).toHaveLength(12);
     });
 
     it("has sdk as first service (start order)", () => {
@@ -48,6 +55,15 @@ describe("services", () => {
       expect(frontApiIndex).toBeGreaterThan(sparkleIndex);
       expect(coreIndex).toBeGreaterThan(sparkleIndex);
     });
+
+    it("starts marketing before proxy so the proxy can route to it", () => {
+      const marketingIndex = ALL_SERVICES.indexOf("marketing");
+      const proxyIndex = ALL_SERVICES.indexOf("proxy");
+      const frontApiIndex = ALL_SERVICES.indexOf("front-api");
+      expect(marketingIndex).toBeGreaterThan(-1);
+      expect(proxyIndex).toBeGreaterThan(marketingIndex);
+      expect(proxyIndex).toBeGreaterThan(frontApiIndex);
+    });
   });
 
   describe("ServiceName type", () => {
@@ -56,6 +72,8 @@ describe("services", () => {
         "sdk",
         "sparkle",
         "front-api",
+        "marketing",
+        "proxy",
         "core",
         "oauth",
         "connectors",
