@@ -44,9 +44,11 @@ export function mapToEnumValues<T>(
 
 interface EnumArgDefinition extends BaseArgDefinition {
   type: "enum";
-  values: EnumValues;
+  values: EnumValues | readonly [EnumValue];
   async?: false;
   multiple: boolean;
+  /** Fetch enum options from the workspace member search API as the user types. */
+  serverSideSearch?: true;
 }
 
 interface AsyncEnumArgDefinition extends BaseArgDefinition {
@@ -54,6 +56,7 @@ interface AsyncEnumArgDefinition extends BaseArgDefinition {
   values: AsyncEnumValues;
   async: true;
   multiple: boolean;
+  serverSideSearch?: true;
 }
 
 interface StringArgDefinition extends BaseArgDefinition {
@@ -184,9 +187,9 @@ export function createZodSchemaFromArgs(
           throw new Error(`Enum argument "${key}" must be an array`);
         }
 
-        // For async enums, allow empty arrays initially
-        // For non-async enums, require at least 2 values.
-        if (!arg.async && arg.values.length < 2) {
+        // For non-async enums, require at least 2 values unless server-side search
+        // is enabled (static values are optional placeholders such as "None").
+        if (!arg.async && !arg.serverSideSearch && arg.values.length < 2) {
           throw new Error(
             `Non-async enum argument "${key}" must have at least two values`
           );
@@ -195,9 +198,9 @@ export function createZodSchemaFromArgs(
         // Extract values from EnumValue objects.
         const enumValues = arg.values.map((v) => v.value) as string[];
 
-        // Handle empty async enums
-        if (enumValues.length === 0) {
-          schemaProps[key] = z.array(z.string()); // Allow any string for async enums initially.
+        // Server-side search enums load options dynamically (e.g. workspace members).
+        if (enumValues.length === 0 || arg.serverSideSearch) {
+          schemaProps[key] = z.array(z.string());
         } else if (enumValues.length === 1) {
           schemaProps[key] = z.array(z.literal(enumValues[0]));
         } else {

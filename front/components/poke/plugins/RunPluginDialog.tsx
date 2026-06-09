@@ -164,6 +164,7 @@ export function RunPluginDialog({
                 manifest={manifest}
                 asyncArgs={asyncArgs}
                 onSubmit={onSubmit}
+                pluginResourceTarget={pluginResourceTarget}
               />
               {manifest.warning && (
                 <PokeAlert variant="destructive">

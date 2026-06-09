@@ -1,7 +1,7 @@
 import { makeColumnsForMCPServerViews } from "@app/components/poke/mcp_server_views/columns";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { PokeMCPServerViewListItemType } from "@app/lib/api/poke/mcp_server_views";
 import { usePokeMCPServerViews } from "@app/poke/swr/mcp_server_views";
 import type { LightWorkspaceType } from "@app/types/user";
 
@@ -13,7 +13,7 @@ interface MCPServerViewsDataTableProps {
 
 function prepareMCPServerViewsForDisplay(
   owner: LightWorkspaceType,
-  mcpServerViews: MCPServerViewType[],
+  mcpServerViews: PokeMCPServerViewListItemType[],
   spaceId?: string
 ) {
   return mcpServerViews
