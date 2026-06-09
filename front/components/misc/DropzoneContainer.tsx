@@ -1,5 +1,4 @@
 import { useFileDrop } from "@app/components/assistant/conversation/FileUploaderContext";
-import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { DropzoneOverlay } from "@dust-tt/sparkle";
 import { useDropzone } from "react-dropzone";
 
@@ -17,7 +16,6 @@ export function DropzoneContainer({
   disabled,
 }: DropzoneContainerProps) {
   const { setDroppedFiles } = useFileDrop();
-  const isMobile = useIsMobile();
 
   const onDrop = (acceptedFiles: File[]) => {
     setDroppedFiles(acceptedFiles);
