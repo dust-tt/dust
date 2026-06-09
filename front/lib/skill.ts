@@ -29,9 +29,10 @@ interface SkillAvatarIconProps {
   name?: string;
 }
 
-interface SkillAvatarIconOptions {
-  isDustProvided?: boolean;
-}
+type SkillAvatarIconInput =
+  | string
+  | null
+  | Pick<SkillWithoutInstructionsAndToolsType, "editedBy" | "icon">;
 
 export function isDustProvidedSkill(
   skill: Pick<SkillWithoutInstructionsAndToolsType, "editedBy">
@@ -39,10 +40,25 @@ export function isDustProvidedSkill(
   return skill.editedBy === null;
 }
 
+function isSkillAvatarIconSkill(
+  input: SkillAvatarIconInput
+): input is Pick<SkillWithoutInstructionsAndToolsType, "editedBy" | "icon"> {
+  return input !== null && typeof input === "object";
+}
+
 export function getSkillAvatarIcon(
-  iconString: string | null,
-  { isDustProvided = false }: SkillAvatarIconOptions = {}
+  input: SkillAvatarIconInput
 ): React.ComponentType<SkillAvatarIconProps> {
+  let iconString: string | null;
+  let isDustProvided = false;
+
+  if (isSkillAvatarIconSkill(input)) {
+    iconString = input.icon;
+    isDustProvided = isDustProvidedSkill(input);
+  } else {
+    iconString = input;
+  }
+
   let SkillAvatar: React.ComponentType<SkillAvatarIconProps>;
   let skillIcon: React.ComponentType<{ className?: string }> = SKILL_ICON;
 
@@ -90,14 +106,6 @@ export function getSkillAvatarIcon(
       ...props,
     });
   };
-}
-
-export function getSkillAvatarIconForSkill(
-  skill: Pick<SkillWithoutInstructionsAndToolsType, "editedBy" | "icon">
-) {
-  return getSkillAvatarIcon(skill.icon, {
-    isDustProvided: isDustProvidedSkill(skill),
-  });
 }
 
 export function getSkillIcon(

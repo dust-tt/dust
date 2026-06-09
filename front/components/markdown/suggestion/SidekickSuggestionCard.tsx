@@ -14,7 +14,7 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
-import { getSkillAvatarIconForSkill } from "@app/lib/skill";
+import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import type {
@@ -391,7 +391,7 @@ function SkillSuggestionCard({ agentSuggestion }: SkillSuggestionCardProps) {
   return (
     <ActionCardBlock
       {...labels}
-      visual={<Avatar icon={getSkillAvatarIconForSkill(skill)} size="sm" />}
+      visual={<Avatar icon={getSkillAvatarIcon(skill)} size="sm" />}
       description={analysis ?? undefined}
       state={cardState}
       rejectedTitle={`${skill.name} skill suggestion rejected`}

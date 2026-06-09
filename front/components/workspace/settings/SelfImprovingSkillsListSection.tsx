@@ -1,4 +1,4 @@
-import { getSkillAvatarIconForSkill } from "@app/lib/skill";
+import { getSkillAvatarIcon } from "@app/lib/skill";
 import {
   useSkillsWithRelations,
   useUpdateSkillReinforcement,
@@ -65,7 +65,7 @@ const COLUMNS: ColumnDef<RowData, unknown>[] = [
     header: "Name",
     accessorKey: "name",
     cell: (info: CellContext<RowData, unknown>) => {
-      const SkillAvatar = getSkillAvatarIconForSkill(info.row.original);
+      const SkillAvatar = getSkillAvatarIcon(info.row.original);
       return (
         <DataTable.CellContent>
           <div className="flex flex-row items-center gap-2 py-3">

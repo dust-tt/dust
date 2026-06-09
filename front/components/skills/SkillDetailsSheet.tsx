@@ -3,7 +3,7 @@ import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
 import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButtonBar";
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
-import { getSkillAvatarIconForSkill, hasRelations } from "@app/lib/skill";
+import { getSkillAvatarIcon, hasRelations } from "@app/lib/skill";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import type {
   SkillRelations,
@@ -157,7 +157,7 @@ const DescriptionSection = ({
       day: "2-digit",
     });
 
-  const SkillAvatar = getSkillAvatarIconForSkill(skill);
+  const SkillAvatar = getSkillAvatarIcon(skill);
 
   return (
     <div className="flex flex-col items-center gap-4 pt-4">

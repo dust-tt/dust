@@ -2,7 +2,7 @@ import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useAppRouter } from "@app/lib/platform";
-import { getSkillAvatarIconForSkill } from "@app/lib/skill";
+import { getSkillAvatarIcon } from "@app/lib/skill";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
@@ -33,7 +33,7 @@ const nameColumn = {
   header: "Name",
   accessorKey: "name",
   cell: (info: CellContext<RowData, string>) => {
-    const SkillAvatar = getSkillAvatarIconForSkill(info.row.original);
+    const SkillAvatar = getSkillAvatarIcon(info.row.original);
 
     return (
       <DataTable.CellContent>

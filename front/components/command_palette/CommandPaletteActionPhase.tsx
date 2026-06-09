@@ -1,6 +1,6 @@
 import { KeyboardHints } from "@app/components/command_palette/CommandPaletteItems";
 import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteSearchPhase";
-import { getSkillAvatarIconForSkill } from "@app/lib/skill";
+import { getSkillAvatarIcon } from "@app/lib/skill";
 import {
   ArrowLeft,
   Avatar,
@@ -123,7 +123,7 @@ export function CommandPaletteActionPhase({
     item.kind === "agent" ? (
       <Avatar visual={item.agent.pictureUrl} size="xs" />
     ) : (
-      React.createElement(getSkillAvatarIconForSkill(item.skill), {
+      React.createElement(getSkillAvatarIcon(item.skill), {
         size: "xs",
       })
     );
