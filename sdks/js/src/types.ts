@@ -1352,20 +1352,6 @@ export type NotificationRunAgentContent = z.infer<
   typeof NotificationRunAgentContentSchema
 >;
 
-const NotificationRunAgentChainOfThoughtSchema = z.object({
-  type: z.literal("run_agent_chain_of_thought"),
-  childAgentId: z.string(),
-  conversationId: z.string(),
-  chainOfThought: z.string(),
-});
-
-const NotificationRunAgentGenerationTokensSchema = z.object({
-  type: z.literal("run_agent_generation_tokens"),
-  childAgentId: z.string(),
-  conversationId: z.string(),
-  text: z.string(),
-});
-
 const NotificationStoreResourceContentSchema = z.object({
   type: z.literal("store_resource"),
   contents: z.array(
@@ -1385,9 +1371,7 @@ const NotificationStoreResourceContentSchema = z.object({
 const NotificationContentSchema = z.union([
   NotificationInteractiveContentFileContentSchema,
   NotificationImageContentSchema,
-  NotificationRunAgentChainOfThoughtSchema,
   NotificationRunAgentContentSchema,
-  NotificationRunAgentGenerationTokensSchema,
   NotificationStoreResourceContentSchema,
   NotificationTextContentSchema,
   NotificationToolApproveBubbleUpContentSchema,

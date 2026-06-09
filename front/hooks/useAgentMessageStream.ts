@@ -9,10 +9,6 @@ import { isAgentMessageWithStreaming } from "@app/components/assistant/conversat
 import { useConversationContextUsage } from "@app/hooks/conversations";
 import { useEventSource } from "@app/hooks/useEventSource";
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
-import {
-  isRunAgentChainOfThoughtProgressOutput,
-  isRunAgentGenerationTokensProgressOutput,
-} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
@@ -183,55 +179,6 @@ export function updateProgress(
   const actionId = event.action.id;
   const currentProgress = agentMessage.streaming.actionProgress.get(actionId);
 
-  const output = event.notification._meta?.data?.output;
-  const prevOutput = currentProgress?.progress?._meta?.data?.output;
-
-  // The server sends deltas (not full state) for run_agent CoT/content tokens.
-  // We accumulate by reading the previous value from the stored progress output.
-  //
-  // Note: progress only holds one output type at a time. When the output switches from CoT
-  // to content, the accumulated CoT is lost here. The component's React state retains it,
-  // which is good enough for live streaming. On replay (page reload), CoT may be lost if content
-  // tokens have already started. This also means interleaved CoT/content/CoT is not supported.
-  let notificationWithAccumulated = event.notification;
-
-  if (output) {
-    if (isRunAgentChainOfThoughtProgressOutput(output)) {
-      const prevCoT =
-        prevOutput && isRunAgentChainOfThoughtProgressOutput(prevOutput)
-          ? prevOutput.chainOfThought
-          : "";
-      notificationWithAccumulated = {
-        ...event.notification,
-        _meta: {
-          ...event.notification._meta,
-          data: {
-            ...event.notification._meta.data,
-            output: {
-              ...output,
-              chainOfThought: prevCoT + output.chainOfThought,
-            },
-          },
-        },
-      };
-    } else if (isRunAgentGenerationTokensProgressOutput(output)) {
-      const prevText =
-        prevOutput && isRunAgentGenerationTokensProgressOutput(prevOutput)
-          ? prevOutput.text
-          : "";
-      notificationWithAccumulated = {
-        ...event.notification,
-        _meta: {
-          ...event.notification._meta,
-          data: {
-            ...event.notification._meta.data,
-            output: { ...output, text: prevText + output.text },
-          },
-        },
-      };
-    }
-  }
-
   return {
     ...agentMessage,
     streaming: {
@@ -242,10 +189,10 @@ export function updateProgress(
           action: event.action,
           progress: {
             ...currentProgress?.progress,
-            ...notificationWithAccumulated,
+            ...event.notification,
             _meta: {
               ...currentProgress?.progress?._meta,
-              ...notificationWithAccumulated._meta,
+              ...event.notification._meta,
             },
           },
         }
