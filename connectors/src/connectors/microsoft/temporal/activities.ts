@@ -342,7 +342,7 @@ export async function getRootNodesToSyncFromResources(
         );
       } else if (isSiteNotFoundError(error)) {
         logger.warn(
-          { error: error.message },
+          { error: normalizeError(error).message },
           "SharePoint site target not found, skipping sites-root"
         );
       } else {
