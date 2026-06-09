@@ -486,7 +486,7 @@ function PreviewActionButtons({
 }: PreviewActionButtonsProps) {
   const clientType = useClientType();
   return (
-    <div className="fixed bottom-4 right-3 flex flex-col gap-1 rounded-lg bg-white p-1 shadow-md dark:bg-gray-900">
+    <div className="fixed bottom-5 right-5 flex flex-col gap-1 rounded-lg bg-white p-1 shadow-md dark:bg-gray-900">
       {clientType !== "extension" && (
         <Tooltip
           label={`${isFullScreen ? "Exit" : "Go to"} full screen mode`}

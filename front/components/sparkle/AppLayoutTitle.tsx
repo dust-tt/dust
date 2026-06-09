@@ -6,11 +6,14 @@ interface AppLayoutTitleProps {
   className?: string;
 }
 
+export const HEADER_HEIGHT_CLASSNAME = `h-[3rem]`;
+
 export function AppLayoutTitle({ children, className }: AppLayoutTitleProps) {
   return (
     <div
       className={cn(
-        "flex h-[48px] w-full shrink-0 flex-col border-b border-separator px-4 pl-14 lg:pl-4",
+        HEADER_HEIGHT_CLASSNAME,
+        "flex w-full shrink-0 flex-col border-b border-separator px-4 pl-14 lg:pl-4",
         "bg-content-background dark:bg-content-background-night",
         "dark:border-separator-night",
         // When no children, only show on mobile for hamburger menu alignment.

@@ -165,6 +165,7 @@ export const NavigationSidebar = React.forwardRef<
 
 interface ToggleNavigationSidebarButtonProps {
   isNavigationBarOpened: boolean;
+  isFullScreen: boolean;
   toggleNavigationBarVisibility: (isOpened: boolean) => void;
 }
 
@@ -174,6 +175,7 @@ export const ToggleNavigationSidebarButton = React.forwardRef<
 >(function ToggleSideBarButton(
   {
     isNavigationBarOpened,
+    isFullScreen,
     toggleNavigationBarVisibility,
   }: ToggleNavigationSidebarButtonProps,
   ref
@@ -182,7 +184,7 @@ export const ToggleNavigationSidebarButton = React.forwardRef<
     toggleNavigationBarVisibility(!isNavigationBarOpened);
   }, [isNavigationBarOpened, toggleNavigationBarVisibility]);
 
-  if (isNavigationBarOpened) {
+  if (isNavigationBarOpened || isFullScreen) {
     return null;
   }
 

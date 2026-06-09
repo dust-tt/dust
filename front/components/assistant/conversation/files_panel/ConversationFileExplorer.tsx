@@ -80,7 +80,7 @@ export function ConversationFileExplorer({
               />
             </ButtonGroup>
           ) : (
-            <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+            <span className="text-sm text-foreground dark:text-foreground-night">
               Conversation Files
             </span>
           )}

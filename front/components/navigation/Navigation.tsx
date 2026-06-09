@@ -7,7 +7,6 @@ import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useUser } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 import type { SubscriptionType } from "@app/types/plan";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -18,11 +17,10 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  useWindowSize,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import type React from "react";
-import { useContext, useMemo } from "react";
+import { useContext } from "react";
 
 interface NavigationProps {
   hideSidebar: boolean;
@@ -32,6 +30,8 @@ interface NavigationProps {
   subNavigation?: SidebarNavigation[] | null;
   isNavigationBarOpen: boolean;
   setNavigationBarOpen: (isOpen: boolean) => void;
+  isFullScreen: boolean;
+  isMobile: boolean;
 }
 
 export function Navigation({
@@ -42,29 +42,12 @@ export function Navigation({
   subNavigation,
   isNavigationBarOpen,
   setNavigationBarOpen,
+  isFullScreen,
+  isMobile,
 }: NavigationProps) {
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
 
   const { user } = useUser();
-
-  const windowSizeState = useWindowSize();
-
-  const showMobileSidebar = useMemo(() => {
-    switch (windowSizeState.activeBreakpoint) {
-      case "xxs":
-      case "xs":
-      case "sm":
-      case "md":
-        return true;
-
-      case "lg":
-      case "xl":
-      case "2xl":
-        return false;
-      default:
-        assertNever(windowSizeState.activeBreakpoint);
-    }
-  }, [windowSizeState.activeBreakpoint]);
 
   if (hideSidebar) {
     return null;
@@ -74,12 +57,13 @@ export function Navigation({
     <div
       className={cn(
         "flex shrink-0 overflow-x-hidden",
-        "text-primary dark:text-primary-night"
+        "text-primary dark:text-primary-night",
+        "bg-app-background dark:bg-app-background"
       )}
     >
-      {showMobileSidebar ? (
+      {isMobile ? (
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-          <div className="fixed left-0 top-0 z-40 flex h-14 shrink-0 items-center gap-x-4 px-2">
+          <div className="fixed left-0 top-0 z-40 flex h-12 shrink-0 items-center gap-x-4 px-2 overflow-y">
             <SheetTrigger asChild>
               <Button
                 variant="ghost"
@@ -115,11 +99,11 @@ export function Navigation({
         <>
           <div
             className={cn(
-              "transition-width flex-none overflow-hidden duration-150 ease-out lg:flex lg:flex-col",
+              "transition-width flex-none overflow-hidden duration-150 ease-out flex flex-col",
               isNavigationBarOpen ? "w-80" : "w-0"
             )}
           >
-            <div className="flex-1 bg-app-background dark:bg-app-background-night lg:inset-y-0 lg:z-0 lg:flex lg:w-80 lg:flex-col">
+            <div className="flex-1 bg-app-background dark:bg-app-background-night inset-y-0 z-0 flex w-80 flex-col">
               <NavigationSidebar
                 owner={owner}
                 subscription={subscription}
@@ -143,6 +127,7 @@ export function Navigation({
               toggleNavigationBarVisibility={(navigationBar) => {
                 setNavigationBarOpen(navigationBar);
               }}
+              isFullScreen={isFullScreen}
             />
           </div>
         </>

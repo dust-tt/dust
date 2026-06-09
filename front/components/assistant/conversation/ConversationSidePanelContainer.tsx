@@ -7,6 +7,8 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { cn, ResizableHandle, ResizablePanel } from "@dust-tt/sparkle";
 import { useEffect, useRef } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
+import { useHashParam } from "@app/hooks/useHashParams";
+import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 
 interface ConversationSidePanelContainerProps {
   conversation?: ConversationWithoutContentType;
@@ -20,6 +22,10 @@ export default function ConversationSidePanelContainer({
   const { currentPanel, setPanelRef, onPanelClosed } =
     useConversationSidePanelContext();
   const panelRef = useRef<ImperativePanelHandle | null>(null);
+  const [fullScreenHash] = useHashParam(
+    FULL_SCREEN_HASH_PARAM
+  );
+    const isFullScreen = fullScreenHash === "true";
 
   const isMobile = useIsMobile();
 
@@ -39,8 +45,8 @@ export default function ConversationSidePanelContainer({
     <>
       {/* Resizable Handle for Panels - Always render but control visibility */}
       <ResizableHandle
-        withHandle={currentPanel && !isMobile}
-        disabled={!currentPanel || isMobile}
+        withHandle={currentPanel && !isMobile && !isFullScreen}
+        disabled={!currentPanel || isMobile || isFullScreen}
         className="z-50"
       />
       {/* Panel Container - either Interactive Content or Actions */}
