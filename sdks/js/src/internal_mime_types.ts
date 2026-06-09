@@ -171,6 +171,7 @@ export const CONTENT_NODE_MIME_TYPES = {
       "CONVERSATION_FOLDER",
       "CONVERSATION_MESSAGES",
       "CONTEXT_FOLDER",
+      "MOUNT_FOLDER",
     ],
   }),
 };
@@ -254,7 +255,7 @@ const TOOL_MIME_TYPES = {
       "TIME_FRAME",
       "JSON_SCHEMA",
       "SECRET",
-      "DUST_PROJECT",
+      "DUST_POD",
     ],
   }),
   TOOL_OUTPUT: generateToolMimeTypes({
@@ -294,7 +295,7 @@ const TOOL_MIME_TYPES = {
       "RUN_AGENT_HANDOVER",
       "RUN_AGENT_QUERY",
       "WARNING",
-      "AGENT_CREATION_RESULT",
+      "SKILL_AUTHORING_RESULT",
       "TOOLSET_LIST_RESULT",
       "TOOLSET_DESCRIBE_RESULT",
       // Legacy, kept for backwards compatibility.

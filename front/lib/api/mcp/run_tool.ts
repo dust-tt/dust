@@ -14,6 +14,7 @@ import type {
   ToolAskUserQuestionEvent,
   ToolEarlyExitEvent,
   ToolFileAuthRequiredEvent,
+  ToolPausedEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/exit_events";
@@ -21,15 +22,23 @@ import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { handleMCPActionError } from "@app/lib/api/mcp/error";
 import type { Authenticator } from "@app/lib/auth";
+import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-
+import { TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS } from "@app/temporal/agent_loop/config";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
   ConversationType,
 } from "@app/types/assistant/conversation";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { heartbeat } from "@temporalio/activity";
+
+const TOOL_RESULT_PROCESSING_HEARTBEAT_TIMEOUT_MARGIN_MS = 5 * 1000;
+const TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS =
+  TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS -
+  TOOL_RESULT_PROCESSING_HEARTBEAT_TIMEOUT_MARGIN_MS;
 
 /**
  * Runs a tool with streaming for the given MCP action configuration.
@@ -61,7 +70,8 @@ export async function* runToolWithStreaming(
   | ToolFileAuthRequiredEvent
   | ToolPersonalAuthRequiredEvent
   | ToolEarlyExitEvent
-  | ToolAskUserQuestionEvent,
+  | ToolAskUserQuestionEvent
+  | ToolPausedEvent,
   void
 > {
   const { toolConfiguration, status, augmentedInputs: inputs } = action;
@@ -87,19 +97,23 @@ export async function* runToolWithStreaming(
   await action.updateStatus("running");
   const startDate = performance.now();
 
+  const intermediateOutputItems: AgentMCPActionOutputItemModel[] = [];
+
   const toolCallResult = yield* tryCallMCPTool(
     auth,
     inputs,
     agentLoopRunContext,
     {
       progressToken: action.id,
-      makeToolNotificationEvent: (notification) =>
-        processToolNotification(auth, notification, {
-          action,
-          agentConfiguration,
-          conversation,
-          agentMessage,
-        }),
+      makeToolNotificationEvent: async (notification) => {
+        const { event, storedItems } = await processToolNotification(
+          auth,
+          notification,
+          { action, agentConfiguration, conversation, agentMessage }
+        );
+        intermediateOutputItems.push(...storedItems);
+        return event;
+      },
       signal,
     }
   );
@@ -120,13 +134,25 @@ export async function* runToolWithStreaming(
     return;
   }
 
-  const { outputItems, generatedFiles } = await processToolResults(auth, {
-    action,
-    conversation,
-    localLogger,
-    toolCallResultContent: toolCallResult.content,
-    toolConfiguration,
-  });
+  // Tool result processing can legitimately take up to 5 minutes when processing files,
+  // so heartbeat while this scoped post-processing phase is running.
+  const { outputItems, generatedFiles } = await withPeriodicHeartbeat(
+    () =>
+      processToolResults(auth, {
+        action,
+        conversation,
+        localLogger,
+        toolCallResultContent: toolCallResult.content,
+        toolConfiguration,
+      }),
+    {
+      intervalMs: TOOL_RESULT_PROCESSING_HEARTBEAT_INTERVAL_MS,
+      heartbeatFn: () => {
+        heartbeat();
+        localLogger.info("MCP tool result processing heartbeat");
+      },
+    }
+  );
 
   // Parse the output resources to check if we find special events that require the agent loop to pause.
   // This could be an authentication, validation, or unconditional exit from the action.
@@ -155,7 +181,11 @@ export async function* runToolWithStreaming(
     messageId: agentMessage.sId,
     action: {
       ...action.toJSON(),
-      output: removeNulls(outputItems.map(hideFileFromActionOutput)),
+      output: removeNulls(
+        [...intermediateOutputItems, ...outputItems].map(
+          hideFileFromActionOutput
+        )
+      ),
       generatedFiles,
     },
   };

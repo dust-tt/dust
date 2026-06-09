@@ -1,20 +1,19 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
 
-import { ChatBubbleLeftRightIcon } from "@sparkle/icons/app";
-
 import {
   Avatar,
   Button,
-  ChatBubbleBottomCenterTextIcon,
-  CloudArrowLeftRightIcon,
+  MessageCircle01,
+  CloudArrowLeftRight,
   ContextItem,
-  FolderIcon,
-  GlobeAltIcon,
+  Folder,
+  Globe01,
   Icon,
   Page,
-  RocketIcon,
+  Rocket02,
 } from "../index_with_tw_base";
+import { MessageChatSquare } from "@sparkle/icons/v2-stroke";
 
 const meta = {
   title: "Modules/Page",
@@ -29,7 +28,7 @@ export const PageSimpleExample = () => {
       <Page.Header
         title="Title"
         description="Description"
-        icon={ChatBubbleBottomCenterTextIcon}
+        icon={MessageCircle01}
       />
       <Page.P>
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod
@@ -53,7 +52,7 @@ export const QIGExample = () => {
   return (
     <Page>
       <Page.Header
-        icon={RocketIcon}
+        icon={Rocket02}
         title={
           <>
             Get Started: <br />
@@ -161,7 +160,7 @@ export const QIGExample = () => {
         <Page.Horizontal>
           <Page.Vertical sizing="grow">
             <div className="flex items-center gap-2">
-              <Icon visual={CloudArrowLeftRightIcon} />{" "}
+              <Icon visual={CloudArrowLeftRight} />{" "}
               <Page.H variant="h6">Connections</Page.H>
             </div>
             <Page.P>
@@ -172,8 +171,7 @@ export const QIGExample = () => {
           <Page.Vertical sizing="grow">
             <Page.Horizontal>
               <div className="flex items-center gap-2">
-                <Icon visual={FolderIcon} />{" "}
-                <Page.H variant="h6">Folders</Page.H>
+                <Icon visual={Folder} /> <Page.H variant="h6">Folders</Page.H>
               </div>
             </Page.Horizontal>
             <Page.P>Upload files (text, pdf, csv) directly in Dust.</Page.P>
@@ -181,8 +179,7 @@ export const QIGExample = () => {
           <Page.Vertical sizing="grow">
             <Page.Horizontal>
               <div className="flex items-center gap-2">
-                <Icon visual={GlobeAltIcon} />{" "}
-                <Page.H variant="h6">Websites</Page.H>
+                <Icon visual={Globe01} /> <Page.H variant="h6">Websites</Page.H>
               </div>
             </Page.Horizontal>
             <Page.P>
@@ -202,7 +199,7 @@ export const PageExample = () => {
       <Page.Header
         title="Title"
         description="Description"
-        icon={ChatBubbleBottomCenterTextIcon}
+        icon={MessageCircle01}
       />
       <Page.P>
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod
@@ -332,10 +329,7 @@ export const AssistantBuilder = () => {
 export const HelpExample = () => {
   return (
     <Page>
-      <Page.Header
-        title="Welcome to Agent"
-        icon={ChatBubbleBottomCenterTextIcon}
-      />
+      <Page.Header title="Welcome to Agent" icon={MessageCircle01} />
       <Page.Layout direction="vertical" gap="xs" align="left">
         <Page.SectionHeader title="Getting started?" />
         <Page.P variant="secondary">
@@ -346,7 +340,7 @@ export const HelpExample = () => {
         <Button
           variant="primary"
           label="Hey @helper, how do I use the agent?"
-          icon={ChatBubbleLeftRightIcon}
+          icon={MessageChatSquare}
         />
       </Page.Layout>
       <Page.Separator />
@@ -366,17 +360,17 @@ export const HelpExample = () => {
           <Button
             variant="outline"
             label="Hey @helper, how do I use the agent?"
-            icon={ChatBubbleLeftRightIcon}
+            icon={MessageChatSquare}
           />
           <Button
             variant="outline"
             label="Hey @helper, What is agent not good at?"
-            icon={ChatBubbleLeftRightIcon}
+            icon={MessageChatSquare}
           />
           <Button
             variant="outline"
             label="Hey @helper, Anything I should know?"
-            icon={ChatBubbleLeftRightIcon}
+            icon={MessageChatSquare}
           />
         </Page.Layout>
       </Page.Layout>

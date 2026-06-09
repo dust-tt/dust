@@ -141,19 +141,21 @@ runs:
           build_args+=("--build-arg DATADOG_API_KEY=${{ inputs.dd_api_key }}")
         fi
 
-        # Only set the Datadog client token for front and front-edge builds
-        if [[ "$COMPONENT" == "front" || "$COMPONENT" == "front-edge" ]]; then
+        # Set the Datadog client token + service name for any front / front-edge build,
+        if [[ "$BASE_COMPONENT" == "front" || "$BASE_COMPONENT" == "front-edge" ]]; then
           build_args+=("--build-arg NEXT_PUBLIC_DATADOG_CLIENT_TOKEN=${{ inputs.dd_client_token }}")
-          build_args+=("--build-arg NEXT_PUBLIC_DATADOG_SERVICE=$COMPONENT")
+          build_args+=("--build-arg NEXT_PUBLIC_DATADOG_SERVICE=$BASE_COMPONENT")
           build_args+=("--build-arg NEXT_PUBLIC_BUILD_DATE=$(date +%s)")
           # Upload source maps for front-sse too (same image, different DD service name)
-          if [[ "$COMPONENT" == "front" ]]; then
+          if [[ "$BASE_COMPONENT" == "front" ]]; then
             build_args+=("--build-arg DATADOG_ADDITIONAL_SERVICES=front-sse")
           fi
         fi
 
-        # Only set Contentful credentials for front and front-edge builds (needed for ISR)
-        if [[ "$COMPONENT" == "front" || "$COMPONENT" == "front-edge" ]]; then
+        # Only set Contentful credentials for front and front-edge builds (needed for ISR),
+        # and for marketing / marketing-edge (which currently builds from front/ and renders
+        # the same Contentful-backed pages).
+        if [[ "$COMPONENT" == "front" || "$COMPONENT" == "front-edge" || "$COMPONENT" == "marketing" || "$COMPONENT" == "marketing-edge" ]]; then
           if [[ -n "${{ inputs.contentful_space_id }}" ]]; then
             build_args+=("--build-arg CONTENTFUL_SPACE_ID=${{ inputs.contentful_space_id }}")
           fi
@@ -178,9 +180,9 @@ runs:
           LATEST_TAGS+=("-t" "${REGISTRY}/${COMPONENT}:latest")
         fi
 
-        # Special handling for front component, build both front and workers targets
+        # Special handling for front component, build front, workers and front-api targets
         if [[ "$BASE_COMPONENT" == "front" ]]; then
-          echo "🏗️ Building front component with dual targets (front + workers)"
+          echo "🏗️ Building front component with three targets (front + workers + front-api)"
 
           # Build front target
           depot build \
@@ -218,6 +220,31 @@ runs:
             -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
             -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${COMPONENT}-workers:${{ inputs.commit_sha }} \
             "${LATEST_TAGS_WORKERS[@]}" \
+            --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
+            --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
+            ${build_args[@]} \
+            --push \
+            .
+
+          # Build front-api target. Insert `-api` after the base component so the prod image
+          # is `front-api` and the edge image is `front-api-edge` (parallel to `front`/`front-edge`).
+          API_COMPONENT="${BASE_COMPONENT}-api${COMPONENT#${BASE_COMPONENT}}"
+          LATEST_TAGS_API=()
+          if [[ "$ENV" == "prod" && "$COMPONENT" == "$BASE_COMPONENT" && "${{ github.ref_name }}" == "main" ]]; then
+            LATEST_TAGS_API+=("-t" "${REGISTRY}/${API_COMPONENT}:latest")
+          fi
+          depot build \
+            --project $DEPOT_PROJECT_ID \
+            --platform linux/amd64 \
+            --provenance=false \
+            --target front-api \
+            --cache-from type=gha,scope=${{ inputs.component }}-deps \
+            --cache-from type=gha,scope=${{ inputs.component }}-front-api \
+            --cache-to type=gha,mode=max,scope=${{ inputs.component }}-deps \
+            --cache-to type=gha,mode=max,scope=${{ inputs.component }}-front-api \
+            -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
+            -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${API_COMPONENT}:${{ inputs.commit_sha }} \
+            "${LATEST_TAGS_API[@]}" \
             --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
             --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
             ${build_args[@]} \

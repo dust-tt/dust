@@ -15,8 +15,9 @@ import {
   resolveConversationFileRef,
 } from "./file_utils";
 
-const { mockResolveFile } = vi.hoisted(() => ({
+const { mockResolveFile, mockFromScopedPath } = vi.hoisted(() => ({
   mockResolveFile: vi.fn(),
+  mockFromScopedPath: vi.fn(),
 }));
 
 vi.mock(
@@ -32,6 +33,18 @@ vi.mock(
     };
   }
 );
+
+vi.mock("@app/lib/api/file_system", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/file_system")>();
+  return {
+    ...actual,
+    DustFileSystem: {
+      ...actual.DustFileSystem,
+      fromScopedPath: mockFromScopedPath,
+    },
+  };
+});
 
 function makeAgentLoopContext(
   conversation: ConversationType
@@ -53,6 +66,105 @@ function makeReadableStream(content: string): Readable {
 describe("getFileFromConversationAttachment", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  describe("canonical scoped path (conversation-{id}/...)", () => {
+    it("reads the file content via DustFileSystem", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const conversation = await createConversation(auth, {
+        title: "Test",
+        visibility: "unlisted",
+        spaceId: null,
+      });
+
+      const canonicalPath = `conversation-${conversation.sId}/report.csv`;
+      const expectedContent = "col1,col2\nval1,val2";
+
+      mockFromScopedPath.mockResolvedValue(
+        new Ok({
+          stat: vi
+            .fn()
+            .mockResolvedValue(
+              new Ok({ contentType: "text/csv", sizeBytes: 19 })
+            ),
+          read: vi
+            .fn()
+            .mockResolvedValue(new Ok(makeReadableStream(expectedContent))),
+        })
+      );
+
+      const result = await getFileFromConversationAttachment(
+        auth,
+        canonicalPath,
+        makeAgentLoopContext({ ...conversation, content: [] })
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) {
+        return;
+      }
+      expect(result.value.buffer.toString()).toBe(expectedContent);
+      expect(result.value.contentType).toBe("text/csv");
+      expect(result.value.filename).toBe("report.csv");
+    });
+
+    it("returns Err when the file is not found", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const conversation = await createConversation(auth, {
+        title: "Test",
+        visibility: "unlisted",
+        spaceId: null,
+      });
+
+      mockFromScopedPath.mockResolvedValue(
+        new Ok({
+          stat: vi.fn().mockResolvedValue(new Ok(null)),
+          read: vi.fn(),
+        })
+      );
+
+      const result = await getFileFromConversationAttachment(
+        auth,
+        `conversation-${conversation.sId}/missing.pdf`,
+        makeAgentLoopContext({ ...conversation, content: [] })
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (!result.isErr()) {
+        return;
+      }
+      expect(result.error).toContain("not found");
+    });
+
+    it("returns Err when fromScopedPath fails", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const conversation = await createConversation(auth, {
+        title: "Test",
+        visibility: "unlisted",
+        spaceId: null,
+      });
+
+      mockFromScopedPath.mockResolvedValue(
+        new Err({ message: "Conversation not found" })
+      );
+
+      const result = await getFileFromConversationAttachment(
+        auth,
+        `conversation-${conversation.sId}/file.txt`,
+        makeAgentLoopContext({ ...conversation, content: [] })
+      );
+
+      expect(result.isErr()).toBe(true);
+    });
   });
 
   describe("legacy fileId path", () => {
@@ -213,6 +325,117 @@ describe("getFileFromConversationAttachment", () => {
 describe("resolveConversationFileRef", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  describe("canonical scoped path (conversation-{id}/...)", () => {
+    it("returns metadata, getSignedUrl, and createReadStream via DustFileSystem", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const conversation = await createConversation(auth, {
+        title: "Test",
+        visibility: "unlisted",
+        spaceId: null,
+      });
+
+      const canonicalPath = `conversation-${conversation.sId}/photo.png`;
+      const signedUrl = "https://storage.example.com/signed";
+
+      mockFromScopedPath.mockResolvedValue(
+        new Ok({
+          stat: vi
+            .fn()
+            .mockResolvedValue(
+              new Ok({ contentType: "image/png", sizeBytes: 512 })
+            ),
+          read: vi
+            .fn()
+            .mockResolvedValue(new Ok(makeReadableStream("img bytes"))),
+          getDownloadUrl: vi.fn().mockResolvedValue(new Ok(signedUrl)),
+        })
+      );
+
+      const result = await resolveConversationFileRef(
+        auth,
+        canonicalPath,
+        undefined // canonical paths do not need agentLoopContext
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (!result.isOk()) {
+        return;
+      }
+      expect(result.value.contentType).toBe("image/png");
+      expect(result.value.sizeBytes).toBe(512);
+      expect(result.value.fileName).toBe("photo.png");
+      expect(await result.value.getSignedUrl()).toBe(signedUrl);
+    });
+
+    it("does not require agentLoopContext", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const conversation = await createConversation(auth, {
+        title: "Test",
+        visibility: "unlisted",
+        spaceId: null,
+      });
+
+      mockFromScopedPath.mockResolvedValue(
+        new Ok({
+          stat: vi
+            .fn()
+            .mockResolvedValue(
+              new Ok({ contentType: "text/plain", sizeBytes: 10 })
+            ),
+          read: vi.fn().mockResolvedValue(new Ok(makeReadableStream("hello"))),
+          getDownloadUrl: vi
+            .fn()
+            .mockResolvedValue(new Ok("https://example.com/url")),
+        })
+      );
+
+      // Pass undefined — should succeed for canonical paths.
+      const result = await resolveConversationFileRef(
+        auth,
+        `conversation-${conversation.sId}/file.txt`,
+        undefined
+      );
+
+      expect(result.isOk()).toBe(true);
+    });
+
+    it("returns Err when the file is not found", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+
+      const conversation = await createConversation(auth, {
+        title: "Test",
+        visibility: "unlisted",
+        spaceId: null,
+      });
+
+      mockFromScopedPath.mockResolvedValue(
+        new Ok({
+          stat: vi.fn().mockResolvedValue(new Ok(null)),
+        })
+      );
+
+      const result = await resolveConversationFileRef(
+        auth,
+        `conversation-${conversation.sId}/missing.png`,
+        undefined
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (!result.isErr()) {
+        return;
+      }
+      expect(result.error).toContain("not found");
+    });
   });
 
   it("returns Err when agentLoopContext has no runContext", async () => {

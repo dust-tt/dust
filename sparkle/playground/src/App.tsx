@@ -6,8 +6,8 @@ import {
   DropdownMenuTrigger,
   ListGroup,
   ListItem,
-  MoonIcon,
-  SunIcon,
+  Moon01,
+  Sun,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
@@ -15,7 +15,7 @@ import { useEffect, useState } from "react";
 // @ts-expect-error - import.meta.glob is a Vite feature
 const storyModules = import.meta.glob("./stories/*.tsx", { eager: true });
 
-// Extract story names and components (exclude TemplateSelection - only reachable via dropdown in Projects)
+// Extract story names and components (exclude TemplateSelection - only reachable via dropdown in Pods)
 const stories = Object.entries(storyModules)
   .map(([path, module]: [string, any]) => {
     const fileName = path.split("/").pop()?.replace(".tsx", "") || "";
@@ -56,18 +56,18 @@ function StoryList({
                 size="sm"
                 variant="outline"
                 isSelect
-                icon={theme === "dark" ? MoonIcon : SunIcon}
+                icon={theme === "dark" ? Moon01 : Sun}
                 label={theme === "dark" ? "Dark" : "Light"}
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem
-                icon={SunIcon}
+                icon={Sun}
                 label="Light"
                 onClick={() => setTheme("light")}
               />
               <DropdownMenuItem
-                icon={MoonIcon}
+                icon={Moon01}
                 label="Dark"
                 onClick={() => setTheme("dark")}
               />

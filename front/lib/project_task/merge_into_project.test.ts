@@ -10,7 +10,7 @@ import type { TakeawaysWithSource } from "@app/lib/resources/takeaways_resource"
 import { TakeawaysResource } from "@app/lib/resources/takeaways_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type { ProjectTaskSourceInfo } from "@app/types/project_task";
+import type { PodTaskSourceInfo } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { TaskVersionedActionItem } from "@app/types/takeaways";
 import type { Logger } from "pino";
@@ -32,8 +32,8 @@ function makeActionItem(
 }
 
 function makeSource(
-  overrides: Partial<ProjectTaskSourceInfo> = {}
-): ProjectTaskSourceInfo {
+  overrides: Partial<PodTaskSourceInfo> = {}
+): PodTaskSourceInfo {
   return {
     sourceType: "slack",
     sourceId: "conv-test-1",
@@ -68,7 +68,7 @@ describe("collectDocumentCandidates", () => {
   let user: UserResource;
   let usersById: Map<string, UserResource>;
   let takeawayBase: TakeawaysResource;
-  let source: ProjectTaskSourceInfo;
+  let source: PodTaskSourceInfo;
 
   beforeEach(async () => {
     const setup = await createResourceTest({ role: "user" });

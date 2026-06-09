@@ -1,9 +1,11 @@
 import type { AwuPoolSummaryResponseBody } from "@app/lib/api/credits/awu_pool_summary";
+import type { GetMembersSeatsResponseBody } from "@app/lib/api/credits/members_seats";
+import type { GetCreditPurchaseInfoResponseBody } from "@app/lib/api/credits/purchase";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
+import type { GetAwuPurchaseInfoResponseBody } from "@app/lib/credits/awu_purchase";
+import type { GetAwuPurchaseStatusResponseBody } from "@app/lib/credits/awu_purchase_status";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetCreditPurchaseInfoResponseBody } from "@app/pages/api/w/[wId]/credits/purchase";
-import type { GetAwuPurchaseInfoResponseBody } from "@app/pages/api/w/[wId]/subscriptions/awu-purchase";
 import type {
   GetCreditsResponseBody,
   PendingCreditData,
@@ -251,14 +253,52 @@ export function useAwuPoolSummary({
   );
 
   return {
-    totalCredits: data?.totalCredits ?? 0,
-    consumedByUsersCredits: data?.consumedByUsersCredits ?? 0,
-    consumedByProgrammaticCredits: data?.consumedByProgrammaticCredits ?? 0,
+    totalRemainingCredits: data?.totalRemainingCredits ?? 0,
+    totalActiveCredits: data?.totalActiveCredits ?? 0,
     resetDate: data?.resetDate ?? "",
+    overageCredits: data?.overageCredits ?? null,
+    overageAmountCents: data?.overageAmountCents ?? null,
+    overageCurrency: data?.overageCurrency ?? null,
     isAwuPoolSummaryLoading: !error && !data && !disabled,
     isAwuPoolSummaryError: error,
     isAwuPoolSummaryValidating: isValidating,
     mutateAwuPoolSummary: mutate,
+  };
+}
+
+// Polls the latest AWU purchase attempt status for a workspace. The dialog
+// drives `disabled` off its own "processing" state so we only poll while a
+// purchase is in flight.
+export function useAwuPurchaseStatus({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const statusFetcher: Fetcher<GetAwuPurchaseStatusResponseBody> = fetcher;
+
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/subscriptions/awu-purchase-status`,
+    statusFetcher,
+    {
+      disabled,
+      refreshInterval: (latest) => {
+        if (!latest?.attempt) {
+          return 2000;
+        }
+        return latest.attempt.status === "pending" ? 2000 : 0;
+      },
+    }
+  );
+
+  return {
+    attempt: data?.attempt ?? null,
+    isAwuPurchaseStatusLoading: !error && !data && !disabled,
+    isAwuPurchaseStatusValidating: isValidating,
+    isAwuPurchaseStatusError: error,
+    mutateAwuPurchaseStatus: mutate,
   };
 }
 
@@ -288,6 +328,35 @@ export function useAwuPurchaseInfo({
   };
 }
 
+const EMPTY_SEAT_PLANS: SeatPlanResponseBody = {};
+
+export function useMembersSeats({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const membersSeatsFetcher: Fetcher<GetMembersSeatsResponseBody> = fetcher;
+
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/credits/members-seats`,
+    membersSeatsFetcher,
+    { disabled }
+  );
+
+  return {
+    membersSeats: data?.seatTypes ?? {},
+    metronomeSeats: data?.metronomeSeats ?? {},
+    totalMembersSeats: data?.total ?? 0,
+    isMembersSeatsLoading: !error && !data && !disabled,
+    isMembersSeatsError: error,
+    isMembersSeatsValidating: isValidating,
+    mutateMembersSeats: mutate,
+  };
+}
+
 export function useSeatPlan({
   workspaceId,
   disabled,
@@ -305,8 +374,7 @@ export function useSeatPlan({
   );
 
   return {
-    proSeatInfo: data?.pro ?? null,
-    maxSeatInfo: data?.max ?? null,
+    seatPlans: data ?? EMPTY_SEAT_PLANS,
     isSeatPlanLoading: !error && !data && !disabled,
     isSeatPlanError: error,
   };

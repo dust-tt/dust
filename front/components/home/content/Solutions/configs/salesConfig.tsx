@@ -13,12 +13,7 @@ import type {
 } from "@app/components/home/content/Solutions/configs/utils";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
-import {
-  CheckCircleIcon,
-  MagicIcon,
-  RocketIcon,
-  UserGroupIcon,
-} from "@dust-tt/sparkle";
+import { CheckCircle, MagicWand02, Rocket02, Users01 } from "@dust-tt/sparkle";
 import Link from "next/link";
 
 // Config exports
@@ -80,7 +75,7 @@ export const Hero: HeroProps = {
     primary: {
       label: "Get started",
       href: "/home/pricing",
-      icon: RocketIcon,
+      icon: Rocket02,
     },
     secondary: {
       label: "Talk to sales",
@@ -93,20 +88,20 @@ export const Benefits: BenefitsProps = {
   sectionTitle: "Elevate your sales reps to new possibilities ",
   items: [
     {
-      icon: MagicIcon,
+      icon: MagicWand02,
       title: "Focus on selling",
       description:
         "Maximize selling time by automating admin tasks and data entry.",
     },
     {
-      icon: CheckCircleIcon,
+      icon: CheckCircle,
       title: "Raise the odds of closing",
       description:
         "Instantly uncover relevant product or prospect insights to deliver personalized responses",
     },
 
     {
-      icon: UserGroupIcon,
+      icon: Users01,
       title: "Boost team performance",
       description:
         "Turn every rep into a top performer by sharing feedback and best practices.",

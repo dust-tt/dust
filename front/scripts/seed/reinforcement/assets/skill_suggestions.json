@@ -11,14 +11,8 @@
       "instructionEdits": [
         {
           "targetBlockId": "ci02intr",
-          "content": "<p>When searching for contact information, follow these steps. When internal directories are insufficient, also leverage the web search tool to find publicly available professional contact information:</p>",
+          "content": "<p>When searching for contact information, follow these steps. When internal directories are insufficient, use <tool id=\"__WEB_SEARCH_TOOL_ID__\" name=\"Web Search\" /> to find publicly available professional contact information:</p>",
           "type": "replace"
-        }
-      ],
-      "toolEdits": [
-        {
-          "action": "add",
-          "toolId": "web_search_&_browse"
         }
       ]
     }

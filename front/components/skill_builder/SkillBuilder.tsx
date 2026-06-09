@@ -10,7 +10,6 @@ import { SkillBuilderInstructionsSection } from "@app/components/skill_builder/S
 import { SkillBuilderRequestedSpacesSection } from "@app/components/skill_builder/SkillBuilderRequestedSpacesSection";
 import { SkillBuilderSettingsSection } from "@app/components/skill_builder/SkillBuilderSettingsSection";
 import { SkillBuilderSuggestionsPanel } from "@app/components/skill_builder/SkillBuilderSuggestionsPanel";
-import { SkillBuilderToolsSection } from "@app/components/skill_builder/SkillBuilderToolsSection";
 import { SkillVersionHistoryPicker } from "@app/components/skill_builder/SkillBuilderVersionComparisonBanner";
 import { SkillBuilderVersionComparisonFooter } from "@app/components/skill_builder/SkillBuilderVersionComparisonFooter";
 import {
@@ -40,7 +39,7 @@ import {
   Button,
   ContentMessage,
   cn,
-  InformationCircleIcon,
+  InfoCircle,
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
@@ -213,14 +212,14 @@ export default function SkillBuilder({
               size="lg"
             >
               A customized version of {extendedSkill.name} with your own
-              guidelines and tools.
+              guidelines and capabilities.
             </ContentMessage>
           )}
           {skill?.status === "suggested" && (
             <ContentMessage
               title="This is a generated skill suggestion"
               variant="primary"
-              icon={InformationCircleIcon}
+              icon={InfoCircle}
               size="lg"
             >
               This skill was automatically generated based on your workspace's
@@ -228,13 +227,12 @@ export default function SkillBuilder({
               specific needs before saving.
             </ContentMessage>
           )}
+          <SkillBuilderAgentFacingDescriptionSection />
+          <SkillBuilderInstructionsSection />
           <SkillBuilderRequestedSpacesSection
             initialRequestedSpaceIds={skill?.requestedSpaceIds}
           />
-          <SkillBuilderAgentFacingDescriptionSection />
-          <SkillBuilderInstructionsSection />
           {hasFeature("sandbox_tools") && <SkillBuilderFilesSection />}
-          <SkillBuilderToolsSection extendedSkill={extendedSkill} />
           <SkillBuilderSettingsOrComparisonFooter
             skill={skill}
             hasSelfImprovingSkills={hasSelfImprovingSkills}

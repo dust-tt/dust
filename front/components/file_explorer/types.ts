@@ -1,8 +1,9 @@
-import type { GCSMountFileEntry } from "@app/lib/api/files/gcs_mount/files";
+import type { FileSystemFileEntry } from "@app/lib/api/file_system/types";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type React from "react";
 
-export type FileEntry = GCSMountFileEntry & { kind: "file" };
+export type FileEntry = FileSystemFileEntry & { kind: "file" };
+export type FileEntryWithId = FileEntry & { fileId: string };
 
 export type ContentNodeEntry = {
   kind: "node";
@@ -15,7 +16,13 @@ export type ContentNodeEntry = {
   connectorProvider: ConnectorProvider | null;
 };
 
-export type FileExplorerEntry = FileEntry | ContentNodeEntry;
+export type FolderEntry = {
+  kind: "folder";
+  path: string;
+  name: string;
+};
+
+export type FileExplorerEntry = FileEntry | ContentNodeEntry | FolderEntry;
 
 export type FileExplorerMenuAction = {
   label: string;
@@ -35,13 +42,14 @@ export type FilePanelCategory =
   | "knowledge"
   | "other";
 
-export type SandboxTreeNode = {
+export type FileSystemTreeNode = {
   name: string;
+  /** Relative path within the mount (scope prefix stripped), e.g. `"reports/q1.pdf"`. */
   path: string;
   isDirectory: boolean;
   contentType: string | null;
   fileId: string | null;
-  children: SandboxTreeNode[];
+  children: FileSystemTreeNode[];
 };
 
 export type FileExplorerBucket =

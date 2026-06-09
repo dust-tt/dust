@@ -2,7 +2,7 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import { NotificationButton } from "@sparkle/components";
-import { InformationCircleIcon } from "@sparkle/icons";
+import { InfoCircle } from "@sparkle/icons";
 
 const meta = {
   title: "Components/NotificationButton",
@@ -17,8 +17,8 @@ export const Example = () => {
         buttonProps={{
           variant: "outline",
           size: "md",
-          icon: InformationCircleIcon,
-          label: "InformationCircleIcon",
+          icon: InfoCircle,
+          label: "InfoCircle",
         }}
         counterProps={{
           value: 1,
@@ -28,7 +28,7 @@ export const Example = () => {
       />
       <NotificationButton
         buttonProps={{
-          icon: InformationCircleIcon,
+          icon: InfoCircle,
           size: "sm",
           variant: "ghost",
         }}

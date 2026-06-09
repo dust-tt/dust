@@ -17,4 +17,4 @@ jobs:
       - name: Run `openapi` command 🚀
         uses: readmeio/rdme@3c41af599df44e516c90ba4107a81c05d4945822 # v10.6.2
         with:
-          rdme: openapi upload front/public/swagger.json --branch=v1.1 --key=${{ secrets.README_API_KEY }} --slug=dust-api-documentation.json
+          rdme: openapi upload front-api/public/swagger.json --branch=v1.1 --key=${{ secrets.README_API_KEY }} --slug=dust-api-documentation.json

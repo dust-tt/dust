@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
@@ -7,16 +8,23 @@ import { logAgentLoopStart } from "@app/temporal/agent_loop/activities/instrumen
 import {
   makeAgentLoopWorkflowId,
   makeCompactionWorkflowId,
+  makeSandboxChildToolWorkflowId,
 } from "@app/temporal/agent_loop/lib/workflow_ids";
-import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import type {
+  AgentLoopArgs,
+  AgentLoopArgsWithTiming,
+} from "@app/types/assistant/agent_run";
 import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/client";
-
 import { QUEUE_NAME } from "./config";
-import { agentLoopWorkflow, compactionWorkflow } from "./workflows";
+import {
+  agentLoopWorkflow,
+  compactionWorkflow,
+  runSandboxChildToolWorkflow,
+} from "./workflows";
 
 export async function launchAgentLoopWorkflow({
   auth,
@@ -178,6 +186,73 @@ export async function launchCompactionWorkflow({
         "Compaction workflow already running for this conversation."
       )
     );
+  }
+
+  return new Ok(undefined);
+}
+
+export async function launchSandboxChildToolWorkflow(
+  auth: Authenticator,
+  {
+    agentLoopArgs,
+    action,
+    step,
+    waitForCompletion,
+  }: {
+    agentLoopArgs: AgentLoopArgsWithTiming;
+    action: AgentMCPActionResource;
+    step: number;
+    // On resume paths, wait for any prior run for this action to finalize first
+    // — same mechanism as launchAgentLoopWorkflow.
+    waitForCompletion?: boolean;
+  }
+): Promise<Result<undefined, Error>> {
+  const authType = auth.toJSON();
+  const { workspaceId } = authType;
+  const client = await getTemporalClientForAgentNamespace();
+
+  const workflowId = makeSandboxChildToolWorkflowId({
+    workspaceId,
+    actionModelId: action.id,
+  });
+
+  await ConversationResource.clearActionRequired(
+    auth,
+    agentLoopArgs.conversationId
+  );
+
+  if (waitForCompletion) {
+    try {
+      const handle = client.workflow.getHandle(workflowId);
+      await handle.result();
+    } catch (error) {
+      logger.info(
+        { workflowId, error },
+        "Non-fatal while waiting for prior sandbox child workflow completion"
+      );
+    }
+  }
+
+  try {
+    await client.workflow.start(runSandboxChildToolWorkflow, {
+      args: [{ authType, agentLoopArgs, actionModelId: action.id, step }],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      searchAttributes: {
+        conversationId: [agentLoopArgs.conversationId],
+        workspaceId: [workspaceId],
+      },
+      memo: {
+        conversationId: agentLoopArgs.conversationId,
+        workspaceId,
+      },
+    });
+  } catch (error) {
+    if (error instanceof WorkflowExecutionAlreadyStartedError) {
+      // Idempotent: another caller already kicked it off for this action.
+      return new Ok(undefined);
+    }
+    throw error;
   }
 
   return new Ok(undefined);

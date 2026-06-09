@@ -1,19 +1,22 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { getPaginationParams } from "@app/lib/api/pagination";
-import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
+import {
+  enrichProjectsWithMetadata,
+  type SearchProjectsResponseBody,
+} from "@app/lib/api/projects/list";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 
 // Mounted under /api/w/:wId/spaces/search_projects.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+/** @ignoreswagger */
+app.get("/", async (ctx): HandlerResult<SearchProjectsResponseBody> => {
+  const auth = ctx.get("auth");
 
-  const paginationRes = getPaginationParams(c.req.query(), {
+  const paginationRes = getPaginationParams(ctx.req.query(), {
     defaultLimit: 20,
     defaultOrderColumn: "name",
     defaultOrderDirection: "asc",
@@ -22,7 +25,7 @@ app.get("/", async (c) => {
   });
 
   if (paginationRes.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -31,7 +34,7 @@ app.get("/", async (c) => {
     });
   }
 
-  const queryString = c.req.query("query");
+  const queryString = ctx.req.query("query");
   const pagination = paginationRes.value;
 
   const {
@@ -64,7 +67,7 @@ app.get("/", async (c) => {
     results.push({ ...metadata, isMember: space.isMember(auth) });
   }
 
-  return c.json({
+  return ctx.json({
     spaces: results,
     hasMore,
     lastValue,

@@ -1,11 +1,8 @@
-import {
-  config,
-  isRegionType,
-  SUPPORTED_REGIONS,
-} from "@app/lib/api/regions/config";
+import { config } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import { makeScript } from "@app/scripts/helpers";
 import { launchCoreDataSourceRelocationWorkflow } from "@app/temporal/relocation/client";
+import { isRegionType, SUPPORTED_REGIONS } from "@app/types/region";
 import assert from "assert";
 
 makeScript(

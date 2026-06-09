@@ -6,16 +6,15 @@ import {
   PokeTableHead,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeWebhookSourceDetails } from "@app/poke/swr/webhook_source_details";
 import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
 export function WebhookSourceDetailsPage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - Webhook Source`);
 
   const webhookSourceId = useRequiredPathParam("wsId");
   const {
@@ -26,6 +25,12 @@ export function WebhookSourceDetailsPage() {
     owner,
     webhookSourceId,
     disabled: false,
+  });
+
+  usePokePageMetadata({
+    name: details?.webhookSource.name,
+    subtitle: owner.name,
+    sId: webhookSourceId,
   });
 
   if (isLoading) {

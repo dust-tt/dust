@@ -4,24 +4,58 @@ import type {
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
-  getConversationFilesBasePath,
-  getProjectFilesBasePath,
-} from "@app/lib/api/files/mount_path";
+  getDustFileSystemForAgentLoop,
+  requireAgentLoopConversation,
+  scopedPathsFromArgs,
+} from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
+import {
+  SCOPED_PREFIX_CONVERSATION,
+  SCOPED_PREFIX_POD,
+} from "@app/lib/api/file_system";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { isProjectConversation } from "@app/types/assistant/conversation";
-import { isConversationFileUseCase } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
+
+/**
+ * Convert a raw GCS mountFilePath back to the canonical scoped path the agent sees.
+ *
+ * w/{wId}/conversations/{cId}/files/{rel} -> conversation-{cId}/{rel}
+ * w/{wId}/projects/{pId}/files/{rel}      -> pod-{pId}/{rel}   (legacy prefix)
+ * w/{wId}/pods/{pId}/files/{rel}          -> pod-{pId}/{rel}
+ */
+function gcsPathToCanonical(
+  workspace: LightWorkspaceType,
+  mountFilePath: string
+): string | null {
+  const base = `w/${workspace.sId}/`;
+  if (!mountFilePath.startsWith(base)) {
+    return null;
+  }
+
+  const rest = mountFilePath.slice(base.length);
+
+  const conv = rest.match(/^conversations\/([^/]+)\/files\/(.+)$/);
+  if (conv) {
+    return `${SCOPED_PREFIX_CONVERSATION}${conv[1]}/${conv[2]}`;
+  }
+
+  const pod =
+    rest.match(/^pods\/([^/]+)\/files\/(.+)$/) ??
+    rest.match(/^projects\/([^/]+)\/files\/(.+)$/);
+  if (pod) {
+    return `${SCOPED_PREFIX_POD}${pod[1]}/${pod[2]}`;
+  }
+
+  return null;
+}
 
 export async function resolveHandler(
   { file_id }: { file_id: string },
   extra: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const conversation = extra.agentLoopContext?.runContext?.conversation;
-  if (!conversation) {
-    return new Err(
-      new MCPError("No conversation context available.", { tracked: false })
-    );
+  const conversationRes = requireAgentLoopConversation(extra);
+  if (conversationRes.isErr()) {
+    return conversationRes;
   }
 
   const file = await FileResource.fetchById(extra.auth, file_id);
@@ -40,71 +74,39 @@ export async function resolveHandler(
     );
   }
 
-  const owner = extra.auth.getNonNullableWorkspace();
-  const { useCase, useCaseMetadata } = file;
-
-  if (isConversationFileUseCase(useCase)) {
-    if (useCaseMetadata?.conversationId !== conversation.sId) {
-      return new Err(
-        new MCPError(
-          `File \`${file_id}\` does not belong to this conversation.`,
-          { tracked: false }
-        )
-      );
-    }
-
-    const prefix = getConversationFilesBasePath({
-      workspaceId: owner.sId,
-      conversationId: conversation.sId,
-    });
-    const relPath = file.mountFilePath.slice(prefix.length);
-
-    return new Ok([{ type: "text", text: `conversation/${relPath}` }]);
+  const workspace = extra.auth.getNonNullableWorkspace();
+  const canonicalPath = gcsPathToCanonical(workspace, file.mountFilePath);
+  if (!canonicalPath) {
+    return new Err(
+      new MCPError(
+        `File \`${file_id}\` is not accessible through the file system (use case: ${file.useCase}).`,
+        { tracked: false }
+      )
+    );
   }
 
-  if (useCase === "project_context") {
-    if (!isProjectConversation(conversation)) {
-      return new Err(
-        new MCPError(
-          `File \`${file_id}\` is a project file but this is not a project conversation.`,
-          { tracked: false }
-        )
-      );
-    }
-
-    const spaceId = useCaseMetadata?.spaceId;
-    if (!spaceId || spaceId !== conversation.spaceId) {
-      return new Err(
-        new MCPError(
-          `File \`${file_id}\` does not belong to the project of this conversation.`,
-          { tracked: false }
-        )
-      );
-    }
-
-    const space = await SpaceResource.fetchById(extra.auth, spaceId);
-    if (!space || !space.canRead(extra.auth)) {
-      return new Err(
-        new MCPError(
-          "You do not have read access to the project containing this file.",
-          { tracked: false }
-        )
-      );
-    }
-
-    const prefix = getProjectFilesBasePath({
-      workspaceId: owner.sId,
-      projectId: spaceId,
-    });
-    const relPath = file.mountFilePath.slice(prefix.length);
-
-    return new Ok([{ type: "text", text: `project/${relPath}` }]);
-  }
-
-  return new Err(
-    new MCPError(
-      `File \`${file_id}\` is not accessible through the file system (use case: ${useCase}).`,
-      { tracked: false }
-    )
+  const fsResult = await getDustFileSystemForAgentLoop(
+    extra.auth,
+    conversationRes.value,
+    scopedPathsFromArgs(canonicalPath)
   );
+  if (fsResult.isErr()) {
+    return fsResult;
+  }
+  const dustFs = fsResult.value;
+
+  const statResult = await dustFs.stat(canonicalPath);
+  if (statResult.isErr()) {
+    return new Err(new MCPError(statResult.error.message, { tracked: false }));
+  }
+  if (!statResult.value) {
+    return new Err(
+      new MCPError(
+        `File \`${file_id}\` is not accessible through the file system.`,
+        { tracked: false }
+      )
+    );
+  }
+
+  return new Ok([{ type: "text", text: canonicalPath }]);
 }

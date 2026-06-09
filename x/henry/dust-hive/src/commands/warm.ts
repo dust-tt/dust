@@ -1,5 +1,5 @@
 import { setCacheSource } from "../lib/cache";
-import { withEnvironment } from "../lib/commands";
+import { withEnvironments } from "../lib/commands";
 import { startDocker } from "../lib/docker";
 import type { Environment } from "../lib/environment";
 import { isInitialized, markInitialized } from "../lib/environment";
@@ -122,7 +122,7 @@ async function ensureAllMCPServerViewsCreated(env: Environment): Promise<void> {
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: orchestration function with necessary complexity
-export const warmCommand = withEnvironment("warm", async (env, options: WarmOptions) => {
+export const warmCommand = withEnvironments("warm", async (env, options: WarmOptions) => {
   const startTime = Date.now();
   const noForward = options.noForward ?? false;
   const forcePorts = options.forcePorts ?? false;
@@ -152,8 +152,9 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
 
   // Check if already warm
   const dockerRunning = await isDockerRunning(env.name);
+
   if (dockerRunning) {
-    const frontRunning = await isServiceRunning(env.name, "front");
+    const frontRunning = await isServiceRunning(env.name, "front-api");
     if (frontRunning) {
       logger.info(`Environment '${env.name}' is already warm`);
       return Ok(undefined);
@@ -164,7 +165,7 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   console.log();
 
   // Clean up orphaned processes on service ports
-  const portServices: ServiceName[] = ["front", "core", "connectors", "oauth"];
+  const portServices: ServiceName[] = ["front-api", "core", "connectors", "oauth"];
   const servicePids = await Promise.all(portServices.map((service) => readPid(env.name, service)));
   const allowedPids = new Set(servicePids.filter((pid): pid is number => pid !== null));
   const { killedPorts, blockedPorts } = await cleanupServicePorts(env.ports, {
@@ -197,12 +198,11 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   // Start Docker (don't await - let it run in background)
   const dockerPromise = startDocker(env);
 
-  // Start front immediately to begin page compilation
+  // Start front-api immediately so it can begin building.
   // It will retry connections to DB/Redis until they're ready
-  await startService(env, "front");
+  await startService(env, "front-api");
 
-  // Start pre-warming immediately - curls will retry until Next.js is ready
-  // Pages compile while Docker containers start and init runs
+  // Start pre-warming immediately - curls will retry until front-api is ready.
   startPreWarmingImmediately(env.ports.front);
 
   // Now wait for Docker and start other services
@@ -277,10 +277,10 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
 
   // Wait for services with health checks
   // Pre-warming is already running in parallel (started above)
-  // Start forwarder as soon as front is healthy (don't wait for core/oauth)
+  // Start forwarder as soon as front-api is healthy (don't wait for core/oauth)
   logger.step("Waiting for services to be healthy...");
   await Promise.all([
-    waitForServiceReady(env, "front").then(async () => {
+    waitForServiceReady(env, "front-api").then(async () => {
       if (!noForward) {
         await startForwarder(env.ports.base, env.name);
       }
@@ -299,7 +299,7 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   console.log();
   logger.success(`Environment '${env.name}' is now warm! (${elapsed}s)`);
   console.log();
-  console.log(`  Front:       http://localhost:${env.ports.front}`);
+  console.log(`  front-api:   http://localhost:${env.ports.front}`);
   console.log(`  Core:        http://localhost:${env.ports.core}`);
   console.log(`  Connectors:  http://localhost:${env.ports.connectors}`);
   console.log(`  Front app:   http://localhost:${env.ports.frontSpaApp}`);

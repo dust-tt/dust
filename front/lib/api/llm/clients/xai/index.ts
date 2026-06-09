@@ -14,6 +14,8 @@ import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { handleError } from "@app/lib/api/llm/utils/openai_like/errors";
 import {
   toInput,
+  toReasoning,
+  toResponseFormat,
   toTool,
   toToolOption,
 } from "@app/lib/api/llm/utils/openai_like/responses/conversation_to_openai";
@@ -25,6 +27,7 @@ import type { ResponseCreateParamsStreaming } from "openai/resources/responses/r
 
 export class XaiLLM extends LLM<ResponseCreateParamsStreaming> {
   private client: OpenAI;
+  protected modelId: XaiWhitelistedModelId;
 
   constructor(
     auth: Authenticator,
@@ -34,6 +37,7 @@ export class XaiLLM extends LLM<ResponseCreateParamsStreaming> {
   ) {
     const params = overwriteLLMParameters(llmParameters);
     super(auth, XAI_PROVIDER_ID, params);
+    this.modelId = llmParameters.modelId;
 
     const { XAI_API_KEY } = llmParameters.credentials;
     assert(XAI_API_KEY, "XAI_API_KEY credential is required");
@@ -49,17 +53,25 @@ export class XaiLLM extends LLM<ResponseCreateParamsStreaming> {
     specifications,
     forceToolCall,
   }: LLMStreamParameters): ResponseCreateParamsStreaming {
-    return {
+    const promptText = systemPromptToText(prompt);
+    const reasoning = toReasoning(this.modelId, this.reasoningEffort);
+
+    const payload: ResponseCreateParamsStreaming = {
       model: this.modelId,
-      input: toInput(systemPromptToText(prompt), conversation, "system"),
+      input: toInput(promptText, conversation, "system"),
       stream: true,
       // Reasoning not supported by xai responses api yet
       // Using default value for reasoning models
       temperature: this.temperature,
       tools: specifications.map(toTool),
+      reasoning,
+      text: {
+        format: toResponseFormat(this.responseFormat, XAI_PROVIDER_ID),
+      },
       include: ["reasoning.encrypted_content"],
       tool_choice: toToolOption(specifications, forceToolCall),
     };
+    return payload;
   }
 
   protected async *sendRequest(

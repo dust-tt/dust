@@ -1,6 +1,5 @@
-import * as t from "io-ts";
-import { NonEmptyString } from "io-ts-types/lib/NonEmptyString";
-import { NumberFromString } from "io-ts-types/lib/NumberFromString";
+import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
+import { z } from "zod";
 
 export const MAX_MESSAGE_TIMEFRAMES = ["day", "lifetime"] as const;
 export type MaxMessagesTimeframeType = (typeof MAX_MESSAGE_TIMEFRAMES)[number];
@@ -9,6 +8,21 @@ export function isMaxMessagesTimeframeType(
   value: string
 ): value is MaxMessagesTimeframeType {
   return (MAX_MESSAGE_TIMEFRAMES as unknown as string[]).includes(value);
+}
+
+export const MAX_AWU_CREDITS_TIMEFRAMES = [
+  "day",
+  "week",
+  "month",
+  "lifetime",
+] as const;
+export type MaxAwuCreditsTimeframeType =
+  (typeof MAX_AWU_CREDITS_TIMEFRAMES)[number];
+
+export function isMaxAwuCreditsTimeframeType(
+  value: string
+): value is MaxAwuCreditsTimeframeType {
+  return (MAX_AWU_CREDITS_TIMEFRAMES as unknown as string[]).includes(value);
 }
 
 /**
@@ -30,6 +44,8 @@ export type LimitsType = {
     isSlackBotAllowed: boolean;
     maxMessages: number;
     maxMessagesTimeframe: MaxMessagesTimeframeType;
+    maxAwuCredits: number;
+    maxAwuCreditsTimeframe: MaxAwuCreditsTimeframeType;
     isDeepDiveAllowed: boolean;
   };
   connections: ManageDataSourcesLimitsType;
@@ -42,6 +58,8 @@ export type LimitsType = {
   };
   users: {
     maxUsers: number;
+    maxFreeUsers: number;
+    maxLifetimeFreeUsers: number;
     isSSOAllowed: boolean;
     isSCIMAllowed: boolean;
   };
@@ -113,6 +131,22 @@ export function isSubscriptionMetronomeBilled(
   );
 }
 
+/**
+ * Returns true if the workspace is on a credit-priced plan.
+ *
+ * Credit-priced plans are prefixed by CP_ by convention.
+ *
+ * - isCreditPricedPlan && isSubscriptionMetronomeBilled: new credit-priced plans.
+ * - isCredeitPricedPlan && !isSubscriptionMetronomeBilled: no possible.
+ * - !isCreditPricedPlan && !isSubscriptionStripeBilled: Legacy PRO/Business (before transition to
+ *   metronome) and Enterprise before renewal
+ * - !isCreditPricedPlan && isSubscriptionStripeBilled: Legacy PRO/Business (after transition to
+ *   metronome)
+ */
+export function isCreditPricedPlan(plan: PlanType): boolean {
+  return isCreditPricedPlanPrefix(plan.code);
+}
+
 export type BillingPeriod = "monthly" | "yearly";
 
 export type SubscriptionPerSeatPricing = {
@@ -122,79 +156,37 @@ export type SubscriptionPerSeatPricing = {
   quantity: number;
 };
 
-export const CreatePlanFormSchema = t.type({
-  code: NonEmptyString,
-  name: NonEmptyString,
-  isSlackbotAllowed: t.boolean,
-  isSlackAllowed: t.boolean,
-  isNotionAllowed: t.boolean,
-  isGoogleDriveAllowed: t.boolean,
-  isGithubAllowed: t.boolean,
-  isIntercomAllowed: t.boolean,
-  isConfluenceAllowed: t.boolean,
-  isWebCrawlerAllowed: t.boolean,
-  isSalesforceAllowed: t.boolean,
-  maxMessages: t.union([t.number, NumberFromString]),
-  maxMessagesTimeframe: t.keyof({
-    day: null,
-    lifetime: null,
-  }),
-  isDeepDiveAllowed: t.boolean,
-  dataSourcesCount: t.union([t.number, NumberFromString]),
-  dataSourcesDocumentsCount: t.union([t.number, NumberFromString]),
-  dataSourcesDocumentsSizeMb: t.union([t.number, NumberFromString]),
-  maxUsers: t.union([t.number, NumberFromString]),
-  maxVaults: t.union([t.number, NumberFromString]),
+export const EnterpriseUpgradeFormSchema = z.object({
+  planCode: z.string().min(1),
+  freeCreditsOverrideEnabled: z.boolean(),
+  paygEnabled: z.boolean(),
+  stripeSubscriptionId: z.string().min(1).optional(),
+  // For the Metronome path: id of the Metronome package the customer will
+  // be placed on, plus a timestamp at least one hour in the future
+  // when the new contracts starts (and the existing contract sunsets),
+  // and the Stripe customer ID to link as the Metronome billing provider.
+  metronomePackageId: z.string().min(1).optional(),
+  startingAt: z.string().min(1).optional(),
+  stripeCustomerId: z.string().min(1).optional(),
+  freeCreditsDollars: z.number().optional(),
+  defaultDiscountPercent: z.number().optional(),
+  paygCapDollars: z.number().optional(),
 });
 
-export type CreatePlanFormType = t.TypeOf<typeof CreatePlanFormSchema>;
-
-export const EnterpriseUpgradeFormSchema = t.intersection([
-  t.type({
-    planCode: NonEmptyString,
-    freeCreditsOverrideEnabled: t.boolean,
-    paygEnabled: t.boolean,
-  }),
-  t.partial({
-    stripeSubscriptionId: NonEmptyString,
-    // For the Metronome path: id of the Metronome package the customer will
-    // be placed on, plus a timestamp at least one hour in the future
-    // when the new contracts starts (and the existing contract sunsets),
-    // and the Stripe customer ID to link as the Metronome billing provider.
-    metronomePackageId: NonEmptyString,
-    startingAt: NonEmptyString,
-    stripeCustomerId: NonEmptyString,
-    freeCreditsDollars: t.number,
-    defaultDiscountPercent: t.number,
-    paygCapDollars: t.number,
-  }),
-]);
-
-export type EnterpriseUpgradeFormType = t.TypeOf<
+export type EnterpriseUpgradeFormType = z.infer<
   typeof EnterpriseUpgradeFormSchema
 >;
 
-export const FreePlanUpgradeFormSchema = t.type({
-  planCode: NonEmptyString,
-  endDate: t.union([
-    t.refinement(
-      t.string,
-      (s) => /^\d{4}-\d{2}-\d{2}$/.test(s),
-      "YYYY-MM-DD date string"
-    ),
-    t.undefined,
-  ]),
+export const FreePlanUpgradeFormSchema = z.object({
+  planCode: z.string().min(1),
+  endDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD date string")
+    .optional(),
 });
 
-export type FreePlanUpgradeFormType = t.TypeOf<
-  typeof FreePlanUpgradeFormSchema
->;
+export type FreePlanUpgradeFormType = z.infer<typeof FreePlanUpgradeFormSchema>;
 
 export type CheckoutUrlResult =
-  | { mode: "hosted"; checkoutUrl: string; plan: PlanType }
-  | {
-      mode: "embedded";
-      clientSecret: string;
-      sessionId: string;
-      plan: PlanType;
-    };
+  | { mode: "hosted"; checkoutUrl: string }
+  | { mode: "embedded"; clientSecret: string; sessionId: string };

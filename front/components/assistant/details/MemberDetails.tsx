@@ -5,7 +5,7 @@ import {
   Avatar,
   Chip,
   ContentMessage,
-  LockIcon,
+  Lock01,
   Separator,
   Sheet,
   SheetContent,
@@ -43,11 +43,10 @@ const getRoleBadgeColor = (
 };
 
 export function MemberDetails({ userId, onClose, owner }: MemberDetailsProps) {
-  const { userDetails, isUserDetailsLoading, isUserDetailsError } =
-    useMemberDetails({
-      workspaceId: owner.sId,
-      userId: userId,
-    });
+  const { userDetails, isMembersLoading, isMembersError } = useMemberDetails({
+    workspaceId: owner.sId,
+    userIds: userId ? [userId] : [],
+  });
 
   return (
     <Sheet open={!!userId} onOpenChange={onClose}>
@@ -55,12 +54,12 @@ export function MemberDetails({ userId, onClose, owner }: MemberDetailsProps) {
         <VisuallyHidden>
           <SheetTitle />
         </VisuallyHidden>
-        {isUserDetailsLoading ? (
+        {isMembersLoading ? (
           <div className="flex h-full w-full items-center justify-center">
             <Spinner size="lg" />
           </div>
-        ) : isUserDetailsError ? (
-          <ContentMessage title="Not Available" icon={LockIcon} size="md">
+        ) : isMembersError ? (
+          <ContentMessage title="Not Available" icon={Lock01} size="md">
             This user is not available.
           </ContentMessage>
         ) : (

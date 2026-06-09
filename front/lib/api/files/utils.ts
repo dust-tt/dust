@@ -11,12 +11,13 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { File } from "formidable";
 import { IncomingForm } from "formidable";
 import type { IncomingMessage } from "http";
+import * as iconv from "iconv-lite";
 import type { Writable } from "stream";
 
 export const parseUploadRequest = async (
+  auth: Authenticator,
   file: FileResource,
-  req: IncomingMessage,
-  writableStream: Writable
+  req: IncomingMessage
 ): Promise<
   Result<
     File,
@@ -29,10 +30,18 @@ export const parseUploadRequest = async (
     }
   >
 > => {
+  // Created by formidable only after the filter accepts a file part, so it is
+  // never allocated for rejected uploads. Captured here so the catch block can
+  // destroy it if formidable throws mid-upload after opening the stream.
+  let writeStream: Writable | undefined;
+
   try {
     const form = new IncomingForm({
       // Stream the uploaded document to the cloud storage.
-      fileWriteStreamHandler: () => writableStream,
+      fileWriteStreamHandler: () => {
+        writeStream = file.getWriteStream({ auth, version: "original" });
+        return writeStream;
+      },
 
       // Support only one file upload.
       maxFiles: 1,
@@ -66,6 +75,7 @@ export const parseUploadRequest = async (
 
     return new Ok(maybeFiles[0]);
   } catch (error) {
+    writeStream?.destroy();
     if (error instanceof Error) {
       if (error.message.startsWith("options.maxTotalFileSize")) {
         return new Err({
@@ -93,6 +103,44 @@ export const parseUploadRequest = async (
   }
 };
 
+/**
+ * Detects the encoding of a buffer and decodes it to a string.
+ * Checks for UTF-16 BOM markers and falls back to UTF-8.
+ *
+ * Files exported from Windows tools (Notepad, Excel CSV) are frequently UTF-16
+ * with a BOM; decoding those as UTF-8 produces interleaved NUL bytes (0x00)
+ * that PostgreSQL later rejects ("invalid byte sequence for encoding UTF8:
+ * 0x00"). iconv-lite strips the BOM as part of decoding.
+ *
+ * Mirrors `decodeBuffer` in connectors (`src/connectors/shared/file.ts`).
+ */
+export function decodeBuffer(data: Uint8Array): string {
+  const buffer = Buffer.from(data);
+
+  // Check for UTF-16 LE BOM (FF FE)
+  if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe) {
+    return iconv.decode(buffer, "utf16le");
+  }
+
+  // Check for UTF-16 BE BOM (FE FF)
+  if (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff) {
+    return iconv.decode(buffer, "utf16be");
+  }
+
+  // Check for UTF-8 BOM (EF BB BF)
+  if (
+    buffer.length >= 3 &&
+    buffer[0] === 0xef &&
+    buffer[1] === 0xbb &&
+    buffer[2] === 0xbf
+  ) {
+    return iconv.decode(buffer, "utf8");
+  }
+
+  // Default to UTF-8 without BOM
+  return buffer.toString("utf-8");
+}
+
 export async function getFileContent(
   auth: Authenticator,
   file: FileResource,
@@ -107,7 +155,7 @@ export async function getFileContent(
     return null;
   }
 
-  return bufferResult.value.toString("utf-8");
+  return decodeBuffer(bufferResult.value);
 }
 
 export function getUpdatedContentAndOccurrences({

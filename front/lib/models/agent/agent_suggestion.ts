@@ -92,10 +92,6 @@ AgentSuggestionModel.init(
         concurrently: true,
       },
       {
-        fields: ["workspaceId", "conversationId"],
-        concurrently: true,
-      },
-      {
         fields: ["conversationId"],
         concurrently: true,
         name: "agent_suggestions_conversation_id",

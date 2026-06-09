@@ -1,41 +1,37 @@
-import { Hono } from "hono";
-
-import {
-  REASONING_MODEL_CONFIGS,
-  USED_MODEL_CONFIGS,
-} from "@app/components/providers/model_configs";
-import { filterCustomAvailableAndWhitelistedModels } from "@app/lib/assistant";
+import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
+import type { GetEnabledModelsResponseType } from "@app/lib/api/assistant/models";
+import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
+import { config as regionConfig } from "@app/lib/api/regions/config";
+import { filterEnabledModels } from "@app/lib/assistant";
 import { getFeatureFlags } from "@app/lib/auth";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
-import type { ModelConfigurationType } from "@app/types/assistant/models/types";
-
-export type GetAvailableModelsResponseType = {
-  models: ModelConfigurationType[];
-  reasoningModels: ModelConfigurationType[];
-};
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 // Mounted at /api/w/:wId/models.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+/** @ignoreswagger */
+app.get("/", async (ctx): HandlerResult<GetEnabledModelsResponseType> => {
+  const auth = ctx.get("auth");
 
   const featureFlags = await getFeatureFlags(auth);
+  const owner = auth.getNonNullableWorkspace();
+  const plan = auth.plan();
+  const region = regionConfig.getCurrentRegion();
+  const whitelistedProviders = getWhitelistedProviders(auth);
+
   // Include both standard models and custom models (from GCS at build time).
   const allUsedModels = [...USED_MODEL_CONFIGS, ...CUSTOM_MODEL_CONFIGS];
-  const models = filterCustomAvailableAndWhitelistedModels(
-    allUsedModels,
+  const models = filterEnabledModels(allUsedModels, {
     featureFlags,
-    auth
-  );
-  const reasoningModels = filterCustomAvailableAndWhitelistedModels(
-    REASONING_MODEL_CONFIGS,
-    featureFlags,
-    auth
-  );
+    plan,
+    regionalModelsOnly: owner.regionalModelsOnly,
+    region,
+    whitelistedProviders,
+  });
 
-  const body: GetAvailableModelsResponseType = { models, reasoningModels };
-  return c.json(body);
+  return ctx.json({ models });
 });
 
 export default app;

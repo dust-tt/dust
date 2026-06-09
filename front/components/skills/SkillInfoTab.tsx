@@ -13,13 +13,16 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type {
+  SkillRelations,
+  SkillType,
+} from "@app/types/assistant/skill_configuration";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   AttachmentChip,
   Chip,
-  DocumentIcon,
+  File02,
   Separator,
   Spinner,
   Tooltip,
@@ -28,7 +31,7 @@ import sortBy from "lodash/sortBy";
 import { useCallback, useMemo, useState } from "react";
 
 interface SkillInfoTabProps {
-  skill: SkillType;
+  skill: SkillType & { relations?: Pick<SkillRelations, "childSkills"> };
   owner: LightWorkspaceType;
   spaces?: SpaceType[];
   showDescription?: boolean;
@@ -51,7 +54,6 @@ export function SkillInfoTab({
       status: "active",
       isDefault: true,
       disabled: !showDiscoverableSkills,
-      viewType: "summary",
     });
 
   const shouldLoadSpaces = skill.requestedSpaceIds.length > 0;
@@ -85,6 +87,13 @@ export function SkillInfoTab({
     [requestedSpaces]
   );
 
+  const childSkills = useMemo(
+    () => sortBy(skill.relations?.childSkills ?? [], "name"),
+    [skill.relations?.childSkills]
+  );
+
+  const showChildSkills = childSkills.length > 0;
+
   const handleKnowledgeItemsChange = useCallback((items: KnowledgeItem[]) => {
     setKnowledgeItems(items);
   }, []);
@@ -94,6 +103,7 @@ export function SkillInfoTab({
     knowledgeItems.length > 0 ||
     (hasFeature("sandbox_tools") && skill.fileAttachments.length > 0) ||
     sortedMCPServerViews.length > 0 ||
+    showChildSkills ||
     showDiscoverableSkills ||
     shouldLoadSpaces;
 
@@ -148,11 +158,37 @@ export function SkillInfoTab({
               <AttachmentChip
                 key={file.fileId}
                 label={file.fileName}
-                icon={{ visual: DocumentIcon }}
+                icon={{ visual: File02 }}
                 color="primary"
                 size="xs"
               />
             ))}
+          </div>
+        </div>
+      )}
+      {showChildSkills && (
+        <div className="flex flex-col gap-4">
+          <div className="heading-lg text-foreground dark:text-foreground-night">
+            Skills
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {childSkills.map((childSkill) => {
+              const SkillAvatar = getSkillAvatarIcon(childSkill.icon);
+
+              return (
+                <Tooltip
+                  key={childSkill.sId}
+                  label={childSkill.userFacingDescription || childSkill.name}
+                  trigger={
+                    <div className="flex min-w-0 flex-row items-center gap-2">
+                      <SkillAvatar size="xs" />
+                      <div className="min-w-0 truncate">{childSkill.name}</div>
+                    </div>
+                  }
+                  tooltipTriggerAsChild
+                />
+              );
+            })}
           </div>
         </div>
       )}

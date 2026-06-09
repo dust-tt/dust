@@ -12,12 +12,7 @@ import type {
 } from "@app/components/home/content/Solutions/configs/utils";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
-import {
-  CheckCircleIcon,
-  MagicIcon,
-  RocketIcon,
-  UserGroupIcon,
-} from "@dust-tt/sparkle";
+import { CheckCircle, MagicWand02, Rocket02, Users01 } from "@dust-tt/sparkle";
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
@@ -74,7 +69,7 @@ export const Hero: HeroProps = {
     primary: {
       label: "Get started",
       href: "/home/pricing",
-      icon: RocketIcon,
+      icon: Rocket02,
     },
     secondary: {
       label: "Talk to sales",
@@ -87,19 +82,19 @@ export const Benefits: BenefitsProps = {
   sectionTitle: "Reduce toil, scale data education and deepen exploration",
   items: [
     {
-      icon: MagicIcon,
+      icon: MagicWand02,
       title: "Focus on insights",
       description:
         "Maximize analysis time by automating query writing and data exploration.",
     },
     {
-      icon: CheckCircleIcon,
+      icon: CheckCircle,
       title: "Accelerate answers",
       description:
         "Instantly transform business questions into accurate queries and visualizations.",
     },
     {
-      icon: UserGroupIcon,
+      icon: Users01,
       title: "Democratize data",
       description:
         "Turn complex data models into accessible insights for the entire organization.",

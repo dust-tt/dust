@@ -7,7 +7,7 @@ import type { StripePricingData } from "@app/types/stripe/pricing";
 import {
   Button,
   Checkbox,
-  CheckCircleIcon,
+  CheckCircle,
   ContentMessage,
   Dialog,
   DialogContainer,
@@ -16,13 +16,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  ExternalLinkIcon,
   Hoverable,
   Icon,
-  InformationCircleIcon,
+  InfoCircle,
   Input,
+  LinkExternal01,
   Spinner,
-  XCircleIcon,
+  XCircle,
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
 
@@ -181,11 +181,7 @@ export function BuyCreditDialog({
       case "success":
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <Icon
-              visual={CheckCircleIcon}
-              size="lg"
-              className="text-success-500"
-            />
+            <Icon visual={CheckCircle} size="lg" className="text-success-500" />
             <div className="text-center">
               <p className="text-lg font-medium text-foreground dark:text-foreground-night">
                 Credits purchased successfully!
@@ -206,7 +202,7 @@ export function BuyCreditDialog({
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
             <Icon
-              visual={ExternalLinkIcon}
+              visual={LinkExternal01}
               size="lg"
               className="text-primary dark:text-primary-night"
             />
@@ -225,7 +221,7 @@ export function BuyCreditDialog({
       case "error":
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <Icon visual={XCircleIcon} size="lg" className="text-warning-500" />
+            <Icon visual={XCircle} size="lg" className="text-warning-500" />
             <div className="text-center">
               <p className="text-lg font-medium text-foreground dark:text-foreground-night">
                 Something went wrong
@@ -246,7 +242,7 @@ export function BuyCreditDialog({
             {showPaygCapWarning && (
               <ContentMessage
                 variant="info"
-                icon={InformationCircleIcon}
+                icon={InfoCircle}
                 title="You still have pay-as-you-go capacity"
               >
                 You're still under {PAYG_CAP_WARNING_THRESHOLD_PERCENT}% of your
@@ -445,7 +441,7 @@ export function BuyCreditDialog({
               onClick: resetModalStateAndClose,
             }}
             rightButtonProps={{
-              label: "Go to Payment",
+              label: "Go to payment",
               variant: "primary",
               onClick: () => {
                 if (paymentUrl) {
@@ -464,7 +460,7 @@ export function BuyCreditDialog({
               onClick: resetModalStateAndClose,
             }}
             rightButtonProps={{
-              label: "Manage Invoices",
+              label: "Manage invoices",
               variant: "primary",
               onClick: () => {
                 window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
@@ -481,7 +477,7 @@ export function BuyCreditDialog({
               onClick={resetModalStateAndClose}
             />
             <Button
-              label="Purchase Credits"
+              label="Purchase credits"
               variant="primary"
               onClick={handlePurchase}
               disabled={!canPurchase}
@@ -501,7 +497,7 @@ export function BuyCreditDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Purchase Programmatic Credits</DialogTitle>
+            <DialogTitle>Purchase programmatic credits</DialogTitle>
             <DialogDescription>
               Credit purchases are not available during your trial period.
             </DialogDescription>
@@ -547,7 +543,7 @@ export function BuyCreditDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Purchase Programmatic Credits</DialogTitle>
+            <DialogTitle>Purchase programmatic credits</DialogTitle>
             <DialogDescription>
               Credit purchases require an active subscription.
             </DialogDescription>
@@ -593,7 +589,7 @@ export function BuyCreditDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Purchase Programmatic Credits</DialogTitle>
+            <DialogTitle>Purchase programmatic credits</DialogTitle>
             <DialogDescription>
               You have pending credit purchases awaiting payment.
             </DialogDescription>
@@ -621,7 +617,7 @@ export function BuyCreditDialog({
               onClick: onClose,
             }}
             rightButtonProps={{
-              label: "Manage Invoices",
+              label: "Manage invoices",
               variant: "primary",
               onClick: () => {
                 window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
@@ -643,7 +639,7 @@ export function BuyCreditDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Purchase Programmatic Credits</DialogTitle>
+            <DialogTitle>Purchase programmatic credits</DialogTitle>
             <DialogDescription>
               You've reached your credit limit for this billing cycle.
             </DialogDescription>
@@ -687,7 +683,7 @@ export function BuyCreditDialog({
     >
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>Purchase Programmatic Credits</DialogTitle>
+          <DialogTitle>Purchase programmatic credits</DialogTitle>
           <DialogDescription>
             Purchase credits for programmatic API usage.
           </DialogDescription>

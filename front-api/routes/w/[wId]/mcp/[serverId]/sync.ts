@@ -1,71 +1,67 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { fetchRemoteServerMetaDataByServerId } from "@app/lib/actions/mcp_metadata";
-import type { MCPServerType } from "@app/lib/api/mcp";
+import type { SyncMCPServerResponseBody } from "@app/lib/api/mcp";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
-export type SyncMCPServerResponseBody = {
-  success: boolean;
-  server: MCPServerType;
-};
+const ParamsSchema = z.object({
+  serverId: z.string(),
+});
 
 // Mounted at /api/w/:wId/mcp/:serverId/sync. Admin-only — refreshes the cached
 // metadata for a remote MCP server.
-const app = new Hono();
+const app = workspaceApp();
 
-app.post("/", async (c) => {
-  const auth = c.get("auth");
-  const serverId = c.req.param("serverId") ?? "";
+/** @ignoreswagger */
+app.post(
+  "/",
+  validate("param", ParamsSchema),
+  ensureIsAdmin(),
+  async (ctx): HandlerResult<SyncMCPServerResponseBody> => {
+    const auth = ctx.get("auth");
+    const { serverId } = ctx.req.valid("param");
 
-  if (!auth.isAdmin()) {
-    return apiError(c, {
-      status_code: 403,
-      api_error: {
-        type: "data_source_auth_error",
-        message:
-          "Only users that are `admins` for the current workspace can manage MCP servers.",
-      },
-    });
-  }
+    const server = await RemoteMCPServerResource.fetchById(auth, serverId);
+    if (!server) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "data_source_not_found",
+          message: "Remote MCP Server not found",
+        },
+      });
+    }
 
-  const server = await RemoteMCPServerResource.fetchById(auth, serverId);
-  if (!server) {
-    return apiError(c, {
-      status_code: 404,
-      api_error: {
-        type: "data_source_not_found",
-        message: "Remote MCP Server not found",
-      },
-    });
-  }
+    const r = await fetchRemoteServerMetaDataByServerId(auth, server.sId);
+    if (r.isErr()) {
+      await server.markAsErrored(auth, {
+        lastError: r.error.message,
+        lastSyncAt: new Date(),
+      });
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: `Error fetching remote server metadata: ${r.error.message}`,
+        },
+      });
+    }
 
-  const r = await fetchRemoteServerMetaDataByServerId(auth, server.sId);
-  if (r.isErr()) {
-    await server.markAsErrored(auth, {
-      lastError: r.error.message,
+    const metadata = r.value;
+    await server.updateMetadata(auth, {
+      cachedName: metadata.name,
+      cachedDescription: metadata.description,
+      cachedTools: metadata.tools,
       lastSyncAt: new Date(),
+      clearError: true,
     });
-    return apiError(c, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: `Error fetching remote server metadata: ${r.error.message}`,
-      },
-    });
+
+    return ctx.json({ success: true, server: server.toJSON() });
   }
-
-  const metadata = r.value;
-  await server.updateMetadata(auth, {
-    cachedName: metadata.name,
-    cachedDescription: metadata.description,
-    cachedTools: metadata.tools,
-    lastSyncAt: new Date(),
-    clearError: true,
-  });
-
-  return c.json({ success: true, server: server.toJSON() });
-});
+);
 
 export default app;

@@ -1,7 +1,5 @@
 import type { ModelConfigurationType } from "./types";
 
-export const FIREWORKS_DEEPSEEK_R1_MODEL_ID =
-  "accounts/fireworks/models/deepseek-r1-0528" as const;
 export const FIREWORKS_DEEPSEEK_V3P2_MODEL_ID =
   "accounts/fireworks/models/deepseek-v3p2" as const;
 export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID =
@@ -14,30 +12,6 @@ export const FIREWORKS_MINIMAX_M2P5_MODEL_ID =
   "accounts/fireworks/models/minimax-m2p5" as const;
 export const FIREWORKS_GLM_5_MODEL_ID =
   "accounts/fireworks/models/glm-5" as const;
-export const FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "fireworks",
-  modelId: FIREWORKS_DEEPSEEK_R1_MODEL_ID,
-  displayName: "DeepSeek R1 (Fireworks)",
-  contextSize: 164_000,
-  recommendedTopK: 32,
-  recommendedExhaustiveTopK: 64,
-  largeModel: true,
-  description:
-    "DeepSeek's reasoning model (164k context, served via Fireworks).",
-  shortDescription: "DeepSeek R1 (reasoning model).",
-  isLegacy: false,
-  isLatest: false,
-  generationTokensCount: 2048,
-  supportsVision: false,
-  minimumReasoningEffort: "none",
-  maximumReasoningEffort: "none",
-  defaultReasoningEffort: "none",
-  tokenizer: { type: "tiktoken", base: "o200k_base" },
-  regionalAvailability: {
-    "us-central1": true,
-    "europe-west1": false,
-  },
-};
 export const FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
   modelId: FIREWORKS_DEEPSEEK_V3P2_MODEL_ID,
@@ -55,8 +29,12 @@ export const FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG: ModelConfigurationType = {
   supportsVision: false,
   // TODO(2025-12-03 pierre) Deepseek V3.2 reasoning support requires a bit more work
   // https://api-docs.deepseek.com/guides/thinking_mode
-  minimumReasoningEffort: "none",
-  maximumReasoningEffort: "none",
+  supportedReasoningEfforts: {
+    none: true,
+    light: false,
+    medium: false,
+    high: false,
+  },
   defaultReasoningEffort: "none",
   supportsResponseFormat: true,
   availableIfOneOf: {
@@ -83,8 +61,12 @@ export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 64_000,
   supportsVision: false,
-  minimumReasoningEffort: "none",
-  maximumReasoningEffort: "none",
+  supportedReasoningEfforts: {
+    none: true,
+    light: false,
+    medium: false,
+    high: false,
+  },
   defaultReasoningEffort: "none",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
@@ -107,8 +89,12 @@ export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: false,
   generationTokensCount: 2048,
   supportsVision: false,
-  minimumReasoningEffort: "light",
-  maximumReasoningEffort: "light",
+  supportedReasoningEfforts: {
+    none: false,
+    light: true,
+    medium: false,
+    high: false,
+  },
   defaultReasoningEffort: "light",
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
@@ -131,8 +117,12 @@ export const FIREWORKS_KIMI_K2P5_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 2048,
   supportsVision: true,
-  minimumReasoningEffort: "none",
-  maximumReasoningEffort: "high",
+  supportedReasoningEfforts: {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
   defaultReasoningEffort: "light",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
@@ -159,8 +149,12 @@ export const FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 2048,
   supportsVision: false,
-  minimumReasoningEffort: "light",
-  maximumReasoningEffort: "high",
+  supportedReasoningEfforts: {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
   defaultReasoningEffort: "light",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
@@ -187,8 +181,12 @@ export const FIREWORKS_GLM_5_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: true,
   generationTokensCount: 2048,
   supportsVision: false,
-  minimumReasoningEffort: "light",
-  maximumReasoningEffort: "high",
+  supportedReasoningEfforts: {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
   defaultReasoningEffort: "light",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },

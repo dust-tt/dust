@@ -3,7 +3,12 @@ import { FathomClient } from "@app/lib/api/triggers/built-in-webhooks/fathom/fat
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";
+import { isGCSPreconditionFailedError } from "@app/lib/file_storage/types";
 import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
+import {
+  isApiBlocked,
+  isProgrammaticApiBlocked,
+} from "@app/lib/metronome/user_block";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
@@ -24,6 +29,7 @@ import type {
   WebhookTriggerType,
 } from "@app/types/assistant/triggers";
 import { isWebhookTrigger } from "@app/types/assistant/triggers";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -34,6 +40,18 @@ import {
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
+
+export interface GetWebhookRequestsResponseBody {
+  requests: Array<{
+    id: number;
+    timestamp: number;
+    status: WebhookRequestTriggerStatus;
+    payload?: {
+      headers?: Record<string, string | string[]>;
+      body?: unknown;
+    };
+  }>;
+}
 
 /**
  * To avoid storing sensitive information, only these headers are allowed to be stored in GCS.
@@ -256,21 +274,53 @@ async function checkWorkspaceRateLimit({
 }): Promise<RateLimitCheckResult> {
   let errorMessage: string | null = null;
 
+  const plan = auth.subscription()?.plan;
+  const owner = auth.getNonNullableWorkspace();
+
+  // Credit-priced pool gate: applies to any execution mode. If the pool is
+  // depleted, no downstream message can be posted, so reject early instead of
+  // spinning up the trigger workflow only to fail in `checkMessagesLimit`.
+  if (plan && isCreditPricedPlan(plan)) {
+    if (owner.metronomeCustomerId && (await isApiBlocked(owner.sId))) {
+      errorMessage =
+        "Your workspace has run out of credits. Please purchase more credits to continue.";
+    }
+
+    // Programmatic monthly cap gate: if the programmatic cap is reached, reject
+    // early for programmatic triggers.
+    if (
+      !errorMessage &&
+      owner.metronomeCustomerId &&
+      trigger.executionMode === "programmatic" &&
+      (await isProgrammaticApiBlocked(owner.sId))
+    ) {
+      errorMessage =
+        "Your workspace has reached its programmatic monthly spending cap.";
+    }
+  }
+
   /**
    * Check for workspace-level rate limits
    * - for fair use execution mode, check global rate limits
    * - for programmatic usage mode, check public API limits
    */
-  if (!trigger.executionMode || trigger.executionMode === "fair_use") {
-    const { rateLimited, message } =
-      await checkWebhookRequestForRateLimit(auth);
-    if (rateLimited) {
-      errorMessage = message;
-    }
-  } else {
-    const limitsResult = await checkProgrammaticUsageLimits(auth);
-    if (limitsResult.isErr()) {
-      errorMessage = limitsResult.error.message;
+  if (!errorMessage) {
+    if (!trigger.executionMode || trigger.executionMode === "fair_use") {
+      const { rateLimited, message } =
+        await checkWebhookRequestForRateLimit(auth);
+      if (rateLimited) {
+        errorMessage = message;
+      }
+    } else {
+      // Programmatic execution mode: legacy programmatic-credit gate applies
+      // to legacy plans only. Credit-priced plans are already gated above by
+      // the workspace pool check.
+      if (!plan || !isCreditPricedPlan(plan)) {
+        const limitsResult = await checkProgrammaticUsageLimits(auth);
+        if (limitsResult.isErr()) {
+          errorMessage = limitsResult.error.message;
+        }
+      }
     }
   }
 
@@ -518,13 +568,32 @@ export async function storePayloadInGCS(
   });
 
   try {
-    // Store in GCS
-    await bucket.uploadRawContentToBucket({
+    // Webhook payloads are capped at 2MB and paths include the request id, so
+    // use the small create-only upload helper instead of a resumable overwrite.
+    await bucket.uploadSmallRawContentToBucketAsNewFile({
       content,
       contentType: "application/json",
       filePath: gcsPath,
     });
   } catch (error: unknown) {
+    if (isGCSPreconditionFailedError(error)) {
+      logger.info(
+        {
+          webhookRequestId: webhookRequest.id,
+          error,
+          gcsPath,
+        },
+        "Webhook request payload was already stored in GCS"
+      );
+
+      getStatsDClient().increment("webhook_gcs_precondition.count", 1, [
+        `provider:${provider}`,
+        `workspace_id:${auth.getNonNullableWorkspace().sId}`,
+      ]);
+
+      return;
+    }
+
     // Log the error, but do not throw, as we want to continue processing the webhook.
     // The webhook request will be marked as failed later in the processing if needed.
     logger.error(
@@ -670,10 +739,18 @@ export async function processWebhookRequest(
     return new Ok(undefined);
   }
 
+  if (filteredTriggers.some((t) => t.configuration.includePayload)) {
+    await storePayloadInGCS(auth, {
+      webhookSource,
+      webhookRequest,
+      headers,
+      body,
+      provider: webhookSource.provider ?? "custom",
+    });
+  }
+
   const launchResult = await launchTriggersWorkflows(auth, {
     filteredTriggers,
-    webhookSource,
-    body,
     webhookRequest,
   });
 
@@ -719,9 +796,11 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
       status,
     }
   );
+  const shouldFetchPayload =
+    isWebhookTrigger(trigger) && trigger.configuration.includePayload;
 
-  // Fetch payloads from GCS for each request
-  const bucket = getWebhookRequestsBucket();
+  // Fetch payloads from GCS for each request when the trigger is configured to keep them.
+  const bucket = shouldFetchPayload ? getWebhookRequestsBucket() : null;
   const requests = await Promise.all(
     webhookRequestTriggers.map(async (wrt) => {
       let payload:
@@ -730,28 +809,33 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
             body?: unknown;
           }
         | undefined;
+      const requestCanHavePayload =
+        wrt.status === "workflow_start_succeeded" ||
+        wrt.status === "workflow_start_failed";
 
-      const gcsPath = WebhookRequestResource.getGcsPath({
-        workspaceId: workspace.sId,
-        webhookSourceId: wrt.webhookRequest.webhookSourceId,
-        webRequestId: wrt.webhookRequest.id,
-      });
+      if (bucket && requestCanHavePayload) {
+        const gcsPath = WebhookRequestResource.getGcsPath({
+          workspaceId: workspace.sId,
+          webhookSourceId: wrt.webhookRequest.webhookSourceId,
+          webRequestId: wrt.webhookRequest.id,
+        });
 
-      try {
-        const file = bucket.file(gcsPath);
-        const [content] = await file.download();
-        if (content) {
-          payload = JSON.parse(content.toString());
+        try {
+          const file = bucket.file(gcsPath);
+          const [content] = await file.download();
+          if (content) {
+            payload = JSON.parse(content.toString());
+          }
+        } catch (error) {
+          logger.warn(
+            {
+              webhookRequestId: wrt.webhookRequest.id,
+              error: error instanceof Error ? error.message : String(error),
+            },
+            "Failed to fetch webhook request payload from GCS"
+          );
+          // Continue without payload if GCS fetch fails
         }
-      } catch (error) {
-        logger.warn(
-          {
-            webhookRequestId: wrt.webhookRequest.id,
-            error: error instanceof Error ? error.message : String(error),
-          },
-          "Failed to fetch webhook request payload from GCS"
-        );
-        // Continue without payload if GCS fetch fails
       }
 
       return {

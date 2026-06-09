@@ -3,10 +3,10 @@ import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { SkillSuggestionDataTable } from "@app/components/poke/skill_suggestions/table";
 import { SkillOverviewTable } from "@app/components/poke/skills/SkillOverviewTable";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import {
   usePokeSkillDetails,
   usePokeSkillVersions,
@@ -23,7 +23,6 @@ import { JsonViewer } from "@textea/json-viewer";
 
 export function SkillDetailsPage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - Skill`);
 
   const sId = useRequiredPathParam("sId");
   const { isDark } = useTheme();
@@ -36,6 +35,12 @@ export function SkillDetailsPage() {
     owner,
     skillId: sId,
     disabled: false,
+  });
+
+  usePokePageMetadata({
+    name: skillDetails?.skill.name,
+    subtitle: owner.name,
+    sId,
   });
 
   const { versions, isLoading: isLoadingVersions } = usePokeSkillVersions({
@@ -60,7 +65,8 @@ export function SkillDetailsPage() {
     );
   }
 
-  const { skill, editedByUser, spaces } = skillDetails;
+  const { skill, editedByUser, spaces, agentsUsage, usedBySkills } =
+    skillDetails;
 
   return (
     <div>
@@ -151,6 +157,69 @@ export function SkillDetailsPage() {
               />
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <div className="border-material-200 rounded-lg border p-4">
+          <Collapsible defaultOpen={false}>
+            <CollapsibleTrigger>
+              <h2 className="text-md font-bold">
+                Used by ({agentsUsage.count} agents, {usedBySkills.length}{" "}
+                skills)
+              </h2>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-4 flex flex-row gap-4">
+                <div className="flex-1">
+                  <h3 className="pb-2 text-sm font-bold">
+                    Agents ({agentsUsage.count})
+                  </h3>
+                  {agentsUsage.agents.length === 0 ? (
+                    <p className="text-muted-foreground dark:text-muted-foreground-night text-sm">
+                      No agents use this skill.
+                    </p>
+                  ) : (
+                    <div className="space-y-1">
+                      {agentsUsage.agents.map((agent) => (
+                        <div key={agent.sId}>
+                          <LinkWrapper
+                            href={`/poke/${owner.sId}/assistants/${agent.sId}`}
+                            className="text-highlight-500"
+                          >
+                            {agent.name}
+                          </LinkWrapper>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h3 className="pb-2 text-sm font-bold">
+                    Skills ({usedBySkills.length})
+                  </h3>
+                  {usedBySkills.length === 0 ? (
+                    <p className="text-muted-foreground dark:text-muted-foreground-night text-sm">
+                      No skills use this skill.
+                    </p>
+                  ) : (
+                    <div className="space-y-1">
+                      {usedBySkills.map((usedBySkill) => (
+                        <div key={usedBySkill.sId}>
+                          <LinkWrapper
+                            href={`/poke/${owner.sId}/skills/${usedBySkill.sId}`}
+                            className="text-highlight-500"
+                          >
+                            {usedBySkill.name}
+                          </LinkWrapper>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       </div>
 

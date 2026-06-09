@@ -99,6 +99,7 @@ final class SpeechService {
             transcribedText = try await TranscriptionService.transcribe(
                 fileURL: recordingURL,
                 workspaceId: workspaceId,
+                mimeType: "audio/wav",
                 tokenProvider: tokenProvider
             )
         } catch {

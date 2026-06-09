@@ -3,59 +3,32 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { resolveMountPoint } from "@app/lib/api/actions/servers/files/tools/utils";
-import { getGCSPathFromScopedPath } from "@app/lib/api/files/gcs_mount/files";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  FILES_MOVE_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
+import {
+  getDustFileSystemForAgentLoop,
+  requireAgentLoopConversation,
+  scopedPathsFromArgs,
+} from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
+import {
+  isInteractiveContentType,
+  stripMimeParameters,
+} from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export async function copyHandler(
   { source, dest }: { source: string; dest: string },
   { auth, agentLoopContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const conversation = agentLoopContext?.runContext?.conversation;
-  if (!conversation) {
-    return new Err(
-      new MCPError("No conversation context available.", { tracked: false })
-    );
+  const conversationRes = requireAgentLoopConversation({ agentLoopContext });
+  if (conversationRes.isErr()) {
+    return conversationRes;
   }
 
-  const sourceMountRes = await resolveMountPoint(auth, conversation, {
-    access: "read",
-    scopedPath: source,
-  });
-  if (sourceMountRes.isErr()) {
-    return sourceMountRes;
-  }
-
-  const destMountRes = await resolveMountPoint(auth, conversation, {
-    access: "write",
-    scopedPath: dest,
-  });
-  if (destMountRes.isErr()) {
-    return destMountRes;
-  }
-
-  const sourceGcsPath = getGCSPathFromScopedPath({
-    prefix: sourceMountRes.value.prefix,
-    scopedPath: source,
-    useCase: sourceMountRes.value.scope.useCase,
-  });
-  const destGcsPath = getGCSPathFromScopedPath({
-    prefix: destMountRes.value.prefix,
-    scopedPath: dest,
-    useCase: destMountRes.value.scope.useCase,
-  });
-  if (!sourceGcsPath || !destGcsPath) {
-    return new Err(
-      new MCPError(
-        "Invalid path: `source` or `dest` does not match the resolved mount point.",
-        { tracked: false }
-      )
-    );
-  }
-
-  if (sourceGcsPath === destGcsPath) {
+  if (source === dest) {
     return new Err(
       new MCPError("`source` and `dest` resolve to the same path.", {
         tracked: false,
@@ -63,24 +36,74 @@ export async function copyHandler(
     );
   }
 
-  const bucket = getPrivateUploadBucket();
-  const sourceFile = bucket.file(sourceGcsPath);
+  const fsResult = await getDustFileSystemForAgentLoop(
+    auth,
+    conversationRes.value,
+    scopedPathsFromArgs(source, dest)
+  );
+  if (fsResult.isErr()) {
+    return fsResult;
+  }
 
-  const [exists] = await sourceFile.exists();
-  if (!exists) {
+  const dustFs = fsResult.value;
+
+  const statResult = await dustFs.stat(source);
+  if (statResult.isErr()) {
+    const err = statResult.error;
+    switch (err.code) {
+      case "legacy_path":
+        return new Err(new MCPError(err.message, { tracked: false }));
+
+      case "invalid_path":
+        return new Err(
+          new MCPError(`Invalid path: \`${source}\`.`, { tracked: false })
+        );
+
+      default:
+        return new Err(
+          new MCPError(`Failed to read source \`${source}\`: ${err.message}`, {
+            tracked: false,
+          })
+        );
+    }
+  }
+
+  if (statResult.value === null) {
     return new Err(
       new MCPError(`Source file not found: \`${source}\`.`, { tracked: false })
     );
   }
 
-  try {
-    await sourceFile.copy(bucket.file(destGcsPath));
-  } catch (err) {
+  const mimeType = stripMimeParameters(statResult.value.contentType);
+  if (isInteractiveContentType(mimeType)) {
     return new Err(
       new MCPError(
-        `Failed to copy \`${source}\` to \`${dest}\`: ${normalizeError(err).message}`
+        `Frame files cannot be copied. Use \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_MOVE_ACTION_NAME)}\` to move \`${source}\` instead.`,
+        { tracked: false }
       )
     );
+  }
+
+  const copyResult = await dustFs.copy({ src: source, dest });
+  if (copyResult.isErr()) {
+    const err = copyResult.error;
+    switch (err.code) {
+      case "legacy_path":
+      case "unauthorized":
+        return new Err(new MCPError(err.message, { tracked: false }));
+
+      case "invalid_path":
+        return new Err(
+          new MCPError(`Invalid path: \`${dest}\`.`, { tracked: false })
+        );
+
+      default:
+        return new Err(
+          new MCPError(
+            `Failed to copy \`${source}\` to \`${dest}\`: ${err.message}`
+          )
+        );
+    }
   }
 
   return new Ok([

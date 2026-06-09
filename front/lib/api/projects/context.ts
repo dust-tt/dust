@@ -5,24 +5,74 @@ import {
 } from "@app/lib/api/assistant/conversation/attachments";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
+import { DustFileSystem } from "@app/lib/api/file_system";
+import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import {
+  createGCSMountDirectory,
   deleteGCSMountFile,
+  type GCSMountDirectoryEntry,
+  moveFile,
+  renameGCSMountDirectory,
   renameGCSMountFile,
 } from "@app/lib/api/files/gcs_mount/files";
-import { getProjectFilesBasePath } from "@app/lib/api/files/mount_path";
+import { moveMountFileWithinScope } from "@app/lib/api/files/mount_file_ops";
+import type { ResolveMountFilePathError } from "@app/lib/api/files/mount_path";
+import {
+  getPodFilesBasePath,
+  joinMountRelativePath,
+  normalizeMountParentRelativePath,
+  validateMountFolderName,
+} from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import type { DustError } from "@app/lib/error";
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/internal/assistant";
+import type { ContentNodeType } from "@app/types/core/content_node";
+import type { ConnectorProvider } from "@app/types/data_source";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { Op } from "sequelize";
+import { z } from "zod";
+
+/** GET: project context (file-backed + content-node fragments). */
+export type GetProjectContextResponseBody = {
+  attachments: ConversationAttachmentType[];
+};
+
+export const PostProjectContextContentNodeItemSchema = z.object({
+  title: z.string().min(1, "title is required"),
+  nodeId: z.string().min(1, "nodeId is required"),
+  nodeDataSourceViewId: z.string().min(1, "nodeDataSourceViewId is required"),
+  url: z.string().nullable().optional(),
+  supersededContentFragmentId: z.string().nullable().optional(),
+});
+
+export const PostProjectContextContentNodeBodySchema = z.object({
+  items: z.array(PostProjectContextContentNodeItemSchema),
+});
+
+export type PostProjectContextContentNodeFragment = {
+  sId: string;
+  title: string;
+  contentType: string;
+  nodeId: string;
+  nodeDataSourceViewId: string;
+  nodeType: ContentNodeType;
+};
+
+export type PostProjectContextContentNodeResponseBody = {
+  contentFragments: PostProjectContextContentNodeFragment[];
+  errors: Array<{ index: number; message: string }>;
+};
 
 /**
  * Folder internal id under which conversation transcripts are indexed in the dust_project
@@ -30,9 +80,9 @@ import { Op } from "sequelize";
  */
 export function getProjectConversationFolderInternalId(
   dustProjectConnectorId: string,
-  spaceSId: string
+  spaceId: string
 ): string {
-  return `dust-project-${dustProjectConnectorId}-project-${spaceSId}`;
+  return `dust-project-${dustProjectConnectorId}-project-${spaceId}`;
 }
 
 export async function listProjectContentFragments(
@@ -65,17 +115,17 @@ export async function listProjectContextFiles(
   }
 
   const files: FileResource[] = [];
-  const seenSIds = new Set<string>();
+  const seenIds = new Set<string>();
 
   for (const fragment of fragments) {
     if (fragment.fileId == null) {
       continue;
     }
     const file = filesByModelId.get(fragment.fileId);
-    if (!file || seenSIds.has(file.sId)) {
+    if (!file || seenIds.has(file.sId)) {
       continue;
     }
-    seenSIds.add(file.sId);
+    seenIds.add(file.sId);
     files.push(file);
   }
 
@@ -142,10 +192,18 @@ export async function listProjectContextAttachments(
     string,
     Map<string, number | null>
   >();
+  const dataSourceViews = await DataSourceViewResource.fetchByIds(
+    auth,
+    Array.from(byView.keys())
+  );
+  const dataSourceViewById = new Map(
+    dataSourceViews.map((dsView) => [dsView.sId, dsView])
+  );
 
-  await Promise.all(
-    Array.from(byView.entries()).map(async ([dsViewSId, nodeIds]) => {
-      const dsView = await DataSourceViewResource.fetchById(auth, dsViewSId);
+  await concurrentExecutor(
+    Array.from(byView.entries()),
+    async ([dsViewId, nodeIds]) => {
+      const dsView = dataSourceViewById.get(dsViewId);
       if (!dsView) {
         return;
       }
@@ -162,8 +220,11 @@ export async function listProjectContextAttachments(
       for (const n of res.value.nodes) {
         m.set(n.internalId, n.lastUpdatedAt);
       }
-      lastUpdatedByViewAndNode.set(dsViewSId, m);
-    })
+      lastUpdatedByViewAndNode.set(dsViewId, m);
+    },
+    {
+      concurrency: 4,
+    }
   );
 
   return attachments.map((a) => {
@@ -174,6 +235,77 @@ export async function listProjectContextAttachments(
       lastUpdatedByViewAndNode.get(a.nodeDataSourceViewId)?.get(a.nodeId) ??
       null;
     return { ...a, lastUpdatedAt: ts };
+  });
+}
+
+export type ProjectKnowledgeFromConnectorItem = {
+  contentFragmentId: string;
+  nodeId: string;
+  nodeType: ContentNodeType;
+  nodeDataSourceViewId: string;
+  title: string;
+  contentType: string;
+  sourceUrl: string | null;
+  lastUpdatedAt: number | null;
+  creator: string | null;
+  sourceDataSourceViewSpaceId: string | null;
+  sourceDataSourceName: string | null;
+  sourceConnectorProvider: ConnectorProvider | null;
+};
+
+/**
+ * For a project space, return the connector-backed content nodes currently in
+ * the project context, enriched with the source data source view's space,
+ * display name and connector provider. Used by the poke admin UI.
+ */
+export async function listProjectKnowledgeFromConnectors(
+  auth: Authenticator,
+  space: SpaceResource
+): Promise<ProjectKnowledgeFromConnectorItem[]> {
+  const attachments = await listProjectContextAttachments(auth, space);
+  const contentNodes = attachments.filter(isContentNodeAttachmentType);
+
+  const dsvIds = [...new Set(contentNodes.map((a) => a.nodeDataSourceViewId))];
+
+  const dsvById = new Map<
+    string,
+    {
+      spaceId: string;
+      dataSourceName: string;
+      connectorProvider: ConnectorProvider | null;
+    }
+  >();
+  if (dsvIds.length > 0) {
+    const dsvs = await DataSourceViewResource.fetchByIds(auth, dsvIds);
+    for (const dsv of dsvs) {
+      const json = dsv.toJSON();
+      dsvById.set(dsv.sId, {
+        spaceId: json.spaceId,
+        dataSourceName: getDisplayNameForDataSource(json.dataSource),
+        connectorProvider: json.dataSource.connectorProvider,
+      });
+    }
+  }
+
+  return contentNodes.map((a) => {
+    const creator = a.creator
+      ? `${a.creator.type === "agent" ? "agent: " : ""}${a.creator.name}`
+      : null;
+    const dsv = dsvById.get(a.nodeDataSourceViewId);
+    return {
+      contentFragmentId: a.contentFragmentId,
+      nodeId: a.nodeId,
+      nodeType: a.nodeType,
+      nodeDataSourceViewId: a.nodeDataSourceViewId,
+      title: a.title,
+      contentType: a.contentType,
+      sourceUrl: a.sourceUrl,
+      lastUpdatedAt: a.lastUpdatedAt ?? null,
+      creator,
+      sourceDataSourceViewSpaceId: dsv?.spaceId ?? null,
+      sourceDataSourceName: dsv?.dataSourceName ?? null,
+      sourceConnectorProvider: dsv?.connectorProvider ?? null,
+    };
   });
 }
 
@@ -240,20 +372,84 @@ export async function addFileToProject(
     sourceConversationId?: string;
   }
 ): Promise<Result<ContentFragmentResource, DustError>> {
-  if (space.kind !== "project") {
+  if (!space.isProject()) {
     return new Err({
       name: "dust_error",
       code: "invalid_request_error",
-      message: "Space is not a project.",
+      message: "Space is not a Pod.",
     });
   }
 
-  // TODO(projects) this is not sufficient, the file mountpoint is not updated on GCS.
-  await file.updateUseCase(auth, "project_context", {
-    spaceId: space.sId,
-    conversationId: undefined,
-    sourceConversationId,
+  const owner = auth.getNonNullableWorkspace();
+  const projectFilesPrefix = getPodFilesBasePath({
+    workspaceId: owner.sId,
+    podId: space.sId,
   });
+
+  // Files already mounted under the project prefix only need content-fragment sync.
+  const isAlreadyOnProjectMount =
+    file.mountFilePath?.startsWith(projectFilesPrefix) ?? false;
+
+  if (!isAlreadyOnProjectMount) {
+    if (!file.mountFilePath) {
+      return new Err({
+        name: "dust_error",
+        code: "invalid_request_error",
+        message: "File has no mount path and cannot be moved to the Pod.",
+      });
+    }
+
+    const destFileName = file.fileName;
+    const destScopedPath = `${SCOPED_PREFIX_POD}${space.sId}/${destFileName}`;
+
+    // Reject the move when a file with the same name already exists in the Pod, rather
+    // than silently overwriting it. moveFile (raw GCS) does not check, so we check the
+    // destination through a Pod-scoped file system first.
+    const fsRes = await DustFileSystem.forPod(auth, space);
+    if (fsRes.isErr()) {
+      return new Err({
+        name: "dust_error",
+        code: "internal_error",
+        message: fsRes.error.message,
+      });
+    }
+
+    const destExistsRes = await fsRes.value.exists(destScopedPath);
+    if (destExistsRes.isErr()) {
+      return new Err({
+        name: "dust_error",
+        code: "internal_error",
+        message: destExistsRes.error.message,
+      });
+    }
+    if (destExistsRes.value) {
+      return new Err({
+        name: "dust_error",
+        code: "invalid_request_error",
+        message: "A file with this name already exists in the Pod.",
+      });
+    }
+
+    const moveRes = await moveFile(auth, {
+      file,
+      sourceGcsPath: file.mountFilePath,
+      destScope: { useCase: "pod", podId: space.sId },
+      destRelativeFilePath: destFileName,
+      destFileName,
+      destUseCase: "project_context",
+      destUseCaseMetadata: {
+        spaceId: space.sId,
+        ...(sourceConversationId ? { sourceConversationId } : {}),
+      },
+    });
+    if (moveRes.isErr()) {
+      return new Err({
+        name: "dust_error",
+        code: "internal_error",
+        message: moveRes.error.message,
+      });
+    }
+  }
 
   // TODO(projects) once the source of truth for the project's files is GCS, we can remove this.
   const fragmentRes =
@@ -289,7 +485,7 @@ export async function addContentNodeToProject(
     space: SpaceResource;
   }
 ): Promise<Result<ContentFragmentResource, DustError>> {
-  if (space.kind !== "project") {
+  if (!space.isProject()) {
     return new Err({
       name: "dust_error",
       code: "invalid_request_error",
@@ -428,6 +624,78 @@ export async function removeFileFromProject(
 }
 
 /**
+ * Create an empty folder in a project GCS mount via a trailing-slash placeholder object.
+ */
+export async function createProjectFolder(
+  auth: Authenticator,
+  {
+    space,
+    folderName,
+    parentRelativePath,
+  }: {
+    space: SpaceResource;
+    folderName: string;
+    parentRelativePath?: string;
+  }
+): Promise<Result<GCSMountDirectoryEntry, Error>> {
+  if (!space.isProject()) {
+    return new Err(new Error("Space is not a project."));
+  }
+
+  const folderNameRes = validateMountFolderName(folderName);
+  if (folderNameRes.isErr()) {
+    return folderNameRes;
+  }
+
+  const parentRes = normalizeMountParentRelativePath(parentRelativePath);
+  if (parentRes.isErr()) {
+    return parentRes;
+  }
+
+  const relativeDirPath = joinMountRelativePath(
+    parentRes.value,
+    folderNameRes.value
+  );
+
+  return createGCSMountDirectory(
+    auth,
+    { useCase: "pod", podId: space.sId },
+    { relativeDirPath }
+  );
+}
+
+/**
+ * Move a file within the project GCS mount by its relative path (e.g. into a subfolder).
+ * Updates the linked FileResource when one exists at the source path; otherwise GCS only.
+ */
+export async function moveProjectFile(
+  auth: Authenticator,
+  {
+    space,
+    sourcePath,
+    destRelativeFilePath,
+  }: {
+    space: SpaceResource;
+    sourcePath: string;
+    destRelativeFilePath: string;
+  }
+): Promise<Result<void, DustError | ResolveMountFilePathError | Error>> {
+  if (!space.isProject()) {
+    return new Err({
+      name: "dust_error",
+      code: "invalid_request_error",
+      message: "Space is not a project.",
+    });
+  }
+
+  return moveMountFileWithinScope(
+    auth,
+    { useCase: "pod", podId: space.sId },
+    { sourcePath, destRelativeFilePath }
+  );
+}
+
+/**
  * Rename a project file by its relative path.
  *
  * Renames the GCS object and, if a FileResource is linked to the path, updates
@@ -446,16 +714,81 @@ export async function renameProjectFile(
   }
 ): Promise<Result<void, Error>> {
   const owner = auth.getNonNullableWorkspace();
-  const oldGcsPath = `${getProjectFilesBasePath({ workspaceId: owner.sId, projectId: space.sId })}${relativeFilePath}`;
+  const normalized = relativeFilePath.replace(/^\/+|\/+$/g, "");
+  const mountBasePath = getPodFilesBasePath({
+    workspaceId: owner.sId,
+    podId: space.sId,
+  });
+  const dirPrefix = `${mountBasePath}${normalized}/`;
+
+  const bucket = getPrivateUploadBucket();
+  const [dirPlaceholderExists] = await bucket.file(dirPrefix).exists();
+  const { files: dirContents } = await bucket.getAllFilesByPrefix({
+    prefix: dirPrefix,
+  });
+  const isDirectoryRename =
+    dirPlaceholderExists || dirContents.some((f) => !f.name.endsWith("/"));
+
+  if (isDirectoryRename) {
+    const folderNameRes = validateMountFolderName(newFileName);
+    if (folderNameRes.isErr()) {
+      return folderNameRes;
+    }
+
+    const mountPaths = dirContents
+      .filter((f) => !f.name.endsWith("/"))
+      .map((f) => f.name);
+    const fileResources = await FileResource.fetchByMountFilePaths(
+      auth,
+      mountPaths
+    );
+
+    const renameResult = await renameGCSMountDirectory(
+      auth,
+      { useCase: "pod", podId: space.sId },
+      {
+        relativeDirPath: normalized,
+        newFolderName: folderNameRes.value,
+      }
+    );
+    if (renameResult.isErr()) {
+      return renameResult;
+    }
+
+    const oldDirMountPrefix = `${mountBasePath}${normalized}/`;
+    const newDirMountPrefix = `${mountBasePath}${renameResult.value.newRelativeDirPath}/`;
+    for (const file of fileResources) {
+      if (!file.mountFilePath?.startsWith(oldDirMountPrefix)) {
+        continue;
+      }
+      const newMountPath = file.mountFilePath.replace(
+        oldDirMountPrefix,
+        newDirMountPrefix
+      );
+      await file.renameMountFile(file.fileName, newMountPath);
+    }
+
+    return new Ok(undefined);
+  }
+
+  // Look up the linked FileResource by either the new `pods/` form or the old
+  // `projects/` form, since old DB rows are not yet backfilled.
+  const podsPrefix = getPodFilesBasePath({
+    workspaceId: owner.sId,
+    podId: space.sId,
+  });
+  const podsGcsPath = `${podsPrefix}${normalized}`;
+  const legacyGcsPath = podsGcsPath.replace("/pods/", "/projects/");
 
   const fileResources = await FileResource.fetchByMountFilePaths(auth, [
-    oldGcsPath,
+    podsGcsPath,
+    legacyGcsPath,
   ]);
 
   const renameResult = await renameGCSMountFile(
     auth,
-    { useCase: "project", projectId: space.sId },
-    { relativeFilePath, newFileName }
+    { useCase: "pod", podId: space.sId },
+    { relativeFilePath: normalized, newFileName }
   );
   if (renameResult.isErr()) {
     return renameResult;
@@ -489,10 +822,58 @@ export async function deleteProjectFile(
   }
 ): Promise<Result<void, Error>> {
   const owner = auth.getNonNullableWorkspace();
-  const gcsPath = `${getProjectFilesBasePath({ workspaceId: owner.sId, projectId: space.sId })}${relativeFilePath}`;
+  const normalized = relativeFilePath.replace(/^\/+|\/+$/g, "");
+  const mountBasePath = getPodFilesBasePath({
+    workspaceId: owner.sId,
+    podId: space.sId,
+  });
+  const gcsPath = `${mountBasePath}${normalized}`;
+  const dirPrefix = `${mountBasePath}${normalized}/`;
+
+  const bucket = getPrivateUploadBucket();
+  const [fileExists] = await bucket.file(gcsPath).exists();
+
+  if (!fileExists) {
+    const [dirPlaceholderExists] = await bucket.file(dirPrefix).exists();
+    const { files: dirContents } = await bucket.getAllFilesByPrefix({
+      prefix: dirPrefix,
+      pageSize: 200,
+    });
+    const isDirectoryDelete =
+      dirPlaceholderExists || dirContents.some((f) => !f.name.endsWith("/"));
+
+    if (isDirectoryDelete) {
+      const mountPaths = dirContents
+        .filter((f) => !f.name.endsWith("/"))
+        .map((f) => f.name);
+      const fileResources = await FileResource.fetchByMountFilePaths(
+        auth,
+        mountPaths
+      );
+      for (const file of fileResources) {
+        const result = await removeFileFromProject(auth, {
+          space,
+          fileId: file.sId,
+        });
+        if (result.isErr()) {
+          return result;
+        }
+      }
+
+      return deleteGCSMountFile(
+        auth,
+        { useCase: "pod", podId: space.sId },
+        { relativeFilePath: normalized }
+      );
+    }
+  }
+
+  const podsGcsPath = `${mountBasePath}${normalized}`;
+  const legacyGcsPath = podsGcsPath.replace("/pods/", "/projects/");
 
   const fileResources = await FileResource.fetchByMountFilePaths(auth, [
-    gcsPath,
+    podsGcsPath,
+    legacyGcsPath,
   ]);
   if (fileResources.length > 0) {
     return removeFileFromProject(auth, {
@@ -503,8 +884,8 @@ export async function deleteProjectFile(
 
   return deleteGCSMountFile(
     auth,
-    { useCase: "project", projectId: space.sId },
-    { relativeFilePath }
+    { useCase: "pod", podId: space.sId },
+    { relativeFilePath: normalized }
   );
 }
 

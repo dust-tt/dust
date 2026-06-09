@@ -1,12 +1,13 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { getLargeWhitelistedModel } from "@app/lib/api/assistant/models";
 import { getLLM } from "@app/lib/api/llm";
 import { writeBatchUserMessages } from "@app/lib/api/llm/batch_llm";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { getLargeWhitelistedModel } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { getLargeWhitelistedModelWithBatchMode } from "@app/lib/reinforcement/models";
 import {
   hasSuggestionSelfConflict,
   pruneConflictingSkillEditSuggestions,
@@ -15,6 +16,7 @@ import {
   ALL_TOOLS,
   DESCRIBE_MCP_TOOL_NAME,
   type ExploratoryToolCallInfo,
+  getEditSkillToolSchema,
   getReinforcedSkillsMetadata,
   isExploratoryToolName,
   isTerminalToolName,
@@ -41,120 +43,62 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export const REINFORCEMENT_SKILLS_AGENT_ID = "reinforcement";
 
 // Tool schemas for reinforced skills (exploration + terminal).
-const REINFORCED_SKILLS_TOOL_DEFINITIONS: Record<
+function buildReinforcedSkillsToolDefinitions(): Record<
   string,
-  { description: string; schema: z.ZodRawShape }
-> = {
-  get_available_tools: {
-    description:
-      "Get the list of available tools (MCP servers) that can be added to skills.",
-    schema: {},
-  },
-  [DESCRIBE_MCP_TOOL_NAME]: {
-    description:
-      "Get detailed information about a specific MCP server: its description, and each tool's name, description, and input parameters. Use this to understand what a tool can do before suggesting instruction changes that reference it.",
-    schema: {
-      mcpId: z.string().describe("The sId of the MCP server to describe"),
+  { description: string; schema: z.ZodObject<z.ZodRawShape> }
+> {
+  return {
+    get_available_tools: {
+      description:
+        "Get the list of available tools (MCP servers) that can be referenced in skill instructions with inline <tool> tags.",
+      schema: z.object({}),
     },
-  },
-  search_knowledge: {
-    description:
-      "Search workspace knowledge sources to discover relevant data nodes.",
-    schema: {
-      query: z
-        .string()
-        .describe("Natural language query describing the knowledge needed."),
-      topK: z
-        .number()
-        .int()
-        .positive()
-        .max(10)
-        .optional()
-        .describe(
-          "Maximum number of document hits to retrieve per data source (default: 5, only applies when query is provided)"
-        ),
+    [DESCRIBE_MCP_TOOL_NAME]: {
+      description:
+        "Get detailed information about a specific MCP server: its description, and each tool's name, description, and input parameters. Use this to understand what a tool can do before suggesting instruction changes that reference it.",
+      schema: z.object({
+        mcpId: z.string().describe("The sId of the MCP server to describe"),
+      }),
     },
-  },
-  edit_skill: {
-    description:
-      "Suggest edits to a skill's instructions and/or configured tools.",
-    schema: {
-      skillId: z.string().describe("The sId of the skill to modify"),
-      instructionEdits: z
-        .array(
-          z.object({
-            targetBlockId: z
-              .string()
-              .describe(
-                'The data-block-id of the block to replace. Use "instructions-root" to replace all instructions.'
-              ),
-            content: z
-              .string()
-              .describe(
-                "Full HTML replacement content for the block, including its wrapping tag. Must be a single-line string with no literal newlines."
-              ),
-            type: z.literal("replace"),
-          })
-        )
-        .optional()
-        .describe(
-          "Block-targeted edits to the skill instructions. Each item targets one block by its data-block-id."
-        ),
-      toolEdits: z
-        .array(
-          z.object({
-            action: z
-              .enum(["add", "remove"])
-              .describe("Whether to add or remove the tool"),
-            toolId: z
-              .string()
-              .describe("The identifier of the tool to add or remove"),
-          })
-        )
-        .optional()
-        .describe("Tools to add or remove from the skill."),
-      agentFacingDescriptionEdit: z
-        .object({
-          content: z
-            .string()
-            .min(1)
-            .describe(
-              "The full new agent-facing description (replaces the current one)."
-            ),
-        })
-        .optional()
-        .describe(
-          "Replacement for the skill's agent-facing description. Should typically be its own suggestion, not bundled with instruction or tool edits."
-        ),
-      analysis: z
-        .string()
-        .optional()
-        .describe("Why this change improves the skill"),
-      title: z
-        .string()
-        .max(25)
-        .optional()
-        .describe(
-          "A short, action-oriented user-facing title for this suggestion (MUST be at most 25 characters). " +
-            "Only set this when producing final aggregated suggestions; leave unset for synthetic suggestions."
-        ),
+    search_knowledge: {
+      description:
+        "Search workspace knowledge sources to discover relevant data nodes.",
+      schema: z.object({
+        query: z
+          .string()
+          .describe("Natural language query describing the knowledge needed."),
+        topK: z
+          .number()
+          .int()
+          .positive()
+          .max(10)
+          .optional()
+          .describe(
+            "Maximum number of document hits to retrieve per data source (default: 5, only applies when query is provided)"
+          ),
+      }),
     },
-  },
-  reject_suggestion: {
-    description:
-      "Reject source suggestions that are very bad quality, not actionable, or too similar to already declined suggestions. " +
-      "Use this tool in parallel with edit_skill calls — both are terminal and no further calls will be made after." +
-      "Do not use to ingore minor suggestions.",
-    schema: {
-      sourceSuggestionIds: z
-        .array(z.string())
-        .min(1)
-        .describe(
-          "The sIds of the source suggestions to reject. Must include at least one suggestion sId."
-        ),
+    edit_skill: {
+      description:
+        "Suggest edits to a skill's instructions and/or agent-facing description.",
+      schema: getEditSkillToolSchema(),
     },
-  },
-};
+    reject_suggestion: {
+      description:
+        "Reject source suggestions that are very bad quality, not actionable, or too similar to already declined suggestions. " +
+        "Use this tool in parallel with edit_skill calls — both are terminal and no further calls will be made after." +
+        "Do not use to ingore minor suggestions.",
+      schema: z.object({
+        sourceSuggestionIds: z
+          .array(z.string())
+          .min(1)
+          .describe(
+            "The sIds of the source suggestions to reject. Must include at least one suggestion sId."
+          ),
+      }),
+    },
+  };
+}
 
 const AGGREGATION_EXTRA_FIELDS: z.ZodRawShape = {
   sourceSuggestionIds: z
@@ -170,6 +114,7 @@ export function buildReinforcedSkillsSpecifications(
   operationType: ReinforcedSkillsOperationType
 ): AgentActionSpecification[] {
   const isAggregation = operationType === "reinforcement_aggregate_suggestions";
+  const toolDefinitions = buildReinforcedSkillsToolDefinitions();
 
   return ALL_TOOLS.filter((toolName) => {
     // reject_suggestion is only available during aggregation.
@@ -178,11 +123,11 @@ export function buildReinforcedSkillsSpecifications(
     }
     return true;
   }).map((toolName) => {
-    const meta = REINFORCED_SKILLS_TOOL_DEFINITIONS[toolName];
+    const meta = toolDefinitions[toolName];
     const schema =
       toolName === "edit_skill" && isAggregation
-        ? z.object({ ...meta.schema, ...AGGREGATION_EXTRA_FIELDS })
-        : z.object(meta.schema);
+        ? meta.schema.extend(AGGREGATION_EXTRA_FIELDS)
+        : meta.schema;
     return {
       name: toolName,
       description: meta.description,
@@ -318,14 +263,17 @@ export async function createReinforcedSkillsConversation(
  */
 export async function getReinforcedSkillsLLM(
   auth: Authenticator,
-  operationType: ReinforcedSkillsOperationType
+  operationType: ReinforcedSkillsOperationType,
+  { forBatch }: { forBatch?: boolean } = {}
 ): Promise<LLM | null> {
   const owner = auth.workspace();
   if (!owner) {
     return null;
   }
 
-  const model = getLargeWhitelistedModel(auth);
+  const model = forBatch
+    ? await getLargeWhitelistedModelWithBatchMode(auth)
+    : getLargeWhitelistedModel(auth);
   if (!model) {
     return null;
   }
@@ -486,7 +434,7 @@ async function createSkillSuggestionsFromToolCall({
 }): Promise<ToolCallResult> {
   switch (toolName) {
     case "edit_skill": {
-      const parsed = TOOL_SCHEMAS.edit_skill.safeParse(actionArguments);
+      const parsed = getEditSkillToolSchema().safeParse(actionArguments);
       if (!parsed.success) {
         logger.warn(
           { contextId, toolName, error: parsed.error },
@@ -520,18 +468,13 @@ async function createSkillSuggestionsFromToolCall({
 
       const hasInstructionEdits =
         (parsed.data.instructionEdits?.length ?? 0) > 0;
-      const hasToolEdits = (parsed.data.toolEdits?.length ?? 0) > 0;
       const hasAgentFacingDescriptionEdit =
         parsed.data.agentFacingDescriptionEdit !== undefined;
-      if (
-        !hasInstructionEdits &&
-        !hasToolEdits &&
-        !hasAgentFacingDescriptionEdit
-      ) {
+      if (!hasInstructionEdits && !hasAgentFacingDescriptionEdit) {
         return {
           type: "error",
           errorMessage:
-            "edit_skill requires at least one instruction edit, tool edit, or description edit.",
+            "edit_skill requires at least one instruction edit or description edit.",
         };
       }
 
@@ -547,7 +490,6 @@ async function createSkillSuggestionsFromToolCall({
         hasSuggestionSelfConflict(
           {
             instructionEdits: parsed.data.instructionEdits,
-            toolEdits: parsed.data.toolEdits,
             agentFacingDescriptionEdit: parsed.data.agentFacingDescriptionEdit,
           },
           skill.instructionsHtml
@@ -556,7 +498,7 @@ async function createSkillSuggestionsFromToolCall({
         return {
           type: "error",
           errorMessage:
-            "Suggestion has conflicting edits (overlapping block targets or duplicate tool IDs).",
+            "Suggestion has conflicting edits (overlapping block targets).",
         };
       }
 
@@ -586,7 +528,6 @@ async function createSkillSuggestionsFromToolCall({
           kind: "edit",
           suggestion: {
             instructionEdits: parsed.data.instructionEdits,
-            toolEdits: parsed.data.toolEdits,
             agentFacingDescriptionEdit: parsed.data.agentFacingDescriptionEdit,
           },
           analysis: parsed.data.analysis ?? null,

@@ -4,33 +4,35 @@ import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButton
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
 import { getSkillAvatarIcon, hasRelations } from "@app/lib/skill";
+import { useSkill } from "@app/lib/swr/skill_configurations";
 import type {
   SkillRelations,
   SkillType,
-  SkillWithRelationsType,
+  SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
-  ArrowPathIcon,
   Button,
   ContentMessage,
-  InformationCircleIcon,
+  InfoCircle,
+  RefreshCw02,
   Sheet,
   SheetContainer,
   SheetContent,
   SheetHeader,
   SheetTitle,
+  Spinner,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-  UserGroupIcon,
+  Users01,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useState } from "react";
 
 type SkillDetailsProps = {
-  skill: SkillWithRelationsType | null;
+  skill: SkillWithoutInstructionsAndToolsWithRelationsType | null;
   onClose: () => void;
   owner: WorkspaceType;
   user: UserType;
@@ -42,6 +44,14 @@ export function SkillDetailsSheet({
   user,
   owner,
 }: SkillDetailsProps) {
+  // Fetch the full skill (with instructions/tools) for the content section,
+  // since the list endpoint may not include them.
+  const { skill: fullSkill, isSkillLoading } = useSkill({
+    workspaceId: owner.sId,
+    skillId: skill?.sId ?? null,
+    disabled: !skill,
+  });
+
   return (
     <Sheet open={skill !== null} onOpenChange={onClose}>
       <SheetContent size="lg" className="pb-4">
@@ -58,11 +68,17 @@ export function SkillDetailsSheet({
               />
             </SheetHeader>
             <SheetContainer className="pb-4">
-              <SkillDetailsSheetContent
-                skill={skill}
-                user={user}
-                owner={owner}
-              />
+              {isSkillLoading || !fullSkill ? (
+                <div className="flex justify-center py-8">
+                  <Spinner size="lg" />
+                </div>
+              ) : (
+                <SkillDetailsSheetContent
+                  skill={{ ...fullSkill, relations: skill.relations }}
+                  user={user}
+                  owner={owner}
+                />
+              )}
             </SheetContainer>
           </>
         )}
@@ -93,13 +109,13 @@ export function SkillDetailsSheetContent({
           <TabsTrigger
             value="info"
             label="Info"
-            icon={InformationCircleIcon}
+            icon={InfoCircle}
             onClick={() => setSelectedTab("info")}
           />
           <TabsTrigger
             value="editors"
             label="Editors"
-            icon={UserGroupIcon}
+            icon={Users01}
             onClick={() => setSelectedTab("editors")}
           />
         </TabsList>
@@ -121,7 +137,7 @@ export function SkillDetailsSheetContent({
 }
 
 type DescriptionSectionProps = {
-  skill: SkillWithRelationsType;
+  skill: SkillWithoutInstructionsAndToolsWithRelationsType;
   owner: WorkspaceType;
   onClose: () => void;
 };
@@ -176,7 +192,7 @@ const DescriptionSection = ({
           <ContentMessage
             title="This skill has been archived."
             variant="warning"
-            icon={InformationCircleIcon}
+            icon={InfoCircle}
             size="sm"
           >
             It is no longer active and cannot be used.
@@ -188,7 +204,7 @@ const DescriptionSection = ({
                   onClick={() => {
                     setShowRestoreModal(true);
                   }}
-                  icon={ArrowPathIcon}
+                  icon={RefreshCw02}
                 />
               </div>
             )}

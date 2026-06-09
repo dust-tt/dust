@@ -7,7 +7,11 @@ import {
   isFileAttachmentType,
   makeFileAttachment,
 } from "@app/lib/api/assistant/conversation/attachments";
-import { parseScopedFilePath } from "@app/lib/api/files/mount_path";
+import { DustFileSystem } from "@app/lib/api/file_system";
+import {
+  isCanonicalScopedPath,
+  parseScopedFilePath,
+} from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -16,6 +20,7 @@ import { isAgentMessageType } from "@app/types/assistant/conversation";
 import { isContentFragmentType } from "@app/types/content_fragment";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import { PassThrough } from "stream";
 
 export function sanitizeFilename(filename: string): string {
   return filename
@@ -46,6 +51,55 @@ export async function resolveConversationFileRef(
   fileId: string,
   agentLoopContext: AgentLoopContextType | undefined
 ): Promise<Result<ConversationFileRef, string>> {
+  // Canonical scoped paths (conversation-{id}/..., pod-{id}/...) produced by the new
+  // DustFileSystem layer. Resolved directly — no conversation context needed.
+  if (isCanonicalScopedPath(fileId)) {
+    const fsResult = await DustFileSystem.fromScopedPath(auth, fileId);
+    if (fsResult.isErr()) {
+      return new Err(fsResult.error.message);
+    }
+    const fs = fsResult.value;
+
+    const statResult = await fs.stat(fileId);
+    if (statResult.isErr()) {
+      return new Err(statResult.error.message);
+    }
+    if (!statResult.value) {
+      return new Err(`File not found: \`${fileId}\`.`);
+    }
+
+    const { contentType, sizeBytes } = statResult.value;
+    const filename = fileId.split("/").pop() ?? fileId;
+
+    return new Ok({
+      contentType,
+      sizeBytes,
+      fileName: sanitizeFilename(filename),
+      getSignedUrl: async () => {
+        const urlResult = await fs.getDownloadUrl(fileId);
+        if (urlResult.isErr()) {
+          throw new Error(urlResult.error.message);
+        }
+        return urlResult.value;
+      },
+      createReadStream: () => {
+        const pass = new PassThrough();
+        void fs.read(fileId).then((result) => {
+          if (result.isErr() || !result.value) {
+            pass.destroy(
+              result.isErr()
+                ? new Error(result.error.message)
+                : new Error(`File not found: \`${fileId}\``)
+            );
+          } else {
+            result.value.pipe(pass);
+          }
+        });
+        return pass;
+      },
+    });
+  }
+
   if (!agentLoopContext?.runContext) {
     return new Err("No conversation context available");
   }
@@ -115,6 +169,43 @@ export async function getFileFromConversationAttachment(
 > {
   if (!agentLoopContext?.runContext) {
     return new Err("No conversation context available");
+  }
+
+  // Canonical scoped paths (conversation-{id}/..., pod-{id}/...) — resolve via DustFileSystem.
+  if (isCanonicalScopedPath(fileId)) {
+    const fsResult = await DustFileSystem.fromScopedPath(auth, fileId);
+    if (fsResult.isErr()) {
+      return new Err(fsResult.error.message);
+    }
+    const fs = fsResult.value;
+
+    const statResult = await fs.stat(fileId);
+    if (statResult.isErr()) {
+      return new Err(statResult.error.message);
+    }
+    if (!statResult.value) {
+      return new Err(`File not found: \`${fileId}\`.`);
+    }
+
+    const readResult = await fs.read(fileId);
+    if (readResult.isErr()) {
+      return new Err(readResult.error.message);
+    }
+    if (!readResult.value) {
+      return new Err(`File not found: \`${fileId}\`.`);
+    }
+
+    const bufferResult = await streamToBuffer(readResult.value);
+    if (bufferResult.isErr()) {
+      return new Err(bufferResult.error);
+    }
+
+    const filename = fileId.split("/").pop() ?? fileId;
+    return new Ok({
+      buffer: bufferResult.value,
+      filename: sanitizeFilename(filename),
+      contentType: statResult.value.contentType,
+    });
   }
 
   // Scoped paths resolve through mount path.

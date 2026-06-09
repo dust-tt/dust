@@ -101,6 +101,7 @@ export async function* getConversationEvents({
   } catch (e) {
     logger.error({ error: e }, "Error getting conversation events");
   } finally {
+    signal.removeEventListener("abort", unsubscribe);
     unsubscribe();
   }
 }
@@ -189,6 +190,20 @@ export async function interruptAgentLoop(
   });
 }
 
+export type MessageStreamEvent = {
+  eventId: string;
+  data: (
+    | AgentErrorEvent
+    | AgentActionRunningEvents
+    | AgentActionSuccessEvent
+    | AgentGenerationCancelledEvent
+    | AgentToolCallStartedEvent
+    | GenerationTokensEvent
+  ) & {
+    step: number;
+  };
+};
+
 export async function* getMessagesEvents(
   auth: Authenticator,
   {
@@ -196,22 +211,7 @@ export async function* getMessagesEvents(
     lastEventId,
     signal,
   }: { messageId: string; lastEventId: string | null; signal: AbortSignal }
-): AsyncGenerator<
-  {
-    eventId: string;
-    data: (
-      | AgentErrorEvent
-      | AgentActionRunningEvents
-      | AgentActionSuccessEvent
-      | AgentGenerationCancelledEvent
-      | AgentToolCallStartedEvent
-      | GenerationTokensEvent
-    ) & {
-      step: number;
-    };
-  },
-  void
-> {
+): AsyncGenerator<MessageStreamEvent, void> {
   const pubsubChannel = getMessageChannelId(messageId);
 
   const start = Date.now();
@@ -266,6 +266,7 @@ export async function* getMessagesEvents(
   } catch (e) {
     logger.error({ error: e }, "Error getting messages events");
   } finally {
+    signal.removeEventListener("abort", unsubscribe);
     unsubscribe();
   }
 }

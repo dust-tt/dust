@@ -2,13 +2,7 @@
 import { P } from "@app/components/home/ContentComponents";
 import { LandingEmailSignup } from "@app/components/home/content/Landing/LandingEmailSignup";
 import { TRACKING_AREAS } from "@app/lib/tracking";
-import {
-  CheckIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  cn,
-  Icon,
-} from "@dust-tt/sparkle";
+import { Check, ChevronLeft, ChevronRight, cn, Icon } from "@dust-tt/sparkle";
 import Image from "next/image";
 import { useState } from "react";
 
@@ -82,14 +76,14 @@ function TestimonialSlider({ testimonials }: TestimonialSliderProps) {
               className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition-colors hover:bg-gray-50"
               aria-label="Previous testimonial"
             >
-              <ChevronLeftIcon className="h-5 w-5" />
+              <ChevronLeft className="h-5 w-5" />
             </button>
             <button
               onClick={next}
               className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition-colors hover:bg-gray-50"
               aria-label="Next testimonial"
             >
-              <ChevronRightIcon className="h-5 w-5" />
+              <ChevronRight className="h-5 w-5" />
             </button>
           </div>
         </div>
@@ -184,7 +178,7 @@ export function GleanDeepDive({ pros, testimonials }: GleanDeepDiveProps) {
               {/* Pros */}
               <div>
                 <h3 className="mb-6 flex items-center gap-2 text-xl font-bold text-[#111418]">
-                  <Icon visual={CheckIcon} className="h-6 w-6 text-green-500" />
+                  <Icon visual={Check} className="h-6 w-6 text-green-500" />
                   Why Dust Wins
                 </h3>
                 <ul className="space-y-4">

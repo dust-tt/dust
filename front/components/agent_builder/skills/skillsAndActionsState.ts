@@ -2,7 +2,7 @@ import type { AgentBuilderSkillsType } from "@app/components/agent_builder/Agent
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { SpaceType } from "@app/types/space";
 import { useMemo } from "react";
 
@@ -15,7 +15,7 @@ export function computeSkillsAndActionsState({
   skillFields: AgentBuilderSkillsType[];
   actionFields: BuilderAction[];
   mcpServerViews: MCPServerViewType[];
-  allSkills: SkillType[];
+  allSkills: SkillWithoutInstructionsAndToolsType[];
   spaces: SpaceType[];
 }): {
   alreadyAddedSkillIds: Set<string>;
@@ -39,7 +39,7 @@ export function useSkillsAndActionsState(
   skillFields: AgentBuilderSkillsType[],
   actionFields: BuilderAction[],
   mcpServerViews: MCPServerViewType[],
-  allSkills: SkillType[],
+  allSkills: SkillWithoutInstructionsAndToolsType[],
   spaces: SpaceType[]
 ) {
   return useMemo(() => {

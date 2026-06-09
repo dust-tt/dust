@@ -1,18 +1,19 @@
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useDismissMention } from "@app/lib/swr/mentions";
 import type {
   ConversationWithoutContentType,
   RichMentionWithStatus,
 } from "@app/types/assistant/conversation";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
+  AlertCircle,
   Button,
   ContentMessage,
-  ExclamationCircleIcon,
   Icon,
-  XMarkIcon,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -47,8 +48,12 @@ export function MentionInvalid({
     messageId: message.sId,
   });
 
-  const isTriggeredByCurrentUser = useMemo(
-    () => !triggeringUser || triggeringUser.sId === user?.sId,
+  const canCurrentUserRespond = useMemo(
+    () =>
+      canCurrentUserRespondToParentUserMessage({
+        parentUserId: triggeringUser?.sId,
+        currentUserId: user?.sId,
+      }),
     [triggeringUser, user?.sId]
   );
 
@@ -61,7 +66,7 @@ export function MentionInvalid({
     }
   };
 
-  if (!isTriggeredByCurrentUser || mention.dismissed) {
+  if (!canCurrentUserRespond || mention.dismissed) {
     return null;
   }
 
@@ -69,15 +74,15 @@ export function MentionInvalid({
     case "user_restricted_by_conversation_access": {
       // Show warning message without approve/reject buttons
       // Different message for project conversations (non-editor can't add members)
-      const isProjectConv = isProjectConversation(conversation);
-      const message = isProjectConv
+      const isPodConv = isPodConversation(conversation);
+      const message = isPodConv
         ? "is not a member of this Pod and only Pod editors can add new members."
         : "doesn't have access to this conversation's spaces and won't be able to view it nor be invited.";
 
       return (
         <ContentMessage variant="warning" className="my-3 w-full max-w-full">
           <div className="flex items-center gap-2">
-            <Icon visual={ExclamationCircleIcon} className="hidden sm:block" />
+            <Icon visual={AlertCircle} className="hidden sm:block" />
             <div>
               <span className="font-semibold">{mention.label}</span> {message}
             </div>
@@ -86,7 +91,7 @@ export function MentionInvalid({
                 label="Dismiss"
                 variant="outline"
                 size="xs"
-                icon={XMarkIcon}
+                icon={XClose}
                 disabled={isSubmitting}
                 onClick={handleDismiss}
               />
@@ -100,7 +105,7 @@ export function MentionInvalid({
       return (
         <ContentMessage variant="warning" className="my-3 w-full max-w-full">
           <div className="flex items-center gap-2">
-            <Icon visual={ExclamationCircleIcon} className="hidden sm:block" />
+            <Icon visual={AlertCircle} className="hidden sm:block" />
             <div>
               <span className="font-semibold">{mention.label}</span> can't be
               invoked as it is configured to use at least one space that the
@@ -112,7 +117,7 @@ export function MentionInvalid({
                 label="Dismiss"
                 variant="outline"
                 size="xs"
-                icon={XMarkIcon}
+                icon={XClose}
                 disabled={isSubmitting}
                 onClick={handleDismiss}
               />

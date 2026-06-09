@@ -14,6 +14,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -200,6 +201,7 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
         createdByUserId: user.id,
         sourceMessageId: blob.sourceMessageModelId,
         branchedAt: blob.branchedAt,
+        fileCopyStatus: "pending",
       },
       { transaction }
     );
@@ -209,6 +211,52 @@ export class ConversationForkResource extends BaseResource<ConversationForkModel
     });
     assert(resource, "Created conversation fork must be fetchable.");
     return resource;
+  }
+
+  static async markFileCopied(
+    auth: Authenticator,
+    { childConversationModelId }: { childConversationModelId: ModelId }
+  ): Promise<void> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const [affectedCount] = await this.model.update(
+      { fileCopyStatus: "done" },
+      {
+        where: {
+          childConversationId: childConversationModelId,
+          workspaceId: owner.id,
+        },
+      }
+    );
+
+    if (affectedCount === 0) {
+      logger.warn(
+        {
+          childConversationModelId,
+          workspaceId: owner.id,
+        },
+        "[conversation_fork_queue] markFileCopied updated 0 rows — fork may remain blocked."
+      );
+    }
+  }
+
+  static async markFileCopiedByDestSId(
+    auth: Authenticator,
+    { childConversationSId }: { childConversationSId: string }
+  ): Promise<void> {
+    const owner = auth.getNonNullableWorkspace();
+    const conv = await ConversationModel.findOne({
+      where: { sId: childConversationSId, workspaceId: owner.id },
+      attributes: ["id"],
+    });
+    if (!conv) {
+      logger.warn(
+        { childConversationSId, workspaceId: owner.id },
+        "[conversation_fork_queue] markFileCopiedByDestSId: conversation not found, fork may remain blocked."
+      );
+      return;
+    }
+    await this.markFileCopied(auth, { childConversationModelId: conv.id });
   }
 
   static async fetchByModelIds(

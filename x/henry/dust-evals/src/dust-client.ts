@@ -1,7 +1,56 @@
 import { DustAPI } from "@dust-tt/client"
-import type { LoggerInterface } from "@dust-tt/client"
+import type {
+  ConversationPublicType,
+  LoggerInterface,
+} from "@dust-tt/client"
 import type { Result, AgentResponse } from "./types"
 import { Ok, Err } from "./types"
+
+const AGENT_MESSAGE_POLL_ATTEMPTS = 8
+const AGENT_MESSAGE_POLL_INITIAL_DELAY_MS = 250
+const AGENT_MESSAGE_POLL_MAX_DELAY_MS = 2000
+
+function hasAgentMessageFor(
+  conversation: ConversationPublicType,
+  userMessageId: string
+): boolean {
+  return conversation.content.some((versions) => {
+    const m = versions[versions.length - 1]
+    return (
+      m != null &&
+      m.type === "agent_message" &&
+      m.parentMessageId === userMessageId
+    )
+  })
+}
+
+async function pollForAgentMessage(
+  client: DustAPI,
+  conversationId: string,
+  userMessageId: string
+): Promise<Result<ConversationPublicType>> {
+  let delayMs = AGENT_MESSAGE_POLL_INITIAL_DELAY_MS
+  for (let attempt = 1; attempt <= AGENT_MESSAGE_POLL_ATTEMPTS; attempt++) {
+    await new Promise((r) => setTimeout(r, delayMs))
+    const res = await client.getConversation({ conversationId })
+    if (!res.isOk()) {
+      return Err(
+        new Error(
+          `Failed to poll conversation ${conversationId}: ${JSON.stringify(res.error)}`
+        )
+      )
+    }
+    if (hasAgentMessageFor(res.value, userMessageId)) {
+      return Ok(res.value)
+    }
+    delayMs = Math.min(delayMs * 2, AGENT_MESSAGE_POLL_MAX_DELAY_MS)
+  }
+  return Err(
+    new Error(
+      `Agent message not present after ${AGENT_MESSAGE_POLL_ATTEMPTS} polls for conversation ${conversationId}`
+    )
+  )
+}
 
 export interface DustClientConfig {
   apiKey: string
@@ -138,7 +187,7 @@ export class DustClient {
         )
       }
 
-      const conversation = conversationRes.value.conversation
+      let conversation = conversationRes.value.conversation
       const userMessageId = conversationRes.value.message?.sId
 
       if (!userMessageId) {
@@ -146,6 +195,21 @@ export class DustClient {
       }
 
       const conversationId = conversation.sId
+
+      // Under load the createConversation response sometimes lands before the
+      // agent_message has been persisted to conversation.content. The SDK then
+      // fails with "Failed to retrieve agent message". Poll briefly to recover.
+      if (!hasAgentMessageFor(conversation, userMessageId)) {
+        const polled = await pollForAgentMessage(
+          this.client,
+          conversationId,
+          userMessageId
+        )
+        if (!polled.isOk) {
+          return Err(polled.error)
+        }
+        conversation = polled.value
+      }
 
       // Stream the agent response.
       let fullResponse = ""

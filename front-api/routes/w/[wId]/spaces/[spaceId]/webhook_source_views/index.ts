@@ -1,31 +1,31 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
+import type {
+  GetWebhookSourceViewsResponseBody,
+  PostWebhookSourceViewResponseBody,
+} from "@app/lib/api/webhook_source";
+import { PostWebhookSourceViewBodySchema } from "@app/lib/api/webhook_source";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import type { SpaceKind } from "@app/types/space";
-
-import { spaceResource } from "@front-api/middleware/space_resource";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withSpace } from "@front-api/middlewares/with_space";
 
 import webhookSourceViewId from "./[webhookSourceViewId]";
 
-const PostWebhookSourceViewBodySchema = z.object({
-  webhookSourceId: z.string(),
-});
-
 // Mounted under /api/w/:wId/spaces/:spaceId/webhook_source_views.
-const app = new Hono();
+const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  withSpace({ requireCanReadOrAdministrate: true }),
+  async (ctx): HandlerResult<GetWebhookSourceViewsResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
     const views = await WebhookSourcesViewResource.listBySpace(auth, space);
-    return c.json({
+    return ctx.json({
       success: true,
       webhookSourceViews: views.map((v) => v.toJSON()),
     });
@@ -34,26 +34,17 @@ app.get(
 
 app.post(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  ensureIsAdmin(),
+  withSpace({ requireCanReadOrAdministrate: true }),
   validate("json", PostWebhookSourceViewBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
-    const { webhookSourceId } = c.req.valid("json");
-
-    if (!auth.isAdmin()) {
-      return apiError(c, {
-        status_code: 403,
-        api_error: {
-          type: "webhook_source_view_auth_error",
-          message: "User is not authorized to add webhook sources to a space.",
-        },
-      });
-    }
+  async (ctx): HandlerResult<PostWebhookSourceViewResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const { webhookSourceId } = ctx.req.valid("json");
 
     const allowedSpaceKinds: SpaceKind[] = ["regular", "global"];
     if (!allowedSpaceKinds.includes(space.kind)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -69,7 +60,7 @@ app.post(
         webhookSourceId
       );
     if (!systemView) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -83,7 +74,7 @@ app.post(
       systemView,
       space,
     });
-    return c.json({ success: true, webhookSourceView: view.toJSON() });
+    return ctx.json({ success: true, webhookSourceView: view.toJSON() });
   }
 );
 

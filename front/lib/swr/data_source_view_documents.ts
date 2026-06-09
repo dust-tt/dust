@@ -1,4 +1,9 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { GetDataSourceViewDocumentResponseBody } from "@app/lib/api/data_source_view";
+import type {
+  PatchDocumentResponseBody,
+  PostDocumentResponseBody,
+} from "@app/lib/api/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
@@ -6,9 +11,6 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { GetDataSourceViewDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/documents/[documentId]";
-import type { PostDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents";
-import type { PatchDocumentResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents/[documentId]";
 import type {
   PatchDataSourceDocumentRequestBody,
   PostDataSourceDocumentRequestBody,

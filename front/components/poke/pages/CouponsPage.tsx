@@ -1,11 +1,11 @@
 import { CreateCouponForm } from "@app/components/poke/coupons/CreateCouponForm";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import {
   usePokeArchiveCoupon,
   usePokeCouponRedemptions,
   usePokeCoupons,
 } from "@app/lib/swr/poke";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import type {
   CouponDiscountType,
   CouponRedemptionStatus,
@@ -15,14 +15,14 @@ import type {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
-  ArchiveIcon,
+  Archive,
   Button,
-  ChevronDownIcon,
-  ChevronRightIcon,
+  ChevronDown,
+  ChevronRight,
   Chip,
   DataTable,
   LinkWrapper,
-  PlusIcon,
+  Plus,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -77,9 +77,9 @@ const couponColumns: ColumnDef<CouponRowData>[] = [
     header: "",
     cell: ({ row }) =>
       row.original.isExpanded ? (
-        <ChevronDownIcon className="h-4 w-4" />
+        <ChevronDown className="h-4 w-4" />
       ) : (
-        <ChevronRightIcon className="h-4 w-4" />
+        <ChevronRight className="h-4 w-4" />
       ),
     meta: { className: "w-8" },
   },
@@ -276,7 +276,7 @@ function CouponRedemptionsPanel({ coupon }: CouponRedemptionsPanelProps) {
 }
 
 export function CouponsPage() {
-  useDocumentTitle("Poke - Coupons");
+  usePokePageMetadata({ name: "Coupons" });
 
   const { coupons, isCouponsLoading, mutate } = usePokeCoupons();
   const archiveCoupon = usePokeArchiveCoupon();
@@ -299,7 +299,7 @@ export function CouponsPage() {
               {
                 kind: "item" as const,
                 label: "Archive",
-                icon: ArchiveIcon,
+                icon: Archive,
                 onClick: (e: MouseEvent) => {
                   e.stopPropagation();
                   void archiveCoupon(coupon.sId);
@@ -341,7 +341,7 @@ export function CouponsPage() {
 
       <div className="mb-4 flex w-full justify-end">
         <Button
-          icon={PlusIcon}
+          icon={Plus}
           label="Create coupon"
           variant="outline"
           disabled={showCreateForm}

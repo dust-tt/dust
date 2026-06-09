@@ -1,17 +1,17 @@
-import { apiError } from "@front-api/middleware/utils";
-import type { Context } from "hono";
-import { Hono } from "hono";
-import { z } from "zod";
-import { fromError } from "zod-validation-error";
-
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
+import type {
+  PostDataSourceRequestBody,
+  PostSpaceDataSourceResponseBody,
+} from "@app/lib/api/data_sources";
 import {
   createDataSourceWithoutProvider,
+  PostDataSourceRequestBodySchema,
+  PostDataSourceWithProviderRequestBodySchema,
   registerSlackWebhookRouterEntry,
 } from "@app/lib/api/data_sources";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
@@ -36,71 +36,51 @@ import { ServerSideTracking } from "@app/lib/tracking/server";
 import { isDisposableEmailDomain } from "@app/lib/utils/disposable_email_domains";
 import logger from "@app/logger/logger";
 import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
-import {
-  ConnectorConfigurationTypeSchema,
-  ConnectorsAPI,
-} from "@app/types/connectors/connectors_api";
+import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { WebCrawlerConfigurationTypeSchema } from "@app/types/connectors/webcrawler";
 import { CoreAPI, EMBEDDING_CONFIGS } from "@app/types/core/core_api";
 import { DEFAULT_QDRANT_CLUSTER } from "@app/types/core/data_source";
-import type { DataSourceType } from "@app/types/data_source";
-import { CONNECTOR_PROVIDERS } from "@app/types/data_source";
-import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { PlanType } from "@app/types/plan";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
-
-import { spaceResource } from "@front-api/middleware/space_resource";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withSpace } from "@front-api/middlewares/with_space";
+import type { Context } from "hono";
+import type { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 import dsId from "./[dsId]";
 
-export const PostDataSourceWithProviderRequestBodySchema = z.object({
-  provider: z.enum(CONNECTOR_PROVIDERS),
-  name: z.string().optional(),
-  configuration: ConnectorConfigurationTypeSchema,
-  connectionId: z.string().optional(),
-  relatedCredentialId: z.string().optional(),
-  extraConfig: z.record(z.string(), z.string()).optional(),
-});
-
-const PostDataSourceWithoutProviderRequestBodySchema = z.object({
-  name: z.string(),
-  description: z.string().nullable(),
-});
-
-const PostDataSourceRequestBodySchema = z.union([
-  PostDataSourceWithoutProviderRequestBodySchema,
+export type { PostDataSourceRequestBody, PostSpaceDataSourceResponseBody };
+// Contract types and schemas are owned by `@app/lib/api/data_sources` and
+// re-exported here to preserve this module's public surface.
+export {
+  PostDataSourceRequestBodySchema,
   PostDataSourceWithProviderRequestBodySchema,
-]);
-
-export type PostDataSourceRequestBody = z.infer<
-  typeof PostDataSourceRequestBodySchema
->;
-
-export type PostSpaceDataSourceResponseBody = {
-  dataSource: DataSourceType;
-  dataSourceView: DataSourceViewType;
 };
 
 // Mounted under /api/w/:wId/spaces/:spaceId/data_sources.
-const app = new Hono();
+const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
   validate("json", PostDataSourceRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx): HandlerResult<PostSpaceDataSourceResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
     const owner = auth.getNonNullableWorkspace();
     const plan = auth.getNonNullablePlan();
 
     if (space.isSystem()) {
       if (!space.canAdministrate(auth)) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "data_source_auth_error",
@@ -111,7 +91,7 @@ app.post(
       }
     } else {
       if (space.isGlobal() && !auth.isBuilder()) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "data_source_auth_error",
@@ -122,7 +102,7 @@ app.post(
       }
 
       if (!space.canWrite(auth)) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "data_source_auth_error",
@@ -133,11 +113,11 @@ app.post(
       }
     }
 
-    const body = c.req.valid("json");
+    const body = ctx.req.valid("json");
 
     if ("provider" in body) {
       return handleDataSourceWithProvider({
-        c,
+        ctx,
         auth,
         plan,
         owner,
@@ -161,7 +141,7 @@ app.post(
           : r.error.code === "plan_limit_error"
             ? 401
             : 400;
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: status,
         api_error: {
           type: r.error.code,
@@ -188,7 +168,7 @@ app.post(
       },
     });
 
-    return c.json(
+    return ctx.json(
       {
         dataSource: dataSourceView.dataSource.toJSON(),
         dataSourceView: dataSourceView.toJSON(),
@@ -204,26 +184,26 @@ export default app;
 
 // Data sources with provider = all connectors except folders.
 async function handleDataSourceWithProvider({
-  c,
+  ctx,
   auth,
   plan,
   owner,
   space,
   body,
 }: {
-  c: Context;
+  ctx: Context;
   auth: Authenticator;
   plan: PlanType;
   owner: WorkspaceType;
   space: SpaceResource;
   body: z.infer<typeof PostDataSourceWithProviderRequestBodySchema>;
-}) {
+}): HandlerResult<PostSpaceDataSourceResponseBody> {
   const { provider, name, connectionId, relatedCredentialId, extraConfig } =
     body;
 
   const isConnectionIdRequired = isConnectionIdRequiredForProvider(provider);
   if (isConnectionIdRequired && !connectionId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -240,7 +220,7 @@ async function handleDataSourceWithProvider({
     featureFlags
   );
   if (!isDataSourceAllowedInPlan) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 401,
       api_error: {
         type: "plan_limit_error",
@@ -251,7 +231,7 @@ async function handleDataSourceWithProvider({
 
   // System spaces only for managed data sources; webcrawler is regular-only.
   if (space.isSystem() && provider === "webcrawler") {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -260,7 +240,7 @@ async function handleDataSourceWithProvider({
     });
   }
   if (!space.isSystem() && provider !== "webcrawler") {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -272,9 +252,9 @@ async function handleDataSourceWithProvider({
   // The suffix is optional and used manually to allow multiple data sources
   // of the same provider. Search for "setupWithSuffixConnector" in the
   // codebase.
-  const suffix = c.req.query("suffix") ?? null;
+  const suffix = ctx.req.query("suffix") ?? null;
   if (suffix && !isValidConnectorSuffix(suffix)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -315,7 +295,7 @@ async function handleDataSourceWithProvider({
     const configurationRes =
       WebCrawlerConfigurationTypeSchema.safeParse(configuration);
     if (!configurationRes.success) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -334,7 +314,7 @@ async function handleDataSourceWithProvider({
       { error: systemAPIKeyRes.error },
       "Could not create the system API key"
     );
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -351,7 +331,7 @@ async function handleDataSourceWithProvider({
 
   const dustProject = await coreAPI.createProject();
   if (dustProject.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -369,7 +349,7 @@ async function handleDataSourceWithProvider({
       { error: normalizeError(err) },
       "Failed to get LLM credentials to create data source"
     );
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -399,7 +379,7 @@ async function handleDataSourceWithProvider({
   });
 
   if (dustDataSource.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 500,
       api_error: {
         type: "internal_server_error",
@@ -416,6 +396,7 @@ async function handleDataSourceWithProvider({
     const deleteRes = await coreAPI.deleteDataSource({
       projectId: dustProjectId,
       dataSourceId: dustDataSourceId,
+      caller: "private-api-create-rollback",
     });
     if (deleteRes.isErr()) {
       logger.error(
@@ -432,7 +413,7 @@ async function handleDataSourceWithProvider({
   );
   if (existingDataSource) {
     await rollbackCoreDataSource();
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -487,7 +468,7 @@ async function handleDataSourceWithProvider({
     );
     if (checkConnectionOwnershipRes.isErr()) {
       await rollbackManagedDataSource();
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -517,7 +498,7 @@ async function handleDataSourceWithProvider({
     switch (connectorsRes.error.type) {
       case "authorization_error":
       case "invalid_request_error":
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
@@ -526,7 +507,7 @@ async function handleDataSourceWithProvider({
           },
         });
       default:
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
@@ -562,6 +543,7 @@ async function handleDataSourceWithProvider({
       const deleteRes = await coreAPI.deleteDataSource({
         projectId: dustProjectId,
         dataSourceId: dustDataSourceId,
+        caller: "private-api-connector-rollback",
       });
       if (deleteRes.isErr()) {
         logger.error(
@@ -570,7 +552,7 @@ async function handleDataSourceWithProvider({
         );
       }
 
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -597,7 +579,7 @@ async function handleDataSourceWithProvider({
   });
 
   // Build the response before scheduling fire-and-forget tracking work.
-  const response = c.json(
+  const response = ctx.json(
     {
       dataSource: dataSource.toJSON(),
       dataSourceView: dataSourceView.toJSON(),

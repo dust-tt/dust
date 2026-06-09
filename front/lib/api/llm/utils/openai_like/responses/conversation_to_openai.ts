@@ -1,12 +1,15 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
-import { OPENAI_MODEL_CONFIGS } from "@app/lib/api/llm/clients/openai/types";
+import {
+  isOpenAIResponsesWhitelistedModelId,
+  OPENAI_MODEL_CONFIGS,
+} from "@app/lib/api/llm/clients/openai/types";
+import type { XaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import {
   extractEncryptedContentFromMetadata,
   extractIdFromMetadata,
   parseResponseFormatSchema,
 } from "@app/lib/api/llm/utils";
-import type { RegionType } from "@app/lib/api/regions/config";
 import { config } from "@app/lib/api/regions/config";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 import type {
@@ -19,6 +22,7 @@ import type {
   ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import type { RegionType } from "@app/types/region";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import compact from "lodash/compact";
 import type {
@@ -188,17 +192,19 @@ const REASONING_CONFIG_MAPPING: Record<ReasoningEffort, OpenAIReasoningEffort> =
   };
 
 export function toReasoning(
-  modelId: OpenAIWhitelistedModelId,
+  modelId: OpenAIWhitelistedModelId | XaiWhitelistedModelId,
   reasoningEffort: ReasoningEffort | null
 ): Reasoning | null {
   if (!reasoningEffort) {
     return null;
   }
 
-  const reasoningConfigMapping = {
-    ...REASONING_CONFIG_MAPPING,
-    ...OPENAI_MODEL_CONFIGS[modelId].reasoningConfigMapping,
-  };
+  const reasoningConfigMapping = isOpenAIResponsesWhitelistedModelId(modelId)
+    ? {
+        ...REASONING_CONFIG_MAPPING,
+        ...OPENAI_MODEL_CONFIGS[modelId]?.reasoningConfigMapping,
+      }
+    : REASONING_CONFIG_MAPPING;
 
   return {
     effort: reasoningConfigMapping[reasoningEffort],

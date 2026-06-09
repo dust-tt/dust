@@ -1,9 +1,9 @@
+import { isProviderWhitelisted } from "@app/lib/api/assistant/models";
 import { ImageGenerationGoogleLLM } from "@app/lib/api/llm/clients/google/imageGeneration";
 import { ImageGenerationOpenAILLM } from "@app/lib/api/llm/clients/openai/imageGeneration";
 import type { ImageGenerationLLM } from "@app/lib/api/llm/imageGeneration";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { config as regionConfig } from "@app/lib/api/regions/config";
-import { isProviderWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
 import {

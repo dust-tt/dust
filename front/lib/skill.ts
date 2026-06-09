@@ -9,11 +9,11 @@ import type {
   SkillType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
-import { cn, PuzzleIcon } from "@dust-tt/sparkle";
+import { cn, PuzzlePiece01 } from "@dust-tt/sparkle";
 import type { AvatarSizeType } from "@dust-tt/sparkle/dist/esm/components/Avatar";
 import React from "react";
 
-export const SKILL_ICON = PuzzleIcon;
+export const SKILL_ICON = PuzzlePiece01;
 
 export const SKILL_AVATAR_BACKGROUND_COLOR =
   "bg-highlight-50 dark:bg-highlight-50-night";

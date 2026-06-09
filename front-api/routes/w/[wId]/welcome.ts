@@ -1,19 +1,15 @@
-import { Hono } from "hono";
-
+import type { GetWelcomeResponseBody } from "@app/lib/api/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import { detectEmailProvider } from "@app/lib/utils/email_provider_detection";
-
-export type GetWelcomeResponseBody = {
-  isFirstAdmin: boolean;
-  emailProvider: EmailProviderType;
-};
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 // Mounted at /api/w/:wId/welcome.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+/** @ignoreswagger */
+app.get("/", async (ctx): HandlerResult<GetWelcomeResponseBody> => {
+  const auth = ctx.get("auth");
 
   const owner = auth.getNonNullableWorkspace();
   const user = auth.getNonNullableUser();
@@ -31,8 +27,7 @@ app.get("/", async (c) => {
     `user-${userJson.sId}`
   );
 
-  const body: GetWelcomeResponseBody = { isFirstAdmin, emailProvider };
-  return c.json(body);
+  return ctx.json({ isFirstAdmin, emailProvider });
 });
 
 export default app;

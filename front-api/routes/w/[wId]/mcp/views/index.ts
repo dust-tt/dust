@@ -1,16 +1,17 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-import { fromError } from "zod-validation-error";
-
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { GetMCPServerViewsListResponseBody } from "@app/lib/api/mcp";
 import {
   oauthProviderRequiresWorkspaceConnectionForPersonalAuth,
   withWorkspaceConnectionRequirement,
 } from "@app/lib/api/mcp_oauth_prerequisites";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
+
+import view from "./[viewId]";
 
 const MCPViewsRequestAvailabilitySchema = z.enum(["manual", "auto"]);
 type MCPViewsRequestAvailabilityType = z.infer<
@@ -22,11 +23,6 @@ const GetMCPViewsRequestSchema = z.object({
   availabilities: z.array(MCPViewsRequestAvailabilitySchema),
 });
 
-export type GetMCPServerViewsListResponseBody = {
-  success: boolean;
-  serverViews: MCPServerViewType[];
-};
-
 // We don't allow fetching "auto_hidden_builder".
 function isAllowedAvailability(
   availability: string
@@ -35,15 +31,16 @@ function isAllowedAvailability(
 }
 
 // Mounted at /api/w/:wId/mcp/views.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const spaceIds = c.req.query("spaceIds");
-  const availabilities = c.req.query("availabilities");
+/** @ignoreswagger */
+app.get("/", async (ctx): HandlerResult<GetMCPServerViewsListResponseBody> => {
+  const auth = ctx.get("auth");
+  const spaceIds = ctx.req.query("spaceIds");
+  const availabilities = ctx.req.query("availabilities");
 
   if (!spaceIds || !availabilities) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -57,7 +54,7 @@ app.get("/", async (c) => {
     availabilities: availabilities.split(","),
   });
   if (!queryValidation.success) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -99,7 +96,7 @@ app.get("/", async (c) => {
   ];
 
   if (mcpServerIdsRequiringWorkspaceConnection.length === 0) {
-    return c.json({ success: true, serverViews: flattenedServerViews });
+    return ctx.json({ success: true, serverViews: flattenedServerViews });
   }
 
   const workspaceConnections =
@@ -111,7 +108,7 @@ app.get("/", async (c) => {
     workspaceConnections.map((connection) => connection.mcpServerId)
   );
 
-  return c.json({
+  return ctx.json({
     success: true,
     serverViews: flattenedServerViews.map((serverView) => ({
       ...serverView,
@@ -129,5 +126,7 @@ app.get("/", async (c) => {
     })),
   });
 });
+
+app.route("/:viewId", view);
 
 export default app;

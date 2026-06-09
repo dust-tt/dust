@@ -1,30 +1,29 @@
 import {
   ActionCardBlock,
-  ArrowDownOnSquareIcon,
-  ArrowLeftIcon,
+  Download01,
+  ArrowRight,
   AttachmentChip,
-  AttachmentIcon,
+  Attachment01,
   Avatar,
-  Bar,
-  BoltIcon,
-  Breadcrumbs,
+  Zap,
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
+  Check,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DocumentIcon,
-  ExternalLinkIcon,
+  File02,
+  LinkExternal01,
   Icon,
-  ImageIcon,
+  Image01,
   ImageZoomDialog,
   Input,
   Markdown,
-  MoreIcon,
+  DotsHorizontal,
   NotionLogo,
   Sheet,
   SheetContainer,
@@ -34,9 +33,9 @@ import {
   SheetHeader,
   SheetTitle,
   SlackLogo,
-  TableIcon,
+  Table,
 } from "@dust-tt/sparkle";
-import type { ActionCardState, BreadcrumbItem } from "@dust-tt/sparkle";
+import { ActionCardState, BreadcrumbsItem } from "@dust-tt/sparkle";
 import {
   NewConversationActiveIndicator,
   NewConversationAgentMessage,
@@ -71,6 +70,7 @@ import type {
 } from "../data/types";
 import { getUserById } from "../data/users";
 import { InputBar } from "./InputBar";
+import { SuggestionBox } from "./SuggestionBox";
 
 interface ConversationViewProps {
   conversation: Conversation;
@@ -78,10 +78,7 @@ interface ConversationViewProps {
   users: User[];
   agents: Agent[];
   conversationsWithMessages: Conversation[]; // Conversations that have messages to randomly select from
-  showBackButton?: boolean;
-  onBack?: () => void;
   conversationTitle?: string;
-  projectTitle?: string;
   onAcceptPendingValidation?: (blockId: string) => void;
   onCancelPendingValidation?: (blockId: string) => void;
   validationDisplayMode?: "inline" | "sheet";
@@ -89,6 +86,8 @@ interface ConversationViewProps {
   onSend?: () => void;
   /** When validationDisplayMode is "sheet", the validation content to show in the sheet (e.g. when user clicked Send). */
   pendingValidationForSheet?: ConversationPendingValidation | null;
+  /** When set, citation clicks call this instead of opening the internal sheet. */
+  onCitationOpen?: (citation: { title: string; icon?: string }) => void;
 }
 
 export function ConversationView({
@@ -97,15 +96,13 @@ export function ConversationView({
   users,
   agents,
   conversationsWithMessages,
-  showBackButton = false,
-  onBack,
   conversationTitle,
-  projectTitle,
   onAcceptPendingValidation,
   onCancelPendingValidation,
   validationDisplayMode = "inline",
   onSend,
   pendingValidationForSheet,
+  onCitationOpen,
 }: ConversationViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -343,10 +340,24 @@ export function ConversationView({
   const [actionCardStates, setActionCardStates] = useState<
     Map<string, ActionCardState>
   >(new Map());
+  const [taskSuggestionTextById, setTaskSuggestionTextById] = useState<
+    Record<string, string>
+  >({});
+  const [hiddenTaskSuggestionBoxIds, setHiddenTaskSuggestionBoxIds] = useState<
+    Set<string>
+  >(new Set());
+  const [hiddenTaskSuggestionItemIds, setHiddenTaskSuggestionItemIds] =
+    useState<Set<string>>(new Set());
 
   useEffect(() => {
     setActionCardStates(new Map(baseActionStates));
   }, [baseActionStates, conversation.id]);
+
+  useEffect(() => {
+    setTaskSuggestionTextById({});
+    setHiddenTaskSuggestionBoxIds(new Set());
+    setHiddenTaskSuggestionItemIds(new Set());
+  }, [conversation.id]);
 
   const toggleReaction = useCallback(
     (messageId: string, emoji: string) => {
@@ -410,6 +421,29 @@ export function ConversationView({
     []
   );
 
+  const setTaskSuggestionText = useCallback((id: string, text: string) => {
+    setTaskSuggestionTextById((previousTextById) => ({
+      ...previousTextById,
+      [id]: text,
+    }));
+  }, []);
+
+  const hideTaskSuggestionItem = useCallback((id: string) => {
+    setHiddenTaskSuggestionItemIds((previousIds) => {
+      const nextIds = new Set(previousIds);
+      nextIds.add(id);
+      return nextIds;
+    });
+  }, []);
+
+  const hideTaskSuggestionBox = useCallback((id: string) => {
+    setHiddenTaskSuggestionBoxIds((previousIds) => {
+      const nextIds = new Set(previousIds);
+      nextIds.add(id);
+      return nextIds;
+    });
+  }, []);
+
   // Auto-scroll to bottom on mount and when conversation changes
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -417,22 +451,7 @@ export function ConversationView({
     }
   }, [conversation.id, itemsToDisplay.length]);
 
-  const breadcrumbItems: BreadcrumbItem[] = [];
-
-  if (showBackButton && projectTitle) {
-    if (onBack) {
-      breadcrumbItems.push({
-        label: projectTitle,
-        icon: ArrowLeftIcon,
-        onClick: onBack,
-      });
-    } else {
-      breadcrumbItems.push({
-        label: projectTitle,
-        icon: ArrowLeftIcon,
-      });
-    }
-  }
+  const breadcrumbItems: BreadcrumbsItem[] = [];
 
   breadcrumbItems.push({
     label: displayTitle,
@@ -447,16 +466,16 @@ export function ConversationView({
   ) => {
     switch (icon) {
       case "table":
-        return TableIcon;
+        return Table;
       case "slack":
         return SlackLogo;
       case "notion":
         return NotionLogo;
       case "image":
-        return ImageIcon;
+        return Image01;
       case "document":
       default:
-        return DocumentIcon;
+        return File02;
     }
   };
 
@@ -484,7 +503,7 @@ export function ConversationView({
               <AttachmentChip
                 key={attachment.id}
                 label={attachment.label}
-                icon={{ visual: DocumentIcon }}
+                icon={{ visual: File02 }}
               />
             ))}
           </div>
@@ -530,6 +549,82 @@ export function ConversationView({
       );
     }
 
+    if (message.taskSuggestionBoxes && message.taskSuggestionBoxes.length > 0) {
+      const visibleBoxes = message.taskSuggestionBoxes.filter(
+        (box) => !hiddenTaskSuggestionBoxIds.has(box.id)
+      );
+
+      if (visibleBoxes.length > 0) {
+        blocks.push(
+          <div
+            key={`${message.id}-task-suggestion-boxes`}
+            className="s-flex s-flex-col s-gap-3"
+          >
+            {visibleBoxes.map((box) => {
+              const visibleItems = box.items.filter(
+                (item) => !hiddenTaskSuggestionItemIds.has(item.id)
+              );
+
+              if (visibleItems.length === 0) {
+                return null;
+              }
+
+              return (
+                <SuggestionBox
+                  key={box.id}
+                  status="ready"
+                  workingLabel="Creating tasks..."
+                  title={box.title}
+                  headerIcon={box.variant === "created" ? Check : undefined}
+                  items={visibleItems.map((item) => {
+                    const groupUser = item.groupUserId
+                      ? getUserByOwnerId(item.groupUserId)
+                      : undefined;
+
+                    return {
+                      id: item.id,
+                      groupTitle: item.groupTitle,
+                      groupVisual: groupUser ? (
+                        <Avatar
+                          name={groupUser.fullName}
+                          visual={groupUser.portrait}
+                          size="xs"
+                          isRounded
+                        />
+                      ) : undefined,
+                      text: item.text,
+                    };
+                  })}
+                  textById={taskSuggestionTextById}
+                  acceptItemLabel={
+                    box.variant === "created" ? "Open task" : "Add this task"
+                  }
+                  acceptAllLabel={
+                    box.variant === "created" ? "Go to tasks" : "Accept all"
+                  }
+                  acceptAllButtonVariant={
+                    box.variant === "created" ? "outline" : undefined
+                  }
+                  acceptAllIcon={
+                    box.variant === "created" ? ArrowRight : undefined
+                  }
+                  rejectAllLabel={
+                    box.variant === "created" ? "Dismiss" : "Reject all"
+                  }
+                  showItemAcceptAction={box.variant !== "created"}
+                  showRejectAllAction={box.variant !== "created"}
+                  onTextChange={setTaskSuggestionText}
+                  onAcceptItem={hideTaskSuggestionItem}
+                  onAcceptAll={() => hideTaskSuggestionBox(box.id)}
+                  onRejectAll={() => hideTaskSuggestionBox(box.id)}
+                />
+              );
+            })}
+          </div>
+        );
+      }
+    }
+
     if (blocks.length === 0) {
       return null;
     }
@@ -555,7 +650,7 @@ export function ConversationView({
     const infoChip =
       currentGroup.infoChip?.icon === "bolt" ? (
         <span className="s-translate-y-0.5 s-text-muted-foreground dark:s-text-muted-foreground-night">
-          <Icon size="xs" visual={BoltIcon} />
+          <Icon size="xs" visual={Zap} />
         </span>
       ) : undefined;
 
@@ -597,11 +692,18 @@ export function ConversationView({
               label={citation.title}
               size="lg"
               onClick={() => {
-                setSelectedCitation(citation);
-                if (citation.imgSrc) {
-                  setIsImageZoomOpen(true);
+                if (onCitationOpen) {
+                  onCitationOpen({
+                    title: citation.title,
+                    icon: citation.icon,
+                  });
                 } else {
-                  setIsCitationSheetOpen(true);
+                  setSelectedCitation(citation);
+                  if (citation.imgSrc) {
+                    setIsImageZoomOpen(true);
+                  } else {
+                    setIsCitationSheetOpen(true);
+                  }
                 }
               }}
               {...(citation.imgSrc ? { imgSrc: citation.imgSrc } : {})}
@@ -793,21 +895,6 @@ export function ConversationView({
 
   return (
     <div className="s-flex s-h-full s-w-full s-flex-col s-overflow-hidden">
-      <Bar
-        title=" "
-        description={
-          <Breadcrumbs items={breadcrumbItems} size="sm" hasLighterFont />
-        }
-        size="sm"
-        rightActions={
-          <div className="s-flex s-gap-2">
-            <Button size="sm" variant="ghost" icon={AttachmentIcon} isSelect />
-            <Button size="sm" variant="ghost" icon={MoreIcon} />
-          </div>
-        }
-        position="top"
-        variant="default"
-      />
       <Dialog
         open={isRenameDialogOpen}
         onOpenChange={(open: boolean) => {
@@ -852,7 +939,7 @@ export function ConversationView({
       <div className="s-relative s-flex s-flex-1 s-flex-col s-overflow-hidden">
         <div
           ref={scrollContainerRef}
-          className="s-flex s-flex-1 s-flex-col s-overflow-y-auto"
+          className="s-flex s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto"
         >
           <NewConversationContainer>
             <div ref={messagesEndRef} className="s-h-12 s-shrink-0" />
@@ -863,7 +950,6 @@ export function ConversationView({
         <div className="s-pointer-events-none s-absolute s-bottom-4 s-left-0 s-right-0 s-flex s-justify-center">
           <div className="s-pointer-events-auto s-w-full s-max-w-4xl s-px-4">
             <InputBar
-              placeholder="Ask a question"
               className="s-shadow-xl"
               onSend={validationDisplayMode === "sheet" ? onSend : undefined}
             />
@@ -931,13 +1017,13 @@ export function ConversationView({
                     <Button
                       variant="outline"
                       size="icon-xs"
-                      icon={ArrowDownOnSquareIcon}
+                      icon={Download01}
                       tooltip="Download"
                     />
                     <Button
                       variant="outline"
                       size="icon-xs"
-                      icon={ExternalLinkIcon}
+                      icon={LinkExternal01}
                       tooltip="Open in tab"
                     />
                   </div>

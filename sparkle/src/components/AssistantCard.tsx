@@ -3,7 +3,7 @@ import type { IconOnlyButtonProps } from "@sparkle/components/Button";
 import type { CardVariantType } from "@sparkle/components/Card";
 import { Card, CardActionButton } from "@sparkle/components/Card";
 import { TruncatedText } from "@sparkle/components/TruncatedText";
-import { MoreIcon } from "@sparkle/icons/app/";
+import { DotsHorizontal } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
@@ -25,7 +25,9 @@ export const AssistantCardMore = React.forwardRef<
   HTMLButtonElement,
   AssistantCardMore
 >(({ ...props }, ref) => {
-  return <CardActionButton size="icon" ref={ref} icon={MoreIcon} {...props} />;
+  return (
+    <CardActionButton size="icon" ref={ref} icon={DotsHorizontal} {...props} />
+  );
 });
 AssistantCardMore.displayName = "AssistantCardMore";
 
@@ -57,7 +59,7 @@ export const AssistantCard = React.forwardRef<
     return (
       <Card
         ref={ref}
-        size="md"
+        size="sm"
         className={cn("s-flex s-flex-col s-gap-3", className)}
         onClick={onClick}
         onContextMenu={onContextMenu}
@@ -72,7 +74,7 @@ export const AssistantCard = React.forwardRef<
             <h3>
               <TruncatedText
                 lineClamp={1}
-                className="s-heading-base s-overflow-hidden s-text-ellipsis s-break-all"
+                className="s-text-sm s-font-medium s-overflow-hidden s-text-ellipsis s-break-all notranslate"
               >
                 {title}
               </TruncatedText>

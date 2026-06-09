@@ -4,11 +4,16 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { makeSId } from "@app/lib/resources/string_ids";
-import type { ProjectMetadataType } from "@app/types/project_metadata";
+import type { PodMetadataType } from "@app/types/project_metadata";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
+
+export type ProjectMetadataBlob = Omit<
+  CreationAttributes<ProjectMetadataModel>,
+  "workspaceId" | "spaceId"
+>;
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ProjectMetadataResource
@@ -88,10 +93,7 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
   static async makeNew(
     auth: Authenticator,
     space: SpaceResource,
-    blob: Omit<
-      CreationAttributes<ProjectMetadataModel>,
-      "workspaceId" | "spaceId"
-    >,
+    blob: ProjectMetadataBlob,
     transaction?: Transaction
   ): Promise<ProjectMetadataResource> {
     const model = await ProjectMetadataModel.create(
@@ -119,6 +121,13 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     transaction?: Transaction
   ) {
     await this.update({ description }, transaction);
+  }
+
+  updateDescriptionAndPinnedFramePath(blob: {
+    description?: string | null;
+    pinnedFramePath?: string | null;
+  }) {
+    return this.update(blob);
   }
 
   async updateLastTodoAnalysisAt(
@@ -156,6 +165,13 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     await this.update({ initialTodoAnalysisLookback }, transaction);
   }
 
+  async updatePinnedFramePath(
+    pinnedFramePath: string | null,
+    transaction?: Transaction
+  ) {
+    await this.update({ pinnedFramePath }, transaction);
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }
@@ -170,7 +186,7 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     return new Ok(undefined);
   }
 
-  toJSON(): ProjectMetadataType {
+  toJSON(): PodMetadataType {
     return {
       sId: this.sId,
       createdAt: this.createdAt.getTime(),
@@ -183,6 +199,7 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       archivedAt: this.archivedAt?.getTime() ?? null,
       todoGenerationEnabled: this.todoGenerationEnabled,
       lastTodoAnalysisAt: this.lastTodoAnalysisAt?.getTime() ?? null,
+      pinnedFramePath: this.pinnedFramePath ?? null,
     };
   }
 }

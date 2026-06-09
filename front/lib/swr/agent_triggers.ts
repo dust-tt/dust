@@ -1,4 +1,16 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type {
+  GetTriggersResponseBody,
+  GetUserTriggersResponseBody,
+  PatchTriggersRequestBody,
+  PostTextAsCronRuleRequestBody,
+  PostTextAsCronRuleResponseBody,
+  PostTriggersRequestBody,
+} from "@app/lib/api/assistant/configuration/triggers";
+import type {
+  PostWebhookFilterGeneratorRequestBody,
+  PostWebhookFilterGeneratorResponseBody,
+} from "@app/lib/api/assistant/configuration/triggers/webhook_filter_generator";
 import { clientFetch } from "@app/lib/egress/client";
 import { parseMatcherExpression } from "@app/lib/matcher";
 import {
@@ -7,21 +19,7 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type {
-  GetTriggersResponseBody,
-  PatchTriggersRequestBody,
-  PostTriggersRequestBody,
-} from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers";
-import type {
-  PostTextAsCronRuleRequestBody,
-  PostTextAsCronRuleResponseBody,
-} from "@app/pages/api/w/[wId]/assistant/agent_configurations/text_as_cron_rule";
-import type {
-  PostWebhookFilterGeneratorRequestBody,
-  PostWebhookFilterGeneratorResponseBody,
-} from "@app/pages/api/w/[wId]/assistant/agent_configurations/webhook_filter_generator";
-import type { GetUserTriggersResponseBody } from "@app/pages/api/w/[wId]/me/triggers";
-import type { GetTriggerEstimationResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]/trigger-estimation";
+import type { GetTriggerEstimationResponseBody } from "@app/lib/triggers/trigger_usage_estimation";
 import type { ScheduleConfig } from "@app/types/assistant/triggers";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";

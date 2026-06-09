@@ -1,11 +1,11 @@
 use anyhow::{Context, Result};
 
 // Keep these constants and frame layout in sync with egress-proxy/src/handshake.rs.
-pub const PROTOCOL_VERSION: u8 = 0x01;
-pub const ALLOW_RESPONSE: u8 = 0x00;
-pub const DENY_RESPONSE: u8 = 0x01;
+pub(super) const PROTOCOL_VERSION: u8 = 0x01;
+pub(super) const ALLOW_RESPONSE: u8 = 0x00;
+pub(super) const DENY_RESPONSE: u8 = 0x01;
 
-pub fn build_handshake_frame(
+pub(super) fn build_handshake_frame(
     token: &str,
     domain: &str,
     original_dest_port: u16,

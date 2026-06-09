@@ -13,7 +13,7 @@ import type {
 } from "@app/components/home/content/Solutions/configs/utils";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
-import { LightbulbIcon, RocketIcon, UserGroupIcon } from "@dust-tt/sparkle";
+import { Lightbulb04, Rocket02, Users01 } from "@dust-tt/sparkle";
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
@@ -70,7 +70,7 @@ export const Hero: HeroProps = {
     primary: {
       label: "Get started",
       href: "/home/pricing",
-      icon: RocketIcon,
+      icon: Rocket02,
     },
     secondary: {
       label: "Talk to sales",
@@ -83,19 +83,19 @@ export const Benefits: BenefitsProps = {
   sectionTitle: "Solve faster, satisfy more",
   items: [
     {
-      icon: RocketIcon,
+      icon: Rocket02,
       title: "Resolve issues faster",
       description:
         "Deflect Tier 1 tickets, surface relevant information from your knowledge bases and draft messages in 50+ languages.",
     },
     {
-      icon: UserGroupIcon,
+      icon: Users01,
       title: "Boost team productivity",
       description:
         "Keep teams in sync with real-time information across all channels and cut onboarding time for new joiners.",
     },
     {
-      icon: LightbulbIcon,
+      icon: Lightbulb04,
       title: "Grasp customer needs",
       description:
         "Convert support interactions into insights, driving data-backed product and documentation improvements.",

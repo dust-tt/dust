@@ -53,7 +53,7 @@ export function useAcademyQuiz({
       return csrfTokenRef.current;
     }
 
-    const response = await clientFetch("/api/academy/chat", {
+    const response = await clientFetch("/m/api/academy/chat", {
       method: "GET",
     });
 
@@ -79,7 +79,7 @@ export function useAcademyQuiz({
         // Fetch CSRF token before making the request
         const csrfToken = await fetchCsrfToken();
 
-        const response = await clientFetch("/api/academy/chat", {
+        const response = await clientFetch("/m/api/academy/chat", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

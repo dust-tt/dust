@@ -11,7 +11,7 @@ import {
   getProductFreeCreditId,
 } from "@app/lib/metronome/constants";
 import { resolveCurrencyForExistingMetronomeCustomer } from "@app/lib/metronome/contracts";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import {
   getStripeSubscription,
   isEnterpriseSubscription,
@@ -19,6 +19,7 @@ import {
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import logger from "@app/logger/logger";
+import { isCreditPricedPlan } from "@app/types/plan";
 import { Err, Ok } from "@app/types/shared/result";
 import { addYears, format } from "date-fns";
 import { z } from "zod";
@@ -65,7 +66,7 @@ const BuyCreditPurchaseArgsSchema = z
 export const buyProgrammaticUsageCreditsPlugin = createPlugin({
   manifest: {
     id: "buy-programmatic-usage-credits",
-    name: "Buy Committed Credits",
+    name: "Buy Programmatic Committed Credits",
     description:
       "Purchase committed credits for paying customers. Committed credits are consumed after free credits and before pay-as-you-go (PAYG) credits. An invoice will be sent to the customer.",
     resourceTypes: ["workspaces"],
@@ -141,6 +142,10 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
         dependsOn: { field: "isFreeCredit", value: false },
       },
     },
+  },
+  isApplicableTo: (auth) => {
+    const plan = auth.plan();
+    return plan !== null && !isCreditPricedPlan(plan);
   },
   populateAsyncArgs: async (auth) => {
     const config =
@@ -271,7 +276,7 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
       }
       isEnterprise = isEnterpriseSubscription(stripeSubscription);
     } else {
-      isEnterprise = isEntreprisePlanPrefix(subscription.getPlan().code);
+      isEnterprise = isEnterprisePlanPrefix(subscription.getPlan().code);
     }
 
     if (!isEnterprise && !validatedArgs.confirmProOverride) {

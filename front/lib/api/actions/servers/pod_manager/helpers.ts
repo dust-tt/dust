@@ -2,9 +2,9 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getDataSourceURI } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type {
   DataSourcesToolConfigurationType,
-  DustProjectConfigurationType,
+  DustPodConfigurationType,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { parseProjectConfigurationURI } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import { parsePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { DataSourceFilter } from "@app/lib/api/assistant/configuration/types";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
@@ -16,14 +16,14 @@ import { fetchProjectDataSourceView } from "@app/lib/api/projects/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
-export interface ProjectSpaceContext {
-  space: SpaceResource;
+interface PodContext {
+  pod: SpaceResource;
 }
 
 export async function buildProjectRetrieveDataSources(
@@ -97,18 +97,18 @@ export async function buildProjectRetrieveDataSources(
  * If dustPod is provided, uses that to fetch all spaces. Otherwise, gets from conversation.
  * The conversation must be in a project (space) if dustPod is not provided.
  */
-export async function getProjectSpace(
+export async function getPod(
   auth: Authenticator,
   from:
     | { agentLoopContext?: AgentLoopContextType }
-    | { dustPod?: DustProjectConfigurationType }
-): Promise<Result<ProjectSpaceContext, MCPError>> {
+    | { dustPod?: DustPodConfigurationType }
+): Promise<Result<PodContext, MCPError>> {
   if ("dustPod" in from && from.dustPod) {
     const { dustPod } = from;
     const authWorkspaceId = auth.getNonNullableWorkspace().sId;
 
     // Parse the project URI to extract workspaceId and projectId.
-    const parseResult = parseProjectConfigurationURI(dustPod.uri);
+    const parseResult = parsePodConfigurationURI(dustPod.uri);
     if (parseResult.isErr()) {
       return new Err(
         new MCPError(`Invalid Pod URI: ${parseResult.error.message}`, {
@@ -117,7 +117,7 @@ export async function getProjectSpace(
       );
     }
 
-    const { workspaceId, projectId } = parseResult.value;
+    const { workspaceId, podId } = parseResult.value;
 
     // Validate that the workspace ID matches the authenticated workspace.
     if (workspaceId !== authWorkspaceId) {
@@ -129,15 +129,15 @@ export async function getProjectSpace(
       );
     }
 
-    // Fetch the space by projectId.
-    const space = await SpaceResource.fetchById(auth, projectId);
-    if (!space) {
+    // Fetch the space by podId.
+    const pod = await SpaceResource.fetchById(auth, podId);
+    if (!pod) {
       return new Err(
-        new MCPError(`Pod not found: ${projectId}`, { tracked: false })
+        new MCPError(`Pod not found: ${podId}`, { tracked: false })
       );
     }
 
-    return new Ok({ space });
+    return new Ok({ pod });
   }
 
   // Otherwise, use the existing logic to get space from conversation context.
@@ -168,7 +168,7 @@ export async function getProjectSpace(
 
     const conversation = conversationRes.value;
 
-    if (!isProjectConversation(conversation)) {
+    if (!isPodConversation(conversation)) {
       return new Err(
         new MCPError(
           "This conversation is not in a Pod. Pod context management is only available in Pod conversations.",
@@ -182,7 +182,7 @@ export async function getProjectSpace(
       return new Err(new MCPError("Pod not found", { tracked: false }));
     }
 
-    return new Ok({ space });
+    return new Ok({ pod: space });
   }
 
   return new Err(new MCPError("No Pod context available", { tracked: false }));
@@ -210,21 +210,21 @@ export function checkWritePermission(
  * Gets the space context and verifies write permissions for all spaces.
  * This is a convenience function that combines getProjectSpace and checkWritePermission.
  */
-export async function getWritableProjectContext(
+export async function getWritablePodContext(
   auth: Authenticator,
   from:
     | { agentLoopContext?: AgentLoopContextType }
-    | { dustPod?: DustProjectConfigurationType }
-): Promise<Result<ProjectSpaceContext, MCPError>> {
-  const contextRes = await getProjectSpace(auth, from);
+    | { dustPod?: DustPodConfigurationType }
+): Promise<Result<PodContext, MCPError>> {
+  const contextRes = await getPod(auth, from);
   if (contextRes.isErr()) {
     return contextRes;
   }
 
-  const { space } = contextRes.value;
+  const { pod } = contextRes.value;
 
   // Check write permissions for all spaces.
-  const permissionRes = checkWritePermission(auth, space);
+  const permissionRes = checkWritePermission(auth, pod);
   if (permissionRes.isErr()) {
     return permissionRes;
   }

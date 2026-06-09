@@ -1,24 +1,29 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
-  type GCSMountEntry,
-  type GCSMountPoint,
-  getGCSPathFromScopedPath,
-  listGCSMountFiles,
-} from "@app/lib/api/files/gcs_mount/files";
+  FILES_CREATE_ACTION_NAME,
+  FILES_LIST_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
+import {
+  CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  INTERACTIVE_CONTENT_SERVER_NAME,
+} from "@app/lib/api/actions/servers/interactive_content/metadata";
+import { getGCSPathFromScopedPath } from "@app/lib/api/files/gcs_mount/files";
 import {
   getConversationFilesBasePath,
-  getProjectFilesBasePath,
+  getPodFilesBasePath,
   parseScopedFilePath,
 } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import { stripMimeParameters } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type { File as GCSFile } from "@google-cloud/storage";
@@ -29,171 +34,61 @@ interface ResolvedFile {
   sizeBytes: number;
 }
 
-export interface MountPoint {
-  prefix: string;
-  scope: GCSMountPoint;
-}
-
-type Access = "read" | "write";
-
-function buildConversationMountPoint(
-  auth: Authenticator,
-  conversation: ConversationWithoutContentType
-): MountPoint {
-  const owner = auth.getNonNullableWorkspace();
-  return {
-    scope: { useCase: "conversation", conversationId: conversation.sId },
-    prefix: getConversationFilesBasePath({
-      workspaceId: owner.sId,
-      conversationId: conversation.sId,
-    }),
-  };
-}
-
-async function buildProjectMountPoint(
-  auth: Authenticator,
-  conversation: ConversationWithoutContentType,
-  { access }: { access: Access }
-): Promise<Result<MountPoint, MCPError>> {
-  if (!isProjectConversation(conversation)) {
-    return new Err(
-      new MCPError(
-        "Project file paths are only available in project conversations.",
-        { tracked: false }
-      )
-    );
-  }
-
-  const space = await SpaceResource.fetchById(auth, conversation.spaceId);
-  if (!space) {
-    return new Err(
-      new MCPError("Project not found for this conversation.", {
-        tracked: false,
-      })
-    );
-  }
-
-  const allowed =
-    access === "write" ? space.canWrite(auth) : space.canRead(auth);
-  if (!allowed) {
-    return new Err(
-      new MCPError(
-        access === "write"
-          ? "You do not have write permissions for this project."
-          : "You do not have read permissions for this project.",
-        { tracked: false }
-      )
-    );
-  }
-
-  const owner = auth.getNonNullableWorkspace();
-  return new Ok({
-    scope: { useCase: "project", projectId: space.sId },
-    prefix: getProjectFilesBasePath({
-      workspaceId: owner.sId,
-      projectId: space.sId,
-    }),
-  });
-}
-
 /**
- * Resolve the mount point a scoped path belongs to. Dispatches by the path's `conversation/` or
- * `project/` prefix, looks up the parent project space when needed, and verifies the requested
- * access level.
- */
-export async function resolveMountPoint(
-  auth: Authenticator,
-  conversation: ConversationWithoutContentType,
-  { access, scopedPath }: { access: Access; scopedPath: string }
-): Promise<Result<MountPoint, MCPError>> {
-  const parsed = parseScopedFilePath(scopedPath);
-  if (!parsed) {
-    return new Err(
-      new MCPError(
-        `Invalid path: \`${scopedPath}\` must start with \`conversation/\` or \`project/\`.`,
-        { tracked: false }
-      )
-    );
-  }
-
-  return resolveMountByUseCase(auth, conversation, {
-    useCase: parsed.prefix,
-    access,
-  });
-}
-
-/**
- * Resolve the mount point for a given scope use case, without going through a path. Used by tools
- * that operate on a whole mount (e.g. `list`).
- */
-export async function resolveMountByUseCase(
-  auth: Authenticator,
-  conversation: ConversationWithoutContentType,
-  { useCase, access }: { useCase: GCSMountPoint["useCase"]; access: Access }
-): Promise<Result<MountPoint, MCPError>> {
-  switch (useCase) {
-    case "conversation":
-      return new Ok(buildConversationMountPoint(auth, conversation));
-
-    case "project":
-      return buildProjectMountPoint(auth, conversation, { access });
-
-    default:
-      assertNever(useCase);
-  }
-}
-
-/**
- * List the files mounted under a project's GCS prefix. Verifies `space.canRead(auth)` before
- * touching the bucket. Use this from callers that already hold a `SpaceResource` so the
- * file-listing path stays funneled through the same helper as `files__list`.
- */
-export async function listProjectFiles(
-  auth: Authenticator,
-  space: SpaceResource
-): Promise<Result<GCSMountEntry[], MCPError>> {
-  if (!space.isProject) {
-    return new Err(new MCPError("Space is not a project.", { tracked: false }));
-  }
-
-  if (!space.canRead(auth)) {
-    return new Err(
-      new MCPError("You do not have read permissions for this project.", {
-        tracked: false,
-      })
-    );
-  }
-
-  const entries = await listGCSMountFiles(auth, {
-    useCase: "project",
-    projectId: space.sId,
-  });
-
-  return new Ok(entries);
-}
-
-/**
- * Resolve a GCS file from a scoped path. Looks up the file metadata via `resolveMountPoint`.
- * Used by `cat` and `grep`.
+ * Resolve a GCS file from a scoped path.
+ *
+ * @deprecated Callers should migrate to DustFileSystem.forConversation(auth, conversation)
+ * followed by fs.stat() and fs.read().
  */
 export async function resolveFile(
   auth: Authenticator,
   conversation: ConversationWithoutContentType,
   path: string
 ): Promise<Result<ResolvedFile, MCPError>> {
-  const mountRes = await resolveMountPoint(auth, conversation, {
-    access: "read",
-    scopedPath: path,
-  });
-  if (mountRes.isErr()) {
-    return mountRes;
+  const parsed = parseScopedFilePath(path);
+  if (!parsed) {
+    return new Err(
+      new MCPError(
+        `Invalid path: \`${path}\` must start with \`conversation/\` or \`pod/\`.`,
+        { tracked: false }
+      )
+    );
   }
 
-  const { scope, prefix } = mountRes.value;
+  const owner = auth.getNonNullableWorkspace();
+  let prefix: string;
+
+  if (parsed.prefix === "conversation") {
+    prefix = getConversationFilesBasePath({
+      workspaceId: owner.sId,
+      conversationId: conversation.sId,
+    });
+  } else {
+    if (!isPodConversation(conversation)) {
+      return new Err(
+        new MCPError(
+          "Pod file paths are only available in Pod conversations.",
+          {
+            tracked: false,
+          }
+        )
+      );
+    }
+    const space = await SpaceResource.fetchById(auth, conversation.spaceId);
+    if (!space || !space.canRead(auth)) {
+      return new Err(
+        new MCPError("You do not have read permissions for this pod.", {
+          tracked: false,
+        })
+      );
+    }
+    prefix = getPodFilesBasePath({ workspaceId: owner.sId, podId: space.sId });
+  }
+
   const gcsPath = getGCSPathFromScopedPath({
     prefix,
     scopedPath: path,
-    useCase: scope.useCase,
+    useCase: parsed.prefix,
   });
   if (!gcsPath) {
     return new Err(
@@ -248,6 +143,23 @@ export async function resolveFile(
       `File not found: \`${path}\`. Error: ${normalizeError(lastError).message}`,
       { tracked: false }
     )
+  );
+}
+
+export function frameFileCreateRejectedError(): MCPError {
+  return new MCPError(
+    `Frame files cannot be created with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CREATE_ACTION_NAME)}\`. ` +
+      `Use \`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` instead.`,
+    { tracked: false }
+  );
+}
+
+export function frameFileEditRejectedError(): MCPError {
+  return new MCPError(
+    `Frame files cannot be edited with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CREATE_ACTION_NAME)}\`. ` +
+      `Use \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` to get the file id, ` +
+      `then \`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` to update it.`,
+    { tracked: false }
   );
 }
 

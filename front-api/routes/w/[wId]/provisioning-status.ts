@@ -1,30 +1,26 @@
-import { Hono } from "hono";
-
+import type { GetProvisioningStatusResponseBody } from "@app/lib/api/workspace";
 import {
   ADMIN_GROUP_NAME,
   BUILDER_GROUP_NAME,
   GroupResource,
 } from "@app/lib/resources/group_resource";
-
-export type GetProvisioningStatusResponseBody = {
-  hasAdminGroup: boolean;
-  hasBuilderGroup: boolean;
-};
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 // Mounted at /api/w/:wId/provisioning-status.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+/** @ignoreswagger */
+app.get("/", async (ctx): HandlerResult<GetProvisioningStatusResponseBody> => {
+  const auth = ctx.get("auth");
 
   const groups =
     await GroupResource.listRoleProvisioningGroupsForWorkspace(auth);
 
-  const body: GetProvisioningStatusResponseBody = {
+  return ctx.json({
     hasAdminGroup: groups.some((g) => g.name === ADMIN_GROUP_NAME),
     hasBuilderGroup: groups.some((g) => g.name === BUILDER_GROUP_NAME),
-  };
-  return c.json(body);
+  });
 });
 
 export default app;

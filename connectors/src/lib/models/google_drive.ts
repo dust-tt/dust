@@ -209,6 +209,8 @@ export class GoogleDriveSyncTokenModel extends ConnectorBaseModel<GoogleDriveSyn
   // and this would allow us to support them.
   declare driveId: string;
   declare syncToken: string;
+  declare lastSyncAt: Date | null;
+  declare lastRelevantChangeAt: Date | null;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
 GoogleDriveSyncTokenModel.init(
@@ -230,6 +232,14 @@ GoogleDriveSyncTokenModel.init(
     syncToken: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    lastSyncAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastRelevantChangeAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
   },
   {

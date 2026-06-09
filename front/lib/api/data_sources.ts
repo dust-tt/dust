@@ -32,12 +32,17 @@ import { cacheWithRedis } from "@app/lib/utils/cache";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import logger from "@app/logger/logger";
+import tracer from "@app/logger/tracer";
 import { launchScrubDataSourceWorkflow } from "@app/poke/temporal/client";
 import type { FrontDataSourceDocumentSectionType } from "@app/types/api/public/data_sources";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { DEFAULT_EMBEDDING_PROVIDER_ID } from "@app/types/assistant/models/embedding";
 import type { AdminCommandType } from "@app/types/connectors/admin/cli";
-import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
+import type { ConnectorConfiguration } from "@app/types/connectors/configuration";
+import {
+  ConnectorConfigurationTypeSchema,
+  ConnectorsAPI,
+} from "@app/types/connectors/connectors_api";
 import type { CoreAPIError, CoreAPITable } from "@app/types/core/core_api";
 import { CoreAPI, EMBEDDING_CONFIGS } from "@app/types/core/core_api";
 import type {
@@ -56,7 +61,12 @@ import type {
   DataSourceWithConnectorDetailsType,
   WithConnector,
 } from "@app/types/data_source";
-import { isDataSourceNameValid } from "@app/types/data_source";
+import {
+  CONNECTOR_PROVIDERS,
+  isDataSourceNameValid,
+} from "@app/types/data_source";
+import type { DataSourceViewType } from "@app/types/data_source_view";
+import type { DocumentType } from "@app/types/document";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { PlanType } from "@app/types/plan";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
@@ -74,7 +84,53 @@ import type {
 } from "@dust-tt/client";
 import assert from "assert";
 import type { Transaction } from "sequelize";
+import { z } from "zod";
 import { ConversationResource } from "../resources/conversation_resource";
+
+// Contract types for the spaces data source endpoints (Next + Hono).
+
+export const PostDataSourceWithProviderRequestBodySchema = z.object({
+  provider: z.enum(CONNECTOR_PROVIDERS),
+  name: z.string().optional(),
+  configuration: ConnectorConfigurationTypeSchema,
+  connectionId: z.string().optional(), // Required for some providers
+  relatedCredentialId: z.string().optional(), // Required for private integrations
+  extraConfig: z.record(z.string(), z.string()).optional(), // Used by slack private integrations
+});
+
+const PostDataSourceWithoutProviderRequestBodySchema = z.object({
+  name: z.string(),
+  description: z.string().nullable(),
+});
+
+export const PostDataSourceRequestBodySchema = z.union([
+  PostDataSourceWithoutProviderRequestBodySchema,
+  PostDataSourceWithProviderRequestBodySchema,
+]);
+
+export type PostDataSourceRequestBody = z.infer<
+  typeof PostDataSourceRequestBodySchema
+>;
+
+export type PostSpaceDataSourceResponseBody = {
+  dataSource: DataSourceType;
+  dataSourceView: DataSourceViewType;
+};
+
+export type GetDataSourceConfigurationResponseBody = {
+  configuration: ConnectorConfiguration;
+};
+
+export type PatchDataSourceConfigurationResponseBody =
+  GetDataSourceConfigurationResponseBody;
+
+export type PostDocumentResponseBody = {
+  document: DocumentType | CoreAPILightDocument;
+};
+
+export type PatchDocumentResponseBody = {
+  document: DocumentType | CoreAPILightDocument;
+};
 
 const CORE_UNKNOWN_DATA_SOURCE_DELETE_ERROR_PREFIX =
   "Failed to delete data source (error: Unknown DataSource: ";
@@ -159,6 +215,26 @@ export async function registerSlackWebhookRouterEntry({
 // Number of files we pull from GCS at once for deletion.
 // If we have 10k documents of 100kB each (which is a lot) we are at 1GB here.
 const FILE_BATCH_SIZE = 10_000;
+
+/**
+ * Resolves the spaceId for legacy data source endpoints, which accept the spaceId either in the
+ * URL or implicitly from auth. When the URL omits it, system keys fall back to the data source's
+ * own space (to support connectors targeting non-global spaces), and user-scoped auth falls back
+ * to the workspace's global space.
+ */
+export async function resolveLegacyDataSourceSpaceId(
+  auth: Authenticator,
+  rawSpaceId: string | string[] | undefined,
+  dataSource: DataSourceResource | null
+): Promise<string | undefined> {
+  if (typeof rawSpaceId === "string") {
+    return rawSpaceId;
+  }
+  if (auth.isSystemKey()) {
+    return dataSource?.space.sId;
+  }
+  return (await SpaceResource.fetchWorkspaceGlobalSpace(auth)).sId;
+}
 
 export async function getDataSources(
   auth: Authenticator,
@@ -249,13 +325,22 @@ export async function hardDeleteDataSource(
   assert(auth.isBuilder(), "Only builders can delete data sources.");
 
   // Delete all files in the data source's bucket.
+  //
+  // The GCS object key for a data source document is
+  // `{dustAPIProjectId}/{dataSourceInternalId}/{documentIdHash}/{version}.json`. The trailing
+  // slash on the prefix is REQUIRED: GCS matches `prefix` as a raw byte string, not by path
+  // segment, so a bare `dustAPIProjectId` (e.g. "1134") also matches every sibling project whose
+  // id merely starts with the same digits (e.g. "11340", "1134276"), deleting unrelated data
+  // sources' files across other workspaces. Projects map 1-1 to data sources, so scoping the
+  // prefix to `{dustAPIProjectId}/` deletes exactly this data source's files and nothing else.
   const { dustAPIProjectId } = dataSource;
+  const prefix = `${dustAPIProjectId}/`;
 
   let files;
 
   do {
     files = await getDustDataSourcesBucket().getFiles({
-      prefix: dustAPIProjectId,
+      prefix,
       maxResults: FILE_BATCH_SIZE,
     });
 
@@ -349,10 +434,25 @@ export async function hardDeleteDataSource(
 
   // Delete the data source from core.
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const coreDeleteRes = await coreAPI.deleteDataSource({
-    projectId: dustAPIProjectId,
-    dataSourceId: dataSource.dustAPIDataSourceId,
-  });
+  const coreDeleteRes = await tracer.trace(
+    "data_sources.hard_delete_data_source",
+    { resource: dataSource.connectorProvider ?? "managed-none" },
+    async (span) => {
+      span?.setTag("workspace.id", auth.workspace()?.sId ?? "unknown");
+      span?.setTag("data_source.s_id", dataSource.sId);
+      span?.setTag(
+        "data_source.connector_provider",
+        dataSource.connectorProvider ?? "none"
+      );
+      span?.setTag("core.project_id", dustAPIProjectId);
+      span?.setTag("core.data_source_id", dataSource.dustAPIDataSourceId);
+      return coreAPI.deleteDataSource({
+        projectId: dustAPIProjectId,
+        dataSourceId: dataSource.dustAPIDataSourceId,
+        caller: "data-sources-api-hard-delete",
+      });
+    }
+  );
   if (coreDeleteRes.isErr()) {
     // Same as above we proceed with the deletion if the data source is not found in core. Otherwise
     // we throw as this is unexpected.

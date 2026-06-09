@@ -196,3 +196,13 @@ export class TemplateResource extends BaseResource<TemplateModel> {
     };
   }
 }
+
+export type FetchAgentTemplateResponse = ReturnType<TemplateResource["toJSON"]>;
+
+export type AssistantTemplateListType = ReturnType<
+  TemplateResource["toListJSON"]
+>;
+
+export interface FetchAssistantTemplatesResponse {
+  templates: AssistantTemplateListType[];
+}

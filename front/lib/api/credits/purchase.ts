@@ -9,13 +9,14 @@ import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
 import { getCreditPurchaseLimits } from "@app/lib/credits/limits";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
 import { resolveCurrencyForExistingMetronomeCustomer } from "@app/lib/metronome/contracts";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import {
   getCreditPurchasePriceId,
   getStripePricingData,
   getStripeSubscription,
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
@@ -23,6 +24,11 @@ import { isSupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { StripePricingData } from "@app/types/stripe/pricing";
+import { z } from "zod";
+
+export const PostCreditPurchaseRequestBody = z.object({
+  amountDollars: z.number().positive(),
+});
 
 export type CreditPurchaseInfo = {
   isEnterprise: boolean;
@@ -32,6 +38,8 @@ export type CreditPurchaseInfo = {
   creditPurchaseLimits: CreditPurchaseLimits | null;
   billingCycleStartDay: number | null;
 };
+
+export type GetCreditPurchaseInfoResponseBody = CreditPurchaseInfo;
 
 export class CreditPurchaseInfoError extends Error {
   constructor(readonly type: "subscription_not_found" | "internal") {
@@ -81,7 +89,7 @@ export async function getCreditPurchaseInfo(
   let billingCycleStartDay: number | null = null;
 
   if (isMetronomeOnly) {
-    isEnterprise = isEntreprisePlanPrefix(subscription.getPlan().code);
+    isEnterprise = isEnterprisePlanPrefix(subscription.getPlan().code);
     creditPurchaseLimits = await getCreditPurchaseLimits(auth, {
       type: "metronome",
       subscription,
@@ -136,9 +144,15 @@ export async function getCreditPurchaseInfo(
     }
   }
 
-  const programmaticConfig =
-    await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-  const discountPercent = programmaticConfig?.defaultDiscountPercent ?? 0;
+  // Discount lives on `credit_usage_configuration` for credit-priced
+  // (Metronome) workspaces and on `programmatic_usage_configuration` for
+  // the legacy Stripe-billed programmatic-usage flow. The two stores are
+  // never read from the other's code path.
+  const discountPercent = isMetronomeOnly
+    ? ((await CreditUsageConfigurationResource.fetchByWorkspaceId(auth))
+        ?.defaultDiscountPercent ?? 0)
+    : ((await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth))
+        ?.defaultDiscountPercent ?? 0);
 
   const creditPricing = await getStripePricingData(getCreditPurchasePriceId());
 
@@ -175,7 +189,7 @@ export async function createCreditPurchase(
   let metronomeCurrency: SupportedCurrency = "usd";
 
   if (isMetronomeOnly) {
-    isEnterprise = isEntreprisePlanPrefix(subscription.getPlan().code);
+    isEnterprise = isEnterprisePlanPrefix(subscription.getPlan().code);
     limits = await getCreditPurchaseLimits(auth, {
       type: "metronome",
       subscription,
@@ -259,12 +273,17 @@ export async function createCreditPurchase(
     );
   }
 
-  const programmaticConfig =
-    await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+  // Same split as in `getCreditPurchaseInfo`: Metronome workspaces read
+  // `credit_usage_configuration`; legacy Stripe-billed programmatic-usage
+  // workspaces read `programmatic_usage_configuration`.
+  const configuredDiscount = isMetronomeOnly
+    ? (await CreditUsageConfigurationResource.fetchByWorkspaceId(auth))
+        ?.defaultDiscountPercent
+    : (await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth))
+        ?.defaultDiscountPercent;
   let discountPercent =
-    programmaticConfig?.defaultDiscountPercent &&
-    programmaticConfig.defaultDiscountPercent > 0
-      ? programmaticConfig.defaultDiscountPercent
+    configuredDiscount && configuredDiscount > 0
+      ? configuredDiscount
       : undefined;
 
   // Defense in depth: enforced at config level, but double-check here.

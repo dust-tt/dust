@@ -12,12 +12,7 @@ import type {
 } from "@app/components/home/content/Solutions/configs/utils";
 import type { DemoVideoProps } from "@app/components/home/content/Solutions/DemoVideoSection";
 import type { UseCaseProps } from "@app/components/home/content/Solutions/UseCasesSection";
-import {
-  CheckCircleIcon,
-  MagicIcon,
-  RocketIcon,
-  UserGroupIcon,
-} from "@dust-tt/sparkle";
+import { CheckCircle, MagicWand02, Rocket02, Users01 } from "@dust-tt/sparkle";
 
 // Config exports
 export const pageSettings: pageSettingsProps = {
@@ -74,7 +69,7 @@ export const Hero: HeroProps = {
     primary: {
       label: "Get started",
       href: "/home/pricing",
-      icon: RocketIcon,
+      icon: Rocket02,
     },
     secondary: {
       label: "Talk to sales",
@@ -87,19 +82,19 @@ export const Benefits: BenefitsProps = {
   sectionTitle: "Transform your company knowledge into actionable intelligence",
   items: [
     {
-      icon: MagicIcon,
+      icon: MagicWand02,
       title: "Drop tribal knowledge",
       description:
         "Maximize productivity by making all company knowledge instantly accessible.",
     },
     {
-      icon: CheckCircleIcon,
+      icon: CheckCircle,
       title: "Accelerate learning",
       description:
         "Turn scattered information into organized, searchable knowledge for everyone.",
     },
     {
-      icon: UserGroupIcon,
+      icon: Users01,
       title: "Scale expertise",
       description:
         "Make every team member an expert with instant access to collective knowledge.",

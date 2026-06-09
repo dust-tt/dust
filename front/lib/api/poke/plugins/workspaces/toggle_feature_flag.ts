@@ -2,6 +2,8 @@ import { createPlugin } from "@app/lib/api/poke/types";
 import { invalidateFeatureFlagsCache } from "@app/lib/auth";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import logger from "@app/logger/logger";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import {
   FEATURE_FLAG_STAGE_LABELS,
@@ -108,6 +110,25 @@ export const toggleFeatureFlagPlugin = createPlugin({
           `❌ Feature "${feature}" has been DISABLED for workspace "${workspace.name}"`
         );
       }
+    }
+
+    if (toAdd.length > 0) {
+      const { createdViewsCount } =
+        await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          enabledFlags: toAdd,
+          createdViewsCount,
+        },
+        "Ensured MCP server views after enabling feature flags."
+      );
+
+      const viewLabel = createdViewsCount === 1 ? "view" : "views";
+      actions.push(
+        `MCP server views ensured for all enabled auto tools (created ${createdViewsCount} ${viewLabel}).`
+      );
     }
 
     return new Ok({

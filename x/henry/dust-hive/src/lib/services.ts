@@ -1,8 +1,10 @@
-// Service names - array order defines start order, reverse for stop order
+// Service names - array order defines start order, reverse for stop order.
+// The API is served exclusively by front-api (Hono); the old Next server
+// (`front`) no longer serves any endpoint and is not run by the hive.
 export const ALL_SERVICES = [
   "sdk",
   "sparkle",
-  "front",
+  "front-api",
   "core",
   "oauth",
   "connectors",

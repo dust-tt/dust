@@ -1,18 +1,44 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
+import type { GetWorkspaceInvitationsResponseBody } from "@app/lib/api/invitation";
+import type { MembersLookupResponseBody } from "@app/lib/api/members";
+import type {
+  GetUserSpendLimitResponseBody,
+  PutUserSpendLimitResponseBody,
+} from "@app/lib/api/users/spend_limit";
+import type { GetMembersResponseBody } from "@app/lib/api/workspace";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
-import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
-import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
-import type { MembersLookupResponseBody } from "@app/pages/api/w/[wId]/members/lookup";
-import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
 import type { GroupKind } from "@app/types/groups";
 import { isGroupKind } from "@app/types/groups";
-import type { LightWorkspaceType } from "@app/types/user";
+import type { MembershipSeatType } from "@app/types/memberships";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import type {
+  LightUserTypeWithWorkspace,
+  LightWorkspaceType,
+} from "@app/types/user";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 import { mutate } from "swr";
+import { z } from "zod";
+
+const SpendLimitResponseSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("unlimited") }),
+  z.object({
+    kind: z.literal("limited"),
+    awuCredits: z.number(),
+  }),
+]);
+
+const PutUserSpendLimitResponseSchema = z.object({
+  limit: SpendLimitResponseSchema,
+  transitionedTo: z.union([
+    z.literal("reached"),
+    z.literal("resolved"),
+    z.null(),
+  ]),
+});
 
 type PaginationParams = {
   orderColumn: "createdAt";
@@ -94,7 +120,9 @@ export function useWorkspaceInvitations(
   };
 }
 
-export function useSearchMembers({
+export function useSearchMembers<
+  T extends LightUserTypeWithWorkspace = LightUserTypeWithWorkspace,
+>({
   workspaceId,
   searchTerm,
   pageIndex,
@@ -112,7 +140,10 @@ export function useSearchMembers({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const searchMembersFetcher: Fetcher<SearchMembersResponseBody> = fetcher;
+  const searchMembersFetcher: Fetcher<{
+    members: T[];
+    total: number;
+  }> = fetcher;
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
 
@@ -189,32 +220,74 @@ export function useMembersLookup({
   };
 }
 
+function membersUsageUrl(workspaceId: string): string {
+  return `/api/w/${workspaceId}/credits/members-usage`;
+}
+
+export async function invalidateMembersUsage(
+  workspaceId: string
+): Promise<void> {
+  await mutate(
+    (key) =>
+      typeof key === "string" && key.startsWith(membersUsageUrl(workspaceId))
+  );
+}
+
 export function useMembersUsage({
   workspaceId,
+  searchTerm = "",
+  pageIndex,
+  pageSize,
+  orderColumn,
+  orderDirection,
   disabled,
 }: {
   workspaceId: string;
+  searchTerm?: string;
+  pageIndex: number;
+  pageSize: number;
+  orderColumn?: "name" | "email";
+  orderDirection?: "asc" | "desc";
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const defaultUrl = `/api/w/${workspaceId}/credits/members-usage`;
-  const [url, setUrl] = useState(defaultUrl);
-
   const membersUsageFetcher: Fetcher<GetMembersUsageResponseBody> = fetcher;
-  const { data, error } = useSWRWithDefaults(url, membersUsageFetcher, {
-    disabled,
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
+
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearchTerm(searchTerm), 300);
+    return () => clearTimeout(id);
+  }, [searchTerm]);
+
+  const searchParams = new URLSearchParams({
+    offset: (pageIndex * pageSize).toString(),
+    limit: pageSize.toString(),
   });
+  if (debouncedSearchTerm.trim().length > 0) {
+    searchParams.set("search", debouncedSearchTerm.trim());
+  }
+  if (orderColumn) {
+    searchParams.set("orderColumn", orderColumn);
+  }
+  if (orderDirection) {
+    searchParams.set("orderDirection", orderDirection);
+  }
+
+  const { data, error } = useSWRWithDefaults(
+    `${membersUsageUrl(workspaceId)}?${searchParams.toString()}`,
+    membersUsageFetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      disabled,
+    }
+  );
 
   return {
     membersUsage: data?.members ?? emptyArray(),
     isMembersUsageLoading: !error && !data && !disabled,
     isMembersUsageError: !!error,
     totalMembersUsage: data?.total ?? 0,
-    hasNextPage: !!data?.nextPageUrl,
-    loadNextPage: useCallback(
-      () => data?.nextPageUrl && setUrl(data.nextPageUrl),
-      [data?.nextPageUrl]
-    ),
   };
 }
 
@@ -231,11 +304,13 @@ export function useUpdateMemberSeatType({
       memberName,
       seatType,
       isCancellingScheduledChange,
+      hasSeatPool,
     }: {
       memberId: string;
       memberName: string;
-      seatType: "pro" | "max";
+      seatType: MembershipSeatType;
       isCancellingScheduledChange: boolean;
+      hasSeatPool: boolean;
     }): Promise<boolean> => {
       const res = await clientFetch(
         `/api/w/${workspaceId}/members/${memberId}/seat-type`,
@@ -258,21 +333,144 @@ export function useUpdateMemberSeatType({
 
       const body = await res.json();
       const isDeferred = !!body?.scheduledSeatChangeAt;
-      sendNotification({
-        type: "success",
-        title: isDeferred ? "Seat change scheduled" : "Seat updated",
-        description: isDeferred
-          ? `${memberName}'s seat will change to ${seatType} at the next credit refresh.`
-          : isCancellingScheduledChange
-            ? `${memberName}'s scheduled seat change has been cancelled.`
-            : `${memberName}'s seat has been updated to ${seatType}.`,
+      const notification = getSeatUpdateNotification({
+        seatType,
+        isDeferred,
+        isCancellingScheduledChange,
+        hasSeatPool,
+        memberName,
       });
+      sendNotification({ type: "success", ...notification });
 
-      await mutate(`/api/w/${workspaceId}/credits/members-usage`);
+      await invalidateMembersUsage(workspaceId);
       return true;
     },
     [workspaceId, sendNotification]
   );
 
   return { doUpdateSeatType };
+}
+
+function getSeatUpdateNotification({
+  seatType,
+  isDeferred,
+  isCancellingScheduledChange,
+  hasSeatPool,
+  memberName,
+}: {
+  seatType: MembershipSeatType;
+  isDeferred: boolean;
+  isCancellingScheduledChange: boolean;
+  hasSeatPool: boolean;
+  memberName: string;
+}): { title: string; description: string } {
+  if (seatType === "none") {
+    return {
+      title: isDeferred ? "Seat removal scheduled" : "Seat removed",
+      description: isDeferred
+        ? `${memberName}'s seat will be removed at the next billing period. They keep full access until then.`
+        : `${memberName}'s seat has been removed.`,
+    };
+  }
+  return {
+    title: isDeferred ? "Seat change scheduled" : "Seat updated",
+    description: isDeferred
+      ? `${memberName}'s seat will change to ${seatType} at the next credit refresh.`
+      : isCancellingScheduledChange
+        ? `${memberName}'s scheduled seat change has been cancelled.`
+        : hasSeatPool
+          ? `${memberName}'s seat has been updated to ${seatType}. The seat pool will be provisioned shortly.`
+          : `${memberName}'s seat has been updated to ${seatType}.`,
+  };
+}
+
+function spendLimitUrl(workspaceId: string, memberId: string): string {
+  return `/api/w/${workspaceId}/members/${memberId}/spend_limit`;
+}
+
+export function useUserSpendLimit({
+  workspaceId,
+  memberId,
+  disabled,
+}: {
+  workspaceId: string;
+  memberId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const spendLimitFetcher: Fetcher<GetUserSpendLimitResponseBody> = fetcher;
+  const { data, error, mutate } = useSWRWithDefaults(
+    spendLimitUrl(workspaceId, memberId),
+    spendLimitFetcher,
+    { disabled }
+  );
+
+  return {
+    spendLimit: data,
+    isSpendLimitLoading: !error && !data && !disabled,
+    isSpendLimitError: !!error,
+    mutateSpendLimit: mutate,
+  };
+}
+
+export function useUpdateUserSpendLimit({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  const doUpdateSpendLimit = useCallback(
+    async ({
+      memberId,
+      memberName,
+      limit,
+    }: {
+      memberId: string;
+      memberName: string;
+      limit: { kind: "unlimited" } | { kind: "limited"; awuCredits: number };
+    }): Promise<PutUserSpendLimitResponseBody | null> => {
+      const res = await clientFetch(spendLimitUrl(workspaceId, memberId), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(limit),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        sendNotification({
+          type: "error",
+          title: "Failed to update spend limit",
+          description: error?.error?.message ?? "An unexpected error occurred.",
+        });
+        return null;
+      }
+
+      const body = PutUserSpendLimitResponseSchema.parse(await res.json());
+      let description: string;
+      switch (limit.kind) {
+        case "unlimited":
+          description = `${memberName}'s spend limit has been removed.`;
+          break;
+        case "limited":
+          description = `${memberName}'s spend limit has been set to ${limit.awuCredits.toLocaleString("en-US")} credits.`;
+          break;
+        default:
+          assertNeverAndIgnore(limit);
+          description = "";
+      }
+      sendNotification({
+        type: "success",
+        title: "Spend limit updated",
+        description,
+      });
+
+      await mutate(spendLimitUrl(workspaceId, memberId));
+      await invalidateMembersUsage(workspaceId);
+      return body;
+    },
+    [workspaceId, sendNotification]
+  );
+
+  return { doUpdateSpendLimit };
 }

@@ -1,11 +1,15 @@
+import { resolveSlackPendingUserMessage } from "@connectors/connectors/slack/bot_pending_message";
 import {
   makeErrorBlock,
   makeMarkdownBlock,
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/slack/chat/blocks";
 import { SlackStreamHandler } from "@connectors/connectors/slack/chat/slack_stream_handler";
-// biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
-import { streamConversationToSlack } from "@connectors/connectors/slack/chat/stream_conversation_handler";
+import {
+  SLACK_USER_ACTION_IDLE_TIMEOUT_MS,
+  streamConversationToSlack,
+  // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
+} from "@connectors/connectors/slack/chat/stream_conversation_handler";
 import {
   getBotUserIdResponse,
   getUserInfo,
@@ -102,6 +106,14 @@ function getMaxFileSizeToUpload(contentType: SupportedFileContentType): number {
 
 // Pattern to match +mention, ~mention, or =mention at the beginning of the string.
 const SLACK_MENTION_PATTERN = /^\s*([+~=][a-zA-Z0-9_\.-]{1,40})(?=\s|,|$)/;
+
+function makeSlackAssistantThreadStatus(
+  agentName: string,
+  status: "thinking" | "queued"
+) {
+  const statusText = `is ${status}...`;
+  return agentName === "dust" ? statusText : `(${agentName}) ${statusText}`;
+}
 
 type BotAnswerParams = {
   responseUrl?: string;
@@ -1151,9 +1163,7 @@ async function answerMessage(
     slackUserId,
   });
   await streamHandler.setThinking(
-    mention.agentName === "dust"
-      ? "is thinking..."
-      : `(${mention.agentName}) is thinking...`
+    makeSlackAssistantThreadStatus(mention.agentName, "thinking")
   );
 
   const buildSlackMessageError = (
@@ -1164,6 +1174,7 @@ async function answerMessage(
       | "getConversation"
       | "createConversation"
       | "postUserMessage"
+      | "waitForUserMessagePromotion"
       | "streamConversationToSlack"
   ) => {
     logger.error(
@@ -1269,6 +1280,7 @@ async function answerMessage(
       visibility: "unlisted",
       message: messageReqBody,
       contentFragments: buildContentFragmentRes.value || undefined,
+      skipToolsValidation,
     });
     if (convRes.isErr()) {
       return buildSlackMessageError(convRes, "createConversation");
@@ -1286,6 +1298,43 @@ async function answerMessage(
 
     slackChatBotMessage.conversationId = conversation.sId;
     await slackChatBotMessage.save();
+  }
+
+  const isPendingUserMessage = userMessage.visibility === "pending";
+  if (isPendingUserMessage) {
+    await streamHandler.setThinking(
+      makeSlackAssistantThreadStatus(mention.agentName, "queued"),
+      "Queued..."
+    );
+  }
+
+  const pendingUserMessageRes = await resolveSlackPendingUserMessage({
+    connector,
+    conversation,
+    dustAPI,
+    slack: {
+      slackChannelId: slackChannel,
+      slackClient,
+      slackMessageTs,
+    },
+    streamHandler,
+    timeoutMs: SLACK_USER_ACTION_IDLE_TIMEOUT_MS,
+    userMessage,
+  });
+  if (pendingUserMessageRes.isErr()) {
+    return buildSlackMessageError(
+      pendingUserMessageRes,
+      "waitForUserMessagePromotion"
+    );
+  }
+  if (pendingUserMessageRes.value === null) {
+    return new Ok(undefined);
+  }
+  conversation = pendingUserMessageRes.value;
+  if (isPendingUserMessage) {
+    await streamHandler.setThinking(
+      makeSlackAssistantThreadStatus(mention.agentName, "thinking")
+    );
   }
 
   const streamRes = await streamConversationToSlack(dustAPI, {

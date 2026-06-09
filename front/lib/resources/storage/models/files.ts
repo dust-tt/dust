@@ -3,6 +3,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   AllSupportedFileContentType,
+  AuthorizedFileAccessKind,
   FileShareScope,
   FileStatus,
   FileUseCase,
@@ -291,6 +292,106 @@ UserModel.hasMany(SharingGrantModel, {
 });
 SharingGrantModel.belongsTo(UserModel, {
   foreignKey: { name: "grantedBy", allowNull: true },
+});
+
+/**
+ * Authorized file access: one row per file a shared Frame may load via useFile().
+ * Active rows have revokedAt = null.
+ */
+
+export class AuthorizedFileAccessModel extends WorkspaceAwareModel<AuthorizedFileAccessModel> {
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
+  declare kind: AuthorizedFileAccessKind;
+  declare ref: string;
+  declare fileName: string | null;
+  declare legacyPath: string | null;
+  declare shareScope: FileShareScope;
+  declare computedByUserId: string;
+  declare frameContentHash: string;
+  declare allowedAt: Date;
+  declare revokedAt: Date | null;
+
+  declare shareableFileId: ForeignKey<ShareableFileModel["id"]>;
+
+  declare shareableFile?: NonAttribute<ShareableFileModel>;
+}
+
+AuthorizedFileAccessModel.init(
+  {
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    kind: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    ref: {
+      type: DataTypes.STRING(4096),
+      allowNull: false,
+    },
+    fileName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    legacyPath: {
+      type: DataTypes.STRING(4096),
+      allowNull: true,
+      defaultValue: null,
+    },
+    shareScope: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    computedByUserId: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    frameContentHash: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    allowedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    revokedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null,
+    },
+  },
+  {
+    modelName: "authorized_file_access",
+    sequelize: frontSequelize,
+    indexes: [
+      { fields: ["workspaceId"], concurrently: true },
+      { fields: ["shareableFileId"], concurrently: true },
+      {
+        fields: ["shareableFileId"],
+        where: { revokedAt: null },
+        name: "authorized_file_accesses_shareable_file_id_non_revoked",
+        concurrently: true,
+      },
+    ],
+  }
+);
+
+ShareableFileModel.hasMany(AuthorizedFileAccessModel, {
+  foreignKey: { name: "shareableFileId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+AuthorizedFileAccessModel.belongsTo(ShareableFileModel, {
+  foreignKey: { name: "shareableFileId", allowNull: false },
 });
 
 /**

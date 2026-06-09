@@ -1,6 +1,6 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
+import type { PokeProjectKnowledgeFromConnectorItem } from "@app/lib/api/poke/projects";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { PokeProjectKnowledgeFromConnectorItem } from "@app/pages/api/poke/workspaces/[wId]/projects/[projectId]/connector-knowledge";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Chip, LinkWrapper, Tooltip } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -13,12 +13,12 @@ function sourceCell(
     item.sourceDataSourceName ??
     item.sourceConnectorProvider ??
     "unknown source";
-  if (!item.sourceDataSourceViewSpaceSId) {
+  if (!item.sourceDataSourceViewSpaceId) {
     return <span>{label}</span>;
   }
   return (
     <LinkWrapper
-      href={`/poke/${owner.sId}/spaces/${item.sourceDataSourceViewSpaceSId}/data_source_views/${item.nodeDataSourceViewId}`}
+      href={`/poke/${owner.sId}/spaces/${item.sourceDataSourceViewSpaceId}/data_source_views/${item.nodeDataSourceViewId}`}
       className="text-highlight-400"
     >
       {label}

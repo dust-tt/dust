@@ -1,10 +1,8 @@
-import { describe, expect, it } from "vitest";
-
 import { CouponRedemptionResource } from "@app/lib/resources/coupon_redemption_resource";
 import { CouponFactory } from "@app/tests/utils/CouponFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-
 import { honoApp } from "@front-api/app";
+import { describe, expect, it } from "vitest";
 
 function validateCoupon(
   workspace: { sId: string },

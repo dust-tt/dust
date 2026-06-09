@@ -21,6 +21,7 @@ import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import type { ConnectorType } from "@app/types/data_source";
 import type { PokeItemBase } from "@app/types/poke";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import { validate as validateUuid } from "uuid";
 
@@ -187,17 +188,48 @@ async function searchPokeFrames(searchTerm: string): Promise<PokeItemBase[]> {
   ];
 }
 
+// `dustAPIProjectId` is a numeric string.
+const DUST_API_PROJECT_ID_REGEX = /^\d+$/;
+
+async function searchPokeDataSourcesByDustAPIProjectId(
+  auth: Authenticator,
+  searchTerm: string
+): Promise<PokeItemBase[]> {
+  if (!DUST_API_PROJECT_ID_REGEX.test(searchTerm)) {
+    return [];
+  }
+
+  const dataSource = await DataSourceResource.unsafeFetchByDustAPIProjectId(
+    auth,
+    searchTerm
+  );
+  if (!dataSource) {
+    return [];
+  }
+
+  return [await dataSourceToPokeJSON(dataSource)];
+}
+
 async function searchByPhoneNumber(
   searchTerm: string
 ): Promise<PokeItemBase[]> {
-  const e164 = tryParsePhoneNumber(searchTerm);
-  if (!e164) {
+  let e164PhoneNumber: string | null;
+  try {
+    e164PhoneNumber = tryParsePhoneNumber(searchTerm);
+  } catch (err) {
+    logger.warn(
+      { err: normalizeError(err) },
+      "Phone number parsing unavailable; skipping phone-search axis"
+    );
+    return [];
+  }
+  if (!e164PhoneNumber) {
     return [];
   }
 
   const workspaceModelId =
     await WorkspaceVerificationAttemptResource.findWorkspaceModelIdFromPhoneNumber(
-      e164
+      e164PhoneNumber
     );
   if (!workspaceModelId) {
     return [];
@@ -235,6 +267,7 @@ export async function searchPokeResources(
       searchPokeFrames(searchTerm),
       searchByStripeSubscriptionId(searchTerm),
       searchByPhoneNumber(searchTerm),
+      searchPokeDataSourcesByDustAPIProjectId(auth, searchTerm),
     ])
   ).flat();
 }

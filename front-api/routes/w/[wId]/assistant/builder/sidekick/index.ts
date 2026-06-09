@@ -1,9 +1,9 @@
-import { Hono } from "hono";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 
 import prompt from "./prompt";
 
 // Mounted under /api/w/:wId/assistant/builder/sidekick.
-const app = new Hono();
+const app = workspaceApp();
 
 app.route("/prompt", prompt);
 

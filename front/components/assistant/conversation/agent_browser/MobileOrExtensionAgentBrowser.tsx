@@ -61,6 +61,7 @@ export function MobileOrExtensionAgentBrowser({
                 key={tab.id}
                 disabled={agentsByTab[tab.id].length === 0}
                 onClick={() => setSelectedTab(tab.id)}
+                className="notranslate"
                 label={tab.label}
               />
             ))}
@@ -101,7 +102,6 @@ export function MobileOrExtensionAgentBrowser({
             handleAssistantClick={handleAgentClick}
             handleMoreClick={setDisplayedAssistantId}
             owner={owner}
-            iconSize="sm"
             canGetMore={false}
           />
         )

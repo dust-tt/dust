@@ -1,23 +1,21 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import { fetchUserFromSession } from "@app/lib/iam/users";
+import { sessionApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
 
-import { sessionAuth } from "../middleware/session_auth";
+import { sessionAuth } from "../middlewares/session_auth";
 
-export const authContextApp = new Hono();
+export const authContextApp = sessionApp();
 
 authContextApp.use("*", sessionAuth);
 
-authContextApp.get("/", async (c) => {
-  const session = c.get("session");
+authContextApp.get("/", async (ctx) => {
+  const session = ctx.get("session");
 
   if (session.workspaceId) {
     const redirect = await getWorkspaceRegionRedirect(session.workspaceId);
     if (redirect) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "workspace_in_different_region",
@@ -30,7 +28,7 @@ authContextApp.get("/", async (c) => {
 
   const user = await fetchUserFromSession(session);
   if (!user) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "user_not_found",
@@ -39,7 +37,7 @@ authContextApp.get("/", async (c) => {
     });
   }
 
-  return c.json({
+  return ctx.json({
     user: user.toJSON(),
     defaultWorkspaceId: session.workspaceId ?? null,
   });

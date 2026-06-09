@@ -1,3 +1,4 @@
+import { isBadCredentials } from "@connectors/connectors/github/lib/errors";
 import {
   getRepo,
   getReposPage,
@@ -495,7 +496,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         }
       }
     } catch (e) {
-      if (e instanceof ExternalOAuthTokenError) {
+      if (e instanceof ExternalOAuthTokenError || isBadCredentials(e)) {
         return new Err(
           new ConnectorManagerError(
             "EXTERNAL_OAUTH_TOKEN_ERROR",

@@ -1,11 +1,12 @@
+import config from "@app/lib/api/config";
 import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import {
   GOOGLE_AI_STUDIO_PROVIDER_ID,
   overwriteLLMParameters,
 } from "@app/lib/api/llm/clients/google/types";
 import {
-  toContent,
-  toTool,
+  toContents,
+  toFunctionDeclaration,
 } from "@app/lib/api/llm/clients/google/utils/conversation_to_google";
 import {
   responseToLLMEvents,
@@ -43,25 +44,41 @@ interface GoogleGenerateContentRequestParams {
 
 export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
   private client: GoogleGenAI;
+  private useVertex: boolean;
   protected modelId: GoogleAIStudioWhitelistedModelId;
 
   constructor(
     auth: Authenticator,
-    llmParameters: LLMParameters & { modelId: GoogleAIStudioWhitelistedModelId }
+    llmParameters: LLMParameters & {
+      modelId: GoogleAIStudioWhitelistedModelId;
+      useVertex?: boolean;
+    }
   ) {
     const params = overwriteLLMParameters(llmParameters);
     super(auth, GOOGLE_AI_STUDIO_PROVIDER_ID, params);
     this.modelId = llmParameters.modelId;
 
-    const { GOOGLE_AI_STUDIO_API_KEY } = llmParameters.credentials;
-    assert(
-      GOOGLE_AI_STUDIO_API_KEY,
-      "GOOGLE_AI_STUDIO_API_KEY credential is required"
-    );
+    this.useVertex = llmParameters.useVertex ?? false;
+    if (this.useVertex) {
+      this.metadata = {
+        ...this.metadata,
+        inferenceProvider: "google_vertex_ai",
+      };
+      this.client = new GoogleGenAI({
+        vertexai: true,
+        project: config.getGoogleCloudProjectId(),
+      });
+    } else {
+      const { GOOGLE_AI_STUDIO_API_KEY } = llmParameters.credentials;
+      assert(
+        GOOGLE_AI_STUDIO_API_KEY,
+        "GOOGLE_AI_STUDIO_API_KEY credential is required"
+      );
 
-    this.client = new GoogleGenAI({
-      apiKey: GOOGLE_AI_STUDIO_API_KEY,
-    });
+      this.client = new GoogleGenAI({
+        apiKey: GOOGLE_AI_STUDIO_API_KEY,
+      });
+    }
   }
 
   private buildGenerateContentConfig(
@@ -71,7 +88,14 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
   ) {
     return {
       temperature: this.temperature ?? undefined,
-      tools: specifications.map(toTool),
+      tools:
+        specifications.length > 0
+          ? [
+              {
+                functionDeclarations: specifications.map(toFunctionDeclaration),
+              },
+            ]
+          : [],
       systemInstruction: { text: systemPromptToText(prompt) },
       // We only need one
       candidateCount: 1,
@@ -106,10 +130,9 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
     payload: GoogleGenerateContentRequestParams
   ): AsyncGenerator<LLMEvent> {
     try {
-      const contents = await Promise.all(
-        payload.conversation.messages.map((message) =>
-          toContent(message, this.modelId)
-        )
+      const contents = await toContents(
+        payload.conversation.messages,
+        this.modelId
       );
 
       const generateContentResponses =
@@ -177,10 +200,7 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
       specifications,
       forceToolCall,
     } of params) {
-      const contents = [];
-      for (const message of conversation.messages) {
-        contents.push(await toContent(message, this.modelId));
-      }
+      const contents = await toContents(conversation.messages, this.modelId);
       inlinedRequests.push({
         contents,
         config: this.buildGenerateContentConfig(

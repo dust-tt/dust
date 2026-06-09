@@ -5,7 +5,9 @@ import {
   IncludeInputSchema,
   SearchWithNodesInputSchema,
 } from "@app/lib/actions/mcp_internal_actions/types";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
+import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
 import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -13,6 +15,9 @@ import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const POD_MANAGER_SERVER_NAME = "pod_manager" as const;
+export const UPDATE_MEMBERS_TOOL_NAME = "update_members" as const;
+export const LIST_MEMBERS_TOOL_NAME = "list_members" as const;
+export const SEMANTIC_SEARCH_TOOL_NAME = "semantic_search" as const;
 
 export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
   add_content_node: {
@@ -27,7 +32,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       nodeId: z.string().describe("Internal node ID to attach"),
       url: z.string().nullable().optional().describe("Optional source URL"),
       dustPod: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
         .optional()
         .describe(
@@ -52,7 +57,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
           "Internal data source view ID for the content node reference (from get_information attachments)"
         ),
       dustPod: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
         .optional()
         .describe(
@@ -65,37 +70,74 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       done: "Remove content node from Pod",
     },
   },
-  edit_description: {
+  edit_information: {
     description:
-      "Edit the Pod description. Only plain text is accepted (no markdown, HTML, or formatting). Descriptions should be brief and concise.",
+      "Edit Pod information: title, description, and/or pinned frame. " +
+      "Provide at least one field to update. Descriptions must be plain text only (no markdown, HTML, or formatting). " +
+      "The pinned frame must be an existing Pod file path under `pod/` (use null to unpin).",
     schema: {
+      title: z.string().optional().describe("New Pod title"),
       description: z
         .string()
+        .optional()
         .describe(
           "New Pod description. Must be plain text only (no markdown, HTML, or other formatting). Keep it brief and concise: 1-2 short sentences max."
         ),
+      pinnedFramePath: z
+        .string()
+        .nullable()
+        .optional()
+        .describe(
+          `Path to a Pod file to pin as the Pod banner frame (e.g. ${SCOPED_PREFIX_POD}<id>/banner.html). Pass null to unpin.`
+        ),
       dustPod: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
         .optional()
         .describe(
-          "Optional Pod to edit the description of, will fallback to the conversation's Pod."
+          "Optional Pod to edit, will fallback to the conversation's Pod."
         ),
     },
     stake: "low",
     displayLabels: {
-      running: "Editing Pod description",
-      done: "Edit Pod description",
+      running: "Editing Pod information",
+      done: "Edit Pod information",
+    },
+  },
+  [UPDATE_MEMBERS_TOOL_NAME]: {
+    description:
+      "Add or remove Pod members by user sId. Requires Pod editor permissions.",
+    schema: {
+      addMemberIds: z
+        .array(z.string())
+        .optional()
+        .describe("User sIds to add as Pod members"),
+      removeMemberIds: z
+        .array(z.string())
+        .optional()
+        .describe("User sIds to remove from the Pod"),
+      dustPod: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
+      ]
+        .optional()
+        .describe(
+          "Optional Pod to update members for, will fallback to the conversation's Pod."
+        ),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Updating Pod members",
+      done: "Update Pod members",
     },
   },
   get_information: {
     description:
-      "Get information about the Pod: URL, description, and linked content nodes " +
+      "Get information about the Pod: URL, title, description, pinned frame, and linked content nodes " +
       "attached to the Pod context. Does NOT list Pod files. Pod files live under " +
-      `\`project/<rel>\` scoped paths and are discovered through the \`${FILES_SERVER_NAME}\` MCP server.`,
+      `\`${SCOPED_PREFIX_POD}<id>/<rel>\` scoped paths and are discovered through the \`${FILES_SERVER_NAME}\` MCP server.`,
     schema: {
       dustPod: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
         .optional()
         .describe(
@@ -108,7 +150,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       done: "Get Pod information",
     },
   },
-  list_members: {
+  [LIST_MEMBERS_TOOL_NAME]: {
     description:
       "List members of the Pod. Each entry includes user ID, name, email and status within the Pod.",
     schema: {
@@ -128,7 +170,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
           "Opaque cursor from nextPageCursor of a prior list_members call. Only for pagination."
         ),
       dustPod: ConfigurableToolInputSchemas[
-        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
       ]
         .optional()
         .describe(
@@ -177,7 +219,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         .boolean()
         .optional()
         .describe(
-          "Whether to seed the Pod with a set of starter tasks. Defaults to false when creating via the tool."
+          "Whether to seed the Pod with a set of starter tasks after creation. Defaults to false."
         ),
     },
     stake: "low",
@@ -194,13 +236,50 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
       nodeIds: SearchWithNodesInputSchema.shape.nodeIds,
       dustPod:
         ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
         ].optional(),
     },
     stake: "never_ask",
     displayLabels: {
       running: "Retrieving recent Pod documents",
       done: "Retrieve recent Pod documents",
+    },
+  },
+  [SEMANTIC_SEARCH_TOOL_NAME]: {
+    description:
+      "Semantic search over a Pod using the same retrieval pipeline as company data search. Scope selects the Pod data source slice (files vs conversation transcripts vs both) plus searchable context nodes for files/all.",
+    schema: {
+      query: z
+        .string()
+        .describe(
+          "Natural-language query; include enough context from the conversation for good retrieval."
+        ),
+      searchScope: z
+        .enum(["files", "conversations", "all"])
+        .optional()
+        .describe(
+          "files: Pod files, metadata, and linked searchable nodes (excludes conversation transcripts in the Pod data source); conversations: only those transcripts; all: entire Pod data source plus linked nodes (default when omitted)."
+        ),
+      relativeTimeFrame: z
+        .string()
+        .regex(/^(all|\d+[hdwmy])$/)
+        .optional()
+        .describe(
+          "Restrict matches by document time (same as company search): `all`, or `{k}h|d|w|m|y`. Omit for all time."
+        ),
+      nodeIds: SearchWithNodesInputSchema.shape.nodeIds,
+      dustPod: ConfigurableToolInputSchemas[
+        INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
+      ]
+        .optional()
+        .describe(
+          "Optional Pod to search, will fallback to the conversation's Pod."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Searching Pod",
+      done: "Search Pod",
     },
   },
   create_conversation: {
@@ -221,7 +300,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         ),
       dustPod:
         ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
         ].optional(),
     },
     stake: "medium",
@@ -276,7 +355,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         ),
       dustPod:
         ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
         ].optional(),
     },
     stake: "never_ask",
@@ -294,7 +373,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe(
-          "Conversation sId to post to; defaults to the conversation this agent run is in when omitted"
+          "Conversation id to post to; defaults to the conversation this agent run is in when omitted"
         ),
       message: z
         .string()
@@ -309,7 +388,7 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
         ),
       dustPod:
         ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD
         ].optional(),
     },
     stake: "medium",
@@ -322,13 +401,17 @@ export const POD_MANAGER_TOOLS_METADATA = createToolsRecord({
 
 const POD_MANAGER_INSTRUCTIONS =
   "Pod files and metadata are shared across all conversations in this Pod. " +
-  `Pod files are managed through the \`${FILES_SERVER_NAME}\` MCP server using \`project/<rel>\` scoped paths ` +
+  `Pod files are managed through the \`${FILES_SERVER_NAME}\` MCP server using \`${SCOPED_PREFIX_POD}<id>/<rel>\` scoped paths ` +
   "(create, cat, grep, list, delete), not through this server. " +
   "Use `add_content_node` to reference a Company Data node in the Pod context, and " +
   "`remove_content_node` to remove such a reference. " +
+  "Use `edit_information` to update the Pod title, description, or pinned frame. " +
+  "Use `update_members` to add or remove Pod members. " +
   "Use `list_pods` to discover Pods you can access and obtain the dustPod uri for other tools. " +
   "Use `retrieve_recent_documents` to load recent content from the Pod data source and from " +
   "knowledge nodes in the Pod context. " +
+  `Use \`${getPrefixedToolName(POD_MANAGER_SERVER_NAME, SEMANTIC_SEARCH_TOOL_NAME)}\` to find relevant chunks in Pod files and/or conversations ` +
+  "(scope: files, conversations, or all). " +
   "Requires write permissions on the Pod for state-changing operations.";
 
 export const POD_MANAGER_SERVER = {
@@ -339,7 +422,7 @@ export const POD_MANAGER_SERVER = {
     description:
       "Manage Pod metadata, members, conversations, and Company Data references. " +
       `Raw Pod file operations (create, read, search, write, delete) live in the \`${FILES_SERVER_NAME}\` MCP ` +
-      "server under `project/<rel>` scoped paths.",
+      `server under \`${SCOPED_PREFIX_POD}<id>/<rel>\` scoped paths.`,
     icon: "ActionDocumentTextIcon",
     authorization: null,
     documentationUrl: null,

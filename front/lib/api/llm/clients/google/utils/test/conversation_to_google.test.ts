@@ -1,7 +1,13 @@
-import { toContent } from "@app/lib/api/llm/clients/google/utils/conversation_to_google";
+import {
+  toContent,
+  toContents,
+} from "@app/lib/api/llm/clients/google/utils/conversation_to_google";
 import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types/assistant/generation";
 import { GEMINI_2_5_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
-import { describe, expect, it } from "vitest";
+import { trustedFetchImageBase64 } from "@app/types/shared/utils/image_utils";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/types/shared/utils/image_utils");
 
 describe("toContent", () => {
   describe("user messages", () => {
@@ -13,6 +19,200 @@ describe("toContent", () => {
       );
 
       expect(messages).toEqual(expectedGoogleMessages);
+    });
+  });
+});
+
+describe("toContents", () => {
+  it("should merge parallel tool results into a single user turn.", async () => {
+    const messages: ModelMessageTypeMultiActionsWithoutContentFragment[] = [
+      {
+        role: "assistant",
+        function_calls: [
+          { id: "call_1", name: "tool_a", arguments: "{}" },
+          { id: "call_2", name: "tool_b", arguments: "{}" },
+        ],
+        content: "",
+        contents: [
+          {
+            type: "function_call",
+            value: { id: "call_1", name: "tool_a", arguments: "{}" },
+          },
+          {
+            type: "function_call",
+            value: { id: "call_2", name: "tool_b", arguments: "{}" },
+          },
+        ],
+      },
+      {
+        role: "function",
+        name: "tool_a",
+        function_call_id: "call_1",
+        content: "result a",
+      },
+      {
+        role: "function",
+        name: "tool_b",
+        function_call_id: "call_2",
+        content: "result b",
+      },
+    ];
+
+    const result = await toContents(messages, GEMINI_2_5_PRO_MODEL_ID);
+
+    // The model turn has 2 functionCall parts, so the following user turn must
+    // hold both functionResponse parts (Gemini enforces equal counts).
+    expect(result).toEqual([
+      {
+        role: "model",
+        parts: [
+          { functionCall: { id: "call_1", name: "tool_a", args: {} } },
+          { functionCall: { id: "call_2", name: "tool_b", args: {} } },
+        ],
+      },
+      {
+        role: "user",
+        parts: [
+          {
+            functionResponse: {
+              response: { output: "result a" },
+              name: "tool_a",
+              id: "call_1",
+            },
+          },
+          {
+            functionResponse: {
+              response: { output: "result b" },
+              name: "tool_b",
+              id: "call_2",
+            },
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("should not merge a regular user message into function responses.", async () => {
+    const messages: ModelMessageTypeMultiActionsWithoutContentFragment[] = [
+      {
+        role: "function",
+        name: "tool_a",
+        function_call_id: "call_1",
+        content: "result a",
+      },
+      {
+        role: "user",
+        name: "Someone",
+        content: [{ type: "text", text: "follow-up" }],
+      },
+    ];
+
+    const result = await toContents(messages, GEMINI_2_5_PRO_MODEL_ID);
+
+    expect(result).toEqual([
+      {
+        role: "user",
+        parts: [
+          {
+            functionResponse: {
+              response: { output: "result a" },
+              name: "tool_a",
+              id: "call_1",
+            },
+          },
+        ],
+      },
+      {
+        role: "user",
+        parts: [{ text: "follow-up" }],
+      },
+    ]);
+  });
+});
+
+describe("image_url handling", () => {
+  it("should return a text part fallback when image fetch fails in user message", async () => {
+    vi.mocked(trustedFetchImageBase64).mockRejectedValue(
+      new Error("Not Found")
+    );
+
+    const result = await toContent(
+      {
+        role: "user",
+        name: "Someone",
+        content: [
+          {
+            type: "image_url",
+            image_url: { url: "https://example.com/expired.png" },
+          },
+        ],
+      },
+      GEMINI_2_5_PRO_MODEL_ID
+    );
+
+    expect(result).toEqual({
+      role: "user",
+      parts: [{ text: "Attachment: image could not be loaded." }],
+    });
+  });
+
+  it("should return a text fallback when image fetch fails in tool result", async () => {
+    vi.mocked(trustedFetchImageBase64).mockRejectedValue(
+      new Error("Not Found")
+    );
+
+    const result = await toContent(
+      {
+        role: "function",
+        name: "some_tool",
+        function_call_id: "call_1",
+        content: [
+          {
+            type: "image_url",
+            image_url: { url: "https://example.com/expired.png" },
+          },
+        ],
+      },
+      GEMINI_2_5_PRO_MODEL_ID
+    );
+
+    expect(result).toEqual({
+      role: "user",
+      parts: [
+        {
+          functionResponse: {
+            response: { output: "Attachment: image could not be loaded." },
+            name: "some_tool",
+            id: "call_1",
+          },
+        },
+      ],
+    });
+  });
+
+  it("should embed image as base64 when fetch succeeds in user message", async () => {
+    vi.mocked(trustedFetchImageBase64).mockResolvedValue({
+      mediaType: "image/jpeg",
+      data: "base64data",
+    });
+
+    const result = await toContent(
+      {
+        role: "user",
+        name: "Someone",
+        content: [
+          {
+            type: "image_url",
+            image_url: { url: "https://example.com/image.jpg" },
+          },
+        ],
+      },
+      GEMINI_2_5_PRO_MODEL_ID
+    );
+
+    expect(result).toEqual({
+      role: "user",
+      parts: [{ inlineData: { mimeType: "image/jpeg", data: "base64data" } }],
     });
   });
 });

@@ -8,7 +8,7 @@ import {
   TooltipRoot,
   TooltipTrigger,
 } from "@sparkle/components/Tooltip";
-import { ArrowDownSIcon, ArrowRightSIcon } from "@sparkle/icons/app";
+import { ChevronDown, ChevronRight } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import React, {
   type ComponentType,
@@ -17,7 +17,6 @@ import React, {
   useEffect,
   useState,
 } from "react";
-
 import { Checkbox, type CheckboxProps } from "./Checkbox";
 
 export interface TreeProps {
@@ -82,8 +81,7 @@ export function Tree({
 
 const treeItemStyleClasses = {
   base: "s-group/tree s-flex s-cursor-default s-flex-row s-items-center s-gap-2 s-h-9",
-  isNavigatableBase:
-    "s-rounded-xl s-pl-1.5 s-pr-3 s-transition-colors s-duration-300 s-ease-out s-cursor-pointer",
+  isNavigatableBase: "s-rounded-xl s-pl-1.5 s-pr-3 s-ease-out s-cursor-pointer",
   isNavigatableUnselected: cn(
     "s-bg-primary-100/0 dark:s-bg-primary-100-night/0",
     "hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night"
@@ -133,7 +131,7 @@ Tree.Item = React.forwardRef<
       type = "node",
       className = "",
       labelClassName = "",
-      tailwindIconTextColor = "s-text-foreground dark:s-text-foreground-night",
+      tailwindIconTextColor = "s-text-muted-foreground dark:s-text-muted-foreground-night",
       visual,
       checkbox,
       onChevronClick,
@@ -238,7 +236,7 @@ Tree.Item = React.forwardRef<
         >
           {type === "node" && (
             <Button
-              icon={isExpanded ? ArrowDownSIcon : ArrowRightSIcon}
+              icon={isExpanded ? ChevronDown : ChevronRight}
               size="xmini"
               variant="ghost-secondary"
               disabled={!effectiveOnChevronClick}
@@ -262,7 +260,7 @@ Tree.Item = React.forwardRef<
                   <div
                     ref={labelRef}
                     className={cn(
-                      "s-font-regular s-truncate s-text-sm s-text-foreground dark:s-text-foreground-night",
+                      "s-font-medium s-truncate s-text-sm s-text-primary dark:s-text-primary-night",
                       labelClassName
                     )}
                   >
@@ -280,7 +278,7 @@ Tree.Item = React.forwardRef<
             <div
               ref={labelRef}
               className={cn(
-                "s-font-regular s-truncate s-text-sm s-text-foreground dark:s-text-foreground-night",
+                "s-font-medium s-truncate s-text-sm s-text-primary dark:s-text-primary-night",
                 labelClassName
               )}
             >

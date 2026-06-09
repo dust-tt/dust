@@ -14,6 +14,7 @@ struct ConversationDetailView: View {
     @State private var showFilesSheet = false
     @State private var selectedFragment: ContentFragment?
     @State private var selectedGeneratedFile: GeneratedFile?
+    @Environment(\.scenePhase) private var scenePhase
 
     init(
         conversation: Conversation,
@@ -47,14 +48,18 @@ struct ConversationDetailView: View {
             messageList
             InputBarView(
                 viewModel: inputBarViewModel,
-                conversationId: conversation.sId
+                conversationId: conversation.sId,
+                onWillSendReply: { text in
+                    viewModel.addOptimisticUserMessage(content: text, userEmail: currentUserEmail)
+                },
+                onReplySendFailed: { viewModel.removeOptimisticUserMessage() }
             )
         }
         .background(Color.dustBackground)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Text(conversation.title ?? "New conversation")
+                Text(viewModel.conversationTitle ?? "New conversation")
                     .sparkleCopySm()
                     .foregroundStyle(Color.dustForeground)
                     .lineLimit(1)
@@ -68,6 +73,18 @@ struct ConversationDetailView: View {
                 }
             }
         }
+        .alert(
+            "Action failed",
+            isPresented: Binding(
+                get: { viewModel.actionError != nil },
+                set: { if !$0 { viewModel.actionError = nil } }
+            ),
+            presenting: viewModel.actionError
+        ) { _ in
+            Button("OK", role: .cancel) {}
+        } message: { error in
+            Text(error)
+        }
         .task {
             await viewModel.loadMessages()
         }
@@ -75,6 +92,11 @@ struct ConversationDetailView: View {
             async let agents: () = inputBarViewModel.loadAgents()
             async let caps: () = inputBarViewModel.loadCapabilities()
             _ = await (agents, caps)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                Task { await viewModel.resyncOnForeground() }
+            }
         }
         .onDisappear {
             inputBarViewModel.cancelUploads()
@@ -113,13 +135,11 @@ struct ConversationDetailView: View {
 
     // MARK: - Steering Detection
 
-    /// Returns true if the agent message at the given index is a steered follow-up
-    /// (i.e., the previous agent message with the same configuration was gracefully stopped).
     private func isSteeredAgentMessage(at index: Int) -> Bool {
         guard case let .agent(agentMsg) = viewModel.messages[index] else { return false }
-        for i in stride(from: index - 1, through: 0, by: -1) {
-            if case let .agent(prevAgent) = viewModel.messages[i] {
-                return prevAgent.status == .gracefullyStopped
+        for priorIndex in stride(from: index - 1, through: 0, by: -1) {
+            if case let .agent(prevAgent) = viewModel.messages[priorIndex] {
+                return (prevAgent.status == .gracefullyStopped || prevAgent.status == .interrupted)
                     && prevAgent.configuration.sId == agentMsg.configuration.sId
             }
         }
@@ -172,7 +192,7 @@ struct ConversationDetailView: View {
                                 let isStreaming = message.id == viewModel.streamingMessageId
                                 let hideAgentHeader = isSteeredAgentMessage(at: index)
                                 MessageBubbleView(
-                                    message: message,
+                                    message: viewModel.renderMessage(message),
                                     currentUserEmail: currentUserEmail,
                                     streamingPhase: isStreaming ? viewModel.streamingPhase : .idle,
                                     activeActions: isStreaming ? viewModel.activeActions : [],
@@ -195,6 +215,9 @@ struct ConversationDetailView: View {
                                     },
                                     onValidateAction: { approval in
                                         Task { await viewModel.validateAction(approved: approval) }
+                                    },
+                                    onAnswerQuestion: { answer in
+                                        Task { await viewModel.answerQuestion(answer) }
                                     },
                                     onRetry: { messageId in
                                         Task { await viewModel.retryMessage(messageId: messageId) }

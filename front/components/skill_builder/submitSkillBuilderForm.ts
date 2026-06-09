@@ -1,11 +1,13 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import type {
+  PatchSkillResponseBody,
+  PostSkillResponseBody,
+} from "@app/lib/api/skills";
 import { clientFetch } from "@app/lib/egress/client";
-import type { PostSkillResponseBody } from "@app/pages/api/w/[wId]/skills";
-import type { PatchSkillResponseBody } from "@app/pages/api/w/[wId]/skills/[sId]";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { UserType, WorkspaceType } from "@app/types/user";
+import type { LightUserType, WorkspaceType } from "@app/types/user";
 
 export async function submitSkillBuilderForm({
   formData,
@@ -14,9 +16,9 @@ export async function submitSkillBuilderForm({
   currentEditors = [],
 }: {
   formData: SkillBuilderFormData;
-  owner: WorkspaceType;
+  owner: Pick<WorkspaceType, "sId">;
   skillId?: string;
-  currentEditors?: UserType[];
+  currentEditors?: LightUserType[];
 }): Promise<
   Result<
     PostSkillResponseBody["skill"] | PatchSkillResponseBody["skill"],
@@ -47,7 +49,7 @@ export async function submitSkillBuilderForm({
         icon: formData.icon,
         extendedSkillId: formData.extendedSkillId,
         isDefault: formData.isDefault,
-        ...(skillId ? { reinforcement: formData.reinforcement } : {}),
+        reinforcement: formData.reinforcement,
         tools: formData.tools.map((tool) => ({
           mcpServerViewId: tool.configuration.mcpServerViewId,
         })),
@@ -56,6 +58,7 @@ export async function submitSkillBuilderForm({
         })),
         attachedKnowledge: formData.attachedKnowledge ?? [],
         additionalRequestedSpaceIds: formData.additionalSpaces,
+        referencedSkillIds: formData.referencedSkillIds,
       }),
     });
 

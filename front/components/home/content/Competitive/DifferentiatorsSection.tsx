@@ -1,12 +1,6 @@
 import { H2, P } from "@app/components/home/ContentComponents";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
-import {
-  BoltIcon,
-  BookOpenIcon,
-  Icon,
-  RobotIcon,
-  UserGroupIcon,
-} from "@dust-tt/sparkle";
+import { BookOpen01, Icon, Robot, Users01, Zap } from "@dust-tt/sparkle";
 
 type IconType = "robot" | "bolt" | "book" | "users";
 type IconColor = "green" | "orange" | "blue" | "red";
@@ -25,10 +19,10 @@ interface DifferentiatorsSectionProps {
 }
 
 const iconMap = {
-  robot: RobotIcon,
-  bolt: BoltIcon,
-  book: BookOpenIcon,
-  users: UserGroupIcon,
+  robot: Robot,
+  bolt: Zap,
+  book: BookOpen01,
+  users: Users01,
 };
 
 const colorMap = {

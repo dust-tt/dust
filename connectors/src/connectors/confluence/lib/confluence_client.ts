@@ -49,11 +49,12 @@ const ConfluencePageCodec = t.intersection([
     parentType: t.union([
       t.literal("page"),
       t.literal("folder"),
+      t.literal("database"),
       t.null,
       t.undefined,
     ]),
     id: t.string,
-    title: t.string,
+    title: t.union([t.string, t.null]),
     spaceId: t.string,
     version: t.type({
       number: t.number,
@@ -149,7 +150,7 @@ const ConfluencePageWithBodyCodec = t.intersection([
   ConfluencePageCodec,
   t.type({
     body: t.type({
-      storage: t.type({
+      view: t.type({
         value: t.string,
       }),
     }),
@@ -839,7 +840,7 @@ export class ConfluenceClient {
 
   async getPageById(pageId: string) {
     const params = new URLSearchParams({
-      "body-format": "storage", // Returns HTML.
+      "body-format": "view", // Returns HTML.
       "include-labels": "true", // Include labels.
     });
 

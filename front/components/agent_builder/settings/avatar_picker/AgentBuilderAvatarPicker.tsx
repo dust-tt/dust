@@ -3,10 +3,9 @@ import AgentBuilderEmojiPicker from "@app/components/agent_builder/settings/avat
 import type { AvatarPickerTabElement } from "@app/components/agent_builder/settings/avatar_picker/types";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ArrowUpOnSquareIcon,
   Avatar,
-  EmotionLaughIcon,
-  ImageIcon,
+  FaceSmile,
+  Image01,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -17,6 +16,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  Upload01,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import type React from "react";
@@ -68,25 +68,25 @@ export function AvatarPicker({
         label: "Droids",
         id: "droids",
         current: currentTab === "droids",
-        icon: ImageIcon,
+        icon: Image01,
       },
       {
         label: "Spirits",
         id: "spirits",
         current: currentTab === "spirits",
-        icon: ImageIcon,
+        icon: Image01,
       },
       {
         label: "Emojis",
         id: "emojis",
         current: currentTab === "emojis",
-        icon: EmotionLaughIcon,
+        icon: FaceSmile,
       },
       {
         label: "Upload",
         id: "upload",
         current: currentTab === "upload",
-        icon: ArrowUpOnSquareIcon,
+        icon: Upload01,
       },
     ],
     [currentTab]

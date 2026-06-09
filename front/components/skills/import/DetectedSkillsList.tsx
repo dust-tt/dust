@@ -9,8 +9,8 @@ import {
   ContentMessage,
   createSelectionColumn,
   DataTable,
-  InformationCircleIcon,
-  PuzzleIcon,
+  InfoCircle,
+  PuzzlePiece01,
   ScrollableDataTable,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -44,7 +44,7 @@ function getColumns(): ColumnDef<SkillRowData>[] {
       accessorKey: "name",
       header: "Skill name",
       cell: (info: SkillCellInfo) => (
-        <DataTable.CellContent icon={PuzzleIcon}>
+        <DataTable.CellContent icon={PuzzlePiece01}>
           {info.row.original.name}
         </DataTable.CellContent>
       ),
@@ -134,7 +134,7 @@ export function DetectedSkillsList({
       {detectError && (
         <ContentMessage
           title="Detection failed"
-          icon={InformationCircleIcon}
+          icon={InfoCircle}
           variant="warning"
           size="lg"
         >

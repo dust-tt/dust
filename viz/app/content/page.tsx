@@ -3,6 +3,7 @@ import { ServerSideVisualizationWrapper } from "@viz/app/content/ServerVisualiza
 
 interface RenderVisualizationSearchParams {
   accessToken?: string;
+  editable?: string;
   fullHeight?: string;
   identifier?: string;
   pdfMode?: string;
@@ -19,12 +20,15 @@ export default function RenderVisualization({
     ? ALLOWED_VISUALIZATION_ORIGIN.split(",").map((s) => s.trim())
     : [];
 
-  const { accessToken, fullHeight, identifier, pdfMode } = searchParams;
+  const { accessToken, editable, fullHeight, identifier, pdfMode } =
+    searchParams;
 
+  const isEditable = editable === "true";
   const isFullHeight = fullHeight === "true";
   const isPdfMode = pdfMode === "true";
 
   // Use SSR approach for access tokens (publicly accessible).
+  // Editing is not available for public shared frames.
   if (accessToken) {
     return (
       <ServerSideVisualizationWrapper
@@ -43,6 +47,7 @@ export default function RenderVisualization({
       <ClientVisualizationWrapper
         identifier={identifier}
         allowedOrigins={allowedOrigins}
+        isEditable={isEditable}
         isFullHeight={isFullHeight}
       />
     );

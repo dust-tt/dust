@@ -29,6 +29,8 @@ export function buildCacheKey(
   return `cacheWithRedis-${resource.fnName}-${resource.buildResolverKey(params)}`;
 }
 
+export const WORKSPACE_CACHE_KEY_VERSION = 2;
+
 export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
   {
     id: "workspace_by_sid",
@@ -42,7 +44,8 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
         placeholder: "e.g. abc123",
       },
     ],
-    buildResolverKey: (p) => `workspace:sid:${p.wId}`,
+    buildResolverKey: (p) =>
+      `workspace:v${WORKSPACE_CACHE_KEY_VERSION}:${p.wId}`,
   },
   {
     id: "user_by_workos_id",
@@ -205,6 +208,86 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) => `slack_users_${p.mcpServerId}`,
+  },
+  {
+    id: "metronome_balance_threshold",
+    label: "Metronome balance threshold",
+    fnName: "fetchWorkspaceBalanceThreshold",
+    params: [
+      {
+        key: "metronomeCustomerId",
+        label: "Metronome Customer ID",
+        type: "string",
+        placeholder: "e.g. 550e8400-e29b-41d4-a716-446655440000",
+      },
+      {
+        key: "workspaceId",
+        label: "Workspace sId",
+        type: "string",
+        placeholder: "e.g. abc123",
+      },
+    ],
+    buildResolverKey: (p) => `${p.metronomeCustomerId}-${p.workspaceId}`,
+  },
+  {
+    id: "metronome_per_user_cap_alert_ids",
+    label: "Metronome per-user cap alert ids",
+    fnName: "fetchPerUserCapAlertIds",
+    params: [
+      {
+        key: "metronomeCustomerId",
+        label: "Metronome Customer ID",
+        type: "string",
+        placeholder: "e.g. 550e8400-e29b-41d4-a716-446655440000",
+      },
+      {
+        key: "workspaceId",
+        label: "Workspace sId",
+        type: "string",
+        placeholder: "e.g. abc123",
+      },
+    ],
+    buildResolverKey: (p) => `${p.metronomeCustomerId}-${p.workspaceId}`,
+  },
+  {
+    id: "metronome_default_cap_thresholds_by_seat_type",
+    label: "Metronome default cap thresholds by seat type",
+    fnName: "fetchDefaultCapThresholdsBySeatType",
+    params: [
+      {
+        key: "metronomeCustomerId",
+        label: "Metronome Customer ID",
+        type: "string",
+        placeholder: "e.g. 550e8400-e29b-41d4-a716-446655440000",
+      },
+      {
+        key: "workspaceId",
+        label: "Workspace sId",
+        type: "string",
+        placeholder: "e.g. abc123",
+      },
+    ],
+    buildResolverKey: (p) => `${p.metronomeCustomerId}-${p.workspaceId}`,
+  },
+  {
+    id: "metronome_workspace_alert_ids",
+    label: "Metronome workspace alert IDs",
+    fnName: "fetchWorkspaceMetronomeAlertIds",
+    params: [
+      {
+        key: "metronomeCustomerId",
+        label: "Metronome Customer ID",
+        type: "string",
+        placeholder: "e.g. 550e8400-e29b-41d4-a716-446655440000",
+      },
+      {
+        key: "workspaceId",
+        label: "Workspace sId",
+        type: "string",
+        placeholder: "e.g. abc123",
+      },
+    ],
+    buildResolverKey: (p) => `${p.metronomeCustomerId}-${p.workspaceId}`,
   },
 ];
 

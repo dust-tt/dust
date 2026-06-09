@@ -1,23 +1,16 @@
-import { Hono } from "hono";
-
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import type { GetUserTriggersResponseBody } from "@app/lib/api/assistant/configuration/triggers";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import type { TriggerType } from "@app/types/assistant/triggers";
 import { removeNulls } from "@app/types/shared/utils/general";
-
-export type GetUserTriggersResponseBody = {
-  triggers: (TriggerType & {
-    isEditor: boolean;
-    agentName: string;
-    agentPictureUrl: string;
-  })[];
-};
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 // Mounted at /api/w/:wId/me/triggers.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+/** @ignoreswagger */
+app.get("/", async (ctx): HandlerResult<GetUserTriggersResponseBody> => {
+  const auth = ctx.get("auth");
 
   const editorTriggers = await TriggerResource.listByUserEditor(
     auth,
@@ -50,8 +43,7 @@ app.get("/", async (c) => {
     })
   );
 
-  const body: GetUserTriggersResponseBody = { triggers };
-  return c.json(body);
+  return ctx.json({ triggers });
 });
 
 export default app;

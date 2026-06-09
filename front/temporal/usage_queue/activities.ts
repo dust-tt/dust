@@ -1,4 +1,5 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
+import { syncMetronomeSeatCountForWorkspace } from "@app/lib/api/metronome/seat_sync";
 import {
   isProgrammaticUsage,
   trackProgrammaticCost,
@@ -9,6 +10,7 @@ import { ingestMetronomeEvents } from "@app/lib/metronome/client";
 import {
   buildLlmUsageEvents,
   buildToolUseEvents,
+  getUsageType,
 } from "@app/lib/metronome/events";
 import {
   hasMauSubscriptionInContract,
@@ -35,6 +37,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import mainLogger from "@app/logger/logger";
 import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import { isHiddenHelperSubAgentId } from "@app/types/assistant/assistant";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
 import { createHash } from "crypto";
@@ -111,13 +114,7 @@ export async function trackProgrammaticUsageActivity(
   authType: AuthenticatorType,
   { agentLoopArgs }: { agentLoopArgs: AgentLoopArgs }
 ): Promise<{ tracked: boolean; origin: UserMessageOrigin }> {
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    throw new Error(
-      `Failed to deserialize authenticator: ${authResult.error.code}`
-    );
-  }
-  const auth = authResult.value;
+  const auth = await Authenticator.fromJSON(authType);
   const workspace = auth.getNonNullableWorkspace();
 
   const { agentMessageId, userMessageId } = agentLoopArgs;
@@ -208,15 +205,7 @@ export async function emitMetronomeUsageEventsActivity(
   authType: AuthenticatorType,
   { agentLoopArgs }: { agentLoopArgs: AgentLoopArgs }
 ): Promise<void> {
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    logger.warn(
-      { error: authResult.error.code },
-      "[Metronome] Failed to deserialize authenticator for usage events"
-    );
-    return;
-  }
-  const auth = authResult.value;
+  const auth = await Authenticator.fromJSON(authType);
   const workspace = auth.getNonNullableWorkspace();
   const isByok = auth.getNonNullablePlan().isByok;
   const { agentMessageId, conversationId, userMessageId } = agentLoopArgs;
@@ -271,7 +260,12 @@ export async function emitMetronomeUsageEventsActivity(
     ],
   });
 
-  const userId = userMessageRow?.userMessage?.user?.sId ?? null;
+  // Prefer the user associated with the UserMessage row; fall back to the
+  // user on the authenticator (covers doNotAssociateUser messages like
+  // pod_manager sub-conversations where the DB row has no user but the auth
+  // still carries the original session user).
+  const userId =
+    userMessageRow?.userMessage?.user?.sId ?? auth.user()?.sId ?? null;
 
   // Sub-agent messages have agenticMessageType set (e.g. "run_agent", "agent_handover").
   // agenticOriginMessageId is the sId of the parent agent message that spawned this one.
@@ -280,35 +274,64 @@ export async function emitMetronomeUsageEventsActivity(
   const isSubAgentMessage = userMessage?.agenticMessageType !== null;
 
   const programmatic = isProgrammaticUsage(auth, { userMessageOrigin });
+  const usageType = getUsageType(programmatic, userMessageOrigin);
   // Use updatedAt — this is when the agent message finished (not when it was created).
   const timestamp = agentMessage.updatedAt.toISOString();
   const authMethod = userMessage?.userContextAuthMethod ?? null;
-  const agentId = agentMessage.agentConfigurationId ?? null;
   const messageStatus = agentMessage.status ?? "unknown";
 
-  // Resolve API key name from the stored numeric FK.
+  // Attribute usage to the parent (triggering) agent only for *hidden helper*
+  // sub-agents (e.g. the dust-task / dust-planning runs spawned by "go deep").
+  // These run in their own child conversation under the workspace system key and
+  // are not meaningful to users on their own, so surfacing them by their own name
+  // (e.g. "dust-task") is confusing — we attribute their usage to the user-facing
+  // parent agent that spawned them instead. Other sub-agents (real user agents
+  // invoked via run_agent / agent_handover) keep their own attribution.
+  let agentId = agentMessage.agentConfigurationId ?? null;
+  // When we override agentId to the parent, keep the original (child) agent id
+  // around as sub_agent_id so it can still be recovered from the event if needed.
+  let subAgentId: string | null = null;
+  if (
+    isSubAgentMessage &&
+    parentAgentMessageId &&
+    agentId &&
+    isHiddenHelperSubAgentId(agentId)
+  ) {
+    const parentAgentMessageRow = await MessageModel.findOne({
+      where: { sId: parentAgentMessageId, workspaceId: workspace.id },
+      include: [
+        { model: AgentMessageModel, as: "agentMessage", required: true },
+      ],
+    });
+    const parentAgentId =
+      parentAgentMessageRow?.agentMessage?.agentConfigurationId ?? null;
+    if (parentAgentId) {
+      subAgentId = agentId;
+      agentId = parentAgentId;
+    }
+  }
+
+  // Resolve API key name from the stored numeric FK. We deliberately never surface
+  // the workspace system key ("DustSystemKey") as the API key name: sub-agent runs
+  // and other internal flows authenticate with the system key, but that is an
+  // implementation detail, not a meaningful billing attribution. In those cases we
+  // leave the API key name unset (it surfaces as "unknown" in the event).
   let apiKeyName: string | null = null;
   if (userMessage?.userContextApiKeyId) {
     const key = await KeyResource.fetchByWorkspaceAndId({
       workspace,
       id: userMessage.userContextApiKeyId,
     });
-    apiKeyName = key?.name ?? null;
+    if (key && !key.isSystem) {
+      apiKeyName = key.name;
+    }
   }
 
   // Get LLM run usages.
   const runs = await RunResource.listByDustRunIds(auth, {
     dustRunIds: effectiveRunIds,
   });
-  const runUsages = (
-    await concurrentExecutor(
-      runs,
-      (run) => {
-        return run.listRunUsages(auth);
-      },
-      { concurrency: 10 }
-    )
-  ).flat();
+  const runUsages = await RunResource.listRunUsagesForRuns(auth, { runs });
 
   // Get MCP actions — filter to this execution's steps if startStep is available,
   // and only include actions with a final status (succeeded/errored/denied).
@@ -357,11 +380,12 @@ export async function emitMetronomeUsageEventsActivity(
     userId,
     agentMessageId,
     agentId,
+    subAgentId,
     parentAgentMessageId,
     runKey,
     runUsages,
     origin: userMessageOrigin,
-    isProgrammaticUsage: programmatic,
+    usageType,
     authMethod,
     apiKeyName,
     messageStatus,
@@ -375,11 +399,12 @@ export async function emitMetronomeUsageEventsActivity(
     userId,
     agentMessageId,
     agentId,
+    subAgentId,
     parentAgentMessageId,
     runKey,
     actions: toolActions,
     origin: userMessageOrigin,
-    isProgrammaticUsage: programmatic,
+    usageType,
     authMethod,
     apiKeyName,
     messageStatus,
@@ -455,4 +480,38 @@ export async function syncMauCountToMetronomeForAllWorkspacesActivity(): Promise
     },
     { concurrency: 10 }
   );
+}
+
+/**
+ * Sync the Metronome seat count for a single workspace after membership changes were debounced.
+ */
+export async function syncMetronomeSeatCountActivity(
+  workspaceId: string
+): Promise<void> {
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    logger.info(
+      {
+        workspaceId,
+      },
+      "[Metronome] Skipping seat count sync: workspace not found"
+    );
+    return;
+  }
+
+  logger.info(
+    { workspaceId: workspace.sId },
+    "[Metronome] Executing debounced seat count sync"
+  );
+
+  const result = await syncMetronomeSeatCountForWorkspace({
+    workspace: renderLightWorkspaceType({ workspace }),
+  });
+  if (result.isErr()) {
+    logger.error(
+      { workspaceId: workspace.sId, error: result.error },
+      "[Metronome] Failed to sync seat count for workspace"
+    );
+    throw result.error;
+  }
 }

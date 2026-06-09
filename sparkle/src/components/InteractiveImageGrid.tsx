@@ -18,6 +18,7 @@ interface InteractiveImageGridProps {
     downloadUrl?: string;
     imageUrl?: string;
     isLoading?: boolean;
+    isGenerating?: boolean;
     title: string;
   }[];
   onClose?: () => void;
@@ -82,6 +83,7 @@ function InteractiveImageGrid({
               title={images[0].title}
               downloadUrl={images[0].downloadUrl}
               isLoading={images[0].isLoading}
+              isGenerating={images[0].isGenerating}
               onClick={() => setCurrentImageIndex(0)}
               onClose={onClose ? () => onClose() : undefined}
               variant="embedded"
@@ -99,6 +101,7 @@ function InteractiveImageGrid({
                 title={image.title}
                 downloadUrl={image.downloadUrl}
                 isLoading={image.isLoading}
+                isGenerating={image.isGenerating}
                 onClick={() => setCurrentImageIndex(idx)}
                 variant="standalone"
                 titlePosition="center"

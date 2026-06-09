@@ -1,6 +1,6 @@
 import type { IndustryPageConfig } from "@app/components/home/content/Industry/configs/utils";
 import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
-import { SparklesIcon } from "@dust-tt/sparkle";
+import { Stars02 } from "@dust-tt/sparkle";
 
 export const energyConfig: IndustryPageConfig = {
   seo: {
@@ -19,7 +19,7 @@ export const energyConfig: IndustryPageConfig = {
     chip: {
       label: "Energy & Utilities",
       color: "green",
-      icon: SparklesIcon,
+      icon: Stars02,
     },
     title: (
       <>

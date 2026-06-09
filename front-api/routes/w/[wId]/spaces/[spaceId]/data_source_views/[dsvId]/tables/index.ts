@@ -1,29 +1,30 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
-import { getCursorPaginationParams } from "@app/lib/api/pagination";
+import type { ListTablesResponseBody } from "@app/lib/api/data_source_view";
 import { getFlattenedContentNodesOfViewTypeForDataSourceView } from "@app/lib/api/data_source_view";
-
-import { dataSourceViewResource } from "@front-api/middleware/data_source_view_resource";
-import { spaceResource } from "@front-api/middleware/space_resource";
-
-import search from "./search";
+import { getCursorPaginationParams } from "@app/lib/api/pagination";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { withDataSourceView } from "@front-api/middlewares/with_data_source_view";
+import { withSpace } from "@front-api/middlewares/with_space";
 import tableId from "./[tableId]";
+import search from "./search";
+
+export type { ListTablesResponseBody };
 
 // Mounted under /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId/tables.
-const app = new Hono();
+const app = workspaceApp();
 
 // GET / — list tables.
+/** @ignoreswagger */
 app.get(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  dataSourceViewResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const dataSourceView = c.get("dataSourceView");
-    const paginationRes = getCursorPaginationParams(c.req.query());
+  withSpace({ requireCanReadOrAdministrate: true }),
+  withDataSourceView({ requireCanReadOrAdministrate: true }),
+  async (ctx): HandlerResult<ListTablesResponseBody> => {
+    const dataSourceView = ctx.get("dataSourceView");
+    const paginationRes = getCursorPaginationParams(ctx.req.query());
     if (paginationRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_pagination_parameters",
@@ -40,7 +41,7 @@ app.get(
         }
       );
     if (contentNodes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -48,7 +49,7 @@ app.get(
         },
       });
     }
-    return c.json({
+    return ctx.json({
       tables: contentNodes.value.nodes,
       nextPageCursor: contentNodes.value.nextPageCursor,
     });

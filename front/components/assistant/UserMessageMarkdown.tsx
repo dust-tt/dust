@@ -55,7 +55,7 @@ export const UserMessageMarkdown = ({
       skill: ({ skillIcon, skillId, skillName }: SkillDirectiveProps) => (
         <SkillBlock
           owner={owner}
-          skillIcon={skillIcon}
+          skillIcon={skillIcon ?? null}
           skillId={skillId}
           skillName={skillName}
         />

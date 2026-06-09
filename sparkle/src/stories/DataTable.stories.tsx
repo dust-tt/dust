@@ -25,7 +25,7 @@ import {
   createSelectionColumn,
   MenuItem,
 } from "@sparkle/components/DataTable";
-import { FolderIcon } from "@sparkle/icons/app";
+import { Folder } from "@sparkle/icons/v2-stroke";
 
 const meta = {
   title: "Components/DataTable",
@@ -97,7 +97,7 @@ const data: TransformedData[] = [
     addedBy: "User2",
     lastUpdated: "2023-07-09",
     size: "64kb",
-    icon: FolderIcon,
+    icon: Folder,
     menuItems: [
       {
         kind: "item",
@@ -113,7 +113,7 @@ const data: TransformedData[] = [
     addedBy: "Another very long user name that should be truncated",
     lastUpdated: "2023-07-09",
     size: "64kb",
-    icon: FolderIcon,
+    icon: Folder,
     menuItems: [
       {
         kind: "submenu",
@@ -150,7 +150,7 @@ const data: TransformedData[] = [
     addedBy: "User21",
     lastUpdated: "2023-07-09",
     size: "64kb",
-    icon: FolderIcon,
+    icon: Folder,
     menuItems: [
       {
         kind: "item",

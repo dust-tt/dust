@@ -31,13 +31,13 @@ export {
 } from "./useConversationTools";
 export { useConversationUrlAccessMode } from "./useConversationUrlAccessMode";
 export { useOpenConversationBranch } from "./useOpenConversationBranch";
-export { usePostOnboardingFollowUp } from "./usePostOnboardingFollowUp";
-export { useSearchPrivateConversations } from "./useSearchPrivateConversations";
-export { useSearchProjectConversations } from "./useSearchProjectConversations";
 export {
-  useSpaceConversations,
-  useSpaceConversationsSummary,
-  useSpaceUnreadConversationIds,
-} from "./useSpaceConversations";
+  usePodConversations,
+  usePodConversationsSummary,
+  usePodUnreadConversationIds,
+} from "./usePodConversations";
+export { usePostOnboardingFollowUp } from "./usePostOnboardingFollowUp";
+export { useSearchPodConversations } from "./useSearchPodConversations";
+export { useSearchPrivateConversations } from "./useSearchPrivateConversations";
 export { useVisualizationRetry } from "./useVisualizationRetry";
 export { useVisualizationRevert } from "./useVisualizationRevert";

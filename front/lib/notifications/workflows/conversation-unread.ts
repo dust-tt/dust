@@ -6,8 +6,8 @@ import {
   countConversationMessages,
   renderConversationAsText,
 } from "@app/lib/api/assistant/conversation/render_as_text";
+import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
 import config from "@app/lib/api/config";
-import { getSmallWhitelistedModel } from "@app/lib/assistant";
 import { Authenticator } from "@app/lib/auth";
 import {
   getAgentsDataRetention,
@@ -33,7 +33,7 @@ import {
   getConversationDisplayTitle,
   isCompactionMessageType,
   isLightAgentMessageType,
-  isProjectConversation,
+  isPodConversation,
   isUserMessageType,
   isVisibleMessage,
 } from "@app/types/assistant/conversation";
@@ -54,7 +54,8 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { pluralize, stripMarkdown } from "@app/types/shared/utils/string_utils";
+import { stripMarkdown } from "@app/types/shared/utils/markdown";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { UserType } from "@app/types/user";
 import { workflow } from "@novu/framework";
 import assert from "assert";
@@ -319,7 +320,7 @@ const getConversationDetails = async ({
   let projectName: string | undefined;
   const isNewProjectConversation = !!payload.isNewProjectConversation;
 
-  if (isNewProjectConversation && isProjectConversation(conversation)) {
+  if (isNewProjectConversation && isPodConversation(conversation)) {
     const project = await SpaceResource.fetchById(auth, conversation.spaceId);
     if (project) {
       projectName = project.name;
@@ -438,7 +439,7 @@ export const shouldSkipNewProjectConversation = async ({
 
   const conversation = conversationResource.toJSON();
 
-  if (!isProjectConversation(conversation)) {
+  if (!isPodConversation(conversation)) {
     return true;
   }
 
@@ -736,7 +737,7 @@ const getEmailSubject = (
     if (uniqueProjectNames.length === 1) {
       return `[Dust] New conversation${pluralize(conversations.length)} in '${uniqueProjectNames[0]}'`;
     }
-    return `[Dust] New conversations in your projects`;
+    return `[Dust] New conversations in your Pods`;
   }
   if (conversations.length === 1) {
     return `[Dust] ${conversations[0]?.title ?? "New unread message(s) in conversation"}`;

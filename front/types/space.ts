@@ -30,19 +30,19 @@ export type SpaceType = {
 /**
  * @swaggerschema PrivateProject (swagger_private_schemas.ts)
  */
-export type ProjectType = SpaceType & {
+export type PodType = SpaceType & {
   description: string | null;
   isMember: boolean;
+  isEditor: boolean;
   archivedAt: number | null;
+  pinnedFramePath?: string | null;
 };
 
-export type ProjectListItemType = ProjectType & {
+export type PodListItemType = PodType & {
   isStarred: boolean;
 };
 
-export function isProjectType(
-  space: SpaceType | ProjectType
-): space is ProjectType {
+export function isProjectType(space: SpaceType | PodType): space is PodType {
   return space.kind === "project";
 }
 

@@ -8,7 +8,7 @@ import { getAgentBuilderRoute, setQueryParam } from "@app/lib/utils/router";
 import { isBuilder } from "@app/types/user";
 import {
   Button,
-  ContactsRobotIcon,
+  ContactsRobot,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -108,16 +108,21 @@ export function WebAgentBrowser({
             {isBuilder(owner) ? (
               <ManageDropdownMenu owner={owner} />
             ) : (
-              <Button
-                href={getAgentBuilderRoute(owner.sId, "manage")}
-                variant="primary"
-                icon={ContactsRobotIcon}
-                label="Manage agents"
-                data-gtm-label="assistantManagementButton"
-                data-gtm-location="homepage"
-                size="sm"
-                onClick={withTracking(TRACKING_AREAS.BUILDER, "manage_agents")}
-              />
+              !isRestrictedFromAgentCreation && (
+                <Button
+                  href={getAgentBuilderRoute(owner.sId, "manage")}
+                  variant="primary"
+                  icon={ContactsRobot}
+                  label="Manage agents"
+                  data-gtm-label="assistantManagementButton"
+                  data-gtm-location="homepage"
+                  size="sm"
+                  onClick={withTracking(
+                    TRACKING_AREAS.BUILDER,
+                    "manage_agents"
+                  )}
+                />
+              )
             )}
           </div>
         </div>

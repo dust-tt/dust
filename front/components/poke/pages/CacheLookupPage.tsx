@@ -1,13 +1,10 @@
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
-import type {
-  RedisCacheResult,
-  RedisInstance,
-} from "@app/pages/api/poke/cache";
+import type { RedisCacheResult, RedisInstance } from "@app/lib/api/poke/cache";
 import {
   usePokeCacheInvalidate,
   usePokeCacheLookup,
 } from "@app/poke/swr/cache";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import type { CacheResourceDefinition } from "@app/types/shared/cache_resource_registry";
 import {
   buildCacheKey,
@@ -412,7 +409,7 @@ function RawKeyForm({ onSubmit }: RawKeyFormProps) {
 }
 
 export function CacheLookupPage() {
-  useDocumentTitle("Poke - Cache Lookup");
+  usePokePageMetadata({ name: "Cache Lookup" });
 
   const [query, setQuery] = useState<LookupQuery | null>(null);
 

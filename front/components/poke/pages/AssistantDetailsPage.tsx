@@ -5,11 +5,11 @@ import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { SuggestionDataTable } from "@app/components/poke/suggestions/table";
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { decodeSqids } from "@app/lib/utils";
 import { usePokeAgentDetails } from "@app/poke/swr/agent_details";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import {
   Button,
@@ -18,8 +18,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  ExternalLinkIcon,
   IconButton,
+  LinkExternal01,
   LinkWrapper,
   Page,
   Spinner,
@@ -28,13 +28,12 @@ import {
   TabsList,
   TabsTrigger,
   TextArea,
-  UserGroupIcon,
+  Users01,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 
 export function AssistantDetailsPage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - Assistants`);
 
   const aId = useRequiredPathParam("aId");
   const { isDark } = useTheme();
@@ -47,6 +46,12 @@ export function AssistantDetailsPage() {
     owner,
     aId,
     disabled: false,
+  });
+
+  usePokePageMetadata({
+    name: agentDetails?.agentConfigurations[0]?.name,
+    subtitle: owner.name,
+    sId: aId,
   });
 
   if (isLoading) {
@@ -88,7 +93,7 @@ export function AssistantDetailsPage() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              icon={UserGroupIcon}
+              icon={Users01}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.currentTarget.focus();
               }}
@@ -238,7 +243,7 @@ export function AssistantDetailsPage() {
                                     target="_blank"
                                   >
                                     <IconButton
-                                      icon={ExternalLinkIcon}
+                                      icon={LinkExternal01}
                                       size="xs"
                                       variant="outline"
                                     />
@@ -263,7 +268,7 @@ export function AssistantDetailsPage() {
                               href={`/poke/${owner.sId}/assistants/${a.sId}/instructions`}
                             >
                               <Button
-                                icon={ExternalLinkIcon}
+                                icon={LinkExternal01}
                                 label="View in editor"
                                 variant="outline"
                                 size="xs"

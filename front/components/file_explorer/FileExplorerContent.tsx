@@ -10,8 +10,10 @@ import type {
   FileEntry,
   FileExplorerEntry,
   FileExplorerMenuAction,
-  SandboxTreeNode,
+  FileSystemTreeNode,
+  FolderEntry,
 } from "@app/components/file_explorer/types";
+import { isFileExplorerMovableFile } from "@app/components/file_explorer/utils";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { CardGrid, ScrollArea, Spinner } from "@dust-tt/sparkle";
 import type React from "react";
@@ -21,14 +23,16 @@ const cardGridClasses =
 
 interface FileExplorerContentProps {
   isLoading: boolean;
-  sortedNodes: SandboxTreeNode[];
+  sortedNodes: FileSystemTreeNode[];
   entryByRelativePath: Map<string, FileExplorerEntry>;
   viewMode: ViewMode;
   isEmpty: boolean;
   emptyState?: React.ReactNode;
-  onFolderNavigate: (node: SandboxTreeNode) => void;
+  fileDragEnabled?: boolean;
+  onFolderNavigate: (node: FileSystemTreeNode) => void;
   onFileOpen: (entry: FileEntry) => void;
   onFileDownload: (entry: FileEntry) => Promise<void>;
+  onMoveFileDrop?: (scopedFilePath: string, parentRelativePath: string) => void;
   onNodeOpen: (entry: ContentNodeEntry) => void;
   getFileMenuItems?: (entry: FileExplorerEntry) => FileExplorerMenuAction[];
 }
@@ -40,20 +44,33 @@ export function FileExplorerContent({
   viewMode,
   isEmpty,
   emptyState,
+  fileDragEnabled,
   onFolderNavigate,
   onFileOpen,
   onFileDownload,
+  onMoveFileDrop,
   onNodeOpen,
   getFileMenuItems,
 }: FileExplorerContentProps) {
   const items = sortedNodes.map((node) => {
     if (node.isDirectory) {
+      // TODO: FolderEntry.path is currently the relative path (scope prefix stripped).
+      // Refactor FileSystemTreeNode to carry the canonical scoped path so that callers
+      // (e.g. PodFileExplorer) can use entry.path directly for API calls without having
+      // to re-prepend the scope prefix.
+      const folderEntry: FolderEntry = {
+        kind: "folder",
+        path: node.path,
+        name: node.name,
+      };
       return (
         <FileExplorerFolderCard
           key={`dir:${node.path}`}
           node={node}
           viewMode={viewMode}
           onNavigate={onFolderNavigate}
+          onMoveFileDrop={onMoveFileDrop}
+          extraMenuItems={getFileMenuItems?.(folderEntry)}
         />
       );
     }
@@ -79,6 +96,7 @@ export function FileExplorerContent({
         return (
           <FileExplorerFileCard
             key={`file:${entry.path}`}
+            draggable={fileDragEnabled && isFileExplorerMovableFile(entry)}
             entry={entry}
             viewMode={viewMode}
             onOpen={onFileOpen}
@@ -86,6 +104,9 @@ export function FileExplorerContent({
             extraMenuItems={getFileMenuItems?.(entry)}
           />
         );
+
+      case "folder":
+        return null;
 
       default:
         assertNeverAndIgnore(entry);
@@ -110,7 +131,7 @@ export function FileExplorerContent({
   }
 
   return (
-    <ScrollArea className="flex-1">
+    <ScrollArea className="min-h-0 flex-1">
       <div className="flex flex-col gap-5 px-4">
         {viewMode === "list" ? (
           <div className="flex flex-col gap-0.5">{items}</div>

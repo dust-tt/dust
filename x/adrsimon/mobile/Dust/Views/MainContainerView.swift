@@ -2,10 +2,10 @@ import SparkleTokens
 import SwiftUI
 
 enum ConversationDestination: Hashable {
+    case compose
     case conversation(Conversation)
-    case newConversation
-    case project(Space)
-    case newProjectConversation(Space)
+    case pod(Space)
+    case newPodConversation(Space)
 }
 
 struct MainContainerView: View {
@@ -15,7 +15,8 @@ struct MainContainerView: View {
     @EnvironmentObject private var authViewModel: AuthViewModel
     @StateObject private var viewModel: ConversationListViewModel
     @Environment(\.scenePhase) private var scenePhase
-    @State private var navigationPath = NavigationPath()
+    // List is the nav root; compose is pushed so we land on compose and swipe-back reveals the list.
+    @State private var navigationPath = NavigationPath([ConversationDestination.compose])
     @State private var showCatchUp = false
 
     private let tokenProvider: TokenProvider
@@ -40,101 +41,11 @@ struct MainContainerView: View {
 
     private var mainContent: some View {
         NavigationStack(path: $navigationPath) {
-            ConversationListView(
-                searchText: $viewModel.searchText,
-                groupedConversations: viewModel.groupedConversations,
-                projects: viewModel.projects,
-                isProjectsExpanded: $viewModel.isProjectsExpanded,
-                user: user,
-                currentWorkspace: viewModel.workspace,
-                workspaces: viewModel.workspaces,
-                isLoading: isLoading,
-                onNewConversation: {
-                    navigationPath.append(ConversationDestination.newConversation)
-                },
-                onSelectConversation: { conversation in
-                    navigationPath.append(ConversationDestination.conversation(conversation))
-                },
-                onSelectProject: { project in
-                    navigationPath.append(ConversationDestination.project(project))
-                },
-                onSwitchWorkspace: { workspace in
-                    navigationPath = NavigationPath()
-                    Task { await viewModel.switchWorkspace(workspace) }
-                },
-                onToggleReadStatus: { conversation in
-                    Task { await viewModel.toggleReadStatus(for: conversation) }
-                },
-                onDelete: { conversation in
-                    Task { await viewModel.deleteConversation(conversation) }
-                },
-                onLogout: onLogout,
-                onCatchUp: viewModel.unreadConversations.isEmpty ? nil : {
-                    showCatchUp = true
-                },
-                onRefresh: {
-                    await viewModel.refresh()
+            conversationList
+                .navigationBarHidden(true)
+                .navigationDestination(for: ConversationDestination.self) { destination in
+                    destinationView(for: destination)
                 }
-            )
-            .navigationBarHidden(true)
-            .navigationDestination(for: ConversationDestination.self) { destination in
-                switch destination {
-                case let .conversation(conversation):
-                    if let workspaceId = viewModel.workspace?.sId {
-                        ConversationDetailView(
-                            conversation: conversation,
-                            workspaceId: workspaceId,
-                            tokenProvider: tokenProvider,
-                            user: user,
-                            currentUserEmail: user.email
-                        )
-                    }
-                case .newConversation:
-                    if let workspaceId = viewModel.workspace?.sId {
-                        NewConversationView(
-                            firstName: user.firstName,
-                            user: user,
-                            workspaceId: workspaceId,
-                            tokenProvider: tokenProvider,
-                            onConversationCreated: { conversation in
-                                navigationPath = NavigationPath([ConversationDestination.conversation(conversation)])
-                            }
-                        )
-                    }
-
-                case let .project(space):
-                    if let workspaceId = viewModel.workspace?.sId {
-                        ProjectConversationsView(
-                            space: space,
-                            workspaceId: workspaceId,
-                            tokenProvider: tokenProvider,
-                            onSelectConversation: { conversation in
-                                navigationPath.append(ConversationDestination.conversation(conversation))
-                            },
-                            onNewConversation: {
-                                navigationPath.append(ConversationDestination.newProjectConversation(space))
-                            }
-                        )
-                    }
-
-                case let .newProjectConversation(space):
-                    if let workspaceId = viewModel.workspace?.sId {
-                        NewConversationView(
-                            firstName: user.firstName,
-                            user: user,
-                            workspaceId: workspaceId,
-                            tokenProvider: tokenProvider,
-                            spaceId: space.sId,
-                            onConversationCreated: { conversation in
-                                navigationPath = NavigationPath([
-                                    ConversationDestination.project(space),
-                                    ConversationDestination.conversation(conversation),
-                                ])
-                            }
-                        )
-                    }
-                }
-            }
         }
         .fullScreenCover(isPresented: $showCatchUp) {
             if let workspaceId = viewModel.workspace?.sId {
@@ -149,8 +60,7 @@ struct MainContainerView: View {
                     },
                     onOpenConversation: { conversation in
                         showCatchUp = false
-                        navigationPath = NavigationPath()
-                        navigationPath.append(ConversationDestination.conversation(conversation))
+                        navigationPath = NavigationPath([ConversationDestination.conversation(conversation)])
                     }
                 )
             }
@@ -166,6 +76,113 @@ struct MainContainerView: View {
         .onChange(of: scenePhase) {
             if scenePhase == .active {
                 Task { await viewModel.refresh() }
+            }
+        }
+    }
+
+    // MARK: - Root: conversation list
+
+    private var conversationList: some View {
+        ConversationListView(
+            searchText: $viewModel.searchText,
+            groupedConversations: viewModel.groupedConversations,
+            pods: viewModel.pods,
+            isPodsExpanded: $viewModel.isPodsExpanded,
+            user: user,
+            currentWorkspace: viewModel.workspace,
+            workspaces: viewModel.workspaces,
+            isLoading: isLoading,
+            onNewConversation: {
+                navigationPath.append(ConversationDestination.compose)
+            },
+            onSelectConversation: { conversation in
+                navigationPath.append(ConversationDestination.conversation(conversation))
+            },
+            onSelectPod: { pod in
+                navigationPath.append(ConversationDestination.pod(pod))
+            },
+            onSwitchWorkspace: { workspace in
+                navigationPath = NavigationPath()
+                Task { await viewModel.switchWorkspace(workspace) }
+            },
+            onToggleReadStatus: { conversation in
+                Task { await viewModel.toggleReadStatus(for: conversation) }
+            },
+            onDelete: { conversation in
+                Task { await viewModel.deleteConversation(conversation) }
+            },
+            onLogout: onLogout,
+            onCatchUp: viewModel.unreadConversations.isEmpty ? nil : {
+                showCatchUp = true
+            },
+            onRefresh: {
+                await viewModel.refresh()
+            }
+        )
+    }
+
+    // MARK: - Pushed destinations
+
+    @ViewBuilder
+    private func destinationView(for destination: ConversationDestination) -> some View {
+        switch destination {
+        case .compose:
+            if let workspaceId = viewModel.workspace?.sId {
+                NewConversationView(
+                    firstName: user.firstName,
+                    user: user,
+                    workspaceId: workspaceId,
+                    tokenProvider: tokenProvider,
+                    autoFocus: true,
+                    onConversationCreated: { conversation in
+                        // Replace compose so back returns to the list.
+                        navigationPath = NavigationPath([ConversationDestination.conversation(conversation)])
+                    }
+                )
+                .id(workspaceId)
+            }
+
+        case let .conversation(conversation):
+            if let workspaceId = viewModel.workspace?.sId {
+                ConversationDetailView(
+                    conversation: conversation,
+                    workspaceId: workspaceId,
+                    tokenProvider: tokenProvider,
+                    user: user,
+                    currentUserEmail: user.email
+                )
+            }
+
+        case let .pod(space):
+            if let workspaceId = viewModel.workspace?.sId {
+                PodConversationsView(
+                    space: space,
+                    workspaceId: workspaceId,
+                    tokenProvider: tokenProvider,
+                    onSelectConversation: { conversation in
+                        navigationPath.append(ConversationDestination.conversation(conversation))
+                    },
+                    onNewConversation: {
+                        navigationPath.append(ConversationDestination.newPodConversation(space))
+                    }
+                )
+            }
+
+        case let .newPodConversation(space):
+            if let workspaceId = viewModel.workspace?.sId {
+                NewConversationView(
+                    firstName: user.firstName,
+                    user: user,
+                    workspaceId: workspaceId,
+                    tokenProvider: tokenProvider,
+                    spaceId: space.sId,
+                    onConversationCreated: { conversation in
+                        navigationPath = NavigationPath([
+                            ConversationDestination.pod(space),
+                            ConversationDestination.conversation(conversation),
+                        ])
+                    }
+                )
             }
         }
     }

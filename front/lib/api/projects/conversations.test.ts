@@ -12,7 +12,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import { beforeEach, describe, expect, it } from "vitest";
 
 describe("moveConversationToProject", () => {
@@ -86,7 +86,66 @@ describe("moveConversationToProject", () => {
     // And its requestedSpaceIds should match the project space
     expect(updatedConversation.requestedSpaceIds).toHaveLength(1);
     expect(updatedConversation.requestedSpaceIds[0]).toBe(projectSpace.sId);
-    expect(isProjectConversation(updatedConversation)).toBe(true);
+    expect(isPodConversation(updatedConversation)).toBe(true);
+  });
+
+  it("returns conversation_agent_running when an agent loop is running", async () => {
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent Description",
+    });
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+
+    const projectSpace = await SpaceFactory.project(workspace);
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const user = auth.getNonNullableUser();
+    const userJson = user.toJSON();
+
+    const projectSpaceGroup = projectSpace.groups.find(
+      (g) => g.kind === "regular"
+    );
+    if (!projectSpaceGroup) {
+      throw new Error("Project space regular group not found");
+    }
+    const addRes = await projectSpaceGroup.dangerouslyAddMember(
+      internalAdminAuth,
+      {
+        user: userJson,
+      }
+    );
+    if (addRes.isErr()) {
+      throw new Error(
+        `Failed to add user to project space group: ${addRes.error.message}`
+      );
+    }
+
+    await auth.refresh();
+
+    const result = await moveConversationToProject(auth, {
+      conversation: { ...conversation, isRunningAgentLoop: true },
+      spaceId: projectSpace.sId,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(DustError);
+      expect(result.error.code).toBe("conversation_agent_running");
+      expect(result.error.message).toContain(
+        "Wait for the agent to finish before moving this conversation."
+      );
+    }
+
+    const updatedConversationResource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    expect(updatedConversationResource?.spaceId).toBeNull();
   });
 
   it("returns unauthorized when user is not a member of the project", async () => {
@@ -253,7 +312,7 @@ describe("moveConversationToProject", () => {
     // Verify conversation was moved
     const updatedConversation = conversationResourceAfter.toJSON();
     expect(updatedConversation.spaceId).toBe(projectSpace.sId);
-    expect(isProjectConversation(updatedConversation)).toBe(true);
+    expect(isPodConversation(updatedConversation)).toBe(true);
 
     // Get participants after move
     const participantsAfter =
@@ -560,7 +619,7 @@ describe("moveConversationToProject", () => {
     expect(updatedConversation.requestedSpaceIds[0]).toBe(
       destinationProject.sId
     );
-    expect(isProjectConversation(updatedConversation)).toBe(true);
+    expect(isPodConversation(updatedConversation)).toBe(true);
   });
 
   it("returns unauthorized when moving conversation from one project to another and user is not an editor of the source project", async () => {
@@ -724,7 +783,7 @@ describe("moveConversationOutOfProject", () => {
     await auth.refresh();
 
     // Verify conversation is in the project.
-    expect(isProjectConversation(conversation)).toBe(true);
+    expect(isPodConversation(conversation)).toBe(true);
 
     const result = await moveConversationOutOfProject(auth, {
       conversation,
@@ -744,7 +803,7 @@ describe("moveConversationOutOfProject", () => {
 
     // The conversation should no longer be associated to a project.
     expect(updatedConversation.spaceId).toBeNull();
-    expect(isProjectConversation(updatedConversation)).toBe(false);
+    expect(isPodConversation(updatedConversation)).toBe(false);
   });
 
   it("returns internal_error when conversation is not in a project", async () => {
@@ -956,7 +1015,7 @@ describe("moveConversationOutOfProject", () => {
     // Verify conversation was moved out.
     const updatedConversation = conversationResourceAfter.toJSON();
     expect(updatedConversation.spaceId).toBeNull();
-    expect(isProjectConversation(updatedConversation)).toBe(false);
+    expect(isPodConversation(updatedConversation)).toBe(false);
 
     // Get participants after move.
     const participantsAfter =

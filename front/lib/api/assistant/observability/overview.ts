@@ -72,3 +72,17 @@ export async function fetchAgentOverview(
     ),
   });
 }
+
+export type GetAgentOverviewResponseBody = {
+  activeUsers: number;
+  mentions: {
+    messageCount: number;
+    conversationCount: number;
+    timePeriodSec: number;
+  };
+  feedbacks: {
+    positiveFeedbacks: number;
+    negativeFeedbacks: number;
+    timePeriodSec: number;
+  };
+};

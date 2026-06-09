@@ -3,17 +3,17 @@ import { menuConfig } from "@app/components/home/menu/config";
 import { classNames } from "@app/lib/utils";
 import {
   Button,
-  ChevronRightIcon,
+  ChevronRight,
   DustLogo,
   IconButton,
-  MenuIcon,
+  Menu01,
   ScrollArea,
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  XMarkIcon,
+  XClose,
 } from "@dust-tt/sparkle";
 import type { LinkProps } from "next/link";
 import Link from "next/link";
@@ -26,7 +26,7 @@ export function MobileNavigation() {
     <div className="flex xl:hidden">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <IconButton size="md" icon={MenuIcon} className="text-gray-900" />
+          <IconButton size="md" icon={Menu01} className="text-gray-900" />
         </SheetTrigger>
         <SheetContent
           side="left"
@@ -41,7 +41,7 @@ export function MobileNavigation() {
               <Button
                 size="sm"
                 variant="outline"
-                icon={XMarkIcon}
+                icon={XClose}
                 onClick={() => {
                   setOpen(!open);
                 }}
@@ -79,7 +79,7 @@ export function MobileNavigation() {
                               onOpenChange={setOpen}
                               isExternal={subItem.isExternal}
                             >
-                              <ChevronRightIcon className="h-5 w-5 text-slate-400" />{" "}
+                              <ChevronRight className="h-5 w-5 text-slate-400" />{" "}
                               {subItem.title}
                             </MobileLink>
                           ) : (

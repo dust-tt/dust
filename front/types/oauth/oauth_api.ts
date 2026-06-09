@@ -177,6 +177,32 @@ export class OAuthAPI {
     return this._resultFromResponse(response);
   }
 
+  async updateConnectionMetadata({
+    connectionId,
+    useStaticIpProxy,
+  }: {
+    connectionId: string;
+    useStaticIpProxy: boolean;
+  }): Promise<
+    OAuthAPIResponse<{
+      connection: OAuthConnectionType;
+    }>
+  > {
+    const response = await this._fetchWithError(
+      `${this._url}/connections/${connectionId}/metadata`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          use_static_ip_proxy: useStaticIpProxy,
+        }),
+      }
+    );
+    return this._resultFromResponse(response);
+  }
+
   async postCredentials({
     provider,
     userId,

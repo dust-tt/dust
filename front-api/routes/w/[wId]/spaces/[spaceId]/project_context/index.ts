@@ -1,43 +1,21 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import {
   addContentNodeToProject,
+  type GetProjectContextResponseBody,
   listProjectContextAttachments,
+  PostProjectContextContentNodeBodySchema,
+  type PostProjectContextContentNodeFragment,
+  type PostProjectContextContentNodeResponseBody,
 } from "@app/lib/api/projects/context";
-import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { ContentNodeType } from "@app/types/core/content_node";
-
-import { spaceResource } from "@front-api/middleware/space_resource";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withSpace } from "@front-api/middlewares/with_space";
 
 import contentNodes from "./content_nodes";
 import files from "./files";
-
-const PostProjectContextContentNodeItemSchema = z.object({
-  title: z.string().min(1, "title is required"),
-  nodeId: z.string().min(1, "nodeId is required"),
-  nodeDataSourceViewId: z.string().min(1, "nodeDataSourceViewId is required"),
-  url: z.string().nullable().optional(),
-  supersededContentFragmentId: z.string().nullable().optional(),
-});
-
-const PostProjectContextContentNodeBodySchema = z.object({
-  items: z.array(PostProjectContextContentNodeItemSchema),
-});
-
-type PostProjectContextContentNodeFragment = {
-  sId: string;
-  title: string;
-  contentType: string;
-  nodeId: string;
-  nodeDataSourceViewId: string;
-  nodeType: ContentNodeType;
-};
 
 /** Lowercase + strip separators so "Hello World 4" matches query "helloworld". */
 function normalizeAttachmentSearchKey(s: string): string {
@@ -60,44 +38,38 @@ function attachmentTitleMatchesQuery(title: string, q: string): boolean {
 }
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_context.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
-  const auth = c.get("auth");
-  const space = c.get("space");
+/** @ignoreswagger */
+app.get(
+  "/",
+  withSpace({ requireCanRead: true }),
+  async (ctx): HandlerResult<GetProjectContextResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
-  const attachments = await listProjectContextAttachments(auth, space);
+    const attachments = await listProjectContextAttachments(auth, space);
 
-  const q = c.req.query("query")?.trim().toLowerCase() ?? "";
+    const q = ctx.req.query("query")?.trim().toLowerCase() ?? "";
 
-  const filtered = attachments.filter((a) =>
-    attachmentTitleMatchesQuery(a.title, q)
-  );
+    const filtered = attachments.filter((a) =>
+      attachmentTitleMatchesQuery(a.title, q)
+    );
 
-  return c.json({ attachments: filtered });
-});
+    return ctx.json({ attachments: filtered });
+  }
+);
 
 app.post(
   "/",
-  spaceResource({ requireCanRead: true }),
+  withSpace({ requireCanRead: true }),
   validate("json", PostProjectContextContentNodeBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
-
-    const featureFlags = await getFeatureFlags(auth);
-    if (!featureFlags.includes("projects")) {
-      return apiError(c, {
-        status_code: 403,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Projects feature is not enabled for this workspace.",
-        },
-      });
-    }
+  async (ctx): HandlerResult<PostProjectContextContentNodeResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     if (!space.isProject()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -107,7 +79,7 @@ app.post(
     }
 
     if (!space.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
@@ -116,7 +88,7 @@ app.post(
       });
     }
 
-    const { items } = c.req.valid("json");
+    const { items } = ctx.req.valid("json");
     const owner = auth.getNonNullableWorkspace();
 
     const results = await concurrentExecutor(
@@ -158,7 +130,7 @@ app.post(
       });
     });
 
-    return c.json({ contentFragments, errors }, 201);
+    return ctx.json({ contentFragments, errors }, 201);
   }
 );
 

@@ -15,7 +15,7 @@ import { SKILL_ICON } from "@app/lib/skill";
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutInstructionsAndToolsWithRelationsType } from "@app/types/assistant/skill_configuration";
 import { isEmptyString } from "@app/types/shared/utils/general";
 import {
   Button,
@@ -23,10 +23,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  FolderOpenIcon,
-  MagnifyingGlassIcon,
+  FolderOpen,
   Page,
-  PlusIcon,
+  Plus,
   SearchInput,
   Spinner,
   Tabs,
@@ -34,13 +33,6 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-const SKILL_SEARCH_TAB = {
-  id: "search",
-  label: "Searching across all skills",
-  icon: MagnifyingGlassIcon,
-  description: "Searching across all skills.",
-} as const;
 
 const SKILL_MANAGER_TABS = [
   {
@@ -71,13 +63,17 @@ function isValidTab(tab: string): tab is SkillManagerTabType {
   return SKILL_MANAGER_TABS.some((t) => t.id === tab);
 }
 
-function getSkillSearchString(skill: SkillWithRelationsType): string {
+function getSkillSearchString(
+  skill: SkillWithoutInstructionsAndToolsWithRelationsType
+): string {
   const skillEditorNames =
     skill.relations.editors?.map((e) => e.fullName) ?? [];
   return [skill.name].concat(skillEditorNames).join(" ").toLowerCase();
 }
 
-function sortSkillsByName(skills: SkillWithRelationsType[]) {
+function sortSkillsByName(
+  skills: SkillWithoutInstructionsAndToolsWithRelationsType[]
+) {
   return [...skills].sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -85,22 +81,21 @@ export function ManageSkillsPage() {
   const owner = useWorkspace();
   const { user } = useAuth();
   const [selectedSkill, setSelectedSkill] =
-    useState<SkillWithRelationsType | null>(null);
+    useState<SkillWithoutInstructionsAndToolsWithRelationsType | null>(null);
   const [agentId, setAgentId] = useState<string | null>(null);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useHashParam("selectedTab", "active");
   const [skillSearch, setSkillSearch] = useState("");
   const [skillIdParam, setSkillIdParam] = useHashParam("skillId");
 
+  const isSearchActive = !isEmptyString(skillSearch);
+
   const activeTab = useMemo(() => {
-    if (!isEmptyString(skillSearch)) {
-      return "search";
-    }
     if (selectedTab && isValidTab(selectedTab)) {
       return selectedTab;
     }
     return "active";
-  }, [selectedTab, skillSearch]);
+  }, [selectedTab]);
 
   const {
     skillsWithRelations: activeSkills,
@@ -116,7 +111,7 @@ export function ManageSkillsPage() {
   } = useSkillsWithRelations({
     owner,
     status: "archived",
-    disabled: activeTab !== "archived",
+    disabled: selectedTab !== "archived",
   });
 
   const {
@@ -132,37 +127,48 @@ export function ManageSkillsPage() {
     const sortedActiveSkills = sortSkillsByName(activeSkills);
     const sortedArchivedSkills = sortSkillsByName(archivedSkills);
 
-    return {
-      active: sortedActiveSkills,
-      editable_by_me: sortedActiveSkills.filter((s) =>
-        s.relations.editors?.some((e) => e.sId === user?.sId)
-      ),
-      default: sortedActiveSkills
-        .filter((s) => s.isDefault || s.relations.editors === null)
-        .sort((a, b) => {
-          // Display first the skills that have no editor (Dust-managed ones).
-          const aNoEditors = a.relations.editors === null;
-          const bNoEditors = b.relations.editors === null;
-          if (aNoEditors !== bNoEditors) {
-            return aNoEditors ? -1 : 1;
-          }
-          // Fallback to a name sort.
-          return a.name.localeCompare(b.name);
-        }),
-      archived: sortedArchivedSkills,
-      search: activeSkills
-        .filter((s) =>
-          subFilter(skillSearch.toLowerCase(), getSkillSearchString(s))
-        )
+    const searchLower = skillSearch.toLowerCase();
+    const filteredList = (
+      skills: SkillWithoutInstructionsAndToolsWithRelationsType[]
+    ) => {
+      if (!isSearchActive) {
+        return skills;
+      }
+      return skills
+        .filter((s) => subFilter(searchLower, getSkillSearchString(s)))
         .sort((a, b) =>
           compareForFuzzySort(
-            skillSearch.toLowerCase(),
+            searchLower,
             getSkillSearchString(a),
             getSkillSearchString(b)
           )
-        ),
+        );
     };
-  }, [activeSkills, archivedSkills, skillSearch, user]);
+
+    return {
+      active: filteredList(sortedActiveSkills),
+      editable_by_me: filteredList(
+        sortedActiveSkills.filter((s) =>
+          s.relations.editors?.some((e) => e.sId === user?.sId)
+        )
+      ),
+      default: filteredList(
+        sortedActiveSkills
+          .filter((s) => s.isDefault || s.relations.editors === null)
+          .sort((a, b) => {
+            // Display first the skills that have no editor (Dust-managed ones).
+            const aNoEditors = a.relations.editors === null;
+            const bNoEditors = b.relations.editors === null;
+            if (aNoEditors !== bNoEditors) {
+              return aNoEditors ? -1 : 1;
+            }
+            // Fallback to a name sort.
+            return a.name.localeCompare(b.name);
+          })
+      ),
+      archived: filteredList(sortedArchivedSkills),
+    };
+  }, [activeSkills, archivedSkills, skillSearch, user, isSearchActive]);
 
   const isLoading = isActiveLoading || isArchivedLoading || isSuggestedLoading;
 
@@ -177,18 +183,34 @@ export function ManageSkillsPage() {
   }, [skillIdParam, activeSkills, isActiveLoading, selectedSkill?.sId]);
 
   const handleSkillSelect = useCallback(
-    (skill: SkillWithRelationsType | null) => {
+    (skill: SkillWithoutInstructionsAndToolsWithRelationsType | null) => {
       setSelectedSkill(skill);
       setSkillIdParam(skill?.sId);
     },
     [setSkillIdParam]
   );
 
-  const visibleTabs = useMemo(() => {
-    return !isEmptyString(skillSearch)
-      ? [SKILL_SEARCH_TAB]
-      : SKILL_MANAGER_TABS;
-  }, [skillSearch]);
+  const knownSkillsById = useMemo(
+    () =>
+      new Map(
+        [...activeSkills, ...archivedSkills, ...suggestedSkills].map(
+          (skill) => [skill.sId, skill]
+        )
+      ),
+    [activeSkills, archivedSkills, suggestedSkills]
+  );
+
+  const handleUsedBySkillSelect = useCallback(
+    (skillId: string) => {
+      const skill = knownSkillsById.get(skillId);
+      if (skill) {
+        handleSkillSelect(skill);
+      } else {
+        setSkillIdParam(skillId);
+      }
+    },
+    [handleSkillSelect, knownSkillsById, setSkillIdParam]
+  );
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 
@@ -267,7 +289,7 @@ export function ManageSkillsPage() {
             />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button label="Create skill" icon={PlusIcon} isSelect />
+                <Button label="Create skill" icon={Plus} isSelect />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuItem
@@ -277,7 +299,7 @@ export function ManageSkillsPage() {
                 />
                 <DropdownMenuItem
                   label="From existing"
-                  icon={FolderOpenIcon}
+                  icon={FolderOpen}
                   onClick={() => setIsImportDialogOpen(true)}
                 />
               </DropdownMenuContent>
@@ -286,12 +308,12 @@ export function ManageSkillsPage() {
           <div className="flex flex-col pt-3">
             <Tabs value={activeTab}>
               <TabsList>
-                {visibleTabs.map((tab) => (
+                {SKILL_MANAGER_TABS.map((tab) => (
                   <TabsTrigger
                     key={tab.id}
                     value={tab.id}
                     label={tab.label}
-                    onClick={() => !skillSearch && setSelectedTab(tab.id)}
+                    onClick={() => setSelectedTab(tab.id)}
                     tooltip={tab.description}
                     isCounter={tab.id !== "archived"}
                     counterValue={`${skillsByTab[tab.id].length}`}
@@ -318,6 +340,7 @@ export function ManageSkillsPage() {
                   skills={skillsByTab[activeTab]}
                   onSkillClick={handleSkillSelect}
                   onAgentClick={setAgentId}
+                  onUsedBySkillClick={handleUsedBySkillSelect}
                 />
               </>
             )}

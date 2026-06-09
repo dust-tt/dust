@@ -1,8 +1,5 @@
 import Anthropic, { APIError } from "@anthropic-ai/sdk";
-import type {
-  MessageCountTokensParams,
-  MessageCreateParamsNonStreaming,
-} from "@anthropic-ai/sdk/resources";
+import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources";
 import type { BetaMessageStreamParams } from "@anthropic-ai/sdk/resources/beta/messages";
 import type AnthropicVertex from "@anthropic-ai/vertex-sdk";
 
@@ -33,7 +30,6 @@ import {
 import {
   getInferenceClient,
   getModel,
-  getModelForTokenCount,
 } from "@app/lib/api/llm/clients/anthropic/utils/vertex";
 import { LLM } from "@app/lib/api/llm/llm";
 import type { BatchResult, BatchStatus } from "@app/lib/api/llm/types/batch";
@@ -105,7 +101,7 @@ function buildSystemBlocks(
   return system;
 }
 
-export class AnthropicLLM extends LLM<LLMStreamParameters> {
+export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
   private client: Anthropic;
   private inferenceClient: Anthropic | AnthropicVertex;
   private omittedThinking: boolean;
@@ -124,6 +120,12 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
     this.omittedThinking = params.omittedThinking ?? false;
 
     this.useVertex = llmParameters.useVertex ?? false;
+    if (this.useVertex) {
+      this.metadata = {
+        ...this.metadata,
+        inferenceProvider: "google_vertex_ai",
+      };
+    }
     this.client = new Anthropic({
       apiKey: ANTHROPIC_API_KEY,
     });
@@ -181,43 +183,15 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
     };
   }
 
-  protected buildStreamRequestPayload(
+  protected async buildStreamRequestPayload(
     streamParameters: LLMStreamParameters
-  ): LLMStreamParameters {
-    // Just capture the parameters; message conversion (async) happens in sendRequest.
-    return streamParameters;
-  }
-
-  private createCountTokensCallback() {
-    const shouldCountReasoningTokens =
-      this.reasoningEffort !== "none" &&
-      (this.reasoningEffort !== "light" ||
-        !!this.modelConfig.useNativeLightReasoning);
-
-    if (!shouldCountReasoningTokens) {
-      return undefined;
-    }
-
-    const model = getModelForTokenCount(this.useVertex, {
-      modelId: this.modelId,
-    });
-
-    return (body: MessageCountTokensParams) =>
-      this.inferenceClient.messages.countTokens({
-        ...body,
-        model,
-      });
-  }
-
-  protected async *sendRequest(
-    streamParameters: LLMStreamParameters
-  ): AsyncGenerator<LLMEvent> {
+  ): Promise<BetaMessageStreamParams> {
     const betas = this.modelConfig.customBetas;
 
     const basePayload = await this.buildBaseRequestPayload(streamParameters);
     const outputFormat = toOutputFormatParam(this.responseFormat);
 
-    const payload: BetaMessageStreamParams = {
+    return {
       ...basePayload,
       stream: true,
       betas,
@@ -227,15 +201,15 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
       cache_control: { type: "ephemeral" },
       model: getModel(this.useVertex, { modelId: this.modelId }),
     };
+  }
 
+  protected async *sendRequest(
+    payload: BetaMessageStreamParams
+  ): AsyncGenerator<LLMEvent> {
     try {
       const events = this.inferenceClient.beta.messages.stream(payload);
 
-      yield* streamLLMEvents(
-        events,
-        this.metadata,
-        this.createCountTokensCallback()
-      );
+      yield* streamLLMEvents(events, this.metadata);
     } catch (err) {
       if (err instanceof APIError) {
         yield handleError(err, this.metadata);
@@ -282,11 +256,7 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
     const batchResult: BatchResult = new Map();
 
     for await (const item of results) {
-      const events = await batchResultToLLMEvents(
-        item.result,
-        this.metadata,
-        this.createCountTokensCallback()
-      );
+      const events = await batchResultToLLMEvents(item.result, this.metadata);
       batchResult.set(item.custom_id, events);
     }
 

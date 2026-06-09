@@ -2,6 +2,7 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { EventError } from "@app/lib/api/llm/types/events";
 import { extractEncryptedContentFromMetadata } from "@app/lib/api/llm/utils";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   AgentFunctionCallContentType,
   AgentReasoningContentType,
@@ -18,8 +19,15 @@ import type {
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { trustedFetchImageBase64 } from "@app/types/shared/utils/image_utils";
-import type { Content, FunctionResponse, Part, Tool } from "@google/genai";
+import type {
+  Content,
+  FunctionDeclaration,
+  FunctionResponse,
+  Part,
+} from "@google/genai";
 import assert from "assert";
+
+const MESSAGE_CONVERSION_CONCURRENCY = 10;
 
 const GOOGLE_AI_STUDIO_SUPPORTED_MIME_TYPES = [
   "image/png",
@@ -36,11 +44,16 @@ async function contentToPart(
   switch (content.type) {
     case "text":
       return { text: content.text };
-    case "image_url":
+    case "image_url": {
       // Google only accepts images as base64 inline data
-      const { mediaType, data } = await trustedFetchImageBase64(
-        content.image_url.url
-      );
+      let fetchResult: Awaited<ReturnType<typeof trustedFetchImageBase64>>;
+      try {
+        fetchResult = await trustedFetchImageBase64(content.image_url.url);
+      } catch {
+        return { text: "Attachment: image could not be loaded." };
+      }
+
+      const { mediaType, data } = fetchResult;
 
       if (!GOOGLE_AI_STUDIO_SUPPORTED_MIME_TYPES.includes(mediaType)) {
         throw new EventError(
@@ -51,6 +64,7 @@ async function contentToPart(
           },
           {
             clientId: "google_ai_studio",
+            inferenceProvider: "google_ai_studio",
             modelId,
           }
         );
@@ -62,6 +76,7 @@ async function contentToPart(
           data,
         },
       };
+    }
     default:
       assertNever(content);
   }
@@ -89,16 +104,31 @@ async function functionMessageToResponses(
             name: message.name,
             id: message.function_call_id,
           };
-        case "image_url":
-          const { mediaType, data } = await trustedFetchImageBase64(
-            c.image_url.url
-          );
+        case "image_url": {
+          let fetchResult: Awaited<ReturnType<typeof trustedFetchImageBase64>>;
+          try {
+            fetchResult = await trustedFetchImageBase64(c.image_url.url);
+          } catch {
+            return {
+              response: { output: "Attachment: image could not be loaded." },
+              name: message.name,
+              id: message.function_call_id,
+            };
+          }
 
           return {
-            parts: [{ inlineData: { data, mimeType: mediaType } }],
+            parts: [
+              {
+                inlineData: {
+                  data: fetchResult.data,
+                  mimeType: fetchResult.mediaType,
+                },
+              },
+            ],
             name: message.name,
             id: message.function_call_id,
           };
+        }
         default:
           assertNever(c);
       }
@@ -158,16 +188,53 @@ async function assistantMessageToParts(
   };
 }
 
-export function toTool(specification: AgentActionSpecification): Tool {
+export function toFunctionDeclaration(
+  specification: AgentActionSpecification
+): FunctionDeclaration {
   return {
-    functionDeclarations: [
-      {
-        name: specification.name,
-        description: specification.description,
-        parametersJsonSchema: specification.inputSchema,
-      },
-    ],
+    name: specification.name,
+    description: specification.description,
+    parametersJsonSchema: specification.inputSchema,
   };
+}
+
+function isFunctionResponseContent(content: Content): boolean {
+  const parts = content.parts ?? [];
+  return (
+    content.role === "user" &&
+    parts.length > 0 &&
+    parts.every((part) => part.functionResponse !== undefined)
+  );
+}
+
+// Merge consecutive function-response Contents into one user turn: Gemini requires the
+// functionResponse part count to match the functionCall count of the preceding model turn.
+export async function toContents(
+  messages: ModelMessageTypeMultiActionsWithoutContentFragment[],
+  modelId: ModelIdType
+): Promise<Content[]> {
+  const contents = await concurrentExecutor(
+    messages,
+    (message) => toContent(message, modelId),
+    { concurrency: MESSAGE_CONVERSION_CONCURRENCY }
+  );
+
+  return contents.reduce<Content[]>((merged, content) => {
+    const previous = merged[merged.length - 1];
+    if (
+      previous &&
+      isFunctionResponseContent(previous) &&
+      isFunctionResponseContent(content)
+    ) {
+      merged[merged.length - 1] = {
+        ...previous,
+        parts: [...(previous.parts ?? []), ...(content.parts ?? [])],
+      };
+      return merged;
+    }
+
+    return [...merged, content];
+  }, []);
 }
 
 /**

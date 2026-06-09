@@ -1,10 +1,10 @@
-import type { RegionType } from "@app/lib/api/regions/config";
 import type { CoreAPIContentNode } from "@app/types/core/content_node";
 import type { CoreAPIDataset } from "@app/types/core/core_api";
 import type {
   CoreAPIDocumentBlob,
   CoreAPITableBlob,
 } from "@app/types/core/data_source";
+import type { RegionType } from "@app/types/region";
 import type { ModelId } from "@app/types/shared/model_id";
 import isPlainObject from "lodash/isPlainObject";
 

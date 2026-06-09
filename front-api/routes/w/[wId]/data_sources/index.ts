@@ -1,11 +1,11 @@
-import { Hono } from "hono";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 
 import dsId from "./[dsId]";
 import botDataSources from "./bot-data-sources";
 import requestAccess from "./request_access";
 
 // Mounted under /api/w/:wId/data_sources.
-const app = new Hono();
+const app = workspaceApp();
 
 // Register static paths BEFORE `/:dsId` so the param route does not swallow
 // these names as ids.

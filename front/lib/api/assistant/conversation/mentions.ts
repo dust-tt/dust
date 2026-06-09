@@ -1,4 +1,5 @@
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import {
   canCurrentUserAddProjectMembers,
@@ -33,7 +34,7 @@ import type {
 import {
   isAgentMessageType,
   isCompactionMessageType,
-  isProjectConversation,
+  isPodConversation,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
@@ -43,7 +44,7 @@ import {
   toMentionType,
 } from "@app/types/assistant/mentions";
 import { isContentFragmentType } from "@app/types/content_fragment";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -52,7 +53,22 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 import uniqBy from "lodash/uniqBy";
 import type { Transaction } from "sequelize";
+import { z } from "zod";
 import { getConversation } from "./fetch";
+
+export const PostMentionActionRequestBodySchema = z.object({
+  type: z.enum(["agent", "user"]),
+  id: z.string(),
+  action: z.enum(["approved", "rejected", "dismissed"]),
+});
+
+export type PostMentionActionRequestBody = z.infer<
+  typeof PostMentionActionRequestBodySchema
+>;
+
+export type PostMentionActionResponseBody = {
+  success: boolean;
+};
 
 export async function getMentionStatus(
   auth: Authenticator,
@@ -67,7 +83,7 @@ export async function getMentionStatus(
   // For project conversations we do not have to check if the mentioned user
   // can access the conversation. If the project is open, they can access it.
   // If it is closed, the only requested space will be the project itself by design.
-  if (isProjectConversation(conversation)) {
+  if (isPodConversation(conversation)) {
     const isProjectMember = await isUserMemberOfSpace(auth, {
       userId: mentionedUser.sId,
       spaceId: conversation.spaceId,
@@ -225,7 +241,7 @@ export async function validateUserMention(
     messageId: string;
     approvalState: "approved" | "rejected";
   }
-): Promise<Result<void, APIErrorWithStatusCode>> {
+): Promise<Result<void, APIErrorWithContentfulStatusCode>> {
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
     return new Err({
@@ -241,7 +257,7 @@ export async function validateUserMention(
   const isApproval = approvalState === "approved";
 
   // For project conversations, add user to project space first when approving.
-  if (isProjectConversation(conversation) && isApproval) {
+  if (isPodConversation(conversation) && isApproval) {
     const space = await SpaceResource.fetchById(auth, conversation.spaceId);
     if (!space) {
       return new Err({
@@ -316,7 +332,12 @@ export async function validateUserMention(
 
   if (isUserMessageType(message)) {
     // Verify user is authorized to edit the message by checking the message user.
-    if (message.user && message.user.id !== auth.getNonNullableUser().id) {
+    if (
+      !canCurrentUserRespondToParentUserMessage({
+        parentUserId: message.user?.id,
+        currentUserId: auth.getNonNullableUser().id,
+      })
+    ) {
       return new Err({
         status_code: 403,
         api_error: {
@@ -331,8 +352,10 @@ export async function validateUserMention(
       messageId,
     });
     if (
-      userMessageUserId !== null &&
-      userMessageUserId !== auth.getNonNullableUser().id
+      !canCurrentUserRespondToParentUserMessage({
+        parentUserId: userMessageUserId,
+        currentUserId: auth.getNonNullableUser().id,
+      })
     ) {
       return new Err({
         status_code: 403,
@@ -485,7 +508,7 @@ export async function dismissMention(
     type: "user" | "agent";
     id: string;
   }
-): Promise<Result<void, APIErrorWithStatusCode>> {
+): Promise<Result<void, APIErrorWithContentfulStatusCode>> {
   const conversationRes = await getConversation(auth, conversationId);
   if (conversationRes.isErr()) {
     return new Err({
@@ -514,7 +537,12 @@ export async function dismissMention(
 
   if (isUserMessageType(message)) {
     // Verify user is authorized to edit the message by checking the message user.
-    if (message.user && message.user.id !== auth.getNonNullableUser().id) {
+    if (
+      !canCurrentUserRespondToParentUserMessage({
+        parentUserId: message.user?.id,
+        currentUserId: auth.getNonNullableUser().id,
+      })
+    ) {
       return new Err({
         status_code: 403,
         api_error: {
@@ -529,8 +557,10 @@ export async function dismissMention(
       messageId,
     });
     if (
-      userMessageUserId !== null &&
-      userMessageUserId !== auth.getNonNullableUser().id
+      !canCurrentUserRespondToParentUserMessage({
+        parentUserId: userMessageUserId,
+        currentUserId: auth.getNonNullableUser().id,
+      })
     ) {
       return new Err({
         status_code: 403,

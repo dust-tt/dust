@@ -1,4 +1,7 @@
-import { PokeFavoriteButton } from "@app/components/poke/PokeFavorites";
+import {
+  PokeFavoriteButton,
+  PokeFavoritesCommandGroups,
+} from "@app/components/poke/PokeFavorites";
 import { PokeRegionDropdown } from "@app/components/poke/PokeRegionDropdown";
 import {
   PokeCommandDialog,
@@ -6,17 +9,17 @@ import {
   PokeCommandItem,
   PokeCommandList,
 } from "@app/components/poke/shadcn/ui/command";
-import type { RegionType } from "@app/lib/api/regions/config";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
 import { usePokeRegion } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
 import { usePokeSearchAllRegions } from "@app/poke/swr/search";
 import type { PokeItemBase } from "@app/types/poke";
+import type { RegionType } from "@app/types/region";
 import { isDevelopment } from "@app/types/shared/env";
 import {
   Button,
-  ChevronRightIcon,
+  ChevronRight,
   Chip,
   LinkWrapper,
   Logo,
@@ -200,6 +203,11 @@ function PokeSearchCommandUI({
             )}
           {isError && <div className="p-4 text-sm">Something went wrong.</div>}
           {searchTerm.length < MIN_SEARCH_CHARACTERS && (
+            <PokeFavoritesCommandGroups
+              onNavigate={() => onOpenChange(false)}
+            />
+          )}
+          {searchTerm.length < MIN_SEARCH_CHARACTERS && (
             <div className="p-4 text-sm">
               <div className="mb-3 text-muted-foreground dark:text-muted-foreground-night">
                 Search for resources by:
@@ -220,6 +228,10 @@ function PokeSearchCommandUI({
                 <div>
                   <span className="font-medium">Data source:</span>{" "}
                   <span className="font-mono">dts_abc123</span>
+                </div>
+                <div>
+                  <span className="font-medium">Dust API project ID:</span>{" "}
+                  <span className="font-mono">123456</span>
                 </div>
                 <div>
                   <span className="font-medium">Connector ID:</span>{" "}
@@ -257,7 +269,7 @@ function PokeSearchCommandUI({
                       </Chip>
                     )}
                   </div>
-                  <ChevronRightIcon className="h-4 w-4 flex-shrink-0" />
+                  <ChevronRight className="h-4 w-4 flex-shrink-0" />
                 </div>
               </PokeCommandItem>
             );

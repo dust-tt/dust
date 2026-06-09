@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { calculatePorts } from "../../src/lib/ports";
 import { SERVICE_REGISTRY, WARM_SERVICES, getHealthChecks } from "../../src/lib/registry";
-import { ALL_SERVICES, type ServiceName } from "../../src/lib/services";
+import { ALL_SERVICES } from "../../src/lib/services";
 
 describe("registry", () => {
   describe("SERVICE_REGISTRY", () => {
@@ -18,9 +18,9 @@ describe("registry", () => {
       expect(config.needsEnvSh).toBe(false);
     });
 
-    it("front config has correct settings", () => {
-      const config = SERVICE_REGISTRY.front;
-      expect(config.cwd).toBe("front");
+    it("front-api config has correct settings", () => {
+      const config = SERVICE_REGISTRY["front-api"];
+      expect(config.cwd).toBe("front-api");
       expect(config.needsNvm).toBe(true);
       expect(config.needsEnvSh).toBe(true);
       expect(config.portKey).toBe("front");
@@ -74,7 +74,7 @@ describe("registry", () => {
     });
 
     it("includes all other services", () => {
-      expect(WARM_SERVICES).toContain("front");
+      expect(WARM_SERVICES).toContain("front-api");
       expect(WARM_SERVICES).toContain("core");
       expect(WARM_SERVICES).toContain("oauth");
       expect(WARM_SERVICES).toContain("connectors");
@@ -86,14 +86,6 @@ describe("registry", () => {
     it("has 7 services (all except sparkle, sdk, and viz)", () => {
       expect(WARM_SERVICES).toHaveLength(7);
     });
-
-    it("is derived from SERVICE_REGISTRY", () => {
-      const registryServices = Object.keys(SERVICE_REGISTRY) as ServiceName[];
-      const expectedWarm = registryServices.filter(
-        (s) => s !== "sparkle" && s !== "sdk" && s !== "viz"
-      );
-      expect(WARM_SERVICES.sort()).toEqual(expectedWarm.sort());
-    });
   });
 
   describe("getHealthChecks", () => {
@@ -104,9 +96,9 @@ describe("registry", () => {
       expect(Array.isArray(checks)).toBe(true);
     });
 
-    it("includes front health check", () => {
+    it("includes the front-api health check", () => {
       const checks = getHealthChecks(ports);
-      const frontCheck = checks.find((c) => c.service === "front");
+      const frontCheck = checks.find((c) => c.service === "front-api");
       expect(frontCheck).toBeDefined();
       expect(frontCheck?.url).toBe("http://localhost:10000/api/healthz");
     });
@@ -132,7 +124,7 @@ describe("registry", () => {
       const secondPorts = calculatePorts(11000);
       const checks = getHealthChecks(secondPorts);
 
-      const frontCheck = checks.find((c) => c.service === "front");
+      const frontCheck = checks.find((c) => c.service === "front-api");
       expect(frontCheck?.url).toBe("http://localhost:11000/api/healthz");
 
       const coreCheck = checks.find((c) => c.service === "core");
@@ -159,9 +151,11 @@ describe("registry", () => {
       expect(command).toBe("npm run watch");
     });
 
-    it("front returns npm run dev", () => {
-      const command = SERVICE_REGISTRY.front.buildCommand(mockEnv);
-      expect(command).toBe("npm run dev");
+    it("front-api binds IPv4, forbids next, and runs npm run dev", () => {
+      const command = SERVICE_REGISTRY["front-api"].buildCommand(mockEnv);
+      expect(command).toBe(
+        "HOSTNAME=127.0.0.1 NODE_ENV=development NODE_OPTIONS=--require=./forbid-next.cjs npm run dev"
+      );
     });
 
     it("core returns cargo run --bin core-api", () => {

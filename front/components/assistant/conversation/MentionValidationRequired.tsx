@@ -1,5 +1,6 @@
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import { isAgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useMentionValidation } from "@app/lib/swr/mentions";
 import type {
@@ -11,7 +12,7 @@ import {
   ActionCardBlock,
   Avatar,
   Button,
-  ChatBubbleLeftRightIcon,
+  MessageChatSquare,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -46,8 +47,12 @@ export function MentionValidationRequired({
     isProjectConversation: isProjectMembership,
   });
 
-  const isTriggeredByCurrentUser = useMemo(
-    () => !triggeringUser || triggeringUser.sId === user?.sId,
+  const canCurrentUserRespond = useMemo(
+    () =>
+      canCurrentUserRespondToParentUserMessage({
+        parentUserId: triggeringUser?.sId,
+        currentUserId: user?.sId,
+      }),
     [triggeringUser, user?.sId]
   );
 
@@ -69,7 +74,7 @@ export function MentionValidationRequired({
     }
   };
 
-  if (!isTriggeredByCurrentUser) {
+  if (!canCurrentUserRespond) {
     return null;
   }
 
@@ -95,7 +100,7 @@ export function MentionValidationRequired({
     <div className="my-3">
       <ActionCardBlock
         title={title}
-        visual={<Avatar icon={ChatBubbleLeftRightIcon} size="sm" />}
+        visual={<Avatar icon={MessageChatSquare} size="sm" />}
         description={description}
         actions={
           <div className="flex flex-wrap justify-end gap-2">

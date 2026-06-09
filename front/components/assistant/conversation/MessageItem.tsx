@@ -20,6 +20,7 @@ import {
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
+import { WakeUpMessage } from "@app/components/assistant/conversation/WakeUpMessage";
 import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
 import { useReaction } from "@app/hooks/useReaction";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -170,10 +171,8 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
             return (
               <AttachmentCitation
-                owner={context.owner}
                 key={index}
                 attachmentCitation={attachmentCitation}
-                conversationId={context.conversation?.sId}
                 compact={!hasImageCitation}
               />
             );
@@ -248,12 +247,6 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       return null;
     }
 
-    if (isHiddenMessage(data)) {
-      // This is hacky but in case of handover we generate a user message from the agent and we want
-      // to hide it in the conversation because it has no value to display.
-      return null;
-    }
-
     const topMargin = getMessageTopMargin({
       data,
       prevData,
@@ -261,6 +254,27 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       isSteeredAgentMessage,
       isPreviousAgentMessageSteered,
     });
+
+    if (isUserMessage(data) && data.context.origin === "wakeup") {
+      return (
+        <div
+          ref={ref}
+          className={cn(
+            "mx-auto max-w-conversation",
+            topMargin,
+            !nextData && "mb-10"
+          )}
+        >
+          <WakeUpMessage message={data} />
+        </div>
+      );
+    }
+
+    if (isHiddenMessage(data)) {
+      // This is hacky but in case of handover we generate a user message from the agent and we want
+      // to hide it in the conversation because it has no value to display.
+      return null;
+    }
 
     // No message without a conversation
     if (!context.conversation) {
@@ -349,6 +363,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 context.additionalMarkdownComponents
               }
               additionalMarkdownPlugins={context.additionalMarkdownPlugins}
+              isAutoScrollEnabledRef={context.isAutoScrollEnabledRef}
               isProjectArchived={context.isProjectArchived}
             />
           )}

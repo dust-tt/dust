@@ -2,7 +2,7 @@ import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import { useLandingAuthContext } from "@app/lib/swr/website";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { appendUTMParams } from "@app/lib/utils/utm";
-import { ArrowRightIcon, Button } from "@dust-tt/sparkle";
+import { ArrowRight, Button } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
@@ -57,7 +57,7 @@ export function OpenDustButton({
       variant={variant}
       size={size}
       label="Open Dust"
-      icon={ArrowRightIcon}
+      icon={ArrowRight}
       onClick={withTracking(trackingArea, trackingObject, () => {
         // eslint-disable-next-line react-hooks/immutability
         window.location.href = appendUTMParams("/api/login");

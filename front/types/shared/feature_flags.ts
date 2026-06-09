@@ -8,9 +8,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
     stage: "dust_only",
   },
-  use_vertex_for_anthropic_models: {
+  use_vertex_for_supported_models: {
     description:
-      "Route Claude model LLM calls through Vertex AI instead of the direct Anthropic API",
+      "Route LLM calls through Vertex AI when supported instead of the direct provider's API",
     stage: "dust_only",
   },
   audit_logs: {
@@ -23,7 +23,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   dust_internal_global_agents: {
     description:
-      "Access to internal global agents (dust-edge, dust-quick, dust-oai, dust-goog, dust-next and their variants)",
+      "Access to internal global agents (dust-edge, dust-quick, dust-oai, dust-goog, custom model agents and their variants)",
+    stage: "dust_only",
+  },
+  dust_agent_gpt_5_5_default: {
+    description:
+      "Use GPT 5.5 (medium reasoning) as the default model for the @dust agent",
     stage: "dust_only",
   },
   notion_private_integration: {
@@ -38,10 +43,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to Claude 4.5 Opus model in the agent builder",
     stage: "on_demand",
   },
-  confluence_tool: {
-    description: "Confluence MCP tool",
-    stage: "on_demand",
-  },
   deepseek_feature: {
     description:
       "Access to DeepSeek models (they cannot use tool so can't be selected in the agent builder)",
@@ -49,10 +50,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   fireworks_new_model_feature: {
     description: "Access to Fireworks new model",
-    stage: "on_demand",
-  },
-  deepseek_r1_global_agent_feature: {
-    description: "Access to DeepSeek R1 model as global agent",
     stage: "on_demand",
   },
   dev_mcp_actions: {
@@ -96,10 +93,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Transcript feature (Labs)",
     stage: "on_demand",
   },
-  openai_o1_custom_assistants_feature: {
-    description: "OpenAI o1 model for custom assistants",
-    stage: "on_demand",
-  },
   openai_o1_feature: {
     description: "Access to OpenAI o1 model",
     stage: "on_demand",
@@ -135,6 +128,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "API for accessing usage data (Means that any builder with an API key can access usage data of the workspace from API)",
     stage: "on_demand",
   },
+  workspace_analytics: {
+    description:
+      "Admin-only workspace usage analytics: the workspace_analytics MCP server, its skill, and the Workspace Analyst agent.",
+    stage: "on_demand",
+  },
   xai_feature: {
     description: "Access to xAI models in the agent builder",
     stage: "on_demand",
@@ -143,17 +141,9 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to noop model in the agent builder",
     stage: "dust_only",
   },
-  monday_tool: {
-    description: "Monday MCP tool",
-    stage: "rolling_out",
-  },
   gemini_3_1_pro_feature: {
     description: "Access to Gemini 3.1 Pro model in the agent builder",
     stage: "on_demand",
-  },
-  agent_management_tool: {
-    description: "MCP tool for creating and managing agent configurations",
-    stage: "dust_only",
   },
   hootl_subscriptions: {
     description: "Subscription feature for Schedule & Triggers.",
@@ -168,9 +158,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slideshow MCP tool",
     stage: "dust_only",
   },
-  snowflake_tool: {
-    description: "Snowflake MCP tool for read-only SQL queries",
-    stage: "on_demand",
+  frames_skill_v2: {
+    description:
+      "Use the merged Frames skill v2 prose for every agent in the workspace. Temporary, remove after global rollout.",
+    stage: "dust_only",
   },
   slack_message_splitting: {
     description:
@@ -179,10 +170,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   legacy_dust_apps: {
     description: "Access to legacy Dust Apps (editor and associated tools)",
-    stage: "on_demand",
-  },
-  luma_tool: {
-    description: "Luma MCP tool for event management and guest tracking",
     stage: "on_demand",
   },
   power_bi_mcp: {
@@ -199,32 +186,23 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Discord bot integration for workspace-level Discord integration",
     stage: "dust_only",
   },
-  projects: {
-    description: "Enable the Projects feature",
-    stage: "on_demand",
-  },
   databricks_tool: {
     description: "Databricks MCP tool",
     stage: "on_demand",
   },
   sandbox_tools: {
     description:
-      "Sandbox MCP tool for executing code in isolated Linux containers",
+      "Computer MCP tool for executing code in isolated Linux containers (sandbox)",
     stage: "dust_only",
   },
   sandbox_dsbx_tools: {
     description:
-      "Programmatic access to MCP tools from inside the sandbox via the dsbx CLI",
+      "Programmatic access to MCP tools from inside the Computer (sandbox) via the dsbx CLI",
     stage: "dust_only",
   },
   sandbox_workspace_admin: {
     description:
-      "Workspace admin configuration for the sandbox: whitelisted domains, environment variables, and the agent egress request setting/tool",
-    stage: "dust_only",
-  },
-  skills_as_user_messages: {
-    description:
-      "Render skills in assistant conversations as synthetic user messages instead of in the system prompt",
+      "Workspace admin configuration for the Computer (sandbox): whitelisted domains, environment variables, and the agent egress request setting/tool",
     stage: "dust_only",
   },
   run_tools_from_prompt: {
@@ -304,6 +282,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable Microsoft sensitivity labels for data classification on connectors and MCP servers",
     stage: "on_demand",
   },
+  deferred_conversation_creation: {
+    description:
+      "Create conversations in two steps (conversation first, first message in background) for faster navigation to the conversation page",
+    stage: "dust_only",
+  },
   conversation_search_indexing: {
     description: "Enable ES indexing of conversations on mutation (write path)",
     stage: "dust_only",
@@ -318,9 +301,34 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Unified GCS-backed file explorer with folder hierarchy, replacing the two-tab files panel.",
     stage: "dust_only",
   },
-  metronome_billing_usage_page: {
+  user_settings_v2: {
+    description: "Enable the new user settings v2 experience",
+    stage: "dust_only",
+  },
+  force_us_api_url: {
     description:
-      "Enable the new Usage admin page with credit pool display and workspace usage management.",
+      "Force the SPA to use the regional API subdomain (us-api/eu-api.dust.tt) " +
+      "as its backend for this workspace",
+    stage: "on_demand",
+  },
+  disable_formatting_prompt: {
+    description:
+      "Skip injecting the OpenAI formatting meta prompt entirely (no markdown/paragraph style guidance)",
+    stage: "dust_only",
+  },
+  metronome_cp_checkout: {
+    description:
+      "Enable the Metronome-owned payment-gated checkout flow for Business plan activation (replaces direct Stripe charge).",
+    stage: "dust_only",
+  },
+  dust_desktop: {
+    description:
+      "Auto-attach the Dust Desktop client-side MCP server to agent runs when registered for the user.",
+    stage: "dust_only",
+  },
+  admin_governance: {
+    description:
+      "Access to admin governance features, including assigning the business_admin role from the UI",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

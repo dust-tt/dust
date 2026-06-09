@@ -4,12 +4,12 @@ import React from "react";
 interface ItemRowProps {
   isSelected: boolean;
   onClick: () => void;
-  onMouseEnter: () => void;
+  onMouseMove: () => void;
   children: React.ReactNode;
 }
 
 export const ItemRow = React.forwardRef<HTMLDivElement, ItemRowProps>(
-  function ItemRow({ isSelected, onClick, onMouseEnter, children }, ref) {
+  function ItemRow({ isSelected, onClick, onMouseMove, children }, ref) {
     return (
       <div
         ref={ref}
@@ -21,7 +21,7 @@ export const ItemRow = React.forwardRef<HTMLDivElement, ItemRowProps>(
             : "hover:bg-muted-background dark:hover:bg-muted-background-night"
         )}
         onClick={onClick}
-        onMouseEnter={onMouseEnter}
+        onMouseMove={onMouseMove}
       >
         {children}
       </div>

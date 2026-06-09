@@ -18,6 +18,8 @@ export class ConversationForkModel extends WorkspaceAwareModel<ConversationForkM
   declare sourceMessageId: ForeignKey<MessageModel["id"]>;
   declare branchedAt: Date;
 
+  declare fileCopyStatus: CreationOptional<"pending" | "done">;
+
   declare parentConversation?: NonAttribute<ConversationModel>;
   declare childConversation?: NonAttribute<ConversationModel>;
   declare createdByUser?: NonAttribute<UserModel>;
@@ -39,6 +41,11 @@ ConversationForkModel.init(
     branchedAt: {
       type: DataTypes.DATE,
       allowNull: false,
+    },
+    fileCopyStatus: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "done",
     },
   },
   {

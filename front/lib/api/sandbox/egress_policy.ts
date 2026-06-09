@@ -17,6 +17,14 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 const INVALIDATION_TIMEOUT_MS = 5_000;
 const SANDBOX_POLICY_MAX_DOMAINS = 100;
 
+export type GetWorkspaceEgressPolicyResponseBody = {
+  policy: EgressPolicy;
+};
+
+export type PutWorkspaceEgressPolicyResponseBody = {
+  policy: EgressPolicy;
+};
+
 function getWorkspacePolicyPath(auth: Authenticator): string {
   return `workspaces/${auth.getNonNullableWorkspace().sId}.json`;
 }

@@ -1,9 +1,8 @@
 import * as CollapsiblePrimitive from "@radix-ui/react-collapsible";
-import { ChevronDownIcon, ChevronRightIcon } from "@sparkle/icons/app";
+import { ChevronDown, ChevronRight } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
-
 import { Icon } from "./Icon";
 
 const labelVariants = cva(
@@ -89,7 +88,7 @@ const CollapsibleTrigger = React.forwardRef<
         ref={ref}
         disabled={disabled}
         className={cn(
-          "s-group/col s-flex s-w-full s-items-center s-gap-1 s-font-semibold focus:s-outline-none focus:s-ring-0",
+          "s-group/col s-flex s-w-full s-items-center s-gap-1 focus:s-outline-none focus:s-ring-0",
           disabled ? "s-cursor-default" : "s-cursor-pointer",
           className
         )}
@@ -103,12 +102,12 @@ const CollapsibleTrigger = React.forwardRef<
             )}
           >
             <Icon
-              visual={ChevronRightIcon}
+              visual={ChevronRight}
               size="sm"
               className="s-block group-data-[state=open]/col:s-hidden"
             />
             <Icon
-              visual={ChevronDownIcon}
+              visual={ChevronDown}
               size="sm"
               className="s-hidden group-data-[state=open]/col:s-block"
             />

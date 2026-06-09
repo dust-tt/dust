@@ -15,8 +15,11 @@ A CLI for interacting with Dust from within sandboxes.
 ## Commands
 
 ```
-dsbx version   Print version information
-dsbx status    Show sandbox status (placeholder)
+dsbx version       Print version information
+dsbx forward       Forward sandbox egress traffic to the Dust egress proxy
+dsbx resolve       Run the local synthetic DNS resolver for proxied traffic
+dsbx healthcheck   Report sandbox egress enforcement health as JSON
+dsbx tools         Interact with MCP servers and tools
 ```
 
 ## Build

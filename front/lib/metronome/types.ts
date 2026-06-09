@@ -10,6 +10,9 @@ import {
   getCreditTypeProgrammaticUsdId,
   getProductExcessCreditsId,
   getProductFreeCreditId,
+  type USAGE_TYPE_FREE,
+  type USAGE_TYPE_PROGRAMMATIC,
+  type USAGE_TYPE_USER,
 } from "@app/lib/metronome/constants";
 import type { SupportedCurrency } from "@app/types/currency";
 import type { Commit, Credit } from "@metronome/sdk/resources/shared";
@@ -27,14 +30,38 @@ export const LEGACY_PRO_ANNUAL_EUR_PACKAGE_ALIAS = "legacy-pro-annual-eur";
 export const LEGACY_BUSINESS_EUR_PACKAGE_ALIAS = "legacy-business-eur";
 export const LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS = "legacy-enterprise-eur";
 
-export type MetronomePackageTier = "pro" | "business" | "enterprise";
+// Free plan
+export const FREE_PACKAGE_ALIAS = "free-plan";
+
+export type MetronomePackageTier = "free" | "pro" | "business" | "enterprise";
+
+// Stripe collection method for a Metronome customer's Stripe billing
+// configuration. `charge_automatically` charges the card on file when an
+// invoice is finalized; `send_invoice` emails the invoice for the customer to
+// pay manually (used for enterprise N30-style billing).
+export type MetronomeStripeCollectionMethod =
+  | "charge_automatically"
+  | "send_invoice";
+
+export const DEFAULT_METRONOME_STRIPE_COLLECTION_METHOD: MetronomeStripeCollectionMethod =
+  "charge_automatically";
+
+export const PAYG_ELIGIBLE_TIERS: readonly MetronomePackageTier[] = [
+  "enterprise",
+  "business",
+];
+
+export function isPaygEligibleTier(tier: MetronomePackageTier): boolean {
+  return PAYG_ELIGIBLE_TIERS.includes(tier);
+}
 
 export type BillingFrequency = "MONTHLY" | "ANNUAL";
 
 /**
  * Classify a Metronome package by its display name. The match is a
  * case-insensitive whole-word search ordered by specificity:
- * "enterprise" → enterprise, "business" → business, "pro" → pro.
+ * "enterprise" → enterprise, "business" → business, "pro" → pro,
+ * "free" → free.
  *
  * Names lacking any of those keywords return `null` — callers refuse such
  * packages explicitly. This is a deliberate trade-off vs. a closed-set
@@ -55,6 +82,9 @@ export function classifyMetronomePackageByName(
   if (/\bpro\b/.test(normalized)) {
     return "pro";
   }
+  if (/\bfree\b/.test(normalized)) {
+    return "free";
+  }
   return null;
 }
 
@@ -67,6 +97,11 @@ export function classifyMetronomePackageCurrencyByName(
   }
   return "usd";
 }
+
+export type UsageType =
+  | typeof USAGE_TYPE_USER
+  | typeof USAGE_TYPE_PROGRAMMATIC
+  | typeof USAGE_TYPE_FREE;
 
 export interface MetronomeEvent {
   transaction_id: string;
@@ -87,6 +122,16 @@ export const FREE_ANNUAL_CREDIT_NAME = "Free Annual Credits";
 // scripts/metronome_setup.ts -> getFreeExcessRecurringCredits(). Has its own
 // FIXED product so it surfaces as a distinct invoice line item.
 export const EXCESS_CREDIT_NAME = "Excess Credits";
+
+// Per-period amount granted by the recurring "Excess Credits" credit in
+// every package. The amount depends on the credit type: AWU packages use a
+// larger buffer than the legacy programmatic USD packages because AWU
+// pricing is per unit while programmatic USD is in dollars. Mirrors the
+// values passed to getFreeExcessRecurringCredits(...) in
+// scripts/metronome_setup.ts. Only AWU recurring excess credits are ever
+// toggled at runtime (see lib/metronome/payg_excess_credits.ts).
+export const DEFAULT_AWU_EXCESS_RECURRING_AMOUNT = 5_000;
+export const DEFAULT_PROGRAMMATIC_USD_EXCESS_RECURRING_AMOUNT = 50;
 
 // Excess credits are an internal accounting mechanism — they should not be
 // surfaced to end users or in the Poke UI. Discriminated by product ID since
@@ -114,13 +159,6 @@ export const MICRO_USD_PER_DOLLAR = 1_000_000;
 export const MIN_CREDIT_PURCHASE_AMOUNT_MICRO_USD = MICRO_USD_PER_DOLLAR;
 // Hard cap used by purchase UIs
 export const MAX_CREDIT_PURCHASE_AMOUNT_MICRO_USD = 1_000_000_000;
-// Price per AWU credit in each supported currency. Must stay in sync with
-// scripts/metronome_setup.ts (AWU_IN_USD_CENTS / AWU_IN_EUR).
-export const AWU_PRICE_PER_CREDIT: Record<SupportedCurrency, number> = {
-  usd: 0.01,
-  eur: 0.0087,
-};
-
 export interface MetronomeUsageListResponse {
   billableMetricId: string;
   billableMetricName: string;

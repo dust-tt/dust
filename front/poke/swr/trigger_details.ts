@@ -1,5 +1,5 @@
+import type { PokeGetTriggerDetails } from "@app/lib/api/poke/triggers";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PokeGetTriggerDetails } from "@app/pages/api/poke/workspaces/[wId]/triggers/[tId]/details";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 

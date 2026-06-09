@@ -1,20 +1,16 @@
-import { Hono } from "hono";
-
+import type { GetTrialMessageUsageResponseType } from "@app/lib/api/assistant/rate_limits";
 import { getMessageUsageCount } from "@app/lib/api/assistant/rate_limits";
-
-export type GetTrialMessageUsageResponseType = {
-  count: number;
-  limit: number;
-};
+import { workspaceApp } from "@front-api/middlewares/ctx";
 
 // Mounted at /api/w/:wId/trial-message-usage.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+/** @ignoreswagger */
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
   const usage = await getMessageUsageCount(auth);
   const body: GetTrialMessageUsageResponseType = usage;
-  return c.json(body);
+  return ctx.json(body);
 });
 
 export default app;

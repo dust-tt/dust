@@ -6,20 +6,22 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { CAT_LINES_DEFAULT } from "@app/lib/api/actions/servers/files/metadata";
 import {
-  isReadableAsText,
-  resolveFile,
-} from "@app/lib/api/actions/servers/files/tools/utils";
+  getDustFileSystemForAgentLoop,
+  requireAgentLoopConversation,
+  scopedPathsFromArgs,
+} from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
+import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils";
 import { isLLMVisionSupportedImageContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { File as GCSFile } from "@google-cloud/storage";
 import * as readline from "readline";
+import type { Readable } from "stream";
 
 const CAT_IMAGE_MAX_BYTES = 2 * 1024 * 1024; // 2 MB vision limit.
 
 function catImage(
-  file: GCSFile,
+  filePath: string,
   {
     path,
     mimeType,
@@ -44,7 +46,7 @@ function catImage(
         uri: `dust://files/${path}`,
         mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.MODEL_VISION_IMAGE,
         text: "" as const,
-        gcsPath: file.name,
+        filePath,
         imageContentType: mimeType,
       },
     },
@@ -52,10 +54,11 @@ function catImage(
 }
 
 async function catText(
-  file: GCSFile,
+  stream: Readable,
   path: string,
   startLine: number,
-  maxLines: number
+  maxLines: number,
+  fileSizeBytes: number
 ): Promise<ToolHandlerResult> {
   const lines: string[] = [];
   let lineNumber = 0;
@@ -63,7 +66,6 @@ async function catText(
   let byteCapped = false;
   let totalLines = 0;
 
-  const stream = file.createReadStream();
   const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
 
   try {
@@ -80,6 +82,13 @@ async function catText(
       const lineBytes = Buffer.byteLength(lineWithNumber + "\n", "utf8");
 
       if (byteCount + lineBytes > FILE_OFFLOAD_TEXT_SIZE_BYTES) {
+        if (lines.length === 0) {
+          // Truncate the oversized line to the byte limit so we don't send huge payloads.
+          const truncated = Buffer.from(lineWithNumber, "utf8")
+            .slice(0, FILE_OFFLOAD_TEXT_SIZE_BYTES)
+            .toString("utf8");
+          lines.push(truncated);
+        }
         byteCapped = true;
         break;
       }
@@ -114,12 +123,15 @@ async function catText(
   }
 
   const endLine = startLine + lines.length - 1;
-
   let text = lines.join("\n");
+
+  const kb = FILE_OFFLOAD_TEXT_SIZE_BYTES / 1024;
+  const fileSizeKb = Math.ceil(fileSizeBytes / 1024);
+
   if (byteCapped) {
-    const kb = FILE_OFFLOAD_TEXT_SIZE_BYTES / 1024;
     text +=
-      `\n\n[Truncated at ${kb}KB. Showing lines ${startLine}-${endLine}.` +
+      `\n\n[Truncated at ${kb}KB. File is ${fileSizeKb}KB.` +
+      ` Showing lines ${startLine}-${endLine}.` +
       ` Use offset=${endLine + 1} to read more.]`;
   } else if (totalLines >= maxLines) {
     text += `\n\n[Showing lines ${startLine}-${endLine}. Use offset=${endLine + 1} to read more.]`;
@@ -132,21 +144,37 @@ export async function catHandler(
   { path, offset, limit }: { path: string; offset?: number; limit?: number },
   { auth, agentLoopContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const conversation = agentLoopContext?.runContext?.conversation;
-  if (!conversation) {
+  const conversationRes = requireAgentLoopConversation({ agentLoopContext });
+  if (conversationRes.isErr()) {
+    return conversationRes;
+  }
+
+  const fsResult = await getDustFileSystemForAgentLoop(
+    auth,
+    conversationRes.value,
+    scopedPathsFromArgs(path)
+  );
+  if (fsResult.isErr()) {
+    return fsResult;
+  }
+
+  const dustFs = fsResult.value;
+
+  const statResult = await dustFs.stat(path);
+  if (statResult.isErr()) {
+    return new Err(new MCPError(statResult.error.message, { tracked: false }));
+  }
+
+  if (statResult.value === null) {
     return new Err(
-      new MCPError("No conversation context available.", { tracked: false })
+      new MCPError(`File not found: \`${path}\`.`, { tracked: false })
     );
   }
 
-  const resolvedRes = await resolveFile(auth, conversation, path);
-  if (resolvedRes.isErr()) {
-    return resolvedRes;
-  }
-  const { file, mimeType, sizeBytes } = resolvedRes.value;
+  const { contentType: mimeType, sizeBytes } = statResult.value;
 
   if (isLLMVisionSupportedImageContentType(mimeType)) {
-    return catImage(file, { path, mimeType, sizeBytes });
+    return catImage(path, { path, mimeType, sizeBytes });
   }
 
   if (!isReadableAsText(mimeType)) {
@@ -158,5 +186,22 @@ export async function catHandler(
     ]);
   }
 
-  return catText(file, path, offset ?? 1, limit ?? CAT_LINES_DEFAULT);
+  const readResult = await dustFs.read(path);
+  if (readResult.isErr()) {
+    return new Err(new MCPError(readResult.error.message, { tracked: false }));
+  }
+
+  if (readResult.value === null) {
+    return new Err(
+      new MCPError(`File not found: \`${path}\`.`, { tracked: false })
+    );
+  }
+
+  return catText(
+    readResult.value, // Readable stream. readline will stop early when limit is reached
+    path,
+    offset ?? 1,
+    limit ?? CAT_LINES_DEFAULT,
+    sizeBytes
+  );
 }

@@ -11,8 +11,13 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { stripNullBytes } from "@app/types/shared/utils/string_utils";
-import type { Bucket, File } from "@google-cloud/storage";
-import { Storage } from "@google-cloud/storage";
+import type {
+  ApiError,
+  Bucket,
+  File,
+  SaveOptions,
+} from "@google-cloud/storage";
+import { RETRYABLE_ERR_FN_DEFAULT, Storage } from "@google-cloud/storage";
 import type formidable from "formidable";
 import fs from "fs";
 import isNumber from "lodash/isNumber";
@@ -20,11 +25,34 @@ import { pipeline } from "stream/promises";
 
 const GCS_COPY_MAX_RETRIES = 3;
 const GCS_COPY_BASE_DELAY_MS = 500;
+const GCS_MAX_RETRIES = 3; // Same as the SDK default.
+const GCS_EXTRA_RETRYABLE_ERROR_MESSAGE_REGEX = /socket hang up/i;
+// GCS generations are object versions. Matching generation 0 means "create only
+// if the object does not already exist", which makes the create safe to retry.
+const GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH = 0;
 
 const DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS = 5 * 60 * 1000; // 5 minutes.
 
 interface FileStorageOptions {
   useServiceAccount?: boolean;
+}
+
+type RawContentUpload = {
+  content: string;
+  contentType: AllSupportedFileContentType;
+  filePath: string;
+};
+
+type RawContentSaveOptions = Pick<
+  SaveOptions,
+  "preconditionOpts" | "resumable"
+>;
+
+function isRetryableGCSError(err: ApiError): boolean {
+  return (
+    RETRYABLE_ERR_FN_DEFAULT(err) ||
+    GCS_EXTRA_RETRYABLE_ERROR_MESSAGE_REGEX.test(err.message)
+  );
 }
 
 export class FileStorage {
@@ -37,6 +65,10 @@ export class FileStorage {
   ) {
     this.storage = new Storage({
       keyFilename: useServiceAccount ? config.getServiceAccount() : undefined,
+      retryOptions: {
+        maxRetries: GCS_MAX_RETRIES,
+        retryableErrorFn: isRetryableGCSError,
+      },
     });
 
     this.bucket = this.storage.bucket(bucketKey);
@@ -47,34 +79,85 @@ export class FileStorage {
    */
 
   async uploadFileToBucket(file: formidable.File, destPath: string) {
-    const gcsFile = this.file(destPath);
-    const fileStream = fs.createReadStream(file.filepath);
+    // Stream-based uploads via pipeline() + createWriteStream() bypass the
+    // SDK's built-in retryOptions, so we need application-level retry.
+    // Since the source is a local file we can safely re-create the read stream.
+    for (let attempt = 1; attempt <= GCS_COPY_MAX_RETRIES; attempt++) {
+      try {
+        const gcsFile = this.file(destPath);
+        const fileStream = fs.createReadStream(file.filepath);
 
-    await pipeline(
-      fileStream,
-      gcsFile.createWriteStream({
-        metadata: {
-          contentType: file.mimetype ?? undefined,
-        },
-      })
-    );
+        await pipeline(
+          fileStream,
+          gcsFile.createWriteStream({
+            metadata: {
+              contentType: file.mimetype ?? undefined,
+            },
+          })
+        );
+
+        return;
+      } catch (err) {
+        if (
+          attempt === GCS_COPY_MAX_RETRIES ||
+          !isRetryableGCSError(err as ApiError)
+        ) {
+          throw err;
+        }
+
+        const delayMs = GCS_COPY_BASE_DELAY_MS * attempt ** 2;
+
+        logger.warn(
+          {
+            error: normalizeError(err),
+            destPath,
+            attempt,
+            maxRetries: GCS_COPY_MAX_RETRIES,
+            delayMs,
+          },
+          "GCS file upload failed (stream), retrying."
+        );
+
+        await setTimeoutAsync(delayMs);
+      }
+    }
   }
 
   async uploadRawContentToBucket({
     content,
     contentType,
     filePath,
-  }: {
-    content: string;
-    contentType: AllSupportedFileContentType;
-    filePath: string;
-  }) {
+  }: RawContentUpload) {
+    await this.saveRawContentToBucket({ content, contentType, filePath });
+  }
+
+  async uploadSmallRawContentToBucketAsNewFile({
+    content,
+    contentType,
+    filePath,
+  }: RawContentUpload) {
+    await this.saveRawContentToBucket(
+      { content, contentType, filePath },
+      {
+        resumable: false,
+        preconditionOpts: {
+          ifGenerationMatch: GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
+        },
+      }
+    );
+  }
+
+  private async saveRawContentToBucket(
+    { content, contentType, filePath }: RawContentUpload,
+    saveOptions?: RawContentSaveOptions
+  ) {
     const gcsFile = this.file(filePath);
 
     const contentToSave = Buffer.from(stripNullBytes(content), "utf8");
 
     await gcsFile.save(contentToSave, {
       contentType,
+      ...saveOptions,
     });
   }
 
@@ -210,7 +293,7 @@ export class FileStorage {
   }: {
     filePath: string;
     maxResults?: number;
-  }) {
+  }): Promise<Result<File[], Error>> {
     try {
       const [files] = await this.bucket.getFiles({
         prefix: filePath,
@@ -221,21 +304,21 @@ export class FileStorage {
       // Filter to only the exact file path and sort by generation (newest first)
       // Generation represents the version order in GCS
       // can be string or number per GCS types, though in practice it seems to always be a number
-      const versions = files
-        .filter((file) => file.name === filePath)
-        .sort((a, b) => {
-          const genA = isNumber(a.metadata.generation)
-            ? a.metadata.generation
-            : Number(a.metadata.generation ?? 0);
-          const genB = isNumber(b.metadata.generation)
-            ? b.metadata.generation
-            : Number(b.metadata.generation ?? 0);
-          return genB - genA;
-        });
-
-      return versions;
-    } catch {
-      return [];
+      return new Ok(
+        files
+          .filter((file) => file.name === filePath)
+          .sort((a, b) => {
+            const genA = isNumber(a.metadata.generation)
+              ? a.metadata.generation
+              : Number(a.metadata.generation ?? 0);
+            const genB = isNumber(b.metadata.generation)
+              ? b.metadata.generation
+              : Number(b.metadata.generation ?? 0);
+            return genB - genA;
+          })
+      );
+    } catch (err) {
+      return new Err(normalizeError(err));
     }
   }
 
@@ -272,13 +355,17 @@ export class FileStorage {
   async copyFile(
     srcPath: string,
     destPath: string,
-    destinationStorage: FileStorage = this
+    destinationStorage: FileStorage = this,
+    { sourceGeneration }: { sourceGeneration?: string } = {}
   ): Promise<void> {
     const destinationFile = destinationStorage.file(destPath);
+    const sourceFile = sourceGeneration
+      ? this.bucket.file(srcPath, { generation: sourceGeneration })
+      : this.file(srcPath);
 
     for (let attempt = 1; attempt <= GCS_COPY_MAX_RETRIES; attempt++) {
       try {
-        await this.file(srcPath).copy(destinationFile);
+        await sourceFile.copy(destinationFile);
         return;
       } catch (err) {
         if (attempt === GCS_COPY_MAX_RETRIES) {

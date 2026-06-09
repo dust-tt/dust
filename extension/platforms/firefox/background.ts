@@ -34,6 +34,11 @@ chrome.runtime.onInstalled.addListener(() => {
     title: "Add selection to conversation",
     contexts: ["selection"],
   });
+  chrome.contextMenus.create({
+    id: "save_page_to_pod",
+    title: "Save page to Pod",
+    contexts: ["all"],
+  });
 });
 
 registerContextMenuTabListeners(platform);

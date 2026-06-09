@@ -371,6 +371,35 @@ const { name, count } = validation.data;
 Reviewer: If you see new `io-ts` imports or codecs introduced by a PR, require the author to
 rewrite them in `zod`.
 
+### [GEN14] Avoid N+1 database calls
+
+Avoid database queries or database-only helpers inside loops, which would resolve in an unbounded
+number of SQL queries that will scale with the data (N+1 pattern).
+Also avoid them in `Promise.all` and `concurrentExecutor` if possible, they only make the queries
+run in parallel; they do not fix the N+1. Running too many SQL queries in parallel can quickly put
+pressure on our connection pool and even exhaust it. `concurrentExecutor` is a good fit for 
+interacting with external services that are beyond our control, not for database queries.
+
+Prefer batching instead: fetch the related rows with one scoped query.
+
+Example:
+
+```
+// BAD: one user query per membership + unbounded Promise.all that take several exhaust the connection pool.
+const users = await Promise.all(
+  memberships.map((membership) =>
+    UserResource.fetchByModelId(membership.userId)
+  )
+);
+
+// GOOD: one query, then reconstruct by id.
+const users = await UserResource.fetchByModelIds(
+  memberships.map((membership) => membership.userId)
+);
+```
+
+Reviewer: If you detect a DB-backed helper or query inside a loop, ask the author to batch it.
+
 ## SECURITY
 
 ### [SEC1] No sensitive data outside of HTTP bodies or headers
@@ -393,6 +422,90 @@ Example:
 // GOOD
 /api/w/[wId]/resource/[sId]
 ```
+
+### [SEC3] Runtime sandbox root commands must not resolve executables through PATH
+
+Any runtime command that runs in an already-built sandbox as `root` must invoke executables through
+absolute paths. This applies to `sandbox.execRoot(...)`, provider-level E2B command execution as
+root, wake/resume hooks, egress setup, log readers, and root-invoked helper scripts.
+
+Image build DSL commands in `front/lib/api/sandbox/image/registry.ts` are out of scope for this
+runtime PATH-hijack rule because they run while building the image, before untrusted sandbox
+workloads can plant files in the sandbox filesystem. Prefer absolute paths there when practical,
+but review them as image build reproducibility/hardening issues rather than runtime workload
+escape issues.
+
+Runtime sandbox root commands must use `execRoot(...)` with a `RootCommand`. Do not pass
+`{ user: "root" }` to generic `sandbox.exec(...)` / `provider.exec(...)`; that path is reserved for
+non-root sandbox workloads. Do not bypass the provider with direct E2B SDK root execution
+(`sandbox.commands.run(..., { user: "root" })`, `sandbox.pty.create(..., { user: "root" })`) outside
+the provider implementation or explicitly operator-only scripts. Prefer
+`rootCommand.exec("/absolute/path", args)` and the small `rootCommand` combinators. Use
+`rootCommand.unsafeShell(command, reason)` only for compound shell flows that cannot reasonably be
+expressed with the builder, and include a specific reason.
+
+When passing positional operands that can be influenced by sandbox workload data or other untrusted
+input, account for option injection. If the target executable supports it, insert `--` before those
+operands so values beginning with `-` cannot be interpreted as flags.
+
+Do not rely on the sandbox `PATH` for root commands. Sandbox workloads may control writable
+directories that appear in a default root PATH on some images, so bare commands like `cat`,
+`chmod`, `nohup`, `systemctl`, `tail`, `head`, `env`, or project helper names can become root code
+execution if an unprivileged sandbox user can plant a matching file earlier in PATH.
+
+If root invokes a helper by absolute path, the helper and every parent directory that makes it
+reachable must be root-owned and not group/other writable before the helper is trusted. Prefer
+root-owned locations such as `/opt/bin` for Dust-managed sandbox helpers, and add image/runtime
+hardening plus tests for their ownership and mode.
+
+Reviewer: If you detect a runtime sandbox command using `sandbox.exec(..., { user: "root" })` or
+`provider.exec(..., { user: "root" })`, require `execRoot(...)` and a `RootCommand`. If you detect
+direct E2B SDK root execution outside the provider or operator-only scripts, require routing
+through the provider. If you detect `rootCommand.unsafeShell(...)`, check that the reason is
+concrete and that simple absolute-executable builder calls would not be clearer. If root command
+args include untrusted positional operands without a `--` separator, check whether the target
+executable can interpret them as options. If you detect a root-invoked helper in a path that sandbox
+users can write to, require ownership/mode hardening or a safer location before approving.
+
+Example:
+
+```
+// BAD: runtime root through generic exec, with commands resolved through PATH.
+await sandbox.exec(auth, "cat /tmp/deny.log | wc -l | tr -d ' '", {
+  user: "root",
+});
+
+// GOOD: root execution uses execRoot and a RootCommand.
+await sandbox.execRoot(
+  auth,
+  rootCommand.and([
+    rootCommand.exec("/usr/bin/install", ["-o", "root", "-g", "root", "-m", "600", "/dev/stdin", path]),
+    rootCommand.exec("/usr/bin/mv", [path, finalPath]),
+  ])
+);
+
+// BAD: root invokes a helper from a path whose ownership/mode is not enforced.
+await sandbox.execRoot(auth, rootCommand.unsafeShell("dust-install-trust-bundle", "bad example"));
+
+// GOOD: root invokes an absolute helper path that image/runtime hardening keeps root-owned and
+// non-writable by sandbox workloads.
+await sandbox.execRoot(auth, rootCommand.exec("/opt/bin/dust-install-trust-bundle"));
+```
+
+### [SEC4] Sandbox root-consumed lookup directories must not be workload-writable
+
+Sandbox workloads must not be able to write to any directory that privileged sandbox services use
+for discovery or activation. This includes systemd unit directories, tmpfiles/profile directories,
+dynamic library lookup directories, plugin directories, and every parent directory that controls
+those paths.
+
+Treat this separately from command `PATH` hardening: root can execute attacker-controlled code by
+loading a systemd unit, tmpfiles config, profile script, library, or plugin from a higher-precedence
+lookup directory even when every command uses absolute executable paths.
+
+Reviewer: If sandbox code adds or depends on a root-consumed lookup path, require image/runtime
+hardening that makes the path root-owned and not group/other writable, plus a regression test that
+attempts to write the attacker-controlled file as the workload user.
 
 ## ERROR
 

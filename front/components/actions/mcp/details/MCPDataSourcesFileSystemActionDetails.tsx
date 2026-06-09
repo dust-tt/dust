@@ -9,16 +9,16 @@ import {
   getVisualForContentNodeType,
 } from "@app/lib/content_nodes";
 import { formatDataSourceDisplayName } from "@app/types/core/utils";
-import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import {
-  ActionPinDistanceIcon,
   Breadcrumbs,
+  type BreadcrumbsItem,
   Citation,
   CitationIcons,
   CitationTitle,
-  DocumentIcon,
+  File02,
   Icon,
   Markdown,
+  MarkerPin01,
 } from "@dust-tt/sparkle";
 
 export function DataSourceNodeContentDetails({
@@ -42,7 +42,7 @@ export function DataSourceNodeContentDetails({
           ? "Retrieving file content"
           : "Retrieve file content"
       }
-      visual={DocumentIcon}
+      visual={File02}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div>
@@ -86,7 +86,7 @@ export function FilesystemPathDetails({
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const { path } = filesystemPath || { path: [] };
 
-  const breadcrumbItems: BreadcrumbItem[] = path?.map((item) =>
+  const breadcrumbItems: BreadcrumbsItem[] = path?.map((item) =>
     item.sourceUrl
       ? {
           icon: getVisualForContentNodeType(item.nodeType),
@@ -118,7 +118,7 @@ export function FilesystemPathDetails({
       actionName={
         displayContext === "conversation" ? "Locating item" : "Locate item"
       }
-      visual={ActionPinDistanceIcon}
+      visual={MarkerPin01}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <span className="text-sm font-bold text-foreground dark:text-foreground-night">

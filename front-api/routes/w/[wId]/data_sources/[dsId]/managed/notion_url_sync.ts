@@ -1,7 +1,3 @@
-import type { Context } from "hono";
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
 import { syncNotionUrls } from "@app/lib/api/poke/plugins/data_sources/notion_url_sync";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
@@ -10,8 +6,15 @@ import type { DataSourceResource } from "@app/lib/resources/data_source_resource
 import { DataSourceResource as DataSourceResourceClass } from "@app/lib/resources/data_source_resource";
 import type { GetPostNotionSyncResponseBody } from "@app/types/api/internal/spaces";
 import { PostNotionSyncPayloadSchema } from "@app/types/api/internal/spaces";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import type { Context } from "hono";
+import { z } from "zod";
 
-import { validate } from "@front-api/middleware/validator";
+const ParamsSchema = z.object({
+  dsId: z.string(),
+});
 
 const RECENT_URLS_COUNT = 100;
 
@@ -67,23 +70,27 @@ async function fetchManagedNotionDataSource(
   return { kind: "ok", dataSource };
 }
 
-function errorJson(c: Context, result: Extract<FetchResult, { kind: "err" }>) {
-  return apiError(c, {
+function errorJson(
+  ctx: Context,
+  result: Extract<FetchResult, { kind: "err" }>
+) {
+  return apiError(ctx, {
     status_code: result.status,
     api_error: { type: result.type, message: result.message },
   });
 }
 
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/notion_url_sync.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const dsId = c.req.param("dsId") ?? "";
+/** @ignoreswagger */
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const { dsId } = ctx.req.valid("param");
 
   const result = await fetchManagedNotionDataSource(auth, dsId);
   if (result.kind === "err") {
-    return errorJson(c, result);
+    return errorJson(ctx, result);
   }
 
   const owner = auth.getNonNullableWorkspace();
@@ -96,59 +103,64 @@ app.get("/", async (c) => {
     JSON.parse(r)
   );
 
-  return c.json({ syncResults: lastSyncedUrls });
+  return ctx.json({ syncResults: lastSyncedUrls });
 });
 
-app.post("/", validate("json", PostNotionSyncPayloadSchema), async (c) => {
-  const auth = c.get("auth");
-  const dsId = c.req.param("dsId") ?? "";
+app.post(
+  "/",
+  validate("param", ParamsSchema),
+  validate("json", PostNotionSyncPayloadSchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { dsId } = ctx.req.valid("param");
 
-  const result = await fetchManagedNotionDataSource(auth, dsId);
-  if (result.kind === "err") {
-    return errorJson(c, result);
-  }
-
-  const owner = auth.getNonNullableWorkspace();
-  const { urls, method } = c.req.valid("json");
-
-  const syncResults = (
-    await syncNotionUrls({
-      urlsArray: urls,
-      dataSourceId: dsId,
-      workspaceId: owner.sId,
-      method,
-    })
-  ).map((urlResult) => ({
-    url: urlResult.url,
-    method,
-    timestamp: urlResult.timestamp,
-    success: urlResult.success,
-    ...(urlResult.error && { error_message: urlResult.error.message }),
-  }));
-
-  // Store the last RECENT_URLS_COUNT synced urls (expires in 1 day if no URL is synced).
-  await runOnRedis({ origin: "notion_url_sync" }, async (redis) => {
-    const redisKey = getRedisKeyForNotionUrlSync(owner.sId);
-
-    await redis.zAdd(
-      redisKey,
-      syncResults.map((urlResult) => ({
-        method,
-        score: urlResult.timestamp,
-        value: JSON.stringify(urlResult),
-      }))
-    );
-
-    await redis.expire(redisKey, 24 * 60 * 60);
-
-    // Delete the oldest URL if the list has more than RECENT_URLS_COUNT items.
-    const count = await redis.zCard(redisKey);
-    if (count > RECENT_URLS_COUNT) {
-      await redis.zRemRangeByRank(redisKey, 0, count - RECENT_URLS_COUNT);
+    const result = await fetchManagedNotionDataSource(auth, dsId);
+    if (result.kind === "err") {
+      return errorJson(ctx, result);
     }
-  });
 
-  return c.json({ syncResults });
-});
+    const owner = auth.getNonNullableWorkspace();
+    const { urls, method } = ctx.req.valid("json");
+
+    const syncResults = (
+      await syncNotionUrls({
+        urlsArray: urls,
+        dataSourceId: dsId,
+        workspaceId: owner.sId,
+        method,
+      })
+    ).map((urlResult) => ({
+      url: urlResult.url,
+      method,
+      timestamp: urlResult.timestamp,
+      success: urlResult.success,
+      ...(urlResult.error && { error_message: urlResult.error.message }),
+    }));
+
+    // Store the last RECENT_URLS_COUNT synced urls (expires in 1 day if no URL is synced).
+    await runOnRedis({ origin: "notion_url_sync" }, async (redis) => {
+      const redisKey = getRedisKeyForNotionUrlSync(owner.sId);
+
+      await redis.zAdd(
+        redisKey,
+        syncResults.map((urlResult) => ({
+          method,
+          score: urlResult.timestamp,
+          value: JSON.stringify(urlResult),
+        }))
+      );
+
+      await redis.expire(redisKey, 24 * 60 * 60);
+
+      // Delete the oldest URL if the list has more than RECENT_URLS_COUNT items.
+      const count = await redis.zCard(redisKey);
+      if (count > RECENT_URLS_COUNT) {
+        await redis.zRemRangeByRank(redisKey, 0, count - RECENT_URLS_COUNT);
+      }
+    });
+
+    return ctx.json({ syncResults });
+  }
+);
 
 export default app;

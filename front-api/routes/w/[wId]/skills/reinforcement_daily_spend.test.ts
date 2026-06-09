@@ -1,13 +1,12 @@
-import { describe, expect, it } from "vitest";
-
 import { MARKUP_MULTIPLIER } from "@app/lib/api/programmatic_usage/common";
 import { Authenticator } from "@app/lib/auth";
 import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
-
 import { honoApp } from "@front-api/app";
+import { ENSURE_IS_ADMIN_ERROR_MESSAGE } from "@front-api/middlewares/ensure_role";
+import { describe, expect, it } from "vitest";
 
 async function setup(role: MembershipRoleType = "admin") {
   return createPrivateApiMockRequest({ method: "GET", role });
@@ -102,7 +101,7 @@ describe("GET /api/w/:wId/skills/reinforcement_daily_spend", () => {
       expect(await response.json()).toEqual({
         error: {
           type: "workspace_auth_error",
-          message: "Only admins can view self-improving skills daily spend.",
+          message: ENSURE_IS_ADMIN_ERROR_MESSAGE,
         },
       });
     }

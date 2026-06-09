@@ -5,12 +5,12 @@ import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
-import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import {
-  BoltIcon,
   Breadcrumbs,
-  CloudArrowLeftRightIcon,
-  ToolsIcon,
+  type BreadcrumbsItem,
+  CloudArrowLeftRight,
+  ShapesPlus,
+  Zap,
 } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -56,7 +56,7 @@ export function SpaceBreadCrumbs({
       ];
     }
 
-    const items: BreadcrumbItem[] = [
+    const items: BreadcrumbsItem[] = [
       {
         icon: getSpaceIcon(space),
         label: getSpaceName(space),
@@ -75,7 +75,7 @@ export function SpaceBreadCrumbs({
           if (dataSourceView === undefined) {
             return [
               {
-                icon: CloudArrowLeftRightIcon,
+                icon: CloudArrowLeftRight,
                 label: "Connections Admin",
               },
             ];
@@ -85,14 +85,14 @@ export function SpaceBreadCrumbs({
         case "actions":
           return [
             {
-              icon: ToolsIcon,
+              icon: ShapesPlus,
               label: "Tools",
             },
           ];
         case "triggers":
           return [
             {
-              icon: BoltIcon,
+              icon: Zap,
               label: "Triggers",
             },
           ];

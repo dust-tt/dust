@@ -1,12 +1,7 @@
 import { EnvironmentSection } from "@app/components/pages/workspace/developers/sections/EnvironmentSection";
 import { NetworkSection } from "@app/components/pages/workspace/developers/sections/NetworkSection";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
-import {
-  CommandLineIcon,
-  ContentMessage,
-  InformationCircleIcon,
-  Page,
-} from "@dust-tt/sparkle";
+import { ContentMessage, Globe01, InfoCircle, Page } from "@dust-tt/sparkle";
 
 export function SandboxPage() {
   const { isAdmin } = useAuth();
@@ -18,16 +13,16 @@ export function SandboxPage() {
   const renderBody = () => {
     if (!isAdmin) {
       return (
-        <ContentMessage variant="info" icon={InformationCircleIcon} size="lg">
-          Only workspace admins can manage sandbox settings.
+        <ContentMessage variant="info" icon={InfoCircle} size="lg">
+          Only workspace admins can manage Computer settings.
         </ContentMessage>
       );
     }
 
     if (!hasSandboxAdmin) {
       return (
-        <ContentMessage variant="info" icon={InformationCircleIcon} size="lg">
-          Sandbox workspace administration is not enabled for this workspace.
+        <ContentMessage variant="info" icon={InfoCircle} size="lg">
+          Computer administration is not enabled for this workspace.
         </ContentMessage>
       );
     }
@@ -43,9 +38,9 @@ export function SandboxPage() {
   return (
     <Page.Vertical gap="xl" align="stretch">
       <Page.Header
-        title="Sandbox"
-        icon={CommandLineIcon}
-        description="Configure workspace-level sandbox network access and environment variables."
+        title="Computer"
+        icon={Globe01}
+        description="Configure workspace-level network access and environment variables for the Computer."
       />
       {renderBody()}
     </Page.Vertical>

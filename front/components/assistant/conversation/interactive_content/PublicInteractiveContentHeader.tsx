@@ -5,10 +5,10 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 import {
   Button,
-  ChatBubbleBottomCenterTextIcon,
   cn,
-  RocketIcon,
-  SpaceClosedIcon,
+  MessageCircle01,
+  Rocket02,
+  SpaceClosed,
 } from "@dust-tt/sparkle";
 
 interface PublicInteractiveContentHeaderProps {
@@ -59,7 +59,7 @@ export function PublicInteractiveContentHeader({
               label="Try it yourself"
               href={`${staticWebsiteUrl}/?${UTM_PARAM}`}
               variant="outline"
-              icon={RocketIcon}
+              icon={Rocket02}
               onClick={withTracking(TRACKING_AREAS.FRAMES, "sign_up")}
               className="hidden sm:flex"
             />
@@ -69,7 +69,7 @@ export function PublicInteractiveContentHeader({
               label="Go to conversation"
               href={conversationUrl}
               variant="outline"
-              icon={ChatBubbleBottomCenterTextIcon}
+              icon={MessageCircle01}
               className="hidden sm:flex"
             />
           )}
@@ -79,7 +79,7 @@ export function PublicInteractiveContentHeader({
               href={projectUrl}
               variant="outline"
               // TODO(projects) this does not show the correct icon for open projects.
-              icon={SpaceClosedIcon}
+              icon={SpaceClosed}
               className="hidden sm:flex"
             />
           )}

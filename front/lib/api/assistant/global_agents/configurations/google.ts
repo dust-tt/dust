@@ -10,7 +10,7 @@ import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import { GEMINI_3_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import { GEMINI_3_1_PRO_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 
 export function _getGeminiProGlobalAgent({
   auth,
@@ -44,10 +44,10 @@ export function _getGeminiProGlobalAgent({
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: GEMINI_3_PRO_MODEL_CONFIG.providerId,
-      modelId: GEMINI_3_PRO_MODEL_CONFIG.modelId,
+      providerId: GEMINI_3_1_PRO_MODEL_CONFIG.providerId,
+      modelId: GEMINI_3_1_PRO_MODEL_CONFIG.modelId,
       temperature: 0.7,
-      reasoningEffort: GEMINI_3_PRO_MODEL_CONFIG.defaultReasoningEffort,
+      reasoningEffort: GEMINI_3_1_PRO_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({

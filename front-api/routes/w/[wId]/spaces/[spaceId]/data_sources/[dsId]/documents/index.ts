@@ -1,30 +1,30 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
+import type { PostDocumentResponseBody } from "@app/lib/api/data_sources";
 import { upsertDocument } from "@app/lib/api/data_sources";
 import { PostDataSourceDocumentRequestBodySchema } from "@app/types/api/public/data_sources";
-
-import { dataSourceResource } from "@front-api/middleware/data_source_resource";
-import { spaceResource } from "@front-api/middleware/space_resource";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withDataSource } from "@front-api/middlewares/with_data_source";
+import { withSpace } from "@front-api/middlewares/with_space";
 
 import documentId from "./[documentId]";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/data_sources/:dsId/documents.
-const app = new Hono();
+const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
-  spaceResource({ requireCanRead: true }),
-  dataSourceResource({ requireCanRead: true }),
+  withSpace({ requireCanRead: true }),
+  withDataSource({ requireCanRead: true }),
   validate("json", PostDataSourceDocumentRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const dataSource = c.get("dataSource");
+  async (ctx): HandlerResult<PostDocumentResponseBody> => {
+    const auth = ctx.get("auth");
+    const dataSource = ctx.get("dataSource");
 
     if (!dataSource.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -34,7 +34,7 @@ app.post(
     }
 
     if (dataSource.connectorId) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -55,7 +55,7 @@ app.post(
       mime_type,
       title,
       document_id,
-    } = c.req.valid("json");
+    } = ctx.req.valid("json");
 
     const upsertResult = await upsertDocument({
       // Use document_id if provided (slugified for LLM-friendly node IDs),
@@ -78,7 +78,7 @@ app.post(
     if (upsertResult.isErr()) {
       switch (upsertResult.error.code) {
         case "data_source_quota_error":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 401,
             api_error: {
               type: "data_source_quota_error",
@@ -88,7 +88,7 @@ app.post(
         case "invalid_url":
         case "text_or_section_required":
         case "invalid_parent_id":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
@@ -96,7 +96,7 @@ app.post(
             },
           });
         default:
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 500,
             api_error: {
               type: "internal_server_error",
@@ -106,7 +106,7 @@ app.post(
       }
     }
 
-    return c.json({ document: upsertResult.value.document }, 201);
+    return ctx.json({ document: upsertResult.value.document }, 201);
   }
 );
 

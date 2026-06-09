@@ -1,0 +1,73 @@
+import { getInvoicePaymentUrl } from "@app/lib/plans/stripe";
+import { CreditResource } from "@app/lib/resources/credit_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type {
+  CreditDisplayData,
+  GetCreditsResponseBody,
+  PendingCreditData,
+} from "@app/types/credits";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+
+import awuPoolSummary from "./awu-pool-summary";
+import membersSeats from "./members-seats";
+import membersUsage from "./members-usage";
+import metronomeBalances from "./metronome-balances";
+import purchase from "./purchase";
+import usageConfiguration from "./usage-configuration";
+
+// Mounted at /api/w/:wId/credits.
+const app = workspaceApp();
+
+app.route("/awu-pool-summary", awuPoolSummary);
+app.route("/members-seats", membersSeats);
+app.route("/members-usage", membersUsage);
+app.route("/metronome-balances", metronomeBalances);
+app.route("/purchase", purchase);
+app.route("/usage-configuration", usageConfiguration);
+
+/** @ignoreswagger */
+app.get("/", ensureIsAdmin(), async (ctx) => {
+  const auth = ctx.get("auth");
+
+  const credits = await CreditResource.listAll(auth, {
+    includeBuyer: true,
+  });
+
+  const creditsData: CreditDisplayData[] = credits
+    .filter((credit) => credit.startDate !== null && credit.type !== "excess")
+    .map((credit) => credit.toJSON());
+
+  const pendingCommittedCredits = credits.filter(
+    (credit) =>
+      credit.startDate === null &&
+      credit.type === "committed" &&
+      credit.invoiceOrLineItemId !== null
+  );
+
+  const pendingCreditsData: PendingCreditData[] = await concurrentExecutor(
+    pendingCommittedCredits,
+    async (credit) => {
+      const paymentUrl = credit.invoiceOrLineItemId
+        ? await getInvoicePaymentUrl(credit.invoiceOrLineItemId)
+        : null;
+      return {
+        sId: credit.sId,
+        type: credit.type,
+        initialAmountMicroUsd: credit.initialAmountMicroUsd,
+        paymentUrl,
+        createdAt: credit.createdAt.getTime(),
+      };
+    },
+    { concurrency: 8 }
+  );
+
+  const body: GetCreditsResponseBody = {
+    credits: creditsData,
+    pendingCredits:
+      pendingCreditsData.length > 0 ? pendingCreditsData : undefined,
+  };
+  return ctx.json(body);
+});
+
+export default app;

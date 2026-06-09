@@ -1,0 +1,153 @@
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
+import { useSearchPods } from "@app/hooks/useSearchPods";
+import { useAppRouter } from "@app/lib/platform";
+import { getSpaceIcon } from "@app/lib/spaces";
+import { getPodRoute } from "@app/lib/utils/router";
+import type { PodType } from "@app/types/space";
+import type { WorkspaceType } from "@app/types/user";
+import {
+  Button,
+  Chip,
+  DotsHorizontal,
+  Icon,
+  LoadingBlock,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  SearchInput,
+  Spinner,
+  Tooltip,
+} from "@dust-tt/sparkle";
+import { useMemo, useState } from "react";
+
+interface PodsBrowsePopoverProps {
+  owner: WorkspaceType;
+}
+
+interface PodBrowseItemProps {
+  pod: PodType;
+  onClick: () => void;
+}
+
+function PodBrowseItemSkeleton({ count = 5 }: { count?: number }) {
+  return (
+    <>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={`pod-skeleton-${i}`} className="flex items-start gap-2 p-2">
+          <LoadingBlock className="mt-0.5 h-4 w-4 rounded" />
+          <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <LoadingBlock className="h-4 w-[70%]" />
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+function PodBrowseItem({ pod, onClick }: PodBrowseItemProps) {
+  return (
+    <div
+      className="flex cursor-pointer items-start gap-2 rounded-lg p-2 hover:bg-muted-background dark:hover:bg-muted-background-night"
+      onClick={onClick}
+    >
+      <Icon visual={getSpaceIcon(pod)} size="sm" className="mt-0.5 shrink-0" />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-row items-center justify-between gap-1.5">
+          <div className="truncate font-medium">{pod.name}</div>
+          {pod.archivedAt && (
+            <Chip size="mini" color="primary" label="Archived" />
+          )}
+        </div>
+        {pod.description && (
+          <Tooltip
+            label={pod.description}
+            tooltipTriggerAsChild
+            trigger={
+              <div className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
+                {pod.description}
+              </div>
+            }
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function PodsBrowsePopover({ owner }: PodsBrowsePopoverProps) {
+  const router = useAppRouter();
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const { pods, isSearching, hasMore, loadMore, isLoadingMore } = useSearchPods(
+    {
+      workspaceId: owner.sId,
+      query: searchQuery,
+      enabled: isOpen,
+      limit: 50,
+    }
+  );
+
+  const filteredPods = useMemo(() => {
+    return pods.filter(
+      ({ isMember, archivedAt }) => (!isMember && !archivedAt) || archivedAt
+    );
+  }, [pods]);
+
+  return (
+    <div>
+      <PopoverRoot open={isOpen} onOpenChange={setIsOpen} modal>
+        <PopoverTrigger asChild>
+          <Button size="xs" icon={DotsHorizontal} variant="ghost" />
+        </PopoverTrigger>
+        <PopoverContent
+          className="flex w-80 max-h-[--radix-popover-content-available-height] flex-col p-0"
+          align="start"
+          collisionPadding={16}
+        >
+          <div className="shrink-0 p-3 pb-2">
+            <SearchInput
+              name="browse-pods-search"
+              placeholder="Search Pods..."
+              value={searchQuery}
+              onChange={setSearchQuery}
+            />
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+            {isSearching && filteredPods.length === 0 ? (
+              <PodBrowseItemSkeleton count={5} />
+            ) : filteredPods.length === 0 ? (
+              <div className="px-2 py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+                No Pods found
+              </div>
+            ) : (
+              <>
+                {filteredPods.map((pod) => (
+                  <PodBrowseItem
+                    key={pod.sId}
+                    pod={pod}
+                    onClick={async () => {
+                      setIsOpen(false);
+                      setSearchQuery("");
+                      await router.push(getPodRoute(owner.sId, pod.sId));
+                    }}
+                  />
+                ))}
+                <InfiniteScroll
+                  nextPage={loadMore}
+                  hasMore={hasMore}
+                  showLoader={isLoadingMore}
+                  loader={
+                    <div className="flex justify-center py-2">
+                      <Spinner size="xs" />
+                    </div>
+                  }
+                />
+              </>
+            )}
+          </div>
+        </PopoverContent>
+      </PopoverRoot>
+    </div>
+  );
+}

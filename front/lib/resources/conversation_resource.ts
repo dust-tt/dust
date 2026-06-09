@@ -27,6 +27,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -34,10 +35,12 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import logger from "@app/logger/logger";
 import { launchIndexConversationEsWorkflow } from "@app/temporal/es_indexation/client";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
+  AgentMessageStatus,
   ConversationForkedChildType,
   ConversationForkedFromType,
   ConversationForkingDataType,
@@ -48,12 +51,17 @@ import type {
   ConversationVisibility,
   ConversationWithoutContentType,
   ParticipantActionType,
+  UserMessageOrigin,
 } from "@app/types/assistant/conversation";
 import {
   ConversationError,
   getConversationDisplayTitle,
   getConversationUrlAccessMode,
 } from "@app/types/assistant/conversation";
+import {
+  ACTIVE_WAKE_UP_STATUSES,
+  type WakeUpScheduleConfig,
+} from "@app/types/assistant/wakeups";
 import type { ContentFragmentVersion } from "@app/types/content_fragment";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -147,7 +155,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       {
         association: "forkedFrom" as const,
         required: false,
-        attributes: ["branchedAt", "childConversationId"],
+        attributes: ["branchedAt", "childConversationId", "fileCopyStatus"],
         include: [
           {
             association: "parentConversation" as const,
@@ -207,6 +215,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         UserResource.model,
         fork.createdByUser.get()
       ).toJSON(),
+      fileCopyStatus: fork.fileCopyStatus,
     };
   }
 
@@ -420,6 +429,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
                 sourceMessageId,
                 branchedAt: branchedAtMs,
                 user,
+                fileCopyStatus: "done" as const,
               },
             },
             title: fork.childConversation.title,
@@ -655,6 +665,74 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       result.set(row.conversationId, parseInt(row.get("count") as string, 10));
     }
     return result;
+  }
+
+  /**
+   * Fetches everything needed to compute an agent message's credit cost: the
+   * agent message model id (used to look up its runs and actions), its tracking
+   * status, its runIds, and the origin of the user message that triggered it
+   * (used to detect free-origin usage). Returns null when the agent message
+   * cannot be found.
+   */
+  static async fetchAgentMessageCreditContext(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<{
+    agentMessageModelId: ModelId;
+    status: AgentMessageStatus;
+    runIds: string[] | null;
+    triggeringUserMessageOrigin: UserMessageOrigin | null;
+  } | null> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const messageRow = await MessageModel.findOne({
+      where: { sId: agentMessageId, workspaceId },
+      include: [
+        { model: AgentMessageModel, as: "agentMessage", required: true },
+      ],
+    });
+
+    const agentMessage = messageRow?.agentMessage;
+    if (!agentMessage) {
+      return null;
+    }
+
+    let triggeringUserMessageOrigin: UserMessageOrigin | null = null;
+    if (messageRow.parentId !== null) {
+      const parentRow = await MessageModel.findOne({
+        where: { id: messageRow.parentId, workspaceId },
+        include: [
+          { model: UserMessageModel, as: "userMessage", required: false },
+        ],
+      });
+      triggeringUserMessageOrigin =
+        parentRow?.userMessage?.userContextOrigin ?? null;
+    }
+
+    return {
+      agentMessageModelId: agentMessage.id,
+      status: agentMessage.status,
+      runIds: agentMessage.runIds,
+      triggeringUserMessageOrigin,
+    };
+  }
+
+  static async updateAgentMessageCostCredits(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      costCredits,
+    }: { agentMessageModelId: ModelId; costCredits: number | null }
+  ): Promise<void> {
+    await AgentMessageModel.update(
+      { costCredits },
+      {
+        where: {
+          id: agentMessageModelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
   }
 
   private static getOptions(
@@ -1824,11 +1902,82 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       auth,
       pagination
     );
+    const nextWakeupAtByConversationId =
+      await this.fetchNextWakeupAtByConversationId(
+        auth,
+        result.conversations.map((c) => c.id)
+      );
+
     return {
-      conversations: result.conversations.map((c) => c.toListItem()),
+      conversations: result.conversations.map((c) => ({
+        ...c.toListItem(),
+        nextWakeupAt: nextWakeupAtByConversationId.get(c.id) ?? null,
+      })),
       hasMore: result.hasMore,
       lastValue: result.lastValue,
     };
+  }
+
+  /**
+   * This wake-up hydration lives here instead of `WakeUpResource` because `WakeUpResource` already
+   * depends on `ConversationResource` to reuse the established conversation ES reindexing path.
+   * This is all to avoid import cycles.
+   */
+  private static async fetchNextWakeupAtByConversationId(
+    auth: Authenticator,
+    conversationIds: ModelId[]
+  ): Promise<Map<ModelId, number>> {
+    if (conversationIds.length === 0) {
+      return new Map();
+    }
+
+    const wakeUps = await WakeUpModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: { [Op.in]: conversationIds },
+        status: ACTIVE_WAKE_UP_STATUSES,
+      },
+      order: [
+        ["createdAt", "ASC"],
+        ["id", "ASC"],
+      ],
+    });
+
+    const nextWakeupAtByConversationId = new Map<ModelId, number>();
+    for (const wakeUp of wakeUps) {
+      const scheduleConfig: WakeUpScheduleConfig | null = (() => {
+        switch (wakeUp.scheduleType) {
+          case "one_shot":
+            return wakeUp.fireAt
+              ? { type: "one_shot", fireAt: wakeUp.fireAt.getTime() }
+              : null;
+          case "cron":
+            return wakeUp.cronExpression && wakeUp.cronTimezone
+              ? {
+                  type: "cron",
+                  cron: wakeUp.cronExpression,
+                  timezone: wakeUp.cronTimezone,
+                }
+              : null;
+          default:
+            return assertNever(wakeUp.scheduleType);
+        }
+      })();
+
+      const nextWakeupAt = scheduleConfig
+        ? getNextWakeUpFireAtFromScheduleConfig(scheduleConfig)
+        : null;
+      if (nextWakeupAt === null) {
+        continue;
+      }
+
+      const previous = nextWakeupAtByConversationId.get(wakeUp.conversationId);
+      if (previous === undefined || nextWakeupAt < previous) {
+        nextWakeupAtByConversationId.set(wakeUp.conversationId, nextWakeupAt);
+      }
+    }
+
+    return nextWakeupAtByConversationId;
   }
 
   static async listSpaceUnreadConversationsAndActivityForUser(
@@ -2270,35 +2419,45 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       order: [["createdAt", "DESC"]],
     });
 
-    return Promise.all(
-      conversations.map(async (c) => {
-        const { actionRequired, lastReadAt } =
-          await ConversationResource.getActionRequiredAndLastReadAtForUser(
-            auth,
-            c.id
-          );
+    let participationByConversationId = new Map<ModelId, UserParticipation>();
+    let lastReadByConversationId = new Map<ModelId, Date>();
+    if (auth.user() && conversations.length > 0) {
+      const conversationIds = conversations.map((c) => c.id);
+      participationByConversationId =
+        await ConversationResource.fetchParticipationMapForUser(
+          auth,
+          conversationIds
+        );
+      lastReadByConversationId = await ConversationResource.fetchReadMapForUser(
+        auth,
+        conversationIds
+      );
+    }
 
-        return {
-          id: c.id,
-          created: c.createdAt.getTime(),
-          updated: c.updatedAt.getTime(),
-          sId: c.sId,
-          title: c.title,
-          triggerId: triggerId,
-          actionRequired,
-          unread: lastReadAt === null || c.updatedAt > lastReadAt,
-          lastReadMs: lastReadAt?.getTime() ?? null,
-          hasError: c.hasError,
-          requestedGroupIds: [],
-          requestedSpaceIds: c.getRequestedSpaceIdsFromModel(),
-          spaceId: c.space?.sId ?? null,
-          depth: c.depth,
-          metadata: c.metadata,
-          branchId: null,
-          isRunningAgentLoop: c.isRunningAgentLoop,
-        };
-      })
-    );
+    return conversations.map((c) => {
+      const participation = participationByConversationId.get(c.id);
+      const lastReadAt = lastReadByConversationId.get(c.id) ?? null;
+
+      return {
+        id: c.id,
+        created: c.createdAt.getTime(),
+        updated: c.updatedAt.getTime(),
+        sId: c.sId,
+        title: c.title,
+        triggerId: triggerId,
+        actionRequired: participation?.actionRequired ?? false,
+        unread: lastReadAt === null || c.updatedAt > lastReadAt,
+        lastReadMs: lastReadAt?.getTime() ?? null,
+        hasError: c.hasError,
+        requestedGroupIds: [],
+        requestedSpaceIds: c.getRequestedSpaceIdsFromModel(),
+        spaceId: c.space?.sId ?? null,
+        depth: c.depth,
+        metadata: c.metadata,
+        branchId: null,
+        isRunningAgentLoop: c.isRunningAgentLoop,
+      };
+    });
   }
 
   static async listSkillReinforcementConversations(
@@ -3135,7 +3294,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           model: AgentMessageModel,
           as: "agentMessage",
           required: true,
-          attributes: ["status"],
+          attributes: ["status", "updatedAt"],
           where: {
             status: { [Op.ne]: "created" },
           },

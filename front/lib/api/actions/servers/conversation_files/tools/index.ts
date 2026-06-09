@@ -413,6 +413,8 @@ const handlersWithFilesystem: ToolHandlers<
 > = {
   [CONVERSATION_LIST_CONTENT_NODES_AND_TABLES_ACTION_NAME]:
     listAttachmentsHandler,
+  [CONVERSATION_CAT_FILE_ACTION_NAME]:
+    handlers[CONVERSATION_CAT_FILE_ACTION_NAME],
 };
 
 export const TOOLS_WITH_FILESYSTEM = buildTools(

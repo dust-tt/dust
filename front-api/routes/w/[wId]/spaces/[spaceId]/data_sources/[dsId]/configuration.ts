@@ -1,32 +1,36 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import config from "@app/lib/api/config";
+import type {
+  GetDataSourceConfigurationResponseBody,
+  PatchDataSourceConfigurationResponseBody,
+} from "@app/lib/api/data_sources";
 import { isWebsite } from "@app/lib/data_sources";
 import logger from "@app/logger/logger";
 import {
   ConnectorsAPI,
   UpdateConnectorConfigurationTypeSchema,
 } from "@app/types/connectors/connectors_api";
-
-import { dataSourceResource } from "@front-api/middleware/data_source_resource";
-import { spaceResource } from "@front-api/middleware/space_resource";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withDataSource } from "@front-api/middlewares/with_data_source";
+import { withSpace } from "@front-api/middlewares/with_space";
 
 // Mounted at /api/w/:wId/spaces/:spaceId/data_sources/:dsId/configuration.
 // Only Slack and Webcrawler connectors have configurations; Slack is set from
 // Poke, so this route is effectively for webcrawler-managed data sources.
-const app = new Hono();
+const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
-  spaceResource({ requireCanRead: true }),
-  dataSourceResource({ requireCanRead: true }),
-  async (c) => {
-    const dataSource = c.get("dataSource");
+  withSpace({ requireCanRead: true }),
+  withDataSource({ requireCanRead: true }),
+  async (ctx): HandlerResult<GetDataSourceConfigurationResponseBody> => {
+    const dataSource = ctx.get("dataSource");
     if (!dataSource.connectorId || !isWebsite(dataSource)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "data_source_not_managed",
@@ -43,7 +47,7 @@ app.get(
       dataSource.connectorId
     );
     if (connectorRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "connector_not_found_error",
@@ -52,21 +56,22 @@ app.get(
         },
       });
     }
-    return c.json({ configuration: connectorRes.value.configuration });
+    return ctx.json({ configuration: connectorRes.value.configuration });
   }
 );
 
 app.patch(
   "/",
-  spaceResource({ requireCanRead: true }),
-  dataSourceResource({ requireCanRead: true }),
+  ensureIsBuilder(),
+  withSpace({ requireCanRead: true }),
+  withDataSource({ requireCanRead: true }),
   validate("json", UpdateConnectorConfigurationTypeSchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const dataSource = c.get("dataSource");
+  async (ctx): HandlerResult<PatchDataSourceConfigurationResponseBody> => {
+    const auth = ctx.get("auth");
+    const dataSource = ctx.get("dataSource");
 
     if (!dataSource.connectorId || !isWebsite(dataSource)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "data_source_not_managed",
@@ -76,7 +81,7 @@ app.patch(
     }
 
     if (!dataSource.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -86,18 +91,7 @@ app.patch(
       });
     }
 
-    if (!auth.isBuilder()) {
-      return apiError(c, {
-        status_code: 403,
-        api_error: {
-          type: "data_source_auth_error",
-          message:
-            "Only the users that are `builders` for the current workspace can update a data source configuration.",
-        },
-      });
-    }
-
-    const { configuration } = c.req.valid("json");
+    const { configuration } = ctx.req.valid("json");
 
     const connectorsAPI = new ConnectorsAPI(
       config.getConnectorsAPIConfig(),
@@ -108,7 +102,7 @@ app.patch(
       configuration: { configuration },
     });
     if (updateRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "connector_update_error",
@@ -118,7 +112,7 @@ app.patch(
       });
     }
 
-    return c.json({ configuration: updateRes.value.configuration });
+    return ctx.json({ configuration: updateRes.value.configuration });
   }
 );
 

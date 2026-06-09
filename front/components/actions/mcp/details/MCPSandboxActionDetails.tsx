@@ -7,9 +7,9 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-  CommandLineIcon,
   cn,
   Markdown,
+  Terminal,
 } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
@@ -112,9 +112,7 @@ export function MCPSandboxActionDetails({
 
   const isRunning = toolOutput === null;
 
-  const actionName = isRunning
-    ? "Executing command in sandbox"
-    : "Executed command in sandbox";
+  const actionName = isRunning ? "Executing command" : "Execute command";
 
   const viewProps: SandboxViewProps = {
     command,
@@ -127,7 +125,7 @@ export function MCPSandboxActionDetails({
     <ActionDetailsWrapper
       displayContext={displayContext}
       actionName={actionName}
-      visual={CommandLineIcon}
+      visual={Terminal}
     >
       {displayContext === "conversation" ? (
         <ConversationView {...viewProps} />

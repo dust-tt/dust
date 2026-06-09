@@ -6,18 +6,14 @@ import { getSkillAvatarIcon } from "@app/lib/skill";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
-import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
-import type { AgentsUsageType } from "@app/types/data_source";
+import type {
+  SkillUsageType,
+  SkillWithoutInstructionsAndToolsWithRelationsType,
+} from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
-import {
-  ClipboardIcon,
-  DataTable,
-  EyeIcon,
-  PencilSquareIcon,
-  TrashIcon,
-} from "@dust-tt/sparkle";
-import type { CellContext } from "@tanstack/react-table";
+import { DataTable, Edit04, Eye, Trash01 } from "@dust-tt/sparkle";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
 type RowData = {
@@ -25,7 +21,7 @@ type RowData = {
   icon: string | null;
   description: string;
   editors: UserType[] | null;
-  usage: AgentsUsageType;
+  usage: SkillUsageType;
   updatedAt: number | null;
   createdAt: number | null;
   onClick: () => void;
@@ -87,19 +83,24 @@ const editorsColumn = {
   },
 };
 
-const usedByColumn = (onAgentClick: (agentId: string) => void) => ({
-  header: "Used by",
+const usedByColumn = (
+  onAgentClick: (agentId: string) => void,
+  onUsedBySkillClick: (skillId: string) => void
+): ColumnDef<RowData, number> => ({
+  id: "usedBy",
+  header: () => <div className="flex w-full justify-center">Used by</div>,
   accessorFn: (row: RowData) => row.usage?.count ?? 0,
   cell: (info: CellContext<RowData, number>) => (
-    <DataTable.CellContent>
+    <div className="flex h-12 w-full items-center justify-center">
       <UsedByButton
         usage={info.row.original.usage}
         onItemClick={onAgentClick}
+        onSkillClick={onUsedBySkillClick}
       />
-    </DataTable.CellContent>
+    </div>
   ),
   meta: {
-    className: "hidden @sm:w-24 @sm:table-cell",
+    className: "hidden px-0 @sm:w-32 @sm:table-cell",
   },
 });
 
@@ -129,7 +130,10 @@ const menuColumn = {
   },
 };
 
-const getTableColumns = (onAgentClick: (agentId: string) => void) => {
+const getTableColumns = (
+  onAgentClick: (agentId: string) => void,
+  onUsedBySkillClick: (skillId: string) => void
+) => {
   /**
    * Columns order:
    * - Name (always)
@@ -141,7 +145,7 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
 
   return [
     nameColumn,
-    usedByColumn(onAgentClick),
+    usedByColumn(onAgentClick, onUsedBySkillClick),
     editorsColumn,
     lastEditedColumn,
     menuColumn,
@@ -149,10 +153,13 @@ const getTableColumns = (onAgentClick: (agentId: string) => void) => {
 };
 
 type SkillsTableProps = {
-  skills: SkillWithRelationsType[];
+  skills: SkillWithoutInstructionsAndToolsWithRelationsType[];
   owner: LightWorkspaceType;
-  onSkillClick: (skill: SkillWithRelationsType) => void;
+  onSkillClick: (
+    skill: SkillWithoutInstructionsAndToolsWithRelationsType
+  ) => void;
   onAgentClick: (agentId: string) => void;
+  onUsedBySkillClick: (skillId: string) => void;
 };
 
 export function SkillsTable({
@@ -160,11 +167,12 @@ export function SkillsTable({
   owner,
   onSkillClick,
   onAgentClick,
+  onUsedBySkillClick,
 }: SkillsTableProps) {
   const router = useAppRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
   const [skillToArchive, setSkillToArchive] =
-    useState<SkillWithRelationsType | null>(null);
+    useState<SkillWithoutInstructionsAndToolsWithRelationsType | null>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const rows: RowData[] = useMemo(
@@ -185,7 +193,7 @@ export function SkillsTable({
             ? [
                 {
                   label: "Edit",
-                  icon: PencilSquareIcon,
+                  icon: Edit04,
                   disabled: !skill.canWrite,
                   onClick: (e: React.MouseEvent) => {
                     e.stopPropagation();
@@ -197,7 +205,7 @@ export function SkillsTable({
                 },
                 {
                   label: "More info",
-                  icon: EyeIcon,
+                  icon: Eye,
                   onClick: (e: React.MouseEvent) => {
                     e.stopPropagation();
                     onSkillClick(skill);
@@ -205,24 +213,8 @@ export function SkillsTable({
                   kind: "item" as const,
                 },
                 {
-                  label: "Customize (New)",
-                  icon: ClipboardIcon,
-                  disabled: !skill.isExtendable,
-                  onClick: (e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    void router.push(
-                      getSkillBuilderRoute(
-                        owner.sId,
-                        "new",
-                        `extends=${skill.sId}`
-                      )
-                    );
-                  },
-                  kind: "item" as const,
-                },
-                {
                   label: "Archive",
-                  icon: TrashIcon,
+                  icon: Trash01,
                   disabled: !skill.canWrite,
                   variant: "warning" as const,
                   onClick: (e: React.MouseEvent) => {
@@ -235,7 +227,7 @@ export function SkillsTable({
             : [],
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- router is not stable, mutating the skills list which prevent pagination to work
-    [skills, onSkillClick, owner.sId]
+    [skills, onSkillClick, onUsedBySkillClick, owner.sId]
   );
 
   if (rows.length === 0) {
@@ -257,7 +249,7 @@ export function SkillsTable({
       <DataTable
         className="relative"
         data={rows}
-        columns={getTableColumns(onAgentClick)}
+        columns={getTableColumns(onAgentClick, onUsedBySkillClick)}
         pagination={pagination}
         setPagination={setPagination}
       />

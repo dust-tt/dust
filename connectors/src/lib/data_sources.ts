@@ -132,10 +132,7 @@ async function _upsertDataSourceDocument({
         endpoint,
         parents,
       });
-      const statsDTags = [
-        `data_source_Id:${dataSourceConfig.dataSourceId}`,
-        `workspace_id:${dataSourceConfig.workspaceId}`,
-      ];
+      const statsDTags = [`workspace_id:${dataSourceConfig.workspaceId}`];
 
       localLogger.info("Attempting to upload document to Dust.");
       statsDClient.increment(
@@ -211,7 +208,10 @@ async function _upsertDataSourceDocument({
           elapsed,
           statsDTags
         );
-        localLogger.info("Successfully uploaded document to Dust.");
+        localLogger.info(
+          { elapsed },
+          "Successfully uploaded document to Dust."
+        );
       } else {
         statsDClient.increment(
           "data_source_upserts_error.count",
@@ -319,7 +319,8 @@ export async function getDataSourceDocumentBlob({
 export async function deleteDataSourceDocument(
   dataSourceConfig: DataSourceConfig,
   documentId: string,
-  loggerArgs: Record<string, string | number> = {}
+  loggerArgs: Record<string, string | number> = {},
+  caller?: string
 ) {
   const localLogger = logger.child({ ...loggerArgs, documentId });
 
@@ -329,6 +330,7 @@ export async function deleteDataSourceDocument(
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
       Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+      ...(caller ? { "X-Dust-Caller": caller } : {}),
     },
   };
 

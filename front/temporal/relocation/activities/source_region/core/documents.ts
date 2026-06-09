@@ -1,5 +1,4 @@
 import config from "@app/lib/api/config";
-import type { RegionType } from "@app/lib/api/regions/config";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
@@ -17,6 +16,7 @@ import type {
 } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { CoreAPIDocumentBlob } from "@app/types/core/data_source";
+import type { RegionType } from "@app/types/region";
 import type { Ok } from "@app/types/shared/result";
 
 export async function getDataSourceDocuments({

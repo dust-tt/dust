@@ -16,7 +16,6 @@ import {
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/api/webhooks/webhook_slack_bot_interaction";
 import type { MessageFootnotes } from "@connectors/lib/bot/citations";
-import { makeDustAppUrl } from "@connectors/lib/bot/conversation_utils";
 import { truncate } from "@connectors/types";
 import type {
   LightAgentConfigurationType,
@@ -112,7 +111,6 @@ function makeContextSectionBlocks({
       state,
       assistantName,
       conversationUrl,
-      workspaceId,
     })
   );
 
@@ -243,14 +241,11 @@ export function makeFooterBlock({
   state,
   assistantName,
   conversationUrl,
-  workspaceId,
 }: {
   state: "thinking" | "error" | "answered";
   assistantName?: string;
   conversationUrl: string | null;
-  workspaceId: string;
 }) {
-  const assistantsUrl = makeDustAppUrl(`/w/${workspaceId}/agent/new`);
   let attribution = "";
   if (assistantName) {
     if (state === "thinking") {
@@ -274,11 +269,11 @@ export function makeFooterBlock({
   if (conversationUrl) {
     links.push(`<${conversationUrl}|View full conversation>`);
   }
-  links.push(`<${assistantsUrl}|Browse agents>`);
 
-  const fullText = attribution
-    ? `${attribution} | ${links.join(" · ")}`
-    : links.join(" · ");
+  const fullText =
+    attribution && links.length > 0
+      ? `${attribution} | ${links.join(" · ")}`
+      : attribution || links.join(" · ");
 
   return {
     type: "context",
@@ -347,7 +342,6 @@ export function makeErrorBlock(
       makeFooterBlock({
         state: "error",
         conversationUrl,
-        workspaceId,
       }),
     ],
     mrkdwn: true,
@@ -429,7 +423,6 @@ export function makePlanMessage({
         state: "thinking",
         assistantName,
         conversationUrl,
-        workspaceId,
       }),
     ],
     text: planTitle,

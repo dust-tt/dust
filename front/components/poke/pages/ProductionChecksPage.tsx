@@ -1,11 +1,11 @@
 import { cn } from "@app/components/poke/shadcn/lib/utils";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   usePokeCheckHistory,
   usePokeProductionChecks,
   useRunProductionCheck,
 } from "@app/hooks/usePokeProductionChecks";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import type {
   ActionLink,
   CheckFailurePayload,
@@ -17,12 +17,12 @@ import { conjugate, pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Button,
   Chip,
-  ClipboardIcon,
+  Clipboard,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   LinkWrapper,
-  PlayIcon,
+  Play,
   Spinner,
 } from "@dust-tt/sparkle";
 import type React from "react";
@@ -165,7 +165,7 @@ function ActionLinksList({ payload, links, checkName }: ActionLinksListProps) {
         <Button
           variant="ghost"
           size="xs"
-          icon={ClipboardIcon}
+          icon={Clipboard}
           onClick={() => handleCopyDocumentIds(item)}
           tooltip="Copy document IDs"
         />
@@ -411,7 +411,7 @@ function ProductionCheckCard({
       <Button
         variant="outline"
         size="xs"
-        icon={isRunning ? Spinner : PlayIcon}
+        icon={isRunning ? Spinner : Play}
         onClick={(e: React.MouseEvent) => {
           e.stopPropagation();
           onRun();
@@ -492,7 +492,7 @@ function ProductionCheckCard({
 }
 
 export function ProductionChecksPage() {
-  useDocumentTitle("Poke - Production Checks");
+  usePokePageMetadata({ name: "Production Checks" });
 
   const { checks, isProductionChecksLoading, mutateProductionChecks } =
     usePokeProductionChecks();

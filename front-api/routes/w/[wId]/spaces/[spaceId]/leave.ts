@@ -1,27 +1,25 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-
-import { spaceResource } from "@front-api/middleware/space_resource";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { withSpace } from "@front-api/middlewares/with_space";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/leave.
-const app = new Hono();
+const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  withSpace({ requireCanReadOrAdministrate: true }),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     if (!space.isProject()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -31,7 +29,7 @@ app.post(
     }
 
     if (!space.isMember(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
@@ -49,7 +47,7 @@ app.post(
       const activeEditors = await editorGroup.getActiveMembers(auth);
       const isUserEditor = activeEditors.some((m) => m.sId === user.sId);
       if (isUserEditor && activeEditors.length === 1) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
@@ -67,7 +65,7 @@ app.post(
     for (const group of groupsToLeave) {
       const result = await group.leaveGroup(auth);
       if (result.isErr() && result.error.code !== "user_not_member") {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 500,
           api_error: {
             type: "internal_server_error",
@@ -88,7 +86,7 @@ app.post(
       metadata: { space_name: space.name },
     });
 
-    return c.json({ success: true });
+    return ctx.json({ success: true });
   }
 );
 

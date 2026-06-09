@@ -9,8 +9,8 @@ import { useConversation } from "@app/hooks/conversations/useConversation";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useSetupNotifications } from "@app/hooks/useSetupNotifications";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { getProjectRoute } from "@app/lib/utils/router";
-import { AttachmentIcon, Button, MoreIcon } from "@dust-tt/sparkle";
+import { getPodRoute } from "@app/lib/utils/router";
+import { Attachment01, Button, DotsHorizontal } from "@dust-tt/sparkle";
 import { useMcpServer } from "@extension/shared/hooks/useMcpServer";
 import { ConversationLayout } from "@extension/ui/components/conversation/ConversationLayout";
 import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdownMenu";
@@ -54,7 +54,7 @@ export const MainPage = () => {
       title={headerTitle}
       backHref={
         conversation?.spaceId
-          ? getProjectRoute(workspace.sId, conversation.spaceId)
+          ? getPodRoute(workspace.sId, conversation.spaceId)
           : undefined
       }
       rightActions={
@@ -63,7 +63,7 @@ export const MainPage = () => {
             <Button
               size="sm"
               label="Files"
-              icon={AttachmentIcon}
+              icon={Attachment01}
               variant="ghost"
               onClick={() => openPanel({ type: "files" })}
             />
@@ -75,7 +75,7 @@ export const MainPage = () => {
                 <Button
                   size="sm"
                   variant="ghost"
-                  icon={MoreIcon}
+                  icon={DotsHorizontal}
                   aria-label="Conversation menu"
                 />
               }

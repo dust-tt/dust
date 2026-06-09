@@ -1,3 +1,4 @@
+import { renderAgentMessageContentView } from "@app/lib/api/assistant/activity_steps";
 import { updateAgentMessageWithFinalStatus } from "@app/lib/api/assistant/conversation";
 import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
@@ -27,6 +28,7 @@ import {
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type {
+  AgentMessageStatus,
   AgentMessageType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
@@ -44,6 +46,11 @@ const SUB_AGENT_FLUSH_INTERVAL_MS = 2 * DEFAULT_EVENT_FLUSH_INTERVAL_MS;
 const DEEP_CONVERSATION_FLUSH_INTERVAL_MS =
   10 * DEFAULT_EVENT_FLUSH_INTERVAL_MS;
 
+type AgentMessageStatusUpdate = Extract<
+  AgentMessageStatus,
+  "succeeded" | "cancelled" | "interrupted" | "gracefully_stopped"
+>;
+
 /**
  * Update in database as well as in-memory agent message.
  * Note that we are mutating the agentMessage object in memory and not returning a new object.
@@ -58,7 +65,7 @@ export async function updateAgentMessageDBAndMemory(
         update:
           | {
               type: "status";
-              status: "succeeded" | "cancelled" | "gracefully_stopped";
+              status: AgentMessageStatusUpdate;
             }
           | {
               type: "error";
@@ -300,7 +307,7 @@ export async function processEventForDatabase(
         conversation,
         update: {
           type: "status",
-          status: "cancelled",
+          status: event.status,
         },
       });
       break;
@@ -331,12 +338,14 @@ export async function processEventForDatabase(
       break;
   }
 
-  if (TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(event.type)) {
-    await ConversationResource.setIsRunningAgentLoop(auth, {
-      conversation,
-      isRunningAgentLoop: false,
-    });
+  if (!TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(event.type)) {
+    return;
   }
+
+  await ConversationResource.setIsRunningAgentLoop(auth, {
+    conversation,
+    isRunningAgentLoop: false,
+  });
 }
 
 // Process unread state for agent events before publishing to Redis.
@@ -386,17 +395,28 @@ export async function updateResourceAndPublishEvent(
     modelInteractionDurationMs?: number;
   }
 ): Promise<void> {
-  // Process DB updates and unread state for all events.
-  await Promise.all([
-    processEventForDatabase(auth, {
-      event,
-      agentMessage,
-      step,
-      conversation,
-      modelInteractionDurationMs,
-    }),
-    processEventForUnreadState(auth, { event, conversation }),
-  ]);
+  // Persist the DB updates first, then publish the terminal done event. The credit cost is
+  // computed and persisted later, in the finalize activities (see finalize.ts), so it is
+  // intentionally not carried on the terminal events here — clients read it from the messages /
+  // conversation API on their next revalidation.
+  await processEventForDatabase(auth, {
+    event,
+    agentMessage,
+    step,
+    conversation,
+    modelInteractionDurationMs,
+  });
+
+  await processEventForUnreadState(auth, {
+    event,
+    conversation,
+  });
+
+  // For terminal "succeeded" events, attach the fully-rendered content view
+  // (body, chain of thought, activity steps) computed from the persisted step
+  // contents — the same source reload uses. This lets the client trust it
+  // wholesale instead of reconciling its incrementally-built streaming view.
+  const eventToPublish = await withContentView(auth, event, agentMessage);
 
   // All events go through the coalescer, which handles batching logic internally.
   const key = `${conversation.sId}-${event.messageId}-${step}`;
@@ -409,11 +429,52 @@ export async function updateResourceAndPublishEvent(
 
   await globalCoalescer.handleEvent({
     conversationId: conversation.sId,
-    event,
+    event: eventToPublish,
     key,
     step,
     flushIntervalMs,
   });
+}
+
+// Enrich `agent_message_success` / `agent_message_gracefully_stopped` events with
+// the server-rendered content view. Reads the latest persisted step contents
+// (authoritative, identical to reload) so the rendered view never drifts from a
+// reload. Other event types pass through unchanged.
+async function withContentView(
+  auth: Authenticator,
+  event: AgentMessageEvents,
+  agentMessage: AgentMessageType
+): Promise<AgentMessageEvents> {
+  if (
+    event.type !== "agent_message_success" &&
+    event.type !== "agent_message_gracefully_stopped"
+  ) {
+    return event;
+  }
+
+  // Reads the latest persisted step contents (authoritative, identical to
+  // reload). A failure here throws and Temporal retries the activity, like the
+  // other DB operations in this publish path.
+  const stepContents = await AgentStepContentResource.fetchByAgentMessages(
+    auth,
+    {
+      agentMessageIds: [agentMessage.agentMessageId],
+      latestVersionsOnly: true,
+    }
+  );
+  const contents = stepContents.map((sc) => ({
+    step: sc.step,
+    content: sc.value,
+  }));
+
+  const contentView = await renderAgentMessageContentView(
+    contents,
+    agentMessage.actions,
+    agentMessage.configuration,
+    agentMessage.sId
+  );
+
+  return { ...event, contentView };
 }
 
 const DEFAULT_WORKFLOW_ERROR_MESSAGE =
@@ -440,32 +501,7 @@ export async function notifyWorkflowError(
   { conversationId, agentMessageId, agentMessageVersion }: AgentLoopArgs,
   error: { message: string; name: string }
 ): Promise<void> {
-  let authResult = await AuthenticatorClass.fromJSON(authType);
-
-  // If subscription changed while the message was running, get a fresh auth with the current
-  // subscription and continue gracefully.
-  if (authResult.isErr() && authResult.error.code === "subscription_mismatch") {
-    logger.info(
-      {
-        workspaceId: authType.workspaceId,
-        originalSubscriptionId: authType.subscriptionId,
-      },
-      "Subscription changed while message was running, using fresh auth in notifyWorkflowError"
-    );
-
-    // Retry without the subscriptionId constraint to get the current subscription.
-    authResult = await AuthenticatorClass.fromJSON({
-      ...authType,
-      subscriptionId: null,
-    });
-  }
-
-  if (authResult.isErr()) {
-    throw new Error(
-      `Failed to deserialize authenticator: ${authResult.error.code}`
-    );
-  }
-  const auth = authResult.value;
+  const auth = await AuthenticatorClass.fromJSON(authType);
 
   // Use lighter fetchConversationWithoutContent
   const conversation = await ConversationResource.fetchById(
@@ -540,6 +576,7 @@ export async function notifyWorkflowError(
     ),
     richMentions: [],
     reactions: [],
+    costCredits: null,
 
     // HACKY: These last 3 fields are not used in the workflow error case but required in the type.
     configuration: null as unknown as LightAgentConfigurationType,

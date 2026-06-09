@@ -42,21 +42,21 @@ export function SkillBuilderSettingsSection({
           <SkillEditorsSheet />
         </div>
       </div>
+      {hasSelfImprovingSkills && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Label className="text-base font-semibold text-foreground dark:text-foreground-night">
+              Self Improvement
+            </Label>
+            <Chip size="xs" color="golden" label="Beta" />
+          </div>
+          <SkillBuilderEnableSuggestionsSection
+            selfImprovementLock={skill?.selfImprovementLock ?? false}
+          />
+        </div>
+      )}
       {skill && (
         <>
-          {hasSelfImprovingSkills && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Label className="text-base font-semibold text-foreground dark:text-foreground-night">
-                  Self Improvement
-                </Label>
-                <Chip size="xs" color="golden" label="Beta" />
-              </div>
-              <SkillBuilderEnableSuggestionsSection
-                selfImprovementLock={skill.selfImprovementLock}
-              />
-            </div>
-          )}
           <Collapsible defaultOpen>
             <CollapsibleTrigger variant="secondary">
               Advanced

@@ -1,13 +1,15 @@
-import type { RegionType } from "@app/lib/api/regions/config";
+import { SUPPORTED_REGIONS } from "@app/types/region";
 import { z } from "zod";
-import type { WhitelistableFeature } from "../../shared/feature_flags";
+import {
+  isWhitelistableFeature,
+  type WhitelistableFeature,
+} from "../../shared/feature_flags";
 import type { ExtractSpecificKeys } from "../../shared/typescipt_utils";
 import type { TokenizerConfig } from "../../tokenizer";
-import type { AgentReasoningEffort } from "../agent";
 import type { EMBEDDING_PROVIDER_IDS } from "./embedding";
 import type { MODEL_IDS, SUPPORTED_MODEL_CONFIGS } from "./models";
 import type { BYOK_MODEL_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "./providers";
-import type { REASONING_EFFORTS } from "./reasoning";
+import { ORDERED_REASONING_EFFORTS } from "./reasoning";
 
 export type ModelIdType = (typeof MODEL_IDS)[number];
 export type ModelProviderIdType = (typeof MODEL_PROVIDER_IDS)[number];
@@ -15,6 +17,31 @@ export type ByokModelProviderIdType = (typeof BYOK_MODEL_PROVIDER_IDS)[number];
 
 export const CUSTOM_THINKING_TYPES = ["auto", "enabled"] as const;
 export type CustomThinkingType = (typeof CUSTOM_THINKING_TYPES)[number];
+
+// z.object (not z.record) so every reasoning effort key is required.
+const ReasoningEffortSupportSchema = z.object({
+  none: z.boolean(),
+  light: z.boolean(),
+  medium: z.boolean(),
+  high: z.boolean(),
+} satisfies Record<ReasoningEffort, z.ZodBoolean>);
+export type ReasoningEffortSupport = z.infer<
+  typeof ReasoningEffortSupportSchema
+>;
+
+const WhitelistableFeatureSchema = z.custom<WhitelistableFeature>(
+  isWhitelistableFeature,
+  { message: "Invalid feature flag" }
+);
+
+const AvailabilityConditionSchema = z.object({
+  enterprise: z.boolean().optional(),
+  featureFlag: WhitelistableFeatureSchema.optional(),
+});
+
+const CustomAvailabilityConditionSchema = z.object({
+  featureFlag: WhitelistableFeatureSchema.optional(),
+});
 
 // Schema for validating model configs (e.g., from GCS at build time).
 // This is the source of truth for the structure of ModelConfigurationType.
@@ -35,8 +62,7 @@ export const ModelConfigurationSchema = z.object({
   tokenCountAdjustment: z.number().optional(),
   generationTokensCount: z.number(),
   supportsVision: z.boolean(),
-  minimumReasoningEffort: z.string(),
-  maximumReasoningEffort: z.string(),
+  supportedReasoningEfforts: ReasoningEffortSupportSchema,
   defaultReasoningEffort: z.string(),
   useNativeLightReasoning: z.boolean().optional(),
   supportsResponseFormat: z.boolean().optional(),
@@ -49,8 +75,18 @@ export const ModelConfigurationSchema = z.object({
   }),
   customThinkingType: z.enum(CUSTOM_THINKING_TYPES).optional(),
   customBetas: z.array(z.string()).optional(),
+  // If true, the model is served through the dedicated EAP (Early Access
+  // Program) Anthropic API key (ANTHROPIC_EAP_API_KEY) instead of the
+  // workspace's Dust-managed / BYOK credentials, for models hosted in a
+  // separate Anthropic workspace. Only consulted for Anthropic models;
+  // ignored for other providers.
+  useEapKey: z.boolean().optional(),
   disablePrefill: z.boolean().optional(),
   supportsBatchProcessing: z.boolean().optional(),
+  // Specify if the model is available in specific regions.
+  regionalAvailability: z.record(z.enum(SUPPORTED_REGIONS), z.boolean()),
+  availableIfOneOf: AvailabilityConditionSchema.optional(),
+  customAvailableIf: CustomAvailabilityConditionSchema.optional(),
 });
 
 // Base type inferred from the schema.
@@ -62,8 +98,6 @@ export type ModelConfigurationType = Omit<
   ModelConfigurationSchemaType,
   | "providerId"
   | "modelId"
-  | "minimumReasoningEffort"
-  | "maximumReasoningEffort"
   | "defaultReasoningEffort"
   | "featureFlag"
   | "customAssistantFeatureFlag"
@@ -71,11 +105,7 @@ export type ModelConfigurationType = Omit<
 > & {
   providerId: ModelProviderIdType;
   modelId: ModelIdType;
-  minimumReasoningEffort: AgentReasoningEffort;
-  maximumReasoningEffort: AgentReasoningEffort;
-  defaultReasoningEffort: AgentReasoningEffort;
-  // Specify if the model is available in specific regions.
-  regionalAvailability: Record<RegionType, boolean>;
+  defaultReasoningEffort: ReasoningEffort;
   // If undefined, model is available.
   // If object is empty, model is not available.
   // If defined, model must satisfy one of the conditions to be available.
@@ -86,10 +116,6 @@ export type ModelConfigurationType = Omit<
     featureFlag?: WhitelistableFeature;
   };
   // Pre-requisite: must be available.
-  // If object is empty, model is not custom available.
-  customAvailableIf?: {
-    featureFlag?: WhitelistableFeature;
-  };
   tokenizer: TokenizerConfig;
 };
 
@@ -100,7 +126,7 @@ export type SupportedModel = ExtractSpecificKeys<
   (typeof SUPPORTED_MODEL_CONFIGS)[number],
   "providerId" | "modelId"
 >;
-export type ReasoningEffort = (typeof REASONING_EFFORTS)[number];
+export type ReasoningEffort = (typeof ORDERED_REASONING_EFFORTS)[number];
 
 export type EmbeddingProviderIdType = (typeof EMBEDDING_PROVIDER_IDS)[number];
 
@@ -119,3 +145,15 @@ export const ResponseFormatSchema = z.object({
   }),
 });
 export type ResponseFormat = z.infer<typeof ResponseFormatSchema>;
+
+export function getAvailableReasoningEfforts(
+  support: ReasoningEffortSupport
+): ReasoningEffort[] {
+  return ORDERED_REASONING_EFFORTS.filter((effort) => support[effort]);
+}
+
+export function getMinimumReasoningEffort(
+  support: ReasoningEffortSupport
+): ReasoningEffort {
+  return ORDERED_REASONING_EFFORTS.find((effort) => support[effort]) || "none";
+}

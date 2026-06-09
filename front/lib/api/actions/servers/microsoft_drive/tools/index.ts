@@ -23,6 +23,25 @@ import { MICROSOFT_DRIVE_TOOLS_METADATA } from "@app/lib/api/actions/servers/mic
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type AdmZip from "adm-zip";
+import { z } from "zod";
+
+const driveChildItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  webUrl: z.string().optional(),
+  size: z.number().optional(),
+  folder: z.object({ childCount: z.number().optional() }).optional(),
+  file: z.object({ mimeType: z.string().optional() }).optional(),
+  parentReference: z
+    .object({
+      driveId: z.string().optional(),
+      id: z.string().optional(),
+      path: z.string().optional(),
+    })
+    .optional(),
+  createdDateTime: z.string().optional(),
+  lastModifiedDateTime: z.string().optional(),
+});
 
 const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
   search_in_files: async (
@@ -96,6 +115,107 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       return new Err(
         new MCPError(
           normalizeError(err).message || "Failed to search drive items"
+        )
+      );
+    }
+  },
+
+  list_drive_items: async (
+    { driveId, siteId, parentFolderId, itemType = "all", top, skipToken },
+    { authInfo }
+  ) => {
+    const client = await getGraphClient(authInfo);
+    if (!client) {
+      return new Err(
+        new MCPError("Failed to authenticate with Microsoft Graph")
+      );
+    }
+
+    try {
+      const baseEndpoint = await getDriveItemEndpoint(
+        parentFolderId,
+        driveId,
+        siteId
+      );
+      const endpoint = parentFolderId
+        ? `${baseEndpoint}/children`
+        : `${baseEndpoint}/root/children`;
+
+      const pageSize = Math.min(Math.max(top ?? 50, 1), 200);
+
+      let request = client
+        .api(endpoint)
+        .select(
+          "id,name,webUrl,folder,file,size,parentReference,createdDateTime,lastModifiedDateTime"
+        )
+        .top(pageSize);
+      if (skipToken) {
+        request = request.query({ $skiptoken: skipToken });
+      }
+
+      const response = await request.get();
+
+      const parsedItems = z
+        .array(driveChildItemSchema)
+        .safeParse(response.value ?? []);
+      if (!parsedItems.success) {
+        return new Err(
+          new MCPError(
+            `Unexpected response shape from Microsoft Graph: ${parsedItems.error.message}`
+          )
+        );
+      }
+
+      const items = parsedItems.data
+        .filter(
+          (item) =>
+            itemType === "all" ||
+            (itemType === "folder" && item.folder) ||
+            (itemType === "file" && item.file)
+        )
+        .map((item) => ({
+          id: item.id,
+          name: item.name,
+          type: item.folder ? "folder" : "file",
+          webUrl: item.webUrl,
+          size: item.size,
+          childCount: item.folder?.childCount,
+          mimeType: item.file?.mimeType,
+          parentReference: item.parentReference,
+          createdDateTime: item.createdDateTime,
+          lastModifiedDateTime: item.lastModifiedDateTime,
+        }));
+
+      const nextLink: string | undefined = response["@odata.nextLink"];
+      let nextSkipToken: string | undefined;
+      if (nextLink) {
+        try {
+          nextSkipToken =
+            new URL(nextLink).searchParams.get("$skiptoken") ?? undefined;
+        } catch {
+          // Unparseable nextLink — leave undefined; caller can re-list.
+        }
+      }
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              items,
+              count: items.length,
+              nextSkipToken,
+              hasMore: !!nextSkipToken,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      return new Err(
+        new MCPError(
+          normalizeError(err).message || "Failed to list drive items"
         )
       );
     }
@@ -395,10 +515,25 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         const folders = folderPath
           .split("/")
           .filter((f: string) => f.length > 0);
-        let currentPath = "";
-        let parentItemId = "root";
 
-        for (const folder of folders) {
+        // Fetch the drive root so we can strip the library name if the user
+        // included it in folderPath (e.g. "Documents partages/Sub"), which
+        // would otherwise cause a 403 when trying to create a folder named
+        // after the library root.
+        const root = await client
+          .api(`${endpoint}/root`)
+          .select("name,id")
+          .get();
+        let parentItemId: string = root.id;
+
+        const effectiveFolders =
+          root.name && folders[0]?.toLowerCase() === root.name.toLowerCase()
+            ? folders.slice(1)
+            : folders;
+
+        let currentPath = "";
+
+        for (const folder of effectiveFolders) {
           currentPath = currentPath
             ? `${currentPath}/${encodeURIComponent(folder)}`
             : encodeURIComponent(folder);
@@ -429,11 +564,30 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
                 // Update parent item ID for next iteration
                 parentItemId = createdFolder.id;
               } catch (createErr) {
-                return new Err(
-                  new MCPError(
-                    `Failed to create folder '${folder}': ${normalizeError(createErr).message}`
-                  )
-                );
+                const createError = normalizeError(createErr);
+                const alreadyExists =
+                  createError.message
+                    .toLowerCase()
+                    .includes("namealreadyexists") ||
+                  createError.message
+                    .toLowerCase()
+                    .includes("name already exists");
+
+                if (alreadyExists) {
+                  // Folder was created concurrently between our GET and POST
+                  // (or the GET error didn't match isNotFound). Fetch the
+                  // existing folder's ID and continue.
+                  const existingFolder = await client
+                    .api(`${endpoint}/root:/${currentPath}`)
+                    .get();
+                  parentItemId = existingFolder.id;
+                } else {
+                  return new Err(
+                    new MCPError(
+                      `Failed to create folder '${folder}': ${createError.message}`
+                    )
+                  );
+                }
               }
             } else {
               return new Err(
@@ -461,7 +615,14 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         : uploadFileName;
 
       // Upload using PUT /drive/root:/{path}:/content
-      const uploadEndpoint = `${endpoint}/root:/${encodeURIComponent(uploadPath)}:/content`;
+      // Encode each path segment individually so "/" separators in nested
+      // paths are preserved (encoding the whole path would turn them into
+      // %2F and Graph would treat the result as a single flat filename).
+      const encodedUploadPath = uploadPath
+        .split("/")
+        .map(encodeURIComponent)
+        .join("/");
+      const uploadEndpoint = `${endpoint}/root:/${encodedUploadPath}:/content`;
 
       const response = await client
         .api(uploadEndpoint)
@@ -494,6 +655,47 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
 
       const errorMessage = error.message || "Failed to upload file";
       return new Err(new MCPError(errorMessage));
+    }
+  },
+
+  rename_drive_item: async (
+    { itemId, driveId, siteId, name },
+    { authInfo }
+  ) => {
+    const client = await getGraphClient(authInfo);
+    if (!client) {
+      return new Err(
+        new MCPError("Failed to authenticate with Microsoft Graph")
+      );
+    }
+
+    try {
+      const endpoint = await getDriveItemEndpoint(itemId, driveId, siteId);
+      const response = await client.api(endpoint).patch({ name });
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              success: true,
+              message: "Item renamed successfully",
+              item: {
+                id: response.id,
+                name: response.name,
+                webUrl: response.webUrl,
+                lastModifiedDateTime: response.lastModifiedDateTime,
+              },
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      return new Err(
+        new MCPError(normalizeError(err).message || "Failed to rename item")
+      );
     }
   },
 

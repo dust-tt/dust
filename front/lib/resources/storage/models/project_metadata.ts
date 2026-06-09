@@ -16,6 +16,8 @@ export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataMod
   declare spaceId: ForeignKey<SpaceModel["id"]>;
 
   declare description: string | null;
+  /** Scoped path to a project frame file, e.g. `project/banner.html`. */
+  declare pinnedFramePath: CreationOptional<string | null>;
 }
 
 ProjectMetadataModel.init(
@@ -48,6 +50,10 @@ ProjectMetadataModel.init(
       defaultValue: false,
     },
     initialTodoAnalysisLookback: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    pinnedFramePath: {
       type: DataTypes.STRING,
       allowNull: true,
     },

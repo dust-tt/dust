@@ -40,7 +40,7 @@ const listStyles = cva(
         false: "",
       },
       size: {
-        xs: "s-rounded-[10px] s-p-0.5",
+        xs: "s-rounded-xl s-p-[3px]",
         sm: "s-rounded-2xl s-p-1",
         md: "s-rounded-3xl s-p-1.5",
       },

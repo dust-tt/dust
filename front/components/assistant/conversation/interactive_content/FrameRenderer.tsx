@@ -2,45 +2,40 @@ import { VisualizationActionIframe } from "@app/components/assistant/conversatio
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
+import { ExportContentDropdown } from "@app/components/assistant/conversation/interactive_content/ExportContentDropdown";
 import { ShareFrameSheet } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSheet";
 import { InteractiveContentHeader } from "@app/components/assistant/conversation/interactive_content/InteractiveContentHeader";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
+import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton";
 import { useVisualizationRevert } from "@app/hooks/conversations";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
-import config from "@app/lib/api/config";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
+import { usePodFiles } from "@app/lib/swr/pods";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
+import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { datadogLogs } from "@datadog/browser-logs";
 import {
-  ArrowCircleIcon,
-  ArrowDownOnSquareIcon,
-  ArrowGoBackIcon,
   Button,
-  CheckCircleIcon,
-  CloudArrowUpIcon,
+  CheckCircle,
   CodeBlock,
-  CommandLineIcon,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-  EyeIcon,
-  FullscreenExitIcon,
-  FullscreenIcon,
+  Eye,
+  Maximize01,
+  Minimize01,
+  RefreshCw01,
+  ReverseLeft,
   Spinner,
+  Terminal,
   Tooltip,
+  UploadCloud02,
 } from "@dust-tt/sparkle";
 import React, {
   useCallback,
@@ -50,145 +45,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-
-interface ExportContentDropdownProps {
-  iframeRef: React.RefObject<HTMLIFrameElement>;
-  owner: LightWorkspaceType;
-  fileId: string;
-  fileContent: string | null;
-  fileName?: string;
-}
-
-function ExportContentDropdown({
-  iframeRef,
-  owner,
-  fileId,
-  fileContent,
-  fileName,
-}: ExportContentDropdownProps) {
-  const sendNotification = useSendNotification();
-  const [isExportingPdf, setIsExportingPdf] = useState(false);
-
-  const exportAsPng = () => {
-    if (fileContent) {
-      const imgRegex = /<img[^>]+src=["'](https?:\/\/[^"']+)["']/gi;
-      if (imgRegex.test(fileContent)) {
-        sendNotification({
-          type: "error",
-          title: "Cannot export as PNG",
-          description:
-            "Content contains images with external URLs, which are blocked for " +
-            "security purposes. Please use images uploaded to the conversation instead.",
-        });
-        return;
-      }
-    }
-
-    if (iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.postMessage({ type: `EXPORT_PNG` }, "*");
-    } else {
-      datadogLogs.logger.info(
-        "Failed to export content as PNG: No iframe content window found"
-      );
-    }
-  };
-
-  const exportAsPdf = async (orientation: "portrait" | "landscape") => {
-    if (isExportingPdf) {
-      return;
-    }
-
-    setIsExportingPdf(true);
-    try {
-      // Use direct fetch instead of fetcher to avoid JSON parsing of binary PDF data.
-      const response = await clientFetch(
-        `/api/w/${owner.sId}/files/${fileId}/export/pdf`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ orientation }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to generate PDF");
-      }
-
-      // Get the PDF blob and trigger download.
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-
-      link.download = fileName?.replace(/\.[^.]+$/, ".pdf") ?? "frame.pdf";
-
-      link.click();
-      URL.revokeObjectURL(url);
-
-      sendNotification({
-        title: "PDF exported",
-        type: "success",
-        description: "Your PDF has been downloaded.",
-      });
-    } catch (error) {
-      console.error("PDF export failed:", error);
-      sendNotification({
-        title: "PDF Export Failed",
-        type: "error",
-        description: "An error occurred while generating the PDF.",
-      });
-    } finally {
-      setIsExportingPdf(false);
-    }
-  };
-
-  const downloadAsCode = () => {
-    try {
-      const downloadUrl = `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download`;
-      // Open the download URL in a new tab/window. Otherwise we get a CORS error due to the redirection
-      // to cloud storage.
-      window.open(downloadUrl, "_blank");
-    } catch (error) {
-      console.error("Download failed:", error);
-      sendNotification({
-        title: "Download Failed",
-        type: "error",
-        description: "An error occurred while opening the download link.",
-      });
-    }
-  };
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          icon={ArrowDownOnSquareIcon}
-          isSelect
-          label={isExportingPdf ? "Exporting..." : "Export"}
-          variant="ghost"
-          disabled={isExportingPdf}
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger disabled={isExportingPdf} label="PDF" />
-          <DropdownMenuSubContent>
-            <DropdownMenuItem onClick={() => exportAsPdf("portrait")}>
-              Portrait
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => exportAsPdf("landscape")}>
-              Landscape
-            </DropdownMenuItem>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
-        <DropdownMenuItem onClick={exportAsPng}>PNG</DropdownMenuItem>
-        <DropdownMenuItem onClick={downloadAsCode}>Template</DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
 
 interface FrameRendererProps {
   conversation?: ConversationWithoutContentType;
@@ -208,6 +64,7 @@ export function FrameRenderer({
   contentHash,
 }: FrameRendererProps) {
   const { vizUrl } = useAuth();
+  const isMobile = useIsMobile();
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
   const [isLoading, setIsLoading] = useState(false);
@@ -218,6 +75,10 @@ export function FrameRenderer({
     workspaceId: owner.sId,
     spaceId: conversation?.spaceId ?? projectId ?? null,
   });
+
+  const isFrameInPod = Boolean(
+    projectId && projectInfo?.kind === "project" && !projectInfo.archivedAt
+  );
 
   const projectSaveState = useMemo(() => {
     if (!projectInfo && isSpaceInfoLoading) {
@@ -237,8 +98,26 @@ export function FrameRenderer({
     return "saved";
   }, [conversation?.spaceId, projectId, projectInfo, isSpaceInfoLoading]);
 
+  const { files: projectFiles } = usePodFiles({
+    owner,
+    podId: projectId ?? "",
+    disabled: !isFrameInPod,
+  });
+
+  const framePath = useMemo(() => {
+    const entry = projectFiles.find(
+      (file) => !file.isDirectory && file.fileId === fileId
+    );
+    return entry?.path ?? null;
+  }, [fileId, projectFiles]);
+
   const { closePanel, panelRef } = useConversationSidePanelContext();
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // The space to resolve `project/` file paths inside the viz.
+  // Priority: explicit project the frame was saved to -> the conversation's own project space
+  // (a conversation can belong to a project space even before the frame is saved there).
+  const frameSpaceId = projectId ?? conversation?.spaceId ?? null;
 
   // eslint-disable-next-line react-hooks/refs
   const panel = panelRef?.current;
@@ -269,6 +148,46 @@ export function FrameRenderer({
   });
 
   const [showCode, setShowCode] = React.useState(false);
+
+  const handleEditText = useCallback(
+    async ({
+      newText,
+      oldText,
+      targetFileId,
+    }: {
+      newText: string;
+      oldText: string;
+      targetFileId?: string;
+    }) => {
+      try {
+        const response = await clientFetch(
+          `/api/w/${owner.sId}/files/${targetFileId ?? fileId}/edit-text`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ oldText, newText }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await getErrorFromResponse(response);
+          return { success: false, error: errorData.message };
+        }
+
+        await mutateFileContent(
+          `/api/w/${owner.sId}/files/${fileId}?action=view`
+        );
+
+        return { success: true };
+      } catch (e) {
+        return {
+          success: false,
+          error: normalizeAsInternalDustError(e).message,
+        };
+      }
+    },
+    [owner.sId, fileId, mutateFileContent]
+  );
 
   const restoreLayout = useCallback(() => {
     if (panel) {
@@ -425,9 +344,7 @@ export function FrameRenderer({
   if (error) {
     return (
       <div className="flex h-full flex-col">
-        <InteractiveContentHeader
-          onClose={conversation ? onClosePanel : undefined}
-        />
+        <InteractiveContentHeader onClose={onClosePanel} />
         <CenteredState>
           <p className="text-warning-500">
             Error loading file: {error.message}
@@ -439,12 +356,10 @@ export function FrameRenderer({
 
   return (
     <div className="flex h-full flex-col">
-      <InteractiveContentHeader
-        onClose={conversation ? onClosePanel : undefined}
-      >
+      <InteractiveContentHeader onClose={onClosePanel}>
         <div className="flex w-full items-center justify-between">
           <Button
-            icon={showCode ? EyeIcon : CommandLineIcon}
+            icon={showCode ? Eye : Terminal}
             onClick={() => setShowCode(!showCode)}
             tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
             variant="ghost"
@@ -457,21 +372,37 @@ export function FrameRenderer({
               fileContent={fileContent ?? null}
               fileName={fileMetadata?.fileName}
             />
-            <ShareFrameSheet fileId={fileId} owner={owner} />
+            <ShareFrameSheet
+              key={contentHash ?? fileId}
+              fileId={fileId}
+              owner={owner}
+              contentHash={contentHash}
+            />
+            <PinPodBannerButton
+              owner={owner}
+              spaceId={projectId ?? ""}
+              pinnedFramePath={projectInfo?.pinnedFramePath ?? null}
+              isEditor={projectInfo?.isEditor ?? false}
+              framePath={framePath}
+              fileName={fileMetadata?.fileName}
+              hidden={!isFrameInPod}
+            />
             {projectSaveState === "saved" && (
               <Button
-                icon={CheckCircleIcon}
+                icon={CheckCircle}
                 variant="ghost"
                 disabled={true}
-                label="Saved"
+                label={isMobile ? undefined : "Saved"}
                 tooltip={`Saved in "${projectInfo?.name ?? "unknown Pod"}"`}
               />
             )}
             {projectSaveState === "supported" && (
               <Button
-                icon={CloudArrowUpIcon}
+                icon={UploadCloud02}
                 variant="ghost"
-                label={isSavingToProject ? "Saving…" : "Save"}
+                label={
+                  isMobile ? undefined : isSavingToProject ? "Saving…" : "Save"
+                }
                 isLoading={isSavingToProject}
                 tooltip={`Save to "${projectInfo?.name ?? "unknown Pod"}"`}
                 onClick={handleSaveToProject}
@@ -506,7 +437,10 @@ export function FrameRenderer({
               }}
               key={`viz-${fileId}`}
               conversationId={conversation?.sId ?? null}
+              isEditable={true}
+              spaceId={frameSpaceId ?? undefined}
               isInDrawer={true}
+              onEditText={handleEditText}
               ref={iframeRef}
             />
             {conversation && (
@@ -560,7 +494,7 @@ function PreviewActionButtons({
           tooltipTriggerAsChild
           trigger={
             <Button
-              icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
+              icon={isFullScreen ? Minimize01 : Maximize01}
               variant="ghost"
               size="xs"
               onClick={isFullScreen ? exitFullScreen : enterFullScreen}
@@ -582,7 +516,7 @@ function PreviewActionButtons({
               variant="ghost"
               disabled={!hasPreviousVersion}
               size="xs"
-              icon={ArrowGoBackIcon}
+              icon={ReverseLeft}
               onClick={onRevert}
             />
           }
@@ -594,7 +528,7 @@ function PreviewActionButtons({
         tooltipTriggerAsChild
         trigger={
           <Button
-            icon={ArrowCircleIcon}
+            icon={RefreshCw01}
             variant="ghost"
             size="xs"
             onClick={reloadFile}

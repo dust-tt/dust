@@ -1,44 +1,27 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { Readable } from "node:stream";
-import type { ReadableStream as NodeReadableStream } from "node:stream/web";
-
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { isString } from "@app/types/shared/utils/general";
+import { readableToReadableStream } from "@app/types/shared/utils/streams";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  sId: z.string(),
+  fileId: z.string(),
+});
 
 // Mounted at /api/w/:wId/skills/:sId/files/:fileId/content.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const sId = c.req.param("sId");
-  const fileId = c.req.param("fileId");
-
-  if (!isString(sId)) {
-    return apiError(c, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid skill ID.",
-      },
-    });
-  }
-
-  if (!isString(fileId)) {
-    return apiError(c, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid file ID.",
-      },
-    });
-  }
+/** @ignoreswagger */
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const { sId, fileId } = ctx.req.valid("param");
 
   const skill = await SkillResource.fetchById(auth, sId);
   if (!skill) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: { type: "file_not_found", message: "File not found." },
     });
@@ -50,17 +33,15 @@ app.get("/", async (c) => {
     file.useCase !== "skill_attachment" ||
     file.useCaseMetadata?.skillId !== sId
   ) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: { type: "file_not_found", message: "File not found." },
     });
   }
 
   const readStream = file.getReadStream({ auth, version: "original" });
-  const webStream = Readable.toWeb(
-    readStream
-  ) as NodeReadableStream<Uint8Array>;
-  return new Response(webStream as unknown as ReadableStream, {
+  const webStream = readableToReadableStream(readStream);
+  return new Response(webStream, {
     status: 200,
     headers: { "Content-Type": file.contentType },
   });

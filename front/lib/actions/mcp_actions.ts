@@ -11,7 +11,6 @@ import {
   DEFAULT_MCP_REQUEST_TIMEOUT_MS,
   FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
-  RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
 import type {
@@ -58,6 +57,12 @@ import {
   isConnectViaMCPServerId,
 } from "@app/lib/actions/mcp_metadata";
 import { MCPOAuthProviderError } from "@app/lib/actions/mcp_oauth_provider";
+import {
+  classifyToolAbortSignal,
+  isToolInterruptionError,
+  makeToolInterruptionError,
+  shouldRetryToolInterruption,
+} from "@app/lib/actions/tool_interruptions";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type {
   AgentLoopListToolsContextType,
@@ -87,7 +92,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import { isInShutdown } from "@app/lib/shutdown_signal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
@@ -531,11 +535,16 @@ export async function* tryCallMCPTool(
       logger.info(toolLogContext, "MCP tool promise resolved");
     } catch (toolError) {
       if (abortSignal?.aborted) {
+        const abortClassification = classifyToolAbortSignal(abortSignal);
+
+        if (abortClassification === "deploy_interruption") {
+          throw makeToolInterruptionError();
+        }
+
         return makeMCPToolExit({
-          message: isInShutdown()
-            ? TOOL_EXECUTION_INTERRUPTED_MESSAGE
-            : TOOL_EXECUTION_CANCELLED_MESSAGE,
+          message: TOOL_EXECUTION_CANCELLED_MESSAGE,
           isError: true,
+          reason: abortClassification,
         });
       }
 
@@ -544,6 +553,44 @@ export async function* tryCallMCPTool(
 
     return postProcessMCPToolResult(toolCallResult, toolConfiguration);
   } catch (error) {
+    const isWorkerShutdownInterruptionError = isToolInterruptionError(error);
+    const isMCPTimeoutError = isMcpTimeoutError(error);
+    const isInterruptError =
+      isWorkerShutdownInterruptionError || isMCPTimeoutError;
+
+    if (isInterruptError) {
+      const retryPolicy =
+        getRetryPolicyFromToolConfiguration(toolConfiguration);
+      const info = Context.current().info;
+
+      if (
+        shouldRetryToolInterruption({
+          isInterruption: isInterruptError,
+          attempt: info.attempt,
+          retryPolicy,
+        })
+      ) {
+        if (isWorkerShutdownInterruptionError) {
+          throw error;
+        }
+
+        const normalizedError = normalizeError(error);
+        throw new Error(
+          `The tool execution timed out, error: ${normalizedError.message}`,
+          { cause: error }
+        );
+      }
+
+      // If the tool should not be retried on interrupt, the error is returned
+      // to the agent as a tool error instead of failing the workflow.
+      if (isWorkerShutdownInterruptionError) {
+        return makeMCPToolExit({
+          message: TOOL_EXECUTION_INTERRUPTED_MESSAGE,
+          isError: true,
+        });
+      }
+    }
+
     logger.error(
       {
         conversationId,
@@ -554,27 +601,6 @@ export async function* tryCallMCPTool(
       },
       "Exception calling MCP tool in tryCallMCPTool()"
     );
-
-    const isMCPTimeoutError = isMcpTimeoutError(error);
-
-    if (isMCPTimeoutError) {
-      // If the tool should not be retried on interrupt, the error is returned
-      // to the model, to let it decide what to do. If the tool should be
-      // retried on interrupt, we throw an error so the workflow retries the
-      // `runTool` activity, unless it's the last attempt.
-      const retryPolicy =
-        getRetryPolicyFromToolConfiguration(toolConfiguration);
-      if (retryPolicy === "retry_on_interrupt") {
-        const info = Context.current().info;
-        const isLastAttempt = info.attempt >= RETRY_ON_INTERRUPT_MAX_ATTEMPTS;
-        if (!isLastAttempt) {
-          throw new Error(
-            `The tool execution timed out, error: ${error.message}`,
-            { cause: error }
-          );
-        }
-      }
-    }
 
     // When the MCP SDK receives a 401/403 from the remote server during a
     // tool call (e.g., StreamableHTTP where each call is a separate HTTP
@@ -713,13 +739,22 @@ async function connectServerSideMCP(
  * metadata. Shared between the Temporal agent-loop path and the sandbox REST
  * endpoint.
  */
-function postProcessMCPToolResult(
+export function postProcessMCPToolResult(
   toolCallResult: Awaited<ReturnType<Client["callTool"]>>,
   toolConfiguration: MCPToolConfigurationType
 ): CallToolResult {
   // Type inference is not working here because of them using passthrough in the zod schema.
-  const content: CallToolResult["content"] = (toolCallResult.content ??
+  let content: CallToolResult["content"] = (toolCallResult.content ??
     []) as CallToolResult["content"];
+
+  if (content.length === 0 && toolCallResult.structuredContent) {
+    content = [
+      {
+        type: "text",
+        text: JSON.stringify(toolCallResult.structuredContent),
+      },
+    ];
+  }
 
   let serverType;
   if (isClientSideMCPToolConfiguration(toolConfiguration)) {
@@ -767,155 +802,6 @@ function postProcessMCPToolResult(
     isError: toolCallResult.isError === true ? true : false,
     content,
   };
-}
-
-/**
- * Simplified MCP tool caller for REST/sandbox context. No progress
- * notifications, no heartbeats, no Temporal retry logic. Never throws — all
- * error paths return a CallToolResult with isError: true.
- */
-export async function callMCPToolForSandbox(
-  auth: Authenticator,
-  inputs: Record<string, unknown> | undefined,
-  agentLoopRunContext: AgentLoopRunContextType
-): Promise<CallToolResult> {
-  const { toolConfiguration } = agentLoopRunContext;
-
-  if (!isMCPToolConfiguration(toolConfiguration)) {
-    return {
-      isError: true,
-      content: [
-        {
-          type: "text",
-          text: "Could not call tool, invalid action configuration: not an MCP action configuration",
-        },
-      ],
-    };
-  }
-
-  if (!isServerSideMCPToolConfiguration(toolConfiguration)) {
-    return {
-      isError: true,
-      content: [
-        {
-          type: "text",
-          text: "Sandbox tool calls only support server-side MCP tools.",
-        },
-      ],
-    };
-  }
-
-  const connResult = await connectServerSideMCP(
-    auth,
-    toolConfiguration,
-    agentLoopRunContext
-  );
-  if (connResult.isErr()) {
-    switch (connResult.error.type) {
-      case "not_found":
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: "Could not call tool: configuration not found",
-            },
-          ],
-        };
-      case "personal_auth_required":
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: "Tool requires personal authentication that cannot be completed from sandbox.",
-            },
-          ],
-        };
-      case "admin_auth_required":
-      case "connection_failed":
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: `The tool execution failed with the following error: ${connResult.error.message}`,
-            },
-          ],
-        };
-      default:
-        assertNever(connResult.error);
-    }
-  }
-
-  const mcpClient = connResult.value;
-  try {
-    const toolCallResult = await tracer.trace(
-      "mcp.tool.call",
-      { resource: toolConfiguration.originalName },
-      async () =>
-        mcpClient.callTool(
-          {
-            name: toolConfiguration.originalName,
-            arguments: inputs,
-          },
-          CallToolResultSchema,
-          {
-            timeout:
-              toolConfiguration.timeoutMs ?? DEFAULT_MCP_REQUEST_TIMEOUT_MS,
-          }
-        )
-    );
-
-    return postProcessMCPToolResult(toolCallResult, toolConfiguration);
-  } catch (error) {
-    logger.error(
-      {
-        error,
-        toolName: toolConfiguration.originalName,
-        workspaceId: auth.getNonNullableWorkspace().sId,
-      },
-      "Exception calling MCP tool in callMCPToolForSandbox()"
-    );
-
-    if (isMcpTimeoutError(error)) {
-      return {
-        isError: true,
-        content: [
-          {
-            type: "text",
-            text: "The tool execution timed out.",
-          },
-        ],
-      };
-    }
-
-    // OAuth errors during tool execution (e.g., expired token mid-call).
-    // Sandbox can't re-authenticate, so surface as an error.
-    if (error instanceof MCPOAuthProviderError) {
-      return {
-        isError: true,
-        content: [
-          {
-            type: "text",
-            text: "Tool requires re-authentication that cannot be completed from sandbox.",
-          },
-        ],
-      };
-    }
-
-    return {
-      isError: true,
-      content: [
-        {
-          type: "text",
-          text: `The tool execution failed with the following error: ${normalizeError(error).message}`,
-        },
-      ],
-    };
-  } finally {
-    await mcpClient.close();
-  }
 }
 
 function makeClientSideMCPConnectionParams(

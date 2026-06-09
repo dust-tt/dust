@@ -1,3 +1,5 @@
+// @migration-status: MIGRATED_TO_HONO
+
 /** @ignoreswagger */
 import { COMMIT_HASH } from "@app/lib/commit-hash";
 import { isInShutdown } from "@app/lib/shutdown_signal";

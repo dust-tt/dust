@@ -5,7 +5,7 @@ import { getPublishingRestrictionMessage } from "@app/lib/api/assistant/publishi
 import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useBotDataSources } from "@app/lib/swr/data_sources";
 import { useSystemSpace } from "@app/lib/swr/spaces";
-import { GlobeAltIcon, Page, Spinner } from "@dust-tt/sparkle";
+import { Building04, Page, Spinner } from "@dust-tt/sparkle";
 
 export function WorkspaceSettingsPage() {
   const owner = useWorkspace();
@@ -34,7 +34,7 @@ export function WorkspaceSettingsPage() {
 
   return (
     <Page.Vertical align="stretch" gap="xl">
-      <Page.Header title="Workspace Settings" icon={GlobeAltIcon} />
+      <Page.Header title="Workspace Settings" icon={Building04} />
       <Page.Vertical align="stretch" gap="md">
         <WorkspaceNameEditor owner={owner} />
       </Page.Vertical>

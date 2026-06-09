@@ -23,13 +23,13 @@ import {
 } from "@app/types/sheets";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
-import type { MenuItem } from "@dust-tt/sparkle";
 import {
-  DocumentPileIcon,
-  ExternalLinkIcon,
-  EyeIcon,
-  PencilSquareIcon,
-  TrashIcon,
+  Edit04,
+  Eye,
+  File04,
+  LinkExternal01,
+  type MenuItem,
+  Trash01,
 } from "@dust-tt/sparkle";
 import capitalize from "lodash/capitalize";
 import type { MouseEvent as ReactMouseEvent, RefObject } from "react";
@@ -201,7 +201,7 @@ export const getMenuItems = (
     actions.push({
       kind: "item",
       label: "Edit",
-      icon: PencilSquareIcon,
+      icon: Edit04,
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
         contentActionsRef.current?.callAction(
@@ -215,7 +215,7 @@ export const getMenuItems = (
     actions.push({
       kind: "item",
       label: "Delete",
-      icon: TrashIcon,
+      icon: Trash01,
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
 
@@ -283,7 +283,7 @@ export const getMenuItems = (
     actions.push({
       kind: "item",
       label: "Copy DataSource ID",
-      icon: DocumentPileIcon,
+      icon: File04,
       onClick: (e: ReactMouseEvent) => {
         e.stopPropagation();
         void navigator.clipboard.writeText(dataSourceView.dataSource.sId);
@@ -307,7 +307,7 @@ const makeViewSourceUrlContentAction = (
   return {
     kind: "item",
     label,
-    icon: ExternalLinkIcon,
+    icon: LinkExternal01,
     disabled: contentNode.sourceUrl === null,
     onClick: (e: ReactMouseEvent) => {
       e.stopPropagation();
@@ -326,7 +326,7 @@ const makeViewRawContentAction = (
   return {
     kind: "item",
     label: "View raw content",
-    icon: EyeIcon,
+    icon: Eye,
     onClick: (e: ReactMouseEvent) => {
       e.stopPropagation();
       setQueryParam(router, "documentId", contentNode.internalId);

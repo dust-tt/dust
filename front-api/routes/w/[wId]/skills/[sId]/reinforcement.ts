@@ -1,8 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -11,9 +6,11 @@ import {
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { SKILL_REINFORCEMENT_MODES } from "@app/types/assistant/skill_configuration";
-import { isString } from "@app/types/shared/utils/general";
-
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 const PatchSkillReinforcementBodySchema = z
   .object({
@@ -38,29 +35,25 @@ export type PatchSkillReinforcementResponseBody = {
   skill: SkillType;
 };
 
-// Mounted at /api/w/:wId/skills/:sId/reinforcement.
-const app = new Hono();
+const ParamsSchema = z.object({
+  sId: z.string(),
+});
 
+// Mounted at /api/w/:wId/skills/:sId/reinforcement.
+const app = workspaceApp();
+
+/** @ignoreswagger */
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PatchSkillReinforcementBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const sId = c.req.param("sId");
-
-    if (!isString(sId)) {
-      return apiError(c, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid skill ID.",
-        },
-      });
-    }
+  async (ctx): HandlerResult<PatchSkillReinforcementResponseBody> => {
+    const auth = ctx.get("auth");
+    const { sId } = ctx.req.valid("param");
 
     const skill = await SkillResource.fetchById(auth, sId);
     if (!skill) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "skill_not_found",
@@ -73,14 +66,14 @@ app.patch(
       reinforcement,
       selfImprovementLock,
       selfImprovementCostsCapMicroUsd,
-    } = c.req.valid("json");
+    } = ctx.req.valid("json");
 
     // The lock and per-skill cap are admin-only controls.
     const requiresAdmin =
       selfImprovementLock !== undefined ||
       selfImprovementCostsCapMicroUsd !== undefined;
     if (requiresAdmin && !auth.isAdmin()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
@@ -94,7 +87,7 @@ app.patch(
     // only admins can flip it.
     if (reinforcement !== undefined) {
       if (!skill.canWrite(auth)) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "app_auth_error",
@@ -103,7 +96,7 @@ app.patch(
         });
       }
       if (skill.selfImprovementLock && !auth.isAdmin()) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 403,
           api_error: {
             type: "workspace_auth_error",
@@ -139,7 +132,7 @@ app.patch(
       );
     }
 
-    return c.json({ skill: skill.toJSON(auth) });
+    return ctx.json({ skill: skill.toJSON(auth) });
   }
 );
 

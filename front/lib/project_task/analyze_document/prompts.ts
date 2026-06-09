@@ -1,8 +1,8 @@
-import type { ProjectTaskSourceType } from "@app/types/project_task";
+import type { PodTaskSourceType } from "@app/types/project_task";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export function buildPromptForSourceType(
-  sourceType: ProjectTaskSourceType
+  sourceType: PodTaskSourceType
 ): string {
   switch (sourceType) {
     case "project_conversation":

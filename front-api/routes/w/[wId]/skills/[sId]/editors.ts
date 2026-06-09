@@ -1,67 +1,37 @@
-import { apiError } from "@front-api/middleware/utils";
-import type { Context } from "hono";
-import { Hono } from "hono";
-import { z } from "zod";
-
+import type {
+  PatchSkillEditorsRequestBody,
+  SkillEditorsResponseBody,
+} from "@app/lib/api/skills/editors";
+import { PatchSkillEditorsRequestBodySchema } from "@app/lib/api/skills/editors";
 import type { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { isString } from "@app/types/shared/utils/general";
-import type { UserType } from "@app/types/user";
+import { toLightUser } from "@app/types/user";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import type { Context } from "hono";
+import { z } from "zod";
 
-import { validate } from "@front-api/middleware/validator";
+export type { PatchSkillEditorsRequestBody, SkillEditorsResponseBody };
 
-const PatchSkillEditorsRequestBodySchema = z
-  .object({
-    addEditorIds: z.array(z.string()).optional(),
-    removeEditorIds: z.array(z.string()).optional(),
-  })
-  .refine(
-    (body) =>
-      (body.addEditorIds instanceof Array && body.addEditorIds.length > 0) ||
-      (body.removeEditorIds instanceof Array &&
-        body.removeEditorIds.length > 0),
-    {
-      message:
-        "Either addEditorIds or removeEditorIds must be provided and contain at least one ID.",
-    }
-  );
-
-export type PatchSkillEditorsRequestBody = z.infer<
-  typeof PatchSkillEditorsRequestBodySchema
->;
-
-export interface GetSkillEditorsResponseBody {
-  editors: UserType[];
-}
-
-export interface PatchSkillEditorsResponseBody {
-  editors: UserType[];
-}
+const ParamsSchema = z.object({
+  sId: z.string(),
+});
 
 // Resolve :sId into a skill + its editor group. Returns either the loaded
 // resources or a Response describing the failure — keeps the validation
 // prelude in one place per [API10].
 async function loadSkillAndEditorGroup(
-  c: Context
+  ctx: Context,
+  sId: string
 ): Promise<{ skill: SkillResource; editorGroup: GroupResource } | Response> {
-  const auth = c.get("auth");
-  const sId = c.req.param("sId");
-
-  if (!isString(sId)) {
-    return apiError(c, {
-      status_code: 400,
-      api_error: {
-        type: "invalid_request_error",
-        message: "Invalid skill id.",
-      },
-    });
-  }
+  const auth = ctx.get("auth");
 
   const skill = await SkillResource.fetchById(auth, sId);
   if (!skill) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "skill_not_found",
@@ -72,7 +42,7 @@ async function loadSkillAndEditorGroup(
 
   const { editorGroup } = skill;
   if (!editorGroup) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -85,33 +55,48 @@ async function loadSkillAndEditorGroup(
 }
 
 // Mounted at /api/w/:wId/skills/:sId/editors.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+/** @ignoreswagger */
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const { sId } = ctx.req.valid("param");
 
-  const loaded = await loadSkillAndEditorGroup(c);
-  if (loaded instanceof Response) return loaded;
+  const loaded = await loadSkillAndEditorGroup(ctx, sId);
+  if (loaded instanceof Response) {
+    return loaded;
+  }
   const { editorGroup } = loaded;
 
   const members = await editorGroup.getActiveMembers(auth);
   const memberUsers = members.map((m) => m.toJSON());
 
-  return c.json({ editors: memberUsers });
+  // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
+  if (auth.isAdmin()) {
+    return ctx.json({ editors: memberUsers });
+  }
+
+  return ctx.json({
+    editors: memberUsers.map(toLightUser),
+  });
 });
 
 app.patch(
   "/",
+  validate("param", ParamsSchema),
   validate("json", PatchSkillEditorsRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { sId } = ctx.req.valid("param");
 
-    const loaded = await loadSkillAndEditorGroup(c);
-    if (loaded instanceof Response) return loaded;
+    const loaded = await loadSkillAndEditorGroup(ctx, sId);
+    if (loaded instanceof Response) {
+      return loaded;
+    }
     const { skill: skillRes, editorGroup } = loaded;
 
     if (!skillRes.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
@@ -120,7 +105,7 @@ app.patch(
       });
     }
 
-    const { addEditorIds = [], removeEditorIds = [] } = c.req.valid("json");
+    const { addEditorIds = [], removeEditorIds = [] } = ctx.req.valid("json");
 
     const usersToAddResources = await UserResource.fetchByIds(addEditorIds);
     const usersToRemoveResources =
@@ -142,7 +127,7 @@ app.patch(
       const missingIds = [...missingAddIds, ...missingRemoveIds];
 
       if (missingIds.length > 0) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 404,
           api_error: {
             type: "user_not_found",
@@ -154,7 +139,7 @@ app.patch(
 
     // Check authorization for modifying group members
     if (!editorGroup.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 401,
         api_error: {
           type: "workspace_auth_error",
@@ -169,7 +154,7 @@ app.patch(
     if (addRes.isErr()) {
       switch (addRes.error.code) {
         case "unauthorized":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 401,
             api_error: {
               type: "workspace_auth_error",
@@ -178,7 +163,7 @@ app.patch(
             },
           });
         case "group_requirements_not_met":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 403,
             api_error: {
               type: "workspace_auth_error",
@@ -186,7 +171,7 @@ app.patch(
             },
           });
         case "system_or_global_group":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 403,
             api_error: {
               type: "workspace_auth_error",
@@ -195,7 +180,7 @@ app.patch(
             },
           });
         case "user_not_found":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 404,
             api_error: {
               type: "user_not_found",
@@ -203,7 +188,7 @@ app.patch(
             },
           });
         case "user_already_member":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 409,
             api_error: {
               type: "invalid_request_error",
@@ -222,7 +207,7 @@ app.patch(
     if (removeRes.isErr()) {
       switch (removeRes.error.code) {
         case "unauthorized":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 401,
             api_error: {
               type: "workspace_auth_error",
@@ -231,7 +216,7 @@ app.patch(
             },
           });
         case "system_or_global_group":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 403,
             api_error: {
               type: "workspace_auth_error",
@@ -240,7 +225,7 @@ app.patch(
             },
           });
         case "user_not_found":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 404,
             api_error: {
               type: "user_not_found",
@@ -248,7 +233,7 @@ app.patch(
             },
           });
         case "user_not_member":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 409,
             api_error: {
               type: "invalid_request_error",
@@ -261,9 +246,15 @@ app.patch(
     }
 
     const updatedMembers = await editorGroup.getActiveMembers(auth);
+    const updatedEditors = updatedMembers.map((m) => m.toJSON());
 
-    return c.json({
-      editors: updatedMembers.map((m) => m.toJSON()),
+    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
+    if (auth.isAdmin()) {
+      return ctx.json({ editors: updatedEditors });
+    }
+
+    return ctx.json({
+      editors: updatedEditors.map(toLightUser),
     });
   }
 );

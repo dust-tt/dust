@@ -3,7 +3,7 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { MembershipOriginType } from "@app/types/memberships";
 import type { ActiveRoleType, RoleType } from "@app/types/user";
 import { ACTIVE_ROLES } from "@app/types/user";
-import { IconButton, TrashIcon } from "@dust-tt/sparkle";
+import { IconButton, Trash01 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 export type MemberDisplayType = {
@@ -78,6 +78,19 @@ export function makeColumnsForMembers({
       },
     },
     {
+      accessorKey: "origin",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Origin" />
+      ),
+      filterFn: (row, id, value) => {
+        return value.includes(row.getValue(id));
+      },
+      cell: ({ row }) => {
+        const { origin } = row.original;
+        return <span>{origin ?? "-"}</span>;
+      },
+    },
+    {
       accessorKey: "role",
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Role" />
@@ -126,7 +139,7 @@ export function makeColumnsForMembers({
         // Hide the revoke button for provisioned users and users with no role.
         return member.role !== "none" && member.origin !== "provisioned" ? (
           <IconButton
-            icon={TrashIcon}
+            icon={Trash01}
             size="xs"
             variant="outline"
             onClick={async () => {

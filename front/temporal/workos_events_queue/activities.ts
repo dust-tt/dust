@@ -155,6 +155,42 @@ async function verifyWorkOSWorkspace<E extends Event, R>(
   return handler(workspace, event);
 }
 
+function emitMembershipRoleUpdatedFromDirectorySync({
+  workspace,
+  user,
+  directoryId,
+  previousRole,
+  newRole,
+}: {
+  workspace: LightWorkspaceType;
+  user: UserResource;
+  directoryId?: string;
+  previousRole: string;
+  newRole: string;
+}): void {
+  void emitAuditLogEventDirect({
+    workspace,
+    action: "membership.role_updated",
+    actor: {
+      type: "system",
+      id: String(directoryId ?? "directory_sync"),
+      name: "Directory Sync",
+    },
+    targets: [
+      buildAuditLogTarget("workspace", workspace),
+      buildAuditLogTarget("user", {
+        sId: user.sId,
+        name: user.fullName() ?? "unknown",
+      }),
+    ],
+    context: { location: "system" },
+    metadata: {
+      previous_role: previousRole,
+      new_role: newRole,
+    },
+  });
+}
+
 /**
  * Handle role assignment based on the name of the group.
  */
@@ -165,11 +201,13 @@ async function handleRoleAssignmentForGroup(
     user,
     group,
     action,
+    directoryId,
   }: {
     workspace: LightWorkspaceType;
     user: UserResource;
     group: GroupResource;
     action: "add" | "remove";
+    directoryId?: string;
   }
 ) {
   if (group.name !== ADMIN_GROUP_NAME && group.name !== BUILDER_GROUP_NAME) {
@@ -229,6 +267,14 @@ async function handleRoleAssignmentForGroup(
         previousRole: currentMembership.role,
         role: newRole,
       });
+
+      emitMembershipRoleUpdatedFromDirectorySync({
+        workspace,
+        user,
+        directoryId,
+        previousRole: String(currentMembership.role),
+        newRole: String(newRole),
+      });
     }
   } else if (action === "remove") {
     const newRole = await determineUserRoleFromGroups(workspace, user);
@@ -268,6 +314,14 @@ async function handleRoleAssignmentForGroup(
         workspace,
         previousRole: currentMembership.role,
         role: newRole,
+      });
+
+      emitMembershipRoleUpdatedFromDirectorySync({
+        workspace,
+        user,
+        directoryId,
+        previousRole: String(currentMembership.role),
+        newRole: String(newRole),
       });
     }
   }
@@ -799,6 +853,7 @@ async function handleUserAddedToGroup(
     user,
     group,
     action: "add",
+    directoryId: eventData.directoryId ?? undefined,
   });
 
   // Update membership origin to "provisioned" when syncing from WorkOS groups.
@@ -947,6 +1002,7 @@ async function handleUserRemovedFromGroup(
     user,
     group,
     action: "remove",
+    directoryId: eventData.directoryId ?? undefined,
   });
 
   void emitAuditLogEventDirect({
@@ -1124,6 +1180,11 @@ async function handleCreateOrUpdateWorkOSUser(
     workspace,
     role: "user",
     origin: "provisioned",
+    auditActor: {
+      type: "system",
+      id: String(eventData.directoryId ?? "directory_sync"),
+      name: "Directory Sync",
+    },
   });
 
   void emitAuditLogEventDirect({
@@ -1202,6 +1263,11 @@ async function handleDeleteWorkOSUser(
 
   const membershipRevokeResult = await revokeAndTrackMembership(auth, user, {
     allowLastAdminRevocation: true,
+    auditActor: {
+      type: "system",
+      id: String(eventData.directoryId ?? "directory_sync"),
+      name: "Directory Sync",
+    },
   });
 
   if (membershipRevokeResult.isErr()) {

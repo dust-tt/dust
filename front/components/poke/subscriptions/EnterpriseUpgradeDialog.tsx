@@ -4,7 +4,7 @@ import {
   SelectField,
 } from "@app/components/poke/shadcn/ui/form/fields";
 import { clientFetch } from "@app/lib/egress/client";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { usePokeMetronomePackages, usePokePlans } from "@app/lib/swr/poke";
 import type {
@@ -32,7 +32,7 @@ import {
   SliderToggle,
   Spinner,
 } from "@dust-tt/sparkle";
-import { ioTsResolver } from "@hookform/resolvers/io-ts";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -123,7 +123,7 @@ export default function EnterpriseUpgradeDialog({
   const paygCapMicroUsd = programmaticUsageConfig?.paygCapMicroUsd ?? null;
 
   const form = useForm<EnterpriseUpgradeFormType>({
-    resolver: ioTsResolver(EnterpriseUpgradeFormSchema),
+    resolver: zodResolver(EnterpriseUpgradeFormSchema),
     defaultValues: {
       stripeSubscriptionId: !useMetronomePath
         ? (subscription.stripeSubscriptionId ?? "")
@@ -249,7 +249,7 @@ export default function EnterpriseUpgradeDialog({
                       title="Enterprise Plan"
                       mountPortalContainer={portalContainer}
                       options={plans
-                        .filter((plan) => isEntreprisePlanPrefix(plan.code))
+                        .filter((plan) => isEnterprisePlanPrefix(plan.code))
                         .map((plan) => ({
                           value: plan.code,
                           display: `${plan.name} (${plan.code})`,

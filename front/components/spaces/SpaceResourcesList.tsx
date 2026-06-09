@@ -37,18 +37,18 @@ import { isString } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
-import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Button,
   Chip,
-  CloudArrowLeftRightIcon,
-  Cog6ToothIcon,
-  CubeIcon,
+  CloudArrowLeftRight,
+  Cube01,
   cn,
   DataTable,
-  PencilSquareIcon,
+  Edit04,
+  type MenuItem,
+  Settings01,
   Spinner,
-  TrashIcon,
+  Trash01,
 } from "@dust-tt/sparkle";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
 import type { ParsedUrlQuery } from "querystring";
@@ -191,7 +191,7 @@ function getTableColumns(
             <Button
               variant="primary"
               size="xs"
-              icon={CloudArrowLeftRightIcon}
+              icon={CloudArrowLeftRight}
               disabled={disabled}
               onClick={buttonOnClick}
               label={isLoading ? "Connecting..." : "Connect"}
@@ -203,7 +203,7 @@ function getTableColumns(
         <DataTable.CellContent>
           <Button
             variant="outline"
-            icon={Cog6ToothIcon}
+            icon={Settings01}
             disabled={disabled}
             onClick={buttonOnClick}
             label={isAdmin ? "Manage" : "View"}
@@ -383,7 +383,7 @@ export const SpaceResourcesList = ({
           menuItems.push({
             label: "Edit",
             kind: "item",
-            icon: PencilSquareIcon,
+            icon: Edit04,
             onClick: (e) => {
               e.stopPropagation();
               setSelectedDataSourceView(dataSourceView);
@@ -394,7 +394,7 @@ export const SpaceResourcesList = ({
             menuItems.push({
               label: "Use from API",
               kind: "item",
-              icon: CubeIcon,
+              icon: Cube01,
               onClick: (e) => {
                 e.stopPropagation();
                 setSelectedDataSourceView(dataSourceView);
@@ -404,7 +404,7 @@ export const SpaceResourcesList = ({
           }
           menuItems.push({
             label: "Delete",
-            icon: TrashIcon,
+            icon: Trash01,
             kind: "item",
             variant: "warning",
             onClick: (e) => {

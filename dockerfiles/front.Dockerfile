@@ -1,12 +1,8 @@
 # Base dependencies stage (shared by front-nextjs and workers)
-FROM node:24.14.0 AS base-deps
+FROM node:24.14.0-slim AS base-deps
 
 RUN apt-get update && \
   apt-get install -y libjemalloc2 libjemalloc-dev
-
-# Only non-Next.js build args needed for base deps
-ARG COMMIT_HASH
-ARG COMMIT_HASH_LONG
 
 RUN npm install -g npm@11.11.0
 
@@ -18,8 +14,9 @@ COPY sdks/js/package.json ./sdks/js/
 COPY sparkle/package.json ./sparkle/
 COPY front/package.json ./front/
 COPY front-spa/package.json ./front-spa/
+COPY front-api/package.json ./front-api/
 
-RUN --mount=type=cache,id=npm-cache,target=/root/.npm npm ci -w sdks/js -w sparkle -w front -w front-spa
+RUN --mount=type=cache,id=npm-cache,target=/root/.npm npm ci -w sdks/js -w sparkle -w front -w front-spa -w front-api
 
 # Build SDK
 WORKDIR /app/sdks/js
@@ -45,6 +42,15 @@ RUN npx tsx scripts/fetch-custom-models.ts
 # Remove test files (shared optimization)
 RUN find . -name "*.test.ts" -delete
 RUN find . -name "*.test.tsx" -delete
+
+# Compile migration script so all runtime images have dist/migrate.js without needing TypeScript sources
+RUN npx esbuild scripts/migrate.ts --bundle --platform=node --target=node22 --alias:@app=. --packages=external --outfile=dist/migrate.js --sourcemap
+
+# Copy front-api source (server.ts, app.ts, routes/, middleware/)
+WORKDIR /app/front-api
+COPY /front-api .
+
+WORKDIR /app/front
 
 # Next.js-specific build stage
 FROM base-deps AS front-nextjs-build
@@ -92,39 +98,44 @@ ENV NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL=$NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
 ENV CONTENTFUL_SPACE_ID=$CONTENTFUL_SPACE_ID
 ENV CONTENTFUL_ACCESS_TOKEN=$CONTENTFUL_ACCESS_TOKEN
 
+# Provide git metadata as env constants so `datadog-ci sourcemaps upload` does not
+# try to spawn git (not installed in the slim base) for repo URL / commit lookups.
+ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust
+ENV DD_GIT_COMMIT_SHA=$COMMIT_HASH_LONG
+
 # Build Next.js application and sitemap (front-nextjs only)
 # Fake PostgreSQL URI is needed because Sequelize validates the connection string
 # during module initialization (imported by `next build`), but doesn't actually connect
 # DATADOG_API_KEY is used to conditionally enable source map generation and upload to Datadog
-RUN --mount=type=cache,id=next-cache,target=/app/front/.next/cache \
+RUN --mount=type=cache,id=next-cache-v2,target=/app/front/.next/cache \
   BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
   FRONT_DATABASE_URI="postgres://fake:fake@localhost:5432/fake" \
   NODE_OPTIONS="--max-old-space-size=8192" \
   npm run build -- --no-lint && \
+  if [ ! -d .next/standalone ]; then \
+  echo "ERROR: next build did not emit .next/standalone (output:standalone). Likely a corrupt next-cache mount; bump the --mount id to reset it."; \
+  exit 1; \
+  fi && \
   if [ -n "$DATADOG_API_KEY" ] && [ -n "$NEXT_PUBLIC_DATADOG_SERVICE" ]; then \
   export DATADOG_SITE=datadoghq.eu DATADOG_API_KEY=$DATADOG_API_KEY; \
   npx --yes @datadog/datadog-ci sourcemaps upload ./.next/static \
   --minified-path-prefix=/_next/static/ \
-  --repository-url=https://github.com/dust-tt/dust \
   --project-path=front \
   --release-version=$COMMIT_HASH \
   --service=$NEXT_PUBLIC_DATADOG_SERVICE-browser && \
   npx --yes @datadog/datadog-ci sourcemaps upload ./.next/server \
   --minified-path-prefix=/app/front/.next/server/ \
-  --repository-url=https://github.com/dust-tt/dust \
   --project-path=front \
   --release-version=$COMMIT_HASH \
   --service=$NEXT_PUBLIC_DATADOG_SERVICE && \
   for svc in $DATADOG_ADDITIONAL_SERVICES; do \
   npx --yes @datadog/datadog-ci sourcemaps upload ./.next/static \
   --minified-path-prefix=/_next/static/ \
-  --repository-url=https://github.com/dust-tt/dust \
   --project-path=front \
   --release-version=$COMMIT_HASH \
   --service=${svc}-browser && \
   npx --yes @datadog/datadog-ci sourcemaps upload ./.next/server \
   --minified-path-prefix=/app/front/.next/server/ \
-  --repository-url=https://github.com/dust-tt/dust \
   --project-path=front \
   --release-version=$COMMIT_HASH \
   --service=${svc} || exit 1; \
@@ -137,8 +148,14 @@ RUN --mount=type=cache,id=next-cache,target=/app/front/.next/cache \
 FROM base-deps AS workers-build
 
 ARG COMMIT_HASH
+ARG COMMIT_HASH_LONG
 ARG DATADOG_API_KEY
 ARG NEXT_PUBLIC_DATADOG_SERVICE
+
+# Provide git metadata as env constants so `datadog-ci sourcemaps upload` does not
+# try to spawn git (not installed in the slim base) for repo URL / commit lookups.
+ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust
+ENV DD_GIT_COMMIT_SHA=$COMMIT_HASH_LONG
 
 # Build temporal workers and esbuild workers (workers only)
 RUN FRONT_DATABASE_URI="postgres://fake:fake@localhost:5432/fake" npm run build:temporal-bundles
@@ -150,17 +167,16 @@ RUN if [ -n "$DATADOG_API_KEY" ] && [ -n "$NEXT_PUBLIC_DATADOG_SERVICE" ]; then 
   DATADOG_API_KEY=$DATADOG_API_KEY \
   npx --yes @datadog/datadog-ci sourcemaps upload ./dist \
   --minified-path-prefix=/app/front/dist/ \
-  --repository-url=https://github.com/dust-tt/dust \
   --project-path=front \
   --release-version=$COMMIT_HASH \
   --service=$NEXT_PUBLIC_DATADOG_SERVICE; \
-fi
+  fi
 
 # Frontend image (Next.js standalone) for front deployment
-FROM node:24.14.0 AS front
+FROM node:24.14.0-slim AS front
 
 RUN apt-get update && \
-  apt-get install -y redis-tools postgresql-client libjemalloc2 && \
+  apt-get install -y redis-tools postgresql-client libjemalloc2 curl && \
   rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -177,6 +193,12 @@ COPY --from=front-nextjs-build /app/front/public ./public
 COPY --from=base-deps /app/front/admin ./admin
 # Copy scripts directory
 COPY --from=base-deps /app/front/scripts ./scripts
+# Copy compiled migration script (built in base-deps, works without TypeScript sources)
+COPY --from=base-deps /app/front/dist/migrate.js ./dist/migrate.js
+COPY --from=base-deps /app/front/dist/migrate.js.map ./dist/migrate.js.map
+# Copy migration scripts
+COPY --from=base-deps /app/front/migrations/pre-deploy ./migrations/pre-deploy
+COPY --from=base-deps /app/front/migrations/post-deploy ./migrations/post-deploy
 
 # Re-declare build args needed at runtime
 ARG NEXT_PUBLIC_DUST_API_URL
@@ -201,10 +223,10 @@ ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 CMD ["node", "--require", "dd-trace/init", "server.js"]
 
 # Workers image (Full Node.js environment) for front-workers deployment
-FROM node:24.14.0 AS workers
+FROM node:24.14.0-slim AS workers
 
 RUN apt-get update && \
-  apt-get install -y redis-tools postgresql-client libjemalloc2 && \
+  apt-get install -y redis-tools postgresql-client libjemalloc2 curl && \
   rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -270,3 +292,125 @@ ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
 ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
 
 CMD ["node", "--enable-source-maps", "--require", "dd-trace/init", "dist/start_worker.js"]
+
+# Front-api build stage — produces /app/front/.next used at runtime by Next.js handler,
+# plus the esbuild-bundled Hono server at /app/front-api/dist/server.js. Uploads source
+# maps for that bundle to Datadog under <service>-api (front-nextjs uploads cover only
+# .next/server and .next/static paths, not this bundle).
+# Does NOT use Next.js standalone output (server.ts loads Next.js as a library).
+FROM base-deps AS front-api-build
+
+ARG COMMIT_HASH
+ARG COMMIT_HASH_LONG
+ARG DATADOG_API_KEY
+ARG NEXT_PUBLIC_VIZ_URL
+ARG NEXT_PUBLIC_DUST_API_URL
+ARG NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL
+ARG NEXT_PUBLIC_DUST_APP_URL
+ARG NEXT_PUBLIC_GTM_TRACKING_ID
+ARG NEXT_PUBLIC_ENABLE_BOT_CRAWLING
+ARG NEXT_PUBLIC_DATADOG_CLIENT_TOKEN
+ARG NEXT_PUBLIC_DATADOG_SERVICE
+ARG NEXT_PUBLIC_POSTHOG_KEY
+ARG NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+ARG NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY
+ARG NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER
+ARG NEXT_PUBLIC_NOVU_API_URL
+ARG NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
+ARG NEXT_PUBLIC_BUILD_DATE
+
+ENV NEXT_PUBLIC_COMMIT_HASH=$COMMIT_HASH
+ENV NEXT_PUBLIC_BUILD_DATE=$NEXT_PUBLIC_BUILD_DATE
+ENV NEXT_PUBLIC_VIZ_URL=$NEXT_PUBLIC_VIZ_URL
+ENV NEXT_PUBLIC_DUST_API_URL=$NEXT_PUBLIC_DUST_API_URL
+ENV NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL=$NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL
+ENV NEXT_PUBLIC_DUST_APP_URL=$NEXT_PUBLIC_DUST_APP_URL
+ENV NEXT_PUBLIC_GTM_TRACKING_ID=$NEXT_PUBLIC_GTM_TRACKING_ID
+ENV NEXT_PUBLIC_ENABLE_BOT_CRAWLING=$NEXT_PUBLIC_ENABLE_BOT_CRAWLING
+ENV NEXT_PUBLIC_DATADOG_CLIENT_TOKEN=$NEXT_PUBLIC_DATADOG_CLIENT_TOKEN
+ENV NEXT_PUBLIC_DATADOG_SERVICE=$NEXT_PUBLIC_DATADOG_SERVICE
+ENV NEXT_PUBLIC_POSTHOG_KEY=$NEXT_PUBLIC_POSTHOG_KEY
+ENV NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=$NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+ENV NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY=$NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY
+ENV NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER=$NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER
+ENV NEXT_PUBLIC_NOVU_API_URL=$NEXT_PUBLIC_NOVU_API_URL
+ENV NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL=$NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
+
+# Provide git metadata as env constants so `datadog-ci sourcemaps upload` does not
+# try to spawn git (not installed in the slim base) for repo URL / commit lookups.
+ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust
+ENV DD_GIT_COMMIT_SHA=$COMMIT_HASH_LONG
+
+WORKDIR /app/front-api
+
+# Build the Hono server bundle and upload its source maps to Datadog so prod stack
+# traces from /app/front-api/dist/server.js symbolicate. Map files are kept in the
+# runtime image and consumed via --enable-source-maps in the runtime CMD.
+RUN npm run build && \
+  if [ -n "$DATADOG_API_KEY" ] && [ -n "$NEXT_PUBLIC_DATADOG_SERVICE" ]; then \
+  DATADOG_SITE=datadoghq.eu \
+  DATADOG_API_KEY=$DATADOG_API_KEY \
+  npx --yes @datadog/datadog-ci sourcemaps upload ./dist \
+  --minified-path-prefix=/app/front-api/dist/ \
+  --project-path=front-api \
+  --release-version=$COMMIT_HASH \
+  --service=$NEXT_PUBLIC_DATADOG_SERVICE-api; \
+  fi
+
+# Front-api runtime image — Hono server with Next.js fallback (strangler shim).
+FROM node:24.14.0-slim AS front-api
+
+RUN apt-get update && \
+  apt-get install -y redis-tools postgresql-client libjemalloc2 curl && \
+  rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Hoisted root node_modules + package manifests.
+COPY --from=front-api-build /app/node_modules ./node_modules
+COPY --from=front-api-build /app/package.json ./package.json
+COPY --from=front-api-build /app/package-lock.json ./package-lock.json
+
+COPY --from=front-api-build /app/front ./front
+
+# front-api workspace (server.ts, app.ts, routes/, middleware/).
+COPY --from=front-api-build /app/front-api ./front-api
+
+# Sibling workspaces resolved via @app aliases or transitive imports.
+COPY --from=base-deps /app/sdks/js ./sdks/js
+COPY --from=base-deps /app/sparkle ./sparkle
+
+WORKDIR /app/front-api
+
+ARG NEXT_PUBLIC_DUST_API_URL
+ARG NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL
+ARG NEXT_PUBLIC_DUST_APP_URL
+ENV NEXT_PUBLIC_DUST_API_URL=$NEXT_PUBLIC_DUST_API_URL
+ENV NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL=$NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL
+ENV NEXT_PUBLIC_DUST_APP_URL=$NEXT_PUBLIC_DUST_APP_URL
+
+# Unlike the Next.js standalone `front` image, this server is esbuild-bundled, so
+# `NEXT_PUBLIC_*` references are NOT inlined at build time — they remain runtime
+# `process.env` lookups and must be provided as runtime env (same as the workers image).
+ARG NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER
+ARG NEXT_PUBLIC_NOVU_API_URL
+ARG NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
+ENV NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER=$NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER
+ENV NEXT_PUBLIC_NOVU_API_URL=$NEXT_PUBLIC_NOVU_API_URL
+ENV NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL=$NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
+
+# Front's transitive runtime deps (e.g. hot-shots) may live in
+# /app/front/node_modules rather than the hoisted /app/node_modules, and node's
+# walk-up from /app/front-api/dist/server.js never visits them. Add it to
+# NODE_PATH so externalized requires from the esbuild bundle resolve at runtime.
+ENV NODE_PATH=/app/front/node_modules
+
+ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
+
+ARG COMMIT_HASH
+ARG COMMIT_HASH_LONG
+ENV DD_VERSION=${COMMIT_HASH}
+ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
+ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
+
+CMD ["node", "--enable-source-maps", "--require", "dd-trace/init", "dist/server.js"]

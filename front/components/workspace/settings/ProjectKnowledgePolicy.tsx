@@ -1,8 +1,7 @@
 import { useProjectKnowledgePolicy } from "@app/hooks/useProjectKnowledgePolicy";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  BookOpenIcon,
+  BookOpen01,
   Button,
   ContextItem,
   DropdownMenu,
@@ -10,7 +9,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-  LockIcon,
+  Lock01,
 } from "@dust-tt/sparkle";
 
 const PROJECT_KNOWLEDGE_POLICIES = [
@@ -18,29 +17,24 @@ const PROJECT_KNOWLEDGE_POLICIES = [
     value: "enabled",
     label: "Manual updates allowed",
     description: "Members can manually add files to Pod.",
-    icon: BookOpenIcon,
+    icon: BookOpen01,
     allowManualProjectKnowledgeManagement: true,
   },
   {
     value: "disabled",
     label: "Manual updates disabled",
     description: "Members cannot manually add files to Pod.",
-    icon: LockIcon,
+    icon: Lock01,
     allowManualProjectKnowledgeManagement: false,
   },
 ] as const;
 
 export function ProjectKnowledgePolicy({ owner }: { owner: WorkspaceType }) {
-  const { featureFlags } = useFeatureFlags();
   const {
     allowManualProjectKnowledgeManagement,
     isChanging,
     doUpdateProjectKnowledgePolicy,
   } = useProjectKnowledgePolicy({ owner });
-
-  if (!featureFlags.includes("projects")) {
-    return null;
-  }
 
   const selectedPolicy = PROJECT_KNOWLEDGE_POLICIES.find(
     (policy) =>
@@ -52,7 +46,7 @@ export function ProjectKnowledgePolicy({ owner }: { owner: WorkspaceType }) {
     <ContextItem
       title="Pod files policy"
       subElement="Control whether members can manually add files to Pods."
-      visual={<BookOpenIcon className="h-6 w-6" />}
+      visual={<BookOpen01 className="h-6 w-6" />}
       hasSeparatorIfLast={true}
       action={
         <DropdownMenu>

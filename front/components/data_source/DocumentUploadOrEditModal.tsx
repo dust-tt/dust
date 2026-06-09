@@ -20,12 +20,12 @@ import { slugify } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  DocumentPlusIcon,
-  EyeIcon,
-  EyeSlashIcon,
+  Eye,
+  EyeOff,
+  FilePlus03,
   Input,
   Page,
-  PlusIcon,
+  Plus,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -34,7 +34,7 @@ import {
   SheetTitle,
   Spinner,
   TextArea,
-  TrashIcon,
+  Trash01,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -442,7 +442,7 @@ export const DocumentUploadOrEditModal = ({
                             ? "Uploading..."
                             : "Upload file",
                         variant: "primary",
-                        icon: DocumentPlusIcon,
+                        icon: FilePlus03,
                         onClick: () => fileInputRef.current?.click(),
                         isLoading:
                           fileUploaderService.isProcessingFiles ||
@@ -490,7 +490,7 @@ export const DocumentUploadOrEditModal = ({
                       action={{
                         label: labelsVisible ? "Hide" : "Show",
                         variant: "ghost",
-                        icon: labelsVisible ? EyeSlashIcon : EyeIcon,
+                        icon: labelsVisible ? EyeOff : Eye,
                         onClick: () => setLabelsVisible(!labelsVisible),
                       }}
                     />
@@ -502,7 +502,7 @@ export const DocumentUploadOrEditModal = ({
                           action={{
                             label: "Add label",
                             variant: "ghost",
-                            icon: PlusIcon,
+                            icon: Plus,
                             onClick: () =>
                               setDocumentState((prev) => ({
                                 ...prev,
@@ -537,7 +537,7 @@ export const DocumentUploadOrEditModal = ({
                                 <div className="flex">
                                   <Button
                                     tooltip="Remove"
-                                    icon={TrashIcon}
+                                    icon={Trash01}
                                     variant="warning"
                                     onClick={() => {
                                       const newTags = [...documentState.tags];

@@ -1,7 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
-
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { Ok } from "@app/types/shared/result";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/assistant/call_llm", () => ({
   runMultiActionsAgent: vi.fn(),

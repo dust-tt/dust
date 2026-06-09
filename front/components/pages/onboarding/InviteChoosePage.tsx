@@ -1,8 +1,8 @@
 import config from "@app/lib/api/config";
-import type { RegionType } from "@app/lib/api/regions/config";
 import { getRegionUrl } from "@app/lib/auth/RegionContext";
 import { useUser } from "@app/lib/swr/user";
 import { usePendingInvitations } from "@app/lib/swr/workspaces";
+import type { RegionType } from "@app/types/region";
 import {
   BarHeader,
   Button,

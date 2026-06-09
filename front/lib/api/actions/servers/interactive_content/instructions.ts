@@ -11,6 +11,12 @@ import {
   VIZ_USE_FILE_EXAMPLES,
 } from "@app/lib/api/actions/servers/common/viz/instructions";
 import {
+  INTERACTIVE_CONTENT_AUTHORING_PROSE_V2,
+  INTERACTIVE_CONTENT_CHART_EXAMPLES_V2,
+  INTERACTIVE_CONTENT_FRAME_IMPORT_EXAMPLE_V2,
+  INTERACTIVE_CONTENT_USE_FILE_EXAMPLES_V2,
+} from "@app/lib/api/actions/servers/interactive_content/instructions_v2";
+import {
   CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
@@ -18,7 +24,7 @@ import {
   REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
 
-export const INTERACTIVE_CONTENT_INSTRUCTIONS = `\
+export const INTERACTIVE_CONTENT_TOOLS_PROSE_BEFORE_AUTHORING = `\
 ## CREATING VISUALIZATIONS WITH INTERACTIVE CONTENT
 
 You have access to an Interactive Content system that allows you to create and update executable files. When creating visualizations, you should create files instead of using the :::visualization directive.
@@ -148,7 +154,9 @@ Fix syntax errors before the file can be created/edited.
 - Use \`${RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to rename an existing Interactive Content file
 - The new file name must include a valid extension (e.g., .js, .jsx, .ts, .tsx)
 - Renaming only changes the file name; the content remains unchanged
+`;
 
+export const INTERACTIVE_CONTENT_AUTHORING_PROSE_DEFAULT = `\
 ${VIZ_REACT_COMPONENT_GUIDELINES}
 
 ${VIZ_STYLING_GUIDELINES}
@@ -158,7 +166,9 @@ ${VIZ_FILE_HANDLING_GUIDELINES}
 ${VIZ_LIBRARY_USAGE}
 
 ${VIZ_MISCELLANEOUS_GUIDELINES}
+`;
 
+export const INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING = `\
 - When to Create Files:
   - Create files for data visualizations such as graphs, charts, and plots
   - Create files for complex visualizations that require user interaction
@@ -244,3 +254,112 @@ Examples:
 
 ${VIZ_CHART_EXAMPLES}
 `;
+
+export const INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING_V2 = `\
+- When to Create Files:
+  - Create files for data visualizations such as graphs, charts, and plots
+  - Create files for complex visualizations that require user interaction
+  - Create files for slideshow presentations (use the Slideshow component)
+  - Do not create files for simple text-based content that can be rendered in Markdown
+  - Do not create files for content that does not require user interaction
+
+### Slideshows
+
+When the user asks for a presentation, slideshow, deck, or multi-slide content, create an interactive
+content file using the \`Slideshow\` and \`Slide\` components.
+
+**MIME type:** Always set \`mime_type\` to \`${VIZ_SLIDESHOW_MIME_TYPE}\` when creating a slideshow.
+
+**Import:** \`import { Slideshow, Slide } from "@dust/slideshow/v2";\`
+
+**Components:**
+- \`<Slideshow>\` wraps all slides. It handles navigation (prev/next arrows, dot indicators, keyboard
+  arrow keys) and PDF export automatically. Accepts an optional \`className\` prop.
+- \`<Slide>\` represents one slide. Each slide takes the full viewport height, centers its children,
+  and accepts a \`className\` prop (commonly used for background colors like \`bg-slate-50\`).
+  Inside a \`<Slide>\`, use any React and Tailwind, standard HTML elements, Recharts charts,
+  grid layouts, etc.
+
+**Content guidelines:**
+- One main idea per slide. Avoid overcrowding.
+- Use a consistent background color across slides for cohesion (e.g. all \`bg-white\` or all \`bg-slate-50\`).
+  Use 1-2 accent colors for emphasis elements.
+- Structure content with clear hierarchy: title, then visuals or key points, then supporting text.
+- For data-heavy slides, prefer charts (Recharts) over tables or bullet lists.
+
+**Do not:**
+- Do not build navigation controls (buttons, arrows, dots, keyboard handlers). They are built in.
+- Do not import from \`@dust/slideshow/v1\`. Always use \`@dust/slideshow/v2\`.
+- Do not set explicit heights on \`<Slide>\`, it fills the viewport automatically.
+- Do not use gradients unless the user explicitly requests them.
+
+\`\`\`tsx
+import { Slideshow, Slide } from "@dust/slideshow/v2";
+
+export default function Deck() {
+  return (
+    <Slideshow>
+      <Slide className="bg-slate-50">
+        <h1 className="text-6xl font-bold text-slate-900 mb-4">Q4 Revenue Analysis</h1>
+        <p className="text-xl text-slate-500">Annual review & key insights</p>
+      </Slide>
+      <Slide className="bg-white">
+        <h2 className="text-4xl font-semibold mb-8">Key Metrics</h2>
+        <div className="grid grid-cols-3 gap-8">
+          <div className="text-center">
+            <p className="text-5xl font-bold text-blue-600">+25%</p>
+            <p className="text-lg text-slate-500 mt-2">YoY Growth</p>
+          </div>
+          <div className="text-center">
+            <p className="text-5xl font-bold text-green-600">92%</p>
+            <p className="text-lg text-slate-500 mt-2">Retention</p>
+          </div>
+          <div className="text-center">
+            <p className="text-5xl font-bold text-purple-600">1.2k</p>
+            <p className="text-lg text-slate-500 mt-2">New Customers</p>
+          </div>
+        </div>
+      </Slide>
+      <Slide className="bg-slate-50">
+        <h2 className="text-4xl font-semibold mb-6">Next Steps</h2>
+        <ul className="space-y-4 text-xl text-slate-700">
+          <li>Expand into EU markets</li>
+          <li>Launch premium tier</li>
+          <li>Revamp onboarding flow</li>
+        </ul>
+      </Slide>
+    </Slideshow>
+  );
+}
+\`\`\`
+
+${INTERACTIVE_CONTENT_USE_FILE_EXAMPLES_V2}
+
+${INTERACTIVE_CONTENT_FRAME_IMPORT_EXAMPLE_V2}
+
+Examples:
+
+${INTERACTIVE_CONTENT_CHART_EXAMPLES_V2}
+`;
+
+function buildInteractiveContentInstructions({
+  afterAuthoringProse,
+  authoringProse,
+}: {
+  afterAuthoringProse: string;
+  authoringProse: string;
+}): string {
+  return `${INTERACTIVE_CONTENT_TOOLS_PROSE_BEFORE_AUTHORING}\n${authoringProse}\n${afterAuthoringProse}`;
+}
+
+export const INTERACTIVE_CONTENT_INSTRUCTIONS =
+  buildInteractiveContentInstructions({
+    afterAuthoringProse: INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING,
+    authoringProse: INTERACTIVE_CONTENT_AUTHORING_PROSE_DEFAULT,
+  });
+
+export const INTERACTIVE_CONTENT_INSTRUCTIONS_V2 =
+  buildInteractiveContentInstructions({
+    afterAuthoringProse: INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING_V2,
+    authoringProse: INTERACTIVE_CONTENT_AUTHORING_PROSE_V2,
+  });

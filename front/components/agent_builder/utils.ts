@@ -1,5 +1,5 @@
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
-import type { AssistantTemplateListType } from "@app/pages/api/templates";
+import type { AssistantTemplateListType } from "@app/lib/resources/template_resource";
 import type { TemplateTagCodeType } from "@app/types/assistant/templates";
 import { useController } from "react-hook-form";
 

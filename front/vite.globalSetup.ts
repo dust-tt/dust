@@ -44,6 +44,8 @@ export default async function setup() {
     DUST_DEVELOPERS_SECRETS_SECRET: "test-developer-secret",
     REGION: "us-central1",
     DUST_MCP_SERVER_CREDENTIALS_SECRET: "test-secret",
+    WORKOS_CLIENT_ID: "test-workos-client-id",
+    WORKOS_AUTHKIT_DOMAIN: "https://test.authkit.app",
     OAUTH_API: process.env.OAUTH_API ?? "http://fake-oauth-api",
     CORE_API: "http://fake-core-api",
     CONNECTORS_API: "http://fake-connectors-api",
@@ -52,6 +54,8 @@ export default async function setup() {
 
     // Variables that modify the behavior of certain tests
     UPDATE_MCP_METADATA_SNAPSHOT: process.env.UPDATE_MCP_METADATA_SNAPSHOT,
+    UPDATE_INTERNAL_MCP_AVAILABILITY_SNAPSHOT:
+      process.env.UPDATE_INTERNAL_MCP_AVAILABILITY_SNAPSHOT,
   };
 
   // Execute the db migration script

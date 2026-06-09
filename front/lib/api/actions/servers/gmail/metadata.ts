@@ -28,22 +28,60 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_draft: {
-    description: `Create a new email draft in Gmail.
+    description: `Create a new email draft in Gmail, or a reply draft to an existing message.
 - The draft will be saved in the user's Gmail account and can be reviewed and sent later.
-- The user can review and send the draft later
-- The draft will include proper email headers and formatting`,
+- The draft will include proper email headers and formatting.`,
     schema: {
-      to: z.array(z.string()).describe("The email addresses of the recipients"),
-      cc: z.array(z.string()).optional().describe("The email addresses to CC"),
+      to: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "The email addresses of the recipients (optional if replyToMessageId is set, acts as override)."
+        ),
+      cc: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "The CC email addresses (optional, acts as override if replyToMessageId is set)."
+        ),
       bcc: z
         .array(z.string())
         .optional()
-        .describe("The email addresses to BCC"),
-      subject: z.string().describe("The subject line of the email"),
+        .describe(
+          "The BCC email addresses (optional, acts as override if replyToMessageId is set)."
+        ),
+      from: z
+        .string()
+        .email()
+        .optional()
+        .describe(
+          "Optional. The email address to send from. Must be configured as a send-as alias in the user's Gmail settings (e.g. a shared Google Group address like team@company.com). If omitted, Gmail will use the authenticated user's primary address."
+        ),
+      subject: z
+        .string()
+        .optional()
+        .describe(
+          "The subject line of the email (required if replyToMessageId is not set, must be omitted if replyToMessageId is set)."
+        ),
       contentType: z
         .enum(["text/plain", "text/html"])
-        .describe("The content type of the email (text/plain or text/html)."),
+        .optional()
+        .describe(
+          "The content type of the email body, use text/plain for plain text or text/html for HTML (required if replyToMessageId is not set, must be omitted if replyToMessageId is set (forced to text/html))."
+        ),
       body: z.string().describe("The body of the email"),
+      replyToMessageId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional. The ID of the message to reply to. If provided, the draft will be created as a reply in the existing thread, with proper threading headers and the original message quoted."
+        ),
+      attachmentFilePath: z
+        .string()
+        .optional()
+        .describe(
+          "Optional. Scoped path of the file to attach to the email (e.g. `conversation-<id>/report.pdf` or `pod-<id>/data.csv`)."
+        ),
     },
     stake: "medium",
     displayLabels: {
@@ -134,39 +172,6 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
       done: "Get Gmail attachment",
     },
   },
-  create_reply_draft: {
-    description: `Create a reply draft to an existing email thread in Gmail.
-- The draft will be saved in the user's Gmail account and can be reviewed and sent later.
-- The reply will be properly formatted with the original message quoted.
-- The draft will include proper email headers and threading information.`,
-    schema: {
-      messageId: z.string().describe("The ID of the message to reply to"),
-      body: z.string().describe("The body of the reply email"),
-      contentType: z
-        .enum(["text/plain", "text/html"])
-        .optional()
-        .describe(
-          "The content type of the email (text/plain or text/html). Defaults to text/plain."
-        ),
-      to: z
-        .array(z.string())
-        .optional()
-        .describe("Override the To recipients for the reply."),
-      cc: z
-        .array(z.string())
-        .optional()
-        .describe("Override the CC recipients for the reply."),
-      bcc: z
-        .array(z.string())
-        .optional()
-        .describe("Override the BCC recipients for the reply."),
-    },
-    stake: "medium",
-    displayLabels: {
-      running: "Creating Gmail reply draft",
-      done: "Create Gmail reply draft",
-    },
-  },
   get_labels: {
     description:
       "Retrieve all Gmail labels, including system labels and user-created labels.",
@@ -201,13 +206,22 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     schema: {
       to: z
         .array(z.string())
-        .min(1)
-        .describe("The email addresses of the recipients"),
-      cc: z.array(z.string()).optional().describe("The email addresses to CC"),
+        .optional()
+        .describe(
+          "The email addresses of the recipients (optional if replyToMessageId is set, acts as override)."
+        ),
+      cc: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "The CC email addresses (optional, acts as override if replyToMessageId is set)."
+        ),
       bcc: z
         .array(z.string())
         .optional()
-        .describe("The email addresses to BCC"),
+        .describe(
+          "The BCC email addresses (optional, acts as override if replyToMessageId is set)."
+        ),
       from: z
         .string()
         .email()
@@ -215,16 +229,51 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Optional. The email address to send from. Must be configured as a send-as alias in the user's Gmail settings (e.g. a shared Google Group address like team@company.com). If omitted, Gmail will use the authenticated user's primary address."
         ),
-      subject: z.string().describe("The subject line of the email"),
+      subject: z
+        .string()
+        .optional()
+        .describe(
+          "The subject line of the email (required if replyToMessageId is not set, must be omitted if replyToMessageId is set)."
+        ),
       contentType: z
         .enum(["text/plain", "text/html"])
-        .describe("The content type of the email (text/plain or text/html)."),
+        .optional()
+        .describe(
+          "The content type of the email body, use text/plain for plain text or text/html for HTML (required if replyToMessageId is not set, must be omitted if replyToMessageId is set (forced to text/html))."
+        ),
       body: z.string().describe("The body of the email"),
+      replyToMessageId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional. The ID of the message to reply to. If provided, the email will be sent as a reply in the existing thread, with proper threading headers and the original message quoted."
+        ),
+      attachmentFilePath: z
+        .string()
+        .optional()
+        .describe(
+          "Optional. Scoped path of the file to attach to the email (e.g. `conversation-<id>/report.pdf` or `pod-<id>/data.csv`)."
+        ),
     },
     stake: "high",
     displayLabels: {
       running: "Sending Gmail email",
       done: "Send Gmail email",
+    },
+  },
+  get_thread: {
+    description: "Get all messages in a Gmail thread/conversation.",
+    schema: {
+      threadId: z
+        .string()
+        .describe(
+          "The ID of the thread to retrieve. Can be found in the threadId field of any message."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Getting Gmail thread",
+      done: "Get Gmail thread",
     },
   },
 });

@@ -1,5 +1,6 @@
 import { useArchiveSkill } from "@app/lib/swr/skill_configurations";
-import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutInstructionsAndToolsWithRelationsType } from "@app/types/assistant/skill_configuration";
+import { removeNulls } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -14,7 +15,7 @@ import {
 import { useState } from "react";
 
 interface DeleteSkillDialogProps {
-  skill: SkillWithRelationsType;
+  skill: SkillWithoutInstructionsAndToolsWithRelationsType;
   isOpen: boolean;
   onClose: () => void;
   owner: LightWorkspaceType;
@@ -28,6 +29,16 @@ export function ArchiveSkillDialog({
 }: DeleteSkillDialogProps) {
   const [isArchiving, setIsArchiving] = useState(false);
   const doArchive = useArchiveSkill({ owner, skill: skill });
+  const agentsUsageCount = skill.relations.usage.agents.length;
+  const skillsUsageCount = skill.relations.usage.skills.length;
+  const usageLabels = removeNulls([
+    agentsUsageCount > 0
+      ? `${agentsUsageCount} agent${pluralize(agentsUsageCount)}`
+      : null,
+    skillsUsageCount > 0
+      ? `${skillsUsageCount} skill${pluralize(skillsUsageCount)}`
+      : null,
+  ]);
 
   return (
     <Dialog
@@ -45,9 +56,9 @@ export function ArchiveSkillDialog({
             <div>
               This will archive the skill{" "}
               <span className="font-bold">{skill?.name}</span>{" "}
-              {skill.relations.usage.count === 0
+              {usageLabels.length === 0
                 ? "for everyone."
-                : `used by ${skill.relations.usage.count} agent${pluralize(skill.relations.usage.count)}.`}
+                : `used by ${usageLabels.join(" and ")}.`}
             </div>
           </DialogDescription>
         </DialogHeader>

@@ -191,9 +191,6 @@ ConversationParticipantModel.init(
         unique: true,
       },
       {
-        fields: ["workspaceId", "conversationId"],
-      },
-      {
         fields: ["workspaceId", "userId", "action"],
       },
       {
@@ -242,9 +239,6 @@ UserConversationReadsModel.init(
       {
         fields: ["workspaceId", "userId", "conversationId"],
         unique: true,
-      },
-      {
-        fields: ["workspaceId", "conversationId"],
       },
       {
         fields: ["conversationId"],
@@ -457,6 +451,7 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare modelInteractionDurationMs: number | null;
   declare completedAt: Date | null;
   declare prunedContext: boolean | null;
+  declare costCredits: number | null;
 }
 
 AgentMessageModel.init(
@@ -541,6 +536,11 @@ AgentMessageModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: true,
       defaultValue: false,
+    },
+    costCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
@@ -644,7 +644,6 @@ AgentMessageFeedbackModel.init(
         name: "agent_message_feedbacks_conversation_id",
         concurrently: true,
       },
-      { fields: ["workspaceId", "conversationId"], concurrently: true },
     ],
   }
 );

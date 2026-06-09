@@ -68,21 +68,13 @@ enum CapabilityService {
             workspaceId: workspaceId, conversationId: conversationId
         )
         let body = ConversationToolActionRequest(action: action, mcpServerViewId: mcpServerViewId)
-        try await APIClient.authenticatedSend(endpoint, method: "POST", body: body, tokenProvider: tokenProvider, snakeCase: true)
-    }
-
-    static func updateSkill(
-        action: ConversationAction,
-        workspaceId: String,
-        conversationId: String,
-        skillId: String,
-        tokenProvider: TokenProvider
-    ) async throws {
-        let endpoint = AppConfig.Endpoints.conversationSkills(
-            workspaceId: workspaceId, conversationId: conversationId
+        try await APIClient.authenticatedSend(
+            endpoint,
+            method: "POST",
+            body: body,
+            tokenProvider: tokenProvider,
+            snakeCase: true
         )
-        let body = ConversationSkillActionRequest(action: action, skillId: skillId)
-        try await APIClient.authenticatedSend(endpoint, method: "POST", body: body, tokenProvider: tokenProvider)
     }
 }
 
@@ -91,9 +83,4 @@ enum CapabilityService {
 private struct ConversationToolActionRequest: Encodable {
     let action: ConversationAction
     let mcpServerViewId: String
-}
-
-private struct ConversationSkillActionRequest: Encodable {
-    let action: ConversationAction
-    let skillId: String
 }

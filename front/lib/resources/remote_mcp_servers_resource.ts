@@ -32,6 +32,7 @@ import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { redactString } from "@app/types/shared/utils/string_utils";
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
@@ -469,12 +470,27 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       );
     }
 
-    const resource: URL | undefined = await selectResourceURL(
-      serverUrl,
-      provider,
-      // we default to null, so swap it for undefined if not set
-      resourceMetadata ?? undefined
-    );
+    let resource: URL | undefined;
+    try {
+      resource = await selectResourceURL(
+        serverUrl,
+        provider,
+        // we default to null, so swap it for undefined if not set
+        resourceMetadata ?? undefined
+      );
+    } catch (e) {
+      const error = normalizeError(e);
+      logger.info(
+        { error, serverUrl },
+        "Failed to select OAuth protected resource URL"
+      );
+      return new Err(
+        new DustError(
+          "internal_error",
+          `Failed to discover OAuth metadata for ${serverUrl}: ${error.message}`
+        )
+      );
+    }
 
     let metadata: AuthorizationServerMetadata | undefined;
     try {

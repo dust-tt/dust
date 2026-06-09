@@ -6,12 +6,13 @@ import { SpaceChips } from "@app/components/shared/SpaceChips";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type {
   AttachedKnowledgeFormData,
+  ReferencedSkillFormData,
   SkillBuilderFormData,
 } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
-import { Button, ContentMessage, PlanetIcon } from "@dust-tt/sparkle";
+import { Button, ContentMessage, Planet } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
@@ -30,6 +31,9 @@ export function SkillBuilderRequestedSpacesSection({
       name: "attachedKnowledge",
     }
   );
+  const referencedSkills = useWatch<SkillBuilderFormData, "referencedSkills">({
+    name: "referencedSkills",
+  });
 
   const {
     field: additionalSpacesField,
@@ -61,9 +65,7 @@ export function SkillBuilderRequestedSpacesSection({
   });
 
   const allSpaces = useMemo(() => {
-    return [...spaces, ...missingSpaces].filter(
-      (space) => space.kind !== "project"
-    );
+    return [...spaces, ...missingSpaces];
   }, [spaces, missingSpaces]);
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -77,17 +79,28 @@ export function SkillBuilderRequestedSpacesSection({
     return new Set(attachedKnowledge?.map((k) => k.spaceId) ?? []);
   }, [attachedKnowledge]);
 
+  const spaceIdsFromNestedSkills = useMemo(() => {
+    return new Set(
+      (referencedSkills ?? []).flatMap((skill) => skill.requestedSpaceIds)
+    );
+  }, [referencedSkills]);
+
   const spaceIdsUsedBySkill = useMemo(() => {
     const actionRequestedSpaceIds = Object.keys(actionsBySpaceId).filter(
       (spaceId) => actionsBySpaceId[spaceId]?.length > 0
     );
 
-    return new Set([...actionRequestedSpaceIds, ...spaceIdsFromKnowledge]);
-  }, [actionsBySpaceId, spaceIdsFromKnowledge]);
+    return new Set([
+      ...actionRequestedSpaceIds,
+      ...spaceIdsFromKnowledge,
+      ...spaceIdsFromNestedSkills,
+    ]);
+  }, [actionsBySpaceId, spaceIdsFromKnowledge, spaceIdsFromNestedSkills]);
 
   const areSpaceRequirementsReady =
     !isMCPServerViewsLoading &&
-    (!initialRequestedSpaceIds || attachedKnowledge !== undefined);
+    (!initialRequestedSpaceIds ||
+      (attachedKnowledge !== undefined && referencedSkills !== undefined));
 
   const knowledgeBySpaceId = useMemo(() => {
     const knowledgeBySpace: Record<string, AttachedKnowledgeFormData[]> = {};
@@ -100,6 +113,18 @@ export function SkillBuilderRequestedSpacesSection({
 
     return knowledgeBySpace;
   }, [attachedKnowledge]);
+
+  const skillsBySpaceId = useMemo(() => {
+    const skillsBySpace: Record<string, ReferencedSkillFormData[]> = {};
+
+    for (const skill of referencedSkills ?? []) {
+      for (const spaceId of skill.requestedSpaceIds) {
+        skillsBySpace[spaceId] = (skillsBySpace[spaceId] ?? []).concat(skill);
+      }
+    }
+
+    return skillsBySpace;
+  }, [referencedSkills]);
 
   const initialAdditionalSpaces = useMemo(() => {
     if (!areSpaceRequirementsReady || !initialRequestedSpaceIds?.length) {
@@ -158,6 +183,11 @@ export function SkillBuilderRequestedSpacesSection({
         space,
         actions: actionsBySpaceId[space.sId] ?? [],
         knowledge: knowledgeBySpaceId[space.sId] ?? [],
+        skills: (skillsBySpaceId[space.sId] ?? []).map((skill) => ({
+          sId: skill.id,
+          name: skill.name,
+          icon: skill.icon,
+        })),
       });
       return;
     }
@@ -203,15 +233,17 @@ export function SkillBuilderRequestedSpacesSection({
       <div className="flex items-start justify-between">
         <div>
           <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
-            Spaces
+            Spaces and Pods
           </h3>
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Set what knowledge and tools the skill can access.
+            Choose which spaces and Pods this skill can access. The skill can
+            use their knowledge and capabilities, and only users with access to
+            all selected spaces and Pods can use it.
           </p>
         </div>
         <Button
           label="Manage"
-          icon={PlanetIcon}
+          icon={Planet}
           variant="outline"
           disabled={!areSpaceRequirementsReady}
           onClick={handleOpenSheet}
@@ -220,8 +252,9 @@ export function SkillBuilderRequestedSpacesSection({
       {nonGlobalSpacesWithRestrictions.length > 0 && (
         <div className="mb-4 w-full">
           <ContentMessage variant="golden" size="lg">
-            Based on your selection of spaces, knowledge, and tools, this skill
-            can only be used by users with access to:&nbsp;
+            This skill can access knowledge and capabilities from these spaces
+            and Pods, and only users with access to all of them can use
+            it:&nbsp;
             <strong>
               {nonGlobalSpacesWithRestrictions
                 .map((space) => space.name)
@@ -236,7 +269,6 @@ export function SkillBuilderRequestedSpacesSection({
       <SpaceSelectionSheet
         alreadyRequestedSpaceIds={spaceIdsUsedBySkill}
         entityName="skill"
-        includeProjects={false}
         missingSpaceIds={missingSpaceIds}
         onClose={handleCloseSheet}
         onSave={handleSaveSpaces}

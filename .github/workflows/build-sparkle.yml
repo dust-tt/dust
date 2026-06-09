@@ -22,3 +22,5 @@ jobs:
           node-version: '24.14.0'
       - name: Build
         run: npm -w sparkle run build
+      - name: Build Storybook
+        run: npm -w sparkle run build-storybook

@@ -5,15 +5,10 @@ import { AVATAR_SIZES } from "@sparkle/components/Avatar";
 import {
   ActionBeerIcon,
   ActionFlagIcon,
-  ActionImageIcon,
-  ActionMagnifyingGlassIcon,
-  ActionScanIcon,
   ActionShirtIcon,
-  ActionTableIcon,
   ActionUmbrellaIcon,
 } from "@sparkle/icons/actions";
 import SvgHome from "@sparkle/icons/actions/Home";
-import { SidekickIcon, StarStrokeIcon } from "@sparkle/icons/app";
 
 import {
   Avatar,
@@ -21,11 +16,13 @@ import {
   NotionLogo,
   SlackLogo,
 } from "../index_with_tw_base";
+import { Image01, Sidekick } from "@sparkle/icons/v2-stroke";
+import { Scan, SearchMd, Star01, Table } from "@sparkle/icons/v2-stroke";
 
 const ICONS = {
   none: null,
   ActionBeerIcon: ActionBeerIcon,
-  StarStrokeIcon: StarStrokeIcon,
+  Star01: Star01,
 } as const;
 
 const meta = {
@@ -201,7 +198,7 @@ export const AvatarExample: Story = {
         <Avatar size="lg" icon={ActionFlagIcon} />
         <Avatar size="lg" icon={SlackLogo} hexBgColor="#421D51" />
         <Avatar size="xl" icon={ActionShirtIcon} />
-        <Avatar size="2xl" icon={StarStrokeIcon} />
+        <Avatar size="2xl" icon={Star01} />
       </div>
       <div className="heading-2xl">Tools example</div>
       <div>Remote MCP Servers</div>
@@ -211,31 +208,31 @@ export const AvatarExample: Story = {
         <Avatar size="md" icon={ActionUmbrellaIcon} />
         <Avatar size="md" icon={ActionFlagIcon} />
         <Avatar size="md" icon={ActionShirtIcon} />
-        <Avatar size="md" icon={StarStrokeIcon} />
+        <Avatar size="md" icon={Star01} />
       </div>
       <div>Internal Tools Servers</div>
       <div className="s-flex s-gap-4">
         <Avatar
           size="md"
-          icon={ActionTableIcon}
+          icon={Table}
           backgroundColor="s-bg-gray-700"
           iconColor="s-text-gray-50"
         />
         <Avatar
           size="md"
-          icon={ActionMagnifyingGlassIcon}
+          icon={SearchMd}
           backgroundColor="s-bg-gray-700"
           iconColor="s-text-gray-50"
         />
         <Avatar
           size="md"
-          icon={ActionImageIcon}
+          icon={Image01}
           backgroundColor="s-bg-gray-700"
           iconColor="s-text-gray-50"
         />
         <Avatar
           size="md"
-          icon={ActionScanIcon}
+          icon={Scan}
           backgroundColor="s-bg-gray-700"
           iconColor="s-text-gray-50"
         />
@@ -244,7 +241,7 @@ export const AvatarExample: Story = {
       <div className="s-flex s-gap-4">
         <Avatar
           size="md"
-          icon={SidekickIcon}
+          icon={Sidekick}
           backgroundColor="s-bg-warning-200"
           iconColor="s-text-warning-800"
         />

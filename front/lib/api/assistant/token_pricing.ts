@@ -148,6 +148,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     cache_creation_input_tokens: 6.25,
     cache_read_input_tokens: 0.5,
   },
+  "claude-opus-4-8": {
+    input: 5.0,
+    output: 25.0,
+    cache_creation_input_tokens: 6.25,
+    cache_read_input_tokens: 0.5,
+  },
   "claude-sonnet-4-6": {
     input: 3.0,
     output: 15.0,
@@ -204,6 +210,11 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 2.5,
     output: 7.5,
   },
+  // No cache pricing published by Mistral for medium 3.5 as of 2026-05-19.
+  "mistral-medium-3-5": {
+    input: 1.5,
+    output: 7.5,
+  },
   "mistral-small-latest": {
     input: 0.9,
     output: 2.8,
@@ -229,6 +240,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 3.0,
     cache_read_input_tokens: 0.05,
   },
+  // Flat pricing as of 2026-05-19 launch (no <=/>200k tiered SKU).
+  "gemini-3.5-flash": {
+    input: 1.5,
+    output: 9.0,
+    cache_read_input_tokens: 0.15,
+  },
   "gemini-2.5-flash": {
     input: 0.15,
     output: 0.6,
@@ -237,6 +254,12 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 0.075,
     output: 0.3,
   },
+  "gemini-3.1-flash-lite": {
+    input: 0.25,
+    output: 1.5,
+    cache_read_input_tokens: 0.025,
+  },
+  // Deprecated: superseded by gemini-3.1-flash-lite. Kept until existing agents are migrated.
   "gemini-3.1-flash-lite-preview": {
     input: 0.25,
     output: 1.5,
@@ -266,23 +289,9 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 0.27,
     output: 1.1,
   },
-  "deepseek-ai/DeepSeek-R1": {
-    input: 0.55,
-    output: 2.19,
-  },
   "deepseek-chat": {
     input: 0.14,
     output: 0.28,
-  },
-  "deepseek-reasoner": {
-    input: 0.55,
-    output: 2.19,
-  },
-  // https://app.fireworks.ai/models/fireworks/deepseek-r1-0528
-  "accounts/fireworks/models/deepseek-r1-0528": {
-    input: 1.35,
-    output: 5.4,
-    cache_read_input_tokens: 0.68,
   },
   // https://fireworks.ai/models/fireworks/deepseek-v3p2
   "accounts/fireworks/models/deepseek-v3p2": {

@@ -9,6 +9,10 @@ import {
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import {
+  InputBarContext,
+  type PendingConversationMessage,
+} from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import {
   createPlaceholderAgentMessage,
   createPlaceholderUserMessage,
 } from "@app/components/assistant/conversation/lib";
@@ -23,6 +27,7 @@ import {
   convertLightMessageTypeToVirtuosoMessages,
   getPredicateForRankAndBranch,
   isAgentMessageWithStreaming,
+  isAtInitialStreamState,
   isCompactionMessage,
   isConversationForkNotice,
   isUserMessage,
@@ -60,7 +65,6 @@ import {
   type ConversationForkedChildType,
   type ConversationListItemType,
   isLightAgentMessageType,
-  isTerminalAgentMessageStatus,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
@@ -82,9 +86,10 @@ import {
   VirtuosoMessageListLicense,
 } from "@virtuoso.dev/message-list";
 import debounce from "lodash/debounce";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, {
+import type { MutableRefObject } from "react";
+import {
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -106,6 +111,7 @@ interface ConversationViewerProps {
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
   setLimitReachedCode?: (code: WorkspaceLimit) => void;
+  limitReachedCode?: WorkspaceLimit | null;
   owner: WorkspaceType;
   user: UserType;
   clientSideMCPServerIds?: string[];
@@ -120,6 +126,35 @@ function customSmoothScroll() {
     animationFrameCount: 30,
     easing: easeOutQuint,
   };
+}
+
+// This function is used to update the auto scroll enabled state based on the scroll location.
+// Goal is to detect when the user is scrolling manually to pause the auto scroll.
+function updateAutoScrollEnabledFromLocation({
+  isAutoScrollEnabledRef,
+  location,
+  prevLocationRef,
+}: {
+  isAutoScrollEnabledRef: MutableRefObject<boolean>;
+  location: Pick<ListScrollLocation, "scrollHeight" | "bottomOffset">;
+  prevLocationRef: MutableRefObject<
+    Pick<ListScrollLocation, "scrollHeight" | "bottomOffset">
+  >;
+}) {
+  const { scrollHeight, bottomOffset } = location;
+  const prev = prevLocationRef.current;
+
+  // Scroll up with out change in content.
+  if (scrollHeight === prev.scrollHeight && bottomOffset > prev.bottomOffset) {
+    isAutoScrollEnabledRef.current = false;
+  }
+
+  // Scroll to bottom with no change in content.
+  if (scrollHeight === prev.scrollHeight && bottomOffset == 0) {
+    isAutoScrollEnabledRef.current = true;
+  }
+
+  prevLocationRef.current = { scrollHeight, bottomOffset };
 }
 
 export function getBranchedInsertIndex(
@@ -236,6 +271,51 @@ function addConversationForkNotices(
 
   return mergedMessages;
 }
+
+interface FirstMessagePlaceholders {
+  userMessage: VirtuosoMessage;
+  agentMessages: VirtuosoMessage[];
+}
+
+// Builds the optimistic placeholders for the very first message of a
+// freshly-created conversation, so the list can mount non-empty.
+function buildFirstMessagePlaceholders(
+  pending: PendingConversationMessage,
+  user: UserType
+): FirstMessagePlaceholders {
+  const { input, mentions, contentFragments } = pending;
+
+  // Empty conversation: ranks start at 0 (no existing messages).
+  let rank =
+    contentFragments.contentNodes.length + contentFragments.uploaded.length;
+
+  const userMessage = createPlaceholderUserMessage({
+    input,
+    mentions,
+    user,
+    branchId: null,
+    rank,
+    contentFragments,
+  });
+
+  const agentMessages: VirtuosoMessage[] = [];
+  for (const mention of mentions) {
+    if (isRichAgentMention(mention)) {
+      rank += 1;
+      agentMessages.push(
+        createPlaceholderAgentMessage({
+          userMessage,
+          mention,
+          rank,
+          branchId: null,
+        })
+      );
+    }
+  }
+
+  return { userMessage, agentMessages };
+}
+
 export const ConversationViewer = ({
   owner,
   user,
@@ -244,14 +324,21 @@ export const ConversationViewer = ({
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
   setLimitReachedCode,
+  limitReachedCode,
   clientSideMCPServerIds,
 }: ConversationViewerProps) => {
   const virtuosoMessageListRef =
     useRef<
       VirtuosoMessageListMethods<VirtuosoMessage, VirtuosoMessageListContext>
     >(null);
+  const isAutoScrollEnabledRef = useRef(true);
+  const prevScrollLocationRef = useRef({
+    scrollHeight: 0,
+    bottomOffset: 0,
+  });
   const sendNotification = useSendNotification();
   const { incrementPendingSteeringCount } = useGenerationContext();
+  const { peekPendingFirstMessage } = useContext(InputBarContext);
 
   const { mutateConversationAttachments } = useConversationAttachments({
     conversationId,
@@ -344,9 +431,39 @@ export const ConversationViewer = ({
   });
   const submitInFlightRef = useRef(false);
 
+  // Pending first message for a freshly-created conversation (deferred-send flow).
+  // Read from InputBarContext (survives Strict Mode remounts) and seeded as the
+  // initial (non-empty) list data so the message shows instantly. The actual send
+  // is handled by useCreateConversationWithMessage; this is display-only.
+  const pendingFirstMessageRef = useRef<
+    PendingConversationMessage | null | undefined
+  >(undefined);
+  if (pendingFirstMessageRef.current === undefined) {
+    pendingFirstMessageRef.current = peekPendingFirstMessage(conversationId);
+  }
+  const firstMessagePlaceholdersRef = useRef<FirstMessagePlaceholders | null>(
+    null
+  );
+  if (
+    pendingFirstMessageRef.current &&
+    firstMessagePlaceholdersRef.current === null
+  ) {
+    firstMessagePlaceholdersRef.current = buildFirstMessagePlaceholders(
+      pendingFirstMessageRef.current,
+      user
+    );
+  }
+
   const [initialListData, setInitialListData] = useState<
     VirtuosoMessage[] | undefined
-  >(undefined);
+  >(() =>
+    firstMessagePlaceholdersRef.current
+      ? [
+          firstMessagePlaceholdersRef.current.userMessage,
+          ...firstMessagePlaceholdersRef.current.agentMessages,
+        ]
+      : undefined
+  );
 
   const [messageIdToScrollTo, setMessageIdToScrollTo] = useState<number | null>(
     null
@@ -704,21 +821,30 @@ export const ConversationViewer = ({
                 virtuosoMessageListRef.current.data.find(predicate);
 
               if (exists) {
-                // On replay (e.g. after navigating away and coming back), the
-                // existing message may already reflect the final state from
-                // the SWR snapshot. The replayed event always carries the
-                // initial "created" payload, so replacing would downgrade the
-                // status (re-activating shouldStream and the message-events
-                // stream) and wipe inlineActivitySteps. Skip the replace only
-                // when the existing message is the same logical message (same
-                // sId) and already terminal. A retry creates a new sId at the
-                // same rank/branch, so it must still go through the replace.
-                const isReplayOfTerminalMessage =
+                // Guard against conversation SSE replays overwriting a message
+                // that the message-level SSE has already partially or fully
+                // streamed.
+                //
+                // Two independent SSE streams feed each message:
+                //   1. Conversation stream — carries agent_message_new (structural events)
+                //   2. Message stream      — carries generation_tokens, tool_* (content events)
+                //
+                // When the conversation stream drops and reconnects, the server
+                // replays agent_message_new with the message's original "created"
+                // payload: null content, agentState = "thinking", empty steps.
+                // Replacing the Virtuoso entry with that stale payload would wipe
+                // whatever the message stream already delivered, so we skip the
+                // replace when the existing entry is the same logical message
+                // (same sId) and has already progressed past its initial state.
+                //
+                // Retries carry a new sId at the same rank/branch, so they
+                // always fall through to the replace path.
+                const shouldSkipReplace =
                   isAgentMessageWithStreaming(exists) &&
                   exists.sId === agentMessage.sId &&
-                  isTerminalAgentMessageStatus(exists.status);
+                  !isAtInitialStreamState(exists);
 
-                if (!isReplayOfTerminalMessage) {
+                if (!shouldSkipReplace) {
                   virtuosoMessageListRef.current.data.map((m) =>
                     predicate(m) ? agentMessage : m
                   );
@@ -1098,7 +1224,9 @@ export const ConversationViewer = ({
           if (result.error.type === "plan_limit_reached_error") {
             setLimitReachedCode?.("message_limit");
           } else if (result.error.type === "credits_exhausted_error") {
-            setLimitReachedCode?.("credits_exhausted");
+            setLimitReachedCode?.("pool_credits_exhausted");
+          } else if (result.error.type === "user_cap_reached_error") {
+            setLimitReachedCode?.("user_credits_exhausted");
           } else {
             sendNotification({
               title: result.error.title,
@@ -1107,7 +1235,15 @@ export const ConversationViewer = ({
             });
           }
 
-          // If the API errors, the original data will be rolled back by SWR automatically.
+          // Remove optimistic placeholders — SWR rolls back the server cache but
+          // Virtuoso's in-memory list must be cleaned up manually.
+          const failedPlaceholderSids = [
+            placeholderUserMsg.sId,
+            ...placeholderAgentMessages.map((m) => m.sId),
+          ];
+          virtuosoMessageListRef.current.data.findAndDelete((m) =>
+            failedPlaceholderSids.includes(m.sId)
+          );
           logger.error({ err: result.error }, "Failed to post message");
           return new Err({
             code: "internal_error",
@@ -1189,6 +1325,12 @@ export const ConversationViewer = ({
 
   const onScroll = useCallback(
     (location: ListScrollLocation) => {
+      updateAutoScrollEnabledFromLocation({
+        isAutoScrollEnabledRef,
+        location,
+        prevLocationRef: prevScrollLocationRef,
+      });
+
       const isLoadingData =
         isLoadingInitialData || isMessagesLoading || isValidating;
 
@@ -1276,6 +1418,8 @@ export const ConversationViewer = ({
       projectSpaceName: spaceInfo?.name,
       branchIdToApprove: branchIdToApprove ?? undefined,
       setBranchIdToApprove,
+      isAutoScrollEnabledRef,
+      isNoSeat: limitReachedCode === "no_seat",
     };
   }, [
     user,
@@ -1293,6 +1437,7 @@ export const ConversationViewer = ({
     spaceInfo?.archivedAt,
     spaceInfo?.name,
     branchIdToApprove,
+    limitReachedCode,
   ]);
 
   return (
@@ -1327,6 +1472,8 @@ export const ConversationViewer = ({
           className={cn(
             "dd-privacy-mask",
             "@container/conversation",
+            "touch-pan-y",
+            "overscroll-contain",
             "h-full w-full px-5",
             !agentBuilderContext && "md:px-8"
           )}

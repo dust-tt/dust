@@ -2,16 +2,23 @@ import { z } from "zod";
 
 import type { LightWorkspaceType } from "../user";
 
+export interface DependsOnCondition {
+  field: string;
+  // The value the dependency field must hold for this field to render. For a
+  // boolean field this is the toggle state; for an enum field it's the value
+  // that must be selected (matched by membership against the selected values).
+  value: boolean | string;
+}
+
 interface BaseArgDefinition {
   description?: string;
   label: string;
   redact?: boolean;
   async?: boolean;
   asyncDescription?: boolean;
-  dependsOn?: {
-    field: string;
-    value: boolean;
-  };
+  // A single condition, or an array of conditions ANDed together — the field
+  // renders only when every condition matches.
+  dependsOn?: DependsOnCondition | DependsOnCondition[];
 }
 
 type AtLeastTwoElements<T> = readonly [T, T, ...T[]];

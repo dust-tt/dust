@@ -24,8 +24,10 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { launchIndexConversationEsWorkflow } from "@app/temporal/es_indexation/client";
+import * as wakeUpTemporalClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -39,6 +41,7 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 import { destroyConversation } from "../api/assistant/conversation/destroy";
@@ -210,6 +213,7 @@ describe("ConversationResource", () => {
           sourceMessageId: sourceMessage.sId,
           branchedAt: branchedAt.getTime(),
           user: auth.getNonNullableUser().toJSON(),
+          fileCopyStatus: "pending",
         },
       });
 
@@ -242,6 +246,7 @@ describe("ConversationResource", () => {
             sourceMessageId: sourceMessage.sId,
             branchedAt: branchedAt.getTime(),
             user: auth.getNonNullableUser().toJSON(),
+            fileCopyStatus: "pending",
           },
         });
       }
@@ -341,6 +346,7 @@ describe("ConversationResource", () => {
           sourceMessageId: sourceMessage.sId,
           branchedAt: branchedAt.getTime(),
           user: adminAuth.getNonNullableUser().toJSON(),
+          fileCopyStatus: "pending",
         },
       });
     });
@@ -2497,6 +2503,66 @@ describe("listPrivateConversationsForUser", () => {
     expect(userConversations).toHaveLength(1);
     expect(userConversations[0].sId).toBe(conversationIds[0]);
     expect(userConversations[0]).toBeInstanceOf(ConversationResource);
+  });
+
+  it("hydrates nextWakeupAt in the DB paginated list", async () => {
+    vi.spyOn(
+      wakeUpTemporalClient,
+      "launchOrScheduleWakeUpTemporalWorkflow"
+    ).mockResolvedValue(new Ok(undefined));
+
+    const agentConfiguration =
+      await AgentConfigurationFactory.createTestAgent(adminAuth);
+    const conversation = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agentConfiguration.sId,
+      messagesCreatedAt: [new Date()],
+    });
+    await ConversationResource.upsertParticipation(userAuth, {
+      conversation,
+      action: "posted",
+      user: userAuth.getNonNullableUser().toJSON(),
+    });
+
+    const scheduledFireAt = new Date("2030-01-01T12:00:00.000Z");
+    const cancelledFireAt = new Date("2029-01-01T12:00:00.000Z");
+
+    const cancelledWakeUpResult = await WakeUpResource.makeNew(
+      adminAuth,
+      {
+        scheduleType: "one_shot",
+        fireAt: cancelledFireAt,
+        cronExpression: null,
+        cronTimezone: null,
+        reason: "Cancelled wake-up",
+      },
+      conversation,
+      agentConfiguration
+    );
+    assert(cancelledWakeUpResult.isOk(), "Failed to create cancelled wake-up.");
+    await cancelledWakeUpResult.value.markCancelled(adminAuth);
+
+    const scheduledWakeUpResult = await WakeUpResource.makeNew(
+      adminAuth,
+      {
+        scheduleType: "one_shot",
+        fireAt: scheduledFireAt,
+        cronExpression: null,
+        cronTimezone: null,
+        reason: "Scheduled wake-up",
+      },
+      conversation,
+      agentConfiguration
+    );
+    assert(scheduledWakeUpResult.isOk(), "Failed to create scheduled wake-up.");
+
+    const result =
+      await ConversationResource.listPrivateConversationsForUserPaginatedFromDB(
+        userAuth,
+        { limit: 100 }
+      );
+    const item = result.conversations.find((c) => c.sId === conversation.sId);
+
+    expect(item?.nextWakeupAt).toBe(scheduledFireAt.getTime());
   });
 
   it("should return conversations with populated participation data", async () => {

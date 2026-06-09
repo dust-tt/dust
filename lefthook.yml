@@ -13,7 +13,7 @@
 #   LEFTHOOK_EXCLUDE=ggshield-scan,package-lock-check git commit -m "message"
 #
 # Skip only linting/type-checking (front and connectors):
-#   LEFTHOOK_EXCLUDE=front-lint-test-filenames,front-lint-swagger-annotations,front-typecheck,front-circular,front-docs-check,biome,connectors-typecheck git commit -m "message"
+#   LEFTHOOK_EXCLUDE=front-lint-test-filenames,front-typecheck,front-circular,front-api-docs-check,biome,connectors-typecheck git commit -m "message"
 #
 # Skip only a project:
 #   LEFTHOOK_EXCLUDE=front git commit -m "message"
@@ -31,7 +31,7 @@ output:
   #  - execution      # Print any execution logs
   #  - execution_out  # Print execution output
   #  - execution_info # Print `EXECUTE > ...` logging
-  - skips          # Print "skip" (i.e. no files matched)
+  #  - skips          # Print "skip" (i.e. no files matched)
 
 pre-commit:
   # Run tasks in parallel for better performance
@@ -72,12 +72,6 @@ pre-commit:
       root: front/
       run: npm run lint:test-filenames
 
-    front-lint-swagger-annotations:
-      tags: front
-      glob: "front/pages/api/v1/**/*.ts"
-      root: front/
-      run: npm run lint:swagger-annotations
-
     front-lint-audit-log-schemas:
       tags: front
       glob: "front/admin/audit_log_schemas/**/*.json"
@@ -90,10 +84,17 @@ pre-commit:
       root: front/
       run: npm run tsgo
 
-    front-docs-check:
-      tags: front
-      glob: "front/pages/api/v1/**/*"
-      root: front/
+    # Front-api directory checks
+    front-api-lint-swagger-annotations:
+      tags: front-api
+      glob: "front-api/routes/**/*.ts"
+      root: front-api/
+      run: npm run lint:swagger-annotations
+
+    front-api-docs-check:
+      tags: front-api
+      glob: "front-api/routes/**/*.ts"
+      root: front-api/
       run: npm run docs:check
 
     # Connectors directory checks
@@ -127,8 +128,88 @@ pre-commit:
       run: cargo fmt -- {staged_files}
       stage_fixed: true
 
+    # Mobile (Swift) format — auto-formats staged files and re-stages them
+    mobile-swiftformat:
+      tags: mobile
+      glob: "*.swift"
+      root: x/adrsimon/mobile/
+      run: swiftformat {staged_files}
+      stage_fixed: true
+
+    # Mobile (Swift) lint — fails on lint errors (warnings do not block)
+    mobile-swiftlint:
+      tags: mobile
+      glob: "*.swift"
+      root: x/adrsimon/mobile/
+      run: swiftlint lint --quiet {staged_files}
+
+    # Guard against adding files to frozen migrations/db/ directories
+    no-legacy-db-migration-connectors:
+      glob: "connectors/migrations/db/*.sql"
+      run: |
+        echo ""
+        echo "ERROR: connectors/migrations/db/ is frozen. Do not add files here."
+        echo ""
+        echo "Use the new phased migration system instead:"
+        echo "  npm run -w connectors migration:generate:pre-deploy <description>"
+        echo "  npm run -w connectors migration:generate:post-deploy <description>"
+        echo ""
+        echo "See: https://app.notion.com/p/dust-tt/Runbook-Deploy-Run-migrations-5669e328475d489ba16298a77f2aa45c?source=copy_link#36728599d94180898358cf59a8725740"
+        exit 1
+      priority: 1
+
     # Biome checks (all JS/TS files in monorepo)
     biome:
       glob: "*.{js,jsx,ts,tsx,css,scss}"
       run: npm run format:lefthook -- {staged_files}
+      stage_fixed: true
+
+    # Optional: lossless image optimization (skip with e.g. LEFTHOOK_EXCLUDE=optimize-png,optimize-jpeg,optimize-svg,optimize-gif)
+    # Install: brew install oxipng jpegoptim gifsicle svgo
+    optimize-png:
+      glob: "*.{png,apng}"
+      run: |
+        if command -v oxipng >/dev/null 2>&1; then
+          oxipng -o 4 --strip safe {staged_files}
+        else
+          echo "Warning: oxipng is not installed. Skipping PNG optimization."
+          echo "Install with: brew install oxipng"
+          exit 0
+        fi
+      stage_fixed: true
+
+    optimize-jpeg:
+      glob: "*.{jpg,jpeg}"
+      run: |
+        if command -v jpegoptim >/dev/null 2>&1; then
+          jpegoptim --strip-all --all-progressive {staged_files}
+        else
+          echo "Warning: jpegoptim is not installed. Skipping JPEG optimization."
+          echo "Install with: brew install jpegoptim"
+          exit 0
+        fi
+      stage_fixed: true
+
+    optimize-svg:
+      glob: "*.svg"
+      run: |
+        if command -v svgo >/dev/null 2>&1; then
+          svgo --multipass {staged_files}
+        else
+          echo "Warning: svgo is not installed. Skipping SVG optimization."
+          echo "Install with: brew install svgo"
+          exit 0
+        fi
+      stage_fixed: true
+
+    optimize-gif:
+      glob: "*.gif"
+      run: |
+        if command -v gifsicle >/dev/null 2>&1; then
+          gifsicle -b -O3 {staged_files}
+        else
+          echo "Warning: gifsicle is not installed. Skipping GIF optimization."
+          echo "Install with: brew install gifsicle"
+          exit 0
+        fi
       stage_fixed: true

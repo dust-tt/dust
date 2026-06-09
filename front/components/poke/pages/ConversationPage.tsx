@@ -1,5 +1,4 @@
 import { PluginList } from "@app/components/poke/plugins/PluginList";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
@@ -7,7 +6,9 @@ import { classNames } from "@app/lib/utils";
 import { usePokeConversation } from "@app/poke/swr";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
 import { usePokeConversationConfig } from "@app/poke/swr/conversation_config";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { useCopyReinforcementTestCase } from "@app/poke/swr/reinforcement_test_case";
+import { usePokeSpaceDetails } from "@app/poke/swr/space_details";
 import type {
   AgentMessageStatus,
   CompactionMessageStatus,
@@ -21,11 +22,11 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  CheckIcon,
-  ChevronDownIcon,
+  Check,
+  ChevronDown,
   Chip,
-  ClipboardCheckIcon,
-  ClipboardIcon,
+  Clipboard,
+  ClipboardCheck,
   CodeBlock,
   ConversationMessage,
   DropdownMenu,
@@ -38,7 +39,7 @@ import {
   Page,
   Spinner,
   useCopyToClipboard,
-  XMarkIcon,
+  XClose,
 } from "@dust-tt/sparkle";
 import { CodeBracketIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
@@ -95,7 +96,7 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
               onClick={() => setIsExpanded(true)}
               className="flex cursor-pointer items-center gap-1 text-sm italic text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
             >
-              <ChevronDownIcon className="h-4 w-4" />
+              <ChevronDown className="h-4 w-4" />
               <span>Hidden System Message (click to expand)</span>
             </button>
           ) : (
@@ -105,7 +106,7 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
                   onClick={() => setIsExpanded(false)}
                   className="mb-2 flex cursor-pointer items-center gap-1 text-sm italic text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
                 >
-                  <XMarkIcon className="h-4 w-4" />
+                  <XClose className="h-4 w-4" />
                   <span>Hide System Message</span>
                 </button>
               )}
@@ -269,10 +270,10 @@ const AgentMessageView = ({
                     size="xs"
                     icon={
                       isExpanded
-                        ? ChevronDownIcon
+                        ? ChevronDown
                         : a.mcpIO?.isError
-                          ? XMarkIcon
-                          : CheckIcon
+                          ? XClose
+                          : Check
                     }
                     className="mr-2"
                     onClick={() => toggleAction(i)}
@@ -397,7 +398,6 @@ function getDatadogSandboxLogsUrl(conversationId: string): string {
 
 export function ConversationPage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - Conversation`);
 
   const conversationId = useRequiredPathParam("cId");
   const {
@@ -414,6 +414,21 @@ export function ConversationPage() {
     workspaceId: owner.sId,
     conversationId,
   });
+
+  usePokePageMetadata({
+    name: conversation?.title,
+    subtitle: owner.name,
+    sId: conversationId,
+  });
+
+  const { data: spaceDetails } = usePokeSpaceDetails({
+    owner,
+    spaceId: conversation?.spaceId ?? "",
+    disabled: !conversation?.spaceId,
+  });
+  const pod =
+    spaceDetails?.space.kind === "project" ? spaceDetails.space : null;
+
   const [useMarkdown, setUseMarkdown] = useState(false);
   const { data: agents } = usePokeAgentConfigurations({
     owner,
@@ -535,6 +550,18 @@ export function ConversationPage() {
           >
             {owner.name}
           </LinkWrapper>
+          {pod && (
+            <>
+              {" "}
+              in pod{" "}
+              <LinkWrapper
+                href={`/poke/${owner.sId}/spaces/${pod.sId}`}
+                className="text-highlight-500"
+              >
+                {pod.name}
+              </LinkWrapper>
+            </>
+          )}
         </h3>
         <Page.Vertical align="stretch">
           <PluginList
@@ -680,7 +707,7 @@ export function ConversationPage() {
                       label={isCopiedJSON ? "Copied" : "Copy JSON"}
                       variant="outline"
                       size="xs"
-                      icon={isCopiedJSON ? ClipboardCheckIcon : ClipboardIcon}
+                      icon={isCopiedJSON ? ClipboardCheck : Clipboard}
                       onClick={() =>
                         copyJSON(
                           JSON.stringify(
@@ -695,7 +722,7 @@ export function ConversationPage() {
                       label="Close"
                       variant="outline"
                       size="xs"
-                      icon={XMarkIcon}
+                      icon={XClose}
                       onClick={() => {
                         setRenderError(null);
                         setRenderResult(null);

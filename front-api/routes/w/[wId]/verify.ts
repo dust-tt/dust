@@ -1,25 +1,21 @@
-import { apiError } from "@front-api/middleware/utils";
-import type { Context } from "hono";
-import { Hono } from "hono";
-import type { Country } from "react-phone-number-input";
-import { isSupportedCountry } from "react-phone-number-input";
-
 import { resolveCountryCode } from "@app/lib/geo/country-detection";
+import type { GetVerifyResponseBody } from "@app/lib/plans/trial/index";
 import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial/index";
 import { getClientIp } from "@app/lib/utils/request";
 import logger from "@app/logger/logger";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import type { Context } from "hono";
+import type { Country } from "react-phone-number-input";
+import { isSupportedCountry } from "react-phone-number-input";
 
 const DEFAULT_COUNTRY: Country = "US";
 
-export type GetVerifyResponseBody = {
-  isEligibleForTrial: boolean;
-  initialCountryCode: Country;
-};
-
-async function detectCountryFromIP(c: Context): Promise<Country> {
+async function detectCountryFromIP(ctx: Context): Promise<Country> {
   try {
     const headers: Record<string, string> = {};
-    c.req.raw.headers.forEach((value, key) => {
+    ctx.req.raw.headers.forEach((value, key) => {
       headers[key] = value;
     });
     const ip = getClientIp({ headers });
@@ -38,29 +34,23 @@ async function detectCountryFromIP(c: Context): Promise<Country> {
 }
 
 // Mounted at /api/w/:wId/verify.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+/** @ignoreswagger */
+app.get(
+  "/",
+  ensureIsAdmin(),
+  async (ctx): HandlerResult<GetVerifyResponseBody> => {
+    const auth = ctx.get("auth");
 
-  if (!auth.isAdmin()) {
-    return apiError(c, {
-      status_code: 403,
-      api_error: {
-        type: "workspace_auth_error",
-        message: "Only admins can access this endpoint.",
-      },
+    const isEligibleForTrial = await isWorkspaceEligibleForTrial(auth);
+    const initialCountryCode = await detectCountryFromIP(ctx);
+
+    return ctx.json({
+      isEligibleForTrial,
+      initialCountryCode,
     });
   }
-
-  const isEligibleForTrial = await isWorkspaceEligibleForTrial(auth);
-  const initialCountryCode = await detectCountryFromIP(c);
-
-  const body: GetVerifyResponseBody = {
-    isEligibleForTrial,
-    initialCountryCode,
-  };
-  return c.json(body);
-});
+);
 
 export default app;

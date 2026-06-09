@@ -13,7 +13,6 @@ import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  BoltIcon,
   Button,
   CardGrid,
   Collapsible,
@@ -22,6 +21,7 @@ import {
   EmptyCTA,
   Hoverable,
   Spinner,
+  Zap,
 } from "@dust-tt/sparkle";
 import uniqBy from "lodash/uniqBy";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -229,7 +229,7 @@ export function AgentBuilderTriggersBlock({
           <Button
             label="Add triggers"
             type="button"
-            icon={BoltIcon}
+            icon={Zap}
             onClick={handleAddTrigger}
           />
         )
@@ -246,7 +246,7 @@ export function AgentBuilderTriggersBlock({
               <Button
                 label="Add triggers"
                 type="button"
-                icon={BoltIcon}
+                icon={Zap}
                 onClick={handleAddTrigger}
               />
             }

@@ -308,6 +308,7 @@ The following skills are available for use with the skill_management__enable_ski
       richMentions: [],
       completionDurationMs: null,
       reactions: [],
+      costCredits: null,
     } satisfies AgentMessageType;
 
     const steps = await getSteps(authenticator, {
@@ -317,7 +318,6 @@ The following skills are available for use with the skill_management__enable_ski
       workspaceId: "workspace_123",
       conversationId: "conv_1",
       onMissingAction: "skip",
-      renderSkillsAsUserMessages: true,
     });
 
     expect(steps).toHaveLength(1);
@@ -414,7 +414,7 @@ describe("vision image rendering in getSteps", () => {
               uri: "dust://files/conversation/photo.png",
               mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.MODEL_VISION_IMAGE,
               text: "" as const,
-              gcsPath,
+              filePath: gcsPath,
               imageContentType: "image/png",
             };
             return [{ type: "resource" as const, resource }];
@@ -438,6 +438,7 @@ describe("vision image rendering in getSteps", () => {
       richMentions: [],
       completionDurationMs: null,
       reactions: [],
+      costCredits: null,
     };
 
     return { auth: authenticator, message, model, workspaceId, conversationId };

@@ -1,26 +1,31 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { APIErrorType } from "@app/types/error";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  dsId: z.string(),
+});
 
 // Mounted at /api/w/:wId/data_sources/:dsId/files.
-const app = new Hono();
+const app = workspaceApp();
 
-app.post("/", async (c) => {
-  const auth = c.get("auth");
-  const dsId = c.req.param("dsId") ?? "";
+/** @ignoreswagger */
+app.post("/", validate("param", ParamsSchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const { dsId } = ctx.req.valid("param");
 
-  const body = await c.req.json().catch(() => ({}));
+  const body = await ctx.req.json().catch(() => ({}));
   const { fileId, upsertArgs } = body;
 
   // Get file and make sure that it is within the same workspace.
   const file = await FileResource.fetchById(auth, fileId);
   if (!file) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "file_not_found",
@@ -35,7 +40,7 @@ app.post("/", async (c) => {
       file.useCase
     )
   ) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -47,7 +52,7 @@ app.post("/", async (c) => {
 
   const dataSource = await DataSourceResource.fetchById(auth, dsId);
   if (!dataSource) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "data_source_not_found",
@@ -57,7 +62,7 @@ app.post("/", async (c) => {
   }
 
   if (!dataSource.canWrite(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "data_source_auth_error",
@@ -101,7 +106,7 @@ app.post("/", async (c) => {
         break;
     }
 
-    return c.json(
+    return ctx.json(
       {
         error: {
           type,
@@ -112,7 +117,7 @@ app.post("/", async (c) => {
     );
   }
 
-  return c.json({ file: file.toPublicJSON(auth) });
+  return ctx.json({ file: file.toPublicJSON(auth) });
 });
 
 export default app;

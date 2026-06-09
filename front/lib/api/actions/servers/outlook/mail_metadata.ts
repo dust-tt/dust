@@ -9,7 +9,7 @@ export const OUTLOOK_TOOL_NAME = "outlook" as const;
 export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
   get_messages: {
     description:
-      "Get messages from Outlook inbox. Supports search queries to filter messages and filter by folder name.",
+      "Get message metadata and previews from Outlook. Returns subject, sender, date, and a short bodyPreview snippet (~255 chars) — NOT the full body. If the task requires reading the actual content of any email, you MUST call get_message_body for each message after this call.",
     schema: {
       search: z
         .string()
@@ -21,7 +21,7 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe(
-          'The name of the folder to get messages from. Examples: "Inbox", "Sent Items", "Drafts". The tool will search for a folder matching this name. Leave empty to get messages from all folders.'
+          'The folder to get messages from. Use a plain name for top-level folders (e.g. "Inbox", "Sent Items") or a "/" separated path to target a subfolder (e.g. "Inbox/Projects", "Inbox/test"). The lookup is case-insensitive. Leave empty to get messages from all folders. Use the list_folders tool to discover the available folder hierarchy.'
         ),
       top: z
         .number()
@@ -50,6 +50,31 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Fetching messages",
       done: "Fetch messages",
+    },
+  },
+  list_folders: {
+    description:
+      "List mail folders in an Outlook mailbox. Returns the immediate children of the specified folder path, or top-level folders when no path is given. Use this to discover the full folder hierarchy before calling get_messages with a subfolder path.",
+    schema: {
+      folderPath: z
+        .array(z.string())
+        .optional()
+        .describe(
+          'Path of the folder whose children to list, as an ordered list of folder names from the top level (e.g. ["Inbox"] to list subfolders of Inbox, ["Inbox", "Projects"] to go one level deeper). Omit or pass an empty array to list top-level folders.'
+        ),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox to access (e.g. 'support@company.com'). " +
+            "Leave empty to access your own mailbox. " +
+            "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing folders",
+      done: "List folders",
     },
   },
   get_attachments: {
@@ -225,11 +250,88 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Whether to save the sent email to the Sent Items folder. Defaults to true."
         ),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox to send from (e.g. 'support@company.com'). " +
+            "Leave empty to send from your own mailbox. " +
+            "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
+        ),
     },
     stake: "high",
     displayLabels: {
       running: "Sending email",
       done: "Send email",
+    },
+  },
+  move_messages: {
+    description:
+      'Move one or more messages to a destination folder in Outlook. The destination is given as a path of folder names from the top level (e.g. ["Archive", "2026", "Receipts"]). Any folders along the path that do not exist are created automatically. Prefer passing all messages destined for the same folder in a single call rather than calling this tool in parallel. Note: Microsoft Graph assigns a new message ID after a move.',
+    schema: {
+      messageIds: z
+        .array(z.string())
+        .min(1)
+        .describe("The IDs of the messages to move"),
+      destinationFolderPath: z
+        .array(z.string())
+        .min(1)
+        .describe(
+          'Path to the destination folder as a list of folder names from the top level (e.g. ["Archive", "2026", "Receipts"]). Pass a single-element array for a top-level folder. Any missing folders along the path are created automatically.'
+        ),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox to access (e.g. 'support@company.com'). " +
+            "Leave empty to access your own mailbox. " +
+            "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
+        ),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Moving messages",
+      done: "Move messages",
+    },
+  },
+  get_message_body: {
+    description:
+      "Get the full body of a single Outlook message. ALWAYS call this after get_messages whenever the task requires reading email content — get_messages only returns a short preview. For large emails, use startChar/endChar to read in chunks and repeat until moreAvailable is false.",
+    schema: {
+      messageId: z
+        .string()
+        .describe("The ID of the message (from get_messages)"),
+      preferredContentType: z
+        .enum(["text", "html"])
+        .optional()
+        .describe(
+          "Preferred body content type. Use 'text' (default) to get plain text — Microsoft Graph will convert HTML emails automatically. Use 'html' to get the raw HTML."
+        ),
+      startChar: z
+        .number()
+        .optional()
+        .describe(
+          "Character offset to start reading from (0-indexed). Defaults to 0."
+        ),
+      endChar: z
+        .number()
+        .optional()
+        .describe(
+          "Character offset to stop reading at (exclusive). Defaults to the full body, capped at 50 000 characters per call."
+        ),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox to access (e.g. 'support@company.com'). " +
+            "Leave empty to access your own mailbox. " +
+            "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Fetching message body",
+      done: "Fetch message body",
     },
   },
   get_contacts: {
@@ -342,7 +444,7 @@ export const OUTLOOK_MAIL_SERVER = {
       provider: "microsoft_tools",
       supported_use_cases: ["personal_actions", "platform_actions"],
       scope:
-        "Mail.ReadWrite.Shared Mail.Send Contacts.ReadWrite Contacts.ReadWrite.Shared User.Read SensitivityLabel.Read offline_access",
+        "Mail.ReadWrite.Shared Mail.Send Mail.Send.Shared Contacts.ReadWrite Contacts.ReadWrite.Shared User.Read SensitivityLabel.Read offline_access",
       availableScopes: [
         {
           value: "Mail.ReadWrite",
@@ -361,6 +463,14 @@ export const OUTLOOK_MAIL_SERVER = {
           value: "Mail.Send",
           label: "Send mail",
           description: "Send emails on behalf of the signed-in user.",
+          required: true,
+          impliedBy: "Mail.Send.Shared",
+        },
+        {
+          value: "Mail.Send.Shared",
+          label: "Send mail from shared mailboxes",
+          description: "Send emails from shared and delegated mailboxes.",
+          fallbackScope: "Mail.Send",
         },
         {
           value: "Contacts.ReadWrite",

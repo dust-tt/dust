@@ -1,5 +1,5 @@
+import type { PokeGetDataRetentionResponseBody } from "@app/lib/api/poke/data_retention";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PokeGetDataRetentionResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_retention";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { Fetcher } from "swr";
 

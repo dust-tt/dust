@@ -3,6 +3,7 @@ import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import type { AppRouter } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
 import type { SubscriptionType } from "@app/types/plan";
+import { isCreditPricedPlan } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -22,7 +23,10 @@ export type WorkspaceLimit =
   | "cant_invite_free_plan"
   | "cant_invite_payment_failure"
   | "message_limit"
-  | "credits_exhausted";
+  | "credits_exhausted"
+  | "pool_credits_exhausted"
+  | "user_credits_exhausted"
+  | "no_seat";
 
 function getLimitPromptForCode(
   router: AppRouter,
@@ -173,25 +177,65 @@ function getLimitPromptForCode(
     }
 
     case "credits_exhausted":
+    case "pool_credits_exhausted": {
+      const creditsManagementHref = isCreditPricedPlan(subscription.plan)
+        ? `/w/${owner.sId}/usage`
+        : `/w/${owner.sId}/developers/credits-usage`;
       return {
-        title: "Out of credits",
+        title: "Workspace out of credits",
         validateLabel: isAdmin ? "Manage credits" : "Ok",
         onValidate: isAdmin
           ? () => {
-              void router.push(`/w/${owner.sId}/developers/credits-usage`);
+              void router.push(creditsManagementHref);
             }
           : undefined,
         children: (
           <>
             <Page.P>
-              You have run out of credits.
               {isAdmin
-                ? "Please purchase more credits to continue using Dust."
-                : "Please contact your administrator to purchase more credits."}
+                ? "Your workspace has run out of credits. Please purchase more credits to continue using Dust."
+                : "Your workspace has run out of credits. Please contact your administrator to purchase more credits."}
             </Page.P>
           </>
         ),
       };
+    }
+
+    case "no_seat": {
+      return {
+        title: "No seat assigned",
+        validateLabel: "Ok",
+        children: (
+          <>
+            <Page.P>
+              You don&apos;t have a seat assigned in this workspace. Please
+              contact your administrator to assign you one.
+            </Page.P>
+          </>
+        ),
+      };
+    }
+
+    case "user_credits_exhausted": {
+      return {
+        title: "Usage cap reached",
+        validateLabel: isAdmin ? "Go to Usage" : "Ok",
+        onValidate: isAdmin
+          ? () => {
+              void router.push(`/w/${owner.sId}/usage`);
+            }
+          : undefined,
+        children: (
+          <>
+            <Page.P>
+              {isAdmin
+                ? "You have reached your personal usage cap. You can adjust user caps from the usage page."
+                : "You have reached your personal usage cap. Please contact your administrator to increase it."}
+            </Page.P>
+          </>
+        ),
+      };
+    }
 
     default:
       assertNeverAndIgnore(code);

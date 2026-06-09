@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
@@ -7,8 +5,9 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WebhookSourceFactory } from "@app/tests/utils/WebhookSourceFactory";
 import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
-
 import { honoApp } from "@front-api/app";
+import { ENSURE_IS_ADMIN_ERROR_MESSAGE } from "@front-api/middlewares/ensure_role";
+import { describe, expect, it } from "vitest";
 
 function listViews(workspace: { sId: string }, spaceId: string) {
   return honoApp.request(
@@ -127,7 +126,7 @@ describe("POST /api/w/:wId/spaces/:spaceId/webhook_source_views", () => {
     });
   });
 
-  it("returns 404 when user cannot access space", async () => {
+  it("returns 403 when user is not admin", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       role: "builder",
     });
@@ -140,7 +139,7 @@ describe("POST /api/w/:wId/spaces/:spaceId/webhook_source_views", () => {
       webhookSourceId: webhookSource.sId,
     });
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(403);
   });
 
   it("returns 400 for invalid request body", async () => {
@@ -251,7 +250,8 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/webhook_source_views/:webhookSource
 
     expect(response.status).toBe(403);
     const body = await response.json();
-    expect(body.error.type).toBe("webhook_source_view_auth_error");
+    expect(body.error.type).toBe("workspace_auth_error");
+    expect(body.error.message).toBe(ENSURE_IS_ADMIN_ERROR_MESSAGE);
   });
 
   it("returns 404 when webhook source view doesn't exist", async () => {

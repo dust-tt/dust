@@ -5,7 +5,6 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   AgentConfigurationScope,
-  AgentReasoningEffort,
   AgentReinforcementMode,
   AgentStatus,
   GlobalAgentStatus,
@@ -13,6 +12,7 @@ import type {
 import type {
   ModelIdType,
   ModelProviderIdType,
+  ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
@@ -38,7 +38,7 @@ export class AgentConfigurationModel extends WorkspaceAwareModel<AgentConfigurat
   declare providerId: ModelProviderIdType;
   declare modelId: ModelIdType;
   declare temperature: number;
-  declare reasoningEffort: AgentReasoningEffort | null;
+  declare reasoningEffort: ReasoningEffort | null;
   declare responseFormat?: string;
 
   declare pictureUrl: string;

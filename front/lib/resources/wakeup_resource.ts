@@ -13,6 +13,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import {
   cancelWakeUpTemporalWorkflow,
   launchOrScheduleWakeUpTemporalWorkflow,
@@ -26,7 +27,7 @@ import {
   type WakeUpStatus,
   type WakeUpType,
 } from "@app/types/assistant/wakeups";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -199,7 +200,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
           cronTimezone: string;
           reason: string;
         },
-    conversation: ConversationResource,
+    conversation: ConversationWithoutContentType,
     agentConfiguration: AgentConfigurationType,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<WakeUpResource, Error>> {
@@ -342,7 +343,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
   static async canUserInteract(
     auth: Authenticator,
     conversation: ConversationWithoutContentType
-  ): Promise<Result<void, APIErrorWithStatusCode>> {
+  ): Promise<Result<void, APIErrorWithContentfulStatusCode>> {
     const activeWakeUps = await this.listByConversation(auth, conversation, {
       status: ACTIVE_WAKE_UP_STATUSES,
     });
@@ -579,26 +580,32 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     if (this.status !== "scheduled") {
       return null;
     }
-    switch (this.scheduleType) {
-      case "one_shot":
-        return this.fireAt ?? null;
-      case "cron": {
-        if (!this.cronExpression || !this.cronTimezone) {
-          return null;
-        }
-        try {
-          return CronExpressionParser.parse(this.cronExpression, {
-            tz: this.cronTimezone,
-          })
-            .next()
-            .toDate();
-        } catch {
-          return null;
-        }
+
+    const scheduleConfig: WakeUpScheduleConfig | null = (() => {
+      switch (this.scheduleType) {
+        case "one_shot":
+          return this.fireAt
+            ? { type: "one_shot", fireAt: this.fireAt.getTime() }
+            : null;
+        case "cron":
+          return this.cronExpression && this.cronTimezone
+            ? {
+                type: "cron",
+                cron: this.cronExpression,
+                timezone: this.cronTimezone,
+              }
+            : null;
+        default:
+          return assertNever(this.scheduleType);
       }
-      default:
-        return assertNever(this.scheduleType);
+    })();
+
+    if (!scheduleConfig) {
+      return null;
     }
+
+    const nextFireAt = getNextWakeUpFireAtFromScheduleConfig(scheduleConfig);
+    return nextFireAt === null ? null : new Date(nextFireAt);
   }
 
   async markFired(

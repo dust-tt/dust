@@ -1,3 +1,4 @@
+import { upsertCreditPricedPlans } from "@app/lib/plans/credit_priced_plans";
 import { upsertFreePlans } from "@app/lib/plans/free_plans";
 import { upsertProPlans } from "@app/lib/plans/pro_plans";
 
@@ -12,6 +13,7 @@ async function main() {
 
   await upsertFreePlans(planCode);
   await upsertProPlans(planCode);
+  await upsertCreditPricedPlans(planCode);
 }
 
 main()

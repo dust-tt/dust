@@ -7,7 +7,7 @@ import {
   CollapsibleTrigger,
   Input,
   Label,
-  XMarkIcon,
+  XClose,
 } from "@dust-tt/sparkle";
 
 type Header = { key: string; value: string };
@@ -75,7 +75,7 @@ export function AdvancedSettingsSection({
                   </div>
                   <Button
                     variant="outline"
-                    icon={XMarkIcon}
+                    icon={XClose}
                     onClick={() => removeHeader(index)}
                   />
                 </div>

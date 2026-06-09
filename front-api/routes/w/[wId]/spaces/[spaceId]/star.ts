@@ -1,31 +1,27 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
+import type { PostUserPodStarResponseBody } from "@app/lib/api/projects/preferences";
+import { PostUserPodStarBodySchema } from "@app/lib/api/projects/preferences";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
-
-import { spaceResource } from "@front-api/middleware/space_resource";
-import { validate } from "@front-api/middleware/validator";
-
-const PostUserProjectStarBodySchema = z.object({
-  starred: z.boolean(),
-});
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withSpace } from "@front-api/middlewares/with_space";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/star.
-const app = new Hono();
+const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  validate("json", PostUserProjectStarBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
-    const { starred } = c.req.valid("json");
+  withSpace({ requireCanReadOrAdministrate: true }),
+  validate("json", PostUserPodStarBodySchema),
+  async (ctx): HandlerResult<PostUserPodStarResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const { starred } = ctx.req.valid("json");
 
     if (!space.isProject()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -39,7 +35,7 @@ app.post(
       isStarred: starred,
     });
 
-    return c.json(pref.toJSON());
+    return ctx.json(pref.toJSON());
   }
 );
 

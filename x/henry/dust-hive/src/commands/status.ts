@@ -2,18 +2,20 @@ import { withEnvironment } from "../lib/commands";
 import { getLogPath } from "../lib/paths";
 import type { PortAllocation } from "../lib/ports";
 import { isServiceRunning } from "../lib/process";
-import { checkServiceHealth, getHealthChecks } from "../lib/registry";
+import { SERVICE_REGISTRY, checkServiceHealth, getHealthChecks } from "../lib/registry";
 import { Ok } from "../lib/result";
 import { ALL_SERVICES } from "../lib/services";
 import { getStateInfo, isDockerRunning } from "../lib/state";
 
-async function printServiceStatus(name: string): Promise<void> {
+async function printServiceStatus(name: string, ports: PortAllocation): Promise<void> {
   console.log("Services:");
 
   for (const service of ALL_SERVICES) {
     const running = await isServiceRunning(name, service);
     const status = running ? "\x1b[32m●\x1b[0m" : "\x1b[90m○\x1b[0m";
-    console.log(`  ${status} ${service}`);
+    const { portKey } = SERVICE_REGISTRY[service];
+    const portLabel = portKey ? `\x1b[90m:${ports[portKey]}\x1b[0m` : "";
+    console.log(`  ${status} ${service.padEnd(14)} ${portLabel}`);
     if (running) {
       console.log(`    Log: ${getLogPath(name, service)}`);
     }
@@ -50,7 +52,7 @@ export const statusCommand = withEnvironment("status", async (env) => {
     console.log();
   }
 
-  await printServiceStatus(env.name);
+  await printServiceStatus(env.name, env.ports);
 
   console.log();
 

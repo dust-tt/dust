@@ -13,6 +13,9 @@ vi.mock("redis", () => ({
 vi.mock("@app/logger/logger", () => ({
   default: {
     info: vi.fn(),
+    debug: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
   },
 }));
 

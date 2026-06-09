@@ -18,6 +18,7 @@ import { describe, expect, it } from "vitest";
 
 const metadata: LLMClientMetadata = {
   clientId: "anthropic" as const,
+  inferenceProvider: "anthropic",
   modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
 };
 
@@ -84,6 +85,7 @@ describe("streamLLMEvents", () => {
             cache_creation_input_tokens: 0,
             cache_read_input_tokens: 0,
             output_tokens: 0,
+            output_tokens_details: null,
             service_tier: "standard",
             server_tool_use: null,
             inference_geo: null,
@@ -96,6 +98,7 @@ describe("streamLLMEvents", () => {
           },
           container: null,
           context_management: null,
+          diagnostics: null,
         },
       },
       {

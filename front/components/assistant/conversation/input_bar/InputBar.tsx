@@ -7,6 +7,11 @@ import InputBarContainer, {
   INPUT_BAR_ACTIONS,
 } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import {
+  INPUT_BAR_COMPACT_ENTER_ANIMATION_CLASSES,
+  INPUT_BAR_COMPACT_MORPH_TRANSITION_CLASSES,
+  INPUT_BAR_COMPACT_PILL_CLASSES,
+} from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { PlanCard } from "@app/components/assistant/conversation/plan_mode/PlanCard";
 import {
@@ -65,6 +70,11 @@ interface InputBarProps {
   disableInput?: boolean;
   submitBlockMessage?: string | null;
   placeholder?: string;
+  effectiveIsCompact?: boolean;
+  onExpandInputBar?: () => void;
+  onEditorFocusChange?: (focused: boolean) => void;
+  onOverlayOpenChange?: (open: boolean) => void;
+  onVoiceActiveChange?: (active: boolean) => void;
 }
 
 export const InputBar = React.memo(function InputBar({
@@ -84,6 +94,11 @@ export const InputBar = React.memo(function InputBar({
   disableInput = false,
   submitBlockMessage = null,
   placeholder,
+  effectiveIsCompact = false,
+  onExpandInputBar,
+  onEditorFocusChange,
+  onOverlayOpenChange,
+  onVoiceActiveChange,
 }: InputBarProps) {
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
   const [isShaking, setIsShaking] = useState(false);
@@ -386,45 +401,77 @@ export const InputBar = React.memo(function InputBar({
   }, [isSubmitting]);
 
   return (
-    <div className="flex w-full flex-col">
+    <div
+      className={classNames(
+        "flex w-full flex-col",
+        effectiveIsCompact && "min-w-0 flex-1"
+      )}
+    >
       <PlanCard
         conversationId={conversation?.sId ?? null}
         workspaceId={owner.sId}
       />
       <div
         onAnimationEnd={() => setIsShaking(false)}
+        onClick={(e) => {
+          if (!effectiveIsCompact || disableInput) {
+            return;
+          }
+          if (
+            e.target instanceof HTMLElement &&
+            e.target.closest("[data-compact-voice]")
+          ) {
+            return;
+          }
+          onExpandInputBar?.();
+        }}
         className={classNames(
           isShaking && "animate-shake",
-          "relative flex w-full flex-1 flex-col items-stretch gap-0 self-stretch sm:flex-row",
-          "rounded-2xl transition-all",
-          "bg-muted-background dark:bg-muted-background-night",
-          "border",
-          "border-border-dark dark:border-border-dark/10",
-          "sm:border-border-dark/50 sm:has-[.tiptap:focus]:border-border-dark",
-          "dark:has-[.tiptap:focus]:border-border-dark-night sm:has-[.tiptap:focus]:border-border-dark",
-          isFloating
+          "relative flex flex-col items-stretch gap-0 sm:flex-row",
+          INPUT_BAR_COMPACT_MORPH_TRANSITION_CLASSES,
+          !effectiveIsCompact && "w-full flex-1 self-stretch",
+          effectiveIsCompact
             ? classNames(
-                "has-[.tiptap:focus]:ring-1 dark:has-[.tiptap:focus]:ring-1",
-                "dark:has-[.tiptap:focus]:ring-highlight/30-night has-[.tiptap:focus]:ring-highlight/30",
-                "sm:has-[.tiptap:focus]:ring-2 dark:sm:has-[.tiptap:focus]:ring-2"
+                INPUT_BAR_COMPACT_PILL_CLASSES,
+                INPUT_BAR_COMPACT_ENTER_ANIMATION_CLASSES,
+                !disableInput && "cursor-pointer"
               )
             : classNames(
-                "has-[.tiptap:focus]:border-highlight-300",
-                "dark:has-[.tiptap:focus]:border-highlight-300-night"
-              ),
-          "duration-300"
+                "w-full rounded-2xl",
+                "bg-muted-background dark:bg-muted-background-night",
+                "border",
+                "border-border-dark dark:border-border-dark/10",
+                "sm:border-border-dark/50 sm:has-[.tiptap:focus]:border-border-dark",
+                "dark:has-[.tiptap:focus]:border-border-dark-night sm:has-[.tiptap:focus]:border-border-dark",
+                isFloating
+                  ? classNames(
+                      "has-[.tiptap:focus]:ring-1 dark:has-[.tiptap:focus]:ring-1",
+                      "dark:has-[.tiptap:focus]:ring-highlight/30-night has-[.tiptap:focus]:ring-highlight/30",
+                      "sm:has-[.tiptap:focus]:ring-2 dark:sm:has-[.tiptap:focus]:ring-2"
+                    )
+                  : classNames(
+                      "has-[.tiptap:focus]:border-highlight-300",
+                      "dark:has-[.tiptap:focus]:border-highlight-300-night"
+                    )
+              )
         )}
       >
-        <div className="relative flex w-full flex-1 flex-col">
-          <InputBarAttachments
-            owner={owner}
-            files={{ service: fileUploaderService }}
-            nodes={{
-              items: attachedNodes,
-              onRemove: handleNodesAttachmentRemove,
-            }}
-            conversationId={conversation?.sId}
-          />
+        <div
+          className={classNames(
+            "relative flex flex-col",
+            !effectiveIsCompact && "w-full flex-1"
+          )}
+        >
+          {!effectiveIsCompact && (
+            <InputBarAttachments
+              owner={owner}
+              files={{ service: fileUploaderService }}
+              nodes={{
+                items: attachedNodes,
+                onRemove: handleNodesAttachmentRemove,
+              }}
+            />
+          )}
           <InputBarContainer
             actions={actions}
             disableAutoFocus={disableAutoFocus}
@@ -457,6 +504,11 @@ export const InputBar = React.memo(function InputBar({
             submitBlockMessage={submitBlockMessage ?? agentSwitchBlockMessage}
             placeholder={placeholder}
             onShake={handleShake}
+            isCompact={effectiveIsCompact}
+            onExpandInputBar={onExpandInputBar}
+            onEditorFocusChange={onEditorFocusChange}
+            onOverlayOpenChange={onOverlayOpenChange}
+            onVoiceActiveChange={onVoiceActiveChange}
           />
         </div>
       </div>

@@ -22,16 +22,16 @@ import {
   SheetTrigger,
   TextArea,
 } from "@sparkle/components";
+
 import {
-  CloudArrowLeftRightIcon,
-  FolderIcon,
-  GlobeAltIcon,
-  MoreIcon,
-  PencilSquareIcon,
-  RocketIcon,
-  StarIcon,
-  TrashIcon,
-} from "@sparkle/icons/app";
+  DotsHorizontal,
+  Edit04,
+  Folder,
+  Globe01,
+  Rocket02,
+  Trash01,
+} from "@sparkle/icons/v2-stroke";
+import { CloudArrowLeftRight, Star01 } from "@sparkle/icons/v2-stroke";
 
 const meta = {
   title: "Layouts/Sheet",
@@ -99,7 +99,7 @@ export function ContentDemo() {
         <SheetContent size="xl">
           <SheetHeader>
             <Page.Header
-              icon={RocketIcon}
+              icon={Rocket02}
               title={<>Quick Guide for new members</>}
             />
           </SheetHeader>
@@ -118,7 +118,7 @@ export function SheetCustom() {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            icon={MoreIcon}
+            icon={DotsHorizontal}
             onClick={(event) => {
               event.currentTarget.focus();
             }}
@@ -160,10 +160,10 @@ export function SheetCustom() {
                 </SheetDescription>
               </div>
               <div className="s-flex s-gap-2">
-                <Button icon={StarIcon} variant={"outline"} />
+                <Button icon={Star01} variant={"outline"} />
                 <Separator orientation="vertical" />
-                <Button icon={PencilSquareIcon} variant={"outline"} />
-                <Button icon={TrashIcon} variant={"outline"} />
+                <Button icon={Edit04} variant={"outline"} />
+                <Button icon={Trash01} variant={"outline"} />
                 <SimpleDropdownDemo />
               </div>
             </div>
@@ -258,7 +258,7 @@ const QIG: React.FC = () => (
       <Page.Horizontal>
         <Page.Vertical sizing="grow">
           <div className="flex items-center gap-2">
-            <Icon visual={CloudArrowLeftRightIcon} />{" "}
+            <Icon visual={CloudArrowLeftRight} />{" "}
             <Page.H variant="h6">Connections</Page.H>
           </div>
           <Page.P>
@@ -269,7 +269,7 @@ const QIG: React.FC = () => (
         <Page.Vertical sizing="grow">
           <Page.Horizontal>
             <div className="flex items-center gap-2">
-              <Icon visual={FolderIcon} /> <Page.H variant="h6">Folders</Page.H>
+              <Icon visual={Folder} /> <Page.H variant="h6">Folders</Page.H>
             </div>
           </Page.Horizontal>
           <Page.P>Upload files (text, pdf, csv) directly in Dust.</Page.P>
@@ -277,8 +277,7 @@ const QIG: React.FC = () => (
         <Page.Vertical sizing="grow">
           <Page.Horizontal>
             <div className="flex items-center gap-2">
-              <Icon visual={GlobeAltIcon} />{" "}
-              <Page.H variant="h6">Websites</Page.H>
+              <Icon visual={Globe01} /> <Page.H variant="h6">Websites</Page.H>
             </div>
           </Page.Horizontal>
           <Page.P>
@@ -380,7 +379,7 @@ const QIG: React.FC = () => (
       <Page.Horizontal>
         <Page.Vertical sizing="grow">
           <div className="flex items-center gap-2">
-            <Icon visual={CloudArrowLeftRightIcon} />{" "}
+            <Icon visual={CloudArrowLeftRight} />{" "}
             <Page.H variant="h6">Connections</Page.H>
           </div>
           <Page.P>
@@ -391,7 +390,7 @@ const QIG: React.FC = () => (
         <Page.Vertical sizing="grow">
           <Page.Horizontal>
             <div className="flex items-center gap-2">
-              <Icon visual={FolderIcon} /> <Page.H variant="h6">Folders</Page.H>
+              <Icon visual={Folder} /> <Page.H variant="h6">Folders</Page.H>
             </div>
           </Page.Horizontal>
           <Page.P>Upload files (text, pdf, csv) directly in Dust.</Page.P>
@@ -399,8 +398,7 @@ const QIG: React.FC = () => (
         <Page.Vertical sizing="grow">
           <Page.Horizontal>
             <div className="flex items-center gap-2">
-              <Icon visual={GlobeAltIcon} />{" "}
-              <Page.H variant="h6">Websites</Page.H>
+              <Icon visual={Globe01} /> <Page.H variant="h6">Websites</Page.H>
             </div>
           </Page.Horizontal>
           <Page.P>
@@ -439,7 +437,7 @@ export function SheetWithThreeButtons() {
             rightEndButtonProps={{
               label: "Delete",
               variant: "warning",
-              icon: TrashIcon,
+              icon: Trash01,
             }}
           />
         </SheetContent>
@@ -457,7 +455,7 @@ export function SheetWithIconInTitle() {
         </SheetTrigger>
         <SheetContent side="left">
           <SheetHeader hideButton>
-            <SheetTitle icon={RocketIcon}>About me</SheetTitle>
+            <SheetTitle icon={Rocket02}>About me</SheetTitle>
           </SheetHeader>
           <SheetContainer>
             <div className="s-flex s-flex-col s-gap-6">

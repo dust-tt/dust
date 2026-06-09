@@ -4,9 +4,13 @@ import {
   getModelsCategorization,
 } from "@app/components/agent_builder/instructions/utils";
 import { getModelProviderLogo } from "@app/components/providers/types";
+import { RegionalFlag } from "@app/components/shared/RegionalFlag";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { getProviderDisplayName } from "@app/types/assistant/models/providers";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { RegionType } from "@app/types/region";
 import {
   DropdownMenuLabel,
   DropdownMenuPortal,
@@ -16,8 +20,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from "@dust-tt/sparkle";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React from "react";
+import type React from "react";
 import { useController } from "react-hook-form";
 
 interface ModelSelectionSubmenuProps {
@@ -28,12 +31,14 @@ interface ModelRadioItemProps {
   modelConfig: ModelConfigurationType;
   isDark: boolean;
   onModelSelection: (modelConfig: ModelConfigurationType) => void;
+  regionalComponent?: React.ReactNode | null;
 }
 
 function ModelRadioItem({
   modelConfig,
   isDark,
   onModelSelection,
+  regionalComponent,
 }: ModelRadioItemProps) {
   return (
     <DropdownMenuRadioItem
@@ -42,9 +47,15 @@ function ModelRadioItem({
       description={modelConfig.shortDescription}
       label={modelConfig.displayName}
       onClick={() => onModelSelection(modelConfig)}
+      endComponent={regionalComponent}
     />
   );
 }
+
+const SHOULD_DISPLAY_FLAG: Record<RegionType, boolean> = {
+  "europe-west1": true,
+  "us-central1": false,
+};
 
 export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
   const { isDark } = useTheme();
@@ -60,6 +71,19 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
   >({
     name: "generationSettings.reasoningEffort",
   });
+
+  const { regionInfo } = useRegionContext();
+  const { hasFeature } = useFeatureFlags();
+  const { subscription } = useAuth();
+
+  const showRegionalFlag =
+    hasFeature("use_vertex_for_supported_models") &&
+    SHOULD_DISPLAY_FLAG[regionInfo.name] &&
+    !subscription.plan.isByok;
+
+  const flag = showRegionalFlag ? (
+    <RegionalFlag region={regionInfo.name} />
+  ) : null;
 
   const { bestGeneralModels, providerGroups } = getModelsCategorization(models);
 
@@ -96,6 +120,11 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                   modelConfig={selectedModel}
                   isDark={isDark}
                   onModelSelection={handleModelSelection}
+                  regionalComponent={
+                    selectedModel.regionalAvailability[regionInfo.name]
+                      ? flag
+                      : null
+                  }
                 />
               </DropdownMenuRadioGroup>
             </>
@@ -109,6 +138,11 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                 modelConfig={modelConfig}
                 isDark={isDark}
                 onModelSelection={handleModelSelection}
+                regionalComponent={
+                  modelConfig.regionalAvailability[regionInfo.name]
+                    ? flag
+                    : null
+                }
               />
             ))}
           </DropdownMenuRadioGroup>
@@ -134,6 +168,13 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                               modelConfig={modelConfig}
                               isDark={isDark}
                               onModelSelection={handleModelSelection}
+                              regionalComponent={
+                                modelConfig.regionalAvailability[
+                                  regionInfo.name
+                                ]
+                                  ? flag
+                                  : null
+                              }
                             />
                           ))}
                         </DropdownMenuRadioGroup>
@@ -153,6 +194,13 @@ export function ModelSelectionSubmenu({ models }: ModelSelectionSubmenuProps) {
                               modelConfig={modelConfig}
                               isDark={isDark}
                               onModelSelection={handleModelSelection}
+                              regionalComponent={
+                                modelConfig.regionalAvailability[
+                                  regionInfo.name
+                                ]
+                                  ? flag
+                                  : null
+                              }
                             />
                           ))}
                         </DropdownMenuRadioGroup>

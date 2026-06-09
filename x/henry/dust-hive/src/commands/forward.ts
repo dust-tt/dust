@@ -79,12 +79,12 @@ async function forwardToEnv(name: string): Promise<Result<void>> {
     return Err(new CommandError(`Environment '${name}' not found`));
   }
 
-  // Check if front is running (at minimum)
-  const frontRunning = await isServiceRunning(name, "front");
+  // Check if front-api is running (at minimum)
+  const frontRunning = await isServiceRunning(name, "front-api");
   if (!frontRunning) {
     return Err(
       new CommandError(
-        `Environment '${name}' does not have front running. Run 'dust-hive warm ${name}' first.`
+        `Environment '${name}' does not have front-api running. Run 'dust-hive warm ${name}' first.`
       )
     );
   }

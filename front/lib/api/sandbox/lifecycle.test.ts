@@ -1,4 +1,4 @@
-import { Err, Ok } from "@app/types/shared/result";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -8,31 +8,38 @@ const {
   mockLoggerError,
   mockLoggerInfo,
   mockLoggerWarn,
-  mockMountConversationFiles,
+  mockForConversation,
+  mockSetupSandboxMount,
+  mockRefreshSandboxMount,
   mockPrepareSandboxEgressBeforeMount,
-  mockRefreshGcsToken,
   mockStartTelemetry,
-} = vi.hoisted(() => ({
-  mockEnsureActive: vi.fn(),
-  mockEnsureSandboxEgressOnExec: vi.fn(),
-  mockGetSandboxImage: vi.fn(),
-  mockLoggerError: vi.fn(),
-  mockLoggerInfo: vi.fn(),
-  mockLoggerWarn: vi.fn(),
-  mockMountConversationFiles: vi.fn(),
-  mockPrepareSandboxEgressBeforeMount: vi.fn(),
-  mockRefreshGcsToken: vi.fn(),
-  mockStartTelemetry: vi.fn(),
-}));
+} = vi.hoisted(() => {
+  const mockSetupSandboxMount = vi.fn();
+  const mockRefreshSandboxMount = vi.fn();
+  return {
+    mockEnsureActive: vi.fn(),
+    mockEnsureSandboxEgressOnExec: vi.fn(),
+    mockGetSandboxImage: vi.fn(),
+    mockLoggerError: vi.fn(),
+    mockLoggerInfo: vi.fn(),
+    mockLoggerWarn: vi.fn(),
+    mockForConversation: vi.fn(),
+    mockSetupSandboxMount,
+    mockRefreshSandboxMount,
+    mockPrepareSandboxEgressBeforeMount: vi.fn(),
+    mockStartTelemetry: vi.fn(),
+  };
+});
 
 vi.mock("@app/lib/api/sandbox/egress", () => ({
   ensureSandboxEgressOnExec: mockEnsureSandboxEgressOnExec,
   prepareSandboxEgressBeforeMount: mockPrepareSandboxEgressBeforeMount,
 }));
 
-vi.mock("@app/lib/api/sandbox/gcs/mount", () => ({
-  mountConversationFiles: mockMountConversationFiles,
-  refreshGcsToken: mockRefreshGcsToken,
+vi.mock("@app/lib/api/file_system/dust_file_system", () => ({
+  DustFileSystem: {
+    forConversation: mockForConversation,
+  },
 }));
 
 vi.mock("@app/lib/api/sandbox/image", () => ({
@@ -59,40 +66,47 @@ vi.mock("@app/logger/logger", () => ({
 
 import { ensureSandboxReady } from "./lifecycle";
 
+function createDeferred<T>() {
+  let resolvePromise: ((value: T | PromiseLike<T>) => void) | undefined;
+  const promise = new Promise<T>((resolve) => {
+    resolvePromise = resolve;
+  });
+
+  if (!resolvePromise) {
+    throw new Error("Deferred promise resolver was not initialized.");
+  }
+
+  return { promise, resolve: resolvePromise };
+}
+
 describe("ensureSandboxReady", () => {
   const auth = { getNonNullableWorkspace: () => ({ sId: "workspace-id" }) };
   const conversation = { sId: "conversation-id" };
   const image = { name: "dust-base" };
-  const sandbox = {
-    providerId: "provider-id",
-    sId: "sandbox-id",
+  const sandbox = { providerId: "provider-id", sId: "sandbox-id" };
+  const mockFs = {
+    setupSandboxMount: mockSetupSandboxMount,
+    refreshSandboxMount: mockRefreshSandboxMount,
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
 
     mockEnsureActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: false,
-        sandbox,
-        wokeFromSleep: false,
-      })
+      new Ok({ freshlyCreated: false, sandbox, wokeFromSleep: false })
     );
     mockPrepareSandboxEgressBeforeMount.mockResolvedValue(new Ok(undefined));
     mockEnsureSandboxEgressOnExec.mockResolvedValue(new Ok(undefined));
     mockGetSandboxImage.mockReturnValue(new Ok(image));
     mockStartTelemetry.mockResolvedValue(new Ok(undefined));
-    mockMountConversationFiles.mockResolvedValue(new Ok(undefined));
-    mockRefreshGcsToken.mockResolvedValue(new Ok(undefined));
+    mockForConversation.mockResolvedValue(new Ok(mockFs));
+    mockSetupSandboxMount.mockResolvedValue(new Ok(undefined));
+    mockRefreshSandboxMount.mockResolvedValue(new Ok(undefined));
   });
 
   it("preps egress, mounts files, and ensures egress on exec for freshly-created sandboxes", async () => {
     mockEnsureActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: true,
-        sandbox,
-        wokeFromSleep: false,
-      })
+      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
     );
 
     const result = await ensureSandboxReady(
@@ -106,34 +120,52 @@ describe("ensureSandboxReady", () => {
       auth,
       sandbox
     );
-    expect(mockMountConversationFiles).toHaveBeenCalledWith(
-      auth,
-      sandbox,
-      conversation,
-      image
-    );
-    expect(mockRefreshGcsToken).not.toHaveBeenCalled();
+    expect(mockForConversation).toHaveBeenCalledWith(auth, conversation);
+    expect(mockSetupSandboxMount).toHaveBeenCalledWith(sandbox, image);
+    expect(mockRefreshSandboxMount).not.toHaveBeenCalled();
     expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
       wokeFromSleep: false,
     });
 
-    expect(
-      mockPrepareSandboxEgressBeforeMount.mock.invocationCallOrder[0]
-    ).toBeLessThan(mockMountConversationFiles.mock.invocationCallOrder[0]);
-    expect(mockMountConversationFiles.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(mockSetupSandboxMount.mock.invocationCallOrder[0]).toBeLessThan(
       mockEnsureSandboxEgressOnExec.mock.invocationCallOrder[0]
     );
   });
 
-  it("only refreshes the token (no remount) when the sandbox woke from sleep", async () => {
-    // e2b preserves the FUSE mount and the token server across betaPause +
-    // connect, so on wake we must NOT remount, that would fail with EBUSY.
+  it("starts GCS mount before initial egress prep resolves", async () => {
+    const prepStarted = createDeferred<void>();
+    const prepResult = createDeferred<Result<void, Error>>();
     mockEnsureActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: false,
-        sandbox,
-        wokeFromSleep: true,
-      })
+      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
+    );
+    mockPrepareSandboxEgressBeforeMount.mockImplementation(() => {
+      prepStarted.resolve(undefined);
+      return prepResult.promise;
+    });
+
+    const resultPromise = ensureSandboxReady(
+      auth as never,
+      conversation as never
+    );
+
+    await prepStarted.promise;
+    // Two ticks: one for forConversation mock resolution, one for setupSandboxMount call.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(mockSetupSandboxMount).toHaveBeenCalledTimes(1);
+    expect(mockEnsureSandboxEgressOnExec).not.toHaveBeenCalled();
+
+    prepResult.resolve(new Ok(undefined));
+    const result = await resultPromise;
+
+    expect(result.isOk()).toBe(true);
+    expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledTimes(1);
+  });
+
+  it("only refreshes the token (no remount) when the sandbox woke from sleep", async () => {
+    mockEnsureActive.mockResolvedValue(
+      new Ok({ freshlyCreated: false, sandbox, wokeFromSleep: true })
     );
 
     const result = await ensureSandboxReady(
@@ -143,13 +175,9 @@ describe("ensureSandboxReady", () => {
 
     expect(result.isOk()).toBe(true);
     expect(mockPrepareSandboxEgressBeforeMount).not.toHaveBeenCalled();
-    expect(mockMountConversationFiles).not.toHaveBeenCalled();
-    expect(mockRefreshGcsToken).toHaveBeenCalledWith(
-      auth,
-      sandbox,
-      conversation,
-      image
-    );
+    expect(mockSetupSandboxMount).not.toHaveBeenCalled();
+    expect(mockForConversation).toHaveBeenCalledWith(auth, conversation);
+    expect(mockRefreshSandboxMount).toHaveBeenCalledWith(sandbox, image);
     expect(mockEnsureSandboxEgressOnExec).toHaveBeenCalledWith(auth, sandbox, {
       wokeFromSleep: true,
     });
@@ -163,14 +191,10 @@ describe("ensureSandboxReady", () => {
 
     expect(result.isOk()).toBe(true);
     expect(mockPrepareSandboxEgressBeforeMount).not.toHaveBeenCalled();
-    expect(mockMountConversationFiles).not.toHaveBeenCalled();
-    expect(mockRefreshGcsToken).toHaveBeenCalledWith(
-      auth,
-      sandbox,
-      conversation,
-      image
-    );
-    expect(mockRefreshGcsToken.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(mockSetupSandboxMount).not.toHaveBeenCalled();
+    expect(mockForConversation).toHaveBeenCalledWith(auth, conversation);
+    expect(mockRefreshSandboxMount).toHaveBeenCalledWith(sandbox, image);
+    expect(mockRefreshSandboxMount.mock.invocationCallOrder[0]).toBeLessThan(
       mockEnsureSandboxEgressOnExec.mock.invocationCallOrder[0]
     );
   });
@@ -186,8 +210,8 @@ describe("ensureSandboxReady", () => {
 
     expect(result.isErr()).toBe(true);
     expect(mockStartTelemetry).not.toHaveBeenCalled();
-    expect(mockMountConversationFiles).not.toHaveBeenCalled();
-    expect(mockRefreshGcsToken).not.toHaveBeenCalled();
+    expect(mockSetupSandboxMount).not.toHaveBeenCalled();
+    expect(mockRefreshSandboxMount).not.toHaveBeenCalled();
     expect(mockEnsureSandboxEgressOnExec).not.toHaveBeenCalled();
     expect(mockLoggerError).toHaveBeenCalledWith(
       { err: imageError },
@@ -208,17 +232,12 @@ describe("ensureSandboxReady", () => {
     expect(mockGetSandboxImage).not.toHaveBeenCalled();
   });
 
-  it("short-circuits when initial egress prep fails", async () => {
+  it("returns the initial egress prep error after also running the GCS mount", async () => {
+    const setupError = new Error("setup failed");
     mockEnsureActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: true,
-        sandbox,
-        wokeFromSleep: false,
-      })
+      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
     );
-    mockPrepareSandboxEgressBeforeMount.mockResolvedValue(
-      new Err(new Error("setup failed"))
-    );
+    mockPrepareSandboxEgressBeforeMount.mockResolvedValue(new Err(setupError));
 
     const result = await ensureSandboxReady(
       auth as never,
@@ -226,21 +245,39 @@ describe("ensureSandboxReady", () => {
     );
 
     expect(result.isErr()).toBe(true);
-    expect(mockGetSandboxImage).not.toHaveBeenCalled();
-    expect(mockMountConversationFiles).not.toHaveBeenCalled();
+    if (result.isErr()) {
+      expect(result.error).toBe(setupError);
+    }
+    expect(mockSetupSandboxMount).toHaveBeenCalledTimes(1);
+    expect(mockEnsureSandboxEgressOnExec).not.toHaveBeenCalled();
+  });
+
+  it("returns the initial egress prep error when both initial phases fail", async () => {
+    const setupError = new Error("setup failed");
+    mockEnsureActive.mockResolvedValue(
+      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
+    );
+    mockPrepareSandboxEgressBeforeMount.mockResolvedValue(new Err(setupError));
+    mockSetupSandboxMount.mockResolvedValue(new Err(new Error("mount failed")));
+
+    const result = await ensureSandboxReady(
+      auth as never,
+      conversation as never
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBe(setupError);
+    }
+    expect(mockSetupSandboxMount).toHaveBeenCalledTimes(1);
+    expect(mockEnsureSandboxEgressOnExec).not.toHaveBeenCalled();
   });
 
   it("short-circuits when mounting conversation files fails", async () => {
     mockEnsureActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: true,
-        sandbox,
-        wokeFromSleep: false,
-      })
+      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
     );
-    mockMountConversationFiles.mockResolvedValue(
-      new Err(new Error("mount failed"))
-    );
+    mockSetupSandboxMount.mockResolvedValue(new Err(new Error("mount failed")));
 
     const result = await ensureSandboxReady(
       auth as never,
@@ -251,8 +288,28 @@ describe("ensureSandboxReady", () => {
     expect(mockEnsureSandboxEgressOnExec).not.toHaveBeenCalled();
   });
 
+  it("short-circuits when DustFileSystem.forConversation fails", async () => {
+    mockEnsureActive.mockResolvedValue(
+      new Ok({ freshlyCreated: true, sandbox, wokeFromSleep: false })
+    );
+    mockForConversation.mockResolvedValue(
+      new Err(new Error("space not found"))
+    );
+
+    const result = await ensureSandboxReady(
+      auth as never,
+      conversation as never
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(mockSetupSandboxMount).not.toHaveBeenCalled();
+    expect(mockEnsureSandboxEgressOnExec).not.toHaveBeenCalled();
+  });
+
   it("short-circuits when refreshing the GCS token fails", async () => {
-    mockRefreshGcsToken.mockResolvedValue(new Err(new Error("refresh failed")));
+    mockRefreshSandboxMount.mockResolvedValue(
+      new Err(new Error("refresh failed"))
+    );
 
     const result = await ensureSandboxReady(
       auth as never,

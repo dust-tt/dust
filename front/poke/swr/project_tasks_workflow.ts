@@ -1,5 +1,5 @@
+import type { PokeGetProjectWorkflow } from "@app/lib/api/poke/projects";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PokeGetProjectWorkflow } from "@app/pages/api/poke/workspaces/[wId]/projects/[projectId]/tasks-workflow";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 

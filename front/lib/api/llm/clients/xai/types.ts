@@ -3,88 +3,37 @@ import type {
   LLMParameters,
 } from "@app/lib/api/llm/types/options";
 import type { ModelIdType } from "@app/types/assistant/models/types";
-import {
-  GROK_3_MINI_MODEL_ID,
-  GROK_3_MODEL_ID,
-  GROK_4_1_FAST_NON_REASONING_MODEL_ID,
-  GROK_4_1_FAST_REASONING_MODEL_ID,
-  GROK_4_FAST_NON_REASONING_MODEL_ID,
-  GROK_4_MODEL_ID,
-} from "@app/types/assistant/models/xai";
-import flatMap from "lodash/flatMap";
+import { GROK_4_MODEL_ID } from "@app/types/assistant/models/xai";
 
 export const XAI_PROVIDER_ID = "xai";
 
-export const XAI_MODEL_FAMILIES = [
-  "no-vision",
-  "non-reasoning",
-  "reasoning",
-] as const;
-export type XaiModelFamily = (typeof XAI_MODEL_FAMILIES)[number];
+export const XAI_WHITELISTED_MODEL_IDS = [GROK_4_MODEL_ID] as const;
+export type XaiWhitelistedModelId = (typeof XAI_WHITELISTED_MODEL_IDS)[number];
 
-export const XAI_MODEL_FAMILIES_CONFIGS: Record<
-  XaiModelFamily,
+export const XAI_MODEL_CONFIGS: Record<
+  XaiWhitelistedModelId,
   {
-    modelIds: ModelIdType[];
     overwrites: LLMParameterOverwrites;
   }
 > = {
-  "no-vision": {
-    modelIds: [GROK_3_MODEL_ID, GROK_3_MINI_MODEL_ID],
-    overwrites: { reasoningEffort: null },
-  },
-  "non-reasoning": {
-    modelIds: [
-      GROK_4_FAST_NON_REASONING_MODEL_ID,
-      GROK_4_MODEL_ID,
-      GROK_4_1_FAST_NON_REASONING_MODEL_ID,
-    ],
-    overwrites: { reasoningEffort: null },
-  },
-  reasoning: {
-    modelIds: [GROK_4_1_FAST_REASONING_MODEL_ID],
+  [GROK_4_MODEL_ID]: {
     overwrites: {},
   },
 };
-
-export type XaiWhitelistedModelId = {
-  [K in XaiModelFamily]: (typeof XAI_MODEL_FAMILIES_CONFIGS)[K]["modelIds"][number];
-}[XaiModelFamily];
-export const XAI_WHITELISTED_MODEL_IDS = flatMap<XaiWhitelistedModelId>(
-  Object.values(XAI_MODEL_FAMILIES_CONFIGS).map((config) => config.modelIds)
-);
-
-export function isXaiWhitelistedModelId(
-  modelId: ModelIdType
-): modelId is XaiWhitelistedModelId {
-  return new Set<string>(XAI_WHITELISTED_MODEL_IDS).has(modelId);
-}
-
-export function getXaiModelFamilyFromModelId(
-  modelId: XaiWhitelistedModelId
-): XaiModelFamily {
-  const family = XAI_MODEL_FAMILIES.find((family) =>
-    XAI_MODEL_FAMILIES_CONFIGS[family].modelIds.includes(modelId)
-  );
-  if (!family) {
-    throw new Error(
-      `Model ID ${modelId} does not belong to any XAI model family`
-    );
-  }
-  return family;
-}
 
 export function overwriteLLMParameters(
   llmParameters: LLMParameters & {
     modelId: XaiWhitelistedModelId;
   }
 ): LLMParameters & { modelId: XaiWhitelistedModelId } {
-  const config = Object.values(XAI_MODEL_FAMILIES_CONFIGS).find((config) =>
-    new Set<string>(config.modelIds).has(llmParameters.modelId)
-  );
-
   return {
     ...llmParameters,
-    ...config?.overwrites,
+    ...XAI_MODEL_CONFIGS[llmParameters.modelId].overwrites,
   };
 }
+
+export const isXaiWhitelistedModelId = (
+  modelId: ModelIdType
+): modelId is XaiWhitelistedModelId => {
+  return (XAI_WHITELISTED_MODEL_IDS as readonly string[]).includes(modelId);
+};

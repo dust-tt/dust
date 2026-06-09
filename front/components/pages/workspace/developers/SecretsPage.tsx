@@ -5,10 +5,10 @@ import { clientFetch } from "@app/lib/egress/client";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import {
-  BookOpenIcon,
-  BracesIcon,
+  BookOpen01,
+  Brackets,
   Button,
-  ClipboardIcon,
+  Clipboard,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -17,8 +17,8 @@ import {
   DialogTitle,
   Input,
   Page,
-  PlusIcon,
-  TrashIcon,
+  Plus,
+  Trash01,
 } from "@dust-tt/sparkle";
 import { PencilIcon } from "@heroicons/react/20/solid";
 import { useState } from "react";
@@ -195,7 +195,7 @@ export function SecretsPage() {
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="Developer Secrets"
-          icon={BracesIcon}
+          icon={Brackets}
           description="Secrets usable in Dust apps or MCP servers to safely store sensitive data."
         />{" "}
         <Page.Vertical align="stretch" gap="md">
@@ -205,7 +205,7 @@ export function SecretsPage() {
               label="Read the API reference"
               size="sm"
               variant="outline"
-              icon={BookOpenIcon}
+              icon={BookOpen01}
               onClick={() => {
                 window.open(
                   "https://docs.dust.tt/reference/developer-platform-overview#developer-secrets",
@@ -222,7 +222,7 @@ export function SecretsPage() {
                   setIsInputNameDisabled(false);
                   setIsNewSecretPromptOpen(true);
                 }}
-                icon={PlusIcon}
+                icon={Plus}
                 disabled={isGenerating || isRevoking}
               />
             )}
@@ -242,7 +242,7 @@ export function SecretsPage() {
                       </pre>
                       <Button
                         variant="outline"
-                        icon={ClipboardIcon}
+                        icon={Clipboard}
                         onClick={() => {
                           const text = `env.secrets.${secret.name}`;
                           void navigator.clipboard.writeText(text);
@@ -274,7 +274,7 @@ export function SecretsPage() {
                             onClick={async () => {
                               setSecretToRevoke(secret);
                             }}
-                            icon={TrashIcon}
+                            icon={Trash01}
                           />
                         </div>
                       </>

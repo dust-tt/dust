@@ -32,9 +32,26 @@ import { GoogleGenAI } from "@google/genai";
 import assert from "assert";
 import OpenAI from "openai";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import { z } from "zod";
 
 const API_KEY_REVEAL_WINDOW_MINUTES = 2;
 const PROVIDER_CREDENTIALS_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+export type GetProviderCredentialsResponseBody = {
+  providerCredentials: ProviderCredentialType[];
+};
+
+export const ProviderCredentialBodySchema = z.object({
+  apiKey: z.string(),
+});
+
+export type ProviderCredentialBody = z.infer<
+  typeof ProviderCredentialBodySchema
+>;
+
+export type ProviderCredentialResponseBody = {
+  providerCredential: ProviderCredentialType;
+};
 
 type ProviderCredential = {
   id: ModelId;

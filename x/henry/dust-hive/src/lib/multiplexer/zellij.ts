@@ -13,7 +13,7 @@ import type {
   MultiplexerAdapter,
   MultiplexerType,
 } from "./types";
-import { SESSION_PREFIX, TAB_NAMES } from "./types";
+import { SESSION_PREFIX, getTabName } from "./types";
 
 /**
  * Base directory for zellij layouts
@@ -298,7 +298,7 @@ ${tabTemplate}
   }
 
   private generateServiceTab(envName: string, service: ServiceName, worktreePath: string): string {
-    const tabName = TAB_NAMES[service];
+    const tabName = getTabName(service);
     return `    tab name="${tabName}" {
         pane {
             cwd "${kdlEscape(worktreePath)}"

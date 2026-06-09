@@ -8,6 +8,7 @@ import {
   UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { SearchUsersOrderBy } from "@app/lib/user_search/search";
 import { searchUsers } from "@app/lib/user_search/search";
 import {
   cacheWithRedis,
@@ -43,6 +44,18 @@ import { Op } from "sequelize";
 export interface SearchMembersPaginationParams {
   offset: number;
   limit: number;
+}
+
+export interface GetUserApprovalsResponseBody {
+  approvals: {
+    mcpServerId: string;
+    toolNames: string[];
+    serverName: string;
+  }[];
+}
+
+export interface DeleteUserApprovalsResponseBody {
+  success: boolean;
 }
 
 const USER_METADATA_COMMA_SEPARATOR = ",";
@@ -354,10 +367,12 @@ export class UserResource extends BaseResource<UserModel> {
       searchTerm,
       offset,
       limit,
+      orderBy,
     }: {
       searchTerm: string;
       offset: number;
       limit: number;
+      orderBy?: SearchUsersOrderBy;
     }
   ): Promise<Result<{ users: UserResource[]; total: number }, Error>> {
     const owner = auth.getNonNullableWorkspace();
@@ -368,6 +383,7 @@ export class UserResource extends BaseResource<UserModel> {
       searchTerm,
       offset,
       limit,
+      orderBy,
     });
     if (searchResult.isErr()) {
       return searchResult;

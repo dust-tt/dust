@@ -1,8 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
@@ -12,18 +7,19 @@ import {
   getConversationDotStatus,
 } from "@app/lib/utils/conversation_dot_status";
 import {
-  isProjectTaskPeriodScope,
-  type ProjectTaskPeriodScope,
-  type ProjectTaskType,
+  isPodTaskPeriodScope,
+  type PodTaskPeriodScope,
+  type PodTaskType,
 } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
-
-import { spaceResource } from "@front-api/middleware/space_resource";
-import { validate } from "@front-api/middleware/validator";
-
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withSpace } from "@front-api/middlewares/with_space";
+import { z } from "zod";
+import taskId from "./[taskId]";
 import bulkActions from "./bulk-actions";
 import markRead from "./mark_read";
-import taskId from "./[taskId]";
 
 const PostProjectTaskBodySchema = z.object({
   text: z
@@ -41,9 +37,9 @@ function parseSingleQueryValue(value: string | undefined): string | undefined {
 
 function parseProjectTaskTimeScope(
   period: string | undefined
-): ProjectTaskPeriodScope {
+): PodTaskPeriodScope {
   const raw = parseSingleQueryValue(period)?.toLowerCase() ?? "active";
-  if (isProjectTaskPeriodScope(raw)) {
+  if (isPodTaskPeriodScope(raw)) {
     return raw;
   }
   return "active";
@@ -66,14 +62,15 @@ function parseProjectTasksPeopleMode(
 }
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_tasks.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
-  const auth = c.get("auth");
-  const space = c.get("space");
+/** @ignoreswagger */
+app.get("/", withSpace({ requireCanRead: true }), async (ctx) => {
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
 
   if (!space.isProject()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -86,10 +83,10 @@ app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
   const state = await ProjectTaskStateResource.fetchBySpace(auth, {
     spaceId: space.id,
   });
-  const timeScope = parseProjectTaskTimeScope(c.req.query("period"));
+  const timeScope = parseProjectTaskTimeScope(ctx.req.query("period"));
   const peopleMode = parseProjectTasksPeopleMode(
-    c.req.query("people"),
-    c.req.query("assignee")
+    ctx.req.query("people"),
+    ctx.req.query("assignee")
   );
   const assigneeUserId: ModelId | null =
     peopleMode === "mine" ? currentUser.id : null;
@@ -122,7 +119,7 @@ app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
     await ConversationResource.fetchListItemsBySIds(auth, conversationSIds);
 
   // TODO: enrich todos with creator/done-by user info when supporting multiple users.
-  const todosWithSources: ProjectTaskType[] = serializedBase.map(
+  const todosWithSources: PodTaskType[] = serializedBase.map(
     (serializedTodo, i) => {
       const t = todos[i]!;
       const sources = sourcesByTodoId.get(t.sId) ?? [];
@@ -151,7 +148,7 @@ app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
     }
   );
 
-  return c.json({
+  return ctx.json({
     tasks: todosWithSources,
     lastReadAt: state ? state.lastReadAt.toISOString() : null,
     viewerUserId: currentUser.sId,
@@ -160,14 +157,14 @@ app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
 
 app.post(
   "/",
-  spaceResource({ requireCanRead: true }),
+  withSpace({ requireCanRead: true }),
   validate("json", PostProjectTaskBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     if (!space.isProject()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -176,7 +173,7 @@ app.post(
       });
     }
 
-    const { text, assigneeUserId } = c.req.valid("json");
+    const { text, assigneeUserId } = ctx.req.valid("json");
     const workspace = auth.getNonNullableWorkspace();
     const currentUser = auth.getNonNullableUser();
 
@@ -195,7 +192,7 @@ app.post(
       );
       const assigneeUser = assigneeAuth.user();
       if (!assigneeUser) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
@@ -205,7 +202,7 @@ app.post(
       }
 
       if (!space.isMember(assigneeAuth)) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
@@ -238,7 +235,7 @@ app.post(
       newTodo.sId
     );
     if (!todoResource) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -249,7 +246,7 @@ app.post(
 
     // Manual creates are never linked to a conversation until someone uses "Start"
     // (see project_task/start); skip getLatestConversationId and keep the same shape as GET.
-    return c.json(
+    return ctx.json(
       {
         task: {
           ...todoResource.toJSON(),

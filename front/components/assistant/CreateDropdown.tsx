@@ -10,16 +10,16 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
   Button,
-  DocumentIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-  FolderOpenIcon,
-  MagicIcon,
-  PlusIcon,
-  PuzzleIcon,
+  File02,
+  FolderOpen,
+  MagicWand02,
+  Plus,
+  PuzzlePiece01,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -45,7 +45,7 @@ export const CreateDropdown = ({
       <DropdownMenuTrigger asChild>
         <Button
           variant="primary"
-          icon={PlusIcon}
+          icon={Plus}
           label="Create"
           data-gtm-label="assistantCreationButton"
           data-gtm-location={dataGtmLocation}
@@ -60,7 +60,7 @@ export const CreateDropdown = ({
         {isBuilder(owner) && <DropdownMenuLabel label="Agents" />}
         <DropdownMenuItem
           label="agent from scratch"
-          icon={DocumentIcon}
+          icon={File02}
           onClick={withTracking(
             TRACKING_AREAS.BUILDER,
             "create_from_scratch",
@@ -72,7 +72,7 @@ export const CreateDropdown = ({
         />
         <DropdownMenuItem
           label="agent from template"
-          icon={MagicIcon}
+          icon={MagicWand02}
           onClick={withTracking(
             TRACKING_AREAS.BUILDER,
             "create_from_template",
@@ -84,7 +84,7 @@ export const CreateDropdown = ({
         />
         <DropdownMenuItem
           label={isUploadingYAML ? "Uploading..." : "agent from YAML"}
-          icon={isUploadingYAML ? <Spinner size="xs" /> : FolderOpenIcon}
+          icon={isUploadingYAML ? <Spinner size="xs" /> : FolderOpen}
           disabled={isUploadingYAML}
           onClick={triggerYAMLUpload}
         />
@@ -93,7 +93,7 @@ export const CreateDropdown = ({
             <DropdownMenuLabel label="Skills" />
             <DropdownMenuItem
               label="skill from scratch"
-              icon={PuzzleIcon}
+              icon={PuzzlePiece01}
               onClick={withTracking(
                 TRACKING_AREAS.BUILDER,
                 "create_skill",
@@ -105,7 +105,7 @@ export const CreateDropdown = ({
             />
             <DropdownMenuItem
               label="skill from existing"
-              icon={FolderOpenIcon}
+              icon={FolderOpen}
               onClick={() => setIsImportSkillDialogOpen(true)}
             />
           </>

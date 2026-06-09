@@ -35,8 +35,8 @@ import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
 import {
   Button,
-  ClipboardCheckIcon,
-  ClipboardIcon,
+  Clipboard,
+  ClipboardCheck,
   cn,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
@@ -173,7 +173,7 @@ export default function ChapterPage({
       void mutateCourseProgress();
     } else if (browserId) {
       void (async () => {
-        await clientFetch("/api/academy/progress/visit", {
+        await clientFetch("/m/api/academy/progress/visit", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -312,7 +312,7 @@ export default function ChapterPage({
                       <Button
                         variant="outline"
                         size="xs"
-                        icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                        icon={isCopied ? ClipboardCheck : Clipboard}
                         label={
                           isCopied
                             ? academySettings.copied

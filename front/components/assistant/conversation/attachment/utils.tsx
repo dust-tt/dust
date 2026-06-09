@@ -29,15 +29,15 @@ import type { ContentNodeType } from "@app/types/core/content_node";
 import type { ConnectorProvider } from "@app/types/data_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
-  ActionVolumeUpIcon,
-  DocumentIcon,
   DoubleIcon,
-  DoubleQuotesIcon,
+  DoubleQuotes,
   FaviconIcon,
-  FolderIcon,
+  File02,
+  Folder,
   Icon,
-  ImageIcon,
-  TableIcon,
+  Image01,
+  Table,
+  VolumeMax,
 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -101,11 +101,7 @@ export const IconForAttachmentCitation = ({
     });
 
     const mainIcon =
-      nodeType === "table"
-        ? TableIcon
-        : nodeType === "folder"
-          ? FolderIcon
-          : DocumentIcon;
+      nodeType === "table" ? Table : nodeType === "folder" ? Folder : File02;
     return (
       <DoubleIcon
         mainIcon={mainIcon}
@@ -118,14 +114,14 @@ export const IconForAttachmentCitation = ({
   if (contentType) {
     const isImageType = contentType.startsWith("image/");
     if (isImageType) {
-      return <Icon visual={ImageIcon} size={size} />;
+      return <Icon visual={Image01} size={size} />;
     }
     const isAudioType = contentType.startsWith("audio/");
     if (isAudioType) {
-      return <Icon visual={ActionVolumeUpIcon} size={size} />;
+      return <Icon visual={VolumeMax} size={size} />;
     }
     if (isPastedFile(contentType)) {
-      return <Icon visual={DoubleQuotesIcon} size={size} />;
+      return <Icon visual={DoubleQuotes} size={size} />;
     }
   }
 
@@ -135,7 +131,7 @@ export const IconForAttachmentCitation = ({
   ) {
     return (
       <DoubleIcon
-        mainIcon={DocumentIcon}
+        mainIcon={File02}
         secondaryIcon={getIcon(iconName)}
         size={size}
       />
@@ -147,7 +143,7 @@ export const IconForAttachmentCitation = ({
     return <Icon visual={FileIcon} size={size} />;
   }
 
-  return <Icon visual={DocumentIcon} size={size} />;
+  return <Icon visual={File02} size={size} />;
 };
 
 export function contentFragmentToAttachmentCitation(
@@ -222,6 +218,7 @@ export function contentFragmentToAttachmentCitation(
       ),
       description: description ?? null,
       fileId: contentFragment.fileId,
+      filePath: contentFragment.path ?? undefined,
       contentType: contentFragment.contentType,
       attachmentCitationType: "fragment",
       provider: contentFragment.sourceProvider ?? undefined,
@@ -241,6 +238,7 @@ export function attachmentToAttachmentCitation(
       title: attachment.title,
       sourceUrl: attachment.sourceUrl ?? null,
       isUploading: attachment.isUploading,
+      size: attachment.size,
       visual: (
         <IconForAttachmentCitation
           contentType={attachment.contentType}

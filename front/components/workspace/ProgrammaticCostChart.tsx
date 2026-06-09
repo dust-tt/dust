@@ -21,11 +21,11 @@ import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { clientFetch } from "@app/lib/egress/client";
 import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
 import {
-  ArrowDownOnSquareIcon,
   Button,
-  ChevronLeftIcon,
-  ChevronRightIcon,
+  ChevronLeft,
+  ChevronRight,
   Chip,
+  Download01,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -169,7 +169,7 @@ function GroupedTooltip(
   // Add credits row only in cumulative mode
   if (shouldShowTotalCredits) {
     rows.push({
-      label: "Total Credits",
+      label: "Total credits",
       value: `$${(data.totalCreditsMicroUsd / 1_000_000).toFixed(2)}`,
       colorClassName: COST_PALETTE.totalCredits,
     });
@@ -436,7 +436,7 @@ export function BaseProgrammaticCostChart({
   if (shouldShowTotalCredits) {
     legendItems.push({
       key: "totalCredits",
-      label: "Total Credits",
+      label: "Total credits",
       colorClassName: COST_PALETTE.totalCredits,
       isActive: true,
     });
@@ -585,7 +585,7 @@ export function BaseProgrammaticCostChart({
         <div className="flex items-center gap-2">
           <span>Usage cost graph</span>
           <Button
-            icon={ChevronLeftIcon}
+            icon={ChevronLeft}
             size="xs"
             variant="ghost"
             onClick={handlePreviousPeriod}
@@ -597,7 +597,7 @@ export function BaseProgrammaticCostChart({
           </span>
           {canGoNext && (
             <Button
-              icon={ChevronRightIcon}
+              icon={ChevronRight}
               size="xs"
               variant="ghost"
               onClick={handleNextPeriod}
@@ -605,7 +605,7 @@ export function BaseProgrammaticCostChart({
             />
           )}
           <Button
-            icon={ArrowDownOnSquareIcon}
+            icon={Download01}
             size="xs"
             variant="ghost"
             onClick={handleExportCsv}
@@ -830,7 +830,7 @@ export function BaseProgrammaticCostChart({
           <Line
             type="monotone"
             dataKey="totalCreditsMicroUsd"
-            name="Total Credits"
+            name="Total credits"
             stroke="currentColor"
             strokeWidth={2}
             className={COST_PALETTE.totalCredits}

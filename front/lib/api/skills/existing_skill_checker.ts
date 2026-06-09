@@ -1,11 +1,15 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-import { getSmallWhitelistedModel } from "@app/lib/assistant";
+import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+
+export type GetSimilarSkillsResponseBody = {
+  similar_skills: string[];
+};
 
 // Safeguards to avoid sending a huge number of skills to the LLM
 const MAX_SKILLS_SENT_TO_LLM = 100;

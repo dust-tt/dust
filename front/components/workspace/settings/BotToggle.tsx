@@ -1,9 +1,9 @@
 import { updateConnectorConnectionId } from "@app/components/data_source/ConnectorPermissionsModal";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { PostDataSourceRequestBody } from "@app/lib/api/data_sources";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig, useToggleChatBot } from "@app/lib/swr/connectors";
-import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type { ConnectorProvider, DataSourceType } from "@app/types/data_source";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { OAuthProvider, OAuthUseCase } from "@app/types/oauth/lib";
@@ -11,10 +11,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ArrowPathIcon,
-  BookOpenIcon,
+  BookOpen01,
   Button,
   ContextItem,
+  RefreshCw02,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -134,7 +134,7 @@ export function BotToggle({
               rel="noopener noreferrer"
               className="text-action-400 hover:text-action-500 text-sm"
             >
-              <BookOpenIcon className="h-4 w-4" />
+              <BookOpen01 className="h-4 w-4" />
             </a>
           )}
         </div>
@@ -149,7 +149,7 @@ export function BotToggle({
               variant="outline"
               label="Reconnect"
               size="xs"
-              icon={ArrowPathIcon}
+              icon={RefreshCw02}
               onClick={async () => {
                 const cRes = await setupOAuthConnection({
                   owner,

@@ -1,31 +1,37 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { upsertTable } from "@app/lib/api/data_sources";
+import type { PatchTableResponseBody } from "@app/lib/api/tables";
 import { deleteTable } from "@app/lib/api/tables";
 import { PatchDataSourceTableRequestBodySchema } from "@app/types/api/public/data_sources";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withDataSource } from "@front-api/middlewares/with_data_source";
+import { withSpace } from "@front-api/middlewares/with_space";
+import { z } from "zod";
 
-import { dataSourceResource } from "@front-api/middleware/data_source_resource";
-import { spaceResource } from "@front-api/middleware/space_resource";
-import { validate } from "@front-api/middleware/validator";
+const ParamsSchema = z.object({
+  tableId: z.string(),
+});
 
 // Mounted at /api/w/:wId/spaces/:spaceId/data_sources/:dsId/tables/:tableId.
-const app = new Hono();
+const app = workspaceApp();
 
+/** @ignoreswagger */
 app.patch(
   "/",
-  spaceResource({ requireCanRead: true }),
-  dataSourceResource({ requireCanRead: true }),
+  validate("param", ParamsSchema),
+  withSpace({ requireCanRead: true }),
+  withDataSource({ requireCanRead: true }),
   validate("json", PatchDataSourceTableRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const dataSource = c.get("dataSource");
-    const tableId = c.req.param("tableId") ?? "";
+  async (ctx): HandlerResult<PatchTableResponseBody> => {
+    const auth = ctx.get("auth");
+    const dataSource = ctx.get("dataSource");
+    const { tableId } = ctx.req.valid("param");
 
     if (!dataSource.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -35,7 +41,7 @@ app.patch(
     }
 
     if (dataSource.connectorId) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -44,7 +50,7 @@ app.patch(
       });
     }
 
-    const body = c.req.valid("json");
+    const body = ctx.req.valid("json");
     const upsertRes = await upsertTable({
       auth,
       params: {
@@ -55,7 +61,7 @@ app.patch(
       dataSource,
     });
     if (upsertRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -64,21 +70,22 @@ app.patch(
       });
     }
 
-    return c.json({ table: upsertRes.value?.table });
+    return ctx.json({ table: upsertRes.value?.table });
   }
 );
 
 app.delete(
   "/",
-  spaceResource({ requireCanRead: true }),
-  dataSourceResource({ requireCanRead: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const dataSource = c.get("dataSource");
-    const tableId = c.req.param("tableId") ?? "";
+  validate("param", ParamsSchema),
+  withSpace({ requireCanRead: true }),
+  withDataSource({ requireCanRead: true }),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const dataSource = ctx.get("dataSource");
+    const { tableId } = ctx.req.valid("param");
 
     if (!dataSource.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -95,7 +102,7 @@ app.delete(
     if (delRes.isErr()) {
       switch (delRes.error.type) {
         case "not_found_error":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 404,
             api_error: {
               type: delRes.error.notFoundError.type,
@@ -104,7 +111,7 @@ app.delete(
           });
         case "invalid_request_error":
         case "internal_server_error":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 500,
             api_error: {
               type: "internal_server_error",
@@ -116,7 +123,7 @@ app.delete(
       }
     }
 
-    return c.body(null, 200);
+    return ctx.body(null, 200);
   }
 );
 

@@ -9,6 +9,7 @@ import { compactConversation } from "@app/lib/api/assistant/conversation/compact
 import { replaceStandaloneAttachmentIds } from "@app/lib/api/assistant/conversation/compaction_attachment_id_replacements";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
+import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { isSandboxRawDelimitedConversationFile } from "@app/lib/api/files/sandbox_raw";
 import {
@@ -16,7 +17,7 @@ import {
   processAndUpsertToDataSource,
 } from "@app/lib/api/files/upsert";
 import { getFileContent } from "@app/lib/api/files/utils";
-import { getSmallWhitelistedModel } from "@app/lib/assistant";
+import { uploadFrameContent } from "@app/lib/api/viz/upload_frame_content";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
@@ -53,6 +54,12 @@ export type CreateConversationForkErrorCode =
   | "internal_error"
   | "invalid_request_error"
   | "unauthorized";
+
+export type PostConversationForkResponseBody = {
+  conversationId: string;
+  parentConversationTitle: string | null;
+  spaceId: string | null;
+};
 
 type CarriedAttachment = {
   carriedAttachment:
@@ -393,16 +400,15 @@ async function rewriteCopiedInteractiveContentAttachmentIds(
         return;
       }
 
-      try {
-        await file.uploadContent(auth, updatedContent);
-      } catch (error) {
+      const uploadResult = await uploadFrameContent(auth, file, updatedContent);
+      if (uploadResult.isErr()) {
         logger.error(
           {
             workspaceId: auth.getNonNullableWorkspace().sId,
             parentConversationId,
             childConversationId,
             copiedFileId: file.sId,
-            error,
+            error: uploadResult.error,
           },
           "Failed to rewrite copied interactive content file ids in forked conversation."
         );
@@ -584,7 +590,7 @@ export async function createConversationFork(
   const parentSpace = parentConversation.space;
   if (parentSpace?.isProject() && !parentSpace.isMember(auth)) {
     return new Err(
-      new DustError("unauthorized", "You are not a member of the project.")
+      new DustError("unauthorized", "You are not a member of the Pod.")
     );
   }
 
@@ -684,6 +690,9 @@ export async function createConversationFork(
       childConversationId: childConversation.sId,
       forkCompactionModel,
       sourceMessageRank: sourceMessage.value.rank,
+      sourceMessageCreatedAtMs: sourceMessageId
+        ? sourceMessage.value.agentMessage?.updatedAt.getTime()
+        : undefined,
     });
   });
 
@@ -700,6 +709,8 @@ export async function createConversationFork(
     workspaceId: auth.getNonNullableWorkspace().sId,
     sourceConversationId: parentConversation.sId,
     destConversationId: childConversationId.value.childConversationId,
+    sourceMessageTimestampMs:
+      childConversationId.value.sourceMessageCreatedAtMs,
   });
   if (launchForkWorkflowResult.isErr()) {
     logger.error(

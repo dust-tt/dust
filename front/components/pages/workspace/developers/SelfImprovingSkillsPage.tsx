@@ -12,10 +12,10 @@ import {
 } from "@app/lib/reinforcement/consumption";
 import {
   ContentMessage,
-  InformationCircleIcon,
+  InfoCircle,
   LinkWrapper,
   Page,
-  SparklesIcon,
+  Stars02,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -36,14 +36,14 @@ export function SelfImprovingSkillsPage() {
   const renderBody = () => {
     if (!isAdmin) {
       return (
-        <ContentMessage variant="info" icon={InformationCircleIcon} size="lg">
+        <ContentMessage variant="info" icon={InfoCircle} size="lg">
           Only workspace admins can manage self-improving skills settings.
         </ContentMessage>
       );
     }
     if (!hasReinforcement) {
       return (
-        <ContentMessage variant="info" icon={InformationCircleIcon} size="lg">
+        <ContentMessage variant="info" icon={InfoCircle} size="lg">
           Self-improving skills are not enabled for this workspace.
         </ContentMessage>
       );
@@ -88,12 +88,12 @@ export function SelfImprovingSkillsPage() {
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="Self-Improving Skills"
-          icon={SparklesIcon}
+          icon={Stars02}
           description={
             <span>
               Configure self-improving skills settings for this workspace.{" "}
               <a
-                href="https://docs.dust.tt/docs/reinforcement"
+                href="https://docs.dust.tt/docs/self-improving-skills"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-highlight dark:text-highlight-night underline"

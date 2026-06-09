@@ -29,11 +29,10 @@ import { isAdmin } from "@app/types/user";
 import {
   Button,
   Chip,
-  ContactsRobotIcon,
-  ListSelectIcon,
-  MagnifyingGlassIcon,
+  ContactsRobot,
+  ListSelect,
   Page,
-  PlusIcon,
+  Plus,
   SearchInput,
   Spinner,
   Tabs,
@@ -64,18 +63,6 @@ export const AGENT_MANAGER_TABS = [
     label: "Archived",
     description: "Archived agents.",
   },
-  {
-    id: "search",
-    label: "Active",
-    icon: MagnifyingGlassIcon,
-    description: "Active agents matching your search",
-  },
-  {
-    id: "search_archived",
-    label: "Archived",
-    icon: MagnifyingGlassIcon,
-    description: "Archived agents matching your search",
-  },
 ] as const;
 
 export type AssistantManagerTabsType =
@@ -103,17 +90,9 @@ export function ManageAgentsPage() {
   const shouldDisableAgentFetching = isRestrictedFromAgentCreation;
   const isSearchActive = assistantSearch.trim() !== "";
 
-  const [selectedSearchTab, setSelectedSearchTab] = useState<
-    "search" | "search_archived"
-  >("search");
-
   const activeTab = useMemo(() => {
-    if (isSearchActive) {
-      return selectedSearchTab;
-    }
-
     return selectedTab && isValidTab(selectedTab) ? selectedTab : "all_custom";
-  }, [isSearchActive, selectedTab, selectedSearchTab]);
+  }, [selectedTab]);
 
   // only fetch the agents that are relevant to the current scope, except when
   // user searches: search across all agents
@@ -139,9 +118,7 @@ export function ManageAgentsPage() {
     workspaceId: owner.sId,
     agentsGetView: "archived",
     includes: ["usage", "feedbacks", "editors"],
-    disabled:
-      shouldDisableAgentFetching ||
-      (selectedTab !== "archived" && !isSearchActive),
+    disabled: shouldDisableAgentFetching || selectedTab !== "archived",
   });
 
   const agentsByTab = useMemo(() => {
@@ -156,8 +133,11 @@ export function ManageAgentsPage() {
       .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
     const searchLower = assistantSearch.toLowerCase();
-    const filterAndSortBySearch = (agents: LightAgentConfigurationType[]) =>
-      agents
+    const filteredList = (agents: LightAgentConfigurationType[]) => {
+      if (!isSearchActive) {
+        return agents;
+      }
+      return agents
         .filter((a) => subFilter(searchLower, getAgentSearchString(a)))
         .sort((a, b) =>
           compareForFuzzySort(
@@ -166,23 +146,24 @@ export function ManageAgentsPage() {
             getAgentSearchString(b)
           )
         );
+    };
 
     return {
-      // do not show the "all" tab while still loading all agents
-      all_custom: allAgents.filter((a) => a.scope !== "global"),
-      editable_by_me: allAgents.filter((a) => a.canEdit),
-      global: allAgents.filter((a) => a.scope === "global"),
-      archived: archivedAgentConfigurations.sort((a, b) =>
-        a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+      all_custom: filteredList(allAgents.filter((a) => a.scope !== "global")),
+      editable_by_me: filteredList(allAgents.filter((a) => a.canEdit)),
+      global: filteredList(allAgents.filter((a) => a.scope === "global")),
+      archived: filteredList(
+        archivedAgentConfigurations.sort((a, b) =>
+          a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+        )
       ),
-      search: filterAndSortBySearch(agentConfigurations),
-      search_archived: filterAndSortBySearch(archivedAgentConfigurations),
     };
   }, [
     agentConfigurations,
     archivedAgentConfigurations,
     selectedTags,
     assistantSearch,
+    isSearchActive,
   ]);
 
   const { uniqueTags } = useMemo(() => {
@@ -228,23 +209,6 @@ export function ManageAgentsPage() {
 
     await mutateAgentConfigurations();
   };
-
-  // if search is active, show search tabs, otherwise show all tabs except search tabs
-  const visibleTabs = useMemo(() => {
-    const searchTab = AGENT_MANAGER_TABS.find((tab) => tab.id === "search");
-    const searchArchivedTab = AGENT_MANAGER_TABS.find(
-      (tab) => tab.id === "search_archived"
-    );
-    if (!searchTab || !searchArchivedTab) {
-      throw new Error("Unexpected: Search tabs not found");
-    }
-
-    return isSearchActive
-      ? [searchTab, searchArchivedTab]
-      : AGENT_MANAGER_TABS.filter(
-          (tab) => tab.id !== "search" && tab.id !== "search_archived"
-        );
-  }, [isSearchActive]);
 
   const searchBarRef = useRef<HTMLInputElement>(null);
 
@@ -292,7 +256,7 @@ export function ManageAgentsPage() {
             onClose={() => setDetailedAgentId(null)}
           />
           <div className="flex w-full flex-col gap-8 pb-4 pt-2 lg:pt-8">
-            <Page.Header title="Manage Agents" icon={ContactsRobotIcon} />
+            <Page.Header title="Manage Agents" icon={ContactsRobot} />
             <Page.Vertical gap="md" align="stretch">
               <div className="flex flex-row gap-2">
                 <SearchInput
@@ -310,7 +274,7 @@ export function ManageAgentsPage() {
                     {isAdmin(owner) && (
                       <Button
                         variant="outline"
-                        icon={ListSelectIcon}
+                        icon={ListSelect}
                         label="Batch edit"
                         onClick={() => {
                           setIsBatchEdit(true);
@@ -363,31 +327,19 @@ export function ManageAgentsPage() {
                 ) : (
                   <Tabs value={activeTab}>
                     <TabsList>
-                      {visibleTabs.map((tab) => (
+                      {AGENT_MANAGER_TABS.map((tab) => (
                         <TabsTrigger
                           key={tab.id}
                           value={tab.id}
                           label={tab.label}
                           onClick={() => {
-                            if (isSearchActive) {
-                              if (
-                                tab.id === "search" ||
-                                tab.id === "search_archived"
-                              ) {
-                                setSelectedSearchTab(tab.id);
-                              }
-                            } else {
-                              setSelectedTab(tab.id);
-                            }
+                            setSelectedTab(tab.id);
                           }}
                           tooltip={
                             AGENT_MANAGER_TABS.find((t) => t.id === tab.id)
                               ?.description
                           }
-                          isCounter={
-                            tab.id !== "archived" &&
-                            tab.id !== "search_archived"
-                          }
+                          isCounter={tab.id !== "archived"}
                           counterValue={`${agentsByTab[tab.id].length}`}
                         />
                       ))}
@@ -423,7 +375,7 @@ export function ManageAgentsPage() {
                       <EmptyCallToAction
                         href={`/w/${owner.sId}/builder/agents/create`}
                         label="Create an agent"
-                        icon={PlusIcon}
+                        icon={Plus}
                         data-gtm-label="assistantCreationButton"
                         data-gtm-location="assistantsWorkspace"
                       />

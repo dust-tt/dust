@@ -1,19 +1,17 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { buildShrinkWrapPromptForConversation } from "@app/lib/api/assistant/builder/sidekick_prompts";
-
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
 
 // Mounted at /api/w/:wId/assistant/builder/sidekick/prompt/shrink-wrap.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const conversationId = c.req.query("conversationId");
+/** @ignoreswagger */
+app.get("/", async (ctx) => {
+  const auth = ctx.get("auth");
+  const conversationId = ctx.req.query("conversationId");
   if (!conversationId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 422,
       api_error: {
         type: "unprocessable_entity",
@@ -27,9 +25,9 @@ app.get("/", async (c) => {
     conversationId
   );
   if (result.isErr()) {
-    return apiErrorForConversation(c, result.error);
+    return apiErrorForConversation(ctx, result.error);
   }
-  return c.json(result.value);
+  return ctx.json(result.value);
 });
 
 export default app;

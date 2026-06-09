@@ -1,26 +1,42 @@
 import config from "@app/lib/api/config";
-import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
+import {
+  CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+  CONTRACT_CREDIT_TYPE_POOL,
+  PLAN_CODE_CUSTOM_FIELD_KEY,
+  SEAT_TYPE_CUSTOM_FIELD_KEY,
+} from "@app/lib/metronome/constants";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
+import type { MembershipSeatType } from "@app/types/memberships";
+import { isMembershipSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import Metronome, { ConflictError } from "@metronome/sdk";
-import type { Commit, ContractV2, Credit } from "@metronome/sdk/resources";
+import type { Commit, ContractV2, Credit, V1 } from "@metronome/sdk/resources";
+import type { ContractRetrieveRateScheduleResponse } from "@metronome/sdk/resources/v1/contracts/contracts";
+import type { ProductListResponse } from "@metronome/sdk/resources/v1/contracts/products";
 import type { RateCardRetrieveResponse } from "@metronome/sdk/resources/v1/contracts/rate-cards";
-import type { Invoice } from "@metronome/sdk/resources/v1/customers";
+import type {
+  CustomerAlert,
+  Invoice,
+} from "@metronome/sdk/resources/v1/customers";
+import type { ContractEditParams } from "@metronome/sdk/resources/v2/contracts";
+import type { IncomingHttpHeaders } from "http";
 import type {
   MetronomeBalance,
   MetronomeEvent,
   MetronomePackageTier,
   MetronomeSeatBalance,
+  MetronomeStripeCollectionMethod,
   MetronomeUsageListResponse,
   MetronomeUsageWithGroupsResponse,
 } from "./types";
 import {
   classifyMetronomePackageByName,
   classifyMetronomePackageCurrencyByName,
+  DEFAULT_METRONOME_STRIPE_COLLECTION_METHOD,
   isMetronomeSeatBalance,
 } from "./types";
 
@@ -68,6 +84,22 @@ export function ceilToMidnightUTC(d: Date): Date {
 }
 
 // ---------------------------------------------------------------------------
+// Webhooks
+// ---------------------------------------------------------------------------
+
+/**
+ * Verify a Metronome webhook signature and return the parsed payload as an
+ * unknown — callers schema-check it. Throws if the signature is invalid.
+ */
+export function unwrapMetronomeWebhook(
+  rawBody: string,
+  headers: IncomingHttpHeaders,
+  secret: string
+): unknown {
+  return getMetronomeClient().webhooks.unwrap(rawBody, headers, secret);
+}
+
+// ---------------------------------------------------------------------------
 // Event ingestion
 // ---------------------------------------------------------------------------
 
@@ -107,15 +139,46 @@ export async function ingestMetronomeEvents(
   }
 
   const client = getMetronomeClient();
-  for (let i = 0; i < validEvents.length; i += METRONOME_INGEST_BATCH_SIZE) {
-    const batch = validEvents.slice(i, i + METRONOME_INGEST_BATCH_SIZE);
-    await client.v1.usage.ingest({ usage: batch });
+  try {
+    for (let i = 0; i < validEvents.length; i += METRONOME_INGEST_BATCH_SIZE) {
+      const batch = validEvents.slice(i, i + METRONOME_INGEST_BATCH_SIZE);
+      await client.v1.usage.ingest({ usage: batch });
+    }
+  } catch (err) {
+    logger.error(
+      { error: normalizeError(err), eventCount: validEvents.length },
+      "[Metronome] Failed to ingest usage events"
+    );
+    throw err;
   }
+  logger.info(
+    { eventCount: validEvents.length },
+    "[Metronome] Ingested usage events"
+  );
 }
 
 // ---------------------------------------------------------------------------
 // Customer management
 // ---------------------------------------------------------------------------
+
+/**
+ * Resolves how to address the Stripe billing-provider delivery method on a
+ * customer config. When the Metronome org has multiple Stripe
+ * DIRECT_TO_BILLING_PROVIDER connections, Metronome rejects the bare
+ * `delivery_method` and requires an explicit `delivery_method_id`; set
+ * METRONOME_STRIPE_DELIVERY_METHOD_ID to pin the intended connection (find ids
+ * with `scripts/list_metronome_delivery_methods.ts`). With a single connection
+ * (e.g. prod) the env var stays unset and the bare delivery_method resolves
+ * unambiguously.
+ */
+function stripeDeliveryMethod():
+  | { delivery_method_id: string }
+  | { delivery_method: "direct_to_billing_provider" } {
+  const deliveryMethodId = config.getMetronomeStripeDeliveryMethodId();
+  return deliveryMethodId
+    ? { delivery_method_id: deliveryMethodId }
+    : { delivery_method: "direct_to_billing_provider" };
+}
 
 /**
  * Create a customer in Metronome, linked to an existing Stripe customer.
@@ -128,10 +191,12 @@ export async function createMetronomeCustomer({
   workspaceId,
   workspaceName,
   stripeCustomerId,
+  stripeCollectionMethod = DEFAULT_METRONOME_STRIPE_COLLECTION_METHOD,
 }: {
   workspaceId: string;
   workspaceName: string;
   stripeCustomerId?: string;
+  stripeCollectionMethod?: MetronomeStripeCollectionMethod;
 }): Promise<Result<{ metronomeCustomerId: string }, Error>> {
   try {
     const response = await getMetronomeClient().v1.customers.create({
@@ -142,10 +207,10 @@ export async function createMetronomeCustomer({
             customer_billing_provider_configurations: [
               {
                 billing_provider: "stripe",
-                delivery_method: "direct_to_billing_provider",
+                ...stripeDeliveryMethod(),
                 configuration: {
                   stripe_customer_id: stripeCustomerId,
-                  stripe_collection_method: "charge_automatically",
+                  stripe_collection_method: stripeCollectionMethod,
                 },
               },
             ],
@@ -239,17 +304,20 @@ export async function getMetronomeCustomerStripeCustomerId(
  * configuration pointing to the given `stripeCustomerId`.
  *
  * - No active Stripe config: adds one.
- * - Active Stripe config already pointing to `stripeCustomerId`: no-op.
- * - Active Stripe config pointing to a different `stripeCustomerId`: archives
- *   the stale config(s) and adds a new one (defensive: should be rare, but
- *   covers cases like a recreated Stripe customer).
+ * - Active Stripe config already pointing to `stripeCustomerId` with the same
+ *   collection method: no-op.
+ * - Active Stripe config pointing to a different `stripeCustomerId` or using a
+ *   different collection method: archives the stale config(s) and adds a new
+ *   one (covers a recreated Stripe customer or a collection-method change).
  */
 export async function ensureMetronomeStripeBillingConfig({
   metronomeCustomerId,
   stripeCustomerId,
+  stripeCollectionMethod = DEFAULT_METRONOME_STRIPE_COLLECTION_METHOD,
 }: {
   metronomeCustomerId: string;
   stripeCustomerId: string;
+  stripeCollectionMethod?: MetronomeStripeCollectionMethod;
 }): Promise<Result<void, Error>> {
   try {
     const existing =
@@ -262,7 +330,9 @@ export async function ensureMetronomeStripeBillingConfig({
     );
 
     const alreadyCorrect = activeStripeConfigs.some(
-      (c) => c.configuration?.stripe_customer_id === stripeCustomerId
+      (c) =>
+        c.configuration?.stripe_customer_id === stripeCustomerId &&
+        c.configuration?.stripe_collection_method === stripeCollectionMethod
     );
     if (alreadyCorrect) {
       return new Ok(undefined);
@@ -292,17 +362,17 @@ export async function ensureMetronomeStripeBillingConfig({
         {
           customer_id: metronomeCustomerId,
           billing_provider: "stripe",
-          delivery_method: "direct_to_billing_provider",
+          ...stripeDeliveryMethod(),
           configuration: {
             stripe_customer_id: stripeCustomerId,
-            stripe_collection_method: "charge_automatically",
+            stripe_collection_method: stripeCollectionMethod,
           },
         },
       ],
     });
 
     logger.info(
-      { metronomeCustomerId, stripeCustomerId },
+      { metronomeCustomerId, stripeCustomerId, stripeCollectionMethod },
       "[Metronome] Stripe billing config added to customer"
     );
     return new Ok(undefined);
@@ -411,6 +481,127 @@ export interface MetronomePackageSummary {
   rateCardId?: string;
   tier: MetronomePackageTier;
   currency: SupportedCurrency;
+  seats: PackageSeatConfig[];
+}
+
+/**
+ * A seat type that can be sold on a package. `entitled` reflects whether the
+ * package flips this seat on by default (via an `entitled: true` override);
+ * non-entitled seats are still surfaced so an operator can opt into entitling
+ * them when switching the contract. `defaultRate` is the per-seat flat rate
+ * stamped by the package's entitlement override (in the rate card's fiat unit,
+ * e.g. cents for USD); it is null when the seat is not entitled, or entitled
+ * without an explicit rate. `productId` is the Metronome seat product the
+ * override targets — used to apply a rate/entitlement override on the
+ * provisioned contract.
+ */
+export interface PackageSeatConfig {
+  seatType: MembershipSeatType;
+  productId: string;
+  productName: string;
+  defaultRate: number | null;
+  entitled: boolean;
+}
+
+// Structural shape of the package list-response overrides we read — only the
+// fields needed to resolve entitled seat products and their flat rate.
+type PackageEntitlementOverride = {
+  entitled?: boolean;
+  product?: { id?: string };
+  override_specifiers?: Array<{ product_id?: string }>;
+  overwrite_rate?: { price?: number };
+};
+
+/**
+ * Resolve every seat a package can sell, flagging which ones it entitles by
+ * default. A package flips `entitled: true` on the seat products it sells (and
+ * stamps their flat rate via `overwrite_rate`); those become `entitled` seats
+ * with their default rate. Every other known seat product is surfaced as a
+ * non-entitled seat (no default rate) so an operator can opt into entitling it
+ * when switching the contract.
+ */
+// `productId → { seatType, name }` for all seat products.
+type SeatProductInfo = { seatType: MembershipSeatType; name: string };
+
+function seatConfigsFromPackageOverrides(
+  overrides: PackageEntitlementOverride[] | undefined,
+  seatProducts: Map<string, SeatProductInfo>
+): PackageSeatConfig[] {
+  const bySeatType = new Map<MembershipSeatType, PackageSeatConfig>();
+
+  // First pass: the seats the package entitles, with their default rate.
+  for (const override of overrides ?? []) {
+    if (override.entitled !== true) {
+      continue;
+    }
+    const productIds = [
+      override.product?.id,
+      ...(override.override_specifiers ?? []).map((s) => s.product_id),
+    ];
+    for (const productId of productIds) {
+      const info = productId ? seatProducts.get(productId) : undefined;
+      if (productId && info && !bySeatType.has(info.seatType)) {
+        bySeatType.set(info.seatType, {
+          seatType: info.seatType,
+          productId,
+          productName: info.name,
+          defaultRate: override.overwrite_rate?.price ?? null,
+          entitled: true,
+        });
+      }
+    }
+  }
+
+  // Second pass: every remaining seat product, surfaced as not entitled so the
+  // operator can opt into it.
+  for (const [productId, info] of seatProducts) {
+    if (!bySeatType.has(info.seatType)) {
+      bySeatType.set(info.seatType, {
+        seatType: info.seatType,
+        productId,
+        productName: info.name,
+        defaultRate: null,
+        entitled: false,
+      });
+    }
+  }
+
+  return [...bySeatType.values()].sort((a, b) =>
+    a.seatType.localeCompare(b.seatType)
+  );
+}
+
+/**
+ * Build a `productId → { seatType, name }` map from all Metronome products
+ * tagged with the `DUST_SEAT_TYPE` custom field. Returns an empty map (and
+ * logs) on error so package listing degrades gracefully rather than failing
+ * entirely.
+ *
+ * Kept inline here (rather than reusing `seat_types.getProductSeatTypes`) to
+ * avoid a `client ↔ seat_types` import cycle.
+ */
+async function buildProductSeatTypeMap(): Promise<
+  Map<string, SeatProductInfo>
+> {
+  const result = new Map<string, SeatProductInfo>();
+  const productsResult = await listMetronomeProducts();
+  if (productsResult.isErr()) {
+    logger.warn(
+      { error: productsResult.error },
+      "[Metronome] Failed to resolve product seat types for package listing"
+    );
+    return result;
+  }
+  for (const product of productsResult.value) {
+    const value = product.custom_fields?.[SEAT_TYPE_CUSTOM_FIELD_KEY];
+    if (value && isMembershipSeatType(value)) {
+      result.set(product.id, {
+        seatType: value,
+        name: product.current?.name ?? "",
+      });
+    }
+  }
+  return result;
 }
 
 // Cache the package list for a few minutes as the catalog rarely changes and
@@ -425,6 +616,7 @@ const TIER_SORT_ORDER: Record<MetronomePackageTier, number> = {
   enterprise: 0,
   business: 1,
   pro: 2,
+  free: 3,
 };
 const CURRENCY_SORT_ORDER: Record<SupportedCurrency, number> = {
   usd: 0,
@@ -458,6 +650,7 @@ export async function listMetronomePackages(): Promise<
   }
 
   try {
+    const productSeatTypes = await buildProductSeatTypeMap();
     const packages: MetronomePackageSummary[] = [];
     for await (const pkg of getMetronomeClient().v1.packages.list()) {
       const aliases = pkg.aliases?.map((a) => a.name) ?? [];
@@ -477,6 +670,7 @@ export async function listMetronomePackages(): Promise<
         rateCardId: pkg.rate_card_id ?? undefined,
         tier,
         currency: classifyMetronomePackageCurrencyByName(name),
+        seats: seatConfigsFromPackageOverrides(pkg.overrides, productSeatTypes),
       });
     }
     packages.sort(comparePackagesForDisplay);
@@ -512,6 +706,26 @@ export async function setMetronomeContractCustomFields({
   }
 }
 
+/** Set custom field values on a Metronome contract credit. */
+export async function setMetronomeContractCreditCustomFields({
+  creditId,
+  customFields,
+}: {
+  creditId: string;
+  customFields: Record<string, string>;
+}): Promise<Result<void, Error>> {
+  try {
+    await getMetronomeClient().v1.customFields.setValues({
+      entity: "contract_credit",
+      entity_id: creditId,
+      custom_fields: customFields,
+    });
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Contract management
 // ---------------------------------------------------------------------------
@@ -530,6 +744,7 @@ export async function createMetronomeContract({
   startingAt,
   enableStripeBilling,
   planCode,
+  additionalCustomFields,
 }: {
   metronomeCustomerId: string;
   /** Mutually exclusive with `packageId`. */
@@ -544,6 +759,11 @@ export async function createMetronomeContract({
   // webhook can swap the workspace's subscription onto this plan when the
   // contract becomes active.
   planCode: string;
+  // Additional custom fields merged with PLAN_CODE_CUSTOM_FIELD_KEY when
+  // stamping the contract. Used to signal payment-gated activation flows
+  // (DUST_PAYMENT_GATE_TYPE) so the contract.start webhook can skip the
+  // automatic subscription swap.
+  additionalCustomFields?: Record<string, string>;
 }): Promise<Result<{ contractId: string }, Error>> {
   if (!packageAlias === !packageId) {
     return new Err(
@@ -617,7 +837,10 @@ export async function createMetronomeContract({
 
   const customFieldsResult = await setMetronomeContractCustomFields({
     contractId,
-    customFields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: planCode },
+    customFields: {
+      [PLAN_CODE_CUSTOM_FIELD_KEY]: planCode,
+      ...additionalCustomFields,
+    },
   });
   if (customFieldsResult.isErr()) {
     return new Err(customFieldsResult.error);
@@ -832,6 +1055,101 @@ export async function reactivateMetronomeContract({
 }
 
 /**
+ * Permanently archive a Metronome contract along with its commits and credits.
+ * Used to undo a not-yet-started contract (e.g. cancelling a pending contract
+ * switch). `voidInvoices` voids any finalized invoices generated for the
+ * contract — safe to set for a future-dated contract that has not billed yet.
+ */
+export async function archiveMetronomeContract({
+  metronomeCustomerId,
+  contractId,
+  voidInvoices = true,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  voidInvoices?: boolean;
+}): Promise<Result<void, Error>> {
+  try {
+    await getMetronomeClient().v1.contracts.archive({
+      customer_id: metronomeCustomerId,
+      contract_id: contractId,
+      void_invoices: voidInvoices,
+    });
+
+    logger.info(
+      { metronomeCustomerId, contractId, voidInvoices },
+      "[Metronome] Contract archived"
+    );
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, contractId },
+      "[Metronome] Failed to archive contract"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Generic wrapper around `v2.contracts.edit`. The Metronome edit endpoint is
+ * an omnibus mutation (add subscriptions, commits, credits, overrides, billing
+ * provider, etc.) — callers compose the body and we surface the resulting
+ * edit id (or error) without prescribing the payload shape.
+ */
+export async function editMetronomeContract(
+  params: ContractEditParams
+): Promise<Result<{ editId: string }, Error>> {
+  try {
+    const response = await getMetronomeClient().v2.contracts.edit(params);
+    return new Ok({ editId: response.data.id });
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      {
+        error,
+        metronomeCustomerId: params.customer_id,
+        contractId: params.contract_id,
+      },
+      "[Metronome] Failed to edit contract"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Lazily iterate the rate-schedule entries for a contract at a given
+ * timestamp. Yields one entry at a time, fetching pages on demand —
+ * callers can `break` early once they've found what they need without
+ * dragging extra pages over the wire. Errors thrown by the SDK surface
+ * through the iterator; wrap with try/catch + Result.
+ */
+export async function* listMetronomeContractRateSchedule({
+  metronomeCustomerId,
+  metronomeContractId,
+  at,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  at: string;
+}): AsyncGenerator<ContractRetrieveRateScheduleResponse.Data> {
+  const client = getMetronomeClient();
+  let nextPage: string | null | undefined = undefined;
+  do {
+    const response = await client.v1.contracts.retrieveRateSchedule({
+      contract_id: metronomeContractId,
+      customer_id: metronomeCustomerId,
+      at,
+      ...(nextPage ? { next_page: nextPage } : {}),
+    });
+    for (const entry of response.data ?? []) {
+      yield entry;
+    }
+    nextPage = response.next_page;
+  } while (nextPage);
+}
+
+/**
  * Get the package aliases for a contract.
  * Retrieves the contract to get its package_id, then retrieves the package
  * to get its aliases.
@@ -928,33 +1246,56 @@ export async function updateSubscriptionQuantity({
 }
 
 // Response shape for POST /v1/contracts/getSubscriptionSeatsHistory. The
-// Metronome Node SDK (3.5.0, latest) has no typed binding for this endpoint —
-// `retrieveSubscriptionQuantityHistory` is the closest and returns quantity
-// totals, not seat IDs. So we route through the SDK client's generic post(),
-// which still gives us auth + retries + error handling.
+// Metronome Node SDK (3.5.0, latest) has no typed binding for this endpoint, so
+// we route through the SDK client's generic post(), which still gives us auth +
+// retries + error handling.
+//
+// `total_quantity` is the absolute billed seat count (assigned + unassigned) at
+// the segment, returned as a STRING. The unassigned count is derived as
+// `total_quantity - assigned_seat_ids.length` (see
+// `getMetronomeSubscriptionSeatState`). NOTE: do not use the subscription's
+// `quantity_schedule` or `retrieveSubscriptionQuantityHistory` for this — those
+// report the base/proration quantity, not the seat-driven total.
 interface SubscriptionSeatsHistoryResponse {
   data: Array<{
     starting_at: string;
     ending_before?: string | null;
     assigned_seat_ids: string[];
-    unassigned_seats?: number;
+    total_quantity?: string;
   }>;
 }
 
 /**
- * Fetch the currently assigned seat IDs on a SEAT_BASED subscription. Returns
- * the seat IDs in the schedule segment that covers `now` — i.e. the live
- * state.
+ * The seat state of a SEAT_BASED subscription segment: the explicitly assigned
+ * seat IDs plus the count of unassigned (paid-for but unallocated) seats.
  */
-export async function getMetronomeSubscriptionAssignedSeatIds({
+export type SubscriptionSeatState = {
+  assignedSeatIds: string[];
+  unassignedSeats: number;
+};
+
+/**
+ * Fetch the seat state (assigned seat IDs + unassigned seat count) on a
+ * SEAT_BASED subscription at `coveringDate` (defaults to now), via the (untyped)
+ * getSubscriptionSeatsHistory endpoint.
+ *
+ * `unassignedSeats` is derived as `total_quantity - assignedCount` from the same
+ * response — the endpoint returns the absolute billed total, but not the
+ * unassigned count directly.
+ */
+export async function getMetronomeSubscriptionSeatState({
   metronomeCustomerId,
   contractId,
   subscriptionId,
+  coveringDate,
 }: {
   metronomeCustomerId: string;
   contractId: string;
   subscriptionId: string;
-}): Promise<Result<string[], Error>> {
+  // Defaults to `now`. Pass a future date to read the assignments projected
+  // at that point in time.
+  coveringDate?: Date;
+}): Promise<Result<SubscriptionSeatState, Error>> {
   try {
     const response =
       await getMetronomeClient().post<SubscriptionSeatsHistoryResponse>(
@@ -964,15 +1305,27 @@ export async function getMetronomeSubscriptionAssignedSeatIds({
             customer_id: metronomeCustomerId,
             contract_id: contractId,
             subscription_id: subscriptionId,
-            covering_date: new Date().toISOString(),
+            covering_date: (coveringDate ?? new Date()).toISOString(),
           },
         }
       );
-    // History is returned ascending by starting_at; take the last entry for the
-    // current live state (earlier entries are stale schedule segments).
-    return new Ok(
-      response.data[response.data.length - 1]?.assigned_seat_ids ?? []
-    );
+    // History is returned ascending by starting_at; take the last entry to
+    // get the segment active at `coveringDate` (earlier entries are stale).
+    const segment = response.data[response.data.length - 1];
+    const assignedSeatIds = segment?.assigned_seat_ids ?? [];
+
+    // `total_quantity` is a string (e.g. "998"). Fall back to the assigned
+    // count (→ 0 unassigned) if it's missing/unparseable so we never invent a
+    // floor top-up from a bad read.
+    const totalQuantity = Number(segment?.total_quantity);
+    const resolvedTotal = Number.isFinite(totalQuantity)
+      ? totalQuantity
+      : assignedSeatIds.length;
+
+    return new Ok({
+      assignedSeatIds,
+      unassignedSeats: Math.max(0, resolvedTotal - assignedSeatIds.length),
+    });
   } catch (err) {
     const error = normalizeError(err);
     logger.error(
@@ -981,6 +1334,35 @@ export async function getMetronomeSubscriptionAssignedSeatIds({
     );
     return new Err(error);
   }
+}
+
+/**
+ * Fetch the assigned seat IDs on a SEAT_BASED subscription at `coveringDate`
+ * (defaults to now), via the (untyped) getSubscriptionSeatsHistory endpoint.
+ */
+export async function getMetronomeSubscriptionAssignedSeatIds({
+  metronomeCustomerId,
+  contractId,
+  subscriptionId,
+  coveringDate,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  subscriptionId: string;
+  // Defaults to `now`. Pass a future date to read the assignments projected
+  // at that point in time.
+  coveringDate?: Date;
+}): Promise<Result<string[], Error>> {
+  const stateResult = await getMetronomeSubscriptionSeatState({
+    metronomeCustomerId,
+    contractId,
+    subscriptionId,
+    coveringDate,
+  });
+  if (stateResult.isErr()) {
+    return new Err(stateResult.error);
+  }
+  return new Ok(stateResult.value.assignedSeatIds);
 }
 
 /**
@@ -1110,6 +1492,14 @@ export async function updateSubscriptionSeats({
 
 /**
  * Add paid credits (=commits) to a Metronome customer.
+ *
+ * When `invoiceSchedule` is provided, Metronome also raises the matching
+ * invoice for the commit (pushed to Stripe through the integration).
+ * `unitPrice` must be in Metronome's fiat unit for the invoice credit type
+ * (cents for USD, whole units for other currencies — see `metronomeAmount`).
+ * `contractId` is required by Metronome whenever an `invoice_schedule` is
+ * set on a customer-level commit — it tells Metronome which contract
+ * should host the invoice line.
  */
 export async function createMetronomeCommit({
   metronomeCustomerId,
@@ -1121,6 +1511,8 @@ export async function createMetronomeCommit({
   name,
   idempotencyKey,
   priority,
+  invoiceSchedule,
+  customFields,
 }: {
   metronomeCustomerId: string;
   productId: string;
@@ -1131,6 +1523,14 @@ export async function createMetronomeCommit({
   idempotencyKey: string;
   name?: string;
   priority?: number;
+  invoiceSchedule?: {
+    contractId: string;
+    creditTypeId: string;
+    unitPrice: number;
+    quantity: number;
+    timestamp: Date;
+  };
+  customFields?: Record<string, string>;
 }): Promise<Result<{ id: string } | null, Error>> {
   // Metronome requires dates on hour boundaries — round down start, round up end.
   const roundedStartingAt = floorToHourISO(startingAt);
@@ -1144,6 +1544,7 @@ export async function createMetronomeCommit({
         amount,
         roundedStartingAt,
         roundedEndingBefore,
+        hasInvoiceSchedule: invoiceSchedule !== undefined,
       },
       "[Metronome] Adding commits to customer"
     );
@@ -1165,6 +1566,24 @@ export async function createMetronomeCommit({
           },
         ],
       },
+      ...(invoiceSchedule
+        ? {
+            invoice_contract_id: invoiceSchedule.contractId,
+            invoice_schedule: {
+              credit_type_id: invoiceSchedule.creditTypeId,
+              schedule_items: [
+                {
+                  unit_price: invoiceSchedule.unitPrice,
+                  quantity: invoiceSchedule.quantity,
+                  timestamp: floorToHourISO(invoiceSchedule.timestamp),
+                },
+              ],
+            },
+          }
+        : {}),
+      ...(customFields && Object.keys(customFields).length > 0
+        ? { custom_fields: customFields }
+        : {}),
       uniqueness_key: idempotencyKey,
     });
 
@@ -1255,6 +1674,7 @@ export async function addPaymentGatedCommitToContract({
   invoiceCreditTypeId,
   invoiceTimestamp,
   priority,
+  applicableProducTags,
   name,
   uniquenessKey,
   stripeInvoiceMetadata,
@@ -1271,6 +1691,7 @@ export async function addPaymentGatedCommitToContract({
   invoiceCreditTypeId: string;
   invoiceTimestamp: Date;
   priority: number;
+  applicableProducTags: string[];
   name: string;
   uniquenessKey: string;
   stripeInvoiceMetadata: Record<string, string>;
@@ -1286,7 +1707,7 @@ export async function addPaymentGatedCommitToContract({
           type: "PREPAID",
           name,
           priority,
-          applicable_product_tags: ["usage"],
+          applicable_product_tags: applicableProducTags,
           access_schedule: {
             credit_type_id: accessCreditTypeId,
             schedule_items: [
@@ -1309,6 +1730,7 @@ export async function addPaymentGatedCommitToContract({
           },
           payment_gate_config: {
             payment_gate_type: "STRIPE",
+            tax_type: "STRIPE",
             stripe_config: {
               payment_type: "INVOICE",
               invoice_metadata: stripeInvoiceMetadata,
@@ -1357,6 +1779,132 @@ export async function addPaymentGatedCommitToContract({
 }
 
 /**
+ * Add a plain (non-payment-gated) PREPAID commit to an existing contract via
+ * `v2.contracts.edit`. Unlike `addPaymentGatedCommitToContract`, the credits
+ * are available immediately (no Stripe payment gate); Metronome raises the
+ * invoice through the contract's billing configuration on its normal cadence,
+ * and collection follows the customer's Stripe collection method.
+ *
+ * `invoiceUnitPrice` is the per-unit fiat price in the invoice credit type's
+ * units — cents for USD, whole units for other fiat currencies (matches
+ * Metronome's fiat unit convention; see `metronomeAmount`). Passing
+ * `invoiceQuantity: 1` makes `invoiceUnitPrice` the full invoice total.
+ */
+export async function addPrepaidCommitToContract({
+  metronomeCustomerId,
+  metronomeContractId,
+  productId,
+  accessAmount,
+  accessCreditTypeId,
+  accessStartingAt,
+  accessEndingBefore,
+  invoiceUnitPrice,
+  invoiceQuantity,
+  invoiceCreditTypeId,
+  invoiceTimestamp,
+  priority,
+  name,
+  uniquenessKey,
+  applicableProductIds,
+  applicableProductTags,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  productId: string;
+  accessAmount: number;
+  accessCreditTypeId: string;
+  accessStartingAt: Date;
+  accessEndingBefore: Date;
+  invoiceUnitPrice: number;
+  invoiceQuantity: number;
+  invoiceCreditTypeId: string;
+  invoiceTimestamp: Date;
+  priority: number;
+  name: string;
+  uniquenessKey: string;
+  applicableProductIds?: string[];
+  applicableProductTags?: string[];
+}): Promise<Result<{ editId: string }, Error>> {
+  try {
+    const response = await getMetronomeClient().v2.contracts.edit({
+      customer_id: metronomeCustomerId,
+      contract_id: metronomeContractId,
+      uniqueness_key: uniquenessKey,
+      add_commits: [
+        {
+          product_id: productId,
+          type: "PREPAID",
+          name,
+          priority,
+          ...(applicableProductIds && applicableProductIds.length > 0
+            ? { applicable_product_ids: applicableProductIds }
+            : {}),
+          ...(applicableProductTags && applicableProductTags.length > 0
+            ? { applicable_product_tags: applicableProductTags }
+            : {}),
+          access_schedule: {
+            credit_type_id: accessCreditTypeId,
+            schedule_items: [
+              {
+                amount: accessAmount,
+                starting_at: floorToHourISO(accessStartingAt),
+                ending_before: floorToHourISO(accessEndingBefore),
+              },
+            ],
+          },
+          invoice_schedule: {
+            credit_type_id: invoiceCreditTypeId,
+            schedule_items: [
+              {
+                unit_price: invoiceUnitPrice,
+                quantity: invoiceQuantity,
+                timestamp: floorToHourISO(invoiceTimestamp),
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    logger.info(
+      {
+        metronomeCustomerId,
+        metronomeContractId,
+        editId: response.data.id,
+        accessAmount,
+        invoiceUnitPrice,
+        invoiceQuantity,
+      },
+      "[Metronome] Prepaid commit added to contract"
+    );
+
+    return new Ok({ editId: response.data.id });
+  } catch (err) {
+    if (err instanceof ConflictError) {
+      logger.info(
+        { metronomeCustomerId, metronomeContractId, uniquenessKey },
+        "[Metronome] Prepaid commit edit already exists (idempotent)"
+      );
+      return new Ok({ editId: "" });
+    }
+
+    const error = normalizeError(err);
+    logger.error(
+      {
+        error,
+        metronomeCustomerId,
+        metronomeContractId,
+        accessAmount,
+        invoiceUnitPrice,
+        invoiceQuantity,
+      },
+      "[Metronome] Failed to add prepaid commit to contract"
+    );
+    return new Err(error);
+  }
+}
+
+/**
  * Find a customer-level commit by its uniqueness_key.
  * Used to recover the id after a 409 conflict on creation.
  * Scoped via covering_date so we don't paginate through expired commits.
@@ -1385,22 +1933,18 @@ export async function findMetronomeCommitByUniquenessKey({
 // Products
 // ---------------------------------------------------------------------------
 
-interface MetronomeProduct {
-  id: string;
-  name: string;
-}
-
 /**
- * List all products from Metronome.
- * Used to resolve product IDs by name (e.g. "Pro Seat", "Max Seat").
+ * List all products from Metronome. Returns the raw SDK product objects so
+ * callers can read whatever fields they need (custom_fields, current state,
+ * etc.) without us maintaining a stripped wrapper type.
  */
 export async function listMetronomeProducts(): Promise<
-  Result<MetronomeProduct[], Error>
+  Result<ProductListResponse[], Error>
 > {
   try {
-    const products: MetronomeProduct[] = [];
+    const products: ProductListResponse[] = [];
     for await (const product of getMetronomeClient().v1.contracts.products.list()) {
-      products.push({ id: product.id, name: product.current.name });
+      products.push(product);
     }
     return new Ok(products);
   } catch (err) {
@@ -1448,6 +1992,7 @@ export async function listMetronomeBalances(
     includeArchived = false,
     coveringDate = new Date(),
     effectiveBefore,
+    onlyPoolCredits = true,
   }: {
     // Pass `null` to drop the `covering_date` filter and return balances of any
     // date (including expired and, depending on `effectiveBefore`, future ones).
@@ -1456,6 +2001,8 @@ export async function listMetronomeBalances(
     // future-dated balances while still returning expired ones.
     effectiveBefore?: Date;
     includeArchived?: boolean;
+    // Restrict to balances related to pool credits
+    onlyPoolCredits?: boolean;
   } = {}
 ): Promise<Result<MetronomeBalance[], Error>> {
   if (!config.getMetronomeApiKey()) {
@@ -1478,6 +2025,19 @@ export async function listMetronomeBalances(
         : {}),
       ...(includeArchived ? { include_archived: true } : {}),
     })) {
+      // Mirror the default ContractCredit alert filter: include only
+      // credits explicitly tagged DUST_CONTRACT_CREDIT_TYPE=pool. Excess
+      // credits (tagged "excess") and per-seat / unstamped credits are
+      // excluded — they're not part of the workspace pool balance the
+      // alert tracks. Commits are not stamped and pass through unchanged.
+      if (
+        onlyPoolCredits &&
+        entry.type === "CREDIT" &&
+        entry.custom_fields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY] !==
+          CONTRACT_CREDIT_TYPE_POOL
+      ) {
+        continue;
+      }
       balances.push(entry);
     }
     return new Ok(balances);
@@ -1547,13 +2107,22 @@ export async function listMetronomeUsageWithGroups({
   endingBefore,
   windowSize,
   groupKey,
+  groupFilters,
 }: {
   customerId: string;
   billableMetricId: string;
+  // Must be UTC midnight (Metronome requirement). To restrict to an
+  // hour-precise period, query midnight-aligned bounds with an HOUR window and
+  // trim the returned buckets to the exact range. (The API's `current_period`
+  // flag is not an option: it requires a legacy v1 Plan, which our
+  // contract-based customers don't have.)
   startingOn: string;
   endingBefore: string;
   windowSize: WindowSize;
   groupKey: string[];
+  // Restrict returned groups to these values per group key. Keys must be part
+  // of `groupKey`; an omitted key returns all of its values.
+  groupFilters?: Record<string, string[]>;
 }): Promise<Result<MetronomeUsageWithGroupsResponse[], Error>> {
   if (!config.getMetronomeApiKey()) {
     return new Ok([]);
@@ -1566,10 +2135,11 @@ export async function listMetronomeUsageWithGroups({
     for await (const entry of client.v1.usage.listWithGroups({
       customer_id: customerId,
       billable_metric_id: billableMetricId,
-      starting_on: startingOn,
-      ending_before: endingBefore,
       window_size: windowSize,
       group_key: groupKey,
+      starting_on: startingOn,
+      ending_before: endingBefore,
+      ...(groupFilters ? { group_filters: groupFilters } : {}),
     })) {
       results.push({
         startingOn: entry.starting_on,
@@ -1655,7 +2225,6 @@ export async function createMetronomeCredit({
   name,
   idempotencyKey,
   applicableProductTags,
-  applicableProductIds,
   priority,
 }: {
   metronomeCustomerId: string;
@@ -1667,7 +2236,6 @@ export async function createMetronomeCredit({
   name: string;
   idempotencyKey: string;
   applicableProductTags?: string[];
-  applicableProductIds?: string[];
   priority: number;
 }): Promise<Result<{ id: string } | null, Error>> {
   // Metronome requires dates on hour boundaries — round down start, round up end.
@@ -1682,9 +2250,6 @@ export async function createMetronomeCredit({
       priority,
       ...(applicableProductTags
         ? { applicable_product_tags: applicableProductTags }
-        : {}),
-      ...(applicableProductIds
-        ? { applicable_product_ids: applicableProductIds }
         : {}),
       access_schedule: {
         credit_type_id: creditTypeId,
@@ -2003,5 +2568,40 @@ export async function listMetronomeSeatBalances({
       "[Metronome] Failed to list seat balances"
     );
     return new Err(error);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Alerts
+// ---------------------------------------------------------------------------
+
+export async function createMetronomeAlert(
+  params: V1.AlertCreateParams
+): Promise<V1.AlertCreateResponse> {
+  return getMetronomeClient().v1.alerts.create(params);
+}
+
+// Archives the alert and releases its uniqueness_key so it can be reused
+// by a subsequent create (the only way we ever archive alerts today).
+export async function archiveMetronomeAlert(
+  params: V1.AlertArchiveParams
+): Promise<V1.AlertArchiveResponse> {
+  return getMetronomeClient().v1.alerts.archive({
+    ...params,
+    release_uniqueness_key: true,
+  });
+}
+
+// Lazily iterates Metronome customer alerts, transparently auto-paginating via
+// the SDK's PagePromise. Callers can `break` to early-exit (no extra pages are
+// fetched) or iterate to the end to scan everything. Errors thrown by the SDK
+// surface through the iterator — callers wrap with try/catch + `Result`.
+export async function* listMetronomeAlerts(
+  params: V1.Customers.AlertListParams
+): AsyncGenerator<CustomerAlert> {
+  for await (const entry of getMetronomeClient().v1.customers.alerts.list(
+    params
+  )) {
+    yield entry;
   }
 }

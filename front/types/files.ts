@@ -1,6 +1,8 @@
 // Types.
+import type { DustError } from "@app/lib/error";
 import { z } from "zod";
 
+import { assertNever } from "./shared/utils/assert_never";
 import { removeNulls } from "./shared/utils/general";
 import type { UserType } from "./user";
 
@@ -81,13 +83,174 @@ export const fileShareScopeSchema = z.enum([
 
 export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
 
+/**
+ * Allowlist of files a shared Frame may load via useFile().
+ * AuthorizedFileAccessModel stores one row per authorized file; active rows have
+ * revokedAt = null.
+ */
+export const authorizedFileAccessKindSchema = z.enum([
+  "file_id",
+  "canonical_path",
+  "unverifiable",
+]);
+
+export type AuthorizedFileAccessKind = z.infer<
+  typeof authorizedFileAccessKindSchema
+>;
+
+const authorizedFileAccessEntryBaseSchema = {
+  shareScope: fileShareScopeSchema,
+  computedByUserId: z.string(),
+  frameContentHash: z.string(),
+  allowedAt: z.string(),
+  revokedAt: z.string().nullable().optional(),
+};
+
+const authorizedFileIdAccessEntrySchema = z
+  .object({
+    kind: z.literal("file_id"),
+    ref: z.string(),
+    fileName: z.string().optional(),
+    ...authorizedFileAccessEntryBaseSchema,
+  })
+  .strict();
+
+const authorizedCanonicalPathAccessEntrySchema = z
+  .object({
+    kind: z.literal("canonical_path"),
+    ref: z.string(),
+    legacyPath: z.string().optional(),
+    fileName: z.string().optional(),
+    ...authorizedFileAccessEntryBaseSchema,
+  })
+  .strict();
+
+const authorizedUnverifiableAccessEntrySchema = z
+  .object({
+    kind: z.literal("unverifiable"),
+    ref: z.string(),
+    ...authorizedFileAccessEntryBaseSchema,
+  })
+  .strict();
+
+export const authorizedFileAccessEntrySchema = z.discriminatedUnion("kind", [
+  authorizedFileIdAccessEntrySchema,
+  authorizedCanonicalPathAccessEntrySchema,
+  authorizedUnverifiableAccessEntrySchema,
+]);
+
+export type AuthorizedFileAccessEntry = z.infer<
+  typeof authorizedFileAccessEntrySchema
+>;
+
+const authorizedFileIdRefSchema = z
+  .object({
+    kind: z.literal("file_id"),
+    ref: z.string(),
+    fileName: z.string().optional(),
+  })
+  .strict();
+
+const authorizedCanonicalPathRefSchema = z
+  .object({
+    kind: z.literal("canonical_path"),
+    ref: z.string(),
+    legacyPath: z.string().optional(),
+    fileName: z.string().optional(),
+  })
+  .strict();
+
+export const authorizedFileRefSchema = z.discriminatedUnion("kind", [
+  authorizedFileIdRefSchema,
+  authorizedCanonicalPathRefSchema,
+]);
+
+export type AuthorizedFileRef = z.infer<typeof authorizedFileRefSchema>;
+
+export function getAuthorizedFileRefLabel(ref: AuthorizedFileRef): string {
+  if (ref.fileName) {
+    return ref.fileName;
+  }
+  if (ref.kind === "file_id") {
+    return ref.ref;
+  }
+  return ref.ref.split("/").pop() ?? ref.ref;
+}
+
+export function entryToAuthorizedFileRef(
+  entry: AuthorizedFileAccessEntry
+): AuthorizedFileRef | null {
+  switch (entry.kind) {
+    case "unverifiable":
+      return null;
+    case "file_id":
+      return {
+        kind: "file_id",
+        ref: entry.ref,
+        ...(entry.fileName ? { fileName: entry.fileName } : {}),
+      };
+    case "canonical_path":
+      return {
+        kind: "canonical_path",
+        ref: entry.ref,
+        ...(entry.legacyPath ? { legacyPath: entry.legacyPath } : {}),
+        ...(entry.fileName ? { fileName: entry.fileName } : {}),
+      };
+    default:
+      return assertNever(entry);
+  }
+}
+
+/** Active allowlist view derived from non-revoked DB rows. */
+export type AuthorizedFileAccessAllowlist = {
+  computedByUserId: string;
+  frameContentHash: string;
+  refs: AuthorizedFileRef[];
+};
+
+/** Result of scanning frame content before persisting rows. */
+export type ComputedAuthorizedFileAccess = AuthorizedFileAccessAllowlist & {
+  unverifiableRefs?: string[];
+};
+
+export function parseAuthorizedFileAccessEntry(
+  data: unknown
+): AuthorizedFileAccessEntry {
+  return authorizedFileAccessEntrySchema.parse(data);
+}
+
+export function getActiveAuthorizedFileAccessEntries(
+  entries: AuthorizedFileAccessEntry[]
+): AuthorizedFileAccessEntry[] {
+  return entries.filter((entry) => entry.revokedAt == null);
+}
+
+export type AuthorizedFileAccessShareError = Omit<DustError, "code"> & {
+  code: "invalid_request_error" | "internal_error";
+  unverifiableRefs?: string[];
+};
+
+export function isUnverifiableFrameFileRefsShareError(
+  error: AuthorizedFileAccessShareError
+): error is AuthorizedFileAccessShareError & {
+  code: "invalid_request_error";
+  unverifiableRefs: string[];
+} {
+  return (
+    error.code === "invalid_request_error" &&
+    Array.isArray(error.unverifiableRefs) &&
+    error.unverifiableRefs.length > 0
+  );
+}
+
 export interface SharingGrantType {
   id: number;
   email: string;
-  grantedAt: Date;
+  grantedAt: number;
   grantedBy: UserType | null;
-  expiresAt: Date | null;
-  lastViewedAt: Date | null;
+  expiresAt: number | null;
+  revokedAt: number | null;
+  lastViewedAt: number | null;
   // True when the workspace policy prevents this grant from granting access.
   blockedByPolicy?: boolean;
 }
@@ -110,7 +273,9 @@ export interface FileType {
 /**
  * @swaggerschema PrivateFileWithUploadUrl (swagger_private_schemas.ts)
  */
-export type FileTypeWithUploadUrl = FileType & { uploadUrl: string };
+export type FileTypeWithUploadUrl = FileType & {
+  uploadUrl: string;
+};
 
 export type FileTypeWithMetadata = FileType & {
   useCaseMetadata: FileUseCaseMetadata;
@@ -244,7 +409,7 @@ export const FILE_FORMATS = {
   "image/png": { cat: "image", exts: [".png"], isSafeToDisplay: true },
   "image/gif": { cat: "image", exts: [".gif"], isSafeToDisplay: true },
   "image/webp": { cat: "image", exts: [".webp"], isSafeToDisplay: true },
-  "image/svg+xml": { cat: "image", exts: [".svg"], isSafeToDisplay: true },
+  "image/svg+xml": { cat: "image", exts: [".svg"], isSafeToDisplay: false },
   "image/bmp": { cat: "image", exts: [".bmp"], isSafeToDisplay: true },
 
   // Structured.
@@ -681,6 +846,10 @@ const EXTENSION_CONTENT_TYPE_OVERRIDES: Record<
 
 export function stripMimeParameters(contentType: string): string {
   return contentType.split(";")[0];
+}
+
+export function stripFileExtension(fileName: string): string {
+  return fileName.replace(/\.[^.]+$/, "");
 }
 
 // This function overrides the browser-reported content type with a more accurate one based on the file extension, if applicable.

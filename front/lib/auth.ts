@@ -27,7 +27,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
 import type {
@@ -72,12 +72,20 @@ export type AuthMethodType =
   | "sandbox_token"
   | "internal";
 
-export const isSandboxTokenPrefix = (token: string): boolean =>
-  token.startsWith(SANDBOX_TOKEN_PREFIX);
+// Bearer tokens are identified by their prefix: API keys start with `sk-`,
+// sandbox exec tokens with `sbt-`. Anything else is treated as an OAuth
+// (WorkOS) token.
+export type AuthTokenKind = "api_key" | "sandbox_token" | "oauth";
 
-// Any token which does not start with sk- or sbt- is considered an OAuth token.
-export const isOAuthToken = (token: string): boolean =>
-  !token.startsWith(SECRET_KEY_PREFIX) && !isSandboxTokenPrefix(token);
+export function getAuthTokenKind(token: string): AuthTokenKind {
+  if (token.startsWith(SECRET_KEY_PREFIX)) {
+    return "api_key";
+  }
+  if (token.startsWith(SANDBOX_TOKEN_PREFIX)) {
+    return "sandbox_token";
+  }
+  return "oauth";
+}
 
 export interface AuthenticatorType {
   authMethod: AuthMethodType;
@@ -88,6 +96,7 @@ export interface AuthenticatorType {
   subscriptionId: string | null;
   isByok: boolean;
   key?: KeyAuthType;
+  attributionKey?: { id: ModelId; name: string };
   clientIp?: string;
 }
 
@@ -100,6 +109,10 @@ export interface AuthenticatorType {
  */
 export class Authenticator {
   _key?: KeyAuthType;
+  // Attribution-only key reference. Records which API key a request should be
+  // *attributed* to for usage analytics, independently of `_key`. It never
+  // influences authorization (role, caps, system-key checks all read `_key`).
+  _attributionKey?: { id: ModelId; name: string };
   _role: RoleType;
   _subscription: SubscriptionResource | null;
   _user: UserResource | null;
@@ -118,6 +131,7 @@ export class Authenticator {
     authMethod,
     subscription,
     key,
+    attributionKey,
     providersHealth,
     clientIp,
   }: {
@@ -128,6 +142,7 @@ export class Authenticator {
     authMethod: AuthMethodType;
     subscription?: SubscriptionResource | null;
     key?: KeyAuthType;
+    attributionKey?: { id: ModelId; name: string };
     providersHealth?: ProvidersHealth | null;
     clientIp?: string;
   }) {
@@ -141,6 +156,7 @@ export class Authenticator {
     this._subscription = subscription || null;
     this._authMethod = authMethod;
     this._key = key;
+    this._attributionKey = attributionKey;
     this._providersHealth = providersHealth ?? null;
     this._clientIp = clientIp;
     if (user) {
@@ -472,7 +488,7 @@ export class Authenticator {
   static async fromSandboxToken(
     claims: SandboxExecTokenPayload,
     wId: string
-  ): Promise<Result<Authenticator, APIErrorWithStatusCode>> {
+  ): Promise<Result<Authenticator, APIErrorWithContentfulStatusCode>> {
     if (claims.wId !== wId) {
       return new Err({
         status_code: 401,
@@ -1189,6 +1205,37 @@ export class Authenticator {
     return this._key ?? null;
   }
 
+  attributionKey(): { id: ModelId; name: string } | null {
+    return this._attributionKey ?? null;
+  }
+
+  attributionKeyModelId(): ModelId | null {
+    return this._attributionKey?.id ?? null;
+  }
+
+  // Returns a copy of this authenticator carrying an attribution-only key
+  // reference. Used to attribute usage to the original caller's key when an
+  // internal flow re-authenticates with the workspace system key (e.g. run_agent
+  // sub-agents). This is attribution only: `_key` is left untouched, so role,
+  // caps and system-key checks keep operating on the actual (system) key.
+  withAttributionKey(attributionKey: {
+    id: ModelId;
+    name: string;
+  }): Authenticator {
+    return new Authenticator({
+      authMethod: this._authMethod,
+      key: this._key,
+      attributionKey,
+      role: this._role,
+      groupModelIds: this._groupModelIds,
+      user: this._user,
+      subscription: this._subscription,
+      workspace: this._workspace,
+      clientIp: this._clientIp,
+      providersHealth: this._providersHealth,
+    });
+  }
+
   toJSON(): AuthenticatorType {
     const workspace = this._workspace;
     assert(workspace, "Workspace is required to serialize Authenticator");
@@ -1202,13 +1249,12 @@ export class Authenticator {
       subscriptionId: this._subscription?.sId ?? null,
       isByok: this.plan()?.isByok ?? false,
       key: this._key,
+      attributionKey: this._attributionKey,
       clientIp: this._clientIp,
     };
   }
 
-  static async fromJSON(
-    authType: AuthenticatorType
-  ): Promise<Result<Authenticator, { code: "subscription_mismatch" }>> {
+  static async fromJSON(authType: AuthenticatorType): Promise<Authenticator> {
     const [workspace, user] = await Promise.all([
       authType.workspaceId
         ? WorkspaceResource.fetchById(authType.workspaceId)
@@ -1216,16 +1262,9 @@ export class Authenticator {
       authType.userId ? UserResource.fetchById(authType.userId) : null,
     ]);
 
-    const lightWorkspace = workspace
-      ? renderLightWorkspaceType({ workspace })
+    const subscription = workspace
+      ? await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id)
       : null;
-
-    const subscription =
-      authType.subscriptionId && lightWorkspace
-        ? await SubscriptionResource.fetchActiveByWorkspaceModelId(
-            lightWorkspace.id
-          )
-        : null;
 
     // Skip mismatch check for no-plan subscriptions: they have ephemeral random sIds
     // that change on every fetch, so they can never match the original.
@@ -1235,7 +1274,14 @@ export class Authenticator {
       subscription.sId !== authType.subscriptionId &&
       !subscription.isLegacyFreeNoPlan()
     ) {
-      return new Err({ code: "subscription_mismatch" });
+      logger.info(
+        {
+          workspaceId: authType.workspaceId,
+          originalSubscriptionId: authType.subscriptionId,
+          currentSubscriptionId: subscription.sId,
+        },
+        "Subscription changed since auth was serialized, using current active subscription"
+      );
     }
 
     const groupIds = removeNulls(
@@ -1247,19 +1293,18 @@ export class Authenticator {
       subscription
     );
 
-    return new Ok(
-      new Authenticator({
-        authMethod: authType.authMethod,
-        workspace,
-        user,
-        role: authType.role,
-        groupModelIds: groupIds,
-        subscription,
-        key: authType.key,
-        providersHealth,
-        clientIp: authType.clientIp,
-      })
-    );
+    return new Authenticator({
+      authMethod: authType.authMethod,
+      workspace,
+      user,
+      role: authType.role,
+      groupModelIds: groupIds,
+      subscription,
+      key: authType.key,
+      attributionKey: authType.attributionKey,
+      providersHealth,
+      clientIp: authType.clientIp,
+    });
   }
 }
 
@@ -1283,7 +1328,7 @@ export async function getSession(
  */
 export async function getBearerToken(
   authHeader: string | undefined
-): Promise<Result<string, APIErrorWithStatusCode>> {
+): Promise<Result<string, APIErrorWithContentfulStatusCode>> {
   if (!authHeader) {
     return new Err({
       status_code: 401,
@@ -1333,7 +1378,7 @@ export async function getSessionFromBearerToken(
   }
 
   const bearerToken = bearerTokenRes.value;
-  if (!isOAuthToken(bearerToken)) {
+  if (getAuthTokenKind(bearerToken) !== "oauth") {
     return new Ok(null);
   }
 
@@ -1381,11 +1426,11 @@ export async function getSessionFromBearerToken(
 
 /**
  * Retrieves the API Key from the Authorization header value.
- * @returns Result<Key, APIErrorWithStatusCode>
+ * @returns Result<Key, APIErrorWithContentfulStatusCode>
  */
 export async function getAPIKey(
   authHeader: string | undefined
-): Promise<Result<KeyResource, APIErrorWithStatusCode>> {
+): Promise<Result<KeyResource, APIErrorWithContentfulStatusCode>> {
   const token = await getBearerToken(authHeader);
 
   if (token.isErr()) {
@@ -1626,12 +1671,16 @@ export function getApiKeyNameFromHeaders(headers: {
 }
 
 export function getApiKeyNameHeader(auth: Authenticator) {
-  const key = auth.key();
-  if (!key || !key.name) {
+  // Prefer the attribution key name over the request's own key so the original
+  // caller's key name propagates transitively through nested internal system-key
+  // calls (e.g. a sub-agent that itself spawns sub-agents). Without this, a nested
+  // call would forward the system key name ("DustSystemKey") and lose attribution.
+  const name = auth.attributionKey()?.name ?? auth.key()?.name;
+  if (!name) {
     return undefined;
   }
 
   return {
-    [DustApiKeyNameHeader]: key.name,
+    [DustApiKeyNameHeader]: name,
   };
 }

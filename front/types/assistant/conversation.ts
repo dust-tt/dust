@@ -136,7 +136,6 @@ export type UserMessageContext = {
   lastTriggerRunAt?: number | null;
   clientSideMCPServerIds?: string[];
   selectedMCPServerViewIds?: string[];
-  selectedSkillIds?: string[];
   apiKeyId?: number | null;
   authMethod?: string | null;
 };
@@ -303,6 +302,11 @@ export type BaseAgentMessageType = {
   completionDurationMs: number | null;
   reactions: MessageReactionType[];
   prunedContext?: boolean;
+  // Optional during rollout: serialized from the API, so an old API server can
+  // return agent messages without this field (`undefined`) to a newer client
+  // during the credit-cost stack rollout. Tighten to `number | null` once the API
+  // change is fully deployed. See [BACK12].
+  costCredits?: number | null;
 };
 
 export type InlineActivityStep =
@@ -490,6 +494,7 @@ export type ConversationForkedFromType = {
   sourceMessageId: string;
   branchedAt: number;
   user: UserType;
+  fileCopyStatus: "pending" | "done";
 };
 
 /**
@@ -609,7 +614,7 @@ export function isLightConversationType(
   return "content" in conversation && !Array.isArray(conversation.content[0]);
 }
 
-export const isProjectConversation = <T extends ConversationListItemType>(
+export const isPodConversation = <T extends ConversationListItemType>(
   conversation: T
 ): conversation is T & { spaceId: string } => !!conversation.spaceId;
 
@@ -644,6 +649,7 @@ export interface ConversationParticipantsType {
 export const CONVERSATION_ERROR_TYPES = [
   "conversation_not_found",
   "conversation_access_restricted",
+  "conversation_agent_running",
   "conversation_with_unavailable_agent",
   "user_already_participant",
   "message_not_found",
@@ -670,6 +676,8 @@ export type SubmitMessageError = {
     | "message_send_error"
     | "plan_limit_reached_error"
     | "credits_exhausted_error"
+    | "user_cap_reached_error"
+    | "no_seat_error"
     | "content_too_large";
   title: string;
   message: string;

@@ -1,37 +1,33 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import apiConfig from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withDataSource } from "@front-api/middlewares/with_data_source";
+import { withSpace } from "@front-api/middlewares/with_space";
+import { z } from "zod";
 
-import { dataSourceResource } from "@front-api/middleware/data_source_resource";
-import { spaceResource } from "@front-api/middleware/space_resource";
+const ParamsSchema = z.object({
+  fId: z.string(),
+});
 
 // Mounted under /api/w/:wId/spaces/:spaceId/data_sources/:dsId/folders/:fId.
-const app = new Hono();
+const app = workspaceApp();
 
+/** @ignoreswagger */
 app.delete(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  dataSourceResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const dataSource = c.get("dataSource");
-    const fId = c.req.param("fId") ?? "";
-    if (!fId) {
-      return apiError(c, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Invalid path parameters.",
-        },
-      });
-    }
+  validate("param", ParamsSchema),
+  withSpace({ requireCanReadOrAdministrate: true }),
+  withDataSource({ requireCanReadOrAdministrate: true }),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const dataSource = ctx.get("dataSource");
+    const { fId } = ctx.req.valid("param");
 
     if (!dataSource.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -45,9 +41,10 @@ app.delete(
       projectId: dataSource.dustAPIProjectId,
       dataSourceId: dataSource.dustAPIDataSourceId,
       folderId: fId,
+      caller: "private-api",
     });
     if (delRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -57,7 +54,7 @@ app.delete(
       });
     }
 
-    return c.body(null, 204);
+    return ctx.body(null, 204);
   }
 );
 

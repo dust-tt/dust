@@ -13,20 +13,20 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ArrowUpOnSquareIcon,
   Button,
-  CloudArrowLeftRightIcon,
-  Cog6ToothIcon,
-  CommandLineIcon,
+  CloudArrowLeftRight,
   cn,
   DataTable,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  GlobeAltIcon,
-  PlusIcon,
+  Globe01,
+  Plus,
+  Settings01,
   Spinner,
+  Terminal,
+  Upload01,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import type { ComponentType } from "react";
@@ -148,38 +148,38 @@ export const SpaceCategoriesList = ({
       {isAdmin && onButtonClick && space.kind === "regular" && (
         <Button
           label="Space settings"
-          icon={Cog6ToothIcon}
+          icon={Settings01}
           onClick={onButtonClick}
           variant="outline"
         />
       )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button label="Add data" icon={PlusIcon} />
+          <Button label="Add data" icon={Plus} />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           <DropdownMenuItem
             disabled={!isAdmin && !canWriteInSpace}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/managed?modal=managed`}
-            icon={CloudArrowLeftRightIcon}
+            icon={CloudArrowLeftRight}
             label="Connected Data"
           />
           <DropdownMenuItem
             disabled={!canWriteInSpace}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/folder`}
-            icon={ArrowUpOnSquareIcon}
+            icon={Upload01}
             label="Upload Data"
           />
           <DropdownMenuItem
             disabled={!canWriteInSpace}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/website?modal=website`}
-            icon={GlobeAltIcon}
+            icon={Globe01}
             label="Scrape a website"
           />
           <DropdownMenuItem
             disabled={!isBuilder || !canWriteInSpace}
             href={`/w/${owner.sId}/spaces/${space.sId}/categories/apps?modal=apps`}
-            icon={CommandLineIcon}
+            icon={Terminal}
             label="Create a Dust App"
           />
           <DropdownMenuItem

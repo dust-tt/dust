@@ -1,12 +1,15 @@
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
+import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { SlashCommandExtension } from "@app/components/editor/extensions/skill_builder/SlashCommandExtension";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   buildSkillInstructionsExtensions,
   INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
 } from "@app/lib/editor/build_skill_instructions_extensions";
 import { preprocessMarkdownForEditor } from "@app/lib/editor/skill_instructions_preprocessing";
+import type { LightWorkspaceType } from "@app/types/user";
 import { cn } from "@dust-tt/sparkle";
 import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import type { Transaction } from "@tiptap/pm/state";
@@ -85,43 +88,111 @@ function useEditorService(editor: Editor | null) {
   }, [editor]);
 }
 
+interface SkillInstructionsSkillReferencesOptions {
+  currentSkillId?: string | null;
+  onSelectSkill?: (skill: SlashCommandSkillSuggestion) => void;
+  onSelectTool?: (tool: MCPServerViewType) => void;
+  onSkillDetails?: (skill: SlashCommandSkillSuggestion) => void;
+  onSkillNodeDetails?: (skillId: string) => void;
+  onToolDetails?: (tool: MCPServerViewType) => void;
+  owner?: LightWorkspaceType;
+}
+
 interface UseSkillInstructionsEditorProps {
   content: string;
   htmlContent?: string;
   isReadOnly: boolean;
+  skillReferences?: SkillInstructionsSkillReferencesOptions;
   onUpdate?: (props: { editor: Editor; transaction: Transaction }) => void;
   onBlur?: () => void;
   onDelete?: (editor: Editor) => void;
 }
 
-const skillInstructionsEditableExtensions = [
-  SlashCommandExtension,
-  AgentInstructionDiffExtension,
-  Placeholder.configure({
-    placeholder: "What does this skill do? How should it behave?",
-    emptyNodeClass:
-      "first:before:text-gray-400 first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
-  }),
-  CharacterCount.configure({
-    limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
-  }),
-];
+function buildSkillInstructionsEditableExtensions({
+  currentSkillId,
+  includeSkillSuggestions,
+  onSelectSkill,
+  onSelectTool,
+  onSkillDetails,
+  onToolDetails,
+  owner,
+}: {
+  currentSkillId?: string | null;
+  includeSkillSuggestions: boolean;
+  onSelectSkill?: (skill: SlashCommandSkillSuggestion) => void;
+  onSelectTool?: (tool: MCPServerViewType) => void;
+  onSkillDetails?: (skill: SlashCommandSkillSuggestion) => void;
+  onToolDetails?: (tool: MCPServerViewType) => void;
+  owner?: LightWorkspaceType;
+}) {
+  return [
+    SlashCommandExtension.configure({
+      currentSkillId: currentSkillId ?? null,
+      includeSkillSuggestions,
+      onSelectSkill,
+      onSelectTool,
+      onSkillDetails,
+      onToolDetails,
+      owner,
+    }),
+    AgentInstructionDiffExtension,
+    Placeholder.configure({
+      placeholder: "What does this skill do? How should it behave?",
+      emptyNodeClass:
+        "first:before:text-gray-400 first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
+    }),
+    CharacterCount.configure({
+      limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
+    }),
+  ];
+}
 
 export function useSkillInstructionsEditor({
   content,
   htmlContent,
   isReadOnly,
+  skillReferences,
   onUpdate,
   onBlur,
   onDelete,
 }: UseSkillInstructionsEditorProps) {
+  const currentSkillId = skillReferences?.currentSkillId ?? null;
+  const onSelectSkill = skillReferences?.onSelectSkill;
+  const onSelectTool = skillReferences?.onSelectTool;
+  const onSkillDetails = skillReferences?.onSkillDetails;
+  const onSkillNodeDetails = skillReferences?.onSkillNodeDetails;
+  const onToolDetails = skillReferences?.onToolDetails;
+  const owner = skillReferences?.owner;
+  const includeSkillSuggestions = !!owner;
+  const editableExtensions = useMemo(
+    () =>
+      buildSkillInstructionsEditableExtensions({
+        currentSkillId,
+        includeSkillSuggestions,
+        onSelectSkill,
+        onSelectTool,
+        onSkillDetails,
+        onToolDetails,
+        owner,
+      }),
+    [
+      currentSkillId,
+      includeSkillSuggestions,
+      onSelectSkill,
+      onSelectTool,
+      onSkillDetails,
+      onToolDetails,
+      owner,
+    ]
+  );
+
   const extensions = useMemo(
     () =>
-      buildSkillInstructionsExtensions(
-        isReadOnly,
-        skillInstructionsEditableExtensions
-      ),
-    [isReadOnly]
+      buildSkillInstructionsExtensions(isReadOnly, editableExtensions, {
+        onSkillNodeDetails,
+        onToolDetails,
+      }),
+    [editableExtensions, isReadOnly, onSkillNodeDetails, onToolDetails]
   );
 
   // Track if initial content has been set

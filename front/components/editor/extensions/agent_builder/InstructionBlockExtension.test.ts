@@ -2,10 +2,25 @@ import { InstructionBlockExtension } from "@app/components/editor/extensions/age
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/instructions/InstructionsDocumentExtension";
 import { InstructionsRootExtension } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
-import type { Editor } from "@tiptap/core";
+import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
+import type { Editor, JSONContent } from "@tiptap/core";
 import type { Slice } from "@tiptap/pm/model";
 import { TextSelection } from "@tiptap/pm/state";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+function collectInstructionBlocks(node: JSONContent): JSONContent[] {
+  const blocks: JSONContent[] = [];
+
+  if (node.type === "instructionBlock") {
+    blocks.push(node);
+  }
+
+  for (const child of node.content ?? []) {
+    blocks.push(...collectInstructionBlocks(child));
+  }
+
+  return blocks;
+}
 
 describe("InstructionBlockExtension", () => {
   let editor: Editor;
@@ -456,6 +471,50 @@ This rule has no attributes
 </prompt>
 
 &nbsp;`);
+  });
+
+  it("loads attributed XML-like tags as text", () => {
+    editor.destroy();
+    editor = EditorFactory(
+      [
+        InstructionsDocumentExtension,
+        InstructionsRootExtension,
+        InstructionBlockExtension,
+      ],
+      { starterKit: { document: false } }
+    );
+
+    editor.commands.setContent(
+      preprocessMarkdownForEditor(`<system_prompt>
+You are a helpful assistant.
+</system_prompt>
+
+1 <section title="Overview">
+<do>
+Summarize the account.
+<do>Use public data only.
+</section>
+
+2. <section title="Next Steps">
+<do>List the next steps.</do>
+</section>`),
+      {
+        emitUpdate: false,
+        contentType: "markdown",
+      }
+    );
+
+    const sectionBlocks = collectInstructionBlocks(editor.getJSON()).filter(
+      (block) => block.attrs?.type === "section"
+    );
+    const doBlocks = collectInstructionBlocks(editor.getJSON()).filter(
+      (block) => block.attrs?.type === "do"
+    );
+
+    expect(sectionBlocks).toHaveLength(0);
+    expect(doBlocks).toHaveLength(0);
+    expect(editor.getText()).toContain('section title="Overview"');
+    expect(editor.getText()).toContain("Use public data only.");
   });
 });
 

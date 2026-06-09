@@ -3,9 +3,8 @@ import data from "@emoji-mart/data";
 import type { Meta } from "@storybook/react";
 import React, { useState } from "react";
 
-import { PaintIcon } from "@sparkle/icons";
+import { Paint } from "@sparkle/icons";
 import { ActionIcons } from "@sparkle/icons";
-import { EmotionLaughIcon } from "@sparkle/icons/app";
 
 import {
   Button,
@@ -15,6 +14,7 @@ import {
 } from "../components";
 import { ColorPicker, IconPicker } from "../components/Picker";
 import { EmojiPicker } from "../index_with_tw_base";
+import { FaceSmile } from "@sparkle/icons/v2-stroke";
 
 const meta = {
   title: "Components/Picker",
@@ -111,7 +111,7 @@ const ColorPickerExample = () => {
             <Button
               label="Select Color"
               variant="outline"
-              icon={PaintIcon}
+              icon={Paint}
               size="sm"
               className={selectedColor}
               isSelect
@@ -180,7 +180,7 @@ const EmojiPickerExample = () => {
             <Button
               label="Pick an Emoji"
               variant="outline"
-              icon={EmotionLaughIcon}
+              icon={FaceSmile}
               size="sm"
               isSelect
             />

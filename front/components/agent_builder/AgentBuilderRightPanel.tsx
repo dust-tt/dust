@@ -7,16 +7,15 @@ import { TabContentLayout } from "@app/components/agent_builder/observability/Ta
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
-  BarChartIcon,
+  BarChart01,
+  Beaker02,
   Button,
+  LayoutRight,
   ScrollArea,
-  SidebarRightCloseIcon,
-  SidebarRightOpenIcon,
-  SidekickIcon,
+  Sidekick,
   Tabs,
   TabsList,
   TabsTrigger,
-  TestTubeIcon,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -43,7 +42,7 @@ function PanelHeader({
             <Tabs value={selectedTab} className="w-full">
               <TabsList>
                 <Button
-                  icon={SidebarRightCloseIcon}
+                  icon={LayoutRight}
                   size="sm"
                   variant="ghost-secondary"
                   tooltip="Hide preview"
@@ -52,19 +51,19 @@ function PanelHeader({
                 <TabsTrigger
                   value="sidekick"
                   label="Sidekick"
-                  icon={SidekickIcon}
+                  icon={Sidekick}
                   onClick={() => onTabChange("sidekick")}
                 />
                 <TabsTrigger
                   value="preview"
                   label="Preview"
-                  icon={TestTubeIcon}
+                  icon={Beaker02}
                   onClick={() => onTabChange("preview")}
                 />
                 <TabsTrigger
                   value="insights"
                   label="Insights"
-                  icon={BarChartIcon}
+                  icon={BarChart01}
                   onClick={withTracking(
                     TRACKING_AREAS.BUILDER,
                     "insights_tab",
@@ -78,7 +77,7 @@ function PanelHeader({
       ) : (
         <div className="flex h-full w-full items-end justify-center pb-3.5">
           <Button
-            icon={SidebarRightOpenIcon}
+            icon={LayoutRight}
             size="sm"
             variant="ghost-secondary"
             tooltip="Open preview"
@@ -98,21 +97,21 @@ function CollapsedTabs({ onTabSelect }: CollapsedTabsProps) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4">
       <Button
-        icon={SidekickIcon}
+        icon={Sidekick}
         variant="ghost"
         size="sm"
         tooltip="Sidekick"
         onClick={() => onTabSelect("sidekick")}
       />
       <Button
-        icon={TestTubeIcon}
+        icon={Beaker02}
         variant="ghost"
         size="sm"
         tooltip="Preview"
         onClick={() => onTabSelect("preview")}
       />
       <Button
-        icon={BarChartIcon}
+        icon={BarChart01}
         variant="ghost"
         size="sm"
         tooltip="Insights"
@@ -152,7 +151,7 @@ function ExpandedContent({
           ) : (
             <TabContentLayout title="Insights">
               <EmptyPlaceholder
-                icon={BarChartIcon}
+                icon={BarChart01}
                 title="Waiting for data"
                 description="Use your agent or share it with your team to see insights data."
               />

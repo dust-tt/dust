@@ -1,6 +1,6 @@
 import type { IndustryPageConfig } from "@app/components/home/content/Industry/configs/utils";
 import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
-import { ActionShoppingBasketIcon } from "@dust-tt/sparkle";
+import { ShoppingBag01 } from "@dust-tt/sparkle";
 
 export const marketplaceConfig: IndustryPageConfig = {
   seo: {
@@ -24,7 +24,7 @@ export const marketplaceConfig: IndustryPageConfig = {
     chip: {
       label: "Marketplace",
       color: "blue",
-      icon: ActionShoppingBasketIcon,
+      icon: ShoppingBag01,
     },
     title: (
       <>

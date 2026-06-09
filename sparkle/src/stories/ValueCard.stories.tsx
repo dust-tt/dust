@@ -2,9 +2,9 @@ import type { Meta, StoryObj } from "@storybook/react";
 import * as React from "react";
 
 import { Avatar } from "@sparkle/components";
-import { HandThumbUpIcon } from "@sparkle/icons/app";
 
 import { ComposableCard, ValueCard } from "../components/ValueCard";
+import { ThumbsUp } from "@sparkle/icons/v2-stroke";
 
 const meta: Meta<typeof ValueCard> = {
   title: "Modules/ValueCard",
@@ -48,7 +48,7 @@ export const WithIcons: Story = {
     title: "Reactions",
     content: (
       <div className="s-flex s-items-center s-gap-2">
-        <HandThumbUpIcon className="s-text-text-muted-foreground s-h-4 s-w-4" />
+        <ThumbsUp className="s-text-text-muted-foreground s-h-4 s-w-4" />
         <div className="s-text-lg s-font-semibold s-text-foreground">12</div>
       </div>
     ),
@@ -65,7 +65,7 @@ export const Composable: Story = {
       </ComposableCard.Header>
       <ComposableCard.Content>
         <div className="s-flex s-items-center s-gap-2">
-          <HandThumbUpIcon className="s-text-text-muted-foreground s-h-4 s-w-4" />
+          <ThumbsUp className="s-text-text-muted-foreground s-h-4 s-w-4" />
           <div className="s-text-lg s-font-semibold">847</div>
         </div>
       </ComposableCard.Content>

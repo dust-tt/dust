@@ -1,14 +1,40 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { GetAgentUsageResponseBody } from "@app/lib/api/assistant/agent_usage";
+import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/lib/api/assistant/builder/slack/channels_linked_with_agent";
+import type { GetAgentConfigurationsResponseBody } from "@app/lib/api/assistant/configuration";
 import type {
   AgentMessageFeedbackType,
   AgentMessageFeedbackWithMetadataType,
 } from "@app/lib/api/assistant/feedback";
+import type { GetAgentMcpConfigurationsResponseBody } from "@app/lib/api/assistant/mcp_configurations";
+import type { GetContextOriginResponse } from "@app/lib/api/assistant/observability/context_origin";
+import type { GetDatasourceRetrievalResponse } from "@app/lib/api/assistant/observability/datasource_retrieval";
+import type { GetDatasourceRetrievalDocumentsResponse } from "@app/lib/api/assistant/observability/datasource_retrieval_documents";
+import type { GetFeedbackDistributionResponse } from "@app/lib/api/assistant/observability/feedback_distribution";
 import type {
+  GetErrorRateResponse,
+  GetLatencyResponse,
+  GetUsageMetricsResponse,
+} from "@app/lib/api/assistant/observability/messages_metrics";
+import type { GetAgentOverviewResponseBody } from "@app/lib/api/assistant/observability/overview";
+import type { GetSkillExecutionResponse } from "@app/lib/api/assistant/observability/skill_execution";
+import type { GetAgentSummaryResponseBody } from "@app/lib/api/assistant/observability/summary";
+import type { GetToolExecutionResponse } from "@app/lib/api/assistant/observability/tool_execution";
+import type {
+  GetToolLatencyResponse,
   ToolLatencyRow,
   ToolLatencyView,
 } from "@app/lib/api/assistant/observability/tool_latency";
+import type { GetToolStepIndexResponse } from "@app/lib/api/assistant/observability/tool_step_index";
+import type { GetVersionMarkersResponse } from "@app/lib/api/assistant/observability/version_markers";
+import type { PostAgentUserFavoriteRequestBody } from "@app/lib/api/assistant/user_relation";
+import type { GetMemberResponseBody } from "@app/lib/api/user";
 import { clientFetch } from "@app/lib/egress/client";
+import type {
+  FetchAgentTemplateResponse,
+  FetchAssistantTemplatesResponse,
+} from "@app/lib/resources/template_resource";
 import {
   emptyArray,
   getErrorFromResponse,
@@ -17,28 +43,6 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import { BROWSER_TIMEZONE } from "@app/lib/swr/workspaces";
-import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
-import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
-import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
-import type { GetAgentMcpConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/mcp_configurations";
-import type { GetDatasourceRetrievalResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/datasource-retrieval";
-import type { GetDatasourceRetrievalDocumentsResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/datasource-retrieval-documents";
-import type { GetErrorRateResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/error_rate";
-import type { GetFeedbackDistributionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/feedback-distribution";
-import type { GetLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/latency";
-import type { GetAgentOverviewResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/overview";
-import type { GetSkillExecutionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/skill-execution";
-import type { GetContextOriginResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/source";
-import type { GetAgentSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/summary";
-import type { GetToolExecutionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-execution";
-import type { GetToolLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-latency";
-import type { GetToolStepIndexResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-step-index";
-import type { GetUsageMetricsResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/usage-metrics";
-import type { GetVersionMarkersResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/version-markers";
-import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
-import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/assistant/builder/slack/channels_linked_with_agent";
-import type { GetMemberResponseBody } from "@app/pages/api/w/[wId]/members/[uId]";
-import type { PostAgentUserFavoriteRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_favorite";
 import type {
   AgentConfigurationType,
   AgentsGetViewType,
@@ -1260,26 +1264,109 @@ export function useAgentDatasourceRetrievalDocuments({
   };
 }
 
+export type MemberDisplayInfo = {
+  fullName: string;
+  email: string | null;
+  image: string | null;
+};
+
+function buildMemberDetailsSwrKey(
+  workspaceId: string,
+  userIds: string[]
+): string | null {
+  const normalizedUserIds = [...new Set(userIds.filter(Boolean))].sort();
+  if (normalizedUserIds.length === 0) {
+    return null;
+  }
+  if (normalizedUserIds.length === 1) {
+    return `/api/w/${workspaceId}/members/${normalizedUserIds[0]}`;
+  }
+  const sIdsKey = normalizedUserIds.join(",");
+  return `/api/w/${workspaceId}/members/batch?sIds=${encodeURIComponent(sIdsKey)}`;
+}
+
 export function useMemberDetails({
   workspaceId,
-  userId,
+  userIds,
 }: {
   workspaceId: string;
-  userId: string | null;
+  userIds: string[];
 }) {
   const { fetcher } = useFetcher();
-  const userConfigurationFetcher: Fetcher<GetMemberResponseBody> = fetcher;
-
-  const { data, error, mutate, isValidating } = useSWRWithDefaults(
-    userId ? `/api/w/${workspaceId}/members/${userId}` : null,
-    userConfigurationFetcher
+  const normalizedUserIds = useMemo(
+    () => [...new Set(userIds.filter(Boolean))].sort(),
+    [userIds]
+  );
+  const swrKey = useMemo(
+    () => buildMemberDetailsSwrKey(workspaceId, normalizedUserIds),
+    [workspaceId, normalizedUserIds]
   );
 
+  const memberDetailsFetcher = useCallback(
+    async (
+      key: string
+    ): Promise<
+      | { kind: "single"; member: GetMemberResponseBody["member"] }
+      | { kind: "batch"; membersBySId: Record<string, MemberDisplayInfo> }
+    > => {
+      if (key.includes("/members/batch?")) {
+        const url = new URL(key, "https://dust.local");
+        const sIdsParam = url.searchParams.get("sIds");
+        if (!sIdsParam) {
+          return { kind: "batch", membersBySId: {} };
+        }
+
+        const membersBySId: Record<string, MemberDisplayInfo> = {};
+        for (const memberSId of sIdsParam.split(",")) {
+          try {
+            const response = (await fetcher(
+              `/api/w/${workspaceId}/members/${memberSId}`
+            )) as GetMemberResponseBody;
+
+            membersBySId[memberSId] = {
+              fullName: response.member.fullName,
+              email: response.member.email,
+              image: response.member.image,
+            };
+          } catch {
+            // Member lookup can fail for privacy or membership reasons.
+          }
+        }
+
+        return { kind: "batch", membersBySId };
+      }
+
+      const response = (await fetcher(key)) as GetMemberResponseBody;
+      return { kind: "single", member: response.member };
+    },
+    [fetcher, workspaceId]
+  );
+
+  const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(
+    swrKey,
+    memberDetailsFetcher
+  );
+
+  const userDetails = data?.kind === "single" ? data.member : undefined;
+  const membersBySId =
+    data?.kind === "batch"
+      ? data.membersBySId
+      : userDetails
+        ? {
+            [userDetails.id]: {
+              fullName: userDetails.fullName,
+              email: userDetails.email,
+              image: userDetails.image,
+            },
+          }
+        : {};
+
   return {
-    userDetails: data?.member,
-    isUserDetailsLoading: !error && !data && !!userId,
-    isUserDetailsError: error,
-    isUserConfigurationValidating: isValidating,
-    mutateUserConfiguration: mutate,
+    userDetails,
+    membersBySId,
+    isMembersLoading: !error && isLoading && !!swrKey,
+    isMembersError: error,
+    isMembersValidating: isValidating,
+    mutateMembers: mutate,
   };
 }

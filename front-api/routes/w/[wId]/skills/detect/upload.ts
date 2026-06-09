@@ -1,36 +1,47 @@
-import { apiError } from "@front-api/middleware/utils";
-import type formidable from "formidable";
-import { Hono } from "hono";
-import { mkdtemp, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-
 import { detectSkillsFromUploadedFiles } from "@app/lib/api/skills/detection/files/detect_skills";
 import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_skills";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { DetectedSkillSummary } from "@app/lib/skill_detection";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { createHono } from "@front-api/lib/hono";
+import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
+import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
+import { apiError } from "@front-api/middlewares/utils";
+import type { HttpBindings } from "@hono/node-server";
+import formidable from "formidable";
 
 // Mounted at /api/w/:wId/skills/detect/upload.
-const app = new Hono();
+//
+// We extend the workspace context with `HttpBindings` so we can hand the
+// underlying Node `IncomingMessage` (exposed by `@hono/node-server` on
+// `ctx.env.incoming`) to `formidable.parse(...)` — matching the Next handler.
+const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 
-app.post("/", async (c) => {
-  const auth = c.get("auth");
+/** @ignoreswagger */
+app.post("/", ensureIsBuilder(), async (ctx) => {
+  const auth = ctx.get("auth");
 
-  if (!auth.isBuilder()) {
-    return apiError(c, {
-      status_code: 403,
-      api_error: { type: "app_auth_error", message: "User is not a builder." },
+  const incoming = ctx.env?.incoming;
+  if (!incoming) {
+    return apiError(ctx, {
+      status_code: 500,
+      api_error: {
+        type: "internal_server_error",
+        message: "Multipart upload is not supported in this runtime.",
+      },
     });
   }
 
-  // Parse the multipart body. `all: true` ensures multiple files under the
-  // same field name are returned as an array.
-  let parsed: Record<string, unknown>;
+  const form = formidable({
+    multiples: true,
+    maxFileSize: MAX_ZIP_SIZE_BYTES,
+  });
+
+  let files: formidable.Files;
   try {
-    parsed = await c.req.parseBody({ all: true });
+    [, files] = await form.parse(incoming);
   } catch (err) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -39,18 +50,10 @@ app.post("/", async (c) => {
     });
   }
 
-  const rawFiles = parsed.files;
-  const blobs: File[] = [];
-  if (Array.isArray(rawFiles)) {
-    for (const v of rawFiles) {
-      if (v instanceof File) blobs.push(v);
-    }
-  } else if (rawFiles instanceof File) {
-    blobs.push(rawFiles);
-  }
+  const uploadedFiles = files.files;
 
-  if (blobs.length === 0) {
-    return apiError(c, {
+  if (!uploadedFiles || uploadedFiles.length === 0) {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -59,45 +62,9 @@ app.post("/", async (c) => {
     });
   }
 
-  // Enforce the max size per file.
-  for (const blob of blobs) {
-    if (blob.size > MAX_ZIP_SIZE_BYTES) {
-      return apiError(c, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `File upload failed: file exceeds the maximum size of ${MAX_ZIP_SIZE_BYTES} bytes.`,
-        },
-      });
-    }
-  }
-
-  // Persist the blobs to a tmp dir so the existing lib code (which reads from
-  // formidable.File.filepath) can keep working unchanged.
-  const tmpDir = await mkdtemp(join(tmpdir(), "skills-detect-"));
-  const formidableFiles: formidable.File[] = [];
-  for (let i = 0; i < blobs.length; i++) {
-    const blob = blobs[i];
-    const filepath = join(tmpDir, `upload-${i}`);
-    const buffer = Buffer.from(await blob.arrayBuffer());
-    await writeFile(filepath, buffer);
-    formidableFiles.push({
-      filepath,
-      originalFilename: blob.name ?? null,
-      size: blob.size,
-      newFilename: `upload-${i}`,
-      mimetype: blob.type || null,
-      hash: null,
-      hashAlgorithm: false,
-      mtime: null,
-      toJSON: () => ({}) as never,
-      toString: () => filepath,
-    } as unknown as formidable.File);
-  }
-
-  const result = await detectSkillsFromUploadedFiles(formidableFiles);
+  const result = await detectSkillsFromUploadedFiles(uploadedFiles);
   if (result.isErr()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -109,7 +76,7 @@ app.post("/", async (c) => {
   const detectedSkills = result.value;
 
   if (detectedSkills.length === 0) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -152,7 +119,7 @@ app.post("/", async (c) => {
     };
   });
 
-  return c.json({ skills: skillSummaries });
+  return ctx.json({ skills: skillSummaries });
 });
 
 export default app;

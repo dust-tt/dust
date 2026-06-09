@@ -1,9 +1,9 @@
-import { Hono } from "hono";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 
 import actions from "./actions";
 
 // Mounted under /api/w/:wId/builder/assistants/:aId.
-const app = new Hono();
+const app = workspaceApp();
 
 app.route("/actions", actions);
 

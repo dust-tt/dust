@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
@@ -12,8 +10,8 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { PlanType } from "@app/types/plan";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-
 import { honoApp } from "@front-api/app";
+import { describe, expect, it } from "vitest";
 
 describe("GET /api/w/:wId/spaces/:spaceId/mcp/available", () => {
   it("returns available servers for regular user", async () => {

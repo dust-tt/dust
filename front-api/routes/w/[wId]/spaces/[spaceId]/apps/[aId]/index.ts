@@ -1,14 +1,13 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
+import type { GetOrPostAppResponseBody } from "@app/lib/api/apps";
 import { softDeleteApp } from "@app/lib/api/apps";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { APP_NAME_REGEXP } from "@app/types/app";
-
-import { spaceResource } from "@front-api/middleware/space_resource";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withSpace } from "@front-api/middlewares/with_space";
+import { z } from "zod";
 
 import datasets from "./datasets";
 import runs from "./runs";
@@ -19,44 +18,58 @@ const PatchAppBodySchema = z.object({
   description: z.string(),
 });
 
+const ParamsSchema = z.object({
+  aId: z.string(),
+});
+
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId.
-const app = new Hono();
+const app = workspaceApp();
 
 // GET / — read app.
-app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
-  const auth = c.get("auth");
-  const space = c.get("space");
-  const aId = c.req.param("aId") ?? "";
+/** @ignoreswagger */
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  withSpace({ requireCanRead: true }),
+  async (ctx): HandlerResult<GetOrPostAppResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const { aId } = ctx.req.valid("param");
 
-  const found = await AppResource.fetchById(auth, aId);
-  if (!found || found.space.sId !== space.sId || !found.canRead(auth)) {
-    return apiError(c, {
-      status_code: 404,
-      api_error: { type: "app_not_found", message: "The app was not found." },
-    });
+    const found = await AppResource.fetchById(auth, aId);
+    if (!found || found.space.sId !== space.sId || !found.canRead(auth)) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "app_not_found",
+          message: "The app was not found.",
+        },
+      });
+    }
+    return ctx.json({ app: found.toJSON() });
   }
-  return c.json({ app: found.toJSON() });
-});
+);
 
 // POST / — update app settings.
 app.post(
   "/",
-  spaceResource({ requireCanRead: true }),
+  validate("param", ParamsSchema),
+  withSpace({ requireCanRead: true }),
   validate("json", PatchAppBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
-    const aId = c.req.param("aId") ?? "";
+  async (ctx): HandlerResult<GetOrPostAppResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const { aId } = ctx.req.valid("param");
 
     const found = await AppResource.fetchById(auth, aId);
     if (!found || found.space.sId !== space.sId || !found.canRead(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: { type: "app_not_found", message: "The app was not found." },
       });
     }
     if (!found.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
@@ -64,9 +77,9 @@ app.post(
         },
       });
     }
-    const { name, description } = c.req.valid("json");
+    const { name, description } = ctx.req.valid("json");
     if (!APP_NAME_REGEXP.test(name)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -76,44 +89,49 @@ app.post(
       });
     }
     await found.updateSettings(auth, { name, description });
-    return c.json({ app: found.toJSON() });
+    return ctx.json({ app: found.toJSON() });
   }
 );
 
 // DELETE / — soft delete app.
-app.delete("/", spaceResource({ requireCanRead: true }), async (c) => {
-  const auth = c.get("auth");
-  const space = c.get("space");
-  const aId = c.req.param("aId") ?? "";
+app.delete(
+  "/",
+  validate("param", ParamsSchema),
+  withSpace({ requireCanRead: true }),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const { aId } = ctx.req.valid("param");
 
-  const found = await AppResource.fetchById(auth, aId);
-  if (!found || found.space.sId !== space.sId || !found.canRead(auth)) {
-    return apiError(c, {
-      status_code: 404,
-      api_error: { type: "app_not_found", message: "The app was not found." },
-    });
+    const found = await AppResource.fetchById(auth, aId);
+    if (!found || found.space.sId !== space.sId || !found.canRead(auth)) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: { type: "app_not_found", message: "The app was not found." },
+      });
+    }
+    if (!found.canWrite(auth)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: "Deleting an app requires write access to the app's space.",
+        },
+      });
+    }
+    const deleteRes = await softDeleteApp(auth, found);
+    if (deleteRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 409,
+        api_error: {
+          type: "invalid_request_error",
+          message: deleteRes.error.message,
+        },
+      });
+    }
+    return ctx.body(null, 204);
   }
-  if (!found.canWrite(auth)) {
-    return apiError(c, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "Deleting an app requires write access to the app's space.",
-      },
-    });
-  }
-  const deleteRes = await softDeleteApp(auth, found);
-  if (deleteRes.isErr()) {
-    return apiError(c, {
-      status_code: 409,
-      api_error: {
-        type: "invalid_request_error",
-        message: deleteRes.error.message,
-      },
-    });
-  }
-  return c.body(null, 204);
-});
+);
 
 app.route("/state", state);
 app.route("/runs", runs);

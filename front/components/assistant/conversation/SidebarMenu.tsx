@@ -2,12 +2,12 @@ import {
   ConversationMenu,
   useConversationMenu,
 } from "@app/components/assistant/conversation/ConversationMenu";
-import { CreateProjectModal } from "@app/components/assistant/conversation/CreateProjectModal";
+import { CreatePodModal } from "@app/components/assistant/conversation/CreatePodModal";
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { StackedInAppBanners } from "@app/components/assistant/conversation/InAppBanner";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { ProjectsBrowsePopover } from "@app/components/assistant/conversation/sidebar/ProjectsBrowsePopover";
-import { renderProjectsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
+import { renderPodsList } from "@app/components/assistant/conversation/sidebar/PodList";
+import { PodsBrowsePopover } from "@app/components/assistant/conversation/sidebar/PodsBrowsePopover";
 import { SidebarSearch } from "@app/components/assistant/conversation/sidebar/SidebarSearch";
 import {
   filterTriggeredConversations,
@@ -19,20 +19,23 @@ import { ImportSkillsDialog } from "@app/components/skills/import/ImportSkillsDi
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import {
   useConversations,
+  usePodConversationsSummary,
+  useSearchPodConversations,
   useSearchPrivateConversations,
-  useSearchProjectConversations,
-  useSpaceConversationsSummary,
 } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
-import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
+import { useActivePodId } from "@app/hooks/useActivePodId";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
-import { useMoveConversationToProject } from "@app/hooks/useMoveConversationToProject";
+import {
+  useBulkMoveConversationsToPod,
+  useMoveConversationToPod,
+} from "@app/hooks/useMoveConversationToPod";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useProjectsSectionCollapsed } from "@app/hooks/useProjectsSectionCollapsed";
-import { useSearchProjects } from "@app/hooks/useSearchProjects";
-import { useStarredProjectsSectionCollapsed } from "@app/hooks/useStarredProjectsSectionCollapsed";
+import { usePodsSectionCollapsed } from "@app/hooks/usePodsSectionCollapsed";
+import { useSearchPods } from "@app/hooks/useSearchPods";
+import { useStarredPodsSectionCollapsed } from "@app/hooks/useStarredPodsSectionCollapsed";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
@@ -46,7 +49,7 @@ import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
-  getProjectRoute,
+  getPodRoute,
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import { formatWakeUpSidebarLabel } from "@app/lib/utils/wakeup_description";
@@ -55,51 +58,51 @@ import {
   type ConversationListItemType,
   getConversationDisplayTitle,
 } from "@app/types/assistant/conversation";
-import type { ProjectType } from "@app/types/space";
+import type { PodType, SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
-  ActionTimeIcon,
+  ArrowRight,
   Avatar,
-  BoltIcon,
-  BoltOffIcon,
-  BracesIcon,
+  Brackets,
   Button,
-  ChatBubbleBottomCenterPlusIcon,
   Checkbox,
-  CheckDoubleIcon,
+  CheckDone01,
   Chip,
+  Clock,
   cn,
-  DocumentIcon,
+  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuPortal,
   DropdownMenuSearchbar,
+  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  FolderOpenIcon,
+  Edit04,
+  File02,
+  FolderOpen,
   Icon,
   Label,
-  ListCheckIcon,
-  MagicIcon,
-  MoreIcon,
+  MagicWand02,
+  MessagePlusCircle,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListItem,
   NavigationListItemAction,
   NavigationListLabel,
-  PencilSquareIcon,
-  PlusIcon,
-  RobotIcon,
-  SearchInput,
+  Plus,
+  Robot,
   Spinner,
-  StarIcon,
-  TrashIcon,
-  XMarkIcon,
+  Star01,
+  Trash01,
+  XClose,
+  Zap,
+  ZapOff,
 } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -127,33 +130,33 @@ type GroupLabel =
   | "Last 12 Months"
   | "Older";
 
-interface SearchProjectItemProps {
-  space: ProjectType;
+interface SearchPodItemProps {
+  pod: PodType;
   owner: WorkspaceType;
   isMember: boolean;
-  activeSpaceId: string | null;
+  activePodId: string | null;
 }
 
-function SearchProjectItem({
-  space,
+function SearchPodItem({
+  pod,
   owner,
   isMember,
-  activeSpaceId,
-}: SearchProjectItemProps) {
+  activePodId: activePodId,
+}: SearchPodItemProps) {
   const router = useAppRouter();
   const { setSidebarOpen } = useContext(SidebarContext);
 
-  const isArchived = !!space.archivedAt;
+  const isArchived = !!pod.archivedAt;
 
   return (
     <NavigationListItem
-      selected={activeSpaceId === space.sId}
-      icon={getSpaceIcon(space)}
-      label={space.name}
+      selected={activePodId === pod.sId}
+      icon={getSpaceIcon(pod)}
+      label={pod.name}
       className={cn(!isMember && "italic")}
       onClick={async () => {
         setSidebarOpen(false);
-        await router.push(getProjectRoute(owner.sId, space.sId));
+        await router.push(getPodRoute(owner.sId, pod.sId));
       }}
       suffix={
         isArchived ? (
@@ -166,12 +169,12 @@ function SearchProjectItem({
 
 interface SearchResultsProps {
   owner: WorkspaceType;
-  allProjects: Array<ProjectType & { isMember: boolean }>;
-  isSearchingProjects: boolean;
-  hasMoreProjects: boolean;
-  loadMoreProjects: () => void;
-  isLoadingMoreProjects: boolean;
-  projectConversationResults: Array<
+  allPods: Array<PodType>;
+  isSearchingPods: boolean;
+  hasMorePods: boolean;
+  loadMorePods: () => void;
+  isLoadingMorePods: boolean;
+  podConversationResults: Array<
     ConversationWithoutContentType & { spaceName: string }
   >;
   privateConversations: ConversationWithoutContentType[];
@@ -179,8 +182,8 @@ interface SearchResultsProps {
   hasMorePrivateConversations: boolean;
   loadMorePrivateConversations: () => void;
   isLoadingMorePrivateConversations: boolean;
-  isSearchingProjectConversations: boolean;
-  onCreateProject: () => void;
+  isSearchingPodConversations: boolean;
+  onCreatePod: () => void;
   activeConversationId: string | null;
   activeSpaceId: string | null;
   hideTriggeredConversations: boolean;
@@ -192,19 +195,19 @@ interface SearchResultsProps {
 
 function SearchResults({
   owner,
-  allProjects,
-  isSearchingProjects,
-  hasMoreProjects,
-  loadMoreProjects,
-  isLoadingMoreProjects,
-  projectConversationResults,
+  allPods,
+  isSearchingPods,
+  hasMorePods,
+  loadMorePods,
+  isLoadingMorePods,
+  podConversationResults,
   privateConversations,
   isSearchingPrivateConversations,
   hasMorePrivateConversations,
   loadMorePrivateConversations,
   isLoadingMorePrivateConversations,
-  isSearchingProjectConversations,
-  onCreateProject,
+  isSearchingPodConversations: isSearchingPodConversations,
+  onCreatePod,
   activeConversationId,
   activeSpaceId,
   hideTriggeredConversations,
@@ -213,7 +216,7 @@ function SearchResults({
   selectedConversations,
   toggleConversationSelection,
 }: SearchResultsProps) {
-  const [projectsSectionOpen, setProjectsSectionOpen] = useState(true);
+  const [podsSectionOpen, setPodsSectionOpen] = useState(true);
 
   const allConversations = useMemo(() => {
     const seen = new Set<string>();
@@ -230,7 +233,7 @@ function SearchResults({
     }
 
     // Semantic results second (when available)
-    for (const conv of projectConversationResults) {
+    for (const conv of podConversationResults) {
       if (!seen.has(conv.sId)) {
         seen.add(conv.sId);
         merged.push(conv);
@@ -245,82 +248,82 @@ function SearchResults({
     return merged;
   }, [
     privateConversations,
-    projectConversationResults,
+    podConversationResults,
     hideTriggeredConversations,
   ]);
 
   const hasTriggeredConversations = useMemo(
     () =>
       privateConversations.some((c) => c.triggerId !== null) ||
-      projectConversationResults.some((c) => c.triggerId !== null),
-    [privateConversations, projectConversationResults]
+      podConversationResults.some((c) => c.triggerId !== null),
+    [privateConversations, podConversationResults]
   );
 
-  const handleShowMoreProjects = useCallback(() => {
-    loadMoreProjects();
-  }, [loadMoreProjects]);
+  const handleShowMorePods = useCallback(() => {
+    loadMorePods();
+  }, [loadMorePods]);
 
   const handleShowMorePrivateConversations = useCallback(() => {
     loadMorePrivateConversations();
   }, [loadMorePrivateConversations]);
 
-  const showProjectsLoading = isSearchingProjects && !isLoadingMoreProjects;
+  const showPodsLoading = isSearchingPods && !isLoadingMorePods;
   const showConversationsLoading =
     (isSearchingPrivateConversations && !isLoadingMorePrivateConversations) ||
-    isSearchingProjectConversations;
+    isSearchingPodConversations;
 
   return (
     <div className="h-full overflow-y-auto">
-      <NavigationList className="px-2">
+      <NavigationList className="mx-sidebar-side-spacing">
         <NavigationListCollapsibleSection
           label="Pods"
           type="collapse"
-          open={projectsSectionOpen}
-          onOpenChange={setProjectsSectionOpen}
+          open={podsSectionOpen}
+          onOpenChange={setPodsSectionOpen}
           action={
             <>
               <Button
                 size="xs"
-                icon={PlusIcon}
+                icon={Plus}
                 label="New"
-                variant="ghost"
+                variant="ghost-secondary"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  onCreateProject();
+                  onCreatePod();
                 }}
               />
-              <ProjectsBrowsePopover owner={owner} />
+              <PodsBrowsePopover owner={owner} />
             </>
           }
         >
-          {showProjectsLoading ? (
+          {showPodsLoading ? (
             <div className="flex items-center justify-center py-4">
               <Spinner size="sm" />
             </div>
-          ) : allProjects.length === 0 ? (
+          ) : allPods.length === 0 ? (
             <div className="px-3 py-2 text-sm text-muted-foreground">
               No results found
             </div>
           ) : (
             <>
-              {allProjects.map((project) => (
-                <SearchProjectItem
-                  key={project.sId}
-                  space={project}
+              {allPods.map((pod) => (
+                <SearchPodItem
+                  key={pod.sId}
+                  pod={pod}
                   owner={owner}
-                  isMember={project.isMember}
-                  activeSpaceId={activeSpaceId}
+                  isMember={pod.isMember}
+                  activePodId={activeSpaceId}
                 />
               ))}
-              {hasMoreProjects && (
+              {hasMorePods && (
                 <div className="flex justify-center py-2">
                   <Button
-                    variant="ghost"
+                    variant="ghost-secondary"
                     size="xs"
-                    label={isLoadingMoreProjects ? "Loading..." : "Show more"}
-                    onClick={handleShowMoreProjects}
-                    disabled={isLoadingMoreProjects}
+                    label={isLoadingMorePods ? "Loading..." : "Show more"}
+                    onClick={handleShowMorePods}
+                    disabled={isLoadingMorePods}
                   />
                 </div>
               )}
@@ -329,17 +332,16 @@ function SearchResults({
         </NavigationListCollapsibleSection>
       </NavigationList>
 
-      <NavigationList className="px-2">
+      <NavigationList className="mx-sidebar-side-spacing">
         <NavigationListCollapsibleSection
           label="Conversations"
-          defaultOpen
           action={
             <>
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     size="xmini"
-                    icon={MoreIcon}
+                    icon={DotsHorizontal}
                     variant="ghost"
                     aria-label="Conversations options"
                     onClick={(e) => {
@@ -356,7 +358,7 @@ function SearchResults({
                         ? "Show triggered"
                         : "Hide triggered"
                     }
-                    icon={hideTriggeredConversations ? BoltIcon : BoltOffIcon}
+                    icon={hideTriggeredConversations ? Zap : ZapOff}
                     disabled={!hasTriggeredConversations}
                     onClick={() =>
                       setHideTriggeredConversations(!hideTriggeredConversations)
@@ -387,7 +389,7 @@ function SearchResults({
           {hasMorePrivateConversations && (
             <div className="flex justify-center py-2">
               <Button
-                variant="ghost"
+                variant="ghost-secondary"
                 size="xs"
                 label={
                   isLoadingMorePrivateConversations ? "Loading..." : "Show more"
@@ -415,15 +417,15 @@ export function AgentSidebarMenu({
 }: AgentSidebarMenuProps) {
   const router = useAppRouter();
   const activeConversationId = useActiveConversationId();
-  const activeSpaceId = useActiveSpaceId();
+  const activePodId = useActivePodId();
   const { hasFeature } = useFeatureFlags();
-  const moveConversationToProject = useMoveConversationToProject(owner);
+  const moveConversationToPod = useMoveConversationToPod(owner);
+  const bulkMoveConversationsToPod = useBulkMoveConversationsToPod(owner);
 
   const { providersHealth } = useAuth();
   const noHealthyProviders = !hasHealthyProviders(providersHealth);
 
   const agentsSearchInputRef = useRef<HTMLInputElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const [searchText, setSearchText] = useState("");
   const { agentConfigurations } = useUnifiedAgentConfigurations({
     workspaceId: owner.sId,
@@ -453,23 +455,18 @@ export function AgentSidebarMenu({
     isLoadingMore,
   } = useConversations({ workspaceId: owner.sId });
 
-  const hasSpaceConversations = hasFeature("projects");
-
   const {
     summary,
     isLoading: isSummaryLoading,
-    mutate: mutateSpaceSummary,
-  } = useSpaceConversationsSummary({
+    mutate: mutatePodConversationSummary,
+  } = usePodConversationsSummary({
     workspaceId: owner.sId,
-    options: { disabled: !hasSpaceConversations },
   });
 
   useEffect(() => {
     const handleConversationsUpdated = () => {
       void mutateConversations();
-      if (hasSpaceConversations) {
-        void mutateSpaceSummary();
-      }
+      void mutatePodConversationSummary();
     };
     window.addEventListener(
       CONVERSATIONS_UPDATED_EVENT,
@@ -481,7 +478,7 @@ export function AgentSidebarMenu({
         handleConversationsUpdated
       );
     };
-  }, [hasSpaceConversations, mutateConversations, mutateSpaceSummary]);
+  }, [mutateConversations, mutatePodConversationSummary]);
 
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedConversations, setSelectedConversations] = useState<
@@ -492,13 +489,11 @@ export function AgentSidebarMenu({
   const { hideTriggeredConversations, setHideTriggeredConversations } =
     useHideTriggeredConversations();
 
-  const { isProjectsSectionCollapsed, setProjectsSectionCollapsed } =
-    useProjectsSectionCollapsed();
+  const { isPodsSectionCollapsed, setPodsSectionCollapsed } =
+    usePodsSectionCollapsed();
 
-  const {
-    isStarredProjectsSectionCollapsed,
-    setStarredProjectsSectionCollapsed,
-  } = useStarredProjectsSectionCollapsed();
+  const { isStarredPodsSectionCollapsed, setStarredPodsSectionCollapsed } =
+    useStarredPodsSectionCollapsed();
 
   const isRestrictedFromAgentCreation =
     hasFeature("disallow_agent_creation_to_users") && !isBuilder(owner);
@@ -507,30 +502,31 @@ export function AgentSidebarMenu({
     "all" | "selection" | null
   >(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
   const [titleFilter, setTitleFilter] = useState<string>("");
-  const [isCreateProjectModalOpen, setIsCreateProjectModalOpen] =
-    useState(false);
+  const [isCreatePodModalOpen, setIsCreatePodModalOpen] = useState(false);
+  const [pendingMoveToNewPod, setPendingMoveToNewPod] = useState(false);
   const [isImportSkillDialogOpen, setIsImportSkillDialogOpen] = useState(false);
 
   const {
-    projects: allProjects,
-    isSearching: isSearchingProjects,
-    hasMore: hasMoreProjects,
-    loadMore: loadMoreProjects,
-    isLoadingMore: isLoadingMoreProjects,
-  } = useSearchProjects({
+    pods,
+    isSearching: isSearchingPods,
+    hasMore: hasMorePods,
+    loadMore: loadMorePods,
+    isLoadingMore: isLoadingMorePods,
+  } = useSearchPods({
     workspaceId: owner.sId,
     query: titleFilter,
-    enabled: hasSpaceConversations && titleFilter.trim().length > 0,
+    enabled: titleFilter.trim().length > 0,
   });
 
   const {
-    conversations: projectConversationSearchResults,
-    isSearching: isSearchingProjectConversations,
-  } = useSearchProjectConversations({
+    conversations: podConversationSearchResults,
+    isSearching: isSearchingPodConversations,
+  } = useSearchPodConversations({
     workspaceId: owner.sId,
     query: titleFilter,
-    enabled: hasSpaceConversations && titleFilter.trim().length > 0,
+    enabled: titleFilter.trim().length > 0,
   });
 
   const {
@@ -542,7 +538,7 @@ export function AgentSidebarMenu({
   } = useSearchPrivateConversations({
     workspaceId: owner.sId,
     query: titleFilter,
-    enabled: hasSpaceConversations && titleFilter.trim().length > 0,
+    enabled: titleFilter.trim().length > 0,
   });
 
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
@@ -606,6 +602,27 @@ export function AgentSidebarMenu({
       });
     }
   }, [doDelete, selectedConversations, sendNotification, toggleMultiSelect]);
+
+  const availablePods = useMemo(
+    () => summary.map(({ space }) => space),
+    [summary]
+  );
+
+  const moveSelectionToPod = useCallback(
+    async (pod: PodType | SpaceType) => {
+      setIsMoving(true);
+      const successCount = await bulkMoveConversationsToPod(
+        selectedConversations,
+        pod
+      );
+      setIsMoving(false);
+      if (successCount > 0) {
+        toggleMultiSelect();
+      }
+      return successCount;
+    },
+    [bulkMoveConversationsToPod, selectedConversations, toggleMultiSelect]
+  );
 
   const deleteAll = useCallback(async () => {
     setIsDeleting(true);
@@ -671,14 +688,11 @@ export function AgentSidebarMenu({
     );
   }, [conversations, hideTriggeredConversations]);
 
-  const isSearchActive = hasSpaceConversations && titleFilter.trim().length > 0;
+  const isSearchActive = titleFilter.trim().length > 0;
 
-  const sidebarTitleFilter = hasSpaceConversations ? "" : titleFilter;
+  const sidebarTitleFilter = titleFilter;
 
   const starredSection = useMemo(() => {
-    if (!hasSpaceConversations) {
-      return null;
-    }
     const starredSummary = summary.filter(({ space }) => space.isStarred);
     const starredCountInSummary = starredSummary.length;
 
@@ -687,7 +701,7 @@ export function AgentSidebarMenu({
     }
 
     const showCount =
-      isStarredProjectsSectionCollapsed && starredCountInSummary > 0;
+      isStarredPodsSectionCollapsed && starredCountInSummary > 0;
 
     const VISIBLE_STARRED = 5;
     const hiddenStarredSummary = starredSummary.slice(VISIBLE_STARRED);
@@ -702,49 +716,43 @@ export function AgentSidebarMenu({
     );
 
     return (
-      <NavigationList className="px-2">
+      <NavigationList className="mx-sidebar-side-spacing">
         <NavigationListCollapsibleSection
           label={showCount ? `Starred (${starredCountInSummary})` : "Starred"}
-          icon={StarIcon}
+          icon={Star01}
           type="collapse"
           visibleItems={VISIBLE_STARRED}
           overflowCount={hiddenOverflowCount}
           overflowHasActivity={hiddenOverflowHasActivity}
-          open={!isStarredProjectsSectionCollapsed}
-          onOpenChange={(open) => setStarredProjectsSectionCollapsed(!open)}
+          open={!isStarredPodsSectionCollapsed}
+          onOpenChange={(open) => setStarredPodsSectionCollapsed(!open)}
         >
-          {renderProjectsList({
+          {renderPodsList({
             owner,
             summary: starredSummary,
             titleFilter: sidebarTitleFilter,
-            moveConversationToProject,
+            moveConversationToPod: moveConversationToPod,
           })}
         </NavigationListCollapsibleSection>
       </NavigationList>
     );
   }, [
-    hasSpaceConversations,
     summary,
     owner,
     sidebarTitleFilter,
-    moveConversationToProject,
-    isStarredProjectsSectionCollapsed,
-    setStarredProjectsSectionCollapsed,
+    moveConversationToPod,
+    isStarredPodsSectionCollapsed,
+    setStarredPodsSectionCollapsed,
   ]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  const projectsSection = useMemo(() => {
-    if (!hasSpaceConversations) {
-      return null;
-    }
-    const nonStarredSummary = summary.filter(
-      (project) => !project.space.isStarred
-    );
-    const projectCountInSummary = nonStarredSummary.length;
-    const showCount = isProjectsSectionCollapsed && projectCountInSummary > 0;
+  const podsSection = useMemo(() => {
+    const nonStarredSummary = summary.filter((pod) => !pod.space.isStarred);
+    const podCountInSummary = nonStarredSummary.length;
+    const showCount = isPodsSectionCollapsed && podCountInSummary > 0;
 
-    const VISIBLE_PROJECTS = 4;
-    const hiddenSummary = nonStarredSummary.slice(VISIBLE_PROJECTS);
+    const VISIBLE_PODS = 4;
+    const hiddenSummary = nonStarredSummary.slice(VISIBLE_PODS);
     const hiddenOverflowCount = hiddenSummary.reduce(
       (sum, s) => sum + s.unreadConversations.length,
       0
@@ -756,31 +764,31 @@ export function AgentSidebarMenu({
     );
 
     return (
-      <NavigationList className="px-2">
+      <NavigationList className="mx-sidebar-side-spacing flex-shrink-0">
         <NavigationListCollapsibleSection
-          label={showCount ? `Pods (${projectCountInSummary})` : "Pods"}
+          label={showCount ? `Pods (${podCountInSummary})` : "Pods"}
           type="collapse"
-          visibleItems={VISIBLE_PROJECTS}
+          visibleItems={VISIBLE_PODS}
           overflowCount={hiddenOverflowCount}
           overflowHasActivity={hiddenOverflowHasActivity}
-          open={!isProjectsSectionCollapsed}
-          onOpenChange={(open) => setProjectsSectionCollapsed(!open)}
+          open={!isPodsSectionCollapsed}
+          onOpenChange={(open) => setPodsSectionCollapsed(!open)}
           action={
             <>
               {nonStarredSummary.length > 0 && (
                 <Button
                   size="xs"
-                  icon={PlusIcon}
+                  icon={Plus}
                   label="New"
-                  variant="ghost"
+                  variant="ghost-secondary"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    setIsCreateProjectModalOpen(true);
+                    setIsCreatePodModalOpen(true);
                   }}
                 />
               )}
-              <ProjectsBrowsePopover owner={owner} />
+              <PodsBrowsePopover owner={owner} />
             </>
           }
         >
@@ -789,29 +797,28 @@ export function AgentSidebarMenu({
               <Spinner size="xs" />
             </div>
           ) : nonStarredSummary.length > 0 ? (
-            renderProjectsList({
+            renderPodsList({
               owner,
               summary: nonStarredSummary,
               titleFilter: sidebarTitleFilter,
-              moveConversationToProject,
+              moveConversationToPod: moveConversationToPod,
             })
           ) : (
             <NavigationListItem
               label="Create a Pod"
-              icon={PlusIcon}
-              onClick={() => setIsCreateProjectModalOpen(true)}
+              icon={Plus}
+              onClick={() => setIsCreatePodModalOpen(true)}
             />
           )}
         </NavigationListCollapsibleSection>
       </NavigationList>
     );
   }, [
-    hasSpaceConversations,
     owner,
     summary,
-    setIsCreateProjectModalOpen,
-    isProjectsSectionCollapsed,
-    setProjectsSectionCollapsed,
+    setIsCreatePodModalOpen,
+    isPodsSectionCollapsed,
+    setPodsSectionCollapsed,
     isSummaryLoading,
     sidebarTitleFilter,
   ]);
@@ -828,7 +835,7 @@ export function AgentSidebarMenu({
         activeConversationId={activeConversationId}
         owner={owner}
         starredSection={starredSection}
-        projectsSection={projectsSection}
+        podsSection={podsSection}
         hasTriggeredConversations={hasTriggeredConversations}
         hideTriggeredConversations={hideTriggeredConversations}
         setHideTriggeredConversations={setHideTriggeredConversations}
@@ -849,7 +856,7 @@ export function AgentSidebarMenu({
     activeConversationId,
     owner,
     starredSection,
-    projectsSection,
+    podsSection,
     hasTriggeredConversations,
     hideTriggeredConversations,
     setHideTriggeredConversations,
@@ -872,10 +879,20 @@ export function AgentSidebarMenu({
         type={showDeleteDialog || "all"}
         selectedCount={selectedConversations.length}
       />
-      <CreateProjectModal
-        isOpen={isCreateProjectModalOpen}
-        onClose={() => setIsCreateProjectModalOpen(false)}
-        onCreated={() => setSidebarOpen(false)}
+      <CreatePodModal
+        isOpen={isCreatePodModalOpen}
+        onClose={() => {
+          setIsCreatePodModalOpen(false);
+          setPendingMoveToNewPod(false);
+        }}
+        onCreated={async (pod) => {
+          setSidebarOpen(false);
+          if (pendingMoveToNewPod) {
+            setPendingMoveToNewPod(false);
+            await moveSelectionToPod(pod);
+          }
+          void router.push(getPodRoute(owner.sId, pod.sId));
+        }}
         owner={owner}
       />
       {isImportSkillDialogOpen && (
@@ -888,46 +905,75 @@ export function AgentSidebarMenu({
         <div className="flex h-0 min-h-full w-full">
           <div className="flex w-full flex-col">
             {isMultiSelect ? (
-              <div className="z-50 flex justify-between gap-2 border-b border-border-dark/60 p-2 dark:border-border-dark/60">
-                <Button
-                  variant={
-                    selectedConversations.length === 0 ? "outline" : "warning"
-                  }
-                  label="Delete"
-                  disabled={selectedConversations.length === 0}
-                  onClick={() => setShowDeleteDialog("selection")}
-                />
+              <div className="z-50 flex justify-between gap-2 border-b border-border-dark/60 p-2 dark:border-border-dark/60 mb-4">
+                <div className="flex gap-2">
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        label="Move to Pod"
+                        icon={ArrowRight}
+                        disabled={selectedConversations.length === 0}
+                        isLoading={isMoving}
+                      />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      className="max-w-60"
+                      onFocusOutside={(e) => e.preventDefault()}
+                    >
+                      <DropdownMenuItem
+                        icon={Plus}
+                        label="New Pod"
+                        onClick={() => {
+                          setPendingMoveToNewPod(true);
+                          setIsCreatePodModalOpen(true);
+                        }}
+                      />
+                      {availablePods.length > 0 && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuLabel label="Pods" />
+                          {availablePods.map((pod) => (
+                            <DropdownMenuItem
+                              key={pod.sId}
+                              icon={getSpaceIcon(pod)}
+                              label={pod.name}
+                              truncateText
+                              onClick={() => moveSelectionToPod(pod)}
+                            />
+                          ))}
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Button
+                    variant={
+                      selectedConversations.length === 0 ? "outline" : "warning"
+                    }
+                    label="Delete"
+                    disabled={selectedConversations.length === 0}
+                    onClick={() => setShowDeleteDialog("selection")}
+                  />
+                </div>
                 <Button
                   variant="ghost"
-                  icon={XMarkIcon}
+                  icon={XClose}
                   onClick={toggleMultiSelect}
                 />
               </div>
             ) : (
-              <div className="z-50 flex justify-end gap-2 p-2">
-                {hasSpaceConversations ? (
-                  <div className="flex-1">
-                    <SidebarSearch
-                      titleFilter={titleFilter}
-                      onTitleFilterChange={setTitleFilter}
-                    />
-                  </div>
-                ) : (
-                  <div className="flex-1">
-                    <SearchInput
-                      ref={searchInputRef}
-                      name="search"
-                      placeholder="Search"
-                      value={titleFilter}
-                      onChange={setTitleFilter}
-                    />
-                  </div>
-                )}
+              <div className="z-50 flex justify-end gap-2 p-sidebar-side-spacing">
+                <div className="flex-1">
+                  <SidebarSearch
+                    titleFilter={titleFilter}
+                    onTitleFilterChange={setTitleFilter}
+                  />
+                </div>
                 <div className="flex gap-2">
                   <Button
                     label="New"
                     href={getConversationRoute(owner.sId)}
-                    icon={ChatBubbleBottomCenterPlusIcon}
+                    icon={MessagePlusCircle}
                     className="shrink-0"
                     tooltip="Create a new conversation"
                     onClick={handleNewClick}
@@ -935,7 +981,11 @@ export function AgentSidebarMenu({
                   {!hideActions && (
                     <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
-                        <Button size="sm" icon={MoreIcon} variant="outline" />
+                        <Button
+                          size="sm"
+                          icon={DotsHorizontal}
+                          variant="outline"
+                        />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         {!isRestrictedFromAgentCreation && (
@@ -943,7 +993,7 @@ export function AgentSidebarMenu({
                             <DropdownMenuLabel>Agents</DropdownMenuLabel>
                             <DropdownMenuSub>
                               <DropdownMenuSubTrigger
-                                icon={PlusIcon}
+                                icon={Plus}
                                 label="New agent"
                                 disabled={noHealthyProviders}
                               />
@@ -954,7 +1004,7 @@ export function AgentSidebarMenu({
                                       owner.sId,
                                       "new"
                                     )}
-                                    icon={DocumentIcon}
+                                    icon={File02}
                                     label="From scratch"
                                     data-gtm-label="assistantCreationButton"
                                     data-gtm-location="sidebarMenu"
@@ -968,7 +1018,7 @@ export function AgentSidebarMenu({
                                       owner.sId,
                                       "create"
                                     )}
-                                    icon={MagicIcon}
+                                    icon={MagicWand02}
                                     label="From template"
                                     data-gtm-label="assistantCreationButton"
                                     data-gtm-location="sidebarMenu"
@@ -982,7 +1032,7 @@ export function AgentSidebarMenu({
                                       isUploadingYAML ? (
                                         <Spinner size="xs" />
                                       ) : (
-                                        BracesIcon
+                                        Brackets
                                       )
                                     }
                                     label={
@@ -1001,7 +1051,7 @@ export function AgentSidebarMenu({
                             {editableAgents.length > 0 && (
                               <DropdownMenuSub>
                                 <DropdownMenuSubTrigger
-                                  icon={PencilSquareIcon}
+                                  icon={Edit04}
                                   label="Edit agent"
                                   disabled={noHealthyProviders}
                                 />
@@ -1039,7 +1089,7 @@ export function AgentSidebarMenu({
                             )}
                             <DropdownMenuItem
                               href={getAgentBuilderRoute(owner.sId, "manage")}
-                              icon={RobotIcon}
+                              icon={Robot}
                               label="Manage agents"
                               data-gtm-label="assistantManagementButton"
                               data-gtm-location="sidebarMenu"
@@ -1055,7 +1105,7 @@ export function AgentSidebarMenu({
                             <DropdownMenuLabel>Skills</DropdownMenuLabel>
                             <DropdownMenuSub>
                               <DropdownMenuSubTrigger
-                                icon={PlusIcon}
+                                icon={Plus}
                                 label="New skill"
                               />
                               <DropdownMenuSubContent>
@@ -1065,7 +1115,7 @@ export function AgentSidebarMenu({
                                   label="From scratch"
                                 />
                                 <DropdownMenuItem
-                                  icon={FolderOpenIcon}
+                                  icon={FolderOpen}
                                   label="From existing"
                                   onClick={() =>
                                     setIsImportSkillDialogOpen(true)
@@ -1084,13 +1134,13 @@ export function AgentSidebarMenu({
                         <DropdownMenuItem
                           label="Edit conversations"
                           onClick={toggleMultiSelect}
-                          icon={ListCheckIcon}
+                          icon={CheckDone01}
                           disabled={filteredConversations.length === 0}
                         />
                         <DropdownMenuItem
                           label="Clear conversation history"
                           onClick={() => setShowDeleteDialog("all")}
-                          icon={TrashIcon}
+                          icon={Trash01}
                           disabled={filteredConversations.length === 0}
                         />
                       </DropdownMenuContent>
@@ -1107,12 +1157,12 @@ export function AgentSidebarMenu({
             {isSearchActive ? (
               <SearchResults
                 owner={owner}
-                allProjects={allProjects}
-                isSearchingProjects={isSearchingProjects}
-                hasMoreProjects={hasMoreProjects}
-                loadMoreProjects={loadMoreProjects}
-                isLoadingMoreProjects={isLoadingMoreProjects}
-                projectConversationResults={projectConversationSearchResults}
+                allPods={pods}
+                isSearchingPods={isSearchingPods}
+                hasMorePods={hasMorePods}
+                loadMorePods={loadMorePods}
+                isLoadingMorePods={isLoadingMorePods}
+                podConversationResults={podConversationSearchResults}
                 privateConversations={privateConversationSearchResults}
                 isSearchingPrivateConversations={
                   isSearchingPrivateConversations
@@ -1122,12 +1172,10 @@ export function AgentSidebarMenu({
                 isLoadingMorePrivateConversations={
                   isLoadingMorePrivateConversations
                 }
-                isSearchingProjectConversations={
-                  isSearchingProjectConversations
-                }
-                onCreateProject={() => setIsCreateProjectModalOpen(true)}
+                isSearchingPodConversations={isSearchingPodConversations}
+                onCreatePod={() => setIsCreatePodModalOpen(true)}
                 activeConversationId={activeConversationId}
-                activeSpaceId={activeSpaceId}
+                activeSpaceId={activePodId}
                 hideTriggeredConversations={hideTriggeredConversations}
                 setHideTriggeredConversations={setHideTriggeredConversations}
                 isMultiSelect={isMultiSelect}
@@ -1138,7 +1186,12 @@ export function AgentSidebarMenu({
               conversationsList
             )}
 
-            {!hideInAppBanner && <StackedInAppBanners owner={owner} />}
+            {!hideInAppBanner && (
+              <StackedInAppBanners
+                owner={owner}
+                onCreatePod={() => setIsCreatePodModalOpen(true)}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -1192,22 +1245,22 @@ function UnreadConversationsSection({
 
   return (
     <NavigationListCollapsibleSection
-      label={`${label} (${totalCount})`}
-      className="border-b border-t border-border bg-background/50 px-2 pb-2 dark:border-border-night dark:bg-background-night/50"
-      defaultOpen
-      actionOnHover={false}
+      label={label}
+      count={totalCount}
+      className="bg-background dark:bg-background-night rounded-xl border border-border dark:border-border-night p-1 mx-sidebar-side-spacing"
       action={
         shouldShowMarkAllAsReadButton ? (
           <Button
             size="xmini"
-            variant="ghost"
-            icon={CheckDoubleIcon}
-            tooltip="Mark all as read"
+            variant="ghost-secondary"
+            label="Mark as read"
             onClick={() => onMarkAllAsRead(conversations.map((c) => c.sId))}
             isLoading={isMarkingAllAsRead}
+            hasLighterFont
           />
         ) : null
       }
+      actionOnHover={false}
     >
       <AnimatePresence initial={false}>
         {conversations.map((conversation) => (
@@ -1227,6 +1280,7 @@ function UnreadConversationsSection({
                 toggleConversationSelection={toggleConversationSelection}
                 activeConversationId={activeConversationId}
                 owner={owner}
+                showStatusDot={false}
               />
             </div>
           </motion.div>
@@ -1256,11 +1310,7 @@ const ConversationList = ({
   return (
     <ConversationListContainer>
       {dateLabel !== "Today" && (
-        <NavigationListLabel
-          label={dateLabel}
-          isSticky
-          className="bg-muted-background dark:bg-muted-background-night"
-        />
+        <NavigationListLabel label={dateLabel} isSticky />
       )}
 
       {conversations.map((conversation) => (
@@ -1281,7 +1331,7 @@ interface WakeUpSuffixProps {
 function WakeUpSuffix({ nextWakeupAt }: WakeUpSuffixProps) {
   return (
     <span className="copy-xs flex items-center gap-1 text-muted-foreground dark:text-muted-foreground-night">
-      <Icon visual={ActionTimeIcon} size="xs" />
+      <Icon visual={Clock} size="xs" />
       {formatWakeUpSidebarLabel(nextWakeupAt)}
     </span>
   );
@@ -1295,6 +1345,7 @@ const ConversationListItem = memo(
     toggleConversationSelection,
     activeConversationId,
     owner,
+    showStatusDot = true,
   }: {
     conversation: ConversationListItemType;
     isMultiSelect: boolean;
@@ -1302,6 +1353,7 @@ const ConversationListItem = memo(
     toggleConversationSelection: (c: ConversationListItemType) => void;
     activeConversationId: string | null;
     owner: WorkspaceType;
+    showStatusDot?: boolean;
   }) => {
     const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
     const {
@@ -1329,7 +1381,7 @@ const ConversationListItem = memo(
 
     const handleDragStart = useCallback(
       (e: React.DragEvent) => {
-        // Only allow dragging if not in multi-select mode and conversation is not already in a project
+        // Only allow dragging if not in multi-select mode and conversation is not already in a pod
         if (isMultiSelect || conversation.spaceId) {
           e.preventDefault();
           return;
@@ -1351,7 +1403,7 @@ const ConversationListItem = memo(
     );
 
     return isMultiSelect ? (
-      <div className="flex items-center px-2 py-2">
+      <div className="flex items-center mx-2 py-2">
         <Checkbox
           id={`conversation-${conversation.sId}`}
           className="bg-background dark:bg-background-night"
@@ -1369,7 +1421,7 @@ const ConversationListItem = memo(
       <NavigationListItem
         key={conversation.sId}
         selected={activeConversationId === conversation.sId}
-        status={getConversationDotStatus(conversation)}
+        status={showStatusDot ? getConversationDotStatus(conversation) : "idle"}
         label={conversationLabel}
         labelAnimation={
           showTypingAnimation
@@ -1428,7 +1480,7 @@ interface NavigationListWithInboxProps {
   activeConversationId: string | null;
   owner: WorkspaceType;
   starredSection?: React.ReactNode;
-  projectsSection?: React.ReactNode;
+  podsSection?: React.ReactNode;
   hasTriggeredConversations: boolean;
   hideTriggeredConversations: boolean;
   setHideTriggeredConversations: (hide: boolean) => void;
@@ -1449,7 +1501,7 @@ function NavigationListWithInbox({
   activeConversationId,
   owner,
   starredSection,
-  projectsSection,
+  podsSection,
   hasTriggeredConversations,
   hideTriggeredConversations,
   setHideTriggeredConversations,
@@ -1516,112 +1568,117 @@ function NavigationListWithInbox({
       ref={scrollContainerRef}
       className="dd-privacy-mask h-full w-full overflow-y-auto"
     >
-      <AnimatePresence initial={false}>
-        {skillSuggestionConversations.length > 0 && (
-          <motion.div
-            key="skill-suggestions"
-            style={GRID_STYLE}
-            animate={GRID_ANIMATE}
-            exit={GRID_EXIT}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+      <div className="flex flex-col gap-4">
+        <AnimatePresence initial={false}>
+          {skillSuggestionConversations.length > 0 && (
+            <motion.div
+              key="skill-suggestions"
+              style={GRID_STYLE}
+              animate={GRID_ANIMATE}
+              exit={GRID_EXIT}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              <div className="overflow-hidden">
+                <UnreadConversationsSection
+                  label="Skill suggestions"
+                  conversations={skillSuggestionConversations}
+                  isMultiSelect={isMultiSelect}
+                  isMarkingAllAsRead={isMarkingAllAsRead}
+                  titleFilter={titleFilter}
+                  onMarkAllAsRead={markAllAsRead}
+                  selectedConversations={selectedConversations}
+                  toggleConversationSelection={toggleConversationSelection}
+                  activeConversationId={activeConversationId}
+                  owner={owner}
+                />
+              </div>
+            </motion.div>
+          )}
+          {inboxConversations.length > 0 && (
+            <motion.div
+              key="inbox"
+              style={GRID_STYLE}
+              animate={{ gridTemplateRows: "1fr" }}
+              exit={{ gridTemplateRows: "0fr" }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              <div className="overflow-hidden">
+                <UnreadConversationsSection
+                  label="Inbox"
+                  conversations={inboxConversations}
+                  isMultiSelect={isMultiSelect}
+                  isMarkingAllAsRead={isMarkingAllAsRead}
+                  titleFilter={titleFilter}
+                  onMarkAllAsRead={markAllAsRead}
+                  selectedConversations={selectedConversations}
+                  toggleConversationSelection={toggleConversationSelection}
+                  activeConversationId={activeConversationId}
+                  owner={owner}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {starredSection}
+        {podsSection}
+        <NavigationList className="mx-sidebar-side-spacing">
+          <NavigationListCollapsibleSection
+            label="Conversations"
+            action={
+              <>
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="xmini"
+                      icon={DotsHorizontal}
+                      variant="ghost"
+                      aria-label="Conversations options"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    onFocusOutside={(e) => e.preventDefault()}
+                  >
+                    <DropdownMenuLabel label="Conversations" />
+                    <DropdownMenuItem
+                      label={
+                        hideTriggeredConversations
+                          ? "Show triggered"
+                          : "Hide triggered"
+                      }
+                      icon={hideTriggeredConversations ? Zap : ZapOff}
+                      disabled={!hasTriggeredConversations}
+                      onClick={() =>
+                        setHideTriggeredConversations(
+                          !hideTriggeredConversations
+                        )
+                      }
+                    />
+                    <DropdownMenuItem
+                      label="Edit history"
+                      icon={CheckDone01}
+                      onClick={toggleMultiSelect}
+                      disabled={conversations.length === 0}
+                    />
+                    <DropdownMenuItem
+                      label="Clear history"
+                      variant="warning"
+                      icon={Trash01}
+                      onClick={() => setShowDeleteDialog("all")}
+                      disabled={conversations.length === 0}
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            }
           >
-            <div className="overflow-hidden">
-              <UnreadConversationsSection
-                label="Skill suggestions"
-                conversations={skillSuggestionConversations}
-                isMultiSelect={isMultiSelect}
-                isMarkingAllAsRead={isMarkingAllAsRead}
-                titleFilter={titleFilter}
-                onMarkAllAsRead={markAllAsRead}
-                selectedConversations={selectedConversations}
-                toggleConversationSelection={toggleConversationSelection}
-                activeConversationId={activeConversationId}
-                owner={owner}
-              />
-            </div>
-          </motion.div>
-        )}
-        {inboxConversations.length > 0 && (
-          <motion.div
-            key="inbox"
-            style={GRID_STYLE}
-            animate={{ gridTemplateRows: "1fr" }}
-            exit={{ gridTemplateRows: "0fr" }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-          >
-            <div className="overflow-hidden">
-              <UnreadConversationsSection
-                label="Inbox"
-                conversations={inboxConversations}
-                isMultiSelect={isMultiSelect}
-                isMarkingAllAsRead={isMarkingAllAsRead}
-                titleFilter={titleFilter}
-                onMarkAllAsRead={markAllAsRead}
-                selectedConversations={selectedConversations}
-                toggleConversationSelection={toggleConversationSelection}
-                activeConversationId={activeConversationId}
-                owner={owner}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {starredSection}
-      {projectsSection}
-      <NavigationList className="px-2">
-        <NavigationListCollapsibleSection
-          label="Conversations"
-          defaultOpen
-          action={
-            <>
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="xmini"
-                    icon={MoreIcon}
-                    variant="ghost"
-                    aria-label="Conversations options"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent onFocusOutside={(e) => e.preventDefault()}>
-                  <DropdownMenuLabel label="Conversations" />
-                  <DropdownMenuItem
-                    label={
-                      hideTriggeredConversations
-                        ? "Show triggered"
-                        : "Hide triggered"
-                    }
-                    icon={hideTriggeredConversations ? BoltIcon : BoltOffIcon}
-                    disabled={!hasTriggeredConversations}
-                    onClick={() =>
-                      setHideTriggeredConversations(!hideTriggeredConversations)
-                    }
-                  />
-                  <DropdownMenuItem
-                    label="Edit history"
-                    icon={ListCheckIcon}
-                    onClick={toggleMultiSelect}
-                    disabled={conversations.length === 0}
-                  />
-                  <DropdownMenuItem
-                    label="Clear history"
-                    variant="warning"
-                    icon={TrashIcon}
-                    onClick={() => setShowDeleteDialog("all")}
-                    disabled={conversations.length === 0}
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          }
-        >
-          {conversationsContent}
-        </NavigationListCollapsibleSection>
-      </NavigationList>
+            {conversationsContent}
+          </NavigationListCollapsibleSection>
+        </NavigationList>
+      </div>
     </div>
   );
 }

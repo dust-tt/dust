@@ -25,6 +25,8 @@ const {
   mockScheduleMetronomeContractEnd,
   mockSyncMauCount,
   mockSyncSeatCount,
+  mockRemapMembershipSeatTypesForContract,
+  mockBuildSeatDataByUserId,
 } = vi.hoisted(() => {
   const mockPrices = { retrieve: vi.fn() };
 
@@ -43,6 +45,8 @@ const {
     mockScheduleMetronomeContractEnd: vi.fn(),
     mockSyncMauCount: vi.fn(),
     mockSyncSeatCount: vi.fn(),
+    mockRemapMembershipSeatTypesForContract: vi.fn(),
+    mockBuildSeatDataByUserId: vi.fn(),
   };
 });
 
@@ -76,6 +80,18 @@ vi.mock("@app/lib/metronome/mau_sync", async () => {
 vi.mock("@app/lib/metronome/seats", () => ({
   hasContractSeatSubscription: mockHasContractSeatSubscription,
   syncSeatCount: mockSyncSeatCount,
+  remapMembershipSeatTypesForContract: mockRemapMembershipSeatTypesForContract,
+  buildSeatDataByUserId: mockBuildSeatDataByUserId,
+}));
+
+vi.mock("@app/lib/api/metronome/credit_state_dispatcher", () => ({
+  syncPoolCreditStateFromBalance: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@app/lib/resources/workspace_resource", () => ({
+  WorkspaceResource: {
+    fetchById: vi.fn().mockResolvedValue(null),
+  },
 }));
 
 vi.mock("@app/lib/plans/stripe", () => ({
@@ -148,7 +164,7 @@ beforeEach(() => {
   mockGetMetronomeContractById.mockResolvedValue(new Ok(CONTRACT));
 
   mockHasContractSeatSubscription.mockReset();
-  mockHasContractSeatSubscription.mockReturnValue(true);
+  mockHasContractSeatSubscription.mockResolvedValue(true);
 
   mockHasMauSubscriptionInContract.mockReset();
   mockHasMauSubscriptionInContract.mockReturnValue(true);
@@ -158,6 +174,12 @@ beforeEach(() => {
 
   mockSyncMauCount.mockReset();
   mockSyncMauCount.mockResolvedValue(new Ok(undefined));
+
+  mockRemapMembershipSeatTypesForContract.mockReset();
+  mockRemapMembershipSeatTypesForContract.mockResolvedValue(new Ok(undefined));
+
+  mockBuildSeatDataByUserId.mockReset();
+  mockBuildSeatDataByUserId.mockResolvedValue(new Ok(new Map()));
 });
 
 function makeSubscription(
@@ -706,7 +728,7 @@ describe("provisionMetronomeContract", () => {
   });
 
   it("skips seat sync when the contract has no seat subscription", async () => {
-    mockHasContractSeatSubscription.mockReturnValue(false);
+    mockHasContractSeatSubscription.mockResolvedValue(false);
 
     const result = await provisionMetronomeContract({
       metronomeCustomerId: "m-customer",

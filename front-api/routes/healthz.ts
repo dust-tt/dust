@@ -1,15 +1,23 @@
-import { Hono } from "hono";
-
 import { getStatsDClient } from "@app/lib/utils/statsd";
+import { createHono } from "@front-api/lib/hono";
 
-export const healthzApp = new Hono();
+import ready from "./healthz/ready";
+import startup from "./healthz/startup";
 
-healthzApp.get("/", (c) => {
+// Mounted at /api/healthz.
+export const healthzApp = createHono();
+
+healthzApp.get("/", (ctx) => {
   const startMs = performance.now();
-  const response = c.text("ok", 200);
+  const response = ctx.text("ok", 200);
   const elapsedMs = performance.now() - startMs;
 
   getStatsDClient().distribution("requests.health.check", elapsedMs);
 
   return response;
 });
+
+healthzApp.route("/ready", ready);
+healthzApp.route("/startup", startup);
+
+export default healthzApp;

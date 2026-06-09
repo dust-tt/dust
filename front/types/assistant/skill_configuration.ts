@@ -17,6 +17,7 @@ export const SKILL_SOURCES = [
   "github",
   "api",
   "local_file",
+  "agent",
 ] as const;
 
 export type SkillSourceType = (typeof SKILL_SOURCES)[number];
@@ -70,16 +71,32 @@ export const SkillSchema = SkillWithoutInstructionsAndToolsSchema.extend({
 
 export type SkillType = z.infer<typeof SkillSchema>;
 
+export type UsedBySkillType = {
+  sId: string;
+  name: string;
+  icon: string | null;
+};
+
+export type SkillUsageType = AgentsUsageType & {
+  skills: UsedBySkillType[];
+};
+
 export type SkillRelations = {
-  usage: AgentsUsageType;
+  usage: SkillUsageType;
   editors: UserType[] | null;
   editedByUser: UserType | null;
   extendedSkill: SkillType | null;
+  childSkills: SkillWithoutInstructionsAndToolsType[];
 };
 
 export type SkillWithRelationsType = SkillType & {
   relations: SkillRelations;
 };
+
+export type SkillWithoutInstructionsAndToolsWithRelationsType =
+  SkillWithoutInstructionsAndToolsType & {
+    relations: SkillRelations;
+  };
 
 export type SkillWithVersionType = SkillType & {
   version: number;

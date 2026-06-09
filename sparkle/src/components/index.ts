@@ -14,8 +14,15 @@ export {
 export { AttachmentChip } from "./AttachmentChip";
 export { Avatar } from "./Avatar";
 export { Bar, BarFooter, BarHeader } from "./Bar";
-export type { BreadcrumbItem } from "./Breadcrumbs";
-export { Breadcrumbs } from "./Breadcrumbs";
+export type { BreadcrumbsItem } from "./Breadcrumbs";
+export {
+  Breadcrumb,
+  BreadcrumbButton,
+  BreadcrumbItem,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+  Breadcrumbs,
+} from "./Breadcrumbs";
 export type {
   ButtonIconType,
   ButtonProps,
@@ -130,6 +137,8 @@ export { Hoverable } from "./Hoverable";
 export { HoveringBar } from "./HoveringBar";
 export { DoubleIcon, Icon } from "./Icon";
 export { IconButton } from "./IconButton";
+export type { ImageGenerationPlaceholderProps } from "./ImageGenerationPlaceholder";
+export { ImageGenerationPlaceholder } from "./ImageGenerationPlaceholder";
 export type {
   ImagePreviewProps,
   ImagePreviewTitlePositionType,
@@ -174,6 +183,12 @@ export {
 export * from "./markdown";
 export { markdownStyles } from "./markdown/styles";
 export * from "./NavigationList";
+export {
+  NavTabPill,
+  NavTabPillContent,
+  NavTabPillList,
+  NavTabPillTrigger,
+} from "./NavTabPill";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
 export { NotificationButton } from "./NotificationButton";
@@ -204,6 +219,8 @@ export { ScrollArea, ScrollBar } from "./ScrollArea";
 export { SearchDropdownMenu } from "./SearchDropdownMenu";
 export { SearchInput, SearchInputWithPopover } from "./SearchInput";
 export { Separator } from "./Separator";
+export type { SettingsListProps, SettingsListRowProps } from "./SettingsList";
+export { SettingsList } from "./SettingsList";
 export {
   Sheet,
   SheetClose,

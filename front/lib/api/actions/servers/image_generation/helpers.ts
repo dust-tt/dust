@@ -16,9 +16,11 @@ import logger from "@app/logger/logger";
 import type { ImageModelIdType } from "@app/types/assistant/models/models";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import {
+  extensionsForContentType,
   fileSizeToHumanReadable,
   isSupportedImageContentType,
   MAX_FILE_SIZES,
+  stripFileExtension,
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -53,7 +55,6 @@ const MICRO_USD_PER_USD = 1_000_000;
 export const QUALITY_TO_IMAGE_SIZE: Record<string, string> = {
   low: "1K",
   medium: "2K",
-  high: "4K",
 };
 
 export type Base64ImageData = {
@@ -214,9 +215,7 @@ export async function uploadAndFormatImageResponse(
   }
 
   const conversationId = agentLoopContext.runContext.conversation.sId;
-  const outputFileName = fileName.toLowerCase().endsWith(".png")
-    ? fileName
-    : `${fileName}.png`;
+  const baseFileName = stripFileExtension(fileName);
 
   const resources: Array<{
     type: "resource";
@@ -233,6 +232,9 @@ export async function uploadAndFormatImageResponse(
         })
       );
     }
+
+    const extension = extensionsForContentType(mimeType)[0] ?? ".png";
+    const outputFileName = `${baseFileName}${extension}`;
 
     const uploadResult = await uploadBase64ImageToFileStorage(auth, {
       base64: image.base64,

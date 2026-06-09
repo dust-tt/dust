@@ -15,13 +15,14 @@ import {
   type MultiPageDialogPage,
   MultiPageDialogTrigger,
 } from "@sparkle/components/MultiPageDialog";
-import {
-  Cog6ToothIcon,
-  DocumentTextIcon,
-  ExclamationCircleIcon,
-  UserIcon,
-} from "@sparkle/icons/app";
+
 import { GmailLogo } from "@sparkle/logo/platforms";
+import {
+  AlertCircle,
+  File04,
+  Settings01,
+  User01,
+} from "@sparkle/icons/v2-stroke";
 
 const meta: Meta<typeof MultiPageDialogContent> = {
   title: "Modules/MultiPageDialog",
@@ -36,7 +37,7 @@ const samplePages: MultiPageDialogPage[] = [
     id: "profile",
     title: "User Profile",
     description: "Manage your personal information",
-    icon: UserIcon,
+    icon: User01,
     content: (
       <div className="s-space-y-4">
         <div>
@@ -72,7 +73,7 @@ const samplePages: MultiPageDialogPage[] = [
     id: "documents",
     title: "Documents",
     description: "Manage your uploaded files",
-    icon: DocumentTextIcon,
+    icon: File04,
     content: (
       <div className="s-space-y-4">
         <div>
@@ -98,7 +99,7 @@ const samplePages: MultiPageDialogPage[] = [
     id: "settings",
     title: "Settings",
     description: "Configure your preferences",
-    icon: Cog6ToothIcon,
+    icon: Settings01,
     content: (
       <div className="s-space-y-4">
         <div>
@@ -366,7 +367,7 @@ export const InteractiveContent: Story = {
         id: "step1",
         title: "Personal Info",
         description: "Enter your basic information",
-        icon: UserIcon,
+        icon: User01,
         content: (
           <div className="s-space-y-4">
             <div>
@@ -410,7 +411,7 @@ export const InteractiveContent: Story = {
         id: "step2",
         title: "File Selection",
         description: "Choose your files",
-        icon: DocumentTextIcon,
+        icon: File04,
         content: (
           <div className="s-space-y-4">
             <div>
@@ -457,7 +458,7 @@ export const InteractiveContent: Story = {
         id: "step3",
         title: "Final Settings",
         description: "Configure your preferences",
-        icon: Cog6ToothIcon,
+        icon: Settings01,
         content: (
           <div className="s-space-y-4">
             <div>
@@ -575,7 +576,7 @@ export const WithConditionalNavigation: Story = {
         id: "data-selection",
         title: "Select Data Sources",
         description: "Choose which data sources to include",
-        icon: DocumentTextIcon,
+        icon: File04,
         content: (
           <div className="s-space-y-4">
             <div>
@@ -633,7 +634,7 @@ export const WithConditionalNavigation: Story = {
         id: "description",
         title: "Add Description",
         description: "Describe your configuration",
-        icon: Cog6ToothIcon,
+        icon: Settings01,
         content: (
           <div className="s-space-y-4">
             <div>
@@ -755,7 +756,7 @@ export const ScrollableContent: Story = {
         title: "Long Form Content",
         description:
           "This page demonstrates scrollable content with fixed search",
-        icon: DocumentTextIcon,
+        icon: File04,
         fixedContent: (
           <SearchInput
             value={searchTerm}
@@ -839,7 +840,7 @@ export const ScrollableContent: Story = {
       {
         id: "summary",
         title: "Summary",
-        icon: Cog6ToothIcon,
+        icon: Settings01,
         content: (
           <div className="s-space-y-4">
             <div>
@@ -955,7 +956,7 @@ export const ActionValidation: Story = {
 
                 {errorMessage && (
                   <div className="s-flex s-items-center s-gap-2 s-text-sm s-font-medium s-text-warning-800">
-                    <ExclamationCircleIcon className="s-h-4 s-w-4" />
+                    <AlertCircle className="s-h-4 s-w-4" />
                     {errorMessage}
                   </div>
                 )}

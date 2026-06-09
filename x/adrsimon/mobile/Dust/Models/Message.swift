@@ -10,6 +10,7 @@ enum AgentMessageStatus: String, Codable {
     case succeeded
     case failed
     case cancelled
+    case interrupted
     case gracefullyStopped = "gracefully_stopped"
 }
 
@@ -22,6 +23,7 @@ struct UserMessage: Codable, Identifiable {
     let version: Int
     let rank: Int
     let content: String
+    let user: MessageUser?
     let context: UserMessageContext?
     let contentFragments: [ContentFragment]?
 
@@ -32,6 +34,20 @@ struct UserMessage: Codable, Identifiable {
     var createdDate: Date {
         created.dateFromEpochMs
     }
+
+    /// `context` picture is often absent for other people's messages, so prefer `user`.
+    var authorAvatarUrl: String? {
+        user?.image ?? context?.profilePictureUrl
+    }
+
+    var authorName: String? {
+        user?.fullName ?? context?.fullName ?? context?.username
+    }
+}
+
+struct MessageUser: Codable {
+    let fullName: String?
+    let image: String?
 }
 
 struct UserMessageContext: Codable {
@@ -66,11 +82,15 @@ struct GeneratedFile: Codable, Identifiable, Hashable {
     let contentType: String
     let createdAt: Double?
     let updatedAt: Double?
-    let isInProjectContext: Bool?
     let hidden: Bool?
 
-    var id: String { fileId }
-    var isVisible: Bool { hidden != true }
+    var id: String {
+        fileId
+    }
+
+    var isVisible: Bool {
+        hidden != true
+    }
 }
 
 // MARK: - Citation (attached to AgentMessage)
@@ -102,6 +122,7 @@ struct AgentMessage: Codable, Identifiable {
     let configuration: AgentConfiguration
     var generatedFiles: [GeneratedFile]?
     var citations: [String: CitationReference]?
+    var error: StreamingError?
 
     var id: String {
         sId
@@ -151,7 +172,12 @@ enum ToolStake: String, Decodable {
 
 enum ErrorCategory: String, Decodable {
     case retryableModelError = "retryable_model_error"
+    case contextWindowExceeded = "context_window_exceeded"
+    case emptyContent = "empty_content"
+    case providerInternalError = "provider_internal_error"
     case streamError = "stream_error"
+    case unknownError = "unknown_error"
+    case invalidResponseFormatConfiguration = "invalid_response_format_configuration"
 }
 
 struct ToolApprovalInfo: Equatable {
@@ -260,7 +286,7 @@ struct ErrorInfo: Equatable {
     let messageId: String
 
     var isRetryable: Bool {
-        category == .retryableModelError || category == .streamError
+        category == .retryableModelError || category == .streamError || category == .emptyContent
     }
 
     init(from error: StreamingError, messageId: String) {
@@ -272,6 +298,36 @@ struct ErrorInfo: Equatable {
     }
 }
 
+/// What the agent is waiting on the user for. Outlives the stream until resolved.
+enum BlockedState: Equatable {
+    case approval(ToolApprovalInfo)
+    case personalAuth(provider: String, toolName: String)
+    case fileAuth(fileName: String, toolName: String)
+    case userQuestion(UserQuestionInfo)
+}
+
+struct UserQuestionInfo: Equatable {
+    let actionId: String
+    let messageId: String
+    let conversationId: String
+    let question: UserQuestion
+
+    init(from event: ToolAskUserQuestionEvent, fallbackMessageId: String, fallbackConversationId: String) {
+        self.actionId = event.actionId ?? ""
+        self.messageId = event.messageId ?? fallbackMessageId
+        self.conversationId = event.conversationId ?? fallbackConversationId
+        self.question = event.question
+    }
+
+    init(from action: BlockedAction, question: UserQuestion, fallbackConversationId: String) {
+        self.actionId = action.actionId ?? ""
+        self.messageId = action.messageId ?? ""
+        self.conversationId = action.conversationId ?? fallbackConversationId
+        self.question = question
+    }
+}
+
+/// Derived view projection of `Activity` overlaid with any `BlockedState`. Not stored.
 enum AgentStreamingPhase: Equatable {
     case idle
     case thinking
@@ -279,6 +335,18 @@ enum AgentStreamingPhase: Equatable {
     case personalAuthRequired(provider: String, toolName: String)
     case fileAuthRequired(fileName: String, toolName: String)
     case approvalRequired(approval: ToolApprovalInfo)
+    case userQuestionRequired(question: UserQuestionInfo)
+}
+
+extension BlockedState {
+    var asPhase: AgentStreamingPhase {
+        switch self {
+        case let .approval(info): .approvalRequired(approval: info)
+        case let .personalAuth(provider, toolName): .personalAuthRequired(provider: provider, toolName: toolName)
+        case let .fileAuth(fileName, toolName): .fileAuthRequired(fileName: fileName, toolName: toolName)
+        case let .userQuestion(info): .userQuestionRequired(question: info)
+        }
+    }
 }
 
 enum ConversationMessage: Identifiable {
@@ -338,4 +406,35 @@ struct ConversationMessagesResponse: Decodable {
     let messages: [ConversationMessage]
     let hasMore: Bool
     let lastValue: Int?
+
+    private enum CodingKeys: String, CodingKey {
+        case messages, hasMore, lastValue
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.hasMore = try container.decode(Bool.self, forKey: .hasMore)
+        self.lastValue = try container.decodeIfPresent(Int.self, forKey: .lastValue)
+        self.messages = try container.decode([RenderableMessage].self, forKey: .messages).compactMap(\.message)
+    }
+}
+
+/// Skips unrenderable types (e.g. `compaction_message`) but lets a renderable message that
+/// fails to decode throw, so schema drift surfaces instead of dropping messages silently.
+private struct RenderableMessage: Decodable {
+    let message: ConversationMessage?
+
+    private enum CodingKeys: String, CodingKey {
+        case type
+    }
+
+    init(from decoder: Decoder) throws {
+        let type = try decoder.container(keyedBy: CodingKeys.self).decode(String.self, forKey: .type)
+        switch type {
+        case MessageType.userMessage.rawValue, MessageType.agentMessage.rawValue:
+            self.message = try ConversationMessage(from: decoder)
+        default:
+            self.message = nil
+        }
+    }
 }

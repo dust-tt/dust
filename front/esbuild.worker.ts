@@ -53,7 +53,30 @@ async function buildWorker() {
   }
 }
 
-buildWorker().catch((error) => {
+async function buildMigrate() {
+  try {
+    console.log("Building migrate script with esbuild...");
+    await esbuild.build({
+      entryPoints: ["scripts/migrate.ts"],
+      bundle: true,
+      platform: "node",
+      target: "node22",
+      outfile: "dist/migrate.js",
+      sourcemap: true,
+      alias: {
+        "@app": ".",
+      },
+      packages: "external",
+      logLevel: "info",
+    });
+    console.log("✅ Migrate script built successfully!");
+  } catch (error) {
+    console.error("❌ Migrate script build failed:", error);
+    process.exit(1);
+  }
+}
+
+Promise.all([buildWorker(), buildMigrate()]).catch((error) => {
   console.error("❌ Unhandled error:", error);
   process.exit(1);
 });

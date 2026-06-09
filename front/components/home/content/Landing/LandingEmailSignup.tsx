@@ -4,7 +4,7 @@ import { useEnrichmentSubmit } from "@app/components/home/content/Landing/useEnr
 import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import type { TrackingArea } from "@app/lib/tracking";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import { ArrowRightIcon, Button, cn, Icon, Spinner } from "@dust-tt/sparkle";
+import { ArrowRight, Button, cn, Icon, Spinner } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
@@ -66,7 +66,7 @@ export function LandingEmailSignup({
           variant="highlight"
           size="md"
           label="Open Dust"
-          icon={ArrowRightIcon}
+          icon={ArrowRight}
           onClick={handleOpenDust}
         />
         <p
@@ -103,7 +103,7 @@ export function LandingEmailSignup({
             >
               {isLoading && <Spinner size="xs" />}
               {ctaButtonText}
-              <Icon visual={ArrowRightIcon} size="sm" />
+              <Icon visual={ArrowRight} size="sm" />
             </button>
           </div>
         ) : (
@@ -123,7 +123,7 @@ export function LandingEmailSignup({
             >
               {isLoading && <Spinner size="xs" />}
               {ctaButtonText}
-              <ArrowRightIcon className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4" />
             </button>
           </div>
         )}

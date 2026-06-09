@@ -60,6 +60,7 @@ export interface MessageDetail {
 
 export const MESSAGES_MAX_RESULTS = 50;
 export const MESSAGES_WITH_ATTACHMENTS_MAX_RESULTS = 10;
+export const MAX_ATTACHMENT_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 
 /**
  * Typeguard for GmailMessage
@@ -83,6 +84,10 @@ export function decodeMessageBody(
   }
 
   if (payload.mimeType === "text/plain" && payload.body?.data) {
+    const base64 = payload.body.data.replace(/-/g, "+").replace(/_/g, "/");
+    return Buffer.from(base64, "base64").toString("utf-8");
+  }
+  if (payload.mimeType == "text/html" && payload.body?.data) {
     const base64 = payload.body.data.replace(/-/g, "+").replace(/_/g, "/");
     return Buffer.from(base64, "base64").toString("utf-8");
   }
@@ -238,7 +243,7 @@ export function createThreadingHeaders(
     headers.push(`In-Reply-To: ${originalMessageId}`);
 
     if (originalReferences) {
-      headers.push(`References: ${originalReferences}`);
+      headers.push(`References: ${originalReferences} ${originalMessageId}`);
     } else {
       headers.push(`References: ${originalMessageId}`);
     }

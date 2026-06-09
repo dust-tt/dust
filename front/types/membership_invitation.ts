@@ -1,4 +1,4 @@
-import type { RegionType } from "@app/lib/api/regions/config";
+import type { RegionType } from "@app/types/region";
 import { z } from "zod";
 
 import type { ModelId } from "./shared/model_id";
@@ -12,6 +12,8 @@ export type MembershipInvitationType = {
   inviteEmail: string;
   initialRole: ActiveRoleType;
   createdAt: number;
+  reminderSentAt: number | null;
+  expiresAt: number;
   isExpired: boolean;
 };
 

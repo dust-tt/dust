@@ -23,6 +23,11 @@ const buildTargets: BuildTarget[] = [
     entryPoint: "src/admin/cli.ts",
     outfile: "dist/cli.js",
   },
+  {
+    name: "Migration",
+    entryPoint: "scripts/migrate.ts",
+    outfile: "dist/migrate.js",
+  },
 ];
 
 async function buildTarget(target: BuildTarget) {

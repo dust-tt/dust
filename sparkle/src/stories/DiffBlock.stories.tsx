@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { Button, DiffBlock, EyeIcon } from "../index_with_tw_base";
+import { Button, DiffBlock, Eye } from "../index_with_tw_base";
 
 const meta = {
   title: "Conversation/DiffBlock",
@@ -65,7 +65,7 @@ export const Default: Story = {
       <Button
         variant="outline"
         size="xs"
-        icon={EyeIcon}
+        icon={Eye}
         tooltip="View changes"
         onClick={() => {}}
       />

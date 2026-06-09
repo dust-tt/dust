@@ -1,6 +1,6 @@
 import { H2 } from "@app/components/home/ContentComponents";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
-import { DashIcon, PlusIcon, Separator } from "@dust-tt/sparkle";
+import { Minus, Plus, Separator } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
@@ -42,9 +42,9 @@ function FAQItemComponent({
           }`}
         >
           {isOpen ? (
-            <DashIcon className="h-5 w-5" />
+            <Minus className="h-5 w-5" />
           ) : (
-            <PlusIcon className="h-5 w-5" />
+            <Plus className="h-5 w-5" />
           )}
         </span>
       </button>

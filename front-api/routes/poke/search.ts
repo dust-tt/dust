@@ -1,0 +1,29 @@
+import type { GetPokeSearchItemsResponseBody } from "@app/lib/api/poke/search";
+import { searchPokeResources } from "@app/lib/poke/search";
+import { isString } from "@app/types/shared/utils/general";
+import { pokeApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+
+// Mounted at /api/poke/search. pokeAuth is applied by the parent poke sub-app.
+const app = pokeApp();
+
+/** @ignoreswagger */
+app.get("/", async (ctx): HandlerResult<GetPokeSearchItemsResponseBody> => {
+  const auth = ctx.get("auth");
+  const search = ctx.req.query("search");
+  if (!isString(search)) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "The search query parameter is required.",
+      },
+    });
+  }
+
+  const results = await searchPokeResources(auth, search);
+  return ctx.json({ results });
+});
+
+export default app;

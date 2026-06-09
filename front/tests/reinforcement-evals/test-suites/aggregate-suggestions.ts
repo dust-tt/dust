@@ -2,8 +2,8 @@ import {
   editSkillCallCount,
   editSkillCallsWithSources,
   editSkillWithAgentFacingDescription,
+  editSkillWithInlineToolReference,
   editSkillWithInstructions,
-  editSkillWithTool,
   mockTool,
   noSuggestion,
   rejectSuggestion,
@@ -223,20 +223,21 @@ Score 3 if well-merged with all themes, clear structure, and analysis referencin
       ],
       workspaceContext: WORKSPACE_CONTEXT,
       expectedToolCalls: [
-        editSkillWithTool("skill_engineering", "mcp_jira", [
+        editSkillWithInlineToolReference("skill_engineering", "mcp_jira", [
           "sug-1",
           "sug-2",
           "sug-3",
         ]),
       ],
-      judgeCriteria: `The analyst MUST call edit_skill with toolEdits to suggest adding JIRA (mcp_jira)
-to skill "skill_engineering". The aggregated suggestion should:
+      judgeCriteria: `The analyst MUST call edit_skill with instructionEdits to suggest adding JIRA (mcp_jira)
+as an inline <tool id="mcp_jira" name="JIRA" /> reference to skill "skill_engineering". The aggregated suggestion should:
 - Merge the 3 individual suggestions into a single recommendation
 - Mention that 3 conversations support this suggestion
 - Include a comprehensive analysis covering the different use cases (ticket creation, sprint status, assignment)
-- Use action "add" with toolId "mcp_jira"
+- Convert the legacy source toolEdits into an instruction edit with an inline <tool> tag; it MUST NOT include toolEdits
 
 Score 0 if no edit_skill call or if it creates 3 separate calls.
+Score 0 if the final edit_skill call uses toolEdits instead of an inline <tool> instruction edit.
 Score 1 if merged but analysis doesn't reference multiple conversations/use cases.
 Score 2 if properly merged with multi-conversation reference but analysis could be better.
 Score 3 if well-merged with clear analysis covering all use cases and conversation count.`,
@@ -500,19 +501,22 @@ Score 3 if no edit_skill suggestion is created AND reject_suggestion is not call
           "sug-desc-1",
           "sug-desc-2",
         ]),
-        editSkillWithTool("skill_payment_resolver", "mcp_jira", ["sug-tool-1"]),
+        editSkillWithInlineToolReference("skill_payment_resolver", "mcp_jira", [
+          "sug-tool-1",
+        ]),
       ],
       judgeCriteria: `Two of the three drafts target the agent-facing description (both about narrowing routing), and one is unrelated tooling work (adding JIRA). Aggregation rules require:
 - ONE description-edit suggestion per skill, merging both description drafts (sug-desc-1 + sug-desc-2). The merged description must explicitly limit the skill to payment failures + chargebacks AND steer the agent away from generic billing/invoice/account-management requests.
 - The description edit MUST be its own standalone edit_skill call. Do NOT bundle it with the tool addition (different topic, different fix).
-- A separate edit_skill call for the JIRA tool addition (sug-tool-1).
+- A separate edit_skill call that converts the legacy JIRA tool addition (sug-tool-1) into an instruction edit with an inline <tool id="mcp_jira" name="JIRA" /> reference. It MUST NOT include toolEdits.
 
 Score 0 if no edit_skill call carries an agentFacingDescriptionEdit for skill_payment_resolver.
 Score 0 if the description edit and the tool addition are bundled into a single edit_skill call.
+Score 0 if the JIRA addition is output as toolEdits instead of an inline <tool> instruction edit.
 Score 0 if more than 2 edit_skill calls are produced (failure to merge sug-desc-1 + sug-desc-2).
 Score 1 if 2 separate edit_skill calls are made but the merged description doesn't explicitly carve out billing/invoice routing (i.e. it stays vague).
 Score 2 if 2 separate edit_skill calls are made and the merged description narrows scope but does not reference both supporting drafts (sug-desc-1 + sug-desc-2 in sourceSuggestionIds).
-Score 3 if exactly 2 edit_skill calls are made: one with agentFacingDescriptionEdit consolidating sug-desc-1 + sug-desc-2 into a description that limits the skill to failures/chargebacks AND explicitly excludes generic billing/invoice/account-management requests; one with toolEdits adding mcp_jira referencing sug-tool-1.`,
+Score 3 if exactly 2 edit_skill calls are made: one with agentFacingDescriptionEdit consolidating sug-desc-1 + sug-desc-2 into a description that limits the skill to failures/chargebacks AND explicitly excludes generic billing/invoice/account-management requests; one with instructionEdits adding an inline mcp_jira tool reference and referencing sug-tool-1.`,
     },
   ],
 };

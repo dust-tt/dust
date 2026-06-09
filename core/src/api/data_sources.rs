@@ -1516,6 +1516,12 @@ pub async fn data_sources_documents_delete(
     Path((project_id, data_source_id, document_id)): Path<(i64, String, String)>,
     State(state): State<Arc<APIState>>,
 ) -> (StatusCode, Json<APIResponse>) {
+    info!(
+        project_id,
+        data_source_id = data_source_id.as_str(),
+        document_id = document_id.as_str(),
+        "data_sources_documents_delete"
+    );
     let project = project::Project::new_from_id(project_id);
     match state
         .store

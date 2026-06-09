@@ -20,8 +20,9 @@ import {
   SearchInput,
   type SearchInputProps,
 } from "@sparkle/components/SearchInput";
+import { Tooltip } from "@sparkle/components/Tooltip";
 import { useSheetContainer } from "@sparkle/hooks/useSheetContainer";
-import { CheckIcon, ChevronRightIcon } from "@sparkle/icons/app";
+import { Check, ChevronRight } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import * as React from "react";
@@ -43,7 +44,7 @@ export const menuStyleClasses = {
   ),
   item: cva(
     cn(
-      "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-md s-heading-sm s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none",
+      "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-lg s-heading-sm s-transition-colors data-[disabled]:s-pointer-events-none",
       "data-[disabled]:s-text-primary-400 dark:data-[disabled]:s-text-primary-400-night"
     ),
     {
@@ -133,11 +134,13 @@ interface ItemWithLabelIconAndDescriptionProps {
   children?: React.ReactNode;
   truncate?: boolean;
   endComponent?: React.ReactNode;
+  variant?: ItemVariantType;
 }
 
 const renderIcon = (
   icon: React.ComponentType | React.ReactNode,
-  size: "xs" | "sm" = "xs"
+  size: "xs" | "sm" = "xs",
+  variant?: ItemVariantType
 ) => {
   // If it's a React element (already rendered), return it as is
   if (React.isValidElement(icon)) {
@@ -146,7 +149,17 @@ const renderIcon = (
 
   // For any component type (including exotic components), render it with Icon
   if (typeof icon === "function" || typeof icon === "object") {
-    return <Icon size={size} visual={icon as React.ComponentType} />;
+    return (
+      <Icon
+        size={size}
+        visual={icon as React.ComponentType}
+        className={
+          variant === "warning"
+            ? undefined
+            : "s-text-muted-foreground dark:s-text-muted-foreground-night"
+        }
+      />
+    );
   }
 
   // For primitive values, return null
@@ -162,6 +175,7 @@ const ItemWithLabelIconAndDescription = <
   truncate,
   children,
   endComponent,
+  variant,
 }: T) => {
   return (
     <>
@@ -178,7 +192,7 @@ const ItemWithLabelIconAndDescription = <
                   : "s-grid-cols-[1fr]"
           )}
         >
-          {renderIcon(icon, "sm")}
+          {renderIcon(icon, "sm", variant)}
           <div className={cn("s-flex s-flex-col", truncate && "s-truncate")}>
             <span className={cn(truncate ? "s-truncate" : "s-line-clamp-3")}>
               {label}
@@ -223,7 +237,13 @@ const DropdownMenuSubTrigger = React.forwardRef<
     <ItemWithLabelIconAndDescription
       label={label}
       icon={icon}
-      endComponent={<Icon size="xs" visual={ChevronRightIcon} />}
+      endComponent={
+        <Icon
+          size="xs"
+          visual={ChevronRight}
+          className="s-text-muted-foreground dark:s-text-muted-foreground-night"
+        />
+      }
     >
       {children}
     </ItemWithLabelIconAndDescription>
@@ -517,6 +537,7 @@ export type DropdownMenuItemProps = MutuallyExclusiveProps<
     inset?: boolean;
     itemId?: string;
     variant?: ItemVariantType;
+    tooltip?: React.ReactNode;
   } & Omit<LinkWrapperProps, "children" | "className">,
   LabelAndIconProps & {
     description?: string;
@@ -548,6 +569,7 @@ const DropdownMenuItem = React.forwardRef<
       shallow,
       prefetch,
       endComponent,
+      tooltip,
       ...props
     },
     ref
@@ -569,7 +591,7 @@ const DropdownMenuItem = React.forwardRef<
       [dropdownItemRegistry, itemId, ref]
     );
 
-    return (
+    const item = (
       <LinkWrapper
         href={href}
         target={target}
@@ -595,6 +617,7 @@ const DropdownMenuItem = React.forwardRef<
               description={description}
               truncate={truncateText}
               endComponent={endComponent}
+              variant={variant}
             >
               {children}
             </ItemWithLabelIconAndDescription>
@@ -602,6 +625,18 @@ const DropdownMenuItem = React.forwardRef<
         </DropdownMenuPrimitive.Item>
       </LinkWrapper>
     );
+
+    const itemWithTooltip = tooltip ? (
+      <Tooltip
+        tooltipTriggerAsChild
+        label={tooltip}
+        trigger={<span className="s-block s-w-full">{item}</span>}
+      />
+    ) : (
+      item
+    );
+
+    return itemWithTooltip;
   }
 );
 DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
@@ -627,14 +662,17 @@ const DropdownMenuCheckboxItem = React.forwardRef<
       ref={ref}
       className={cn(
         menuStyleClasses.item({ variant: "default" }),
-        menuStyleClasses.inset,
-        className
+        menuStyleClasses.inset
       )}
       {...props}
     >
       <span className={menuStyleClasses.subTrigger.span}>
         <DropdownMenuPrimitive.ItemIndicator>
-          <Icon size="xs" visual={CheckIcon} />
+          <Icon
+            size="xs"
+            visual={Check}
+            className="s-text-muted-foreground dark:s-text-muted-foreground-night"
+          />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
       <ItemWithLabelIconAndDescription
@@ -655,33 +693,39 @@ const DropdownMenuRadioItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.RadioItem>,
   MutuallyExclusiveProps<
     React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem>,
-    LabelAndIconProps & { description?: string }
+    LabelAndIconProps & { description?: string; endComponent?: React.ReactNode }
   >
->(({ className, children, description, label, icon, ...props }, ref) => (
-  <DropdownMenuPrimitive.RadioItem
-    ref={ref}
-    className={cn(
-      menuStyleClasses.item({ variant: "default" }),
-      menuStyleClasses.inset,
-      "s-group/dropdown-radio",
-      className
-    )}
-    {...props}
-  >
-    <span className={cn("s-absolute s-left-2", radioStyles({ size: "xs" }))}>
-      <DropdownMenuPrimitive.ItemIndicator>
-        <div className={radioIndicatorStyles({ size: "xs" })} />
-      </DropdownMenuPrimitive.ItemIndicator>
-    </span>
-    <ItemWithLabelIconAndDescription
-      label={label}
-      icon={icon}
-      description={description}
+>(
+  (
+    { className, children, description, label, icon, endComponent, ...props },
+    ref
+  ) => (
+    <DropdownMenuPrimitive.RadioItem
+      ref={ref}
+      className={cn(
+        menuStyleClasses.item({ variant: "default" }),
+        menuStyleClasses.inset,
+        "s-group/dropdown-radio",
+        className
+      )}
+      {...props}
     >
-      {children}
-    </ItemWithLabelIconAndDescription>
-  </DropdownMenuPrimitive.RadioItem>
-));
+      <span className={cn("s-absolute s-left-2", radioStyles({ size: "xs" }))}>
+        <DropdownMenuPrimitive.ItemIndicator>
+          <div className={radioIndicatorStyles({ size: "xs" })} />
+        </DropdownMenuPrimitive.ItemIndicator>
+      </span>
+      <ItemWithLabelIconAndDescription
+        label={label}
+        icon={icon}
+        description={description}
+        endComponent={endComponent}
+      >
+        {children}
+      </ItemWithLabelIconAndDescription>
+    </DropdownMenuPrimitive.RadioItem>
+  )
+);
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName;
 
 interface DropdownMenuTagItemProps

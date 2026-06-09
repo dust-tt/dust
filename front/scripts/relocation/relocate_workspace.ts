@@ -7,12 +7,7 @@ import {
   pauseAllLabsWorkflows,
   unpauseAllLabsWorkflows,
 } from "@app/lib/api/labs";
-import type { RegionType } from "@app/lib/api/regions/config";
-import {
-  config,
-  isRegionType,
-  SUPPORTED_REGIONS,
-} from "@app/lib/api/regions/config";
+import { config } from "@app/lib/api/regions/config";
 import { invalidateWorkspaceRegionCache } from "@app/lib/api/regions/lookup";
 import {
   deleteWorkspace,
@@ -27,6 +22,8 @@ import { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { makeScript } from "@app/scripts/helpers";
 import { launchWorkspaceRelocationWorkflow } from "@app/temporal/relocation/client";
+import type { RegionType } from "@app/types/region";
+import { isRegionType, SUPPORTED_REGIONS } from "@app/types/region";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const RELOCATION_STEPS = [

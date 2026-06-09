@@ -1,6 +1,9 @@
 import { PlanModel } from "@app/lib/models/plan";
+import { upsertFreePlans } from "@app/lib/plans/free_plans";
 import {
+  CREDIT_PRICED_BUSINESS_PLAN_CODE,
   FREE_BYOK_PLAN_CODE,
+  FREE_TEST_PLAN_CODE,
   PRO_PLAN_SEAT_29_CODE,
 } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
@@ -16,6 +19,7 @@ import { expect } from "vitest";
 
 interface WorkspaceOverrides {
   whiteListedProviders?: ModelProviderIdType[] | null;
+  metronomeCustomerId?: string | null;
 }
 
 export class WorkspaceFactory {
@@ -27,12 +31,32 @@ export class WorkspaceFactory {
     return this.create(FREE_BYOK_PLAN_CODE, overrides);
   }
 
+  static async freeNoProductAccess(
+    overrides?: WorkspaceOverrides
+  ): Promise<WorkspaceType> {
+    await upsertFreePlans(FREE_TEST_PLAN_CODE);
+    return this.create(FREE_TEST_PLAN_CODE, overrides);
+  }
+
   static async metronome(
     overrides?: WorkspaceOverrides
   ): Promise<WorkspaceType> {
     return this.create(PRO_PLAN_SEAT_29_CODE, overrides, {
       metronomeContractId: "test-metronome-contract-id",
     });
+  }
+
+  // A Metronome credit-priced workspace (plan code prefixed `CP_`), used to
+  // exercise credit-priced gating such as the per-user credit cap or the
+  // `none`-seat message block.
+  static async creditPriced(
+    overrides?: WorkspaceOverrides
+  ): Promise<WorkspaceType> {
+    return this.create(
+      CREDIT_PRICED_BUSINESS_PLAN_CODE,
+      { metronomeCustomerId: "cus_test_credit_priced", ...overrides },
+      { metronomeContractId: "test-metronome-contract-id" }
+    );
   }
 
   // Plans are seeded by the DB init script (admin/db.ts) to avoid deadlocks
@@ -53,6 +77,7 @@ export class WorkspaceFactory {
       name: faker.company.name(),
       description: workspaceDescription,
       workOSOrganizationId: faker.string.alpha(10),
+      metronomeCustomerId: overrides?.metronomeCustomerId ?? null,
       ...(overrides?.whiteListedProviders !== undefined && {
         whiteListedProviders: overrides.whiteListedProviders,
       }),

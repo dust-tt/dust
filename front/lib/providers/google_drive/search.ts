@@ -33,6 +33,44 @@ turndownService.addRule("removeBase64Images", {
   replacement: () => "",
 });
 
+export interface GoogleDriveAuthorizationSearchFile {
+  fileId: string;
+  fileName: string;
+  mimeType: string;
+  webViewLink: string;
+}
+
+export async function searchDocumentsByName({
+  accessToken,
+  fileName,
+}: {
+  accessToken: string;
+  fileName: string;
+}): Promise<GoogleDriveAuthorizationSearchFile[]> {
+  const drive = getGoogleDriveClient(accessToken);
+
+  // Prevent query injection in Google Drive API search syntax.
+  const escapedFileName = fileName.replace(/'/g, "\\'");
+  const query = `name contains '${escapedFileName}' and (mimeType='application/vnd.google-apps.document' or mimeType='application/vnd.google-apps.spreadsheet') and trashed=false`;
+
+  const searchRes = await drive.files.list({
+    q: query,
+    pageSize: 10,
+    orderBy: "modifiedTime desc",
+    fields: "files(id, name, mimeType, webViewLink)",
+    includeItemsFromAllDrives: true,
+    supportsAllDrives: true,
+    corpora: "allDrives",
+  });
+
+  return (searchRes.data.files ?? []).map((file) => ({
+    fileId: file.id ?? "",
+    fileName: file.name ?? "",
+    mimeType: file.mimeType ?? "",
+    webViewLink: file.webViewLink ?? "",
+  }));
+}
+
 export async function search({
   accessToken,
   query,

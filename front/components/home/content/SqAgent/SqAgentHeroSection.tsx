@@ -1,12 +1,7 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { P } from "@app/components/home/ContentComponents";
 import { LandingEmailSignup } from "@app/components/home/content/Landing/LandingEmailSignup";
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  cn,
-  UserGroupIcon,
-} from "@dust-tt/sparkle";
+import { ChevronLeft, ChevronRight, cn, Users01 } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useState } from "react";
@@ -140,7 +135,7 @@ export function SqAgentHeroSection({
                     className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50"
                     aria-label="Previous testimonial"
                   >
-                    <ChevronLeftIcon className="h-4 w-4" />
+                    <ChevronLeft className="h-4 w-4" />
                   </button>
                   <div className="flex gap-2">
                     {testimonials.map((_, index) => (
@@ -166,7 +161,7 @@ export function SqAgentHeroSection({
                     className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50"
                     aria-label="Next testimonial"
                   >
-                    <ChevronRightIcon className="h-4 w-4" />
+                    <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
               </div>
@@ -209,7 +204,7 @@ export function SqAgentHeroSection({
 
               {/* Users count badge */}
               <div className="mt-4 flex items-center justify-center gap-2 lg:justify-start">
-                <UserGroupIcon className="h-4 w-4 text-blue-500" />
+                <Users01 className="h-4 w-4 text-blue-500" />
                 <span className="text-sm font-medium text-muted-foreground">
                   {usersCount}
                 </span>

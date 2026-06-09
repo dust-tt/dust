@@ -2,25 +2,25 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import {
-  ArrowPathIcon,
-  BoltIcon,
+  RefreshCw02,
+  Zap,
   Button,
-  ChevronRightIcon,
+  ChevronRight,
   Citation,
   CitationIcons,
   CitationTitle,
-  ClipboardIcon,
+  Clipboard,
   ConversationContainer,
   ConversationMessage,
-  GithubIcon,
-  HandThumbDownIcon,
-  HandThumbUpIcon,
+  GithubMonoLogo,
+  ThumbsDown,
+  ThumbsUp,
   Icon,
   Markdown,
-  PencilSquareIcon,
+  Edit04,
   SlackLogo,
-  TableIcon,
-  TrashIcon,
+  Table,
+  Trash01,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -50,14 +50,14 @@ export const ConversationExample = () => {
             citations={[
               <Citation href="https://www.google.com">
                 <CitationIcons>
-                  <Icon visual={TableIcon} size="sm" />
+                  <Icon visual={Table} size="sm" />
                 </CitationIcons>
                 <CitationTitle>Title</CitationTitle>
               </Citation>,
             ]}
             infoChip={
               <span className="s-translate-y-1 s-text-muted-foreground dark:s-text-muted-foreground-night">
-                <Icon size="xs" visual={BoltIcon} />
+                <Icon size="xs" visual={Zap} />
               </span>
             }
           >
@@ -71,13 +71,13 @@ export const ConversationExample = () => {
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
             buttons={[
               <Button
-                icon={HandThumbUpIcon}
+                icon={ThumbsUp}
                 onClick={() => {}}
                 size="xs"
                 variant={"outline"}
               />,
               <Button
-                icon={HandThumbDownIcon}
+                icon={ThumbsDown}
                 onClick={() => {}}
                 size="xs"
                 variant={"outline"}
@@ -94,7 +94,7 @@ export const ConversationExample = () => {
               </Citation>,
               <Citation href="https://www.google.com">
                 <CitationIcons>
-                  <Icon visual={GithubIcon} size="sm" />
+                  <Icon visual={GithubMonoLogo} size="sm" />
                 </CitationIcons>
                 <CitationTitle>Title</CitationTitle>
               </Citation>,
@@ -217,13 +217,13 @@ export const ConversationHandoffExample = () => {
             pictureUrl="https://avatars.githubusercontent.com/u/138893015?&v=4"
             buttons={[
               <Button
-                icon={ClipboardIcon}
+                icon={Clipboard}
                 onClick={() => {}}
                 size="xs"
                 variant={"outline"}
               />,
               <Button
-                icon={ArrowPathIcon}
+                icon={RefreshCw02}
                 onClick={() => {}}
                 size="xs"
                 variant={"outline"}
@@ -242,7 +242,7 @@ export const ConversationHandoffExample = () => {
             completionStatus={
               <span className="s-flex s-cursor-pointer s-items-center s-gap-1 s-text-xs">
                 <span>Completed in 9 min 30 sec</span>
-                <Icon visual={ChevronRightIcon} size="xs" />
+                <Icon visual={ChevronRight} size="xs" />
               </span>
             }
             citations={[
@@ -256,7 +256,7 @@ export const ConversationHandoffExample = () => {
               </Citation>,
               <Citation href="https://www.google.com">
                 <CitationIcons>
-                  <Icon visual={GithubIcon} size="sm" />
+                  <Icon visual={GithubMonoLogo} size="sm" />
                 </CitationIcons>
                 <CitationTitle>PR from @henry</CitationTitle>
               </Citation>,
@@ -304,14 +304,14 @@ export const ConversationWithActions = () => {
           timestamp="14:30"
           actions={[
             {
-              icon: PencilSquareIcon,
+              icon: Edit04,
               label: "Edit",
               onClick: () => {
                 console.log("Edit clicked");
               },
             },
             {
-              icon: TrashIcon,
+              icon: Trash01,
               label: "Delete",
               onClick: () => {
                 console.log("Delete clicked");

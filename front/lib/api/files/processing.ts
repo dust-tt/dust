@@ -36,7 +36,7 @@ import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import { fileSync } from "tmp";
 
-const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
+const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 2; // 2 minute.
 const PROCESSING_TIMEOUT_MS = 1000 * 60 * 5; // 5 minutes.
 const CONVERSATION_IMG_MAX_SIZE_PIXELS = "1538";
 const AVATAR_IMG_MAX_SIZE_PIXELS = "256";
@@ -200,13 +200,13 @@ const resizeAndWriteToProcessed = async (
     );
   }
 
-  const writeStream = file.getWriteStream({
-    auth,
-    version: "processed",
-  });
-
   try {
     const stream = await createReadableFromUrl(result.file.url);
+
+    const writeStream = file.getWriteStream({
+      auth,
+      version: "processed",
+    });
 
     await pipeline(stream, writeStream);
     return new Ok(undefined);
@@ -669,11 +669,7 @@ export async function processAndStoreFile(
         file.getWriteStream({ auth, version: "original" })
       );
     } else {
-      const r = await parseUploadRequest(
-        file,
-        content.value,
-        file.getWriteStream({ auth, version: "original" })
-      );
+      const r = await parseUploadRequest(auth, file, content.value);
       if (r.isErr()) {
         await file.markAsFailed();
         return r;

@@ -13,6 +13,7 @@ import {
   type EnabledSkill,
   renderEnabledSkillUserMessageFromInstructions,
 } from "@app/lib/api/assistant/skills_rendering";
+import { DustFileSystem } from "@app/lib/api/file_system";
 import { getConversationFileMountSignedUrl } from "@app/lib/api/files/gcs_mount/files";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
@@ -47,6 +48,18 @@ import { removeNulls } from "@app/types/shared/utils/general";
 
 const RENDER_ACTIONS_CONCURRENCY = 5;
 
+async function getDustFileSystemDownloadUrl(
+  auth: Authenticator,
+  filePath: string
+) {
+  const fsResult = await DustFileSystem.fromScopedPath(auth, filePath);
+  if (fsResult.isErr()) {
+    return fsResult;
+  }
+
+  return fsResult.value.getDownloadUrl(filePath);
+}
+
 /**
  * Type for a step in agent message processing
  */
@@ -63,16 +76,12 @@ function renderEnabledSkillMessagesForAction(
   action: AgentMCPActionWithOutputType,
   {
     enabledSkillById,
-    renderSkillsAsUserMessages,
+    useFramesV2,
   }: {
     enabledSkillById: ReadonlyMap<string, EnabledSkill>;
-    renderSkillsAsUserMessages: boolean;
+    useFramesV2: boolean;
   }
 ): UserMessageTypeModel[] {
-  if (!renderSkillsAsUserMessages) {
-    return [];
-  }
-
   const enabledSkillMessages: UserMessageTypeModel[] = [];
 
   for (const outputBlock of action.output ?? []) {
@@ -89,6 +98,7 @@ function renderEnabledSkillMessagesForAction(
     enabledSkillMessages.push(
       renderEnabledSkillUserMessageFromInstructions({
         skill,
+        useFramesV2,
       })
     );
   }
@@ -156,11 +166,20 @@ async function renderActionForMultiActionsModel(
       if (isTextContent(item)) {
         contentArray.push({ type: "text", text: item.text });
       } else if (isModelVisionImage(item)) {
-        const urlRes = await getConversationFileMountSignedUrl(
-          auth,
-          { useCase: "conversation", conversationId },
-          item.resource.gcsPath
-        );
+        // @ts-ignore gcsPath is the legacy field.
+        const { gcsPath, filePath } = item.resource;
+
+        const path = filePath || gcsPath;
+
+        // Legacy records carry a raw GCS path (starts with `w/`).
+        // New records carry a canonical scoped path (e.g. `conversation-{cId}/photo.png`).
+        const urlRes = path.startsWith("w/")
+          ? await getConversationFileMountSignedUrl(
+              auth,
+              { useCase: "conversation", conversationId },
+              path
+            )
+          : await getDustFileSystemDownloadUrl(auth, path);
 
         if (urlRes.isOk()) {
           contentArray.push({
@@ -200,7 +219,7 @@ export async function getSteps(
     conversationId,
     onMissingAction,
     enabledSkillById,
-    renderSkillsAsUserMessages = false,
+    useFramesV2 = false,
   }: {
     model: ModelConfigurationType;
     message: AgentMessageType;
@@ -208,7 +227,7 @@ export async function getSteps(
     conversationId: string;
     onMissingAction: "inject-placeholder" | "skip";
     enabledSkillById: ReadonlyMap<string, EnabledSkill>;
-    renderSkillsAsUserMessages?: boolean;
+    useFramesV2?: boolean;
   }
 ): Promise<Step[]> {
   const supportedModel = getSupportedModelConfig(model);
@@ -236,7 +255,7 @@ export async function getSteps(
       }),
       enabledSkillMessages: renderEnabledSkillMessagesForAction(action, {
         enabledSkillById,
-        renderSkillsAsUserMessages,
+        useFramesV2,
       }),
     }),
     { concurrency: RENDER_ACTIONS_CONCURRENCY }

@@ -14,9 +14,9 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
-  ProjectTaskAssigneeType,
-  ProjectTaskSourceInfo,
-  ProjectTaskType,
+  PodTaskAssigneeType,
+  PodTaskSourceInfo,
+  PodTaskType,
 } from "@app/types/project_task";
 import type { ModelId } from "@app/types/shared/model_id";
 import { Err, Ok, type Result } from "@app/types/shared/result";
@@ -44,6 +44,26 @@ type ProjectTaskVersionCreationAttributes =
     version: number;
   };
 
+export type UpdateBlob = Partial<
+  Pick<
+    CreationAttributes<ProjectTaskModel>,
+    | "category"
+    | "userId"
+    | "text"
+    | "status"
+    | "doneAt"
+    | "actorRationale"
+    | "agentInstructions"
+    | "markedAsDoneByType"
+    | "markedAsDoneByUserId"
+    | "markedAsDoneByAgentConfigurationId"
+    | "deletedAt"
+    | "agentSuggestionStatus"
+    | "agentSuggestionReviewedAt"
+    | "agentSuggestionReviewedByUserId"
+  >
+>;
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ProjectTaskResource
@@ -52,7 +72,7 @@ export interface ProjectTaskResource
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
   static model: ModelStaticWorkspaceAware<ProjectTaskModel> = ProjectTaskModel;
-  private readonly assignee: ProjectTaskAssigneeType | null;
+  private readonly assignee: PodTaskAssigneeType | null;
   private readonly conversationSId: string | null;
   private readonly createdByUserSId: string | null;
   private readonly markedAsDoneByUserSId: string | null;
@@ -66,7 +86,7 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
       createdByUserSId,
       markedAsDoneByUserSId,
     }: {
-      assignee?: ProjectTaskAssigneeType | null;
+      assignee?: PodTaskAssigneeType | null;
       conversationSId?: string | null;
       createdByUserSId?: string | null;
       markedAsDoneByUserSId?: string | null;
@@ -118,7 +138,22 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
         { transaction: t }
       );
 
-      return new this(ProjectTaskModel, todo.get());
+      const todoBlob = todo.get();
+      let assignee: PodTaskAssigneeType | null = null;
+      if (todoBlob.userId !== null) {
+        const [user] = await UserResource.fetchByModelIds([todoBlob.userId], {
+          transaction: t,
+        });
+        if (user) {
+          assignee = {
+            sId: user.sId,
+            fullName: user.fullName(),
+            image: user.imageUrl,
+          };
+        }
+      }
+
+      return new this(ProjectTaskModel, todoBlob, { assignee });
     }, transaction);
   }
 
@@ -127,25 +162,7 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
   // snapshot count + 1.
   async updateWithVersion(
     auth: Authenticator,
-    updates: Partial<
-      Pick<
-        CreationAttributes<ProjectTaskModel>,
-        | "category"
-        | "userId"
-        | "text"
-        | "status"
-        | "doneAt"
-        | "actorRationale"
-        | "agentInstructions"
-        | "markedAsDoneByType"
-        | "markedAsDoneByUserId"
-        | "markedAsDoneByAgentConfigurationId"
-        | "deletedAt"
-        | "agentSuggestionStatus"
-        | "agentSuggestionReviewedAt"
-        | "agentSuggestionReviewedByUserId"
-      >
-    >,
+    updates: UpdateBlob,
     transaction?: Transaction
   ): Promise<ProjectTaskResource> {
     if (this.workspaceId !== auth.getNonNullableWorkspace().id) {
@@ -155,6 +172,15 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
     return withTransaction(async (t) => {
       await this.saveVersion(t);
       await this.update(updates, t);
+
+      if (updates.userId !== undefined) {
+        const [refreshed] = await ProjectTaskResource.baseFetch(
+          auth,
+          { where: { id: this.id }, limit: 1 },
+          t
+        );
+        return refreshed ?? this;
+      }
 
       return this;
     }, transaction);
@@ -265,7 +291,7 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
       }),
     ]);
 
-    const assigneeByModelId = new Map<ModelId, ProjectTaskAssigneeType>(
+    const assigneeByModelId = new Map<ModelId, PodTaskAssigneeType>(
       assignees.map((assignee) => [
         assignee.id,
         {
@@ -530,7 +556,7 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
   static async fetchSourcesForTaskIds(
     auth: Authenticator,
     { sIds }: { sIds: string[] }
-  ): Promise<Map<string, Array<ProjectTaskSourceInfo>>> {
+  ): Promise<Map<string, Array<PodTaskSourceInfo>>> {
     if (sIds.length === 0) {
       return new Map();
     }
@@ -559,7 +585,7 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
     });
 
     // Group by logical todo sId.
-    const result = new Map<string, Array<ProjectTaskSourceInfo>>();
+    const result = new Map<string, Array<PodTaskSourceInfo>>();
 
     for (const source of sources) {
       const todoId = idToSId.get(source.projectTodoId);
@@ -658,6 +684,27 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
     });
   }
 
+  static async unlinkConversation(
+    auth: Authenticator,
+    {
+      taskId,
+      conversationModelId,
+    }: { taskId: string; conversationModelId: ModelId }
+  ): Promise<number> {
+    const taskModelId = getResourceIdFromSId(taskId);
+    if (taskModelId === null) {
+      return 0;
+    }
+
+    return ProjectTaskConversationModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        projectTodoId: taskModelId,
+        conversationId: conversationModelId,
+      },
+    });
+  }
+
   // ── Source links (* => todo) ─────────────────────────────────────────────
 
   // Links the given takeaway item + source document to this todo. Idempotent
@@ -671,7 +718,7 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
       source,
     }: {
       itemId: string;
-      source: ProjectTaskSourceInfo;
+      source: PodTaskSourceInfo;
     },
     transaction?: Transaction
   ): Promise<void> {
@@ -716,7 +763,7 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
         "workspaceId" | "category"
       >;
       itemId: string;
-      source: ProjectTaskSourceInfo;
+      source: PodTaskSourceInfo;
     },
     transaction?: Transaction
   ): Promise<ProjectTaskResource> {
@@ -729,7 +776,7 @@ export class ProjectTaskResource extends BaseResource<ProjectTaskModel> {
 
   // ── Serialization ──────────────────────────────────────────────────────────
 
-  toJSON(): ProjectTaskType {
+  toJSON(): PodTaskType {
     return {
       id: this.id,
       sId: this.sId,

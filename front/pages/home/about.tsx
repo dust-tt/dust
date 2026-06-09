@@ -12,13 +12,13 @@ import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
 import { classNames } from "@app/lib/utils";
 import {
-  ArrowRightIcon,
+  ArrowRight,
   Button,
   Div3D,
-  GithubIcon,
+  GithubMonoLogo,
   Hover3D,
   Icon,
-  LinkedinIcon,
+  LinkedinLogo,
   Separator,
 } from "@dust-tt/sparkle";
 import Link from "next/link";
@@ -52,7 +52,7 @@ const Person = ({ handle }: { handle: string }) => {
             <a href={person.linkedIn} target="_blank">
               <Icon
                 size="xs"
-                visual={LinkedinIcon}
+                visual={LinkedinLogo}
                 className="text-muted-foreground hover:text-foreground"
               />
             </a>
@@ -61,7 +61,7 @@ const Person = ({ handle }: { handle: string }) => {
             <a href={person.github} target="_blank">
               <Icon
                 size="xs"
-                visual={GithubIcon}
+                visual={GithubMonoLogo}
                 className="text-muted-foreground hover:text-foreground"
               />
             </a>
@@ -242,7 +242,7 @@ export default function About() {
                   variant="highlight"
                   size="md"
                   label="We're hiring"
-                  icon={ArrowRightIcon}
+                  icon={ArrowRight}
                 />
               </Link>
             </div>

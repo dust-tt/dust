@@ -1,15 +1,14 @@
 import {
-  BellIcon,
-  CheckCircleIcon,
-  InformationCircleIcon,
-  XCircleIcon,
-} from "@sparkle/icons/app";
+  Bell01,
+  CheckCircle,
+  InfoCircle,
+  XCircle,
+} from "@sparkle/icons/v2-stroke";
 import { assertNever } from "@sparkle/lib/internal_utils";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React from "react";
 import { Toaster, toast } from "sonner";
-
 import { Icon } from "./Icon";
 
 const NOTIFICATION_DELAY_MS = 5000;
@@ -58,13 +57,13 @@ export function NotificationContent({
   const icon = (() => {
     switch (type) {
       case "success":
-        return CheckCircleIcon;
+        return CheckCircle;
       case "error":
-        return XCircleIcon;
+        return XCircle;
       case "info":
-        return InformationCircleIcon;
+        return InfoCircle;
       case "hello":
-        return BellIcon;
+        return Bell01;
       default:
         assertNever(type);
     }

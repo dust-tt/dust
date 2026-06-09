@@ -1,9 +1,9 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { FileUploadRequestResponseBody } from "@app/lib/api/files/upload_metadata";
 import { clientFetch } from "@app/lib/egress/client";
+import type { FileUploadedRequestResponseBody } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { FileUploadRequestResponseBody } from "@app/pages/api/w/[wId]/files";
-import type { FileUploadedRequestResponseBody } from "@app/pages/api/w/[wId]/files/[fileId]";
 import { isAPIErrorResponse } from "@app/types/error";
 import type {
   FileUseCase,
@@ -37,6 +37,8 @@ export interface FileBlob {
   publicUrl?: string;
   iconName?: string;
   provider?: string;
+  /** Scoped mount path from upload (same as `GCSMountEntryBase.path`). */
+  path?: string | null;
 }
 export type FileBlobWithFileId = FileBlob & { fileId: string };
 
@@ -152,8 +154,11 @@ export function useFileUploaderService({
 
   const uploadFiles = useCallback(
     async (
-      newFileBlobs: FileBlob[]
+      newFileBlobs: FileBlob[],
+      options?: { useCaseMetadata?: FileUseCaseMetadata }
     ): Promise<Result<FileBlob, FileBlobUploadError>[]> => {
+      const effectiveUseCaseMetadata =
+        options?.useCaseMetadata ?? useCaseMetadata;
       // Browsers have a limit on the number of concurrent network operations.
       // We have a limit of the allowed time to upload the content of a file once the file object has been created.
       // If we start a large number of uploads at the same time and the network is somewhat slow, it's possible that we'll
@@ -174,7 +179,7 @@ export function useFileUploaderService({
                 fileName: fileBlob.filename,
                 fileSize: fileBlob.size,
                 useCase,
-                useCaseMetadata,
+                useCaseMetadata: effectiveUseCaseMetadata,
               }),
             });
           } catch (err) {
@@ -248,6 +253,7 @@ export function useFileUploaderService({
             isUploading: false,
             sourceUrl: fileUploaded.downloadUrl,
             publicUrl: file.publicUrl,
+            path: fileUploaded.path,
           });
         },
         { concurrency: 4 }
@@ -307,7 +313,10 @@ export function useFileUploaderService({
   );
 
   const handleFilesUpload = useCallback(
-    async (files: File[]) => {
+    async (
+      files: File[],
+      options?: { useCaseMetadata?: FileUseCaseMetadata }
+    ) => {
       setNumFilesProcessing((prev) => prev + files.length);
 
       const oversizedFiles = files
@@ -340,7 +349,7 @@ export function useFileUploaderService({
       const previewResults = processSelectedFiles(files);
       const newFileBlobs = processResults(previewResults, true);
 
-      const uploadResults = await uploadFiles(newFileBlobs);
+      const uploadResults = await uploadFiles(newFileBlobs, options);
       const finalFileBlobs = processResults(uploadResults);
 
       setNumFilesProcessing((prev) => prev - files.length);

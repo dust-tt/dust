@@ -5,7 +5,7 @@ import { RootRouterLayout } from "@spa/app/layouts/RootRouterLayout";
 import { UnauthenticatedPage } from "@spa/app/layouts/UnauthenticatedPage";
 import { WorkspacePage } from "@spa/app/layouts/WorkspacePage";
 import { IndexPage } from "@spa/app/pages/IndexPage";
-import { adminRoutes } from "@spa/app/routes/adminRoutes";
+import { adminFullPageRoutes, adminRoutes } from "@spa/app/routes/adminRoutes";
 import { appsRoutes } from "@spa/app/routes/appsRoutes";
 import {
   builderContentRoutes,
@@ -19,6 +19,7 @@ import {
   loginUnauthenticatedRoutes,
 } from "@spa/app/routes/loginRoutes";
 import { onboardingRoutes } from "@spa/app/routes/onboardingRoutes";
+import { podsRoutes } from "@spa/app/routes/podsRoutes";
 import {
   spacesRedirectRoutes,
   spacesRoutes,
@@ -64,10 +65,12 @@ export const routes: RouteObject[] = [
               ...appsRoutes,
               ...builderContentRoutes,
               ...spacesRedirectRoutes,
+              ...podsRoutes,
             ],
           },
 
           // Routes WITHOUT AppContentLayout (no sidebar/navigation chrome)
+          ...adminFullPageRoutes,
           ...builderFullPageRoutes,
           ...builderRedirectRoutes,
           ...onboardingRoutes,

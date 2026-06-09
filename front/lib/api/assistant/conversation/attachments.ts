@@ -75,6 +75,10 @@ export type ConversationAttachmentType =
 /** Same item shape as GET `/assistant/conversations/[cId]/attachments` and GET project context. */
 export type ContextAttachmentItem = ConversationAttachmentType;
 
+export type GetConversationAttachmentsResponseBody = {
+  attachments: ConversationAttachmentType[];
+};
+
 export function isFileAttachmentType(
   attachment: ConversationAttachmentType
 ): attachment is FileAttachmentType {
@@ -363,9 +367,11 @@ export function renderAttachmentXml({
         ]),
   ];
 
-  if (isContentNodeAttachmentType(attachment) && attachment.sourceUrl) {
-    params.push(`sourceUrl="${attachment.sourceUrl}"`);
+  if (isContentNodeAttachmentType(attachment)) {
     params.push(`nodeId="${attachment.nodeId}"`);
+    if (attachment.sourceUrl) {
+      params.push(`sourceUrl="${attachment.sourceUrl}"`);
+    }
   }
 
   let tag = `<attachment ${params.join(" ")}`;

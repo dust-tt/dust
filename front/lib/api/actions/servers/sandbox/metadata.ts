@@ -39,8 +39,8 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Executing command in sandbox",
-      done: "Execute command in sandbox",
+      running: "Executing command",
+      done: "Execute command in the Computer",
     },
   },
   describe_toolset: {
@@ -54,8 +54,8 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Describing sandbox toolset",
-      done: "Describe sandbox toolset",
+      running: "Describing Computer toolset",
+      done: "Describe Computer toolset",
     },
   },
   add_egress_domain: {
@@ -90,8 +90,9 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Requesting sandbox network access",
-      done: "Allow domain in sandbox",
+      running: "Requesting Computer network access",
+      done: "Allow domain in the Computer",
+      icon: "ActionGlobeAltIcon",
     },
   },
 });
@@ -101,7 +102,7 @@ export const SANDBOX_SERVER = {
     name: "sandbox",
     version: "1.0.0",
     description:
-      "Execute code and commands in an isolated Linux sandbox environment.",
+      "Execute code and commands in the conversation's Computer (an isolated Linux environment).",
     authorization: null,
     icon: "CommandLineIcon",
     documentationUrl: null,

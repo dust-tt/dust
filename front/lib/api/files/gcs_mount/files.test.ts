@@ -1,11 +1,16 @@
+import { GCSMountDirectoryAlreadyExistsError } from "@app/lib/api/files/gcs_mount/errors";
 import {
   copyConversationGCSMount,
   copyMountFile,
+  createGCSMountDirectory,
   createGCSMountFile,
   deleteGCSMountFile,
   type GCSMountFileEntry,
   getConversationFileMountSignedUrl,
+  getGCSPathFromScopedPath,
+  getScopedPathFromGCSPath,
   listGCSMountFiles,
+  renameGCSMountDirectory,
   renameGCSMountFile,
 } from "@app/lib/api/files/gcs_mount/files";
 import type { Authenticator } from "@app/lib/auth";
@@ -15,6 +20,7 @@ import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -121,6 +127,154 @@ describe("createGCSMountFile", () => {
 
     assert(entryRes.isOk());
     expect(entryRes.value.thumbnailUrl).toBeNull();
+  });
+
+  it("dual-writes to the projects/ mirror for pod use-case", async () => {
+    const content = Buffer.from("hello");
+
+    await createGCSMountFile(
+      auth,
+      { useCase: "pod", podId: "proj123" },
+      { relativeFilePath: "report.txt", content, contentType: "text/plain" }
+    );
+
+    const bucket = vi.mocked(getPrivateUploadBucket)();
+    expect(bucket.file).toHaveBeenCalledWith(
+      `w/${workspaceId}/pods/proj123/files/report.txt`
+    );
+    expect(bucket.file).toHaveBeenCalledWith(
+      `w/${workspaceId}/projects/proj123/files/report.txt`
+    );
+    expect(saveMock).toHaveBeenCalledTimes(2);
+    expect(saveMock).toHaveBeenNthCalledWith(1, content, {
+      contentType: "text/plain",
+    });
+    expect(saveMock).toHaveBeenNthCalledWith(2, content, {
+      contentType: "text/plain",
+    });
+  });
+
+  it("does not write to projects/ for conversation use-case", async () => {
+    await createGCSMountFile(
+      auth,
+      { useCase: "conversation", conversationId },
+      {
+        relativeFilePath: "report.txt",
+        content: Buffer.from("hello"),
+        contentType: "text/plain",
+      }
+    );
+
+    const bucket = vi.mocked(getPrivateUploadBucket)();
+    expect(bucket.file).toHaveBeenCalledTimes(1);
+    expect(saveMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("createGCSMountDirectory", () => {
+  let auth: Authenticator;
+  let conversationId: string;
+  let workspaceId: string;
+  let saveMock: ReturnType<typeof vi.fn>;
+  let existsMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    existsMock = vi.fn().mockResolvedValue([false]);
+    saveMock = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+      file: vi.fn(() => ({ save: saveMock, exists: existsMock })),
+    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
+
+    const { authenticator, conversationsSpace } = await createResourceTest({});
+    auth = authenticator;
+    workspaceId = auth.getNonNullableWorkspace().sId;
+
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+      spaceId: conversationsSpace.id,
+    });
+    conversationId = conversation.sId;
+  });
+
+  it("writes a trailing-slash placeholder to the correct GCS path", async () => {
+    const entryRes = await createGCSMountDirectory(
+      auth,
+      { useCase: "conversation", conversationId },
+      { relativeDirPath: "reports/q1" }
+    );
+
+    assert(entryRes.isOk());
+    expect(entryRes.value).toMatchObject({
+      isDirectory: true,
+      fileName: "q1",
+      path: "conversation/reports/q1",
+      sizeBytes: 0,
+    });
+    const bucket = vi.mocked(getPrivateUploadBucket)();
+    expect(bucket.file).toHaveBeenCalledWith(
+      `w/${workspaceId}/conversations/${conversationId}/files/reports/q1/`
+    );
+    expect(saveMock).toHaveBeenCalledWith(Buffer.alloc(0), {
+      contentType: "application/x-directory",
+    });
+  });
+
+  it("returns Err when the folder already exists", async () => {
+    existsMock.mockResolvedValue([true]);
+
+    const entryRes = await createGCSMountDirectory(
+      auth,
+      { useCase: "conversation", conversationId },
+      { relativeDirPath: "reports" }
+    );
+
+    expect(entryRes.isErr()).toBe(true);
+    if (entryRes.isErr()) {
+      expect(entryRes.error).toBeInstanceOf(
+        GCSMountDirectoryAlreadyExistsError
+      );
+    }
+    expect(saveMock).not.toHaveBeenCalled();
+  });
+
+  it("dual-writes the placeholder on the projects/ mirror for pod use-case", async () => {
+    const entryRes = await createGCSMountDirectory(
+      auth,
+      { useCase: "pod", podId: "proj123" },
+      { relativeDirPath: "reports/q1" }
+    );
+
+    assert(entryRes.isOk());
+    const bucket = vi.mocked(getPrivateUploadBucket)();
+    expect(bucket.file).toHaveBeenCalledWith(
+      `w/${workspaceId}/pods/proj123/files/reports/q1/`
+    );
+    expect(bucket.file).toHaveBeenCalledWith(
+      `w/${workspaceId}/projects/proj123/files/reports/q1/`
+    );
+    expect(saveMock).toHaveBeenCalledTimes(2);
+    expect(saveMock).toHaveBeenNthCalledWith(1, Buffer.alloc(0), {
+      contentType: "application/x-directory",
+    });
+    expect(saveMock).toHaveBeenNthCalledWith(2, Buffer.alloc(0), {
+      contentType: "application/x-directory",
+    });
+  });
+
+  it("does not write to projects/ for conversation use-case", async () => {
+    const entryRes = await createGCSMountDirectory(
+      auth,
+      { useCase: "conversation", conversationId },
+      { relativeDirPath: "reports/q1" }
+    );
+
+    assert(entryRes.isOk());
+    expect(saveMock).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -402,10 +556,14 @@ describe("copyConversationGCSMount", () => {
   it("copies every file under the source prefix to the dest prefix", async () => {
     const sourcePrefix = `w/${workspaceId}/conversations/${source.sId}/files/`;
     const destPrefix = `w/${workspaceId}/conversations/${dest.sId}/files/`;
+    const past = "2020-01-01T00:00:00.000Z";
     getFilesMock.mockResolvedValue([
-      { name: `${sourcePrefix}report.pdf` },
-      { name: `${sourcePrefix}.tool_outputs/chart.png` },
-      { name: `${sourcePrefix}data/foo.csv` },
+      { name: `${sourcePrefix}report.pdf`, metadata: { updated: past } },
+      {
+        name: `${sourcePrefix}.tool_outputs/chart.png`,
+        metadata: { updated: past },
+      },
+      { name: `${sourcePrefix}data/foo.csv`, metadata: { updated: past } },
     ]);
 
     const result = await copyConversationGCSMount(auth, { source, dest });
@@ -464,7 +622,12 @@ describe("copyConversationGCSMount", () => {
 
   it("returns Err when a copy fails", async () => {
     const sourcePrefix = `w/${workspaceId}/conversations/${source.sId}/files/`;
-    getFilesMock.mockResolvedValue([{ name: `${sourcePrefix}report.pdf` }]);
+    getFilesMock.mockResolvedValue([
+      {
+        name: `${sourcePrefix}report.pdf`,
+        metadata: { updated: "2020-01-01T00:00:00.000Z" },
+      },
+    ]);
     copyFileMock.mockRejectedValue(new Error("GCS copy unavailable"));
 
     const result = await copyConversationGCSMount(auth, { source, dest });
@@ -473,6 +636,170 @@ describe("copyConversationGCSMount", () => {
     if (result.isErr()) {
       expect(result.error.message).toContain("GCS copy unavailable");
     }
+  });
+
+  describe("slow path (sourceTimestampMs)", () => {
+    let getSortedFileVersionsMock: ReturnType<typeof vi.fn>;
+    const forkMs = new Date("2025-06-01T12:00:00.000Z").getTime();
+    const beforeFork = "2025-06-01T11:59:00.000Z";
+    const afterFork = "2025-06-01T12:01:00.000Z";
+
+    beforeEach(() => {
+      getSortedFileVersionsMock = vi.fn().mockResolvedValue(new Ok([]));
+      vi.mocked(getPrivateUploadBucket).mockReturnValue({
+        getFiles: getFilesMock,
+        copyFile: copyFileMock,
+        getSortedFileVersions: getSortedFileVersionsMock,
+      } as unknown as ReturnType<typeof getPrivateUploadBucket>);
+    });
+
+    it("copies files predating the fork directly without fetching version history", async () => {
+      const sourcePrefix = `w/${workspaceId}/conversations/${source.sId}/files/`;
+      const destPrefix = `w/${workspaceId}/conversations/${dest.sId}/files/`;
+      getFilesMock.mockResolvedValue([
+        { name: `${sourcePrefix}old.txt`, metadata: { updated: beforeFork } },
+      ]);
+
+      const result = await copyConversationGCSMount(auth, {
+        source,
+        dest,
+        sourceTimestampMs: forkMs,
+      });
+
+      assert(result.isOk());
+      expect(result.value.copiedCount).toBe(1);
+      expect(getSortedFileVersionsMock).not.toHaveBeenCalled();
+      expect(copyFileMock).toHaveBeenCalledOnce();
+      expect(copyFileMock).toHaveBeenCalledWith(
+        `${sourcePrefix}old.txt`,
+        `${destPrefix}old.txt`
+      );
+    });
+
+    it("fetches version history and copies the pre-fork generation for files written after the fork", async () => {
+      const sourcePrefix = `w/${workspaceId}/conversations/${source.sId}/files/`;
+      const destPrefix = `w/${workspaceId}/conversations/${dest.sId}/files/`;
+      const filePath = `${sourcePrefix}modified.txt`;
+      getFilesMock.mockResolvedValue([
+        { name: filePath, metadata: { updated: afterFork } },
+      ]);
+      getSortedFileVersionsMock.mockResolvedValue(
+        new Ok([
+          {
+            name: filePath,
+            metadata: { updated: afterFork, generation: "456" },
+          },
+          {
+            name: filePath,
+            metadata: { updated: beforeFork, generation: "123" },
+          },
+        ])
+      );
+
+      const result = await copyConversationGCSMount(auth, {
+        source,
+        dest,
+        sourceTimestampMs: forkMs,
+      });
+
+      assert(result.isOk());
+      expect(result.value.copiedCount).toBe(1);
+      expect(getSortedFileVersionsMock).toHaveBeenCalledOnce();
+      expect(getSortedFileVersionsMock).toHaveBeenCalledWith({ filePath });
+      expect(copyFileMock).toHaveBeenCalledWith(
+        filePath,
+        `${destPrefix}modified.txt`,
+        undefined,
+        { sourceGeneration: "123" }
+      );
+    });
+
+    it("skips a file written after the fork when no pre-fork version exists", async () => {
+      const sourcePrefix = `w/${workspaceId}/conversations/${source.sId}/files/`;
+      const filePath = `${sourcePrefix}new-file.txt`;
+      getFilesMock.mockResolvedValue([
+        { name: filePath, metadata: { updated: afterFork } },
+      ]);
+      getSortedFileVersionsMock.mockResolvedValue(
+        new Ok([
+          {
+            name: filePath,
+            metadata: { updated: afterFork, generation: "456" },
+          },
+        ])
+      );
+
+      const result = await copyConversationGCSMount(auth, {
+        source,
+        dest,
+        sourceTimestampMs: forkMs,
+      });
+
+      assert(result.isOk());
+      expect(result.value.copiedCount).toBe(0);
+      expect(copyFileMock).not.toHaveBeenCalled();
+    });
+
+    it("handles a mix of unchanged, version-filtered, and skipped files", async () => {
+      const sourcePrefix = `w/${workspaceId}/conversations/${source.sId}/files/`;
+      const destPrefix = `w/${workspaceId}/conversations/${dest.sId}/files/`;
+      const oldPath = `${sourcePrefix}old.txt`;
+      const modifiedPath = `${sourcePrefix}modified.txt`;
+      const newPath = `${sourcePrefix}new.txt`;
+
+      getFilesMock.mockResolvedValue([
+        { name: oldPath, metadata: { updated: beforeFork } },
+        { name: modifiedPath, metadata: { updated: afterFork } },
+        { name: newPath, metadata: { updated: afterFork } },
+      ]);
+      getSortedFileVersionsMock.mockImplementation(
+        ({ filePath }: { filePath: string }) => {
+          if (filePath === modifiedPath) {
+            return Promise.resolve(
+              new Ok([
+                {
+                  name: modifiedPath,
+                  metadata: { updated: afterFork, generation: "200" },
+                },
+                {
+                  name: modifiedPath,
+                  metadata: { updated: beforeFork, generation: "100" },
+                },
+              ])
+            );
+          }
+          return Promise.resolve(
+            new Ok([
+              {
+                name: newPath,
+                metadata: { updated: afterFork, generation: "300" },
+              },
+            ])
+          );
+        }
+      );
+
+      const result = await copyConversationGCSMount(auth, {
+        source,
+        dest,
+        sourceTimestampMs: forkMs,
+      });
+
+      assert(result.isOk());
+      expect(result.value.copiedCount).toBe(2);
+      expect(getSortedFileVersionsMock).toHaveBeenCalledTimes(2);
+      expect(copyFileMock).toHaveBeenCalledTimes(2);
+      expect(copyFileMock).toHaveBeenCalledWith(
+        oldPath,
+        `${destPrefix}old.txt`
+      );
+      expect(copyFileMock).toHaveBeenCalledWith(
+        modifiedPath,
+        `${destPrefix}modified.txt`,
+        undefined,
+        { sourceGeneration: "100" }
+      );
+    });
   });
 });
 
@@ -531,6 +858,32 @@ describe("copyMountFile", () => {
       expect(result.error.message).toContain("GCS copy unavailable");
     }
   });
+
+  it("mirrors the destination write on projects/ when dest is a pod", async () => {
+    const result = await copyMountFile(auth, {
+      source: {
+        scope: { useCase: "conversation", conversationId: "src-conv" },
+        relativeFilePath: "report.pdf",
+      },
+      dest: {
+        scope: { useCase: "pod", podId: "proj123" },
+        relativeFilePath: "report.pdf",
+      },
+    });
+
+    assert(result.isOk());
+    const sourcePath = `w/${workspaceId}/conversations/src-conv/files/report.pdf`;
+    const destPodsPath = `w/${workspaceId}/pods/proj123/files/report.pdf`;
+    const destProjectsPath = `w/${workspaceId}/projects/proj123/files/report.pdf`;
+
+    expect(copyFileMock).toHaveBeenCalledTimes(2);
+    expect(copyFileMock).toHaveBeenNthCalledWith(1, sourcePath, destPodsPath);
+    expect(copyFileMock).toHaveBeenNthCalledWith(
+      2,
+      sourcePath,
+      destProjectsPath
+    );
+  });
 });
 
 describe("renameGCSMountFile", () => {
@@ -559,11 +912,11 @@ describe("renameGCSMountFile", () => {
   it("copies to the new path, deletes the old path, and returns the new GCS path", async () => {
     const result = await renameGCSMountFile(
       auth,
-      { useCase: "project", projectId: "proj123" },
+      { useCase: "pod", podId: "proj123" },
       { relativeFilePath: "report.pdf", newFileName: "final.pdf" }
     );
 
-    const prefix = `w/${workspaceId}/projects/proj123/files/`;
+    const prefix = `w/${workspaceId}/pods/proj123/files/`;
     expect(result.isOk()).toBe(true);
     expect(copyFileMock).toHaveBeenCalledWith(
       `${prefix}report.pdf`,
@@ -578,11 +931,11 @@ describe("renameGCSMountFile", () => {
   it("preserves directory structure when renaming a nested file", async () => {
     await renameGCSMountFile(
       auth,
-      { useCase: "project", projectId: "proj123" },
+      { useCase: "pod", podId: "proj123" },
       { relativeFilePath: "reports/q1.csv", newFileName: "q1-final.csv" }
     );
 
-    const prefix = `w/${workspaceId}/projects/proj123/files/`;
+    const prefix = `w/${workspaceId}/pods/proj123/files/`;
     expect(copyFileMock).toHaveBeenCalledWith(
       `${prefix}reports/q1.csv`,
       `${prefix}reports/q1-final.csv`
@@ -595,7 +948,7 @@ describe("renameGCSMountFile", () => {
 
     const result = await renameGCSMountFile(
       auth,
-      { useCase: "project", projectId: "proj123" },
+      { useCase: "pod", podId: "proj123" },
       { relativeFilePath: "report.pdf", newFileName: "final.pdf" }
     );
 
@@ -605,17 +958,162 @@ describe("renameGCSMountFile", () => {
     }
     expect(deleteMock).not.toHaveBeenCalled();
   });
+
+  it("mirrors rename on projects/ for pod use-case using the new canonical as source", async () => {
+    await renameGCSMountFile(
+      auth,
+      { useCase: "pod", podId: "proj123" },
+      { relativeFilePath: "report.pdf", newFileName: "final.pdf" }
+    );
+
+    const podsPrefix = `w/${workspaceId}/pods/proj123/files/`;
+    const projectsPrefix = `w/${workspaceId}/projects/proj123/files/`;
+
+    expect(copyFileMock).toHaveBeenCalledTimes(2);
+    expect(copyFileMock).toHaveBeenNthCalledWith(
+      1,
+      `${podsPrefix}report.pdf`,
+      `${podsPrefix}final.pdf`
+    );
+    // Projects mirror copies from the NEW canonical (not from an old projects/ source,
+    // which may not exist for files written only to pods/).
+    expect(copyFileMock).toHaveBeenNthCalledWith(
+      2,
+      `${podsPrefix}final.pdf`,
+      `${projectsPrefix}final.pdf`
+    );
+
+    expect(deleteMock).toHaveBeenCalledTimes(2);
+    expect(deleteMock).toHaveBeenNthCalledWith(1, `${podsPrefix}report.pdf`);
+    expect(deleteMock).toHaveBeenNthCalledWith(
+      2,
+      `${projectsPrefix}report.pdf`,
+      { ignoreNotFound: true }
+    );
+  });
+
+  it("does not mirror rename on projects/ for conversation use-case", async () => {
+    const result = await renameGCSMountFile(
+      auth,
+      { useCase: "conversation", conversationId: "conv-rename" },
+      { relativeFilePath: "report.pdf", newFileName: "final.pdf" }
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(copyFileMock).toHaveBeenCalledTimes(1);
+    expect(deleteMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("renameGCSMountDirectory", () => {
+  let auth: Authenticator;
+  let workspaceId: string;
+  let copyFileMock: ReturnType<typeof vi.fn>;
+  let deleteByPrefixMock: ReturnType<typeof vi.fn>;
+  let dirExistsMock: ReturnType<typeof vi.fn>;
+  let getAllFilesByPrefixMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    copyFileMock = vi.fn().mockResolvedValue(undefined);
+    deleteByPrefixMock = vi.fn().mockResolvedValue(undefined);
+    dirExistsMock = vi.fn().mockResolvedValue([false]);
+
+    const { authenticator } = await createResourceTest({});
+    auth = authenticator;
+    workspaceId = auth.getNonNullableWorkspace().sId;
+
+    const prefix = `w/${workspaceId}/pods/pod123/files/`;
+    getAllFilesByPrefixMock = vi.fn().mockResolvedValue({
+      files: [
+        { name: `${prefix}archive/` },
+        { name: `${prefix}archive/report.pdf` },
+      ],
+    });
+    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+      copyFile: copyFileMock,
+      deleteByPrefix: deleteByPrefixMock,
+      file: vi.fn().mockReturnValue({ exists: dirExistsMock }),
+      getAllFilesByPrefix: getAllFilesByPrefixMock,
+    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
+  });
+
+  it("moves all objects under the folder prefix and deletes the old prefix", async () => {
+    const result = await renameGCSMountDirectory(
+      auth,
+      { useCase: "pod", podId: "pod123" },
+      { relativeDirPath: "archive", newFolderName: "backup" }
+    );
+
+    const podsPrefix = `w/${workspaceId}/pods/pod123/files/`;
+    const projectsPrefix = `w/${workspaceId}/projects/pod123/files/`;
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.newRelativeDirPath).toBe("backup");
+    }
+    // Canonical copies happen on the pods/ side.
+    expect(copyFileMock).toHaveBeenCalledWith(
+      `${podsPrefix}archive/`,
+      `${podsPrefix}backup/`
+    );
+    expect(copyFileMock).toHaveBeenCalledWith(
+      `${podsPrefix}archive/report.pdf`,
+      `${podsPrefix}backup/report.pdf`
+    );
+    // Old prefix is deleted on both the pods/ and projects/ sides.
+    expect(deleteByPrefixMock).toHaveBeenCalledWith(`${podsPrefix}archive/`);
+    expect(deleteByPrefixMock).toHaveBeenCalledWith(
+      `${projectsPrefix}archive/`
+    );
+    // Mirror copies from the new canonical pods/ path to the projects/ side.
+    expect(copyFileMock).toHaveBeenCalledWith(
+      `${podsPrefix}backup/`,
+      `${projectsPrefix}backup/`
+    );
+    expect(copyFileMock).toHaveBeenCalledWith(
+      `${podsPrefix}backup/report.pdf`,
+      `${projectsPrefix}backup/report.pdf`
+    );
+    // Double write: each of the 2 objects is copied on the pods/ side and
+    // mirrored to the projects/ side (2 canonical + 2 mirror = 4).
+    expect(copyFileMock).toHaveBeenCalledTimes(4);
+    expect(deleteByPrefixMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns Err when the destination folder already exists", async () => {
+    dirExistsMock.mockResolvedValue([true]);
+
+    const result = await renameGCSMountDirectory(
+      auth,
+      { useCase: "pod", podId: "pod123" },
+      { relativeDirPath: "archive", newFolderName: "backup" }
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(copyFileMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("deleteGCSMountFile", () => {
   let auth: Authenticator;
   let workspaceId: string;
   let deleteMock: ReturnType<typeof vi.fn>;
+  let deleteByPrefixMock: ReturnType<typeof vi.fn>;
+  let dirExistsMock: ReturnType<
+    typeof vi.fn<(path: string) => Promise<[boolean]>>
+  >;
+  let getAllFilesByPrefixMock: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     deleteMock = vi.fn().mockResolvedValue(undefined);
+    deleteByPrefixMock = vi.fn().mockResolvedValue(undefined);
+    dirExistsMock = vi.fn().mockResolvedValue([false]);
+    getAllFilesByPrefixMock = vi.fn().mockResolvedValue({ files: [] });
     vi.mocked(getPrivateUploadBucket).mockReturnValue({
       delete: deleteMock,
+      deleteByPrefix: deleteByPrefixMock,
+      file: vi.fn((path: string) => ({ exists: () => dirExistsMock(path) })),
+      getAllFilesByPrefix: getAllFilesByPrefixMock,
     } as unknown as ReturnType<typeof getPrivateUploadBucket>);
 
     const { authenticator } = await createResourceTest({});
@@ -626,11 +1124,11 @@ describe("deleteGCSMountFile", () => {
   it("calls bucket.delete with the correct GCS path and ignoreNotFound", async () => {
     const result = await deleteGCSMountFile(
       auth,
-      { useCase: "project", projectId: "proj123" },
+      { useCase: "pod", podId: "pod123" },
       { relativeFilePath: "archive/old.pdf" }
     );
 
-    const prefix = `w/${workspaceId}/projects/proj123/files/`;
+    const prefix = `w/${workspaceId}/pods/pod123/files/`;
     expect(result.isOk()).toBe(true);
     expect(deleteMock).toHaveBeenCalledWith(`${prefix}archive/old.pdf`, {
       ignoreNotFound: true,
@@ -642,7 +1140,7 @@ describe("deleteGCSMountFile", () => {
 
     const result = await deleteGCSMountFile(
       auth,
-      { useCase: "project", projectId: "proj123" },
+      { useCase: "pod", podId: "pod123" },
       { relativeFilePath: "file.pdf" }
     );
 
@@ -650,5 +1148,86 @@ describe("deleteGCSMountFile", () => {
     if (result.isErr()) {
       expect(result.error.message).toContain("delete failed");
     }
+  });
+
+  it("mirrors delete on projects/ for pod use-case", async () => {
+    await deleteGCSMountFile(
+      auth,
+      { useCase: "pod", podId: "pod123" },
+      { relativeFilePath: "archive/old.pdf" }
+    );
+
+    const podsPath = `w/${workspaceId}/pods/pod123/files/archive/old.pdf`;
+    const projectsPath = `w/${workspaceId}/projects/pod123/files/archive/old.pdf`;
+
+    expect(deleteMock).toHaveBeenCalledTimes(2);
+    expect(deleteMock).toHaveBeenNthCalledWith(1, podsPath, {
+      ignoreNotFound: true,
+    });
+    expect(deleteMock).toHaveBeenNthCalledWith(2, projectsPath, {
+      ignoreNotFound: true,
+    });
+  });
+
+  it("does not mirror delete on projects/ for conversation use-case", async () => {
+    await deleteGCSMountFile(
+      auth,
+      { useCase: "conversation", conversationId: "conv-del" },
+      { relativeFilePath: "old.pdf" }
+    );
+
+    expect(deleteMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("deletes a directory placeholder and its contents by prefix", async () => {
+    dirExistsMock.mockImplementation((path: string) => {
+      return Promise.resolve([path.endsWith("/")]);
+    });
+
+    const result = await deleteGCSMountFile(
+      auth,
+      { useCase: "pod", podId: "pod123" },
+      { relativeFilePath: "archive" }
+    );
+
+    const prefix = `w/${workspaceId}/projects/pod123/files/`;
+    const podsPrefix = `w/${workspaceId}/pods/pod123/files/`;
+
+    expect(result.isOk()).toBe(true);
+    expect(deleteByPrefixMock).toHaveBeenCalledWith(`${prefix}archive/`);
+    expect(deleteByPrefixMock).toHaveBeenCalledWith(`${podsPrefix}archive/`);
+    expect(deleteMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("scoped path ↔ GCS path", () => {
+  const prefix = "w/ws1/pods/pod123/files/";
+
+  it("getScopedPathFromGCSPath is the inverse of getGCSPathFromScopedPath", () => {
+    const scopedPath = "pod/reports/report_fil_abc.pdf";
+    const gcsPath = getGCSPathFromScopedPath({
+      prefix,
+      scopedPath,
+      useCase: "pod",
+    });
+    expect(gcsPath).toBe(`${prefix}reports/report_fil_abc.pdf`);
+
+    expect(
+      getScopedPathFromGCSPath({
+        prefix,
+        gcsPath: gcsPath!,
+        useCase: "pod",
+      })
+    ).toBe(scopedPath);
+  });
+
+  it("getScopedPathFromGCSPath returns null when the path is outside the prefix", () => {
+    expect(
+      getScopedPathFromGCSPath({
+        prefix,
+        gcsPath: "w/ws1/projects/other/files/file.txt",
+        useCase: "pod",
+      })
+    ).toBeNull();
   });
 });

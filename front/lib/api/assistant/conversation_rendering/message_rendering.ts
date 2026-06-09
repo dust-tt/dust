@@ -118,8 +118,11 @@ export function renderAgentSteps(
         } satisfies AssistantContentMessageTypeModel);
       }
 
-      for (const { result, enabledSkillMessages } of step.actions) {
+      // Tool calls must be immediately followed by their results, skill messages come after.
+      for (const { result } of step.actions) {
         messages.push(result);
+      }
+      for (const { enabledSkillMessages } of step.actions) {
         messages.push(...enabledSkillMessages);
       }
     }
@@ -144,7 +147,7 @@ export async function renderAllMessages(
     onMissingAction,
     agentConfiguration,
     enabledSkills,
-    renderSkillsAsUserMessages = false,
+    useFramesV2 = false,
   }: {
     conversation: ConversationType;
     model: ModelConfigurationType;
@@ -153,7 +156,7 @@ export async function renderAllMessages(
     onMissingAction: "inject-placeholder" | "skip";
     agentConfiguration?: AgentConfigurationType;
     enabledSkills: EnabledSkill[];
-    renderSkillsAsUserMessages?: boolean;
+    useFramesV2?: boolean;
   }
 ): Promise<ModelMessageTypeMultiActions[]> {
   const messages: ModelMessageTypeMultiActions[] = [];
@@ -193,7 +196,7 @@ export async function renderAllMessages(
             conversationId: conversation.sId,
             onMissingAction,
             enabledSkillById,
-            renderSkillsAsUserMessages,
+            useFramesV2,
           });
 
           const agentMessages = renderAgentSteps(

@@ -1,58 +1,35 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { PatchSpaceMembersRequestBodySchema } from "@app/lib/api/spaces/members";
 import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/project-added-as-member";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
-import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
+import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import { auditLog } from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withSpace } from "@front-api/middlewares/with_space";
 
-import { spaceResource } from "@front-api/middleware/space_resource";
-import { validate } from "@front-api/middleware/validator";
-
-const PatchSpaceMembersRequestBodySchema = z.intersection(
-  z.object({
-    isRestricted: z.boolean(),
-    name: z.string(),
-  }),
-  z.discriminatedUnion("managementMode", [
-    z.object({
-      memberIds: z.array(z.string()),
-      managementMode: z.literal("manual"),
-      editorIds: z.array(z.string()),
-    }),
-    z.object({
-      groupIds: z.array(z.string()),
-      managementMode: z.literal("group"),
-      editorGroupIds: z.array(z.string()),
-    }),
-  ])
-);
-
-export type PatchSpaceMembersRequestBodyType = z.infer<
-  typeof PatchSpaceMembersRequestBodySchema
->;
+export type { PatchSpaceMembersRequestBodyType } from "@app/lib/api/spaces/members";
 
 // Mounted at /api/w/:wId/spaces/:spaceId/members.
-const app = new Hono();
+const app = workspaceApp();
 
+/** @ignoreswagger */
 app.patch(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
   validate("json", PatchSpaceMembersRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     if (!space.isRegular() && !space.isProject()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -62,7 +39,7 @@ app.patch(
     }
 
     if (!space.canAdministrate(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
@@ -72,15 +49,15 @@ app.patch(
       });
     }
 
-    const body = c.req.valid("json");
+    const body = ctx.req.valid("json");
     const owner = auth.getNonNullableWorkspace();
 
     if (
       space.isProjectAndRestricted() &&
       !body.isRestricted &&
-      !areOpenProjectsAllowed(owner)
+      !areOpenPodsAllowed(owner)
     ) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "invalid_request_error",
@@ -108,7 +85,7 @@ app.patch(
     if (updateRes.isErr()) {
       switch (updateRes.error.code) {
         case "unauthorized":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 401,
             api_error: {
               type: "workspace_auth_error",
@@ -117,7 +94,7 @@ app.patch(
             },
           });
         case "user_not_found":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 404,
             api_error: {
               type: "user_not_found",
@@ -125,7 +102,7 @@ app.patch(
             },
           });
         case "user_not_member":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
@@ -133,7 +110,7 @@ app.patch(
             },
           });
         case "group_not_found":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 404,
             api_error: {
               type: "group_not_found",
@@ -141,7 +118,7 @@ app.patch(
             },
           });
         case "user_already_member":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
@@ -149,7 +126,7 @@ app.patch(
             },
           });
         case "invalid_id":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
@@ -157,7 +134,7 @@ app.patch(
             },
           });
         case "group_requirements_not_met":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 403,
             api_error: {
               type: "workspace_auth_error",
@@ -166,7 +143,7 @@ app.patch(
             },
           });
         case "system_or_global_group":
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
@@ -234,7 +211,7 @@ app.patch(
       }
     }
 
-    return c.json({ space: space.toJSON() });
+    return ctx.json({ space: space.toJSON() });
   }
 );
 

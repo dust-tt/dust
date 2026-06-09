@@ -1,3 +1,7 @@
+import {
+  CardBrandIcon,
+  formatBrandName,
+} from "@app/components/checkout/PaymentMethodRow";
 import { useAwuPurchase } from "@app/hooks/useAwuPurchase";
 import config from "@app/lib/api/config";
 import type { AwuPurchaseInfo } from "@app/lib/credits/awu_purchase";
@@ -5,13 +9,16 @@ import {
   MAX_AWU_PURCHASE_CREDITS_PER_CYCLE,
   MIN_AWU_PURCHASE_CREDITS,
 } from "@app/lib/credits/awu_purchase_constants";
-import { AWU_PRICE_PER_CREDIT } from "@app/lib/metronome/types";
+import {
+  awuCreditsToCurrency,
+  currencyToAwuCredits,
+} from "@app/lib/metronome/amounts";
+import { useAwuPurchaseStatus } from "@app/lib/swr/credits";
 import { CURRENCY_SYMBOLS } from "@app/types/currency";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
-  ActionCreditCoinsIcon,
   Button,
-  CheckCircleIcon,
+  CheckCircle,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -26,9 +33,9 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  XCircleIcon,
+  XCircle,
 } from "@dust-tt/sparkle";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type PurchaseState = "idle" | "processing" | "success" | "error";
 type TopUpTab = "one-time" | "automatic";
@@ -39,6 +46,22 @@ const supportEmail = config.getSupportEmailAddress().email;
 
 function formatCredits(credits: number): string {
   return Math.round(credits).toLocaleString("en-US");
+}
+
+function formatPaymentMethodLabel(
+  pm:
+    | { type: "card"; brand: string; last4: string }
+    | { type: "sepa_debit"; last4: string }
+): string {
+  switch (pm.type) {
+    case "card":
+      return `${formatBrandName(pm.brand)} ${pm.last4}`;
+    case "sepa_debit":
+      return `IBAN •••• ${pm.last4}`;
+    default:
+      assertNeverAndIgnore(pm);
+      return "";
+  }
 }
 
 function formatCost(amount: number): string {
@@ -56,16 +79,7 @@ interface CreditValueProps {
 }
 
 function CreditValue({ credits }: CreditValueProps) {
-  return (
-    <span className="flex items-center gap-1">
-      <Icon
-        visual={ActionCreditCoinsIcon}
-        size="xs"
-        className="text-muted-foreground dark:text-muted-foreground-night"
-      />
-      {formatCredits(credits)}
-    </span>
-  );
+  return <span>{formatCredits(credits)}</span>;
 }
 
 interface SummaryRowProps {
@@ -93,6 +107,7 @@ interface BuyAwuCreditsDialogProps {
   workspaceId: string;
   awuPurchaseInfo: AwuPurchaseInfo | null;
   isAwuPurchaseInfoLoading: boolean;
+  isAwuPurchaseInfoError: boolean;
   currentBalanceCredits?: number;
 }
 
@@ -103,19 +118,60 @@ export function BuyAwuCreditsDialog({
   workspaceId,
   awuPurchaseInfo,
   isAwuPurchaseInfoLoading,
+  isAwuPurchaseInfoError,
   currentBalanceCredits,
 }: BuyAwuCreditsDialogProps) {
   const [amountInput, setAmountInput] = useState<string>("");
   const [selectedTab, setSelectedTab] = useState<TopUpTab>("one-time");
   const [purchaseState, setPurchaseState] = useState<PurchaseState>("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
+  // Ignore polled attempts older than the one we just started, so a cached
+  // "succeeded" entry from a previous purchase can't flash through.
+  const [purchaseStartedAtMs, setPurchaseStartedAtMs] = useState<number | null>(
+    null
+  );
   const { purchaseAwuCredits } = useAwuPurchase({ workspaceId });
+
+  // Poll the payment-gated commit status only while waiting on the webhook
+  // outcome. The Metronome -> Stripe payment is async, so the dialog can't
+  // know success/failure from the POST response alone.
+  const { attempt, mutateAwuPurchaseStatus } = useAwuPurchaseStatus({
+    workspaceId,
+    disabled: !isOpen || purchaseState !== "processing",
+  });
+
+  useEffect(() => {
+    if (purchaseState !== "processing" || !attempt) {
+      return;
+    }
+    if (
+      purchaseStartedAtMs !== null &&
+      attempt.createdAtMs < purchaseStartedAtMs
+    ) {
+      return;
+    }
+    switch (attempt.status) {
+      case "succeeded":
+        setPurchaseState("success");
+        onPurchaseSuccess?.();
+        break;
+      case "failed":
+        setErrorMessage(attempt.errorMessage ?? "Payment failed.");
+        setPurchaseState("error");
+        break;
+      case "pending":
+        break;
+      default:
+        assertNeverAndIgnore(attempt.status);
+    }
+  }, [attempt, purchaseState, purchaseStartedAtMs, onPurchaseSuccess]);
 
   const resetModalStateAndClose = useCallback(() => {
     setAmountInput("");
     setSelectedTab("one-time");
     setPurchaseState("idle");
     setErrorMessage("");
+    setPurchaseStartedAtMs(null);
     onClose();
   }, [onClose]);
 
@@ -123,15 +179,21 @@ export function BuyAwuCreditsDialog({
     ? awuPurchaseInfo.currency
     : "usd";
   const currencySymbol = CURRENCY_SYMBOLS[currency];
-  const pricePerCredit = AWU_PRICE_PER_CREDIT[currency];
-  const creditsPerCurrencyUnit = 1 / pricePerCredit;
+  const discountPercent = awuPurchaseInfo?.canPurchase
+    ? awuPurchaseInfo.discountPercent
+    : 0;
 
+  // The cycle cap is denominated in credits, so the matching cap in
+  // currency at the discounted rate is `credits × price_per_credit × (1 - d/100)`.
   const maxAmountInCurrency = useMemo(() => {
     if (!awuPurchaseInfo?.canPurchase) {
       return null;
     }
-    return Math.floor(awuPurchaseInfo.remainingCycleCredits * pricePerCredit);
-  }, [awuPurchaseInfo, pricePerCredit]);
+    return Math.floor(
+      awuCreditsToCurrency(awuPurchaseInfo.remainingCycleCredits, currency) *
+        (1 - discountPercent / 100)
+    );
+  }, [awuPurchaseInfo, currency, discountPercent]);
 
   const maxAmountFormatted = useMemo(() => {
     if (maxAmountInCurrency === null) {
@@ -142,7 +204,9 @@ export function BuyAwuCreditsDialog({
 
   const effectiveMaxAmount =
     maxAmountInCurrency ??
-    Math.floor(MAX_AWU_PURCHASE_CREDITS_PER_CYCLE * pricePerCredit);
+    Math.floor(
+      awuCreditsToCurrency(MAX_AWU_PURCHASE_CREDITS_PER_CYCLE, currency)
+    );
 
   const setAmountWithClamp = useCallback(
     (amount: number) => {
@@ -154,18 +218,25 @@ export function BuyAwuCreditsDialog({
   const parsedAmount = parseFloat(amountInput) || 0;
   const isValidAmount = parsedAmount > 0;
   const amountExceedsMax = parsedAmount > effectiveMaxAmount;
-  const addedCredits = parsedAmount * creditsPerCurrencyUnit;
+  // The user types what they want to spend; the discount means they get
+  // more credits at the same spend (credits_per_full_price / (1 - d/100)).
+  const addedCredits =
+    currencyToAwuCredits(parsedAmount, currency) / (1 - discountPercent / 100);
 
   const canPurchase = isValidAmount && !amountExceedsMax;
 
   const handlePurchase = async () => {
+    setPurchaseStartedAtMs(Date.now());
     setPurchaseState("processing");
     const amountCredits = Math.round(addedCredits);
     const result = await purchaseAwuCredits(amountCredits);
     switch (result.status) {
       case "success":
-        setPurchaseState("success");
-        onPurchaseSuccess?.();
+        // The Metronome commit is created but payment is still being
+        // attempted asynchronously. Stay in "processing" and let the
+        // status poll flip us to success or error based on the
+        // payment_gate.payment_status webhook outcome.
+        void mutateAwuPurchaseStatus();
         break;
       case "error":
         setErrorMessage(result.message);
@@ -183,7 +254,10 @@ export function BuyAwuCreditsDialog({
           <div className="flex flex-col items-center justify-center gap-4 py-8">
             <Spinner size="lg" />
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-              Processing purchase...
+              Processing payment...
+            </p>
+            <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+              This may take a few seconds.
             </p>
           </div>
         );
@@ -191,11 +265,7 @@ export function BuyAwuCreditsDialog({
       case "success":
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <Icon
-              visual={CheckCircleIcon}
-              size="lg"
-              className="text-success-500"
-            />
+            <Icon visual={CheckCircle} size="lg" className="text-success-500" />
             <div className="text-center">
               <p className="text-lg font-medium text-foreground dark:text-foreground-night">
                 Credits purchased successfully!
@@ -215,7 +285,7 @@ export function BuyAwuCreditsDialog({
       case "error":
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <Icon visual={XCircleIcon} size="lg" className="text-warning-500" />
+            <Icon visual={XCircle} size="lg" className="text-warning-500" />
             <div className="text-center">
               <p className="text-lg font-medium text-foreground dark:text-foreground-night">
                 Something went wrong
@@ -238,7 +308,7 @@ export function BuyAwuCreditsDialog({
               onValueChange={(v) => setSelectedTab(v as TopUpTab)}
             >
               <TabsList>
-                <TabsTrigger value="one-time" label="One time top-up" />
+                <TabsTrigger value="one-time" label="One-time top-up" />
                 <TabsTrigger value="automatic" label="Automatic top-up" />
               </TabsList>
 
@@ -277,8 +347,7 @@ export function BuyAwuCreditsDialog({
                       </div>
                       {isValidAmount && (
                         <span className="flex items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                          {formatCredits(addedCredits)} credit
-                          <Icon visual={ActionCreditCoinsIcon} size="xs" />
+                          {formatCredits(addedCredits)} credits
                         </span>
                       )}
                       <div className="ml-auto flex gap-2">
@@ -302,7 +371,7 @@ export function BuyAwuCreditsDialog({
                       </p>
                       {currentBalanceCredits !== undefined && (
                         <SummaryRow
-                          label="Current Balance"
+                          label="Current balance"
                           value={
                             <CreditValue credits={currentBalanceCredits} />
                           }
@@ -344,6 +413,37 @@ export function BuyAwuCreditsDialog({
                       if you need more.
                     </p>
                   )}
+
+                  {awuPurchaseInfo?.canPurchase &&
+                    awuPurchaseInfo.paymentMethod && (
+                      <div className="flex flex-col gap-2">
+                        <p className="text-sm font-medium text-foreground dark:text-foreground-night">
+                          Payment method
+                        </p>
+                        <div className="flex w-full items-center justify-between rounded-lg border border-separator bg-muted px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            {awuPurchaseInfo.paymentMethod.type === "card" ? (
+                              <CardBrandIcon
+                                brand={awuPurchaseInfo.paymentMethod.brand}
+                                width={38}
+                                height={24}
+                              />
+                            ) : null}
+                            <span className="text-sm font-medium">
+                              {formatPaymentMethodLabel(
+                                awuPurchaseInfo.paymentMethod
+                              )}
+                            </span>
+                          </div>
+                          <Button
+                            label="Change"
+                            variant="ghost"
+                            size="sm"
+                            href={`/w/${workspaceId}/subscription/manage`}
+                          />
+                        </div>
+                      </div>
+                    )}
                 </div>
               </TabsContent>
 
@@ -395,7 +495,7 @@ export function BuyAwuCreditsDialog({
               onClick: resetModalStateAndClose,
             }}
             rightButtonProps={{
-              label: "Manage Invoices",
+              label: "Manage invoices",
               variant: "primary",
               onClick: () => {
                 window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
@@ -427,7 +527,7 @@ export function BuyAwuCreditsDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Credit pool top-up</DialogTitle>
+            <DialogTitle>Workspace Credits Pool top-up</DialogTitle>
           </DialogHeader>
           <DialogContainer>
             <div className="flex justify-center py-8">
@@ -445,6 +545,44 @@ export function BuyAwuCreditsDialog({
   // `pending_purchase` and bump the user off the success screen.
   const isPurchaseInFlight = purchaseState !== "idle";
 
+  if (!isPurchaseInFlight && isAwuPurchaseInfoError) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Workspace Credits Pool top-up</DialogTitle>
+            <DialogDescription>
+              We couldn't load your purchase information.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogContainer>
+            <div className="flex flex-col items-center justify-center gap-4 py-8">
+              <Icon visual={XCircle} size="lg" className="text-warning-500" />
+              <p className="text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+                Something went wrong while loading your top-up options. Please
+                try again in a moment, or{" "}
+                <a
+                  href={`mailto:${supportEmail}?subject=Credit%20purchase%20-%20unable%20to%20load`}
+                  className="text-action-500 hover:underline"
+                >
+                  contact support
+                </a>{" "}
+                if the issue persists.
+              </p>
+            </div>
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Close",
+              variant: "outline",
+              onClick: onClose,
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   // Cannot purchase: legacy plan.
   if (
     !isPurchaseInFlight &&
@@ -456,16 +594,16 @@ export function BuyAwuCreditsDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Credit pool top-up</DialogTitle>
+            <DialogTitle>Workspace Credits Pool top-up</DialogTitle>
             <DialogDescription>
-              AWU credit purchases are not available for your current plan.
+              Credit purchases are not available for your current plan.
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               Please{" "}
               <a
-                href={`mailto:${supportEmail}?subject=AWU%20credit%20purchase`}
+                href={`mailto:${supportEmail}?subject=Credit%20purchase`}
                 className="text-action-500 hover:underline"
               >
                 contact support
@@ -496,7 +634,7 @@ export function BuyAwuCreditsDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Credit pool top-up</DialogTitle>
+            <DialogTitle>Workspace Credits Pool top-up</DialogTitle>
             <DialogDescription>
               No billing configuration found for this workspace.
             </DialogDescription>
@@ -505,7 +643,7 @@ export function BuyAwuCreditsDialog({
             <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               Please{" "}
               <a
-                href={`mailto:${supportEmail}?subject=AWU%20credit%20purchase%20-%20billing%20setup`}
+                href={`mailto:${supportEmail}?subject=Credit%20purchase%20-%20billing%20setup`}
                 className="text-action-500 hover:underline"
               >
                 contact support
@@ -536,7 +674,7 @@ export function BuyAwuCreditsDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Credit pool top-up</DialogTitle>
+            <DialogTitle>Workspace Credits Pool top-up</DialogTitle>
             <DialogDescription>
               You have pending credit purchases awaiting payment.
             </DialogDescription>
@@ -561,7 +699,7 @@ export function BuyAwuCreditsDialog({
               onClick: onClose,
             }}
             rightButtonProps={{
-              label: "Manage Invoices",
+              label: "Manage invoices",
               variant: "primary",
               onClick: () => {
                 window.open(`/w/${workspaceId}/subscription/manage`, "_blank");
@@ -583,7 +721,7 @@ export function BuyAwuCreditsDialog({
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Credit pool top-up</DialogTitle>
+            <DialogTitle>Workspace Credits Pool top-up</DialogTitle>
             <DialogDescription>
               You've reached your credit limit for this billing cycle.
             </DialogDescription>
@@ -621,8 +759,10 @@ export function BuyAwuCreditsDialog({
     >
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>Credit pool top-up</DialogTitle>
-          <DialogDescription>Add credit to your credit pool.</DialogDescription>
+          <DialogTitle>Workspace Credits Pool top-up</DialogTitle>
+          <DialogDescription>
+            Add credits to your Workspace Credits Pool.
+          </DialogDescription>
         </DialogHeader>
         <DialogContainer>{renderContent()}</DialogContainer>
         {renderFooter()}

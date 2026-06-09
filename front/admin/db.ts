@@ -64,6 +64,7 @@ import {
 } from "@app/lib/models/skill/conversation_skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SelfImprovingSkillsUsageModel } from "@app/lib/models/skill/self_improving_skills_usage";
+import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { TagModel } from "@app/lib/models/tags";
 import { WorkspaceSensitivityLabelConfigModel } from "@app/lib/models/workspace_sensitivity_label_config";
@@ -79,10 +80,12 @@ import {
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { CouponRedemptionModel } from "@app/lib/resources/storage/models/coupon_redemptions";
 import { CouponModel } from "@app/lib/resources/storage/models/coupons";
+import { CreditUsageConfigurationModel } from "@app/lib/resources/storage/models/credit_usage_configurations";
 import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import {
+  AuthorizedFileAccessModel,
   ExternalViewerSessionModel,
   FileModel,
   ShareableFileModel,
@@ -132,6 +135,7 @@ import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
+import { WorkspaceSeatLimitModel } from "@app/lib/resources/storage/models/workspace_seat_limit";
 import { WorkspaceVerificationAttemptModel } from "@app/lib/resources/storage/models/workspace_verification_attempt";
 import logger from "@app/logger/logger";
 import { sendInitDbMessage } from "@app/types/shared/deployment";
@@ -160,6 +164,7 @@ export function loadAllModels() {
     KeyModel,
     FileModel,
     ShareableFileModel,
+    AuthorizedFileAccessModel,
     SharingGrantModel,
     ExternalViewerSessionModel,
     DustAppSecretModel,
@@ -186,6 +191,7 @@ export function loadAllModels() {
     CouponModel,
     CouponRedemptionModel,
     ProgrammaticUsageConfigurationModel,
+    CreditUsageConfigurationModel,
     AgentConfigurationModel,
     AgentUserRelationModel,
     GlobalAgentSettingsModel,
@@ -228,6 +234,7 @@ export function loadAllModels() {
     SkillDataSourceConfigurationModel,
     SkillVersionModel,
     GroupSkillModel,
+    SkillReferenceModel,
     AgentSkillModel,
     ConversationSkillModel,
     AgentMessageSkillModel,
@@ -253,6 +260,7 @@ export function loadAllModels() {
     UserProjectPreferencesModel,
     WorkspaceSensitivityLabelConfigModel,
     WorkspaceSandboxEnvVarModel,
+    WorkspaceSeatLimitModel,
   ];
 }
 
@@ -269,7 +277,11 @@ async function main() {
   // Seed pro plans so they're available before parallel test workers start.
   // This avoids deadlocks from concurrent upserts in WorkspaceFactory.
   const { upsertProPlans } = await import("@app/lib/plans/pro_plans");
+  const { upsertCreditPricedPlans } = await import(
+    "@app/lib/plans/credit_priced_plans"
+  );
   await upsertProPlans();
+  await upsertCreditPricedPlans();
 
   process.exit(0);
 }

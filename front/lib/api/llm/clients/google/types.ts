@@ -7,7 +7,9 @@ import {
   GEMINI_2_5_FLASH_MODEL_ID,
   GEMINI_2_5_PRO_MODEL_ID,
   GEMINI_3_1_FLASH_LITE_MODEL_ID,
+  GEMINI_3_1_FLASH_LITE_PREVIEW_DEPRECATED_MODEL_ID,
   GEMINI_3_1_PRO_MODEL_ID,
+  GEMINI_3_5_FLASH_MODEL_ID,
   GEMINI_3_FLASH_MODEL_ID,
   GEMINI_3_PRO_MODEL_ID,
 } from "@app/types/assistant/models/google_ai_studio";
@@ -25,12 +27,27 @@ export const GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS = [
   GEMINI_2_5_PRO_MODEL_ID,
   GEMINI_3_PRO_MODEL_ID,
   GEMINI_3_1_FLASH_LITE_MODEL_ID,
+  GEMINI_3_1_FLASH_LITE_PREVIEW_DEPRECATED_MODEL_ID,
   GEMINI_3_1_PRO_MODEL_ID,
   GEMINI_3_FLASH_MODEL_ID,
+  GEMINI_3_5_FLASH_MODEL_ID,
 ] as const;
 
 export type GoogleAIStudioWhitelistedModelId =
   (typeof GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS)[number];
+
+// TODO(eu-endpoint): temporary list — remove once availability is per-model, not per-provider.
+export const GOOGLE_VERTEX_WHITELISTED_MODEL_IDS = [
+  GEMINI_2_5_FLASH_MODEL_ID,
+  GEMINI_2_5_FLASH_LITE_MODEL_ID,
+  GEMINI_2_5_PRO_MODEL_ID,
+  // Only available on global endpoint
+  GEMINI_3_1_PRO_MODEL_ID,
+  GEMINI_3_5_FLASH_MODEL_ID,
+] as const;
+
+export type GoogleVertexWhitelistedModelId =
+  (typeof GOOGLE_VERTEX_WHITELISTED_MODEL_IDS)[number];
 
 const PRE_GEMINI_3_THINKING_CONFIG_MAPPING: Record<
   ReasoningEffort,
@@ -88,13 +105,13 @@ export const GOOGLE_AI_STUDIO_MODEL_CONFIGS: Record<
   [GEMINI_2_5_FLASH_MODEL_ID]: {
     thinkingConfig: {
       ...PRE_GEMINI_3_THINKING_CONFIG_MAPPING,
-      none: { thinkingBudget: 0, includeThoughts: true },
+      none: { thinkingBudget: 0, includeThoughts: false },
     },
   },
   [GEMINI_2_5_FLASH_LITE_MODEL_ID]: {
     thinkingConfig: {
       ...PRE_GEMINI_3_THINKING_CONFIG_MAPPING,
-      none: { thinkingBudget: 0, includeThoughts: true },
+      none: { thinkingBudget: 0, includeThoughts: false },
     },
   },
   [GEMINI_2_5_PRO_MODEL_ID]: {
@@ -137,9 +154,23 @@ export const GOOGLE_AI_STUDIO_MODEL_CONFIGS: Record<
     },
     thinkingConfig: POST_GEMINI_3_THINKING_CONFIG_MAPPING,
   },
+  // Deprecated: superseded by gemini-3.1-flash-lite. Kept until existing agents are migrated.
+  [GEMINI_3_1_FLASH_LITE_PREVIEW_DEPRECATED_MODEL_ID]: {
+    overwrites: {
+      temperature: 1,
+    },
+    thinkingConfig: POST_GEMINI_3_THINKING_CONFIG_MAPPING,
+  },
   [GEMINI_3_1_PRO_MODEL_ID]: {
     overwrites: {
       // Not required but strongly recommended by Google for Gemini 3
+      temperature: 1,
+    },
+    thinkingConfig: POST_GEMINI_3_THINKING_CONFIG_MAPPING,
+  },
+  [GEMINI_3_5_FLASH_MODEL_ID]: {
+    overwrites: {
+      // Not required but strongly recommended by Google for Gemini 3+
       temperature: 1,
     },
     thinkingConfig: POST_GEMINI_3_THINKING_CONFIG_MAPPING,
@@ -161,6 +192,14 @@ export function isGoogleAIStudioWhitelistedModelId(
   modelId: ModelIdType
 ): modelId is GoogleAIStudioWhitelistedModelId {
   return (GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS as readonly string[]).includes(
+    modelId
+  );
+}
+
+export function isGoogleVertexWhitelistedModelId(
+  modelId: ModelIdType
+): modelId is GoogleVertexWhitelistedModelId {
+  return (GOOGLE_VERTEX_WHITELISTED_MODEL_IDS as readonly string[]).includes(
     modelId
   );
 }

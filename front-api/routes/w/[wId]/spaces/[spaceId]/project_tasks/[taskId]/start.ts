@@ -1,33 +1,36 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import { startAgentForProjectTask } from "@app/lib/project_task/start_agent";
 import type { APIErrorType } from "@app/types/error";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withSpace } from "@front-api/middlewares/with_space";
+import { z } from "zod";
 
-import { spaceResource } from "@front-api/middleware/space_resource";
-import { validate } from "@front-api/middleware/validator";
-
-const PostStartProjectTaskBodySchema = z.object({
+const PostStartPodTaskBodySchema = z.object({
   customMessage: z.string().optional(),
   agentConfigurationId: z.string().optional(),
 });
 
-// Mounted under /api/w/:wId/spaces/:spaceId/project_tasks/:taskId/start.
-const app = new Hono();
+const ParamsSchema = z.object({
+  taskId: z.string(),
+});
 
+// Mounted under /api/w/:wId/spaces/:spaceId/project_tasks/:taskId/start.
+const app = workspaceApp();
+
+/** @ignoreswagger */
 app.post(
   "/",
-  spaceResource({ requireCanRead: true }),
-  validate("json", PostStartProjectTaskBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
-    const taskId = c.req.param("taskId") ?? "";
+  validate("param", ParamsSchema),
+  withSpace({ requireCanRead: true }),
+  validate("json", PostStartPodTaskBodySchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const { taskId } = ctx.req.valid("param");
 
     if (!space.isProject()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -36,7 +39,7 @@ app.post(
       });
     }
 
-    const { customMessage, agentConfigurationId } = c.req.valid("json");
+    const { customMessage, agentConfigurationId } = ctx.req.valid("json");
     const startRes = await startAgentForProjectTask(auth, {
       space,
       taskId,
@@ -44,7 +47,7 @@ app.post(
       agentConfigurationId,
     });
     if (startRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: startRes.error.statusCode,
         api_error: {
           type: startRes.error.type as APIErrorType,
@@ -53,7 +56,7 @@ app.post(
       });
     }
 
-    return c.json({ task: startRes.value.task });
+    return ctx.json({ task: startRes.value.task });
   }
 );
 

@@ -1,3 +1,8 @@
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  POD_TASKS_SERVER_NAME,
+  UPDATE_TASKS_TOOL_NAME,
+} from "@app/lib/api/actions/servers/pod_tasks/metadata";
 import {
   createConversation,
   postNewContentFragment,
@@ -10,16 +15,14 @@ import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { APIErrorType } from "@app/types/error";
-import type {
-  ProjectTaskSourceInfo,
-  ProjectTaskType,
-} from "@app/types/project_task";
+import type { PodTaskSourceInfo, PodTaskType } from "@app/types/project_task";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { toFileContentFragment } from "../api/assistant/conversation/content_fragment";
 
 type StartProjectTaskAgentError = {
-  statusCode: number;
+  statusCode: ContentfulStatusCode;
   type: APIErrorType;
   message: string;
 };
@@ -44,19 +47,7 @@ function linkLabelForUrlOnly(url: string): string {
   }
 }
 
-function mergeKickoffCustomMessage(
-  stored: string | null | undefined,
-  userProvided: string | undefined
-): string | undefined {
-  const s = stored?.trim();
-  const u = userProvided?.trim();
-  if (s && u) {
-    return `${s}\n\n${u}`;
-  }
-  return u ?? s ?? undefined;
-}
-
-function formatTaskSourcesMarkdown(sources: ProjectTaskSourceInfo[]): string {
+function formatTaskSourcesMarkdown(sources: PodTaskSourceInfo[]): string {
   const lines = sources
     .map((s) => {
       const title = s.sourceTitle?.trim();
@@ -84,13 +75,14 @@ function buildTaskKickoffPrompt({
   taskId,
   taskText,
   sources,
-  customMessage,
+  agentInstructions,
 }: {
   taskId: string;
   taskText: string;
-  sources: ProjectTaskSourceInfo[];
-  customMessage?: string;
+  sources: PodTaskSourceInfo[];
+  agentInstructions: string | null;
 }): string {
+  const trimmedAgentInstructions = agentInstructions?.trim();
   const sourcesBlock = formatTaskSourcesMarkdown(sources);
 
   const taskDirective = serializeProjectTaskDirective({
@@ -99,7 +91,7 @@ function buildTaskKickoffPrompt({
   });
 
   return [
-    "Assist with the following project task. Repeating the full title is not necessary unless helpful for clarity.",
+    "Assist with the following Pod task. Repeating the full title is not necessary unless helpful for clarity.",
     "",
     "For tools requiring a task reference, use:",
     "",
@@ -110,16 +102,19 @@ function buildTaskKickoffPrompt({
     "## Instructions",
     "",
     "1. Clarify initial assumptions and planning; independently use available tools or context as needed.",
-    "2. Leverage project context and accessible tools to complete the task end-to-end.",
+    "2. Leverage Pod context and accessible tools to complete the task end-to-end.",
     "3. Provide a summary of actions taken and highlight anything that should be verified.",
     "",
     "## Completion Criteria",
     "",
     "After the initial delivery, avoid marking the task as done solely based on your own judgment—provide a clear summary for user review and response.",
     "",
-    'Once there is explicit acceptance in this chat (e.g. "ok good for me", "looks good", "perfect", "works for me", "thanks that\'s what I needed", or any unequivocal statement of satisfaction or task completion), mark the task as done in the same turn using the project task management tools. Verbal approval in chat is required; do not assume closure will only happen via the UI. A prompt acknowledgment is sufficient, but always mark the task as done upon clear approval.',
+    `Once there is explicit acceptance in this chat (e.g. "ok good for me", "looks good", "perfect", "works for me", "thanks that's what I needed", or any unequivocal statement of satisfaction or task completion), mark the task as done in the same turn using the \`${getPrefixedToolName(POD_TASKS_SERVER_NAME, UPDATE_TASKS_TOOL_NAME)}\` tool. Verbal approval in chat is required; do not assume closure will only happen via the UI. A prompt acknowledgment is sufficient, but always mark the task as done upon clear approval.`,
     "",
     "If further changes are requested, if feedback indicates the work is not complete, or if the user instructs to keep the task open, do not mark it as done.",
+    ...(trimmedAgentInstructions
+      ? ["", "## Task-specific guidance", "", trimmedAgentInstructions]
+      : []),
   ].join("\n");
 }
 
@@ -139,7 +134,7 @@ export async function startAgentForProjectTask(
 ): Promise<
   Result<
     {
-      task: ProjectTaskType;
+      task: PodTaskType;
       conversationId: string;
       userMessageId: string;
       action: "created" | "appended";
@@ -151,7 +146,7 @@ export async function startAgentForProjectTask(
     return new Err({
       statusCode: 400,
       type: "invalid_request_error",
-      message: "Tasks are only available for project spaces.",
+      message: "Tasks are only available for Pod spaces.",
     });
   }
 
@@ -185,10 +180,7 @@ export async function startAgentForProjectTask(
     taskId: task.sId,
     taskText: task.text,
     sources,
-    customMessage: mergeKickoffCustomMessage(
-      task.agentInstructions,
-      customMessage
-    ),
+    agentInstructions: task.agentInstructions,
   });
 
   let conversationId = await task.getLatestConversationId(auth);
@@ -277,7 +269,7 @@ export async function startAgentForProjectTask(
   const content =
     "Let's work on: " +
     taskDirective +
-    "\n\n" +
+    ".\n\n" +
     (customMessage ?? "") +
     "\n\n" +
     "Read the attached file in full for more instructions.";

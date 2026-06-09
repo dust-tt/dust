@@ -1,8 +1,8 @@
 import {
   useConversations,
-  useSpaceConversations,
-  useSpaceConversationsSummary,
-  useSpaceUnreadConversationIds,
+  usePodConversations,
+  usePodConversationsSummary,
+  usePodUnreadConversationIds,
 } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
@@ -11,12 +11,12 @@ import { useCallback, useState } from "react";
 
 interface useMarkAllConversationsAsReadParams {
   owner: WorkspaceType;
-  spaceId?: string;
+  podId?: string;
 }
 
 export function useMarkAllConversationsAsRead({
   owner,
-  spaceId,
+  podId,
 }: useMarkAllConversationsAsReadParams) {
   const [isMarkingAllAsRead, setIsMarkingAllAsRead] = useState(false);
   const sendNotification = useSendNotification();
@@ -25,20 +25,21 @@ export function useMarkAllConversationsAsRead({
     options: { disabled: true },
   });
 
-  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+  const { mutate: mutatePodSummary } = usePodConversationsSummary({
     workspaceId: owner.sId,
     options: { disabled: true },
   });
 
-  const { mutateConversations: mutateSpaceConversations } =
-    useSpaceConversations({
-      workspaceId: owner.sId,
-      spaceId: spaceId ?? null,
-    });
-
-  const { mutateUnreadConversationIds } = useSpaceUnreadConversationIds({
+  const { mutateConversations: mutatePodConversations } = usePodConversations({
     workspaceId: owner.sId,
-    spaceId: spaceId ?? null,
+    podId: podId ?? null,
+    options: { disabled: true },
+  });
+
+  const { mutateUnreadConversationIds } = usePodUnreadConversationIds({
+    workspaceId: owner.sId,
+    podId: podId ?? null,
+    options: { disabled: true },
   });
 
   const markAllAsRead = useCallback(
@@ -93,8 +94,8 @@ export function useMarkAllConversationsAsRead({
           throw new Error("Failed to mark conversations as read");
         }
 
-        void mutateSpaceSummary();
-        void mutateSpaceConversations();
+        void mutatePodSummary();
+        void mutatePodConversations();
         void mutateUnreadConversationIds();
 
         sendNotification({
@@ -117,8 +118,8 @@ export function useMarkAllConversationsAsRead({
     [
       owner.sId,
       mutateConversations,
-      mutateSpaceSummary,
-      mutateSpaceConversations,
+      mutatePodSummary,
+      mutatePodConversations,
       sendNotification,
       mutateUnreadConversationIds,
     ]

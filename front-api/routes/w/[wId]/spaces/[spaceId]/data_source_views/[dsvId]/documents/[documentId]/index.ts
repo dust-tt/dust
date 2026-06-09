@@ -1,25 +1,32 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import config from "@app/lib/api/config";
+import type { GetDataSourceViewDocumentResponseBody } from "@app/lib/api/data_source_view";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withDataSourceView } from "@front-api/middlewares/with_data_source_view";
+import { withSpace } from "@front-api/middlewares/with_space";
+import { z } from "zod";
 
-import { dataSourceViewResource } from "@front-api/middleware/data_source_view_resource";
-import { spaceResource } from "@front-api/middleware/space_resource";
+const ParamsSchema = z.object({
+  documentId: z.string(),
+});
 
 // Mounted under
 // /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId/documents/:documentId.
-const app = new Hono();
+const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
-  spaceResource({ requireCanRead: true }),
-  dataSourceViewResource({ requireCanRead: true }),
-  async (c) => {
-    const dataSourceView = c.get("dataSourceView");
-    const documentId = c.req.param("documentId") ?? "";
+  validate("param", ParamsSchema),
+  withSpace({ requireCanRead: true }),
+  withDataSourceView({ requireCanRead: true }),
+  async (ctx): HandlerResult<GetDataSourceViewDocumentResponseBody> => {
+    const dataSourceView = ctx.get("dataSourceView");
+    const { documentId } = ctx.req.valid("param");
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const doc = await coreAPI.getDataSourceDocument({
       dataSourceId: dataSourceView.dataSource.dustAPIDataSourceId,
@@ -28,7 +35,7 @@ app.get(
       viewFilter: dataSourceView.toViewFilter(),
     });
     if (doc.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "data_source_error",
@@ -38,7 +45,7 @@ app.get(
         },
       });
     }
-    return c.json({ document: doc.value.document });
+    return ctx.json({ document: doc.value.document });
   }
 );
 

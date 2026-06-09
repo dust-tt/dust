@@ -1,7 +1,7 @@
+import type { GetSlackClientIdResponseBody } from "@app/lib/api/credentials";
+import type { GetOAuthSetupResponseBody } from "@app/lib/api/oauth";
 import { clientFetch } from "@app/lib/egress/client";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetSlackClientIdResponseBody } from "@app/pages/api/w/[wId]/credentials/slack_is_legacy";
-import type { GetOAuthSetupResponseBody } from "@app/pages/api/w/[wId]/oauth/[provider]/setup";
 import type { APIError, WithAPIErrorResponse } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
 import type {

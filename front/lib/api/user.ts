@@ -14,12 +14,84 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type {
   LightWorkspaceType,
+  RoleType,
+  UserMetadataType,
+  UserType,
   UserTypeWithExtensionWorkspaces,
   UserTypeWithWorkspaces,
 } from "@app/types/user";
 
 import { MembershipResource } from "../resources/membership_resource";
 import { findWorkOSOrganizationsForUserId } from "./workos/organization_membership";
+
+export type GetMemberResponseBody = {
+  member: {
+    id: string;
+    username: string;
+    email: string;
+    firstName: string;
+    lastName: string | null;
+    fullName: string;
+    image: string | null;
+    revoked: boolean;
+    role: RoleType;
+    startAt: string | null;
+    endAt: string | null;
+  };
+};
+
+export type PostMemberResponseBody = {
+  member: UserTypeWithWorkspaces;
+};
+
+export type GetUserResponseBody = {
+  user: UserTypeWithWorkspaces & { subscriberHash: string | null };
+};
+
+export type PostUserMetadataResponseBody = {
+  success: boolean;
+};
+
+export type GetUserMetadataResponseBody = {
+  metadata: UserMetadataType | null;
+};
+
+export type PostUserMetadataKeyResponseBody = {
+  metadata: UserMetadataType;
+};
+
+/**
+ * Returns the acting user for an authenticated request. Falls back to looking up the user by
+ * email when auth is an API key (used by the Slack integration to attribute actions to the
+ * Slack user via the user-email header).
+ */
+export async function getActiveUserFromAuthOrEmail(
+  auth: Authenticator,
+  fallbackEmail: string | null | undefined
+): Promise<UserType | null> {
+  const authUser = auth.user();
+  if (authUser) {
+    return authUser.toJSON();
+  }
+
+  if (!auth.isKey() || !fallbackEmail) {
+    return null;
+  }
+
+  const users = await UserResource.listByEmail(fallbackEmail);
+  if (users.length === 0) {
+    return null;
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    users,
+    workspace,
+  });
+  const activeUserIds = new Set(memberships.map((m) => m.userId));
+  const firstActive = users.find((u) => activeUserIds.has(u.id));
+  return firstActive ? firstActive.toJSON() : null;
+}
 
 export async function getUserForWorkspace(
   auth: Authenticator,
@@ -43,6 +115,71 @@ export async function getUserForWorkspace(
   const shouldReturnUser = await hasSharedMembership(auth, { user });
 
   return shouldReturnUser ? user : null;
+}
+
+/**
+ * Batch version of hasSharedMembership: filters users that share at least one
+ * workspace with the authenticated user and have a membership in the auth workspace.
+ * Returns the subset of `users` that pass the privacy check.
+ */
+export async function filterUsersWithSharedMembership(
+  auth: Authenticator,
+  users: UserResource[]
+): Promise<UserResource[]> {
+  if (users.length === 0) {
+    return [];
+  }
+
+  const workspace = auth.workspace();
+  const authUser = auth.user();
+  if (!workspace || !authUser) {
+    return [];
+  }
+
+  // Check which users have a membership in the auth workspace.
+  const { memberships: workspaceMemberships } =
+    await MembershipResource.getActiveMemberships({
+      users,
+      workspace,
+    });
+  const usersInWorkspace = new Set(workspaceMemberships.map((m) => m.userId));
+
+  const usersWithWorkspaceMembership = users.filter((u) =>
+    usersInWorkspace.has(u.id)
+  );
+
+  if (usersWithWorkspaceMembership.length === 0) {
+    return [];
+  }
+
+  // Superusers can see all users that have a workspace membership.
+  if (auth.isDustSuperUser()) {
+    return usersWithWorkspaceMembership;
+  }
+
+  // For regular users: check shared workspaces.
+  const { memberships: authUserMemberships } =
+    await MembershipResource.getActiveMemberships({
+      users: [authUser],
+    });
+  const authUserWorkspaceIds = new Set(
+    authUserMemberships.map((m) => m.workspaceId)
+  );
+
+  const { memberships: candidateMemberships } =
+    await MembershipResource.getActiveMemberships({
+      users: usersWithWorkspaceMembership,
+    });
+
+  // Collect user IDs that share at least one workspace with the auth user.
+  const visibleUserIds = new Set<number>();
+  for (const m of candidateMemberships) {
+    if (authUserWorkspaceIds.has(m.workspaceId)) {
+      visibleUserIds.add(m.userId);
+    }
+  }
+
+  return usersWithWorkspaceMembership.filter((u) => visibleUserIds.has(u.id));
 }
 
 /**

@@ -137,6 +137,7 @@ describe("renderAllMessages", () => {
             richMentions: [],
             completionDurationMs: null,
             reactions: [],
+            costCredits: null,
           } satisfies AgentMessageType,
         ];
       }
@@ -513,7 +514,6 @@ describe("renderAllMessages", () => {
       enabledSkills: [],
       model,
       onMissingAction: "skip",
-      renderSkillsAsUserMessages: true,
     });
 
     expect(result.map((m) => m.role)).toEqual([
@@ -521,9 +521,6 @@ describe("renderAllMessages", () => {
       "function",
       "user",
     ]);
-    expect(vi.mocked(getSteps).mock.calls.at(-1)?.[1]).toMatchObject({
-      renderSkillsAsUserMessages: true,
-    });
     const enabledSkillMessage = result[2];
     expect(enabledSkillMessage?.role).toBe("user");
     if (!enabledSkillMessage || enabledSkillMessage.role !== "user") {
@@ -532,55 +529,6 @@ describe("renderAllMessages", () => {
     expect(enabledSkillMessage.content[0]).toEqual({
       type: "text",
       text: "<dust_system>Enabled skill instructions</dust_system>",
-    });
-  });
-
-  it("does not render enabled skill messages when skill user messages are disabled", async () => {
-    const conversation = createConversation([
-      { type: "agent", visibility: "visible" },
-    ]);
-
-    vi.mocked(getSteps).mockResolvedValue([
-      {
-        contents: [
-          {
-            type: "function_call",
-            value: {
-              id: "toolu_enable_skill",
-              name: "skill_management__enable_skill",
-              arguments: '{"skillName":"commit"}',
-            },
-          },
-        ],
-        actions: [
-          {
-            call: {
-              id: "toolu_enable_skill",
-              name: "skill_management__enable_skill",
-              arguments: '{"skillName":"commit"}',
-            },
-            enabledSkillMessages: [],
-            result: {
-              role: "function",
-              name: "skill_management__enable_skill",
-              function_call_id: "toolu_enable_skill",
-              content: 'Skill "commit" has been enabled.',
-            },
-          },
-        ],
-      },
-    ]);
-
-    const result = await renderAllMessages(auth, {
-      conversation,
-      enabledSkills: [],
-      model,
-      onMissingAction: "skip",
-    });
-
-    expect(result.map((m) => m.role)).toEqual(["assistant", "function"]);
-    expect(vi.mocked(getSteps).mock.calls.at(-1)?.[1]).toMatchObject({
-      renderSkillsAsUserMessages: false,
     });
   });
 });

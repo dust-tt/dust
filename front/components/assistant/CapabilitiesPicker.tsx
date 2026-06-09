@@ -1,6 +1,5 @@
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
-import { MCPServerDetails } from "@app/components/actions/mcp/MCPServerDetails";
-import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
+import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
@@ -15,20 +14,15 @@ import {
   useAvailableMCPServers,
   useMCPServerViewsFromSpaces,
 } from "@app/lib/swr/mcp_servers";
-import {
-  useSkills,
-  useSkillWithRelations,
-} from "@app/lib/swr/skill_configurations";
+import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
   TRACKING_ACTIONS,
   TRACKING_AREAS,
   trackEvent,
 } from "@app/lib/tracking";
-import type {
-  SkillWithoutInstructionsAndToolsType,
-  SkillWithRelationsType,
-} from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -37,6 +31,7 @@ import {
   Button,
   Chip,
   cn,
+  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -44,8 +39,7 @@ import {
   DropdownMenuTrigger,
   DropdownTooltipTrigger,
   LoadingBlock,
-  MoreIcon,
-  ToolsIcon,
+  ShapesPlus,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -223,7 +217,7 @@ function CapabilitiesPickerItemsList({
                 <Chip size="xs" color="golden" label="Configure" />
               ) : (
                 <Button
-                  icon={MoreIcon}
+                  icon={DotsHorizontal}
                   variant="outline"
                   size="mini"
                   className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
@@ -309,6 +303,7 @@ interface CapabilitiesPickerProps {
   isLoading?: boolean;
   disabled?: boolean;
   buttonSize?: "xs" | "sm" | "md";
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function CapabilitiesPicker({
@@ -320,7 +315,9 @@ export function CapabilitiesPicker({
   isLoading = false,
   disabled = false,
   buttonSize = "xs",
+  onOpenChange,
 }: CapabilitiesPickerProps) {
+  const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -332,15 +329,11 @@ export function CapabilitiesPicker({
   const [pendingServerToAdd, setPendingServerToAdd] =
     useState<MCPServerType | null>(null);
 
-  // Detail sheet state
-  const [selectedSkillForDetails, setSelectedSkillForDetails] =
-    useState<SkillWithRelationsType | null>(null);
+  const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
+    string | null
+  >(null);
   const [selectedServerViewForDetails, setSelectedServerViewForDetails] =
     useState<MCPServerViewType | null>(null);
-
-  const { fetchSkillWithRelations } = useSkillWithRelations(owner, {
-    onSuccess: ({ skill }) => setSelectedSkillForDetails(skill),
-  });
 
   const shouldFetchToolsData =
     isOpen || isClosing || isSettingUpServer || !!pendingServerToAdd;
@@ -404,7 +397,6 @@ export function CapabilitiesPicker({
     status: "active",
     globalSpaceOnly: true,
     disabled: !shouldFetchToolsData,
-    viewType: "summary",
   });
 
   const isSkillsDataReady = !isSkillsLoading;
@@ -594,6 +586,7 @@ export function CapabilitiesPicker({
         open={isOpen}
         onOpenChange={(open) => {
           setIsOpen(open);
+          onOpenChange?.(open);
           if (open) {
             setIsClosing(false);
             trackEvent({
@@ -609,7 +602,7 @@ export function CapabilitiesPicker({
       >
         <DropdownMenuTrigger asChild>
           <Button
-            icon={ToolsIcon}
+            icon={ShapesPlus}
             variant="ghost-secondary"
             size={buttonSize}
             tooltip="Capabilities"
@@ -626,7 +619,7 @@ export function CapabilitiesPicker({
           }}
         >
           <DropdownMenuSearchbar
-            autoFocus
+            autoFocus={!isMobile}
             name="search-capabilities"
             placeholder="Search capabilities"
             value={searchText}
@@ -646,7 +639,7 @@ export function CapabilitiesPicker({
               items={capabilityPickerItems}
               onItemSelect={selectCapabilityPickerItem}
               onSkillDetails={(skillId) => {
-                void fetchSkillWithRelations(skillId);
+                setSelectedSkillIdForDetails(skillId);
                 setIsOpen(false);
               }}
               onToolDetails={(serverView) => {
@@ -704,21 +697,13 @@ export function CapabilitiesPicker({
         />
       )}
 
-      {user && (
-        <SkillDetailsSheet
-          skill={selectedSkillForDetails}
-          onClose={() => setSelectedSkillForDetails(null)}
-          owner={owner}
-          user={user}
-        />
-      )}
-
-      <MCPServerDetails
+      <CapabilityDetailsSheets
         owner={owner}
-        mcpServerView={selectedServerViewForDetails}
-        isOpen={!!selectedServerViewForDetails}
-        onClose={() => setSelectedServerViewForDetails(null)}
-        readOnly
+        user={user}
+        selectedSkillId={selectedSkillIdForDetails}
+        selectedMCPServerView={selectedServerViewForDetails}
+        onCloseSkill={() => setSelectedSkillIdForDetails(null)}
+        onCloseTool={() => setSelectedServerViewForDetails(null)}
       />
     </>
   );

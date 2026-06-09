@@ -1,18 +1,16 @@
-import { Hono } from "hono";
-
-import { getMembershipInvitationToken } from "@app/lib/api/invitation";
+import type { GetPendingInvitationsResponseBody } from "@app/lib/api/invitation";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import { getMembershipInvitationToken } from "@app/lib/utils/invitation_token";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
-
-export type GetPendingInvitationsResponseBody = {
-  pendingInvitations: PendingInvitationOption[];
-};
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 // Mounted at /api/w/:wId/me/pending-invitations.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+/** @ignoreswagger */
+app.get("/", async (ctx): HandlerResult<GetPendingInvitationsResponseBody> => {
+  const auth = ctx.get("auth");
   const user = auth.getNonNullableUser();
 
   const invitationResources =
@@ -33,8 +31,7 @@ app.get("/", async (c) => {
     }
   );
 
-  const body: GetPendingInvitationsResponseBody = { pendingInvitations };
-  return c.json(body);
+  return ctx.json({ pendingInvitations });
 });
 
 export default app;

@@ -1,5 +1,13 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { GetPendingInvitationsResponseBody } from "@app/lib/api/invitation";
+import type { GetSlackNotificationResponseBody } from "@app/lib/api/me/slack_notifications";
+import type {
+  GetUserMetadataResponseBody,
+  GetUserResponseBody,
+} from "@app/lib/api/user";
 import { clientFetch } from "@app/lib/egress/client";
+import type { GetWorkspaceUsageStatusResponseBody } from "@app/lib/metronome/user_block";
+import type { GetUserApprovalsResponseBody } from "@app/lib/resources/user_resource";
 import { nonRedirectingFetcher } from "@app/lib/swr/fetcher";
 import {
   emptyArray,
@@ -8,11 +16,6 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
-import type { GetUserResponseBody } from "@app/pages/api/user";
-import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
-import type { GetUserApprovalsResponseBody } from "@app/pages/api/w/[wId]/me/approvals";
-import type { GetPendingInvitationsResponseBody } from "@app/pages/api/w/[wId]/me/pending-invitations";
-import type { GetSlackNotificationResponseBody } from "@app/pages/api/w/[wId]/me/slack-notifications";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -249,5 +252,29 @@ export function useSlackNotifications(
   return {
     isSlackSetupLoading,
     canConfigureSlack,
+  };
+}
+
+export function useWorkspaceUsageStatus({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const usageStatusFetcher: Fetcher<GetWorkspaceUsageStatusResponseBody> =
+    fetcher;
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/usage-status`,
+    usageStatusFetcher,
+    { disabled }
+  );
+
+  return {
+    awuStatus: data?.awuStatus ?? "normal",
+    poolCreditState: data?.poolCreditState ?? "active",
+    programmaticCreditStatus: data?.programmaticCreditStatus ?? "active",
+    isUsageStatusLoading: !error && !data && !disabled,
   };
 }

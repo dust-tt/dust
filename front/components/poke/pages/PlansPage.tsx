@@ -6,27 +6,27 @@ import {
   toPlanType,
   useEditingPlan,
 } from "@app/components/poke/plans/form";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { PlanTypeSchema } from "@app/lib/api/poke/plans";
 import { clientFetch } from "@app/lib/egress/client";
 import { usePokePlans } from "@app/lib/swr/poke";
-import type { PlanTypeSchema } from "@app/pages/api/poke/plans";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import type { PlanType } from "@app/types/plan";
 import {
   Button,
-  CheckIcon,
+  Check,
+  Edit04,
   IconButton,
-  PencilSquareIcon,
-  PlusIcon,
+  Plus,
   Spinner,
-  XMarkIcon,
+  XClose,
 } from "@dust-tt/sparkle";
 import React from "react";
 import { useSWRConfig } from "swr";
 import type { z } from "zod";
 
 export function PlansPage() {
-  useDocumentTitle("Poke - Plans");
+  usePokePageMetadata({ name: "Plans" });
 
   const { mutate } = useSWRConfig();
 
@@ -161,16 +161,13 @@ export function PlansPage() {
                   <td className="w-12 min-w-16 flex-none border px-4 py-2">
                     {plan.code === editingPlan?.code || plan.isNewPlan ? (
                       <div className="flex flex-row justify-center">
-                        <IconButton icon={CheckIcon} onClick={handleSavePlan} />
-                        <IconButton
-                          icon={XMarkIcon}
-                          onClick={resetEditingPlan}
-                        />
+                        <IconButton icon={Check} onClick={handleSavePlan} />
+                        <IconButton icon={XClose} onClick={resetEditingPlan} />
                       </div>
                     ) : (
                       <div className="flex flex-row justify-center">
                         <IconButton
-                          icon={PencilSquareIcon}
+                          icon={Edit04}
                           onClick={() => setEditingPlan(plan)}
                         />
                       </div>
@@ -184,7 +181,7 @@ export function PlansPage() {
       </div>
       <div>
         <Button
-          icon={PlusIcon}
+          icon={Plus}
           label="Create a new plan"
           variant="outline"
           onClick={() => createNewPlan()}

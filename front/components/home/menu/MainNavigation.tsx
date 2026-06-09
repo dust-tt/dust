@@ -1,7 +1,7 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { menuConfig } from "@app/components/home/menu/config";
 import { classNames } from "@app/lib/utils";
-import { ChevronDownIcon } from "@dust-tt/sparkle";
+import { ChevronDown } from "@dust-tt/sparkle";
 import Link from "next/link";
 import * as React from "react";
 
@@ -43,7 +43,7 @@ export function MainNavigation() {
               className="inline-flex h-9 items-center gap-1 px-4 text-sm font-medium text-foreground/70 transition-colors duration-150 hover:text-foreground focus:outline-none"
             >
               {item.title}
-              <ChevronDownIcon
+              <ChevronDown
                 className={classNames(
                   "mt-px h-3 w-3 opacity-40 transition-transform duration-200 ease-out motion-reduce:transition-none",
                   isOpen ? "rotate-180" : "rotate-0"

@@ -1,20 +1,20 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type {
+  DeleteWebhookSourceResponseBody,
+  GetWebhookSourceViewsForSourceResponseBody as GetSpecificWebhookSourceViewsResponseBody,
+  GetWebhookSourcesResponseBody,
+  GetWebhookSourceViewsResponseBody,
+  PostWebhookSourcesBody,
+} from "@app/lib/api/webhook_source";
 import { clientFetch } from "@app/lib/egress/client";
+import type { GetWebhookSourceViewsListResponseBody } from "@app/lib/resources/webhook_sources_view_resource";
 import {
   emptyArray,
   getErrorFromResponse,
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { GetWebhookRequestsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers/[tId]/webhook_requests";
-import type { GetWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/webhook_source_views";
-import type {
-  GetWebhookSourcesResponseBody,
-  PostWebhookSourcesBody,
-} from "@app/pages/api/w/[wId]/webhook_sources";
-import type { DeleteWebhookSourceResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]";
-import type { GetWebhookSourceViewsResponseBody as GetSpecificWebhookSourceViewsResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]/views";
-import type { GetWebhookSourceViewsListResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/views";
+import type { GetWebhookRequestsResponseBody } from "@app/lib/triggers/webhook";
 import type { SpaceType } from "@app/types/space";
 import type {
   WebhookSourceForAdminType,

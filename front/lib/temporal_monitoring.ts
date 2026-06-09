@@ -1,3 +1,4 @@
+import { queryTracker } from "@app/lib/api/query_tracker";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import type logger from "@app/logger/logger";
 import type { Logger } from "@app/logger/logger";
@@ -35,8 +36,8 @@ export class ActivityInboundLogInterceptor
   constructor(ctx: Context, logger: Logger) {
     this.context = ctx;
     this.logger = logger.child({
-      activityName: ctx.info.activityType,
-      workflowName: ctx.info.workflowType,
+      activityType: ctx.info.activityType,
+      workflowType: ctx.info.workflowType,
       workflowId: ctx.info.workflowExecution.workflowId,
       workflowRunId: ctx.info.workflowExecution.runId,
       activityId: ctx.info.activityId,
@@ -54,32 +55,35 @@ export class ActivityInboundLogInterceptor
     let error: any = undefined;
     const startTime = new Date();
     const tags = [
-      `activity_name:${this.context.info.activityType}`,
-      `workflow_name:${this.context.info.workflowType}`,
+      `activity_type:${this.context.info.activityType}`,
+      `workflow_type:${this.context.info.workflowType}`,
       `attempt:${this.context.info.attempt}`,
     ];
+    const queryTrackerStore = { concurrent: 0, peak: 0 };
 
     try {
       this.logger.info("Activity started.");
-      return await tracer.trace(
-        `${this.context.info.workflowType}-${this.context.info.activityType}`,
-        {
-          resource: this.context.info.activityType,
-          type: "temporal-activity",
-        },
-        async (span) => {
-          span?.setTag("attempt", this.context.info.attempt);
-          span?.setTag(
-            "workflow_id",
-            this.context.info.workflowExecution.workflowId
-          );
-          span?.setTag(
-            "workflow_run_id",
-            this.context.info.workflowExecution.runId
-          );
+      return await queryTracker.run(queryTrackerStore, () =>
+        tracer.trace(
+          `${this.context.info.workflowType}-${this.context.info.activityType}`,
+          {
+            resource: this.context.info.activityType,
+            type: "temporal-activity",
+          },
+          async (span) => {
+            span?.setTag("attempt", this.context.info.attempt);
+            span?.setTag(
+              "workflow_id",
+              this.context.info.workflowExecution.workflowId
+            );
+            span?.setTag(
+              "workflow_run_id",
+              this.context.info.workflowExecution.runId
+            );
 
-          return next(input);
-        }
+            return next(input);
+          }
+        )
       );
     } catch (err: unknown) {
       error = err;
@@ -104,6 +108,7 @@ export class ActivityInboundLogInterceptor
             errorType,
             durationMs,
             attempt: this.context.info.attempt,
+            peakConcurrentQueries: queryTrackerStore.peak,
           },
           "Activity failed"
         );
@@ -111,7 +116,13 @@ export class ActivityInboundLogInterceptor
         tags.push(`error_type:${errorType}`);
         getStatsDClient().increment("activity_failed.count", 1, tags);
       } else {
-        this.logger.info({ durationMs: durationMs }, "Activity completed.");
+        this.logger.info(
+          {
+            durationMs,
+            peakConcurrentQueries: queryTrackerStore.peak,
+          },
+          "Activity completed."
+        );
         getStatsDClient().increment("activities_success.count", 1, tags);
       }
     }

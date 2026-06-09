@@ -14,6 +14,7 @@ export type FileAttachment = {
   title: string;
   contentType: AllSupportedFileContentType;
   isUploading: boolean;
+  size?: number;
   onRemove?: () => void;
   description?: string;
   sourceUrl?: string;
@@ -53,7 +54,9 @@ export interface FileAttachmentCitation extends BaseAttachmentCitation {
   contentType: SupportedContentFragmentType;
   description: string | null;
   fileId: string | null;
+  filePath?: string;
   isUploading?: boolean;
+  size?: number;
 }
 
 export interface NodeAttachmentCitation extends BaseAttachmentCitation {
@@ -67,6 +70,7 @@ export interface MCPAttachmentCitation extends BaseAttachmentCitation {
   type: "file";
   attachmentCitationType: "mcp";
   fileId: string | null;
+  filePath?: string;
   isUploading: false;
   description?: string;
   contentType: AllSupportedWithDustSpecificFileContentType;

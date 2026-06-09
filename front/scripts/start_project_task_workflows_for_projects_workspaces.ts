@@ -7,17 +7,13 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { launchOrSignalProjectTodoWorkflow } from "@app/temporal/project_task/client";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType } from "@app/types/user";
-
-const PROJECTS_FEATURE_FLAG =
-  "projects" as const satisfies WhitelistableFeature;
 
 async function listWorkspacesWithProjectsFeatureFlag(): Promise<
   LightWorkspaceType[]
 > {
   const flags = await FeatureFlagModel.findAll({
-    where: { name: PROJECTS_FEATURE_FLAG },
+    where: { name: "projects" },
     attributes: ["workspaceId"],
     // WORKSPACE_ISOLATION_BYPASS: list workspace IDs with the projects flag for this admin-only backfill script.
     // @ts-expect-error -- Script operates across all workspaces.
@@ -97,13 +93,13 @@ makeScript(
       const hasProjectsFlag = await FeatureFlagModel.findOne({
         where: {
           workspaceId: workspace.id,
-          name: PROJECTS_FEATURE_FLAG,
+          name: "projects",
         },
       });
 
       if (!hasProjectsFlag) {
         throw new Error(
-          `Workspace ${wId} does not have the workspace-level "${PROJECTS_FEATURE_FLAG}" feature flag.`
+          `Workspace ${wId} does not have the workspace-level "projects" feature flag.`
         );
       }
 

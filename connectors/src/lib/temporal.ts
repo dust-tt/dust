@@ -1,8 +1,13 @@
 import logger from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";
 import { Context } from "@temporalio/activity";
-import type { ConnectionOptions } from "@temporalio/client";
-import { Client, Connection, WorkflowNotFoundError } from "@temporalio/client";
+import {
+  Client,
+  Connection,
+  type ConnectionOptions,
+  defaultPayloadConverter,
+  WorkflowNotFoundError,
+} from "@temporalio/client";
 import { defineSearchAttributeKey } from "@temporalio/common";
 import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
@@ -76,6 +81,29 @@ async function getConnectionOptions(): Promise<
   };
 }
 
+// Programmatically retrieves the arguments that were passed to a Temporal workflow.
+async function getTemporalWorkflowArguments({
+  workflowId,
+}: {
+  workflowId: string;
+}): Promise<unknown[]> {
+  const client = await getTemporalClient();
+
+  // Fetch the first event.
+  const response = await client.workflowService.getWorkflowExecutionHistory({
+    namespace: process.env.TEMPORAL_NAMESPACE,
+    execution: { workflowId },
+    maximumPageSize: 1,
+  });
+  const startEvent = response.history?.events?.[0];
+
+  const payloads =
+    startEvent?.workflowExecutionStartedEventAttributes?.input?.payloads ?? [];
+
+  // This will always return an array, each entry matches a line of what's under Input in the UI under the event.
+  return payloads.map((p) => defaultPayloadConverter.fromPayload(p));
+}
+
 export async function getTemporalWorkerConnection(): Promise<{
   connection: NativeConnection;
   namespace: string | undefined;
@@ -110,6 +138,20 @@ export async function getConnectorId(
       connectorId =
         described.typedSearchAttributes?.get(connectorIdSearchAttribute) ??
         null;
+    }
+
+    // If we still don't have a connector ID, look it up in the arguments of the workflow.
+    if (connectorId === null) {
+      const args = await getTemporalWorkflowArguments({ workflowId });
+
+      if (
+        typeof args[0] === "object" &&
+        args[0] !== null &&
+        "connectorId" in args[0] &&
+        typeof args[0].connectorId === "number"
+      ) {
+        connectorId = args[0].connectorId;
+      }
     }
 
     if (connectorId !== null) {

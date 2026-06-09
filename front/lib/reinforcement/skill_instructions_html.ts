@@ -3,17 +3,21 @@ import {
   BLOCK_ID_UNIQUE_ID_NODE_TYPES,
 } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
-import { KNOWLEDGE_TAG_REGEX } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
-import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
+import { KNOWLEDGE_TAG_REGEX } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeConstants";
+import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/SkillNode";
+import { TOOL_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/ToolNode";
+import { buildSkillInstructionsExtensionsForServer } from "@app/lib/editor/build_skill_instructions_extensions_server";
 import { preprocessMarkdownForEditor } from "@app/lib/editor/skill_instructions_preprocessing";
 import { generateShortBlockId } from "@app/lib/generate_short_block_id";
+import { parseSkillReferenceTag } from "@app/lib/skills/format";
+import { parseToolTag } from "@app/lib/tools/format";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
 import type { JSONContent } from "@tiptap/core";
 import { MarkdownManager } from "@tiptap/markdown";
 import { renderToHTMLString } from "@tiptap/static-renderer/pm/html-string";
 import * as cheerio from "cheerio";
 
-const SKILL_EDITOR_EXTENSIONS = buildSkillInstructionsExtensions(true, []);
+const SKILL_EDITOR_EXTENSIONS = buildSkillInstructionsExtensionsForServer();
 const MARKDOWN_MANAGER = new MarkdownManager({
   extensions: SKILL_EDITOR_EXTENSIONS,
 });
@@ -82,26 +86,26 @@ function stripPresentationAttributes(html: string): string {
   // the round-trip mechanism for recovering the language on generateJSON
   $("[class]").not("code").removeAttr("class");
   $("[style]").removeAttr("style");
-  // Must maintain id on <knowledge> elements for knowledgeNode parsing
-  $("[id]").not("knowledge").removeAttr("id");
+  // Must maintain id on custom inline elements for their parseHTML rules.
+  $("[id]").not("knowledge, tool, skill, unavailable_skill").removeAttr("id");
   return $.html();
 }
 
 /**
  * TipTap's server-side parseHTMLToken has no DOM, so it converts block-level
- * HTML tokens (e.g. a standalone <knowledge .../> on its own line) to plain-
+ * HTML tokens (e.g. standalone <knowledge .../> or <tool .../> lines) to plain-
  * text paragraphs instead of calling generateJSON + parseHTML rules. Walk the
- * parsed JSON tree and restore any such nodes back to proper knowledgeNode
+ * parsed JSON tree and restore any such nodes back to proper inline-node
  * JSONContent before rendering to HTML.
  */
-function recoverKnowledgeNodes(node: JSONContent): JSONContent {
+function recoverCustomInlineNodes(node: JSONContent): JSONContent {
   if (node.type === "paragraph" && node.content?.length === 1) {
     const child = node.content[0];
     if (child.type === "text") {
       const text = (child.text ?? "").trim();
-      const match = KNOWLEDGE_TAG_REGEX.exec(text);
-      if (match) {
-        const attrs = match[1];
+      const knowledgeMatch = KNOWLEDGE_TAG_REGEX.exec(text);
+      if (knowledgeMatch) {
+        const attrs = knowledgeMatch[1];
         const id = /id="([^"]+)"/.exec(attrs)?.[1];
         const title = /title="([^"]+)"/.exec(attrs)?.[1];
         if (id && title) {
@@ -126,10 +130,45 @@ function recoverKnowledgeNodes(node: JSONContent): JSONContent {
           };
         }
       }
+
+      const tool = parseToolTag(text);
+      if (tool) {
+        return {
+          ...node,
+          content: [
+            {
+              type: TOOL_NODE_TYPE,
+              attrs: {
+                mcpServerViewId: tool.id,
+                toolIcon: tool.icon,
+                toolName: tool.name,
+              },
+            },
+          ],
+        };
+      }
+
+      const skill = parseSkillReferenceTag(text);
+      if (skill) {
+        return {
+          ...node,
+          content: [
+            {
+              type: SKILL_NODE_TYPE,
+              attrs: {
+                skillId: skill.id,
+                skillIcon: skill.icon,
+                skillName: skill.name,
+                skillUnavailable: skill.unavailable ?? false,
+              },
+            },
+          ],
+        };
+      }
     }
   }
   if (node.content) {
-    return { ...node, content: node.content.map(recoverKnowledgeNodes) };
+    return { ...node, content: node.content.map(recoverCustomInlineNodes) };
   }
   return node;
 }
@@ -151,7 +190,7 @@ export function convertMarkdownToBlockHtml(markdown: string): string {
     content: [
       {
         type: INSTRUCTIONS_ROOT_NODE_NAME,
-        content: rawContent.map(recoverKnowledgeNodes),
+        content: rawContent.map(recoverCustomInlineNodes),
       },
     ],
   };

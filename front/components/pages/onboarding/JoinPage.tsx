@@ -3,12 +3,12 @@ import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
 import { useJoinData } from "@app/lib/swr/workspaces";
 import Custom404 from "@app/pages/404";
 import {
+  AlertCircle,
   Button,
   DustLogoSquare,
-  ExclamationCircleIcon,
   Hoverable,
   Icon,
-  LoginIcon,
+  LogIn01,
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -55,7 +55,7 @@ export function JoinPage() {
           <div className="flex max-w-md flex-col gap-3 text-center">
             <div className="flex flex-col items-center gap-2">
               <Icon
-                visual={ExclamationCircleIcon}
+                visual={AlertCircle}
                 size="lg"
                 className="dark:text-warning-400-night text-warning-400"
               />
@@ -134,7 +134,7 @@ export function JoinPage() {
             variant="primary"
             size="sm"
             label={userExists ? "Sign in" : "Sign up"}
-            icon={LoginIcon}
+            icon={LogIn01}
             onClick={() => (window.location.href = signInUrl)}
           />
         </div>

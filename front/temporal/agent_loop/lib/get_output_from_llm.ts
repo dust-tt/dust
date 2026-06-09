@@ -255,6 +255,9 @@ export async function getOutputFromLLMStream(
     step,
     modelId: model.modelId,
   };
+  // Unique ID for this LLM call; changes on Temporal retries so the client
+  // can detect retry boundaries and reset its CoT accumulator.
+  const traceId = llm.getTraceId();
 
   if (start >= activityTimeoutDeadlineMs) {
     logger.error(
@@ -314,7 +317,7 @@ export async function getOutputFromLLMStream(
             event.content.delta
           )) {
             await updateResourceAndPublishEvent(auth, {
-              event: tokenEvent,
+              event: { ...tokenEvent, traceId },
               agentMessage,
               conversation,
               step,
@@ -331,6 +334,7 @@ export async function getOutputFromLLMStream(
               configurationId: agentConfiguration.sId,
               messageId: agentMessage.sId,
               text: event.content.delta,
+              traceId,
             },
             agentMessage,
             conversation,
@@ -398,6 +402,7 @@ export async function getOutputFromLLMStream(
               configurationId: agentConfiguration.sId,
               messageId: agentMessage.sId,
               text: "\n\n",
+              traceId,
             },
             agentMessage,
             conversation,

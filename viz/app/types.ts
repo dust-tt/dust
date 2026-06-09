@@ -15,10 +15,16 @@ interface DownloadFileRequestParams {
   filename?: string;
 }
 
-interface setErrorMessageParams {
+interface SetErrorMessageParams {
   errorMessage: string;
   fileId: string;
   isInteractiveContent: boolean;
+}
+
+interface EditTextParams {
+  oldText: string;
+  newText: string;
+  targetFileId?: string;
 }
 
 // Define a mapped type to extend the base with specific parameters.
@@ -26,9 +32,10 @@ export type VisualizationRPCRequestMap = {
   getFile: GetFileParams;
   getCodeToExecute: null;
   setContentHeight: SetContentHeightParams;
-  setErrorMessage: setErrorMessageParams;
+  setErrorMessage: SetErrorMessageParams;
   downloadFileRequest: DownloadFileRequestParams;
   displayCode: null;
+  editText: EditTextParams;
 };
 
 // Derive the command type from the keys of the request map
@@ -43,6 +50,7 @@ export interface CommandResultMap {
   setContentHeight: void;
   setErrorMessage: void;
   displayCode: void;
+  editText: { success: boolean; error?: string };
 }
 
 export function isDevelopment() {

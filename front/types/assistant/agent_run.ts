@@ -9,7 +9,6 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { cacheWithRedis } from "@app/lib/utils/cache";
-import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
   GlobalAgentContext,
@@ -150,33 +149,9 @@ export async function getAgentLoopData(
     AgentLoopDataError | Error
   >
 > {
-  let authResult = await Authenticator.fromJSON(authType);
+  const auth = await Authenticator.fromJSON(authType);
 
-  // If subscription changed while the message was running, get a fresh auth with the current
-  // subscription and continue gracefully.
-  if (authResult.isErr() && authResult.error.code === "subscription_mismatch") {
-    logger.info(
-      {
-        workspaceId: authType.workspaceId,
-        originalSubscriptionId: authType.subscriptionId,
-      },
-      "Subscription changed while message was running, using fresh auth"
-    );
-
-    // Retry without the subscriptionId constraint to get the current subscription.
-    authResult = await Authenticator.fromJSON({
-      ...authType,
-      subscriptionId: null,
-    });
-  }
-
-  if (authResult.isErr()) {
-    return new Err(
-      new Error(`Failed to deserialize authenticator: ${authResult.error.code}`)
-    );
-  }
-
-  return getAgentLoopDataWithAuth(authResult.value, agentLoopArgs);
+  return getAgentLoopDataWithAuth(auth, agentLoopArgs);
 }
 
 /**

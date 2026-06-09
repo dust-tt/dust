@@ -7,12 +7,12 @@ import type { SkillWithRelationsType } from "@app/types/assistant/skill_configur
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  InformationCircleIcon,
+  InfoCircle,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-  UserGroupIcon,
+  Users01,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useMemo, useState } from "react";
@@ -53,13 +53,13 @@ export function SkillInfoPage({
             <TabsTrigger
               value="info"
               label="Info"
-              icon={InformationCircleIcon}
+              icon={InfoCircle}
               onClick={() => setSelectedTab("info")}
             />
             <TabsTrigger
               value="editors"
               label="Editors"
-              icon={UserGroupIcon}
+              icon={Users01}
               onClick={() => setSelectedTab("editors")}
             />
           </TabsList>

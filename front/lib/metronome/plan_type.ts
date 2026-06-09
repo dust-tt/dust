@@ -1,5 +1,4 @@
-import { getMetronomeClient } from "@app/lib/metronome/client";
-import { getProductProgrammaticUsageId } from "@app/lib/metronome/constants";
+import { getMetronomeContractById } from "@app/lib/metronome/client";
 import { SubscriptionModel } from "@app/lib/models/plan";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
@@ -39,11 +38,13 @@ async function fetchActiveContract(
       return null;
     }
 
-    const client = getMetronomeClient();
-    const response = await client.v2.contracts.retrieve({
-      customer_id: workspace.metronomeCustomerId,
-      contract_id: subscription.metronomeContractId,
+    const result = await getMetronomeContractById({
+      metronomeCustomerId: workspace.metronomeCustomerId,
+      metronomeContractId: subscription.metronomeContractId,
     });
+    if (result.isErr()) {
+      throw result.error;
+    }
 
     logger.info(
       {
@@ -54,10 +55,7 @@ async function fetchActiveContract(
       "[Metronome Contract] Contract fetched"
     );
 
-    if (!response.data) {
-      return null;
-    }
-    const { commits: _commits, credits: _credits, ...contract } = response.data;
+    const { commits: _commits, credits: _credits, ...contract } = result.value;
     return contract;
   } catch (err) {
     logger.warn(
@@ -82,55 +80,6 @@ export async function getActiveContract(
   workspaceId: string
 ): Promise<CachedContract | null> {
   return await getCachedActiveContract(workspaceId);
-}
-
-/**
- * Returns true if the contract's rate card prices the `Programmatic Usage`
- * product. Legacy plans bill programmatic usage in programmatic-USD credits;
- * new plans price all usage in AWU and never reference this product.
- *
- * Cached by rate card ID — rate cards rarely change.
- */
-async function fetchHasProgrammaticUsageRate(
-  rateCardId: string
-): Promise<boolean> {
-  try {
-    const client = getMetronomeClient();
-    const response = await client.v1.contracts.rateCards.retrieveRateSchedule({
-      rate_card_id: rateCardId,
-      starting_at: new Date().toISOString(),
-      selectors: [{ product_id: getProductProgrammaticUsageId() }],
-      limit: 1,
-    });
-    return (response.data ?? []).some((rate) => rate.entitled);
-  } catch (err) {
-    logger.warn(
-      { rateCardId, err },
-      "[Metronome Contract] Failed to fetch rate schedule — treating as legacy (fail-open)"
-    );
-    return true;
-  }
-}
-
-const getCachedHasProgrammaticUsageRate = cacheWithRedis(
-  fetchHasProgrammaticUsageRate,
-  (rateCardId) => `metronome:has-programmatic-usage-rate:${rateCardId}`,
-  { ttlMs: 6 * 60 * 60 * 1000 }
-);
-
-/**
- * Returns true if the workspace is on a legacy Metronome plan.
- *
- * Legacy plans price the `Programmatic Usage` product (programmatic-USD credit
- * type); new plans bill all usage in AWU. Fails open (returns true) when the
- * plan cannot be determined.
- */
-export async function isLegacyPlan(workspaceId: string): Promise<boolean> {
-  const contract = await getActiveContract(workspaceId);
-  if (!contract?.rate_card_id) {
-    return true;
-  }
-  return await getCachedHasProgrammaticUsageRate(contract.rate_card_id);
 }
 
 /**

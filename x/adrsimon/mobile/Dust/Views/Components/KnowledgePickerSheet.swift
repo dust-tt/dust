@@ -16,7 +16,7 @@ struct KnowledgePickerSheet: View {
             Group {
                 if searchVM.searchText.count < 2 {
                     promptView
-                } else if searchVM.isLoading && searchVM.results.isEmpty {
+                } else if searchVM.isLoading, searchVM.results.isEmpty {
                     loadingView
                 } else if searchVM.results.isEmpty {
                     noResultsView
@@ -174,7 +174,7 @@ struct KnowledgePickerSheet: View {
 private let logger = Logger(subsystem: AppConfig.bundleId, category: "KnowledgeSearch")
 
 @MainActor
-private final class KnowledgeSearchViewModel: ObservableObject {
+final private class KnowledgeSearchViewModel: ObservableObject {
     @Published var searchText = ""
     @Published var results: [SearchNode] = []
     @Published var isLoading = false

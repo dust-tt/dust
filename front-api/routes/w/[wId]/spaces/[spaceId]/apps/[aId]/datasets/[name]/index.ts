@@ -1,43 +1,43 @@
-import { apiError } from "@front-api/middleware/utils";
-import type { Context } from "hono";
-import { Hono } from "hono";
-
 import config from "@app/lib/api/config";
+import type { GetDatasetResponseBody } from "@app/lib/api/datasets";
 import { getDatasetHash } from "@app/lib/api/datasets";
 import { checkDatasetData } from "@app/lib/datasets";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DatasetModel } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
-
+import type { APIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
-
-import { spaceResource } from "@front-api/middleware/space_resource";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withSpace } from "@front-api/middlewares/with_space";
+import type { Context, TypedResponse } from "hono";
 
 import { PostDatasetRequestBodySchema } from "../schemas";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/datasets/:name.
-const app = new Hono();
+const app = workspaceApp();
 
 // Shared prelude for every method: resolves the workspace, app, and dataset
 // from the path params and enforces read access on the app. Returns either
 // the loaded resources (with the validated `aId` and `name` params) or the
 // `Response` to short-circuit the handler with.
-async function loadAppAndDataset(c: Context): Promise<
+async function loadAppAndDataset(ctx: Context): Promise<
   | {
       appResource: AppResource;
       dataset: DatasetModel;
       aId: string;
       name: string;
     }
-  | Response
+  | (Response & TypedResponse<APIErrorResponse>)
 > {
-  const auth = c.get("auth");
-  const space = c.get("space");
-  const { aId, name } = c.req.param();
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
+  const { aId, name } = ctx.req.param();
   if (!isString(aId) || !isString(name)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -47,7 +47,7 @@ async function loadAppAndDataset(c: Context): Promise<
   }
   const owner = auth.workspace();
   if (!owner) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "workspace_not_found",
@@ -58,14 +58,14 @@ async function loadAppAndDataset(c: Context): Promise<
 
   const appResource = await AppResource.fetchById(auth, aId);
   if (!appResource || appResource.space.sId !== space.sId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: { type: "app_not_found", message: "The app was not found." },
     });
   }
 
   if (!appResource.canRead(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "app_auth_error",
@@ -82,7 +82,7 @@ async function loadAppAndDataset(c: Context): Promise<
     },
   });
   if (!dataset) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "dataset_not_found",
@@ -95,42 +95,47 @@ async function loadAppAndDataset(c: Context): Promise<
   return { appResource, dataset, aId, name };
 }
 
-app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
-  const loaded = await loadAppAndDataset(c);
-  if (loaded instanceof Response) {
-    return loaded;
-  }
-  const { appResource, dataset } = loaded;
-  const auth = c.get("auth");
+/** @ignoreswagger */
+app.get(
+  "/",
+  withSpace({ requireCanRead: true }),
+  async (ctx): HandlerResult<GetDatasetResponseBody> => {
+    const loaded = await loadAppAndDataset(ctx);
+    if (loaded instanceof Response) {
+      return loaded;
+    }
+    const { appResource, dataset } = loaded;
+    const auth = ctx.get("auth");
 
-  const showData = c.req.query("data") === "true";
-  const datasetHash = showData
-    ? await getDatasetHash(auth, appResource, dataset.name, "latest")
-    : null;
-  return c.json({
-    dataset: {
-      name: dataset.name,
-      description: dataset.description,
-      schema: showData ? dataset.schema : null,
-      data: showData && datasetHash ? datasetHash.data : null,
-    },
-  });
-});
+    const showData = ctx.req.query("data") === "true";
+    const datasetHash = showData
+      ? await getDatasetHash(auth, appResource, dataset.name, "latest")
+      : null;
+    return ctx.json({
+      dataset: {
+        name: dataset.name,
+        description: dataset.description,
+        schema: showData ? dataset.schema : null,
+        data: showData && datasetHash ? datasetHash.data : null,
+      },
+    });
+  }
+);
 
 app.post(
   "/",
-  spaceResource({ requireCanRead: true }),
+  withSpace({ requireCanRead: true }),
   validate("json", PostDatasetRequestBodySchema),
-  async (c) => {
-    const loaded = await loadAppAndDataset(c);
+  async (ctx): HandlerResult<GetDatasetResponseBody> => {
+    const loaded = await loadAppAndDataset(ctx);
     if (loaded instanceof Response) {
       return loaded;
     }
     const { appResource, dataset, name } = loaded;
-    const auth = c.get("auth");
+    const auth = ctx.get("auth");
 
     if (!appResource.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
@@ -140,14 +145,14 @@ app.post(
       });
     }
 
-    const body = c.req.valid("json");
+    const body = ctx.req.valid("json");
 
     // Check name validity.
     if (
       !body.dataset.name.match(/^[a-zA-Z0-9_]+$/) ||
       body.dataset.name.length === 0
     ) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -158,7 +163,7 @@ app.post(
       });
     }
     if (name !== body.dataset.name) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -175,7 +180,7 @@ app.post(
         schema: body.schema,
       });
     } catch {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -201,7 +206,7 @@ app.post(
       data,
     });
     if (d.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -220,7 +225,7 @@ app.post(
       schema: body.schema,
     });
 
-    return c.json({
+    return ctx.json({
       dataset: {
         name: body.dataset.name,
         description,
@@ -230,40 +235,45 @@ app.post(
   }
 );
 
-app.delete("/", spaceResource({ requireCanRead: true }), async (c) => {
-  const loaded = await loadAppAndDataset(c);
-  if (loaded instanceof Response) {
-    return loaded;
-  }
-  const { appResource, dataset } = loaded;
-  const auth = c.get("auth");
-  const owner = auth.getNonNullableWorkspace();
+app.delete(
+  "/",
+  withSpace({ requireCanRead: true }),
+  async (ctx): HandlerResult<GetDatasetResponseBody> => {
+    const loaded = await loadAppAndDataset(ctx);
+    if (loaded instanceof Response) {
+      return loaded;
+    }
+    const { appResource, dataset } = loaded;
+    const auth = ctx.get("auth");
+    const owner = auth.getNonNullableWorkspace();
 
-  if (!appResource.canWrite(auth)) {
-    return apiError(c, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "Deleting a dataset requires write access to the app's space.",
+    if (!appResource.canWrite(auth)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message:
+            "Deleting a dataset requires write access to the app's space.",
+        },
+      });
+    }
+
+    await DatasetModel.destroy({
+      where: {
+        workspaceId: owner.id,
+        appId: appResource.id,
+        name: dataset.name,
+      },
+    });
+
+    return ctx.json({
+      dataset: {
+        name: dataset.name,
+        description: dataset.description,
+        data: null,
       },
     });
   }
-
-  await DatasetModel.destroy({
-    where: {
-      workspaceId: owner.id,
-      appId: appResource.id,
-      name: dataset.name,
-    },
-  });
-
-  return c.json({
-    dataset: {
-      name: dataset.name,
-      description: dataset.description,
-      data: null,
-    },
-  });
-});
+);
 
 export default app;

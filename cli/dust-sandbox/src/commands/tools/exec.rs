@@ -1,12 +1,15 @@
-use anyhow::bail;
+use anyhow::{bail, Context};
 
-use crate::api::{ContentBlock, DustApiClient};
+use crate::api::{parse_content_block, ContentBlock, DustApiClient};
+
+const MAX_FILE_ARG_SIZE_BYTES: u64 = 100 * 1024 * 1024;
 
 pub async fn cmd_exec(
     client: &DustApiClient,
     server_name: &str,
     tool_name: &str,
     raw_args: &[String],
+    json: bool,
 ) -> anyhow::Result<()> {
     let views = client.list_tools(Some(server_name), false).await?;
 
@@ -28,38 +31,43 @@ pub async fn cmd_exec(
 
     let arguments = parse_args(raw_args)?;
 
-    let resp = client
-        .call_tool(&view.space_id, &view.s_id, tool_name, arguments)
-        .await?;
+    let resp = client.call_tool(&view.s_id, tool_name, arguments).await?;
 
-    for block in &resp.result.content {
-        match block {
-            ContentBlock::Text { text } => {
-                println!("{text}");
-            }
-            ContentBlock::Image { mime_type, .. } => {
-                eprintln!("[image: {mime_type}]");
-            }
-            ContentBlock::Audio { mime_type, .. } => {
-                eprintln!("[audio: {mime_type}]");
-            }
-            ContentBlock::Resource { resource } => {
-                if let Some(text) = &resource.text {
+    if json {
+        println!("{}", serde_json::to_string_pretty(&resp.result)?);
+    } else {
+        // All content blocks (text and sentinel markers) go to stdout so a
+        // caller capturing stdout sees the full tool output. stderr is
+        // reserved for ambient diagnostics.
+        for value in &resp.result.content {
+            match parse_content_block(value) {
+                ContentBlock::Text { text } => {
                     println!("{text}");
-                } else if resource.blob.is_some() {
-                    eprintln!("[binary resource: {}]", resource.uri);
-                } else {
-                    eprintln!("[resource: {}]", resource.uri);
                 }
-            }
-            ContentBlock::ResourceLink { uri, name } => {
-                if let Some(name) = name {
-                    eprintln!("[resource link: {name} — {uri}]");
-                } else {
-                    eprintln!("[resource link: {uri}]");
+                ContentBlock::Image { mime_type, .. } => {
+                    println!("[image: {mime_type}]");
                 }
+                ContentBlock::Audio { mime_type, .. } => {
+                    println!("[audio: {mime_type}]");
+                }
+                ContentBlock::Resource { resource } => {
+                    if let Some(text) = &resource.text {
+                        println!("{text}");
+                    } else if resource.blob.is_some() {
+                        println!("[binary resource: {}]", resource.uri);
+                    } else {
+                        println!("[resource: {}]", resource.uri);
+                    }
+                }
+                ContentBlock::ResourceLink { uri, name } => {
+                    if let Some(name) = name {
+                        println!("[resource link: {name} - {uri}]");
+                    } else {
+                        println!("[resource link: {uri}]");
+                    }
+                }
+                ContentBlock::Unknown => {}
             }
-            ContentBlock::Unknown => {}
         }
     }
 
@@ -72,6 +80,10 @@ pub async fn cmd_exec(
 
 /// Parse `--key value` pairs into a JSON object.
 /// Auto-detects numbers, booleans, JSON objects/arrays, and falls back to string.
+///
+/// A value prefixed with `__file__:` reads the file at that path (UTF-8, capped
+/// at 100 MB), letting agents pass values larger than the OS argv limit
+/// (ARG_MAX). JSON object/array contents are parsed; other content is a string.
 fn parse_args(raw: &[String]) -> anyhow::Result<Option<serde_json::Value>> {
     if raw.is_empty() {
         return Ok(Some(serde_json::Value::Object(serde_json::Map::new())));
@@ -104,11 +116,43 @@ fn parse_args(raw: &[String]) -> anyhow::Result<Option<serde_json::Value>> {
             continue;
         }
 
-        map.insert(key, coerce_value(val));
+        map.insert(key, coerce_value_or_read_file(val)?);
         i += 1;
     }
 
     Ok(Some(serde_json::Value::Object(map)))
+}
+
+fn coerce_value_or_read_file(s: &str) -> anyhow::Result<serde_json::Value> {
+    if let Some(path) = s.strip_prefix("__file__:") {
+        let contents = read_file_arg(path)?;
+        // JSON object/array contents are parsed (like inline values); anything
+        // else is a string. Malformed JSON-shaped content errors rather than
+        // silently degrading, since the file isn't visible on the command line.
+        let trimmed = contents.trim();
+        if looks_like_json_object_or_array(trimmed) {
+            return serde_json::from_str::<serde_json::Value>(trimmed)
+                .with_context(|| format!("__file__:{path} looks like JSON but failed to parse"));
+        }
+        return Ok(serde_json::Value::String(contents));
+    }
+    Ok(coerce_value(s))
+}
+
+fn read_file_arg(path: &str) -> anyhow::Result<String> {
+    if path.is_empty() {
+        bail!("__file__: prefix requires a path");
+    }
+    let metadata =
+        std::fs::metadata(path).with_context(|| format!("failed to stat __file__:{path}"))?;
+    if metadata.len() > MAX_FILE_ARG_SIZE_BYTES {
+        bail!(
+            "__file__:{path} is {} bytes; exceeds the {MAX_FILE_ARG_SIZE_BYTES}-byte limit",
+            metadata.len()
+        );
+    }
+    std::fs::read_to_string(path)
+        .with_context(|| format!("failed to read __file__:{path} (must be UTF-8)"))
 }
 
 fn coerce_value(s: &str) -> serde_json::Value {
@@ -128,14 +172,22 @@ fn coerce_value(s: &str) -> serde_json::Value {
             return serde_json::Value::Number(num);
         }
     }
-    // JSON object or array
-    if (s.starts_with('{') && s.ends_with('}')) || (s.starts_with('[') && s.ends_with(']')) {
-        if let Ok(v) = serde_json::from_str::<serde_json::Value>(s) {
+    // JSON object or array; shaped-but-invalid falls back to a string.
+    let trimmed = s.trim();
+    if looks_like_json_object_or_array(trimmed) {
+        if let Ok(v) = serde_json::from_str::<serde_json::Value>(trimmed) {
             return v;
         }
     }
     // Fallback: string
     serde_json::Value::String(s.to_string())
+}
+
+/// Shape check only (delimited by `{}`/`[]`); the content may still be invalid
+/// JSON. Expects an already-trimmed string.
+fn looks_like_json_object_or_array(trimmed: &str) -> bool {
+    (trimmed.starts_with('{') && trimmed.ends_with('}'))
+        || (trimmed.starts_with('[') && trimmed.ends_with(']'))
 }
 
 #[cfg(test)]
@@ -202,13 +254,23 @@ mod tests {
     }
 
     #[test]
+    fn parse_inline_malformed_json_falls_back_to_string() {
+        let args = vec!["--filter".to_string(), "[not valid json]".to_string()];
+        let result = parse_args(&args)
+            .expect("should parse")
+            .expect("should have value");
+        assert_eq!(result["filter"], "[not valid json]");
+        assert!(result["filter"].is_string());
+    }
+
+    #[test]
     fn parse_float_args() {
-        let args = vec!["--ratio".to_string(), "3.14".to_string()];
+        let args = vec!["--ratio".to_string(), "3.125".to_string()];
         let result = parse_args(&args)
             .expect("should parse")
             .expect("should have value");
         let ratio = result["ratio"].as_f64().expect("should be f64");
-        assert!((ratio - 3.14).abs() < f64::EPSILON);
+        assert!((ratio - 3.125).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -231,5 +293,131 @@ mod tests {
     fn parse_missing_dashes_errors() {
         let args = vec!["name".to_string(), "hello".to_string()];
         assert!(parse_args(&args).is_err());
+    }
+
+    fn write_tempfile(contents: &[u8]) -> tempfile::NamedTempFile {
+        use std::io::Write;
+        let mut file = tempfile::NamedTempFile::new().expect("create tempfile");
+        file.write_all(contents).expect("write tempfile");
+        file
+    }
+
+    #[test]
+    fn parse_file_prefix_reads_contents() {
+        let file = write_tempfile(b"hello world");
+        let args = vec![
+            "--query".to_string(),
+            format!("__file__:{}", file.path().to_string_lossy()),
+        ];
+        let result = parse_args(&args)
+            .expect("should parse")
+            .expect("should have value");
+        assert_eq!(result["query"], "hello world");
+    }
+
+    #[test]
+    fn parse_file_prefix_skips_coercion() {
+        let file = write_tempfile(b"42");
+        let args = vec![
+            "--count".to_string(),
+            format!("__file__:{}", file.path().to_string_lossy()),
+        ];
+        let result = parse_args(&args)
+            .expect("should parse")
+            .expect("should have value");
+        assert_eq!(result["count"], "42");
+        assert!(result["count"].is_string());
+    }
+
+    #[test]
+    fn parse_file_prefix_parses_json_array() {
+        let file = write_tempfile(br#"[{"path":"README.md","content":"hello"}]"#);
+        let args = vec![
+            "--files".to_string(),
+            format!("__file__:{}", file.path().to_string_lossy()),
+        ];
+        let result = parse_args(&args)
+            .expect("should parse")
+            .expect("should have value");
+        assert!(result["files"].is_array());
+        assert_eq!(result["files"][0]["path"], "README.md");
+        assert_eq!(result["files"][0]["content"], "hello");
+    }
+
+    #[test]
+    fn parse_file_prefix_parses_json_object() {
+        let file = write_tempfile(br#"{"status":"active"}"#);
+        let args = vec![
+            "--filter".to_string(),
+            format!("__file__:{}", file.path().to_string_lossy()),
+        ];
+        let result = parse_args(&args)
+            .expect("should parse")
+            .expect("should have value");
+        assert_eq!(result["filter"]["status"], "active");
+    }
+
+    #[test]
+    fn parse_file_prefix_parses_json_array_with_trailing_newline() {
+        let file = write_tempfile(b"[1, 2, 3]\n");
+        let args = vec![
+            "--values".to_string(),
+            format!("__file__:{}", file.path().to_string_lossy()),
+        ];
+        let result = parse_args(&args)
+            .expect("should parse")
+            .expect("should have value");
+        assert!(result["values"].is_array());
+        assert_eq!(result["values"][2], 3);
+    }
+
+    #[test]
+    fn parse_file_prefix_malformed_json_array_errors() {
+        let file = write_tempfile(b"[not valid json]");
+        let args = vec![
+            "--files".to_string(),
+            format!("__file__:{}", file.path().to_string_lossy()),
+        ];
+        assert!(parse_args(&args).is_err());
+    }
+
+    #[test]
+    fn parse_file_prefix_non_json_shaped_content_is_string() {
+        let file = write_tempfile(b"just some free-form text");
+        let args = vec![
+            "--query".to_string(),
+            format!("__file__:{}", file.path().to_string_lossy()),
+        ];
+        let result = parse_args(&args)
+            .expect("should parse")
+            .expect("should have value");
+        assert_eq!(result["query"], "just some free-form text");
+        assert!(result["query"].is_string());
+    }
+
+    #[test]
+    fn parse_file_prefix_empty_path_errors() {
+        let args = vec!["--query".to_string(), "__file__:".to_string()];
+        assert!(parse_args(&args).is_err());
+    }
+
+    #[test]
+    fn parse_file_prefix_nonexistent_path_errors() {
+        let args = vec![
+            "--query".to_string(),
+            "__file__:/nonexistent/dsbx-test-12345".to_string(),
+        ];
+        assert!(parse_args(&args).is_err());
+    }
+
+    #[test]
+    fn parse_value_without_file_prefix_treated_as_literal_string() {
+        // A value that doesn't start with `__file__:` is coerced normally;
+        // no filesystem touch.
+        let args = vec!["--query".to_string(), "hello world".to_string()];
+        let result = parse_args(&args)
+            .expect("should parse")
+            .expect("should have value");
+        assert_eq!(result["query"], "hello world");
     }
 }

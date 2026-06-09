@@ -10,6 +10,10 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontWeight: {
+        medium: "450",
+        semibold: "550",
+      },
       containers: {
         xxxs: "16rem",
       },
@@ -72,6 +76,44 @@ module.exports = {
           from: { opacity: "0", transform: "translateY(10px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        "input-bar-compact-in": {
+          "0%": {
+            opacity: "0.45",
+            transform: "scale(0.82) translateY(18px)",
+          },
+          "55%": {
+            opacity: "1",
+            transform: "scale(1.05) translateY(-3px)",
+          },
+          "100%": {
+            opacity: "1",
+            transform: "scale(1) translateY(0)",
+          },
+        },
+        "input-bar-compact-content-in": {
+          "0%": {
+            opacity: "0",
+            transform: "translateX(-8px)",
+          },
+          "100%": {
+            opacity: "1",
+            transform: "translateX(0)",
+          },
+        },
+        "input-bar-compact-nav-in": {
+          "0%": {
+            opacity: "0",
+            transform: "scale(0.86) translateX(14px)",
+          },
+          "60%": {
+            opacity: "1",
+            transform: "scale(1.04) translateX(-2px)",
+          },
+          "100%": {
+            opacity: "1",
+            transform: "scale(1) translateX(0)",
+          },
+        },
         "saved-pulse": {
           "0%, 100%": { color: "inherit" },
           "15%": { color: "#86efac" },
@@ -87,6 +129,12 @@ module.exports = {
         fadeout: "fadeout 500ms ease-out",
         marquee: "marquee 25s linear infinite",
         "fade-in-up": "fade-in-up 0.5s ease-in-out",
+        "input-bar-compact-in":
+          "input-bar-compact-in 480ms cubic-bezier(0.34, 1.56, 0.64, 1) both",
+        "input-bar-compact-content-in":
+          "input-bar-compact-content-in 320ms ease-out 100ms both",
+        "input-bar-compact-nav-in":
+          "input-bar-compact-nav-in 420ms cubic-bezier(0.34, 1.56, 0.64, 1) 160ms both",
         "saved-pulse": "saved-pulse 2s ease-out",
       },
     },

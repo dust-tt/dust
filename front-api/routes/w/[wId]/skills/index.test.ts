@@ -1,5 +1,3 @@
-import { describe, expect, it, vi } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { SkillMCPServerConfigurationModel } from "@app/lib/models/skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -17,13 +15,12 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type {
-  SkillType,
   SkillWithoutInstructionsAndToolsType,
-  SkillWithRelationsType,
+  SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { MembershipRoleType } from "@app/types/memberships";
-
 import { honoApp } from "@front-api/app";
+import { describe, expect, it, vi } from "vitest";
 
 async function setupTest(role: MembershipRoleType = "builder") {
   return createPrivateApiMockRequest({ role });
@@ -71,7 +68,9 @@ describe("GET /api/w/:wId/skills", () => {
     const data = await response.json();
     expect(data).toHaveProperty("skills");
 
-    const skillNames = data.skills.map((s: SkillType) => s.name);
+    const skillNames = data.skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
     expect(skillNames).toContain("Test Skill 1");
     expect(skillNames).toContain("Test Skill 2");
   });
@@ -102,7 +101,9 @@ describe("GET /api/w/:wId/skills", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
 
-    const skillNames = data.skills.map((s: SkillType) => s.name);
+    const skillNames = data.skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
     expect(skillNames).toContain("Active Skill");
     expect(skillNames).not.toContain("Archived Skill");
   });
@@ -122,7 +123,7 @@ describe("GET /api/w/:wId/skills", () => {
     const response1 = await getSkills(workspace);
     expect(response1.status).toBe(200);
     const allSkillIds = (await response1.json()).skills.map(
-      (s: SkillType) => s.sId
+      (s: SkillWithoutInstructionsAndToolsType) => s.sId
     );
     expect(allSkillIds).toContain("frames");
     expect(allSkillIds).toContain(customSkill.sId);
@@ -130,7 +131,7 @@ describe("GET /api/w/:wId/skills", () => {
     const response2 = await getSkills(workspace, { onlyCustom: "true" });
     expect(response2.status).toBe(200);
     const customOnlySIds = (await response2.json()).skills.map(
-      (s: SkillType) => s.sId
+      (s: SkillWithoutInstructionsAndToolsType) => s.sId
     );
     expect(customOnlySIds).not.toContain("frames");
     expect(customOnlySIds).toContain(customSkill.sId);
@@ -159,7 +160,9 @@ describe("GET /api/w/:wId/skills", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
 
-    const skillNames = data.skills.map((s: SkillType) => s.name);
+    const skillNames = data.skills.map(
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
+    );
     expect(skillNames).toContain("Suggested Skill");
     expect(skillNames).not.toContain("Active Skill");
     expect(skillNames).not.toContain("Archived Skill");
@@ -180,7 +183,7 @@ describe("GET /api/w/:wId/skills", () => {
 
       expect(response.status).toBe(200);
       const skillNames = (await response.json()).skills.map(
-        (s: SkillType) => s.name
+        (s: SkillWithoutInstructionsAndToolsType) => s.name
       );
       expect(skillNames).toContain(`Skill for ${role}`);
     }
@@ -202,7 +205,7 @@ describe("GET /api/w/:wId/skills", () => {
 
     expect(response.status).toBe(200);
     const skillNames = (await response.json()).skills.map(
-      (s: SkillType) => s.name
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
     );
     expect(skillNames).toContain("Accessible Skill");
     expect(skillNames).not.toContain("Restricted Skill");
@@ -225,12 +228,12 @@ describe("GET /api/w/:wId/skills", () => {
 
     expect(response.status).toBe(200);
     const skillNames = (await response.json()).skills.map(
-      (s: SkillType) => s.name
+      (s: SkillWithoutInstructionsAndToolsType) => s.name
     );
     expect(skillNames).toContain("Skill In Restricted Space");
   });
 
-  it("should return skill summaries for viewType=summary", async () => {
+  it("should not return instructions or tools in skill list", async () => {
     const { workspace, auth, user } = await setupTest();
 
     const skill = await SkillFactory.create(auth, {
@@ -238,7 +241,7 @@ describe("GET /api/w/:wId/skills", () => {
       userFacingDescription: "Shown in the capabilities picker",
     });
 
-    const response = await getSkills(workspace, { viewType: "summary" });
+    const response = await getSkills(workspace);
 
     expect(response.status).toBe(200);
 
@@ -271,7 +274,7 @@ describe("GET /api/w/:wId/skills", () => {
     expect(skillWithoutInstructionsAndTools).not.toHaveProperty("tools");
   });
 
-  it("should not fetch dynamic global instructions for viewType=summary", async () => {
+  it("should not fetch dynamic global instructions", async () => {
     const { workspace } = await setupTest();
 
     const fetchInstructionsSpy = vi.spyOn(
@@ -281,7 +284,6 @@ describe("GET /api/w/:wId/skills", () => {
     try {
       const response = await getSkills(workspace, {
         globalSpaceOnly: "true",
-        viewType: "summary",
       });
 
       expect(response.status).toBe(200);
@@ -328,7 +330,8 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
       workspaceId: workspace.id,
     });
     const skillResult = (await response.json()).skills.find(
-      (s: SkillWithRelationsType) => s.sId === skillId
+      (s: SkillWithoutInstructionsAndToolsWithRelationsType) =>
+        s.sId === skillId
     );
 
     expect(skillResult).toMatchObject({
@@ -363,7 +366,8 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
     expect(response.status).toBe(200);
 
     const skillResult = (await response.json()).skills.find(
-      (s: SkillWithRelationsType) => s.sId === "frames"
+      (s: SkillWithoutInstructionsAndToolsWithRelationsType) =>
+        s.sId === "frames"
     );
 
     expect(skillResult).toMatchObject({
@@ -397,12 +401,99 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
       workspaceId: workspace.id,
     });
     const skillResult = (await response.json()).skills.find(
-      (s: SkillWithRelationsType) => s.sId === skillId
+      (s: SkillWithoutInstructionsAndToolsWithRelationsType) =>
+        s.sId === skillId
     );
 
     expect(skillResult).toMatchObject({
       relations: {
-        usage: { count: 0, agents: [] },
+        usage: { count: 0, agents: [], skills: [] },
+      },
+    });
+  });
+
+  it("should return child skills", async () => {
+    const { workspace, user } = await setupTest();
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const { parentSkill, childSkill } =
+      await SkillFactory.createWithNestedSkill(auth, {
+        childOverrides: {
+          name: "Child Skill",
+        },
+        parentOverrides: {
+          name: "Parent Skill",
+        },
+      });
+
+    const response = await getSkills(workspace, { withRelations: "true" });
+
+    expect(response.status).toBe(200);
+
+    const skillResult = (await response.json()).skills.find(
+      (s: SkillWithoutInstructionsAndToolsWithRelationsType) =>
+        s.sId === parentSkill.sId
+    );
+
+    expect(skillResult).toMatchObject({
+      relations: {
+        childSkills: [
+          {
+            sId: childSkill.sId,
+            name: "Child Skill",
+          },
+        ],
+      },
+    });
+    expect(skillResult.relations.childSkills[0]).not.toHaveProperty(
+      "instructions"
+    );
+  });
+
+  it("should return skills that reference a skill", async () => {
+    const { workspace, user } = await setupTest();
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const { childSkill, parentSkill } =
+      await SkillFactory.createWithNestedSkill(auth, {
+        childOverrides: {
+          name: "Referenced Skill",
+        },
+        parentOverrides: {
+          name: "Parent Skill",
+        },
+      });
+
+    const response = await getSkills(workspace, { withRelations: "true" });
+
+    expect(response.status).toBe(200);
+
+    const skillResult = (await response.json()).skills.find(
+      (s: SkillWithoutInstructionsAndToolsWithRelationsType) =>
+        s.sId === childSkill.sId
+    );
+
+    expect(skillResult).toMatchObject({
+      relations: {
+        usage: {
+          count: 1,
+          agents: [],
+          skills: [
+            {
+              sId: parentSkill.sId,
+              name: "Parent Skill",
+              icon: parentSkill.icon,
+            },
+          ],
+        },
       },
     });
   });
@@ -428,7 +519,7 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
       workspaceId: workspace.id,
     });
     const skillResult = (await response.json()).skills.find(
-      (s: SkillType) => s.sId === skillId
+      (s: SkillWithoutInstructionsAndToolsType) => s.sId === skillId
     );
 
     expect(skillResult).toBeDefined();
@@ -470,7 +561,8 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
       workspaceId: workspace.id,
     });
     const skillResult = (await response.json()).skills.find(
-      (s: SkillWithRelationsType) => s.sId === skillId
+      (s: SkillWithoutInstructionsAndToolsWithRelationsType) =>
+        s.sId === skillId
     );
 
     expect(skillResult).toMatchObject({
@@ -517,6 +609,66 @@ describe("POST /api/w/:wId/skills", () => {
       responseData.skill.sId
     );
     expect(createdSkill).not.toBeNull();
+  });
+
+  it("creates skill references", async () => {
+    const { auth, workspace } = await setupTest("admin");
+
+    const childSkill = await SkillFactory.create(auth, {
+      name: "Referenced Skill",
+    });
+
+    const response = await postSkill(workspace, {
+      name: "Parent Skill",
+      agentFacingDescription: "To use with another skill",
+      userFacingDescription: "A skill with a nested reference",
+      instructions: "Start with the referenced skill.",
+      icon: "PuzzleIcon",
+      tools: [],
+      extendedSkillId: null,
+      attachedKnowledge: [],
+      referencedSkillIds: [childSkill.sId],
+      instructionsHtml: null,
+    });
+
+    expect(response.status).toBe(200);
+
+    const createdSkill = await SkillResource.fetchById(
+      auth,
+      (await response.json()).skill.sId
+    );
+    expect(createdSkill).not.toBeNull();
+
+    await expect(createdSkill!.fetchChildSkills(auth)).resolves.toEqual([
+      expect.objectContaining({
+        sId: childSkill.sId,
+      }),
+    ]);
+  });
+
+  it("drops missing nested skill references", async () => {
+    const { auth, workspace } = await setupTest("admin");
+
+    const response = await postSkill(workspace, {
+      name: "Parent Skill",
+      agentFacingDescription: "To use with another skill",
+      userFacingDescription: "A skill with an invalid nested reference",
+      instructions: "Start with an invalid nested reference.",
+      icon: "PuzzleIcon",
+      tools: [],
+      extendedSkillId: null,
+      attachedKnowledge: [],
+      referencedSkillIds: ["not-a-skill-reference"],
+      instructionsHtml: null,
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+
+    const createdSkill = await SkillResource.fetchById(auth, data.skill.sId);
+    expect(createdSkill).not.toBeNull();
+
+    await expect(createdSkill!.fetchChildSkills(auth)).resolves.toHaveLength(0);
   });
 
   it("creates a skill configuration with additional requested spaces", async () => {

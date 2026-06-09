@@ -1,6 +1,6 @@
 import { clientEventSource } from "@app/lib/egress/client";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
-import { useProjectFiles } from "@app/lib/swr/projects";
+import { usePodFiles } from "@app/lib/swr/pods";
 import { emptyArray } from "@app/lib/swr/swr";
 import type { ContentNodeWithParent } from "@app/types/connectors/connectors_api";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
@@ -72,11 +72,12 @@ export function useUnifiedSearch({
   const [hasMore, setHasMore] = useState(false);
   const eventSourceRef = useRef<EventSourcePolyfill | null>(null);
 
-  const { files: projectFiles, isProjectFilesLoading } = useProjectFiles({
-    owner,
-    spaceId: projectId ?? "",
-    disabled: disabled || !projectId,
-  });
+  const { files: projectFiles, isPodFilesLoading: isProjectFilesLoading } =
+    usePodFiles({
+      owner,
+      podId: projectId ?? "",
+      disabled: disabled || !projectId,
+    });
 
   const projectContextFiles = useMemo<ProjectFileSearchResult[]>(() => {
     return removeNulls(

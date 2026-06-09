@@ -1,5 +1,6 @@
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import * as React from "react";
+import { expect } from "storybook/test";
 
 import { Separator } from "@sparkle/index_with_tw_base";
 
@@ -29,3 +30,30 @@ export const SeparatorExample = () => (
     </div>
   </div>
 );
+
+type Story = StoryObj<typeof meta>;
+
+export const Horizontal: Story = {
+  tags: ["ai-generated", "needs-work"],
+  render: () => (
+    <div className="s-w-64">
+      <Separator />
+    </div>
+  ),
+};
+
+// A semantic (non-decorative) vertical separator must expose role="separator" and
+// aria-orientation="vertical" — proving the orientation prop drives the accessibility tree.
+export const Vertical: Story = {
+  args: { orientation: "vertical", decorative: false },
+  tags: ["ai-generated", "needs-work"],
+  render: (args) => (
+    <div className="s-flex s-h-16">
+      <Separator {...args} />
+    </div>
+  ),
+  play: async ({ canvas }) => {
+    const separator = canvas.getByRole("separator");
+    await expect(separator).toHaveAttribute("aria-orientation", "vertical");
+  },
+};

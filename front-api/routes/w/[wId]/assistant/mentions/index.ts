@@ -1,10 +1,10 @@
-import { Hono } from "hono";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 
 import parse from "./parse";
 import suggestions from "./suggestions";
 
 // Mounted under /api/w/:wId/assistant/mentions.
-const app = new Hono();
+const app = workspaceApp();
 
 app.route("/parse", parse);
 app.route("/suggestions", suggestions);

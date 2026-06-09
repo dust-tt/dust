@@ -3,11 +3,28 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { resolveMountByUseCase } from "@app/lib/api/actions/servers/files/tools/utils";
-import { listGCSMountFiles } from "@app/lib/api/files/gcs_mount/files";
+import {
+  getDustFileSystemForAgentLoop,
+  requireAgentLoopConversation,
+  scopedPathsFromArgs,
+} from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
+import type { FileSystemMount } from "@app/lib/api/file_system/types";
+import {
+  SCOPED_PREFIX_CONVERSATION,
+  SCOPED_PREFIX_POD,
+} from "@app/lib/api/file_system/types";
+import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
 import { parseProcessedFilename } from "@app/lib/api/files/mount_path";
-import { stripMimeParameters } from "@app/types/files";
+import {
+  type ConversationWithoutContentType,
+  isPodConversation,
+} from "@app/types/assistant/conversation";
+import {
+  isInteractiveContentType,
+  stripMimeParameters,
+} from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import partition from "lodash/partition";
 
 function getDirAndFileName(path: string): { dir: string; fileName: string } {
@@ -22,29 +39,125 @@ function getDirAndFileName(path: string): { dir: string; fileName: string } {
   };
 }
 
+function findConversationMount(
+  mounts: ReadonlyArray<FileSystemMount>,
+  conversationId: string
+): FileSystemMount | undefined {
+  return mounts.find(
+    (m) => m.kind === "conversation" && m.id === conversationId
+  );
+}
+
+function findPodMount(
+  mounts: ReadonlyArray<FileSystemMount>,
+  podId: string
+): FileSystemMount | undefined {
+  return mounts.find((m) => m.kind === "pod" && m.id === podId);
+}
+
+function defaultPodIdFromMounts(
+  mounts: ReadonlyArray<FileSystemMount>,
+  conversation: ConversationWithoutContentType
+): string | undefined {
+  if (!isPodConversation(conversation)) {
+    return undefined;
+  }
+
+  const podMounts = mounts.filter((m) => m.kind === "pod");
+  if (podMounts.length === 1) {
+    return podMounts[0].id;
+  }
+
+  return podMounts[0]?.id;
+}
+
+type ListScope =
+  | { type: "conversation"; conversation_id?: string }
+  | { type: "pod"; pod_id?: string };
+
 export async function listHandler(
-  { scope }: { scope?: "conversation" | "project" },
+  { scope }: { scope?: ListScope },
   extra: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const conversation = extra.agentLoopContext?.runContext?.conversation;
-  if (!conversation) {
-    return new Err(
-      new MCPError("No conversation context available.", { tracked: false })
-    );
+  const conversationRes = requireAgentLoopConversation(extra);
+  if (conversationRes.isErr()) {
+    return conversationRes;
+  }
+  const conversation = conversationRes.value;
+
+  const listScope: ListScope = scope ?? { type: "conversation" };
+  const scopedPaths = scopedPathsFromArgs(
+    listScope.type === "conversation" && listScope.conversation_id
+      ? `${SCOPED_PREFIX_CONVERSATION}${listScope.conversation_id}/`
+      : undefined,
+    listScope.type === "pod" && listScope.pod_id
+      ? `${SCOPED_PREFIX_POD}${listScope.pod_id}/`
+      : undefined
+  );
+
+  const fsResult = await getDustFileSystemForAgentLoop(
+    extra.auth,
+    conversation,
+    scopedPaths
+  );
+  if (fsResult.isErr()) {
+    return fsResult;
+  }
+  const dustFs = fsResult.value;
+  const mounts = dustFs.getMounts();
+
+  let scopedPrefix: string;
+
+  switch (listScope.type) {
+    case "conversation": {
+      const conversationId = listScope.conversation_id ?? conversation.sId;
+      const mount = findConversationMount(mounts, conversationId);
+      if (!mount) {
+        return new Err(
+          new MCPError(
+            `Conversation not found or not accessible: ${conversationId}`,
+            { tracked: false }
+          )
+        );
+      }
+
+      scopedPrefix = `${mount.scopedPrefix}/`;
+      break;
+    }
+    case "pod": {
+      const resolvedPodId =
+        listScope.pod_id ?? defaultPodIdFromMounts(mounts, conversation);
+      if (!resolvedPodId) {
+        return new Err(
+          new MCPError(
+            'Pass `scope: { type: "pod", pod_id: "..." }` to list a Pod you can access, or run this from a Pod conversation.',
+            { tracked: false }
+          )
+        );
+      }
+
+      const mount = findPodMount(mounts, resolvedPodId);
+      if (!mount) {
+        return new Err(
+          new MCPError(`Pod not found or not accessible: ${resolvedPodId}`, {
+            tracked: false,
+          })
+        );
+      }
+
+      scopedPrefix = `${mount.scopedPrefix}/`;
+      break;
+    }
+    default:
+      assertNever(listScope);
   }
 
-  const useCase = scope ?? "conversation";
-  const mountRes = await resolveMountByUseCase(extra.auth, conversation, {
-    useCase,
-    access: "read",
-  });
-  if (mountRes.isErr()) {
-    return mountRes;
-  }
-
-  const entries = await listGCSMountFiles(extra.auth, mountRes.value.scope, {
-    includeProcessed: true,
-  });
+  // Enrich, so we can expose ids for interactive content files.
+  const entries = await enrichListWithFileResourceIds(
+    extra.auth,
+    dustFs,
+    await dustFs.list(scopedPrefix, { includeProcessed: true })
+  );
 
   const [dirs, files] = partition(entries, (e) => e.isDirectory);
 
@@ -70,7 +183,6 @@ export async function listHandler(
     if (parseProcessedFilename(fileName).isProcessed) {
       continue;
     }
-
     const lastDot = fileName.lastIndexOf(".");
     const base = lastDot > 0 ? fileName.substring(0, lastDot) : fileName;
     sourcePathByKey.set(`${dir}/${base}`, file.path);
@@ -114,7 +226,16 @@ export async function listHandler(
     const annotation = sourcePath
       ? ` (processed version of ${sourcePath})`
       : "";
-    lines.push(`${file.path} (${mimeType}, ${kb} KB)${annotation}`);
+    // Frames are created and updated via the interactive_content MCP server, which
+    // identifies them by file ID rather than path. Exposing the ID here lets the agent
+    // reference the correct frame when calling those tools.
+    const fileIdSuffix =
+      isInteractiveContentType(mimeType) && file.fileId
+        ? ` [id: ${file.fileId}]`
+        : "";
+    lines.push(
+      `${file.path} (${mimeType}, ${kb} KB)${fileIdSuffix}${annotation}`
+    );
   }
 
   return new Ok([{ type: "text", text: lines.join("\n") }]);

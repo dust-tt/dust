@@ -64,8 +64,30 @@ export enum GLOBAL_AGENTS_SID {
   DUST_OAI_HIGH = "dust-oai-high",
   DUST_GOOG = "dust-goog",
   DUST_GOOG_MEDIUM = "dust-goog-medium",
+  DUST_GOOG_HIGH = "dust-goog-high",
+  DUST_GOOG_PRO = "dust-goog-pro",
+  DUST_GOOG_PRO_MEDIUM = "dust-goog-pro-medium",
+  DUST_GOOG_PRO_HIGH = "dust-goog-pro-high",
   DUST_NEXT = "dust-next",
   DUST_NEXT_MEDIUM = "dust-next-medium",
+  DUST_CHAWI = "dust-chawi",
+  DUST_CHAWI_MEDIUM = "dust-chawi-medium",
+  DUST_CHAWI_HIGH = "dust-chawi-high",
+  DUST_SOUPINOU = "dust-soupinou",
+  DUST_SOUPINOU_MEDIUM = "dust-soupinou-medium",
+  DUST_SOUPINOU_HIGH = "dust-soupinou-high",
+  DUST_SUNDAE = "dust-sundae",
+  DUST_SUNDAE_MEDIUM = "dust-sundae-medium",
+  DUST_SUNDAE_HIGH = "dust-sundae-high",
+  DUST_PISTACHE = "dust-pistache",
+  DUST_PISTACHE_MEDIUM = "dust-pistache-medium",
+  DUST_PISTACHE_HIGH = "dust-pistache-high",
+  DUST_CHALOM = "dust-chalom",
+  DUST_CHALOM_MEDIUM = "dust-chalom-medium",
+  DUST_CHALOM_HIGH = "dust-chalom-high",
+  DUST_LIONEL = "dust-lionel",
+  DUST_LIONEL_MEDIUM = "dust-lionel-medium",
+  DUST_LIONEL_HIGH = "dust-lionel-high",
   DUST_ANT = "dust-ant",
   DUST_ANT_MEDIUM = "dust-ant-medium",
   DUST_ANT_HIGH = "dust-ant-high",
@@ -81,6 +103,8 @@ export enum GLOBAL_AGENTS_SID {
   DUST_MINIMAX_MEDIUM = "dust-minimax-medium",
   DUST_MINIMAX_HIGH = "dust-minimax-high",
   DUST_DEEPSEEK = "dust-deepseek",
+  DUST_MISTRAL_MEDIUM_NONE = "dust-mistral-medium-none",
+  DUST_MISTRAL_MEDIUM_HIGH = "dust-mistral-medium-high",
   DUST_NEXT_HIGH = "dust-next-high",
   DEEP_DIVE = "deep-dive",
   DUST_TASK = "dust-task",
@@ -118,13 +142,30 @@ export enum GLOBAL_AGENTS_SID {
   // Needed to preserve ongoing chat integrity due to 'sId=mistral' references in legacy messages.
   MISTRAL_SMALL = "mistral",
   GEMINI_PRO = "gemini-pro",
-  DEEPSEEK_R1 = "deepseek-r1",
+
+  ANALYST = "analyst",
 
   NOOP = "noop",
 }
 
 export function isGlobalAgentId(sId: string): sId is GLOBAL_AGENTS_SID {
   return (Object.values(GLOBAL_AGENTS_SID) as string[]).includes(sId);
+}
+
+// Hidden helper sub-agents that are only ever invoked internally (e.g. via
+// run_agent by the Deep Dive agent). On their own they are not meaningful to
+// users, so usage they generate should be attributed to the parent agent that
+// spawned them rather than to the helper itself. Other sub-agents (real user
+// agents invoked via run_agent / agent_handover) keep their own attribution.
+export const HIDDEN_HELPER_SUB_AGENT_SIDS: ReadonlySet<string> =
+  new Set<string>([
+    GLOBAL_AGENTS_SID.DUST_TASK,
+    GLOBAL_AGENTS_SID.DUST_PLANNING,
+    GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY,
+  ]);
+
+export function isHiddenHelperSubAgentId(sId: string): boolean {
+  return HIDDEN_HELPER_SUB_AGENT_SIDS.has(sId);
 }
 
 // If you want to show feedback buttons for global agents, add sId here.
@@ -166,8 +207,6 @@ export function getGlobalAgentAuthorName(agentId: string): string {
       return "Mistral";
     case GLOBAL_AGENTS_SID.GEMINI_PRO:
       return "Google";
-    case GLOBAL_AGENTS_SID.DEEPSEEK_R1:
-      return "DeepSeek";
     case GLOBAL_AGENTS_SID.NOOP:
       return "Noop";
     default:
@@ -191,6 +230,24 @@ const GLOBAL_AGENTS_SORT_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST_OAI,
   GLOBAL_AGENTS_SID.DUST_OAI_MEDIUM,
   GLOBAL_AGENTS_SID.DUST_OAI_HIGH,
+  GLOBAL_AGENTS_SID.DUST_CHAWI,
+  GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
+  GLOBAL_AGENTS_SID.DUST_SOUPINOU,
+  GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
+  GLOBAL_AGENTS_SID.DUST_SUNDAE,
+  GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH,
+  GLOBAL_AGENTS_SID.DUST_PISTACHE,
+  GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH,
+  GLOBAL_AGENTS_SID.DUST_CHALOM,
+  GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
+  GLOBAL_AGENTS_SID.DUST_LIONEL,
+  GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH,
 ];
 const globalAgentIndexMap = new Map(
   GLOBAL_AGENTS_SORT_ORDER.map((id, index) => [id, index])

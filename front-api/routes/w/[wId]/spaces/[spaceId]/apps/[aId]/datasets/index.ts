@@ -1,55 +1,49 @@
-import { apiError } from "@front-api/middleware/utils";
-import type { Context } from "hono";
-import { Hono } from "hono";
-import { z } from "zod";
-
 import config from "@app/lib/api/config";
-import { getDatasets } from "@app/lib/api/datasets";
+import type {
+  GetDatasetsResponseBody,
+  PostDatasetResponseBody,
+} from "@app/lib/api/datasets";
+import {
+  getDatasets,
+  PostDatasetRequestBodySchema,
+} from "@app/lib/api/datasets";
 import { checkDatasetData } from "@app/lib/datasets";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DatasetModel } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
+import type { APIErrorResponse } from "@app/types/error";
 import { isString } from "@app/types/shared/utils/general";
-
-import { spaceResource } from "@front-api/middleware/space_resource";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withSpace } from "@front-api/middlewares/with_space";
+import type { Context, TypedResponse } from "hono";
 
 import name from "./[name]";
-
-export const PostDatasetRequestBodySchema = z.object({
-  dataset: z.object({
-    name: z.string(),
-    description: z.string().nullable(),
-    data: z.array(z.record(z.string(), z.any())),
-  }),
-  schema: z.array(
-    z.object({
-      key: z.string(),
-      type: z.enum(["string", "number", "boolean", "json"]),
-      description: z.string().nullable(),
-    })
-  ),
-});
 
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/datasets.
 //
 // Interacting with datasets requires write access to the app's space.
 // Read permission is not enough as it's available to all space users (or
 // everybody for public spaces).
-const app = new Hono();
+const app = workspaceApp();
 
 // Shared prelude for GET and POST: resolves the app from `:aId`, verifies it
 // belongs to the current space, and enforces write access on it. Returns
 // either the loaded resources or the `Response` to short-circuit with.
 async function loadApp(
-  c: Context
-): Promise<{ appResource: AppResource; aId: string } | Response> {
-  const auth = c.get("auth");
-  const space = c.get("space");
-  const { aId } = c.req.param();
+  ctx: Context
+): Promise<
+  | { appResource: AppResource; aId: string }
+  | (Response & TypedResponse<APIErrorResponse>)
+> {
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
+  const { aId } = ctx.req.param();
   if (!isString(aId)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -60,14 +54,14 @@ async function loadApp(
 
   const appResource = await AppResource.fetchById(auth, aId);
   if (!appResource || appResource.space.sId !== space.sId) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 404,
       api_error: { type: "app_not_found", message: "The app was not found." },
     });
   }
 
   if (!appResource.canWrite(auth)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 403,
       api_error: {
         type: "app_auth_error",
@@ -80,31 +74,36 @@ async function loadApp(
   return { appResource, aId };
 }
 
-app.get("/", spaceResource({ requireCanWrite: true }), async (c) => {
-  const loaded = await loadApp(c);
-  if (loaded instanceof Response) {
-    return loaded;
-  }
-  const { appResource } = loaded;
-  const auth = c.get("auth");
-
-  const datasets = await getDatasets(auth, appResource.toJSON());
-  return c.json({ datasets });
-});
-
-app.post(
+/** @ignoreswagger */
+app.get(
   "/",
-  spaceResource({ requireCanWrite: true }),
-  validate("json", PostDatasetRequestBodySchema),
-  async (c) => {
-    const loaded = await loadApp(c);
+  withSpace({ requireCanWrite: true }),
+  async (ctx): HandlerResult<GetDatasetsResponseBody> => {
+    const loaded = await loadApp(ctx);
     if (loaded instanceof Response) {
       return loaded;
     }
     const { appResource } = loaded;
-    const auth = c.get("auth");
+    const auth = ctx.get("auth");
+
+    const datasets = await getDatasets(auth, appResource.toJSON());
+    return ctx.json({ datasets });
+  }
+);
+
+app.post(
+  "/",
+  withSpace({ requireCanWrite: true }),
+  validate("json", PostDatasetRequestBodySchema),
+  async (ctx): HandlerResult<PostDatasetResponseBody> => {
+    const loaded = await loadApp(ctx);
+    if (loaded instanceof Response) {
+      return loaded;
+    }
+    const { appResource } = loaded;
+    const auth = ctx.get("auth");
     const owner = auth.getNonNullableWorkspace();
-    const body = c.req.valid("json");
+    const body = ctx.req.valid("json");
 
     // Check that dataset does not already exist.
     const existing = await DatasetModel.findAll({
@@ -116,7 +115,7 @@ app.post(
     });
 
     if (existing.some((e) => e.name === body.dataset.name)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -130,7 +129,7 @@ app.post(
       !body.dataset.name.match(/^[a-zA-Z0-9_]+$/) ||
       body.dataset.name.length === 0
     ) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -148,7 +147,7 @@ app.post(
         schema: body.schema,
       });
     } catch {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -173,7 +172,7 @@ app.post(
       data,
     });
     if (dataset.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -194,7 +193,7 @@ app.post(
       schema: body.schema,
     });
 
-    return c.json(
+    return ctx.json(
       {
         dataset: {
           name: body.dataset.name,

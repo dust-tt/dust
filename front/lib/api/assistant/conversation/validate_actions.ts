@@ -7,10 +7,13 @@ import {
   extractArgRequiringApprovalValues,
   setUserAlwaysApprovedTool,
 } from "@app/lib/actions/tool_status";
+import { isSandboxChildActionInfo } from "@app/lib/actions/types";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { resumeAncestorConversations as resumeAncestorConversationsHelper } from "@app/lib/api/assistant/conversation/resume_ancestor_conversations";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
+import { resolveSandboxChildBlock } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
@@ -64,7 +67,12 @@ export async function validateAction(
     messageId,
   });
 
-  if (userMessageUserId !== user?.id) {
+  if (
+    !canCurrentUserRespondToParentUserMessage({
+      parentUserId: userMessageUserId,
+      currentUserId: user?.id,
+    })
+  ) {
     return new Err(
       new DustError(
         "unauthorized",
@@ -151,6 +159,30 @@ export async function validateAction(
       ? payload.actionId === actionId
       : false;
   }, getMessageChannelId(messageId));
+
+  const { sandboxChildActionInfo } = action.stepContext;
+  if (isSandboxChildActionInfo(sandboxChildActionInfo)) {
+    // Sandbox-child actions always pause the parent bash on any block, so
+    // the parent is sitting in `blocked_child_action_input_required` by
+    // the time we get here. Relaunch the parent agent loop in resume mode;
+    // checkForResume + getExistingActionsAndBlobs dispatches both the
+    // parent (resume mode via stored execId) and the now-ready child.
+    await resolveSandboxChildBlock(auth, {
+      action,
+      sandboxChildActionInfo,
+      agentLoopArgs: {
+        agentMessageId,
+        agentMessageVersion,
+        conversationBranchId: branchId,
+        conversationId,
+        conversationTitle,
+        userMessageId,
+        userMessageVersion,
+        userMessageOrigin,
+      },
+    });
+    return new Ok(undefined);
+  }
 
   // We only launch the agent loop if there are no remaining blocked actions.
   const blockedActions =

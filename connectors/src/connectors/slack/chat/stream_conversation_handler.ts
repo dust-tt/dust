@@ -42,7 +42,14 @@ import type {
   Result,
   UserMessageType,
 } from "@dust-tt/client";
-import { assertNever, DustAPI, Err, Ok, removeNulls } from "@dust-tt/client";
+import {
+  assertNever,
+  DustAPI,
+  Err,
+  normalizeError,
+  Ok,
+  removeNulls,
+} from "@dust-tt/client";
 import type { WebClient } from "@slack/web-api";
 import * as t from "io-ts";
 
@@ -129,6 +136,28 @@ interface StreamConversationToSlackParams {
   feedbackVisibleToAuthorOnly: boolean;
 }
 
+async function runBestEffortSlackCleanup({
+  planHandler,
+  streamHandler,
+  logContext,
+}: {
+  planHandler: PlanMessageHandler;
+  streamHandler: SlackStreamHandler;
+  logContext: Record<string, unknown>;
+}): Promise<void> {
+  planHandler.abortAllChildStreams();
+
+  try {
+    await planHandler.deletePlanMessage();
+    await streamHandler.stop();
+  } catch (error) {
+    logger.warn(
+      { error, ...logContext },
+      "Failed to delete plan message or stop stream while cleaning up Slack stream."
+    );
+  }
+}
+
 export async function streamConversationToSlack(
   dustAPI: DustAPI,
   conversationData: StreamConversationToSlackParams
@@ -180,9 +209,14 @@ export async function streamConversationToSlack(
     );
   } finally {
     // Cleanup streams and plan message on unexpected error
-    planHandler.abortAllChildStreams();
-    await planHandler.deletePlanMessage();
-    await streamHandler.stop();
+    await runBestEffortSlackCleanup({
+      planHandler,
+      streamHandler,
+      logContext: {
+        connectorId: connector.id,
+        conversationId: conversation.sId,
+      },
+    });
   }
 }
 
@@ -200,35 +234,41 @@ type SlackUserActionType = Extract<
   | "tool_ask_user_question"
 >;
 
-const SLACK_USER_ACTION_IDLE_TIMEOUT_MS = 4 * 60 * 1000 + 30 * 1000; // 4.5 minutes
+export const SLACK_USER_ACTION_IDLE_TIMEOUT_MS = 4 * 60 * 1000 + 30 * 1000; // 4.5 minutes
+
+type SlackUserActionEvent = Extract<AgentEvent, { type: SlackUserActionType }>;
+
+function getUserActionLabel(actionType: SlackUserActionType): string {
+  switch (actionType) {
+    case "tool_approve_execution":
+      return "tool execution approval";
+    case "tool_file_auth_required":
+      return "file access authorization";
+    case "tool_personal_auth_required":
+      return "tool authentication";
+    case "tool_ask_user_question":
+      return "response to a question";
+    default:
+      assertNever(actionType);
+  }
+}
+
+function getContinueOnDustSuffix(conversationUrl: string | null): string {
+  return conversationUrl ? ` <${conversationUrl}|Continue on Dust>.` : "";
+}
 
 function getUserActionFallbackMessage(
   actionType: SlackUserActionType,
   conversationUrl: string | null
 ): string {
-  let actionLabel: string;
-  switch (actionType) {
-    case "tool_approve_execution":
-      actionLabel = "tool execution approval";
-      break;
-    case "tool_file_auth_required":
-      actionLabel = "file access authorization";
-      break;
-    case "tool_personal_auth_required":
-      actionLabel = "tool authentication";
-      break;
-    case "tool_ask_user_question":
-      actionLabel = "response to a question";
-      break;
-    default:
-      assertNever(actionType);
-  }
+  return `:hourglass_flowing_sand: _Streaming was interrupted after 5 mins waiting on a ${getUserActionLabel(actionType)}.${getContinueOnDustSuffix(conversationUrl)}_`;
+}
 
-  const urlPart = conversationUrl
-    ? ` <${conversationUrl}|Continue on Dust>.`
-    : "";
-
-  return `:hourglass_flowing_sand: _Streaming was interrupted after 5 mins waiting on a ${actionLabel}.${urlPart}_`;
+function getUserActionPostFailureFallbackMessage(
+  actionType: SlackUserActionType,
+  conversationUrl: string | null
+): string {
+  return `:warning: _Dust could not display the Slack controls for a ${getUserActionLabel(actionType)}.${getContinueOnDustSuffix(conversationUrl)}_`;
 }
 
 async function streamAgentAnswerToSlack(
@@ -343,6 +383,96 @@ async function streamAgentAnswerToSlack(
     );
   };
 
+  const stopSlackStreamWithUserActionFallback = async ({
+    fallbackText,
+    logContext,
+    postFailureLogMessage,
+    successLogMessage,
+  }: {
+    fallbackText: string;
+    logContext: Record<string, unknown>;
+    postFailureLogMessage: string;
+    successLogMessage: string;
+  }): Promise<Result<undefined, Error>> => {
+    await runBestEffortSlackCleanup({
+      planHandler,
+      streamHandler,
+      logContext,
+    });
+
+    try {
+      await slackClient.chat.postMessage({
+        channel: slackChannelId,
+        text: fallbackText,
+        blocks: makeMarkdownBlock(fallbackText),
+        thread_ts: slackMessageTs,
+        unfurl_links: false,
+      });
+      logger.info(logContext, successLogMessage);
+    } catch (postError) {
+      logger.error({ error: postError, ...logContext }, postFailureLogMessage);
+    }
+
+    return new Ok(undefined);
+  };
+
+  const handleUserActionPostFailure = async (
+    event: SlackUserActionEvent,
+    error: unknown
+  ): Promise<Result<undefined, Error>> => {
+    clearUserActionTimeout();
+    abortController.abort();
+    const logContext = {
+      connectorId: connector.id,
+      conversationId: event.conversationId,
+      messageId: event.messageId,
+      actionType: event.type,
+    };
+
+    logger.error(
+      { error, ...logContext },
+      "Failed to post Slack user-action controls, stopping Slack stream."
+    );
+
+    const conversationUrl = makeConversationUrl(
+      connector.workspaceId,
+      event.conversationId
+    );
+    const fallbackText = getUserActionPostFailureFallbackMessage(
+      event.type,
+      conversationUrl
+    );
+
+    return stopSlackStreamWithUserActionFallback({
+      fallbackText,
+      logContext,
+      postFailureLogMessage:
+        "Failed to post Slack fallback after user-action controls failed.",
+      successLogMessage:
+        "Posted user-action controls failure fallback message to Slack.",
+    });
+  };
+
+  const postUserActionEphemeral = async <T extends { text: string }>(
+    payload: T
+  ): Promise<Result<undefined, Error>> => {
+    if (!slackUserId || slackUserInfo.is_bot) {
+      return new Ok(undefined);
+    }
+
+    try {
+      await slackClient.chat.postEphemeral({
+        ...payload,
+        channel: slackChannelId,
+        thread_ts: slackMessageTs,
+        user: slackUserId,
+      });
+      return new Ok(undefined);
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
+  };
+
   async function* eventStreamWithTimeoutCleanup() {
     try {
       yield* eventStream;
@@ -408,18 +538,16 @@ async function streamAgentAnswerToSlack(
         await planHandler.upsertPlanMessage(AWAITING_TOOL_APPROVAL_LABEL);
         await streamHandler.setThinking(AWAITING_TOOL_APPROVAL_LABEL);
 
-        if (slackUserId && !slackUserInfo.is_bot) {
-          await slackClient.chat.postEphemeral({
-            channel: slackChannelId,
-            user: slackUserId,
-            text: "Approve tool execution",
-            blocks: makeToolValidationBlock({
-              agentName: event.metadata.agentName,
-              toolName: event.metadata.toolName,
-              id: JSON.stringify(blockId),
-            }),
-            thread_ts: slackMessageTs,
-          });
+        const postResult = await postUserActionEphemeral({
+          text: "Approve tool execution",
+          blocks: makeToolValidationBlock({
+            agentName: event.metadata.agentName,
+            toolName: event.metadata.toolName,
+            id: JSON.stringify(blockId),
+          }),
+        });
+        if (postResult.isErr()) {
+          return handleUserActionPostFailure(event, postResult.error);
         }
         break;
       }
@@ -433,9 +561,7 @@ async function streamAgentAnswerToSlack(
         );
 
         if (slackUserId && !slackUserInfo.is_bot && conversationUrl) {
-          await slackClient.chat.postEphemeral({
-            channel: slackChannelId,
-            user: slackUserId,
+          const postResult = await postUserActionEphemeral({
             text: "Personal authentication required",
             blocks: makeToolAuthenticationBlock({
               agentName: event.metadata.agentName,
@@ -446,8 +572,10 @@ async function streamAgentAnswerToSlack(
                 messageId: event.messageId,
               }),
             }),
-            thread_ts: slackMessageTs,
           });
+          if (postResult.isErr()) {
+            return handleUserActionPostFailure(event, postResult.error);
+          }
 
           pendingPersonalAuth = {
             redisKey: getAuthResponseUrlRedisKey(
@@ -472,9 +600,7 @@ async function streamAgentAnswerToSlack(
         );
 
         if (slackUserId && !slackUserInfo.is_bot && conversationUrl) {
-          await slackClient.chat.postEphemeral({
-            channel: slackChannelId,
-            user: slackUserId,
+          const postResult = await postUserActionEphemeral({
             text: "File authorization required",
             blocks: makeToolFileAuthorizationBlock({
               agentName: event.metadata.agentName,
@@ -485,8 +611,10 @@ async function streamAgentAnswerToSlack(
                 messageId: event.messageId,
               }),
             }),
-            thread_ts: slackMessageTs,
           });
+          if (postResult.isErr()) {
+            return handleUserActionPostFailure(event, postResult.error);
+          }
         }
 
         await streamHandler.setThinking("Waiting for file authorization...");
@@ -810,17 +938,15 @@ async function streamAgentAnswerToSlack(
           slackChatBotMessageId: slackChatBotMessage.id,
         });
 
-        if (slackUserId && !slackUserInfo.is_bot) {
-          await slackClient.chat.postEphemeral({
-            channel: slackChannelId,
-            user: slackUserId,
-            text: event.question.question,
-            blocks: makeUserQuestionBlock({
-              question: event.question,
-              value: questionValue,
-            }),
-            thread_ts: slackMessageTs,
-          });
+        const postResult = await postUserActionEphemeral({
+          text: event.question.question,
+          blocks: makeUserQuestionBlock({
+            question: event.question,
+            value: questionValue,
+          }),
+        });
+        if (postResult.isErr()) {
+          return handleUserActionPostFailure(event, postResult.error);
         }
         break;
       }
@@ -839,10 +965,6 @@ async function streamAgentAnswerToSlack(
   }
 
   if (abortController.signal.aborted && timedOutUserActionType) {
-    planHandler.abortAllChildStreams();
-    await planHandler.deletePlanMessage();
-    await streamHandler.stop();
-
     const conversationUrl = makeConversationUrl(
       connector.workspaceId,
       conversation.sId
@@ -852,24 +974,18 @@ async function streamAgentAnswerToSlack(
       conversationUrl
     );
 
-    await slackClient.chat.postMessage({
-      channel: slackChannelId,
-      text: fallbackText,
-      blocks: makeMarkdownBlock(fallbackText),
-      thread_ts: slackMessageTs,
-      unfurl_links: false,
-    });
-
-    logger.info(
-      {
+    return stopSlackStreamWithUserActionFallback({
+      fallbackText,
+      logContext: {
         connectorId: connector.id,
         conversationId: conversation.sId,
         pendingActionType: timedOutUserActionType,
       },
-      "Posted user-action timeout fallback message to Slack."
-    );
-
-    return new Ok(undefined);
+      postFailureLogMessage:
+        "Failed to post Slack fallback after user-action timeout.",
+      successLogMessage:
+        "Posted user-action timeout fallback message to Slack.",
+    });
   }
 
   // Clean up if the event stream ended without a terminal event.

@@ -25,26 +25,81 @@ import type { LightWorkspaceType } from "@app/types/user";
 import type { VirtuosoMessageListMethods } from "@virtuoso.dev/message-list";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import throttle from "lodash/throttle";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  type MutableRefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 
-function createUpdateMessageThrottled() {
+const TOKEN_BUFFER_THRESHOLD_MS = 500;
+
+type VirtuosoMethods = VirtuosoMessageListMethods<
+  VirtuosoMessage,
+  VirtuosoMessageListContext
+>;
+
+function createAutoScrollToBottomBehavior(
+  isAutoScrollEnabledRef: MutableRefObject<boolean>
+) {
+  return ({
+    scrollLocation,
+    scrollInProgress,
+  }: {
+    scrollLocation: { bottomOffset: number };
+    scrollInProgress: boolean;
+  }) => {
+    if (!isAutoScrollEnabledRef.current || scrollInProgress) {
+      return false;
+    }
+
+    if (scrollLocation.bottomOffset < 0) {
+      return false;
+    }
+
+    return {
+      index: "LAST" as const,
+      align: "end" as const,
+      behavior: "smooth" as const,
+    };
+  };
+}
+
+function batchMapMessagesWithAutoScroll(
+  methods: VirtuosoMethods,
+  isAutoScrollEnabledRef: MutableRefObject<boolean>,
+  mapFn: (message: VirtuosoMessage, index: number) => VirtuosoMessage
+) {
+  methods.data.batch(
+    () => methods.data.map(mapFn),
+    createAutoScrollToBottomBehavior(isAutoScrollEnabledRef)
+  );
+}
+
+function createUpdateMessageThrottled(
+  isAutoScrollEnabledRef: MutableRefObject<boolean>,
+  methods: VirtuosoMethods
+) {
   return throttle(
     ({
       chainOfThought,
       content,
-      methods,
       sId,
     }: {
       chainOfThought: string;
       content: string;
-      methods: VirtuosoMessageListMethods<
-        VirtuosoMessage,
-        VirtuosoMessageListContext
-      >;
       sId: string;
     }) => {
-      methods.data.map((m) => {
+      batchMapMessagesWithAutoScroll(methods, isAutoScrollEnabledRef, (m) => {
         if (isAgentMessageWithStreaming(m) && m.sId === sId) {
+          // Enable auto scroll if we are starting to receive content or chain of thought.
+          if (
+            (!m.content && content) ||
+            (!m.chainOfThought && chainOfThought)
+          ) {
+            isAutoScrollEnabledRef.current = true;
+          }
           return {
             ...m,
             content,
@@ -54,7 +109,7 @@ function createUpdateMessageThrottled() {
         return m;
       });
     },
-    100
+    TOKEN_BUFFER_THRESHOLD_MS
   );
 }
 
@@ -242,17 +297,22 @@ function flushPendingSegment({
   content,
   steps,
   suffix,
+  retryCoTBuffer,
 }: {
   lastClassification: { current: "tokens" | "chain_of_thought" | null };
   chainOfThought: { current: string };
   content: { current: string };
   steps: InlineActivityStep[];
   suffix: string;
+  retryCoTBuffer?: { current: string | null };
 }): { steps: InlineActivityStep[]; contentCleared: boolean } {
   const cls = lastClassification.current;
   if (cls === "chain_of_thought" && chainOfThought.current) {
     const cotToFlush = chainOfThought.current;
     chainOfThought.current = "";
+    if (retryCoTBuffer) {
+      retryCoTBuffer.current = null;
+    }
     return {
       steps: appendThinkingStep(steps, cotToFlush, `thinking-${suffix}`),
       contentCleared: false,
@@ -272,6 +332,7 @@ function flushPendingSegment({
 interface UseAgentMessageStreamParams {
   agentMessage: AgentMessageWithStreaming;
   conversationId: string | null;
+  isAutoScrollEnabledRef: MutableRefObject<boolean>;
   owner: LightWorkspaceType;
   onEventCallback?: (event: {
     eventId: string;
@@ -283,6 +344,7 @@ interface UseAgentMessageStreamParams {
 export function useAgentMessageStream({
   agentMessage,
   conversationId,
+  isAutoScrollEnabledRef,
   owner,
   onEventCallback: customOnEventCallback,
   streamId,
@@ -293,13 +355,22 @@ export function useAgentMessageStream({
     workspaceId: owner.sId,
     options: { disabled: true },
   });
+
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
     VirtuosoMessageListContext
   >();
+
   const updateMessageThrottled = useMemo(
-    () => createUpdateMessageThrottled(),
-    []
+    () => createUpdateMessageThrottled(isAutoScrollEnabledRef, methods),
+    [isAutoScrollEnabledRef, methods]
+  );
+
+  const mapMessagesWithAutoScroll = useCallback(
+    (mapFn: (message: VirtuosoMessage, index: number) => VirtuosoMessage) => {
+      batchMapMessagesWithAutoScroll(methods, isAutoScrollEnabledRef, mapFn);
+    },
+    [methods, isAutoScrollEnabledRef]
   );
 
   // Short-circuit replays of events we've already processed in this hook
@@ -349,6 +420,14 @@ export function useAgentMessageStream({
   // thinking (chain_of_thought) and writing (tokens), flushing completed
   // segments as activity steps on each switch.
   const lastClassification = useRef<"tokens" | "chain_of_thought" | null>(null);
+  // Tracks the traceId of the last CoT event to detect Temporal retry boundaries.
+  const lastCoTTraceId = useRef<string | null>(null);
+  // Shadow buffer for retry CoT suppression. When a new traceId arrives, CoT
+  // tokens are accumulated here instead of directly into chainOfThought.current.
+  // As long as the buffer is a prefix of the existing CoT, display is unchanged
+  // (no blank/refill). Once it diverges, chainOfThought.current is replaced with
+  // the new content. Null means normal (non-retry) accumulation mode.
+  const retryCoTBuffer = useRef<string | null>(null);
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
@@ -405,7 +484,9 @@ export function useAgentMessageStream({
           ) {
             content.current = "";
             chainOfThought.current = "";
-            methods.data.map((m) => {
+            lastCoTTraceId.current = null;
+            retryCoTBuffer.current = null;
+            mapMessagesWithAutoScroll((m) => {
               if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
                 return m;
               }
@@ -426,6 +507,27 @@ export function useAgentMessageStream({
             classification === "tokens" ||
             classification === "chain_of_thought"
           ) {
+            // When a CoT event arrives with a new traceId, the Temporal activity
+            // was retried. Reset content.current (prevents stale tokens from
+            // being flushed at the transition boundary) and enter shadow-buffer
+            // mode: new CoT tokens are compared against what's already shown
+            // rather than appended, so an identical retry is invisible to the
+            // user.
+            if (classification === "chain_of_thought") {
+              const newTraceId = generationTokens.traceId;
+              if (
+                newTraceId &&
+                lastCoTTraceId.current !== null &&
+                newTraceId !== lastCoTTraceId.current
+              ) {
+                content.current = "";
+                retryCoTBuffer.current = "";
+              }
+              if (newTraceId) {
+                lastCoTTraceId.current = newTraceId;
+              }
+            }
+
             // Detect classification transitions and flush completed segments.
             if (
               lastClassification.current !== null &&
@@ -434,7 +536,7 @@ export function useAgentMessageStream({
               updateMessageThrottled.cancel();
               const newAgentState =
                 classification === "tokens" ? "writing" : "thinking";
-              methods.data.map((m) => {
+              mapMessagesWithAutoScroll((m) => {
                 if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
                   return m;
                 }
@@ -444,6 +546,7 @@ export function useAgentMessageStream({
                   content,
                   steps: m.streaming.inlineActivitySteps,
                   suffix: `pre-${Date.now()}`,
+                  retryCoTBuffer,
                 });
                 return {
                   ...m,
@@ -460,7 +563,7 @@ export function useAgentMessageStream({
               classification === "tokens"
             ) {
               // First tokens event in inline mode — set agentState to writing.
-              methods.data.map((m) => {
+              mapMessagesWithAutoScroll((m) => {
                 if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
                   return m;
                 }
@@ -473,23 +576,39 @@ export function useAgentMessageStream({
 
             lastClassification.current = classification;
 
+            let suppressUpdate = false;
             if (classification === "tokens") {
               content.current += generationTokens.text;
             } else if (classification === "chain_of_thought") {
-              chainOfThought.current += generationTokens.text;
+              if (retryCoTBuffer.current !== null) {
+                retryCoTBuffer.current += generationTokens.text;
+                if (
+                  !chainOfThought.current.startsWith(retryCoTBuffer.current)
+                ) {
+                  // Retry's CoT diverged — switch to showing the new content.
+                  chainOfThought.current = retryCoTBuffer.current;
+                  retryCoTBuffer.current = null;
+                } else {
+                  // Still reproducing content already shown — suppress update.
+                  suppressUpdate = true;
+                }
+              } else {
+                chainOfThought.current += generationTokens.text;
+              }
             }
-            updateMessageThrottled({
-              chainOfThought: chainOfThought.current,
-              content: content.current,
-              methods,
-              sId,
-            });
+            if (!suppressUpdate) {
+              updateMessageThrottled({
+                chainOfThought: chainOfThought.current,
+                content: content.current,
+                sId,
+              });
+            }
           }
           break;
 
         case "agent_action_success":
           const action = eventPayload.data.action;
-          methods.data.map((m) => {
+          mapMessagesWithAutoScroll((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
             }
@@ -536,7 +655,7 @@ export function useAgentMessageStream({
         case "tool_params":
           updateMessageThrottled.cancel();
           const toolParams = eventPayload.data;
-          methods.data.map((m) => {
+          mapMessagesWithAutoScroll((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
             }
@@ -546,6 +665,7 @@ export function useAgentMessageStream({
               content,
               steps: m.streaming.inlineActivitySteps,
               suffix: `toolparams-${Date.now()}`,
+              retryCoTBuffer,
             });
             return {
               ...updateMessageWithAction(m, toolParams.action),
@@ -566,7 +686,7 @@ export function useAgentMessageStream({
 
         case "tool_notification":
           const toolNotification = eventPayload.data;
-          methods.data.map((m) =>
+          mapMessagesWithAutoScroll((m) =>
             isAgentMessageWithStreaming(m) && m.sId === sId
               ? updateProgress(m, toolNotification)
               : m
@@ -578,7 +698,7 @@ export function useAgentMessageStream({
           if (toolCallStarted.type !== "tool_call_started") {
             break;
           }
-          methods.data.map((m) => {
+          mapMessagesWithAutoScroll((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
             }
@@ -605,7 +725,7 @@ export function useAgentMessageStream({
           isStreamTerminated.current = true;
           updateMessageThrottled.cancel();
           const error = eventPayload.data.error;
-          methods.data.map((m) => {
+          mapMessagesWithAutoScroll((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
             }
@@ -615,6 +735,7 @@ export function useAgentMessageStream({
               content,
               steps: m.streaming.inlineActivitySteps,
               suffix: `error-${Date.now()}`,
+              retryCoTBuffer,
             });
             return {
               ...m,
@@ -632,7 +753,7 @@ export function useAgentMessageStream({
           break;
 
         case "agent_context_pruned":
-          methods.data.map((m) =>
+          mapMessagesWithAutoScroll((m) =>
             isAgentMessageWithStreaming(m) && m.sId === sId
               ? {
                   ...m,
@@ -649,7 +770,7 @@ export function useAgentMessageStream({
           if (cancelData.type !== "agent_generation_cancelled") {
             break;
           }
-          methods.data.map((m) => {
+          mapMessagesWithAutoScroll((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
             }
@@ -659,6 +780,7 @@ export function useAgentMessageStream({
               content,
               steps: m.streaming.inlineActivitySteps,
               suffix: `cancel-${Date.now()}`,
+              retryCoTBuffer,
             });
             return {
               ...m,
@@ -680,53 +802,31 @@ export function useAgentMessageStream({
           isStreamTerminated.current = true;
           updateMessageThrottled.cancel();
           const messageSuccess = eventPayload.data;
-          // Flush any remaining CoT (but not content — the final text segment
-          // becomes the message body via the server's canonical message).
-          const cotAtSuccess = chainOfThought.current;
-          chainOfThought.current = "";
-          // content.current tracks only the final text segment (intermediate
-          // segments were flushed to content steps). The server's full message
-          // includes ALL text, so we override with the tracked final segment.
-          // Only override when tokens were actually streamed (lastClassification
-          // is non-null); otherwise the content was set server-side without
-          // streaming (e.g. prompt commands like /list) and the server's value
-          // should be used as-is.
-          const finalSegment = content.current;
-          const hadStreamedTokens = lastClassification.current !== null;
-          lastClassification.current = null;
-          methods.data.map((m) => {
+          // Trust the server-rendered content view: it is computed from the
+          // same persisted step contents reload uses, so it matches reload
+          // exactly. If an older server omitted it during a deploy window, fall
+          // back to the server's full message (its content/chainOfThought) and
+          // keep the live-built steps; this self-heals on the next reload.
+          const contentView = messageSuccess.contentView;
+          mapMessagesWithAutoScroll((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
-            }
-            let steps = cotAtSuccess
-              ? appendThinkingStep(
-                  m.streaming.inlineActivitySteps,
-                  cotAtSuccess,
-                  `thinking-final-${Date.now()}`
-                )
-              : m.streaming.inlineActivitySteps;
-            // When no tokens streamed after the last tool call (e.g. the agent
-            // handed off or otherwise terminated right after a tool), the text
-            // we flushed as a content step at the last `tool_params` is also
-            // what the server keeps as the message body. Drop that trailing
-            // content step so the same text isn't rendered twice — aligning
-            // with `contentsToActivitySteps`, which is what runs after reload.
-            if (!hadStreamedTokens) {
-              for (let i = steps.length - 1; i >= 0; i--) {
-                if (steps[i].type === "content") {
-                  steps = [...steps.slice(0, i), ...steps.slice(i + 1)];
-                  break;
-                }
-              }
             }
             return {
               ...m,
               ...getLightAgentMessageFromAgentMessage(messageSuccess.message),
-              ...(hadStreamedTokens ? { content: finalSegment || null } : {}),
+              ...(contentView
+                ? {
+                    content: contentView.content,
+                    chainOfThought: contentView.chainOfThought,
+                    activitySteps: contentView.activitySteps,
+                  }
+                : {}),
               streaming: {
                 ...m.streaming,
                 agentState: "done",
-                inlineActivitySteps: steps,
+                inlineActivitySteps:
+                  contentView?.activitySteps ?? m.streaming.inlineActivitySteps,
                 pendingToolCalls: [],
               },
             };
@@ -744,7 +844,7 @@ export function useAgentMessageStream({
     },
     [
       customOnEventCallback,
-      methods,
+      mapMessagesWithAutoScroll,
       sId,
       mutateContextUsage,
       updateMessageThrottled,

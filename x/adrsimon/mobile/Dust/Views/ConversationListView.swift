@@ -4,15 +4,15 @@ import SwiftUI
 struct ConversationListView: View {
     @Binding var searchText: String
     let groupedConversations: [(String, [Conversation])]
-    let projects: [Space]
-    @Binding var isProjectsExpanded: Bool
+    let pods: [Space]
+    @Binding var isPodsExpanded: Bool
     let user: User
     let currentWorkspace: Workspace?
     let workspaces: [Workspace]
     let isLoading: Bool
     let onNewConversation: () -> Void
     let onSelectConversation: (Conversation) -> Void
-    let onSelectProject: (Space) -> Void
+    let onSelectPod: (Space) -> Void
     let onSwitchWorkspace: (Workspace) -> Void
     let onToggleReadStatus: (Conversation) -> Void
     let onDelete: (Conversation) -> Void
@@ -112,41 +112,47 @@ struct ConversationListView: View {
         .liquidGlassCapsule()
     }
 
-    // MARK: - Projects
+    // MARK: - Pods
 
-    private var projectsSection: some View {
+    private var podsSection: some View {
         Section {
-            if isProjectsExpanded {
-                ForEach(projects) { project in
+            if isPodsExpanded {
+                ForEach(pods) { pod in
                     Button {
-                        onSelectProject(project)
+                        onSelectPod(pod)
                     } label: {
-                        Text(project.name)
-                            .sparkleCopySm()
-                            .foregroundStyle(Color.dustForeground)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
+                        HStack(spacing: 8) {
+                            (pod.isRestricted ? SparkleIcon.spaceClosed : SparkleIcon.spaceOpen).image
+                                .resizable()
+                                .frame(width: 14, height: 14)
+                                .foregroundStyle(Color.dustFaint)
+                            Text(pod.name)
+                                .sparkleCopySm()
+                                .foregroundStyle(Color.dustForeground)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
                     }
                 }
             }
         } header: {
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
-                    isProjectsExpanded.toggle()
+                    isPodsExpanded.toggle()
                 }
             } label: {
                 HStack(spacing: 4) {
-                    Text("Projects")
+                    Text("Pods")
                         .sparkleLabelXs()
                         .textCase(.uppercase)
 
                     SparkleIcon.chevronDown.image
                         .resizable()
                         .frame(width: 8, height: 8)
-                        .rotationEffect(.degrees(isProjectsExpanded ? 0 : -90))
+                        .rotationEffect(.degrees(isPodsExpanded ? 0 : -90))
 
                     Spacer()
                 }
@@ -203,8 +209,8 @@ struct ConversationListView: View {
 
     private var conversationList: some View {
         List {
-            if !projects.isEmpty {
-                projectsSection
+            if !pods.isEmpty {
+                podsSection
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)

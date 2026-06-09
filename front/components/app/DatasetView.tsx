@@ -17,14 +17,14 @@ import type {
   DatasetViewType,
 } from "@app/types/dataset";
 import {
-  ArrowDownOnSquareIcon,
-  ArrowUpOnSquareIcon,
   Button,
+  Download01,
   Input,
   Label,
-  PlusCircleIcon,
-  PlusIcon,
-  XCircleIcon,
+  Plus,
+  PlusCircle,
+  Upload01,
+  XCircle,
 } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
@@ -617,7 +617,7 @@ export default function DatasetView({
                                   size="icon"
                                   variant="ghost"
                                   className="text-muted-foreground"
-                                  icon={XCircleIcon}
+                                  icon={XCircle}
                                   tooltip="Delete property"
                                   onClick={() => {
                                     handleDeleteKey(j);
@@ -628,7 +628,7 @@ export default function DatasetView({
                                   size="icon"
                                   variant="ghost"
                                   className="text-muted-foreground"
-                                  icon={PlusCircleIcon}
+                                  icon={PlusCircle}
                                   onClick={() => {
                                     handleNewKey(j);
                                   }}
@@ -793,7 +793,7 @@ export default function DatasetView({
                       <div className="flex items-center justify-end gap-1 p-1 text-xs">
                         {datasetData.length > 1 ? (
                           <Button
-                            icon={XCircleIcon}
+                            icon={XCircle}
                             size="icon"
                             variant="ghost"
                             onClick={() => {
@@ -802,7 +802,7 @@ export default function DatasetView({
                           />
                         ) : null}
                         <Button
-                          icon={PlusCircleIcon}
+                          icon={PlusCircle}
                           size="icon"
                           variant="ghost"
                           onClick={() => {
@@ -823,7 +823,7 @@ export default function DatasetView({
                     onClick={() => {
                       handleNewEntry(datasetData.length - 1);
                     }}
-                    icon={PlusIcon}
+                    icon={Plus}
                     label="New Entry"
                   />
                 ) : null}
@@ -849,7 +849,7 @@ export default function DatasetView({
                       downloadAnchorNode.click();
                       downloadAnchorNode.remove();
                     }}
-                    icon={ArrowDownOnSquareIcon}
+                    icon={Download01}
                     label="Download"
                   />
                 </div>
@@ -873,7 +873,7 @@ export default function DatasetView({
                           fileInputRef.current.click();
                         }
                       }}
-                      icon={ArrowUpOnSquareIcon}
+                      icon={Upload01}
                       label="JSONL"
                     />
                   ) : null}

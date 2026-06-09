@@ -9,14 +9,15 @@ import {
   cn,
   DropzoneOverlay,
   Hoverable,
-  InformationCircleIcon,
-  PlusIcon,
+  InfoCircle,
+  Plus,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFormContext } from "react-hook-form";
 
-const ACCEPTED_EXTENSIONS = [".zip"];
+const ACCEPTED_EXTENSIONS = [".zip", ".skill"];
+const ACCEPTED_EXTENSIONS_LABEL = ".zip or .skill";
 
 interface ImportFromFilesTabProps {
   owner: LightWorkspaceType;
@@ -70,10 +71,13 @@ export function ImportFromFilesTab({
         return;
       }
       const rejected = files.filter(
-        (f) => !ACCEPTED_EXTENSIONS.some((ext) => f.name.endsWith(ext))
+        (f) =>
+          !ACCEPTED_EXTENSIONS.some((ext) => f.name.toLowerCase().endsWith(ext))
       );
       if (rejected.length > 0) {
-        setFileTypeError("Only .zip files are accepted.");
+        setFileTypeError(
+          `Only ${ACCEPTED_EXTENSIONS_LABEL} files are accepted.`
+        );
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
         }
@@ -157,7 +161,7 @@ function SkillFileDropzone({
       <DropzoneOverlay
         isDragActive={isDragOver}
         title="Drop files here"
-        description="Upload .zip files"
+        description={`Upload ${ACCEPTED_EXTENSIONS_LABEL} files`}
       />
       {isLoading ? (
         <>
@@ -181,7 +185,7 @@ function SkillFileDropzone({
           />
           <Button
             label="Upload files"
-            icon={PlusIcon}
+            icon={Plus}
             variant="primary"
             size="sm"
             disabled={disabled}
@@ -197,12 +201,15 @@ function FileRequirements() {
   return (
     <ContentMessage
       title="File requirements"
-      icon={InformationCircleIcon}
+      icon={InfoCircle}
       variant="outline"
       size="lg"
     >
       <ul className="list-disc pl-4 text-sm">
-        <li>The imported .zip must include a SKILL.md file</li>
+        <li>
+          The imported {ACCEPTED_EXTENSIONS_LABEL} archive must include a
+          SKILL.md file
+        </li>
         <li>
           This file must contain the skill name and description formatted in
           YAML

@@ -8,6 +8,7 @@ import {
   CONVERSATIONS_RETENTION_MIN_DAYS,
   isValidConversationsRetentionDays,
 } from "@app/lib/conversations_retention";
+import { FeatureFlagModel } from "@app/lib/models/feature_flag";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
@@ -26,7 +27,12 @@ import logger from "@app/logger/logger";
 import { terminateAllAgentLoopWorkflowsForConversation } from "@app/temporal/agent_loop/terminate";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type { EmbeddingProviderIdType } from "@app/types/assistant/models/types";
-import type { WorkspacePoolCreditState } from "@app/types/credits";
+import type {
+  WorkspacePoolCreditState,
+  WorkspaceProgrammaticCreditState,
+} from "@app/types/credits";
+import { WORKSPACE_CACHE_KEY_VERSION } from "@app/types/shared/cache_resource_registry";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -73,6 +79,7 @@ type CachedWorkspaceData = {
   conversationsRetentionDays: number | null;
   metronomeCustomerId: string | null;
   poolCreditState: WorkspacePoolCreditState;
+  programmaticCreditState: WorkspaceProgrammaticCreditState;
   createdAt: number;
   updatedAt: number;
 };
@@ -118,7 +125,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }
 
   private static readonly workspaceCacheKeyResolver = (wId: string) =>
-    `workspace:sid:${wId}`;
+    `workspace:v${WORKSPACE_CACHE_KEY_VERSION}:${wId}`;
 
   static isWorkspaceConversationKillSwitchValue(
     killSwitched: unknown
@@ -204,6 +211,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       conversationsRetentionDays: workspace.conversationsRetentionDays,
       metronomeCustomerId: workspace.metronomeCustomerId ?? null,
       poolCreditState: workspace.poolCreditState,
+      programmaticCreditState: workspace.programmaticCreditState,
       createdAt: workspace.createdAt.getTime(),
       updatedAt: workspace.updatedAt.getTime(),
     };
@@ -246,6 +254,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       conversationsRetentionDays: data.conversationsRetentionDays,
       metronomeCustomerId: data.metronomeCustomerId ?? null,
       poolCreditState: data.poolCreditState,
+      programmaticCreditState: data.programmaticCreditState,
       createdAt: new Date(data.createdAt),
       updatedAt: new Date(data.updatedAt),
     };
@@ -452,6 +461,31 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return workspaces.map((w) => w.id);
   }
 
+  static async listWithFeatureFlag(
+    name: WhitelistableFeature
+  ): Promise<WorkspaceResource[]> {
+    const flagRows = await FeatureFlagModel.findAll({
+      attributes: ["workspaceId"],
+      where: {
+        name,
+      },
+      // WORKSPACE_ISOLATION_BYPASS: cross-workspace listing of workspaces with a given feature flag enabled.
+      // @ts-expect-error -- Cross-workspace query by design.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
+    const workspaceModelIds = Array.from(
+      new Set(flagRows.map((f) => f.workspaceId))
+    );
+    if (workspaceModelIds.length === 0) {
+      return [];
+    }
+    const workspaces = await this.model.findAll({
+      where: { id: { [Op.in]: workspaceModelIds } },
+    });
+    return workspaces.map((w) => new this(this.model, w.get()));
+  }
+
   async updateSegmentation(segmentation: WorkspaceSegmentationType) {
     return this.update({ segmentation });
   }
@@ -461,6 +495,13 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     transaction?: Transaction
   ): Promise<void> {
     await this.update({ poolCreditState }, transaction);
+  }
+
+  async updateProgrammaticCreditState(
+    programmaticCreditState: WorkspaceProgrammaticCreditState,
+    transaction?: Transaction
+  ): Promise<void> {
+    await this.update({ programmaticCreditState }, transaction);
   }
 
   async updateWorkspaceSettings(
@@ -907,7 +948,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       ) {
         return new Err(
           new Error(
-            `Conversation retention must be -1 or >= ${CONVERSATIONS_RETENTION_MIN_DAYS} days.`
+            `Conversation retention must be null or at least ${CONVERSATIONS_RETENTION_MIN_DAYS} day.`
           )
         );
       }

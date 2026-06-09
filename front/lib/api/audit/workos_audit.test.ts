@@ -92,4 +92,29 @@ describe("emitAuditLogEvent", () => {
 
     expect(mockCreateAuditLogEvent).not.toHaveBeenCalled();
   });
+
+  it("truncates metadata values longer than 1000 chars", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await freshAuth(workspace.sId);
+    await FeatureFlagFactory.basic(auth, "audit_logs");
+
+    const longValue = "x".repeat(2000);
+    const shortValue = "y".repeat(50);
+
+    await emitAuditLogEvent({
+      auth,
+      action: "workspace.audit_logs_updated",
+      targets: [buildAuditLogTarget("workspace", workspace)],
+      metadata: {
+        long_field: longValue,
+        short_field: shortValue,
+      },
+    });
+
+    expect(mockCreateAuditLogEvent).toHaveBeenCalledTimes(1);
+    const eventArg = mockCreateAuditLogEvent.mock.calls[0][0].event;
+    expect(eventArg.metadata.long_field.length).toBe(1000);
+    expect(eventArg.metadata.long_field.endsWith("...[truncated]")).toBe(true);
+    expect(eventArg.metadata.short_field).toBe(shortValue);
+  });
 });

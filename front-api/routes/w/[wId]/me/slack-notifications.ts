@@ -1,17 +1,15 @@
-import { Hono } from "hono";
-
+import type { GetSlackNotificationResponseBody } from "@app/lib/api/me/slack_notifications";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-
-export type GetSlackNotificationResponseBody = {
-  canConfigure: boolean;
-};
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 // Mounted at /api/w/:wId/me/slack-notifications.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+/** @ignoreswagger */
+app.get("/", async (ctx): HandlerResult<GetSlackNotificationResponseBody> => {
+  const auth = ctx.get("auth");
 
   const featureFlags = await getFeatureFlags(auth);
   const isFeatureEnabled = featureFlags.includes(
@@ -19,8 +17,7 @@ app.get("/", async (c) => {
   );
 
   if (!isFeatureEnabled) {
-    const body: GetSlackNotificationResponseBody = { canConfigure: false };
-    return c.json(body);
+    return ctx.json({ canConfigure: false });
   }
 
   const slackBotConnections = await DataSourceResource.listByConnectorProvider(
@@ -28,10 +25,9 @@ app.get("/", async (c) => {
     "slack_bot"
   );
 
-  const body: GetSlackNotificationResponseBody = {
+  return ctx.json({
     canConfigure: slackBotConnections.length > 0,
-  };
-  return c.json(body);
+  });
 });
 
 export default app;

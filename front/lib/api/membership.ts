@@ -4,15 +4,21 @@ import {
   emitAuditLogEventDirect,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import type { AuditLogActor } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
-import { updateSubscriptionSeats } from "@app/lib/metronome/client";
-import type { CachedContract } from "@app/lib/metronome/plan_type";
+import {
+  upsertMetronomePerUserCapAlert,
+  upsertMetronomePerUserWarningAlert,
+} from "@app/lib/metronome/alerts/spend_limits";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
-  getSubscriptionIdForSeatTypeFromContract,
-  handleSeatTransition,
+  getDefaultSeatTypeForContract,
+  getProductSeatTypes,
+  getSeatAllowancesByNormalizedSeatType,
+} from "@app/lib/metronome/seat_types";
+import {
+  classifySeatChange,
   hasContractSeatSubscription,
-  syncSeatCount,
 } from "@app/lib/metronome/seats";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -23,13 +29,18 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import { launchUpdateUsageWorkflow } from "@app/temporal/usage_queue/client";
+import {
+  launchMetronomeSeatCountSyncWorkflow,
+  launchUpdateUsageWorkflow,
+} from "@app/temporal/usage_queue/client";
 import type {
   MembershipOriginType,
   MembershipRoleType,
   MembershipSeatType,
 } from "@app/types/memberships";
+import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import { Err, Ok, type Result } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   ActiveRoleType,
   LightWorkspaceType,
@@ -37,62 +48,132 @@ import type {
 } from "@app/types/user";
 import type { Transaction } from "sequelize";
 
-async function syncSeatCountForWorkspace(
-  workspace: LightWorkspaceType
-): Promise<Result<void, Error>> {
+/**
+ * Resolve the seat type for a brand-new membership. For seat-billed
+ * contracts, picks the lowest-allowance seat tier billed on the contract,
+ * gated by the active plan's free-seat caps:
+ *
+ *  - Returning member (already had a row in this workspace) → `free` is
+ *    skipped (one-shot starter tier).
+ *  - `useFreeSeat` is false → caller opted out of `free` directly.
+ *  - `plan.limits.users.maxFreeUsers` reached → `free` is skipped.
+ *  - `plan.limits.users.maxLifetimeFreeUsers` reached → `free` is skipped.
+ *
+ * In all three skip cases the resolver advances to the next billed tier
+ * and only fails when no tier is assignable.
+ *
+ * The workspace-wide active-member cap (`plan.limits.users.maxUsers`) is
+ * NOT checked here — it's enforced upstream by
+ * `evaluateWorkspaceSeatAvailability` (signup) and `invitation.ts` (invite
+ * creation).
+ *
+ * Returns `undefined` for workspaces not on Metronome billing. The caller
+ * passes `undefined` to `createMembership`, which applies its built-in
+ * default.
+ */
+async function resolveSeatTypeForNewMembership(
+  user: UserResource,
+  workspace: LightWorkspaceType,
+  { useFreeSeat = true }: { useFreeSeat?: boolean } = {}
+): Promise<MembershipSeatType | undefined> {
   if (!workspace.metronomeCustomerId) {
-    return new Ok(undefined);
+    return undefined;
   }
   const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
     workspace.id
   );
   if (!subscription?.metronomeContractId) {
-    return new Ok(undefined);
+    return undefined;
   }
-
   const contract = await getActiveContract(workspace.sId);
   if (!contract) {
-    return new Ok(undefined);
+    return undefined;
   }
-
-  // Gate on seat subscription presence — contracts without a seat product (e.g. enterprise)
-  // should not trigger a seat sync.
-  if (!hasContractSeatSubscription(contract)) {
-    return new Ok(undefined);
-  }
-
-  return await syncSeatCount({
-    metronomeCustomerId: workspace.metronomeCustomerId,
-    contractId: subscription.metronomeContractId,
-    workspace,
+  const planLimits = subscription.toJSON().plan.limits.users;
+  // `isReturningMember` is always queried — the one-shot rule (`free`
+  // cannot be re-granted to a user who already had a membership) holds
+  // independently of any configured cap. `freeSeatCounts` is only needed
+  // when at least one of the two caps is set; skip the count queries
+  // otherwise.
+  const limitsActive =
+    planLimits.maxFreeUsers !== -1 || planLimits.maxLifetimeFreeUsers !== -1;
+  const [productSeatTypes, isReturningMember, freeSeatCounts] =
+    await Promise.all([
+      getProductSeatTypes(),
+      MembershipResource.hasAnyMembershipOfUserInWorkspace({ user, workspace }),
+      limitsActive
+        ? MembershipResource.getFreeSeatCounts({ workspace })
+        : Promise.resolve(undefined),
+    ]);
+  const defaultSeatType = getDefaultSeatTypeForContract(
     contract,
-  });
+    productSeatTypes,
+    {
+      isReturningMember,
+      useFreeSeat,
+      freeSeatCounts,
+      freeSeatLimits: {
+        maxActiveFreeUsers: planLimits.maxFreeUsers,
+        maxLifetimeFreeUsers: planLimits.maxLifetimeFreeUsers,
+      },
+    }
+  );
+  if (!defaultSeatType) {
+    throw new Error(
+      `Cannot resolve a seat type for user ${user.sId} in workspace ${workspace.sId}: contract has seat subscriptions but no tier is assignable${isReturningMember ? " (returning user; `free` is one-shot)" : ""}.`
+    );
+  }
+  return defaultSeatType;
 }
 
 /**
  * Create a membership with tracking, audit logging, and Metronome seat provisioning.
+ *
+ * For Metronome-billed workspaces with a seat-billed contract, the seat
+ * type assigned to the new membership is the lowest-allowance tier billed
+ * on the contract (with `free` skipped for returning members, when
+ * `useFreeSeat` is false, or when the plan's free-seat caps are hit).
+ * Refuses to create the row when no tier is assignable.
+ *
+ * `useFreeSeat` (default `true`) lets the caller opt the new member out
+ * of `free` even when it would otherwise be available — e.g. an admin
+ * provisioning a new member directly onto a paid tier.
  */
 export async function createAndTrackMembership({
   user,
   workspace,
   role,
   origin,
+  useFreeSeat = true,
+  auditActor,
 }: {
   user: UserResource;
   workspace: WorkspaceResource | WorkspaceModel | LightWorkspaceType;
   role: ActiveRoleType;
   origin: MembershipOriginType;
+  useFreeSeat?: boolean;
+  // Override for the audit-log actor. Defaults to the user themselves, which
+  // is correct for self-signup. SCIM/system-driven provisioning should pass
+  // `{ type: "system", id: directoryId, name: "Directory Sync" }` so the
+  // audit row doesn't read like the user provisioned themselves.
+  auditActor?: AuditLogActor;
 }) {
   const w =
     workspace instanceof WorkspaceModel ||
     workspace instanceof WorkspaceResource
       ? renderLightWorkspaceType({ workspace })
       : workspace;
+
+  const seatType = await resolveSeatTypeForNewMembership(user, w, {
+    useFreeSeat,
+  });
+
   const m = await MembershipResource.createMembership({
     role,
     user,
     workspace: w,
     origin,
+    seatType,
   });
 
   void ServerSideTracking.trackCreateMembership({
@@ -105,7 +186,7 @@ export async function createAndTrackMembership({
   void emitAuditLogEventDirect({
     workspace: w,
     action: "membership.created",
-    actor: {
+    actor: auditActor ?? {
       type: "user",
       id: user.sId,
       name: user.fullName() ?? "unknown",
@@ -128,7 +209,9 @@ export async function createAndTrackMembership({
   await launchUpdateUsageWorkflow({ workspaceId: workspace.sId });
 
   // Add seat in Metronome if workspace is Metronome-billed.
-  const addSeatResult = await syncSeatCountForWorkspace(w);
+  const addSeatResult = await launchMetronomeSeatCountSyncWorkflow({
+    workspaceId: w.sId,
+  });
   if (addSeatResult.isErr()) {
     logger.error(
       {
@@ -149,9 +232,16 @@ export async function revokeAndTrackMembership(
   {
     transaction,
     allowLastAdminRevocation = false,
+    auditActor,
   }: {
     transaction?: Transaction;
     allowLastAdminRevocation?: boolean;
+    // Override for the audit-log actor. When omitted, the actor is derived
+    // from `auth` (typically a generic system actor when called from SCIM,
+    // since auth is internalAdminForWorkspace). SCIM callers should pass
+    // `{ type: "system", id: directoryId, name: "Directory Sync" }` so the
+    // audit row identifies which directory triggered the revocation.
+    auditActor?: AuditLogActor;
   } = {}
 ) {
   const workspace = auth.getNonNullableWorkspace();
@@ -188,24 +278,45 @@ export async function revokeAndTrackMembership(
       endAt: revokeResult.value.endAt,
     });
 
-    void emitAuditLogEvent({
-      auth,
-      action: "membership.revoked",
-      targets: [
-        buildAuditLogTarget("workspace", workspace),
-        buildAuditLogTarget("user", {
-          sId: user.sId,
-          name: user.fullName() ?? "unknown",
-        }),
-      ],
-      context: getAuditLogContext(auth),
-      metadata: {
-        previous_role: revokeResult.value.role,
-      },
-    });
+    if (auditActor) {
+      void emitAuditLogEventDirect({
+        workspace,
+        action: "membership.revoked",
+        actor: auditActor,
+        targets: [
+          buildAuditLogTarget("workspace", workspace),
+          buildAuditLogTarget("user", {
+            sId: user.sId,
+            name: user.fullName() ?? "unknown",
+          }),
+        ],
+        context: getAuditLogContext(auth),
+        metadata: {
+          previous_role: revokeResult.value.role,
+        },
+      });
+    } else {
+      void emitAuditLogEvent({
+        auth,
+        action: "membership.revoked",
+        targets: [
+          buildAuditLogTarget("workspace", workspace),
+          buildAuditLogTarget("user", {
+            sId: user.sId,
+            name: user.fullName() ?? "unknown",
+          }),
+        ],
+        context: getAuditLogContext(auth),
+        metadata: {
+          previous_role: revokeResult.value.role,
+        },
+      });
+    }
 
     // Remove seat in Metronome if workspace is Metronome-billed.
-    const removeSeatResult = await syncSeatCountForWorkspace(workspace);
+    const removeSeatResult = await launchMetronomeSeatCountSyncWorkflow({
+      workspaceId: workspace.sId,
+    });
     if (removeSeatResult.isErr()) {
       logger.error(
         {
@@ -282,7 +393,9 @@ export async function updateMembershipRoleAndTrack({
 
     // If a revoked membership was re-activated, add a Metronome seat and update usage.
     if (wasRevoked) {
-      const addSeatResult = await syncSeatCountForWorkspace(workspace);
+      const addSeatResult = await launchMetronomeSeatCountSyncWorkflow({
+        workspaceId: workspace.sId,
+      });
       if (addSeatResult.isErr()) {
         logger.error(
           {
@@ -301,61 +414,129 @@ export async function updateMembershipRoleAndTrack({
 }
 
 /**
- * Schedules the inverse Metronome transition at the same future date,
- * overriding the previously scheduled seat change. Returns Err if subscription
- * IDs are missing.
+ * Re-sync the Metronome per-user cap alert after a seat-type change, for
+ * users carrying a pool cap override. The override itself (pool-only,
+ * persisted on the membership as `poolCapOverrideAwuCredits`) is unchanged —
+ * only the seat-allowance portion of the alert threshold
+ * (seatAllowance + poolCapOverride) moves with the new seat type, so the
+ * total is recomputed from the membership's current state. Idempotent: the
+ * upsert is a no-op when the threshold is unchanged.
+ *
+ * Best-effort: failures are logged but do not block the seat change (the
+ * next override write or reconcile re-derives the alert from the DB value).
  */
-async function cancelScheduledSeatChangeInMetronome({
-  metronomeCustomerId,
-  contractId,
-  contract,
-  currentSeatType,
-  scheduledSeatType,
-  scheduledAt,
+export async function recalculatePerUserCapAlertForSeatChange({
+  workspace,
+  membership,
   userId,
 }: {
-  metronomeCustomerId: string;
-  contractId: string;
-  contract: CachedContract;
-  currentSeatType: MembershipSeatType;
-  scheduledSeatType: MembershipSeatType;
-  scheduledAt: Date;
+  workspace: LightWorkspaceType;
+  membership: MembershipResource;
   userId: string;
-}): Promise<Result<void, Error>> {
-  const fromSubId = getSubscriptionIdForSeatTypeFromContract(
-    contract,
-    scheduledSeatType
-  );
-  const toSubId = getSubscriptionIdForSeatTypeFromContract(
-    contract,
-    currentSeatType
-  );
-  if (!fromSubId || !toSubId) {
-    return new Err(
-      new Error(
-        `Missing subscription IDs to cancel scheduled change from ${scheduledSeatType} to ${currentSeatType}`
-      )
+}): Promise<void> {
+  const { metronomeCustomerId } = workspace;
+  if (!metronomeCustomerId) {
+    return;
+  }
+
+  // No override → the user follows the per-seat-type default alerts, which
+  // already fan out per user; nothing to recalculate.
+  const poolCapOverrideAwuCredits = membership.poolCapOverrideAwuCredits;
+  if (poolCapOverrideAwuCredits === null) {
+    return;
+  }
+
+  // Seat allowance for the *new* (current) seat type; 0 when the seat type
+  // carries no allowance — same convention as `setUserSpendLimit`.
+  const normalizedSeatType = normalizeToPoolLimitSeatType(membership.seatType);
+  let newAllowanceAwuCredits = 0;
+  if (normalizedSeatType) {
+    try {
+      const allowances = await getSeatAllowancesByNormalizedSeatType(
+        workspace.sId
+      );
+      newAllowanceAwuCredits = allowances[normalizedSeatType] ?? 0;
+    } catch (err) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          userId,
+          seatType: membership.seatType,
+          err,
+        },
+        "[Membership] Failed to resolve seat allowance for per-user cap recalculation"
+      );
+      return;
+    }
+  }
+
+  const newThresholdAwuCredits =
+    newAllowanceAwuCredits + poolCapOverrideAwuCredits;
+
+  const upsertResult = await upsertMetronomePerUserCapAlert({
+    metronomeCustomerId,
+    workspaceId: workspace.sId,
+    userId,
+    awuCredits: newThresholdAwuCredits,
+  });
+  if (upsertResult.isErr()) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        userId,
+        seatType: membership.seatType,
+        newThresholdAwuCredits,
+        err: upsertResult.error,
+      },
+      "[Membership] Failed to recalculate per-user cap alert after seat change"
+    );
+    return;
+  }
+
+  // Also update the companion 80% warning alert.
+  const warningResult = await upsertMetronomePerUserWarningAlert({
+    metronomeCustomerId,
+    workspaceId: workspace.sId,
+    userId,
+    capAwuCredits: newThresholdAwuCredits,
+  });
+  if (warningResult.isErr()) {
+    logger.warn(
+      {
+        workspaceId: workspace.sId,
+        userId,
+        newThresholdAwuCredits,
+        err: warningResult.error,
+      },
+      "[Membership] Failed to recalculate per-user warning alert after seat change"
     );
   }
-  return updateSubscriptionSeats({
-    metronomeCustomerId,
-    contractId,
-    fromSubscriptionId: fromSubId,
-    toSubscriptionId: toSubId,
-    addSeatIds: [userId],
-    removeSeatIds: [userId],
-    startingAt: scheduledAt.toISOString(),
-  });
+
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      userId,
+      seatType: membership.seatType,
+      poolCapOverrideAwuCredits,
+      newAllowanceAwuCredits,
+      newThresholdAwuCredits,
+    },
+    "[Membership] Recalculated per-user cap alert after seat change"
+  );
 }
 
 /**
- * Update a membership's seat type and re-sync Metronome seat counts.
- * Seat-based Metronome subscriptions (Pro / Max) bucket users by seat type,
- * so any change must trigger a seat-count sync.
+ * Update a membership's seat type and re-sync Metronome accordingly. All
+ * Metronome state changes (including scheduling decisions) flow through
+ * `syncSeatCount`, which classifies the transition generically based on
+ * allocation comparison — no per-seat-type policy lives here.
  *
- * Deferred transitions (Max → Pro at next billing period) close the current
- * membership row at the scheduled date and insert a future row that takes
- * effect at that date — no separate "pending" state is persisted.
+ * Outcome from `syncSeatCount` drives the DB write:
+ * - `immediate`: update the active membership row in place.
+ * - `deferred`: close the active row at the scheduled date and insert a
+ *   future row that takes effect at that date.
+ * - `cancelled`: drop any DB future row and reopen the active one.
+ * - `noop`: nothing to write.
  */
 export async function updateMembershipSeatAndTrack({
   user,
@@ -374,7 +555,7 @@ export async function updateMembershipSeatAndTrack({
       newSeatType: MembershipSeatType;
       scheduledSeatChangeAt: Date | undefined;
     },
-    { type: "not_found" | "metronome_error" }
+    { type: "not_found" | "metronome_error" | "free_seat_not_allowed" }
   >
 > {
   const membership =
@@ -387,106 +568,154 @@ export async function updateMembershipSeatAndTrack({
   }
 
   const previousSeatType = membership.seatType;
+
+  // `free` is a one-shot starter tier — only assignable when creating a
+  // user's first membership in the workspace. Any subsequent change to
+  // free is rejected, even for users who previously held a free seat
+  // (no twice-free). A free→free noop is unaffected: nothing is written.
+  if (newSeatType === "free" && previousSeatType !== "free") {
+    return new Err({ type: "free_seat_not_allowed" });
+  }
+
   const scheduledRow =
     await MembershipResource.getScheduledMembershipOfUserInWorkspace({
       user,
       workspace,
     });
 
-  let scheduledAt: Date | undefined;
+  // Outside of Metronome billing we just write the DB straight through —
+  // no scheduling logic applies.
+  if (!workspace.metronomeCustomerId) {
+    if (previousSeatType !== newSeatType) {
+      await membership.updateMembershipSeat({
+        user,
+        workspace,
+        newSeatType,
+        author,
+      });
+    }
+    return new Ok({
+      previousSeatType,
+      newSeatType,
+      scheduledSeatChangeAt: undefined,
+    });
+  }
 
-  if (workspace.metronomeCustomerId) {
-    const subscription =
-      await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
-    const contract = await getActiveContract(workspace.sId);
+  const contract = await getActiveContract(workspace.sId);
+  const hasSeatSubscription = contract
+    ? await hasContractSeatSubscription(contract)
+    : false;
+  if (!contract || !hasSeatSubscription) {
+    // Workspace is on Metronome but the active contract has no seat
+    // subscription — apply the DB change without touching Metronome.
+    if (previousSeatType !== newSeatType) {
+      await membership.updateMembershipSeat({
+        user,
+        workspace,
+        newSeatType,
+        author,
+      });
+    }
+    return new Ok({
+      previousSeatType,
+      newSeatType,
+      scheduledSeatChangeAt: undefined,
+    });
+  }
 
-    if (
-      subscription?.metronomeContractId &&
-      contract &&
-      hasContractSeatSubscription(contract)
-    ) {
-      const metronomeCustomerId = workspace.metronomeCustomerId;
-      const contractId = subscription.metronomeContractId;
-
-      const transitionResult = await handleSeatTransition({
-        metronomeCustomerId,
-        contractId,
-        contract,
+  const productSeatTypes = await getProductSeatTypes();
+  const outcome = classifySeatChange({
+    contract,
+    productSeatTypes,
+    change: {
+      userId: user.sId,
+      previousSeatType,
+      newSeatType,
+      pendingScheduledChange: scheduledRow
+        ? { seatType: scheduledRow.seatType, at: scheduledRow.startAt }
+        : undefined,
+    },
+  });
+  if (!outcome) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
         userId: user.sId,
         previousSeatType,
         newSeatType,
+      },
+      "[Metronome] Cannot defer seat transition — no next billing period on contract"
+    );
+    return new Err({ type: "metronome_error" });
+  }
+
+  // Apply the DB write *before* syncing Metronome. `syncSeatCount` reads
+  // active + scheduled-future memberships and reconciles Metronome to match
+  // — no `change` plumbing required.
+  let scheduledSeatChangeAt: Date | undefined;
+  let resultingActiveSeatType: MembershipSeatType = previousSeatType;
+  switch (outcome.kind) {
+    case "noop":
+      break;
+    case "cancelled":
+      await membership.cancelScheduledSeatChange({ user, workspace, author });
+      break;
+    case "immediate":
+      // Drop any pending future row first so `syncSeatCount` doesn't try
+      // to reconcile a stale scheduled segment.
+      if (scheduledRow) {
+        await membership.cancelScheduledSeatChange({ user, workspace, author });
+      }
+      await membership.updateMembershipSeat({
+        user,
+        workspace,
+        newSeatType,
+        author,
       });
-      if (transitionResult.isErr()) {
-        logger.error(
-          {
-            workspaceId: workspace.sId,
-            userId: user.sId,
-            previousSeatType,
-            newSeatType,
-            error: transitionResult.error,
-          },
-          "[Metronome] Failed to handle seat transition"
-        );
-        return new Err({ type: "metronome_error" });
-      }
-
-      scheduledAt = transitionResult.value.scheduledAt;
-
-      if (!scheduledAt && scheduledRow) {
-        // Same-seat selection while a future row exists → cancel the scheduled change.
-        const cancelResult = await cancelScheduledSeatChangeInMetronome({
-          metronomeCustomerId,
-          contractId,
-          contract,
-          currentSeatType: membership.seatType,
-          scheduledSeatType: scheduledRow.seatType,
-          scheduledAt: scheduledRow.startAt,
-          userId: user.sId,
-        });
-        if (cancelResult.isErr()) {
-          logger.error(
-            {
-              workspaceId: workspace.sId,
-              userId: user.sId,
-              error: cancelResult.error,
-            },
-            "[Metronome] Failed to cancel scheduled seat change"
-          );
-          return new Err({ type: "metronome_error" });
-        }
-      }
-    }
+      // Re-sync the per-user cap alert: the seat-allowance portion of the
+      // threshold changed with the seat type, the pool override didn't.
+      await recalculatePerUserCapAlertForSeatChange({
+        workspace,
+        membership,
+        userId: user.sId,
+      });
+      resultingActiveSeatType = newSeatType;
+      break;
+    case "deferred":
+      // `scheduleSeatChange` already destroys any prior pending row.
+      await membership.scheduleSeatChange({
+        user,
+        workspace,
+        newSeatType,
+        scheduledAt: outcome.at,
+        author,
+      });
+      scheduledSeatChangeAt = outcome.at;
+      break;
+    default:
+      return assertNever(outcome);
   }
 
-  if (scheduledAt) {
-    await membership.scheduleSeatChange({
-      user,
-      workspace,
-      newSeatType,
-      scheduledAt,
-      author,
-    });
-    return new Ok({
-      previousSeatType,
-      newSeatType: previousSeatType,
-      scheduledSeatChangeAt: scheduledAt,
-    });
-  }
-
-  if (scheduledRow) {
-    await membership.cancelScheduledSeatChange({ user, workspace, author });
-  } else if (previousSeatType !== newSeatType) {
-    await membership.updateMembershipSeat({
-      user,
-      workspace,
-      newSeatType,
-      author,
-    });
+  const syncResult = await launchMetronomeSeatCountSyncWorkflow({
+    workspaceId: workspace.sId,
+  });
+  if (syncResult.isErr()) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        userId: user.sId,
+        previousSeatType,
+        newSeatType,
+        error: syncResult.error,
+      },
+      "[Metronome] Failed to sync seat count for transition"
+    );
+    return new Err({ type: "metronome_error" });
   }
 
   return new Ok({
     previousSeatType,
-    newSeatType,
-    scheduledSeatChangeAt: undefined,
+    newSeatType: resultingActiveSeatType,
+    scheduledSeatChangeAt,
   });
 }

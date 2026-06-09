@@ -1,14 +1,15 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
-
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
 
 const ConversationSkillActionRequestSchema = z.object({
   action: z.enum(["add", "delete"]),
@@ -16,11 +17,12 @@ const ConversationSkillActionRequestSchema = z.object({
 });
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/skills.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const conversationId = c.req.param("cId") ?? "";
+/** @ignoreswagger */
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const { cId: conversationId } = ctx.req.valid("param");
 
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(
@@ -28,7 +30,7 @@ app.get("/", async (c) => {
       conversationId
     );
   if (conversationRes.isErr()) {
-    return apiErrorForConversation(c, conversationRes.error);
+    return apiErrorForConversation(ctx, conversationRes.error);
   }
 
   const conversationSkills = await SkillResource.listEnabledByConversation(
@@ -36,15 +38,16 @@ app.get("/", async (c) => {
     { conversation: conversationRes.value }
   );
 
-  return c.json({ skills: conversationSkills.map((s) => s.toJSON(auth)) });
+  return ctx.json({ skills: conversationSkills.map((s) => s.toJSON(auth)) });
 });
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", ConversationSkillActionRequestSchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const conversationId = c.req.param("cId") ?? "";
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { cId: conversationId } = ctx.req.valid("param");
 
     const conversationRes =
       await ConversationResource.fetchConversationWithoutContent(
@@ -52,11 +55,11 @@ app.post(
         conversationId
       );
     if (conversationRes.isErr()) {
-      return apiErrorForConversation(c, conversationRes.error);
+      return apiErrorForConversation(ctx, conversationRes.error);
     }
 
     const conversationWithoutContent = conversationRes.value;
-    const { action, skillId } = c.req.valid("json");
+    const { action, skillId } = ctx.req.valid("json");
 
     const skillRes = await SkillResource.fetchById(auth, skillId);
 
@@ -69,7 +72,7 @@ app.post(
         },
         "Skill not found"
       );
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "skill_not_found",
@@ -94,7 +97,7 @@ app.post(
         },
         "Failed to upsert skill to conversation"
       );
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -103,7 +106,7 @@ app.post(
       });
     }
 
-    return c.json({ success: true });
+    return ctx.json({ success: true });
   }
 );
 

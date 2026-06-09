@@ -18,11 +18,13 @@ import {
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
-import type {
-  MembershipOriginType,
-  MembershipRoleType,
-  MembershipSeatType,
-  UserCreditState,
+import {
+  initialCreditStateForSeatType,
+  isMembershipSeatType,
+  type MembershipOriginType,
+  type MembershipRoleType,
+  type MembershipSeatType,
+  type UserCreditState,
 } from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -86,6 +88,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   get isBuilder(): boolean {
     switch (this.role) {
       case "admin":
+      case "business_admin":
       case "builder":
         return true;
       case "user":
@@ -250,6 +253,41 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     };
   }
 
+  /**
+   * Return memberships whose `startAt` is strictly in the future for the given
+   * workspace — i.e. scheduled seat-type changes that haven't taken effect yet.
+   *
+   * Pairs with `scheduleSeatChange`, which writes exactly one future row per
+   * user (it destroys any prior future row first), so the result is at most
+   * one row per user. The "previous" seat type for each future row lives on
+   * the currently-active membership for that user.
+   *
+   * Used by `syncSeatCount` to reconcile Metronome's future-dated seat
+   * segments with the DB state.
+   */
+  static async getScheduledFutureMemberships({
+    workspace,
+    transaction,
+  }: {
+    workspace: LightWorkspaceType;
+    transaction?: Transaction;
+  }): Promise<MembershipResource[]> {
+    const rows = await MembershipModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        startAt: { [Op.gt]: new Date() },
+      },
+      include: [{ model: UserModel, required: true }],
+      transaction,
+    });
+    return rows.map(
+      (row) =>
+        new MembershipResource(MembershipModel, row.get(), {
+          user: row.user?.get(),
+        })
+    );
+  }
+
   static async getLatestMemberships({
     users,
     workspace,
@@ -372,6 +410,32 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       transaction,
     });
     return row ? new MembershipResource(this.model, row.get()) : null;
+  }
+
+  /**
+   * Returns true when the user has *any* prior membership row in the
+   * workspace — current, future-scheduled, or revoked. Used to enforce
+   * that `"free"` is a one-shot starter tier: it can only be assigned at
+   * the very first membership creation; any subsequent change refuses
+   * `"free"` (including re-joining after revoke).
+   */
+  static async hasAnyMembershipOfUserInWorkspace({
+    user,
+    workspace,
+    transaction,
+  }: {
+    user: UserResource;
+    workspace: LightWorkspaceType;
+    transaction?: Transaction;
+  }): Promise<boolean> {
+    const count = await this.model.count({
+      where: {
+        userId: user.id,
+        workspaceId: workspace.id,
+      },
+      transaction,
+    });
+    return count > 0;
   }
 
   /**
@@ -681,6 +745,76 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
+  static async getActiveSeatTypeCountsForWorkspace({
+    workspace,
+    transaction,
+  }: {
+    workspace: LightWorkspaceType;
+    transaction?: Transaction;
+  }): Promise<Partial<Record<MembershipSeatType, number>>> {
+    const now = new Date();
+    const rows = await this.model.count({
+      where: {
+        workspaceId: workspace.id,
+        startAt: {
+          [Op.lte]: now,
+        },
+        endAt: {
+          [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: now }],
+        },
+      },
+      distinct: true,
+      col: "userId",
+      group: ["seatType"],
+      transaction,
+    });
+
+    const counts: Partial<Record<MembershipSeatType, number>> = {};
+    for (const row of rows) {
+      const { seatType } = row;
+      if (isMembershipSeatType(seatType)) {
+        counts[seatType] = row.count;
+      }
+    }
+
+    return counts;
+  }
+
+  /**
+   * Counts used to enforce the plan-level `free`-seat caps
+   * (`plan.limits.users.maxFreeUsers` / `maxLifetimeFreeUsers`).
+   *
+   *  - `active`:   distinct users with a currently-active `free` row.
+   *  - `lifetime`: distinct users ever assigned `free` (active + revoked
+   *    + expired). `free` is a one-shot starter tier, so the lifetime
+   *    count is the right denominator for the cap.
+   */
+  static async getFreeSeatCounts({
+    workspace,
+  }: {
+    workspace: LightWorkspaceType;
+  }): Promise<{ active: number; lifetime: number }> {
+    const now = new Date();
+    const [active, lifetime] = await Promise.all([
+      MembershipModel.count({
+        where: {
+          workspaceId: workspace.id,
+          seatType: "free",
+          startAt: { [Op.lte]: now },
+          endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: now }] },
+        },
+        distinct: true,
+        col: "userId",
+      }),
+      MembershipModel.count({
+        where: { workspaceId: workspace.id, seatType: "free" },
+        distinct: true,
+        col: "userId",
+      }),
+    ]);
+    return { active, lifetime };
+  }
+
   /**
    * Computes the number of active members at each given timestamp (end of day).
    * Fetches all memberships overlapping the date range in a single query,
@@ -898,6 +1032,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
         role,
         origin,
         seatType,
+        // Optimistic initial state from the seat type (pro/max → user_seat) so a
+        // new seat user isn't stuck at the "on_pool" DB default during the seat
+        // sync's debounce window; the post-sync reconcile refines it from the
+        // live Metronome balance.
+        creditState: initialCreditStateForSeatType(seatType),
         firstUsedAt: origin === "provisioned" ? null : new Date(),
       },
       { transaction }
@@ -1298,7 +1437,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
   /**
    * Update the seatType of an active membership in place. Callers are
-   * responsible for calling handleSeatTransition before this returns.
+   * responsible for syncing seat state in Metronome before this returns
+   * (via `syncSeatCount`).
    */
   async updateMembershipSeat({
     user,
@@ -1335,6 +1475,19 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     );
 
     return { previousSeatType, newSeatType };
+  }
+
+  /**
+   * Update the per-user pool cap override (in AWU credits, seat allowance
+   * excluded) of an active membership in place. `null` clears the override,
+   * letting the seat-type default apply. Callers are responsible for syncing
+   * the derived Metronome alerts.
+   */
+  async updatePoolCapOverride(
+    poolCapOverrideAwuCredits: number | null,
+    transaction?: Transaction
+  ): Promise<void> {
+    await this.update({ poolCapOverrideAwuCredits }, transaction);
   }
 
   /**
@@ -1378,6 +1531,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
           origin: this.origin,
           seatType: newSeatType,
           firstUsedAt: this.firstUsedAt,
+          // The pool cap override survives the seat change: it's the
+          // pool-only portion, independent of the seat allowance.
+          poolCapOverrideAwuCredits: this.poolCapOverrideAwuCredits,
         },
         { transaction }
       );
@@ -1432,6 +1588,54 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       },
       "Membership scheduled seat change cancelled"
     );
+  }
+
+  /**
+   * Cancel scheduled seat changes for a whole workspace that were staged for a
+   * specific `scheduledAt` moment (e.g. a pending contract switch's start). For
+   * each future row at that exact moment, drops it and reopens the current row
+   * it superseded (clears its `endAt`). Scoped to `scheduledAt` so unrelated
+   * scheduled changes (e.g. an admin-deferred downgrade at period end) are left
+   * untouched. Returns the number of memberships whose change was cancelled.
+   */
+  static async cancelScheduledSeatChangesForWorkspaceAt({
+    workspace,
+    scheduledAt,
+  }: {
+    workspace: LightWorkspaceType;
+    scheduledAt: Date;
+  }): Promise<number> {
+    // A backdated/immediate remap updates the row in place (no future row), so
+    // only a genuinely future `scheduledAt` can have rows to cancel.
+    if (scheduledAt.getTime() <= Date.now()) {
+      return 0;
+    }
+    return frontSequelize.transaction(async (transaction) => {
+      const futureRows = await MembershipModel.findAll({
+        where: {
+          workspaceId: workspace.id,
+          startAt: scheduledAt,
+        },
+        transaction,
+      });
+      for (const future of futureRows) {
+        // Drop the future row first to preserve the `WHERE endAt IS NULL`
+        // unique invariant, then reopen the current row it superseded.
+        await future.destroy({ transaction });
+        await MembershipModel.update(
+          { endAt: null },
+          {
+            where: {
+              userId: future.userId,
+              workspaceId: workspace.id,
+              endAt: scheduledAt,
+            },
+            transaction,
+          }
+        );
+      }
+      return futureRows.length;
+    });
   }
 
   async delete(

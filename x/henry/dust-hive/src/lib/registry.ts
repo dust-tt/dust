@@ -53,11 +53,18 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
         `${getWorktreeDir(env.name, env.metadata.repoRoot)}/sdks/js/dist/client.esm.js`,
     },
   },
-  front: {
-    cwd: "front",
+  "front-api": {
+    cwd: "front-api",
     needsNvm: true,
     needsEnvSh: true,
-    buildCommand: () => "npm run dev",
+    // forbid-next.cjs throws if anything loads `next` at runtime, guaranteeing
+    // the Hono server (not Next) serves every request. Mirrors the front-hono
+    // proc in tools/mprocs.yaml.
+    // HOSTNAME=127.0.0.1 forces an IPv4 bind: "localhost" resolves to ::1 on
+    // macOS, but the port forwarder connects upstream over IPv4, so without
+    // this the forwarded port (3000) cannot reach front-api.
+    buildCommand: () =>
+      "HOSTNAME=127.0.0.1 NODE_ENV=development NODE_OPTIONS=--require=./forbid-next.cjs npm run dev",
     readinessCheck: {
       type: "http",
       url: (ports) => `http://localhost:${ports.front}/api/healthz`,
@@ -146,7 +153,7 @@ if (missingKeys.length > 0 || extraKeys.length > 0) {
   );
 }
 
-// Services to start during warm (all services except sparkle, SDK, and viz which start at spawn/manually)
+// Services to start during warm (all services except sparkle, SDK, and viz which start at spawn/manually).
 export const WARM_SERVICES: ServiceName[] = ALL_SERVICES.filter(
   (service) => service !== "sparkle" && service !== "sdk" && service !== "viz"
 );
@@ -312,16 +319,17 @@ export async function waitForServiceReady(
   return waitForFileReady(service, env, check.path(env), timeoutMs);
 }
 
-// Get HTTP health checks for all services (for status display)
+// Get HTTP health checks for active services (for status display)
 export function getHealthChecks(
   ports: PortAllocation
 ): Array<{ service: ServiceName; url: string }> {
   const checks: Array<{ service: ServiceName; url: string }> = [];
 
-  for (const [service, config] of Object.entries(SERVICE_REGISTRY)) {
+  for (const service of ALL_SERVICES) {
+    const config = SERVICE_REGISTRY[service];
     if (config.readinessCheck?.type === "http") {
       checks.push({
-        service: service as ServiceName,
+        service,
         url: config.readinessCheck.url(ports),
       });
     }

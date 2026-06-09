@@ -1,6 +1,6 @@
 import type { IndustryPageConfig } from "@app/components/home/content/Industry/configs/utils";
 import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
-import { ActionStoreIcon } from "@dust-tt/sparkle";
+import { ActionStore } from "@dust-tt/sparkle";
 
 export const retailEcommerceConfig: IndustryPageConfig = {
   seo: {
@@ -24,7 +24,7 @@ export const retailEcommerceConfig: IndustryPageConfig = {
     chip: {
       label: "Retail & e-Commerce",
       color: "green",
-      icon: ActionStoreIcon,
+      icon: ActionStore,
     },
     title: (
       <>

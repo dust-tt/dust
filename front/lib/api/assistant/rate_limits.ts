@@ -9,6 +9,11 @@ import {
 import type { MaxMessagesTimeframeType } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 
+export type GetTrialMessageUsageResponseType = {
+  count: number;
+  limit: number;
+};
+
 export const MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE = 100;
 export const MESSAGE_RATE_LIMIT_WINDOW_SECONDS = 60;
 export const MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR = 3_000;

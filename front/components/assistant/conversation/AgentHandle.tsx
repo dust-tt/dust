@@ -34,7 +34,7 @@ export function AgentHandle({
       href={href}
       shallow
       className={cn(
-        "max-w-[14rem] cursor-pointer truncate transition duration-200 hover:text-highlight active:text-highlight-600 sm:max-w-fit",
+        "max-w-[14rem] cursor-pointer truncate transition duration-200 hover:text-highlight active:text-highlight-600 sm:max-w-fit notranslate",
         isDisabled && "text-gray-600 text-opacity-75"
       )}
     >

@@ -1,9 +1,9 @@
-import { Hono } from "hono";
+import { workspaceApp } from "@front-api/middlewares/ctx";
 
 import available from "./available";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/mcp.
-const app = new Hono();
+const app = workspaceApp();
 
 app.route("/available", available);
 

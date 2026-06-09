@@ -1,9 +1,7 @@
-import { describe, expect, it } from "vitest";
-
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-
 import { honoApp } from "@front-api/app";
+import { describe, expect, it } from "vitest";
 
 async function setup(role: "builder" | "user" | "admin" = "admin") {
   const { workspace, systemSpace } = await createPrivateApiMockRequest({
@@ -42,7 +40,9 @@ describe("POST /api/w/:wId/mcp/:serverId/sync", () => {
 
     expect(response.status).toBe(403);
     const body = await response.json();
-    expect(body.error.type).toBe("data_source_auth_error");
-    expect(body.error.message).toContain("Only users that are `admins`");
+    expect(body.error.type).toBe("workspace_auth_error");
+    expect(body.error.message).toContain(
+      "Only admin users can perform this action."
+    );
   });
 });

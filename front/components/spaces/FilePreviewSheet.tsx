@@ -29,12 +29,12 @@ export type MinimalFileForPreview = {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ArrowDownOnSquareIcon,
   Button,
-  ClipboardCheckIcon,
-  ClipboardIcon,
+  Clipboard,
+  ClipboardCheck,
   CodeBlock,
-  ExternalLinkIcon,
+  Download01,
+  LinkExternal01,
   Markdown,
   Sheet,
   SheetContainer,
@@ -469,14 +469,14 @@ export function FilePreviewSheet({
                       tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
                       variant="outline"
                       size="icon-xs"
-                      icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                      icon={isCopied ? ClipboardCheck : Clipboard}
                       onClick={() => copy(processedContent?.text ?? "")}
                     />
                   )}
                   <Button
                     variant="outline"
                     size="icon-xs"
-                    icon={ArrowDownOnSquareIcon}
+                    icon={Download01}
                     tooltip="Download"
                     onClick={handleDownload}
                   />
@@ -484,7 +484,7 @@ export function FilePreviewSheet({
                     <Button
                       variant="outline"
                       size="icon-xs"
-                      icon={ExternalLinkIcon}
+                      icon={LinkExternal01}
                       tooltip="Open in browser"
                       onClick={handleOpenInBrowser}
                     />

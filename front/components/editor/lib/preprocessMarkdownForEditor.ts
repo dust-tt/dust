@@ -91,12 +91,32 @@ export function preprocessMarkdownForEditor(markdown: string): string {
   );
   const openCount = new Map<string, number>();
   const validNestedPositions = new Set<number>();
+  const escapedContainerStack: string[] = [];
 
   processed = processed.replace(
     escapedTagRegex,
     (match, slash, tagName, rest, offset) => {
       const normalized = tagName.toLowerCase();
       const isClosing = slash === "/";
+
+      // Attribute-bearing containers stay text-only; otherwise their nested
+      // XML-like tags can be partially unescaped into invalid instruction blocks.
+      if (escapedContainerStack.length > 0) {
+        if (
+          isClosing &&
+          normalized === escapedContainerStack[escapedContainerStack.length - 1]
+        ) {
+          escapedContainerStack.pop();
+        } else if (!isClosing && rest !== "" && matchedPairs.has(normalized)) {
+          escapedContainerStack.push(normalized);
+        }
+        return match;
+      }
+
+      if (!isClosing && rest !== "" && matchedPairs.has(normalized)) {
+        escapedContainerStack.push(normalized);
+        return match;
+      }
 
       if (isClosing) {
         const count = openCount.get(normalized) ?? 0;
@@ -115,12 +135,6 @@ export function preprocessMarkdownForEditor(markdown: string): string {
       const isNestedChild = validNestedPositions.has(offset);
 
       if (matchedPairs.has(normalized) && (isAtLineStart || isNestedChild)) {
-        // Don't un-escape if the tag has attributes — those cause schema violations.
-        // When we skip un-escaping, openCount is NOT incremented, so the closing tag
-        // also stays escaped automatically.
-        if (rest !== "") {
-          return match;
-        }
         openCount.set(normalized, (openCount.get(normalized) ?? 0) + 1);
         validNestedPositions.add(offset + match.length);
         return `<${slash}${tagName}${rest}>`;

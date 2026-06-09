@@ -21,6 +21,12 @@ export class MembershipModel extends WorkspaceAwareModel<MembershipModel> {
   declare firstUsedAt: Date | null;
   declare seatType: CreationOptional<MembershipSeatType>;
   declare creditState: CreationOptional<UserCreditState>;
+  // Admin-set per-user cap on workspace-pool AWU consumption, in AWU credits,
+  // excluding the seat allowance (i.e. exactly what the admin entered). NULL
+  // means no override — the seat-type default applies. The Metronome
+  // `spend_threshold_reached` alert (threshold = override + seat allowance)
+  // is derived from this value and remains the enforcement mechanism.
+  declare poolCapOverrideAwuCredits: number | null;
 
   declare userId: ForeignKey<UserModel["id"]>;
   declare user: NonAttribute<UserModel>;
@@ -66,7 +72,12 @@ MembershipModel.init(
     creditState: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: "normal",
+      defaultValue: "on_pool",
+    },
+    poolCapOverrideAwuCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {

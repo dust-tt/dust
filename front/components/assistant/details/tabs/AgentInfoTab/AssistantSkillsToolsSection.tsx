@@ -27,13 +27,7 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import {
-  Avatar,
-  Button,
-  CommandIcon,
-  Spinner,
-  Tooltip,
-} from "@dust-tt/sparkle";
+import { Avatar, Button, Command, Spinner, Tooltip } from "@dust-tt/sparkle";
 import sortBy from "lodash/sortBy";
 import uniqBy from "lodash/uniqBy";
 import type { ReactNode } from "react";
@@ -302,7 +296,7 @@ function renderOtherAction(
     return {
       title: asDisplayName(action.name),
       description: action.description,
-      avatar: <Avatar icon={CommandIcon} size="xs" />,
+      avatar: <Avatar icon={Command} size="xs" />,
       order: 3,
     };
   } else {

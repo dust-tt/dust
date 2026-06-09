@@ -4,13 +4,13 @@ import {
   isCustomResourceIconType,
 } from "@app/components/resources/resources_icons";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { ActionIcons, BookOpenIcon } from "@dust-tt/sparkle";
+import { ActionIcons, BookOpen01 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
 export function getSelectedToolIcon(tool: SelectedTool): ComponentType {
   return isCustomResourceIconType(tool.view.server.icon)
     ? ActionIcons[tool.view.server.icon]
-    : (InternalActionIcons[tool.view.server.icon] ?? BookOpenIcon);
+    : (InternalActionIcons[tool.view.server.icon] ?? BookOpen01);
 }
 
 export function getSelectedToolLabel(tool: SelectedTool): string {

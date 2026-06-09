@@ -11,7 +11,7 @@ import {
   PokeFormTextArea,
   PokeFormUpload,
 } from "@app/components/poke/shadcn/ui/form";
-import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/manifest";
+import type { PokeGetPluginDetailsResponseBody } from "@app/lib/api/poke/plugins/manifest";
 import type { AsyncEnumValues, EnumValues } from "@app/types/poke/plugins";
 import { createZodSchemaFromArgs } from "@app/types/poke/plugins";
 import { Button, Checkbox, SliderToggle } from "@dust-tt/sparkle";
@@ -122,7 +122,11 @@ export function PluginForm({
       ...new Set(
         Object.values(manifest.args)
           .filter((arg) => arg.dependsOn)
-          .map((arg) => arg.dependsOn!.field)
+          .flatMap((arg) =>
+            Array.isArray(arg.dependsOn)
+              ? arg.dependsOn.map((c) => c.field)
+              : [arg.dependsOn!.field]
+          )
       ),
     ];
   }, [manifest]);
@@ -156,9 +160,20 @@ export function PluginForm({
       >
         <div className="max-h-[50vh] space-y-8 overflow-y-auto pr-2">
           {Object.entries(manifest.args).map(([key, arg]) => {
-            const isDependentFieldHidden =
-              arg.dependsOn &&
-              watchedValues[arg.dependsOn.field] !== arg.dependsOn.value;
+            const conditions = arg.dependsOn
+              ? Array.isArray(arg.dependsOn)
+                ? arg.dependsOn
+                : [arg.dependsOn]
+              : [];
+            const isDependentFieldHidden = conditions.some((c) => {
+              const watched = watchedValues[c.field];
+              // Enum fields surface their selection as an array of values, so
+              // match by membership; everything else compares by value.
+              if (Array.isArray(watched)) {
+                return !watched.includes(c.value);
+              }
+              return watched !== c.value;
+            });
 
             if (isDependentFieldHidden) {
               return null;

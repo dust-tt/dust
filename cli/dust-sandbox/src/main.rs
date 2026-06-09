@@ -18,8 +18,19 @@ enum Commands {
     Version,
     /// Forward sandbox egress traffic to the Dust egress proxy
     Forward(commands::forward::ForwardArgs),
+    /// Run the local synthetic DNS resolver for proxied agent traffic
+    Resolve(commands::resolve::ResolveArgs),
+    /// Report sandbox egress enforcement health as JSON
+    Healthcheck(commands::healthcheck::HealthcheckArgs),
+    /// List sandbox environment variables and DSEC allowlists
+    Env(commands::env::EnvArgs),
     /// Interact with MCP servers and tools
     Tools {
+        /// Emit the tool execution result as JSON (`{ content, isError }`)
+        /// instead of plain text. Must be placed before the positional
+        /// arguments. Ignored when listing servers or tools.
+        #[arg(long)]
+        json: bool,
         /// Server name (omit to list all servers)
         server_name: Option<String>,
         /// Tool name to execute
@@ -46,7 +57,11 @@ async fn run() -> anyhow::Result<()> {
     match cli.command {
         Commands::Version => commands::cmd_version(),
         Commands::Forward(args) => commands::cmd_forward(args).await?,
+        Commands::Resolve(args) => commands::cmd_resolve(args).await?,
+        Commands::Healthcheck(args) => commands::cmd_healthcheck(args)?,
+        Commands::Env(args) => commands::cmd_env(args)?,
         Commands::Tools {
+            json,
             server_name,
             tool_name,
             args,
@@ -56,7 +71,7 @@ async fn run() -> anyhow::Result<()> {
                 (None, _) => commands::cmd_list_servers(&client).await?,
                 (Some(server), None) => commands::cmd_list_tools(&client, &server).await?,
                 (Some(server), Some(tool)) => {
-                    commands::cmd_exec(&client, &server, &tool, &args).await?
+                    commands::cmd_exec(&client, &server, &tool, &args, json).await?
                 }
             }
         }
@@ -86,5 +101,49 @@ mod tests {
     #[test]
     fn verify_cli() {
         Cli::command().debug_assert();
+    }
+
+    fn tools_fields(cli: Cli) -> (bool, Option<String>, Option<String>, Vec<String>) {
+        match cli.command {
+            Commands::Tools {
+                json,
+                server_name,
+                tool_name,
+                args,
+            } => (json, server_name, tool_name, args),
+            _ => panic!("expected Tools subcommand"),
+        }
+    }
+
+    #[test]
+    fn json_flag_parses_before_positionals() {
+        let cli = Cli::try_parse_from(["dsbx", "tools", "--json", "srv", "tool", "--foo", "bar"])
+            .expect("should parse");
+        let (json, server, tool, args) = tools_fields(cli);
+
+        assert!(json, "--json before positionals should set json=true");
+        assert_eq!(server.as_deref(), Some("srv"));
+        assert_eq!(tool.as_deref(), Some("tool"));
+        assert_eq!(args, vec!["--foo".to_string(), "bar".to_string()]);
+    }
+
+    #[test]
+    fn json_flag_after_positionals_is_swallowed_into_args() {
+        let cli = Cli::try_parse_from(["dsbx", "tools", "srv", "tool", "--foo", "bar", "--json"])
+            .expect("should parse");
+        let (json, _, _, args) = tools_fields(cli);
+
+        assert!(!json, "--json after positionals should NOT toggle the flag");
+        assert!(
+            args.contains(&"--json".to_string()),
+            "--json should land in trailing args instead"
+        );
+    }
+
+    #[test]
+    fn tools_without_json_defaults_to_false() {
+        let cli = Cli::try_parse_from(["dsbx", "tools", "srv", "tool"]).expect("should parse");
+        let (json, ..) = tools_fields(cli);
+        assert!(!json);
     }
 }

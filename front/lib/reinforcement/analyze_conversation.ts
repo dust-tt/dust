@@ -35,24 +35,22 @@ In most conversations, the correct outcome is no configuration change. This mean
 Propose configuration changes only when <analysis_workflow> yields concrete evidence. If you are unsure, do not call edit_skill.
 
 ## Exploration tools (optional — use these if you need more context)
-- get_available_tools: Use this to discover tools you could suggest adding or to verify that suggested tools exist.
+- get_available_tools: ALWAYS call this before embedding any <tool> tag in an instruction edit — the tag requires an MCP server view ID and name that must come from this tool. See <tool_references> for more details.
 - describe_mcp: ALWAYS call this before suggesting instruction changes that reference specific tool names or workflows for a given MCP — you need to know the exact tool names and their inputs to write accurate instructions.
 - search_knowledge: ALWAYS call this before embedding any <knowledge> tag in an instruction edit — the tag requires node attributes (id, space, dsv, hasChildren) that must come from this tool. Use this whenever the conversation shows the agent navigating or retrieving specific data nodes that the skill instructions should directly reference. See <knowledge_nodes> for more details.
 `,
 
-  // TODO(2026-04-29 aubin): switch the 2nd line of `skill_usage_analysis` when ungating the new skill rendering
-  // Proposal: "When enabled, skill instructions may be rendered into the conversation as dedicated <dust_system> user messages.
-  // This means that every subsequent agent action can be influenced by each enabled skill in addition to the agent's system prompt."
   skill_usage_analysis: `In <skill_context>, you have received all custom skills that were enabled in the conversation.
-Skills are injected into the agent's system prompt when enabled. This means that every subsequent agent action is influenced by each enabled skill in addition to the agent's system prompt.
-The only strong signal of skill influence on the agent behavior is when the agent calls a tool that the skill provides.
+When enabled, skill instructions are rendered in the conversation as dedicated <dust_system> user messages.
+This means that every subsequent agent action can be influenced by each enabled skill in addition to the agent's system prompt.
+The only strong signal of skill influence on the agent behavior is when the agent calls a tool that the skill references in its instructions.
 You will need to infer the impact of the skill on the agent behavior by checking tool calls and agent messages.`,
 
   analysis_workflow: `Follow this process for every conversation you analyze:
 
 Step 1: Determine which skills were relevant to the conversation.
 For each skill in <skill_context>, ask yourself these questions:
-- Were any of the skill's configured tools called in <conversation>? Match the skill's tool names/IDs against the functionCallName in actions.
+- Were any tools referenced by the skill's instructions called in <conversation>? Match inline <tool> tags and their described MCP tools against the functionCallName in actions.
 - Does the conversation topic match the skill's purpose and instructions? Use <agentFacingDescription> and <instructions> inside each <skill> in <skill_context>.
 - Was there an enable_skill tool call for the skill? If so, note when. This means the agent made an explicit decision to enable the skill for the rest of the conversation.
 
@@ -68,8 +66,8 @@ A key consideration is that conversations can be user-specific, but skills share
 Step 4: For each skill improvement identified in Step 3, formulate a suggestion.
 ALWAYS ensure that the suggestion is inline with the skill's purpose and instructions. Skills SHOULD be single purpose and not be overloaded with multiple responsibilities.
 Consider the following improvements to a skill:
-- Review instructions to determine if the skill is meeting the user intent and properly utilizing the configured tools: <instructions_guidance>.
-- If the skill references or requires external actions or knowledge, then tools may need to be added or removed. See <tools_guidance>.
+- Review instructions to determine if the skill is meeting the user intent and properly utilizing its inline tool references: <instructions_guidance>.
+- If the skill references or requires external actions or knowledge, inline <tool> or <knowledge> references may need to be added or removed from its instructions. See <tools_guidance>.
 - If the conversation reveals that the agent enabled the skill in the wrong situation, or failed to enable it when it should have, the agent-facing description may need to be improved. See <agent_facing_description_guidance>.
 All improvements that should be treated as a single atomic unit should be grouped together in a single suggestion.
 NEVER group things that are not related to each other.
@@ -97,7 +95,7 @@ ONLY make suggestions that will affect the skill behavior. NEVER suggest cosmeti
 
 - Focus on actionable information that changes what the skill does.
 - Preserve the skill's existing goals — NEVER change what the goal is, only improve HOW it achieves it.
-- Instructions SHOULD reference how to use tools that are configured in the skill.
+- Instructions SHOULD reference how to use tools that are inlined in the skill instructions.
 - Suggestions ALWAYS need to be using the same language as the existing instructions OR, for new skills, the language of the user conversation.
 - Prefer small, focused changes over large rewrites.
 - Extract the INTENT from examples, not the literal pattern.
@@ -105,12 +103,13 @@ ONLY make suggestions that will affect the skill behavior. NEVER suggest cosmeti
 
   instruction_editing: SKILL_INSTRUCTION_HTML_EDIT_PROMPT,
 
-  tools_guidance: `Tools provide capabilities to the skill. When evaluating tool changes:
+  tools_guidance: `Tools provide capabilities to the skill through inline <tool> tags in the instructions. When evaluating tool changes:
 
 - Discover available tools by calling get_available_tools.
 - Only suggest adding a tool if there is clear evidence from the conversation that the skill needed a capability it did not have.
 - Only suggest removing a tool if there is clear evidence the tool is causing confusion or is unused and cluttering the skill configuration.
 - When suggesting a tool addition, ensure the tool exists in the workspace by checking available tools first.
+- Suggest tool additions by creating an instruction edit that embeds a self-closing <tool> tag in the relevant instruction block. Suggest tool removals by creating an instruction edit that removes the obsolete <tool> tag and related usage instructions. NEVER use separate tool edits.
 - When the conversation involves a tool call that failed or produced unexpected results, call describe_mcp for the relevant MCP to understand the full list of available tools and their correct usage before suggesting instruction changes.`,
 
   agent_facing_description_guidance: `The agent-facing description (\`<agentFacingDescription>\` in the skill context) is what the agent reads to decide WHEN to enable the skill. It is NOT the skill's behavior — that lives in \`<instructions>\`.

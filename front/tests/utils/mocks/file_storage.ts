@@ -19,13 +19,23 @@ export interface WriteStreamCall {
  */
 class FileStorageMock {
   private _writeStreamCalls: WriteStreamCall[] = [];
+  private _existsPredicate: (filePath: string) => boolean = () => true;
 
   get writeStreamCalls(): readonly WriteStreamCall[] {
     return this._writeStreamCalls;
   }
 
+  /**
+   * Controls what `file(path).exists()` resolves to, keyed by the GCS path.
+   * Defaults to always-exists. Reset between tests via `reset()`.
+   */
+  setFileExists(predicate: (filePath: string) => boolean): void {
+    this._existsPredicate = predicate;
+  }
+
   reset(): void {
     this._writeStreamCalls.length = 0;
+    this._existsPredicate = () => true;
   }
 
   /**
@@ -60,7 +70,9 @@ class FileStorageMock {
         }),
       delete: vi.fn().mockResolvedValue(undefined),
       download: vi.fn().mockResolvedValue([Buffer.from("", "utf-8")]),
-      exists: vi.fn().mockResolvedValue([true]),
+      exists: vi.fn(() =>
+        Promise.resolve([this._existsPredicate(filePath ?? "")])
+      ),
       getMetadata: vi
         .fn()
         .mockResolvedValue([{ contentType: "text/plain", size: "0" }]),
@@ -80,6 +92,9 @@ class FileStorageMock {
       getSignedUrl: vi.fn().mockResolvedValue("https://signed-url.test"),
       uploadFileToBucket: vi.fn().mockResolvedValue(undefined),
       uploadRawContentToBucket: vi.fn().mockResolvedValue(undefined),
+      uploadSmallRawContentToBucketAsNewFile: vi
+        .fn()
+        .mockResolvedValue(undefined),
       fetchFileContent: vi.fn().mockResolvedValue("mock content"),
       copyFile: vi.fn().mockResolvedValue(undefined),
       delete: vi.fn().mockResolvedValue(undefined),

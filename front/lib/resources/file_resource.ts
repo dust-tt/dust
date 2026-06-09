@@ -3,10 +3,21 @@
 
 import config from "@app/lib/api/config";
 import {
+  SCOPED_PREFIX_CONVERSATION,
+  SCOPED_PREFIX_POD,
+  sanitizeFileSystemName,
+} from "@app/lib/api/file_system";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import {
   disambiguateFileName,
+  type FrameScopedPathContext,
   getConversationFilePath,
-  getProjectFilesBasePath,
+  getConversationFilesBasePath,
+  getPodFilesBasePath,
+  isLegacyScopedPath,
   makeProcessedMountFileName,
+  resolveCanonicalScopedPath,
+  toProjectMountFilePath,
 } from "@app/lib/api/files/mount_path";
 import {
   getProcessedContentType,
@@ -17,6 +28,16 @@ import {
   getDefaultFrameShareScope,
   sendFrameSharedEmail,
 } from "@app/lib/api/share/frame_sharing";
+import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
+import {
+  extractFileRefs,
+  type FileRef,
+} from "@app/lib/api/viz/extract_file_refs";
+import {
+  canAccessFileInConversation,
+  canAccessFileInProject,
+} from "@app/lib/api/viz/file_access";
+import type { ShareFrameViewerFile } from "@app/lib/api/viz/share_frame_viewer_files";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import {
@@ -29,6 +50,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
+  AuthorizedFileAccessModel,
   ExternalViewerSessionModel,
   FileModel,
   ShareableFileModel,
@@ -39,10 +61,15 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { copyContent } from "@app/lib/utils/files";
+import { streamToBuffer } from "@app/lib/utils/streams";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import tracer from "@app/logger/tracer";
 import { CoreAPI } from "@app/types/core/core_api";
 import type {
+  AuthorizedFileAccessAllowlist,
+  AuthorizedFileRef,
+  ComputedAuthorizedFileAccess,
   FileShareScope,
   FileType,
   FileTypeWithMetadata,
@@ -53,12 +80,15 @@ import type {
 } from "@app/types/files";
 import {
   ALL_FILE_FORMATS,
+  frameContentType,
+  frameSlideshowContentType,
   isConversationFileUseCase,
   isInteractiveContentType,
 } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type {
@@ -74,12 +104,31 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op } from "sequelize";
+import { Op, UniqueConstraintError } from "sequelize";
 import type { Readable, Writable } from "stream";
 import { validate } from "uuid";
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
 export type FileVersion = "processed" | "original" | "public";
+
+const FRAME_CONTENT_TYPES = new Set([
+  frameContentType,
+  frameSlideshowContentType,
+]);
+
+export interface FileUploadedRequestResponseBody {
+  file: FileType & {
+    /** Scoped mount path when the file is on GCS (same shape as `GCSMountEntryBase.path`). */
+    path: string | null;
+  };
+}
+
+export type ShareFileResponseBody = {
+  scope: FileShareScope;
+  sharedAt: number;
+  shareUrl: string;
+  viewerFiles: ShareFrameViewerFile[];
+};
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileResource extends ReadonlyAttributesType<FileModel> {}
@@ -88,6 +137,8 @@ export class FileResource extends BaseResource<FileModel> {
   static model: ModelStaticWorkspaceAware<FileModel> = FileModel;
   static shareableFileModel: ModelStaticWorkspaceAware<ShareableFileModel> =
     ShareableFileModel;
+  static authorizedFileAccessModel: ModelStaticWorkspaceAware<AuthorizedFileAccessModel> =
+    AuthorizedFileAccessModel;
 
   constructor(
     model: ModelStaticWorkspaceAware<FileModel>,
@@ -99,12 +150,9 @@ export class FileResource extends BaseResource<FileModel> {
   static async makeNew(
     blob: Omit<CreationAttributes<FileModel>, "status" | "sId" | "version">
   ) {
-    // Normalize the user-visible file name to NFC. GCS object names are byte-exact and macOS
-    // uploads commonly arrive in NFD, which breaks lookups when consumers (e.g. LLMs) echo paths
-    // back in NFC. Normalizing on the way in keeps mount paths stable.
     const key = await FileResource.model.create({
       ...blob,
-      fileName: blob.fileName.normalize("NFC"),
+      fileName: sanitizeFileSystemName(blob.fileName),
       status: "created",
       version: 0,
     });
@@ -182,22 +230,26 @@ export class FileResource extends BaseResource<FileModel> {
     file: FileResource;
     content: string;
     shareScope: FileShareScope;
+    shareableFileId: ModelId;
+    workspace: LightWorkspaceType;
+    authorizedFileAccess: AuthorizedFileAccessAllowlist | null;
   } | null> {
     const r = await this.fetchByShareToken(token);
     if (r.isErr()) {
       return null;
     }
 
-    const { file, shareScope, workspace } = r.value;
-    const content = await file.getFileContent(workspace, "original");
+    const content = await r.value.file.getFileContent(
+      r.value.workspace,
+      "original"
+    );
     if (!content) {
       return null;
     }
 
     return {
-      file,
+      ...r.value,
       content,
-      shareScope,
     };
   }
 
@@ -208,6 +260,8 @@ export class FileResource extends BaseResource<FileModel> {
         shareScope: FileShareScope;
         shareableFileId: ModelId;
         workspace: LightWorkspaceType;
+        // Active allowlist for useFile() refs, if computed.
+        authorizedFileAccess: AuthorizedFileAccessAllowlist | null;
       },
       DustError
     >
@@ -246,24 +300,17 @@ export class FileResource extends BaseResource<FileModel> {
       return new Err(new DustError("file_not_found", "File not found"));
     }
 
-    // Check if associated conversation still exist (not soft-deleted).
+    // Verify the associated conversation still exists (not soft-deleted).
     if (
       fileRes.useCase === "conversation" &&
       fileRes.useCaseMetadata?.conversationId
     ) {
-      const conversationId = fileRes.useCaseMetadata.conversationId;
-
       const auth = await Authenticator.internalBuilderForWorkspace(
         workspace.sId
       );
-
-      // Share token access bypasses normal space restrictions. We only need to verify the
-      // conversation exists, but internalBuilderForWorkspace only has global group
-      // access and can't see agents from other groups that this conversation might reference.
-      // Skip permission filtering since share token provides its own authorization.
       const conversation = await ConversationResource.fetchById(
         auth,
-        conversationId,
+        fileRes.useCaseMetadata.conversationId,
         { dangerouslySkipPermissionFiltering: true }
       );
       if (!conversation) {
@@ -273,11 +320,15 @@ export class FileResource extends BaseResource<FileModel> {
       }
     }
 
+    const authorizedFileAccess =
+      await fileRes.getActiveAuthorizedFileAccessAllowlist();
+
     return new Ok({
       file: fileRes,
       workspace: renderLightWorkspaceType({ workspace }),
       shareScope: shareableFile.shareScope,
       shareableFileId: shareableFile.id,
+      authorizedFileAccess,
     });
   }
 
@@ -479,12 +530,18 @@ export class FileResource extends BaseResource<FileModel> {
           .file(this.getCloudStoragePath(auth, "public"))
           .delete({ ignoreNotFound: true });
 
-        // Delete sharing grants before shareable file (FK constraint).
+        // Delete sharing grants and access snapshots before shareable file (FK constraint).
         const shareableFile = await FileResource.shareableFileModel.findOne({
           where: { fileId: this.id, workspaceId: this.workspaceId },
         });
         if (shareableFile) {
           await SharingGrantModel.destroy({
+            where: {
+              shareableFileId: shareableFile.id,
+              workspaceId: this.workspaceId,
+            },
+          });
+          await FileResource.authorizedFileAccessModel.destroy({
             where: {
               shareableFileId: shareableFile.id,
               workspaceId: this.workspaceId,
@@ -756,19 +813,14 @@ export class FileResource extends BaseResource<FileModel> {
   /**
    * Get sorted file versions from GCS (newest first).
    * Used for reverting Interactive Content files to previous versions.
-   * Returns an empty array if versions cannot be retrieved.
    */
   private async getSortedFileVersions(
     auth: Authenticator,
     maxResults?: number
-  ): Promise<File[]> {
+  ): Promise<Result<File[], Error>> {
     const filePath = this.getCloudStoragePath(auth, "original");
     const fileStorage = getPrivateUploadBucket();
-
-    return fileStorage.getSortedFileVersions({
-      filePath,
-      maxResults,
-    });
+    return fileStorage.getSortedFileVersions({ filePath, maxResults });
   }
 
   /**
@@ -785,7 +837,8 @@ export class FileResource extends BaseResource<FileModel> {
     }
   ): Promise<Result<undefined, string>> {
     // Get all versions of the file (sorted newest to oldest)
-    const versions = await this.getSortedFileVersions(auth);
+    const versionsResult = await this.getSortedFileVersions(auth);
+    const versions = versionsResult.isOk() ? versionsResult.value : [];
 
     // Check if there's a previous version available before attempting revert
     if (versions.length < 2) {
@@ -899,9 +952,16 @@ export class FileResource extends BaseResource<FileModel> {
 
       const content = Buffer.concat(chunks).toString("utf-8");
       return content || null;
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
     } catch (error) {
+      logger.error(
+        {
+          err: normalizeError(error),
+          fileId: this.sId,
+          workspaceId: owner.sId,
+          version,
+        },
+        "getFileContent failed"
+      );
       return null;
     }
   }
@@ -925,11 +985,22 @@ export class FileResource extends BaseResource<FileModel> {
     // The mount path becomes the sole live version, and the canonical path stays as the immutable
     // original.
     if (this.mountFilePath) {
+      const podsMountFilePath = this.normalizeMountFilePath(this.mountFilePath);
       await getPrivateUploadBucket().uploadRawContentToBucket({
         content,
         contentType: this.contentType,
-        filePath: this.mountFilePath,
+        filePath: podsMountFilePath,
       });
+
+      // Double-write to the projects/ path for pod mount paths.
+      const projectsMountFilePath = toProjectMountFilePath(podsMountFilePath);
+      if (projectsMountFilePath) {
+        await getPrivateUploadBucket().uploadRawContentToBucket({
+          content,
+          contentType: this.contentType,
+          filePath: projectsMountFilePath,
+        });
+      }
     }
 
     // Increment version after successful upload and mark as ready
@@ -953,10 +1024,10 @@ export class FileResource extends BaseResource<FileModel> {
 
   // Mount file path logic.
   //
-  // Files used in conversations or projects are copied to a gcsfuse-mountable GCS path so
+  // Files used in conversations or Pods are copied to a gcsfuse-mountable GCS path so
   // sandboxes can access them as a flat, human-readable filesystem:
   //   w/{wId}/conversations/{cId}/files/{fileName}
-  //   w/{wId}/projects/{spaceId}/files/{fileName}
+  //   w/{wId}/pods/{spaceId}/files/{fileName}
   //
   // The canonical path (files/w/{wId}/{fileId}/{version}) remains the immutable original. The mount
   // path is the mutable "live" version. Initial copy from canonical, then frame edits write
@@ -971,42 +1042,50 @@ export class FileResource extends BaseResource<FileModel> {
    * Examines the file's use case and metadata to determine whether a mount path should be created.
    * Branches internally by use case:
    * - conversation / tool_output: mounts under w/{wId}/conversations/{cId}/files/
-   * - project_context:            mounts under w/{wId}/projects/{spaceId}/files/
+   * - project_context:            mounts under w/{wId}/pods/{spaceId}/files/
    *
    * No-ops if the file already has a mountFilePath or conditions aren't met.
    */
   private async resolveAndSetMountFilePath(auth: Authenticator): Promise<void> {
-    if (this.mountFilePath) {
-      return;
+    if (!this.mountFilePath) {
+      const { useCase, useCaseMetadata } = this;
+
+      let resolved: { path: string; fallbackPath: string } | null = null;
+
+      if (
+        isConversationFileUseCase(useCase) &&
+        useCaseMetadata?.conversationId
+      ) {
+        resolved = await this.resolveConversationMountPath(auth, {
+          conversationId: useCaseMetadata.conversationId,
+        });
+      } else if (useCase === "project_context" && useCaseMetadata?.spaceId) {
+        resolved = await this.resolveProjectMountPath(auth, {
+          podId: useCaseMetadata.spaceId,
+        });
+      }
+
+      if (!resolved) {
+        return;
+      }
+
+      await this.claimMountFilePath(resolved);
     }
 
-    const { useCase, useCaseMetadata } = this;
-
-    let resolvedPath: string | null = null;
-
-    if (isConversationFileUseCase(useCase) && useCaseMetadata?.conversationId) {
-      resolvedPath = await this.resolveConversationMountPath(auth, {
-        conversationId: useCaseMetadata.conversationId,
-      });
-    } else if (useCase === "project_context" && useCaseMetadata?.spaceId) {
-      resolvedPath = await this.resolveProjectMountPath(auth, {
-        projectId: useCaseMetadata.spaceId,
-      });
-    }
-
-    if (resolvedPath) {
-      await this.setMountFilePath(auth, resolvedPath);
-    }
+    // The DB row now owns a mount path. Copy the file's contents to it. This is idempotent, so it
+    // is safe to re-run on a Temporal retry that committed the path but failed before the copy.
+    await this.copyMountFiles(auth);
   }
 
   /**
-   * Resolve the mount path for a conversation file. Checks for collisions via the unique index on
-   * mountFilePath and disambiguates with the file's sId if needed.
+   * Resolve the desired mount path for a conversation file, alongside the sId-disambiguated
+   * fallback used when the desired path collides. The desired path is pre-checked against the
+   * unique index on mountFilePath; the fallback is always unique because it embeds the file's sId.
    */
   private async resolveConversationMountPath(
     auth: Authenticator,
     { conversationId }: { conversationId: string }
-  ): Promise<string> {
+  ): Promise<{ path: string; fallbackPath: string }> {
     const owner = auth.getNonNullableWorkspace();
 
     const desiredPath = getConversationFilePath({
@@ -1014,54 +1093,150 @@ export class FileResource extends BaseResource<FileModel> {
       conversationId,
       fileName: this.fileName,
     });
+    const fallbackPath = getConversationFilePath({
+      workspaceId: owner.sId,
+      conversationId,
+      fileName: disambiguateFileName(this),
+    });
 
     const isTaken = await this.isMountFilePathTaken(desiredPath);
 
-    return isTaken
-      ? getConversationFilePath({
-          workspaceId: owner.sId,
-          conversationId,
-          fileName: disambiguateFileName(this),
-        })
-      : desiredPath;
+    return { path: isTaken ? fallbackPath : desiredPath, fallbackPath };
   }
 
   /**
-   * Resolve the mount path for a project_context file. Checks for collisions via the unique index
-   * on mountFilePath and disambiguates with the file's sId if needed.
+   * Resolve the desired mount path for a project_context file, alongside the sId-disambiguated
+   * fallback used when the desired path collides. The desired path is pre-checked against the
+   * unique index on mountFilePath; the fallback is always unique because it embeds the file's sId.
    */
   private async resolveProjectMountPath(
     auth: Authenticator,
-    { projectId }: { projectId: string }
-  ): Promise<string> {
+    { podId }: { podId: string }
+  ): Promise<{ path: string; fallbackPath: string }> {
     const owner = auth.getNonNullableWorkspace();
-    const basePath = getProjectFilesBasePath({
+    const basePath = getPodFilesBasePath({
       workspaceId: owner.sId,
-      projectId,
+      podId,
     });
 
     const desiredPath = `${basePath}${this.fileName}`;
+    const fallbackPath = `${basePath}${disambiguateFileName(this)}`;
     const isTaken = await this.isMountFilePathTaken(desiredPath);
 
-    return isTaken ? `${basePath}${disambiguateFileName(this)}` : desiredPath;
+    return { path: isTaken ? fallbackPath : desiredPath, fallbackPath };
   }
 
   /**
-   * Set the mount file path and copy the file's original (and processed if exists) versions to the
-   * given GCS path for gcsfuse mounting. The path is conversation- or project-scoped depending on
-   * the caller.
+   * Persist the mount path on the DB row, claiming it against the unique index on
+   * (workspaceId, mountFilePath) BEFORE any GCS copy so a losing writer never clobbers the
+   * winner's mount object.
    *
-   * This is a one-time operation: copies from the canonical path to the mount path. Subsequent
-   * edits (frames) write directly to the mount path.
+   * The desired path is pre-checked in resolve*MountPath, but that check is not atomic with this
+   * write: a concurrent file with the same name in the same conversation/pod (tool outputs are
+   * processed concurrently, see mcp_execution.ts) can claim the path in between, surfacing a
+   * UniqueConstraintError here. In that case we fall back to the sId-disambiguated path, which is
+   * guaranteed unique. Catching here is allowed since Sequelize is an external library.
    */
-  private async setMountFilePath(
-    auth: Authenticator,
-    mountFilePath: string
-  ): Promise<void> {
+  private async claimMountFilePath({
+    path,
+    fallbackPath,
+  }: {
+    path: string;
+    fallbackPath: string;
+  }): Promise<void> {
+    try {
+      await this.update({ mountFilePath: path });
+    } catch (err) {
+      if (err instanceof UniqueConstraintError && path !== fallbackPath) {
+        await this.update({ mountFilePath: fallbackPath });
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  /**
+   * Returns the canonical scoped path for this file (e.g. `pod-{spaceId}/report.pdf` or
+   * `conversation-{cId}/file.txt`), or `null` when the file has no mount path or its use
+   * case does not produce a scoped path.
+   *
+   * This is the shape that gcsfuse consumers (agents, file explorer) expect, and what the
+   * file upload API returns in the `path` field.
+   */
+  // TODO(FILE SYSTEM MIGRATION): Temporary until file is not tighted for file system anymore.
+  toScopedPath(auth: Authenticator): string | null {
+    if (!this.mountFilePath) {
+      return null;
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+
+    if (this.useCase === "project_context" && this.useCaseMetadata?.spaceId) {
+      const spaceId = this.useCaseMetadata.spaceId;
+      const prefix = getPodFilesBasePath({
+        workspaceId: owner.sId,
+        podId: spaceId,
+      });
+      if (!this.mountFilePath.startsWith(prefix)) {
+        return null;
+      }
+
+      return `${SCOPED_PREFIX_POD}${spaceId}/${this.mountFilePath.slice(prefix.length)}`;
+    }
+
+    if (
+      isConversationFileUseCase(this.useCase) &&
+      this.useCaseMetadata?.conversationId
+    ) {
+      const conversationId = this.useCaseMetadata.conversationId;
+      const prefix = getConversationFilesBasePath({
+        workspaceId: owner.sId,
+        conversationId,
+      });
+      if (!this.mountFilePath.startsWith(prefix)) {
+        return null;
+      }
+
+      return `${SCOPED_PREFIX_CONVERSATION}${conversationId}/${this.mountFilePath.slice(prefix.length)}`;
+    }
+
+    return null;
+  }
+
+  /**
+   * Translate rows that still point to `projects/`. The gcs migration guaranteed the `pods/`
+   * copy exists for all such files. This translation can be removed once the DB
+   * migration is complete.
+   */
+  private normalizeMountFilePath(path: string): string {
+    return path.replace("/projects/", "/pods/");
+  }
+
+  /**
+   * Copy the file's original (and processed if it exists) versions to its already-claimed mount
+   * path for gcsfuse mounting. The path is conversation- or project-scoped depending on the use
+   * case, and must have been persisted via claimMountFilePath() first.
+   *
+   * This copies from the canonical path to the mount path and is idempotent: the underlying GCS
+   * copies overwrite, so re-running after a partial failure is safe. Subsequent edits (frames)
+   * write directly to the mount path.
+   */
+  private async copyMountFiles(auth: Authenticator): Promise<void> {
+    const { mountFilePath } = this;
+    if (!mountFilePath) {
+      return;
+    }
+
     const bucket = getPrivateUploadBucket();
 
     const srcOriginalPath = this.getCloudStoragePath(auth, "original");
     await bucket.copyFile(srcOriginalPath, mountFilePath);
+
+    // Double-write to the projects/ path for pod mount paths.
+    const projectsMountFilePath = toProjectMountFilePath(mountFilePath);
+    if (projectsMountFilePath) {
+      await bucket.copyFile(srcOriginalPath, projectsMountFilePath);
+    }
 
     // Copy processed version only if this file type has real processing.
     if (this.getContentVersion() === "processed") {
@@ -1071,17 +1246,25 @@ export class FileResource extends BaseResource<FileModel> {
         processedContentType: getProcessedContentType(this.contentType),
       });
       await bucket.copyFile(srcProcessedPath, processedMountPath);
-    }
 
-    await this.update({ mountFilePath });
+      const processedProjectsMountPath =
+        toProjectMountFilePath(processedMountPath);
+      if (processedProjectsMountPath) {
+        await bucket.copyFile(srcProcessedPath, processedProjectsMountPath);
+      }
+    }
   }
 
   private async isMountFilePathTaken(mountFilePath: string): Promise<boolean> {
+    // Check both `pods/` (new) and `projects/` forms so a new file cannot collide
+    // with the disambiguated name of an old DB row whose mountFilePath still lives under
+    // `projects/`.
+    const legacyMountFilePath = mountFilePath.replace("/pods/", "/projects/");
     const existing = await FileResource.model.findOne({
       attributes: ["id"],
       where: {
         workspaceId: this.workspaceId,
-        mountFilePath,
+        mountFilePath: { [Op.in]: [mountFilePath, legacyMountFilePath] },
         id: { [Op.ne]: this.id },
       },
     });
@@ -1094,7 +1277,14 @@ export class FileResource extends BaseResource<FileModel> {
     }
 
     const bucket = getPrivateUploadBucket();
-    await bucket.delete(this.mountFilePath, { ignoreNotFound: true });
+    const gcsMountFilePath = this.normalizeMountFilePath(this.mountFilePath);
+    await bucket.delete(gcsMountFilePath, { ignoreNotFound: true });
+
+    // Mirror delete on the projects/ side for pod files (double-write counterpart).
+    const projectsMountFilePath = toProjectMountFilePath(gcsMountFilePath);
+    if (projectsMountFilePath) {
+      await bucket.delete(projectsMountFilePath, { ignoreNotFound: true });
+    }
 
     if (
       this.useCaseMetadata?.skipFileProcessing === true ||
@@ -1105,10 +1295,16 @@ export class FileResource extends BaseResource<FileModel> {
 
     // Only delete processed mount file if this file type has real processing.
     const processedMountPath = makeProcessedMountFileName({
-      mountFilePath: this.mountFilePath,
+      mountFilePath: gcsMountFilePath,
       processedContentType: getProcessedContentType(this.contentType),
     });
     await bucket.delete(processedMountPath, { ignoreNotFound: true });
+
+    const processedProjectsMountPath =
+      toProjectMountFilePath(processedMountPath);
+    if (processedProjectsMountPath) {
+      await bucket.delete(processedProjectsMountPath, { ignoreNotFound: true });
+    }
   }
 
   static async bulkSetUseCaseMetadata(
@@ -1168,13 +1364,32 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   rename(newFileName: string) {
-    return this.update({ fileName: newFileName.normalize("NFC") });
+    return this.update({ fileName: sanitizeFileSystemName(newFileName) });
   }
 
   renameMountFile(newFileName: string, newMountFilePath: string) {
     return this.update({
-      fileName: newFileName.normalize("NFC"),
+      fileName: sanitizeFileSystemName(newFileName),
       mountFilePath: newMountFilePath,
+    });
+  }
+
+  updateMount({
+    destFileName,
+    destMountFilePath,
+    destUseCase,
+    destUseCaseMetadata,
+  }: {
+    destFileName: string;
+    destMountFilePath: string;
+    destUseCase: FileUseCase;
+    destUseCaseMetadata?: FileUseCaseMetadata;
+  }) {
+    return this.update({
+      fileName: sanitizeFileSystemName(destFileName),
+      mountFilePath: destMountFilePath,
+      useCase: destUseCase,
+      useCaseMetadata: destUseCaseMetadata ?? null,
     });
   }
 
@@ -1227,7 +1442,7 @@ export class FileResource extends BaseResource<FileModel> {
 
   async getShareInfo(): Promise<{
     scope: FileShareScope;
-    sharedAt: Date;
+    sharedAt: number;
     shareUrl: string;
   } | null> {
     if (!this.isInteractiveContent) {
@@ -1241,7 +1456,7 @@ export class FileResource extends BaseResource<FileModel> {
     if (shareableFile) {
       return {
         scope: shareableFile.shareScope,
-        sharedAt: shareableFile.sharedAt,
+        sharedAt: shareableFile.sharedAt.getTime(),
         shareUrl: this.getShareUrlForShareableFile({
           shareableFileToken: shareableFile.token,
         }),
@@ -1270,12 +1485,336 @@ export class FileResource extends BaseResource<FileModel> {
     );
   }
 
-  // Sharing grants logic.
+  // Authorized file access logic.
 
-  private async getShareableFileId(): Promise<ModelId> {
+  private async resolveFrameContextForAuthorizedAccess(
+    auth: Authenticator
+  ): Promise<FrameScopedPathContext> {
+    const conversationId =
+      this.useCaseMetadata?.conversationId ??
+      this.useCaseMetadata?.sourceConversationId ??
+      null;
+
+    let conversationSpaceId: string | null = null;
+    if (conversationId) {
+      const conversation = await ConversationResource.fetchById(
+        auth,
+        conversationId,
+        { dangerouslySkipPermissionFiltering: true }
+      );
+      if (conversation?.spaceId) {
+        conversationSpaceId = SpaceResource.modelIdToSId({
+          id: conversation.spaceId,
+          workspaceId: this.workspaceId,
+        });
+      }
+    }
+
+    const spaceId = this.useCaseMetadata?.spaceId ?? conversationSpaceId;
+
+    return { conversationId, spaceId };
+  }
+
+  private async verifyAuthorizedFileIdRef(
+    auth: Authenticator,
+    {
+      fileId,
+      frameContext,
+    }: {
+      fileId: string;
+      frameContext: FrameScopedPathContext;
+    }
+  ): Promise<{ verified: true; file: FileResource } | { verified: false }> {
+    const file = await FileResource.fetchById(auth, fileId);
+    if (!file) {
+      return { verified: false };
+    }
+
+    const owner = renderLightWorkspaceType({
+      workspace: auth.getNonNullableWorkspace(),
+    });
+
+    let hasAccess: Result<true, Error>;
+    if (frameContext.conversationId) {
+      hasAccess = await canAccessFileInConversation(owner, {
+        file,
+        requestedConversationId: frameContext.conversationId,
+      });
+    } else if (frameContext.spaceId) {
+      hasAccess = await canAccessFileInProject(owner, {
+        file,
+        requestedProjectId: frameContext.spaceId,
+      });
+    } else {
+      return { verified: false };
+    }
+
+    if (hasAccess.isErr()) {
+      return { verified: false };
+    }
+
+    return { verified: true, file };
+  }
+
+  private async verifyAndNormalizeAuthorizedFileRef(
+    auth: Authenticator,
+    {
+      fileRef,
+      frameContext,
+    }: {
+      fileRef: FileRef;
+      frameContext: FrameScopedPathContext;
+    }
+  ): Promise<
+    | {
+        verified: true;
+        entry: AuthorizedFileRef;
+        nestedContent?: string;
+        nestedContentType?: string;
+      }
+    | { verified: false }
+  > {
+    switch (fileRef.type) {
+      case "fileId": {
+        const verifyResult = await this.verifyAuthorizedFileIdRef(auth, {
+          fileId: fileRef.fileId,
+          frameContext,
+        });
+        if (!verifyResult.verified) {
+          return { verified: false };
+        }
+
+        const { file } = verifyResult;
+        const entry: AuthorizedFileRef = {
+          kind: "file_id",
+          ref: fileRef.fileId,
+          fileName: file.fileName,
+        };
+
+        let nestedContent: string | undefined;
+        if (FRAME_CONTENT_TYPES.has(file.contentType)) {
+          const workspace = renderLightWorkspaceType({
+            workspace: auth.getNonNullableWorkspace(),
+          });
+          const bufferResult = await streamToBuffer(
+            file.getSharedReadStream(workspace, "original")
+          );
+          if (bufferResult.isOk()) {
+            nestedContent = bufferResult.value.toString("utf-8") || undefined;
+          }
+        }
+
+        return {
+          verified: true,
+          entry,
+          nestedContent,
+          nestedContentType: file.contentType,
+        };
+      }
+      case "path": {
+        const originalPath = fileRef.scopedPath;
+        const isLegacy = isLegacyScopedPath(originalPath);
+        const canonicalPath = resolveCanonicalScopedPath(
+          originalPath,
+          frameContext
+        );
+
+        if (!canonicalPath) {
+          return { verified: false };
+        }
+
+        const fsResult = await DustFileSystem.fromScopedPath(
+          auth,
+          canonicalPath
+        );
+        if (fsResult.isErr()) {
+          return { verified: false };
+        }
+
+        const statResult = await fsResult.value.stat(canonicalPath);
+        if (statResult.isErr() || !statResult.value) {
+          return { verified: false };
+        }
+
+        const fileName = canonicalPath.split("/").pop();
+        const entry: AuthorizedFileRef = {
+          kind: "canonical_path",
+          ref: canonicalPath,
+          ...(isLegacy ? { legacyPath: originalPath } : {}),
+          ...(fileName ? { fileName } : {}),
+        };
+
+        let nestedContent: string | undefined;
+        const { contentType } = statResult.value;
+        if (FRAME_CONTENT_TYPES.has(contentType)) {
+          const readResult = await fsResult.value.read(canonicalPath);
+          if (readResult.isOk() && readResult.value) {
+            const bufferResult = await streamToBuffer(readResult.value);
+            if (bufferResult.isOk()) {
+              nestedContent = bufferResult.value.toString("utf-8");
+            }
+          }
+        }
+
+        return {
+          verified: true,
+          entry,
+          nestedContent,
+          nestedContentType: contentType,
+        };
+      }
+      default:
+        return assertNever(fileRef);
+    }
+  }
+
+  private async collectVerifiedAuthorizedFileRefs(
+    auth: Authenticator,
+    {
+      frameContent,
+      frameContext,
+      visited,
+    }: {
+      frameContent: string;
+      frameContext: FrameScopedPathContext;
+      visited: Set<string>;
+    }
+  ): Promise<{
+    refs: AuthorizedFileRef[];
+    unverifiableRefs: string[];
+  }> {
+    const extracted = extractFileRefs(frameContent);
+    const refs: AuthorizedFileRef[] = [];
+    const unverifiableRefs: string[] = [];
+
+    for (const fileRef of extracted) {
+      let key: string;
+      switch (fileRef.type) {
+        case "fileId":
+          key = fileRef.fileId;
+          break;
+        case "path":
+          key = fileRef.scopedPath;
+          break;
+        default:
+          assertNever(fileRef);
+      }
+      if (visited.has(key)) {
+        continue;
+      }
+      visited.add(key);
+
+      const result = await this.verifyAndNormalizeAuthorizedFileRef(auth, {
+        fileRef,
+        frameContext,
+      });
+      if (!result.verified) {
+        unverifiableRefs.push(key);
+        continue;
+      }
+
+      refs.push(result.entry);
+
+      if (
+        result.nestedContent &&
+        result.nestedContentType &&
+        FRAME_CONTENT_TYPES.has(result.nestedContentType)
+      ) {
+        const nested = await this.collectVerifiedAuthorizedFileRefs(auth, {
+          frameContent: result.nestedContent,
+          frameContext,
+          visited,
+        });
+        refs.push(...nested.refs);
+        unverifiableRefs.push(...nested.unverifiableRefs);
+      }
+    }
+
+    return { refs, unverifiableRefs };
+  }
+
+  async computeAuthorizedFileAccess(
+    auth: Authenticator,
+    { frameContent }: { frameContent: string }
+  ): Promise<ComputedAuthorizedFileAccess> {
+    const frameContext =
+      await this.resolveFrameContextForAuthorizedAccess(auth);
+    const { refs, unverifiableRefs } =
+      await this.collectVerifiedAuthorizedFileRefs(auth, {
+        frameContent,
+        frameContext,
+        visited: new Set(),
+      });
+
+    let computedByUserId = auth.user()?.sId;
+    if (!computedByUserId) {
+      // Temporary: API keys carry a userId FK to their owner, fall back to it
+      // until authorized file access is reworked to not require a user identity.
+      const keyUserModelId = auth.key()?.userModelId;
+      if (keyUserModelId) {
+        const keyUser = await UserResource.fetchByModelId(keyUserModelId);
+        computedByUserId = keyUser?.sId;
+      }
+    }
+    if (!computedByUserId) {
+      throw new Error("Cannot compute authorized file access without a user");
+    }
+
+    return {
+      computedByUserId,
+      frameContentHash: computeFrameContentHash(frameContent),
+      refs,
+      ...(unverifiableRefs.length > 0 ? { unverifiableRefs } : {}),
+    };
+  }
+
+  private static modelToAuthorizedFileRef(
+    row: AuthorizedFileAccessModel
+  ): AuthorizedFileRef | null {
+    switch (row.kind) {
+      case "unverifiable":
+        return null;
+      case "file_id":
+        return {
+          kind: "file_id",
+          ref: row.ref,
+          ...(row.fileName ? { fileName: row.fileName } : {}),
+        };
+      case "canonical_path":
+        return {
+          kind: "canonical_path",
+          ref: row.ref,
+          ...(row.legacyPath ? { legacyPath: row.legacyPath } : {}),
+          ...(row.fileName ? { fileName: row.fileName } : {}),
+        };
+      default:
+        return assertNever(row.kind);
+    }
+  }
+
+  private static allowlistFromActiveRows(
+    rows: AuthorizedFileAccessModel[]
+  ): AuthorizedFileAccessAllowlist | null {
+    if (rows.length === 0) {
+      return null;
+    }
+
+    const refs = rows.flatMap((row) => {
+      const ref = FileResource.modelToAuthorizedFileRef(row);
+      return ref ? [ref] : [];
+    });
+
+    return {
+      computedByUserId: rows[0]!.computedByUserId,
+      frameContentHash: rows[0]!.frameContentHash,
+      refs,
+    };
+  }
+
+  private async getShareableFile(): Promise<ShareableFileModel> {
     assert(
       this.isInteractiveContent,
-      `Sharing grants are only supported for interactive content files (file: ${this.sId})`
+      `Shareable file access requires interactive content (file: ${this.sId})`
     );
 
     const shareableFile = await FileResource.shareableFileModel.findOne({
@@ -1287,7 +1826,124 @@ export class FileResource extends BaseResource<FileModel> {
       `ShareableFileModel record not found for file ${this.sId}`
     );
 
-    return shareableFile.id;
+    return shareableFile;
+  }
+
+  async getActiveAuthorizedFileAccessAllowlist(): Promise<AuthorizedFileAccessAllowlist | null> {
+    const shareableFile = await this.getShareableFile();
+    const rows = await FileResource.authorizedFileAccessModel.findAll({
+      where: {
+        shareableFileId: shareableFile.id,
+        workspaceId: this.workspaceId,
+        revokedAt: null,
+      },
+    });
+
+    return FileResource.allowlistFromActiveRows(rows);
+  }
+
+  async getActiveAuthorizedFileAccessShareScope(): Promise<FileShareScope | null> {
+    const shareableFile = await this.getShareableFile();
+    const row = await FileResource.authorizedFileAccessModel.findOne({
+      where: {
+        shareableFileId: shareableFile.id,
+        workspaceId: this.workspaceId,
+        revokedAt: null,
+      },
+      attributes: ["shareScope"],
+    });
+
+    return row?.shareScope ?? null;
+  }
+
+  async getShareScope(): Promise<FileShareScope> {
+    const shareableFile = await this.getShareableFile();
+    return shareableFile.shareScope;
+  }
+
+  async persistAuthorizedFileAccess(
+    computed: ComputedAuthorizedFileAccess,
+    allowedAt: Date = new Date()
+  ): Promise<void> {
+    const shareableFile = await this.getShareableFile();
+
+    await FileResource.authorizedFileAccessModel.update(
+      { revokedAt: allowedAt },
+      {
+        where: {
+          shareableFileId: shareableFile.id,
+          workspaceId: this.workspaceId,
+          revokedAt: null,
+        },
+      }
+    );
+
+    const baseRow = {
+      workspaceId: this.workspaceId,
+      shareableFileId: shareableFile.id,
+      shareScope: shareableFile.shareScope,
+      computedByUserId: computed.computedByUserId,
+      frameContentHash: computed.frameContentHash,
+      allowedAt,
+      revokedAt: null,
+    };
+
+    await FileResource.authorizedFileAccessModel.bulkCreate([
+      ...computed.refs.map((ref) => ({
+        ...baseRow,
+        kind: ref.kind,
+        ref: ref.ref,
+        fileName: ref.fileName ? ref.fileName.substring(0, 64) : null,
+        legacyPath:
+          ref.kind === "canonical_path" ? (ref.legacyPath ?? null) : null,
+      })),
+      ...(computed.unverifiableRefs ?? []).map((ref) => ({
+        ...baseRow,
+        kind: "unverifiable" as const,
+        ref,
+        fileName: null,
+        legacyPath: null,
+      })),
+    ]);
+  }
+
+  private async readOriginalContent(
+    auth: Authenticator
+  ): Promise<string | null> {
+    const workspace = renderLightWorkspaceType({
+      workspace: auth.getNonNullableWorkspace(),
+    });
+    const readStream = this.getSharedReadStream(workspace, "original");
+    const bufferResult = await streamToBuffer(readStream);
+    if (bufferResult.isErr()) {
+      return null;
+    }
+
+    return bufferResult.value.toString("utf-8") || null;
+  }
+
+  async refreshAuthorizedFileAccess(
+    auth: Authenticator
+  ): Promise<ComputedAuthorizedFileAccess> {
+    const frameContent = await this.readOriginalContent(auth);
+    if (frameContent === null) {
+      throw new Error(
+        `Failed to read frame content for authorized file access refresh (file: ${this.sId})`
+      );
+    }
+
+    const authorized = await this.computeAuthorizedFileAccess(auth, {
+      frameContent,
+    });
+    await this.persistAuthorizedFileAccess(authorized);
+
+    return authorized;
+  }
+
+  // Sharing grants logic.
+
+  private async getShareableFileId(): Promise<ModelId> {
+    return (await this.getShareableFile()).id;
   }
 
   async addSharingGrants(
@@ -1429,6 +2085,28 @@ export class FileResource extends BaseResource<FileModel> {
         workspaceId: this.workspaceId,
         shareableFileId,
         revokedAt: null,
+      },
+      order: [["grantedAt", "DESC"]],
+    });
+
+    const userIds = removeNulls(grants.map((g) => g.grantedBy));
+    const users = await UserResource.fetchByModelIds(userIds);
+    const usersById = new Map(users.map((u) => [u.id, u]));
+
+    return grants.map((grant) => renderSharingGrant(grant, usersById));
+  }
+
+  async listAllSharingGrants(): Promise<SharingGrantType[]> {
+    assert(
+      this.isInteractiveContent,
+      "listAllSharingGrants requires interactive content file"
+    );
+    const shareableFileId = await this.getShareableFileId();
+
+    const grants = await SharingGrantModel.findAll({
+      where: {
+        workspaceId: this.workspaceId,
+        shareableFileId,
       },
       order: [["grantedAt", "DESC"]],
     });
@@ -1666,51 +2344,66 @@ async function deleteCoreFileArtifactsFromDataSource(
   dataSource: DataSourceResource,
   file: FileResource
 ): Promise<void> {
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const projectId = dataSource.dustAPIProjectId;
-  const dataSourceId = dataSource.dustAPIDataSourceId;
-  const logCtx = {
-    workspaceId: auth.workspace()?.sId,
-    fileId: file.sId,
-    dataSourceSId: dataSource.sId,
-  };
+  return tracer.trace(
+    "file_resource.delete_core_artifacts",
+    { resource: file.useCase },
+    async (span) => {
+      const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+      const projectId = dataSource.dustAPIProjectId;
+      const dataSourceId = dataSource.dustAPIDataSourceId;
+      const logCtx = {
+        workspaceId: auth.workspace()?.sId,
+        fileId: file.sId,
+        dataSourceSId: dataSource.sId,
+      };
 
-  const tableIds = new Set<string>([
-    ...(file.useCaseMetadata?.generatedTables ?? []),
-    file.sId,
-  ]);
+      const tableIds = new Set<string>([
+        ...(file.useCaseMetadata?.generatedTables ?? []),
+        file.sId,
+      ]);
 
-  for (const tableId of tableIds) {
-    const delTableRes = await coreAPI.deleteTable({
-      projectId,
-      dataSourceId,
-      tableId,
-    });
-    if (
-      delTableRes.isErr() &&
-      !isBenignCoreIndexedFileDeleteError(delTableRes.error.code)
-    ) {
-      logger.warn(
-        { ...logCtx, tableId, error: delTableRes.error },
-        "File delete: failed to remove table from Core data source."
-      );
+      span?.setTag("workspace.id", auth.workspace()?.sId ?? "unknown");
+      span?.setTag("file.id", file.sId);
+      span?.setTag("file.use_case", file.useCase);
+      span?.setTag("data_source.s_id", dataSource.sId);
+      span?.setTag("core.project_id", projectId);
+      span?.setTag("core.data_source_id", dataSourceId);
+      span?.setTag("tables.count", tableIds.size);
+
+      for (const tableId of tableIds) {
+        const delTableRes = await coreAPI.deleteTable({
+          projectId,
+          dataSourceId,
+          tableId,
+        });
+        if (
+          delTableRes.isErr() &&
+          !isBenignCoreIndexedFileDeleteError(delTableRes.error.code)
+        ) {
+          logger.warn(
+            { ...logCtx, tableId, error: delTableRes.error },
+            "File delete: failed to remove table from Core data source."
+          );
+        }
+      }
+
+      const delDocRes = await coreAPI.deleteDataSourceDocument({
+        projectId,
+        dataSourceId,
+        documentId: file.sId,
+        caller: "file-resource",
+      });
+      if (
+        delDocRes.isErr() &&
+        !isBenignCoreIndexedFileDeleteError(delDocRes.error.code)
+      ) {
+        logger.warn(
+          { ...logCtx, error: delDocRes.error },
+          "File delete: failed to remove document from Core data source."
+        );
+      }
     }
-  }
-
-  const delDocRes = await coreAPI.deleteDataSourceDocument({
-    projectId,
-    dataSourceId,
-    documentId: file.sId,
-  });
-  if (
-    delDocRes.isErr() &&
-    !isBenignCoreIndexedFileDeleteError(delDocRes.error.code)
-  ) {
-    logger.warn(
-      { ...logCtx, error: delDocRes.error },
-      "File delete: failed to remove document from Core data source."
-    );
-  }
+  );
 }
 
 async function maybeDeleteCoreArtifactsForIndexedFile(
@@ -1799,9 +2492,10 @@ function renderSharingGrant(
   return {
     id: grant.id,
     email: grant.email,
-    grantedAt: grant.grantedAt,
+    grantedAt: grant.grantedAt.getTime(),
     grantedBy: user?.toJSON() ?? null,
-    expiresAt: grant.expiresAt,
-    lastViewedAt: grant.lastViewedAt,
+    expiresAt: grant.expiresAt ? grant.expiresAt.getTime() : null,
+    revokedAt: grant.revokedAt ? grant.revokedAt.getTime() : null,
+    lastViewedAt: grant.lastViewedAt ? grant.lastViewedAt.getTime() : null,
   };
 }

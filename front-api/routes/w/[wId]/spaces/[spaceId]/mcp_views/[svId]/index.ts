@@ -1,40 +1,41 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceKind } from "@app/types/space";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withSpace } from "@front-api/middlewares/with_space";
+import { z } from "zod";
 
-import { spaceResource } from "@front-api/middleware/space_resource";
+const ParamsSchema = z.object({
+  svId: z.string(),
+});
+
+export type DeleteMCPServerViewResponseBody = {
+  deleted: boolean;
+};
 
 // Mounted under /api/w/:wId/spaces/:spaceId/mcp_views/:svId.
-const app = new Hono();
+const app = workspaceApp();
 
+/** @ignoreswagger */
 app.delete(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
-    const serverViewId = c.req.param("svId") ?? "";
-
-    if (!auth.isUser()) {
-      return apiError(c, {
-        status_code: 401,
-        api_error: {
-          type: "mcp_auth_error",
-          message:
-            "You are not authorized to make request to inspect an MCP server.",
-        },
-      });
-    }
+  validate("param", ParamsSchema),
+  ensureIsAdmin(),
+  withSpace({ requireCanReadOrAdministrate: true }),
+  async (ctx): HandlerResult<DeleteMCPServerViewResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const { svId: serverViewId } = ctx.req.valid("param");
 
     const mcpServerView = await MCPServerViewResource.fetchById(
       auth,
       serverViewId
     );
     if (!mcpServerView || mcpServerView.space.id !== space.id) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "data_source_not_found",
@@ -45,7 +46,7 @@ app.delete(
 
     const allowedSpaceKinds: SpaceKind[] = ["regular", "global"];
     if (!allowedSpaceKinds.includes(space.kind)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -55,19 +56,9 @@ app.delete(
       });
     }
 
-    if (!auth.isAdmin()) {
-      return apiError(c, {
-        status_code: 403,
-        api_error: {
-          type: "mcp_auth_error",
-          message: "User is not authorized to remove tools from a space.",
-        },
-      });
-    }
-
     await mcpServerView.delete(auth, { hardDelete: true });
 
-    return c.json({ deleted: true });
+    return ctx.json({ deleted: true });
   }
 );
 

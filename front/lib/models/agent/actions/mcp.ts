@@ -10,6 +10,7 @@ import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
 import type { CitationType } from "@app/types/assistant/conversation";
+import type { AllSupportedFileContentType } from "@app/types/files";
 import type { TimeFrame } from "@app/types/shared/utils/time_frame";
 import { isTimeFrame } from "@app/types/shared/utils/time_frame";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -179,6 +180,11 @@ AgentMCPServerConfigurationModel.init(
         fields: ["sId"],
         concurrently: true,
       },
+      {
+        fields: ["mcpServerViewId"],
+        concurrently: true,
+        name: "agent_mcp_srv_config_mcp_srv_view_id",
+      },
     ],
   }
 );
@@ -338,6 +344,8 @@ export class AgentMCPActionOutputItemModel extends WorkspaceAwareModel<AgentMCPA
   declare contentGcsPath: string | null;
   declare fileId: ForeignKey<FileModel["id"]> | null;
   declare citations: Record<string, CitationType> | null;
+  declare generatedFilePath: string | null;
+  declare generatedFileContentType: AllSupportedFileContentType | null;
 
   declare file: NonAttribute<FileModel>;
 }
@@ -388,6 +396,16 @@ AgentMCPActionOutputItemModel.init(
         },
       },
     },
+    generatedFilePath: {
+      type: DataTypes.STRING(4096),
+      allowNull: true,
+      defaultValue: null,
+    },
+    generatedFileContentType: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
     modelName: "agent_mcp_action_output_item",
@@ -399,7 +417,6 @@ AgentMCPActionOutputItemModel.init(
         concurrently: true,
       },
       { fields: ["workspaceId", "id"], concurrently: true },
-      // TODO(2025-11-24 fabien) Remove this useless index when the one on ("workspaceId", "agentMCPActionId") is created.
       {
         fields: ["agentMCPActionId"],
         concurrently: true,
@@ -407,11 +424,6 @@ AgentMCPActionOutputItemModel.init(
       {
         fields: ["fileId"],
         concurrently: true,
-      },
-      {
-        fields: ["workspaceId", "agentMCPActionId"],
-        concurrently: true,
-        name: "agent_mcp_action_output_items_workspace_id_agent_mcp_action_id",
       },
       {
         fields: ["workspaceId", "agentMCPActionId", "contentGcsPath"],

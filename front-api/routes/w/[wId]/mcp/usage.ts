@@ -1,19 +1,16 @@
-import { Hono } from "hono";
-
-import type { MCPServersUsageByAgent } from "@app/lib/api/agent_actions";
 import { getToolsUsage } from "@app/lib/api/agent_actions";
-
-export type GetMCPServersUsageResponseBody = {
-  usage: MCPServersUsageByAgent;
-};
+import type { GetMCPServersUsageResponseBody } from "@app/lib/api/mcp";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 // Mounted at /api/w/:wId/mcp/usage.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+/** @ignoreswagger */
+app.get("/", async (ctx): HandlerResult<GetMCPServersUsageResponseBody> => {
+  const auth = ctx.get("auth");
   const usage = await getToolsUsage(auth);
-  return c.json({ usage });
+  return ctx.json({ usage });
 });
 
 export default app;

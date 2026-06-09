@@ -4,6 +4,10 @@ import {
   resolveFilePathsInParentScope,
 } from "@app/lib/api/actions/servers/run_agent/file_paths";
 import { createConversation } from "@app/lib/api/assistant/conversation";
+import {
+  SCOPED_PREFIX_CONVERSATION,
+  SCOPED_PREFIX_POD,
+} from "@app/lib/api/file_system";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -56,31 +60,24 @@ async function setupPlainConversation(): Promise<{
 describe("resolveFilePathsInParentScope", () => {
   it("resolves a conversation-scoped path in a plain conversation", async () => {
     const { auth, conversation } = await setupPlainConversation();
+    const path = `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/foo.md`;
 
-    const res = await resolveFilePathsInParentScope(auth, conversation, [
-      "conversation/foo.md",
-    ]);
+    const res = await resolveFilePathsInParentScope(auth, conversation, [path]);
 
     assert(res.isOk());
-    expect(res.value).toHaveLength(1);
-    expect(res.value[0].useCase).toBe("conversation");
-    expect(res.value[0].rel).toBe("foo.md");
-    expect(res.value[0].scopedPath).toBe("conversation/foo.md");
+    expect(res.value).toEqual([path]);
   });
 
-  it("resolves both conversation and project paths in a project conversation", async () => {
-    const { auth, conversation } = await setupProjectConversation();
+  it("resolves both conversation and Pod paths in a Pod conversation", async () => {
+    const { auth, conversation, projectId } = await setupProjectConversation();
 
     const res = await resolveFilePathsInParentScope(auth, conversation, [
-      "conversation/a.txt",
-      "project/b.txt",
+      `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/a.txt`,
+      `${SCOPED_PREFIX_POD}${projectId}/b.txt`,
     ]);
 
     assert(res.isOk());
     expect(res.value).toHaveLength(2);
-    expect(res.value[0].useCase).toBe("conversation");
-    expect(res.value[1].useCase).toBe("project");
-    expect(res.value[1].rel).toBe("b.txt");
   });
 
   it("returns Err for a path with no scope prefix", async () => {
@@ -96,32 +93,30 @@ describe("resolveFilePathsInParentScope", () => {
     }
   });
 
-  it("returns Err for a project path in a non-project conversation", async () => {
+  it("returns Err for a Pod path in a non-Pod conversation", async () => {
     const { auth, conversation } = await setupPlainConversation();
 
     const res = await resolveFilePathsInParentScope(auth, conversation, [
-      "project/spec.md",
+      `${SCOPED_PREFIX_POD}somepodid/spec.md`,
     ]);
 
     expect(res.isErr()).toBe(true);
     if (res.isErr()) {
-      expect(res.error.message).toContain("project conversations");
+      expect(res.error.message).toContain("File not found");
     }
   });
 
   it("returns Err when the source file is missing", async () => {
     const { auth, conversation } = await setupPlainConversation();
 
-    // The global mock's `getMetadata` resolves successfully; override here so the file lookup
-    // fails and surfaces the missing-file error path.
     vi.mocked(getPrivateUploadBucket).mockReturnValueOnce({
       file: vi.fn(() => ({
-        getMetadata: vi.fn().mockRejectedValue(new Error("404")),
+        exists: vi.fn().mockResolvedValue([false]),
       })),
     } as unknown as ReturnType<typeof getPrivateUploadBucket>);
 
     const res = await resolveFilePathsInParentScope(auth, conversation, [
-      "conversation/missing.md",
+      `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/missing.md`,
     ]);
 
     expect(res.isErr()).toBe(true);
@@ -132,17 +127,13 @@ describe("resolveFilePathsInParentScope", () => {
 });
 
 describe("appendFilePathsHintToQuery", () => {
-  it("returns the query unchanged when no paths are resolved", () => {
+  it("returns the query unchanged when no paths are provided", () => {
     expect(appendFilePathsHintToQuery("hello", [])).toBe("hello");
   });
 
-  it("appends a one-line nudge when at least one path is resolved", () => {
+  it("appends a one-line nudge when at least one path is provided", () => {
     const result = appendFilePathsHintToQuery("hello", [
-      {
-        scopedPath: "conversation/a.md",
-        useCase: "conversation",
-        rel: "a.md",
-      },
+      "conversation-abc123/a.md",
     ]);
 
     expect(result).toBe(
@@ -153,65 +144,57 @@ describe("appendFilePathsHintToQuery", () => {
 
 describe("copyConversationFilesIntoSub", () => {
   it("is a no-op when no paths are conversation-scoped", async () => {
-    const { auth, conversation } = await setupPlainConversation();
+    const { auth, conversation, projectId } = await setupProjectConversation();
 
     const res = await copyConversationFilesIntoSub(auth, {
       parentConversation: conversation,
       subConversationId: "sub_sid",
-      resolvedFilePaths: [
-        {
-          scopedPath: "project/spec.md",
-          useCase: "project",
-          rel: "spec.md",
-        },
+      filePaths: [`${SCOPED_PREFIX_POD}${projectId}/spec.md`],
+    });
+
+    assert(res.isOk());
+  });
+
+  it("copies conversation-scoped files into the sub-conversation", async () => {
+    const { auth, conversation } = await setupPlainConversation();
+    const subConversation = await createConversation(auth, {
+      title: "Sub",
+      visibility: "unlisted",
+      spaceId: null,
+    });
+
+    const res = await copyConversationFilesIntoSub(auth, {
+      parentConversation: conversation,
+      subConversationId: subConversation.sId,
+      filePaths: [
+        `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/a.md`,
+        `${SCOPED_PREFIX_POD}somepod/skipped.md`,
       ],
     });
 
     assert(res.isOk());
   });
 
-  it("dispatches conversation-scoped paths through the GCS mount copy primitive", async () => {
+  it("returns Err when the GCS copy fails", async () => {
     const { auth, conversation } = await setupPlainConversation();
-
-    const res = await copyConversationFilesIntoSub(auth, {
-      parentConversation: conversation,
-      subConversationId: "sub_sid",
-      resolvedFilePaths: [
-        {
-          scopedPath: "conversation/a.md",
-          useCase: "conversation",
-          rel: "a.md",
-        },
-        {
-          scopedPath: "project/skipped.md",
-          useCase: "project",
-          rel: "skipped.md",
-        },
-      ],
+    const subConversation = await createConversation(auth, {
+      title: "Sub",
+      visibility: "unlisted",
+      spaceId: null,
     });
 
-    assert(res.isOk());
-  });
-
-  it("returns Err when the parent auth check fails on a path", async () => {
-    const { auth, conversation } = await setupPlainConversation();
-
-    // Force `resolveFile` to fail by making the source object look missing.
     vi.mocked(getPrivateUploadBucket).mockReturnValueOnce({
       file: vi.fn(() => ({
-        getMetadata: vi.fn().mockRejectedValue(new Error("404")),
+        copy: vi.fn().mockRejectedValue(new Error("GCS copy failed")),
       })),
+      copyFile: vi.fn().mockRejectedValue(new Error("GCS copy failed")),
     } as unknown as ReturnType<typeof getPrivateUploadBucket>);
 
     const res = await copyConversationFilesIntoSub(auth, {
       parentConversation: conversation,
-      subConversationId: "sub_sid",
-      resolvedFilePaths: [
-        {
-          scopedPath: "conversation/missing.md",
-          useCase: "conversation",
-          rel: "missing.md",
-        },
+      subConversationId: subConversation.sId,
+      filePaths: [
+        `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/missing.md`,
       ],
     });
 

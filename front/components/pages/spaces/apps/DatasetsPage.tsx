@@ -10,7 +10,7 @@ import { useApp } from "@app/lib/swr/apps";
 import { useDatasets } from "@app/lib/swr/datasets";
 import { classNames } from "@app/lib/utils";
 import Custom404 from "@app/pages/404";
-import { Button, Chip, PlusIcon, Spinner, TrashIcon } from "@dust-tt/sparkle";
+import { Button, Chip, Plus, Spinner, Trash01 } from "@dust-tt/sparkle";
 import { useContext } from "react";
 
 export function DatasetsPage() {
@@ -85,7 +85,7 @@ export function DatasetsPage() {
               disabled={readOnly}
               variant="primary"
               label="New Dataset"
-              icon={PlusIcon}
+              icon={Plus}
               onClick={() => {
                 void router.push(
                   `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/new`
@@ -109,7 +109,7 @@ export function DatasetsPage() {
                         </p>
                         {readOnly ? null : (
                           <div className="ml-2 flex flex-shrink-0">
-                            <TrashIcon
+                            <Trash01
                               className="hidden h-4 w-4 text-gray-400 hover:text-warning group-hover:block dark:text-gray-400-night"
                               onClick={async (e) => {
                                 e.preventDefault();

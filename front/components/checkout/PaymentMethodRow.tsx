@@ -12,7 +12,7 @@ import {
   VisaFlatIcon,
 } from "react-svg-credit-card-payment-icons";
 
-function CardBrandIcon({
+export function CardBrandIcon({
   brand,
   ...props
 }: { brand: string } & SVGComponentProps) {
@@ -40,7 +40,7 @@ function CardBrandIcon({
   }
 }
 
-function formatBrandName(brand: string): string {
+export function formatBrandName(brand: string): string {
   switch (brand.toLowerCase()) {
     case "visa":
       return "Visa";

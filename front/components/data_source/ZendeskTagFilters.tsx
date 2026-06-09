@@ -6,7 +6,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-  XMarkIcon,
+  XClose,
   ZendeskLogo,
   ZendeskWhiteLogo,
 } from "@dust-tt/sparkle";
@@ -100,7 +100,7 @@ export function ZendeskTagFilters({
               disabled={loading}
               className="ml-1 hover:opacity-70 disabled:opacity-50"
             >
-              <XMarkIcon className="h-3 w-3" />
+              <XClose className="h-3 w-3" />
             </button>
           )}
         </span>

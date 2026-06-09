@@ -1,4 +1,3 @@
-import config from "@app/lib/api/config";
 import { getSandboxProvider } from "@app/lib/api/sandbox";
 import { revokeAllExecTokensForSandbox } from "@app/lib/api/sandbox/access_tokens";
 import { deleteSandboxPolicy } from "@app/lib/api/sandbox/egress_policy";
@@ -11,9 +10,11 @@ import type {
   ExecOptions,
   ExecResult,
   FileEntry,
+  RootExecOptions,
   SandboxProvider,
 } from "@app/lib/api/sandbox/provider";
 import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
+import type { RootCommand } from "@app/lib/api/sandbox/root_command";
 import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
@@ -335,8 +336,11 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       return new Err(new Error("Sandbox provider not configured."));
     }
 
-    return executeWithLock(`sandbox:lifecycle:${conversationId}`, () =>
-      fn(provider)
+    return executeWithLock(
+      `sandbox:lifecycle:${conversationId}`,
+      () => fn(provider),
+      undefined,
+      { traceAcquireResource: "sandbox:lifecycle" }
     );
   }
 
@@ -373,8 +377,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       ...httpsSecretEnvResult.value,
       ...imageEnvVars,
       ...SANDBOX_TRUST_ENV_VARS,
-      DD_API_KEY: config.getDatadogApiKey() ?? "",
-      DD_HOST: "http-intake.logs.datadoghq.eu",
       CONVERSATION_ID: conversation.sId,
       WORKSPACE_ID: auth.getNonNullableWorkspace().sId,
     });
@@ -436,19 +438,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           baseImage: createConfig.imageId.imageName,
           version: createConfig.imageId.tag,
         });
-
-        const startTelemetry = await provider.exec(
-          createResult.value.providerId,
-          "systemd-cat -t fluent-bit /opt/fluent-bit/bin/fluent-bit -c /etc/fluent-bit/fluent-bit.conf &",
-          undefined,
-          tracingOpts
-        );
-        if (startTelemetry.isErr()) {
-          logger.warn(
-            { error: startTelemetry.error.message },
-            "Failed to start fluent-bit telemetry"
-          );
-        }
 
         logger.info(
           { sandbox: sandbox.toLogJSON() },
@@ -574,19 +563,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           });
           freshlyCreated = true;
 
-          const startTelemetry = await provider.exec(
-            createResult.value.providerId,
-            "systemd-cat -t fluent-bit /opt/fluent-bit/bin/fluent-bit -c /etc/fluent-bit/fluent-bit.conf &",
-            undefined,
-            tracingOpts
-          );
-          if (startTelemetry.isErr()) {
-            logger.warn(
-              { error: startTelemetry.error.message },
-              "Failed to start fluent-bit telemetry"
-            );
-          }
-
           logger.info(
             {
               sandbox: existing.toLogJSON(),
@@ -675,12 +651,28 @@ export class SandboxResource extends BaseResource<SandboxModel> {
 
       const ctx = { workspaceId: auth.getNonNullableWorkspace().sId };
 
-      const result = await provider.sleep(sandbox.providerId, ctx);
-      if (result.isErr()) {
-        return result;
+      // Flip the DB to `pending_approval` BEFORE the provider sleep.
+      // If we slept first and the DB update then failed, we'd be stuck with
+      // a frozen SDK sandbox and a DB row saying "running" — ensureActive's
+      // `running` branch would skip wake-up and subsequent execs would hang
+      // against the frozen sandbox indefinitely. With DB first, a sleep
+      // failure leaves DB=pending_approval + SDK=running, which is the
+      // recoverable shape: ensureActive's pending_approval branch will wake
+      // the (still-running) sandbox on the next call, idempotently.
+      await sandbox.updateStatus("pending_approval", { ctx });
+
+      const sleepResult = await provider.sleep(sandbox.providerId, ctx);
+      if (sleepResult.isErr()) {
+        logger.error(
+          {
+            sandbox: sandbox.toLogJSON(),
+            err: sleepResult.error,
+          },
+          "Provider sleep failed after pending_approval DB update — sandbox left in recoverable pending_approval state."
+        );
+        return sleepResult;
       }
 
-      await sandbox.updateStatus("pending_approval", { ctx });
       logger.info(
         { sandbox: sandbox.toLogJSON() },
         "Sandbox paused for tool approval."
@@ -942,6 +934,41 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       logger.error(
         { sandbox: this.toLogJSON() },
         "Sandbox not found at provider during exec — marking as deleted"
+      );
+      await this.updateStatus("deleted");
+    }
+
+    return result;
+  }
+
+  /**
+   * Execute a privileged command in this sandbox.
+   *
+   * Root commands must be built as RootCommand so callers cannot accidentally
+   * pass raw shell strings through the generic exec path.
+   */
+  async execRoot(
+    auth: Authenticator,
+    command: RootCommand,
+    opts?: RootExecOptions
+  ): Promise<Result<ExecResult, Error>> {
+    const provider = getSandboxProvider();
+    if (!provider) {
+      return new Err(new Error("Sandbox provider not configured."));
+    }
+
+    const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
+    const result = await provider.execRoot(
+      this.providerId,
+      command,
+      opts,
+      tracingOpts
+    );
+
+    if (result.isErr() && result.error instanceof SandboxNotFoundError) {
+      logger.error(
+        { sandbox: this.toLogJSON() },
+        "Sandbox not found at provider during root exec — marking as deleted"
       );
       await this.updateStatus("deleted");
     }

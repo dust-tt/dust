@@ -12,7 +12,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  PlusIcon,
+  Plus,
 } from "@dust-tt/sparkle";
 
 type AddTriggerMenuProps = {
@@ -31,7 +31,7 @@ export const AddTriggerMenu = ({
         <Button
           label="Add Source"
           variant="primary"
-          icon={PlusIcon}
+          icon={Plus}
           size="sm"
           onClick={withTracking(TRACKING_AREAS.TRIGGERS, "add_trigger_menu")}
         />

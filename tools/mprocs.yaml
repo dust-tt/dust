@@ -45,21 +45,6 @@ procs:
       echo "Node $(node --version)"
       ./admin/dev.sh
 
-  front:
-    cwd: "<CONFIG_DIR>/../front"
-    shell: |
-      set -euo pipefail
-      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-      nvm use
-      echo "Node $(node --version)"
-      READY_FILE="../sdks/js/dist/client.esm.js.map"
-      echo "Waiting for sdks-js to compile..."
-      echo "Expecting file: $READY_FILE"
-      while [ ! -f "$READY_FILE" ]; do sleep 1; done
-      echo "sdks-js ready. Starting front."
-      ./admin/dev.sh
-
   front-hono:
     cwd: "<CONFIG_DIR>/../front-api"
     shell: |
@@ -72,12 +57,13 @@ procs:
       echo "Waiting for sdks-js to compile..."
       echo "Expecting file: $READY_FILE"
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
-      echo "sdks-js ready. Starting front-api (Hono strangler)."
+      echo "sdks-js ready. Starting front-api (Hono only, no Next)."
       # exec replaces this shell with tsx so mprocs's signals reach node
       # directly (npm doesn't reliably forward signals to its child).
       export NODE_ENV=development
-      exec ../node_modules/.bin/tsx ./server.ts
-    autostart: false
+      # Guard: throw if anything tries to load `next` at runtime.
+      export NODE_OPTIONS="--require=./forbid-next.cjs"
+      npm run dev
 
   front-workers:
     cwd: "<CONFIG_DIR>/../front"
@@ -133,6 +119,22 @@ procs:
       echo "Expecting file: $READY_FILE"
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
       npm run dev:poke
+
+  marketing-site:
+    cwd: "<CONFIG_DIR>/../front"
+    shell: |
+      set -euo pipefail
+      export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+      [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+      nvm use
+      echo "Node $(node --version)"
+      READY_FILE="../sdks/js/dist/client.esm.js.map"
+      echo "Waiting for sdks-js to compile..."
+      echo "Expecting file: $READY_FILE"
+      while [ ! -f "$READY_FILE" ]; do sleep 1; done
+      echo "sdks-js ready. Starting front."
+      ./admin/dev.sh
+    autostart: false
 
   sparkle-storybook:
     cwd: "<CONFIG_DIR>/../sparkle"
@@ -191,4 +193,9 @@ procs:
   novu:
     # Doc: https://docs.novu.co/framework/studio
     shell: "npx novu@latest dev --port 3000"
+    autostart: false
+
+  stripe:
+    # Doc: https://www.notion.so/dust-tt/Runbook-Local-Dev-setup-720bffc7d67a447184cb957e9471380c?source=copy_link#5814f227351d4d258422e21e8de39c82/
+    shell: "stripe listen --forward-to localhost:3000/api/stripe/webhook"
     autostart: false

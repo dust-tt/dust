@@ -14,8 +14,8 @@ import { useConversationAttachments } from "@app/hooks/conversations/useConversa
 import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
-import type { GCSMountFileEntry } from "@app/lib/api/files/gcs_mount/files";
-import { downloadSandboxFile } from "@app/lib/swr/files";
+import type { FileSystemFileEntry } from "@app/lib/api/file_system/types";
+import { downloadFile } from "@app/lib/swr/files";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isInteractiveContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -25,7 +25,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  XMarkIcon,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useRef, useState } from "react";
 
@@ -93,7 +93,7 @@ export function ConversationFilesPanel({
   );
 
   const handleSandboxFileClick = useCallback(
-    async (entry: GCSMountFileEntry) => {
+    async (entry: FileSystemFileEntry) => {
       if (entry.fileId) {
         openFile({
           fileId: entry.fileId,
@@ -107,14 +107,10 @@ export function ConversationFilesPanel({
         return;
       }
 
-      // File only exists in GCS — download via POST and open as blob URL.
+      // File only exists in GCS, download and open as blob URL.
       isDownloadingRef.current = true;
       try {
-        const res = await downloadSandboxFile(
-          owner,
-          conversation.sId,
-          entry.path
-        );
+        const res = await downloadFile(owner, entry.path);
         const blob = await res.blob();
         if (blobUrlRef.current) {
           URL.revokeObjectURL(blobUrlRef.current);
@@ -138,7 +134,7 @@ export function ConversationFilesPanel({
         isDownloadingRef.current = false;
       }
     },
-    [openFile, owner, conversation.sId, sendNotification]
+    [openFile, owner, sendNotification]
   );
 
   const fileRows = useMemo(
@@ -178,7 +174,7 @@ export function ConversationFilesPanel({
                 variant="ghost"
                 size="sm"
                 onClick={closePanel}
-                icon={XMarkIcon}
+                icon={XClose}
               />
             </div>
           </AppLayoutTitle>
@@ -215,7 +211,7 @@ export function ConversationFilesPanel({
                   variant="ghost"
                   size="sm"
                   onClick={closePanel}
-                  icon={XMarkIcon}
+                  icon={XClose}
                 />
               </div>
             </div>

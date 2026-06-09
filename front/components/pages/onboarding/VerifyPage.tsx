@@ -1,5 +1,6 @@
 import { PhoneNumberCodeInput } from "@app/components/trial/PhoneNumberCodeInput";
 import { PhoneNumberInput } from "@app/components/trial/PhoneNumberInput";
+import config from "@app/lib/api/config";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -11,11 +12,12 @@ import {
 import { useAppRouter } from "@app/lib/platform";
 import { useAuthContext, useVerifyData } from "@app/lib/swr/workspaces";
 import { Button, DustLogoSquare, Page, Spinner } from "@dust-tt/sparkle";
+import { Turnstile } from "@marsidev/react-turnstile";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Country } from "react-phone-number-input";
 
-type Step = "phone" | "code";
+type Step = "captcha" | "phone" | "code";
 
 export function VerifyPage() {
   const { workspace } = useAuth();
@@ -31,8 +33,11 @@ export function VerifyPage() {
     isVerifyDataLoading,
   } = useVerifyData({ workspaceId: workspace.sId });
 
-  const [step, setStep] = useState<Step>("phone");
+  const [step, setStep] = useState<Step>("captcha");
   const [isLoading, setIsLoading] = useState(false);
+
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaKey, setCaptchaKey] = useState(0);
 
   const [phoneNumber, setPhoneNumber] = useState("");
   const [countryCode, setCountryCode] = useState<Country>("US");
@@ -83,6 +88,13 @@ export function VerifyPage() {
       return;
     }
 
+    if (!captchaToken) {
+      setCaptchaKey((k) => k + 1);
+      setCaptchaToken(null);
+      setStep("captcha");
+      return;
+    }
+
     setIsLoading(true);
     const e164Phone = phoneNumber;
     let response: Response;
@@ -92,7 +104,7 @@ export function VerifyPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phoneNumber: e164Phone }),
+          body: JSON.stringify({ phoneNumber: e164Phone, captchaToken }),
         }
       );
     } catch {
@@ -104,6 +116,16 @@ export function VerifyPage() {
 
     if (!response.ok) {
       const data = await response.json();
+      if (data.error?.type === "invalid_captcha") {
+        setCaptchaToken(null);
+        setCaptchaKey((k) => k + 1);
+        setStep("captcha");
+        setPhoneError(
+          data.error?.message ??
+            "Captcha verification failed. Please try again."
+        );
+        return;
+      }
       if (data.error?.type === "rate_limit_error" && data.error?.retryAfter) {
         const waitSeconds = Math.max(
           0,
@@ -258,6 +280,30 @@ export function VerifyPage() {
       <div className="flex h-screen items-center justify-center">
         <Spinner />
       </div>
+    );
+  }
+
+  if (step === "captcha") {
+    return (
+      <CaptchaStep
+        captchaKey={captchaKey}
+        siteKey={config.getTurnstileSiteKey()}
+        error={phoneError}
+        onSuccess={(token) => {
+          setCaptchaToken(token);
+          setPhoneError(null);
+          setStep("phone");
+        }}
+        onExpire={() => {
+          setCaptchaToken(null);
+        }}
+        onError={() => {
+          setCaptchaToken(null);
+          setPhoneError(
+            "Captcha could not load. Please refresh and try again."
+          );
+        }}
+      />
     );
   }
 
@@ -441,6 +487,54 @@ function CodeVerificationStep({
                   />
                 </div>
               </div>
+            </div>
+          </Page.Vertical>
+        </Page.Horizontal>
+      </div>
+    </Page>
+  );
+}
+
+interface CaptchaStepProps {
+  captchaKey: number;
+  siteKey: string;
+  error: string | null;
+  onSuccess: (token: string) => void;
+  onExpire: () => void;
+  onError: () => void;
+}
+
+function CaptchaStep({
+  captchaKey,
+  siteKey,
+  error,
+  onSuccess,
+  onExpire,
+  onError,
+}: CaptchaStepProps) {
+  return (
+    <Page>
+      <div className="flex h-full flex-col justify-center">
+        <Page.Horizontal>
+          <Page.Vertical sizing="grow" gap="lg">
+            <Page.Header
+              title="Verify you're human"
+              icon={() => <DustLogoSquare className="-ml-11 h-10 w-32" />}
+            />
+            <p className="-mt-4 text-muted-foreground dark:text-muted-foreground-night">
+              A quick check before we send your verification code.
+            </p>
+
+            <div className="flex w-full max-w-xl flex-col gap-4">
+              <Turnstile
+                key={captchaKey}
+                siteKey={siteKey}
+                onSuccess={onSuccess}
+                onExpire={onExpire}
+                onError={onError}
+                options={{ theme: "auto" }}
+              />
+              <p className="min-h-5 text-sm text-red-500">{error}</p>
             </div>
           </Page.Vertical>
         </Page.Horizontal>

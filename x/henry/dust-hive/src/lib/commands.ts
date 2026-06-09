@@ -5,6 +5,20 @@ import { type Environment, getEnvironment } from "./environment";
 import { restoreTerminal, selectEnvironment } from "./prompt";
 import { CommandError, Err, Ok, type Result, envNotFoundError } from "./result";
 
+export type EnvironmentNameArg = string | string[] | undefined;
+
+export function normalizeEnvironmentNames(nameArg: EnvironmentNameArg): string[] {
+  if (nameArg === undefined) {
+    return [];
+  }
+
+  if (Array.isArray(nameArg)) {
+    return nameArg;
+  }
+
+  return [nameArg];
+}
+
 export interface RequireEnvironmentOptions {
   /** If provided, shows a confirmation prompt after selection.
    * Use {name} as placeholder for the selected environment name. */
@@ -65,6 +79,34 @@ export function withEnvironment<T extends unknown[]>(
     if (!envResult.ok) return envResult;
 
     return handler(envResult.value, ...args);
+  };
+}
+
+// Wrapper for commands that can operate on one or more environments.
+// When no name is provided, it preserves the existing interactive selection flow.
+export function withEnvironments<T extends unknown[]>(
+  commandName: string,
+  handler: (env: Environment, ...args: T) => Promise<Result<void>>
+): (nameArg: EnvironmentNameArg, ...args: T) => Promise<Result<void>> {
+  return async (nameArg: EnvironmentNameArg, ...args: T): Promise<Result<void>> => {
+    const names = normalizeEnvironmentNames(nameArg);
+
+    if (names.length === 0) {
+      const envResult = await requireEnvironment(undefined, commandName);
+      if (!envResult.ok) return envResult;
+
+      return handler(envResult.value, ...args);
+    }
+
+    for (const name of names) {
+      const envResult = await requireEnvironment(name, commandName);
+      if (!envResult.ok) return envResult;
+
+      const result = await handler(envResult.value, ...args);
+      if (!result.ok) return result;
+    }
+
+    return Ok(undefined);
   };
 }
 

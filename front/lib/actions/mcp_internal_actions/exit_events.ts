@@ -2,10 +2,11 @@ import type {
   ToolAskUserQuestionEvent,
   ToolEarlyExitEvent,
   ToolFileAuthRequiredEvent,
+  ToolPausedEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
+import { pauseSandboxBashForBlockedChild } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
@@ -14,6 +15,11 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { MCPApproveExecutionEvent } from "@dust-tt/client";
 import { assertNever, isAgentPauseOutputResourceType } from "@dust-tt/client";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+
+type MCPActionOutputItemWithContent = {
+  content: CallToolResult["content"][number];
+};
 
 /**
  * Server-only utility for processing exit/pause events from MCP tool outputs.
@@ -29,7 +35,7 @@ export async function getExitOrPauseEvents(
     agentMessage,
     conversation,
   }: {
-    outputItems: AgentMCPActionOutputItemModel[];
+    outputItems: MCPActionOutputItemWithContent[];
     action: AgentMCPActionResource;
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;
@@ -42,6 +48,7 @@ export async function getExitOrPauseEvents(
     | ToolPersonalAuthRequiredEvent
     | ToolFileAuthRequiredEvent
     | ToolEarlyExitEvent
+    | ToolPausedEvent
   )[]
 > {
   const exitOutputItem = outputItems
@@ -51,7 +58,9 @@ export async function getExitOrPauseEvents(
   if (exitOutputItem) {
     switch (exitOutputItem.type) {
       case "tool_early_exit": {
-        const { isError, text } = exitOutputItem;
+        const { isError, reason, text } = exitOutputItem;
+        const eventIsError = reason === "user_cancellation" ? false : isError;
+
         return [
           {
             type: "tool_early_exit",
@@ -60,7 +69,8 @@ export async function getExitOrPauseEvents(
             conversationId: conversation.sId,
             messageId: agentMessage.sId,
             text: text,
-            isError: isError,
+            isError: eventIsError,
+            reason,
           },
         ];
       }
@@ -75,8 +85,27 @@ export async function getExitOrPauseEvents(
           resumeState: state,
         });
 
-        // Yield the blocking events.
-        return blockingEvents;
+        // Forward any UI-facing blocking events the tool collected, plus a
+        // `tool_paused` sentinel. The sentinel keeps the pause-decision on
+        // the event channel even when `blockingEvents` is empty — the case
+        // for any future tool whose blocking event is published upstream
+        // out-of-band (e.g. sandbox bash, where the child's blocking event
+        // is published by `createSandboxChildAction` and never flows
+        // through bash's return). Without it, `runToolWithStreaming` would
+        // fall through to `markAsSucceeded` on an already-blocked action.
+        // Appended LAST so the for-await in `executeToolStreaming` processes
+        // every blocking event before the sentinel triggers the return.
+        return [
+          ...blockingEvents,
+          {
+            type: "tool_paused",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            messageId: agentMessage.sId,
+            conversationId: conversation.sId,
+            actionId: action.sId,
+          },
+        ];
       }
       case "tool_personal_auth_required": {
         const { provider, scope } = exitOutputItem;
@@ -87,6 +116,7 @@ export async function getExitOrPauseEvents(
 
         // Update the action to mark it as blocked because of a personal authentication error.
         await action.updateStatus("blocked_authentication_required");
+        await pauseSandboxBashForBlockedChild(auth, action, conversation);
 
         return [
           {
@@ -126,6 +156,7 @@ export async function getExitOrPauseEvents(
           `for ${fileName}, please authorize the file to continue.`;
 
         await action.updateStatus("blocked_file_authorization_required");
+        await pauseSandboxBashForBlockedChild(auth, action, conversation);
 
         // Persisted here so the blocked action can be reconstructed on page reload.
         await action.updateStepContext({
@@ -170,6 +201,7 @@ export async function getExitOrPauseEvents(
         const { question } = exitOutputItem;
 
         await action.updateStatus("blocked_user_answer_required");
+        await pauseSandboxBashForBlockedChild(auth, action, conversation);
 
         await action.updateStepContext({
           ...action.stepContext,

@@ -1,3 +1,3 @@
-import type { APIErrorWithStatusCode } from "../error";
+import type { APIErrorWithContentfulStatusCode } from "../error";
 
-export type PubSubError = APIErrorWithStatusCode;
+export type PubSubError = APIErrorWithContentfulStatusCode;

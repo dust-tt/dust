@@ -1,14 +1,12 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import {
   MCPServerInstanceLimitError,
   registerMCPServer,
 } from "@app/lib/api/actions/mcp/client_side_registry";
-
-import { validate } from "@front-api/middleware/validator";
+import { maybePersistDustDesktopClientSideMCPServerRegistration } from "@app/lib/api/actions/mcp/dust_desktop";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 const MIN_SERVER_NAME_LENGTH = 5;
 const MAX_SERVER_NAME_LENGTH = 30;
@@ -29,32 +27,42 @@ export type PostMCPRegisterRequestBody = z.infer<
 >;
 
 // Mounted at /api/w/:wId/mcp/register.
-const app = new Hono();
+const app = workspaceApp();
 
-app.post("/", validate("json", PostMCPRegisterRequestBodySchema), async (c) => {
-  const auth = c.get("auth");
-  const { serverName } = c.req.valid("json");
+/** @ignoreswagger */
+app.post(
+  "/",
+  validate("json", PostMCPRegisterRequestBodySchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { serverName } = ctx.req.valid("json");
 
-  const registration = await registerMCPServer(auth, {
-    serverName,
-    workspaceId: auth.getNonNullableWorkspace().sId,
-  });
+    const registration = await registerMCPServer(auth, {
+      serverName,
+      workspaceId: auth.getNonNullableWorkspace().sId,
+    });
 
-  if (registration.isErr()) {
-    const error = registration.error;
-    if (error instanceof MCPServerInstanceLimitError) {
-      return apiError(c, {
-        status_code: 400,
-        api_error: { type: "invalid_request_error", message: error.message },
+    if (registration.isErr()) {
+      const error = registration.error;
+      if (error instanceof MCPServerInstanceLimitError) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: { type: "invalid_request_error", message: error.message },
+        });
+      }
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: { type: "internal_server_error", message: error.message },
       });
     }
-    return apiError(c, {
-      status_code: 500,
-      api_error: { type: "internal_server_error", message: error.message },
-    });
-  }
 
-  return c.json(registration.value);
-});
+    await maybePersistDustDesktopClientSideMCPServerRegistration(auth, {
+      serverName,
+      serverId: registration.value.serverId,
+    });
+
+    return ctx.json(registration.value);
+  }
+);
 
 export default app;

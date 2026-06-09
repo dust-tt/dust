@@ -8,8 +8,6 @@ export const TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_ID =
   "Qwen/Qwen2-72B-Instruct" as const;
 export const TOGETHERAI_DEEPSEEK_V3_MODEL_ID =
   "deepseek-ai/DeepSeek-V3" as const;
-export const TOGETHERAI_DEEPSEEK_R1_MODEL_ID =
-  "deepseek-ai/DeepSeek-R1" as const;
 export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_ID =
   "Qwen/Qwen2.5-Coder-32B-Instruct" as const;
 
@@ -28,8 +26,12 @@ export const TOGETHERAI_LLAMA_3_3_70B_INSTRUCT_TURBO_MODEL_CONFIG: ModelConfigur
     isLatest: false,
     generationTokensCount: 2048,
     supportsVision: false,
-    minimumReasoningEffort: "none",
-    maximumReasoningEffort: "none",
+    supportedReasoningEfforts: {
+      none: true,
+      light: false,
+      medium: false,
+      high: false,
+    },
     defaultReasoningEffort: "none",
     tokenizer: { type: "tiktoken", base: "o200k_base" },
     regionalAvailability: {
@@ -52,8 +54,12 @@ export const TOGETHERAI_QWEN_2_5_CODER_32B_INSTRUCT_MODEL_CONFIG: ModelConfigura
     isLatest: false,
     generationTokensCount: 2048,
     supportsVision: false,
-    minimumReasoningEffort: "none",
-    maximumReasoningEffort: "none",
+    supportedReasoningEfforts: {
+      none: true,
+      light: false,
+      medium: false,
+      high: false,
+    },
     defaultReasoningEffort: "none",
     tokenizer: { type: "tiktoken", base: "o200k_base" },
     regionalAvailability: {
@@ -76,8 +82,12 @@ export const TOGETHERAI_QWEN_QWQ_32B_PREVIEW_MODEL_CONFIG: ModelConfigurationTyp
     isLatest: false,
     generationTokensCount: 2048,
     supportsVision: false,
-    minimumReasoningEffort: "none",
-    maximumReasoningEffort: "none",
+    supportedReasoningEfforts: {
+      none: true,
+      light: false,
+      medium: false,
+      high: false,
+    },
     defaultReasoningEffort: "none",
     tokenizer: { type: "tiktoken", base: "o200k_base" },
     regionalAvailability: {
@@ -100,8 +110,12 @@ export const TOGETHERAI_QWEN_72B_INSTRUCT_MODEL_CONFIG: ModelConfigurationType =
     isLatest: false,
     generationTokensCount: 2048,
     supportsVision: false,
-    minimumReasoningEffort: "none",
-    maximumReasoningEffort: "none",
+    supportedReasoningEfforts: {
+      none: true,
+      light: false,
+      medium: false,
+      high: false,
+    },
     defaultReasoningEffort: "none",
     tokenizer: { type: "tiktoken", base: "o200k_base" },
     regionalAvailability: {
@@ -123,31 +137,12 @@ export const TOGETHERAI_DEEPSEEK_V3_MODEL_CONFIG: ModelConfigurationType = {
   isLatest: false,
   generationTokensCount: 2048,
   supportsVision: false,
-  minimumReasoningEffort: "none",
-  maximumReasoningEffort: "none",
-  defaultReasoningEffort: "none",
-  tokenizer: { type: "tiktoken", base: "o200k_base" },
-  regionalAvailability: {
-    "us-central1": true,
-    "europe-west1": false,
+  supportedReasoningEfforts: {
+    none: true,
+    light: false,
+    medium: false,
+    high: false,
   },
-};
-export const TOGETHERAI_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "togetherai",
-  modelId: TOGETHERAI_DEEPSEEK_R1_MODEL_ID,
-  displayName: "DeepSeek R1 (TogetherAI)",
-  contextSize: 163_840,
-  recommendedTopK: 32,
-  recommendedExhaustiveTopK: 64,
-  largeModel: true,
-  description: "DeepSeek R1 (reasoning, 163k context, served via TogetherAI).",
-  shortDescription: "DeepSeek R1 (reasoning model).",
-  isLegacy: false,
-  isLatest: false,
-  generationTokensCount: 2048,
-  supportsVision: false,
-  minimumReasoningEffort: "none",
-  maximumReasoningEffort: "none",
   defaultReasoningEffort: "none",
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {

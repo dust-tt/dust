@@ -3,11 +3,7 @@ import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/deta
 import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { UserQuestionSchema } from "@app/lib/actions/types";
 import { parseUserQuestionAnswer } from "@app/lib/actions/user_question";
-import {
-  ChatBubbleBottomCenterTextIcon,
-  CheckIcon,
-  Icon,
-} from "@dust-tt/sparkle";
+import { Check, Icon, MessageCircle01 } from "@dust-tt/sparkle";
 
 export function MCPAskUserQuestionActionDetails({
   toolOutput,
@@ -31,7 +27,7 @@ export function MCPAskUserQuestionActionDetails({
           ? "Asking a question"
           : "Asked a question"
       }
-      visual={ChatBubbleBottomCenterTextIcon}
+      visual={MessageCircle01}
     >
       {displayContext !== "conversation" && userQuestion && outputText && (
         <div className="flex flex-col gap-3 pl-6 pt-4">
@@ -49,7 +45,7 @@ export function MCPAskUserQuestionActionDetails({
                 >
                   <div className="flex items-center gap-2">
                     <Icon
-                      visual={CheckIcon}
+                      visual={Check}
                       size="xs"
                       className={
                         isSelected
@@ -76,7 +72,7 @@ export function MCPAskUserQuestionActionDetails({
             {customAnswer && (
               <div className="flex items-center gap-2 text-sm">
                 <Icon
-                  visual={CheckIcon}
+                  visual={Check}
                   size="xs"
                   className="text-primary dark:text-primary-night"
                 />

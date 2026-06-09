@@ -2,10 +2,11 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
-import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { ConversationError } from "@app/types/assistant/conversation";
-import type { PokeConversationType } from "@app/types/poke";
-import type { ModelId } from "@app/types/shared/model_id";
+import type {
+  PokeAgentMessageType,
+  PokeConversationType,
+} from "@app/types/poke";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 
@@ -27,20 +28,26 @@ export async function getPokeConversation(
   if (conversation.isOk()) {
     const pokeConversation = conversation.value as PokeConversationType;
 
-    // Cycle through the message and actions and enrich them with the runId(s) and timestamps
+    const agentMessages = pokeConversation.content
+      .flat()
+      .filter((m): m is PokeAgentMessageType => m.type === "agent_message");
+
+    const agentMessagesWithRunIds = await AgentMessageModel.findAll({
+      where: {
+        id: [...new Set(agentMessages.map((m) => m.agentMessageId))],
+        workspaceId: owner.id,
+      },
+      attributes: ["id", "runIds"],
+    });
+    const runIdsByAgentMessageId = new Map(
+      agentMessagesWithRunIds.map((m) => [m.id, m.runIds])
+    );
+
+    // Cycle through the messages and actions and enrich them with runId(s) and timestamps.
     for (const messages of pokeConversation.content) {
       for (const m of messages) {
         if (m.type === "agent_message") {
-          const runIds = (
-            await AgentMessageModel.findOne({
-              where: {
-                id: m.agentMessageId,
-                workspaceId: owner.id,
-              },
-              attributes: ["runIds"],
-              raw: true,
-            })
-          )?.runIds;
+          const runIds = runIdsByAgentMessageId.get(m.agentMessageId) ?? null;
 
           m.runIds = runIds;
 
@@ -54,17 +61,6 @@ export async function getPokeConversation(
           }
 
           if (m.actions.length > 0) {
-            // Fetch timestamps for actions
-            const actionIds: ModelId[] = m.actions.map((a) => a.id);
-            const actionsWithTimestamps =
-              await AgentMCPActionResource.fetchByModelIds(auth, actionIds);
-            const timestampMap = new Map(
-              actionsWithTimestamps.map((action) => [
-                action.id,
-                action.createdAt.getTime(),
-              ])
-            );
-
             for (const a of m.actions) {
               a.mcpIO = {
                 params: a.params,
@@ -72,11 +68,7 @@ export async function getPokeConversation(
                 generatedFiles: a.generatedFiles,
                 isError: a.status === "errored",
               };
-              // Add timestamp if available
-              const timestamp = timestampMap.get(a.id);
-              if (timestamp) {
-                a.created = timestamp;
-              }
+              a.created = a.createdAt;
             }
           }
         }

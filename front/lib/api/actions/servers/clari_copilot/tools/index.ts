@@ -26,21 +26,26 @@ const handlers: ToolHandlers<typeof CLARI_COPILOT_TOOLS_METADATA> = {
       );
     }
 
-    const calls = result.value;
+    const { calls, pagination } = result.value;
+    const totalText =
+      pagination?.matched !== undefined
+        ? ` (${pagination.matched} total${pagination.hasMore ? ", more available" : ""})`
+        : "";
     return new Ok([
       {
         type: "resource" as const,
         resource: {
           mimeType: CLARI_CALL_LIST_MIME_TYPE,
           uri: "",
-          text: `${calls.length} call(s) found`,
+          text: `${calls.length} call(s) returned${totalText}`,
           calls,
+          pagination,
         },
       },
     ]);
   },
 
-  get_call_details: async ({ call_id }, extra) => {
+  get_call_details: async ({ call_id, include_transcript }, extra) => {
     const clientResult = getClariClient(extra);
     if (clientResult.isErr()) {
       return new Err(clientResult.error);
@@ -56,6 +61,9 @@ const handlers: ToolHandlers<typeof CLARI_COPILOT_TOOLS_METADATA> = {
     }
 
     const call = result.value;
+    const callToReturn = include_transcript
+      ? call
+      : { ...call, transcript: undefined };
     return new Ok([
       {
         type: "resource" as const,
@@ -63,7 +71,7 @@ const handlers: ToolHandlers<typeof CLARI_COPILOT_TOOLS_METADATA> = {
           mimeType: CLARI_CALL_DETAILS_MIME_TYPE,
           uri: call.call_review_page_url ?? "",
           text: `Call details retrieved for "${call.title ?? call.id}"`,
-          call,
+          call: callToReturn,
         },
       },
     ]);

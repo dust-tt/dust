@@ -1,8 +1,9 @@
 import type {
   ConnectionOptions,
   WorkflowClientInterceptor,
+  WorkflowExecutionDescription,
 } from "@temporalio/client";
-import { Client, Connection } from "@temporalio/client";
+import { Client, Connection, WorkflowNotFoundError } from "@temporalio/client";
 import { OpenTelemetryWorkflowClientInterceptor } from "@temporalio/interceptors-opentelemetry";
 import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
@@ -118,6 +119,25 @@ export async function getTemporalClientForFrontNamespace() {
 
 export async function getTemporalClientForConnectorsNamespace() {
   return getTemporalClientForNamespace("connectors");
+}
+
+export async function describeTemporalWorkflow(
+  temporalClient: Client,
+  {
+    workflowId,
+  }: {
+    workflowId: string;
+  }
+): Promise<WorkflowExecutionDescription | null> {
+  try {
+    return await temporalClient.workflow.getHandle(workflowId).describe();
+  } catch (err) {
+    if (err instanceof WorkflowNotFoundError) {
+      return null;
+    }
+
+    throw err;
+  }
 }
 
 /**

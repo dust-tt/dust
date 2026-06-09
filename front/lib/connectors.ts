@@ -89,6 +89,8 @@ export function orderDatasourceViewSelectionConfigurationByImportance<
 
 type BaseProvider = {
   matcher: (url: URL) => boolean;
+  // Source URL search is exact, so only opt in providers whose stored source URLs are canonical.
+  sourceUrlSearchNormalizer?: (url: URL) => UrlCandidate | null;
 };
 
 export type UrlCandidate = { url: string | null; provider: ConnectorProvider };
@@ -128,6 +130,56 @@ type Provider =
   | ProviderWithExtractor
   | ProviderWithNormalizer
   | ProviderWithBoth;
+
+function normalizeGithubUrl(url: URL): UrlCandidate {
+  const normalizedUrl = new URL(url.toString());
+  normalizedUrl.search = "";
+  normalizedUrl.hash = "";
+
+  return { url: normalizedUrl.toString(), provider: "github" };
+}
+
+function normalizeZendeskUrl(url: URL): UrlCandidate {
+  const path = url.pathname.endsWith("/")
+    ? url.pathname.slice(0, -1)
+    : url.pathname;
+
+  return {
+    url: `${url.origin}${path.replace("/agent", "")}`,
+    provider: "zendesk",
+  };
+}
+
+function isIntercomAppUrl(url: URL): boolean {
+  return (
+    url.hostname.startsWith("app.") && url.hostname.endsWith(".intercom.com")
+  );
+}
+
+function normalizeIntercomUrl(url: URL): UrlCandidate {
+  const path = url.pathname.endsWith("/")
+    ? url.pathname.slice(0, -1)
+    : url.pathname;
+
+  return { url: `${url.origin}${path}`, provider: "intercom" };
+}
+
+function normalizeGongSourceUrl(url: URL): UrlCandidate {
+  const callId = url.searchParams.get("id");
+  if (!callId) {
+    throw new Error("Unexpected Gong URL without a call id.");
+  }
+
+  return { url: `${url.origin}${url.pathname}?id=${callId}`, provider: "gong" };
+}
+
+function normalizeDustProjectUrl(url: URL): UrlCandidate {
+  const path = url.pathname.endsWith("/")
+    ? url.pathname.slice(0, -1)
+    : url.pathname;
+
+  return { url: `${url.origin}${path}`, provider: "dust_project" };
+}
 
 const providers: Partial<Record<ConnectorProvider, Provider>> = {
   confluence: {
@@ -180,11 +232,12 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
   },
   github: {
     matcher: (url: URL): boolean => {
-      return url.hostname.endsWith("github.com");
+      return (
+        url.hostname === "github.com" || url.hostname.endsWith(".github.com")
+      );
     },
-    urlNormalizer: (url: URL): UrlCandidate => {
-      return { url: url.toString(), provider: "github" };
-    },
+    urlNormalizer: normalizeGithubUrl,
+    sourceUrlSearchNormalizer: normalizeGithubUrl,
   },
   notion: {
     matcher: (url: URL): boolean => {
@@ -242,7 +295,8 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
   gong: {
     matcher: (url: URL): boolean => {
       return (
-        url.hostname.endsWith("app.gong.io") &&
+        (url.hostname === "app.gong.io" ||
+          url.hostname.endsWith(".app.gong.io")) &&
         url.pathname === "/call" &&
         url.searchParams.has("id")
       );
@@ -250,48 +304,37 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
     urlNormalizer: (url: URL): UrlCandidate => {
       return { url: url.toString(), provider: "gong" };
     },
+    sourceUrlSearchNormalizer: normalizeGongSourceUrl,
   },
   zendesk: {
     matcher: (url: URL): boolean => {
-      return url.hostname.endsWith("zendesk.com");
+      return (
+        url.hostname === "zendesk.com" || url.hostname.endsWith(".zendesk.com")
+      );
     },
-    urlNormalizer: (url: URL): UrlCandidate => {
-      const path = url.pathname.endsWith("/")
-        ? url.pathname.slice(0, -1)
-        : url.pathname;
-      // Zendesk ticket URL can contain /agent/ in the path if viewed from the agent page.
-      return {
-        url: `${url.origin}${path.replace("/agent", "")}`,
-        provider: "zendesk",
-      };
-    },
+    // Zendesk ticket URLs can contain /agent/ in the path when viewed from the agent page.
+    urlNormalizer: normalizeZendeskUrl,
+    sourceUrlSearchNormalizer: normalizeZendeskUrl,
   },
   intercom: {
     matcher: (url: URL): boolean => {
       return (
-        (url.hostname.includes("intercom.com") &&
-          url.hostname.startsWith("app")) ||
+        isIntercomAppUrl(url) ||
         // custom help center domains (websiteTurnedOn is true)
         url.hostname.startsWith("help")
       );
     },
-    urlNormalizer: (url: URL): UrlCandidate => {
-      const path = url.pathname.endsWith("/")
-        ? url.pathname.slice(0, -1)
-        : url.pathname;
-      return { url: `${url.origin}${path}`, provider: "intercom" };
+    urlNormalizer: normalizeIntercomUrl,
+    sourceUrlSearchNormalizer: (url: URL): UrlCandidate | null => {
+      return isIntercomAppUrl(url) ? normalizeIntercomUrl(url) : null;
     },
   },
   dust_project: {
     matcher: (url: URL): boolean => {
       return url.toString().startsWith(config.getAppUrl());
     },
-    urlNormalizer: (url: URL): UrlCandidate => {
-      const path = url.pathname.endsWith("/")
-        ? url.pathname.slice(0, -1)
-        : url.pathname;
-      return { url: `${url.origin}${path}`, provider: "dust_project" };
-    },
+    urlNormalizer: normalizeDustProjectUrl,
+    sourceUrlSearchNormalizer: normalizeDustProjectUrl,
   },
 };
 
@@ -376,6 +419,31 @@ export function nodeCandidateFromUrl(
   } catch {
     return null;
   }
+}
+
+function sourceUrlCandidateFromUrl(url: string): UrlCandidate | null {
+  try {
+    const urlObj = new URL(url);
+
+    for (const provider of Object.values(providers)) {
+      if (provider.matcher(urlObj)) {
+        return provider.sourceUrlSearchNormalizer?.(urlObj) ?? null;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function normalizeUrlForSourceUrlSearch(query: string): string {
+  const candidate = sourceUrlCandidateFromUrl(query.trim());
+
+  if (candidate?.url) {
+    return candidate.url;
+  }
+
+  return query;
 }
 
 // Notion databases have 2 entries in core:

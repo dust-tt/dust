@@ -32,7 +32,7 @@ import type {
   UserMessageType,
   UserMessageTypeWithoutMentions,
 } from "@app/types/assistant/conversation";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
 import { isAgentMention } from "@app/types/assistant/mentions";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -399,7 +399,7 @@ export const createAgentMessages = async (
             // In case of Project's conversation, we need to check if the agent configuration is
             // using only the project spaces or public spaces/ Otherwise we reject the mention and
             // do not create the agent message.
-            if (isProjectConversation(conversation)) {
+            if (isPodConversation(conversation)) {
               const canAgentBeUsed = await canAgentBeUsedInProjectConversation(
                 auth,
                 {
@@ -552,6 +552,7 @@ export const createAgentMessages = async (
             ),
             richMentions: [],
             reactions: [],
+            costCredits: null,
           };
         }
       }
@@ -602,7 +603,7 @@ export async function getUserMessageIdFromMessageId(
       sId: messageId,
       agentMessageId: { [Op.ne]: null },
     },
-    attributes: ["parentId", "version", "sId"],
+    attributes: ["parentId", "version", "sId", "branchId", "workspaceId"],
   });
 
   assert(

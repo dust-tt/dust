@@ -1,6 +1,6 @@
 import { useSidekickHighlight } from "@app/components/agent_builder/sidekick/SidekickHighlightContext";
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
-import { Button, CheckIcon, HoveringBar, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, Check, HoveringBar, XClose } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import type { RefObject } from "react";
 import {
@@ -279,7 +279,7 @@ export function SuggestionBubbleMenu({
     >
       <HoveringBar size="xs">
         <Button
-          icon={XMarkIcon}
+          icon={XClose}
           size="xs"
           variant="ghost"
           tooltip="Reject suggestion"
@@ -288,7 +288,7 @@ export function SuggestionBubbleMenu({
         />
         <HoveringBar.Separator />
         <Button
-          icon={CheckIcon}
+          icon={Check}
           size="xs"
           variant="highlight"
           tooltip="Accept suggestion"

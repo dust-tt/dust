@@ -4,16 +4,32 @@ import { getIcon } from "@app/components/resources/resources_icons";
 import { useValidateAction } from "@app/hooks/useValidateAction";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import {
+  POD_MANAGER_SERVER_NAME,
+  UPDATE_MEMBERS_TOOL_NAME,
+} from "@app/lib/api/actions/servers/pod_manager/metadata";
+import { isPodManagerUpdateMembersInput } from "@app/lib/api/actions/servers/pod_manager/types";
+import {
+  CREATE_TASKS_TOOL_NAME,
+  POD_TASKS_SERVER_NAME,
+  UPDATE_TASKS_TOOL_NAME,
+} from "@app/lib/api/actions/servers/pod_tasks/metadata";
+import {
+  isPodTasksCreateTasksInput,
+  isPodTasksUpdateTasksInput,
+} from "@app/lib/api/actions/servers/pod_tasks/types";
+import { WAKEUPS_SERVER_NAME } from "@app/lib/api/actions/servers/wakeups/metadata";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Button,
+  Check,
   Checkbox,
-  CheckIcon,
   ContentMessage,
   Label,
-  XMarkIcon,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
@@ -50,18 +66,88 @@ const MCP_TOOL_OVERRIDES: Partial<
       detailsExpanded: true,
     },
   },
+  [POD_TASKS_SERVER_NAME]: {
+    [CREATE_TASKS_TOOL_NAME]: {
+      title: (agentName, inputs) => {
+        if (!isPodTasksCreateTasksInput(inputs)) {
+          return `Allow ${asDisplayName(agentName)} to create tasks?`;
+        }
+        const count = inputs.tasks.length;
+        return `Allow ${asDisplayName(agentName)} to create ${count} task${count === 1 ? "" : "s"}?`;
+      },
+      alwaysAllowLabel: (agentName) =>
+        `Always allow ${asDisplayName(agentName)} to create tasks`,
+    },
+    [UPDATE_TASKS_TOOL_NAME]: {
+      title: (agentName, inputs) => {
+        if (!isPodTasksUpdateTasksInput(inputs)) {
+          return `Allow ${asDisplayName(agentName)} to update tasks?`;
+        }
+        const count = inputs.tasks.length;
+        const doneCount = inputs.tasks.filter(
+          (task) => task.doneRationale
+        ).length;
+        if (doneCount > 0 && doneCount === count) {
+          return `Allow ${asDisplayName(agentName)} to mark ${count} task${count === 1 ? "" : "s"} as done?`;
+        }
+        if (doneCount > 0) {
+          return `Allow ${asDisplayName(agentName)} to update ${count} task${count === 1 ? "" : "s"} (${doneCount} marked as done)?`;
+        }
+        return `Allow ${asDisplayName(agentName)} to update ${count} task${count === 1 ? "" : "s"}?`;
+      },
+      alwaysAllowLabel: (agentName) =>
+        `Always allow ${asDisplayName(agentName)} to update tasks`,
+    },
+  },
+  [POD_MANAGER_SERVER_NAME]: {
+    [UPDATE_MEMBERS_TOOL_NAME]: {
+      title: (agentName, inputs) => {
+        if (!isPodManagerUpdateMembersInput(inputs)) {
+          return `Allow ${asDisplayName(agentName)} to update Pod members?`;
+        }
+        const addCount = inputs.addMemberIds?.length ?? 0;
+        const removeCount = inputs.removeMemberIds?.length ?? 0;
+        const parts: string[] = [];
+        if (addCount > 0) {
+          parts.push(`add ${addCount}`);
+        }
+        if (removeCount > 0) {
+          parts.push(`remove ${removeCount}`);
+        }
+        return `Allow ${asDisplayName(agentName)} to ${parts.join(" and ")} Pod member${addCount + removeCount === 1 ? "" : "s"}?`;
+      },
+      alwaysAllowLabel: (agentName) =>
+        `Always allow ${asDisplayName(agentName)} to update Pod members`,
+    },
+  },
+  [WAKEUPS_SERVER_NAME]: {
+    schedule_wakeup: {
+      title: (agentName) =>
+        `Allow ${asDisplayName(agentName)} to schedule a wake-up?`,
+    },
+    list_wakeups: {
+      title: (agentName) =>
+        `Allow ${asDisplayName(agentName)} to list wake-ups?`,
+    },
+    cancel_wakeup: {
+      title: (agentName) =>
+        `Allow ${asDisplayName(agentName)} to cancel a wake-up?`,
+    },
+  },
 };
 
 interface MCPToolValidationRequiredProps {
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
   blockedAction: BlockedToolExecution;
+  conversationId?: string | null;
 }
 
 export function MCPToolValidationRequired({
   triggeringUser,
   owner,
   blockedAction,
+  conversationId,
 }: MCPToolValidationRequiredProps) {
   const { user } = useAuth();
   const [neverAskAgain, setNeverAskAgain] = useState(false);
@@ -78,8 +164,12 @@ export function MCPToolValidationRequired({
     onError: setErrorMessage,
   });
 
-  const isTriggeredByCurrentUser = useMemo(
-    () => blockedAction.userId === user?.sId,
+  const canCurrentUserRespond = useMemo(
+    () =>
+      canCurrentUserRespondToParentUserMessage({
+        parentUserId: blockedAction.userId,
+        currentUserId: user?.sId,
+      }),
     [blockedAction.userId, user?.sId]
   );
 
@@ -137,7 +227,7 @@ export function MCPToolValidationRequired({
     ];
 
   function getTitle() {
-    if (!isTriggeredByCurrentUser) {
+    if (!canCurrentUserRespond) {
       return `Permission needed for ${asDisplayName(blockedAction.metadata.mcpServerName)}.`;
     }
     if (toolOverride?.title) {
@@ -194,11 +284,13 @@ export function MCPToolValidationRequired({
       className="flex w-full flex-col gap-3 sm:w-80 sm:min-w-[500px]"
       icon={icon}
     >
-      {isTriggeredByCurrentUser ? (
+      {canCurrentUserRespond ? (
         <>
           <ToolValidationDetails
             blockedAction={blockedAction}
             user={user}
+            owner={owner}
+            conversationId={conversationId}
             defaultExpanded={toolOverride?.detailsExpanded}
           />
           {errorMessage && (
@@ -231,7 +323,7 @@ export function MCPToolValidationRequired({
                 label="Decline"
                 variant="outline"
                 size="xs"
-                icon={XMarkIcon}
+                icon={XClose}
                 disabled={isValidating}
                 isPulsing={isPulsing}
                 onClick={() => void handleValidation("rejected")}
@@ -240,7 +332,7 @@ export function MCPToolValidationRequired({
                 label="Allow"
                 variant="highlight"
                 size="xs"
-                icon={CheckIcon}
+                icon={Check}
                 disabled={isValidating}
                 isPulsing={isPulsing}
                 onClick={() => void handleValidation("approved")}

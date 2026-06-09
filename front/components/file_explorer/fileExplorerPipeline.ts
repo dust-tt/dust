@@ -3,19 +3,20 @@ import type {
   FileExplorerEntry,
   FileExplorerFilter,
   FileExplorerSortMode,
-  SandboxTreeNode,
+  FileSystemTreeNode,
 } from "@app/components/file_explorer/types";
 import {
-  buildSandboxTree,
+  buildFileSystemTree,
   compareTreeNodesForSort,
+  getChildrenAtFolderPath,
   getFileExplorerBucket,
 } from "@app/components/file_explorer/utils";
-import type { GCSMountEntry } from "@app/lib/api/files/gcs_mount/files";
+import type { FileSystemEntry } from "@app/lib/api/file_system/types";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 
 export interface FileExplorerPipeline {
   /** Tree nodes at the current folder level, filtered + sorted. */
-  sortedNodes: SandboxTreeNode[];
+  sortedNodes: FileSystemTreeNode[];
   /** Count of items per filter bucket (post-search). Used by the chip row. */
   filterCounts: Partial<Record<FileExplorerFilter, number>>;
   folderCount: number;
@@ -29,13 +30,13 @@ export interface FileExplorerPipeline {
 interface GetFileExplorerPipelineParams {
   activeFilter: FileExplorerFilter;
   contentNodes: ContentNodeEntry[];
-  files: GCSMountEntry[];
-  folderStack: SandboxTreeNode[];
+  currentFolderPath: string;
+  files: FileSystemEntry[];
   searchQuery: string;
   sortMode: FileExplorerSortMode;
 }
 
-function toRelativePath(entry: GCSMountEntry): string {
+function toRelativePath(entry: FileSystemEntry): string {
   const slashIdx = entry.path.indexOf("/");
   return slashIdx >= 0 ? entry.path.slice(slashIdx + 1) : entry.path;
 }
@@ -47,13 +48,12 @@ function toRelativePath(entry: GCSMountEntry): string {
 export function getFileExplorerPipeline({
   activeFilter,
   contentNodes,
+  currentFolderPath,
   files,
-  folderStack,
   searchQuery,
   sortMode,
 }: GetFileExplorerPipelineParams): FileExplorerPipeline {
   const entryByRelativePath = new Map<string, FileExplorerEntry>();
-  const timestampsByPath = new Map<string, number>();
   for (const f of files) {
     if (f.isDirectory) {
       continue;
@@ -61,22 +61,18 @@ export function getFileExplorerPipeline({
 
     const relativePath = toRelativePath(f);
     entryByRelativePath.set(relativePath, { ...f, kind: "file" });
-    timestampsByPath.set(relativePath, f.lastModifiedMs);
   }
 
   // Content nodes are always flat (no folder structure). They appear only at
   // the root level and are keyed by their synthetic path.
   for (const node of contentNodes) {
     entryByRelativePath.set(node.path, node);
-    if (node.lastModifiedMs !== null) {
-      timestampsByPath.set(node.path, node.lastModifiedMs);
-    }
   }
 
-  const tree = buildSandboxTree(files);
+  const tree = buildFileSystemTree(files);
 
   // Synthetic tree nodes for content-node entries — always flat, at root level.
-  const contentNodeTreeNodes: SandboxTreeNode[] = contentNodes.map((cn) => ({
+  const contentNodeTreeNodes: FileSystemTreeNode[] = contentNodes.map((cn) => ({
     name: cn.fileName,
     path: cn.path,
     isDirectory: false,
@@ -85,10 +81,9 @@ export function getFileExplorerPipeline({
     children: [],
   }));
 
-  const currentNodes =
-    folderStack.length === 0
-      ? [...tree, ...contentNodeTreeNodes]
-      : (folderStack.at(-1)?.children ?? []);
+  const currentNodes = currentFolderPath
+    ? getChildrenAtFolderPath(tree, currentFolderPath)
+    : [...tree, ...contentNodeTreeNodes];
 
   const q = searchQuery.trim().toLowerCase();
   const visibleNodes = currentNodes.filter((node) => {
@@ -128,7 +123,7 @@ export function getFileExplorerPipeline({
         });
 
   const sortedNodes = [...matchingNodes].sort((a, b) =>
-    compareTreeNodesForSort(a, b, sortMode, timestampsByPath)
+    compareTreeNodesForSort(a, b, sortMode, entryByRelativePath)
   );
 
   let folderCount = 0;

@@ -12,18 +12,18 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import { getConversationRoute, getProjectRoute } from "@app/lib/utils/router";
+import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
-import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import {
-  ActionGitBranchIcon,
-  ArrowLeftIcon,
+  ArrowLeft,
   Breadcrumbs,
+  type BreadcrumbsItem,
   Button,
   Chip,
-  FolderIcon,
-  MoreIcon,
+  DotsHorizontal,
+  Folder,
+  GitBranch01,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -70,14 +70,14 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const forkedFrom = conversation?.forkingData?.forkedFrom;
   const isMobileForkedConversation = isMobile && !!forkedFrom;
 
-  const breadcrumbItems: BreadcrumbItem[] = [];
+  const breadcrumbItems: BreadcrumbsItem[] = [];
 
   if (spaceId && spaceInfo) {
     breadcrumbItems.push({
-      icon: isMobile ? undefined : ArrowLeftIcon,
+      icon: isMobile ? undefined : ArrowLeft,
       label: spaceInfo.name,
       onClick: () => {
-        void router.push(getProjectRoute(owner.sId, spaceId), undefined, {
+        void router.push(getPodRoute(owner.sId, spaceId), undefined, {
           shallow: true,
         });
       },
@@ -117,7 +117,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
                   owner.sId,
                   forkedFrom.parentConversationId
                 )}
-                icon={ActionGitBranchIcon}
+                icon={GitBranch01}
                 label={isMobile ? tooltipLabel : chipLabel}
                 size="mini"
               />
@@ -172,7 +172,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
           <Button
             size="sm"
             label={isMobile ? undefined : "Files"}
-            icon={FolderIcon}
+            icon={Folder}
             variant="ghost"
             onClick={() => openPanel({ type: "files" })}
           />
@@ -184,7 +184,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
               <Button
                 size="sm"
                 variant="ghost"
-                icon={MoreIcon}
+                icon={DotsHorizontal}
                 aria-label="Conversation menu"
                 isLoading={isPendingAction}
                 disabled={

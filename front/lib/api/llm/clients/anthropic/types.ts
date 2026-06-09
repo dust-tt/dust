@@ -12,9 +12,10 @@ import {
   CLAUDE_4_SONNET_20250514_MODEL_ID,
   CLAUDE_OPUS_4_6_MODEL_ID,
   CLAUDE_OPUS_4_7_MODEL_ID,
+  CLAUDE_OPUS_4_8_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
-import { CUSTOM_MODEL_IDS } from "@app/types/assistant/models/custom_models.generated";
+import { CUSTOM_ANTHROPIC_MODEL_IDS } from "@app/types/assistant/models/custom_models.generated";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 
 export const ANTHROPIC_PROVIDER_ID = "anthropic";
@@ -29,9 +30,10 @@ export const ANTHROPIC_WHITELISTED_MODEL_IDS = [
   CLAUDE_4_SONNET_20250514_MODEL_ID,
   CLAUDE_OPUS_4_6_MODEL_ID,
   CLAUDE_OPUS_4_7_MODEL_ID,
+  CLAUDE_OPUS_4_8_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
   // Custom Anthropic models (generated at build time from GCS)
-  ...CUSTOM_MODEL_IDS,
+  ...CUSTOM_ANTHROPIC_MODEL_IDS,
 ] as const;
 export type AnthropicWhitelistedModelId =
   (typeof ANTHROPIC_WHITELISTED_MODEL_IDS)[number];
@@ -74,6 +76,9 @@ const STATIC_ANTHROPIC_MODEL_CONFIGS: Partial<
   [CLAUDE_OPUS_4_7_MODEL_ID]: {
     overwrites: THINKING_OVERWRITES,
   },
+  [CLAUDE_OPUS_4_8_MODEL_ID]: {
+    overwrites: THINKING_OVERWRITES,
+  },
   [CLAUDE_SONNET_4_6_MODEL_ID]: {
     overwrites: THINKING_OVERWRITES,
   },
@@ -113,7 +118,7 @@ export const VERTEX_MODEL_ID_MAP: Partial<
   [CLAUDE_4_5_HAIKU_20251001_MODEL_ID]: "claude-haiku-4-5@20251001",
 };
 
-export function isVertexWhitelistedModelId(
+export function isAnthropicVertexWhitelistedModelId(
   modelId: ModelIdType
 ): modelId is keyof typeof VERTEX_MODEL_ID_MAP {
   return modelId in VERTEX_MODEL_ID_MAP;

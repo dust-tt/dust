@@ -1,4 +1,4 @@
-export interface ProjectMetadataType {
+export interface PodMetadataType {
   sId: string;
   createdAt: number;
   updatedAt: number;
@@ -7,4 +7,5 @@ export interface ProjectMetadataType {
   archivedAt: number | null;
   todoGenerationEnabled: boolean;
   lastTodoAnalysisAt: number | null;
+  pinnedFramePath: string | null;
 }

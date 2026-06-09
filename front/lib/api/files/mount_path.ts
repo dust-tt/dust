@@ -2,13 +2,21 @@
 //
 // Two scoped mounts are supported:
 //   - "conversation": files scoped to a single conversation, mounted at /files/conversation
-//   - "project":      files scoped to a project (space), mounted at /files/project when the
-//                     conversation belongs to a project. Persistent across conversations within
-//                     the same project.
+//   - "pod":          files scoped to a Pod (project space), mounted at /files/pod when the
+//                     conversation belongs to a Pod. Persistent across conversations within
+//                     the same Pod.
 
+import {
+  LEGACY_PREFIX_CONVERSATION,
+  LEGACY_PREFIX_PROJECT,
+  SCOPED_PREFIX_CONVERSATION,
+  SCOPED_PREFIX_POD,
+} from "@app/lib/api/file_system/types";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { extensionsForContentType } from "@app/types/files";
+import { Err, Ok, type Result } from "@app/types/shared/result";
+import path from "path";
 import { z } from "zod";
 
 export function getBaseMountPathForWorkspace({
@@ -61,6 +69,44 @@ export function getProjectFilesBasePath({
   projectId: string;
 }): string {
   return `${getBaseMountPathForWorkspace({ workspaceId })}projects/${projectId}/files/`;
+}
+
+export function getPodFilesBasePath({
+  workspaceId,
+  podId,
+}: {
+  workspaceId: string;
+  podId: string;
+}): string {
+  return `${getBaseMountPathForWorkspace({ workspaceId })}pods/${podId}/files/`;
+}
+
+/**
+ * Convert a project mount file path (`w/{wId}/projects/{pId}/files/...`) to its pods/ counterpart
+ * (`w/{wId}/pods/{pId}/files/...`). Returns `null` if the input is not a project mount path.
+ */
+export function toPodMountFilePath(
+  projectMountFilePath: string
+): string | null {
+  const match = projectMountFilePath.match(/^(w\/[^/]+\/)projects\/(.+)$/);
+  if (!match) {
+    return null;
+  }
+  return `${match[1]}pods/${match[2]}`;
+}
+
+/**
+ * Convert a pod mount file path (`w/{wId}/pods/{pId}/files/...`) to its projects/ counterpart
+ * (`w/{wId}/projects/{pId}/files/...`). Returns `null` if the input is not a pod mount path.
+ */
+export function toProjectMountFilePath(
+  podMountFilePath: string
+): string | null {
+  const match = podMountFilePath.match(/^(w\/[^/]+\/)pods\/(.+)$/);
+  if (!match) {
+    return null;
+  }
+  return `${match[1]}projects/${match[2]}`;
 }
 
 /**
@@ -143,7 +189,7 @@ export function parseProcessedFilename(
   return { isProcessed: true, sourceBaseName: fileName.slice(0, idx) };
 }
 
-export const scopedFilePathPrefixSchema = z.enum(["conversation", "project"]);
+export const scopedFilePathPrefixSchema = z.enum(["conversation", "pod"]);
 export type ScopedFilePathPrefix = z.infer<typeof scopedFilePathPrefixSchema>;
 
 export type ScopedFilePath = {
@@ -152,7 +198,66 @@ export type ScopedFilePath = {
 };
 
 /**
- * Parse a scoped file path like "conversation/chart.png" or "project/report.pdf".
+ * Typed parse result for the first URL segment of a viz scoped path.
+ *
+ * - "canonical-conversation" / "canonical-pod": ID is embedded in the prefix
+ *   (e.g. "conversation-abc123" or "pod-xyz456"). The id field is guaranteed non-empty.
+ * - "legacy": bare keyword ("conversation" or "pod"); the resource ID must be
+ *   resolved from the frame's metadata (useCaseMetadata).
+ */
+export type ParsedVizScope =
+  | { kind: "canonical-conversation"; id: string }
+  | { kind: "canonical-pod"; id: string }
+  | { kind: "legacy"; prefix: ScopedFilePathPrefix };
+
+/**
+ * Parse the first URL segment of a viz scoped path into a typed result.
+ * Returns null for unrecognised prefixes (caller should return a 400).
+ */
+export function parseRawVizScope(rawScope: string): ParsedVizScope | null {
+  if (rawScope.startsWith(SCOPED_PREFIX_CONVERSATION)) {
+    const id = rawScope.slice(SCOPED_PREFIX_CONVERSATION.length);
+    return id ? { kind: "canonical-conversation", id } : null;
+  }
+
+  if (rawScope.startsWith(SCOPED_PREFIX_POD)) {
+    const id = rawScope.slice(SCOPED_PREFIX_POD.length);
+    return id ? { kind: "canonical-pod", id } : null;
+  }
+
+  const r = scopedFilePathPrefixSchema.safeParse(rawScope);
+  return r.success ? { kind: "legacy", prefix: r.data } : null;
+}
+
+export type ParsedCanonicalScopedPath = {
+  scope:
+    | { kind: "canonical-conversation"; id: string }
+    | { kind: "canonical-pod"; id: string };
+  relPath: string;
+};
+
+/**
+ * Parse a canonical agent-visible scoped path (`conversation-{id}/...`, `pod-{id}/...`)
+ * into its scope and path relative to that mount.
+ */
+export function parseCanonicalScopedPath(
+  scopedPath: string
+): ParsedCanonicalScopedPath | null {
+  const slashIdx = scopedPath.indexOf("/");
+  const rawScope = slashIdx === -1 ? scopedPath : scopedPath.slice(0, slashIdx);
+  const parsed = parseRawVizScope(rawScope);
+  if (!parsed || parsed.kind === "legacy") {
+    return null;
+  }
+
+  return {
+    scope: parsed,
+    relPath: slashIdx === -1 ? "" : scopedPath.slice(slashIdx + 1),
+  };
+}
+
+/**
+ * Parse a scoped file path like "conversation/chart.png" or "pod/report.pdf".
  * Returns null if the path is missing a valid scope prefix.
  */
 export function parseScopedFilePath(filePath: string): ScopedFilePath | null {
@@ -167,6 +272,331 @@ export function parseScopedFilePath(filePath: string): ScopedFilePath | null {
     return null;
   }
   return { prefix: prefixResult.data, rel: filePath.slice(slashIdx + 1) };
+}
+
+/** Conversation/pod context used to resolve legacy scoped paths for a frame. */
+export type FrameScopedPathContext = {
+  conversationId: string | null;
+  spaceId: string | null;
+};
+
+function getScopedPathPrefix(scopedPath: string): string | null {
+  const slashIdx = scopedPath.indexOf("/");
+  if (slashIdx <= 0) {
+    return null;
+  }
+  return scopedPath.slice(0, slashIdx);
+}
+
+/**
+ * True for canonical agent-visible paths (`conversation-{id}/...`, `pod-{id}/...`).
+ * The id segment after the prefix must be non-empty.
+ */
+export function isCanonicalScopedPath(scopedPath: string): boolean {
+  const prefix = getScopedPathPrefix(scopedPath);
+  if (!prefix) {
+    return false;
+  }
+
+  if (prefix.startsWith(SCOPED_PREFIX_CONVERSATION)) {
+    return prefix.length > SCOPED_PREFIX_CONVERSATION.length;
+  }
+
+  if (prefix.startsWith(SCOPED_PREFIX_POD)) {
+    return prefix.length > SCOPED_PREFIX_POD.length;
+  }
+
+  return false;
+}
+
+/** True for legacy bare-prefix paths (`conversation/...`, `pod/...`, `project/...`). */
+export function isLegacyScopedPath(scopedPath: string): boolean {
+  const prefix = getScopedPathPrefix(scopedPath);
+  if (!prefix) {
+    return false;
+  }
+
+  return (
+    prefix === LEGACY_PREFIX_CONVERSATION ||
+    prefix === "pod" ||
+    prefix === LEGACY_PREFIX_PROJECT
+  );
+}
+
+/** True for any agent-visible scoped path (canonical or legacy). */
+export function isAgentScopedPath(scopedPath: string): boolean {
+  return isCanonicalScopedPath(scopedPath) || isLegacyScopedPath(scopedPath);
+}
+
+/**
+ * Resolve a legacy scoped path to its canonical form under the frame context.
+ * Canonical paths are returned unchanged.
+ */
+export function resolveCanonicalScopedPath(
+  scopedPath: string,
+  frameContext: FrameScopedPathContext
+): string | null {
+  if (isCanonicalScopedPath(scopedPath)) {
+    return scopedPath;
+  }
+
+  if (!isLegacyScopedPath(scopedPath)) {
+    return null;
+  }
+
+  const slashIdx = scopedPath.indexOf("/");
+  const prefix = scopedPath.slice(0, slashIdx);
+  const rel = path.posix.normalize(scopedPath.slice(slashIdx + 1));
+
+  if (rel.startsWith("..") || rel.startsWith("/")) {
+    return null;
+  }
+
+  switch (prefix) {
+    case LEGACY_PREFIX_CONVERSATION: {
+      if (!frameContext.conversationId) {
+        return null;
+      }
+      return `${SCOPED_PREFIX_CONVERSATION}${frameContext.conversationId}/${rel}`;
+    }
+    case "pod":
+    case LEGACY_PREFIX_PROJECT: {
+      if (!frameContext.spaceId) {
+        return null;
+      }
+      return `${SCOPED_PREFIX_POD}${frameContext.spaceId}/${rel}`;
+    }
+    default:
+      return null;
+  }
+}
+
+/** Match a requested legacy scoped path against a stored legacy alias. */
+export function legacyScopedPathsMatch(
+  storedLegacyPath: string | undefined,
+  requestedRef: string
+): boolean {
+  if (!storedLegacyPath) {
+    return false;
+  }
+
+  if (storedLegacyPath === requestedRef) {
+    return true;
+  }
+
+  // Older frame code may request `project/...` while the stored alias uses `pod/...`.
+  return (
+    requestedRef.startsWith(`${LEGACY_PREFIX_PROJECT}/`) &&
+    storedLegacyPath ===
+      `pod/${requestedRef.slice(`${LEGACY_PREFIX_PROJECT}/`.length)}`
+  );
+}
+
+export class ResolveScopedMountFilePathError extends Error {
+  constructor(
+    readonly code: "invalid_prefix" | "outside_scope",
+    message: string
+  ) {
+    super(message);
+    this.name = "ResolveScopedMountFilePathError";
+  }
+
+  static isResolveScopedMountFilePathError(
+    error: unknown
+  ): error is ResolveScopedMountFilePathError {
+    return error instanceof ResolveScopedMountFilePathError;
+  }
+}
+
+/**
+ * Parse a scoped rel path, normalize it under `mountBasePath`, and reject traversal.
+ */
+export function resolveScopedMountFilePath({
+  relPath,
+  expectedPrefix,
+  mountBasePath,
+  outsideScopeMessage = "Access denied: path is outside mount scope.",
+}: {
+  relPath: string;
+  expectedPrefix: ScopedFilePathPrefix;
+  mountBasePath: string;
+  outsideScopeMessage?: string;
+}): Result<
+  { normalizedRelative: string; normalizedGcsPath: string },
+  ResolveScopedMountFilePathError
+> {
+  const scopedPath = parseScopedFilePath(relPath);
+  if (!scopedPath || scopedPath.prefix !== expectedPrefix) {
+    return new Err(
+      new ResolveScopedMountFilePathError(
+        "invalid_prefix",
+        "Path must start with the correct scope prefix."
+      )
+    );
+  }
+
+  const normalizedGcsPath = path.posix.normalize(
+    `${mountBasePath}${scopedPath.rel}`
+  );
+  if (!normalizedGcsPath.startsWith(mountBasePath)) {
+    return new Err(
+      new ResolveScopedMountFilePathError("outside_scope", outsideScopeMessage)
+    );
+  }
+
+  return new Ok({
+    normalizedRelative: normalizedGcsPath.slice(mountBasePath.length),
+    normalizedGcsPath,
+  });
+}
+
+export type ResolveMountFilePathError = {
+  code: "invalid_path" | "outside_scope";
+  message: string;
+};
+
+export function isResolveMountFilePathError(
+  error: unknown
+): error is ResolveMountFilePathError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error.code === "invalid_path" || error.code === "outside_scope")
+  );
+}
+
+/**
+ * Validate a full GCS mount file path (as stored on `FileResource.mountFilePath`)
+ * and ensure it lies under `mountBasePath`.
+ */
+export function resolveMountFilePath({
+  mountFilePath,
+  mountBasePath,
+  outsideScopeMessage = "Access denied: path is outside mount scope.",
+}: {
+  mountFilePath: string;
+  mountBasePath: string;
+  outsideScopeMessage?: string;
+}): Result<{ normalizedMountFilePath: string }, ResolveMountFilePathError> {
+  const normalizedMountFilePath = path.posix.normalize(
+    mountFilePath.trim().replace(/^\/+/, "")
+  );
+  if (!normalizedMountFilePath.startsWith(mountBasePath)) {
+    return new Err({
+      code: "outside_scope",
+      message: outsideScopeMessage,
+    });
+  }
+
+  const mountRelative = normalizedMountFilePath.slice(mountBasePath.length);
+  const validated = normalizeAndValidateMountRelativeFilePath(mountRelative);
+  if (validated.isErr()) {
+    return new Err({
+      code: "invalid_path",
+      message: validated.error.message,
+    });
+  }
+
+  return new Ok({ normalizedMountFilePath });
+}
+
+/**
+ * Resolve a move source path: scoped listing path (`project/foo.pdf`),
+ * mount-relative path (`foo.pdf`), or full GCS path (`w/...`).
+ */
+export function resolveMoveSourcePath({
+  sourcePath,
+  expectedPrefix,
+  mountBasePath,
+  outsideScopeMessage = "Access denied: path is outside mount scope.",
+}: {
+  sourcePath: string;
+  expectedPrefix: ScopedFilePathPrefix;
+  mountBasePath: string;
+  outsideScopeMessage?: string;
+}): Result<{ normalizedMountFilePath: string }, ResolveMountFilePathError> {
+  const trimmed = sourcePath.trim().replace(/^\/+/, "");
+
+  const scoped = parseScopedFilePath(trimmed);
+  if (scoped) {
+    if (scoped.prefix !== expectedPrefix) {
+      return new Err({
+        code: "invalid_path",
+        message: "Path must start with the correct scope prefix.",
+      });
+    }
+
+    const relativeRes = normalizeAndValidateMountRelativeFilePath(scoped.rel);
+    if (relativeRes.isErr()) {
+      return new Err({
+        code: "invalid_path",
+        message: relativeRes.error.message,
+      });
+    }
+
+    const normalizedMountFilePath = path.posix.normalize(
+      `${mountBasePath}${relativeRes.value}`
+    );
+    if (!normalizedMountFilePath.startsWith(mountBasePath)) {
+      return new Err({
+        code: "outside_scope",
+        message: outsideScopeMessage,
+      });
+    }
+
+    return new Ok({ normalizedMountFilePath });
+  }
+
+  if (trimmed.startsWith("w/")) {
+    return resolveMountFilePath({
+      mountFilePath: trimmed,
+      mountBasePath,
+      outsideScopeMessage,
+    });
+  }
+
+  return resolveMountFileSourcePath({
+    sourcePath: trimmed,
+    mountBasePath,
+    outsideScopeMessage,
+  });
+}
+
+/**
+ * Resolve a move source path relative to the mount root (no scope prefix).
+ * Returns the normalized mount file path or an error if the path is invalid.
+ */
+export function resolveMountFileSourcePath({
+  sourcePath,
+  mountBasePath,
+  outsideScopeMessage = "Access denied: path is outside mount scope.",
+}: {
+  sourcePath: string;
+  mountBasePath: string;
+  outsideScopeMessage?: string;
+}): Result<{ normalizedMountFilePath: string }, ResolveMountFilePathError> {
+  const trimmed = sourcePath.trim().replace(/^\/+/, "");
+
+  const relativeRes = normalizeAndValidateMountRelativeFilePath(trimmed);
+  if (relativeRes.isErr()) {
+    return new Err({
+      code: "invalid_path",
+      message: relativeRes.error.message,
+    });
+  }
+
+  const normalizedMountFilePath = path.posix.normalize(
+    `${mountBasePath}${relativeRes.value}`
+  );
+  if (!normalizedMountFilePath.startsWith(mountBasePath)) {
+    return new Err({
+      code: "outside_scope",
+      message: outsideScopeMessage,
+    });
+  }
+
+  return new Ok({ normalizedMountFilePath });
 }
 
 /**
@@ -185,4 +615,96 @@ export function disambiguateFileName(file: FileResource): string {
   const basename = fileName.substring(0, lastDot);
   const ext = fileName.substring(lastDot);
   return `${basename}_${sId}${ext}`;
+}
+
+/**
+ * Validate a single folder segment name (no path separators).
+ */
+export function validateMountFolderName(
+  folderName: string
+): Result<string, Error> {
+  const trimmed = folderName.trim();
+  if (
+    trimmed === "" ||
+    trimmed.includes("/") ||
+    trimmed.includes("\\") ||
+    trimmed === "." ||
+    trimmed === ".."
+  ) {
+    return new Err(
+      new Error(
+        "folderName is required and must be a non-empty string without path separators."
+      )
+    );
+  }
+
+  return new Ok(trimmed);
+}
+
+/**
+ * Normalize a parent directory path within a mount (no `project/` prefix).
+ * Returns an empty string for the mount root.
+ */
+export function normalizeMountParentRelativePath(
+  parentRelativePath: string | undefined
+): Result<string, Error> {
+  if (parentRelativePath === undefined || parentRelativePath.trim() === "") {
+    return new Ok("");
+  }
+
+  const normalized = path.posix.normalize(
+    parentRelativePath.replace(/^\/+/, "")
+  );
+  if (normalized === "." || normalized === "") {
+    return new Ok("");
+  }
+
+  if (
+    normalized.startsWith("..") ||
+    normalized.split("/").some((part) => part === "..")
+  ) {
+    return new Err(new Error("parentRelativePath is outside mount scope."));
+  }
+
+  return new Ok(normalized);
+}
+
+/**
+ * Normalize and validate a file path within a mount (no scope prefix).
+ */
+export function normalizeAndValidateMountRelativeFilePath(
+  relativeFilePath: string
+): Result<string, Error> {
+  const trimmed = relativeFilePath.trim();
+  if (trimmed === "") {
+    return new Err(new Error("relativeFilePath is required."));
+  }
+
+  const normalized = path.posix.normalize(trimmed.replace(/^\/+/, ""));
+  if (normalized === "." || normalized === "") {
+    return new Err(new Error("Invalid file path."));
+  }
+
+  if (
+    normalized.startsWith("..") ||
+    normalized.split("/").some((part) => part === "..")
+  ) {
+    return new Err(new Error("relativeFilePath is outside mount scope."));
+  }
+
+  const fileName = normalized.split("/").pop();
+  if (!fileName) {
+    return new Err(new Error("Invalid file path."));
+  }
+
+  return new Ok(normalized);
+}
+
+export function joinMountRelativePath(
+  parentRelativePath: string,
+  folderName: string
+): string {
+  return parentRelativePath
+    ? `${parentRelativePath}/${folderName}`
+    : folderName;
 }

@@ -15,7 +15,9 @@ export const imageGenerationToolInputSchema = z.object({
     .string()
     .max(64)
     .describe(
-      "The filename that will be used to save the generated image. Must be 64 characters or less."
+      "The base name (without file extension) used to save the generated image. " +
+        "The extension is appended automatically based on the image format returned " +
+        "by the model. Must be 64 characters or less."
     ),
   referenceImages: z
     .array(z.string())
@@ -43,12 +45,10 @@ export const imageGenerationToolInputSchema = z.object({
       "The aspect ratio of the generated image. Must be one of 1:1, 3:2, 2:3, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, or 21:9."
     ),
   quality: z
-    .enum(["low", "medium", "high"])
+    .enum(["low", "medium"])
     .optional()
     .default("low")
-    .describe(
-      "Output resolution: low (1K/1024px), medium (2K/2048px), or high (4K/4096px)."
-    ),
+    .describe("Output resolution: low (1K/1024px) or medium (2K/2048px)."),
 });
 
 export type ImageGenerationToolInput = z.infer<
@@ -87,7 +87,7 @@ const IMAGE_GENERATION_SERVER_INSTRUCTIONS =
   "- Images from previous tool calls can be used as reference for subsequent generations\n" +
   "- Example: generate a character portrait, then use it as reference for different poses\n\n" +
   "OUTPUT OPTIONS:\n" +
-  "- Quality: 'low', 'medium', or 'high'\n" +
+  "- Quality: 'low' or 'medium'\n" +
   "- Aspect ratios: 1:1, 3:2, 2:3, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9";
 
 export const IMAGE_GENERATION_SERVER = {

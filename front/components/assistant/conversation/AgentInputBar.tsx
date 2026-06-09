@@ -2,6 +2,9 @@ import { useBlockedActionsContext } from "@app/components/assistant/conversation
 import { ContextUsageWarningBanner } from "@app/components/assistant/conversation/ContextUsageWarningBanner";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { InputBarMessageNavigation } from "@app/components/assistant/conversation/input_bar/InputBarMessageNavigation";
+import { INPUT_BAR_COMPACT_NAV_ENTER_ANIMATION_CLASSES } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
+import { useInputBarCompactMode } from "@app/components/assistant/conversation/input_bar/useInputBarCompactMode";
 import type {
   VirtuosoMessage,
   VirtuosoMessageListContext,
@@ -14,7 +17,7 @@ import {
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { WakeUpBanner } from "@app/components/assistant/conversation/WakeUpBanner";
-import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
+import { PodJoinCTA } from "@app/components/pod/conversation/PodJoinCTA";
 import {
   useCancelMessage,
   useConversation,
@@ -24,7 +27,7 @@ import { CONTEXT_USAGE_PERCENT_THRESHOLDS } from "@app/hooks/conversations/useCo
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
-import { describeWakeUpSchedule } from "@app/lib/utils/wakeup_description";
+import { classNames } from "@app/lib/utils";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   isRichAgentMention,
@@ -33,16 +36,10 @@ import {
 } from "@app/types/assistant/mentions";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  BoltIcon,
-  Button,
   ContentMessageAction,
   ContentMessageInline,
   EmptyCTA,
-  IconButton,
-  InformationCircleIcon,
-  StopIcon,
+  InfoCircle,
 } from "@dust-tt/sparkle";
 import {
   useVirtuosoLocation,
@@ -90,6 +87,16 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   );
   const methods = useVirtuosoMethods<VirtuosoMessage>();
   const { bottomOffset, listOffset, visibleListHeight } = useVirtuosoLocation();
+  const {
+    effectiveIsCompact,
+    expandInputBar,
+    onEditorFocusChange,
+    onOverlayOpenChange,
+    onVoiceActiveChange,
+  } = useInputBarCompactMode({
+    enabled: isMobile && !agentBuilderContext,
+    listOffset,
+  });
 
   const allMessages = methods.data.get();
 
@@ -143,7 +150,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   const isActiveWakeUpOwner = activeWakeUp?.user.sId === context.user.sId;
   const wakeUpBlockMessage =
     activeWakeUp && !isActiveWakeUpOwner
-      ? `Conversation paused - a wake-up is scheduled ${describeWakeUpSchedule(activeWakeUp)}`
+      ? `You cannot send a message to an agent awaiting a wake-up set by another user`
       : null;
 
   const autoMentions = useMemo(() => {
@@ -368,8 +375,8 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       e.preventDefault();
       lastEscTimeRef.current = now;
       setTimeout(() => {
-        if (lastEscTimeRef.current === now) {
-          doAction(hasPending ? "interrupt" : "cancel");
+        if (lastEscTimeRef.current === now && hasPending) {
+          doAction("interrupt");
         }
       }, DOUBLE_ESC_WINDOW_MS);
     }
@@ -388,10 +395,10 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   ) {
     return (
       <div className="relative z-20 mx-auto flex max-h-dvh w-full flex-col py-4 sm:w-full sm:max-w-conversation">
-        <ProjectJoinCTA
+        <PodJoinCTA
           owner={context.owner}
-          spaceId={context.projectId}
-          spaceName={context.projectSpaceName}
+          podId={context.projectId}
+          podName={context.projectSpaceName}
           isRestricted={context.isProjectRestricted ?? false}
           userName={context.user.fullName}
         />
@@ -441,6 +448,27 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     void mutateConversation();
   };
 
+  const handleStopClick = () => {
+    if (hasPendingMessages) {
+      void handleAction("interrupt");
+    } else {
+      void handleAction("cancel");
+    }
+  };
+
+  const messageNavigationProps = {
+    showStopButton,
+    showMessageNavigation,
+    stopButtonLabel: getStopButtonLabel(),
+    hasPendingMessages,
+    pendingAction,
+    onStopClick: handleStopClick,
+    canScrollUp,
+    canScrollDown,
+    onScrollUp: scrollToPreviousUserMessage,
+    onScrollDown: scrollToNextUserMessage,
+  };
+
   if (context.projectId && context.isProjectArchived) {
     return (
       <div className="mx-auto flex flex-col w-full py-4 sm:max-w-conversation">
@@ -454,62 +482,21 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
 
   return (
     <div
-      className={
+      className={classNames(
         "relative z-20 mx-auto flex max-h-dvh w-full flex-col py-4 sm:w-full sm:max-w-conversation"
-      }
+      )}
     >
       <div className="flex w-full justify-center gap-2">
-        {showNavigationContainer && (
-          <div
-            className="flex items-center gap-1 rounded-xl border border-border bg-white p-1 dark:border-border-night dark:bg-muted-night"
-            style={{
-              position: "absolute",
-              top: "-2rem",
-            }}
-          >
-            {showStopButton && (
-              <>
-                <Button
-                  variant="ghost"
-                  label={getStopButtonLabel()}
-                  icon={hasPendingMessages ? BoltIcon : StopIcon}
-                  onClick={
-                    hasPendingMessages
-                      ? () => handleAction("interrupt")
-                      : () => handleAction("cancel")
-                  }
-                  disabled={pendingAction !== null}
-                  size="xs"
-                />
-                {showMessageNavigation && (
-                  <div className="h-4 w-px bg-border dark:bg-border-night" />
-                )}
-              </>
-            )}
-            {showMessageNavigation && (
-              <>
-                <IconButton
-                  icon={ArrowUpIcon}
-                  onClick={scrollToPreviousUserMessage}
-                  disabled={!canScrollUp}
-                  size="xs"
-                  tooltip="Previous user message"
-                />
-                <IconButton
-                  icon={ArrowDownIcon}
-                  onClick={scrollToNextUserMessage}
-                  disabled={!canScrollDown}
-                  size="xs"
-                  tooltip="Next user message"
-                />
-              </>
-            )}
-          </div>
+        {showNavigationContainer && !effectiveIsCompact && (
+          <InputBarMessageNavigation
+            variant="floating"
+            {...messageNavigationProps}
+          />
         )}
       </div>
       {blockedActions.length > 0 && (
         <ContentMessageInline
-          icon={InformationCircleIcon}
+          icon={InfoCircle}
           variant="primary"
           className="mb-5 flex max-h-dvh w-full"
         >
@@ -565,21 +552,42 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
           isOwner={isActiveWakeUpOwner}
         />
       )}
-      <InputBar
-        owner={context.owner}
-        user={context.user}
-        onSubmit={context.handleSubmit}
-        stickyMentions={autoMentions}
-        conversation={context.conversation}
-        draftKey={context.draftKey}
-        disableAutoFocus={isMobile || hasUserAnswerRequired}
-        disableUserMentions={!!agentBuilderContext}
-        actions={agentBuilderContext?.actionsToShow}
-        isSubmitting={agentBuilderContext?.isSubmitting === true}
-        isAgentBuilder={!!agentBuilderContext}
-        disableInput={wakeUpBlockMessage !== null}
-        submitBlockMessage={wakeUpBlockMessage ?? compactionBlockMessage}
-      />
+      <div
+        className={classNames(
+          "relative w-full",
+          effectiveIsCompact && "flex items-center gap-2"
+        )}
+      >
+        <InputBar
+          owner={context.owner}
+          user={context.user}
+          onSubmit={context.handleSubmit}
+          stickyMentions={autoMentions}
+          conversation={context.conversation}
+          draftKey={context.draftKey}
+          disableAutoFocus={isMobile || hasUserAnswerRequired}
+          disableUserMentions={!!agentBuilderContext}
+          actions={agentBuilderContext?.actionsToShow}
+          isSubmitting={agentBuilderContext?.isSubmitting === true}
+          isAgentBuilder={!!agentBuilderContext}
+          submitBlockMessage={wakeUpBlockMessage ?? compactionBlockMessage}
+          effectiveIsCompact={effectiveIsCompact}
+          onExpandInputBar={expandInputBar}
+          onEditorFocusChange={onEditorFocusChange}
+          onOverlayOpenChange={onOverlayOpenChange}
+          onVoiceActiveChange={onVoiceActiveChange}
+        />
+        {effectiveIsCompact && showNavigationContainer && (
+          <div className="shrink-0">
+            <div className={INPUT_BAR_COMPACT_NAV_ENTER_ANIMATION_CLASSES}>
+              <InputBarMessageNavigation
+                variant="compact"
+                {...messageNavigationProps}
+              />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

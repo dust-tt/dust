@@ -1,6 +1,15 @@
 import type { Authenticator } from "@app/lib/auth";
 import { getBillingCycle } from "@app/lib/client/subscription";
 import {
+  computeAwuInvoiceUnitPrice,
+  resolveAwuPurchaseCurrency,
+  resolveAwuPurchaseDiscountPercent,
+} from "@app/lib/credits/awu_pricing";
+import {
+  recordAwuPurchaseAttemptSyncFailure,
+  setAwuPurchaseAttemptPending,
+} from "@app/lib/credits/awu_purchase_status";
+import {
   addPaymentGatedCommitToContract,
   getMetronomeCustomerStripeCustomerId,
 } from "@app/lib/metronome/client";
@@ -10,13 +19,15 @@ import {
   getCreditTypeAwuId,
   getProductPrepaidCommitId,
 } from "@app/lib/metronome/constants";
-import { getCreditTypeFromContract } from "@app/lib/metronome/coupons";
-import { getActiveContract, isLegacyPlan } from "@app/lib/metronome/plan_type";
-import { AWU_PRICE_PER_CREDIT } from "@app/lib/metronome/types";
+import { USAGE_TAG } from "@app/lib/metronome/setup_common";
+import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { getStripeClient } from "@app/lib/plans/stripe";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
-import { isSubscriptionMetronomeBilled } from "@app/types/plan";
+import {
+  isCreditPricedPlan,
+  isSubscriptionMetronomeBilled,
+} from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type Stripe from "stripe";
@@ -31,6 +42,7 @@ export type AwuPurchaseInfo =
       reason:
         | "not_metronome_billed"
         | "legacy_plan"
+        | "enterprise_plan"
         | "no_stripe_customer"
         | "pending_purchase";
     }
@@ -38,15 +50,27 @@ export type AwuPurchaseInfo =
       canPurchase: true;
       remainingCycleCredits: number;
       currency: SupportedCurrency;
+      discountPercent: number;
+      paymentMethod:
+        | { type: "card"; brand: string; last4: string }
+        | { type: "sepa_debit"; last4: string }
+        | null;
     };
 
 export type AwuPurchaseResult = {
   amountCredits: number;
 };
 
+export type GetAwuPurchaseInfoResponseBody = AwuPurchaseInfo;
+
+export type PostAwuPurchaseResponseBody = {
+  amountCredits: number;
+};
+
 export type AwuPurchaseError =
   | { code: "not_metronome_billed" }
   | { code: "legacy_plan" }
+  | { code: "enterprise_plan" }
   | { code: "no_stripe_customer" }
   | { code: "pending_purchase" }
   | { code: "invalid_amount"; message: string }
@@ -63,26 +87,22 @@ type AwuEligibilityOk = {
   stripe: Stripe;
 };
 
-/**
- * Resolves the billing currency from the active Metronome contract's rate
- * card — the source of truth for Metronome-billed workspaces. The Stripe
- * customer's `currency` field is unreliable (only set after the first paid
- * invoice) and its `address.country` may not be populated, so deriving
- * currency from the contract guarantees the invoice matches what Metronome
- * is configured to bill.
- */
-async function resolveAwuPurchaseCurrency(
-  workspaceId: string
-): Promise<Result<SupportedCurrency, Error>> {
-  const contract = await getActiveContract(workspaceId);
-  if (!contract) {
-    return new Err(new Error("No active Metronome contract found"));
+function getAwuPurchasedCreditsFromInvoice(invoice: Stripe.Invoice): number {
+  if (invoice.metadata?.awu_purchase !== "true") {
+    return 0;
   }
-  const creditTypeResult = await getCreditTypeFromContract(contract);
-  if (creditTypeResult.isErr()) {
-    return new Err(creditTypeResult.error);
+
+  const amountCreditsString = invoice.metadata?.awu_amount_credits;
+  if (!amountCreditsString) {
+    return 0;
   }
-  return new Ok(creditTypeResult.value.currency);
+
+  const amountCredits = Number.parseInt(amountCreditsString, 10);
+  if (!Number.isFinite(amountCredits)) {
+    return 0;
+  }
+
+  return amountCredits;
 }
 
 async function checkAwuPurchaseEligibility(
@@ -101,9 +121,12 @@ async function checkAwuPurchaseEligibility(
     return new Err({ code: "not_metronome_billed" });
   }
 
-  const onLegacyPlan = await isLegacyPlan(workspace.sId);
-  if (onLegacyPlan) {
+  if (!isCreditPricedPlan(subscription.plan)) {
     return new Err({ code: "legacy_plan" });
+  }
+
+  if (isEnterprisePlanPrefix(subscription.plan.code)) {
+    return new Err({ code: "enterprise_plan" });
   }
 
   const stripeCustomerResult =
@@ -150,12 +173,46 @@ export async function getAwuPurchaseInfo(
   }
   const currency = currencyResult.value;
 
+  const discountPercent = await resolveAwuPurchaseDiscountPercent(auth);
+
+  // Fetch default payment method for display.
+  let paymentMethod:
+    | { type: "card"; brand: string; last4: string }
+    | { type: "sepa_debit"; last4: string }
+    | null = null;
+  try {
+    const customer = await stripe.customers.retrieve(stripeCustomerId, {
+      expand: ["invoice_settings.default_payment_method"],
+    });
+    if (!("deleted" in customer)) {
+      const pmRaw = customer.invoice_settings?.default_payment_method;
+      const pm: Stripe.PaymentMethod | null =
+        pmRaw && typeof pmRaw !== "string" ? pmRaw : null;
+      if (pm?.type === "card" && pm.card) {
+        paymentMethod = {
+          type: "card",
+          brand: pm.card.brand ?? "unknown",
+          last4: pm.card.last4 ?? "",
+        };
+      } else if (pm?.type === "sepa_debit" && pm.sepa_debit) {
+        paymentMethod = {
+          type: "sepa_debit",
+          last4: pm.sepa_debit.last4 ?? "",
+        };
+      }
+    }
+  } catch {
+    // Non-fatal — display without payment method info.
+  }
+
   const billingCycle = getBillingCycle(subscription.startDate);
   if (!billingCycle) {
     return {
       canPurchase: true,
       remainingCycleCredits: MAX_AWU_PURCHASE_CREDITS_PER_CYCLE,
       currency,
+      discountPercent,
+      paymentMethod,
     };
   }
 
@@ -167,9 +224,10 @@ export async function getAwuPurchaseInfo(
     status: "paid",
     created: { gte: cycleStartSeconds },
   });
-  const alreadyPurchasedThisCycleCredits = paidInvoices.data
-    .filter((inv) => inv.metadata?.awu_purchase === "true")
-    .reduce((sum, inv) => sum + (inv.amount_paid ?? 0), 0);
+  const alreadyPurchasedThisCycleCredits = paidInvoices.data.reduce(
+    (sum, inv) => sum + getAwuPurchasedCreditsFromInvoice(inv),
+    0
+  );
 
   return {
     canPurchase: true,
@@ -178,6 +236,8 @@ export async function getAwuPurchaseInfo(
       MAX_AWU_PURCHASE_CREDITS_PER_CYCLE - alreadyPurchasedThisCycleCredits
     ),
     currency,
+    discountPercent,
+    paymentMethod,
   };
 }
 
@@ -218,9 +278,10 @@ export async function purchaseAwuCredits(
     status: "paid",
     created: { gte: cycleStartSeconds },
   });
-  const alreadyPurchasedThisCycleCredits = paidInvoices.data
-    .filter((inv) => inv.metadata?.awu_purchase === "true")
-    .reduce((sum, inv) => sum + (inv.amount_paid ?? 0), 0);
+  const alreadyPurchasedThisCycleCredits = paidInvoices.data.reduce(
+    (sum, inv) => sum + getAwuPurchasedCreditsFromInvoice(inv),
+    0
+  );
 
   const remaining =
     MAX_AWU_PURCHASE_CREDITS_PER_CYCLE - alreadyPurchasedThisCycleCredits;
@@ -244,20 +305,29 @@ export async function purchaseAwuCredits(
   }
   const currency = currencyResult.value;
 
-  // Metronome wants invoice unit prices in the credit type's units: cents
-  // for USD, whole units for EUR (matches the rate-card convention; see
-  // `metronomeAmount`). AWU_PRICE_PER_CREDIT is per-credit in the
-  // currency's natural unit ($0.01 / €0.0087):
-  //   USD: 0.01 USD * 100 = 1 cent per credit
-  //   EUR: 0.0087 EUR per credit (Metronome allows decimal unit prices)
-  const invoiceUnitPrice =
-    currency === "usd"
-      ? AWU_PRICE_PER_CREDIT.usd * 100
-      : AWU_PRICE_PER_CREDIT.eur;
+  const discountPercent = await resolveAwuPurchaseDiscountPercent(auth);
+
+  const invoiceUnitPrice = computeAwuInvoiceUnitPrice({
+    amountCredits,
+    currency,
+    discountPercent,
+  });
 
   const now = new Date();
   const oneYearFromNow = new Date(now);
   oneYearFromNow.setUTCFullYear(oneYearFromNow.getUTCFullYear() + 1);
+
+  const uniquenessKey = `awuPurchase-${workspace.sId}-${now.getTime()}`;
+
+  // Record the attempt as pending BEFORE calling Metronome so the
+  // `payment_gate.payment_status` webhook can update it on arrival —
+  // the webhook can race ahead of this function returning.
+  await setAwuPurchaseAttemptPending({
+    workspaceId: workspace.sId,
+    contractId: metronomeContractId,
+    uniquenessKey,
+    amountCredits,
+  });
 
   const editResult = await addPaymentGatedCommitToContract({
     metronomeCustomerId,
@@ -268,12 +338,16 @@ export async function purchaseAwuCredits(
     accessStartingAt: now,
     accessEndingBefore: oneYearFromNow,
     invoiceUnitPrice,
-    invoiceQuantity: amountCredits,
+    invoiceQuantity: 1,
     invoiceCreditTypeId: CURRENCY_TO_CREDIT_TYPE_ID[currency],
     invoiceTimestamp: now,
     priority: AWU_PRIORITY_PURCHASED_COMMIT,
-    name: `Credit top-up: ${amountCredits.toLocaleString()} credits`,
-    uniquenessKey: `awuPurchase-${workspace.sId}-${now.getTime()}`,
+    applicableProducTags: [USAGE_TAG],
+    name:
+      discountPercent > 0
+        ? `Credit top-up: ${amountCredits.toLocaleString()} credits (${discountPercent}% discount)`
+        : `Credit top-up: ${amountCredits.toLocaleString()} credits`,
+    uniquenessKey,
     // Stamped on the Stripe invoice Metronome pushes downstream so the
     // existing eligibility check (`isAwuPurchaseInvoice`) still recognises
     // pending AWU purchases.
@@ -281,6 +355,9 @@ export async function purchaseAwuCredits(
       awu_purchase: "true",
       awu_amount_credits: String(amountCredits),
       workspace_id: workspace.sId,
+      ...(discountPercent > 0
+        ? { awu_discount_percent: String(discountPercent) }
+        : {}),
     },
   });
 
@@ -293,6 +370,12 @@ export async function purchaseAwuCredits(
       },
       "[AWU Purchase] Failed to add payment-gated commit"
     );
+    // No webhook will fire for an edit that never landed in Metronome —
+    // flip the attempt to failed so the UI can show the error immediately.
+    await recordAwuPurchaseAttemptSyncFailure({
+      workspaceId: workspace.sId,
+      errorMessage: editResult.error.message,
+    });
     return new Err({
       code: "purchase_failed",
       message: editResult.error.message,
@@ -304,6 +387,9 @@ export async function purchaseAwuCredits(
       workspaceId: workspace.sId,
       editId: editResult.value.editId,
       amountCredits,
+      discountPercent,
+      invoiceUnitPrice,
+      currency,
     },
     "[AWU Purchase] Payment-gated commit created — Metronome will invoice and unlock on payment"
   );

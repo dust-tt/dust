@@ -9,9 +9,10 @@ import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuild
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
+import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
 import { useSimilarSkills, useSkills } from "@app/lib/swr/skill_configurations";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
-import { ArrowGoBackIcon, Button, cn } from "@dust-tt/sparkle";
+import { Button, cn, ReverseLeft } from "@dust-tt/sparkle";
 import type { Transaction } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
 import { useCallback, useEffect, useState } from "react";
@@ -33,7 +34,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
     });
 
   const { getSimilarSkills } = useSimilarSkills({ owner });
-  const { skills } = useSkills({ owner, viewType: "summary" });
+  const { skills } = useSkills({ owner });
 
   const [similarSkills, setSimilarSkills] = useState<
     SkillWithoutInstructionsAndToolsType[]
@@ -187,15 +188,20 @@ export function SkillBuilderAgentFacingDescriptionSection() {
 
   return (
     <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
-          What will this skill be used for?
-        </h3>
+      <div className="flex items-start justify-between gap-2">
+        <div className="space-y-1">
+          <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
+            {SKILL_INVOCATION_LABEL}
+          </h3>
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Tell the agent when it should use this skill.
+          </p>
+        </div>
         {descriptionDiffers && (
           <Button
             variant="outline"
             size="sm"
-            icon={ArrowGoBackIcon}
+            icon={ReverseLeft}
             onClick={restoreDescription}
             label="Restore description"
           />

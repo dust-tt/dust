@@ -11,7 +11,7 @@ import {
   withTracking,
 } from "@app/lib/tracking";
 import { appendUTMParams } from "@app/lib/utils/utm";
-import { Button, RocketIcon } from "@dust-tt/sparkle";
+import { Button, Rocket02 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -49,7 +49,7 @@ export default function Pricing() {
               variant="highlight"
               size="md"
               label="Start with Pro, 14 days free"
-              icon={RocketIcon}
+              icon={Rocket02}
               onClick={withTracking(
                 TRACKING_AREAS.PRICING,
                 "hero_start_trial",

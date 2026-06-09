@@ -14,9 +14,17 @@ struct MCPServerView: Decodable, Identifiable {
     let spaceId: String
     let server: MCPServer
 
-    var id: String { sId }
-    var displayName: String { name ?? server.name }
-    var displayDescription: String { description ?? server.description }
+    var id: String {
+        sId
+    }
+
+    var displayName: String {
+        name ?? server.name
+    }
+
+    var displayDescription: String {
+        description ?? server.description
+    }
 }
 
 struct MCPServerViewsResponse: Decodable {

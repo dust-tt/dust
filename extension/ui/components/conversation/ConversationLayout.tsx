@@ -4,10 +4,10 @@ import { SidebarBanners } from "@app/components/navigation/AppStatusBanner";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
-  ArrowLeftIcon,
+  ArrowLeft,
   BarHeader,
   Button,
-  MenuIcon,
+  Menu01,
   Sheet,
   SheetContent,
   SheetHeader,
@@ -20,6 +20,7 @@ import { useNavigate } from "react-router-dom";
 interface ConversationLayoutProps {
   title: string;
   backHref?: string;
+  centerActions?: React.ReactNode;
   rightActions?: React.ReactNode;
   children: React.ReactNode;
 }
@@ -27,6 +28,7 @@ interface ConversationLayoutProps {
 export const ConversationLayout = ({
   title,
   backHref,
+  centerActions,
   rightActions,
   children,
 }: ConversationLayoutProps) => {
@@ -39,7 +41,7 @@ export const ConversationLayout = ({
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <SheetContent
           side="left"
-          className="flex w-full max-w-72 flex-1 bg-muted-background dark:bg-muted-background-night"
+          className="flex w-full max-w-72 flex-1 bg-sidebar-background dark:bg-sidebar-background-night"
         >
           <SheetHeader className="bg-muted-background p-0" hideButton>
             <SheetTitle className="hidden" />
@@ -54,24 +56,26 @@ export const ConversationLayout = ({
         title={title}
         tooltip={title}
         className="justify-between"
+        size="sm"
         leftActions={
           <div className="flex flex-row">
             {backHref ? (
               <Button
                 variant="ghost"
-                icon={ArrowLeftIcon}
+                icon={ArrowLeft}
                 onClick={() => navigate(backHref)}
                 tooltip="Go back to Pod homepage"
               />
             ) : (
               <Button
                 variant="ghost"
-                icon={MenuIcon}
+                icon={Menu01}
                 onClick={() => setSidebarOpen(true)}
               />
             )}
           </div>
         }
+        centerActions={centerActions}
         rightActions={rightActions}
       />
       <div className="h-full w-full pt-16">{children}</div>

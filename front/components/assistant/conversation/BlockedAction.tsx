@@ -33,6 +33,7 @@ export function BlockedAction({
           triggeringUser={triggeringUser}
           owner={owner}
           blockedAction={blockedAction}
+          conversationId={conversationId}
         />
       );
 

@@ -10,9 +10,11 @@ import {
   GREP_MATCHES_MAX,
 } from "@app/lib/api/actions/servers/files/metadata";
 import {
-  isReadableAsText,
-  resolveFile,
-} from "@app/lib/api/actions/servers/files/tools/utils";
+  getDustFileSystemForAgentLoop,
+  requireAgentLoopConversation,
+  scopedPathsFromArgs,
+} from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
+import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import * as readline from "readline";
@@ -21,18 +23,33 @@ export async function grepHandler(
   { path, pattern }: { path: string; pattern: string },
   { auth, agentLoopContext }: ToolHandlerExtra
 ): Promise<ToolHandlerResult> {
-  const conversation = agentLoopContext?.runContext?.conversation;
-  if (!conversation) {
+  const conversationRes = requireAgentLoopConversation({ agentLoopContext });
+  if (conversationRes.isErr()) {
+    return conversationRes;
+  }
+
+  const fsResult = await getDustFileSystemForAgentLoop(
+    auth,
+    conversationRes.value,
+    scopedPathsFromArgs(path)
+  );
+  if (fsResult.isErr()) {
+    return fsResult;
+  }
+  const dustFs = fsResult.value;
+
+  const statResult = await dustFs.stat(path);
+  if (statResult.isErr()) {
+    return new Err(new MCPError(statResult.error.message, { tracked: false }));
+  }
+
+  if (statResult.value === null) {
     return new Err(
-      new MCPError("No conversation context available.", { tracked: false })
+      new MCPError(`File not found: \`${path}\`.`, { tracked: false })
     );
   }
 
-  const resolvedRes = await resolveFile(auth, conversation, path);
-  if (resolvedRes.isErr()) {
-    return resolvedRes;
-  }
-  const { file, mimeType } = resolvedRes.value;
+  const { contentType: mimeType } = statResult.value;
 
   if (!isReadableAsText(mimeType)) {
     return new Ok([
@@ -57,13 +74,26 @@ export async function grepHandler(
     );
   }
 
-  const stream = file.createReadStream();
+  const readResult = await dustFs.read(path);
+  if (readResult.isErr()) {
+    return new Err(new MCPError(readResult.error.message, { tracked: false }));
+  }
+
+  if (readResult.value === null) {
+    return new Err(
+      new MCPError(`File not found: \`${path}\`.`, { tracked: false })
+    );
+  }
 
   const matches: string[] = [];
   let lineNumber = 0;
   let capped = false;
 
-  const rl = readline.createInterface({ input: stream, crlfDelay: Infinity });
+  // readResult.value is a Readable stream readline will stop early once we hit GREP_MATCHES_MAX.
+  const rl = readline.createInterface({
+    input: readResult.value,
+    crlfDelay: Infinity,
+  });
 
   try {
     for await (const line of rl) {
@@ -75,7 +105,6 @@ export async function grepHandler(
         if (matches.length >= GREP_MATCHES_MAX) {
           capped = true;
           rl.close();
-          stream.destroy();
           break;
         }
       }

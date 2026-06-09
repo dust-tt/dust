@@ -3,10 +3,27 @@ import {
   getBaseMountPathForWorkspace,
   getConversationFilePath,
   getConversationFilesBasePath,
+  getPodFilesBasePath,
   getProjectFilesBasePath,
+  isAgentScopedPath,
+  isCanonicalScopedPath,
+  isLegacyScopedPath,
+  legacyScopedPathsMatch,
   makeProcessedMountFileName,
+  normalizeAndValidateMountRelativeFilePath,
+  normalizeMountParentRelativePath,
+  parseCanonicalScopedPath,
   parseProcessedFilename,
   parseScopedFilePath,
+  ResolveScopedMountFilePathError,
+  resolveCanonicalScopedPath,
+  resolveMountFilePath,
+  resolveMountFileSourcePath,
+  resolveMoveSourcePath,
+  resolveScopedMountFilePath,
+  toPodMountFilePath,
+  toProjectMountFilePath,
+  validateMountFolderName,
 } from "@app/lib/api/files/mount_path";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -40,6 +57,177 @@ describe("mount_path helpers", () => {
     });
   });
 
+  describe("getPodFilesBasePath", () => {
+    it("should return full pod files path", () => {
+      expect(getPodFilesBasePath({ workspaceId: "ws1", podId: "spc1" })).toBe(
+        "w/ws1/pods/spc1/files/"
+      );
+    });
+  });
+
+  describe("toPodMountFilePath", () => {
+    it("converts a project mount file path to its pods/ counterpart", () => {
+      expect(toPodMountFilePath("w/ws1/projects/p1/files/report.pdf")).toBe(
+        "w/ws1/pods/p1/files/report.pdf"
+      );
+    });
+
+    it("preserves nested directory structure", () => {
+      expect(
+        toPodMountFilePath("w/ws1/projects/p1/files/dir/sub/report.pdf")
+      ).toBe("w/ws1/pods/p1/files/dir/sub/report.pdf");
+    });
+
+    it("returns null for conversation paths", () => {
+      expect(
+        toPodMountFilePath("w/ws1/conversations/c1/files/report.pdf")
+      ).toBeNull();
+    });
+
+    it("returns null for already-pods paths (no double-rewrite)", () => {
+      expect(toPodMountFilePath("w/ws1/pods/p1/files/report.pdf")).toBeNull();
+    });
+
+    it("returns null when the w/ workspace prefix is missing", () => {
+      expect(toPodMountFilePath("projects/p1/files/report.pdf")).toBeNull();
+    });
+
+    it("returns null when nothing follows projects/", () => {
+      expect(toPodMountFilePath("w/ws1/projects/")).toBeNull();
+    });
+  });
+
+  describe("toProjectMountFilePath", () => {
+    it("converts a pod mount file path to its projects/ counterpart", () => {
+      expect(toProjectMountFilePath("w/ws1/pods/p1/files/report.pdf")).toBe(
+        "w/ws1/projects/p1/files/report.pdf"
+      );
+    });
+
+    it("preserves nested directory structure", () => {
+      expect(
+        toProjectMountFilePath("w/ws1/pods/p1/files/dir/sub/report.pdf")
+      ).toBe("w/ws1/projects/p1/files/dir/sub/report.pdf");
+    });
+
+    it("returns null for conversation paths", () => {
+      expect(
+        toProjectMountFilePath("w/ws1/conversations/c1/files/report.pdf")
+      ).toBeNull();
+    });
+
+    it("returns null for already-projects paths (no double-rewrite)", () => {
+      expect(
+        toProjectMountFilePath("w/ws1/projects/p1/files/report.pdf")
+      ).toBeNull();
+    });
+
+    it("returns null when the w/ workspace prefix is missing", () => {
+      expect(toProjectMountFilePath("pods/p1/files/report.pdf")).toBeNull();
+    });
+
+    it("returns null when nothing follows pods/", () => {
+      expect(toProjectMountFilePath("w/ws1/pods/")).toBeNull();
+    });
+  });
+
+  describe("scoped path classification", () => {
+    it("detects canonical scoped paths", () => {
+      expect(isCanonicalScopedPath("conversation-conv_abc/report.csv")).toBe(
+        true
+      );
+      expect(isCanonicalScopedPath("pod-pod_xyz/data.csv")).toBe(true);
+      expect(isCanonicalScopedPath("conversation-/file.csv")).toBe(false);
+      expect(isCanonicalScopedPath("conversation/file.csv")).toBe(false);
+    });
+
+    it("detects legacy scoped paths", () => {
+      expect(isLegacyScopedPath("conversation/report.csv")).toBe(true);
+      expect(isLegacyScopedPath("pod/data.csv")).toBe(true);
+      expect(isLegacyScopedPath("project/data.csv")).toBe(true);
+      expect(isLegacyScopedPath("conversation-conv_abc/report.csv")).toBe(
+        false
+      );
+    });
+
+    it("detects any agent scoped path", () => {
+      expect(isAgentScopedPath("conversation-conv_abc/report.csv")).toBe(true);
+      expect(isAgentScopedPath("conversation/report.csv")).toBe(true);
+      expect(isAgentScopedPath("hello/world")).toBe(false);
+    });
+
+    it("parses canonical scoped paths into scope and relative path", () => {
+      expect(
+        parseCanonicalScopedPath(
+          "pod-pod_xyz/my folder/another folder/report.md"
+        )
+      ).toEqual({
+        scope: { kind: "canonical-pod", id: "pod_xyz" },
+        relPath: "my folder/another folder/report.md",
+      });
+      expect(
+        parseCanonicalScopedPath("conversation-conv_abc/report.csv")
+      ).toEqual({
+        scope: { kind: "canonical-conversation", id: "conv_abc" },
+        relPath: "report.csv",
+      });
+      expect(parseCanonicalScopedPath("conversation/report.csv")).toBeNull();
+    });
+  });
+
+  describe("resolveCanonicalScopedPath", () => {
+    const frameContext = {
+      conversationId: "conv_abc",
+      spaceId: "pod_xyz",
+    };
+
+    it("passes through canonical paths unchanged", () => {
+      expect(
+        resolveCanonicalScopedPath(
+          "conversation-conv_abc/chart.png",
+          frameContext
+        )
+      ).toBe("conversation-conv_abc/chart.png");
+    });
+
+    it("resolves legacy conversation paths under frame context", () => {
+      expect(
+        resolveCanonicalScopedPath("conversation/chart.png", frameContext)
+      ).toBe("conversation-conv_abc/chart.png");
+    });
+
+    it("resolves legacy pod and project paths under frame context", () => {
+      expect(resolveCanonicalScopedPath("pod/data.csv", frameContext)).toBe(
+        "pod-pod_xyz/data.csv"
+      );
+      expect(resolveCanonicalScopedPath("project/data.csv", frameContext)).toBe(
+        "pod-pod_xyz/data.csv"
+      );
+    });
+
+    it("returns null when frame context is missing", () => {
+      expect(
+        resolveCanonicalScopedPath("conversation/chart.png", {
+          conversationId: null,
+          spaceId: null,
+        })
+      ).toBeNull();
+    });
+  });
+
+  describe("legacyScopedPathsMatch", () => {
+    it("matches exact legacy paths and project/pod aliases", () => {
+      expect(legacyScopedPathsMatch("pod/data.csv", "pod/data.csv")).toBe(true);
+      expect(legacyScopedPathsMatch("pod/data.csv", "project/data.csv")).toBe(
+        true
+      );
+      expect(
+        legacyScopedPathsMatch("pod/data.csv", "conversation/data.csv")
+      ).toBe(false);
+      expect(legacyScopedPathsMatch(undefined, "pod/data.csv")).toBe(false);
+    });
+  });
+
   describe("parseScopedFilePath", () => {
     it("parses a conversation path", () => {
       expect(parseScopedFilePath("conversation/report.pdf")).toEqual({
@@ -48,9 +236,9 @@ describe("mount_path helpers", () => {
       });
     });
 
-    it("parses a project path", () => {
-      expect(parseScopedFilePath("project/notes/2026/draft.md")).toEqual({
-        prefix: "project",
+    it("parses a Pod path", () => {
+      expect(parseScopedFilePath("pod/notes/2026/draft.md")).toEqual({
+        prefix: "pod",
         rel: "notes/2026/draft.md",
       });
     });
@@ -179,6 +367,229 @@ describe("mount_path helpers", () => {
         isProcessed: false,
       });
       expect(parseProcessedFilename("")).toEqual({ isProcessed: false });
+    });
+  });
+
+  describe("validateMountFolderName", () => {
+    it("accepts a simple folder name", () => {
+      const result = validateMountFolderName("  Reports  ");
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBe("Reports");
+      }
+    });
+
+    it("rejects path separators and empty names", () => {
+      expect(validateMountFolderName("").isErr()).toBe(true);
+      expect(validateMountFolderName("a/b").isErr()).toBe(true);
+      expect(validateMountFolderName("..").isErr()).toBe(true);
+    });
+  });
+
+  describe("resolveScopedMountFilePath", () => {
+    const mountBasePath = "w/ws123/pods/pod456/files/";
+
+    it("rejects invalid scope prefix", () => {
+      const result = resolveScopedMountFilePath({
+        relPath: "conversation/file.txt",
+        expectedPrefix: "pod",
+        mountBasePath,
+      });
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(
+          ResolveScopedMountFilePathError.isResolveScopedMountFilePathError(
+            result.error
+          )
+        ).toBe(true);
+        if (
+          ResolveScopedMountFilePathError.isResolveScopedMountFilePathError(
+            result.error
+          )
+        ) {
+          expect(result.error.code).toBe("invalid_prefix");
+        }
+      }
+    });
+
+    it("rejects path traversal", () => {
+      const result = resolveScopedMountFilePath({
+        relPath: "pod/../other/file.txt",
+        expectedPrefix: "pod",
+        mountBasePath,
+      });
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(
+          ResolveScopedMountFilePathError.isResolveScopedMountFilePathError(
+            result.error
+          )
+        ).toBe(true);
+        if (
+          ResolveScopedMountFilePathError.isResolveScopedMountFilePathError(
+            result.error
+          )
+        ) {
+          expect(result.error.code).toBe("outside_scope");
+        }
+      }
+    });
+
+    it("returns normalized relative and GCS paths", () => {
+      const result = resolveScopedMountFilePath({
+        relPath: "pod/reports/../reports/file.txt",
+        expectedPrefix: "pod",
+        mountBasePath,
+      });
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.normalizedRelative).toBe("reports/file.txt");
+        expect(result.value.normalizedGcsPath).toBe(
+          `${mountBasePath}reports/file.txt`
+        );
+      }
+    });
+  });
+
+  describe("resolveMoveSourcePath", () => {
+    const mountBasePath = "w/ws123/pods/pod1/files/";
+
+    it("resolves a scoped listing path", () => {
+      const result = resolveMoveSourcePath({
+        sourcePath: "pod/reports/report_fil_abc.pdf",
+        expectedPrefix: "pod",
+        mountBasePath,
+      });
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.normalizedMountFilePath).toBe(
+          `${mountBasePath}reports/report_fil_abc.pdf`
+        );
+      }
+    });
+
+    it("resolves a mount-relative path", () => {
+      const result = resolveMoveSourcePath({
+        sourcePath: "reports/file.txt",
+        expectedPrefix: "pod",
+        mountBasePath,
+      });
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.normalizedMountFilePath).toBe(
+          `${mountBasePath}reports/file.txt`
+        );
+      }
+    });
+
+    it("rejects a scoped path with the wrong prefix", () => {
+      const result = resolveMoveSourcePath({
+        sourcePath: "conversation/file.txt",
+        expectedPrefix: "pod",
+        mountBasePath,
+      });
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe("invalid_path");
+      }
+    });
+  });
+
+  describe("resolveMountFileSourcePath", () => {
+    const mountBasePath = "w/ws123/conversations/conv1/files/";
+
+    it("resolves a mount-relative path", () => {
+      const result = resolveMountFileSourcePath({
+        sourcePath: "reports/file.txt",
+        mountBasePath,
+      });
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.normalizedMountFilePath).toBe(
+          `${mountBasePath}reports/file.txt`
+        );
+      }
+    });
+  });
+
+  describe("resolveMountFilePath", () => {
+    const mountBasePath = "w/ws123/conversations/conv1/files/";
+
+    it("rejects path traversal", () => {
+      const result = resolveMountFilePath({
+        mountFilePath: `${mountBasePath}../other/file.txt`,
+        mountBasePath,
+      });
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe("outside_scope");
+      }
+    });
+
+    it("returns the normalized mount file path", () => {
+      const result = resolveMountFilePath({
+        mountFilePath: `${mountBasePath}reports/../reports/file.txt`,
+        mountBasePath,
+      });
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.normalizedMountFilePath).toBe(
+          `${mountBasePath}reports/file.txt`
+        );
+      }
+    });
+  });
+
+  describe("normalizeAndValidateMountRelativeFilePath", () => {
+    it("rejects empty paths", () => {
+      expect(normalizeAndValidateMountRelativeFilePath("").isErr()).toBe(true);
+      expect(normalizeAndValidateMountRelativeFilePath("  ").isErr()).toBe(
+        true
+      );
+    });
+
+    it("rejects path traversal", () => {
+      expect(
+        normalizeAndValidateMountRelativeFilePath("../evil.txt").isErr()
+      ).toBe(true);
+    });
+
+    it("normalizes nested file paths", () => {
+      const result = normalizeAndValidateMountRelativeFilePath(
+        "/archive/report.pdf"
+      );
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBe("archive/report.pdf");
+      }
+    });
+  });
+
+  describe("normalizeMountParentRelativePath", () => {
+    it("normalizes empty to mount root", () => {
+      const undefinedResult = normalizeMountParentRelativePath(undefined);
+      expect(undefinedResult.isOk()).toBe(true);
+      if (undefinedResult.isOk()) {
+        expect(undefinedResult.value).toBe("");
+      }
+
+      const emptyResult = normalizeMountParentRelativePath("");
+      expect(emptyResult.isOk()).toBe(true);
+      if (emptyResult.isOk()) {
+        expect(emptyResult.value).toBe("");
+      }
+    });
+
+    it("rejects path traversal", () => {
+      expect(normalizeMountParentRelativePath("../evil").isErr()).toBe(true);
+    });
+
+    it("strips leading slashes", () => {
+      const result = normalizeMountParentRelativePath("/reports/q1");
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value).toBe("reports/q1");
+      }
     });
   });
 

@@ -21,10 +21,13 @@ import { getWebhookRequestPayloadFromGCS } from "@app/lib/triggers/webhook";
 import logger from "@app/logger/logger";
 import { makeTriggerScheduleId } from "@app/temporal/triggers/schedule_client";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import {
+  type ConversationType,
+  isUserMessageType,
+} from "@app/types/assistant/conversation";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -44,7 +47,7 @@ async function createConversationForAgentConfiguration({
   trigger: TriggerType;
   lastRunAt: Date | null;
   webhookRequest: WebhookRequestResource | null;
-}): Promise<Result<ConversationType, APIErrorWithStatusCode>> {
+}): Promise<Result<ConversationType, APIErrorWithContentfulStatusCode>> {
   const newConversation = await createConversation(auth, {
     title: null,
     visibility: "unlisted",
@@ -95,7 +98,7 @@ async function createConversationForAgentConfiguration({
       conversation: newConversation,
       contentFragment: {
         contentType: "application/json",
-        content: JSON.stringify(payloadRes.value.body),
+        content: JSON.stringify(payloadRes.value.body, null, 2),
         title: `Webhook body (source id: ${webhookRequest.webhookSourceId}, date: ${new Date().toISOString()})`,
       },
       fileName: `webhook_body_${webhookRequest.webhookSourceId}_${Date.now()}.json`,
@@ -293,6 +296,7 @@ export async function runTriggeredAgentsActivity({
     const isNonRetryable =
       errorType === "plan_message_limit_exceeded" ||
       errorType === "credits_exhausted" ||
+      errorType === "user_cap_reached" ||
       errorType === "model_disabled" ||
       errorType === "invalid_request_error" ||
       errorType === "agent_inaccessible" ||
@@ -346,6 +350,27 @@ function buildWakeUpMessageContent(wakeUp: WakeUpType): string {
   content += `Wake-up reason: ${wakeUp.reason}`;
 
   return content;
+}
+
+function getWakeUpClientSideMCPServerIds(
+  conversation: ConversationType
+): string[] {
+  const previousUserMessageVersions = conversation.content.findLast(
+    (versions) => {
+      const message = versions.at(-1);
+      return (
+        !!message &&
+        isUserMessageType(message) &&
+        message.context.origin !== "wakeup"
+      );
+    }
+  );
+
+  const previousUserMessage = previousUserMessageVersions?.at(-1);
+
+  return previousUserMessage && isUserMessageType(previousUserMessage)
+    ? (previousUserMessage.context.clientSideMCPServerIds ?? [])
+    : [];
 }
 
 export async function runWakeUpActivity({
@@ -407,6 +432,7 @@ export async function runWakeUpActivity({
   }
 
   const conversation = conversationRes.value;
+  const clientSideMCPServerIds = getWakeUpClientSideMCPServerIds(conversation);
 
   const postMessageResult = await postUserMessage(auth, {
     conversation,
@@ -419,6 +445,7 @@ export async function runWakeUpActivity({
       email: null,
       profilePictureUrl: null,
       origin: "wakeup",
+      clientSideMCPServerIds,
     },
     skipToolsValidation: false,
   });

@@ -4,7 +4,11 @@ import {
   useFileUploaderService,
 } from "@app/hooks/useFileUploaderService";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
-import type { RichAgentMention } from "@app/types/assistant/mentions";
+import type {
+  RichAgentMention,
+  RichMention,
+} from "@app/types/assistant/mentions";
+import type { ContentFragmentsType } from "@app/types/content_fragment";
 import {
   createContext,
   type ReactNode,
@@ -12,6 +16,20 @@ import {
   useMemo,
   useState,
 } from "react";
+
+/** Payload for the first message when creation is deferred until after navigation. */
+export type PendingConversationMessage = {
+  input: string;
+  mentions: RichMention[];
+  contentFragments: ContentFragmentsType;
+};
+
+type CaptureActions = {
+  onCapture: (type: "text" | "screenshot") => void;
+  isCapturing: boolean;
+  onSavePageToPod?: () => Promise<void>;
+  isSavingPageToPod?: boolean;
+};
 
 export const InputBarContext = createContext<{
   animate: boolean;
@@ -22,11 +40,16 @@ export const InputBarContext = createContext<{
   setSelectedSingleAgent: (agentMention: RichAgentMention | null) => void;
   getAndClearPendingInputText: () => string | null;
   setPendingInputText: (text: string | null) => void;
+  peekPendingFirstMessage: (
+    conversationId: string
+  ) => PendingConversationMessage | null;
+  setPendingFirstMessage: (
+    conversationId: string,
+    message: PendingConversationMessage
+  ) => void;
+  clearPendingFirstMessage: (conversationId: string) => void;
   fileUploaderService: FileUploaderService;
-  captureActions?: {
-    onCapture: (type: "text" | "screenshot") => void;
-    isCapturing: boolean;
-  };
+  captureActions?: CaptureActions;
 }>({
   animate: false,
   getAndClearSelectedAgent: () => null,
@@ -36,6 +59,9 @@ export const InputBarContext = createContext<{
   setSelectedSingleAgent: () => {},
   getAndClearPendingInputText: () => null,
   setPendingInputText: () => {},
+  peekPendingFirstMessage: () => null,
+  setPendingFirstMessage: () => {},
+  clearPendingFirstMessage: () => {},
   fileUploaderService: {
     fileBlobs: [],
     handleFileChange: async () => undefined,
@@ -52,10 +78,7 @@ export const InputBarContext = createContext<{
 interface InputBarContextProviderProps {
   children: ReactNode;
   fileUploaderService: FileUploaderService;
-  captureActions?: {
-    onCapture: (type: "text" | "screenshot") => void;
-    isCapturing: boolean;
-  };
+  captureActions?: CaptureActions;
 }
 
 export function InputBarContextProvider({
@@ -78,6 +101,35 @@ export function InputBarContextProvider({
   const [pendingInputText, setPendingInputTextState] = useState<string | null>(
     null
   );
+
+  // First message stashed while navigating to a newly-created conversation (deferred-send flow).
+  const [
+    pendingFirstMessagesByConversation,
+    setPendingFirstMessagesByConversation,
+  ] = useState<Record<string, PendingConversationMessage>>({});
+
+  const setPendingFirstMessage = useCallback(
+    (conversationId: string, message: PendingConversationMessage) => {
+      setPendingFirstMessagesByConversation((prev) => ({
+        ...prev,
+        [conversationId]: message,
+      }));
+    },
+    []
+  );
+
+  const peekPendingFirstMessage = useCallback(
+    (conversationId: string) =>
+      pendingFirstMessagesByConversation[conversationId] ?? null,
+    [pendingFirstMessagesByConversation]
+  );
+
+  const clearPendingFirstMessage = useCallback((conversationId: string) => {
+    setPendingFirstMessagesByConversation((prev) => {
+      const { [conversationId]: _, ...rest } = prev;
+      return rest;
+    });
+  }, []);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const setSelectedAgentOuter = useCallback(
@@ -120,6 +172,9 @@ export function InputBarContextProvider({
       setSelectedSingleAgent,
       getAndClearPendingInputText,
       setPendingInputText,
+      peekPendingFirstMessage,
+      setPendingFirstMessage,
+      clearPendingFirstMessage,
       captureActions,
       fileUploaderService,
     }),
@@ -130,6 +185,9 @@ export function InputBarContextProvider({
       selectedSingleAgent,
       getAndClearPendingInputText,
       setPendingInputText,
+      peekPendingFirstMessage,
+      setPendingFirstMessage,
+      clearPendingFirstMessage,
       captureActions,
       fileUploaderService,
     ]

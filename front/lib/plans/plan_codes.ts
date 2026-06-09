@@ -12,6 +12,12 @@ export const PRO_PLAN_SEAT_29_CODE = "PRO_PLAN_SEAT_29";
 export const PRO_PLAN_LARGE_FILES_CODE = "PRO_PLAN_LARGE_FILES";
 export const PRO_PLAN_SEAT_39_CODE = "PRO_PLAN_SEAT_39";
 
+// Credit-priced plans:
+export const CREDIT_PRICED_BUSINESS_PLAN_CODE = "CP_BUSINESS_PLAN";
+export const CREDIT_PRICED_FREE_PLAN_CODE = "CP_FREE_PLAN";
+export const CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE = "CP_ENT_DEFAULT_PLAN";
+export const CREDIT_PRICED_DUST_COMPANY_PLAN_CODE = "CP_DUST_COMPANY";
+
 // BYOK plan:
 export const FREE_BYOK_TRANSITIONING_PLAN_CODE = "FREE_BYOK_TRANSITIONING";
 export const FREE_BYOK_PLAN_CODE = "FREE_BYOK";
@@ -29,12 +35,17 @@ export const REINFORCEMENT_EXCLUDED_PLAN_CODES = new Set([
   FREE_TRIAL_PHONE_PLAN_CODE,
 ]);
 
-// If the plan code starts with ENT_, it's an entreprise plan
-export const isEntreprisePlanPrefix = (planCode: string) =>
-  planCode.startsWith("ENT_");
+// Credit priced plan billed/tracked through Metronome and not legacy.
+export const isCreditPricedPlanPrefix = (planCode: string) =>
+  planCode.startsWith("CP_");
+
+// If the plan code starts with ENT_, it's an enterprise plan
+export const isEnterprisePlanPrefix = (planCode: string) =>
+  planCode.startsWith("ENT_") || planCode.startsWith("CP_ENT_");
 
 export const isDustCompanyPlan = (planCode: string) =>
-  planCode === DUST_COMPANY_PLAN_CODE;
+  planCode === DUST_COMPANY_PLAN_CODE ||
+  planCode === CREDIT_PRICED_DUST_COMPANY_PLAN_CODE;
 
 // If the plan code starts with PRO_, it's a pro plan
 export const isProPlanPrefix = (planCode: string) =>
@@ -44,9 +55,17 @@ export const isProPlanPrefix = (planCode: string) =>
 export const isFriendsAndFamilyPlan = (planCode: string) =>
   planCode === "FREE_FRIENDSAMILY";
 
+export const isCreditPricedBusinessPlan = (planCode: string) =>
+  planCode === CREDIT_PRICED_BUSINESS_PLAN_CODE;
+
+export const isBusinessPlanPrefix = (planCode: string) =>
+  planCode.startsWith("CP_BUSINESS_");
+
 // Everything else is free
 export const isFreePlan = (planCode: string) =>
-  !isEntreprisePlanPrefix(planCode) && !isProPlanPrefix(planCode);
+  !isEnterprisePlanPrefix(planCode) &&
+  !isProPlanPrefix(planCode) &&
+  !isCreditPricedBusinessPlan(planCode);
 
 export const isFreeTrialPhonePlan = (planCode: string) =>
   planCode === FREE_TRIAL_PHONE_PLAN_CODE;
@@ -54,6 +73,29 @@ export const isFreeTrialPhonePlan = (planCode: string) =>
 // Early plan when anyone could create a dust account
 export const isOldFreePlan = (planCode: string) =>
   planCode === FREE_TEST_PLAN_CODE;
+
+// Sort priority for plan-code buckets. Lower number sorts first.
+// Used by the poke workspaces list to surface enterprise / pro tenants
+// ahead of free / old-free ones when the result set is over the requested
+// limit.
+export const getPlanCodeSortPriority = (planCode: string): number => {
+  if (isEnterprisePlanPrefix(planCode)) {
+    return 1;
+  }
+  if (isFriendsAndFamilyPlan(planCode)) {
+    return 2;
+  }
+  if (isProPlanPrefix(planCode)) {
+    return 3;
+  }
+  if (isFreePlan(planCode)) {
+    return 4;
+  }
+  if (isOldFreePlan(planCode)) {
+    return 5;
+  }
+  return 6;
+};
 
 export function isProPlan(plan?: PlanType) {
   return (
@@ -71,6 +113,22 @@ export function isBusinessPlan(plan?: PlanType) {
 
 export function isProOrBusinessPlanCode(plan?: PlanType) {
   return isProPlan(plan) || isBusinessPlan(plan);
+}
+
+/**
+ * Returns the implicit default pool credit limit for a plan when no explicit
+ * limit has been configured in Metronome.
+ *
+ *   - Enterprise plans → `null` (unlimited pool access)
+ *   - Everything else (business, pro, free) → `0` (no pool access)
+ */
+export function getPlanDefaultPoolLimitAwuCredits(
+  planCode: string
+): number | null {
+  if (isEnterprisePlanPrefix(planCode)) {
+    return null;
+  }
+  return 0;
 }
 
 /**

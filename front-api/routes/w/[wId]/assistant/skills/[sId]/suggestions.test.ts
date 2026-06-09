@@ -1,5 +1,3 @@
-import { describe, expect, it, vi } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -9,6 +7,7 @@ import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory"
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { SkillSuggestionState } from "@app/types/suggestions/skill_suggestion";
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/reinforcement/workspace_check", () => ({
   hasReinforcementEnabled: vi.fn().mockResolvedValue(true),

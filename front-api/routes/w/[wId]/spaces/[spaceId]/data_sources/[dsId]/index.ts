@@ -1,8 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -11,10 +6,12 @@ import {
 import { softDeleteDataSourceAndLaunchScrubWorkflow } from "@app/lib/api/data_sources";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { isRemoteDatabase } from "@app/lib/data_sources";
-
-import { dataSourceResource } from "@front-api/middleware/data_source_resource";
-import { spaceResource } from "@front-api/middleware/space_resource";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withDataSource } from "@front-api/middlewares/with_data_source";
+import { withSpace } from "@front-api/middlewares/with_space";
+import { z } from "zod";
 
 import configuration from "./configuration";
 import documents from "./documents";
@@ -26,20 +23,21 @@ const PatchDataSourceWithoutProviderRequestBodySchema = z.object({
 });
 
 // Mounted under /api/w/:wId/spaces/:spaceId/data_sources/:dsId.
-const app = new Hono();
+const app = workspaceApp();
 
+/** @ignoreswagger */
 app.patch(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  dataSourceResource({}),
+  withSpace({ requireCanReadOrAdministrate: true }),
+  withDataSource({}),
   validate("json", PatchDataSourceWithoutProviderRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
-    const dataSource = c.get("dataSource");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const dataSource = ctx.get("dataSource");
 
     if (space.isSystem() && !space.canAdministrate(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -49,7 +47,7 @@ app.patch(
       });
     }
     if (space.isGlobal() && !space.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -61,7 +59,7 @@ app.patch(
 
     if (dataSource.connectorId) {
       // Patching a managed data source is not yet implemented.
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -70,7 +68,7 @@ app.patch(
       });
     }
 
-    const { description } = c.req.valid("json");
+    const { description } = ctx.req.valid("json");
     await dataSource.setDescription(description);
 
     void emitAuditLogEvent({
@@ -87,21 +85,21 @@ app.patch(
       },
     });
 
-    return c.json({ dataSource: dataSource.toJSON() });
+    return ctx.json({ dataSource: dataSource.toJSON() });
   }
 );
 
 app.delete(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  dataSourceResource({}),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
-    const dataSource = c.get("dataSource");
+  withSpace({ requireCanReadOrAdministrate: true }),
+  withDataSource({}),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const dataSource = ctx.get("dataSource");
 
     if (space.isSystem() && !space.canAdministrate(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -111,7 +109,7 @@ app.delete(
       });
     }
     if (space.isGlobal() && !space.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -128,7 +126,7 @@ app.delete(
         space.canAdministrate(auth) &&
         isRemoteDatabase(dataSource));
     if (!isAuthorized) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "data_source_auth_error",
@@ -143,7 +141,7 @@ app.delete(
       dataSource.connectorProvider &&
       !CONNECTOR_CONFIGURATIONS[dataSource.connectorProvider].isDeletable
     ) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -156,7 +154,7 @@ app.delete(
       dataSource,
     });
     if (dRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -180,7 +178,7 @@ app.delete(
       },
     });
 
-    return c.body(null, 204);
+    return ctx.body(null, 204);
   }
 );
 

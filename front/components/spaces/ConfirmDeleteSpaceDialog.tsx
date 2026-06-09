@@ -1,5 +1,5 @@
+import type { SpaceCategoryInfo } from "@app/lib/api/spaces";
 import { getSpaceName } from "@app/lib/spaces";
-import type { SpaceCategoryInfo } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type { SpaceType } from "@app/types/space";
 import {
   Button,
@@ -12,7 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
   Spinner,
-  TrashIcon,
+  Trash01,
 } from "@dust-tt/sparkle";
 
 interface ConfirmDeleteSpaceDialogProps {
@@ -47,7 +47,7 @@ export function ConfirmDeleteSpaceDialog({
       <DialogTrigger asChild>
         <div className="flex w-full flex-col items-end">
           <Button
-            icon={TrashIcon}
+            icon={Trash01}
             size="xs"
             variant="warning"
             label="Delete space"

@@ -26,7 +26,7 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "noop"
 >();
 
-type KnownModelLLMId =
+export type KnownModelLLMId =
   | "gpt-3.5-turbo"
   | "gpt-4-turbo"
   | "gpt-4o-2024-08-06"
@@ -59,27 +59,28 @@ type KnownModelLLMId =
   | "claude-opus-4-5-20251101"
   | "claude-opus-4-6"
   | "claude-opus-4-7"
+  | "claude-opus-4-8"
   | "claude-sonnet-4-6"
   | "mistral-large-latest"
   | "mistral-medium"
+  | "mistral-medium-3-5"
   | "mistral-small-latest"
   | "codestral-latest"
   | "gemini-2.5-pro"
   | "gemini-2.5-flash"
   | "gemini-2.5-flash-lite"
+  | "gemini-3.1-flash-lite"
   | "gemini-3.1-flash-lite-preview"
   | "gemini-3-pro-preview"
   | "gemini-3.1-pro-preview"
   | "gemini-3-flash-preview"
+  | "gemini-3.5-flash"
   | "meta-llama/Llama-3.3-70B-Instruct-Turbo" // togetherai
   | "Qwen/Qwen2.5-Coder-32B-Instruct" // togetherai
   | "Qwen/QwQ-32B-Preview" // togetherai
   | "Qwen/Qwen2-72B-Instruct" // togetherai
   | "deepseek-ai/DeepSeek-V3" // togetherai
-  | "deepseek-ai/DeepSeek-R1" // togetherai
   | "deepseek-chat" // deepseek api
-  | "deepseek-reasoner" // deepseek api
-  | "accounts/fireworks/models/deepseek-r1-0528" // fireworks
   | "accounts/fireworks/models/deepseek-v3p2" // fireworks
   | "accounts/fireworks/models/deepseek-v4-pro" // fireworks
   | "accounts/fireworks/models/kimi-k2-instruct" // fireworks - not supported anymore
@@ -683,28 +684,29 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_builder_copilot"
   | "agent_builder_copilot_builders"
   | "agent_builder_shrink_wrap"
-  | "agent_management_tool"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
   | "audit_logs"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
-  | "confluence_tool"
   | "sessions_branching"
-  | "projects"
   | "databricks_tool"
   | "deepseek_feature"
-  | "deepseek_r1_global_agent_feature"
   | "dev_mcp_actions"
+  | "disable_formatting_prompt"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
   | "discord_bot"
   | "dummy_feature_for_flag_testing"
   | "dust_academy"
+  | "dust_agent_gpt_5_5_default"
+  | "dust_desktop"
   | "dust_internal_global_agents"
   | "dust_no_spa"
   | "dust_spa"
   | "fireworks_new_model_feature"
+  | "force_us_api_url"
+  | "frames_skill_v2"
   | "gemini_3_1_pro_feature"
   | "clari_copilot_mcp"
   | "google_sheets_tool"
@@ -715,13 +717,10 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "labs_mcp_actions_dashboard"
   | "labs_transcripts"
   | "legacy_dust_apps"
-  | "luma_tool"
-  | "monday_tool"
   | "netsuite_mcp"
   | "noop_model_feature"
   | "notion_private_integration"
   | "allow_old_notion_mcp"
-  | "openai_o1_custom_assistants_feature"
   | "openai_o1_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_usage_mcp"
@@ -745,10 +744,10 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slack_enhanced_default_agent"
   | "slack_message_splitting"
   | "slideshow"
-  | "snowflake_tool"
   | "skills_as_user_messages"
   | "run_tools_from_prompt"
   | "usage_data_api"
+  | "workspace_analytics"
   | "xai_feature"
   | "conversations_slack_notifications"
   | "anthropic_reasoning_token_count"
@@ -758,9 +757,13 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "sensitivity_labels"
   | "conversation_search_indexing"
   | "conversation_search_read"
+  | "deferred_conversation_creation"
   | "new_file_explorer"
-  | "use_vertex_for_anthropic_models"
+  | "use_vertex_for_supported_models"
   | "metronome_billing_usage_page"
+  | "user_settings_v2"
+  | "metronome_cp_checkout"
+  | "admin_governance"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -768,7 +771,13 @@ export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
 const WorkspaceSegmentationSchema =
   FlexibleEnumSchema<"interesting">().nullable();
 
-const RoleSchema = z.enum(["admin", "builder", "user", "none"]);
+const RoleSchema = z.enum([
+  "admin",
+  "business_admin",
+  "builder",
+  "user",
+  "none",
+]);
 
 const LightWorkspaceSchema = z.object({
   id: ModelIdSchema,
@@ -778,7 +787,7 @@ const LightWorkspaceSchema = z.object({
   segmentation: WorkspaceSegmentationSchema,
   whiteListedProviders: ModelProviderIdSchema.array().nullable(),
   defaultEmbeddingProvider: EmbeddingProviderIdSchema.nullable(),
-  regionalModelsOnly: z.boolean(),
+  regionalModelsOnly: z.boolean().default(false),
 });
 
 export type LightWorkspaceType = z.infer<typeof LightWorkspaceSchema>;
@@ -1198,6 +1207,71 @@ export type ConversationWithoutContentPublicType = z.infer<
   typeof ConversationWithoutContentSchema
 >;
 export type ConversationPublicType = z.infer<typeof ConversationSchema>;
+
+/**
+ * Subset of {@link ConversationSchema} used by connectors when syncing conversations
+ * to a data source (dust_project). `content` is the latest version of each message
+ * (no per-message version arrays). Matches fields read in sync_conversation and
+ * conversation_formatting.
+ */
+const ConversationForDataSourceSyncUserSchema = UserSchema.pick({
+  sId: true,
+  fullName: true,
+  username: true,
+  email: true,
+});
+
+const ConversationForDataSourceSyncContentFragmentSchema = z.object({
+  type: z.literal("content_fragment"),
+  created: z.number(),
+  visibility: VisibilitySchema,
+  contentFragmentId: z.string(),
+  contentType: SupportedContentFragmentTypeSchema,
+  title: z.string(),
+  version: z.number(),
+  sourceUrl: z.string().nullable(),
+});
+
+const ConversationForDataSourceSyncUserMessageSchema = z.object({
+  type: z.literal("user_message"),
+  created: z.number(),
+  visibility: VisibilitySchema,
+  user: ConversationForDataSourceSyncUserSchema.nullable(),
+  content: z.string(),
+  contentFragments: z.array(ConversationForDataSourceSyncContentFragmentSchema),
+});
+
+const ConversationForDataSourceSyncAgentMessageSchema = z.object({
+  type: z.literal("agent_message"),
+  created: z.number(),
+  visibility: VisibilitySchema,
+  configuration: z.object({
+    name: z.string(),
+  }),
+  content: z.string().nullable(),
+});
+
+const ConversationForDataSourceSyncMessageSchema = z.discriminatedUnion(
+  "type",
+  [
+    ConversationForDataSourceSyncUserMessageSchema,
+    ConversationForDataSourceSyncAgentMessageSchema,
+  ]
+);
+
+export const ConversationForDataSourceSyncSchema = z.object({
+  sId: z.string(),
+  created: z.number(),
+  updated: z.number().optional(),
+  title: z.string().nullable(),
+  visibility: ConversationVisibilitySchema,
+  url: z.string(),
+  content: z.array(ConversationForDataSourceSyncMessageSchema),
+});
+
+export type ConversationForDataSourceSyncType = z.infer<
+  typeof ConversationForDataSourceSyncSchema
+>;
 
 const ConversationMessageReactionsSchema = z.array(
   z.object({
@@ -1744,6 +1818,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "plan_limit_error"
   | "plan_message_limit_exceeded"
   | "credits_exhausted"
+  | "user_cap_reached"
   | "plugin_execution_failed"
   | "plugin_not_found"
   | "provider_auth_error"
@@ -2062,9 +2137,15 @@ export type GetOrPatchAgentConfigurationResponseType = z.infer<
   typeof GetOrPatchAgentConfigurationResponseSchema
 >;
 
-export const PatchAgentConfigurationRequestSchema = z.object({
-  userFavorite: z.boolean().optional(),
-});
+// Passthrough is required: beyond `userFavorite`, the endpoint accepts agent configuration
+// patch fields (`instructions`, `agent`, `generation_settings`, `tags`, `editors`, `skills`,
+// `toolset`, ...) which are validated server-side by `agentYAMLConfigPatchSchema`. Stripping
+// unknown keys here would silently drop them (see dust-tt/dust#26698).
+export const PatchAgentConfigurationRequestSchema = z
+  .object({
+    userFavorite: z.boolean().optional(),
+  })
+  .passthrough();
 
 export type PatchAgentConfigurationRequestType = z.infer<
   typeof PatchAgentConfigurationRequestSchema
@@ -2099,30 +2180,6 @@ export const GetAgentConfigurationsResponseSchema = z.object({
 
 export type GetAgentConfigurationsResponseType = z.infer<
   typeof GetAgentConfigurationsResponseSchema
->;
-
-export const CreateGenericAgentConfigurationRequestSchema = z.object({
-  name: z.string(),
-  description: z.string(),
-  instructions: z.string(),
-  emoji: z.string().optional(),
-  subAgentName: z.string().optional(),
-  subAgentDescription: z.string().optional(),
-  subAgentInstructions: z.string().optional(),
-  subAgentEmoji: z.string().optional(),
-});
-
-export type CreateAgentConfigurationWithDefaultsRequestType = z.infer<
-  typeof CreateGenericAgentConfigurationRequestSchema
->;
-
-export const CreateGenericAgentConfigurationResponseSchema = z.object({
-  agentConfiguration: LightAgentConfigurationSchema,
-  subAgentConfiguration: LightAgentConfigurationSchema.optional(),
-});
-
-export type CreateGenericAgentConfigurationResponseType = z.infer<
-  typeof CreateGenericAgentConfigurationResponseSchema
 >;
 
 export const PostContentFragmentResponseSchema = z.object({
@@ -2626,7 +2683,7 @@ export type CheckUpsertQueueResponseType = z.infer<
 >;
 
 export const GetSpaceConversationsForDataSourceResponseSchema = z.object({
-  conversations: z.array(ConversationSchema),
+  conversations: z.array(ConversationForDataSourceSyncSchema),
 });
 export type GetSpaceConversationsForDataSourceResponseType = z.infer<
   typeof GetSpaceConversationsForDataSourceResponseSchema
@@ -2977,6 +3034,7 @@ const AnalyticsExportTableSchema = z.enum([
   "skill_usage",
   "tool_usage",
   "messages",
+  "feedback",
 ]);
 
 const AnalyticsDateSchema = z
@@ -3255,6 +3313,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionTableIcon"
   | "ActionTimeIcon"
   | "AmplitudeLogo"
+  | "ApifyLogo"
   | "AsanaLogo"
   | "AshbyLogo"
   | "AttioLogo"
@@ -3264,10 +3323,13 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ClariLogo"
   | "CommandLineIcon"
   | "ConfluenceLogo"
+  | "ContentsquareLogo"
+  | "CostoryLogo"
   | "DriveLogo"
   | "FathomLogo"
   | "FreshserviceLogo"
   | "FrontLogo"
+  | "GammaLogo"
   | "GcalLogo"
   | "GithubLogo"
   | "GitlabLogo"
@@ -3292,6 +3354,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "NotionLogo"
   | "OpenaiLogo"
   | "PowerBiLogo"
+  | "PraizLogo"
   | "ProductboardLogo"
   | "PuzzleIcon"
   | "SalesforceLogo"
@@ -3514,6 +3577,7 @@ export type GetMCPServerViewsQueryType = z.infer<
 >;
 
 export const CallMCPToolRequestBodySchema = z.object({
+  serverViewId: z.string(),
   toolName: z.string(),
   arguments: z.record(z.unknown()).optional(),
 });

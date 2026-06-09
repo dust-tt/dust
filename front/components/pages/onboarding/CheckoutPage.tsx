@@ -1,8 +1,12 @@
 import { PaymentMethodRow } from "@app/components/checkout/PaymentMethodRow";
 import config from "@app/lib/api/config";
-import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   BUSINESS_PLAN_COST_MONTHLY,
+  CP_MAX_SEAT_COST_MONTHLY,
+  CP_MAX_SEAT_COST_YEARLY,
+  CP_PRO_SEAT_COST_MONTHLY,
+  CP_PRO_SEAT_COST_YEARLY,
   getPriceAsString,
   PRO_PLAN_COST_MONTHLY,
   PRO_PLAN_COST_YEARLY,
@@ -10,10 +14,13 @@ import {
 } from "@app/lib/client/subscription";
 import { isWhitelistedBusinessPlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
+import { useKillSwitches } from "@app/lib/swr/kill";
 import {
   useAuthContext,
+  useCheckBusinessActivation,
   useConfirmPayment,
   useCreateCheckoutSession,
+  useInitiateBusinessActivation,
   usePreparePayment,
   useValidateCoupon,
   useWorkspaceSeatsCount,
@@ -22,16 +29,16 @@ import type { CouponType } from "@app/types/coupon";
 import type { BillingPeriod } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
-  ActionCheckCircleIcon,
-  ActionXCircleIcon,
   Button,
+  CheckCircle,
   DustLogoSquare,
   Icon,
   Input,
-  LockIcon,
+  Lock01,
   Spinner,
-  TagIcon,
-  XMarkIcon,
+  Tag01,
+  XCircle,
+  XClose,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -53,8 +60,6 @@ function getStripePromise() {
   return stripePromise;
 }
 
-const COUPONS_ENABLED = false;
-
 const couponFormSchema = z.object({
   couponCode: z.string().min(1, "Please enter a promotion code"),
 });
@@ -65,7 +70,8 @@ type CheckoutPhase =
   | "card_capture" // Phase 1 — Stripe setup iframe
   | "payment_review" // Phase 2 — tax breakdown + confirm button
   | "confirming" // Phase 3 — POST /payment in progress
-  | "activating" // Phase 4 — mutating auth context, redirecting
+  | "waiting_for_payment" // Phase 4 — polling Redis for Metronome webhook result
+  | "activating" // Phase 5 — mutating auth context, redirecting
   | "error"; // Terminal error
 
 type PhaseError =
@@ -73,6 +79,8 @@ type PhaseError =
   | { kind: "payment_failed" }
   | { kind: "metronome_error" }
   | { kind: "internal_error" }
+  | { kind: "invalid_coupon" }
+  | { kind: "activation_failed" }
   | { kind: "generic" };
 
 function useBillingPeriodParam(): BillingPeriod {
@@ -80,15 +88,35 @@ function useBillingPeriodParam(): BillingPeriod {
   return raw === "yearly" ? "yearly" : "monthly";
 }
 
+function useSeatTypeParam(): "pro" | "max" | null {
+  const raw = useSearchParam("seatType");
+  return raw === "pro" || raw === "max" ? raw : null;
+}
+
 export function CheckoutPage() {
   const owner = useWorkspace();
   const router = useAppRouter();
   const billingPeriod = useBillingPeriodParam();
+  const seatType = useSeatTypeParam();
+  const targetUserId = useSearchParam("targetUserId");
   const { mutateAuthContext } = useAuthContext({ workspaceId: owner.sId });
+
+  // Determine if CP checkout is enabled.
+  const { hasFeature } = useFeatureFlags();
+  const { killSwitches } = useKillSwitches();
+  const isMetronomeEnabled =
+    hasFeature("metronome_billing") ||
+    !killSwitches?.includes("global_disable_metronome_billing");
+  const isMetronomeCheckout =
+    isMetronomeEnabled && hasFeature("metronome_cp_checkout") && !!seatType;
 
   const [phase, setPhase] = useState<CheckoutPhase>("card_capture");
   const [phaseError, setPhaseError] = useState<PhaseError | null>(null);
   const [setupSessionId, setSetupSessionId] = useState<string | null>(null);
+  // For the waiting_for_payment phase: contract id to poll.
+  const [pendingContractId, setPendingContractId] = useState<string | null>(
+    null
+  );
   // Prevents initSession from firing before URL params have been read on mount.
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -123,9 +151,13 @@ export function CheckoutPage() {
   const { createSession, isCreating } = useCreateCheckoutSession({
     workspaceId: owner.sId,
   });
-  const { confirmPayment, isConfirming } = useConfirmPayment({
-    workspaceId: owner.sId,
-  });
+  const { confirmPayment, isConfirming: isConfirmingLegacy } =
+    useConfirmPayment({
+      workspaceId: owner.sId,
+    });
+  const { initiateBusinessActivation, isInitiating } =
+    useInitiateBusinessActivation({ workspaceId: owner.sId });
+  const isConfirming = isMetronomeCheckout ? isInitiating : isConfirmingLegacy;
   const { validateCoupon } = useValidateCoupon({ workspaceId: owner.sId });
 
   const {
@@ -146,6 +178,35 @@ export function CheckoutPage() {
     }
   }, [livePreparePayment]);
 
+  // Poll checkout payment status while in waiting_for_payment phase.
+  const { checkoutPayment } = useCheckBusinessActivation({
+    workspaceId: owner.sId,
+    contractId: pendingContractId,
+    disabled: phase !== "waiting_for_payment",
+    pollIntervalMs: phase === "waiting_for_payment" ? 1500 : 0,
+  });
+
+  // React to Redis activation status.
+  useEffect(() => {
+    if (phase !== "waiting_for_payment" || !checkoutPayment) {
+      return;
+    }
+    if (checkoutPayment.status === "succeeded") {
+      setPhase("activating");
+      void (async () => {
+        await Promise.all([
+          mutateAuthContext(),
+          new Promise<void>((resolve) => setTimeout(resolve, 2000)),
+        ]);
+        void router.replace(`/w/${owner.sId}`);
+      })();
+    } else if (checkoutPayment.status === "failed") {
+      setPhaseError({ kind: "activation_failed" });
+      setPhase("error");
+    }
+    // pending: keep polling
+  }, [phase, checkoutPayment, mutateAuthContext, router, owner.sId]);
+
   const {
     register: registerCoupon,
     handleSubmit: handleCouponSubmit,
@@ -160,12 +221,20 @@ export function CheckoutPage() {
 
   const couponCodeValue = watchCoupon("couponCode");
 
+  const fallbackCurrency = useUserBillingCurrency();
+
   const initSession = useCallback(
     async (couponCodeArg?: string) => {
       setClientSecret(null);
       const result = await createSession({
         billingPeriod,
         couponCode: couponCodeArg,
+        ...(isMetronomeCheckout && seatType
+          ? {
+              seatType,
+              targetUserId: targetUserId ?? undefined,
+            }
+          : {}),
       });
       if (!result) {
         void router.back();
@@ -183,7 +252,14 @@ export function CheckoutPage() {
           assertNeverAndIgnore(result);
       }
     },
-    [billingPeriod, createSession, router]
+    [
+      billingPeriod,
+      createSession,
+      router,
+      isMetronomeCheckout,
+      seatType,
+      targetUserId,
+    ]
   );
 
   // Force light mode — Stripe embedded checkout does not support dark mode.
@@ -229,6 +305,45 @@ export function CheckoutPage() {
     confirmCalledRef.current = true;
     setPhase("confirming");
 
+    if (isMetronomeCheckout) {
+      // CP path: dedicated business activation endpoint — always returns
+      // activationPending or an error, never a direct success.
+      const result = await initiateBusinessActivation({ setupSessionId });
+      if (!result) {
+        setPhaseError({ kind: "generic" });
+        setPhase("error");
+        return;
+      }
+      if ("error" in result) {
+        switch (result.error) {
+          case "setup_failed":
+            setPhaseError({ kind: "setup_failed" });
+            break;
+          case "payment_failed":
+            setPhaseError({ kind: "payment_failed" });
+            break;
+          case "metronome_error":
+            setPhaseError({ kind: "metronome_error" });
+            break;
+          case "internal_error":
+            setPhaseError({ kind: "internal_error" });
+            break;
+          case "invalid_coupon":
+            setPhaseError({ kind: "invalid_coupon" });
+            break;
+          default:
+            assertNeverAndIgnore(result.error);
+            setPhaseError({ kind: "generic" });
+        }
+        setPhase("error");
+        return;
+      }
+      setPendingContractId(result.contractId);
+      setPhase("waiting_for_payment");
+      return;
+    }
+
+    // Legacy path.
     const result = await confirmPayment({ setupSessionId });
     if (!result) {
       setPhaseError({ kind: "generic" });
@@ -249,6 +364,9 @@ export function CheckoutPage() {
         case "internal_error":
           setPhaseError({ kind: "internal_error" });
           break;
+        case "invalid_coupon":
+          setPhaseError({ kind: "invalid_coupon" });
+          break;
         default:
           assertNeverAndIgnore(result.error);
           setPhaseError({ kind: "generic" });
@@ -264,7 +382,15 @@ export function CheckoutPage() {
       new Promise<void>((resolve) => setTimeout(resolve, 2000)),
     ]);
     void router.replace(`/w/${owner.sId}`);
-  }, [setupSessionId, confirmPayment, mutateAuthContext, router, owner.sId]);
+  }, [
+    setupSessionId,
+    isMetronomeCheckout,
+    initiateBusinessActivation,
+    confirmPayment,
+    mutateAuthContext,
+    router,
+    owner.sId,
+  ]);
 
   const handleCardCaptureComplete = useCallback(() => {
     setPhase("payment_review");
@@ -277,6 +403,7 @@ export function CheckoutPage() {
     setPhaseError(null);
     setAppliedCoupon(null);
     setPreparePayment(null);
+    setPendingContractId(null);
     resetCoupon();
     confirmCalledRef.current = false;
     setPhase("card_capture");
@@ -303,27 +430,52 @@ export function CheckoutPage() {
     setIsSessionRefreshing(false);
   });
 
-  const fallbackCurrency = useUserBillingCurrency();
-
   const showActualTax = preparePayment !== null;
 
   const currency = showActualTax ? preparePayment.currency : fallbackCurrency;
   const seats = seatsCount ?? 1;
   const isBusiness = isWhitelistedBusinessPlan(owner);
-  const seatPricePerMonthCents =
-    (isBusiness
-      ? BUSINESS_PLAN_COST_MONTHLY
-      : billingPeriod === "monthly"
-        ? PRO_PLAN_COST_MONTHLY
-        : PRO_PLAN_COST_YEARLY) * 100;
-  const monthsInPeriod = billingPeriod === "yearly" ? 12 : 1;
-  const seatPriceCents = seatPricePerMonthCents * monthsInPeriod;
-  const subtotalCents = seatPriceCents * seats;
+
+  // Compute seat price for order summary.
+  // CP checkout: USD prices only. Yearly = per-month price × 12.
+  // Legacy: use existing plan cost constants.
+  let seatPriceCents: number;
+  if (isMetronomeCheckout && seatType) {
+    const monthlyPrice =
+      seatType === "pro" ? CP_PRO_SEAT_COST_MONTHLY : CP_MAX_SEAT_COST_MONTHLY;
+    const yearlyMonthlyPrice =
+      seatType === "pro" ? CP_PRO_SEAT_COST_YEARLY : CP_MAX_SEAT_COST_YEARLY;
+    seatPriceCents =
+      billingPeriod === "monthly"
+        ? monthlyPrice * 100
+        : yearlyMonthlyPrice * 12 * 100;
+  } else {
+    const seatPricePerMonthCents =
+      (isBusiness
+        ? BUSINESS_PLAN_COST_MONTHLY
+        : billingPeriod === "monthly"
+          ? PRO_PLAN_COST_MONTHLY
+          : PRO_PLAN_COST_YEARLY) * 100;
+    const monthsInPeriod = billingPeriod === "yearly" ? 12 : 1;
+    seatPriceCents = seatPricePerMonthCents * monthsInPeriod;
+  }
+
+  const seatCountForSummary = isMetronomeCheckout ? 1 : seats;
+  const subtotalCents = seatPriceCents * seatCountForSummary;
   const couponDiscountCents =
     appliedCoupon !== null
       ? Math.min(appliedCoupon.amount * 100, subtotalCents)
       : 0;
   const totalDueTodayCents = subtotalCents - couponDiscountCents;
+
+  // Plan display name.
+  const planDisplayName = isMetronomeCheckout
+    ? seatType === "pro"
+      ? "Pro seat"
+      : "Max seat"
+    : isBusiness
+      ? "Business plan"
+      : "Pro plan";
 
   if (!isInitialized) {
     return null;
@@ -354,7 +506,7 @@ export function CheckoutPage() {
           <div className="flex flex-col">
             <span className="text-base text-muted-foreground">Your plan</span>
             <h1 className="text-5xl font-semibold text-foreground">
-              {isBusiness ? "Business plan" : "Pro plan"}
+              {planDisplayName}
             </h1>
             <span className="text-sm text-muted-foreground">
               {billingPeriod === "yearly"
@@ -379,7 +531,9 @@ export function CheckoutPage() {
             </div>
             <div className="mt-3 flex justify-between">
               <span className="text-muted-foreground">Number of seats</span>
-              <span>{showActualTax ? preparePayment.seatCount : seats}</span>
+              <span>
+                {showActualTax ? preparePayment.seatCount : seatCountForSummary}
+              </span>
             </div>
             <div className="mt-6 flex justify-between border-t border-separator pt-3 font-medium">
               <span>Subtotal (excl. taxes)</span>
@@ -393,8 +547,8 @@ export function CheckoutPage() {
               </span>
             </div>
 
-            {COUPONS_ENABLED &&
-              !appliedCoupon &&
+            {!appliedCoupon &&
+              phase === "card_capture" &&
               (showCouponInput ? (
                 <div className="mt-4 flex flex-col gap-2">
                   <div className="flex gap-2">
@@ -430,19 +584,21 @@ export function CheckoutPage() {
                 </div>
               ))}
 
-            {COUPONS_ENABLED && appliedCoupon && (
+            {appliedCoupon && (
               <div className="mt-4 flex flex-col gap-1">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-sm text-muted-foreground">
-                    <Icon visual={TagIcon} size="xs" />
+                    <Icon visual={Tag01} size="xs" />
                     <span className="font-medium">{appliedCoupon.code}</span>
-                    <button
-                      type="button"
-                      onClick={handleRemoveCoupon}
-                      className="ml-0.5 hover:text-foreground"
-                    >
-                      <Icon visual={XMarkIcon} size="xs" />
-                    </button>
+                    {phase === "card_capture" && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveCoupon}
+                        className="ml-0.5 hover:text-foreground"
+                      >
+                        <Icon visual={XClose} size="xs" />
+                      </button>
+                    )}
                   </div>
                   <span className="text-sm text-success-500">
                     −
@@ -581,11 +737,7 @@ function RightPane({
       if (isPreparePaymentError) {
         return (
           <div className="flex flex-col items-center gap-6 text-center">
-            <Icon
-              visual={ActionXCircleIcon}
-              size="2xl"
-              className="text-warning-500"
-            />
+            <Icon visual={XCircle} size="2xl" className="text-warning-500" />
             <div className="flex flex-col gap-3">
               <h2 className="text-2xl font-semibold text-foreground">
                 Couldn&apos;t load payment details
@@ -633,7 +785,7 @@ function RightPane({
                 label="Confirm payment"
                 onClick={onConfirmPayment}
                 size="md"
-                icon={LockIcon}
+                icon={Lock01}
                 className="w-full"
               />
             </>
@@ -649,14 +801,18 @@ function RightPane({
         </div>
       );
 
+    case "waiting_for_payment":
+      return (
+        <div className="flex flex-col items-center gap-4">
+          <Spinner size="lg" />
+          <p className="text-sm text-muted-foreground">Processing payment…</p>
+        </div>
+      );
+
     case "activating":
       return (
         <div className="flex flex-col items-center gap-6 text-center">
-          <Icon
-            visual={ActionCheckCircleIcon}
-            size="2xl"
-            className="text-success-500"
-          />
+          <Icon visual={CheckCircle} size="2xl" className="text-success-500" />
           <h2 className="text-2xl font-semibold text-foreground">
             Thanks for subscribing
           </h2>
@@ -667,11 +823,7 @@ function RightPane({
       if (phaseError?.kind === "metronome_error") {
         return (
           <div className="flex flex-col items-center gap-6 text-center">
-            <Icon
-              visual={ActionXCircleIcon}
-              size="2xl"
-              className="text-warning-500"
-            />
+            <Icon visual={XCircle} size="2xl" className="text-warning-500" />
             <div className="flex flex-col gap-3">
               <h2 className="text-2xl font-semibold text-foreground">
                 Something went wrong in your subscription
@@ -691,13 +843,52 @@ function RightPane({
           </div>
         );
       }
+      if (phaseError?.kind === "activation_failed") {
+        return (
+          <div className="flex flex-col items-center gap-6 text-center">
+            <Icon visual={XCircle} size="2xl" className="text-warning-500" />
+            <div className="flex flex-col gap-3">
+              <h2 className="text-2xl font-semibold text-foreground">
+                Payment could not be processed
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Your subscription could not be activated. You have not been
+                charged. Please try again.
+                <br />
+                If the issue persists, contact us at{" "}
+                <a
+                  href="mailto:support@dust.tt"
+                  className="text-primary underline"
+                >
+                  support@dust.tt
+                </a>
+                .
+              </p>
+            </div>
+            <Button label="Try again" onClick={onRestart} />
+          </div>
+        );
+      }
+      if (phaseError?.kind === "invalid_coupon") {
+        return (
+          <div className="flex flex-col items-center gap-6 text-center">
+            <Icon visual={XCircle} size="2xl" className="text-warning-500" />
+            <div className="flex flex-col gap-3">
+              <h2 className="text-2xl font-semibold text-foreground">
+                Coupon no longer valid
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                This coupon is no longer valid. You have not been charged.
+                Please try again with a different code.
+              </p>
+            </div>
+            <Button label="Try again" onClick={onRestart} />
+          </div>
+        );
+      }
       return (
         <div className="flex flex-col items-center gap-6 text-center">
-          <Icon
-            visual={ActionXCircleIcon}
-            size="2xl"
-            className="text-warning-500"
-          />
+          <Icon visual={XCircle} size="2xl" className="text-warning-500" />
           <div className="flex flex-col gap-3">
             <h2 className="text-2xl font-semibold text-foreground">
               Payment failed

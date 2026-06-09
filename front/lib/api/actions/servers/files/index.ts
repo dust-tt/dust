@@ -2,12 +2,8 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
-import {
-  TOOLS,
-  TOOLS_WITH_PROJECT,
-} from "@app/lib/api/actions/servers/files/tools";
+import { TOOLS } from "@app/lib/api/actions/servers/files/tools";
 import type { Authenticator } from "@app/lib/auth";
-import { isProjectConversation } from "@app/types/assistant/conversation";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 function createServer(
@@ -16,14 +12,7 @@ function createServer(
 ): McpServer {
   const server = makeInternalMCPServer(FILES_SERVER_NAME);
 
-  const conversation =
-    agentLoopContext?.runContext?.conversation ??
-    agentLoopContext?.listToolsContext?.conversation;
-  const isConversationInProject = conversation
-    ? isProjectConversation(conversation)
-    : false;
-
-  for (const tool of isConversationInProject ? TOOLS_WITH_PROJECT : TOOLS) {
+  for (const tool of TOOLS) {
     registerTool(auth, agentLoopContext, server, tool, {
       monitoringName: FILES_SERVER_NAME,
     });

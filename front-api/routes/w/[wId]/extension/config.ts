@@ -1,23 +1,47 @@
-import { Hono } from "hono";
-
+import type { GetExtensionConfigResponseBody } from "@app/lib/resources/extension";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
-
-export type GetExtensionConfigResponseBody = {
-  blacklistedDomains: string[];
-};
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
 
 // Mounted at /api/w/:wId/extension/config.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+/**
+ * @swagger
+ * /api/w/{wId}/extension/config:
+ *   get:
+ *     summary: Get extension configuration
+ *     description: Returns the extension configuration for the workspace, including blacklisted domains.
+ *     tags:
+ *       - Private Extension
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Extension configuration
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PrivateExtensionConfig'
+ *       401:
+ *         description: Unauthorized
+ */
+
+app.get("/", async (ctx): HandlerResult<GetExtensionConfigResponseBody> => {
+  const auth = ctx.get("auth");
 
   const config = await ExtensionConfigurationResource.fetchForWorkspace(auth);
 
-  const body: GetExtensionConfigResponseBody = {
+  return ctx.json({
     blacklistedDomains: config?.blacklistedDomains ?? [],
-  };
-  return c.json(body);
+  });
 });
 
 export default app;

@@ -1,68 +1,60 @@
+import { FileExplorerBreadcrumb } from "@app/components/file_explorer/FileExplorerBreadcrumb";
 import { FileExplorerContent } from "@app/components/file_explorer/FileExplorerContent";
 import { FileExplorerFilters } from "@app/components/file_explorer/FileExplorerFilters";
 import type { ViewMode } from "@app/components/file_explorer/FileExplorerItem";
 import { FileExplorerToolbar } from "@app/components/file_explorer/FileExplorerToolbar";
 import { FilePreviewDialog } from "@app/components/file_explorer/FilePreviewDialog";
+import { canMoveFileToParentFolder } from "@app/components/file_explorer/fileExplorerDragDrop";
 import { getFileExplorerPipeline } from "@app/components/file_explorer/fileExplorerPipeline";
+import { MoveFileToFolderDialog } from "@app/components/file_explorer/MoveFileToFolderDialog";
 import type {
   ContentNodeEntry,
   FileEntry,
+  FileEntryWithId,
   FileExplorerEntry,
   FileExplorerFilter,
   FileExplorerMenuAction,
   FileExplorerSortMode,
-  SandboxTreeNode,
+  FileSystemTreeNode,
+  FolderEntry,
 } from "@app/components/file_explorer/types";
-import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
-import type { GCSMountEntry } from "@app/lib/api/files/gcs_mount/files";
-import { isInteractiveContentType } from "@app/types/files";
 import {
-  type BreadcrumbItem,
-  Breadcrumbs,
-  Button,
-  cn,
-  PencilSquareIcon,
-  TrashIcon,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
+  buildFolderTree,
+  countFoldersInTree,
+  getFolderBreadcrumbSegments,
+  getScopedRelativePath,
+  isFileExplorerMovableFile,
+} from "@app/components/file_explorer/utils";
+import type { FileSystemEntry } from "@app/lib/api/file_system/types";
+import { isInteractiveContentType } from "@app/types/files";
+import { Err, type Result } from "@app/types/shared/result";
+import { cn, Edit04, FolderOpen, Trash01 } from "@dust-tt/sparkle";
 import type React from "react";
-import { useCallback, useMemo, useState } from "react";
-
-interface FileExplorerBreadcrumbProps {
-  folderStack: SandboxTreeNode[];
-  onNavigate: (index: number) => void;
-}
-
-function FileExplorerBreadcrumb({
-  folderStack,
-  onNavigate,
-}: FileExplorerBreadcrumbProps) {
-  const items: BreadcrumbItem[] = [
-    { label: "All files", onClick: () => onNavigate(-1) },
-    ...folderStack.map((node, i) => ({
-      label: node.name,
-      onClick: () => onNavigate(i),
-    })),
-  ];
-
-  return <Breadcrumbs items={items} size="sm" />;
-}
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface FileExplorerProps {
   contentClassName?: string;
   contentNodes?: ContentNodeEntry[];
   defaultViewMode?: ViewMode;
   emptyState?: React.ReactNode;
-  hideTitleBorder?: boolean;
-  files: GCSMountEntry[];
+  hideBreadcrumbAtRoot?: boolean;
+  files: FileSystemEntry[];
   getFileUrl: (path: string) => string;
-  headerActions?: React.ReactNode;
+  toolbarExtraActions?: React.ReactNode;
   isLoading: boolean;
-  onClose?: () => void;
+  navigationResetKey?: number;
+  onCurrentFolderChange?: (relativePath: string) => void;
   onDelete?: (entry: FileExplorerEntry) => Promise<void>;
   onFileDownload: (entry: FileEntry) => Promise<void>;
-  onOpenInteractive?: (fileId: string) => void;
-  onRename?: (entry: FileEntry) => void;
+  onMoveFile?: (
+    entry: FileEntry,
+    parentRelativePath: string
+  ) => Promise<Result<void, Error>>;
+  onOpenInteractive?: (entry: FileEntryWithId) => void;
+  onRename?: (entry: FileEntry | FolderEntry) => void;
+  getExtraFileMenuItems?: (
+    entry: FileExplorerEntry
+  ) => FileExplorerMenuAction[];
 }
 
 export function FileExplorer({
@@ -72,16 +64,35 @@ export function FileExplorer({
   emptyState,
   files,
   getFileUrl,
-  headerActions,
-  hideTitleBorder = false,
+  toolbarExtraActions,
+  hideBreadcrumbAtRoot = false,
   isLoading,
-  onClose,
+  navigationResetKey,
+  onCurrentFolderChange,
   onDelete,
   onFileDownload,
+  onMoveFile,
   onOpenInteractive,
   onRename,
+  getExtraFileMenuItems,
 }: FileExplorerProps) {
-  const [folderStack, setFolderStack] = useState<SandboxTreeNode[]>([]);
+  const [currentFolderPath, setCurrentFolderPath] = useState("");
+  const prevNavigationResetKey = useRef(navigationResetKey);
+
+  useEffect(() => {
+    onCurrentFolderChange?.(currentFolderPath);
+  }, [currentFolderPath, onCurrentFolderChange]);
+
+  useEffect(() => {
+    if (
+      navigationResetKey !== undefined &&
+      prevNavigationResetKey.current !== navigationResetKey
+    ) {
+      setCurrentFolderPath("");
+    }
+    prevNavigationResetKey.current = navigationResetKey;
+  }, [navigationResetKey]);
+
   const [viewMode, setViewMode] = useState<ViewMode>(defaultViewMode);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FileExplorerFilter>("all");
@@ -89,6 +100,8 @@ export function FileExplorer({
     useState<FileExplorerSortMode>("last-modified");
   const [previewFile, setPreviewFile] = useState<FileEntry | null>(null);
   const [showPreviewSheet, setShowPreviewSheet] = useState(false);
+  const [fileToMove, setFileToMove] = useState<FileEntry | null>(null);
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
 
   const {
     sortedNodes,
@@ -101,32 +114,62 @@ export function FileExplorer({
     () =>
       getFileExplorerPipeline({
         contentNodes,
+        currentFolderPath,
         files,
-        folderStack,
         searchQuery,
         activeFilter,
         sortMode,
       }),
-    [contentNodes, files, folderStack, searchQuery, activeFilter, sortMode]
+    [
+      contentNodes,
+      currentFolderPath,
+      files,
+      searchQuery,
+      activeFilter,
+      sortMode,
+    ]
+  );
+
+  const folderTree = useMemo(() => buildFolderTree(files), [files]);
+  const totalFolderCount = useMemo(
+    () => countFoldersInTree(folderTree),
+    [folderTree]
   );
 
   const getMenuItems = useCallback(
     (entry: FileExplorerEntry): FileExplorerMenuAction[] => {
-      const items: FileExplorerMenuAction[] = [];
-      if (onRename && entry.kind === "file") {
+      const items: FileExplorerMenuAction[] =
+        getExtraFileMenuItems?.(entry) ?? [];
+      if (onRename && (entry.kind === "file" || entry.kind === "folder")) {
         items.push({
           label: "Rename",
-          icon: PencilSquareIcon,
+          icon: Edit04,
           onClick: (e) => {
             e.stopPropagation();
             onRename(entry);
           },
         });
       }
+      if (
+        onMoveFile &&
+        totalFolderCount > 0 &&
+        entry.kind === "file" &&
+        isFileExplorerMovableFile(entry)
+      ) {
+        items.push({
+          label: "Move to…",
+          icon: FolderOpen,
+          onClick: (e) => {
+            e.stopPropagation();
+            setFileToMove(entry);
+            setShowMoveDialog(true);
+          },
+        });
+      }
       if (onDelete) {
         items.push({
           label: entry.kind === "node" ? "Remove" : "Delete",
-          icon: TrashIcon,
+          icon: Trash01,
           variant: "warning",
           onClick: (e) => {
             e.stopPropagation();
@@ -136,16 +179,54 @@ export function FileExplorer({
       }
       return items;
     },
-    [onDelete, onRename]
+    [getExtraFileMenuItems, onDelete, onMoveFile, onRename, totalFolderCount]
+  );
+
+  const handleMoveToFolder = useCallback(
+    async (parentRelativePath: string) => {
+      if (!fileToMove || !onMoveFile) {
+        return new Err(new Error("No file selected to move."));
+      }
+      return onMoveFile(fileToMove, parentRelativePath);
+    },
+    [fileToMove, onMoveFile]
   );
 
   const handleBreadcrumbNavigate = (index: number) => {
-    setFolderStack((prev) => (index < 0 ? [] : prev.slice(0, index + 1)));
+    if (index < 0) {
+      setCurrentFolderPath("");
+      return;
+    }
+
+    const segments = getFolderBreadcrumbSegments(currentFolderPath);
+    setCurrentFolderPath(segments[index]?.path ?? "");
   };
 
-  const handleFolderNavigate = (node: SandboxTreeNode) => {
-    setFolderStack((prev) => [...prev, node]);
+  const handleFolderNavigate = (node: FileSystemTreeNode) => {
+    setCurrentFolderPath(node.path);
   };
+
+  const fileDragEnabled = Boolean(onMoveFile && totalFolderCount > 0);
+
+  const handleMoveFileDrop = useCallback(
+    async (scopedFilePath: string, parentRelativePath: string) => {
+      if (
+        !onMoveFile ||
+        !canMoveFileToParentFolder(scopedFilePath, parentRelativePath)
+      ) {
+        return;
+      }
+
+      const relativePath = getScopedRelativePath(scopedFilePath);
+      const entry = entryByRelativePath.get(relativePath);
+      if (entry?.kind !== "file" || !isFileExplorerMovableFile(entry)) {
+        return;
+      }
+
+      await onMoveFile(entry, parentRelativePath);
+    },
+    [entryByRelativePath, onMoveFile]
+  );
 
   const handleFileOpen = (entry: FileEntry) => {
     if (
@@ -153,7 +234,7 @@ export function FileExplorer({
       isInteractiveContentType(entry.contentType) &&
       entry.fileId
     ) {
-      onOpenInteractive(entry.fileId);
+      onOpenInteractive({ ...entry, fileId: entry.fileId });
       return;
     }
     setPreviewFile(entry);
@@ -182,40 +263,31 @@ export function FileExplorer({
       ? () => setPreviewFile(fileEntriesAtLevel[previewIndex + 1] ?? null)
       : undefined;
 
+  const showBreadcrumb = !(hideBreadcrumbAtRoot && currentFolderPath === "");
+
   return (
     <>
       <div className="flex h-full w-full min-h-0 flex-1 flex-col">
-        <AppLayoutTitle className={hideTitleBorder ? "border-b-0" : undefined}>
+        <div
+          className={cn("flex flex-1 min-h-0 flex-col gap-5", contentClassName)}
+        >
+          {showBreadcrumb && (
+            <div className={cn("px-4", hideBreadcrumbAtRoot && "pt-5")}>
+              <FileExplorerBreadcrumb
+                currentFolderPath={currentFolderPath}
+                onNavigate={handleBreadcrumbNavigate}
+                onMoveFileDrop={
+                  fileDragEnabled ? handleMoveFileDrop : undefined
+                }
+              />
+            </div>
+          )}
           <div
             className={cn(
-              "flex h-full items-center justify-between gap-2 px-4",
-              contentClassName
+              "px-4",
+              hideBreadcrumbAtRoot && !showBreadcrumb && "pt-5"
             )}
           >
-            <FileExplorerBreadcrumb
-              folderStack={folderStack}
-              onNavigate={handleBreadcrumbNavigate}
-            />
-            <div className="flex items-center gap-2">
-              {headerActions}
-              {onClose && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  icon={XMarkIcon}
-                  onClick={onClose}
-                />
-              )}
-            </div>
-          </div>
-        </AppLayoutTitle>
-        <div
-          className={cn(
-            "flex flex-1 min-h-0 flex-col gap-5 pt-5",
-            contentClassName
-          )}
-        >
-          <div className="px-4">
             <FileExplorerToolbar
               searchQuery={searchQuery}
               onSearchQueryChange={setSearchQuery}
@@ -223,15 +295,18 @@ export function FileExplorer({
               onViewModeChange={setViewMode}
               sortMode={sortMode}
               onSortModeChange={setSortMode}
+              toolbarExtraActions={toolbarExtraActions}
             />
           </div>
-          <div className="px-4">
-            <FileExplorerFilters
-              active={activeFilter}
-              onActiveChange={setActiveFilter}
-              counts={filterCounts}
-            />
-          </div>
+          {Object.keys(filterCounts).length > 1 && (
+            <div className="px-4">
+              <FileExplorerFilters
+                active={activeFilter}
+                onActiveChange={setActiveFilter}
+                counts={filterCounts}
+              />
+            </div>
+          )}
           <FileExplorerContent
             isLoading={isLoading}
             sortedNodes={sortedNodes}
@@ -239,24 +314,40 @@ export function FileExplorer({
             viewMode={viewMode}
             isEmpty={fileCount === 0 && folderCount === 0}
             emptyState={emptyState}
+            fileDragEnabled={fileDragEnabled}
             onFolderNavigate={handleFolderNavigate}
             onFileOpen={handleFileOpen}
             onFileDownload={onFileDownload}
+            onMoveFileDrop={fileDragEnabled ? handleMoveFileDrop : undefined}
             onNodeOpen={handleNodeOpen}
-            getFileMenuItems={onDelete || onRename ? getMenuItems : undefined}
+            getFileMenuItems={
+              onDelete || onRename || onMoveFile || getExtraFileMenuItems
+                ? getMenuItems
+                : undefined
+            }
           />
         </div>
       </div>
 
       <FilePreviewDialog
         entry={previewFile}
-        getFileUrl={getFileUrl}
+        fileUrl={previewFile ? getFileUrl(previewFile.path) : null}
         isOpen={showPreviewSheet}
         onOpenChange={setShowPreviewSheet}
         onDownload={onFileDownload}
         onPrev={handlePreviewPrev}
         onNext={handlePreviewNext}
       />
+
+      {onMoveFile && (
+        <MoveFileToFolderDialog
+          folderTree={folderTree}
+          file={fileToMove}
+          isOpen={showMoveDialog}
+          onClose={() => setShowMoveDialog(false)}
+          onMove={handleMoveToFolder}
+        />
+      )}
     </>
   );
 }

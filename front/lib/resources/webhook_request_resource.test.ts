@@ -13,13 +13,15 @@ describe("WebhookRequestResource", () => {
       });
 
       const result =
-        await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
+        await WebhookRequestResource.getWorkspacesWithTooManyRequests({
           maxWebhookRequestsToKeep: 1000,
           webhookRequestTtl: "30 day",
         });
 
       expect(Array.isArray(result)).toBe(true);
-      expect(result).not.toContain(workspace.id);
+      expect(result.map((workspace) => workspace.id)).not.toContain(
+        workspace.id
+      );
     });
 
     it("should return workspaces that exceed max webhook requests limit", async () => {
@@ -53,12 +55,12 @@ describe("WebhookRequestResource", () => {
       await WebhookRequestModel.bulkCreate(requests);
 
       const result =
-        await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
+        await WebhookRequestResource.getWorkspacesWithTooManyRequests({
           maxWebhookRequestsToKeep: 3,
           webhookRequestTtl: "30 day",
         });
 
-      expect(result).toContain(workspace.id);
+      expect(result.map((workspace) => workspace.id)).toContain(workspace.id);
     });
 
     it("should respect the custom maxWebhookRequestsToKeep parameter", async () => {
@@ -93,12 +95,12 @@ describe("WebhookRequestResource", () => {
 
       // With custom limit of 3, this workspace should be returned
       const result =
-        await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
+        await WebhookRequestResource.getWorkspacesWithTooManyRequests({
           maxWebhookRequestsToKeep: 3,
           webhookRequestTtl: "30 day",
         });
 
-      expect(result).toContain(workspace.id);
+      expect(result.map((workspace) => workspace.id)).toContain(workspace.id);
     });
 
     it("should return workspaces with old requests beyond TTL", async () => {
@@ -125,12 +127,12 @@ describe("WebhookRequestResource", () => {
       });
 
       const result =
-        await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
+        await WebhookRequestResource.getWorkspacesWithTooManyRequests({
           maxWebhookRequestsToKeep: 1000,
           webhookRequestTtl: "30 day",
         });
 
-      expect(result).toContain(workspace.id);
+      expect(result.map((workspace) => workspace.id)).toContain(workspace.id);
     });
 
     it("should not return workspaces with old requests within TTL", async () => {
@@ -157,12 +159,14 @@ describe("WebhookRequestResource", () => {
       });
 
       const result =
-        await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
+        await WebhookRequestResource.getWorkspacesWithTooManyRequests({
           maxWebhookRequestsToKeep: 1000,
           webhookRequestTtl: "30 day",
         });
 
-      expect(result).not.toContain(workspace.id);
+      expect(result.map((workspace) => workspace.id)).not.toContain(
+        workspace.id
+      );
     });
 
     it("should handle multiple workspaces correctly", async () => {
@@ -242,16 +246,18 @@ describe("WebhookRequestResource", () => {
         updatedAt: oldDate,
       });
 
-      const result =
-        await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
+      const workspaces =
+        await WebhookRequestResource.getWorkspacesWithTooManyRequests({
           maxWebhookRequestsToKeep: 3,
           webhookRequestTtl: "30 day",
         });
 
+      const workspaceIds = workspaces.map((workspace) => workspace.id);
+
       // Workspace 1 and 3 should be returned, but not workspace 2
-      expect(result).toContain(workspace1.id);
-      expect(result).not.toContain(workspace2.id);
-      expect(result).toContain(workspace3.id);
+      expect(workspaceIds).toContain(workspace1.id);
+      expect(workspaceIds).not.toContain(workspace2.id);
+      expect(workspaceIds).toContain(workspace3.id);
     });
 
     it("should return results sorted by workspaceId ascending", async () => {
@@ -295,15 +301,15 @@ describe("WebhookRequestResource", () => {
       });
 
       const result =
-        await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
+        await WebhookRequestResource.getWorkspacesWithTooManyRequests({
           maxWebhookRequestsToKeep: 1000,
           webhookRequestTtl: "30 day",
         });
 
       // Filter to only include our test workspaces
-      const testResult = result.filter(
-        (id) => id === workspace1.id || id === workspace2.id
-      );
+      const testResult = result
+        .filter(({ id }) => id === workspace1.id || id === workspace2.id)
+        .map(({ id }) => id);
 
       // Verify sorted order
       if (testResult.length > 1) {
@@ -361,13 +367,13 @@ describe("WebhookRequestResource", () => {
       await WebhookRequestModel.bulkCreate(requests);
 
       const result =
-        await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
+        await WebhookRequestResource.getWorkspacesWithTooManyRequests({
           maxWebhookRequestsToKeep: 3,
           webhookRequestTtl: "30 day",
         });
 
       // Total of 5 requests, should exceed limit of 3
-      expect(result).toContain(workspace.id);
+      expect(result.map((workspace) => workspace.id)).toContain(workspace.id);
     });
 
     it("should use default constants when not provided", async () => {
@@ -402,11 +408,11 @@ describe("WebhookRequestResource", () => {
 
       // Call with only the custom maxWebhookRequestsToKeep to test defaults for TTL
       const result =
-        await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
+        await WebhookRequestResource.getWorkspacesWithTooManyRequests({
           maxWebhookRequestsToKeep: 3,
         });
 
-      expect(result).toContain(workspace.id);
+      expect(result.map((workspace) => workspace.id)).toContain(workspace.id);
     });
 
     it("should handle edge case at boundary of max requests", async () => {
@@ -440,13 +446,15 @@ describe("WebhookRequestResource", () => {
       await WebhookRequestModel.bulkCreate(requests);
 
       let result =
-        await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
+        await WebhookRequestResource.getWorkspacesWithTooManyRequests({
           maxWebhookRequestsToKeep: 3,
           webhookRequestTtl: "30 day",
         });
 
       // Should not be returned (HAVING COUNT(*) > limit)
-      expect(result).not.toContain(workspace.id);
+      expect(result.map((workspace) => workspace.id)).not.toContain(
+        workspace.id
+      );
 
       // Add one more request to exceed limit
       await WebhookRequestModel.create({
@@ -457,13 +465,13 @@ describe("WebhookRequestResource", () => {
         updatedAt: new Date(),
       });
 
-      result = await WebhookRequestResource.getWorkspaceIdsWithTooManyRequests({
+      result = await WebhookRequestResource.getWorkspacesWithTooManyRequests({
         maxWebhookRequestsToKeep: 3,
         webhookRequestTtl: "30 day",
       });
 
       // Should now be returned (4 > 3)
-      expect(result).toContain(workspace.id);
+      expect(result.map((workspace) => workspace.id)).toContain(workspace.id);
     });
   });
 

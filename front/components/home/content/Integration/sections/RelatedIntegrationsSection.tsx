@@ -5,7 +5,7 @@ import {
   getIcon,
   ResourceAvatar,
 } from "@app/components/resources/resources_icons";
-import { ArrowRightIcon } from "@dust-tt/sparkle";
+import { ArrowRight } from "@dust-tt/sparkle";
 import Link from "next/link";
 
 import type { IntegrationBase } from "../types";
@@ -46,7 +46,7 @@ export function RelatedIntegrationsSection({
               </span>
               <span className="mt-3 flex items-center gap-1 text-xs font-medium text-green-600 opacity-0 transition-opacity group-hover:opacity-100">
                 Learn more
-                <ArrowRightIcon className="h-3 w-3" />
+                <ArrowRight className="h-3 w-3" />
               </span>
             </Link>
           );
@@ -59,7 +59,7 @@ export function RelatedIntegrationsSection({
           className="inline-flex items-center gap-2 text-sm font-medium text-green-600 hover:text-green-700"
         >
           View all integrations
-          <ArrowRightIcon className="h-4 w-4" />
+          <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
     </div>

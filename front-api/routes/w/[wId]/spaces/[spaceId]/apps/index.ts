@@ -1,17 +1,19 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
+import type {
+  GetAppsResponseBody,
+  PostAppResponseBody,
+} from "@app/lib/api/apps";
 import config from "@app/lib/api/config";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
 import { APP_NAME_REGEXP } from "@app/types/app";
 import { CoreAPI } from "@app/types/core/core_api";
-
-import { spaceResource } from "@front-api/middleware/space_resource";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withSpace } from "@front-api/middlewares/with_space";
+import { z } from "zod";
 
 import aId from "./[aId]";
 
@@ -21,32 +23,33 @@ const PostAppBodySchema = z.object({
 });
 
 // Mounted under /api/w/:wId/spaces/:spaceId/apps.
-const app = new Hono();
+const app = workspaceApp();
 
 // GET / — list apps in space.
+/** @ignoreswagger */
 app.get(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  withSpace({ requireCanReadOrAdministrate: true }),
+  async (ctx): HandlerResult<GetAppsResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
     const apps = await AppResource.listBySpace(auth, space);
-    return c.json({ apps: apps.map((a) => a.toJSON()) });
+    return ctx.json({ apps: apps.map((a) => a.toJSON()) });
   }
 );
 
 // POST / — create app.
 app.post(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
   validate("json", PostAppBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx): HandlerResult<PostAppResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
     const owner = auth.getNonNullableWorkspace();
 
     if (!space.canWrite(auth) || !auth.isBuilder()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
@@ -56,9 +59,9 @@ app.post(
       });
     }
 
-    const { name, description } = c.req.valid("json");
+    const { name, description } = ctx.req.valid("json");
     if (!APP_NAME_REGEXP.test(name)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -71,7 +74,7 @@ app.post(
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const p = await coreAPI.createProject();
     if (p.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -92,7 +95,7 @@ app.post(
       },
       space
     );
-    return c.json({ app: created.toJSON() }, 201);
+    return ctx.json({ app: created.toJSON() }, 201);
   }
 );
 

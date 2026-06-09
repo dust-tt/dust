@@ -1,17 +1,15 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import { isRemoteMCPServerError } from "@app/lib/actions/mcp_errors";
-import type { MCPServerType, MCPServerTypeWithViews } from "@app/lib/api/mcp";
+import type { GetMCPServersResponseBody } from "@app/lib/api/mcp";
 import {
   createInternalMCPServer,
   createRemoteMCPServer,
   listMCPServersWithViews,
 } from "@app/lib/api/mcp/servers";
-
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 import server from "./[serverId]";
 import available from "./available";
@@ -21,18 +19,10 @@ import discoverOAuthMetadata from "./discover_oauth_metadata";
 import heartbeat from "./heartbeat";
 import register from "./register";
 import requestAccess from "./request_access";
+import requests from "./requests";
+import results from "./results";
 import usage from "./usage";
 import views from "./views";
-
-export type GetMCPServersResponseBody = {
-  success: true;
-  servers: MCPServerTypeWithViews[];
-};
-
-export type CreateMCPServerResponseBody = {
-  success: true;
-  server: MCPServerType;
-};
 
 const CustomHeadersSchema = z
   .array(z.object({ key: z.string(), value: z.string() }))
@@ -68,17 +58,18 @@ const PostBodySchema = z.discriminatedUnion("serverType", [
 
 // Mounted at /api/w/:wId/mcp. workspaceAuth is applied by the parent
 // workspace sub-app.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+/** @ignoreswagger */
+app.get("/", async (ctx): HandlerResult<GetMCPServersResponseBody> => {
+  const auth = ctx.get("auth");
   const servers = await listMCPServersWithViews(auth);
-  return c.json({ success: true, servers });
+  return ctx.json({ success: true, servers });
 });
 
-app.post("/", validate("json", PostBodySchema), async (c) => {
-  const auth = c.get("auth");
-  const body = c.req.valid("json");
+app.post("/", validate("json", PostBodySchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const body = ctx.req.valid("json");
 
   const result =
     body.serverType === "remote"
@@ -89,7 +80,7 @@ app.post("/", validate("json", PostBodySchema), async (c) => {
     const message = result.error.message;
     if (isRemoteMCPServerError(result.error)) {
       // Non-standard envelope: callers rely on the `isRemoteServerError` flag.
-      return c.json(
+      return ctx.json(
         {
           error: { type: "invalid_request_error", message },
           isRemoteServerError: true,
@@ -97,13 +88,13 @@ app.post("/", validate("json", PostBodySchema), async (c) => {
         400
       );
     }
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: { type: "invalid_request_error", message },
     });
   }
 
-  return c.json({ success: true, server: result.value }, 201);
+  return ctx.json({ success: true, server: result.value }, 201);
 });
 
 app.route("/available", available);
@@ -113,6 +104,8 @@ app.route("/discover_oauth_metadata", discoverOAuthMetadata);
 app.route("/heartbeat", heartbeat);
 app.route("/register", register);
 app.route("/request_access", requestAccess);
+app.route("/requests", requests);
+app.route("/results", results);
 app.route("/usage", usage);
 app.route("/views", views);
 

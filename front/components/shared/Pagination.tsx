@@ -1,5 +1,5 @@
 import { LinkWrapper } from "@app/lib/platform";
-import { ChevronLeftIcon, ChevronRightIcon } from "@dust-tt/sparkle";
+import { ChevronLeft, ChevronRight } from "@dust-tt/sparkle";
 
 type PageNumber = number | "ellipsis-start" | "ellipsis-end";
 
@@ -109,7 +109,7 @@ export function Pagination({
           aria-disabled={!canGoPrev}
           tabIndex={canGoPrev ? undefined : -1}
         >
-          <ChevronLeftIcon className="h-4 w-4" />
+          <ChevronLeft className="h-4 w-4" />
         </LinkWrapper>
 
         {pageNumbers.map((pageNum) =>
@@ -140,7 +140,7 @@ export function Pagination({
           aria-disabled={!canGoNext}
           tabIndex={canGoNext ? undefined : -1}
         >
-          <ChevronRightIcon className="h-4 w-4" />
+          <ChevronRight className="h-4 w-4" />
         </LinkWrapper>
       </div>
 

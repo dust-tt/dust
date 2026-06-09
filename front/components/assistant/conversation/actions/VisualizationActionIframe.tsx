@@ -4,17 +4,18 @@ import { clientFetch } from "@app/lib/egress/client";
 import datadogLogger from "@app/logger/datadogLogger";
 import type {
   CommandResultMap,
+  EditTextFn,
   VisualizationRPCCommand,
   VisualizationRPCRequest,
 } from "@app/types/assistant/visualization";
 import { isVisualizationRPCRequest } from "@app/types/assistant/visualization";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
+  AlertCircle,
   Button,
   CodeBlock,
   ContentMessage,
   cn,
-  ExclamationCircleIcon,
   Markdown,
   Sheet,
   SheetContainer,
@@ -80,6 +81,7 @@ const getExtensionFromBlob = (blob: Blob): string => {
 // Custom hook to encapsulate the logic for handling visualization messages.
 function useVisualizationDataHandler({
   getFileBlob,
+  onEditText,
   setCodeDrawerOpened,
   setContentHeight,
   setErrorMessage,
@@ -87,6 +89,7 @@ function useVisualizationDataHandler({
   vizIframeRef,
 }: {
   getFileBlob: (fileId: string) => Promise<Blob | null>;
+  onEditText?: EditTextFn;
   setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
   setContentHeight: (v: SetStateAction<number>) => void;
   setErrorMessage: (v: SetStateAction<string | null>) => void;
@@ -182,6 +185,26 @@ function useVisualizationDataHandler({
           setCodeDrawerOpened(true);
           break;
 
+        case "editText": {
+          if (onEditText) {
+            const editResult = await onEditText({
+              newText: data.params.newText,
+              oldText: data.params.oldText,
+              targetFileId: data.params.targetFileId,
+            });
+
+            sendResponseToIframe(data, editResult, event.source);
+          } else {
+            sendResponseToIframe(
+              data,
+              { success: false, error: "Editing is not supported here" },
+              event.source
+            );
+          }
+
+          break;
+        }
+
         default:
           assertNever(data);
       }
@@ -193,6 +216,7 @@ function useVisualizationDataHandler({
     code,
     downloadFileFromBlob,
     getFileBlob,
+    onEditText,
     setContentHeight,
     setErrorMessage,
     setCodeDrawerOpened,
@@ -235,12 +259,14 @@ export function CodeDrawer({
 interface VisualizationActionIframeProps {
   agentConfigurationId: string | null;
   conversationId: string | null;
-  spaceId?: string | null;
+  isEditable?: boolean;
   isInDrawer?: boolean;
+  isPublic?: boolean;
+  onEditText?: EditTextFn;
+  spaceId?: string;
   visualization: Visualization;
   vizUrl: string;
   workspaceId: string;
-  isPublic?: boolean;
 }
 
 export const VisualizationActionIframe = forwardRef<
@@ -274,8 +300,11 @@ export const VisualizationActionIframe = forwardRef<
   const {
     agentConfigurationId,
     conversationId,
+    isEditable = false,
     isInDrawer = false,
     isPublic = false,
+    onEditText,
+    spaceId,
     visualization,
     workspaceId,
   } = props;
@@ -284,13 +313,26 @@ export const VisualizationActionIframe = forwardRef<
     async (fileId: string) => {
       let url: string;
 
-      if (fileId.startsWith("conversation/")) {
+      if (fileId.startsWith("conversation-") || fileId.startsWith("pod-")) {
+        // Canonical scoped paths — the global endpoint resolves auth from the prefix.
+        const encodedPath = fileId.split("/").map(encodeURIComponent).join("/");
+        url = `/api/w/${workspaceId}/files/path/${encodedPath}`;
+      } else if (fileId.startsWith("conversation/")) {
+        // Legacy path: normalize to canonical using context conversationId.
         if (!conversationId) {
           return null;
         }
-
-        // TODO(20260428 FILE_SYSTEM): implement space files content endpoint when project-scoped files are added.
-        url = `/api/w/${workspaceId}/assistant/conversations/${conversationId}/files/${fileId}`;
+        const rel = fileId.slice("conversation/".length);
+        url = `/api/w/${workspaceId}/files/path/conversation-${conversationId}/${rel}`;
+      } else if (fileId.startsWith("pod/") || fileId.startsWith("project/")) {
+        // Legacy paths: normalize to canonical using context spaceId.
+        if (!spaceId) {
+          return null;
+        }
+        const rel = fileId.startsWith("pod/")
+          ? fileId.slice("pod/".length)
+          : fileId.slice("project/".length);
+        url = `/api/w/${workspaceId}/files/path/pod-${spaceId}/${rel}`;
       } else {
         url = `/api/w/${workspaceId}/files/${fileId}?action=view`;
       }
@@ -306,11 +348,12 @@ export const VisualizationActionIframe = forwardRef<
         type: response.headers.get("Content-Type") ?? undefined,
       });
     },
-    [workspaceId, conversationId]
+    [workspaceId, conversationId, spaceId]
   );
 
   useVisualizationDataHandler({
     getFileBlob,
+    onEditText,
     setCodeDrawerOpened,
     setContentHeight,
     setErrorMessage,
@@ -359,16 +402,15 @@ export const VisualizationActionIframe = forwardRef<
       params.set("fullHeight", "true");
     }
 
-    return `${props.vizUrl}/content?${params.toString()}`;
-  }, [visualization, isInDrawer, props.vizUrl]);
+    if (isEditable) {
+      params.set("editable", "true");
+    }
+
+    return `${props.vizUrl.replace(/\/$/, "")}/content?${params.toString()}`;
+  }, [visualization, isInDrawer, isEditable, props.vizUrl]);
 
   return (
     <div className={cn("relative flex flex-col", isInDrawer && "h-full")}>
-      {showSpinner && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white">
-          <Spinner size="xl" />
-        </div>
-      )}
       {code && (
         <CodeDrawer
           isOpened={isCodeDrawerOpen}
@@ -379,7 +421,7 @@ export const VisualizationActionIframe = forwardRef<
       <div
         className={cn(
           "relative w-full overflow-hidden",
-          codeFullyGenerated && !isErrored && "min-h-96",
+          codeFullyGenerated && !isErrored && !isInDrawer && "min-h-96",
           errorMessage && "h-full",
           isInDrawer && "h-full"
         )}
@@ -412,7 +454,10 @@ export const VisualizationActionIframe = forwardRef<
                 >
                   <iframe
                     ref={combinedRef}
-                    className={cn("h-full w-full", !errorMessage && "min-h-96")}
+                    className={cn(
+                      "h-full w-full",
+                      !errorMessage && !isInDrawer && "min-h-96"
+                    )}
                     src={vizUrl}
                     sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
                   />
@@ -424,7 +469,7 @@ export const VisualizationActionIframe = forwardRef<
                   <ContentMessage
                     title="Visualization failed"
                     variant="warning"
-                    icon={ExclamationCircleIcon}
+                    icon={AlertCircle}
                     className="max-w-md"
                   >
                     <div className="mb-4 text-sm">
@@ -455,7 +500,7 @@ export const VisualizationActionIframe = forwardRef<
                   <div className="flex flex-col gap-3 text-center">
                     <div className="flex flex-col items-center gap-2 text-center">
                       <div className="flex flex-col items-center gap-2">
-                        <ExclamationCircleIcon className="h-8 w-8" />
+                        <AlertCircle className="h-8 w-8" />
                         <p className="heading-xl leading-7 text-foreground dark:text-foreground-night">
                           Visualization Error
                         </p>
@@ -474,6 +519,11 @@ export const VisualizationActionIframe = forwardRef<
           )}
         </div>
       </div>
+      {showSpinner && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background dark:bg-background-night">
+          <Spinner size="xl" variant="color" />
+        </div>
+      )}
     </div>
   );
 });

@@ -9,12 +9,12 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   AnimatedText,
-  ArrowRightIcon,
+  ArrowRight,
   ContentMessage,
   ContentMessageInline,
-  DotIcon,
+  Dot,
   Icon,
-  InformationCircleIcon,
+  InfoCircle,
   Label,
   TextArea,
   Tooltip,
@@ -218,14 +218,14 @@ export function ScheduleEditionScheduler({
             <div className="flex flex-row items-start gap-2 text-foreground dark:text-foreground-night">
               {generationStatus === "loading" ? (
                 <>
-                  <DotIcon className="mt-0.5 h-4 w-4 shrink-0 self-start" />
+                  <Dot className="mt-0.5 h-4 w-4 shrink-0 self-start" />
                   <AnimatedText variant="primary">
                     {cronDescription}
                   </AnimatedText>
                 </>
               ) : (
                 <>
-                  <ArrowRightIcon className="mt-0.5 h-4 w-4 shrink-0 self-start" />
+                  <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 self-start" />
                   <div className="flex flex-1 items-center justify-between">
                     <p>{cronDescription}</p>
                     {nextOccurrences.length > 0 && (
@@ -250,7 +250,7 @@ export function ScheduleEditionScheduler({
                         }
                         trigger={
                           <Icon
-                            visual={InformationCircleIcon}
+                            visual={InfoCircle}
                             size="xs"
                             className="shrink-0 text-faint dark:text-faint-night"
                           />

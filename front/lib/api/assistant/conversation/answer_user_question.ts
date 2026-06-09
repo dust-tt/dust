@@ -1,8 +1,11 @@
 import { isToolAskUserQuestionEvent } from "@app/lib/actions/mcp";
 import type { UserQuestionAnswer } from "@app/lib/actions/types";
+import { isSandboxChildActionInfo } from "@app/lib/actions/types";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
+import { resolveSandboxChildBlock } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -52,7 +55,12 @@ export async function registerUserAnswer(
     messageId,
   });
 
-  if (userMessageUserId !== user?.id) {
+  if (
+    !canCurrentUserRespondToParentUserMessage({
+      parentUserId: userMessageUserId,
+      currentUserId: user?.id,
+    })
+  ) {
     return new Err(
       new DustError(
         "unauthorized",
@@ -106,6 +114,28 @@ export async function registerUserAnswer(
     const payload = JSON.parse(event.message["payload"]);
     return isToolAskUserQuestionEvent(payload) && payload.actionId === actionId;
   }, getMessageChannelId(messageId));
+
+  const { sandboxChildActionInfo } = action.stepContext;
+  if (isSandboxChildActionInfo(sandboxChildActionInfo)) {
+    // Sandbox-child resolution always relaunches the parent bash (the
+    // frozen sandbox must be thawed regardless of the user's answer).
+    // See validateAction for the full rationale.
+    await resolveSandboxChildBlock(auth, {
+      action,
+      sandboxChildActionInfo,
+      agentLoopArgs: {
+        agentMessageId,
+        agentMessageVersion,
+        conversationBranchId: branchId,
+        conversationId,
+        conversationTitle,
+        userMessageId,
+        userMessageVersion,
+        userMessageOrigin,
+      },
+    });
+    return new Ok(undefined);
+  }
 
   // Only launch the agent loop if there are no remaining blocked actions.
   const blockedActions =

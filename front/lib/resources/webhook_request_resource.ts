@@ -6,7 +6,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type {
   TriggerType,
@@ -227,10 +227,10 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     });
   }
 
-  static async getWorkspaceIdsWithTooManyRequests({
+  static async getWorkspacesWithTooManyRequests({
     webhookRequestTtl = WEBHOOK_REQUEST_TTL,
     maxWebhookRequestsToKeep = MAX_WEBHOOK_REQUESTS_TO_KEEP,
-  }: Partial<CleanUpWorkspaceOptions> = {}) {
+  }: Partial<CleanUpWorkspaceOptions> = {}): Promise<WorkspaceResource[]> {
     // biome-ignore lint/plugin/noRawSql: automatic suppress
     const rows = await frontSequelize.query<{
       workspaceId: ModelId;
@@ -258,7 +258,13 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
       }
     );
 
-    return rows.map((row) => row.workspaceId);
+    // fetchByModelIds does not preserve input order, so re-sort by id ascending
+    // to honor the query's ORDER BY "workspaceId" ASC.
+    const workspaces = await WorkspaceResource.fetchByModelIds(
+      rows.map((row) => row.workspaceId)
+    );
+
+    return workspaces.sort((a, b) => a.id - b.id);
   }
 
   static async cleanUpWorkspace(
@@ -284,13 +290,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
       "Cleaning up old webhook requests"
     );
 
-    await concurrentExecutor(
-      oldRequests,
-      async (request) => {
-        await request.delete(auth);
-      },
-      { concurrency: 16 }
-    );
+    await this.deleteMany(auth, oldRequests);
 
     const excessiveRequests = await this.baseFetch(auth, {
       order: [["createdAt", "DESC"]],
@@ -305,13 +305,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
       "Cleaning up excessive webhook requests"
     );
 
-    await concurrentExecutor(
-      excessiveRequests,
-      async (request) => {
-        await request.delete(auth);
-      },
-      { concurrency: 16 }
-    );
+    await this.deleteMany(auth, excessiveRequests);
   }
 
   /**
@@ -469,6 +463,29 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     webRequestId: ModelId;
   }): string {
     return `${workspaceId}/webhook_source_${webhookSourceId}/webhook_request_${webRequestId}.json`;
+  }
+
+  private static async deleteMany(
+    auth: Authenticator,
+    webhookRequests: WebhookRequestResource[]
+  ) {
+    const owner = auth.getNonNullableWorkspace();
+
+    const webhookRequestModelIds = webhookRequests.map((request) => request.id);
+
+    await WebhookRequestTriggerModel.destroy({
+      where: {
+        workspaceId: owner.id,
+        webhookRequestId: webhookRequestModelIds,
+      },
+    });
+
+    await this.model.destroy({
+      where: {
+        workspaceId: owner.id,
+        id: webhookRequestModelIds,
+      },
+    });
   }
 
   async delete(

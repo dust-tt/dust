@@ -36,6 +36,7 @@ function createForkedData(user: NonNullable<UserMessageType["user"]>) {
       sourceMessageId: "msg_parent_source",
       branchedAt: Date.now(),
       user,
+      fileCopyStatus: "done" as const,
     },
   };
 }
@@ -370,6 +371,45 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).not.toContain("source message");
   });
 
+  it("should inject the formatting prompt by default and drop it when disabled", () => {
+    // Pick a model that actually carries a formatting prompt (OpenAI models do).
+    const modelWithFormatting = getSupportedModelConfigs().find(
+      (m) => m.formattingMetaPrompt
+    );
+    const formattingMetaPrompt = modelWithFormatting?.formattingMetaPrompt;
+    if (!modelWithFormatting || !formattingMetaPrompt) {
+      throw new Error(
+        "expected at least one model to carry a formatting prompt"
+      );
+    }
+
+    const baseParams = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelWithFormatting,
+      hasAvailableActions: true,
+      agentsList: null,
+      systemSkills: [],
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+
+    const enabledText = systemPromptToText(
+      constructPromptMultiActions(authenticator1, baseParams)
+    );
+    expect(enabledText).toContain("# RESPONSE FORMAT");
+    expect(enabledText).toContain(formattingMetaPrompt);
+
+    const disabledText = systemPromptToText(
+      constructPromptMultiActions(authenticator1, {
+        ...baseParams,
+        disableFormattingPrompt: true,
+      })
+    );
+    expect(disabledText).not.toContain("# RESPONSE FORMAT");
+    expect(disabledText).not.toContain(formattingMetaPrompt);
+  });
+
   it("should place branch context in ephemeral tier for structured prompts", () => {
     const deepDiveConfig = {
       ...agentConfig1,
@@ -435,46 +475,6 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).toContain("User prefers TypeScript");
   });
 
-  it("should include system skills in the enabled skills section when passed separately", async () => {
-    await SkillFactory.linkGlobalSkillToAgent(authenticator1, {
-      globalSkillId: "discover_skills",
-      agentConfigurationId: agentConfig1.id,
-    });
-
-    const { systemSkills } = await SkillResource.listForAgentLoop(
-      authenticator1,
-      {
-        agentConfiguration: agentConfig1,
-        conversation: conversation1,
-      }
-    );
-    const discoverSkills = systemSkills.find(
-      (skill) => skill.sId === "discover_skills"
-    );
-    if (!discoverSkills) {
-      throw new Error("Expected discover_skills system skill to exist.");
-    }
-
-    const params = {
-      userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
-      hasAvailableActions: true,
-      agentsList: null,
-      systemSkills: [discoverSkills],
-      enabledSkills: [],
-      equippedSkills: [],
-    };
-
-    const sections = constructPromptMultiActions(authenticator1, params);
-    const text = systemPromptToText(sections);
-
-    expect(text).toContain("### ENABLED SKILLS");
-    expect(text).toContain(
-      "Some of the available skills come from the workspace"
-    );
-  });
-
   it("should produce a valid prompt when memoriesContext is omitted", () => {
     const params = {
       userMessage: userMessage1,
@@ -513,7 +513,6 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       systemSkills: [],
       enabledSkills: [],
       equippedSkills,
-      renderSkillsAsUserMessages: true,
     };
 
     const sections = constructPromptMultiActions(authenticator1, params);
@@ -528,62 +527,6 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       "Create a git commit with a descriptive message."
     );
     expect(text).not.toContain("## AVAILABLE SKILLS");
-  });
-
-  it("should keep equipped skills in the system prompt on the legacy path", async () => {
-    const equippedSkills = [
-      await SkillFactory.create(authenticator1, {
-        name: "commit",
-        agentFacingDescription:
-          "Create a git commit with a descriptive message.",
-      }),
-    ];
-
-    const params = {
-      userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
-      hasAvailableActions: true,
-      agentsList: null,
-      systemSkills: [],
-      enabledSkills: [],
-      equippedSkills,
-    };
-
-    const sections = constructPromptMultiActions(authenticator1, params);
-    const text = systemPromptToText(sections);
-
-    expect(text).toContain("## AVAILABLE SKILLS");
-    expect(text).toContain(
-      "- **commit**: Create a git commit with a descriptive message."
-    );
-  });
-
-  it("should not show enabled skills in available skills on the legacy path", async () => {
-    const commitSkill = await SkillFactory.create(authenticator1, {
-      name: "commit",
-      agentFacingDescription: "Create a git commit with a descriptive message.",
-    });
-
-    const params = {
-      userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
-      hasAvailableActions: true,
-      agentsList: null,
-      systemSkills: [],
-      enabledSkills: [SkillFactory.withExtendedSkill(commitSkill)],
-      equippedSkills: [commitSkill],
-    };
-
-    const sections = constructPromptMultiActions(authenticator1, params);
-    const text = systemPromptToText(sections);
-
-    expect(text).toContain("### ENABLED SKILLS");
-    expect(text).not.toContain("### AVAILABLE SKILLS");
-    expect(text).not.toContain(
-      "- **commit**: Create a git commit with a descriptive message."
-    );
   });
 
   it("should keep system skill instructions in the system prompt", async () => {
@@ -605,7 +548,6 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       systemSkills: [discoverSkills],
       enabledSkills: [],
       equippedSkills: [],
-      renderSkillsAsUserMessages: true,
     };
 
     const sections = constructPromptMultiActions(authenticator1, params);
@@ -667,6 +609,11 @@ describe("globalAgentInjectsMemory", () => {
     expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_NEXT_HIGH)).toBe(
       true
     );
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_CHAWI)).toBe(true);
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_SOUPINOU)).toBe(
+      true
+    );
+    expect(globalAgentInjectsMemory(GLOBAL_AGENTS_SID.DUST_SUNDAE)).toBe(true);
   });
 
   it("should return false for non-dust global agents", () => {

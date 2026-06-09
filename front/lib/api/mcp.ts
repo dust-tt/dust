@@ -17,10 +17,17 @@ import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
+import type { MCPServersUsageByAgent } from "@app/lib/api/agent_actions";
+import type {
+  PatchMCPServerBodySchema,
+  PostRequestActionsAccessBodySchema,
+  UpdateMCPToolSettingsBodySchema,
+} from "@app/lib/api/mcp_schemas";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { EditedByUser } from "@app/types/user";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
+import type { z } from "zod";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const MCP_TOOL_RETRY_POLICY_TYPES = ["retry_on_interrupt", "no_retry"] as const;
@@ -49,6 +56,7 @@ export function getRetryPolicyFromToolConfiguration(
 export type ToolDisplayLabels = {
   running: string; // e.g. "Searching data"
   done: string; // e.g. "Search data"
+  icon?: InternalAllowedIconType; // optional per-tool icon override
 };
 
 export type MCPToolType = {
@@ -161,3 +169,59 @@ export type MCPServerTypeWithViews = MCPServerType & {
 };
 
 export type DeveloperSecretSelectionType = "required" | "optional";
+
+export type GetMCPServerViewsNotActivatedResponseBody = {
+  success: boolean;
+  serverViews: MCPServerViewType[];
+};
+
+export type GetMCPServersResponseBody = {
+  success: true;
+  servers: MCPServerTypeWithViews[];
+};
+
+export type CreateMCPServerResponseBody = {
+  success: true;
+  server: MCPServerType;
+};
+
+export type PostRequestActionsAccessBody = z.infer<
+  typeof PostRequestActionsAccessBodySchema
+>;
+
+export type PatchMCPServerBody = z.infer<typeof PatchMCPServerBodySchema>;
+
+export type GetMCPServerResponseBody = {
+  server: MCPServerTypeWithViews;
+};
+
+export type PatchMCPServerResponseBody = {
+  success: true;
+  server: MCPServerType;
+};
+
+export type DeleteMCPServerResponseBody = {
+  deleted: boolean;
+};
+
+export type GetMCPServersUsageResponseBody = {
+  usage: MCPServersUsageByAgent;
+};
+
+export type SyncMCPServerResponseBody = {
+  success: boolean;
+  server: MCPServerType;
+};
+
+export type GetMCPServerViewsListResponseBody = {
+  success: boolean;
+  serverViews: MCPServerViewType[];
+};
+
+export type PatchMCPServerToolsPermissionsResponseBody = {
+  success: boolean;
+};
+
+export type UpdateMCPToolSettingsBodyType = z.infer<
+  typeof UpdateMCPToolSettingsBodySchema
+>;

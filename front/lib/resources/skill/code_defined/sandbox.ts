@@ -12,7 +12,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-import { isProjectConversation } from "@app/types/assistant/conversation";
+import { isPodConversation } from "@app/types/assistant/conversation";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { Ok } from "@app/types/shared/result";
 
@@ -22,7 +22,7 @@ function buildSandboxInstructionProse({
   hasDsbxTools: boolean;
 }): string {
   const instructions = [
-    "The sandbox provides an isolated Linux environment for running code, scripts, and shell commands.",
+    'The sandbox provides an isolated Linux environment for running code, scripts, and shell commands. Always call this environment "the Computer" in any text you send to the user.',
     "Use `bash` to run commands and scripts.",
     "The sandbox persists for the conversation duration.",
   ];
@@ -30,7 +30,9 @@ function buildSandboxInstructionProse({
   if (hasDsbxTools) {
     instructions.push(
       "You can use the `dsbx` command line tool to list and run tools programmatically in the sandbox.",
-      "Use it with `dsbx tools [SERVER_NAME] [TOOL_NAME] [ARGS]...`. Run `dsbx tools --help` for more information."
+      "Use it with `dsbx tools [SERVER_NAME] [TOOL_NAME] [ARGS]...`. Run `dsbx tools --help` for more information.",
+      "For very large argument values, write the value to a file in the sandbox and pass the path with a `__file__:` prefix (e.g. `--query __file__:/tmp/q.txt`) instead of inlining the value on the command line. Any value starting with `__file__:` is read from the file (UTF-8, max 100 MB) and used as the value for that key. File contents that are a JSON object or array are parsed into structured data (e.g. `--files __file__:/tmp/files.json` for a tool expecting an array), exactly as if the same JSON had been passed inline; any other content is used as a string. The file must already exist in the sandbox filesystem.",
+      "Pass `--json` (before the server and tool names, e.g. `dsbx tools --json [SERVER_NAME] [TOOL_NAME] [ARGS]...`) to get the tool result as structured JSON (`{ content, isError }`) instead of plain text, which is easier to parse programmatically. Placed after the positional arguments it is treated as a tool argument instead."
     );
   }
 
@@ -98,7 +100,7 @@ function buildProjectFilesSection(): string {
   return `#### Sandbox Project File System
 
 This conversation belongs to a Pod, so the Pod's file system is also
-mounted read-write inside the sandbox at \`/files/project\`. These files are
+mounted read-write inside the sandbox at \`/files/pod\`. These files are
 shared across every conversation in the same Pod and **persist beyond
 this conversation** — anything you write or delete here is visible to other
 conversations in the same Pod.
@@ -106,12 +108,12 @@ conversations in the same Pod.
 Use this surface for files that belong to the Pod as a whole (specs,
 knowledge bases, shared scripts, recurring data sets), and use
 \`/files/conversation\` for ephemeral or per-conversation artifacts. When
-both are relevant, prefer reading from \`/files/project\` and writing
+both are relevant, prefer reading from \`/files/pod\` and writing
 deliverables to \`/files/conversation\` unless the user has asked you to
 update the Pod's files specifically.
 
 The same files are also exposed by the \`files\` MCP server under scoped
-paths like \`project/<rel>\`. Sandbox writes and MCP writes are two views on
+paths like \`pod-{podId}/<rel>\`. Sandbox writes and MCP writes are two views on
 the same underlying storage.`;
 }
 
@@ -154,10 +156,18 @@ Workspace allowlist:
 
 ${formatWorkspaceAllowlist(workspaceDomains)}
 
-If a request is blocked, the bash tool output will include a
-\`<network_proxy_logs>\` block listing the denied domain(s). Surface that
+If a domain is blocked by the allowlist, the bash tool output will include a
+\`<network_proxy_logs>\` block naming the denied domain(s). Surface that
 information to the user so they can decide whether to ask their admin to
-allowlist it; do not retry without changes.`;
+allowlist it; do not retry without changes.
+
+The block lists **only** domains rejected by the allowlist. A request that
+reaches an allowed domain and comes back with an HTTP \`401\`/\`403\` (or any
+other \`4xx\`) in \`<stdout>\` is an upstream authentication/authorization
+error, not a proxy block — do not treat it as a domain that needs
+allowlisting. If the block names a host you did not call directly, the request
+most likely followed a redirect to that host (for example an auth/login
+domain).`;
   }
 
   return `#### Sandbox Network Access
@@ -186,36 +196,89 @@ do NOT call \`add_egress_domain\`; just use the domain. Only call
 accepted) and a one-sentence reason the user will see in the approval prompt.
 This is preferable to running the command first and reacting to a denial.
 
-If a request does get blocked — for example because you missed a domain or
-a redirect chain hits an unexpected host — the bash tool output will
-include a \`<network_proxy_logs>\` block listing the denied domain(s).
+If a request is blocked by the allowlist — for example because you missed a
+domain or a redirect chain hits an unexpected host — the bash tool output
+will include a \`<network_proxy_logs>\` block naming the denied domain(s).
 Use that block to identify the missing domain and call
-\`add_egress_domain\` to unblock the next attempt. If a request mysteriously
-hangs or fails with TLS/DNS errors, check the \`<network_proxy_logs>\`
-block first; a denied egress is a possible cause.`;
+\`add_egress_domain\` to unblock the next attempt.
+
+The block lists **only** domains rejected by the allowlist. A request that
+reaches an allowed domain and returns an HTTP \`401\`/\`403\` (or any other
+\`4xx\`) in \`<stdout>\` is an upstream authentication/authorization error, not
+a proxy block — do **not** call \`add_egress_domain\` for it. If the block
+names a host you did not call directly, the request most likely followed a
+redirect to that host (such as an auth/login domain); allowlist that host only
+if you intend to follow the redirect. If a request mysteriously hangs or fails
+with TLS/DNS errors, check the \`<network_proxy_logs>\` block first; a denied
+egress is a possible cause.`;
 }
 
 function buildEnvironmentVariablesSection(): string {
   return `#### Sandbox Environment Variables
 
 The sandbox may have workspace-configured environment variables available
-in the bash shell and to any code you run. All workspace-configured names
-are prefixed with \`DST_\` (e.g. \`DST_API_TOKEN\`, \`DST_SERVICE_KEY\`).
-If a tool, CLI, or SDK expects a specific unprefixed name, you must read
-the \`DST_\`-prefixed variable and re-export it under the expected name
-yourself before invoking the tool — for example
-\`SOMETOOL_TOKEN=\$DST_SOMETOOL_TOKEN some-cli ...\`. You may use these
-variables to authenticate with APIs or pass them into code paths that
-consume them, but you must never print, echo, \`cat\`, or otherwise
-disclose an environment variable value. Do not include a value in output,
-logs, error messages, or final answers. Do not re-encode, transform, or
-split a value to bypass this rule. Do not list available environment
-variable names just to enumerate what is configured.
+in the bash shell and to any code you run. All of them are sensitive.
 
-If a user asks for a secret value, refuse and say it is not viewable. If you
-need to confirm a variable is set, check whether it is non-empty without
-printing its content (e.g. \`[ -n "\$DST_FOO" ]\` in bash) — do not read or
-print the value.
+There are two prefixes:
+
+- \`DST_*\`: configuration values injected as normal environment variables.
+  Use them for local configuration and API clients, but never print them.
+- \`DSEC_*\`: HTTPS secret placeholders. The value in the environment is
+  intentionally not the real secret. Send it as an HTTPS request header to
+  the domain approved for that secret; the egress proxy substitutes the real
+  value on the wire.
+
+To see which \`DST_*\` and \`DSEC_*\` variables are configured for this
+workspace, run \`dsbx env\`. It lists each variable by name and, for every
+\`DSEC_*\` placeholder, the HTTPS domain(s) it is approved for. It never
+prints values, so it is safe to run before deciding which variable to use.
+Prefer \`dsbx env\` over guessing names or dumping the environment with
+\`env\` / \`printenv\` (those would just produce redacted output).
+
+Hard rules for environment variables:
+
+- Never print, echo, \`cat\`, log, summarize, or otherwise disclose a
+  configured value. If a user asks for a secret value, refuse and say it is
+  not viewable.
+- Do not try to extract, decode, recover, or inspect the real value behind a
+  \`DSEC_*\` placeholder. The placeholder is all your process is supposed to
+  see.
+- Do not transform a \`DSEC_*\` placeholder before sending it. Do not URL
+  encode it, split it across fields, put it in a request body, write it to a
+  file and re-read it, sign with it, or use it in HMAC/SigV4 flows. The
+  exception is standard HTTP Basic auth: it is OK to let a normal HTTP
+  client base64-encode \`user:$DSEC_SECRET\` or \`$DSEC_SECRET:\` into the
+  \`Authorization: Basic ...\` header (the egress proxy handles that case);
+  do not base64-encode the value yourself.
+- Do not put a \`DSEC_*\` placeholder in a URL or query string (e.g.
+  \`https://api.example.com/x?token=$DSEC_FOO\`). The egress proxy only
+  substitutes in HTTP headers; placeholders on the request line are
+  rejected and the connection is dropped.
+- Use a \`DSEC_*\` secret only with its approved HTTPS destination. Cross-
+  domain use will not substitute and the request will fail.
+- Do not pass custom TLS trust settings such as Python \`verify=\`, Node
+  \`ca\`, Go \`RootCAs\`/\`tls.Config\`, Rust custom root stores, Java custom
+  trust managers, or \`-Djavax.net.ssl.trustStore\`. They can bypass the
+  sandbox trust bundle and break TLS to substituted domains.
+
+If a tool, CLI, or SDK expects a specific unprefixed name, re-export the
+prefixed variable under the expected name in the same process before using
+the tool. For example:
+
+\`\`\`python
+import os
+os.environ["OPENAI_API_KEY"] = os.environ["DSEC_OPENAI_API_KEY"]
+\`\`\`
+
+Then use the SDK normally. This only aliases the placeholder; the real value
+is still substituted by the egress proxy when the SDK sends HTTPS headers.
+
+For Rust HTTP clients, prefer \`reqwest\` default features or
+\`rustls-tls-native-roots\`. Do not use \`rustls-tls\` with webpki-roots for
+\`DSEC_*\` traffic because it ignores the system trust store. For Java/JVM,
+use the JDK that came with the sandbox image; do not install another JDK or
+override the trust store mid-session. If you ignore this, the usual symptom
+is a TLS error such as \`PKIX path building failed\`.
 
 Bash tool output that contains a configured environment variable value is
 post-processed and replaced with a marker like \`«redacted: $FOO»\`. If you
@@ -287,12 +350,13 @@ ${manifestYaml}
 
 export const sandboxSkill = {
   sId: "sandbox",
-  name: "Sandbox",
+  name: "Computer",
   userFacingDescription:
-    "Run code, scripts, and shell commands in an isolated Linux environment.",
+    "Run code, scripts, and shell commands in the conversation's Computer (a sandboxed Linux environment).",
   agentFacingDescription:
     "Execute code and commands in an isolated Linux sandbox. Useful to parse lengthy tool outputs, run code, " +
-    "process data, install packages, manipulate files, or perform any task requiring shell access.",
+    "process data, install packages, manipulate files, or perform any task requiring shell access. " +
+    "Always call this environment 'the Computer' in any text you send to the user.",
   fetchInstructions: async (
     auth: Authenticator,
     {
@@ -303,7 +367,7 @@ export const sandboxSkill = {
     const flags = await getFeatureFlags(auth);
     const hasDsbxTools = flags.includes("sandbox_dsbx_tools");
     const isProject = agentLoopData?.conversation
-      ? isProjectConversation(agentLoopData.conversation)
+      ? isPodConversation(agentLoopData.conversation)
       : false;
 
     return buildSandboxInstructions(auth, providerId, {

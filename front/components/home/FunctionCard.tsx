@@ -1,6 +1,6 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { H3 } from "@app/components/home/ContentComponents";
-import { Button, ChevronRightIcon, Icon } from "@dust-tt/sparkle";
+import { Button, ChevronRight, Icon } from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
 import Link from "next/link";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -80,7 +80,7 @@ export function FunctionCard({
               className="flex min-h-6 items-start gap-1 py-1.5 text-gray-700"
             >
               <div className="pt-0.5">
-                <Icon visual={ChevronRightIcon} size="sm" />
+                <Icon visual={ChevronRight} size="sm" />
               </div>
               {feature}
             </li>

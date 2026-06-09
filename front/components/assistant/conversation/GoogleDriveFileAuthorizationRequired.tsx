@@ -6,19 +6,20 @@ import type {
   BlockedToolExecution,
   FileAuthorizationInfo,
 } from "@app/lib/actions/mcp";
+import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
+import type { PickerTokenResponseType } from "@app/lib/api/google_drive";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
-import type { PickerTokenResponseType } from "@app/pages/api/w/[wId]/google_drive/picker_token";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Button,
-  CheckCircleIcon,
+  CheckCircle,
   ContentMessage,
-  DocumentTextIcon,
-  ExternalLinkIcon,
-  XMarkIcon,
+  File04,
+  LinkExternal01,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -59,14 +60,18 @@ export function GoogleDriveFileAuthorizationRequired({
   });
   const isExtension = clientType === "extension";
 
-  const isTriggeredByCurrentUser = useMemo(
-    () => triggeringUser?.sId === user?.sId,
+  const canCurrentUserRespond = useMemo(
+    () =>
+      canCurrentUserRespondToParentUserMessage({
+        parentUserId: triggeringUser?.sId,
+        currentUserId: user?.sId,
+      }),
     [triggeringUser, user?.sId]
   );
 
   // Pre-fetch picker credentials on mount for faster picker opening
   useEffect(() => {
-    if (isExtension || !isTriggeredByCurrentUser || pickerCredentials) {
+    if (isExtension || !canCurrentUserRespond || pickerCredentials) {
       return;
     }
 
@@ -95,7 +100,7 @@ export function GoogleDriveFileAuthorizationRequired({
     void fetchCredentials();
   }, [
     isExtension,
-    isTriggeredByCurrentUser,
+    canCurrentUserRespond,
     owner.sId,
     mcpServerId,
     pickerCredentials,
@@ -188,10 +193,10 @@ export function GoogleDriveFileAuthorizationRequired({
     <ContentMessage
       title={isAuthorized ? "File authorized" : "Authorization required"}
       variant={isAuthorized ? "success" : "primary"}
-      icon={isAuthorized ? CheckCircleIcon : DocumentTextIcon}
+      icon={isAuthorized ? CheckCircle : File04}
       className="flex w-80 min-w-[300px] flex-col gap-3 sm:min-w-[500px]"
     >
-      {isTriggeredByCurrentUser ? (
+      {canCurrentUserRespond ? (
         <>
           <div className="font-sm whitespace-normal break-words text-foreground dark:text-foreground-night">
             {isAuthorized ? (
@@ -211,7 +216,7 @@ export function GoogleDriveFileAuthorizationRequired({
                 variant="outline"
                 size="xs"
                 label="Skip"
-                icon={XMarkIcon}
+                icon={XClose}
                 disabled={isResolving || isOpeningPicker}
                 onClick={() => void handleSkip()}
               />
@@ -220,7 +225,7 @@ export function GoogleDriveFileAuthorizationRequired({
                   label="Open in Web App"
                   variant="highlight"
                   size="xs"
-                  icon={ExternalLinkIcon}
+                  icon={LinkExternal01}
                   onClick={handleOpenInWebApp}
                 />
               ) : (
@@ -228,7 +233,7 @@ export function GoogleDriveFileAuthorizationRequired({
                   label={isButtonLoading ? "Loading..." : "Open File Picker"}
                   variant="highlight"
                   size="xs"
-                  icon={DocumentTextIcon}
+                  icon={File04}
                   disabled={
                     isButtonLoading ||
                     isResolving ||

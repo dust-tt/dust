@@ -1,6 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
-import type { ResolvedScopedFilePath } from "@app/lib/api/actions/servers/run_agent/file_paths";
 import {
   appendFilePathsHintToQuery,
   copyConversationFilesIntoSub,
@@ -114,12 +113,12 @@ export async function getOrCreateConversation(
   }
 
   // Resolve scoped file paths in the parent's auth/conversation scope. Any failure here surfaces
-  // cleanly before the sub-conversation is created. `project/<rel>` paths are validated but not
-  // copied (the project mount is shared across the project's conversations).
-  // `conversation/<rel>` paths are copied to the sub-conversation's mount once the sub exists.
+  // cleanly before the sub-conversation is created. `pod-{podId}/<rel>` paths are validated but not
+  // copied (the Pod mount is shared across the Pod's conversations).
+  // `conversation-{conversationId}/<rel>` paths are copied to the sub-conversation's mount once the sub exists.
   // A short hint is appended to the sub's first message so it knows which paths were forwarded;
   // the sub reads them through the files MCP server.
-  let resolvedFilePaths: ResolvedScopedFilePath[] = [];
+  let resolvedFilePaths: string[] = [];
   if (filePaths && filePaths.length > 0) {
     const resolvedFilePathsRes = await resolveFilePathsInParentScope(
       auth,
@@ -310,7 +309,7 @@ export async function getOrCreateConversation(
   const copyRes = await copyConversationFilesIntoSub(auth, {
     parentConversation: mainConversation,
     subConversationId: conversation.sId,
-    resolvedFilePaths,
+    filePaths: resolvedFilePaths,
   });
   if (copyRes.isErr()) {
     return copyRes;

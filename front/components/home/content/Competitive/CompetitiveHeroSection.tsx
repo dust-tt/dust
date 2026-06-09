@@ -2,7 +2,7 @@ import { LandingEmailSignup } from "@app/components/home/content/Landing/Landing
 import { OpenDustButton } from "@app/components/home/OpenDustButton";
 import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import { TRACKING_AREAS } from "@app/lib/tracking";
-import { CheckIcon, Icon, LockIcon, TimeIcon } from "@dust-tt/sparkle";
+import { Check, Clock, Icon, Lock01 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
@@ -82,7 +82,7 @@ export function CompetitiveHeroSection({
                   {valueProps.map((prop, index) => (
                     <li key={index} className="flex items-start gap-3">
                       <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-emerald-400">
-                        <CheckIcon className="h-3 w-3 text-white" />
+                        <Check className="h-3 w-3 text-white" />
                       </span>
                       <span className="text-white/95">{prop}</span>
                     </li>
@@ -121,14 +121,11 @@ export function CompetitiveHeroSection({
             {trustBadges.map((badge, index) => (
               <div key={index} className="flex items-center gap-2">
                 {index === 0 ? (
-                  <Icon
-                    visual={CheckIcon}
-                    className="h-4 w-4 text-emerald-500"
-                  />
+                  <Icon visual={Check} className="h-4 w-4 text-emerald-500" />
                 ) : index === 1 ? (
-                  <Icon visual={TimeIcon} className="h-4 w-4 text-blue-500" />
+                  <Icon visual={Clock} className="h-4 w-4 text-blue-500" />
                 ) : (
-                  <Icon visual={LockIcon} className="h-4 w-4 text-amber-500" />
+                  <Icon visual={Lock01} className="h-4 w-4 text-amber-500" />
                 )}
                 <span>{badge}</span>
               </div>

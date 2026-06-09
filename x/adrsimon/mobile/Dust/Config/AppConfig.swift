@@ -2,8 +2,17 @@ import Foundation
 
 enum AppConfig {
     static let domain = "dust.tt"
+
+    // The DEV flag is set by the `Dev` build configuration (see project.yml); it
+    // points the app at a local front server. `Prod` and `Release` builds hit prod.
+    #if DEV
+    static let apiBaseURL = "http://localhost:3000"
+    static let appURL = "http://localhost:3000"
+    #else
     static let apiBaseURL = "https://\(domain)"
     static let appURL = "https://app.\(domain)"
+    #endif
+
     static let vizURL = "https://viz.\(domain)"
     static let bundleId = "com.dust.mobile"
     static let callbackURLScheme = "dust"
@@ -25,6 +34,10 @@ enum AppConfig {
 
         static func conversationMessages(workspaceId: String, conversationId: String) -> String {
             "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)/messages"
+        }
+
+        static func conversationMessage(workspaceId: String, conversationId: String, messageId: String) -> String {
+            "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)/messages/\(messageId)"
         }
 
         static func conversationEvents(workspaceId: String, conversationId: String) -> String {
@@ -75,6 +88,10 @@ enum AppConfig {
             "/api/v1/w/\(workspaceId)/assistant/conversations/\(conversationId)/messages/\(messageId)/retry"
         }
 
+        static func answerQuestion(workspaceId: String, conversationId: String, messageId: String) -> String {
+            "/api/v1/w/\(workspaceId)/assistant/conversations/\(conversationId)/messages/\(messageId)/answer-question"
+        }
+
         static func mcpServerViews(workspaceId: String) -> String {
             "/api/w/\(workspaceId)/mcp/views"
         }
@@ -85,10 +102,6 @@ enum AppConfig {
 
         static func conversationTools(workspaceId: String, conversationId: String) -> String {
             "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)/tools"
-        }
-
-        static func conversationSkills(workspaceId: String, conversationId: String) -> String {
-            "/api/w/\(workspaceId)/assistant/conversations/\(conversationId)/skills"
         }
 
         static func search(workspaceId: String) -> String {

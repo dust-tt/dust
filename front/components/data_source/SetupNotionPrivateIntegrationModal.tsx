@@ -1,12 +1,12 @@
+import type { GetNotionWebhookConfigResponseBody } from "@app/lib/api/data_sources/managed_notion";
 import { clientFetch } from "@app/lib/egress/client";
-import type { GetNotionWebhookConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/notion/webhook_config";
 import type { DataSourceType } from "@app/types/data_source";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { NotificationType } from "@dust-tt/sparkle";
 import {
   Button,
-  ClipboardCheckIcon,
-  ClipboardIcon,
+  Clipboard,
+  ClipboardCheck,
   Dialog,
   DialogContent,
   DialogFooter,
@@ -209,11 +209,7 @@ export function SetupNotionPrivateIntegrationModal({
                       />
                       <div className="absolute inset-y-0 right-0 flex items-center pr-2">
                         <Button
-                          icon={
-                            isCopiedWebhookUrl
-                              ? ClipboardCheckIcon
-                              : ClipboardIcon
-                          }
+                          icon={isCopiedWebhookUrl ? ClipboardCheck : Clipboard}
                           onClick={() =>
                             copyWebhookUrl(webhookConfig.webhookUrl)
                           }
@@ -251,9 +247,7 @@ export function SetupNotionPrivateIntegrationModal({
                         />
                         <div className="absolute inset-y-0 right-0 flex items-center pr-2">
                           <Button
-                            icon={
-                              isCopiedToken ? ClipboardCheckIcon : ClipboardIcon
-                            }
+                            icon={isCopiedToken ? ClipboardCheck : Clipboard}
                             onClick={() =>
                               copyToken(webhookConfig.verificationToken!)
                             }

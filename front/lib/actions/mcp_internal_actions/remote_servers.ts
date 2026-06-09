@@ -1498,6 +1498,485 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10020,
+    name: "Contentsquare",
+    description:
+      "Contentsquare tools for digital experience analytics — explore site metrics, funnels, journeys, page comparisons, and top errors across your projects.",
+    url: "https://api.contentsquare.com/mcp",
+    icon: "ContentsquareLogo",
+    documentationUrl: "https://docs.dust.tt/docs/remote-mcp-server",
+    connectionInstructions:
+      "Contentsquare uses OAuth. You will be prompted to sign in with your Contentsquare account. Access is scoped to the projects you have permission to view.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      "list-projects": "never_ask",
+      searchMappings: "never_ask",
+      searchGoals: "never_ask",
+      searchSegments: "never_ask",
+      recommendMappings: "never_ask",
+      recommendGoals: "never_ask",
+      recommendPageGroups: "never_ask",
+      recommendSegments: "never_ask",
+      getPageGroupsForMapping: "never_ask",
+      computeSiteMetrics: "never_ask",
+      computeFunnel: "never_ask",
+      computeImpact: "never_ask",
+      computeJourney: "never_ask",
+      computePageComparison: "never_ask",
+      computePageGroupMetrics: "never_ask",
+      getTopErrorsBySessionsWithErrors: "never_ask",
+      getTopErrorsByImpactOnGoal: "never_ask",
+      getTopErrorsByMissedOpportunity: "never_ask",
+      getTopPageGroupsByLostConversions: "never_ask",
+      getTopPagesBySessionsWithErrors: "never_ask",
+      submitMcpFeedback: "low",
+    },
+    toolDisplayLabels: {
+      "list-projects": {
+        running: "Listing projects on Contentsquare",
+        done: "Listed projects on Contentsquare",
+      },
+      searchMappings: {
+        running: "Searching mappings on Contentsquare",
+        done: "Searched mappings on Contentsquare",
+      },
+      searchGoals: {
+        running: "Searching goals on Contentsquare",
+        done: "Searched goals on Contentsquare",
+      },
+      searchSegments: {
+        running: "Searching segments on Contentsquare",
+        done: "Searched segments on Contentsquare",
+      },
+      recommendMappings: {
+        running: "Recommending mappings on Contentsquare",
+        done: "Recommended mappings on Contentsquare",
+      },
+      recommendGoals: {
+        running: "Recommending goals on Contentsquare",
+        done: "Recommended goals on Contentsquare",
+      },
+      recommendPageGroups: {
+        running: "Recommending page groups on Contentsquare",
+        done: "Recommended page groups on Contentsquare",
+      },
+      recommendSegments: {
+        running: "Recommending segments on Contentsquare",
+        done: "Recommended segments on Contentsquare",
+      },
+      getPageGroupsForMapping: {
+        running: "Fetching page groups from Contentsquare",
+        done: "Fetched page groups from Contentsquare",
+      },
+      computeSiteMetrics: {
+        running: "Computing site metrics on Contentsquare",
+        done: "Computed site metrics on Contentsquare",
+      },
+      computeFunnel: {
+        running: "Computing funnel on Contentsquare",
+        done: "Computed funnel on Contentsquare",
+      },
+      computeImpact: {
+        running: "Computing impact on Contentsquare",
+        done: "Computed impact on Contentsquare",
+      },
+      computeJourney: {
+        running: "Computing journey on Contentsquare",
+        done: "Computed journey on Contentsquare",
+      },
+      computePageComparison: {
+        running: "Comparing pages on Contentsquare",
+        done: "Compared pages on Contentsquare",
+      },
+      computePageGroupMetrics: {
+        running: "Computing page group metrics on Contentsquare",
+        done: "Computed page group metrics on Contentsquare",
+      },
+      getTopErrorsBySessionsWithErrors: {
+        running: "Fetching top errors by sessions from Contentsquare",
+        done: "Fetched top errors by sessions from Contentsquare",
+      },
+      getTopErrorsByImpactOnGoal: {
+        running: "Fetching top errors by goal impact from Contentsquare",
+        done: "Fetched top errors by goal impact from Contentsquare",
+      },
+      getTopErrorsByMissedOpportunity: {
+        running: "Fetching top errors by missed opportunity from Contentsquare",
+        done: "Fetched top errors by missed opportunity from Contentsquare",
+      },
+      getTopPageGroupsByLostConversions: {
+        running:
+          "Fetching top page groups by lost conversions from Contentsquare",
+        done: "Fetched top page groups by lost conversions from Contentsquare",
+      },
+      getTopPagesBySessionsWithErrors: {
+        running: "Fetching top pages by session errors from Contentsquare",
+        done: "Fetched top pages by session errors from Contentsquare",
+      },
+      submitMcpFeedback: {
+        running: "Submitting feedback to Contentsquare",
+        done: "Submitted feedback to Contentsquare",
+      },
+    },
+  },
+  {
+    id: 10021,
+    name: "Praiz",
+    description:
+      "Praiz tools to search and read your meetings, calls, and transcripts — keep your CRM and team in sync with your customer conversations.",
+    url: "https://mcp.praiz.io/mcp",
+    icon: "PraizLogo",
+    documentationUrl: "https://docs.dust.tt/docs/remote-mcp-server",
+    connectionInstructions:
+      "Praiz uses OAuth. You will be prompted to sign in with your Praiz account and approve the requested scopes directly from the Dust chat.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      search: "never_ask",
+      fetch: "never_ask",
+      list_videos: "never_ask",
+      search_videos: "never_ask",
+      get_video: "never_ask",
+      get_video_transcript: "never_ask",
+      get_transcript_around: "never_ask",
+      get_video_timeline: "never_ask",
+      list_comments: "never_ask",
+      list_participants: "never_ask",
+      search_participants: "never_ask",
+      list_templates: "never_ask",
+      get_template_fields: "never_ask",
+      get_template_values: "never_ask",
+      list_users: "never_ask",
+      list_teams: "never_ask",
+      list_tags: "never_ask",
+      list_playlists: "never_ask",
+      usage_stats: "never_ask",
+    },
+    toolDisplayLabels: {
+      search: {
+        running: "Searching on Praiz",
+        done: "Searched on Praiz",
+      },
+      fetch: {
+        running: "Fetching record from Praiz",
+        done: "Fetched record from Praiz",
+      },
+      list_videos: {
+        running: "Listing videos on Praiz",
+        done: "Listed videos on Praiz",
+      },
+      search_videos: {
+        running: "Searching videos on Praiz",
+        done: "Searched videos on Praiz",
+      },
+      get_video: {
+        running: "Fetching video from Praiz",
+        done: "Fetched video from Praiz",
+      },
+      get_video_transcript: {
+        running: "Fetching transcript from Praiz",
+        done: "Fetched transcript from Praiz",
+      },
+      get_transcript_around: {
+        running: "Fetching transcript segment from Praiz",
+        done: "Fetched transcript segment from Praiz",
+      },
+      get_video_timeline: {
+        running: "Fetching timeline from Praiz",
+        done: "Fetched timeline from Praiz",
+      },
+      list_comments: {
+        running: "Listing comments on Praiz",
+        done: "Listed comments on Praiz",
+      },
+      list_participants: {
+        running: "Listing participants on Praiz",
+        done: "Listed participants on Praiz",
+      },
+      search_participants: {
+        running: "Searching participants on Praiz",
+        done: "Searched participants on Praiz",
+      },
+      list_templates: {
+        running: "Listing templates on Praiz",
+        done: "Listed templates on Praiz",
+      },
+      get_template_fields: {
+        running: "Fetching template fields from Praiz",
+        done: "Fetched template fields from Praiz",
+      },
+      get_template_values: {
+        running: "Fetching template values from Praiz",
+        done: "Fetched template values from Praiz",
+      },
+      list_users: {
+        running: "Listing users on Praiz",
+        done: "Listed users on Praiz",
+      },
+      list_teams: {
+        running: "Listing teams on Praiz",
+        done: "Listed teams on Praiz",
+      },
+      list_tags: {
+        running: "Listing tags on Praiz",
+        done: "Listed tags on Praiz",
+      },
+      list_playlists: {
+        running: "Listing playlists on Praiz",
+        done: "Listed playlists on Praiz",
+      },
+      usage_stats: {
+        running: "Fetching usage stats from Praiz",
+        done: "Fetched usage stats from Praiz",
+      },
+    },
+  },
+  {
+    id: 10022,
+    name: "Costory",
+    description:
+      "Costory tools to explore cloud cost data, compare periods, set alerts, and share reports across AWS, GCP, Azure, Datadog, Anthropic, OpenAI, and more.",
+    url: "https://app-api.costory.io/mcp",
+    icon: "CostoryLogo",
+    documentationUrl: "https://docs.costory.io/features/mcp",
+    connectionInstructions:
+      "Costory uses OAuth. You will be prompted to sign in with your Costory account in a browser window to authorize access.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      search: "never_ask",
+      search_documentation: "never_ask",
+      get_documentation_page: "never_ask",
+      get_context: "never_ask",
+      suggest_actions: "never_ask",
+      suggest_groupby: "never_ask",
+      suggest_usage_metrics: "never_ask",
+      query: "never_ask",
+      get: "never_ask",
+      get_dashboard_widget_data: "never_ask",
+      get_dashboard_widget_image: "never_ask",
+      list_metrics: "never_ask",
+      list_events: "never_ask",
+      list_alerts: "never_ask",
+      list_available_destinations: "never_ask",
+      list_organizations: "never_ask",
+      list_teams: "never_ask",
+      list_tags: "never_ask",
+      create_dashboard: "low",
+      update_dashboard: "high",
+      create_alert: "low",
+      create_event: "low",
+      create_report: "low",
+    },
+    toolDisplayLabels: {
+      search: {
+        running: "Searching on Costory",
+        done: "Searched on Costory",
+      },
+      search_documentation: {
+        running: "Searching Costory docs",
+        done: "Searched Costory docs",
+      },
+      get_documentation_page: {
+        running: "Fetching docs page from Costory",
+        done: "Fetched docs page from Costory",
+      },
+      get_context: {
+        running: "Loading workspace context from Costory",
+        done: "Loaded workspace context from Costory",
+      },
+      suggest_actions: {
+        running: "Suggesting actions on Costory",
+        done: "Suggested actions on Costory",
+      },
+      suggest_groupby: {
+        running: "Suggesting group-by on Costory",
+        done: "Suggested group-by on Costory",
+      },
+      suggest_usage_metrics: {
+        running: "Suggesting usage metrics on Costory",
+        done: "Suggested usage metrics on Costory",
+      },
+      query: {
+        running: "Querying costs on Costory",
+        done: "Queried costs on Costory",
+      },
+      get: {
+        running: "Fetching record from Costory",
+        done: "Fetched record from Costory",
+      },
+      get_dashboard_widget_data: {
+        running: "Fetching widget data from Costory",
+        done: "Fetched widget data from Costory",
+      },
+      get_dashboard_widget_image: {
+        running: "Rendering widget image on Costory",
+        done: "Rendered widget image on Costory",
+      },
+      list_metrics: {
+        running: "Listing metrics on Costory",
+        done: "Listed metrics on Costory",
+      },
+      list_events: {
+        running: "Listing events on Costory",
+        done: "Listed events on Costory",
+      },
+      list_alerts: {
+        running: "Listing alerts on Costory",
+        done: "Listed alerts on Costory",
+      },
+      list_available_destinations: {
+        running: "Listing destinations on Costory",
+        done: "Listed destinations on Costory",
+      },
+      list_organizations: {
+        running: "Listing organizations on Costory",
+        done: "Listed organizations on Costory",
+      },
+      list_teams: {
+        running: "Listing teams on Costory",
+        done: "Listed teams on Costory",
+      },
+      list_tags: {
+        running: "Listing tags on Costory",
+        done: "Listed tags on Costory",
+      },
+      create_dashboard: {
+        running: "Creating dashboard on Costory",
+        done: "Created dashboard on Costory",
+      },
+      update_dashboard: {
+        running: "Updating dashboard on Costory",
+        done: "Updated dashboard on Costory",
+      },
+      create_alert: {
+        running: "Creating alert on Costory",
+        done: "Created alert on Costory",
+      },
+      create_event: {
+        running: "Logging event on Costory",
+        done: "Logged event on Costory",
+      },
+      create_report: {
+        running: "Scheduling report on Costory",
+        done: "Scheduled report on Costory",
+      },
+    },
+  },
+  {
+    id: 10023,
+    name: "Apify",
+    description:
+      "Apify tools to discover and run Actors (web scrapers and automations), read their outputs, and browse Apify storage.",
+    url: "https://mcp.apify.com/",
+    icon: "ApifyLogo",
+    documentationUrl: "https://docs.apify.com/platform/integrations/mcp",
+    connectionInstructions:
+      "Apify uses OAuth. You will be prompted to sign in with your Apify account in a browser window to authorize access.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      "search-actors": "never_ask",
+      "fetch-actor-details": "never_ask",
+      "get-actor-run": "never_ask",
+      "get-dataset-items": "never_ask",
+      "get-key-value-store-record": "never_ask",
+      "search-apify-docs": "never_ask",
+      "fetch-apify-docs": "never_ask",
+      "call-actor": "low",
+      "abort-actor-run": "low",
+      "apify--rag-web-browser": "low",
+    },
+    toolDisplayLabels: {
+      "search-actors": {
+        running: "Searching Actors on Apify",
+        done: "Searched Actors on Apify",
+      },
+      "fetch-actor-details": {
+        running: "Fetching Actor details from Apify",
+        done: "Fetched Actor details from Apify",
+      },
+      "get-actor-run": {
+        running: "Fetching Actor run from Apify",
+        done: "Fetched Actor run from Apify",
+      },
+      "get-dataset-items": {
+        running: "Fetching dataset items from Apify",
+        done: "Fetched dataset items from Apify",
+      },
+      "get-key-value-store-record": {
+        running: "Fetching key-value record from Apify",
+        done: "Fetched key-value record from Apify",
+      },
+      "search-apify-docs": {
+        running: "Searching Apify docs",
+        done: "Searched Apify docs",
+      },
+      "fetch-apify-docs": {
+        running: "Fetching Apify docs page",
+        done: "Fetched Apify docs page",
+      },
+      "call-actor": {
+        running: "Running Actor on Apify",
+        done: "Ran Actor on Apify",
+      },
+      "abort-actor-run": {
+        running: "Aborting Actor run on Apify",
+        done: "Aborted Actor run on Apify",
+      },
+      "apify--rag-web-browser": {
+        running: "Browsing the web with Apify",
+        done: "Browsed the web with Apify",
+      },
+    },
+  },
+  {
+    id: 10024,
+    name: "Gamma",
+    description:
+      "Create and manage Gamma presentations directly from your conversations.",
+    url: "https://mcp.gamma.app/mcp",
+    icon: "GammaLogo",
+    documentationUrl: "https://developers.gamma.app",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      get_gammas: "never_ask",
+      read_gamma: "never_ask",
+      get_themes: "never_ask",
+      get_folders: "never_ask",
+      get_generation_status: "never_ask",
+      generate: "low",
+      generate_from_template: "low",
+    },
+    toolDisplayLabels: {
+      get_gammas: {
+        running: "Browsing Gammas",
+        done: "Browsed Gammas",
+      },
+      read_gamma: {
+        running: "Reading Gamma",
+        done: "Read Gamma",
+      },
+      get_themes: {
+        running: "Loading Gamma themes",
+        done: "Loaded Gamma themes",
+      },
+      get_folders: {
+        running: "Loading Gamma folders",
+        done: "Loaded Gamma folders",
+      },
+      get_generation_status: {
+        running: "Checking generation status",
+        done: "Checked generation status",
+      },
+      generate: {
+        running: "Generating Gamma presentation",
+        done: "Generated Gamma presentation",
+      },
+      generate_from_template: {
+        running: "Generating Gamma from template",
+        done: "Generated Gamma from template",
+      },
+    },
+  },
 ];
 
 export const isDefaultRemoteMcpServerURL = (url: string | undefined) => {

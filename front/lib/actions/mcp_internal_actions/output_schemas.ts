@@ -110,16 +110,35 @@ export function isToolGeneratedFilePath(
   );
 }
 
-// GCS mount image returned by the `files__cat` tool for vision-capable models.
-// Carries a GCS path so the rendering layer can generate a fresh signed URL at render time.
+// File-system image returned by the `files__cat` tool for vision-capable models.
+// Carries a path so the rendering layer can generate a signed URL at render time.
+//
+// Field evolution:
+//   - v1 (legacy): `gcsPath` held a raw GCS object name (e.g. `w/{wId}/conversations/...`).
+//     The rendering layer detects these by checking whether the value starts with `w/`.
+//   - v2 (current): `filePath` holds a canonical scoped path (e.g. `conversation-{cId}/photo.png`).
+//     Resolved via DustFileSystem.fromScopedPath at render time.
+//
+// The schema accepts both shapes so old stored records continue to parse.
 
-const ModelVisionImageSchema = z.object({
-  uri: z.string(),
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.MODEL_VISION_IMAGE),
-  text: z.literal(""),
-  gcsPath: z.string(),
-  imageContentType: z.string(),
-});
+const ModelVisionImageSchema = z
+  .object({
+    uri: z.string(),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.MODEL_VISION_IMAGE),
+    text: z.literal(""),
+    imageContentType: z.string(),
+  })
+  .and(
+    z
+      .union([
+        z.object({ filePath: z.string() }),
+        z.object({ gcsPath: z.string() }).transform(({ gcsPath, ...rest }) => ({
+          ...rest,
+          filePath: gcsPath,
+        })),
+      ])
+      .transform((v) => v)
+  );
 
 export type ModelVisionImageType = z.infer<typeof ModelVisionImageSchema>;
 
@@ -495,6 +514,8 @@ export const RunAgentQueryResourceSchema = z.object({
   text: z.string(),
   childAgentId: z.string(),
   uri: z.literal(""),
+  conversationId: z.string().optional(),
+  agentMessageId: z.string().optional(),
 });
 
 export type RunAgentQueryResourceType = z.infer<
@@ -536,46 +557,6 @@ export const isToolsetsResultResourceType = (
   return (
     outputBlock.type === "resource" &&
     ToolsetsResultResourceSchema.safeParse(outputBlock.resource).success
-  );
-};
-
-// Agent creation results.
-
-export const AgentCreationResultResourceSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_CREATION_RESULT),
-  text: z.string(), // Required by MCP SDK
-  uri: z.string(),
-  mainAgent: z.object({
-    id: z.string(),
-    name: z.string(),
-    description: z.string(),
-    pictureUrl: z.string(),
-    url: z.string(),
-  }),
-  subAgent: z.optional(
-    z.object({
-      id: z.string(),
-      name: z.string(),
-      description: z.string(),
-      pictureUrl: z.string(),
-      url: z.string(),
-    })
-  ),
-});
-
-export type AgentCreationResultResourceType = z.infer<
-  typeof AgentCreationResultResourceSchema
->;
-
-export const isAgentCreationResultResourceType = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is {
-  type: "resource";
-  resource: AgentCreationResultResourceType;
-} => {
-  return (
-    outputBlock.type === "resource" &&
-    AgentCreationResultResourceSchema.safeParse(outputBlock.resource).success
   );
 };
 
@@ -1125,6 +1106,9 @@ export const EarlyExitOutputResourceSchema = z.object({
   type: z.literal("tool_early_exit"),
   text: z.string(),
   isError: z.boolean(),
+  reason: z
+    .enum(["deploy_interruption", "user_cancellation", "none"])
+    .optional(),
   uri: z.string(),
 });
 
@@ -1168,6 +1152,42 @@ export const isAgentPauseOutputResourceType = (
   );
 };
 
+// Outlook mail folder list tool output.
+
+export const OUTLOOK_MAIL_FOLDER_LIST_MIME_TYPE =
+  "application/vnd.dust.tool-output.outlook-mail-folder-list" as const;
+
+const OutlookFolderItemSchema = z.object({
+  name: z.string(),
+  childFolderCount: z.number().optional(),
+  unreadItemCount: z.number().optional(),
+  totalItemCount: z.number().optional(),
+});
+
+export const OutlookMailFolderListResourceSchema = z.object({
+  mimeType: z.literal(OUTLOOK_MAIL_FOLDER_LIST_MIME_TYPE),
+  uri: z.literal(""),
+  text: z.string(),
+  path: z.array(z.string()),
+  folders: z.array(OutlookFolderItemSchema),
+});
+
+export type OutlookMailFolderListResourceType = z.infer<
+  typeof OutlookMailFolderListResourceSchema
+>;
+
+export const isOutlookMailFolderListResource = (
+  outputBlock: CallToolResult["content"][number]
+): outputBlock is {
+  type: "resource";
+  resource: OutlookMailFolderListResourceType;
+} => {
+  return (
+    outputBlock.type === "resource" &&
+    OutlookMailFolderListResourceSchema.safeParse(outputBlock.resource).success
+  );
+};
+
 // Clari Copilot tool outputs.
 
 export const CLARI_CALL_LIST_MIME_TYPE =
@@ -1178,6 +1198,13 @@ export const ClariCallListResourceSchema = z.object({
   uri: z.literal(""),
   text: z.string(),
   calls: z.array(ClariCallSchema),
+  pagination: z
+    .object({
+      matched: z.number().optional(),
+      hasMore: z.boolean().optional(),
+      nextPageSkip: z.number().optional(),
+    })
+    .optional(),
 });
 
 export type ClariCallListResourceType = z.infer<

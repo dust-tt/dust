@@ -1,16 +1,18 @@
 import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
 import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
-import type { MCPServerType } from "@app/lib/api/mcp";
-import type { RegionInfo } from "@app/lib/api/regions/config";
+import type {
+  CreateMCPServerResponseBody,
+  MCPServerType,
+} from "@app/lib/api/mcp";
+import type { DiscoverOAuthMetadataResponseBody } from "@app/lib/api/oauth/providers/mcp";
 import {
   isMCPCreateServerError,
   type MCPConnectionType,
 } from "@app/lib/swr/mcp_servers";
-import type { CreateMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp";
-import type { DiscoverOAuthMetadataResponseBody } from "@app/pages/api/w/[wId]/mcp/discover_oauth_metadata";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import type { RegionInfo } from "@app/types/region";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { sanitizeHeadersArray } from "@app/types/shared/utils/http_headers";

@@ -7,6 +7,12 @@ import {
   getFileContent,
   getUpdatedContentAndOccurrences,
 } from "@app/lib/api/files/utils";
+import {
+  diffAuthorizedFileRefs,
+  fetchShareableFileAllowlistState,
+  formatPublicShareReferencedFilesChangeNoticeForLLM,
+} from "@app/lib/api/viz/authorized_file_access";
+import { uploadFrameContent } from "@app/lib/api/viz/upload_frame_content";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -127,7 +133,13 @@ export async function createClientExecutableFile(
     });
 
     // Upload content directly.
-    await fileResource.uploadContent(auth, content);
+    const uploadResult = await uploadFrameContent(auth, fileResource, content);
+    if (uploadResult.isErr()) {
+      return new Err({
+        message: uploadResult.error.message,
+        tracked: uploadResult.error.code === "internal_error",
+      });
+    }
 
     return new Ok({ fileResource, warnings });
   } catch (error) {
@@ -170,6 +182,7 @@ export async function editClientExecutableFile(
       fileResource: FileResource;
       replacementCount: number;
       warnings: ValidationWarning[];
+      referencedFilesChangeNotice: string | null;
     },
     { tracked: boolean; message: string }
   >
@@ -242,10 +255,41 @@ export async function editClientExecutableFile(
         warnings.push(...tailwindValidation.error);
       }
 
-      // Upload the updated content (version is incremented inside uploadContent).
-      await fileResource.uploadContent(auth, updatedContent);
+      const beforeShareState =
+        await fetchShareableFileAllowlistState(fileResource);
 
-      return new Ok({ fileResource, replacementCount: occurrences, warnings });
+      // Upload the updated content (version is incremented inside uploadFrameContent).
+      const uploadResult = await uploadFrameContent(
+        auth,
+        fileResource,
+        updatedContent
+      );
+      if (uploadResult.isErr()) {
+        return new Err({
+          message: uploadResult.error.message,
+          tracked: uploadResult.error.code === "internal_error",
+        });
+      }
+
+      let referencedFilesChangeNotice: string | null = null;
+      if (beforeShareState?.shareScope === "public") {
+        const afterShareState =
+          await fetchShareableFileAllowlistState(fileResource);
+        referencedFilesChangeNotice =
+          formatPublicShareReferencedFilesChangeNoticeForLLM(
+            diffAuthorizedFileRefs(
+              beforeShareState.refs,
+              afterShareState?.refs ?? []
+            ).added
+          );
+      }
+
+      return new Ok({
+        fileResource,
+        replacementCount: occurrences,
+        warnings,
+        referencedFilesChangeNotice,
+      });
     });
   } catch (error) {
     return new Err({

@@ -27,6 +27,20 @@ export function isFileAuthorizationInfo(
   return FileAuthorizationInfoSchema.safeParse(value).success;
 }
 
+const SandboxChildActionInfoSchema = z.object({
+  parentActionId: z.string(),
+});
+
+export type SandboxChildActionInfo = z.infer<
+  typeof SandboxChildActionInfoSchema
+>;
+
+export function isSandboxChildActionInfo(
+  value: unknown
+): value is SandboxChildActionInfo {
+  return SandboxChildActionInfoSchema.safeParse(value).success;
+}
+
 const UserQuestionOptionSchema = z.object({
   label: z
     .string()
@@ -76,10 +90,23 @@ export function isUserQuestionResumeState(
   return UserQuestionResumeStateSchema.safeParse(value).success;
 }
 
+const SandboxResumeStateSchema = z.object({
+  execId: z.string(),
+});
+
+export type SandboxResumeState = z.infer<typeof SandboxResumeStateSchema>;
+
+export function isSandboxResumeState(
+  value: unknown
+): value is SandboxResumeState {
+  return SandboxResumeStateSchema.safeParse(value).success;
+}
+
 export type StepContext = {
   citationsCount: number;
   citationsOffset: number;
   fileAuthorizationInfo?: FileAuthorizationInfo;
+  sandboxChildActionInfo?: SandboxChildActionInfo;
   resumeState: Record<string, unknown> | null;
   retrievalTopK: number;
   websearchResultCount: number;

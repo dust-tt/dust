@@ -3,17 +3,24 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "tsx ./server.ts",
-    "start": "NODE_ENV=production node dist/server.js",
-    "build": "tsx esbuild.server.ts",
+    "dev": "tsx esbuild.dev.ts",
+    "build": "tsx esbuild.production.ts",
     "test": "FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI REDIS_URI=$TEST_REDIS_URI REDIS_CACHE_URI=$TEST_REDIS_URI vitest --run",
+    "test:ci": "vitest --reporter=junit --watch=false --test-timeout=30000",
+    "lint:swagger-annotations": "BAD_FILES=$(grep -rlE 'app\\.(get|post|patch|put|delete)\\(' routes --include='*.ts' | grep -v '\\.test\\.ts$' | xargs grep -rL '@swagger\\|@ignoreswagger'); if [ -n \"$BAD_FILES\" ]; then echo \"Error: The following API route files register a handler but are missing the @swagger or @ignoreswagger annotation:\"; echo \"$BAD_FILES\"; exit 1; else echo \"Swagger annotation check: OK.\"; exit 0; fi",
+    "docs": "npx next-swagger-doc-cli swagger.json 2>&1 | tee /dev/stderr | grep -E \"YAML.*Error\" && { echo \"Could not generate swagger because of errors\" && exit 1; } || npx @redocly/cli@1.25.5 lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json",
+    "docs:check": "npx @redocly/cli@1.25.5 lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json",
     "tsgo": "tsgo"
   },
   "dependencies": {
+    "@hono/mcp": "^0.3.0",
     "@hono/node-server": "^1.19.10",
     "@hono/zod-validator": "^0.7.6",
     "hono": "^4.12.15",
+    "jose": "^6.2.3",
     "next": "^14.2.35",
+    "next-swagger-doc": "^0.4.0",
+    "openai": "^6.33.0",
     "zod": "^3.25.76",
     "zod-validation-error": "^3.4.0"
   },

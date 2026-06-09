@@ -6,9 +6,9 @@ import type { TocItem } from "@app/lib/contentful/tableOfContents";
 import type { SearchableItem } from "@app/lib/contentful/types";
 import { LinkWrapper } from "@app/lib/platform";
 import {
-  ArrowLeftIcon,
+  ArrowLeft,
   Button,
-  MenuIcon,
+  Menu01,
   Sheet,
   SheetContent,
   SheetTitle,
@@ -38,7 +38,7 @@ function SidebarContent({
           onClick={onNavigate}
           className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
-          <ArrowLeftIcon className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" />
           {backToAcademy}
         </LinkWrapper>
       </div>
@@ -85,7 +85,7 @@ export function MobileMenuButton({
   return (
     <>
       <Button
-        icon={MenuIcon}
+        icon={Menu01}
         variant="ghost"
         size="sm"
         className="lg:hidden"

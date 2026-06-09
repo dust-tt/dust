@@ -1,4 +1,5 @@
 @tailwind base;
+@import "./fonts.css";
 
 /* Custom scrollbar styles */
 @layer base {

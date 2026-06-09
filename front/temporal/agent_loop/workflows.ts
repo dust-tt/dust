@@ -10,8 +10,15 @@ import type * as finalizeActivities from "@app/temporal/agent_loop/activities/fi
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
-import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
-import { isTerminalRunModelAndCreateActionsTimeout } from "@app/temporal/agent_loop/lib/workflow_failures";
+import {
+  MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
+  RUN_MODEL_MAX_RETRIES,
+  TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
+} from "@app/temporal/agent_loop/config";
+import {
+  isRunModelLLMUnresponsiveError,
+  isTerminalRunModelTimeout,
+} from "@app/temporal/agent_loop/lib/workflow_failures";
 import { makeAgentLoopConversationTitleWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import {
   cancelAgentLoopSignal,
@@ -43,9 +50,6 @@ import {
 const toolActivityStartToCloseTimeoutMs =
   Math.max(RUN_AGENT_CALL_TOOL_TIMEOUT_MS, DEFAULT_MCP_REQUEST_TIMEOUT_MS) +
   60 * 1000;
-
-const TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60 * 1000;
-const MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60 * 1000;
 
 import {
   OpenTelemetryInboundInterceptor,
@@ -113,9 +117,15 @@ const { ensureConversationTitleActivity } = proxyActivities<
 const { compactionActivity } = proxyActivities<typeof compactionActivities>({
   startToCloseTimeout: "20 minutes",
   retry: {
-    // Do not retry compaction, the message is marked as failed, not idempotent.
+    // Do not retry compaction, the message is marked as failed, not idempotent
     maximumAttempts: 1,
   },
+});
+
+const { compactionCleanupActivity } = proxyActivities<
+  typeof compactionActivities
+>({
+  startToCloseTimeout: "1 minute",
 });
 
 const {
@@ -153,13 +163,23 @@ export async function compactionWorkflow({
   model: SupportedModel;
   sourceConversation?: CompactionSourceConversation;
 }) {
-  await compactionActivity(authType, {
-    conversationId,
-    compactionMessageId,
-    compactionMessageVersion,
-    model,
-    sourceConversation,
-  });
+  try {
+    await compactionActivity(authType, {
+      conversationId,
+      compactionMessageId,
+      compactionMessageVersion,
+      model,
+      sourceConversation,
+    });
+  } catch (_error) {
+    // If the compactionActivity has failed, it may be a timeout and the
+    // compaction message remained stuck in a "created" state.
+    await compactionCleanupActivity(authType, {
+      conversationId,
+      compactionMessageId,
+      compactionMessageVersion,
+    });
+  }
 }
 
 export async function agentLoopWorkflow({
@@ -315,11 +335,11 @@ export async function agentLoopWorkflow({
     });
   } catch (err) {
     const workflowError = err instanceof Error ? err : new Error(String(err));
-    // This activity already turns terminal model/provider failures into a user-facing agent error
-    // when our code regains control. We swallow only the final Temporal StartToClose timeout so the
-    // workflow does not surface that infrastructure timeout as a separate workflow failure.
+    // The activity publishes user-facing model errors when our code regains control. We swallow
+    // only terminal Temporal timeouts whose failure chain proves the blocked work was an LLM
+    // provider timeout, so unrelated infrastructure timeouts still surface as workflow failures.
     const shouldSwallowWorkflowFailure =
-      isTerminalRunModelAndCreateActionsTimeout(err);
+      isTerminalRunModelTimeout(err) && isRunModelLLMUnresponsiveError(err);
 
     // Notify error in a non-cancellable scope to ensure it runs even if the workflow is canceled.
     // Pass this execution's runIds and startStep to finalize so tracking
@@ -457,4 +477,26 @@ async function executeStepIteration({
     runId,
     shouldContinue: !toolResults.some((result) => result.shouldPauseAgentLoop),
   };
+}
+
+export async function runSandboxChildToolWorkflow({
+  authType,
+  agentLoopArgs,
+  actionModelId,
+  step,
+}: {
+  authType: AuthenticatorType;
+  agentLoopArgs: AgentLoopArgsWithTiming;
+  actionModelId: number;
+  step: number;
+}) {
+  const { deferredEvents } = await runToolActivity(authType, {
+    actionId: actionModelId,
+    runAgentArgs: agentLoopArgs,
+    step,
+  });
+
+  if (deferredEvents.length > 0) {
+    await publishDeferredEventsActivity(deferredEvents);
+  }
 }

@@ -2,8 +2,9 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import { AttachmentChip } from "@sparkle/components";
-import { DocumentIcon, DocumentTextIcon, FolderIcon } from "@sparkle/icons/app";
+
 import { DriveLogo, NotionLogo } from "@sparkle/logo";
+import { File02, File04, Folder } from "@sparkle/icons/v2-stroke";
 
 const meta = {
   title: "Conversation/AttachmentChip",
@@ -57,7 +58,7 @@ export const Image: Story = {
 export const Text: Story = {
   args: {
     label: "text.txt",
-    icon: { visual: DocumentTextIcon },
+    icon: { visual: File04 },
   },
   decorators: [
     (Story) => (
@@ -71,7 +72,7 @@ export const Text: Story = {
 export const LongLabel: Story = {
   args: {
     label: "very_long_document_name_that_will_be_truncated.pdf",
-    icon: { visual: DocumentIcon },
+    icon: { visual: File02 },
   },
   decorators: [
     (Story) => (
@@ -85,7 +86,7 @@ export const LongLabel: Story = {
 export const WithDoubleIcon: Story = {
   args: {
     label: "My Drive Folder",
-    doubleIcon: { mainIcon: FolderIcon, secondaryIcon: DriveLogo, size: "sm" },
+    doubleIcon: { mainIcon: Folder, secondaryIcon: DriveLogo, size: "sm" },
   },
   decorators: [
     (Story) => (
@@ -100,7 +101,7 @@ export const WithDoubleIconAndLink: Story = {
   args: {
     label: "Notion Document",
     doubleIcon: {
-      mainIcon: DocumentIcon,
+      mainIcon: File02,
       secondaryIcon: NotionLogo,
       size: "sm",
     },
@@ -120,7 +121,7 @@ export const WithDoubleIconAndLink: Story = {
 export const WithChipColor: Story = {
   args: {
     label: "Success chip",
-    icon: { visual: DocumentIcon },
+    icon: { visual: File02 },
     color: "success",
   },
   decorators: [

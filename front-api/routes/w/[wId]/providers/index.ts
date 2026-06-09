@@ -1,14 +1,12 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
+import type { GetProvidersResponseBody } from "@app/lib/api/providers";
 import { ProviderModel } from "@app/lib/resources/storage/models/apps";
-import type { ProviderType } from "@app/types/provider";
 import { redactString } from "@app/types/shared/utils/string_utils";
-
-export type GetProvidersResponseBody = {
-  providers: ProviderType[];
-};
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import check from "./[pId]/check";
+import provider from "./[pId]/index";
+import models from "./[pId]/models";
 
 function redactConfig(config: string) {
   const parsedConfig = JSON.parse(config);
@@ -20,36 +18,33 @@ function redactConfig(config: string) {
 }
 
 // Mounted at /api/w/:wId/providers.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
+/** @ignoreswagger */
+app.get(
+  "/",
+  ensureIsBuilder(),
+  async (ctx): HandlerResult<GetProvidersResponseBody> => {
+    const auth = ctx.get("auth");
 
-  if (!auth.isBuilder()) {
-    return apiError(c, {
-      status_code: 403,
-      api_error: {
-        type: "provider_auth_error",
-        message:
-          "Only the users that are `builders` for the current workspace can list providers.",
+    const owner = auth.getNonNullableWorkspace();
+    const providers = await ProviderModel.findAll({
+      where: {
+        workspaceId: owner.id,
       },
     });
+
+    return ctx.json({
+      providers: providers.map((p) => ({
+        providerId: p.providerId,
+        config: redactConfig(p.config),
+      })),
+    });
   }
+);
 
-  const owner = auth.getNonNullableWorkspace();
-  const providers = await ProviderModel.findAll({
-    where: {
-      workspaceId: owner.id,
-    },
-  });
-
-  const body: GetProvidersResponseBody = {
-    providers: providers.map((p) => ({
-      providerId: p.providerId,
-      config: redactConfig(p.config),
-    })),
-  };
-  return c.json(body);
-});
+app.route("/:pId/check", check);
+app.route("/:pId/models", models);
+app.route("/:pId", provider);
 
 export default app;

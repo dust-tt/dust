@@ -4,15 +4,14 @@ import { MembersDataTable } from "@app/components/poke/members/table";
 import { ProjectPage } from "@app/components/poke/pages/ProjectPage";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { ViewSpaceViewTable } from "@app/components/poke/spaces/view";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeSpaceDetails } from "@app/poke/swr/space_details";
 import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
 export function SpacePage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - Space`);
 
   const spaceId = useRequiredPathParam("spaceId");
   const {
@@ -23,6 +22,12 @@ export function SpacePage() {
     owner,
     spaceId,
     disabled: false,
+  });
+
+  usePokePageMetadata({
+    name: spaceDetails?.space.name,
+    subtitle: owner.name,
+    sId: spaceId,
   });
 
   if (isLoading) {

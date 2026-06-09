@@ -1,6 +1,6 @@
 use super::DomainParseResult;
 
-pub fn parse_client_hello_sni(bytes: &[u8]) -> DomainParseResult {
+pub(super) fn parse_client_hello_sni(bytes: &[u8]) -> DomainParseResult {
     let record = match bytes.get(..5) {
         Some(record) => record,
         None => return DomainParseResult::Incomplete,

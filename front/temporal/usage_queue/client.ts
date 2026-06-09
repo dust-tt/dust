@@ -4,12 +4,15 @@ import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/usage_queue/config";
 import {
+  makeMetronomeSeatCountSyncWorkflowId,
   makeMetronomeUsageEventsWorkflowId,
   makeTrackProgrammaticUsageWorkflowId,
 } from "@app/temporal/usage_queue/helpers";
+import { syncMetronomeSeatCountSignal } from "@app/temporal/usage_queue/signals";
 import {
   emitMetronomeUsageEventsWorkflow,
   syncMauCountToMetronomeWorkflow,
+  syncMetronomeSeatCountWorkflow,
   trackProgrammaticUsageWorkflow,
   updateWorkspaceUsageWorkflow,
 } from "@app/temporal/usage_queue/workflows";
@@ -181,6 +184,39 @@ export async function launchEmitMetronomeUsageEventsWorkflow({
       );
     }
 
+    return new Err(normalizeError(e));
+  }
+}
+
+export async function launchMetronomeSeatCountSyncWorkflow({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<Result<undefined, Error>> {
+  const client = await getTemporalClientForFrontNamespace();
+  const workflowId = makeMetronomeSeatCountSyncWorkflowId({ workspaceId });
+
+  try {
+    await client.workflow.signalWithStart(syncMetronomeSeatCountWorkflow, {
+      args: [workspaceId],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      signal: syncMetronomeSeatCountSignal,
+      signalArgs: undefined,
+      memo: {
+        workspaceId,
+      },
+    });
+    return new Ok(undefined);
+  } catch (e) {
+    logger.error(
+      {
+        workflowId,
+        workspaceId,
+        error: e,
+      },
+      "[Metronome] Failed to signal seat count sync workflow"
+    );
     return new Err(normalizeError(e));
   }
 }

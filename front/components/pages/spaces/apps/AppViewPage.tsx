@@ -22,12 +22,12 @@ import type { CoreAPIError } from "@app/types/core/core_api";
 import type { APIErrorResponse } from "@app/types/error";
 import type { BlockType } from "@app/types/run";
 import {
-  BracesIcon,
+  Brackets,
   Button,
-  DocumentTextIcon,
-  PlayIcon,
+  File04,
+  Play,
   Spinner,
-  StopIcon,
+  Stop,
 } from "@dust-tt/sparkle";
 import { useRef, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -376,7 +376,7 @@ export function AppViewPage() {
               disabled={cancelRequested}
               label={cancelRequested ? "Canceling..." : "Cancel"}
               onClick={() => handleCancelRun()}
-              icon={StopIcon}
+              icon={Stop}
             />
           ) : (
             <Button
@@ -388,7 +388,7 @@ export function AppViewPage() {
                 runRequested || run?.status.run == "running" ? "Running" : "Run"
               }
               onClick={() => handleRun()}
-              icon={PlayIcon}
+              icon={Play}
             />
           )}
           {runError ? (
@@ -408,7 +408,7 @@ export function AppViewPage() {
             <div className="hidden flex-initial space-x-2 sm:block">
               <Button
                 variant="outline"
-                icon={BracesIcon}
+                icon={Brackets}
                 label="Secrets"
                 onClick={() => {
                   void router.push(`/w/${owner.sId}/developers/dev-secrets`);
@@ -416,7 +416,7 @@ export function AppViewPage() {
               />
               <Button
                 variant="ghost"
-                icon={DocumentTextIcon}
+                icon={File04}
                 label="Documentation"
                 onClick={() => {
                   window.open(
@@ -462,7 +462,7 @@ export function AppViewPage() {
             <p className="mt-4">
               <Button
                 variant="ghost"
-                icon={DocumentTextIcon}
+                icon={File04}
                 label="Follow the QuickStart Guide"
                 onClick={() => {
                   window.open(
@@ -494,7 +494,7 @@ export function AppViewPage() {
                   disabled={cancelRequested}
                   label={cancelRequested ? "Canceling..." : "Cancel"}
                   onClick={() => handleCancelRun()}
-                  icon={StopIcon}
+                  icon={Stop}
                 />
               ) : (
                 <Button
@@ -508,7 +508,7 @@ export function AppViewPage() {
                       : "Run"
                   }
                   onClick={() => handleRun()}
-                  icon={PlayIcon}
+                  icon={Play}
                 />
               )}
             </div>

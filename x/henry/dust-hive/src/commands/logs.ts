@@ -54,8 +54,8 @@ export const logsCommand = withEnvironment(
       return runInteractiveMode(env.name, serviceArg);
     }
 
-    // Determine target service (default to front)
-    let targetService: ServiceName = "front";
+    // Determine target service (default to front-api).
+    let targetService: ServiceName = "front-api";
     if (serviceArg) {
       const result = validateServiceArg(serviceArg);
       if (!result.ok) return result;

@@ -21,7 +21,10 @@ import {
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
-import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
+import {
+  type EnabledSkill,
+  resolveSkillInstructions,
+} from "@app/lib/api/assistant/skills_rendering";
 import {
   PASTED_CONTENT_MAX_CHARACTERS,
   TRUNCATED_SNIPPET_SIZE,
@@ -57,12 +60,14 @@ function constructContextSection({
   model,
   owner,
   errorContext,
+  disableFormattingPrompt,
 }: {
   userMessage: UserMessageType;
   agentConfiguration: AgentConfigurationType;
   model: ModelConfigurationType;
   owner: WorkspaceType | null;
   errorContext?: string;
+  disableFormattingPrompt: boolean;
 }): string {
   const d = moment(new Date()).tz(userMessage.context.timezone);
 
@@ -74,7 +79,7 @@ function constructContextSection({
     context += `workspace: ${owner.name}\n`;
   }
 
-  if (model.formattingMetaPrompt) {
+  if (model.formattingMetaPrompt && !disableFormattingPrompt) {
     context += `# RESPONSE FORMAT\n${model.formattingMetaPrompt}\n`;
   }
 
@@ -199,30 +204,12 @@ function constructToolsSection({
   return toolsSection;
 }
 
-/**
- * Get the full instructions for an enabled skill, including extended skill instructions if applicable.
- */
-function getEnabledSkillInstructions(skill: EnabledSkill): string {
-  const { name, instructions, extendedSkill } = skill;
-
-  if (!extendedSkill) {
-    return `<${name}>\n${instructions}\n</${name}>`;
-  }
-
-  return [
-    `<${name}>`,
-    extendedSkill.instructions,
-    "<additional_guidelines>",
-    instructions,
-    "</additional_guidelines>",
-    `</${name}>`,
-  ].join("\n");
-}
-
-function constructSkillsSectionForUserMessageRendering({
+function constructSkillsSection({
   systemSkills,
+  useFramesV2,
 }: {
   systemSkills: SkillResource[];
+  useFramesV2: boolean;
 }): string {
   const toolDisplayName = `${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}`;
 
@@ -235,10 +222,14 @@ function constructSkillsSectionForUserMessageRendering({
     `You can enable them using the \`${toolDisplayName}\` tool when they become relevant to the conversation.\n` +
     "- **Enabled**: Fully active with instructions loaded.\n\n" +
     "Enable skills proactively when a user's request matches a skill's purpose.\n" +
-    `If a user message contains a \`<skill id=\"...\" name=\"...\" />\` tag, treat it as a strong hint that the ` +
-    "referenced skill is relevant: it means the user specifically mentioned this skill. If the skill is not already " +
-    `enabled, and it would help, enable it with \`${toolDisplayName}\`.\n` +
-    "Only enable skills you actually need, enabling a skill loads its full instructions into context.\n" +
+    `Skill references can also appear as \`<skill id=\"...\" name=\"...\" />\` tags in user messages or enabled skill instructions. ` +
+    "These tags are strong hints that the referenced skill is relevant, including when a skill author nested one skill inside another. " +
+    `If the referenced skill would help and is not already enabled, call \`${toolDisplayName}\` with \`skillName\` set to the tag's \`name\` value.\n` +
+    "Referenced skills may not appear in the available-skills list; a tag is enough to enable the skill by name. " +
+    "Only enable skills you actually need, because enabling a skill loads its full instructions into context.\n" +
+    `Enabled skill instructions can also contain \`<unavailable_skill id=\"...\" />\` tags. ` +
+    "These mean the instructions used to reference another skill, but that skill is no longer available to this conversation, for example because skill scope or permissions changed. " +
+    "Do not try to enable unavailable skill tags.\n" +
     "If you need to enable multiple skills, enable them in parallel.\n\n" +
     "When in doubt about enabling a skill, prefer enabling it as it may give you a new " +
     "perspective on the currently available context.\n";
@@ -249,94 +240,14 @@ function constructSkillsSectionForUserMessageRendering({
       "The following baseline skills are always active for this agent:\n" +
       systemSkills
         .map(
-          (skill) => `<${skill.name}>\n${skill.instructions}\n</${skill.name}>`
+          (skill) =>
+            `<${skill.name}>\n${resolveSkillInstructions({
+              skill,
+              useFramesV2,
+            })}\n</${skill.name}>`
         )
         .join("\n") +
       "\n";
-  }
-
-  return skillsSection;
-}
-
-function constructSkillsSection({
-  systemSkills,
-  enabledSkills,
-  equippedSkills,
-}: {
-  systemSkills: SkillResource[];
-  enabledSkills: EnabledSkill[];
-  equippedSkills: SkillResource[];
-}): string {
-  let skillsSection =
-    "\n## SKILLS\n" +
-    "Skills are modular capabilities that extend your abilities for specific tasks. " +
-    "Each skill includes specialized instructions and may provide additional tools.\n\n" +
-    "Skills can be in two states:\n" +
-    // We do not use the wording `equipped` with the model as `available` is more meaningful in context.
-    // `equipped` is the backend term.
-    "- **Available**: Listed below but not active. Their instructions are not loaded yet. " +
-    `You can enable them using the \`${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}\` ` +
-    "tool when they become relevant to the conversation.\n" +
-    "- **Enabled**: Fully active with instructions loaded. Once enabled, a skill remains active " +
-    "for the rest of the conversation.\n\n" +
-    "Enable skills proactively when a user's request matches a skill's purpose.\n" +
-    "Only enable skills you actually need—enabling a skill loads its full instructions into context.\n" +
-    "If you need to enable multiple skills, enable them in parallel.\n\n" +
-    "When in doubt about enabling a skill, prefer enabling it as it may give you a new " +
-    "perspective on the currently available context.\n" +
-    "Decisions taken prior to enabling a skill may need to be revisited after enabling it.\n";
-
-  // Sort all skill arrays by name for stable prompt caching.
-  const sortByName = <T extends { name: string }>(arr: T[]): T[] =>
-    [...arr].sort((a, b) => a.name.localeCompare(b.name));
-  const sortedSystemSkills = sortByName(systemSkills);
-  const sortedEnabledSkills = sortByName(enabledSkills);
-  const sortedEquippedSkills = sortByName(equippedSkills);
-
-  const enabledSkillIds = new Set(
-    sortedEnabledSkills.map((skill) => skill.sId)
-  );
-  // This is a legacy behavior: enabled skills are removed from the list of equipped skills.
-  const sortedAvailableSkills = sortedEquippedSkills.filter(
-    (skill) => !enabledSkillIds.has(skill.sId)
-  );
-
-  const allEnabledSkills = [...sortedSystemSkills, ...sortedEnabledSkills];
-
-  if (!systemSkills.length && !enabledSkills.length && !equippedSkills.length) {
-    skillsSection +=
-      "\nNo skills are currently available or enabled for this agent.\n";
-    return skillsSection;
-  }
-
-  // Enabled skills - inject their full instructions.
-  if (allEnabledSkills.length > 0) {
-    skillsSection += "\n### ENABLED SKILLS\n";
-    skillsSection += "The following skills are currently enabled:\n";
-
-    const skillInstructions = [
-      ...sortedSystemSkills.map(
-        (skill) => `<${skill.name}>\n${skill.instructions}\n</${skill.name}>`
-      ),
-      ...sortedEnabledSkills.map((skill) => getEnabledSkillInstructions(skill)),
-    ];
-
-    skillsSection += skillInstructions.join("\n");
-  }
-
-  // Equipped but not yet enabled skills - show name and description only
-  if (sortedAvailableSkills.length > 0) {
-    skillsSection += "\n### AVAILABLE SKILLS\n";
-    skillsSection +=
-      `These skills can be enabled using the \`${ENABLE_SKILL_TOOL_NAME}\` tool. ` +
-      "Review their descriptions and enable the appropriate skill when relevant:\n";
-    const skillList = sortedAvailableSkills
-      .map(
-        ({ name, agentFacingDescription }) =>
-          `- **${name}**: ${agentFacingDescription}`
-      )
-      .join("\n");
-    skillsSection += skillList + "\n\n";
   }
 
   return skillsSection;
@@ -489,7 +400,6 @@ export function constructPromptMultiActions(
     enabledSkills,
     systemSkills,
     equippedSkills,
-    renderSkillsAsUserMessages = false,
     memoriesContext,
     toolsetsContext,
     userContext,
@@ -497,6 +407,8 @@ export function constructPromptMultiActions(
     projectContext,
     isNewFileExplorer = false,
     hasSandboxTools = false,
+    useFramesV2 = false,
+    disableFormattingPrompt = false,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -510,7 +422,6 @@ export function constructPromptMultiActions(
     enabledSkills: EnabledSkill[];
     systemSkills: SkillResource[];
     equippedSkills: SkillResource[];
-    renderSkillsAsUserMessages?: boolean;
     memoriesContext?: string;
     toolsetsContext?: string;
     userContext?: string;
@@ -518,6 +429,8 @@ export function constructPromptMultiActions(
     projectContext?: string;
     isNewFileExplorer?: boolean;
     hasSandboxTools?: boolean;
+    useFramesV2?: boolean;
+    disableFormattingPrompt?: boolean;
   }
 ): SystemPromptSections {
   const owner = auth.workspace();
@@ -544,6 +457,7 @@ export function constructPromptMultiActions(
     model,
     owner,
     userMessage,
+    disableFormattingPrompt,
   });
   const branchContextSection = constructBranchContextSection({ conversation });
 
@@ -553,15 +467,10 @@ export function constructPromptMultiActions(
     agentConfiguration,
     serverToolsAndInstructions,
   });
-  const skillsSection = renderSkillsAsUserMessages
-    ? constructSkillsSectionForUserMessageRendering({
-        systemSkills,
-      })
-    : constructSkillsSection({
-        systemSkills,
-        enabledSkills,
-        equippedSkills,
-      });
+  const skillsSection = constructSkillsSection({
+    systemSkills,
+    useFramesV2,
+  });
   const attachmentsSection = isNewFileExplorer
     ? constructAttachmentsSectionNewFileExplorer({ hasSandboxTools })
     : constructAttachmentsSection();

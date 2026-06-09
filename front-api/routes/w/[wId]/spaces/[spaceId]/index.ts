@@ -1,14 +1,14 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import uniqBy from "lodash/uniqBy";
-
 import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import type {
+  GetSpaceResponseBody,
+  PatchSpaceResponseBody,
+  SpaceCategoryInfo,
+} from "@app/lib/api/spaces";
 import { softDeleteSpaceAndLaunchScrubWorkflow } from "@app/lib/api/spaces";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -18,12 +18,14 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { PatchSpaceRequestBodySchema } from "@app/types/api/internal/spaces";
 import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types/api/public/spaces";
-import type { AgentsUsageType } from "@app/types/data_source";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceUserType } from "@app/types/user";
-
-import { spaceResource } from "@front-api/middleware/space_resource";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withSpace } from "@front-api/middlewares/with_space";
+import uniqBy from "lodash/uniqBy";
 
 import apps from "./apps";
 import dataSourceViews from "./data_source_views";
@@ -42,24 +44,202 @@ import searchConversations from "./search_conversations";
 import star from "./star";
 import webhookSourceViews from "./webhook_source_views";
 
-type SpaceCategoryInfo = {
-  usage: AgentsUsageType;
-  count: number;
-};
-
 // Mounted under /api/w/:wId/spaces/:spaceId. The bare `/` handles GET, PATCH,
 // and DELETE on the space resource itself. Per-space sub-resource sub-apps
 // live in their own sibling files; each sub-app applies its own
-// `spaceResource(...)` middleware so different permission options can be used
+// `withSpace(...)` middleware so different permission options can be used
 // per route.
-const app = new Hono();
+const app = workspaceApp();
+
+/**
+ * @swagger
+ * /api/w/{wId}/spaces/{spaceId}:
+ *   get:
+ *     summary: Get a space
+ *     description: Returns the details of a specific space including categories, members, and permissions.
+ *     tags:
+ *       - Private Spaces
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: spaceId
+ *         required: true
+ *         description: ID of the space
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: includeAllMembers
+ *         required: false
+ *         description: Include all members (including inactive)
+ *         schema:
+ *           type: string
+ *           enum: ["true"]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 space:
+ *                   allOf:
+ *                     - $ref: '#/components/schemas/PrivateSpace'
+ *                     - type: object
+ *                       properties:
+ *                         categories:
+ *                           type: object
+ *                           additionalProperties:
+ *                             type: object
+ *                             properties:
+ *                               count:
+ *                                 type: integer
+ *                               usage:
+ *                                 type: object
+ *                                 properties:
+ *                                   count:
+ *                                     type: integer
+ *                                   agents:
+ *                                     type: array
+ *                                     items:
+ *                                       type: object
+ *                         canWrite:
+ *                           type: boolean
+ *                         canRead:
+ *                           type: boolean
+ *                         isMember:
+ *                           type: boolean
+ *                         isEditor:
+ *                           type: boolean
+ *                         members:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                         description:
+ *                           type: string
+ *                           nullable: true
+ *                         archivedAt:
+ *                           type: integer
+ *                           nullable: true
+ *                         todoGenerationEnabled:
+ *                           type: boolean
+ *                           description: Whether automatic todo suggestions from project activity are enabled.
+ *                         lastTodoAnalysisAt:
+ *                           type: integer
+ *                           nullable: true
+ *                           description: Unix timestamp (ms) of the last automatic todo suggestion scan, if any.
+ *                         pinnedFramePath:
+ *                           type: string
+ *                           nullable: true
+ *                           description: Scoped path to the frame file pinned as the Pod banner.
+ *       401:
+ *         description: Unauthorized
+ *   patch:
+ *     summary: Update a space
+ *     description: Updates the properties of a specific space.
+ *     tags:
+ *       - Private Spaces
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: spaceId
+ *         required: true
+ *         description: ID of the space
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               content:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     dataSourceId:
+ *                       type: string
+ *                     parentsIn:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 space:
+ *                   $ref: '#/components/schemas/PrivateSpace'
+ *       401:
+ *         description: Unauthorized
+ *   delete:
+ *     summary: Delete a space
+ *     description: Deletes a specific space from the workspace.
+ *     tags:
+ *       - Private Spaces
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: spaceId
+ *         required: true
+ *         description: ID of the space
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: force
+ *         required: false
+ *         description: Force deletion even if space is in use
+ *         schema:
+ *           type: string
+ *           enum: ["true"]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 space:
+ *                   $ref: '#/components/schemas/PrivateSpace'
+ *       401:
+ *         description: Unauthorized
+ */
 
 app.get(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  withSpace({ requireCanReadOrAdministrate: true }),
+  async (ctx): HandlerResult<GetSpaceResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     const dataSourceViewsList = await DataSourceViewResource.listBySpace(
       auth,
@@ -110,7 +290,8 @@ app.get(
     categories["apps"].count = appsList.length;
     categories["actions"].count = actionsCount;
 
-    const shouldIncludeAllMembers = c.req.query("includeAllMembers") === "true";
+    const shouldIncludeAllMembers =
+      ctx.req.query("includeAllMembers") === "true";
 
     const { groupsToProcess, allGroupMemberships } =
       await space.fetchManualGroupsMemberships(auth, {
@@ -153,7 +334,7 @@ app.get(
       ? await ProjectMetadataResource.fetchBySpace(auth, space)
       : undefined;
 
-    return c.json({
+    return ctx.json({
       space: {
         ...space.toJSON(),
         categories,
@@ -166,6 +347,7 @@ app.get(
         archivedAt: meta?.archivedAt?.getTime() ?? null,
         todoGenerationEnabled: meta?.todoGenerationEnabled ?? false,
         lastTodoAnalysisAt: meta?.lastTodoAnalysisAt?.getTime() ?? null,
+        pinnedFramePath: meta?.pinnedFramePath ?? null,
       },
     });
   }
@@ -173,14 +355,14 @@ app.get(
 
 app.patch(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  withSpace({ requireCanReadOrAdministrate: true }),
   validate("json", PatchSpaceRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx): HandlerResult<PatchSpaceResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     if (!space.canAdministrate(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
@@ -189,7 +371,7 @@ app.patch(
       });
     }
 
-    const { content, name } = c.req.valid("json");
+    const { content, name } = ctx.req.valid("json");
 
     if (content) {
       const currentViews = await DataSourceViewResource.listBySpace(
@@ -226,7 +408,7 @@ app.patch(
               );
 
             if (dataSourceViewRes.isErr()) {
-              return apiError(c, {
+              return apiError(ctx, {
                 status_code: 403,
                 api_error: {
                   type: "data_source_auth_error",
@@ -250,19 +432,19 @@ app.patch(
     if (name) {
       await space.updateName(auth, name);
     }
-    return c.json({ space: space.toJSON() });
+    return ctx.json({ space: space.toJSON() });
   }
 );
 
 app.delete(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  withSpace({ requireCanReadOrAdministrate: true }),
+  async (ctx): HandlerResult<PatchSpaceResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     if (!space.canAdministrate(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
@@ -271,7 +453,7 @@ app.delete(
       });
     }
 
-    const shouldForce = c.req.query("force") === "true";
+    const shouldForce = ctx.req.query("force") === "true";
 
     try {
       const deleteRes = await softDeleteSpaceAndLaunchScrubWorkflow(
@@ -280,7 +462,7 @@ app.delete(
         shouldForce
       );
       if (deleteRes.isErr()) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
@@ -289,7 +471,7 @@ app.delete(
         });
       }
     } catch (e) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -312,7 +494,7 @@ app.delete(
       },
     });
 
-    return c.json({ space: space.toJSON() });
+    return ctx.json({ space: space.toJSON() });
   }
 );
 

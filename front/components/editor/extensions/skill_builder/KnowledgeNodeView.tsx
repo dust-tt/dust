@@ -4,6 +4,14 @@ import {
   KnowledgeErrorChip,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
 import type { KnowledgeNodeAttributes } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import type {
+  FullKnowledgeItem,
+  KnowledgeItem,
+} from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
+import {
+  computeHasChildren,
+  isFullKnowledgeItem,
+} from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import {
   getLocationForDataSourceViewContentNodeWithSpace,
@@ -13,7 +21,6 @@ import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaceDataSourceView, useSpaces } from "@app/lib/swr/spaces";
-import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -31,50 +38,17 @@ import { NodeViewWrapper } from "@tiptap/react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-// Minimal data from serialization.
-export interface BaseKnowledgeItem {
-  dataSourceViewId: string;
-  hasChildren: boolean;
-  label: string;
-  nodeId: string;
-  spaceId: string;
-}
-
-// Fresh selection from search with complete node data.
-export interface FullKnowledgeItem extends BaseKnowledgeItem {
-  node: DataSourceViewContentNode;
-}
-
-export type KnowledgeItem = BaseKnowledgeItem | FullKnowledgeItem;
-
-export function isFullKnowledgeItem(
-  item: KnowledgeItem
-): item is FullKnowledgeItem {
-  return "node" in item && item.node !== undefined;
-}
-
-/**
- * Computes whether a node has children, with special handling for Notion.
- * For Notion: pages and databases can have children even if they're currently empty.
- * For others: uses expandable field or node type.
- */
-export function computeHasChildren(node: DataSourceViewContentNode): boolean {
-  const isNotion =
-    node.dataSourceView.dataSource.connectorProvider === "notion";
-
-  if (isNotion) {
-    // In Notion, pages (documents) and databases (tables) can have children.
-    // Folders always can have children (though Notion doesn't actually use folders).
-    return (
-      node.type === "folder" ||
-      node.type === "document" ||
-      node.type === "table"
-    );
-  }
-
-  // For non-Notion sources, use the childrenCount field.
-  return node.childrenCount > 0;
-}
+// Re-exports for existing consumers that import these from KnowledgeNodeView.
+// The canonical home is now KnowledgeNodeTypes.ts (React-free).
+export type {
+  BaseKnowledgeItem,
+  FullKnowledgeItem,
+  KnowledgeItem,
+} from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
+export {
+  computeHasChildren,
+  isFullKnowledgeItem,
+} from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 
 interface KnowledgeDisplayProps {
   item: KnowledgeItem;
@@ -545,7 +519,7 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
   // Show selected knowledge.
   if (selectedItems.length > 0) {
     return (
-      <NodeViewWrapper className="inline">
+      <NodeViewWrapper className="inline" data-drag-handle="">
         <KnowledgeDisplayComponent
           item={selectedItems[0]}
           owner={owner}

@@ -51,7 +51,7 @@ jobs:
       - name: Install minimal stable
         uses: dtolnay/rust-toolchain@aad518f59d88bae90133242f9ddac7f8bbc5dddf # 1.94.1
         with:
-          components: rustfmt
+          components: rustfmt, clippy
 
       - name: Setup Rust Cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
@@ -62,6 +62,10 @@ jobs:
         working-directory: cli/dust-sandbox
         run: cargo fmt --all -- --check
 
+      - name: Clippy
+        working-directory: cli/dust-sandbox
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
       - name: Build
         working-directory: cli/dust-sandbox
         run: cargo build
@@ -69,3 +73,8 @@ jobs:
       - name: Test
         working-directory: cli/dust-sandbox
         run: cargo test --all
+
+      - name: E2E (local)
+        working-directory: cli/dust-sandbox
+        # The e2e harness spawns subprocess listeners and shared local proxy/upstream fixtures.
+        run: cargo test --test e2e_local -- --test-threads=1 --nocapture

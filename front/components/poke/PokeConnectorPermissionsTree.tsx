@@ -7,10 +7,10 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   DatadogLogo,
-  ExternalLinkIcon,
   IconButton,
-  InformationCircleIcon,
-  Tooltip,
+  InfoCircle,
+  LinkExternal01,
+  Popover,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useCallback } from "react";
@@ -57,8 +57,8 @@ export function PokePermissionTree({
         onDocumentViewClick={onDocumentViewClick}
         useResourcesHook={useResourcesHook}
         additionalActionsForContentNode={(contentNode) => (
-          <Tooltip
-            label={
+          <Popover
+            content={
               <div className="flex flex-col gap-2 p-2">
                 <div className="text-xs">
                   <div className="font-semibold">Title:</div>
@@ -90,7 +90,7 @@ export function PokePermissionTree({
                         target="_blank"
                         rel="noopener noreferrer"
                         label={"Source"}
-                        icon={ExternalLinkIcon}
+                        icon={LinkExternal01}
                         size="xs"
                         variant="outline"
                       />{" "}
@@ -110,11 +110,7 @@ export function PokePermissionTree({
             }
             className="max-w-md"
             trigger={
-              <IconButton
-                size="xs"
-                icon={InformationCircleIcon}
-                variant="outline"
-              />
+              <IconButton size="xs" icon={InfoCircle} variant="outline" />
             }
           />
         )}

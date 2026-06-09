@@ -1,4 +1,4 @@
-import { Icon, TimeIcon } from "@dust-tt/sparkle";
+import { Clock, Icon } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 const TASKS = [
@@ -128,7 +128,7 @@ export function SalesAnimationWidget() {
               : "translate-y-2 opacity-0"
           }`}
         >
-          <Icon visual={TimeIcon} className="h-4 w-4 text-emerald-600" />
+          <Icon visual={Clock} className="h-4 w-4 text-emerald-600" />
           <span className="text-sm font-semibold text-emerald-700">
             4 post-call tasks done in 45 seconds
           </span>

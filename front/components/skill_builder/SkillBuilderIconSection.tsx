@@ -1,11 +1,11 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import {
   ActionIcons,
-  ActionPlusIcon,
   Avatar,
   Button,
+  Edit04,
   IconPicker,
-  PencilSquareIcon,
+  Plus,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -13,7 +13,7 @@ import {
 import { useState } from "react";
 import { useController } from "react-hook-form";
 
-const DEFAULT_ICON = ActionPlusIcon;
+const DEFAULT_ICON = Plus;
 
 export function SkillBuilderIconSection() {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -44,7 +44,7 @@ export function SkillBuilderIconSection() {
           <Button
             variant="outline"
             size="sm"
-            icon={PencilSquareIcon}
+            icon={Edit04}
             type="button"
             onClick={() => setIsPopoverOpen(true)}
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"

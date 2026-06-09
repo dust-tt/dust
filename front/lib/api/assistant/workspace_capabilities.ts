@@ -4,14 +4,18 @@ import {
   getMcpServerViewDisplayName,
   isToolWithKnowledge,
 } from "@app/lib/actions/mcp_helper";
+import { getWhitelistedProviders } from "@app/lib/api/assistant/models";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
-import { filterCustomAvailableAndWhitelistedModels } from "@app/lib/assistant";
+import { config as regionConfig } from "@app/lib/api/regions/config";
+import { filterEnabledModels } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
+import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 
 export interface AvailableTool {
@@ -40,13 +44,51 @@ export async function getAvailableModelsForWorkspace(
   auth: Authenticator
 ): Promise<ModelConfigurationType[]> {
   const featureFlags = await getFeatureFlags(auth);
+  const owner = auth.getNonNullableWorkspace();
+  const plan = auth.plan();
+  const region = regionConfig.getCurrentRegion();
+  const whitelistedProviders = getWhitelistedProviders(auth);
 
   const allUsedModels = [...USED_MODEL_CONFIGS, ...CUSTOM_MODEL_CONFIGS];
-  return filterCustomAvailableAndWhitelistedModels(
-    allUsedModels,
+  return filterEnabledModels(allUsedModels, {
     featureFlags,
-    auth
-  );
+    plan,
+    regionalModelsOnly: owner.regionalModelsOnly,
+    region,
+    whitelistedProviders,
+  });
+}
+
+/**
+ * List sIds of active workspace agents whose model is not available in
+ * the current region. Used to gate enabling `regionalModelsOnly` on a
+ * workspace — admins must not strand existing agents.
+ */
+export async function listActiveAgentsUsingNonRegionalModels(
+  auth: Authenticator
+): Promise<string[]> {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+  const region = regionConfig.getCurrentRegion();
+
+  // Match against the full catalog: existing agents may use older
+  // still-supported models no longer surfaced in the picker.
+  const regionalModelKeys = new Set<string>();
+  for (const m of SUPPORTED_MODEL_CONFIGS) {
+    if (m.regionalAvailability[region] === true) {
+      regionalModelKeys.add(`${m.providerId}:${m.modelId}`);
+    }
+  }
+
+  const activeAgents = await AgentConfigurationModel.findAll({
+    where: { workspaceId, status: "active" },
+    attributes: ["sId", "providerId", "modelId"],
+  });
+
+  return activeAgents
+    .filter(
+      (agent) => !regionalModelKeys.has(`${agent.providerId}:${agent.modelId}`)
+    )
+    .map((agent) => agent.sId);
 }
 
 /**

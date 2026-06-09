@@ -28,11 +28,11 @@ import {
 } from "@app/lib/swr/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
-import type { BreadcrumbItem } from "@dust-tt/sparkle";
 import {
   Breadcrumbs,
+  type BreadcrumbsItem,
   Button,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRight,
   cn,
   SearchInput,
   Separator,
@@ -251,7 +251,7 @@ export const DataSourceBuilderSelector = ({
     }
   };
 
-  const breadcrumbItems: BreadcrumbItem[] = useMemo(() => {
+  const breadcrumbItems: BreadcrumbsItem[] = useMemo(() => {
     if (shouldShowSearch && currentSpace) {
       // When searching in space scope, show only up to space level
       if (searchScope === "space") {
@@ -302,7 +302,7 @@ export const DataSourceBuilderSelector = ({
           </div>
           <div>
             <Button
-              icon={CloudArrowLeftRightIcon}
+              icon={CloudArrowLeftRight}
               label="Connect data"
               variant="primary"
               onClick={handleConnectDataClick}
@@ -387,7 +387,7 @@ export const DataSourceBuilderSelector = ({
 
 function getBreadcrumbConfig(
   entry: NavigationHistoryEntryType
-): BreadcrumbItem {
+): BreadcrumbsItem {
   switch (entry.type) {
     case "root":
       return {

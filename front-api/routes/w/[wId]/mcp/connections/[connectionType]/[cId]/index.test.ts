@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -8,8 +6,8 @@ import { MCPServerConnectionFactory } from "@app/tests/utils/MCPServerConnection
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-
 import { honoApp } from "@front-api/app";
+import { describe, expect, it } from "vitest";
 
 function get(workspace: { sId: string }, connectionType: string, cId: string) {
   return honoApp.request(

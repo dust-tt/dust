@@ -1,11 +1,9 @@
-import { describe, expect, it } from "vitest";
-
 import { Authenticator } from "@app/lib/auth";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-
 import { honoApp } from "@front-api/app";
+import { describe, expect, it } from "vitest";
 
 function getFeatureFlags(workspace: { sId: string }, key: { secret: string }) {
   return honoApp.request(`/api/v1/w/${workspace.sId}/feature_flags`, {
@@ -14,16 +12,16 @@ function getFeatureFlags(workspace: { sId: string }, key: { secret: string }) {
 }
 
 describe("GET /api/v1/w/:wId/feature_flags", () => {
-  it("returns 404 if not a system key", async () => {
+  it("returns 403 if not a system key", async () => {
     const { workspace, key } = await createPublicApiMockRequest();
 
     const response = await getFeatureFlags(workspace, key);
 
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(403);
     expect(await response.json()).toEqual({
       error: {
-        type: "workspace_not_found",
-        message: "The workspace was not found.",
+        type: "invalid_oauth_token_error",
+        message: "Only system keys can perform this action.",
       },
     });
   });

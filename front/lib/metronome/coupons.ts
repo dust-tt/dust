@@ -15,16 +15,16 @@ import {
 import {
   CURRENCY_TO_CREDIT_TYPE_ID,
   getProductSeatSubscriptionCreditsId,
-  getProductWorkspaceSeatId,
+  SEAT_PRIORITY_COUPON_CREDIT,
 } from "@app/lib/metronome/constants";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
+import { SEAT_TAG } from "@app/lib/metronome/setup_common";
 import { CouponRedemptionResource } from "@app/lib/resources/coupon_redemption_resource";
 import type {
   CouponResource,
   CouponValidationError,
 } from "@app/lib/resources/coupon_resource";
-import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { CouponDiscountType } from "@app/types/coupon";
 import type { SupportedCurrency } from "@app/types/currency";
@@ -32,7 +32,6 @@ import { isSupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { addMonths } from "date-fns";
 
 async function getCreditTypeFromRateCardId(
@@ -94,12 +93,12 @@ export async function getCreditTypeFromPackage(
   return getCreditTypeFromRateCardId(pkg.rateCardId);
 }
 
-function getApplicableProductIdsForDiscountType(
+function getApplicableProductTagsForDiscountType(
   discountType: CouponDiscountType
 ): string[] {
   switch (discountType) {
     case "seat":
-      return [getProductWorkspaceSeatId()];
+      return [SEAT_TAG];
     default:
       return assertNever(discountType);
   }
@@ -130,8 +129,8 @@ export async function createCouponCredit({
     endingBefore: ceilToHourISO(addMonths(redeemedAt, durationMonths)),
     name: `Coupon: ${coupon.code}`,
     idempotencyKey: `coupon-${redemptionId}-0`,
-    priority: 0,
-    applicableProductIds: getApplicableProductIdsForDiscountType(
+    priority: SEAT_PRIORITY_COUPON_CREDIT,
+    applicableProductTags: getApplicableProductTagsForDiscountType(
       coupon.discountType
     ),
   });
@@ -225,20 +224,13 @@ export async function redeemCoupon(
   }
   const { creditTypeId, currency } = creditTypeIdResult.value;
 
-  let redemption: CouponRedemptionResource;
-  try {
-    redemption = await withTransaction(async (transaction) => {
-      const r = await CouponRedemptionResource.makeNew(
-        auth,
-        { coupon },
-        { transaction }
-      );
-      await coupon.incrementRedemptionCount({ transaction });
-      return r;
-    });
-  } catch (err) {
-    return new Err(normalizeError(err));
+  const pendingResult = await CouponRedemptionResource.createPending(auth, {
+    coupon,
+  });
+  if (pendingResult.isErr()) {
+    return new Err(pendingResult.error);
   }
+  const redemption = pendingResult.value;
 
   const creditResult = await createCouponCredit({
     metronomeCustomerId,
@@ -250,16 +242,25 @@ export async function redeemCoupon(
   });
 
   if (creditResult.isErr()) {
-    await coupon.decrementRedemptionCount();
-    await redemption.markFailed();
     logger.error(
       {
         err: creditResult.error,
         couponId: coupon.sId,
         workspaceId: workspace.sId,
       },
-      "[Metronome] Failed to create coupon credit — redemption marked failed"
+      "[Metronome] Failed to create coupon credit — rolling back redemption"
     );
+    const rollbackResult = await redemption.rollback(coupon);
+    if (rollbackResult.isErr()) {
+      logger.error(
+        {
+          err: rollbackResult.error,
+          couponId: coupon.sId,
+          workspaceId: workspace.sId,
+        },
+        "[Metronome] Failed to create coupon credit - failed to rollback coupon redemption"
+      );
+    }
     return new Err(creditResult.error);
   }
 

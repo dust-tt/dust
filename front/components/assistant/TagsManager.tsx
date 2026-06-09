@@ -9,17 +9,17 @@ import {
   Button,
   Chip,
   DataTable,
+  Edit04,
   EmptyCTA,
-  PencilSquareIcon,
-  PlusIcon,
+  Plus,
   Sheet,
   SheetContainer,
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SparklesIcon,
   Spinner,
-  XMarkIcon,
+  Stars02,
+  XClose,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import { useState } from "react";
@@ -55,7 +55,7 @@ const SuggestTagsButton = ({ owner }: { owner: WorkspaceType }) => {
     <>
       <Button
         label="Suggest tags"
-        icon={SparklesIcon}
+        icon={Stars02}
         onClick={() => setOpen(true)}
         variant="primary"
       />
@@ -77,7 +77,7 @@ const NewTagButton = ({
     <>
       <Button
         label={empty ? "Add tag manually" : "New tag"}
-        icon={PlusIcon}
+        icon={Plus}
         onClick={() => setOpen(true)}
         variant={empty ? "outline" : "primary"}
       />
@@ -113,7 +113,7 @@ export function TagsManager({ open, setOpen, owner }: TagsManagerProps) {
     ...tag,
     menuItems: [
       {
-        icon: PencilSquareIcon,
+        icon: Edit04,
         label: "Edit tag",
         onClick: (e: React.MouseEvent) => {
           e.stopPropagation();
@@ -122,7 +122,7 @@ export function TagsManager({ open, setOpen, owner }: TagsManagerProps) {
         kind: "item",
       },
       {
-        icon: XMarkIcon,
+        icon: XClose,
         label: "Delete tag",
         onClick: (e: React.MouseEvent) => {
           e.stopPropagation();

@@ -70,6 +70,32 @@ describe("buildSkillAnalysisPrompt", () => {
     expect(userMessage).toContain("Always verify data before responding.");
   });
 
+  it("strips tool icon attributes from instructionsHtml in the user message", () => {
+    const skill = makeSkill({
+      instructionsHtml:
+        '<p>Use <tool id="mcp_server_view_1" name="GitHub Search" icon="GithubLogo"></tool>.</p>',
+    });
+    const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill]);
+
+    expect(userMessage).toContain(
+      '<tool id="mcp_server_view_1" name="GitHub Search" />'
+    );
+    expect(userMessage).not.toContain('icon="GithubLogo"');
+  });
+
+  it("strips skill icon attributes from instructionsHtml in the user message", () => {
+    const skill = makeSkill({
+      instructionsHtml:
+        '<p>Use <skill id="skill_123" name="Create memo" icon="book_open"></skill>.</p>',
+    });
+    const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill]);
+
+    expect(userMessage).toContain(
+      '<skill id="skill_123" name="Create memo" />'
+    );
+    expect(userMessage).not.toContain('icon="book_open"');
+  });
+
   it("omits instructions when null", () => {
     const skill = makeSkill({ instructions: null, instructionsHtml: null });
     const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill]);
@@ -97,13 +123,14 @@ describe("buildSkillAnalysisPrompt", () => {
     expect(userMessage).toContain("</skill_context>");
   });
 
-  it("system prompt mentions suggestion and exploration tools", () => {
+  it("system prompt mentions inline tool references", () => {
     const { systemPrompt } = buildSkillAnalysisPrompt("User: hello", [
       makeSkill(),
     ]);
 
     expect(systemPrompt).toContain("edit_skill");
     expect(systemPrompt).toContain("get_available_tools");
+    expect(systemPrompt).toContain("inline <tool>");
   });
 
   it("system prompt has guidance for agent-facing description edits", () => {
@@ -116,7 +143,7 @@ describe("buildSkillAnalysisPrompt", () => {
     expect(systemPrompt).toMatch(/routing|when to enable/i);
   });
 
-  it("includes skill configured tools in user message", () => {
+  it("does not include skill tools as a separate user message block", () => {
     const skill = makeSkill({
       tools: [
         {
@@ -127,9 +154,9 @@ describe("buildSkillAnalysisPrompt", () => {
     });
     const { userMessage } = buildSkillAnalysisPrompt("User: hello", [skill]);
 
-    expect(userMessage).toContain("<tools>");
-    expect(userMessage).toContain('sId="tool-ws"');
-    expect(userMessage).toContain('name="web_search"');
+    expect(userMessage).not.toContain("<tools>");
+    expect(userMessage).not.toContain('sId="tool-ws"');
+    expect(userMessage).not.toContain('name="web_search"');
   });
 
   it("includes multiple skills in user message", () => {

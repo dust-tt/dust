@@ -18,6 +18,8 @@ import type {
   AshbyOffer,
   AshbyOfferInfoRequest,
   AshbyOfferListRequest,
+  AshbyOpening,
+  AshbyOpeningListRequest,
   AshbyReferralCreateRequest,
   AshbyReportSynchronousRequest,
   AshbyUserSearchRequest,
@@ -37,6 +39,7 @@ import {
   AshbyJobSchema,
   AshbyOfferInfoResponseSchema,
   AshbyOfferListResponseSchema,
+  AshbyOpeningListResponseSchema,
   AshbyReferralCreateResponseSchema,
   AshbyReferralFormInfoResponseSchema,
   AshbyReportSynchronousResponseSchema,
@@ -243,6 +246,24 @@ export class AshbyClient {
       "application.info",
       request,
       AshbyApplicationInfoResponseSchema
+    );
+  }
+
+  async listOpenings(request: AshbyOpeningListRequest): Promise<
+    Result<
+      {
+        results: AshbyOpening[];
+        moreDataAvailable?: boolean;
+        nextCursor?: string;
+      },
+      Error
+    >
+  > {
+    return this.postRequest(
+      "opening.list",
+      request,
+      AshbyOpeningListResponseSchema,
+      { isPaginated: true }
     );
   }
 

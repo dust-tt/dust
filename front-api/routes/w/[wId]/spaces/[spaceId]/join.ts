@@ -1,7 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -9,21 +5,23 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
-
-import { spaceResource } from "@front-api/middleware/space_resource";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { withSpace } from "@front-api/middlewares/with_space";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/join.
-const app = new Hono();
+const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  withSpace({ requireCanReadOrAdministrate: true }),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     if (!space.isProject()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -33,7 +31,7 @@ app.post(
     }
 
     if (space.isProjectAndRestricted()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
@@ -43,7 +41,7 @@ app.post(
     }
 
     if (space.managementMode !== "manual") {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "invalid_request_error",
@@ -54,7 +52,7 @@ app.post(
     }
 
     if (space.isMember(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -69,7 +67,7 @@ app.post(
     });
 
     if (memberGroupSpaces.length !== 1) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -84,7 +82,7 @@ app.post(
       users: [user.toJSON()],
     });
     if (result.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -110,7 +108,7 @@ app.post(
       workspace: { id: workspace.id },
     });
 
-    return c.json({ success: true });
+    return ctx.json({ success: true });
   }
 );
 

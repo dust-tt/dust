@@ -21,15 +21,17 @@ on:
         options:
           - front
           - front-edge
+          - marketing
+          - marketing-edge
           - connectors
           - core
           - front-sse
-          - front-api
           - prodbox
           - oauth
           - viz
           - dante
           - egress-proxy
+          - sparkle-storybook
       check_deployment_blocked:
         description: "Check #deployment locks or force deploy"
         required: true
@@ -62,7 +64,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: "deploy_${{ inputs.component }}${{ inputs.component == 'front-edge' && format('_{0}', github.run_id) || '' }}"
+  group: "deploy_${{ inputs.component }}${{ (inputs.component == 'front-edge' || inputs.component == 'marketing-edge') && format('_{0}', github.run_id) || '' }}"
   cancel-in-progress: false
 
 jobs:
@@ -78,13 +80,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check if deployment is from main branch
-        if: ${{ github.ref != 'refs/heads/main' && inputs.component != 'front-edge' }}
+        if: ${{ github.ref != 'refs/heads/main' && inputs.component != 'front-edge' && inputs.component != 'marketing-edge' }}
         run: |
           echo "Error: Deployments for ${{ inputs.component }} are only allowed from the main branch"
           exit 1
 
   prepare:
-    needs: [ check-branch ]
+    needs: [check-branch]
     runs-on: ubuntu-latest
     outputs:
       short_sha: ${{ steps.short_sha.outputs.short_sha }}
@@ -99,7 +101,7 @@ jobs:
         run: echo "long_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
   notify-start:
-    needs: [ prepare ]
+    needs: [prepare]
     runs-on: ubuntu-latest
     outputs:
       thread_ts: ${{ steps.build_message.outputs.thread_ts }}
@@ -143,7 +145,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    needs: [ prepare, notify-start, create-matrix ]
+    needs: [prepare, notify-start, create-matrix]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -212,7 +214,15 @@ jobs:
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
 
   deploy:
-    needs: [ prepare, notify-start, build, deploy-app, deploy-poke, ensure-sandbox-images ]
+    needs:
+      [
+        prepare,
+        notify-start,
+        build,
+        deploy-app,
+        deploy-poke,
+        ensure-sandbox-images,
+      ]
     if: ${{ !failure() && !cancelled() && (needs.ensure-sandbox-images.result == 'success' || needs.ensure-sandbox-images.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
@@ -222,7 +232,7 @@ jobs:
         id: generate-token
         uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
         with:
-          app-id: ${{ secrets.INFRA_DISPATCH_APP_ID }}
+          client-id: ${{ secrets.INFRA_DISPATCH_APP_ID }}
           private-key: ${{ secrets.INFRA_DISPATCH_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
           repositories: dust-infra
@@ -241,6 +251,7 @@ jobs:
           SPA_APP_VERSION_ID: ${{ needs.deploy-app.outputs.version_id }}
           SPA_POKE_VERSION_ID: ${{ needs.deploy-poke.outputs.version_id }}
           PLAYWRIGHT_SHA: ${{ github.sha }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
           github-token: ${{ steps.generate-token.outputs.token }}
           script: |
@@ -304,7 +315,7 @@ jobs:
   # Starts in parallel with Docker build to save time.
   deploy-app:
     if: (inputs.component == 'front' || inputs.component == 'front-edge') && inputs.deploy_spa_app
-    needs: [ notify-start ]
+    needs: [notify-start]
     uses: ./.github/workflows/deploy-spa.yaml
     with:
       app: "app"
@@ -315,7 +326,7 @@ jobs:
 
   deploy-poke:
     if: (inputs.component == 'front' || inputs.component == 'front-edge') && inputs.deploy_spa_poke
-    needs: [ notify-start ]
+    needs: [notify-start]
     uses: ./.github/workflows/deploy-spa.yaml
     with:
       app: "poke"

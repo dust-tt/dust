@@ -23,6 +23,10 @@ import type {
 } from "sequelize";
 import sequelize from "sequelize/lib/sequelize";
 
+export type GetTagsUsageResponseBody = {
+  tags: TagTypeWithUsage[];
+};
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 

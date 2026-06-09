@@ -1,47 +1,72 @@
 import {
-  ArrowUpIcon,
-  AttachmentIcon,
-  BoltIcon,
+  ArrowUp,
+  Attachment01,
   Button,
   cn,
-  DocumentIcon,
+  File02,
   Icon,
-  ImageIcon,
+  Image01,
   ImageZoomDialog,
-  MicIcon,
-  PlusIcon,
-  RobotIcon,
+  Microphone01,
+  Plus,
+  Robot,
   Sheet,
   SheetContainer,
   SheetContent,
   SheetHeader,
   SheetTitle,
+  Tool02,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { NewCitation, NewCitationGrid } from "./NewCitation";
+import {
+  NewCitation,
+  NewCitationGrid,
+  type NewCitationProps,
+} from "./NewCitation";
 import { RichTextArea, type RichTextAreaHandle } from "./RichTextArea";
+import { TaskItem } from "./TaskItem";
 
 type DroppedFile = { id: string; file: File; objectUrl?: string };
+
+export type InputBarTaskCommand = {
+  id: string;
+  label: string;
+  contextAttachments?: Array<{
+    id: string;
+    label: string;
+    tooltip?: string;
+    visual?: NewCitationProps["visual"];
+  }>;
+};
 
 interface InputBarProps {
   placeholder?: string;
   className?: string;
   instructionReference?: { start: number; end: number } | null;
+  taskCommand?: InputBarTaskCommand | null;
+  variant?: "default" | "embedded";
   onInstructionInserted?: () => void;
+  onClose?: () => void;
   onSend?: () => void;
 }
 
 export function InputBar({
-  placeholder = "Ask a question",
+  placeholder = "Get work done",
   className,
   instructionReference,
+  taskCommand,
+  variant = "default",
   onInstructionInserted,
+  onClose,
   onSend,
 }: InputBarProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [droppedFiles, setDroppedFiles] = useState<DroppedFile[]>([]);
+  const [dismissedContextAttachmentIds, setDismissedContextAttachmentIds] =
+    useState<Set<string>>(new Set());
   const [selectedDroppedFile, setSelectedDroppedFile] =
     useState<DroppedFile | null>(null);
   const [isImageZoomOpen, setIsImageZoomOpen] = useState(false);
@@ -156,7 +181,20 @@ export function InputBar({
     onInstructionInserted?.();
   }, [instructionReference, onInstructionInserted]);
 
-  const showFocusStyle = isFocused || isDragOver;
+  useEffect(() => {
+    if (!taskCommand) {
+      return;
+    }
+
+    setDismissedContextAttachmentIds(new Set());
+    richTextAreaRef.current?.setContent("Let's start working on this task.");
+  }, [taskCommand?.id, taskCommand]);
+
+  const showFocusStyle = variant === "default" && (isFocused || isDragOver);
+  const visibleContextAttachments =
+    taskCommand?.contextAttachments?.filter(
+      (attachment) => !dismissedContextAttachmentIds.has(attachment.id)
+    ) ?? [];
 
   return (
     <div
@@ -167,28 +205,59 @@ export function InputBar({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={cn(
-        "s-relative s-w-full s-max-w-4xl s-z-10",
-        "s-rounded-3xl s-border s-bg-primary-50/70 dark:s-bg-primary-900/70 s-backdrop-blur-md s-transition-all",
-        showFocusStyle
-          ? "s-border-highlight-300 dark:s-border-highlight-300-night s-ring-2 s-ring-highlight-300/50 dark:s-ring-highlight-700/60"
-          : "s-border-border dark:s-border-border-night",
+        "s-relative s-w-full s-z-10 s-transition-all s-rounded-3xl s-max-w-4xl s-border s-border-highlight-300 dark:s-border-highlight-300-night s-ring-2 s-ring-highlight-300/50 dark:s-ring-highlight-700/60",
+        variant === "default" &&
+          "s-bg-primary-50/70 dark:s-bg-primary-900/70 s-backdrop-blur-md",
+        variant === "embedded" && "s-bg-primary-50 dark:s-bg-primary-900",
+        variant === "default" &&
+          (showFocusStyle ? "" : "s-border-border dark:s-border-border-night"),
         className
       )}
     >
+      {onClose && (
+        <Button
+          icon={XClose}
+          size="sm"
+          variant="ghost"
+          aria-label="Close"
+          className="s-absolute s-right-3 s-top-3 s-z-20"
+          onClick={(event) => {
+            event.stopPropagation();
+            onClose();
+          }}
+        />
+      )}
       <div className="s-flex s-w-full s-flex-col">
-        {droppedFiles.length > 0 && (
+        {(visibleContextAttachments.length > 0 || droppedFiles.length > 0) && (
           <NewCitationGrid
             className="s-pt-2 s-px-2 s-pb-0 s-w-full"
             justify="start"
           >
+            {visibleContextAttachments.map((attachment) => (
+              <NewCitation
+                key={attachment.id}
+                label={attachment.label}
+                size="lg"
+                visual={attachment.visual ?? File02}
+                variant="secondary"
+                tooltip={attachment.tooltip}
+                onClose={() => {
+                  setDismissedContextAttachmentIds(
+                    (previousDismissedAttachmentIds) =>
+                      new Set([
+                        ...previousDismissedAttachmentIds,
+                        attachment.id,
+                      ])
+                  );
+                }}
+              />
+            ))}
             {droppedFiles.map(({ id, file, objectUrl }) => (
               <NewCitation
                 key={id}
                 label={file.name}
                 size="lg"
-                visual={
-                  file.type.startsWith("image/") ? ImageIcon : DocumentIcon
-                }
+                visual={file.type.startsWith("image/") ? Image01 : File02}
                 variant="secondary"
                 imgSrc={objectUrl}
                 onClick={() => {
@@ -209,7 +278,31 @@ export function InputBar({
           ref={richTextAreaRef}
           placeholder={placeholder}
           onFocus={handleFocus}
+          defaultValue={taskCommand ? "Let's start working on this task." : ""}
           variant="compact"
+          topBar={
+            taskCommand ? (
+              <div className="s-w-full s-p-2">
+                <div className="s-rounded-xl s-bg-highlight-50 s-border s-border-highlight-100/70 s-px-2 s-pt-1 s-pb-0 dark:s-bg-muted-background-night">
+                  <TaskItem
+                    id={taskCommand.id}
+                    text={taskCommand.label}
+                    isEditable={false}
+                  />
+                </div>
+              </div>
+            ) : undefined
+          }
+          topBarClassName={
+            taskCommand
+              ? "s-static s-items-stretch s-rounded-t-xl s-border-b-0 s-bg-transparent dark:s-bg-transparent"
+              : undefined
+          }
+          containerClassName={
+            variant === "embedded"
+              ? "s-min-h-0 s-rounded-none s-border-0 s-bg-transparent focus-within:s-ring-0 focus-within:s-border-0 dark:s-bg-transparent"
+              : undefined
+          }
           showFormattingMenu
           showAskSidekickMenu={false}
           className="placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night"
@@ -217,7 +310,7 @@ export function InputBar({
         <div className="s-flex s-w-full s-gap-2 s-p-2 s-pl-4">
           <Button
             variant="outline"
-            icon={PlusIcon}
+            icon={Plus}
             size="sm"
             tooltip="Attach a document"
             className="md:s-hidden"
@@ -225,34 +318,35 @@ export function InputBar({
           <div className="s-hidden s-gap-0 md:s-flex">
             <Button
               variant="ghost-secondary"
-              icon={AttachmentIcon}
+              icon={Robot}
+              size="xs"
+              label="Dust"
+              tooltip="Mention an Agent"
+            />
+            <Button
+              variant="ghost-secondary"
+              icon={Attachment01}
               size="xs"
               tooltip="Attach a document"
             />
             <Button
               variant="ghost-secondary"
-              icon={BoltIcon}
+              icon={Tool02}
               size="xs"
               tooltip="Add functionality"
-            />
-            <Button
-              variant="ghost-secondary"
-              icon={RobotIcon}
-              size="xs"
-              tooltip="Mention an Agent"
             />
           </div>
           <div className="s-grow" />
           <div className="s-flex s-items-center s-gap-2 md:s-gap-1">
             <Button
               variant="ghost-secondary"
-              icon={MicIcon}
+              icon={Microphone01}
               size="xs"
               isRounded
             />
             <Button
               variant="highlight"
-              icon={ArrowUpIcon}
+              icon={ArrowUp}
               size="xs"
               tooltip="Send message"
               isRounded
@@ -290,9 +384,7 @@ export function InputBar({
             <SheetTitle>
               <div className="s-flex s-flex-1 s-flex-col s-w-full s-items-start s-gap-4">
                 <div className="s-flex s-items-center s-gap-2">
-                  {selectedDroppedFile && (
-                    <Icon visual={DocumentIcon} size="md" />
-                  )}
+                  {selectedDroppedFile && <Icon visual={File02} size="md" />}
                   <span>
                     {selectedDroppedFile?.file.name || "Document preview"}
                   </span>

@@ -10,7 +10,7 @@ import {
   ConfluenceLogo,
   DriveLogo,
   GithubLogo,
-  GlobeAltIcon,
+  Globe01,
   Input,
   IntercomLogo,
   NotionLogo,
@@ -41,8 +41,12 @@ export type EditingPlanType = {
   maxImagesPerWeek: string | number;
   maxMessages: string | number;
   maxMessagesTimeframe: string;
+  maxAwuCredits: string | number;
+  maxAwuCreditsTimeframe: string;
   isDeepDiveAllowed: boolean;
   maxUsers: string | number;
+  maxFreeUsers: string | number;
+  maxLifetimeFreeUsers: string | number;
   maxVaults: string | number;
   name: string;
   trialPeriodDays: string | number;
@@ -67,11 +71,15 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     isAuditLogsAllowed: plan.isAuditLogsAllowed,
     maxMessages: plan.limits.assistant.maxMessages,
     maxMessagesTimeframe: plan.limits.assistant.maxMessagesTimeframe,
+    maxAwuCredits: plan.limits.assistant.maxAwuCredits,
+    maxAwuCreditsTimeframe: plan.limits.assistant.maxAwuCreditsTimeframe,
     isDeepDiveAllowed: plan.limits.assistant.isDeepDiveAllowed,
     dataSourcesCount: plan.limits.dataSources.count,
     dataSourcesDocumentsCount: plan.limits.dataSources.documents.count,
     dataSourcesDocumentsSizeMb: plan.limits.dataSources.documents.sizeMb,
     maxUsers: plan.limits.users.maxUsers,
+    maxFreeUsers: plan.limits.users.maxFreeUsers,
+    maxLifetimeFreeUsers: plan.limits.users.maxLifetimeFreeUsers,
     maxVaults: plan.limits.vaults.maxVaults,
     trialPeriodDays: plan.trialPeriodDays,
     maxImagesPerWeek: plan.limits.capabilities.images.maxImagesPerWeek,
@@ -88,6 +96,9 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
   if (!isMaxMessagesTimeframeType(editingPlan.maxMessagesTimeframe)) {
     throw new Error("Invalid maxMessagesTimeframe");
   }
+  if (!isMaxMessagesTimeframeType(editingPlan.maxAwuCreditsTimeframe)) {
+    throw new Error("Invalid maxAwuCreditsTimeframe");
+  }
 
   return {
     code: editingPlan.code.trim(),
@@ -97,6 +108,8 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
         isSlackBotAllowed: editingPlan.isSlackBotAllowed,
         maxMessages: parseMaybeNumber(editingPlan.maxMessages),
         maxMessagesTimeframe: editingPlan.maxMessagesTimeframe,
+        maxAwuCredits: parseMaybeNumber(editingPlan.maxAwuCredits),
+        maxAwuCreditsTimeframe: editingPlan.maxAwuCreditsTimeframe,
         isDeepDiveAllowed: editingPlan.isDeepDiveAllowed,
       },
       connections: {
@@ -123,6 +136,10 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
       },
       users: {
         maxUsers: parseMaybeNumber(editingPlan.maxUsers),
+        maxFreeUsers: parseMaybeNumber(editingPlan.maxFreeUsers),
+        maxLifetimeFreeUsers: parseMaybeNumber(
+          editingPlan.maxLifetimeFreeUsers
+        ),
         isSSOAllowed: editingPlan.isSSOAllowed,
         isSCIMAllowed: editingPlan.isSCIMAllowed,
       },
@@ -159,8 +176,12 @@ const getEmptyPlan = (): EditingPlanType => ({
   maxImagesPerWeek: "",
   maxMessages: "",
   maxMessagesTimeframe: "day",
+  maxAwuCredits: "",
+  maxAwuCreditsTimeframe: "day",
   isDeepDiveAllowed: true,
   maxUsers: "",
+  maxFreeUsers: -1,
+  maxLifetimeFreeUsers: -1,
   maxVaults: "",
   name: "",
   trialPeriodDays: 0,
@@ -248,7 +269,7 @@ export const PLAN_FIELDS = {
     type: "boolean",
     width: "tiny",
     title: "Websites",
-    IconComponent: () => <GlobeAltIcon className="h-4 w-4" />,
+    IconComponent: () => <Globe01 className="h-4 w-4" />,
   },
   isSalesforceAllowed: {
     type: "boolean",
@@ -259,7 +280,7 @@ export const PLAN_FIELDS = {
   maxMessages: {
     type: "number",
     width: "small",
-    title: "# Messages",
+    title: "Messages (pooled) fair use",
     error: (plan: EditingPlanType) => errorCheckNumber(plan.maxMessages),
   },
   maxMessagesTimeframe: {
@@ -268,6 +289,19 @@ export const PLAN_FIELDS = {
     title: "/ Timeframe / Seat",
     error: (plan: EditingPlanType) =>
       errorCheckMaxMessageTimeframe(plan.maxMessagesTimeframe),
+  },
+  maxAwuCredits: {
+    type: "number",
+    width: "small",
+    title: "AWUCredits (unpooled) fair use",
+    error: (plan: EditingPlanType) => errorCheckNumber(plan.maxAwuCredits),
+  },
+  maxAwuCreditsTimeframe: {
+    type: "string",
+    width: "medium",
+    title: "/ Timeframe / Seat",
+    error: (plan: EditingPlanType) =>
+      errorCheckMaxMessageTimeframe(plan.maxAwuCreditsTimeframe),
   },
   isDeepDiveAllowed: {
     type: "boolean",
@@ -299,6 +333,19 @@ export const PLAN_FIELDS = {
     width: "small",
     title: "# Users",
     error: (plan: EditingPlanType) => errorCheckNumber(plan.maxUsers),
+  },
+  maxFreeUsers: {
+    type: "number",
+    width: "small",
+    title: "# Free",
+    error: (plan: EditingPlanType) => errorCheckNumber(plan.maxFreeUsers),
+  },
+  maxLifetimeFreeUsers: {
+    type: "number",
+    width: "small",
+    title: "# Free (LT)",
+    error: (plan: EditingPlanType) =>
+      errorCheckNumber(plan.maxLifetimeFreeUsers),
   },
   isSSOAllowed: {
     type: "boolean",

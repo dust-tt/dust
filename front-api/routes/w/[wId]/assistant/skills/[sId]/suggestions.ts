@@ -1,77 +1,44 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
+import type {
+  GetSkillSuggestionsResponseBody,
+  PatchSkillSuggestionResponseBody,
+} from "@app/lib/api/assistant/skills/suggestions";
+import {
+  GetSkillSuggestionsQuerySchema,
+  PatchSkillSuggestionRequestBodySchema,
+} from "@app/lib/api/assistant/skills/suggestions";
 import { postSkillSuggestionStatusUpdate } from "@app/lib/reinforcement/aggregate_suggestions";
 import { hasReinforcementEnabled } from "@app/lib/reinforcement/workspace_check";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
-import { SkillSuggestionSchema } from "@app/types/suggestions/skill_suggestion";
-
-import { validate } from "@front-api/middleware/validator";
-
-const StateSchema = z.enum(["pending", "approved", "rejected", "outdated"]);
-
-const GetSkillSuggestionsQuerySchema = z.object({
-  // Hono returns query params as strings; accept comma-separated or repeated.
-  states: z
-    .preprocess((v) => (typeof v === "string" ? [v] : v), z.array(StateSchema))
-    .optional(),
-  kind: z.enum(["edit"]).optional(),
-  limit: z.string().optional(),
-});
-
-export type GetSkillSuggestionsQuery = z.infer<
-  typeof GetSkillSuggestionsQuerySchema
->;
-
-export const GetSkillSuggestionsResponseBodySchema = z.object({
-  suggestions: z.array(SkillSuggestionSchema),
-});
-export type GetSkillSuggestionsResponseBody = z.infer<
-  typeof GetSkillSuggestionsResponseBodySchema
->;
-
-const PatchSkillSuggestionRequestBodySchema = z.object({
-  suggestionIds: z.array(z.string()).min(1),
-  state: z.enum(["approved", "rejected", "outdated"]),
-});
-
-export type PatchSkillSuggestionRequestBody = z.infer<
-  typeof PatchSkillSuggestionRequestBodySchema
->;
-
-export const PatchSkillSuggestionResponseBodySchema = z.object({
-  suggestions: z.array(SkillSuggestionSchema),
-});
-export type PatchSkillSuggestionResponseBody = z.infer<
-  typeof PatchSkillSuggestionResponseBodySchema
->;
+import { skillApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 
 // Mounted at /api/w/:wId/assistant/skills/:sId/suggestions.
 // The `skill` context variable is set by the parent skills/[sId]/index.ts
 // middleware, which also enforces canWrite.
-const app = new Hono();
+const app = skillApp();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const skill = c.get("skill");
+/** @ignoreswagger */
+app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
+  const auth = ctx.get("auth");
+  const skill = ctx.get("skill");
 
   if (!(await hasReinforcementEnabled(auth))) {
-    return c.json({ suggestions: [] });
+    return ctx.json({ suggestions: [] });
   }
 
   // Hono path-param fetch returns single-value query; for `states` we want all
   // repeats too. Build the input object explicitly.
   const queryInput = {
-    states: c.req.queries("states"),
-    kind: c.req.query("kind"),
-    limit: c.req.query("limit"),
+    states: ctx.req.queries("states"),
+    kind: ctx.req.query("kind"),
+    limit: ctx.req.query("limit"),
   };
   const queryValidation = GetSkillSuggestionsQuerySchema.safeParse(queryInput);
   if (!queryValidation.success) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -84,7 +51,7 @@ app.get("/", async (c) => {
 
   const parsedLimit = limit ? parseInt(limit, 10) : undefined;
   if (parsedLimit !== undefined && isNaN(parsedLimit)) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -104,18 +71,18 @@ app.get("/", async (c) => {
     }
   );
 
-  return c.json({ suggestions: suggestions.map((s) => s.toJSON()) });
+  return ctx.json({ suggestions: suggestions.map((s) => s.toJSON()) });
 });
 
 app.patch(
   "/",
   validate("json", PatchSkillSuggestionRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const skill = c.get("skill");
+  async (ctx): HandlerResult<PatchSkillSuggestionResponseBody> => {
+    const auth = ctx.get("auth");
+    const skill = ctx.get("skill");
 
     if (!(await hasReinforcementEnabled(auth))) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -124,7 +91,7 @@ app.patch(
       });
     }
 
-    const { suggestionIds, state } = c.req.valid("json");
+    const { suggestionIds, state } = ctx.req.valid("json");
 
     const suggestions = await SkillSuggestionResource.fetchByIds(
       auth,
@@ -132,7 +99,7 @@ app.patch(
     );
 
     if (suggestions.length !== suggestionIds.length) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "agent_suggestion_not_found",
@@ -143,7 +110,7 @@ app.patch(
 
     for (const suggestion of suggestions) {
       if (suggestion.skillConfigurationSId !== skill.sId) {
-        return apiError(c, {
+        return apiError(ctx, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
@@ -166,7 +133,7 @@ app.patch(
       suggestionIds
     );
 
-    return c.json({
+    return ctx.json({
       suggestions: updatedSuggestions.map(
         (s): SkillSuggestionType => s.toJSON()
       ),

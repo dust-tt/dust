@@ -9,16 +9,19 @@ import {
   getWorkspaceAdministrationVersionLock,
 } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { INVITATION_EXPIRATION_TIME_SEC } from "@app/lib/constants/invitation";
 import { MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY } from "@app/lib/invitations";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { isEmailValid } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { getMembershipInvitationUrl } from "@app/lib/utils/invitation_token";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
-import type { APIErrorWithStatusCode } from "@app/types/error";
-import type { MembershipInvitationType } from "@app/types/membership_invitation";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
+import type {
+  MembershipInvitationType,
+  PendingInvitationOption,
+} from "@app/types/membership_invitation";
 import type { SubscriptionType } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -31,15 +34,54 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
+import { ActiveRoleSchema } from "@app/types/user";
 import sgMail from "@sendgrid/mail";
 import { escape } from "html-escaper";
-import { sign } from "jsonwebtoken";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
+import { z } from "zod";
 
 import { MembershipInvitationResource } from "../resources/membership_invitation_resource";
 
 const EMAIL_CONCURRENCY = 8;
+
+export type GetWorkspaceInvitationsResponseBody = {
+  invitations: MembershipInvitationType[];
+};
+
+export type GetPendingInvitationsLookupResponseBody = {
+  pendingInvitations: PendingInvitationOption[];
+};
+
+export type GetPendingInvitationsResponseBody = {
+  pendingInvitations: PendingInvitationOption[];
+};
+
+export const PostInvitationRequestBodySchema = z.array(
+  z.object({
+    email: z.string(),
+    role: ActiveRoleSchema,
+  })
+);
+
+export type PostInvitationRequestBody = z.infer<
+  typeof PostInvitationRequestBodySchema
+>;
+
+export type PostInvitationResponseBody = {
+  success: boolean;
+  email: string;
+  error_message?: string;
+}[];
+
+export type PostMemberInvitationsResponseBody = {
+  invitation: MembershipInvitationType;
+};
+
+export const PostMemberInvitationBodySchema = z.object({
+  status: z.enum(["revoked", "pending"]),
+  initialRole: ActiveRoleSchema,
+});
 
 export async function getInvitation(
   auth: Authenticator,
@@ -66,37 +108,6 @@ export async function getInvitation(
   return invitation.toJSON();
 }
 
-export function getMembershipInvitationToken(
-  invitation: MembershipInvitationType
-) {
-  const iat = Math.floor(invitation.createdAt / 1000);
-  const exp = iat + INVITATION_EXPIRATION_TIME_SEC;
-
-  return sign(
-    {
-      membershipInvitationId: invitation.id,
-      iat,
-      exp,
-    },
-    config.getDustInviteTokenSecret()
-  );
-}
-
-function getMembershipInvitationUrlForToken(
-  owner: LightWorkspaceType,
-  invitationToken: string
-) {
-  return `${config.getAppUrl()}/w/${owner.sId}/join/?t=${invitationToken}`;
-}
-
-export function getMembershipInvitationUrl(
-  owner: LightWorkspaceType,
-  invitation: MembershipInvitationType
-) {
-  const invitationToken = getMembershipInvitationToken(invitation);
-  return getMembershipInvitationUrlForToken(owner, invitationToken);
-}
-
 export async function sendWorkspaceInvitationEmail(
   owner: WorkspaceType,
   user: UserType,
@@ -111,6 +122,24 @@ export async function sendWorkspaceInvitationEmail(
       inviteLink: getMembershipInvitationUrl(owner, invitation),
       // Escape the name to prevent XSS attacks via injected script elements.
       inviterName: escape(user.fullName),
+      workspaceName: owner.name,
+    },
+  };
+
+  sgMail.setApiKey(config.getSendgridApiKey());
+  await sgMail.send(message);
+}
+
+export async function sendWorkspaceInvitationReminderEmail(
+  owner: LightWorkspaceType,
+  invitation: MembershipInvitationType
+) {
+  const message = {
+    to: invitation.inviteEmail,
+    from: config.getSupportEmailAddress(),
+    templateId: config.getInvitationReminderEmailTemplate(),
+    dynamic_template_data: {
+      inviteLink: getMembershipInvitationUrl(owner, invitation),
       workspaceName: owner.name,
     },
   };
@@ -190,7 +219,9 @@ export async function handleMembershipInvitations(
     invitationRequests: MembershipInvitationBlob[];
     force?: boolean;
   }
-): Promise<Result<HandleMembershipInvitationResult[], APIErrorWithStatusCode>> {
+): Promise<
+  Result<HandleMembershipInvitationResult[], APIErrorWithContentfulStatusCode>
+> {
   const { maxUsers } = subscription.plan.limits.users;
 
   // Emails are sent after the transaction commits so the DB transaction is
@@ -199,11 +230,11 @@ export async function handleMembershipInvitations(
     async (
       t
     ): Promise<
-      Result<InvitationTransactionPayload, APIErrorWithStatusCode>
+      Result<InvitationTransactionPayload, APIErrorWithContentfulStatusCode>
     > => {
-      if (maxUsers !== -1) {
-        await getWorkspaceAdministrationVersionLock(owner, t);
+      await getWorkspaceAdministrationVersionLock(owner, t);
 
+      if (maxUsers !== -1) {
         const membersCount =
           await MembershipResource.getMembersCountForWorkspace({
             workspace: owner,
@@ -360,9 +391,6 @@ export async function handleMembershipInvitations(
         inviteEmail: string;
         initialRole: ActiveRoleType;
       }[] = [];
-      // Group role updates by target role so we issue one UPDATE per distinct
-      // role (bounded by the number of active roles) instead of per invitation.
-      const toUpdateRoleByRole = new Map<ActiveRoleType, ModelId[]>();
       const invitationBySanitizedEmail = new Map<
         string,
         MembershipInvitationType
@@ -373,38 +401,16 @@ export async function handleMembershipInvitations(
         role,
       } of uniqueCandidateBySanitizedEmail.values()) {
         const existing = existingByEmail.get(sanitizedEmail);
-        if (!existing || existing.isExpired()) {
-          if (existing) {
-            toRevokeModelIds.push(existing.id);
-          }
-          toCreate.push({
-            inviteEmail: sanitizedEmail,
-            initialRole: role,
-          });
-        } else {
-          if (existing.initialRole !== role) {
-            const group = toUpdateRoleByRole.get(role) ?? [];
-            group.push(existing.id);
-            toUpdateRoleByRole.set(role, group);
-          }
-          invitationBySanitizedEmail.set(sanitizedEmail, {
-            ...existing.toJSON(),
-            initialRole: role,
-          });
+        if (existing) {
+          toRevokeModelIds.push(existing.id);
         }
+        toCreate.push({ inviteEmail: sanitizedEmail, initialRole: role });
       }
 
       await MembershipInvitationResource.bulkRevokeByModelIds(auth, {
         modelIds: toRevokeModelIds,
         transaction: t,
       });
-
-      for (const [role, modelIds] of toUpdateRoleByRole) {
-        await MembershipInvitationResource.bulkUpdateInitialRoleByModelIds(
-          auth,
-          { modelIds, role, transaction: t }
-        );
-      }
 
       const created = await MembershipInvitationResource.bulkMakeNewPending(
         auth,
@@ -472,9 +478,12 @@ export async function handleMembershipInvitations(
     void emitAuditLogEvent({
       auth,
       action: "member.invited",
-      targets: successfulInvites.map((r) =>
-        buildAuditLogTarget("user", { sId: r.email, name: r.email })
-      ),
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        ...successfulInvites.map((r) =>
+          buildAuditLogTarget("user", { sId: r.email, name: r.email })
+        ),
+      ],
       context: getAuditLogContext(auth),
       metadata: {
         invited_count: String(successfulInvites.length),

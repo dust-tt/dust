@@ -5,7 +5,7 @@ export const VIZ_REACT_COMPONENT_GUIDELINES = `
 - The generated component should always be exported as default.
 - All code must be wrapped in a proper React function component - never generate standalone JSX outside a component.
 - When displaying text with < or > symbols in JSX, use HTML entities: &lt; for < and &gt; for >, or wrap in curly braces like {"< 100"}.
-- There is no internet access in the visualization environment.
+- Outbound network requests (fetch, XHR, WebSocket) are blocked. connect-src is restricted to the Dust service only. External images can be rendered via <img src="https://..."> tags.
 - External links: All anchor tags (<a>) with external URLs must include target="_blank" attribute since content is rendered inside an iframe.
 - Supported React features:
   - React elements, e.g. \`<strong>Hello World!</strong>\`.
@@ -53,6 +53,7 @@ export const VIZ_STYLING_GUIDELINES = `
   - Always use padding around plots to ensure elements are fully visible and labels/legends do not overlap with the plot or with each other.
   - Use shadcn's background classes (bg-background, bg-card) instead of hardcoded bg-white for automatic theme compatibility.
   - If you need to generate a legend for a chart, ensure it uses relative positioning or follows the natural flow of the layout, avoiding \`position: absolute\`, to maintain responsiveness and adaptability.
+  - **Animation**: \`motion/react\` is available for animations. Use it for entrance transitions, staggered list or card reveals, and conditional mount/unmount effects via \`AnimatePresence\`. Prefer one well-orchestrated entrance sequence over many scattered micro-interactions. Keep entrance durations between 0.3 s and 0.5 s; interactive feedback between 0.15 s and 0.25 s.
 `;
 
 export const VIZ_FILE_HANDLING_GUIDELINES = `
@@ -60,7 +61,11 @@ export const VIZ_FILE_HANDLING_GUIDELINES = `
   - Files attached to the conversation can be accessed using the \`useFile()\` React hook (all files can be accessed by the hook irrespective of their status).
   - \`useFile\` has to be imported from \`"@dust/react-hooks"\`.
   - Like any React hook, \`useFile\` must be called inside a React component at the top level (not in event handlers, loops, or conditions).
-  - \`useFile()\` accepts either a file ID (e.g. \`"fil_abc123"\`, as found in \`<attachment id="fil_..." ...>\` tags) or a scoped file path (e.g. \`"conversation/report.csv"\`). Pass whichever you already have.
+  - \`useFile()\` accepts either a file ID (e.g. \`"fil_abc123"\`, as found in \`<attachment id="fil_..." ...>\` tags) or a scoped file path. Supported scoped path formats:
+    - \`"conversation-{conversationId}/report.csv"\` — a file in a specific conversation (portable)
+    - \`"pod-{podId}/filename.md"\` — a file in a specific pod (portable)
+    - **Never use bare \`"conversation/filename"\` or \`"pod/filename"\` (without their respective ID)** — these paths are context-dependent: they only resolve correctly when the frame is rendered inside that exact conversation or pod. They are non-portable and will silently load the wrong file or fail in any other context. Always use the explicit \`"conversation-{conversationId}/filename"\` or \`"pod-{podId}/filename"\` forms instead.
+  - File IDs, that will be used with \`useFile()\`, should be stored as non-breaking strings in the code, e.g store and use \`"fil_..."\` and NOT concatenation \`"fil_" + file.id\`
   - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
   - \`file.text()\` is ASYNC - Always use await \`file.text()\` inside useEffect with async function. Never call \`file.text()\` directly in render logic as it returns a Promise, not a string.
   - Always use \`papaparse\` to parse CSV files.
@@ -73,10 +78,10 @@ export const VIZ_FILE_HANDLING_GUIDELINES = `
   - \`captureScreenshot\` has to be imported from \`"@dust/react-hooks"\`.
   - The function takes an optional filename parameter and automatically downloads the screenshot as PNG.
   - Example: \`await captureScreenshot("my-chart.png")\` or simply \`await captureScreenshot()\` for default naming.
-\n+- Using image files from the conversation:
+- Using image files from the conversation:
   - Always load images via \`useFile()\` to obtain a \`File\` object — never reference images directly by URL/path or by copying the \`<attachment/>\` tag contents.
   - Create a local object URL from the \`File\` when rendering (e.g. \`const src = URL.createObjectURL(file)\`).
-  - Use the resulting object URL for \`<img src={src} alt="..." />\` or as a background image; do not attempt to fetch remote images (no internet access).
+  - Use the resulting object URL for \`<img src={src} alt="..." />\` or as a background image.
   - When creating custom components that render files, always use \`fileId\` as the prop name for file identifiers (e.g., \`<EventPhoto fileId="fil_abc123" caption="..." />\` or \`<EventPhoto fileId="conversation/photo.jpg" caption="..." />\`). This naming convention ensures proper file prefetching during server-side rendering. The prop accepts either a file ID or a scoped file path.
 - Importing other frames as React components:
   - Another frame can be imported directly as a React component using a standard ES import, with either its file ID (\`import MyComponent from "fil_abc123"\`) or its scoped file path (\`import MyComponent from "conversation/MyFrame.tsx"\`).
@@ -123,7 +128,7 @@ export const VIZ_LIBRARY_USAGE = `
 
 export const VIZ_MISCELLANEOUS_GUIDELINES = `
 - Miscellaneous:
-  - Images from the web cannot be rendered or used in the visualization (no internet access).
+  - Outbound network requests (fetch, XHR, WebSocket) are blocked. External images can be rendered via <img> tags with a direct URL.
   - When parsing dates, the date format should be accounted for based on the format seen in the \`<attachment/>\` tag.
   - If needed, the application must contain buttons or other navigation elements to allow the user to scroll/cycle through the content.
 `;

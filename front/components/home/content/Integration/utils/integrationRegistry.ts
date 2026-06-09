@@ -15,12 +15,12 @@ import type {
 const EXCLUDED_MCP_SERVERS = new Set([
   // Hidden/auto servers (not user-facing)
   "agent_router",
-  "agent_management",
   "missing_action_catcher",
   "conversation_files",
   "data_sources_file_system",
   "data_warehouses",
   "toolsets",
+  "skill_authoring",
   "skill_management",
   "schedules_management",
   "common_utilities",
@@ -109,6 +109,8 @@ const MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   vanta: "security",
   // AI
   openai_usage: "ai",
+  // Transcripts
+  fathom: "transcripts",
 };
 
 // Category mapping for remote MCP servers (by name, lowercased)
@@ -119,6 +121,7 @@ const REMOTE_MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   supabase: "development",
   guru: "productivity",
   granola: "transcripts",
+  praiz: "transcripts",
   intercom: "support",
   attio: "crm",
   gitlab: "development",

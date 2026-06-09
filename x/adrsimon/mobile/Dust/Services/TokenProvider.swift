@@ -68,8 +68,11 @@ actor TokenProvider {
                 return response.accessToken
             } catch {
                 logger.error("Token refresh failed: \(error)")
-                refreshFailed = true
-                onSessionExpired?()
+                // Only latch on a definitive 4xx; network errors must stay retryable.
+                if case let APIError.httpError(statusCode, _) = error, (400 ..< 500).contains(statusCode) {
+                    refreshFailed = true
+                    onSessionExpired?()
+                }
                 throw error
             }
         }

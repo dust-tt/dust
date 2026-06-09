@@ -25,6 +25,8 @@ on:
           - core
           - front
           - front-edge
+          - marketing
+          - marketing-edge
           - metabase
           - oauth
           - prodbox
@@ -166,7 +168,7 @@ jobs:
         id: generate-token
         uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
         with:
-          app-id: ${{ secrets.INFRA_DISPATCH_APP_ID }}
+          client-id: ${{ secrets.INFRA_DISPATCH_APP_ID }}
           private-key: ${{ secrets.INFRA_DISPATCH_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
           repositories: dust-infra

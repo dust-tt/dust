@@ -1,184 +1,193 @@
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
+import { ConfirmContext } from "@app/components/Confirm";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
+import { AwuUsageChart } from "@app/components/workspace/AwuUsageChart";
 import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDialog";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
+import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
+import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
+import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
+import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
-import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { isEnterprisePlanPrefix, isUpgraded } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import {
   useAwuPoolSummary,
   useAwuPurchaseInfo,
+  useCreditPurchaseInfo,
   useSeatPlan,
 } from "@app/lib/swr/credits";
-import { useMembersUsage } from "@app/lib/swr/memberships";
 import {
-  useMetronomeContract,
+  useMembersUsage,
+  useUpdateMemberSeatType,
+} from "@app/lib/swr/memberships";
+import {
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
 } from "@app/lib/swr/workspaces";
 import type { MembershipSeatType } from "@app/types/memberships";
+import { isCreditPricedPlan } from "@app/types/plan";
 import { isAdmin } from "@app/types/user";
 import {
-  ActionCreditCoinsIcon,
-  ActionPieChartIcon,
-  ArrowUpIcon,
+  AlertCircle,
+  ArrowUp,
   Button,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  ExclamationCircleIcon,
   Icon,
   Page,
+  PieChart01,
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useState } from "react";
+import type { PaginationState, SortingState } from "@tanstack/react-table";
+import { useCallback, useContext, useEffect, useState } from "react";
 
 function formatCredits(credits: number): string {
   return Math.round(credits).toLocaleString("en-US");
 }
 
-function getOrdinalSuffix(day: number): string {
-  if (day >= 11 && day <= 13) {
-    return "th";
-  }
-  switch (day % 10) {
-    case 1:
-      return "st";
-    case 2:
-      return "nd";
-    case 3:
-      return "rd";
-    default:
-      return "th";
-  }
-}
-
-function getResetDateLabel(resetDate: string): string {
-  if (!resetDate) {
-    return "";
-  }
-  const date = new Date(resetDate);
-  const resetDay = date.getUTCDate();
-  const suffix = getOrdinalSuffix(resetDay);
-  const resetMonth = date.toLocaleDateString(undefined, {
-    month: "long",
-    timeZone: "UTC",
-  });
-  return `Monthly resets on the ${resetDay}${suffix}, ${resetMonth}`;
-}
-
-interface CreditPoolUsageBarProps {
-  totalCredits: number;
-  consumedByUsersCredits: number;
-  consumedByProgrammaticCredits: number;
-}
-
-function CreditPoolUsageBar({
-  totalCredits,
-  consumedByUsersCredits,
-  consumedByProgrammaticCredits,
-}: CreditPoolUsageBarProps) {
-  const usersPercentage =
-    totalCredits > 0
-      ? Math.min((consumedByUsersCredits / totalCredits) * 100, 100)
-      : 0;
-  const programmaticPercentage =
-    totalCredits > 0
-      ? Math.min(
-          (consumedByProgrammaticCredits / totalCredits) * 100,
-          100 - usersPercentage
-        )
-      : 0;
-  const totalConsumedPercentage = usersPercentage + programmaticPercentage;
-
-  return (
-    <Page.Vertical gap="xs" align="stretch">
-      <div
-        className="flex h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10 dark:bg-muted-foreground-night/10"
-        role="progressbar"
-        aria-label="Credit pool usage"
-        aria-valuenow={Math.round(totalConsumedPercentage)}
-        aria-valuemin={0}
-        aria-valuemax={100}
-      >
-        <div
-          className="h-full shrink-0 bg-yellow-400 transition-all"
-          style={{ width: `${usersPercentage}%` }}
-        />
-        <div
-          className="h-full shrink-0 bg-purple-500 transition-all"
-          style={{ width: `${programmaticPercentage}%` }}
-        />
-      </div>
-      <div className="flex gap-4 text-xs text-muted-foreground dark:text-muted-foreground-night">
-        <span className="flex items-center gap-1.5">
-          <span className="h-2 w-2 bg-yellow-400" />
-          Users
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="h-2 w-2 bg-purple-500" />
-          Programmatic Usage
-        </span>
-      </div>
-    </Page.Vertical>
-  );
-}
+const DEFAULT_PAGE_SIZE = 25;
 
 export function UsagePage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
-  const { hasFeature } = useFeatureFlags();
   const router = useAppRouter();
+  const isCreditPriced = isCreditPricedPlan(subscription.plan);
   const [searchTerm, setSearchTerm] = useState("");
   const [seatTypeFilter, setSeatTypeFilter] = useState<
     MembershipSeatType | "none" | null
   >(null);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  });
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "name", desc: false },
+  ]);
+
+  // Members are sorted server-side; reset to the first page when the sort
+  // changes so the user lands on the start of the new ordering.
+  const handleSetSorting = useCallback((next: SortingState) => {
+    setSorting(next);
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, []);
+
+  const sort = sorting[0];
+  const membersOrderColumn = sort?.id === "email" ? "email" : "name";
+  const membersOrderDirection = sort?.desc ? "desc" : "asc";
+
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
   const [changeSeatMember, setChangeSeatMember] =
     useState<MemberUsageType | null>(null);
+
+  const confirm = useContext(ConfirmContext);
+  const { doUpdateSeatType } = useUpdateMemberSeatType({
+    workspaceId: owner.sId,
+  });
+  const [seatChangePendingMemberIds, setSeatChangePendingMemberIds] = useState<
+    ReadonlySet<string>
+  >(() => new Set());
+  const handleSeatChangePendingChange = useCallback(
+    (memberId: string, isPending: boolean) =>
+      setSeatChangePendingMemberIds((prev) => {
+        const next = new Set(prev);
+        next[isPending ? "add" : "delete"](memberId);
+        return next;
+      }),
+    []
+  );
+  const onRemoveSeat = useCallback(
+    async (member: MemberUsageType) => {
+      const confirmed = await confirm({
+        title: "Remove seat",
+        message: `Are you sure you want to remove ${member.name}'s seat? They will keep access until the end of the current billing period, then lose the ability to send messages.`,
+        validateLabel: "Remove seat",
+        validateVariant: "warning",
+      });
+      if (!confirmed) {
+        return;
+      }
+      handleSeatChangePendingChange(member.sId, true);
+      try {
+        await doUpdateSeatType({
+          memberId: member.sId,
+          memberName: member.name,
+          seatType: "none",
+          isCancellingScheduledChange: false,
+          hasSeatPool: false,
+        });
+      } finally {
+        handleSeatChangePendingChange(member.sId, false);
+      }
+    },
+    [confirm, doUpdateSeatType, handleSeatChangePendingChange]
+  );
+  const [editSpendLimitMember, setEditSpendLimitMember] =
+    useState<MemberUsageType | null>(null);
+  const [
+    totalAllowedUsagePendingMemberIds,
+    setTotalAllowedUsagePendingMemberIds,
+  ] = useState<ReadonlySet<string>>(() => new Set());
+  const handleUsagePendingChange = useCallback(
+    (memberId: string, isPending: boolean) =>
+      setTotalAllowedUsagePendingMemberIds((prev) => {
+        const next = new Set(prev);
+        next[isPending ? "add" : "delete"](memberId);
+        return next;
+      }),
+    []
+  );
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
   useEffect(() => {
-    if (!hasFeature("metronome_billing_usage_page")) {
+    if (!isCreditPriced) {
       void router.push(`/w/${owner.sId}/members`);
     }
-  }, [hasFeature, router, owner.sId]);
+  }, [isCreditPriced, router, owner.sId]);
 
   const {
-    totalCredits,
-    consumedByUsersCredits,
-    consumedByProgrammaticCredits,
-    resetDate,
+    totalRemainingCredits,
+    totalActiveCredits,
+    overageCredits,
     isAwuPoolSummaryLoading,
     isAwuPoolSummaryError,
   } = useAwuPoolSummary({
     workspaceId: owner.sId,
   });
 
-  const { awuPurchaseInfo, isAwuPurchaseInfoLoading } = useAwuPurchaseInfo({
-    workspaceId: owner.sId,
-    disabled: !showBuyCreditDialog,
-  });
+  const { awuPurchaseInfo, isAwuPurchaseInfoLoading, isAwuPurchaseInfoError } =
+    useAwuPurchaseInfo({
+      workspaceId: owner.sId,
+      disabled: !showBuyCreditDialog,
+    });
 
-  const { membersUsage, isMembersUsageLoading } = useMembersUsage({
-    workspaceId: owner.sId,
-  });
+  const { billingCycleStartDay, isCreditPurchaseInfoLoading } =
+    useCreditPurchaseInfo({
+      workspaceId: owner.sId,
+    });
+
+  const { membersUsage, isMembersUsageLoading, totalMembersUsage } =
+    useMembersUsage({
+      workspaceId: owner.sId,
+      searchTerm,
+      pageIndex: pagination.pageIndex,
+      pageSize: pagination.pageSize,
+      orderColumn: membersOrderColumn,
+      orderDirection: membersOrderDirection,
+    });
 
   const { hasAvailableSeats } = useWorkspaceSeatAvailability({
     workspaceId: owner.sId,
   });
 
-  const { proSeatInfo, maxSeatInfo } = useSeatPlan({
+  const { seatPlans } = useSeatPlan({
     workspaceId: owner.sId,
   });
 
@@ -186,13 +195,10 @@ export function UsagePage() {
     workspaceId: owner.sId,
   });
 
-  const { contract } = useMetronomeContract({
-    workspaceId: owner.sId,
-  });
-
-  const hasSeatSubscription = contract?.hasSeatSubscription ?? false;
+  const isSeatBased = Object.keys(seatPlans).length > 1;
 
   const plan = subscription.plan;
+  const isEnterprise = isEnterprisePlanPrefix(plan.code);
   const isManualInvitationsEnabled =
     owner.metadata?.disableManualInvitations !== true;
 
@@ -212,13 +218,13 @@ export function UsagePage() {
     [plan, subscription.paymentFailingSince, hasAvailableSeats]
   );
 
-  const totalConsumedCredits =
-    consumedByUsersCredits + consumedByProgrammaticCredits;
-  const currentBalanceCredits = Math.round(totalCredits - totalConsumedCredits);
+  const totalConsumedCredits = Math.max(
+    0,
+    totalActiveCredits - totalRemainingCredits
+  );
+  const initialTotalCredits = totalActiveCredits;
 
-  const resetDateLabel = getResetDateLabel(resetDate);
-
-  if (!hasFeature("metronome_billing_usage_page")) {
+  if (!isCreditPriced) {
     return null;
   }
 
@@ -230,13 +236,14 @@ export function UsagePage() {
         workspaceId={owner.sId}
         awuPurchaseInfo={awuPurchaseInfo}
         isAwuPurchaseInfoLoading={isAwuPurchaseInfoLoading}
-        currentBalanceCredits={currentBalanceCredits}
+        isAwuPurchaseInfoError={!!isAwuPurchaseInfoError}
+        currentBalanceCredits={totalRemainingCredits}
       />
 
-      <Page.Vertical gap="xl" align="stretch">
+      <div className="flex flex-col items-stretch gap-10 pb-20">
         <Page.Vertical gap="xs">
           <Icon
-            visual={ActionPieChartIcon}
+            visual={PieChart01}
             className="text-muted-foreground dark:text-muted-foreground-night"
             size="lg"
           />
@@ -246,56 +253,16 @@ export function UsagePage() {
           </Page.P>
         </Page.Vertical>
 
-        <Page.Vertical gap="sm" align="stretch">
-          <div className="flex items-center justify-between">
-            <span className="text-[16px] font-medium leading-[24px] tracking-[-0.32px] text-foreground dark:text-foreground-night">
-              Credit pool
-            </span>
-            {!isAwuPoolSummaryLoading && (
-              <div className="flex flex-col items-end gap-0.5">
-                <span className="flex items-center gap-1.5 text-[18px] font-semibold leading-[26px] tracking-[-0.36px] text-foreground dark:text-foreground-night">
-                  <Icon
-                    visual={ActionCreditCoinsIcon}
-                    size="sm"
-                    className="text-muted-foreground dark:text-muted-foreground-night"
-                  />
-                  {formatCredits(totalConsumedCredits)} /{" "}
-                  {formatCredits(totalCredits)}
-                </span>
-                <button
-                  className="flex cursor-pointer items-center gap-1 text-xs font-medium text-highlight-500 dark:text-highlight-500-night"
-                  onClick={() => setShowBuyCreditDialog(true)}
-                >
-                  <Icon visual={ArrowUpIcon} size="xs" />
-                  Top up
-                </button>
-              </div>
-            )}
-          </div>
-
+        <Page.Vertical gap="xs" align="stretch">
           {isAwuPoolSummaryError && (
             <ContentMessage
-              title="Failed to load credit pool"
-              icon={ExclamationCircleIcon}
+              title="Failed to load Workspace Credits Pool"
+              icon={AlertCircle}
               variant="warning"
             >
-              An error occurred while loading your credit pool data. Please
-              refresh the page or contact support if the issue persists.
+              An error occurred while loading your Workspace Credits Pool data.
+              Please refresh the page or contact support if the issue persists.
             </ContentMessage>
-          )}
-
-          {resetDateLabel &&
-            !isAwuPoolSummaryLoading &&
-            !isAwuPoolSummaryError && (
-              <Page.P variant="secondary">{resetDateLabel}</Page.P>
-            )}
-
-          {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
-            <CreditPoolUsageBar
-              totalCredits={totalCredits}
-              consumedByUsersCredits={consumedByUsersCredits}
-              consumedByProgrammaticCredits={consumedByProgrammaticCredits}
-            />
           )}
 
           {isAwuPoolSummaryLoading && (
@@ -303,15 +270,63 @@ export function UsagePage() {
               <Spinner />
             </div>
           )}
+
+          {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
+            <>
+              <div className="flex items-baseline gap-1">
+                <span className="heading-mono-4xl text-foreground dark:text-foreground-night">
+                  {formatCredits(totalConsumedCredits)}
+                </span>
+                <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                  /{formatCredits(initialTotalCredits)}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {overageCredits !== null && overageCredits > 0 && (
+                  <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                    {formatCredits(overageCredits)} overage credits
+                  </span>
+                )}
+                {isEnterprise ? (
+                  <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                    Contact your Dust sales representative to buy credits
+                  </span>
+                ) : (
+                  <Button
+                    label="Top up"
+                    icon={ArrowUp}
+                    size="xs"
+                    variant="ghost"
+                    onClick={() => setShowBuyCreditDialog(true)}
+                  />
+                )}
+              </div>
+            </>
+          )}
         </Page.Vertical>
 
+        {isCreditPurchaseInfoLoading ? (
+          <div className="h-64 animate-pulse rounded bg-muted-foreground/20" />
+        ) : (
+          <AwuUsageChart
+            workspaceId={owner.sId}
+            billingCycleStartDay={billingCycleStartDay ?? 1}
+          />
+        )}
+
+        <UsageSettingsCard workspaceId={owner.sId} />
+
+        <UsageProgrammaticLimitCard workspaceId={owner.sId} />
+
+        <UsageNotificationsCard workspaceId={owner.sId} />
+
         <Page.Vertical gap="sm" align="stretch">
-          <span className="text-[16px] font-medium leading-[24px] tracking-[-0.32px] text-foreground dark:text-foreground-night">
+          <span className="heading-2xl text-foreground dark:text-foreground-night">
             Members
           </span>
           <div className="flex flex-row gap-2">
             <SearchInput
-              placeholder="Search members (email)"
+              placeholder="Search members"
               value={searchTerm}
               name="search"
               onChange={setSearchTerm}
@@ -326,7 +341,7 @@ export function UsagePage() {
               />
             )}
           </div>
-          {hasSeatSubscription && (
+          {isSeatBased && (
             <div className="flex flex-row justify-end">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -372,10 +387,20 @@ export function UsagePage() {
           <MembersUsageTable
             members={membersUsage}
             isLoading={isMembersUsageLoading}
-            searchTerm={searchTerm}
+            totalAllowedUsagePendingMemberIds={
+              totalAllowedUsagePendingMemberIds
+            }
+            seatChangePendingMemberIds={seatChangePendingMemberIds}
             seatTypeFilter={seatTypeFilter}
-            showSeatColumns={hasSeatSubscription}
+            isSeatBased={isSeatBased}
             onChangeSeat={setChangeSeatMember}
+            onRemoveSeat={onRemoveSeat}
+            onEditSpendLimit={setEditSpendLimitMember}
+            pagination={pagination}
+            setPagination={setPagination}
+            totalRowCount={totalMembersUsage}
+            sorting={sorting}
+            setSorting={handleSetSorting}
           />
         </Page.Vertical>
 
@@ -390,23 +415,23 @@ export function UsagePage() {
           />
         )}
 
-        {changeSeatMember && (
-          <ChangeSeatModal
-            isOpen={true}
-            onClose={() => setChangeSeatMember(null)}
-            member={changeSeatMember}
-            owner={owner}
-            proSeatInfo={proSeatInfo}
-            maxSeatInfo={maxSeatInfo}
-          />
-        )}
+        <ChangeSeatModal
+          isOpen={changeSeatMember !== null}
+          onClose={() => setChangeSeatMember(null)}
+          member={changeSeatMember}
+          owner={owner}
+          seatPlans={seatPlans}
+          onSavingChange={handleSeatChangePendingChange}
+        />
 
-        {/* TODO: Settings section*/}
-        <div />
-
-        {/* TODO: Notifications section */}
-        <div />
-      </Page.Vertical>
+        <EditSpendLimitModal
+          isOpen={editSpendLimitMember !== null}
+          onClose={() => setEditSpendLimitMember(null)}
+          member={editSpendLimitMember}
+          owner={owner}
+          onSavingChange={handleUsagePendingChange}
+        />
+      </div>
     </>
   );
 }

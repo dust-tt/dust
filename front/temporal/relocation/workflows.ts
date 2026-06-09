@@ -1,4 +1,3 @@
-import type { RegionType } from "@app/lib/api/regions/config";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type * as connectorsDestinationActivities from "@app/temporal/relocation/activities/destination_region/connectors/sql";
 import type * as coreDestinationActivities from "@app/temporal/relocation/activities/destination_region/core";
@@ -15,6 +14,7 @@ import {
   CORE_API_LIST_TABLES_BATCH_SIZE,
 } from "@app/temporal/relocation/activities/types";
 import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
+import type { RegionType } from "@app/types/region";
 import type { ModelId } from "@app/types/shared/model_id";
 import {
   continueAsNew,

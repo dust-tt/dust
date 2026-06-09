@@ -65,9 +65,17 @@ async function userContentToParam(
         };
       }
 
-      const { mediaType, data } = await trustedFetchImageBase64(
-        content.image_url.url
-      );
+      let fetchResult: Awaited<ReturnType<typeof trustedFetchImageBase64>>;
+      try {
+        fetchResult = await trustedFetchImageBase64(content.image_url.url);
+      } catch {
+        return {
+          type: "text",
+          text: "Attachment: image could not be loaded.",
+        };
+      }
+
+      const { mediaType, data } = fetchResult;
 
       if (!isAcceptedMediaType(mediaType)) {
         return {

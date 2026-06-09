@@ -5,6 +5,15 @@ options:
     iOS: "17.4"
   xcodeVersion: "16.0"
 
+# Three build configurations:
+#   Dev      debug build  -> dev API (http://localhost:3000)
+#   Prod     debug build  -> prod API (https://dust.tt)
+#   Release  release build -> prod API (https://dust.tt)
+configs:
+  Dev: debug
+  Prod: debug
+  Release: release
+
 packages:
   SparkleTokens:
     path: SparkleTokens
@@ -15,7 +24,8 @@ packages:
 settings:
   base:
     SWIFT_VERSION: "5.9"
-    DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM: "ABH98MM6YT"
+    CODE_SIGN_STYLE: Automatic
 
 targets:
   Dust:
@@ -33,14 +43,45 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.dust.mobile
         MARKETING_VERSION: "0.1.0"
-        CURRENT_PROJECT_VERSION: 1
+        CURRENT_PROJECT_VERSION: 2
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1" # iPhone only
+      configs:
+        # Only the Dev config defines DEV; debug configs already inherit DEBUG.
+        Dev:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG DEV
     info:
       path: Dust/Info.plist
       properties:
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        ITSAppUsesNonExemptEncryption: false
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               - dust
         NSMicrophoneUsageDescription: "Dust needs microphone access for voice input"
         UILaunchScreen: {}
+        # Allow the Dev build to reach the local front server over plain HTTP.
+        # No effect on Prod/Release, which never talk to localhost.
+        NSAppTransportSecurity:
+          NSExceptionDomains:
+            localhost:
+              NSExceptionAllowsInsecureHTTPLoads: true
+              NSIncludesSubdomains: true
+
+schemes:
+  Dust:
+    build:
+      targets:
+        Dust: all
+    run:
+      config: Dev
+    test:
+      config: Prod
+    profile:
+      config: Prod
+    analyze:
+      config: Prod
+    archive:
+      config: Release

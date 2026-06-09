@@ -624,6 +624,9 @@ export const EarlyExitOutputResourceSchema = z.object({
   type: z.literal("tool_early_exit"),
   text: z.string(),
   isError: z.boolean(),
+  reason: z
+    .enum(["deploy_interruption", "user_cancellation", "none"])
+    .optional(),
   uri: z.string(),
 });
 

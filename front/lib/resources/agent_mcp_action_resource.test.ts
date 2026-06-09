@@ -2,6 +2,7 @@ import type {
   LightMCPToolConfigurationType,
   LightServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
+import type { ToolGeneratedFilePathType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
@@ -28,7 +29,8 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 
 // In-memory GCS mock: writes persist content that reads can return.
 const gcsStore = new Map<string, Buffer>();
@@ -585,6 +587,83 @@ describe("Output items with GCS storage", () => {
     expect(items![0].id).toBe(outputItems[0].id);
     expect(items![0].content).toBeUndefined();
     expect(items![0].contentGcsPath).toBeUndefined();
+  });
+
+  it("should store generatedFilePath and generatedFileContentType for path-based output items", async () => {
+    const { action } = await ConversationFactory.createAgentMessage(auth, {
+      workspace,
+      conversation,
+      agentConfig,
+      mcpAction: { toolConfiguration },
+    });
+    assert(action, "action should be defined");
+
+    const outputResourceItem: ToolGeneratedFilePathType = {
+      text: "file written",
+      uri: "conversation-abc123/analysis.csv",
+      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH,
+      path: "conversation-abc123/analysis.csv",
+      title: "analysis.csv",
+      contentType: "text/csv",
+    };
+
+    const outputItems = await action.createOutputItems(auth, [
+      {
+        content: {
+          type: "resource",
+          resource: outputResourceItem,
+        },
+      },
+    ]);
+
+    expect(outputItems).toHaveLength(1);
+    expect(outputItems[0].generatedFilePath).toBe(
+      "conversation-abc123/analysis.csv"
+    );
+    expect(outputItems[0].generatedFileContentType).toBe("text/csv");
+  });
+
+  it("should return generatedFilePath and generatedFileContentType when ignoreContent is true", async () => {
+    const { action } = await ConversationFactory.createAgentMessage(auth, {
+      workspace,
+      conversation,
+      agentConfig,
+      mcpAction: { toolConfiguration },
+    });
+    assert(action, "action should be defined");
+
+    const outputResourceItem: ToolGeneratedFilePathType = {
+      text: "file written",
+      uri: "conversation-abc123/analysis.csv",
+      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH,
+      path: "conversation-abc123/analysis.csv",
+      title: "analysis.csv",
+      contentType: "text/csv",
+    };
+
+    await action.createOutputItems(auth, [
+      {
+        content: {
+          type: "resource",
+          resource: outputResourceItem,
+        },
+      },
+    ]);
+
+    const map = await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+      actionIds: [action.id],
+      ignoreContent: true,
+    });
+
+    const items = map.get(action.id);
+    assert(items !== undefined, "items should be defined");
+    expect(items).toHaveLength(1);
+    // content and contentGcsPath are excluded by ignoreContent.
+    expect(items[0].content).toBeUndefined();
+    expect(items[0].contentGcsPath).toBeUndefined();
+    // Path-based file metadata survives.
+    expect(items[0].generatedFilePath).toBe("conversation-abc123/analysis.csv");
+    expect(items[0].generatedFileContentType).toBe("text/csv");
   });
 
   it("fetchOutputItemsByActionIds mixes metadata-only and full-content actions in one call", async () => {

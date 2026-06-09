@@ -1,5 +1,4 @@
-import { getWorkspaceInfos } from "@app/lib/api/workspace";
-import type { AuthenticatorType } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { launchHandleMentionsWorkflow } from "@app/temporal/mentions_queue/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
@@ -8,21 +7,11 @@ import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
  * Launch mentions workflow in fire-and-forget mode.
  */
 export async function handleMentions(
-  authType: AuthenticatorType,
+  auth: Authenticator,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  // Use `getWorkspaceInfos` for lightweight workspace info.
-  const owner = await getWorkspaceInfos(authType.workspaceId);
-  if (!owner) {
-    logger.warn(
-      { workspaceId: authType.workspaceId },
-      "Failed to fetch workspace infos for mentions"
-    );
-    return;
-  }
-
   const result = await launchHandleMentionsWorkflow({
-    authType,
+    authType: auth.toJSON(),
     agentLoopArgs,
   });
 
@@ -31,7 +20,7 @@ export async function handleMentions(
       {
         agentMessageId: agentLoopArgs.agentMessageId,
         error: result.error,
-        workspaceId: authType.workspaceId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
       },
       "Failed to launch mentions workflow"
     );

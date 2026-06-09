@@ -44,6 +44,42 @@ describe("sandboxSkill", () => {
     expect(instructions).toContain("DuckDB");
   });
 
+  it("documents DSEC HTTPS secret handling and trust-store footguns", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    await FeatureFlagFactory.basic(auth, "sandbox_tools");
+
+    const instructions = await sandboxSkill.fetchInstructions(auth, {
+      spaceIds: [],
+    });
+
+    expect(instructions).toContain("`DST_*`: configuration values");
+    expect(instructions).toContain("`DSEC_*`: HTTPS secret placeholders");
+    expect(instructions).toContain("Authorization: Basic");
+    expect(instructions).toContain(
+      "Do not put a `DSEC_*` placeholder in a URL or query string"
+    );
+    expect(instructions).toContain(
+      'os.environ["OPENAI_API_KEY"] = os.environ["DSEC_OPENAI_API_KEY"]'
+    );
+    expect(instructions).toContain("rustls-tls-native-roots");
+    expect(instructions).toContain("PKIX path building failed");
+    expect(instructions).toContain("Do not pass custom TLS trust settings");
+  });
+
+  it("points at `dsbx env` for env-var discovery", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+
+    await FeatureFlagFactory.basic(auth, "sandbox_tools");
+
+    const instructions = await sandboxSkill.fetchInstructions(auth, {
+      spaceIds: [],
+    });
+
+    expect(instructions).toContain("`dsbx env`");
+    expect(instructions).toContain("the HTTPS domain(s) it is approved for");
+  });
+
   it("hides agent egress request instructions until enabled", async () => {
     const {
       authenticator: auth,

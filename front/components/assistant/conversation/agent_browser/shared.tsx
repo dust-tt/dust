@@ -9,9 +9,9 @@ import {
   Button,
   CardGrid,
   Chip,
+  DotsHorizontal,
   DropdownMenuItem,
   DropdownMenuLabel,
-  MoreIcon,
   SearchDropdownMenu,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -85,7 +85,6 @@ type AgentGridProps = {
   handleAssistantClick: (agent: LightAgentConfigurationType) => void;
   handleMoreClick: (agentId: string) => void;
   owner: WorkspaceType;
-  iconSize?: "sm" | "md";
   canGetMore?: boolean;
 };
 
@@ -94,7 +93,6 @@ export const AgentGrid = ({
   handleAssistantClick,
   handleMoreClick,
   owner,
-  iconSize = "md",
   canGetMore = true,
 }: AgentGridProps) => {
   // Context menu state
@@ -165,7 +163,7 @@ export const AgentGrid = ({
                 setContextMenuAgent(agent);
                 setContextMenuPosition({ x: e.clientX, y: e.clientY });
               }}
-              iconSize={iconSize}
+              iconSize="sm"
               action={
                 canGetMore && (
                   <AssistantCardMore
@@ -240,6 +238,7 @@ export function SearchDropdownContent({
       {filteredAgents.length > 0 && <DropdownMenuLabel label="Agents" />}
       {filteredAgents.map((agent) => (
         <DropdownMenuItem
+          className="notranslate"
           key={agent.sId}
           onClick={() => onAgentClick(agent)}
           truncateText
@@ -251,7 +250,7 @@ export function SearchDropdownContent({
               <Button
                 variant="ghost"
                 size="xs"
-                icon={MoreIcon}
+                icon={DotsHorizontal}
                 onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.stopPropagation();
                   onAgentMoreClick(agent.sId);

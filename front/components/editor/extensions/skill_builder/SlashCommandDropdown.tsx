@@ -1,5 +1,9 @@
+import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
+  Button,
   cn,
+  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -9,6 +13,7 @@ import {
 import type { SuggestionProps } from "@tiptap/suggestion";
 import type React from "react";
 import {
+  Fragment,
   forwardRef,
   useCallback,
   useEffect,
@@ -38,10 +43,20 @@ const EMPTY_SCROLL_FADE_STATE: ScrollFadeState = {
 
 export interface SlashCommand {
   action: string;
+  data?: {
+    skill?: SlashCommandSkillSuggestion;
+    tool?: {
+      icon: string | null;
+      id: string;
+      name: string;
+      view: MCPServerViewType;
+    };
+  };
   description?: string;
   icon: React.ComponentType<any>;
   id: string;
   label: string;
+  sectionLabel?: string;
   tooltip?: SlashCommandTooltip;
 }
 
@@ -54,6 +69,7 @@ export interface SlashCommandDropdownProps
   header?: string;
   listMaxHeightClassName?: `max-h-${string}`;
   onClose?: () => void;
+  onItemDetails?: (item: SlashCommand) => void;
   showScrollFade?: boolean;
   size?: "default" | "wide";
 }
@@ -75,6 +91,7 @@ export const SlashCommandDropdown = forwardRef<
       header,
       listMaxHeightClassName = DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME,
       onClose,
+      onItemDetails,
       showScrollFade = false,
       size = "default",
     },
@@ -269,40 +286,70 @@ export const SlashCommandDropdown = forwardRef<
                     aria-hidden
                   />
                   {items.map((item, index) => {
+                    const sectionLabel =
+                      item.sectionLabel &&
+                      items[index - 1]?.sectionLabel !== item.sectionLabel
+                        ? item.sectionLabel
+                        : undefined;
+                    const canShowDetails =
+                      !!onItemDetails &&
+                      !!(item.data?.skill || item.data?.tool);
                     const menuItem = (
                       <DropdownMenuItem
-                        key={item.id}
                         icon={item.icon}
                         itemId={item.id}
                         label={item.label}
                         description={item.description}
                         truncateText
+                        endComponent={
+                          canShowDetails ? (
+                            <Button
+                              icon={DotsHorizontal}
+                              variant="outline"
+                              size="mini"
+                              className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                onItemDetails?.(item);
+                              }}
+                            />
+                          ) : undefined
+                        }
                         onClick={() => selectItem(index)}
                         onMouseEnter={() => setSelectedIndex(index)}
-                        className={
-                          index === selectedIndex
-                            ? "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
-                            : ""
-                        }
+                        className={cn(
+                          "group",
+                          index === selectedIndex &&
+                            "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
+                        )}
                       />
                     );
 
                     // Wrap with DropdownTooltipTrigger if command has tooltip property.
-                    if (item.tooltip) {
-                      return (
-                        <DropdownTooltipTrigger
-                          key={item.id}
-                          description={item.tooltip.description}
-                          media={item.tooltip.media}
-                          side="right"
-                          sideOffset={8}
-                        >
-                          {menuItem}
-                        </DropdownTooltipTrigger>
-                      );
-                    }
+                    const itemContent = item.tooltip ? (
+                      <DropdownTooltipTrigger
+                        description={item.tooltip.description}
+                        media={item.tooltip.media}
+                        side="right"
+                        sideOffset={8}
+                      >
+                        {menuItem}
+                      </DropdownTooltipTrigger>
+                    ) : (
+                      menuItem
+                    );
 
-                    return menuItem;
+                    return (
+                      <Fragment key={item.id}>
+                        {sectionLabel ? (
+                          <div className="px-3 py-2 text-xs font-semibold text-muted-foreground dark:text-muted-foreground-night">
+                            {sectionLabel}
+                          </div>
+                        ) : null}
+                        {itemContent}
+                      </Fragment>
+                    );
                   })}
                 </div>
               </div>

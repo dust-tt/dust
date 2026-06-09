@@ -1,27 +1,38 @@
-import { Hono } from "hono";
-
+import type { GetConversationAttachmentsResponseBody } from "@app/lib/api/assistant/conversation/attachments";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
-
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/attachments.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const conversationId = c.req.param("cId") ?? "";
+/** @ignoreswagger */
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<GetConversationAttachmentsResponseBody> => {
+    const auth = ctx.get("auth");
+    const { cId: conversationId } = ctx.req.valid("param");
 
-  const conversationRes = await getConversation(auth, conversationId);
-  if (conversationRes.isErr()) {
-    return apiErrorForConversation(c, conversationRes.error);
+    const conversationRes = await getConversation(auth, conversationId);
+    if (conversationRes.isErr()) {
+      return apiErrorForConversation(ctx, conversationRes.error);
+    }
+
+    const attachments = await listAttachments(auth, {
+      conversation: conversationRes.value,
+    });
+
+    return ctx.json({ attachments });
   }
-
-  const attachments = await listAttachments(auth, {
-    conversation: conversationRes.value,
-  });
-
-  return c.json({ attachments });
-});
+);
 
 export default app;

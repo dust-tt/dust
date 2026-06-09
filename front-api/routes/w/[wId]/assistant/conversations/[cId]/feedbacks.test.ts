@@ -1,5 +1,3 @@
-import { describe, expect, it } from "vitest";
-
 import type { Authenticator } from "@app/lib/auth";
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
@@ -8,8 +6,8 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
-
 import { honoApp } from "@front-api/app";
+import { describe, expect, it } from "vitest";
 
 async function getMessageByRank(
   auth: Authenticator,

@@ -28,7 +28,7 @@ export function CreateRoomDialog({
   const handleNext = () => {
     const trimmedName = roomName.trim();
     if (!trimmedName) {
-      setError("Room name is required");
+      setError("Pod name is required");
       return;
     }
     setError(null);
@@ -50,8 +50,8 @@ export function CreateRoomDialog({
         </DialogHeader>
         <DialogContainer className="s-space-y-6">
           <Input
-            label="Room name"
-            placeholder="Enter room name"
+            label="Pod name"
+            placeholder="Enter the pod name"
             value={roomName}
             onChange={(e) => {
               setRoomName(e.target.value);

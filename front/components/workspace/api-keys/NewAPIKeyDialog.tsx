@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
-  PlusIcon,
+  Plus,
   RadioGroup,
   RadioGroupItem,
   Sheet,
@@ -29,7 +29,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  XMarkIcon,
+  XClose,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -56,6 +56,7 @@ interface NewAPIKeyDialogProps {
     monthlyCapMicroUsd: number | null;
     role: KeyRole;
   }) => Promise<void>;
+  showLegacyUsdMonthlyCap: boolean;
 }
 
 export const NewAPIKeyDialog = ({
@@ -63,6 +64,7 @@ export const NewAPIKeyDialog = ({
   isGenerating,
   isRevoking,
   onCreate,
+  showLegacyUsdMonthlyCap,
 }: NewAPIKeyDialogProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [spaceSearch, setSpaceSearch] = useState("");
@@ -145,7 +147,7 @@ export const NewAPIKeyDialog = ({
       <SheetTrigger asChild>
         <Button
           label="Create API Key"
-          icon={PlusIcon}
+          icon={Plus}
           disabled={isGenerating || isRevoking}
         />
       </SheetTrigger>
@@ -243,7 +245,7 @@ export const NewAPIKeyDialog = ({
                       <Button
                         key={gId}
                         label={prettifyGroupName(group)}
-                        icon={XMarkIcon}
+                        icon={XClose}
                         size="xs"
                         variant="ghost"
                         onClick={() => removeGroupId(gId)}
@@ -285,22 +287,24 @@ export const NewAPIKeyDialog = ({
                 </RadioGroup>
               </div>
 
-              <BaseFormFieldSection
-                title="Monthly cap (USD)"
-                fieldName="monthlyCapDollars"
-              >
-                {({ registerRef, registerProps, onChange, errorMessage }) => (
-                  <Input
-                    ref={registerRef}
-                    {...registerProps}
-                    onChange={onChange}
-                    placeholder="Leave empty for unlimited"
-                    isError={!!errorMessage}
-                    message={errorMessage}
-                    messageStatus="error"
-                  />
-                )}
-              </BaseFormFieldSection>
+              {showLegacyUsdMonthlyCap && (
+                <BaseFormFieldSection
+                  title="Monthly cap (USD)"
+                  fieldName="monthlyCapDollars"
+                >
+                  {({ registerRef, registerProps, onChange, errorMessage }) => (
+                    <Input
+                      ref={registerRef}
+                      {...registerProps}
+                      onChange={onChange}
+                      placeholder="Leave empty for unlimited"
+                      isError={!!errorMessage}
+                      message={errorMessage}
+                      messageStatus="error"
+                    />
+                  )}
+                </BaseFormFieldSection>
+              )}
             </div>
           </FormProvider>
         </SheetContainer>

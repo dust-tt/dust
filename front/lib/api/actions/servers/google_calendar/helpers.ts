@@ -109,6 +109,13 @@ export interface GoogleCalendarEvent {
     signature?: string;
     notes?: string;
   };
+  attachments?: Array<{
+    fileUrl?: string;
+    title?: string;
+    mimeType?: string;
+    iconLink?: string;
+    fileId?: string;
+  }>;
 }
 
 export interface EnrichedGoogleCalendarEvent
@@ -308,6 +315,19 @@ export function formatEventAsText(event: EnrichedGoogleCalendarEvent): string {
 
   if (event.description) {
     lines.push(`Description: ${event.description}`);
+  }
+
+  if (event.attachments && event.attachments.length > 0) {
+    const attachmentList = event.attachments
+      .filter((a) => a.fileUrl)
+      .map((a) => {
+        const title = a.title ?? "Untitled";
+        const mimeType = a.mimeType ? ` [${a.mimeType}]` : "";
+        return `${title}${mimeType}: ${a.fileUrl}`;
+      });
+    if (attachmentList.length > 0) {
+      lines.push(`Attachments: ${attachmentList.join(", ")}`);
+    }
   }
 
   if (event.attendees && event.attendees.length > 0) {

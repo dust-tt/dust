@@ -66,14 +66,9 @@ AgentStepContentToolExecutionModel.init(
       // N:1 from action's side: each action has at most one stepContent.
       {
         unique: true,
-        fields: ["workspaceId", "agentMCPActionId"],
+        fields: ["agentMCPActionId"],
         concurrently: true,
-        name: "agent_sc_te_workspace_action",
-      },
-      {
-        fields: ["workspaceId", "stepContentId"],
-        concurrently: true,
-        name: "agent_sc_te_workspace_step_content",
+        name: "agent_step_content_tool_executions_agent_mcp_action_id",
       },
       {
         fields: ["stepContentId"],
@@ -89,6 +84,11 @@ AgentStepContentToolExecutionModel.init(
         fields: ["conversationId"],
         concurrently: true,
         name: "agent_step_content_tool_executions_conversation_id",
+      },
+      {
+        fields: ["agentMessageId"],
+        concurrently: true,
+        name: "agent_step_content_tool_executions_agent_message_id",
       },
     ],
   }

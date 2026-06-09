@@ -33,6 +33,7 @@ import {
   isItemNotFoundError,
   isJSONParsingError,
   isMalformedDriveError,
+  isSiteNotFoundError,
 } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 import { launchMicrosoftFullSyncWorkflow } from "@connectors/connectors/microsoft/temporal/client";
@@ -221,82 +222,93 @@ export async function getRootNodesToSyncFromResources(
   // get root folders and drives and drill down site-root and sites to their
   // child drives (converted to MicrosoftNode types)
   const rootFolderAndDriveNodes = removeNulls(
-    await Promise.all(
-      rootResources
-        .filter(
-          (resource) =>
-            resource.nodeType === "folder" || resource.nodeType === "drive"
-        )
-        .map(async (resource) => {
-          try {
-            const item = await getItem(
-              logger,
-              client,
-              typeAndPathFromInternalId(resource.internalId).itemAPIPath
-            );
+    await concurrentExecutor(
+      rootResources.filter(
+        (resource) =>
+          resource.nodeType === "folder" || resource.nodeType === "drive"
+      ),
+      async (resource) => {
+        try {
+          const item = await getItem(
+            logger,
+            client,
+            typeAndPathFromInternalId(resource.internalId).itemAPIPath
+          );
 
-            const node = itemToMicrosoftNode(
-              resource.nodeType as "folder" | "drive",
-              item
-            );
-            return {
-              ...node,
-              name: node.name,
-            };
-          } catch (error) {
-            if (error instanceof GraphError && error.statusCode === 404) {
-              return null;
-            }
-            if (isAccessBlockedError(error)) {
-              logger.warn(
-                {
-                  connectorId,
-                  id: resource.internalId,
-                  error: error.message,
-                },
-                "Root resource access blocked by administrator, skipping"
-              );
-              return null;
-            }
-            if (isGeneralExceptionError(error)) {
-              logger.warn(
-                {
-                  connectorId,
-                  internalId: resource.internalId,
-                  errorCode: error.code,
-                  errorMessage: error.message,
-                },
-                "Skipping root resource due to 401 generalException - possible site permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
-              );
-              return null;
-            }
-            if (isBillingPolicyError(error)) {
-              logger.warn(
-                {
-                  connectorId,
-                  internalId: resource.internalId,
-                  error: error.message,
-                },
-                "Billing policy error from Microsoft, skipping root resource"
-              );
-              return null;
-            }
-            if (error instanceof ExternalOAuthTokenError) {
-              // Do not throw immediately, the token may still be valid for other roots.
-              oauthTokenErrors.push(error);
-              return null;
-            }
-            logger.error(
+          const node = itemToMicrosoftNode(
+            resource.nodeType as "folder" | "drive",
+            item
+          );
+          return {
+            ...node,
+            name: node.name,
+          };
+        } catch (error) {
+          if (
+            (error instanceof GraphError && error.statusCode === 404) ||
+            isSiteNotFoundError(error)
+          ) {
+            logger.warn(
               {
                 connectorId,
-                error,
-                id: resource.internalId,
+                internalId: resource.internalId,
+                error: normalizeError(error).message,
               },
-              "Failed to get item"
+              "Root resource not found, skipping"
             );
-            throw error;
+            return null;
           }
-        })
+          if (isAccessBlockedError(error)) {
+            logger.warn(
+              {
+                connectorId,
+                id: resource.internalId,
+                error: error.message,
+              },
+              "Root resource access blocked by administrator, skipping"
+            );
+            return null;
+          }
+          if (isGeneralExceptionError(error)) {
+            logger.warn(
+              {
+                connectorId,
+                internalId: resource.internalId,
+                errorCode: error.code,
+                errorMessage: error.message,
+              },
+              "Skipping root resource due to 401 generalException - possible site permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
+            );
+            return null;
+          }
+          if (isBillingPolicyError(error)) {
+            logger.warn(
+              {
+                connectorId,
+                internalId: resource.internalId,
+                error: error.message,
+              },
+              "Billing policy error from Microsoft, skipping root resource"
+            );
+            return null;
+          }
+          if (error instanceof ExternalOAuthTokenError) {
+            // Do not throw immediately, the token may still be valid for other roots.
+            oauthTokenErrors.push(error);
+            return null;
+          }
+          logger.error(
+            {
+              connectorId,
+              error,
+              id: resource.internalId,
+            },
+            "Failed to get item"
+          );
+          throw error;
+        }
+      },
+      { concurrency: 5 }
     )
   );
 
@@ -328,6 +340,11 @@ export async function getRootNodesToSyncFromResources(
           { error: error.message },
           "Billing policy error from Microsoft, skipping sites-root"
         );
+      } else if (isSiteNotFoundError(error)) {
+        logger.warn(
+          { error: normalizeError(error).message },
+          "SharePoint site target not found, skipping sites-root"
+        );
       } else {
         throw error;
       }
@@ -350,8 +367,11 @@ export async function getRootNodesToSyncFromResources(
               nextLink
             );
           } catch (error) {
-            if (isItemNotFoundError(error)) {
-              logger.warn({ sitePath }, "Site not found, skipping drives");
+            if (isItemNotFoundError(error) || isSiteNotFoundError(error)) {
+              logger.warn(
+                { sitePath, error: normalizeError(error).message },
+                "Site not found, skipping drives"
+              );
               return { results: [] };
             }
             if (isAccessBlockedError(error)) {
@@ -668,6 +688,7 @@ export async function syncFiles({
   );
   const client = await getMicrosoftClient(connector.connectionId);
 
+  let childrenListed = false;
   try {
     const childrenResult = await getFilesAndFolders(
       logger,
@@ -676,6 +697,7 @@ export async function syncFiles({
       nextPageLink,
       (providerConfig.allowedSensitivityLabels ?? []).length > 0
     );
+    childrenListed = true;
 
     const children = childrenResult.results;
 
@@ -705,6 +727,7 @@ export async function syncFiles({
           file: child,
           parentInternalId,
           startSyncTs,
+          skipMissingFile: true,
           heartbeat,
         }),
       { concurrency }
@@ -826,6 +849,34 @@ export async function syncFiles({
         nextLink: undefined,
       };
     }
+    // A 404 while listing children means the synced drive/folder was deleted
+    // upstream ("404 FILE NOT FOUND"), or the hosting SharePoint site is gone
+    // ("Target '<tenant>.sharepoint.com' is not found."). The resource can no
+    // longer be synced, so skip it instead of throwing, which would otherwise
+    // wedge the workflow in an infinite retry loop.
+    // The childrenListed gate keeps this catch at the parent-listing boundary:
+    // a child file disappearing later during syncOneFile is local to that file
+    // and should not short-circuit the whole page.
+    if (
+      !childrenListed &&
+      ((e instanceof GraphError && e.statusCode === 404) ||
+        isSiteNotFoundError(e))
+    ) {
+      logger.warn(
+        {
+          connectorId,
+          dataSourceId: dataSourceConfig.dataSourceId,
+          parent,
+          error: e.message,
+        },
+        "Resource not found (404) from Microsoft, skipping syncFiles"
+      );
+      return {
+        count: 0,
+        childNodes: [],
+        nextLink: undefined,
+      };
+    }
 
     throw e;
   }
@@ -861,13 +912,36 @@ export async function reconcileSensitivityLabelsForParent({
   const allowedLabels = providerConfig.allowedSensitivityLabels ?? [];
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const client = await getMicrosoftClient(connector.connectionId);
-  const childrenResult = await getFilesAndFolders(
-    logger,
-    client,
-    parentInternalId,
-    nextPageLink,
-    allowedLabels.length > 0
-  );
+
+  let childrenResult: {
+    results: DriveItem[];
+    nextLink?: string;
+  };
+  try {
+    childrenResult = await getFilesAndFolders(
+      logger,
+      client,
+      parentInternalId,
+      nextPageLink,
+      allowedLabels.length > 0
+    );
+  } catch (error) {
+    if (isItemNotFoundError(error) || isMalformedDriveError(error)) {
+      logger.info(
+        {
+          connectorId,
+          parentInternalId,
+          error: normalizeError(error).message,
+        },
+        "[ReconcileSensitivityLabels] Parent not found or malformed, skipping subtree"
+      );
+      return {
+        childNodes: [],
+        nextLink: undefined,
+      };
+    }
+    throw error;
+  }
 
   const mimeTypesToSync = await getMimeTypesToSync({
     pdfEnabled: providerConfig.pdfEnabled || false,
@@ -1749,6 +1823,23 @@ async function getDeltaData({
         "Billing policy error from Microsoft, skipping delta sync for node"
       );
       // Return empty results with current deltaLink so we retry next cycle.
+      return { results: [], deltaLink: node.deltaLink };
+    }
+    // A 404 means the delta-synced drive/folder was deleted upstream ("404 FILE
+    // NOT FOUND"), or the hosting SharePoint site is gone ("Target
+    // '<tenant>.sharepoint.com' is not found."). Skip gracefully so we do not
+    // wedge the incremental sync in an infinite retry loop.
+    if (
+      (e instanceof GraphError && e.statusCode === 404) ||
+      isSiteNotFoundError(e)
+    ) {
+      logger.warn(
+        {
+          internalId: node.internalId,
+          error: e.message,
+        },
+        "Resource not found (404) from Microsoft, skipping delta sync for node"
+      );
       return { results: [], deltaLink: node.deltaLink };
     }
     throw e;

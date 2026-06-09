@@ -1,3 +1,4 @@
+import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import { isLightClientSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import {
   buildAuditLogTarget,
@@ -39,6 +40,21 @@ const CONVERSATION_CACHE_TTL_MS = 5000;
 // the configuration sId. External MCP servers (e.g. Airtable) bypass that
 // augmentation and may send entries like { tableId, fieldIds } with no uri, so
 // uri access must be guarded and we fall back to tableId when available.
+// Cap the per-field ID list for the tool.executed audit event so tools that
+// touch dozens of data sources don't blow the WorkOS payload limit. A sample
+// of 30 IDs preserves forensic cross-reference (~25 chars * 30 IDs = ~750
+// chars, well under the 1000-char per-value metadata cap), and the
+// "+N more" suffix preserves the total count without joining every ID.
+const TOOL_EXECUTED_MAX_SAMPLE_IDS = 30;
+
+function formatAccessedIdsSample(ids: string[]): string {
+  if (ids.length <= TOOL_EXECUTED_MAX_SAMPLE_IDS) {
+    return ids.join(",");
+  }
+  const sample = ids.slice(0, TOOL_EXECUTED_MAX_SAMPLE_IDS).join(",");
+  return `${sample},+${ids.length - TOOL_EXECUTED_MAX_SAMPLE_IDS} more`;
+}
+
 function extractDataSourceIds(
   inputs: Record<string, unknown>
 ): Record<string, string> {
@@ -48,13 +64,13 @@ function extractDataSourceIds(
   const lastUriSegment = (v: unknown): string | undefined =>
     isString(v) ? v.split("/").pop() : undefined;
   if (Array.isArray(ds) && ds.length > 0) {
-    result.accessed_data_source_ids = ds
+    const ids = ds
       .map((d: { uri?: unknown }) => lastUriSegment(d.uri) ?? "")
-      .filter(Boolean)
-      .join(",");
+      .filter(Boolean);
+    result.accessed_data_source_ids = formatAccessedIdsSample(ids);
   }
   if (Array.isArray(tables) && tables.length > 0) {
-    result.accessed_table_ids = tables
+    const ids = tables
       .map((t: { uri?: unknown; tableId?: unknown }) => {
         const segment = lastUriSegment(t.uri);
         if (segment) {
@@ -62,8 +78,8 @@ function extractDataSourceIds(
         }
         return isString(t.tableId) ? t.tableId : "";
       })
-      .filter(Boolean)
-      .join(",");
+      .filter(Boolean);
+    result.accessed_table_ids = formatAccessedIdsSample(ids);
   }
   return result;
 }
@@ -82,13 +98,7 @@ export async function runToolActivity(
     runIds?: string[];
   }
 ): Promise<ToolExecutionResult> {
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    throw new Error(
-      `Failed to deserialize authenticator: ${authResult.error.code}`
-    );
-  }
-  const auth = authResult.value;
+  const auth = await Authenticator.fromJSON(authType);
   const deferredEvents: ToolExecutionResult["deferredEvents"] = [];
 
   const [runAgentDataRes, action] = await startActiveObservation(
@@ -198,6 +208,16 @@ async function executeToolStreaming(
     getShutdownSignal(),
   ]);
 
+  // Sandbox-child actions are observed by the CLI through polling; they must
+  // not surface in the conversation timeline, so progress events are dropped.
+  const isSandboxChildAction = isSandboxChildActionInfo(
+    action.stepContext.sandboxChildActionInfo
+  );
+
+  const handleNonDeferredEvents = !isSandboxChildAction
+    ? updateResourceAndPublishEvent
+    : () => {};
+
   const eventStream = runToolWithStreaming(
     auth,
     {
@@ -224,7 +244,7 @@ async function executeToolStreaming(
         );
 
         // For tool errors, send immediately.
-        await updateResourceAndPublishEvent(auth, {
+        await handleNonDeferredEvents(auth, {
           event: {
             type: "tool_error",
             created: event.created,
@@ -255,8 +275,17 @@ async function executeToolStreaming(
           { asType: "tool" }
         );
 
+        if (event.reason === "user_cancellation") {
+          return { deferredEvents, shouldPauseAgentLoop: true };
+        }
+
         let updatedAgentMessage = agentMessage;
-        if (!event.isError && event.text && !agentMessage.content) {
+        if (
+          !event.isError &&
+          event.text &&
+          !agentMessage.content &&
+          !isSandboxChildAction
+        ) {
           // Save and post the tool's text content only if the execution stopped
           // before any text was generated.
           await AgentStepContentResource.createNewVersion({
@@ -287,7 +316,7 @@ async function executeToolStreaming(
           };
         }
 
-        await updateResourceAndPublishEvent(auth, {
+        await handleNonDeferredEvents(auth, {
           event: event.isError
             ? {
                 type: "tool_error",
@@ -322,6 +351,15 @@ async function executeToolStreaming(
           step,
         });
 
+        return { deferredEvents, shouldPauseAgentLoop: true };
+
+      case "tool_paused":
+        // Internal sentinel emitted by `exit_events` whenever a tool returned
+        // a `tool_blocked_awaiting_input` resource. Carries no UI payload —
+        // user-facing blocking events (if any) flowed through earlier
+        // iterations of this for-await and already populated `deferredEvents`.
+        // Sole purpose: pause the loop on the event channel rather than
+        // relying on `action.status` introspection.
         return { deferredEvents, shouldPauseAgentLoop: true };
 
       case "tool_personal_auth_required":
@@ -398,7 +436,7 @@ async function executeToolStreaming(
           },
         });
 
-        await updateResourceAndPublishEvent(auth, {
+        await handleNonDeferredEvents(auth, {
           event: {
             type: "agent_action_success",
             created: event.created,
@@ -413,7 +451,7 @@ async function executeToolStreaming(
         break;
       case "tool_params":
       case "tool_notification":
-        await updateResourceAndPublishEvent(auth, {
+        await handleNonDeferredEvents(auth, {
           event,
           agentMessage,
           conversation,

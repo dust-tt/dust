@@ -12,17 +12,17 @@ import {
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
-  ChevronRightIcon,
-  ClipboardIcon,
-  EmotionLaughIcon,
-  FullscreenExitIcon,
-  FullscreenIcon,
-  HandThumbDownIcon,
-  HandThumbUpIcon,
-  LinkIcon,
-  MoreIcon,
-  PencilSquareIcon,
-  TrashIcon,
+  ChevronRight,
+  Clipboard,
+  FaceSmile,
+  Minimize01,
+  Maximize01,
+  ThumbsDown,
+  ThumbsUp,
+  Link01,
+  DotsHorizontal,
+  Edit04,
+  Trash01,
   cn,
 } from "@dust-tt/sparkle";
 import type { EmojiMartData } from "@emoji-mart/data";
@@ -119,7 +119,7 @@ export const NewConversationContainer = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s-flex s-h-full s-w-full s-flex-col s-items-center s-@container/conversation",
+        "s-flex s-w-full s-flex-col s-items-center s-@container/conversation",
         className
       )}
       {...props}
@@ -334,7 +334,7 @@ export const NewConversationMessageGroupHeader = React.forwardRef<
           {completionStatus ? (
             <Button
               label={completionStatus as string}
-              icon={ChevronRightIcon}
+              icon={ChevronRight}
               size="sm"
               variant="ghost"
             />
@@ -577,7 +577,7 @@ export const NewConversationUserMessage = React.forwardRef<
               <Button
                 size="xs"
                 variant="outline"
-                icon={EmotionLaughIcon}
+                icon={FaceSmile}
                 aria-label="React with emoji"
               />
             </PopoverTrigger>
@@ -593,26 +593,26 @@ export const NewConversationUserMessage = React.forwardRef<
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                icon={MoreIcon}
+                icon={DotsHorizontal}
                 size="xs"
                 variant="outline"
                 aria-label="Message actions"
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem label="Copy anchor link" icon={LinkIcon} />
+              <DropdownMenuItem label="Copy anchor link" icon={Link01} />
               <DropdownMenuSeparator />
               {canEdit && (
                 <DropdownMenuItem
                   label="Edit"
-                  icon={PencilSquareIcon}
+                  icon={Edit04}
                   onClick={handleEditStart}
                 />
               )}
               <DropdownMenuItem
                 label="Delete"
                 variant="warning"
-                icon={TrashIcon}
+                icon={Trash01}
                 onClick={onDelete}
               />
             </DropdownMenuContent>
@@ -751,7 +751,7 @@ export const NewConversationUserMessage = React.forwardRef<
                       <Button
                         size="xs"
                         variant="outline"
-                        icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
+                        icon={isExpanded ? Minimize01 : Maximize01}
                         label={isExpanded ? "Show less" : "Show more"}
                         onClick={() => setIsExpanded((v) => !v)}
                         aria-expanded={isExpanded}
@@ -879,7 +879,7 @@ export const NewConversationAgentMessage = React.forwardRef<
                   <Button
                     size="xs"
                     variant="outline"
-                    icon={isExpanded ? FullscreenExitIcon : FullscreenIcon}
+                    icon={isExpanded ? Minimize01 : Maximize01}
                     label={isExpanded ? "Show less" : "Show all"}
                     onClick={() => setIsExpanded((value) => !value)}
                     aria-expanded={isExpanded}
@@ -898,20 +898,20 @@ export const NewConversationAgentMessage = React.forwardRef<
                 <div className="s-flex s-items-center s-gap-1 s-opacity-0 s-transition-opacity group-hover/new-conversation-message:s-opacity-100">
                   <ButtonGroup removeGaps>
                     <Button
-                      icon={HandThumbUpIcon}
+                      icon={ThumbsUp}
                       size="xs"
                       variant="outline"
                       aria-label="Thumbs up"
                     />
                     <Button
-                      icon={HandThumbDownIcon}
+                      icon={ThumbsDown}
                       size="xs"
                       variant="outline"
                       aria-label="Thumbs down"
                     />
                   </ButtonGroup>
                   <Button
-                    icon={ClipboardIcon}
+                    icon={Clipboard}
                     size="xs"
                     variant="outline"
                     aria-label="Copy"
@@ -919,7 +919,7 @@ export const NewConversationAgentMessage = React.forwardRef<
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
-                        icon={MoreIcon}
+                        icon={DotsHorizontal}
                         size="xs"
                         variant="outline"
                         aria-label="More actions"
@@ -928,14 +928,14 @@ export const NewConversationAgentMessage = React.forwardRef<
                     <DropdownMenuContent>
                       <DropdownMenuItem
                         label="Copy anchor link"
-                        icon={LinkIcon}
+                        icon={Link01}
                       />
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem label="Edit" icon={PencilSquareIcon} />
+                      <DropdownMenuItem label="Edit" icon={Edit04} />
                       <DropdownMenuItem
                         label="Delete"
                         variant="warning"
-                        icon={TrashIcon}
+                        icon={Trash01}
                         onClick={onDelete}
                       />
                     </DropdownMenuContent>
@@ -965,25 +965,38 @@ interface NewConversationMessageContentProps
 export const NewConversationMessageContent = React.forwardRef<
   HTMLDivElement,
   NewConversationMessageContentProps
->(({ children, citations, className, ...props }, ref) => {
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        "s-flex s-min-w-0 s-flex-1 s-flex-col s-gap-1 s-py-3",
-        className
-      )}
-      {...props}
-    >
-      <div className="s-text-base s-text-foreground dark:s-text-foreground-night">
-        {children}
+>(
+  (
+    {
+      children,
+      citations,
+      className,
+      reactions: _reactions,
+      infoChip: _infoChip,
+      onReactionClick: _onReactionClick,
+      ...props
+    },
+    ref
+  ) => {
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "s-flex s-min-w-0 s-flex-1 s-flex-col s-gap-1 s-py-3",
+          className
+        )}
+        {...props}
+      >
+        <div className="s-text-base s-text-foreground dark:s-text-foreground-night">
+          {children}
+        </div>
+        {citations && citations.length > 0 && (
+          <NewCitationGrid>{citations}</NewCitationGrid>
+        )}
       </div>
-      {citations && citations.length > 0 && (
-        <NewCitationGrid>{citations}</NewCitationGrid>
-      )}
-    </div>
-  );
-});
+    );
+  }
+);
 
 NewConversationMessageContent.displayName = "NewConversationMessageContent";
 

@@ -1,25 +1,32 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import config from "@app/lib/api/config";
+import type { GetDataSourceViewTableResponseBody } from "@app/lib/api/tables";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withDataSourceView } from "@front-api/middlewares/with_data_source_view";
+import { withSpace } from "@front-api/middlewares/with_space";
+import { z } from "zod";
 
-import { dataSourceViewResource } from "@front-api/middleware/data_source_view_resource";
-import { spaceResource } from "@front-api/middleware/space_resource";
+const ParamsSchema = z.object({
+  tableId: z.string(),
+});
 
 // Mounted under
 // /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId/tables/:tableId.
-const app = new Hono();
+const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
-  spaceResource({ requireCanRead: true }),
-  dataSourceViewResource({ requireCanRead: true }),
-  async (c) => {
-    const dataSourceView = c.get("dataSourceView");
-    const tableId = c.req.param("tableId") ?? "";
+  validate("param", ParamsSchema),
+  withSpace({ requireCanRead: true }),
+  withDataSourceView({ requireCanRead: true }),
+  async (ctx): HandlerResult<GetDataSourceViewTableResponseBody> => {
+    const dataSourceView = ctx.get("dataSourceView");
+    const { tableId } = ctx.req.valid("param");
     const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
     const tableRes = await coreAPI.getTable({
       projectId: dataSourceView.dataSource.dustAPIProjectId,
@@ -27,7 +34,7 @@ app.get(
       tableId,
     });
     if (tableRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "data_source_error",
@@ -37,7 +44,7 @@ app.get(
         },
       });
     }
-    return c.json({ table: tableRes.value.table });
+    return ctx.json({ table: tableRes.value.table });
   }
 );
 

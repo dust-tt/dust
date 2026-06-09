@@ -1,0 +1,110 @@
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
+import type { WakeUpType } from "@app/types/assistant/wakeups";
+import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+  wuId: z.string(),
+});
+
+export type DeleteConversationWakeUpResponseBody = {
+  wakeUp: WakeUpType;
+};
+
+// Mounted at /api/w/:wId/assistant/conversations/:cId/wakeups/:wuId.
+const app = workspaceApp();
+
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/wakeups/{wuId}:
+ *   delete:
+ *     summary: Cancel a wake-up
+ *     description: Cancel a scheduled wake-up. Only the wake-up owner or a workspace admin can cancel.
+ *     tags:
+ *       - Private Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: wuId
+ *         required: true
+ *         description: sId of the wake-up to cancel
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully cancelled (or already terminal)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 wakeUp:
+ *                   $ref: '#/components/schemas/PrivateWakeUp'
+ *       403:
+ *         description: Caller is not the wake-up owner or a workspace admin
+ *       404:
+ *         description: Wake-up not found in this conversation
+ */
+
+app.delete(
+  "/",
+  validate("param", ParamsSchema),
+  async (ctx): HandlerResult<DeleteConversationWakeUpResponseBody> => {
+    const auth = ctx.get("auth");
+    const { cId, wuId } = ctx.req.valid("param");
+
+    // The fetchConversationWithoutContent method checks for conversation
+    // accessibility (inside the resource through `baseFetchWithAuthorization`).
+    const conversationRes =
+      await ConversationResource.fetchConversationWithoutContent(auth, cId);
+    if (conversationRes.isErr()) {
+      return apiErrorForConversation(ctx, conversationRes.error);
+    }
+    const conversation = conversationRes.value;
+
+    const wakeUp = await WakeUpResource.fetchById(auth, wuId);
+    if (!wakeUp || wakeUp.conversationId !== conversation.id) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "wakeup_not_found",
+          message: "Wake-up not found in this conversation.",
+        },
+      });
+    }
+
+    const cancelRes = await wakeUp.cancel(auth);
+    if (cancelRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: cancelRes.error.message,
+        },
+      });
+    }
+
+    return ctx.json({ wakeUp: wakeUp.toJSON() });
+  }
+);
+
+export default app;

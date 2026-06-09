@@ -11,6 +11,9 @@ import { Worker } from "@temporalio/worker";
 
 import { QUEUE_NAME } from "./config";
 
+// Must match the deployment's terminationGracePeriodSeconds minus 10s buffer.
+const SHUTDOWN_GRACE_TIME_MS = 70 * 1_000;
+
 export async function runScrubWorkspaceQueueWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const worker = await Worker.create({
@@ -24,6 +27,7 @@ export async function runScrubWorkspaceQueueWorker() {
     connection,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
     namespace,
+    shutdownGraceTime: SHUTDOWN_GRACE_TIME_MS,
     interceptors: {
       activity: [
         (ctx: Context) => {

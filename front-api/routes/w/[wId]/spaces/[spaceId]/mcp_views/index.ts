@@ -1,8 +1,3 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { sendMCPGlobalSharingReconfigurationEmail } from "@app/lib/api/email";
 import {
@@ -12,6 +7,10 @@ import {
 import { getActiveAdminEmails } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+import type {
+  GetMCPServerViewsResponseBody,
+  PostMCPServerViewResponseBody,
+} from "@app/lib/resources/mcp_server_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -19,12 +18,15 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceKind } from "@app/types/space";
-
-import { spaceResource } from "@front-api/middleware/space_resource";
-import { validate } from "@front-api/middleware/validator";
-
-import notActivated from "./not_activated";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withSpace } from "@front-api/middlewares/with_space";
+import { z } from "zod";
 import svId from "./[svId]";
+import notActivated from "./not_activated";
 
 const GetQueryParamsSchema = z.object({
   availability: z
@@ -105,21 +107,22 @@ async function notifyWorkspaceAdminsAboutAffectedAgents(
 }
 
 // Mounted under /api/w/:wId/spaces/:spaceId/mcp_views.
-const app = new Hono();
+const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  withSpace({ requireCanReadOrAdministrate: true }),
+  async (ctx): HandlerResult<GetMCPServerViewsResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     const r = GetQueryParamsSchema.safeParse({
-      availability: c.req.query("availability"),
+      availability: ctx.req.query("availability"),
     });
 
     if (!r.success) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -157,7 +160,7 @@ app.get(
     ];
 
     if (mcpServerIdsRequiringWorkspaceConnection.length === 0) {
-      return c.json({
+      return ctx.json({
         success: true,
         serverViews: filteredServerViews,
       });
@@ -174,7 +177,7 @@ app.get(
       workspaceConnections.map((connection) => connection.mcpServerId)
     );
 
-    return c.json({
+    return ctx.json({
       success: true,
       serverViews: filteredServerViews.map((serverView) => ({
         ...serverView,
@@ -196,27 +199,18 @@ app.get(
 
 app.post(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
+  ensureIsAdmin(),
+  withSpace({ requireCanReadOrAdministrate: true }),
   validate("json", PostBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx): HandlerResult<PostMCPServerViewResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
-    const { mcpServerId } = c.req.valid("json");
-
-    if (!auth.isAdmin()) {
-      return apiError(c, {
-        status_code: 403,
-        api_error: {
-          type: "mcp_auth_error",
-          message: "User is not authorized to add tools to a space.",
-        },
-      });
-    }
+    const { mcpServerId } = ctx.req.valid("json");
 
     const allowedSpaceKinds: SpaceKind[] = ["regular", "global"];
     if (!allowedSpaceKinds.includes(space.kind)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -233,7 +227,7 @@ app.post(
       );
 
     if (!systemView) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -251,7 +245,7 @@ app.post(
       );
 
     if (hasConflict) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -276,7 +270,7 @@ app.post(
       });
     }
 
-    return c.json({
+    return ctx.json({
       success: true,
       serverView: serverView.toJSON(),
     });

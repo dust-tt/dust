@@ -1,25 +1,23 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { getBuilderSuggestions } from "@app/lib/api/assistant/suggestions";
 import { InternalPostBuilderSuggestionsRequestBodySchema } from "@app/types/api/internal/assistant";
-
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 
 // Mounted at /api/w/:wId/assistant/builder/suggestions.
-const app = new Hono();
+const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", InternalPostBuilderSuggestionsRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const { type, inputs } = c.req.valid("json");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { type, inputs } = ctx.req.valid("json");
 
     const suggestionsRes = await getBuilderSuggestions(auth, type, inputs);
     if (suggestionsRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -28,7 +26,7 @@ app.post(
       });
     }
 
-    return c.json(suggestionsRes.value);
+    return ctx.json(suggestionsRes.value);
   }
 );
 

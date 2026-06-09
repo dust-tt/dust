@@ -102,6 +102,13 @@ const config = {
   getSendgridApiKey: (): string => {
     return EnvironmentConfig.getEnvVariable("SENDGRID_API_KEY");
   },
+  // Dedicated Anthropic API key scoped to our EAP workspace. Optional: only set
+  // in deployments that serve EAP models (those with `useEapKey` in their config).
+  getAnthropicEapApiKey: (): string | null => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("ANTHROPIC_EAP_API_KEY") ?? null
+    );
+  },
   getSupportEmailAddress: (): { name: string; email: string } => {
     return {
       name: "Dust team",
@@ -111,6 +118,11 @@ const config = {
   getInvitationEmailTemplate: (): string => {
     return EnvironmentConfig.getEnvVariable(
       "SENDGRID_INVITATION_EMAIL_TEMPLATE_ID"
+    );
+  },
+  getInvitationReminderEmailTemplate: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "SENDGRID_INVITATION_REMINDER_EMAIL_TEMPLATE_ID"
     );
   },
   getGenericEmailTemplate: (): string => {
@@ -124,6 +136,29 @@ const config = {
       throw new Error("NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is not set");
     }
     return process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+  },
+  getTurnstileSiteKey: (): string => {
+    // Using process.env here to make sure the function is usable on the client side.
+    if (process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) {
+      return process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    }
+    // Cloudflare-published "always passes" dummy sitekey for local dev:
+    // https://developers.cloudflare.com/turnstile/troubleshooting/testing/
+    if (isDevelopment()) {
+      // return "3x00000000000000000000FF"; // forces interactive challenge
+      // return "2x00000000000000000000AB"; // always fails and visible
+      return "1x00000000000000000000AA"; // always succeeds and visible
+    }
+    throw new Error("NEXT_PUBLIC_TURNSTILE_SITE_KEY is not set");
+  },
+  getTurnstileSecretKey: (): string => {
+    // Cloudflare-published "always validates" dummy secret for local dev:
+    // https://developers.cloudflare.com/turnstile/troubleshooting/testing/
+    if (isDevelopment()) {
+      // return "2x0000000000000000000000000000000AA" // always fails validation
+      return "1x0000000000000000000000000000000AA"; // always passes validation
+    }
+    return EnvironmentConfig.getEnvVariable("TURNSTILE_SECRET_KEY");
   },
   getStripeSecretKey: (): string => {
     return EnvironmentConfig.getEnvVariable("STRIPE_SECRET_KEY");
@@ -404,6 +439,9 @@ const config = {
   getWorkOSEnvironmentId: (): string => {
     return EnvironmentConfig.getEnvVariable("WORKOS_ENVIRONMENT_ID");
   },
+  getWorkOSAuthKitDomain: (): string => {
+    return EnvironmentConfig.getEnvVariable("WORKOS_AUTHKIT_DOMAIN");
+  },
   // Profiler.
   getProfilerSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DEBUG_PROFILER_SECRET");
@@ -591,8 +629,23 @@ const config = {
   getMetronomeWebhookSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("METRONOME_WEBHOOK_SECRET");
   },
+  // Pins which Stripe billing-provider delivery method (connection) to use when
+  // the Metronome org has more than one Stripe DIRECT_TO_BILLING_PROVIDER
+  // configuration (the bare delivery_method is ambiguous and rejected). Must be
+  // a delivery_method_id (UUID), discoverable via
+  // `scripts/list_metronome_delivery_methods.ts`. Leave unset when the org has a
+  // single Stripe connection (e.g. prod); Metronome then resolves the bare
+  // delivery_method.
+  getMetronomeStripeDeliveryMethodId: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "METRONOME_STRIPE_DELIVERY_METHOD_ID"
+    );
+  },
   getVertexAiProjectId: (): string => {
     return EnvironmentConfig.getEnvVariable("VERTEX_AI_PROJECT_ID");
+  },
+  getDustWebhooksPublicUrl: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DUST_WEBHOOKS_PUBLIC_URL");
   },
 };
 

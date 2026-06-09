@@ -7,6 +7,7 @@ import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
+import { getActiveDustDesktopClientSideMCPServerId } from "@app/lib/api/actions/mcp/dust_desktop";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
@@ -45,7 +46,7 @@ import {
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
-import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { type Authenticator, getFeatureFlags } from "@app/lib/auth";
 import type { DurationRecorder } from "@app/lib/duration_recorder";
 import {
   AgentMessageContentParser,
@@ -71,6 +72,7 @@ import { METRICS } from "@app/temporal/agent_loop/activities/instrumentation";
 import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
+import { makeRunModelLLMError } from "@app/temporal/agent_loop/lib/run_model_errors";
 import type { AgentActionsEvent } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type {
@@ -161,6 +163,7 @@ export async function runModel(
   const localLogger = logger.child({
     workspaceId: conversation.owner.sId,
     conversationId: conversation.sId,
+    agentConfigurationId: agentConfiguration.sId,
     multiActionLoopIteration: step,
   });
 
@@ -228,7 +231,6 @@ export async function runModel(
     enabledSkills,
     systemSkills,
     equippedSkills,
-    renderSkillsAsUserMessages,
     hasConditionalJITTools,
     mcpActions,
     mcpToolsListingError,
@@ -243,18 +245,26 @@ export async function runModel(
       }
     );
 
+    const clientSideMCPServerIds = [
+      ...(userMessage.context.clientSideMCPServerIds ?? []),
+    ];
+    const dustDesktopServerId =
+      await getActiveDustDesktopClientSideMCPServerId(auth);
+    if (
+      dustDesktopServerId &&
+      !clientSideMCPServerIds.includes(dustDesktopServerId)
+    ) {
+      clientSideMCPServerIds.push(dustDesktopServerId);
+    }
+
     const clientSideMCPActionConfigurations =
       await createClientSideMCPServerConfigurations(
         auth,
-        userMessage.context.clientSideMCPServerIds
+        clientSideMCPServerIds
       );
 
     const { enabledSkills, systemSkills, equippedSkills } =
       await SkillResource.listForAgentLoop(auth, runAgentData);
-    const renderSkillsAsUserMessages = await hasFeatureFlag(
-      auth,
-      "skills_as_user_messages"
-    );
 
     const skillServers = await getSkillServers(auth, {
       agentConfiguration,
@@ -282,7 +292,6 @@ export async function runModel(
       enabledSkills,
       equippedSkills,
       systemSkills,
-      renderSkillsAsUserMessages,
       mcpActions,
       mcpToolsListingError,
     };
@@ -380,7 +389,12 @@ export async function runModel(
   });
 
   const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
-  const hasSandboxTools = await hasFeatureFlag(auth, "sandbox_tools");
+  const featureFlags = await getFeatureFlags(auth);
+  const hasSandboxTools = featureFlags.includes("sandbox_tools");
+  const useFramesV2 = featureFlags.includes("frames_skill_v2");
+  const disableFormattingPrompt = featureFlags.includes(
+    "disable_formatting_prompt"
+  );
 
   const prompt = constructPromptMultiActions(auth, {
     userMessage,
@@ -395,7 +409,6 @@ export async function runModel(
     systemSkills,
     enabledSkills,
     equippedSkills,
-    renderSkillsAsUserMessages,
     memoriesContext,
     toolsetsContext,
     userContext,
@@ -403,10 +416,12 @@ export async function runModel(
     projectContext,
     isNewFileExplorer,
     hasSandboxTools,
+    useFramesV2,
+    disableFormattingPrompt,
   });
-  const leadingMessages = renderSkillsAsUserMessages
-    ? removeNulls([renderEquippedSkillsUserMessage(equippedSkills)])
-    : [];
+  const leadingMessages = removeNulls([
+    renderEquippedSkillsUserMessage(equippedSkills),
+  ]);
 
   const specifications: AgentActionSpecification[] = [];
   for (const a of availableActions) {
@@ -438,7 +453,7 @@ export async function runModel(
           agentConfiguration,
           leadingMessages,
           enabledSkills,
-          renderSkillsAsUserMessages,
+          useFramesV2,
         })
       )
   );
@@ -695,7 +710,10 @@ export async function runModel(
         }
 
         // Throw to let Temporal handle the retry via its retry policy.
-        throw new Error(`LLM error (${type}): ${errorMessage}`);
+        throw makeRunModelLLMError({
+          type,
+          message: errorMessage,
+        });
       }
       case "shouldReturnNull":
         return null;

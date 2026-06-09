@@ -1,22 +1,30 @@
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
 import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
+import { SkillNode } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { BlockIdExtension } from "@app/components/editor/extensions/instructions/BlockIdExtension";
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/instructions/InstructionsDocumentExtension";
 import { InstructionsRootExtension } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
-import { KnowledgeNode } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import { KnowledgeNodeWithView } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeWithView";
 import {
   RawMarkdownBlock,
   rawMarkdownBlockParsers,
 } from "@app/components/editor/extensions/skill_builder/RawMarkdownBlock";
+import { ToolNodeWithView } from "@app/components/editor/extensions/skill_builder/ToolNodeWithView";
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { markdownStyles } from "@dust-tt/sparkle";
 import type { Extensions } from "@tiptap/core";
 import { Markdown } from "@tiptap/markdown";
 import { StarterKit } from "@tiptap/starter-kit";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
+
+interface BuildSkillInstructionsExtensionsOptions {
+  onSkillNodeDetails?: (skillId: string) => void;
+  onToolDetails?: (tool: MCPServerViewType) => void;
+}
 
 /**
  * Build the TipTap extension list for the skill instructions editor.
@@ -26,7 +34,11 @@ export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
  */
 export function buildSkillInstructionsExtensions(
   isReadOnly: boolean,
-  editableExtensions: Extensions = []
+  editableExtensions: Extensions = [],
+  {
+    onSkillNodeDetails,
+    onToolDetails,
+  }: BuildSkillInstructionsExtensionsOptions = {}
 ): Extensions {
   const baseExtensions: Extensions = [
     InstructionsDocumentExtension,
@@ -85,11 +97,16 @@ export function buildSkillInstructionsExtensions(
       },
     }),
     BlockIdExtension,
-    KnowledgeNode.configure({ readOnly: isReadOnly }),
+    KnowledgeNodeWithView.configure({ readOnly: isReadOnly }),
+    ToolNodeWithView.configure({ onToolDetails }),
+    SkillNode.configure({ onSkillDetails: onSkillNodeDetails }),
+  ];
+
+  baseExtensions.push(
     InstructionSuggestionExtension.configure({ showBlockHighlight: false }),
     RawMarkdownBlock,
-    ...rawMarkdownBlockParsers,
-  ];
+    ...rawMarkdownBlockParsers
+  );
 
   if (!isReadOnly) {
     baseExtensions.push(...editableExtensions);

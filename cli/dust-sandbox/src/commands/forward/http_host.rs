@@ -1,6 +1,7 @@
+use super::http_framing::find_subslice;
 use super::DomainParseResult;
 
-pub fn parse_http_host(bytes: &[u8]) -> DomainParseResult {
+pub(super) fn parse_http_host(bytes: &[u8]) -> DomainParseResult {
     let header_end = find_subslice(bytes, b"\r\n\r\n");
     let parse_end = header_end.map_or(bytes.len(), |index| index + 4);
     let header_bytes = &bytes[..parse_end];
@@ -47,12 +48,6 @@ fn strip_port(host: &str) -> &str {
     }
 
     host
-}
-
-fn find_subslice(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-    haystack
-        .windows(needle.len())
-        .position(|window| window == needle)
 }
 
 #[cfg(test)]

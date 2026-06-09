@@ -12,7 +12,7 @@ import type {
   MultiplexerAdapter,
   MultiplexerType,
 } from "./types";
-import { SESSION_PREFIX, TAB_NAMES } from "./types";
+import { SESSION_PREFIX, getTabName } from "./types";
 
 /**
  * Base directory for tmux layout scripts
@@ -220,7 +220,7 @@ export class TmuxAdapter implements MultiplexerAdapter {
     } else {
       // Individual service windows
       for (const service of ALL_SERVICES) {
-        const tabName = TAB_NAMES[service];
+        const tabName = getTabName(service);
         lines.push(
           `# Create ${service} logs window`,
           `tmux new-window -t "$SESSION_NAME" -n ${shellQuote(tabName)} -c "$WORKTREE_PATH"`,

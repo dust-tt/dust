@@ -19,6 +19,7 @@ import {
   WorkspaceResource,
 } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
@@ -34,6 +35,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { md5 } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type {
+  LightUserTypeWithWorkspace,
   LightWorkspaceType,
   RoleType,
   UserTypeWithWorkspace,
@@ -42,6 +44,7 @@ import type {
   WorkspaceType,
 } from "@app/types/user";
 import { ACTIVE_ROLES, isBuilder } from "@app/types/user";
+import type { WorkspaceDomain } from "@app/types/workspace";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -201,6 +204,7 @@ export async function getMembers(
     if (!m.isRevoked()) {
       switch (m.role) {
         case "admin":
+        case "business_admin":
         case "builder":
         case "user":
           role = m.role;
@@ -242,6 +246,53 @@ export async function getActiveAdminEmails(
   });
 
   return Array.from(new Set(members.map((member) => member.email)));
+}
+
+/**
+ * Returns true if any user with this email has an active membership in the
+ * workspace. The same email can be attached to multiple users, so we fan out
+ * to all of them and ask `MembershipResource.getActiveMemberships` in a
+ * single query.
+ */
+export async function hasActiveMemberByEmail({
+  email,
+  workspace,
+}: {
+  email: string;
+  workspace: LightWorkspaceType;
+}): Promise<boolean> {
+  const users = await UserResource.listByEmail(email);
+  if (!users.length) {
+    return false;
+  }
+
+  const { total } = await MembershipResource.getActiveMemberships({
+    users,
+    workspace,
+  });
+
+  return total > 0;
+}
+
+/**
+ * For a given group, return the workspace members that belong to it. Members
+ * are returned as `UserTypeWithWorkspaces` (matching `getMembers`) so callers
+ * have the workspace context. Users in the group who are not workspace
+ * members are filtered out.
+ */
+export async function getGroupMembersWithWorkspaces(
+  auth: Authenticator,
+  group: GroupResource
+): Promise<UserTypeWithWorkspaces[]> {
+  const groupMembers = await group.getActiveMembers(auth);
+  const { members } = await getMembers(auth);
+
+  const memberById = new Map(members.map((m) => [m.sId, m]));
+
+  return groupMembers.flatMap((user) => {
+    const member = memberById.get(user.sId);
+    return member ? [member] : [];
+  });
 }
 
 export async function searchMembers(
@@ -472,6 +523,7 @@ export interface WorkspaceMetadata {
   killSwitched?: WorkspaceKillSwitchValue;
   allowContentCreationFileSharing?: boolean;
   allowEmailAgents?: boolean;
+  emailBlacklistedAgentIds?: string[];
   allowVoiceTranscription?: boolean;
   allowOpenProjects?: boolean;
   allowManualProjectKnowledgeManagement?: boolean;
@@ -682,3 +734,55 @@ export async function findWorkspaceByWorkOSOrganizationId(
 
   return renderLightWorkspaceType({ workspace });
 }
+
+export type GetWorkspaceLookupResponseBody = {
+  workspace: LightWorkspaceType;
+  status: "auto-join-disabled" | "revoked";
+  workspaceVerifiedDomain: string | null;
+};
+
+export type GetSeatAvailabilityResponseBody = {
+  hasAvailableSeats: boolean;
+};
+
+export type GetMembersResponseBody = {
+  members: UserTypeWithWorkspaces[];
+  total: number;
+  nextPageUrl?: string;
+};
+
+export type GetWorkspaceSeatsCountResponseBody = {
+  seatsCount: number;
+};
+
+export type GetWorkspaceVerifiedDomainsResponseBody = {
+  verifiedDomains: WorkspaceDomain[];
+};
+
+export type GetProvisioningStatusResponseBody = {
+  hasAdminGroup: boolean;
+  hasBuilderGroup: boolean;
+};
+
+export type GetWelcomeResponseBody = {
+  isFirstAdmin: boolean;
+  emailProvider: EmailProviderType;
+};
+
+export type PostWorkspaceResponseBody = {
+  workspace: WorkspaceType;
+};
+
+export type GetWorkspaceResponseBody = {
+  workspace: WorkspaceType;
+};
+
+export type SearchMembersResponseBody = {
+  members: LightUserTypeWithWorkspace[];
+  total: number;
+};
+
+export type SearchMembersAdminResponseBody = {
+  members: UserTypeWithWorkspace[];
+  total: number;
+};

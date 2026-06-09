@@ -4,6 +4,7 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { REINFORCEMENT_EXCLUDED_PLAN_CODES } from "@app/lib/plans/plan_codes";
 import { getCorePrimaryDbConnection } from "@app/lib/production_checks/utils";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import { runOnAllWorkspacesInActivity } from "@app/temporal/activity_utils";
 import type {
@@ -16,11 +17,13 @@ import {
   getSyntheticSuggestionsDeletionCutoffDate,
   isSequelizeForeignKeyConstraintError,
 } from "@app/temporal/hard_delete/utils";
+import { concurrentExecutor } from "@app/temporal/workflow_utils";
 import { Context } from "@temporalio/activity";
 import type { Sequelize } from "sequelize";
 import { Op, QueryTypes } from "sequelize";
 
 const BATCH_SIZE = 100;
+const WORKSPACE_CONCURRENCY = 32;
 
 export async function purgeExpiredRunExecutionsActivity() {
   const coreSequelize = getCorePrimaryDbConnection();
@@ -135,8 +138,11 @@ export async function purgeExpiredPendingAgentsActivity(
     `About to purge pending agents created before ${cutoffDate.toISOString()}.`
   );
 
-  const results = await runOnAllWorkspacesInActivity(
-    async (_auth, workspace) => {
+  const workspaces = await WorkspaceResource.listAll();
+
+  const deletedCounts = await concurrentExecutor(
+    workspaces,
+    async (workspace) => {
       let deleted = 0;
       let hasMore = true;
 
@@ -162,10 +168,11 @@ export async function purgeExpiredPendingAgentsActivity(
       } while (hasMore);
 
       return deleted;
-    }
+    },
+    { concurrency: WORKSPACE_CONCURRENCY }
   );
 
-  const totalDeleted = results.reduce((sum, count) => sum + count, 0);
+  const totalDeleted = deletedCounts.reduce((sum, count) => sum + count, 0);
 
   logger.info(
     { totalDeleted },
@@ -206,7 +213,10 @@ export async function purgeExpiredSyntheticSkillSuggestionsActivity(
 
       return deleted;
     },
-    { excludePlanCodes: REINFORCEMENT_EXCLUDED_PLAN_CODES }
+    {
+      concurrency: WORKSPACE_CONCURRENCY,
+      excludePlanCodes: REINFORCEMENT_EXCLUDED_PLAN_CODES,
+    }
   );
 
   const totalDeleted = results.reduce((sum, count) => sum + count, 0);

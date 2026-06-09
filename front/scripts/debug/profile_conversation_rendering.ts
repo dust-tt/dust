@@ -3,12 +3,12 @@ import inspector from "node:inspector/promises";
 
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
+import { saveProfile } from "@app/lib/api/debug/profiler";
 import { Authenticator } from "@app/lib/auth";
 import {
   getModelConfigByModelId,
   getSupportedModelConfigs,
 } from "@app/lib/llms/model_configurations";
-import { saveProfile } from "@app/pages/api/debug/profiler";
 import { makeScript } from "@app/scripts/helpers";
 
 makeScript(

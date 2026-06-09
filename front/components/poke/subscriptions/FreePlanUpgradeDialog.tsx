@@ -8,7 +8,7 @@ import { isFreePlan, isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type { FreePlanUpgradeFormType } from "@app/types/plan";
-import { FreePlanUpgradeFormSchema } from "@app/types/plan";
+import { FreePlanUpgradeFormSchema, isCreditPricedPlan } from "@app/types/plan";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -23,7 +23,7 @@ import {
   DialogTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
-import { ioTsResolver } from "@hookform/resolvers/io-ts";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -49,7 +49,7 @@ export default function FreePlanUpgradeDialog({
   const { plans } = usePokePlans();
 
   const form = useForm<FreePlanUpgradeFormType>({
-    resolver: ioTsResolver(FreePlanUpgradeFormSchema),
+    resolver: zodResolver(FreePlanUpgradeFormSchema),
     defaultValues: {
       planCode: "",
       endDate: undefined,
@@ -143,7 +143,9 @@ export default function FreePlanUpgradeDialog({
                       options={plans
                         .filter(
                           (plan) =>
-                            isFreePlan(plan.code) && !isOldFreePlan(plan.code)
+                            isFreePlan(plan.code) &&
+                            !isOldFreePlan(plan.code) &&
+                            !isCreditPricedPlan(plan)
                         )
                         .map((plan) => ({
                           value: plan.code,

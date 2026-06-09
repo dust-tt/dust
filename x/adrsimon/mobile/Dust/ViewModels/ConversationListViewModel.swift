@@ -79,13 +79,17 @@ final class ConversationListViewModel: ObservableObject {
     @Published var searchText: String = ""
     @Published var workspace: Workspace?
     @Published var workspaces: [Workspace] = []
-    @Published var projects: [Space] = []
-    @Published var isProjectsExpanded: Bool = true
+    @Published var pods: [Space] = []
+    @Published var isPodsExpanded: Bool = true
 
     private let tokenProvider: TokenProvider
+    private var titleObserver: ConversationTitleObserver?
 
     init(tokenProvider: TokenProvider) {
         self.tokenProvider = tokenProvider
+        self.titleObserver = ConversationTitleObserver { [weak self] conversationId, title in
+            self?.conversations.updateTitle(conversationId: conversationId, title: title)
+        }
     }
 
     func load() async {
@@ -102,9 +106,9 @@ final class ConversationListViewModel: ObservableObject {
 
             workspace = dustUser.workspaces.first { $0.sId == workspaceId }
             async let convosTask: Void = loadConversations()
-            async let projectsTask: Void = loadProjects()
+            async let podsTask: Void = loadPods()
             try await convosTask
-            await projectsTask
+            await podsTask
         } catch {
             logger.error("Failed to load conversations: \(error)")
             state = .error(error.localizedDescription)
@@ -114,13 +118,13 @@ final class ConversationListViewModel: ObservableObject {
     func switchWorkspace(_ newWorkspace: Workspace) async {
         workspace = newWorkspace
         conversations = []
-        projects = []
+        pods = []
         state = .loading
         do {
             async let convosTask: Void = loadConversations()
-            async let projectsTask: Void = loadProjects()
+            async let podsTask: Void = loadPods()
             try await convosTask
-            await projectsTask
+            await podsTask
         } catch {
             logger.error("Failed to load conversations: \(error)")
             state = .error(error.localizedDescription)
@@ -130,9 +134,9 @@ final class ConversationListViewModel: ObservableObject {
     func refresh() async {
         do {
             async let convosTask: Void = loadConversations()
-            async let projectsTask: Void = loadProjects()
+            async let podsTask: Void = loadPods()
             try await convosTask
-            await projectsTask
+            await podsTask
         } catch {
             logger.error("Failed to refresh conversations: \(error)")
         }
@@ -148,15 +152,15 @@ final class ConversationListViewModel: ObservableObject {
         state = .loaded
     }
 
-    private func loadProjects() async {
+    private func loadPods() async {
         guard let workspaceId = workspace?.sId else { return }
         do {
-            projects = try await SpaceService.fetchProjects(
+            pods = try await SpaceService.fetchPods(
                 workspaceId: workspaceId,
                 tokenProvider: tokenProvider
             )
         } catch {
-            logger.error("Failed to load projects: \(error)")
+            logger.error("Failed to load pods: \(error)")
         }
     }
 

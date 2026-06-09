@@ -4,7 +4,7 @@ import { ConfigurationSectionContainer } from "@app/components/agent_builder/cap
 import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
-import type { ProjectType } from "@app/types/space";
+import type { PodType } from "@app/types/space";
 import { isProjectType } from "@app/types/space";
 import {
   Button,
@@ -14,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuTrigger,
-  InformationCircleIcon,
+  InfoCircle,
   Spinner,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -28,12 +28,7 @@ interface ProjectMessageProps {
 
 function ProjectMessage({ title, children }: ProjectMessageProps) {
   return (
-    <ContentMessage
-      title={title}
-      icon={InformationCircleIcon}
-      variant="warning"
-      size="sm"
-    >
+    <ContentMessage title={title} icon={InfoCircle} variant="warning" size="sm">
       {children}
     </ContentMessage>
   );
@@ -76,7 +71,7 @@ export function ProjectSection() {
   }, [field.value, allProjects]);
 
   const handleSelectProject = useCallback(
-    (project: ProjectType) => {
+    (project: PodType) => {
       const newProject: ProjectConfiguration = {
         workspaceId: owner.sId,
         projectId: project.sId,

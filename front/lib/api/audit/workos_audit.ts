@@ -13,112 +13,128 @@ import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 
-type AuditAction =
+export type AuditLogsPortal = "view_logs" | "configure_export";
+
+export type AuditLogsPortalResponse = {
+  portalUrl: string;
+};
+
+export const AUDIT_ACTIONS = [
   // Existing Tier 1 events.
-  | "user.login"
-  | "user.logout"
-  | "membership.created"
-  | "membership.revoked"
-  | "member.invited"
-  | "sso.connection_deleted"
-  | "domain.removed"
-  | "dsync.connection_deleted"
-  | "workspace.deleted"
+  "user.login",
+  "user.logout",
+  "membership.created",
+  "membership.revoked",
+  "member.invited",
+  "sso.connection_deleted",
+  "domain.removed",
+  "dsync.connection_deleted",
+  "workspace.deleted",
   // Authentication & Admin.
-  | "user.login_failed"
-  | "user.identity_merged"
-  | "user.relocated"
+  "user.login_failed",
+  "user.identity_merged",
+  "user.relocated",
   // API Keys & Secrets.
-  | "api_key.created"
-  | "api_key.revoked"
-  | "api_key.updated"
+  "api_key.created",
+  "api_key.revoked",
+  "api_key.updated",
   // Membership & Invitations.
-  | "membership.role_updated"
-  | "membership.origin_updated"
-  | "invitation.revoked"
-  | "invitation.role_updated"
-  | "member.bulk_invited"
-  | "member.bulk_revoked"
+  "membership.role_updated",
+  "membership.origin_updated",
+  "invitation.revoked",
+  "invitation.role_updated",
+  "member.bulk_invited",
+  "member.bulk_revoked",
+  "member.spend_limit_updated",
   // Domains & SSO.
-  | "domain.verified"
-  | "domain.verification_failed"
+  "domain.verified",
+  "domain.verification_failed",
   // OAuth & Credentials.
-  | "oauth.initiated"
-  | "oauth.authorized"
-  | "oauth.revoked"
-  | "credentials.created"
-  | "credentials.updated"
-  | "credentials.revoked"
-  | "credentials.invalidated"
+  "oauth.initiated",
+  "oauth.authorized",
+  "oauth.revoked",
+  "credentials.created",
+  "credentials.updated",
+  "credentials.revoked",
+  "credentials.invalidated",
   // MCP Connections.
-  | "mcp_connection.created"
-  | "mcp_connection.deleted"
+  "mcp_connection.created",
+  "mcp_connection.deleted",
   // Projects.
-  | "project.joined"
-  | "project.left"
+  "project.joined",
+  "project.left",
   // Self-improvement.
-  | "self_improvement.enabled"
-  | "self_improvement.batch_mode_updated"
-  | "skill.self_improvement_updated"
+  "self_improvement.enabled",
+  "self_improvement.batch_mode_updated",
+  "skill.self_improvement_updated",
   // Sandbox.
-  | "sandbox_egress_policy.agent_requests_setting_updated"
-  | "sandbox_egress_policy.sandbox_updated"
-  | "sandbox_egress_policy.updated"
-  | "sandbox_env_var.allowed_domains_updated"
-  | "sandbox_env_var.created"
-  | "sandbox_env_var.deleted"
-  | "sandbox_env_var.promoted_to_https_secret"
-  | "sandbox_env_var.updated"
+  "sandbox_egress_policy.agent_requests_setting_updated",
+  "sandbox_egress_policy.sandbox_updated",
+  "sandbox_egress_policy.updated",
+  "sandbox_env_var.allowed_domains_updated",
+  "sandbox_env_var.created",
+  "sandbox_env_var.deleted",
+  "sandbox_env_var.promoted_to_https_secret",
+  "sandbox_env_var.updated",
   // Workspace settings.
-  | "workspace.audit_logs_updated"
+  "workspace.audit_logs_updated",
+  "workspace.default_user_spend_limit_updated",
+  "workspace.programmatic_usage_limit_updated",
   // SCIM / Directory Sync.
-  | "scim.user_provisioned"
-  | "scim.user_updated"
-  | "scim.user_deprovisioned"
-  | "scim.group_created"
-  | "scim.group_deleted"
-  | "scim.group_user_added"
-  | "scim.group_user_removed"
+  "scim.user_provisioned",
+  "scim.user_updated",
+  "scim.user_deprovisioned",
+  "scim.group_created",
+  "scim.group_deleted",
+  "scim.group_user_added",
+  "scim.group_user_removed",
   // Agent & Tool Execution.
-  | "agent.executed"
-  | "tool.executed"
+  "agent.executed",
+  "tool.executed",
   // Triggers.
-  | "trigger.created"
-  | "trigger.deleted"
-  | "trigger.enabled"
-  | "trigger.disabled"
-  | "trigger.fired"
-  | "trigger.email_received"
+  "trigger.created",
+  "trigger.deleted",
+  "trigger.enabled",
+  "trigger.disabled",
+  "trigger.fired",
+  "trigger.email_received",
   // Wake-ups.
-  | "wake_up.cancelled"
-  | "wake_up.created"
-  | "wake_up.expired"
-  | "wake_up.fired"
+  "wake_up.cancelled",
+  "wake_up.created",
+  "wake_up.expired",
+  "wake_up.fired",
   // Agent lifecycle.
-  | "agent.created"
-  | "agent.updated"
-  | "agent.archived"
-  | "agent.restored"
-  | "agent.scope_changed"
+  "agent.created",
+  "agent.updated",
+  "agent.archived",
+  "agent.restored",
+  "agent.scope_changed",
   // Spaces.
-  | "space.accessed"
-  | "space.created"
-  | "space.deleted"
-  | "space.permissions_updated"
+  "space.accessed",
+  "space.created",
+  "space.deleted",
+  "space.permissions_updated",
   // Conversations.
-  | "conversation.accessed"
+  "conversation.accessed",
   // Data Sources.
-  | "datasource.created"
-  | "datasource.updated"
-  | "datasource.deleted"
-  | "datasource.deleted_admin"
-  | "datasource.reauthorized"
+  "datasource.created",
+  "datasource.updated",
+  "datasource.deleted",
+  "datasource.deleted_admin",
+  "datasource.reauthorized",
+  // Files.
+  "file.moved",
   // Audit Logs.
-  | "audit_log.viewed"
-  | "audit_log.export_configured"
+  "audit_log.viewed",
+  "audit_log.export_configured",
+  // Billing & Subscriptions.
+  "subscription.changed",
   // Coupons.
-  | "coupon.redeemed"
-  | "coupon.revoked";
+  "coupon.redeemed",
+  "coupon.revoked",
+] as const;
+
+export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
 export type EmitAuditLogEventParams = {
   auth: Authenticator;
@@ -128,9 +144,18 @@ export type EmitAuditLogEventParams = {
   metadata?: Record<string, string | number | boolean>;
 };
 
+// Max characters allowed per metadata value before truncation. Bounds the
+// total payload size so audit logs survive emit sites that pass unbounded
+// strings (e.g. `tool.executed` joining accessed data source IDs).
+const METADATA_VALUE_MAX_CHARS = 1000;
+const METADATA_TRUNCATION_SUFFIX = "...[truncated]";
+
 /**
  * Serializes all metadata values to strings so the emitted event matches the
  * schema definitions, which declare every metadata value as `"string"`.
+ * Values longer than METADATA_VALUE_MAX_CHARS are truncated with a suffix
+ * so a single oversized field cannot push the whole event past the WorkOS
+ * audit log size limit.
  */
 function serializeMetadata(
   metadata: Record<string, string | number | boolean> | undefined
@@ -140,7 +165,16 @@ function serializeMetadata(
   }
   const result: Record<string, string> = {};
   for (const [key, value] of Object.entries(metadata)) {
-    result[key] = typeof value === "string" ? value : String(value);
+    const stringValue = typeof value === "string" ? value : String(value);
+    if (stringValue.length > METADATA_VALUE_MAX_CHARS) {
+      result[key] =
+        stringValue.slice(
+          0,
+          METADATA_VALUE_MAX_CHARS - METADATA_TRUNCATION_SUFFIX.length
+        ) + METADATA_TRUNCATION_SUFFIX;
+    } else {
+      result[key] = stringValue;
+    }
   }
   return result;
 }

@@ -33,13 +33,13 @@ const PersonaReportResponseSchema = z.object({
     id: z.string(),
     attributes: z.object({
       status: z.string(),
-      "phone-number": z.string().optional(),
-      "phone-type": z.string().optional(),
-      "phone-carrier": z.string().nullable().optional(),
-      "phone-risk-level": z.string().optional(),
-      "phone-risk-score": z.number().optional(),
-      "phone-risk-recommendation": z.string().optional(),
-      "phone-risk-sim-swap": z.string().nullable().optional(),
+      "phone-number": z.string().nullish(),
+      "phone-type": z.string().nullish(),
+      "phone-carrier": z.string().nullish(),
+      "phone-risk-level": z.string().nullish(),
+      "phone-risk-score": z.number().nullish(),
+      "phone-risk-recommendation": z.string().nullish(),
+      "phone-risk-sim-swap": z.string().nullish(),
     }),
   }),
 });
@@ -92,7 +92,10 @@ function normalizeRiskRecommendation(
 export class PhoneLookupError extends Error {
   constructor(
     public readonly code: PhoneLookupErrorCode,
-    message: string
+    message: string,
+    // Path-specific detail for diagnostics (the user-facing message is generic
+    // across all `lookup_failed` cases, so this is what tells them apart).
+    public readonly detail?: string
   ) {
     super(message);
     this.name = "PhoneLookupError";
@@ -143,7 +146,8 @@ async function createReport(
     return new Err(
       new PhoneLookupError(
         "lookup_failed",
-        "Phone lookup failed. Please try again."
+        "Phone lookup failed. Please try again.",
+        `create_report_threw: ${err.message}`
       )
     );
   }
@@ -158,7 +162,8 @@ async function createReport(
     return new Err(
       new PhoneLookupError(
         "lookup_failed",
-        "Phone lookup failed. Please try again."
+        "Phone lookup failed. Please try again.",
+        `create_report_status: ${statusCode}`
       )
     );
   }
@@ -171,7 +176,8 @@ async function createReport(
     return new Err(
       new PhoneLookupError(
         "lookup_failed",
-        "Phone lookup failed. Please try again."
+        "Phone lookup failed. Please try again.",
+        "create_report_invalid_response"
       )
     );
   }
@@ -239,11 +245,17 @@ export async function lookupPhoneNumber(
 
   const reportId = createResult.value;
 
+  // Track the last observed poll state so a timeout can report whether the
+  // report was still processing or whether fetches kept failing.
+  let lastStatus: string | undefined;
+  let lastFetchError: string | undefined;
+
   for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
     await sleep(POLL_INTERVAL_MS);
 
     const fetchResult = await fetchReport(client, reportId);
     if (fetchResult.isErr()) {
+      lastFetchError = fetchResult.error.message;
       logger.warn(
         {
           attempt: attempt + 1,
@@ -257,6 +269,20 @@ export async function lookupPhoneNumber(
 
     const report = fetchResult.value;
     const attrs = report.data.attributes;
+    lastStatus = attrs.status;
+
+    // "ready" is a terminal status. If the risk fields are still null at that
+    // point, Persona has finished and has no data on this number (typically a
+    // fake/invalid number). Reject now rather than polling out and returning a
+    // misleading "try again".
+    if (attrs.status === "ready" && !isCompletedReport(attrs)) {
+      return new Err(
+        new PhoneLookupError(
+          "invalid_phone_number",
+          "This phone number could not be verified."
+        )
+      );
+    }
 
     if (!isCompletedReport(attrs)) {
       continue;
@@ -308,8 +334,12 @@ export async function lookupPhoneNumber(
 
   return new Err(
     new PhoneLookupError(
-      "lookup_failed",
-      "Phone lookup failed. Please try again."
+      "lookup_timeout",
+      "Phone lookup failed. Please try again.",
+      `poll_timeout after ${MAX_POLL_ATTEMPTS} attempts ` +
+        `(lastStatus: ${lastStatus ?? "none"}` +
+        (lastFetchError ? `, lastFetchError: ${lastFetchError}` : "") +
+        ")"
     )
   );
 }

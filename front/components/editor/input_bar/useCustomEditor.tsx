@@ -1,5 +1,5 @@
 import { CodeExtension } from "@app/components/editor/extensions/CodeExtension";
-import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
+import { createEmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
 import {
   InputBarSlashSuggestionExtension,
@@ -36,6 +36,7 @@ import { useEffect, useMemo, useRef } from "react";
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
 const SUBMIT_COOLDOWN_MS = 750;
+const INPUT_BAR_DEFAULT_PLACEHOLDER = "Get work done";
 
 function isLongTextPaste(text: string, maxCharThreshold?: number) {
   const maxChars = maxCharThreshold ?? DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD;
@@ -208,10 +209,17 @@ export interface CustomEditorProps {
     onSelectRef: React.RefObject<
       ((capability: InputBarSlashSuggestionCapability) => void) | undefined
     >;
+    onDetailsRef?: React.RefObject<
+      ((capability: InputBarSlashSuggestionCapability) => void) | undefined
+    >;
+    onSkillDetails?: (skillId: string) => void;
     selectedMCPServerViewIdsRef: React.RefObject<Set<string>>;
   };
   // Override the default editor placeholder (e.g. to show a blocked-state reason).
   placeholderOverride?: string | null;
+  onSuggestionActiveChangeRef?: React.RefObject<
+    ((active: boolean) => void) | undefined
+  >;
 }
 
 export const buildEditorExtensions = ({
@@ -226,6 +234,7 @@ export const buildEditorExtensions = ({
   onFirstAgentMentionPasteRef,
   slashSuggestion,
   placeholderOverride,
+  onSuggestionActiveChangeRef,
 }: {
   owner: WorkspaceType;
   conversationId?: string | null;
@@ -240,7 +249,12 @@ export const buildEditorExtensions = ({
   >;
   slashSuggestion?: CustomEditorProps["slashSuggestion"];
   placeholderOverride?: string | null;
+  onSuggestionActiveChangeRef?: CustomEditorProps["onSuggestionActiveChangeRef"];
 }) => {
+  const notifySuggestionActiveChange = (active: boolean) => {
+    onSuggestionActiveChangeRef?.current?.(active);
+  };
+
   const extensions = [
     KeyboardShortcutsExtension,
     StarterKit.configure({
@@ -315,16 +329,19 @@ export const buildEditorExtensions = ({
           users: !disableUserMentions,
         },
         onAgentSelect,
+        onActiveChange: notifySuggestionActiveChange,
       }),
     }),
-    SkillNode,
-    EmojiExtension,
+    SkillNode.configure({
+      onSkillDetails: slashSuggestion?.onSkillDetails,
+    }),
+    createEmojiExtension({ onActiveChange: notifySuggestionActiveChange }),
     Placeholder.configure({
       placeholder: ({ node }) => {
         if (node.type.name !== "paragraph") {
           return "";
         }
-        return placeholderOverride ?? "Ask a question";
+        return placeholderOverride ?? INPUT_BAR_DEFAULT_PLACEHOLDER;
       },
       emptyNodeClass:
         "first:before:text-gray-400 first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
@@ -341,8 +358,10 @@ export const buildEditorExtensions = ({
         owner,
         enabledRef: slashSuggestion.enabledRef,
         onSelectRef: slashSuggestion.onSelectRef,
+        onDetailsRef: slashSuggestion.onDetailsRef,
         selectedMCPServerViewIdsRef:
           slashSuggestion.selectedMCPServerViewIdsRef,
+        onActiveChangeRef: onSuggestionActiveChangeRef,
       })
     );
   }
@@ -374,6 +393,7 @@ const useCustomEditor = ({
   onFirstAgentMentionPasteRef,
   slashSuggestion,
   placeholderOverride,
+  onSuggestionActiveChangeRef,
 }: CustomEditorProps) => {
   const editor = useEditor(
     {
@@ -390,6 +410,7 @@ const useCustomEditor = ({
         onFirstAgentMentionPasteRef,
         slashSuggestion,
         placeholderOverride,
+        onSuggestionActiveChangeRef,
       }),
       shouldRerenderOnTransaction: true, // necessary to update the editor state (and so the toolbar icons "activation") in real time
       editorProps: {

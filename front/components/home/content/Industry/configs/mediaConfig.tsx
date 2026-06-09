@@ -1,6 +1,6 @@
 import type { IndustryPageConfig } from "@app/components/home/content/Industry/configs/utils";
 import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
-import { BookOpenIcon } from "@dust-tt/sparkle";
+import { BookOpen01 } from "@dust-tt/sparkle";
 
 export const mediaConfig: IndustryPageConfig = {
   seo: {
@@ -18,7 +18,7 @@ export const mediaConfig: IndustryPageConfig = {
     chip: {
       label: "Media Companies",
       color: "blue",
-      icon: BookOpenIcon,
+      icon: BookOpen01,
     },
     title: (
       <>

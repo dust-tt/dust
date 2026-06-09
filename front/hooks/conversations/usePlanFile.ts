@@ -1,5 +1,5 @@
+import type { GetConversationPlanModeResponseBody } from "@app/lib/api/assistant/plan_mode";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetConversationPlanModeResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/plan_mode";
 import type { Fetcher } from "swr";
 
 export function planFileKey({

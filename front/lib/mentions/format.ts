@@ -91,10 +91,20 @@ export function serializeMention(
  * `:mention[Agent Name]{sId=xxx}` -> @Agent Name
  * `:mention_user[User Name]{sId=xxx}` -> @User Name
  */
+function normalizeMentionLabel(label: string): string {
+  return label.replaceAll("\n", " ").replaceAll("\r", " ").trim();
+}
+
 export function replaceMentionsWithAt(text: string): string {
   return text
-    .replaceAll(AGENT_MENTION_REGEX, (_, name) => `@${name}`)
-    .replaceAll(USER_MENTION_REGEX, (_, name) => `@${name}`);
+    .replaceAll(
+      AGENT_MENTION_REGEX,
+      (_, name) => `@${normalizeMentionLabel(name)}`
+    )
+    .replaceAll(
+      USER_MENTION_REGEX,
+      (_, name) => `@${normalizeMentionLabel(name)}`
+    );
 }
 
 /**
@@ -141,15 +151,15 @@ export function extractFromEditorJSON(node?: JSONContent): {
     const skillIcon = node.attrs?.skillIcon;
     const skillName = node.attrs?.skillName;
 
-    if (isString(skillId) && isString(skillIcon) && isString(skillName)) {
+    if (isString(skillId) && isString(skillName)) {
       skills.push({
         id: skillId,
-        icon: skillIcon,
+        icon: isString(skillIcon) ? skillIcon : null,
         name: skillName,
       });
       textContent += serializeSkillTag({
         id: skillId,
-        icon: skillIcon,
+        icon: isString(skillIcon) ? skillIcon : null,
         name: skillName,
       });
     }

@@ -2,20 +2,26 @@ import { KeyboardHints } from "@app/components/command_palette/CommandPaletteIte
 import type { CommandPaletteItem } from "@app/components/command_palette/CommandPaletteSearchPhase";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import {
-  ArrowLeftIcon,
+  ArrowLeft,
   Avatar,
-  ChatBubbleBottomCenterTextIcon,
   cn,
-  EyeIcon,
+  Edit04,
+  Eye,
   Icon,
-  PencilSquareIcon,
+  MessageCircle01,
 } from "@dust-tt/sparkle";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 export type CommandPaletteAction = "view_details" | "edit" | "chat_with";
 
+// Pods navigate directly and never enter the action phase.
+export type ActionPhaseItem = Extract<
+  CommandPaletteItem,
+  { kind: "agent" | "skill" }
+>;
+
 interface CommandPaletteActionPhaseProps {
-  item: CommandPaletteItem;
+  item: ActionPhaseItem;
   onAction: (action: CommandPaletteAction) => void;
   onBack: () => void;
   onClose: () => void;
@@ -25,10 +31,10 @@ interface ActionDefinition {
   action: CommandPaletteAction;
   label: string;
   description: string;
-  icon: typeof EyeIcon;
+  icon: typeof Eye;
 }
 
-function canEdit(item: CommandPaletteItem): boolean {
+function canEdit(item: ActionPhaseItem): boolean {
   switch (item.kind) {
     case "agent":
       return item.agent.canEdit;
@@ -50,21 +56,21 @@ export function CommandPaletteActionPhase({
         action: "chat_with",
         label: "New conversation",
         description: "Open a new conversation",
-        icon: ChatBubbleBottomCenterTextIcon,
+        icon: MessageCircle01,
       });
     }
     result.push({
       action: "view_details",
       label: "Details",
       description: "View description and settings",
-      icon: EyeIcon,
+      icon: Eye,
     });
     if (canEdit(item)) {
       result.push({
         action: "edit",
         label: "Edit",
         description: "Change instructions and settings",
-        icon: PencilSquareIcon,
+        icon: Edit04,
       });
     }
     return result;
@@ -137,7 +143,7 @@ export function CommandPaletteActionPhase({
         )}
         onClick={onBack}
       >
-        <Icon visual={ArrowLeftIcon} size="sm" />
+        <Icon visual={ArrowLeft} size="sm" />
         {itemAvatar}
         <span className="font-medium text-foreground dark:text-foreground-night">
           {itemName}

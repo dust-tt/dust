@@ -1,3 +1,4 @@
+import { CONVERSATIONS_RETENTION_MIN_DAYS } from "@app/lib/conversations_retention";
 import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -25,6 +26,21 @@ vi.mock("@app/lib/utils/cache", () => ({
       }
     ),
   invalidateCacheWithRedis: vi
+    .fn()
+    .mockImplementation(
+      <T, Args extends unknown[]>(
+        fn: CacheableFunction<JsonSerializable<T>, Args>,
+        resolver: (...args: Args) => string
+      ) => {
+        return (...args: Args): Promise<void> => {
+          const key = `cacheWithRedis-${fn.name}-${resolver(...args)}`;
+          inMemoryCache.delete(key);
+          deletedKeys.push(key);
+          return Promise.resolve();
+        };
+      }
+    ),
+  bestEffortInvalidateCacheWithRedis: vi
     .fn()
     .mockImplementation(
       <T, Args extends unknown[]>(
@@ -83,11 +99,15 @@ vi.mock("@app/lib/resources/kill_switch_resource", () => ({
 
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { WORKSPACE_CACHE_KEY_VERSION } from "@app/types/shared/cache_resource_registry";
 import type { WorkspaceType } from "@app/types/user";
 
 function getCacheKeyForWorkspace(workspaceId: string): string {
-  return `cacheWithRedis-_fetchByIdUncached-workspace:sid:${workspaceId}`;
+  return `cacheWithRedis-_fetchByIdUncached-workspace:v${WORKSPACE_CACHE_KEY_VERSION}:${workspaceId}`;
 }
+
+const INVALID_RETENTION_DAYS = CONVERSATIONS_RETENTION_MIN_DAYS - 1;
+const SHORT_RETENTION_DAYS = 30;
 
 describe("WorkspaceResource", () => {
   let workspace: WorkspaceType;
@@ -176,7 +196,7 @@ describe("WorkspaceResource", () => {
     it("should reject values below the minimum retention", async () => {
       const result = await WorkspaceResource.updateConversationsRetention(
         workspace.id,
-        59
+        INVALID_RETENTION_DAYS
       );
 
       expect(result.isErr()).toBe(true);
@@ -185,21 +205,24 @@ describe("WorkspaceResource", () => {
       expect(updated?.conversationsRetentionDays).toBeNull();
     });
 
-    it("should set retention days value", async () => {
+    it("should allow sub-60 retention days value", async () => {
       const result = await WorkspaceResource.updateConversationsRetention(
         workspace.id,
-        60
+        SHORT_RETENTION_DAYS
       );
 
       expect(result.isOk()).toBe(true);
 
       const updated = await WorkspaceResource.fetchById(workspace.sId);
-      expect(updated?.conversationsRetentionDays).toBe(60);
+      expect(updated?.conversationsRetentionDays).toBe(SHORT_RETENTION_DAYS);
     });
 
     it("should convert -1 to null", async () => {
       // First set a value
-      await WorkspaceResource.updateConversationsRetention(workspace.id, 60);
+      await WorkspaceResource.updateConversationsRetention(
+        workspace.id,
+        SHORT_RETENTION_DAYS
+      );
 
       // Then set -1 which should convert to null
       const result = await WorkspaceResource.updateConversationsRetention(
@@ -217,7 +240,7 @@ describe("WorkspaceResource", () => {
       const result = await WorkspaceResource.updateByModelIdAndCheckExistence(
         workspace.id,
         {
-          conversationsRetentionDays: 59,
+          conversationsRetentionDays: INVALID_RETENTION_DAYS,
         }
       );
 

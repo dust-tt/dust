@@ -1,12 +1,15 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
+import { AppResource } from "@app/lib/resources/app_resource";
+import type { AppType } from "@app/types/app";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withSpace } from "@front-api/middlewares/with_space";
 import { z } from "zod";
 
-import { AppResource } from "@app/lib/resources/app_resource";
-
-import { spaceResource } from "@front-api/middleware/space_resource";
-import { validate } from "@front-api/middleware/validator";
+export type PostStateResponseBody = {
+  app: AppType;
+};
 
 const PostStateBodySchema = z.object({
   specification: z.string(),
@@ -14,27 +17,33 @@ const PostStateBodySchema = z.object({
   run: z.string().optional(),
 });
 
-// Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/state.
-const app = new Hono();
+const ParamsSchema = z.object({
+  aId: z.string(),
+});
 
+// Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/state.
+const app = workspaceApp();
+
+/** @ignoreswagger */
 app.post(
   "/",
-  spaceResource({ requireCanWrite: true }),
+  validate("param", ParamsSchema),
+  withSpace({ requireCanWrite: true }),
   validate("json", PostStateBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
-    const aId = c.req.param("aId") ?? "";
+  async (ctx): HandlerResult<PostStateResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+    const { aId } = ctx.req.valid("param");
 
     const found = await AppResource.fetchById(auth, aId);
     if (!found || found.space.sId !== space.sId) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: { type: "app_not_found", message: "The app was not found." },
       });
     }
     if (!found.canWrite(auth)) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "app_auth_error",
@@ -42,7 +51,7 @@ app.post(
         },
       });
     }
-    const { specification, config: appConfig, run } = c.req.valid("json");
+    const { specification, config: appConfig, run } = ctx.req.valid("json");
     const updateParams: {
       savedSpecification: string;
       savedConfig: string;
@@ -55,7 +64,7 @@ app.post(
       updateParams.savedRun = run;
     }
     await found.updateState(auth, updateParams);
-    return c.json({ app: found.toJSON() });
+    return ctx.json({ app: found.toJSON() });
   }
 );
 

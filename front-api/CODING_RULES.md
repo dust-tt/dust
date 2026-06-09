@@ -14,12 +14,11 @@ matched requests go to Hono, the rest fall through to Next.
 
 ## ROUTING
 
-### [API1] One file per Next path; mirror Next layout exactly
+### [API1] One file per route; mirror the URL layout exactly
 
-`front-api/routes/<path>.ts` mirrors `front/pages/api/<path>.ts` 1:1,
-including dynamic segments (`[wId]`, `[spaceId]`, etc.) as literal directory
-names. The path mapping is deterministic and used by DangerJS to enforce the
-migration sync check (see [BACK17]).
+`front-api/routes/<path>.ts` maps 1:1 to the `/api/<path>` URL, including
+dynamic segments (`[wId]`, `[spaceId]`, etc.) as literal directory names. The
+path mapping is deterministic.
 
 ```
 front-api/routes/
@@ -56,7 +55,7 @@ Each leaf exports `export default app`:
 ```ts
 // front-api/routes/w/[wId]/spaces/[spaceId]/leave.ts
 const app = new Hono();
-app.post("/", spaceResource({ requireCanReadOrAdministrate: true }), ...);
+app.post("/", withSpace({ requireCanReadOrAdministrate: true }), ...);
 export default app;
 ```
 
@@ -117,15 +116,15 @@ once and stashes it on `c` so every route below can read it from
 
 ### [API5] Resource-fetching middleware is applied per-handler when options vary
 
-Resource middlewares like `spaceResource` carry permission options
+Resource-loading middlewares like `withSpace` carry permission options
 (`requireCanRead`, `requireCanWrite`, etc.) that vary per endpoint. Apply
 them on the individual handler, not on the parent's `index.ts`:
 
 ```ts
 // front-api/routes/w/[wId]/spaces/[spaceId]/mcp/available.ts
 const app = new Hono();
-app.get("/", spaceResource({ requireCanRead: true }), async (c) => {
-  const space = c.get("space");
+app.get("/", withSpace({ requireCanRead: true }), async (ctx) => {
+  const space = ctx.get("space");
   // …
 });
 export default app;
@@ -211,8 +210,8 @@ into `front/`:
 
 ```ts
 // front-api/routes/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/search.ts
-import { validate } from "@front-api/middleware/validator";        // self
-import { spaceResource } from "@front-api/middleware/space_resource";
+import { validate } from "@front-api/middlewares/validator";        // self
+import { withSpace } from "@front-api/middlewares/with_space";
 import { CoreAPI } from "@app/types/core/core_api";                // front
 ```
 
@@ -229,9 +228,14 @@ should use the alias.
 middleware reads what it needs from Hono's `Context` directly
 (`c.req.header(...)`, `c.req.param(...)`, `c.req.raw.headers`).
 
-Known exception: the bridge in `workspace_auth.ts`, which still constructs
-a Next-shaped `req`/`res` to call the legacy `getSession(req, res)`. That
-will go away when `getSession` is refactored to take an I/O abstraction.
+For cookie-based session resolution, call
+`getWorkOSSessionWithSetCookies(workOSSessionCookie)` from
+`@app/lib/api/workos/user`. It returns `{ session, setCookies }` — emit
+each `setCookies` value with
+`c.header("Set-Cookie", cookie, { append: true })`. The Next-flavored
+`getSession(req, res)` / `getWorkOSSession(req, res)` helpers remain the
+entry point for Next code paths and must not be called from Hono
+middleware.
 
 The strangler entry in `server.ts` keeps `import next from "next"` — that
 disappears when Next is fully retired.

@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 
 const metadata: LLMClientMetadata = {
   clientId: "google_ai_studio" as const,
+  inferenceProvider: "google_ai_studio",
   modelId: GEMINI_2_5_PRO_MODEL_ID,
 };
 

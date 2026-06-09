@@ -3,20 +3,20 @@ import { useAppRouter } from "@app/lib/platform";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useUpdateSkillEditors } from "@app/lib/swr/skill_editors";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutInstructionsAndToolsWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   Button,
   Card,
   CardActionButton,
-  PlusIcon,
-  SparklesIcon,
-  XMarkIcon,
+  Plus,
+  Stars02,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 type SuggestedSkillCardProps = {
-  skill: SkillWithRelationsType;
+  skill: SkillWithoutInstructionsAndToolsWithRelationsType;
   onMoreInfoClick: () => void;
   owner: LightWorkspaceType;
   user: UserType;
@@ -64,7 +64,7 @@ function SuggestedSkillCard({
         action={
           <CardActionButton
             size="icon"
-            icon={XMarkIcon}
+            icon={XClose}
             onClick={(e) => {
               e.stopPropagation();
               setIsArchiveDialogOpen(true);
@@ -86,7 +86,7 @@ function SuggestedSkillCard({
             <Button
               size="xs"
               variant="outline"
-              icon={PlusIcon}
+              icon={Plus}
               label="Add skill"
               isLoading={isAddingSkill}
               onClick={(e) => {
@@ -102,8 +102,10 @@ function SuggestedSkillCard({
 }
 
 type SuggestedSkillsSectionProps = {
-  skills: SkillWithRelationsType[];
-  onSkillClick: (skill: SkillWithRelationsType) => void;
+  skills: SkillWithoutInstructionsAndToolsWithRelationsType[];
+  onSkillClick: (
+    skill: SkillWithoutInstructionsAndToolsWithRelationsType
+  ) => void;
   owner: LightWorkspaceType;
   user: UserType;
 };
@@ -122,7 +124,7 @@ export function SuggestedSkillsSection({
     <div className="mt-6 flex flex-col gap-3 pb-6">
       <h4 className="heading-sm flex items-center gap-1.5 text-foreground dark:text-foreground-night">
         Suggested skills
-        <SparklesIcon className="h-4 w-4" />
+        <Stars02 className="h-4 w-4" />
       </h4>
       <div className="flex gap-2 overflow-x-auto">
         {skills.map((skill) => (

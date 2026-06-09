@@ -1,30 +1,30 @@
-import { Hono } from "hono";
-
+import type { GeoLocationResponse } from "@app/lib/geo/country-detection";
 import { resolveCountryCode } from "@app/lib/geo/country-detection";
 import { isGDPRCountry } from "@app/lib/geo/eu-detection";
 import { getClientIp } from "@app/lib/utils/request";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-
-export type GeoLocationResponse = {
-  isGDPR: boolean;
-  countryCode?: string;
-  dev?: boolean;
-};
+import { unauthedApp } from "@front-api/middlewares/ctx";
+import { getConnInfo } from "@hono/node-server/conninfo";
 
 // Mounted at /api/geo/location. No workspace auth — top-level route.
-const app = new Hono();
+const app = unauthedApp();
 
-app.get("/", async (c) => {
+/** @ignoreswagger */
+app.get("/", async (ctx) => {
+  const connInfo = getConnInfo(ctx);
   const headers: Record<string, string> = {};
-  c.req.raw.headers.forEach((value, key) => {
+  ctx.req.raw.headers.forEach((value, key) => {
     headers[key] = value;
   });
-  const ip = getClientIp({ headers });
+  const ip = getClientIp({
+    headers,
+    socket: { remoteAddress: connInfo.remote.address },
+  });
 
   if (ip === "internal") {
     logger.error("No IP address found in request");
-    return c.json({ error: "No IP address found" }, 400);
+    return ctx.json({ error: "No IP address found" }, 400);
   }
 
   try {
@@ -33,10 +33,10 @@ app.get("/", async (c) => {
       isGDPR: isGDPRCountry(countryCode),
       countryCode,
     };
-    return c.json(body);
+    return ctx.json(body);
   } catch (err) {
     logger.error({ error: normalizeError(err) }, "Error in geolocation API");
-    return c.json(
+    return ctx.json(
       { error: "Internal server error while fetching geolocation" },
       500
     );

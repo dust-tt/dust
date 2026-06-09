@@ -1,44 +1,25 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
+import { BulkActionsBodySchema } from "@app/lib/api/projects/tasks";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
-import { PROJECT_TASK_STATUSES } from "@app/types/project_task";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-
-import { spaceResource } from "@front-api/middleware/space_resource";
-import { validate } from "@front-api/middleware/validator";
-
-const BulkActionsBodySchema = z.discriminatedUnion("action", [
-  z.object({
-    action: z.literal("set_status"),
-    taskIds: z.array(z.string().min(1)).min(1).max(200),
-    status: z.enum(PROJECT_TASK_STATUSES),
-  }),
-  z.object({
-    action: z.literal("approve_agent_suggestion"),
-    taskIds: z.array(z.string().min(1)).min(1).max(200),
-  }),
-  z.object({
-    action: z.literal("reject_agent_suggestion"),
-    taskIds: z.array(z.string().min(1)).min(1).max(200),
-  }),
-]);
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { withSpace } from "@front-api/middlewares/with_space";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_tasks/bulk-actions.
-const app = new Hono();
+const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
-  spaceResource({ requireCanRead: true }),
+  withSpace({ requireCanRead: true }),
   validate("json", BulkActionsBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const space = c.get("space");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
 
     if (!space.isProject()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -47,7 +28,7 @@ app.post(
       });
     }
 
-    const body = c.req.valid("json");
+    const body = ctx.req.valid("json");
 
     switch (body.action) {
       case "set_status": {
@@ -75,7 +56,7 @@ app.post(
         );
 
         if (result.isErr()) {
-          return apiError(c, {
+          return apiError(ctx, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
@@ -84,12 +65,15 @@ app.post(
           });
         }
 
-        return c.json({ success: true });
+        return ctx.json({ success: true });
       }
 
       case "approve_agent_suggestion": {
         const user = auth.getNonNullableUser();
-        for (const sId of body.taskIds) {
+        // Approve in reverse so the first-listed task is saved last and keeps
+        // the latest `updatedAt`, preserving display order under the client's
+        // `updatedAt desc` initial sort (matches `seedInitialPodTasks`).
+        for (const sId of [...body.taskIds].reverse()) {
           const todo = await ProjectTaskResource.fetchBySId(auth, sId);
           if (
             !todo ||
@@ -102,7 +86,7 @@ app.post(
             reviewedByUserId: user.id,
           });
         }
-        return c.json({ success: true });
+        return ctx.json({ success: true });
       }
 
       case "reject_agent_suggestion": {
@@ -120,7 +104,7 @@ app.post(
             reviewedByUserId: user.id,
           });
         }
-        return c.json({ success: true });
+        return ctx.json({ success: true });
       }
 
       default:

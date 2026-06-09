@@ -3,6 +3,7 @@ import type { FireworksWhitelistedModelId } from "@app/lib/api/llm/clients/firew
 import type { GoogleAIStudioWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import type { MistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
 import type { OpenAIWhitelistedModelId } from "@app/lib/api/llm/clients/openai/types";
+import type { XaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import {
   CLAUDE_3_5_HAIKU_20241022_MODEL_ID,
   CLAUDE_3_OPUS_2024029_MODEL_ID,
@@ -13,6 +14,7 @@ import {
   CLAUDE_4_SONNET_20250514_MODEL_ID,
   CLAUDE_OPUS_4_6_MODEL_ID,
   CLAUDE_OPUS_4_7_MODEL_ID,
+  CLAUDE_OPUS_4_8_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
 import type { CUSTOM_MODEL_IDS } from "@app/types/assistant/models/custom_models.generated";
@@ -29,13 +31,16 @@ import {
   GEMINI_2_5_FLASH_MODEL_ID,
   GEMINI_2_5_PRO_MODEL_ID,
   GEMINI_3_1_FLASH_LITE_MODEL_ID,
+  GEMINI_3_1_FLASH_LITE_PREVIEW_DEPRECATED_MODEL_ID,
   GEMINI_3_1_PRO_MODEL_ID,
+  GEMINI_3_5_FLASH_MODEL_ID,
   GEMINI_3_FLASH_MODEL_ID,
   GEMINI_3_PRO_MODEL_ID,
 } from "@app/types/assistant/models/google_ai_studio";
 import {
   MISTRAL_CODESTRAL_MODEL_ID,
   MISTRAL_LARGE_MODEL_ID,
+  MISTRAL_MEDIUM_3_5_MODEL_ID,
   MISTRAL_MEDIUM_MODEL_ID,
   MISTRAL_SMALL_MODEL_ID,
 } from "@app/types/assistant/models/mistral";
@@ -60,15 +65,17 @@ import {
   O4_MINI_MODEL_ID,
 } from "@app/types/assistant/models/openai";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import { GROK_4_MODEL_ID } from "@app/types/assistant/models/xai";
 
 type CustomModelId = (typeof CUSTOM_MODEL_IDS)[number];
 
 export const MODELS: Record<
-  | OpenAIWhitelistedModelId
+  | Exclude<OpenAIWhitelistedModelId, CustomModelId>
   | Exclude<AnthropicWhitelistedModelId, CustomModelId>
   | GoogleAIStudioWhitelistedModelId
   | MistralWhitelistedModelId
-  | FireworksWhitelistedModelId,
+  | FireworksWhitelistedModelId
+  | XaiWhitelistedModelId,
   { runTest: boolean; providerId: ModelProviderIdType }
 > = {
   // Anthropic models
@@ -105,6 +112,10 @@ export const MODELS: Record<
     runTest: false,
     providerId: "anthropic",
   },
+  [CLAUDE_OPUS_4_8_MODEL_ID]: {
+    runTest: false,
+    providerId: "anthropic",
+  },
   [CLAUDE_SONNET_4_6_MODEL_ID]: {
     runTest: false,
     providerId: "anthropic",
@@ -118,6 +129,10 @@ export const MODELS: Record<
     runTest: false,
     providerId: "google_ai_studio",
   },
+  [GEMINI_3_1_FLASH_LITE_PREVIEW_DEPRECATED_MODEL_ID]: {
+    runTest: false,
+    providerId: "google_ai_studio",
+  },
   [GEMINI_2_5_FLASH_MODEL_ID]: {
     runTest: false,
     providerId: "google_ai_studio",
@@ -126,10 +141,15 @@ export const MODELS: Record<
   [GEMINI_3_PRO_MODEL_ID]: { runTest: false, providerId: "google_ai_studio" },
   [GEMINI_3_1_PRO_MODEL_ID]: { runTest: false, providerId: "google_ai_studio" },
   [GEMINI_3_FLASH_MODEL_ID]: { runTest: false, providerId: "google_ai_studio" },
+  [GEMINI_3_5_FLASH_MODEL_ID]: {
+    runTest: false,
+    providerId: "google_ai_studio",
+  },
   // Mistral models
   [MISTRAL_CODESTRAL_MODEL_ID]: { runTest: false, providerId: "mistral" },
   [MISTRAL_LARGE_MODEL_ID]: { runTest: false, providerId: "mistral" },
   [MISTRAL_MEDIUM_MODEL_ID]: { runTest: false, providerId: "mistral" },
+  [MISTRAL_MEDIUM_3_5_MODEL_ID]: { runTest: false, providerId: "mistral" },
   [MISTRAL_SMALL_MODEL_ID]: { runTest: false, providerId: "mistral" },
   // OpenAI models
   [GPT_3_5_TURBO_MODEL_ID]: { runTest: false, providerId: "openai" },
@@ -174,5 +194,10 @@ export const MODELS: Record<
   [FIREWORKS_GLM_5_MODEL_ID]: {
     runTest: false,
     providerId: "fireworks",
+  },
+  // xAI
+  [GROK_4_MODEL_ID]: {
+    runTest: false,
+    providerId: "xai",
   },
 };

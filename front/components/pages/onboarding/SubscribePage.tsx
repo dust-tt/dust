@@ -1,10 +1,17 @@
 import { ProPlansTable } from "@app/components/plans/ProPlansTable";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
-import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import {
+  CP_MAX_SEAT_COST_MONTHLY,
+  CP_MAX_SEAT_COST_YEARLY,
+  CP_PRO_SEAT_COST_MONTHLY,
+  CP_PRO_SEAT_COST_YEARLY,
+} from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { isFreeTrialPhonePlan, isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
+import { useKillSwitches } from "@app/lib/swr/kill";
 import { useUser } from "@app/lib/swr/user";
 import {
   useSubscriptionStatus,
@@ -13,11 +20,237 @@ import {
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { BillingPeriod } from "@app/types/plan";
 import { isDevelopment } from "@app/types/shared/env";
-import { BarHeader, Button, LockIcon, Page, Spinner } from "@dust-tt/sparkle";
+import {
+  BarHeader,
+  Button,
+  ButtonGroup,
+  Chip,
+  Lock01,
+  Page,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { CreditCardIcon } from "@heroicons/react/20/solid";
 import React, { useEffect } from "react";
 
-export function SubscribePage() {
+function CPSubscribePage() {
+  const { workspace, isAdmin, user: authUser } = useAuth();
+  const router = useAppRouter();
+  const { user } = useUser();
+  const { shouldRedirect, redirectUrl, isSubscriptionStatusLoading } =
+    useSubscriptionStatus({ workspaceId: workspace.sId });
+
+  const [billingPeriod, setBillingPeriod] =
+    React.useState<BillingPeriod>("monthly");
+  const [seatType, setSeatType] = React.useState<"pro" | "max">("pro");
+
+  const { submit: handleSubscribe } = useSubmitFunction(
+    async (params: {
+      seatType: "pro" | "max";
+      billingPeriod: BillingPeriod;
+    }) => {
+      const query = new URLSearchParams({
+        seatType: params.seatType,
+        billingPeriod: params.billingPeriod,
+        targetUserId: authUser.sId,
+      });
+      await router.push(
+        `/w/${workspace.sId}/subscription/checkout?${query.toString()}`
+      );
+    }
+  );
+
+  useEffect(() => {
+    if (shouldRedirect && redirectUrl) {
+      void router.replace(redirectUrl);
+    }
+  }, [shouldRedirect, redirectUrl, router]);
+
+  if (isSubscriptionStatusLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <>
+        <BarHeader
+          title="Joining Dust"
+          className="ml-10 lg:ml-0"
+          rightActions={
+            user && (
+              <UserMenu user={user} owner={workspace} subscription={null} />
+            )
+          }
+        />
+        <Page>
+          <div className="flex h-full flex-col justify-center">
+            <Page.Horizontal>
+              <Page.Vertical sizing="grow" gap="lg">
+                <Page.Header icon={Lock01} title="Workspace locked" />
+                <Page.P>
+                  <span className="font-bold">
+                    The subscription for this workspace is not active.
+                  </span>
+                </Page.P>
+                <Page.P>
+                  To unlock premium features, your workspace needs to be
+                  upgraded by an admin.
+                </Page.P>
+              </Page.Vertical>
+            </Page.Horizontal>
+          </div>
+        </Page>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <BarHeader
+        title="Subscribe to Business"
+        className="ml-10 lg:ml-0"
+        rightActions={
+          <div className="flex flex-row items-center">
+            {user && (
+              <UserMenu user={user} owner={workspace} subscription={null} />
+            )}
+          </div>
+        }
+      />
+      <Page>
+        <div className="flex h-full flex-col items-center justify-center gap-8">
+          {/* Placeholder banner */}
+          <div className="w-full max-w-xl rounded-xl border border-warning-200 bg-warning-100 p-4 text-center dark:border-warning-200-night dark:bg-warning-100-night">
+            <p className="text-lg font-bold text-foreground dark:text-foreground-night">
+              Placeholder — Page to be designed
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+              This page has not been designed yet.
+            </p>
+          </div>
+          <div className="flex flex-col items-center gap-2 text-center">
+            <Page.Header
+              icon={CreditCardIcon}
+              title="Choose your Business plan"
+            />
+            <Page.P>
+              Select a seat type and billing period to get started.
+            </Page.P>
+          </div>
+
+          {/* Billing period toggle */}
+          <div className="flex items-center gap-3">
+            <ButtonGroup>
+              <Button
+                size="sm"
+                variant={billingPeriod === "monthly" ? "primary" : "outline"}
+                label="Monthly"
+                onClick={() => setBillingPeriod("monthly")}
+              />
+              <Button
+                size="sm"
+                variant={billingPeriod === "yearly" ? "primary" : "outline"}
+                label="Yearly"
+                onClick={() => setBillingPeriod("yearly")}
+              />
+            </ButtonGroup>
+            {billingPeriod === "yearly" && (
+              <Chip size="xs" color="green" label="Save 20%" />
+            )}
+          </div>
+
+          {/* Seat type cards */}
+          <div className="flex w-full max-w-xl flex-col gap-4">
+            {(
+              [
+                {
+                  type: "pro" as const,
+                  name: "Pro",
+                  monthlyPrice: `$${CP_PRO_SEAT_COST_MONTHLY}/mo`,
+                  yearlyPrice: `$${CP_PRO_SEAT_COST_YEARLY}/mo`,
+                  yearlyTotal: `$${CP_PRO_SEAT_COST_YEARLY * 12} billed yearly`,
+                  creditsLabel: "8,000 credits/month",
+                },
+                {
+                  type: "max" as const,
+                  name: "Max",
+                  monthlyPrice: `$${CP_MAX_SEAT_COST_MONTHLY}/mo`,
+                  yearlyPrice: `$${CP_MAX_SEAT_COST_YEARLY}/mo`,
+                  yearlyTotal: `$${CP_MAX_SEAT_COST_YEARLY * 12} billed yearly`,
+                  creditsLabel: "40,000 credits/month",
+                },
+              ] satisfies Array<{
+                type: "pro" | "max";
+                name: string;
+                monthlyPrice: string;
+                yearlyPrice: string;
+                yearlyTotal: string;
+                creditsLabel: string;
+              }>
+            ).map((seat) => (
+              <button
+                key={seat.type}
+                type="button"
+                onClick={() => setSeatType(seat.type)}
+                className={`flex w-full flex-col gap-2 rounded-xl border-2 p-5 text-left transition-colors ${
+                  seatType === seat.type
+                    ? "border-highlight-500 bg-highlight-500/10"
+                    : "border-separator dark:border-separator-night hover:border-muted-foreground/40"
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-lg font-semibold text-foreground dark:text-foreground-night">
+                      {seat.name}
+                    </span>
+                    <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                      {seat.creditsLabel}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-end gap-0.5">
+                    <span className="text-xl font-bold text-foreground dark:text-foreground-night">
+                      {billingPeriod === "monthly"
+                        ? seat.monthlyPrice
+                        : seat.yearlyPrice}
+                    </span>
+                    {billingPeriod === "yearly" && (
+                      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                        {seat.yearlyTotal}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <Button
+            variant="primary"
+            label="Continue to checkout"
+            icon={CreditCardIcon}
+            size="sm"
+            onClick={withTracking(
+              TRACKING_AREAS.AUTH,
+              "cp_subscription_start",
+              () => {
+                void handleSubscribe({ seatType, billingPeriod });
+              },
+              {
+                seat_type: seatType,
+                billing_period: billingPeriod,
+              }
+            )}
+          />
+        </div>
+      </Page>
+    </>
+  );
+}
+
+function LegacySubscribePage() {
   const { workspace, isAdmin } = useAuth();
   const router = useAppRouter();
   const { user } = useUser();
@@ -218,7 +451,7 @@ export function SubscribePage() {
           ) : (
             <Page.Horizontal>
               <Page.Vertical sizing="grow" gap="lg">
-                <Page.Header icon={LockIcon} title="Workspace locked" />
+                <Page.Header icon={Lock01} title="Workspace locked" />
                 <Page.P>
                   <span className="font-bold">
                     The subscription for this workspace is not active.
@@ -243,4 +476,21 @@ export function SubscribePage() {
       </Page>
     </>
   );
+}
+
+export function SubscribePage() {
+  const { hasFeature } = useFeatureFlags();
+  const { killSwitches } = useKillSwitches();
+
+  const isMetronomeEnabled =
+    hasFeature("metronome_billing") ||
+    !killSwitches?.includes("global_disable_metronome_billing");
+  const isMetronomeCheckout =
+    isMetronomeEnabled && hasFeature("metronome_cp_checkout");
+
+  if (isMetronomeCheckout) {
+    return <CPSubscribePage />;
+  }
+
+  return <LegacySubscribePage />;
 }

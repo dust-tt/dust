@@ -6,12 +6,12 @@ import {
   BUTTON_VARIANTS,
 } from "@sparkle/components/Button";
 
-import { Button, PlusIcon, RobotIcon, Separator } from "../index_with_tw_base";
+import { Button, Plus, Robot, Separator } from "../index_with_tw_base";
 
 const ICONS = {
   none: null,
-  PlusIcon: PlusIcon,
-  RobotIcon: RobotIcon,
+  Plus: Plus,
+  Robot: Robot,
 } as const;
 
 const meta = {
@@ -83,7 +83,7 @@ const meta = {
   },
   render: (args) => {
     if (args.size === "mini" && !args.icon) {
-      args.icon = ICONS.PlusIcon;
+      args.icon = ICONS.Plus;
     }
     return <Button {...args} />;
   },
@@ -109,7 +109,7 @@ export const ExampleButton: Story = {
 };
 
 export const MiniButton: Story = {
-  render: () => <Button size="icon" icon={PlusIcon} />,
+  render: () => <Button size="icon" icon={Plus} />,
 };
 
 const ButtonBySize = ({
@@ -132,12 +132,7 @@ const ButtonBySize = ({
           <div className="s-flex s-items-center s-gap-4">
             <Button size={size} variant={variant} label="Button" />
             <Button size={size} variant={variant} label="Button" isLoading />
-            <Button
-              size={size}
-              variant={variant}
-              icon={PlusIcon}
-              label="Button"
-            />
+            <Button size={size} variant={variant} icon={Plus} label="Button" />
             <Button size={size} variant={variant} label="Button" disabled />
           </div>
         </div>

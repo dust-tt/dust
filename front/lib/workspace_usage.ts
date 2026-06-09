@@ -18,6 +18,8 @@ import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import { stringify } from "csv-stringify/sync";
+import { endOfDay } from "date-fns/endOfDay";
+import { endOfMonth } from "date-fns/endOfMonth";
 import { format } from "date-fns/format";
 import { Op, QueryTypes, Sequelize } from "sequelize";
 
@@ -686,6 +688,7 @@ async function getAssistantsUsageData(
              LEFT JOIN "users" aut ON ac."authorId" = aut."id"
              LEFT JOIN "agent_messages" a
                       ON a."agentConfigurationId" = ac."sId"
+                      AND a."workspaceId" = :wId
                       AND a."status" = 'succeeded'
                       AND a."createdAt" BETWEEN :startDate AND :endDate
              LEFT JOIN "messages" m ON a."id" = m."agentMessageId"
@@ -807,14 +810,21 @@ export async function fetchUsageData({
         feedback: await getFeedbackUsageData(start, end, workspace),
       };
     case "all":
-      const [users, assistant_messages, builders, assistants, feedback] =
-        await Promise.all([
-          getUserUsageData(start, end, workspace, { includeInactive }),
-          getMessageUsageData(start, end, workspace),
-          getBuildersUsageData(start, end, workspace),
-          getAssistantsUsageData(start, end, workspace, { includeInactive }),
-          getFeedbackUsageData(start, end, workspace),
-        ]);
+      // Sequential on purpose: each query is heavy, running them in parallel
+      // spikes load on the read replica.
+      const users = await getUserUsageData(start, end, workspace, {
+        includeInactive,
+      });
+      const assistant_messages = await getMessageUsageData(
+        start,
+        end,
+        workspace
+      );
+      const builders = await getBuildersUsageData(start, end, workspace);
+      const assistants = await getAssistantsUsageData(start, end, workspace, {
+        includeInactive,
+      });
+      const feedback = await getFeedbackUsageData(start, end, workspace);
       return { users, assistant_messages, builders, assistants, feedback };
     default:
       assertNever(table);
@@ -844,4 +854,35 @@ function generateCsvFromQueryResult(
       date: (value) => value.toISOString(),
     },
   });
+}
+
+type WorkspaceUsageDateRange =
+  | { mode: "month"; start: string }
+  | { mode: "range"; start: string; end: string };
+
+export function resolveWorkspaceUsageDates(query: WorkspaceUsageDateRange): {
+  startDate: Date;
+  endDate: Date;
+} {
+  const parseDate = (dateString: string) => {
+    const parts = dateString.split("-");
+    return new Date(
+      parseInt(parts[0]),
+      parseInt(parts[1]) - 1,
+      parts[2] ? parseInt(parts[2]) : 1
+    );
+  };
+
+  switch (query.mode) {
+    case "month":
+      const date = parseDate(query.start);
+      return { startDate: date, endDate: endOfMonth(date) };
+    case "range":
+      return {
+        startDate: parseDate(query.start),
+        endDate: endOfDay(parseDate(query.end)),
+      };
+    default:
+      assertNever(query);
+  }
 }

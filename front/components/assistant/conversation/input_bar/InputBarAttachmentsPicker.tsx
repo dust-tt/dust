@@ -23,6 +23,7 @@ import type {
 } from "@app/lib/search/tools/types";
 import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaces } from "@app/lib/swr/spaces";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import type { DataSourceType } from "@app/types/data_source";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
@@ -32,10 +33,9 @@ import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  AttachmentIcon,
+  Attachment01,
   Button,
-  ChevronRightIcon,
-  CloudArrowUpIcon,
+  ChevronRight,
   DoubleIcon,
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -51,8 +51,9 @@ import {
   Icon,
   Input,
   LoadingBlock,
-  MagnifyingGlassIcon,
+  SearchMd,
   Spinner,
+  UploadCloud02,
 } from "@dust-tt/sparkle";
 import type { ButtonVariantType } from "@dust-tt/sparkle/dist/esm/components/Button";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -105,6 +106,7 @@ interface InputBarAttachmentsPickerProps {
   onFileChange?: () => void;
   externalOpen?: boolean;
   onExternalOpenChange?: (open: boolean) => void;
+  onOpenChange?: (open: boolean) => void;
   anchorRef?: React.RefObject<HTMLElement | null>;
 }
 
@@ -274,8 +276,10 @@ export const InputBarAttachmentsPicker = ({
   onFileChange,
   externalOpen,
   onExternalOpenChange,
+  onOpenChange,
   anchorRef,
 }: InputBarAttachmentsPickerProps) => {
+  const isMobile = useIsMobile();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
   const [internalOpen, setInternalOpen] = useState(false);
@@ -549,6 +553,7 @@ export const InputBarAttachmentsPicker = ({
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
+        onOpenChange?.(open);
         if (open) {
           setSearch("");
         }
@@ -558,7 +563,7 @@ export const InputBarAttachmentsPicker = ({
         <DropdownMenuTrigger asChild>
           <Button
             variant={buttonVariant}
-            icon={AttachmentIcon}
+            icon={Attachment01}
             size={buttonSize}
             disabled={disabled || isLoading || isAnyToolFileUploading}
             isLoading={isLoading || isAnyToolFileUploading}
@@ -591,9 +596,9 @@ export const InputBarAttachmentsPicker = ({
             setIsOpen(true);
           }}
         >
-          <AttachmentIcon className="w-5 h-5" />
+          <Attachment01 className="w-5 h-5" />
           Attach knowledge
-          <ChevronRightIcon className="w-5 h-5" />
+          <ChevronRight className="w-5 h-5" />
         </DropdownMenuSubTrigger>
       )}
       <ContentWrapper
@@ -625,7 +630,7 @@ export const InputBarAttachmentsPicker = ({
               multiple={true}
             />
             <DropdownMenuSearchbar
-              autoFocus
+              autoFocus={!isMobile}
               name="search-files"
               placeholder="Search"
               value={search}
@@ -644,7 +649,7 @@ export const InputBarAttachmentsPicker = ({
               }}
               button={
                 <Button
-                  icon={CloudArrowUpIcon}
+                  icon={UploadCloud02}
                   label="Upload File"
                   onClick={() => fileInputRef.current?.click()}
                   className="ml-4"
@@ -795,7 +800,7 @@ export const InputBarAttachmentsPicker = ({
         ) : (
           <div className="flex h-full w-full items-center justify-center">
             <div className="flex flex-col items-center justify-center gap-0 text-center text-base font-semibold text-primary-400">
-              <Icon visual={MagnifyingGlassIcon} size="sm" />
+              <Icon visual={SearchMd} size="sm" />
               Search knowledge
             </div>
           </div>

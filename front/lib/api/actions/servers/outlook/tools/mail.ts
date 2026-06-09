@@ -1,4 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { OUTLOOK_MAIL_FOLDER_LIST_MIME_TYPE } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
@@ -12,6 +13,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types/shared/result";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import sanitizeHtml from "sanitize-html";
+import { z } from "zod";
 
 const DEFAULT_MESSAGE_FIELDS = [
   "id",
@@ -52,6 +54,26 @@ const getMailboxBasePath = (sharedMailboxAddress?: string): string => {
     return `/users/${encodeURIComponent(sharedMailboxAddress)}`;
   }
   return "/me";
+};
+
+// Parses the `Retry-After` header from a 429/503 response. Microsoft Graph
+// typically returns a number of seconds, but per RFC 9110 the value may also
+// be an HTTP-date.
+const parseRetryAfterSeconds = (
+  retryAfter: string | null | undefined
+): number | undefined => {
+  if (!retryAfter) {
+    return undefined;
+  }
+  const seconds = Number(retryAfter);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.ceil(seconds);
+  }
+  const dateMs = Date.parse(retryAfter);
+  if (!Number.isNaN(dateMs)) {
+    return Math.max(0, Math.ceil((dateMs - Date.now()) / 1000));
+  }
+  return undefined;
 };
 
 const getErrorText = async (response: Response): Promise<string> => {
@@ -142,14 +164,193 @@ interface OutlookFileAttachment {
   contentBytes?: string; // Standard base64-encoded content
 }
 
-interface OutlookFolder {
-  id: string;
-  displayName: string;
-  parentFolderId?: string;
-  childFolderCount?: number;
-  unreadItemCount?: number;
-  totalItemCount?: number;
-}
+const OutlookFolderSchema = z.object({
+  id: z.string(),
+  displayName: z.string(),
+  parentFolderId: z.string().optional(),
+  childFolderCount: z.number().optional(),
+  unreadItemCount: z.number().optional(),
+  totalItemCount: z.number().optional(),
+});
+type OutlookFolder = z.infer<typeof OutlookFolderSchema>;
+
+const GraphFolderListResponseSchema = z.object({
+  value: z.array(OutlookFolderSchema).default([]),
+});
+
+const foldersEndpoint = (
+  basePath: string,
+  parentFolderId: string | null
+): string =>
+  parentFolderId
+    ? `${basePath}/mailFolders/${parentFolderId}/childFolders`
+    : `${basePath}/mailFolders`;
+
+const findFolderIdByName = async (
+  folderName: string,
+  parentFolderId: string | null,
+  basePath: string,
+  accessToken: string
+): Promise<{ folderId: string | null } | { error: MCPError }> => {
+  const response = await fetchFromOutlook(
+    `${foldersEndpoint(basePath, parentFolderId)}?$top=250`,
+    accessToken,
+    { method: "GET" }
+  );
+  if (!response.ok) {
+    const errorText = await getErrorText(response);
+    return {
+      error: new MCPError(
+        `Failed to fetch folders: ${response.status} ${response.statusText} - ${errorText}`
+      ),
+    };
+  }
+  const parsed = GraphFolderListResponseSchema.safeParse(await response.json());
+  if (!parsed.success) {
+    return { error: new MCPError("Unexpected response format from Graph API") };
+  }
+  const folder = parsed.data.value.find(
+    (f) => f.displayName.toLowerCase() === folderName.toLowerCase()
+  );
+  return { folderId: folder?.id ?? null };
+};
+
+const createFolder = async (
+  displayName: string,
+  parentFolderId: string | null,
+  basePath: string,
+  accessToken: string
+): Promise<{ folderId: string } | { error: MCPError }> => {
+  const response = await fetchFromOutlook(
+    foldersEndpoint(basePath, parentFolderId),
+    accessToken,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ displayName }),
+    }
+  );
+  if (!response.ok) {
+    const errorText = await getErrorText(response);
+    return {
+      error: new MCPError(
+        `Failed to create folder: ${response.status} ${response.statusText} - ${errorText}`
+      ),
+    };
+  }
+  const result = (await response.json()) as OutlookFolder;
+  return { folderId: result.id };
+};
+
+const resolveFolderPath = async (
+  folderPath: string[],
+  basePath: string,
+  accessToken: string
+): Promise<
+  { folderId: string; createdSegments: string[] } | { error: MCPError }
+> => {
+  let parentFolderId: string | null = null;
+  const createdSegments: string[] = [];
+
+  for (const segment of folderPath) {
+    const lookup = await findFolderIdByName(
+      segment,
+      parentFolderId,
+      basePath,
+      accessToken
+    );
+    if ("error" in lookup) {
+      return { error: lookup.error };
+    }
+
+    if (lookup.folderId) {
+      parentFolderId = lookup.folderId;
+      continue;
+    }
+
+    const created = await createFolder(
+      segment,
+      parentFolderId,
+      basePath,
+      accessToken
+    );
+    if (!("error" in created)) {
+      parentFolderId = created.folderId;
+      createdSegments.push(segment);
+      continue;
+    }
+
+    // Create failed. This commonly happens when a concurrent move_message call
+    // created the same folder between our lookup and our create (Graph returns
+    // ErrorFolderExists / 409). Re-lookup; if the folder now exists, use it.
+    // Otherwise the create error was a real failure — propagate it.
+    const retry = await findFolderIdByName(
+      segment,
+      parentFolderId,
+      basePath,
+      accessToken
+    );
+    if ("error" in retry || !retry.folderId) {
+      return { error: created.error };
+    }
+    parentFolderId = retry.folderId;
+  }
+
+  return { folderId: parentFolderId as string, createdSegments };
+};
+
+const findFolderByPath = async (
+  pathSegments: string[],
+  basePath: string,
+  accessToken: string
+): Promise<{ folderId: string } | { error: MCPError }> => {
+  let parentFolderId: string | null = null;
+
+  for (let i = 0; i < pathSegments.length; i++) {
+    const segment = pathSegments[i];
+    const response = await fetchFromOutlook(
+      `${foldersEndpoint(basePath, parentFolderId)}?$top=250`,
+      accessToken,
+      { method: "GET" }
+    );
+    if (!response.ok) {
+      const errorText = await getErrorText(response);
+      return {
+        error: new MCPError(
+          `Failed to fetch folders: ${response.status} ${response.statusText} - ${errorText}`
+        ),
+      };
+    }
+    const parsed = GraphFolderListResponseSchema.safeParse(
+      await response.json()
+    );
+    if (!parsed.success) {
+      return {
+        error: new MCPError("Unexpected response format from Graph API"),
+      };
+    }
+    const folders = parsed.data.value;
+    const folder = folders.find(
+      (f) => f.displayName.toLowerCase() === segment.toLowerCase()
+    );
+    if (!folder) {
+      const parentPath = pathSegments.slice(0, i).join("/");
+      const locationHint = parentPath ? ` in "${parentPath}"` : "";
+      const available = folders.map((f) => f.displayName).join(", ");
+      return {
+        error: new MCPError(
+          `Folder "${segment}" not found${locationHint}. Available folders${locationHint}: ${available}`
+        ),
+      };
+    }
+    parentFolderId = folder.id;
+  }
+
+  if (parentFolderId === null) {
+    return { error: new MCPError("No folder resolved from path") };
+  }
+  return { folderId: parentFolderId };
+};
 
 const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
   get_messages: async (
@@ -163,43 +364,22 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
 
     const basePath = getMailboxBasePath(sharedMailboxAddress);
 
-    // If folderName is provided, search for the folder and get its ID
+    // If folderName is provided, resolve it (supports "/" separated paths like "Inbox/Projects")
     let folderId: string | undefined;
     if (folderName) {
-      const foldersResponse = await fetchFromOutlook(
-        `${basePath}/mailFolders`,
-        accessToken,
-        {
-          method: "GET",
-        }
+      const pathSegments = folderName
+        .split("/")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const resolved = await findFolderByPath(
+        pathSegments,
+        basePath,
+        accessToken
       );
-
-      if (!foldersResponse.ok) {
-        const errorText = await getErrorText(foldersResponse);
-        return new Err(
-          new MCPError(
-            `Failed to fetch folders: ${foldersResponse.status} ${foldersResponse.statusText} - ${errorText}`
-          )
-        );
+      if ("error" in resolved) {
+        return new Err(resolved.error);
       }
-
-      const foldersResult = await foldersResponse.json();
-      const folders = (foldersResult.value ?? []) as OutlookFolder[];
-
-      // Search for the folder by name (case-insensitive)
-      const folder = folders.find(
-        (f) => f.displayName.toLowerCase() === folderName.toLowerCase()
-      );
-
-      if (!folder) {
-        return new Err(
-          new MCPError(
-            `Folder "${folderName}" not found. Available folders: ${folders.map((f) => f.displayName).join(", ")}`
-          )
-        );
-      }
-
-      folderId = folder.id;
+      folderId = resolved.folderId;
     }
 
     const allowedLabels = await getAllowedLabelsForMCPServer(
@@ -388,6 +568,70 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
           null,
           2
         ),
+      },
+    ]);
+  },
+
+  list_folders: async ({ folderPath, sharedMailboxAddress }, { authInfo }) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const basePath = getMailboxBasePath(sharedMailboxAddress);
+    let parentFolderId: string | null = null;
+
+    if (folderPath && folderPath.length > 0) {
+      const resolved = await findFolderByPath(
+        folderPath,
+        basePath,
+        accessToken
+      );
+      if ("error" in resolved) {
+        return new Err(resolved.error);
+      }
+      parentFolderId = resolved.folderId;
+    }
+
+    const response = await fetchFromOutlook(
+      `${foldersEndpoint(basePath, parentFolderId)}?$top=250`,
+      accessToken,
+      { method: "GET" }
+    );
+
+    if (!response.ok) {
+      const errorText = await getErrorText(response);
+      return new Err(
+        new MCPError(
+          `Failed to fetch folders: ${response.status} ${response.statusText} - ${errorText}`
+        )
+      );
+    }
+
+    const parsed = GraphFolderListResponseSchema.safeParse(
+      await response.json()
+    );
+    if (!parsed.success) {
+      return new Err(new MCPError("Unexpected response format from Graph API"));
+    }
+    const folders = parsed.data.value;
+
+    const path = folderPath ?? [];
+    return new Ok([
+      {
+        type: "resource" as const,
+        resource: {
+          mimeType: OUTLOOK_MAIL_FOLDER_LIST_MIME_TYPE,
+          uri: "",
+          text: `${folders.length} folder(s) listed${path.length > 0 ? ` in "${path.join("/")}"` : ""}`,
+          path,
+          folders: folders.map((f) => ({
+            name: f.displayName,
+            childFolderCount: f.childFolderCount,
+            unreadItemCount: f.unreadItemCount,
+            totalItemCount: f.totalItemCount,
+          })),
+        },
       },
     ]);
   },
@@ -812,6 +1056,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       contentType = "text",
       body,
       saveToSentItems = true,
+      sharedMailboxAddress,
     },
     { authInfo }
   ) => {
@@ -819,6 +1064,8 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     if (!accessToken) {
       return new Err(new MCPError("Authentication required"));
     }
+
+    const basePath = getMailboxBasePath(sharedMailboxAddress);
 
     const message: Record<string, unknown> = {
       subject,
@@ -830,6 +1077,12 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
         emailAddress: { address: email },
       })),
     };
+
+    if (sharedMailboxAddress) {
+      message.from = {
+        emailAddress: { address: sharedMailboxAddress },
+      };
+    }
 
     if (cc && cc.length > 0) {
       message.ccRecipients = cc.map((email) => ({
@@ -849,16 +1102,20 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       }));
     }
 
-    const response = await fetchFromOutlook("/me/sendMail", accessToken, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        message,
-        saveToSentItems,
-      }),
-    });
+    const response = await fetchFromOutlook(
+      `${basePath}/sendMail`,
+      accessToken,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message,
+          saveToSentItems,
+        }),
+      }
+    );
 
     if (!response.ok) {
       const errorText = await getErrorText(response);
@@ -870,6 +1127,198 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     }
 
     return new Ok([{ type: "text" as const, text: "Email sent successfully" }]);
+  },
+
+  move_messages: async (
+    { messageIds, destinationFolderPath, sharedMailboxAddress },
+    { authInfo }
+  ) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const basePath = getMailboxBasePath(sharedMailboxAddress);
+
+    const resolved = await resolveFolderPath(
+      destinationFolderPath,
+      basePath,
+      accessToken
+    );
+    if ("error" in resolved) {
+      return new Err(resolved.error);
+    }
+
+    const moveResults = await concurrentExecutor(
+      messageIds,
+      async (
+        messageId
+      ): Promise<
+        | { messageId: string; ok: true; newMessageId: string }
+        | {
+            messageId: string;
+            ok: false;
+            error: string;
+            retryAfterSeconds?: number;
+          }
+      > => {
+        const encodedMessageId = encodeURIComponent(messageId);
+        const response = await fetchFromOutlook(
+          `${basePath}/messages/${encodedMessageId}/move`,
+          accessToken,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ destinationId: resolved.folderId }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await getErrorText(response);
+          const error =
+            response.status === 404
+              ? "Message not found"
+              : `${response.status} ${response.statusText} - ${errorText}`;
+          const retryAfterSeconds =
+            response.status === 429 || response.status === 503
+              ? parseRetryAfterSeconds(response.headers.get("Retry-After"))
+              : undefined;
+          return retryAfterSeconds !== undefined
+            ? { messageId, ok: false, error, retryAfterSeconds }
+            : { messageId, ok: false, error };
+        }
+
+        const result = await response.json();
+        return { messageId, ok: true, newMessageId: result.id };
+      },
+      { concurrency: 3 }
+    );
+
+    const succeeded = moveResults.filter((r) => r.ok);
+    const failed = moveResults.filter((r) => !r.ok);
+    const throttled = failed.filter((r) => r.retryAfterSeconds !== undefined);
+    const maxRetryAfterSeconds = throttled.reduce(
+      (max, r) => Math.max(max, r.retryAfterSeconds ?? 0),
+      0
+    );
+    const pathLabel = destinationFolderPath.join(" / ");
+
+    const summaryParts: string[] = [];
+    summaryParts.push(
+      `Moved ${succeeded.length}/${messageIds.length} message(s) to "${pathLabel}".`
+    );
+    if (resolved.createdSegments.length > 0) {
+      summaryParts.push(
+        `New folder segments created: ${resolved.createdSegments.join(", ")}.`
+      );
+    }
+    if (failed.length > 0) {
+      summaryParts.push(`${failed.length} failed.`);
+    }
+    if (throttled.length > 0) {
+      summaryParts.push(
+        `${throttled.length} throttled by Microsoft Graph — retry after ${maxRetryAfterSeconds} second(s).`
+      );
+    }
+
+    return new Ok([
+      { type: "text" as const, text: summaryParts.join(" ") },
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            destinationFolderPath,
+            createdSegments: resolved.createdSegments,
+            succeeded,
+            failed,
+          },
+          null,
+          2
+        ),
+      },
+    ]);
+  },
+
+  get_message_body: async (
+    {
+      messageId,
+      preferredContentType = "text",
+      startChar = 0,
+      endChar,
+      sharedMailboxAddress,
+    },
+    { authInfo }
+  ) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const basePath = getMailboxBasePath(sharedMailboxAddress);
+    const encodedId = encodeURIComponent(messageId);
+
+    const params = new URLSearchParams();
+    params.append("$select", "id,subject,from,receivedDateTime,body");
+
+    const fetchHeaders: Record<string, string> = {};
+    if (preferredContentType === "text") {
+      fetchHeaders["Prefer"] = 'outlook.body-content-type="text"';
+    }
+
+    const response = await fetchFromOutlook(
+      `${basePath}/messages/${encodedId}?${params.toString()}`,
+      accessToken,
+      { method: "GET", headers: fetchHeaders }
+    );
+
+    if (!response.ok) {
+      const errorText = await getErrorText(response);
+      if (response.status === 404) {
+        return new Err(
+          new MCPError(`Message not found: ${messageId}`, { tracked: false })
+        );
+      }
+      return new Err(
+        new MCPError(
+          `Failed to get message body: ${response.status} ${response.statusText} - ${errorText}`
+        )
+      );
+    }
+
+    const message = (await response.json()) as OutlookMessage;
+    const rawBody = message.body?.content ?? "";
+    const actualContentType = message.body?.contentType ?? preferredContentType;
+    const totalLength = rawBody.length;
+
+    const MAX_CHUNK = 50_000;
+    const chunkEnd = Math.min(
+      endChar !== undefined ? endChar : startChar + MAX_CHUNK,
+      totalLength
+    );
+    const bodySlice = rawBody.slice(startChar, chunkEnd);
+    const moreAvailable = chunkEnd < totalLength;
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            messageId: message.id,
+            subject: message.subject,
+            from: message.from,
+            receivedDateTime: message.receivedDateTime,
+            contentType: actualContentType,
+            bodyLength: totalLength,
+            startChar,
+            endChar: chunkEnd,
+            moreAvailable,
+            body: bodySlice,
+          },
+          null,
+          2
+        ),
+      },
+    ]);
   },
 
   get_contacts: async (

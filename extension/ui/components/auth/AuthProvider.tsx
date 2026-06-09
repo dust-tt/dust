@@ -56,6 +56,8 @@ const EXTENSION_SUBSCRIPTION: SubscriptionType = {
         isSlackBotAllowed: false,
         maxMessages: -1,
         maxMessagesTimeframe: "lifetime",
+        maxAwuCredits: -1,
+        maxAwuCreditsTimeframe: "lifetime",
         isDeepDiveAllowed: false,
       },
       connections: {
@@ -72,7 +74,13 @@ const EXTENSION_SUBSCRIPTION: SubscriptionType = {
         count: -1,
         documents: { count: -1, sizeMb: -1 },
       },
-      users: { maxUsers: -1, isSSOAllowed: false, isSCIMAllowed: false },
+      users: {
+        maxUsers: -1,
+        maxFreeUsers: -1,
+        maxLifetimeFreeUsers: -1,
+        isSSOAllowed: false,
+        isSCIMAllowed: false,
+      },
       vaults: { maxVaults: -1 },
       capabilities: { images: { maxImagesPerWeek: -1 } },
       canUseProduct: true,

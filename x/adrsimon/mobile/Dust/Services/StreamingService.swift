@@ -22,9 +22,15 @@ final private class AuthPreservingDelegate: NSObject, URLSessionTaskDelegate {
         completionHandler: @escaping (URLRequest?) -> Void
     ) {
         var redirected = request
-        redirected.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        redirected.setBearer(accessToken)
         completionHandler(redirected)
     }
+}
+
+private enum SSEConfig {
+    // High because the server sends no heartbeat; idle streams must not time out.
+    static let requestTimeoutSeconds: TimeInterval = 3600
+    static let resourceTimeoutSeconds: TimeInterval = 86400
 }
 
 /// Lightweight SSE client using URLSession async bytes.
@@ -46,6 +52,7 @@ enum StreamingService {
                     )
                     defer { session.invalidateAndCancel() }
                     try await readLines(from: bytes, into: continuation)
+                    logger.info("SSE disconnected: \(endpoint)")
                     continuation.finish()
                 } catch {
                     if !Task.isCancelled {
@@ -56,31 +63,19 @@ enum StreamingService {
             }
 
             continuation.onTermination = { _ in
+                logger.info("SSE cancelled: \(endpoint)")
                 task.cancel()
             }
         }
     }
 
-    /// Connects with token refresh on 401, invalidating the failed session before retry.
     private static func connectWithRetry(
         endpoint: String,
         tokenProvider: TokenProvider,
         lastEventId: String?
     ) async throws -> (URLSession.AsyncBytes, URLSession) {
-        let token = try await tokenProvider.validAccessToken()
-        do {
-            return try await connect(
-                endpoint: endpoint,
-                accessToken: token,
-                lastEventId: lastEventId
-            )
-        } catch APIError.httpError(statusCode: 401, _) {
-            let freshToken = try await tokenProvider.refreshedAccessToken()
-            return try await connect(
-                endpoint: endpoint,
-                accessToken: freshToken,
-                lastEventId: lastEventId
-            )
+        try await APIClient.withAuthRetry(tokenProvider: tokenProvider) { token in
+            try await connect(endpoint: endpoint, accessToken: token, lastEventId: lastEventId)
         }
     }
 
@@ -96,7 +91,10 @@ enum StreamingService {
             lastEventId: lastEventId
         )
         let delegate = AuthPreservingDelegate(accessToken: accessToken)
-        let session = URLSession(configuration: .default, delegate: delegate, delegateQueue: nil)
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForRequest = SSEConfig.requestTimeoutSeconds
+        configuration.timeoutIntervalForResource = SSEConfig.resourceTimeoutSeconds
+        let session = URLSession(configuration: configuration, delegate: delegate, delegateQueue: nil)
 
         logger.info("SSE connecting: \(endpoint)")
         let (bytes, response) = try await session.bytes(for: request)
@@ -136,7 +134,7 @@ enum StreamingService {
         }
 
         var request = URLRequest(url: url)
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.setBearer(accessToken)
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         return request
     }

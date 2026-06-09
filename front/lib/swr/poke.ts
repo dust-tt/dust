@@ -1,18 +1,22 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { GetDataSourcePermissionsResponseBody } from "@app/lib/api/data_sources/managed_permissions";
+import type {
+  GetPokeNoWorkspaceAuthContextResponseType,
+  GetPokeWorkspaceAuthContextResponseType,
+} from "@app/lib/api/poke/auth_context";
+import type {
+  GetPokeCouponRedemptionsResponseBody,
+  GetPokeCouponsResponseBody,
+} from "@app/lib/api/poke/coupons";
+import type { GetPokeFeaturesResponseBody } from "@app/lib/api/poke/features";
+import type { GetPokeMetronomePackagesResponseBody } from "@app/lib/api/poke/metronome";
+import type { GetPokePlansResponseBody } from "@app/lib/api/poke/plans";
+import type { PostPokeStripeCustomerCurrencyResponseBody } from "@app/lib/api/poke/stripe_customers";
+import type { GetRegionResponseType } from "@app/lib/api/regions/config";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { isRegionRedirect } from "@app/lib/swr/workspaces";
-import type { GetPokeNoWorkspaceAuthContextResponseType } from "@app/pages/api/poke/auth-context";
-import type { GetPokeCouponRedemptionsResponseBody } from "@app/pages/api/poke/coupons/[couponId]/redemptions";
-import type { GetPokeCouponsResponseBody } from "@app/pages/api/poke/coupons/index";
-import type { GetPokeMetronomePackagesResponseBody } from "@app/pages/api/poke/metronome/packages";
-import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
-import type { GetRegionResponseType } from "@app/pages/api/poke/region";
-import type { PostPokeStripeCustomerCurrencyResponseBody } from "@app/pages/api/poke/stripe/customers/currency";
-import type { GetPokeWorkspaceAuthContextResponseType } from "@app/pages/api/poke/workspaces/[wId]/auth-context";
-import type { GetPokeFeaturesResponseBody } from "@app/pages/api/poke/workspaces/[wId]/features";
-import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
 import type { ConnectorPermission } from "@app/types/connectors/connectors_api";
 import type { DataSourceType } from "@app/types/data_source";
 import {
@@ -147,6 +151,34 @@ export function usePokeArchiveCoupon() {
     }
     await mutate("/api/poke/coupons");
     sendNotification({ title: "Coupon archived", type: "success" });
+  };
+}
+
+export function usePokeCancelPendingContract() {
+  const sendNotification = useSendNotification();
+
+  return async (owner: LightWorkspaceType): Promise<boolean> => {
+    const r = await clientFetch(
+      `/api/poke/workspaces/${owner.sId}/cancel_pending_contract`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }
+    );
+    if (!r.ok) {
+      sendNotification({
+        title: "Error cancelling pending subscription",
+        type: "error",
+        description: `Something went wrong: ${r.status} ${await r.text()}`,
+      });
+      return false;
+    }
+    sendNotification({
+      title: "Pending subscription cancelled",
+      type: "success",
+    });
+    return true;
   };
 }
 

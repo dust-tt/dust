@@ -1,9 +1,8 @@
-import { Hono } from "hono";
-import { z } from "zod";
-
 import { updateMCPServerHeartbeat } from "@app/lib/api/actions/mcp/client_side_registry";
-
-import { validate } from "@front-api/middleware/validator";
+import { maybePersistDustDesktopClientSideMCPServerRegistration } from "@app/lib/api/actions/mcp/dust_desktop";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 const PostMCPHeartbeatRequestBodySchema = z.object({
   serverId: z.string(),
@@ -27,14 +26,15 @@ export type HeartbeatMCPResponseType =
   | MCPServerHeartbeatFailure;
 
 // Mounted at /api/w/:wId/mcp/heartbeat.
-const app = new Hono();
+const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostMCPHeartbeatRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const { serverId } = c.req.valid("json");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { serverId } = ctx.req.valid("json");
 
     const result = await updateMCPServerHeartbeat(auth, {
       serverId,
@@ -45,10 +45,14 @@ app.post(
       // Return 200 with success: false instead of 4xx to avoid triggering
       // monitoring alerts for expected conditions (expired/terminated
       // connections).
-      return c.json({ success: false });
+      return ctx.json({ success: false });
     }
 
-    return c.json(result);
+    await maybePersistDustDesktopClientSideMCPServerRegistration(auth, {
+      serverId,
+    });
+
+    return ctx.json(result);
   }
 );
 

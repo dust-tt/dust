@@ -217,12 +217,12 @@ export function getSessionName(envName: string): string {
 export const MAIN_SESSION_NAME = "dust-hive-main";
 
 /**
- * Tab display names (shorter names for better display in tab bar)
+ * Tab display names (shorter names for better display in tab bar).
  */
-export const TAB_NAMES: Record<ServiceName, string> = {
+const TAB_NAMES: Record<ServiceName, string> = {
   sparkle: "sparkle",
   sdk: "sdk",
-  front: "front",
+  "front-api": "front-api",
   core: "core",
   oauth: "oauth",
   connectors: "connectors",
@@ -231,3 +231,7 @@ export const TAB_NAMES: Record<ServiceName, string> = {
   "front-spa-app": "spa-app",
   viz: "viz",
 };
+
+export function getTabName(service: ServiceName): string {
+  return TAB_NAMES[service];
+}

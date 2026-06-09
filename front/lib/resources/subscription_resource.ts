@@ -1,13 +1,7 @@
-import assert from "node:assert";
 import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  BUSINESS_PLAN_COST_MONTHLY,
-  PRO_PLAN_COST_MONTHLY,
-  PRO_PLAN_COST_YEARLY,
-} from "@app/lib/client/subscription";
 import { DustError } from "@app/lib/error";
 import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
 import {
@@ -18,11 +12,7 @@ import {
   syncContractQuantities,
 } from "@app/lib/metronome/contracts";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
-import {
-  LEGACY_BUSINESS_PACKAGE_ALIAS,
-  LEGACY_PRO_ANNUAL_PACKAGE_ALIAS,
-  LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
-} from "@app/lib/metronome/types";
+import { LEGACY_BUSINESS_PACKAGE_ALIAS } from "@app/lib/metronome/types";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
@@ -31,25 +21,21 @@ import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
   FREE_TEST_PLAN_CODE,
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
   isFreePlan,
   isProOrBusinessPlanCode,
   isProPlanPrefix,
   isUpgraded,
   isWhitelistedBusinessPlan,
-  PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   cancelSubscriptionImmediately,
-  createEmbeddedMetronomeSetupCheckoutSession,
   createStripeBusinessSubscription,
-  createStripeSubscriptionCheckoutSession,
   getBusinessProPlanProductId,
   getProPlanProductId,
   getStripeSubscription,
-  type SupportedPaymentMethod,
 } from "@app/lib/plans/stripe";
 import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial/limits";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
@@ -74,8 +60,6 @@ import {
 } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import {
-  type BillingPeriod,
-  type CheckoutUrlResult,
   type EnterpriseUpgradeFormType,
   isSubscriptionMetronomeBilled,
   type PlanType,
@@ -87,15 +71,20 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
-import type {
-  LightWorkspaceType,
-  UserType,
-  WorkspaceType,
-} from "@app/types/user";
+import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import keyBy from "lodash/keyBy";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 import type Stripe from "stripe";
+
+export type GetSubscriptionPricingResponseBody = {
+  perSeatPricing: SubscriptionPerSeatPricing | null;
+};
+
+export type GetSubscriptionStatusResponseBody = {
+  shouldRedirect: boolean;
+  redirectUrl: string | null;
+};
 
 const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
 const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
@@ -154,6 +143,27 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
 
   get isMetronomeOnlyBilled(): boolean {
     return !!this.metronomeContractId && !this.stripeSubscriptionId;
+  }
+
+  /**
+   * Terminal status to use when ending this subscription as part of a contract
+   * swap (`activatePending` / `swapMetronomeContract`).
+   *
+   * A subscription backed by a Stripe subscription converges via Stripe's
+   * `customer.subscription.deleted` webhook, so it is ended as
+   * `ended_backend_only` and only becomes `ended` once Stripe confirms.
+   *
+   * A Metronome-only (no Stripe) or free subscription has no such follow-up: in
+   * a swap the converging `contract.end` for the old contract fires
+   * concurrently with the `contract.start` that triggers the swap, and may be
+   * processed *before* we set the status. When that happens `contract.end`
+   * takes the "active + successor → skip" branch and is ack'd, so no later
+   * webhook is left to converge the sub — stranding it in `ended_backend_only`
+   * (see lib/api/metronome/process_webhook.ts). Finalize these directly to
+   * `ended`.
+   */
+  private get swapEndedStatus(): "ended" | "ended_backend_only" {
+    return this.stripeSubscriptionId ? "ended_backend_only" : "ended";
   }
 
   static async makeNew(
@@ -871,7 +881,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     }
 
     const plan = await this.findPlanOrThrow(enterpriseDetails.planCode);
-    if (!isEntreprisePlanPrefix(plan.code)) {
+    if (!isEnterprisePlanPrefix(plan.code)) {
       throw new Error(`Plan ${plan.code} is not an enterprise plan.`);
     }
     // End the current subscription if any.
@@ -991,7 +1001,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     }
 
     // Ugrade to Enterprise is not allowed through this function.
-    if (isEntreprisePlanPrefix(newPlan.code)) {
+    if (isEnterprisePlanPrefix(newPlan.code)) {
       throw new Error(
         `Cannot subscribe to plan ${planCode}: Enterprise Plans requires a special process.`
       );
@@ -1206,104 +1216,6 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     }
   }
 
-  async getCheckoutUrlForUpgrade(
-    owner: WorkspaceType,
-    user: UserType,
-    billingPeriod: BillingPeriod,
-    {
-      useMetronomeBilling,
-      couponCode,
-    }: {
-      useMetronomeBilling: boolean;
-      couponCode?: string;
-    }
-  ): Promise<CheckoutUrlResult> {
-    const isBusiness = !!owner.metadata?.isBusiness;
-    const { planCode, allowedPaymentMethods, metronomePackageAlias } =
-      isBusiness
-        ? {
-            planCode: PRO_PLAN_SEAT_39_CODE,
-            allowedPaymentMethods: [
-              "card",
-              "sepa_debit",
-            ] satisfies SupportedPaymentMethod[],
-            metronomePackageAlias: LEGACY_BUSINESS_PACKAGE_ALIAS,
-          }
-        : {
-            planCode: PRO_PLAN_SEAT_29_CODE,
-            allowedPaymentMethods: ["card"] satisfies SupportedPaymentMethod[],
-            metronomePackageAlias:
-              billingPeriod === "yearly"
-                ? LEGACY_PRO_ANNUAL_PACKAGE_ALIAS
-                : LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
-          };
-
-    const proPlan = await SubscriptionResource.findPlanOrThrow(planCode);
-
-    // We verify that the workspace is not already subscribed to the Pro plan product.
-    const isAlreadyOnProPlan =
-      await this.isSubscriptionOnProOrBusinessPlan(owner);
-    assert(
-      !isAlreadyOnProPlan,
-      `Cannot subscribe to plan ${planCode}: already subscribed to a Pro plan.`
-    );
-
-    if (useMetronomeBilling) {
-      const seatCount = await MembershipResource.countActiveSeatsInWorkspace(
-        owner.sId
-      );
-
-      // Per-period per-seat price in cents. Business has no yearly variant.
-      const pricePerMonth = isBusiness
-        ? BUSINESS_PLAN_COST_MONTHLY
-        : billingPeriod === "yearly"
-          ? PRO_PLAN_COST_YEARLY
-          : PRO_PLAN_COST_MONTHLY;
-      const pricePerMonthCents = pricePerMonth * 100;
-      const monthsInPeriod = !isBusiness && billingPeriod === "yearly" ? 12 : 1;
-      const pricePerSeatCents = pricePerMonthCents * monthsInPeriod;
-
-      const { clientSecret, sessionId } =
-        await createEmbeddedMetronomeSetupCheckoutSession({
-          allowedPaymentMethods,
-          metronomePackageAlias,
-          owner,
-          planCode,
-          billingPeriod,
-          seatCount,
-          pricePerSeatCents,
-          couponCode,
-          user,
-        });
-      return {
-        mode: "embedded",
-        clientSecret,
-        sessionId,
-        plan: renderPlanFromModel({ plan: proPlan }),
-      };
-    }
-
-    const checkoutUrl = await createStripeSubscriptionCheckoutSession({
-      owner,
-      user,
-      billingPeriod,
-      planCode,
-      metronomePackageAlias,
-      allowedPaymentMethods,
-    });
-
-    assert(
-      checkoutUrl,
-      `Cannot subscribe to plan ${planCode}: error while creating checkout session (URL is null).`
-    );
-
-    return {
-      mode: "hosted",
-      checkoutUrl,
-      plan: renderPlanFromModel({ plan: proPlan }),
-    };
-  }
-
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
@@ -1345,9 +1257,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
    * different Metronome contract and plan code. Used by the contract.start
    * webhook when an admin-scheduled upgrade activates — preserves the
    * plan-change history rather than mutating the existing subscription in
-   * place. A billed current sub is ended as `ended_backend_only` so the
-   * contract.end webhook does not scrub the workspace; a non-billed (free)
-   * current sub is ended as `ended` since no external webhook will close it.
+   * place. The current sub is ended via `swapEndedStatus`: Stripe-backed subs
+   * as `ended_backend_only` (Stripe converges them), Metronome-only and free
+   * subs directly as `ended` (no follow-up webhook to rely on). The old
+   * `contract.end` then no-ops on the already-`ended` sub instead of scrubbing.
    */
   async swapMetronomeContract({
     metronomeContractId,
@@ -1357,7 +1270,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     planCode: string;
   }): Promise<void> {
     const newPlan = await SubscriptionResource.findPlanOrThrow(planCode);
-    const endedStatus = this.isBilled ? "ended_backend_only" : "ended";
+    const endedStatus = this.swapEndedStatus;
 
     await withTransaction(async (t) => {
       await this.markAsEnded(endedStatus, t);
@@ -1402,10 +1315,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
           t
         );
       if (currentActive && !currentActive.isLegacyFreeNoPlan()) {
-        const endedStatus = currentActive.isBilled
-          ? "ended_backend_only"
-          : "ended";
-        await currentActive.markAsEnded(endedStatus, t);
+        await currentActive.markAsEnded(currentActive.swapEndedStatus, t);
       }
       await this.update({ status: "active" }, t);
       const workspaceId = this.workspaceId;
@@ -1706,7 +1616,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     return activeSubscription;
   }
 
-  private async isSubscriptionOnProOrBusinessPlan(
+  async isSubscriptionOnProOrBusinessPlan(
     owner: WorkspaceType
   ): Promise<boolean> {
     // Check Stripe first (shadow-billed subscriptions have both IDs).

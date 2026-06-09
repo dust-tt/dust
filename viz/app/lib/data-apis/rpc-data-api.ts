@@ -26,7 +26,7 @@ export class RPCDataAPI implements VisualizationDataAPI {
 
   async fetchFile(fileId: string): Promise<File | null> {
     try {
-      console.log(">> RPCDataAPI: Fetching file via RPC", this.sendMessage);
+      console.log(">> RPCDataAPI: Fetching file via RPC", fileId);
 
       const res = await this.sendMessage("getFile", { fileId });
       const { fileBlob: blob } = res;
@@ -44,7 +44,6 @@ export class RPCDataAPI implements VisualizationDataAPI {
 
   async fetchCode(): Promise<string | null> {
     try {
-      console.log(">> RPCDataAPI: Fetching code via RPC", this.sendMessage);
       const result = await this.sendMessage("getCodeToExecute", null);
       const { code } = result;
       return code || null;

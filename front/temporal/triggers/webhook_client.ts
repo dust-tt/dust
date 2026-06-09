@@ -1,7 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
-import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -66,25 +65,26 @@ export async function launchTriggersWorkflows(
   auth: Authenticator,
   {
     filteredTriggers,
-    webhookSource,
-    body,
     webhookRequest,
   }: {
     filteredTriggers: WebhookTriggerType[];
-    webhookSource: WebhookSourceResource;
-    body: Record<string, unknown>;
     webhookRequest: WebhookRequestResource;
   }
 ): Promise<Result<void, Error>> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const webhookRequestId = webhookRequest.id;
 
+  const users = await UserResource.fetchByModelIds([
+    ...new Set(filteredTriggers.map((trigger) => trigger.editor)),
+  ]);
+  const userByModelId = new Map(users.map((user) => [user.id, user]));
+
   // Launch all the triggers' workflows concurrently.
   await concurrentExecutor(
     filteredTriggers,
     async (trigger) => {
       // Get the trigger's user and create a new authenticator
-      const user = await UserResource.fetchByModelId(trigger.editor);
+      const user = userByModelId.get(trigger.editor);
 
       if (!user) {
         logger.error(

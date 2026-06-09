@@ -299,10 +299,7 @@ export async function sendBatchCallToLlm(
   const batchMap = new Map<string, LLMStreamParameters>();
 
   const modelConfig = llm.getModelConfig();
-  const renderSkillsAsUserMessages = await hasFeatureFlag(
-    auth,
-    "skills_as_user_messages"
-  );
+  const useFramesV2 = await hasFeatureFlag(auth, "frames_skill_v2");
 
   for (const input of conversations) {
     // Store new messages in DB.
@@ -342,10 +339,10 @@ export async function sendBatchCallToLlm(
       leadingMessages,
       enabledSkills: enabledSkills ?? [],
       prompt: promptText,
-      renderSkillsAsUserMessages,
       tools,
       allowedTokenCount:
         modelConfig.contextSize - modelConfig.generationTokensCount,
+      useFramesV2,
     });
 
     if (modelConversationRes.isErr()) {

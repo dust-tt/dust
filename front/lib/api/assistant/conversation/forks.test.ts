@@ -13,6 +13,7 @@ import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import * as dataSourcesModule from "@app/lib/api/data_sources";
 import * as fileUpsertModule from "@app/lib/api/files/upsert";
 import * as fileUtilsModule from "@app/lib/api/files/utils";
+import * as uploadFrameContentModule from "@app/lib/api/viz/upload_frame_content";
 import { Authenticator } from "@app/lib/auth";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
@@ -170,6 +171,7 @@ async function createAgentMessage(
   const action = await AgentMCPActionModel.create({
     workspaceId: workspace.id,
     agentMessageId: agentMessage.id,
+    stepContentId: stepContent.id,
     mcpServerConfigurationId: generateRandomModelSId(),
     status: "succeeded",
     citationsAllocated: 0,
@@ -444,6 +446,15 @@ function mockFileContentStorage() {
   };
 }
 
+function mockUploadFrameContent() {
+  return vi
+    .spyOn(uploadFrameContentModule, "uploadFrameContent")
+    .mockImplementation(async (auth, file, content) => {
+      await file.uploadContent(auth, content);
+      return new Ok(undefined);
+    });
+}
+
 function mockContentNodeAttachments(nodeDataSourceViewId: number) {
   return vi
     .spyOn(contentFragmentModule, "getContentFragmentBlob")
@@ -514,6 +525,7 @@ describe("createConversationFork", () => {
         sourceMessageId: sourceMessage.sId,
         branchedAt: expect.any(Number),
         user: user.toJSON(),
+        fileCopyStatus: "pending",
       },
     });
     expect(childConversation.content).toHaveLength(1);
@@ -995,6 +1007,7 @@ describe("createConversationFork", () => {
     const { auth } = await createPrivateApiMockRequest();
     const copyToConversationSpy = mockCopyToConversation({ copyContent: true });
     const { getFileContentSpy, uploadContentSpy } = mockFileContentStorage();
+    const uploadFrameContentSpy = mockUploadFrameContent();
     const {
       getOrCreateConversationDataSourceFromFileSpy,
       processAndUpsertToDataSourceSpy,
@@ -1142,6 +1155,7 @@ const untouched = "prefix${referencedFile.sId}suffix";`
     getOrCreateConversationDataSourceFromFileSpy.mockRestore();
     processAndUpsertToDataSourceSpy.mockRestore();
     uploadContentSpy.mockRestore();
+    uploadFrameContentSpy.mockRestore();
   }, 15_000);
 
   it("only copies attachments that existed at the selected source message", async () => {

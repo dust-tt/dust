@@ -1,23 +1,21 @@
 import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
-import { useAppRouter } from "@app/lib/platform";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutInstructionsAndToolsWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  ClipboardIcon,
+  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  MoreIcon,
-  PencilSquareIcon,
-  TrashIcon,
+  Edit04,
+  Trash01,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 interface SkillDetailsButtonBarProps {
-  skill: SkillWithRelationsType;
+  skill: SkillWithoutInstructionsAndToolsWithRelationsType;
   owner: WorkspaceType;
   onClose: () => void;
 }
@@ -27,10 +25,9 @@ export function SkillDetailsButtonBar({
   owner,
   onClose,
 }: SkillDetailsButtonBarProps) {
-  const router = useAppRouter();
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
 
-  if (!skill.canWrite && !skill.isExtendable) {
+  if (!skill.canWrite) {
     return null;
   }
 
@@ -52,34 +49,18 @@ export function SkillDetailsButtonBar({
             tooltip="Edit skill"
             href={getSkillBuilderRoute(owner.sId, skill.sId)}
             variant="outline"
-            icon={PencilSquareIcon}
+            icon={Edit04}
           />
         )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button icon={MoreIcon} size="sm" variant="ghost" />
+            <Button icon={DotsHorizontal} size="sm" variant="ghost" />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
-            {skill.isExtendable && (
-              <DropdownMenuItem
-                label="Customize (New)"
-                icon={ClipboardIcon}
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  await router.push(
-                    getSkillBuilderRoute(
-                      owner.sId,
-                      "new",
-                      `extends=${skill.sId}`
-                    )
-                  );
-                }}
-              />
-            )}
             {skill.canWrite && (
               <DropdownMenuItem
                 label="Archive"
-                icon={TrashIcon}
+                icon={Trash01}
                 variant="warning"
                 onClick={(e) => {
                   e.stopPropagation();

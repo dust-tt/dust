@@ -55,7 +55,8 @@ export function getVisualizationPlugin(
   agentConfigurationId: string,
   conversationId: string,
   messageId: string,
-  vizUrl: string
+  vizUrl: string,
+  spaceId: string | null
 ) {
   const customRenderer = {
     visualization: (code: string, complete: boolean, lineStart: number) => {
@@ -71,6 +72,7 @@ export function getVisualizationPlugin(
           key={`viz-${messageId}-${lineStart}`}
           conversationId={conversationId}
           agentConfigurationId={agentConfigurationId}
+          spaceId={spaceId ?? undefined}
         />
       );
     },

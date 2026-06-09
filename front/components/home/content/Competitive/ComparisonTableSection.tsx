@@ -1,7 +1,7 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { H2 } from "@app/components/home/ContentComponents";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
-import { CheckIcon, Icon, XMarkIcon } from "@dust-tt/sparkle";
+import { Check, Icon, XClose } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ReactNode } from "react";
 
@@ -27,16 +27,12 @@ const STATUS_CONFIG: Record<FeatureStatus, { bg: string; content: ReactNode }> =
     yes: {
       bg: "bg-emerald-100",
       content: (
-        <Icon
-          visual={CheckIcon}
-          className="h-4 w-4 text-emerald-600"
-          size="sm"
-        />
+        <Icon visual={Check} className="h-4 w-4 text-emerald-600" size="sm" />
       ),
     },
     no: {
       bg: "bg-red-100",
-      content: <Icon visual={XMarkIcon} className="h-4 w-4 text-red-500" />,
+      content: <Icon visual={XClose} className="h-4 w-4 text-red-500" />,
     },
     partial: {
       bg: "bg-amber-100",

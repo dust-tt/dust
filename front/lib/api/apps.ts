@@ -1,12 +1,59 @@
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import type { AppResource } from "@app/lib/resources/app_resource";
+import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import tracer from "@app/logger/tracer";
+import type { AppType, SpecificationType } from "@app/types/app";
 import { CoreAPI } from "@app/types/core/core_api";
+import type { RunType } from "@app/types/run";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
+
+type AppDeploymentCheck = {
+  appId: string;
+  appHash: string;
+};
+
+export type GetAppsResponseBody = {
+  apps: AppType[];
+};
+
+export type PostAppResponseBody = {
+  app: AppType;
+};
+
+export type GetOrPostAppResponseBody = {
+  app: AppType;
+};
+
+export type GetRunsResponseBody = {
+  runs: RunType[];
+  total: number;
+};
+
+export type PostRunsResponseBody = {
+  run: RunType;
+};
+
+export type GetRunResponseBody = {
+  run: RunType;
+  spec: SpecificationType;
+};
+
+export type GetRunBlockResponseBody = {
+  run: RunType | null;
+};
+
+export type PostRunCancelResponseBody = {
+  success: boolean;
+};
+
+export type GetRunStatusResponseBody = {
+  run: RunType | null;
+};
 
 export async function softDeleteApp(
   auth: Authenticator,
@@ -40,9 +87,18 @@ export async function hardDeleteApp(
 ): Promise<Result<void, Error>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
-  const deleteProjectRes = await coreAPI.deleteProject({
-    projectId: app.dustAPIProjectId,
-  });
+  const deleteProjectRes = await tracer.trace(
+    "apps.hard_delete_app",
+    async (span) => {
+      span?.setTag("workspace.id", auth.workspace()?.sId ?? "unknown");
+      span?.setTag("app.s_id", app.sId);
+      span?.setTag("core.project_id", app.dustAPIProjectId);
+      return coreAPI.deleteProject({
+        projectId: app.dustAPIProjectId,
+        caller: "apps-api-hard-delete",
+      });
+    }
+  );
   if (deleteProjectRes.isErr()) {
     return new Err(new Error(deleteProjectRes.error.message));
   }
@@ -53,6 +109,38 @@ export async function hardDeleteApp(
   }
 
   return new Ok(undefined);
+}
+
+export async function checkAppsDeployment(
+  auth: Authenticator,
+  apps: AppDeploymentCheck[]
+): Promise<(AppDeploymentCheck & { deployed: boolean })[]> {
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+
+  const appResources = await AppResource.fetchByIds(auth, [
+    ...new Set(apps.map((appRequest) => appRequest.appId)),
+  ]);
+  const appById = new Map(appResources.map((app) => [app.sId, app]));
+
+  return concurrentExecutor(
+    apps,
+    async (appRequest) => {
+      const app = appById.get(appRequest.appId);
+      if (!app) {
+        return { ...appRequest, deployed: false };
+      }
+      const coreSpec = await coreAPI.getSpecification({
+        projectId: app.dustAPIProjectId,
+        specificationHash: appRequest.appHash,
+      });
+      if (coreSpec.isErr()) {
+        return { ...appRequest, deployed: false };
+      }
+
+      return { ...appRequest, deployed: true };
+    },
+    { concurrency: 5 }
+  );
 }
 
 export async function cloneAppToWorkspace(

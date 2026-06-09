@@ -1,30 +1,30 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import config from "@app/lib/api/config";
 import { getContentNodeFromCoreNode } from "@app/lib/api/content_nodes";
+import type { SearchTablesResponseBody } from "@app/lib/api/data_source_view";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
-
-import { dataSourceViewResource } from "@front-api/middleware/data_source_view_resource";
-import { spaceResource } from "@front-api/middleware/space_resource";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { withDataSourceView } from "@front-api/middlewares/with_data_source_view";
+import { withSpace } from "@front-api/middlewares/with_space";
 
 // Mounted under
 // /api/w/:wId/spaces/:spaceId/data_source_views/:dsvId/tables/search.
-const app = new Hono();
+const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
-  spaceResource({ requireCanReadOrAdministrate: true }),
-  dataSourceViewResource({ requireCanReadOrAdministrate: true }),
-  async (c) => {
-    const dataSourceView = c.get("dataSourceView");
-    const query = c.req.query("query");
+  withSpace({ requireCanReadOrAdministrate: true }),
+  withDataSourceView({ requireCanReadOrAdministrate: true }),
+  async (ctx): HandlerResult<SearchTablesResponseBody> => {
+    const dataSourceView = ctx.get("dataSourceView");
+    const query = ctx.req.query("query");
     if (!query || query.length < MIN_SEARCH_QUERY_SIZE) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
@@ -33,9 +33,9 @@ app.get(
       });
     }
 
-    const paginationRes = getCursorPaginationParams(c.req.query());
+    const paginationRes = getCursorPaginationParams(ctx.req.query());
     if (paginationRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_pagination_parameters",
@@ -62,7 +62,7 @@ app.get(
       },
     });
     if (searchRes.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -74,7 +74,7 @@ app.get(
       ...getContentNodeFromCoreNode(node, "table"),
       dataSourceView: dataSourceView.toJSON(),
     }));
-    return c.json({
+    return ctx.json({
       tables,
       nextPageCursor: searchRes.value.next_page_cursor,
       warningCode: searchRes.value.warning_code,

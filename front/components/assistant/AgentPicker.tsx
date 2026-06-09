@@ -1,19 +1,20 @@
 import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
 import { useClientType } from "@app/lib/context/clientType";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { filterAndSortAgents } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
+  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  MoreIcon,
-  RobotIcon,
+  Robot,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -30,6 +31,7 @@ interface AgentPickerProps {
   isLoading?: boolean;
   disabled?: boolean;
   mountPortal?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function AgentPicker({
@@ -44,8 +46,10 @@ export function AgentPicker({
   size = "md",
   isLoading = false,
   disabled = false,
+  onOpenChange,
 }: AgentPickerProps) {
   const clientType = useClientType();
+  const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
@@ -56,6 +60,7 @@ export function AgentPicker({
       open={isOpen}
       onOpenChange={(open) => {
         setIsOpen(open);
+        onOpenChange?.(open);
         if (open) {
           setSearchText("");
         }
@@ -67,7 +72,7 @@ export function AgentPicker({
           pickerButton
         ) : (
           <Button
-            icon={RobotIcon}
+            icon={Robot}
             variant="ghost-secondary"
             isSelect={showDropdownArrow}
             size={size}
@@ -83,7 +88,7 @@ export function AgentPicker({
         dropdownHeaders={
           <>
             <DropdownMenuSearchbar
-              autoFocus
+              autoFocus={!isMobile}
               name="search-agents"
               placeholder="Search Agents"
               value={searchText}
@@ -112,11 +117,11 @@ export function AgentPicker({
               icon={() => <Avatar size="xs" visual={c.pictureUrl} />}
               label={c.name}
               truncateText
-              className="group py-1"
+              className="group py-1 notranslate"
               endComponent={
                 onAgentDetailsClick && clientType !== "extension" ? (
                   <Button
-                    icon={MoreIcon}
+                    icon={DotsHorizontal}
                     variant="outline"
                     size="mini"
                     className="opacity-0 group-hover:opacity-100"

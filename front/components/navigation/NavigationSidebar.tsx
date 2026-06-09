@@ -3,7 +3,7 @@ import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideP
 import { SidebarBanners } from "@app/components/navigation/AppStatusBanner";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
-import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
+import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { UserMenu } from "@app/components/UserMenu";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -15,16 +15,17 @@ import { isAdmin } from "@app/types/user";
 import {
   CollapseButton,
   cn,
+  LayoutLeft,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  XMarkIcon,
+  NavTabPill,
+  NavTabPillContent,
+  NavTabPillList,
+  NavTabPillTrigger,
+  XClose,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useContext, useMemo, useState } from "react";
+import React, { useCallback, useContext, useMemo } from "react";
 
 interface NavigationSidebarProps {
   children: React.ReactNode;
@@ -67,12 +68,14 @@ export const NavigationSidebar = React.forwardRef<
     () => getTopNavigationTabs(owner, spaceMenuButtonRef),
     [owner, spaceMenuButtonRef]
   );
+
   const currentTab = useMemo(
     () => navs.find((n) => n.isCurrent(activePath)),
     [navs, activePath]
   );
 
   const { setSidebarOpen } = useContext(SidebarContext);
+  const { setIsNavigationBarOpen } = useDesktopNavigation();
 
   return (
     <div ref={ref} className="flex min-w-0 grow flex-col">
@@ -81,45 +84,48 @@ export const NavigationSidebar = React.forwardRef<
           <SidebarBanners />
         </div>
         {navs.length > 1 && (
-          <Tabs value={currentTab?.id ?? "conversations"}>
-            <div className="border-b border-separator px-2 dark:border-separator-night">
-              <TabsList border={false}>
-                {navs.map((tab) => (
-                  <div key={tab.id} ref={tab.ref ?? undefined}>
-                    <TabsTrigger
-                      key={tab.id}
-                      value={tab.id}
-                      label={tab.hideLabel ? undefined : tab.label}
-                      tooltip={tab.hideLabel ? tab.label : undefined}
-                      icon={tab.icon}
-                      href={tab.href}
-                    />
-                  </div>
-                ))}
-                {isMobile && (
-                  <div className="flex flex-grow justify-end">
-                    <TabsTrigger
-                      value="close-icon"
-                      icon={XMarkIcon}
-                      onClick={() => setSidebarOpen(false)}
-                    />
-                  </div>
+          <NavTabPill value={currentTab?.id ?? "conversations"}>
+            <NavTabPillList className="mx-sidebar-side-spacing">
+              {navs.map((tab) => (
+                <div key={tab.id} ref={tab.ref ?? undefined}>
+                  <NavTabPillTrigger
+                    className="notranslate"
+                    value={tab.id}
+                    icon={tab.icon}
+                    href={tab.href}
+                  >
+                    {tab.label}
+                  </NavTabPillTrigger>
+                </div>
+              ))}
+              <div className="flex flex-grow justify-end">
+                {isMobile ? (
+                  <NavTabPillTrigger
+                    value="close-icon"
+                    icon={XClose}
+                    onClick={() => setSidebarOpen(false)}
+                  />
+                ) : (
+                  <NavTabPillTrigger
+                    icon={LayoutLeft}
+                    value="close-icon"
+                    onClick={() => setIsNavigationBarOpen(false)}
+                  />
                 )}
-              </TabsList>
-            </div>
+              </div>
+            </NavTabPillList>
             {navs.map((tab) => (
-              <TabsContent key={tab.id} value={tab.id}>
-                <NavigationList className="px-3">
+              <NavTabPillContent
+                key={tab.id}
+                value={tab.id}
+                className="mx-sidebar-side-spacing"
+              >
+                <NavigationList>
                   {subNavigation &&
                     tab.isCurrent(activePath) &&
                     subNavigation.map((nav) => (
                       <React.Fragment key={`nav-${nav.label}`}>
-                        {nav.label && (
-                          <NavigationListLabel
-                            label={nav.label}
-                            variant={nav.variant}
-                          />
-                        )}
+                        {nav.label && <NavigationListLabel label={nav.label} />}
                         {nav.menus
                           .filter(
                             (menu) =>
@@ -127,22 +133,21 @@ export const NavigationSidebar = React.forwardRef<
                               featureFlags.includes(menu.featureFlag)
                           )
                           .map((menu) => (
-                            <React.Fragment key={menu.id}>
-                              <NavigationListItem
-                                selected={menu.current}
-                                label={menu.label}
-                                icon={menu.icon}
-                                href={menu.href}
-                                target={menu.target}
-                              />
-                            </React.Fragment>
+                            <NavigationListItem
+                              key={menu.id}
+                              selected={menu.current}
+                              label={menu.label}
+                              icon={menu.icon}
+                              href={menu.href}
+                              target={menu.target}
+                            />
                           ))}
                       </React.Fragment>
                     ))}
                 </NavigationList>
-              </TabsContent>
+              </NavTabPillContent>
             ))}
-          </Tabs>
+          </NavTabPill>
         )}
       </div>
       <div className="flex grow flex-col">{children}</div>
@@ -152,17 +157,7 @@ export const NavigationSidebar = React.forwardRef<
         </div>
       )}
       {user && (
-        <div
-          className={cn(
-            "flex items-center border-t px-2 py-2",
-            "border-border-dark dark:border-border-darker-night",
-            "text-foreground dark:text-foreground-night"
-          )}
-        >
-          <UserMenu user={user} owner={owner} subscription={subscription} />
-          <div className="flex-1" />
-          <HelpDropdown owner={owner} user={user} />
-        </div>
+        <UserMenu user={user} owner={owner} subscription={subscription} />
       )}
     </div>
   );
@@ -183,18 +178,20 @@ export const ToggleNavigationSidebarButton = React.forwardRef<
   }: ToggleNavigationSidebarButtonProps,
   ref
 ) {
-  const [direction, setDirection] = useState<"left" | "right">("left");
-
   const handleClick = useCallback(() => {
     toggleNavigationBarVisibility(!isNavigationBarOpened);
-    setDirection((prevDirection) =>
-      prevDirection === "left" ? "right" : "left"
-    );
   }, [isNavigationBarOpened, toggleNavigationBarVisibility]);
+
+  if (isNavigationBarOpened) {
+    return null;
+  }
 
   return (
     <div ref={ref} onClick={handleClick} className="lg:top-1/2 lg:flex lg:w-5">
-      <CollapseButton direction={direction} variant="light" />
+      <CollapseButton
+        direction={isNavigationBarOpened ? "left" : "right"}
+        variant="light"
+      />
     </div>
   );
 });

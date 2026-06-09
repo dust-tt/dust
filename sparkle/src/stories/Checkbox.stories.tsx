@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
+import { expect } from "storybook/test";
 
 import { CHECKBOX_SIZES } from "@sparkle/components/Checkbox";
 
@@ -113,5 +114,31 @@ export const Default: Story = {
       return <CheckboxWithText text={text} {...props} />;
     }
     return <Checkbox {...props} />;
+  },
+};
+
+export const Checked: Story = {
+  args: { checked: true },
+  tags: ["ai-generated", "needs-work"],
+};
+
+export const Indeterminate: Story = {
+  args: { checked: "partial" },
+  tags: ["ai-generated", "needs-work"],
+};
+
+export const Disabled: Story = {
+  args: { checked: true, disabled: true },
+  tags: ["ai-generated", "needs-work"],
+};
+
+// Interaction: an uncontrolled checkbox must flip its aria-checked state on click.
+export const Interactive: Story = {
+  tags: ["ai-generated", "needs-work"],
+  play: async ({ canvas, userEvent }) => {
+    const checkbox = canvas.getByRole("checkbox");
+    await expect(checkbox).toHaveAttribute("aria-checked", "false");
+    await userEvent.click(checkbox);
+    await expect(checkbox).toHaveAttribute("aria-checked", "true");
   },
 };

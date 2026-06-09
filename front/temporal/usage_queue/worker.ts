@@ -6,8 +6,12 @@ import * as activities from "@app/temporal/usage_queue/activities";
 import { launchMetronomeGaugeSchedule } from "@app/temporal/usage_queue/client";
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
+import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 import { QUEUE_NAME } from "./config";
+
+// Must match the deployment's terminationGracePeriodSeconds minus 10s buffer.
+const SHUTDOWN_GRACE_TIME_MS = 70 * 1_000;
 
 export async function runUpdateWorkspaceUsageWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
@@ -21,6 +25,7 @@ export async function runUpdateWorkspaceUsageWorker() {
     maxConcurrentActivityTaskExecutions: 32,
     connection,
     namespace,
+    shutdownGraceTime: SHUTDOWN_GRACE_TIME_MS,
     interceptors: {
       activity: [
         (ctx: Context) => {
@@ -29,6 +34,15 @@ export async function runUpdateWorkspaceUsageWorker() {
           };
         },
       ],
+    },
+    bundlerOptions: {
+      // Update the webpack config to use aliases from our tsconfig.json.
+      webpackConfigHook: (config) => {
+        const plugins = config.resolve?.plugins ?? [];
+
+        config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];
+        return config;
+      },
     },
   });
 

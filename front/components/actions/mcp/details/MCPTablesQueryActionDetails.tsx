@@ -15,7 +15,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import { CodeBlock, TableIcon } from "@dust-tt/sparkle";
+import { CodeBlock, Table } from "@dust-tt/sparkle";
 
 export function MCPTablesQueryActionDetails({
   toolOutput,
@@ -44,7 +44,7 @@ export function MCPTablesQueryActionDetails({
       actionName={
         displayContext === "conversation" ? "Querying tables" : "Query tables"
       }
-      visual={TableIcon}
+      visual={Table}
     >
       {displayContext === "conversation" ? (
         thinkingBlocks.length > 0 && (
@@ -94,11 +94,7 @@ export function MCPTablesQueryActionDetails({
                 Results
               </span>
               {generatedFiles.map((file) => (
-                <ToolGeneratedFileDetails
-                  key={file.fileId}
-                  resource={file}
-                  owner={owner}
-                />
+                <ToolGeneratedFileDetails key={file.fileId} resource={file} />
               ))}
             </div>
           )}

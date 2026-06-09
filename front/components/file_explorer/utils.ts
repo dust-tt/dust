@@ -1,18 +1,22 @@
 import { getFilePreviewConfig } from "@app/components/spaces/FilePreviewSheet";
-import type { GCSMountEntry } from "@app/lib/api/files/gcs_mount/files";
+import type { FileSystemEntry } from "@app/lib/api/file_system/types";
 import {
   frameSlideshowContentType,
   isInteractiveContentType,
 } from "@app/types/files";
 
 import type {
+  FileEntry,
   FileExplorerBucket,
+  FileExplorerEntry,
   FileExplorerSortMode,
   FilePanelCategory,
-  SandboxTreeNode,
+  FileSystemTreeNode,
 } from "./types";
 
 export const MIN_FILES_FOR_SEARCH = 10;
+
+export const ROOT_FOLDER_LABEL = "All files";
 
 /**
  * Category display configuration, ordered by priority.
@@ -38,7 +42,7 @@ export const CATEGORY_CONFIG: {
  * unmapped type) return null and only surface under the "All" chip.
  */
 export function getFileExplorerBucket(
-  node: SandboxTreeNode
+  node: FileSystemTreeNode
 ): FileExplorerBucket | null {
   if (node.isDirectory) {
     return "folders";
@@ -79,15 +83,57 @@ export function getFileExplorerBucket(
 }
 
 /**
- * Returns a node's sort key for the explorer sort modes. Falls back to 0 / empty string when
- * the underlying entry isn't available (e.g. inferred directory).
+ * Whether mount-relative move (drag-and-drop, "Move to…") is allowed in the file explorer.
+ *
+ * Frames and slideshows are still keyed by `fileId` (canonical storage at
+ * `files/w/{wId}/{fileId}/…`), not mount-path relocation. Until they are fully on the mount
+ * filesystem, disable move for those entries.
+ */
+export function isFileExplorerMovableFile(entry: FileEntry): boolean {
+  if (isInteractiveContentType(entry.contentType)) {
+    return false;
+  }
+  return true;
+}
+
+function getEntryLastModifiedMs(entry: FileExplorerEntry | undefined): number {
+  if (!entry || entry.kind === "folder") {
+    return 0;
+  }
+  return entry.lastModifiedMs ?? 0;
+}
+
+/** Display order: Company Data refs, then folders, then GCS files. */
+function getExplorerNodeSortRank(
+  node: FileSystemTreeNode,
+  entryByRelativePath: Map<string, FileExplorerEntry>
+): number {
+  if (entryByRelativePath.get(node.path)?.kind === "node") {
+    return 0;
+  }
+  if (node.isDirectory) {
+    return 1;
+  }
+  return 2;
+}
+
+/**
+ * Compare nodes for the explorer sort modes. Always groups entries as: connected data (content
+ * nodes), then folders, then files; within each group the selected sort mode applies.
  */
 export function compareTreeNodesForSort(
-  a: SandboxTreeNode,
-  b: SandboxTreeNode,
+  a: FileSystemTreeNode,
+  b: FileSystemTreeNode,
   sortMode: FileExplorerSortMode,
-  timestampsByPath: Map<string, number>
+  entryByRelativePath: Map<string, FileExplorerEntry>
 ): number {
+  const rankDiff =
+    getExplorerNodeSortRank(a, entryByRelativePath) -
+    getExplorerNodeSortRank(b, entryByRelativePath);
+  if (rankDiff !== 0) {
+    return rankDiff;
+  }
+
   switch (sortMode) {
     case "name-asc":
       return a.name.localeCompare(b.name);
@@ -96,10 +142,10 @@ export function compareTreeNodesForSort(
       return b.name.localeCompare(a.name);
 
     case "last-modified": {
-      // Folders have no timestamp on the tree (they're inferred from file paths). Fall through
-      // to alphabetical so they group at the top in a stable order.
-      const ta = timestampsByPath.get(a.path) ?? 0;
-      const tb = timestampsByPath.get(b.path) ?? 0;
+      // Folders have no timestamp on the tree (they're inferred from file paths). Among files,
+      // sort by recency; tie-break by name.
+      const ta = getEntryLastModifiedMs(entryByRelativePath.get(a.path));
+      const tb = getEntryLastModifiedMs(entryByRelativePath.get(b.path));
       if (tb !== ta) {
         return tb - ta;
       }
@@ -157,17 +203,48 @@ export function getCategoryFromContentType(
   }
 }
 
+function ensureDirectoryNode(
+  nodeMap: Map<string, FileSystemTreeNode>,
+  root: FileSystemTreeNode[],
+  path: string,
+  name: string
+): void {
+  if (nodeMap.has(path)) {
+    return;
+  }
+
+  const dirNode: FileSystemTreeNode = {
+    name,
+    path,
+    isDirectory: true,
+    contentType: null,
+    fileId: null,
+    children: [],
+  };
+  nodeMap.set(path, dirNode);
+
+  const parentPath = path.substring(0, path.lastIndexOf("/"));
+  const parent = parentPath ? nodeMap.get(parentPath) : undefined;
+  if (parent) {
+    parent.children.push(dirNode);
+  } else {
+    root.push(dirNode);
+  }
+}
+
 /**
  * Build a tree from flat file entries by inferring directories from paths.
  * entry.path is a scoped path (e.g. "conversation/subdir/file.png"); the
  * use-case prefix (first segment) is stripped so tree paths start at the
  * sandbox working directory root.
  */
-export function buildSandboxTree(entries: GCSMountEntry[]): SandboxTreeNode[] {
-  const root: SandboxTreeNode[] = [];
-  const nodeMap = new Map<string, SandboxTreeNode>();
+export function buildFileSystemTree(
+  entries: FileSystemEntry[]
+): FileSystemTreeNode[] {
+  const root: FileSystemTreeNode[] = [];
+  const nodeMap = new Map<string, FileSystemTreeNode>();
 
-  for (const entry of entries.filter((e) => !e.isDirectory)) {
+  for (const entry of entries) {
     const slashIdx = entry.path.indexOf("/");
     const relativePath =
       slashIdx >= 0 ? entry.path.slice(slashIdx + 1) : entry.path;
@@ -178,36 +255,26 @@ export function buildSandboxTree(entries: GCSMountEntry[]): SandboxTreeNode[] {
 
     const parts = relativePath.split("/");
 
-    // Ensure all ancestor directories exist as nodes.
-    let currentPath = "";
-    for (let i = 0; i < parts.length - 1; i++) {
-      currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i]!;
-      if (!nodeMap.has(currentPath)) {
-        const dirNode: SandboxTreeNode = {
-          name: parts[i]!,
-          path: currentPath,
-          isDirectory: true,
-          contentType: null,
-          fileId: null,
-          children: [],
-        };
-        nodeMap.set(currentPath, dirNode);
-
-        const parentPath = currentPath.substring(
-          0,
-          currentPath.lastIndexOf("/")
-        );
-        const parent = parentPath ? nodeMap.get(parentPath) : undefined;
-        if (parent) {
-          parent.children.push(dirNode);
-        } else {
-          root.push(dirNode);
-        }
+    if (entry.isDirectory) {
+      if (nodeMap.has(relativePath)) {
+        continue;
       }
+
+      let currentPath = "";
+      for (let i = 0; i < parts.length; i++) {
+        currentPath = currentPath ? `${currentPath}/${parts[i]!}` : parts[i]!;
+        ensureDirectoryNode(nodeMap, root, currentPath, parts[i]!);
+      }
+      continue;
     }
 
-    // Add the file node.
-    const fileNode: SandboxTreeNode = {
+    let currentPath = "";
+    for (let i = 0; i < parts.length - 1; i++) {
+      currentPath = currentPath ? `${currentPath}/${parts[i]!}` : parts[i]!;
+      ensureDirectoryNode(nodeMap, root, currentPath, parts[i]!);
+    }
+
+    const fileNode: FileSystemTreeNode = {
       name: parts[parts.length - 1]!,
       path: relativePath,
       isDirectory: false,
@@ -227,4 +294,136 @@ export function buildSandboxTree(entries: GCSMountEntry[]): SandboxTreeNode[] {
   }
 
   return root;
+}
+
+/** Strip the scoped prefix (e.g. `project/`) from a mount path. */
+export function getScopedRelativePath(scopedPath: string): string {
+  const slashIdx = scopedPath.indexOf("/");
+  return slashIdx >= 0 ? scopedPath.slice(slashIdx + 1) : scopedPath;
+}
+
+/** Parent folder path within the mount, or empty string for the root. */
+export function getParentFolderRelativePath(relativeFilePath: string): string {
+  const lastSlash = relativeFilePath.lastIndexOf("/");
+  return lastSlash >= 0 ? relativeFilePath.slice(0, lastSlash) : "";
+}
+
+/** Join a parent folder path and file name within a mount (no scope prefix). */
+export function joinMountRelativePath(
+  parentRelativePath: string,
+  fileName: string
+): string {
+  return parentRelativePath ? `${parentRelativePath}/${fileName}` : fileName;
+}
+
+function filterDirectoryNodes(
+  nodes: FileSystemTreeNode[]
+): FileSystemTreeNode[] {
+  return nodes
+    .filter((node) => node.isDirectory)
+    .map((node) => ({
+      ...node,
+      children: filterDirectoryNodes(node.children),
+    }));
+}
+
+/** Folder-only view of the sandbox tree (no files). */
+export function buildFolderTree(
+  entries: FileSystemEntry[]
+): FileSystemTreeNode[] {
+  return filterDirectoryNodes(buildFileSystemTree(entries));
+}
+
+export function countFoldersInTree(nodes: FileSystemTreeNode[]): number {
+  return nodes.reduce(
+    (count, node) => count + 1 + countFoldersInTree(node.children),
+    0
+  );
+}
+
+/** Human-readable breadcrumb for a folder path in the move dialog. */
+export function formatFolderDestinationLabel(
+  folderPath: string,
+  folderTree: FileSystemTreeNode[]
+): string {
+  if (!folderPath) {
+    return ROOT_FOLDER_LABEL;
+  }
+
+  const labels = [ROOT_FOLDER_LABEL];
+  let nodes = folderTree;
+  let current = "";
+  for (const part of folderPath.split("/")) {
+    current = current ? `${current}/${part}` : part;
+    const node = nodes.find((n) => n.path === current);
+    if (!node) {
+      labels.push(part);
+      break;
+    }
+    labels.push(node.name);
+    nodes = node.children;
+  }
+  return labels.join(" / ");
+}
+
+/** Paths of every ancestor folder, for expanding the tree to a location. */
+export function getAncestorFolderPaths(folderPath: string): Set<string> {
+  if (!folderPath) {
+    return new Set();
+  }
+
+  const paths = new Set<string>();
+  let current = "";
+  for (const part of folderPath.split("/")) {
+    current = current ? `${current}/${part}` : part;
+    paths.add(current);
+  }
+  return paths;
+}
+
+/** Breadcrumb segments for a folder path (e.g. `reports/q1` → two segments). */
+export function getFolderBreadcrumbSegments(
+  folderPath: string
+): { label: string; path: string }[] {
+  if (!folderPath) {
+    return [];
+  }
+
+  const segments: { label: string; path: string }[] = [];
+  let current = "";
+  for (const part of folderPath.split("/")) {
+    current = current ? `${current}/${part}` : part;
+    segments.push({ label: part, path: current });
+  }
+  return segments;
+}
+
+export function findTreeNodeByPath(
+  nodes: FileSystemTreeNode[],
+  path: string
+): FileSystemTreeNode | undefined {
+  for (const node of nodes) {
+    if (node.path === path) {
+      return node;
+    }
+
+    const found = findTreeNodeByPath(node.children, path);
+    if (found) {
+      return found;
+    }
+  }
+  return undefined;
+}
+
+/** Children of a folder in the sandbox tree; root when `folderPath` is empty. */
+export function getChildrenAtFolderPath(
+  tree: FileSystemTreeNode[],
+  folderPath: string
+): FileSystemTreeNode[] {
+  if (!folderPath) {
+    return tree;
+  }
+
+  const folder = findTreeNodeByPath(tree, folderPath);
+  return folder?.isDirectory ? folder.children : [];
 }

@@ -1,11 +1,11 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { renderConversationAsText } from "@app/lib/api/assistant/conversation/render_as_text";
-import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import {
   getSmallWhitelistedModel,
   getWhitelistedProviders,
-} from "@app/lib/assistant";
+} from "@app/lib/api/assistant/models";
+import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -82,13 +82,7 @@ export async function ensureConversationTitleFromAgentLoop(
 
   const { conversation, userMessage } = runAgentDataRes.value;
 
-  const authResult = await Authenticator.fromJSON(authType);
-  if (authResult.isErr()) {
-    throw new Error(
-      `Failed to deserialize authenticator: ${authResult.error.code}`
-    );
-  }
-  const auth = authResult.value;
+  const auth = await Authenticator.fromJSON(authType);
 
   return ensureConversationTitle(auth, { conversation, userMessage });
 }

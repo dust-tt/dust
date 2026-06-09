@@ -1,16 +1,16 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import config from "@app/lib/api/config";
+import type { PokeAgentConfigurationType } from "@app/lib/api/poke/agent_configurations";
 import { clientFetch } from "@app/lib/egress/client";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { PokeAgentConfigurationType } from "@app/pages/api/poke/workspaces/[wId]/agent_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  ArrowDownOnSquareIcon,
-  EmotionLaughIcon,
+  Download01,
+  FaceSmile,
   IconButton,
   LinkWrapper,
-  TrashIcon,
-  XMarkIcon,
+  Trash01,
+  XClose,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -99,11 +99,7 @@ export function makeColumnsForAssistants(
       cell: ({ row }) => {
         const sId: string = row.getValue("sId");
         const retention: number = agentsRetention[sId];
-        return retention ? (
-          `${retention} days`
-        ) : (
-          <XMarkIcon className="h-4 w-4" />
-        );
+        return retention ? `${retention} days` : <XClose className="h-4 w-4" />;
       },
     },
     {
@@ -114,9 +110,7 @@ export function makeColumnsForAssistants(
         return (
           <>
             <IconButton
-              icon={
-                assistant.status !== "archived" ? TrashIcon : EmotionLaughIcon
-              }
+              icon={assistant.status !== "archived" ? Trash01 : FaceSmile}
               size="xs"
               variant="outline"
               onClick={async () => {
@@ -139,11 +133,7 @@ export function makeColumnsForAssistants(
               target="_blank"
               rel="noopener noreferrer"
             >
-              <IconButton
-                icon={ArrowDownOnSquareIcon}
-                size="xs"
-                variant="outline"
-              />
+              <IconButton icon={Download01} size="xs" variant="outline" />
             </a>
           </>
         );

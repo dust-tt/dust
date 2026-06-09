@@ -32,11 +32,57 @@ describe("extractFileRefs", () => {
     ]);
   });
 
-  it("extracts scoped paths from string literals", () => {
+  it("extracts scoped paths from string literals (conversation/)", () => {
     const code = `const path = "conversation/abc/file.csv";`;
     expect(extractFileRefs(code)).toEqual([
       { type: "path", scopedPath: "conversation/abc/file.csv" },
     ]);
+  });
+
+  it("extracts scoped paths from string literals (project/)", () => {
+    const code = `const path = "project/abc/file.csv";`;
+    expect(extractFileRefs(code)).toEqual([
+      { type: "path", scopedPath: "project/abc/file.csv" },
+    ]);
+  });
+
+  it("extracts scoped paths from string literals (pod/)", () => {
+    const code = `const path = "pod/abc/file.csv";`;
+    expect(extractFileRefs(code)).toEqual([
+      { type: "path", scopedPath: "pod/abc/file.csv" },
+    ]);
+  });
+
+  // Canonical, portable scopes are the form frame code is INSTRUCTED to use
+  // (bare `conversation/` and `pod/` are explicitly discouraged). These must be
+  // extracted so the public-share prefetch can fetch them.
+  it("extracts canonical conversation scope from useFile (conversation-{id}/)", () => {
+    const code = `const f = useFile("conversation-conv_123/report.csv");`;
+    expect(extractFileRefs(code)).toEqual([
+      { type: "path", scopedPath: "conversation-conv_123/report.csv" },
+    ]);
+  });
+
+  it("extracts canonical pod scope from string literals (pod-{id}/)", () => {
+    const code = `const path = "pod-pod_456/notes.md";`;
+    expect(extractFileRefs(code)).toEqual([
+      { type: "path", scopedPath: "pod-pod_456/notes.md" },
+    ]);
+  });
+
+  it("extracts canonical conversation scope from import specifiers", () => {
+    const code = `import MyFrame from "conversation-conv_123/MyFrame.tsx";`;
+    expect(extractFileRefs(code)).toEqual([
+      { type: "path", scopedPath: "conversation-conv_123/MyFrame.tsx" },
+    ]);
+  });
+
+  it("ignores canonical prefixes with an empty id", () => {
+    const code = `
+      const a = "conversation-/file.csv";
+      const b = "pod-/file.csv";
+    `;
+    expect(extractFileRefs(code)).toEqual([]);
   });
 
   it("deduplicates refs across visitors", () => {

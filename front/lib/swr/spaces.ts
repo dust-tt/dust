@@ -1,9 +1,26 @@
-import { useSpaceConversationsSummary } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type {
+  GetDataSourceViewResponseBody,
+  GetSpaceDataSourceViewsResponseBody,
+} from "@app/lib/api/data_source_view";
+import type { PostSpaceDataSourceResponseBody } from "@app/lib/api/data_sources";
 import type {
   CursorPaginationParams,
   SortingParams,
 } from "@app/lib/api/pagination";
+import type { SpacesLookupResponseBody } from "@app/lib/api/projects/lookup";
+import type {
+  DataSourceContentNode,
+  PostWorkspaceSearchResponseBody,
+} from "@app/lib/api/search";
+import type {
+  GetSpaceResponseBody,
+  GetSpacesResponseBody,
+  PatchSpaceResponseBody,
+  PostSpaceRequestBodyType,
+  PostSpacesResponseBody,
+} from "@app/lib/api/spaces";
+import type { PatchSpaceMembersRequestBodyType } from "@app/lib/api/spaces/members";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
 import { getSpaceName } from "@app/lib/spaces";
@@ -14,46 +31,13 @@ import {
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type {
-  DataSourceContentNode,
-  PostWorkspaceSearchResponseBody,
-} from "@app/pages/api/w/[wId]/search";
-import type {
-  GetSpacesResponseBody,
-  PostSpaceRequestBodyType,
-  PostSpacesResponseBody,
-} from "@app/pages/api/w/[wId]/spaces";
-import type {
-  GetSpaceResponseBody,
-  PatchSpaceResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]";
-import type { GetSpaceDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views";
-import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
-import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
-import type { PatchSpaceMembersRequestBodyType } from "@app/pages/api/w/[wId]/spaces/[spaceId]/members";
-import type {
-  GetProjectMetadataResponseBody,
-  PatchProjectMetadataResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_metadata";
-import type {
-  GetUserProjectNotificationPreferenceResponseBody,
-  PatchUserProjectNotificationPreferenceResponseBody,
-} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_notification_preferences";
-import type { PostUserProjectStarResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/star";
-import type { SpacesLookupResponseBody } from "@app/pages/api/w/[wId]/spaces/projects-lookup";
-import type { PatchProjectMetadataBodyType } from "@app/types/api/internal/spaces";
 import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { SearchWarningCode } from "@app/types/core/core_api";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import type { DataSourceViewType } from "@app/types/data_source_view";
-import type {
-  NotificationCondition,
-  UserProjectNotificationPreference,
-} from "@app/types/notification_preferences";
-import type { ProjectMetadataType } from "@app/types/project_metadata";
 import { isString } from "@app/types/shared/utils/general";
-import type { ProjectType, SpaceKind, SpaceType } from "@app/types/space";
+import type { PodType, SpaceKind, SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo } from "react";
 import type { Fetcher, KeyedMutator } from "swr";
@@ -80,7 +64,7 @@ export function useSpaces({
   const spaces = useMemo(() => {
     return (
       data?.spaces?.filter((s) => kinds === "all" || kinds.includes(s.kind)) ??
-      emptyArray<SpaceType | ProjectType>()
+      emptyArray<SpaceType | PodType>()
     );
     // Serialize the kinds array to a string to avoid unnecessary re-renders
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -952,351 +936,4 @@ export function useSpacesSearchWithInfiniteScroll({
       await setSize((size) => size + 1);
     }, [setSize]),
   };
-}
-
-export function useProjectMetadata({
-  workspaceId,
-  spaceId,
-  disabled = false,
-}: {
-  workspaceId: string;
-  spaceId: string | null;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const projectMetadataFetcher: Fetcher<GetProjectMetadataResponseBody> =
-    fetcher;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/spaces/${spaceId}/project_metadata`,
-    projectMetadataFetcher,
-    { disabled: disabled || spaceId === null }
-  );
-
-  return {
-    projectMetadata: data?.projectMetadata ?? null,
-    isProjectMetadataLoading: !error && !data && !disabled,
-    isProjectMetadataError: error,
-    mutateProjectMetadata: mutate,
-  };
-}
-
-export function useUpdateProjectMetadata({
-  owner,
-  spaceId,
-}: {
-  owner: LightWorkspaceType;
-  spaceId: string;
-}) {
-  const sendNotification = useSendNotification();
-  const { mutateProjectMetadata } = useProjectMetadata({
-    workspaceId: owner.sId,
-    spaceId,
-    disabled: true, // Needed just to mutate
-  });
-  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
-    workspaceId: owner.sId,
-    options: { disabled: true },
-  });
-
-  const { mutateSpaceInfoRegardlessOfQueryParams } = useSpaceInfo({
-    workspaceId: owner.sId,
-    spaceId: spaceId,
-    disabled: true,
-  });
-
-  return async (
-    updates: PatchProjectMetadataBodyType
-  ): Promise<ProjectMetadataType | null> => {
-    const url = `/api/w/${owner.sId}/spaces/${spaceId}/project_metadata`;
-
-    const res = await clientFetch(url, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updates),
-    });
-
-    if (!res.ok) {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Error updating Pod metadata",
-        description: `Error: ${errorData.message}`,
-      });
-      return null;
-    }
-
-    void mutateProjectMetadata();
-    void mutateSpaceSummary();
-    void mutateSpaceInfoRegardlessOfQueryParams();
-
-    const title =
-      updates.archive !== undefined
-        ? updates.archive
-          ? "Pod archived"
-          : "Pod unarchived"
-        : updates.todoGenerationEnabled !== undefined
-          ? updates.todoGenerationEnabled
-            ? "Automatic task suggestions turned on"
-            : "Automatic task suggestions turned off"
-          : "Pod updated";
-
-    sendNotification({
-      type: "success",
-      title,
-    });
-
-    const response: PatchProjectMetadataResponseBody = await res.json();
-    return response.projectMetadata;
-  };
-}
-
-export function useProjectNotificationPreference({
-  workspaceId,
-  spaceId,
-  disabled = false,
-}: {
-  workspaceId: string;
-  spaceId: string | null;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const projectMetadataFetcher: Fetcher<GetUserProjectNotificationPreferenceResponseBody> =
-    fetcher;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/spaces/${spaceId}/project_notification_preferences`,
-    projectMetadataFetcher,
-    { disabled: disabled || spaceId === null }
-  );
-
-  return {
-    projectNotificationPreference:
-      data?.userProjectNotificationPreference ?? null,
-    isProjectNotificationPreferenceLoading: !error && !data && !disabled,
-    mutateProjectNotificationPreference: mutate,
-  };
-}
-
-export function useUpdateProjectNotificationPreference({
-  workspaceId,
-  spaceId,
-}: {
-  workspaceId: string;
-  spaceId: string | null;
-}) {
-  const sendNotification = useSendNotification();
-  const { mutateProjectNotificationPreference } =
-    useProjectNotificationPreference({
-      workspaceId,
-      spaceId,
-      disabled: true,
-    });
-
-  return async (
-    preference: NotificationCondition
-  ): Promise<UserProjectNotificationPreference | null> => {
-    if (!spaceId) {
-      return null;
-    }
-    const url = `/api/w/${workspaceId}/spaces/${spaceId}/project_notification_preferences`;
-
-    const res = await clientFetch(url, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        preference,
-      }),
-    });
-
-    if (!res.ok) {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Error updating Pod notification preference",
-        description: `Error: ${errorData.message}`,
-      });
-      return null;
-    }
-
-    void mutateProjectNotificationPreference();
-
-    sendNotification({
-      type: "success",
-      title: "Pod notification preference updated",
-    });
-
-    const response: PatchUserProjectNotificationPreferenceResponseBody =
-      await res.json();
-    return response.userProjectNotificationPreference;
-  };
-}
-
-export function useLeaveProject({
-  owner,
-  spaceId,
-  spaceName,
-  userName,
-}: {
-  owner: LightWorkspaceType;
-  spaceId: string;
-  spaceName: string;
-  userName: string;
-}) {
-  const sendNotification = useSendNotification();
-  const { mutateSpaceInfoRegardlessOfQueryParams } = useSpaceInfo({
-    workspaceId: owner.sId,
-    spaceId,
-    disabled: true,
-  });
-  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
-    workspaceId: owner.sId,
-    options: { disabled: true },
-  });
-
-  const doLeave = async (): Promise<boolean> => {
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/spaces/${spaceId}/leave`,
-      { method: "POST" }
-    );
-
-    if (res.ok) {
-      void mutateSpaceInfoRegardlessOfQueryParams();
-      void mutateSpaceSummary();
-      sendNotification({
-        type: "success",
-        title: `${userName} left Pod ${spaceName}`,
-        description: "You have successfully left the Pod.",
-      });
-      return true;
-    } else {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Could not leave Pod",
-        description: `Error: ${errorData.message}`,
-      });
-      return false;
-    }
-  };
-
-  return doLeave;
-}
-
-export function useJoinProject({
-  owner,
-  spaceId,
-  spaceName,
-  userName,
-}: {
-  owner: LightWorkspaceType;
-  spaceId: string;
-  spaceName: string;
-  userName: string;
-}) {
-  const sendNotification = useSendNotification();
-  const { mutateSpaceInfoRegardlessOfQueryParams } = useSpaceInfo({
-    workspaceId: owner.sId,
-    spaceId,
-    disabled: true,
-  });
-  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
-    workspaceId: owner.sId,
-    options: { disabled: true },
-  });
-
-  const doJoin = async (): Promise<boolean> => {
-    const res = await clientFetch(
-      `/api/w/${owner.sId}/spaces/${spaceId}/join`,
-      { method: "POST" }
-    );
-
-    if (res.ok) {
-      void mutateSpaceInfoRegardlessOfQueryParams();
-      void mutateSpaceSummary();
-      sendNotification({
-        type: "success",
-        title: `${userName} joined Pod ${spaceName}`,
-        description: "You can now participate in conversations.",
-      });
-      return true;
-    } else {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Could not join Pod",
-        description: `Error: ${errorData.message}`,
-      });
-      return false;
-    }
-  };
-
-  return doJoin;
-}
-
-export function useStarProject({
-  workspaceId,
-  spaceId,
-}: {
-  workspaceId: string;
-  spaceId: string | null;
-}) {
-  const sendNotification = useSendNotification();
-  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
-    workspaceId,
-    options: { disabled: true },
-  });
-
-  return useCallback(
-    async (
-      isStarred: boolean
-    ): Promise<PostUserProjectStarResponseBody | null> => {
-      if (!spaceId) {
-        return null;
-      }
-
-      const res = await clientFetch(
-        `/api/w/${workspaceId}/spaces/${spaceId}/star`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ starred: isStarred }),
-        }
-      );
-
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
-          title: isStarred
-            ? "Error starring project"
-            : "Error unstarring project",
-          description: `Error: ${errorData.message}`,
-        });
-        return null;
-      }
-
-      const response: PostUserProjectStarResponseBody = await res.json();
-
-      void mutateSpaceSummary((data) => {
-        if (!data) {
-          return data;
-        }
-        return {
-          ...data,
-          summary: data.summary.map((entry) =>
-            entry.space.sId === spaceId
-              ? {
-                  ...entry,
-                  space: { ...entry.space, isStarred: response.isStarred },
-                }
-              : entry
-          ),
-        };
-      }, false);
-
-      return response;
-    },
-    [workspaceId, spaceId, mutateSpaceSummary, sendNotification]
-  );
 }

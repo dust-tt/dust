@@ -146,14 +146,17 @@ vi.mock("@app/lib/utils/cache", () => ({
   invalidateCacheWithRedis: vi.fn().mockImplementation(() => {
     return async () => {};
   }),
+  bestEffortInvalidateCacheWithRedis: vi.fn().mockImplementation(() => {
+    return async () => {};
+  }),
   batchInvalidateCacheWithRedis: vi.fn().mockImplementation(() => {
     return async () => {};
   }),
   invalidateCacheAfterCommit: vi
     .fn()
     .mockImplementation(
-      (_transaction: unknown, invalidateFn: () => Promise<void>) => {
-        invalidateFn();
+      async (_transaction: unknown, invalidateFn: () => Promise<void>) => {
+        await invalidateFn();
       }
     ),
 }));
@@ -246,7 +249,7 @@ beforeEach(async (c) => {
 afterEach(async (c2) => {
   if ("transaction" in c2) {
     // @ts-expect-error - storing context in the test context
-    c2["transaction"].rollback();
+    await c2["transaction"].rollback();
   }
   if ("namespace" in c2) {
     // @ts-expect-error - storing context in the test context

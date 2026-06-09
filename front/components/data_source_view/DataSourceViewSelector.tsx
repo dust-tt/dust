@@ -50,12 +50,12 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import {
   Button,
-  CloudArrowLeftRightIcon,
+  CheckDone01,
+  CloudArrowLeftRight,
   cn,
-  FolderIcon,
-  GlobeAltIcon,
-  InformationCircleIcon,
-  ListCheckIcon,
+  Folder,
+  Globe01,
+  InfoCircle,
   SearchInputWithPopover,
   Tree,
 } from "@dust-tt/sparkle";
@@ -601,7 +601,7 @@ export function DataSourceViewsSelector({
           <Tree.Item
             key="connected"
             label="Connected Data"
-            visual={CloudArrowLeftRightIcon}
+            visual={CloudArrowLeftRight}
             type="node"
             defaultCollapsed={
               !searchResult ||
@@ -652,7 +652,7 @@ export function DataSourceViewsSelector({
           <Tree.Item
             key="folders"
             label="Folders"
-            visual={FolderIcon}
+            visual={Folder}
             type="node"
             defaultCollapsed={
               !searchResult || !isFolder(searchResult.dataSourceView.dataSource)
@@ -683,7 +683,7 @@ export function DataSourceViewsSelector({
             <Tree.Item
               key="websites"
               label="Websites"
-              visual={GlobeAltIcon}
+              visual={Globe01}
               type="node"
               defaultCollapsed={
                 !searchResult ||
@@ -725,7 +725,7 @@ function LimitedSearchContentMessage({
       return {
         title: "Search results are partial due to the large amount of data.",
         variant: "golden",
-        icon: InformationCircleIcon,
+        icon: InfoCircle,
         className: "w-full",
         size: "lg",
       };
@@ -1003,7 +1003,7 @@ export function DataSourceViewSelector({
                     ? "Unselect All"
                     : "Select All"
               }
-              icon={ListCheckIcon}
+              icon={CheckDone01}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.stopPropagation();
                 handleSelectAll();

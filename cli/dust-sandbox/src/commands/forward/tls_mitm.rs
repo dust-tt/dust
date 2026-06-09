@@ -1,30 +1,37 @@
 use std::fs::{self, OpenOptions};
 use std::io::Write;
+use std::num::NonZeroUsize;
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use anyhow::{bail, Context, Result};
+use lru::LruCache;
 use rcgen::{
-    BasicConstraints, Certificate, CertificateParams, DistinguishedName, DnType, IsCa, KeyPair,
-    KeyUsagePurpose,
+    BasicConstraints, Certificate, CertificateParams, DistinguishedName, DnType,
+    ExtendedKeyUsagePurpose, IsCa, KeyPair, KeyUsagePurpose, SanType,
 };
+use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer};
+use rustls::server::ResolvesServerCert;
+use rustls::sign::CertifiedKey;
+use rustls::ServerConfig;
+use tokio::sync::Mutex;
 
 const CA_COMMON_NAME: &str = "Dust Sandbox Egress MITM CA";
+const LEAF_CACHE_CAPACITY: usize = 256;
+pub(super) const H2_ALPN: &[u8] = b"h2";
+pub(super) const HTTP_1_1_ALPN: &[u8] = b"http/1.1";
 
-// Slice 3 only persists the CA on disk so front can install it in the sandbox
-// trust bundle. Per-host leaf signing + an LRU-bounded cache land in the slice
-// that wires up TLS termination, alongside the per-request placeholder swap.
-pub struct MitmCa {
-    #[allow(dead_code)]
+pub(super) struct MitmCa {
     ca_cert: Certificate,
-    #[allow(dead_code)]
     ca_key_pair: KeyPair,
     ca_cert_pem: String,
+    leaf_cache: Mutex<LruCache<String, Arc<CertifiedKey>>>,
 }
 
 impl MitmCa {
-    pub fn load_or_generate(cert_path: &Path, key_path: &Path) -> Result<Self> {
+    pub(super) fn load_or_generate(cert_path: &Path, key_path: &Path) -> Result<Self> {
         let cert_exists = cert_path
             .try_exists()
             .with_context(|| format!("failed to stat CA cert file {}", cert_path.display()))?;
@@ -52,7 +59,7 @@ impl MitmCa {
         }
     }
 
-    pub fn generate() -> Result<Self> {
+    pub(super) fn generate() -> Result<Self> {
         let params = Self::new_ca_params()?;
         let ca_key_pair = KeyPair::generate().context("failed to generate CA key pair")?;
         let ca_cert = params
@@ -64,6 +71,7 @@ impl MitmCa {
             ca_cert,
             ca_key_pair,
             ca_cert_pem,
+            leaf_cache: Mutex::new(Self::new_leaf_cache()?),
         })
     }
 
@@ -101,7 +109,22 @@ impl MitmCa {
             ca_cert,
             ca_key_pair,
             ca_cert_pem,
+            leaf_cache: Mutex::new(Self::new_leaf_cache()?),
         })
+    }
+
+    pub(super) async fn server_config_for(&self, sni: &str) -> Result<Arc<ServerConfig>> {
+        // Idempotent. Keeps focused tests (e.g. `cargo test server_config_for`)
+        // from panicking when no other test installed the provider first.
+        let _ = rustls::crypto::ring::default_provider().install_default();
+
+        let certified = self.get_or_mint_leaf(sni).await?;
+        let resolver = SingleCertResolver { key: certified };
+        let mut config = ServerConfig::builder()
+            .with_no_client_auth()
+            .with_cert_resolver(Arc::new(resolver));
+        config.alpn_protocols = vec![H2_ALPN.to_vec(), HTTP_1_1_ALPN.to_vec()];
+        Ok(Arc::new(config))
     }
 
     fn new_ca_params() -> Result<CertificateParams> {
@@ -120,12 +143,74 @@ impl MitmCa {
         Ok(params)
     }
 
+    fn new_leaf_cache() -> Result<LruCache<String, Arc<CertifiedKey>>> {
+        let capacity = NonZeroUsize::new(LEAF_CACHE_CAPACITY)
+            .context("leaf cache capacity must be non-zero")?;
+        Ok(LruCache::new(capacity))
+    }
+
     fn write_persistent(&self, cert_path: &Path, key_path: &Path) -> Result<()> {
         write_file_atomically(cert_path, self.ca_cert_pem.as_bytes(), 0o644)
             .with_context(|| format!("failed to write CA cert file {}", cert_path.display()))?;
         write_file_atomically(key_path, self.ca_key_pair.serialize_pem().as_bytes(), 0o600)
             .with_context(|| format!("failed to write CA key file {}", key_path.display()))?;
         Ok(())
+    }
+
+    async fn get_or_mint_leaf(&self, sni: &str) -> Result<Arc<CertifiedKey>> {
+        let mut cache = self.leaf_cache.lock().await;
+        if let Some(existing) = cache.get(sni).cloned() {
+            return Ok(existing);
+        }
+
+        let minted = self.mint_leaf(sni)?;
+        cache.put(sni.to_string(), Arc::clone(&minted));
+        Ok(minted)
+    }
+
+    fn mint_leaf(&self, sni: &str) -> Result<Arc<CertifiedKey>> {
+        let mut params =
+            CertificateParams::new(Vec::<String>::new()).context("invalid leaf params")?;
+        let mut dn = DistinguishedName::new();
+        dn.push(DnType::CommonName, sni);
+        params.distinguished_name = dn;
+        params.subject_alt_names = vec![SanType::DnsName(
+            sni.to_string()
+                .try_into()
+                .context("invalid SNI for leaf cert")?,
+        )];
+        params.is_ca = IsCa::ExplicitNoCa;
+        params.key_usages = vec![KeyUsagePurpose::DigitalSignature];
+        params.extended_key_usages = vec![ExtendedKeyUsagePurpose::ServerAuth];
+        params.use_authority_key_identifier_extension = true;
+
+        let leaf_key = KeyPair::generate().context("failed to generate leaf key pair")?;
+        let leaf = params
+            .signed_by(&leaf_key, &self.ca_cert, &self.ca_key_pair)
+            .context("failed to sign leaf certificate")?;
+
+        let leaf_der = CertificateDer::from(leaf.der().to_vec());
+        let key_der = PrivateKeyDer::from(PrivatePkcs8KeyDer::from(leaf_key.serialize_der()));
+        let signing_key = rustls::crypto::ring::sign::any_supported_type(&key_der)
+            .context("failed to load leaf signing key")?;
+
+        Ok(Arc::new(CertifiedKey::new(vec![leaf_der], signing_key)))
+    }
+
+    #[cfg(test)]
+    pub(super) fn ca_cert_der(&self) -> CertificateDer<'static> {
+        CertificateDer::from(self.ca_cert.der().to_vec())
+    }
+}
+
+#[derive(Debug)]
+struct SingleCertResolver {
+    key: Arc<CertifiedKey>,
+}
+
+impl ResolvesServerCert for SingleCertResolver {
+    fn resolve(&self, _client_hello: rustls::server::ClientHello<'_>) -> Option<Arc<CertifiedKey>> {
+        Some(Arc::clone(&self.key))
     }
 }
 
@@ -202,6 +287,9 @@ mod tests {
     use std::os::unix::fs::PermissionsExt;
 
     use super::*;
+    use x509_parser::certificate::X509Certificate;
+    use x509_parser::extensions::{GeneralName, ParsedExtension};
+    use x509_parser::prelude::FromDer;
 
     #[test]
     fn load_or_generate_writes_and_reuses_persistent_ca() -> Result<()> {
@@ -317,5 +405,112 @@ mod tests {
         }
 
         Ok(())
+    }
+
+    #[tokio::test]
+    async fn server_config_for_advertises_h2_then_http1_alpn() -> Result<()> {
+        let ca = Arc::new(MitmCa::generate()?);
+
+        let config = ca.server_config_for("api.openai.com").await?;
+
+        assert_eq!(
+            config.alpn_protocols,
+            vec![H2_ALPN.to_vec(), HTTP_1_1_ALPN.to_vec()]
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn minted_leaf_contains_strict_x509_server_extensions() -> Result<()> {
+        let ca = Arc::new(MitmCa::generate()?);
+
+        let certified = ca.get_or_mint_leaf("api.openai.com").await?;
+        let leaf_der = certified
+            .cert
+            .first()
+            .context("minted leaf did not contain a certificate")?;
+        let leaf = parse_cert(leaf_der.as_ref())?;
+
+        let san = leaf
+            .subject_alternative_name()
+            .map_err(|err| anyhow::anyhow!("failed to parse leaf SAN: {err}"))?
+            .context("leaf missing subjectAltName")?;
+        assert!(san.value.general_names.iter().any(|name| {
+            matches!(name, GeneralName::DNSName(dns_name) if *dns_name == "api.openai.com")
+        }));
+
+        let basic_constraints = leaf
+            .basic_constraints()
+            .map_err(|err| anyhow::anyhow!("failed to parse leaf basicConstraints: {err}"))?
+            .context("leaf missing basicConstraints")?;
+        assert!(basic_constraints.critical);
+        assert!(!basic_constraints.value.ca);
+
+        let key_usage = leaf
+            .key_usage()
+            .map_err(|err| anyhow::anyhow!("failed to parse leaf keyUsage: {err}"))?
+            .context("leaf missing keyUsage")?;
+        assert!(key_usage.critical);
+        assert!(key_usage.value.digital_signature());
+        assert!(!key_usage.value.key_cert_sign());
+        assert!(!key_usage.value.crl_sign());
+
+        let extended_key_usage = leaf
+            .extended_key_usage()
+            .map_err(|err| anyhow::anyhow!("failed to parse leaf extendedKeyUsage: {err}"))?
+            .context("leaf missing extendedKeyUsage")?;
+        assert!(!extended_key_usage.critical);
+        assert!(extended_key_usage.value.server_auth);
+        assert!(!extended_key_usage.value.client_auth);
+
+        let ca_cert = parse_cert(ca.ca_cert.der().as_ref())?;
+        let ca_subject_key_identifier =
+            subject_key_identifier(&ca_cert).context("CA missing subjectKeyIdentifier")?;
+        let leaf_authority_key_identifier =
+            authority_key_identifier(&leaf).context("leaf missing authorityKeyIdentifier")?;
+        assert_eq!(leaf_authority_key_identifier, ca_subject_key_identifier);
+        assert!(
+            subject_key_identifier(&leaf).is_some(),
+            "leaf missing subjectKeyIdentifier"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn leaf_cache_is_lru_bounded() -> Result<()> {
+        let ca = Arc::new(MitmCa::generate()?);
+
+        for i in 0..(LEAF_CACHE_CAPACITY + 10) {
+            let sni = format!("host-{i}.example.com");
+            ca.server_config_for(&sni).await?;
+        }
+
+        assert_eq!(ca.leaf_cache.lock().await.len(), LEAF_CACHE_CAPACITY);
+        Ok(())
+    }
+
+    fn parse_cert(der: &[u8]) -> Result<X509Certificate<'_>> {
+        let (_, cert) = X509Certificate::from_der(der)
+            .map_err(|err| anyhow::anyhow!("failed to parse certificate DER: {err}"))?;
+        Ok(cert)
+    }
+
+    fn subject_key_identifier(cert: &X509Certificate<'_>) -> Option<Vec<u8>> {
+        cert.iter_extensions()
+            .find_map(|ext| match ext.parsed_extension() {
+                ParsedExtension::SubjectKeyIdentifier(key_id) => Some(key_id.0.to_vec()),
+                _ => None,
+            })
+    }
+
+    fn authority_key_identifier(cert: &X509Certificate<'_>) -> Option<Vec<u8>> {
+        cert.iter_extensions()
+            .find_map(|ext| match ext.parsed_extension() {
+                ParsedExtension::AuthorityKeyIdentifier(key_id) => {
+                    key_id.key_identifier.as_ref().map(|id| id.0.to_vec())
+                }
+                _ => None,
+            })
     }
 }

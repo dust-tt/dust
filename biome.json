@@ -52,7 +52,8 @@
       "sparkle/**",
       "connectors/**",
       "front-spa/**",
-      "front/**"
+      "front/**",
+      "front-api/**"
     ],
     "rules": {
       "recommended": false,
@@ -73,6 +74,7 @@
     {
       "includes": [
         "front/**/*.{js,jsx,ts,tsx}",
+        "front-api/**/*.{js,jsx,ts,tsx}",
         "connectors/src/**/*.{js,jsx,ts,tsx}",
         "cli/dust-cli/**/*.{js,jsx,ts,tsx}",
         "extension/**/*.{js,jsx,ts,tsx}"
@@ -83,11 +85,18 @@
       ]
     },
     {
-      "includes": ["front/**/*.{js,jsx,ts,tsx}"],
+      "includes": [
+        "front/**/*.{js,jsx,ts,tsx}",
+        "front-api/**/*.{js,jsx,ts,tsx}"
+      ],
       "plugins": [
         "./.grit/patterns/enforceClientTypesInPublicApi.grit",
         "./.grit/patterns/noClientDeepImports.grit"
       ]
+    },
+    {
+      "includes": ["front-api/**/*.ts", "!front-api/routes/types.ts"],
+      "plugins": ["./.grit/patterns/noInlineSuccessResponseBody.grit"]
     },
     {
       "includes": [
@@ -106,6 +115,7 @@
     {
       "includes": [
         "front/**/*.{js,jsx,ts,tsx}",
+        "front-api/**/*.{js,jsx,ts,tsx}",
         "connectors/src/**/*.{js,jsx,ts,tsx}"
       ],
       "plugins": [
@@ -118,9 +128,12 @@
         "extension/**/*.{js,jsx,ts,tsx}",
         "front-spa/**/*.{js,jsx,ts,tsx}",
         "front/**/*.{js,jsx,ts,tsx}",
+        "front-api/**/*.{js,jsx,ts,tsx}",
         "sparkle/**/*.{js,jsx,ts,tsx}",
         "!front/pages/**",
         "!front/lib/api/sse.ts",
+        "!front/lib/api/auth_wrappers.ts",
+        "!front-api/server.ts",
         "!sparkle/.storybook/**",
         "!sparkle/playground/**"
       ],
@@ -143,6 +156,10 @@
         "front/lib/api/actions/servers/**/*.{js,jsx,ts,tsx}"
       ],
       "plugins": ["./.grit/patterns/noMcpServerInstructions.grit"]
+    },
+    {
+      "includes": ["front-api/routes/**/*.ts"],
+      "plugins": ["./.grit/patterns/noDirectRoleCheck.grit"]
     },
     {
       "includes": [
@@ -238,7 +255,8 @@
       "sparkle/**",
       "connectors/**",
       "front-spa/**",
-      "front/**"
+      "front/**",
+      "front-api/**"
     ],
     "enabled": true,
     "actions": {

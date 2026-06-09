@@ -7,14 +7,10 @@ use anyhow::{anyhow, bail, ensure, Context, Result};
 use serde::Deserialize;
 use tracing::info;
 
-const PLACEHOLDER_PREFIX: &str = "__DSEC_";
-const PLACEHOLDER_SUFFIX: &str = "__";
-const PLACEHOLDER_HEX_LEN: usize = 32;
+pub(crate) const PLACEHOLDER_PREFIX: &str = "__DSEC_";
+pub(crate) const PLACEHOLDER_SUFFIX: &str = "__";
+pub(crate) const PLACEHOLDER_HEX_LEN: usize = 32;
 
-// Slice 6 will consume `name` and `value` from the request rewriter. Slice 4
-// only loads and plumbs the table so MITM scoping can key off the allowlist
-// union.
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Secret {
     pub name: String,
@@ -24,10 +20,11 @@ pub struct Secret {
 }
 
 // `by_placeholder` and `sni_match_set` intentionally double-store the
-// allowlist domains: per-secret membership drives Slice 6 substitution
-// (placeholder -> value only fires for connections to that secret's
-// allowed domains), while the union drives whether MITM kicks in at all
-// for a given SNI. Same data, two access shapes; do not dedupe.
+// allowlist domains: per-secret membership drives the rewriter's
+// substitution path (placeholder -> value only fires for connections to
+// that secret's allowed domains), while the union drives whether MITM
+// kicks in at all for a given SNI. Same data, two access shapes; do not
+// dedupe.
 #[derive(Debug, Clone, Default)]
 pub struct SecretTable {
     pub by_placeholder: HashMap<String, Secret>,
@@ -70,12 +67,6 @@ impl SecretTable {
         self.by_placeholder.len()
     }
 
-    // Consumed by Slice 5 to short-circuit MITM when no secrets are loaded.
-    #[allow(dead_code)]
-    pub fn is_empty(&self) -> bool {
-        self.by_placeholder.is_empty()
-    }
-
     fn parse(contents: &str) -> Result<Self> {
         let raw_secrets: Vec<RawSecret> =
             serde_json::from_str(contents).context("invalid egress secrets JSON")?;
@@ -114,8 +105,6 @@ impl DomainSet {
         Ok(set)
     }
 
-    // Consumed by Slice 5 to gate MITM on SNI; tested directly in this slice.
-    #[allow(dead_code)]
     pub fn matches(&self, domain: &str) -> bool {
         let domain = match normalize_dns_name(domain) {
             Ok(domain) => domain,
@@ -203,6 +192,13 @@ impl Secret {
         ensure!(
             !raw.value.is_empty(),
             "egress secret {} has empty value",
+            raw.name
+        );
+        ensure!(
+            !raw.value
+                .bytes()
+                .any(|byte| byte.is_ascii_control() || byte == 0x7f),
+            "egress secret {} value contains control bytes that would break HTTP framing",
             raw.name
         );
         ensure!(
@@ -444,6 +440,23 @@ mod tests {
         match SecretTable::parse(contents) {
             Ok(_) => panic!("empty value unexpectedly parsed"),
             Err(error) => assert!(format!("{:#}", error).contains("empty value")),
+        }
+    }
+
+    #[test]
+    fn parse_rejects_value_with_control_bytes() {
+        let contents = r#"[
+          {
+            "name": "A",
+            "placeholder": "__DSEC_0123456789abcdef0123456789abcdef__",
+            "value": "sk-\nbroken",
+            "allowedDomains": ["api.openai.com"]
+          }
+        ]"#;
+
+        match SecretTable::parse(contents) {
+            Ok(_) => panic!("control-byte value unexpectedly parsed"),
+            Err(error) => assert!(format!("{:#}", error).contains("control bytes")),
         }
     }
 

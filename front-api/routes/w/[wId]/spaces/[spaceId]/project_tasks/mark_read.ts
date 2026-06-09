@@ -1,20 +1,18 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-
 import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_resource";
-
-import { spaceResource } from "@front-api/middleware/space_resource";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { withSpace } from "@front-api/middlewares/with_space";
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_tasks/mark_read.
-const app = new Hono();
+const app = workspaceApp();
 
-app.post("/", spaceResource({ requireCanRead: true }), async (c) => {
-  const auth = c.get("auth");
-  const space = c.get("space");
+/** @ignoreswagger */
+app.post("/", withSpace({ requireCanRead: true }), async (ctx) => {
+  const auth = ctx.get("auth");
+  const space = ctx.get("space");
 
   if (!space.isProject()) {
-    return apiError(c, {
+    return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
@@ -28,7 +26,7 @@ app.post("/", spaceResource({ requireCanRead: true }), async (c) => {
     lastReadAt: new Date(),
   });
 
-  return c.json({ success: true });
+  return ctx.json({ success: true });
 });
 
 export default app;

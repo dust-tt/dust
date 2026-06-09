@@ -1,15 +1,15 @@
 import {
-  isProjectTaskPeriodScope,
-  type ProjectTaskPeopleScope,
-  type ProjectTaskPeriodScope,
+  isPodTaskPeriodScope,
+  type PodTaskPeopleScope,
+  type PodTaskPeriodScope,
 } from "@app/types/project_task";
 import { isString } from "@app/types/shared/utils/general";
 import { z } from "zod";
 
 /** Filter for project task list fetching + persisted project UI prefs. */
 export interface TaskOwnerFilter {
-  periodScope: ProjectTaskPeriodScope;
-  peopleScope: ProjectTaskPeopleScope;
+  periodScope: PodTaskPeriodScope;
+  peopleScope: PodTaskPeopleScope;
 }
 
 export const DEFAULT_TASK_OWNER_FILTER: TaskOwnerFilter = {
@@ -17,28 +17,28 @@ export const DEFAULT_TASK_OWNER_FILTER: TaskOwnerFilter = {
   peopleScope: "all_project",
 };
 
-const PERIOD_SCOPE_LABELS: Record<ProjectTaskPeriodScope, string> = {
+const PERIOD_SCOPE_LABELS: Record<PodTaskPeriodScope, string> = {
   active: "Open",
   last_24h: "Done today",
   last_7d: "Done in the last 7 days",
   last_30d: "Done in the last 30 days",
 };
 
-const PEOPLE_SCOPE_LABELS: Record<ProjectTaskPeopleScope, string> = {
+const PEOPLE_SCOPE_LABELS: Record<PodTaskPeopleScope, string> = {
   all_project: "Everyone",
   just_mine: "Mine",
 };
 
-export function periodScopeLabel(scope: ProjectTaskPeriodScope): string {
+export function periodScopeLabel(scope: PodTaskPeriodScope): string {
   return PERIOD_SCOPE_LABELS[scope];
 }
 
-export function peopleScopeLabel(scope: ProjectTaskPeopleScope): string {
+export function peopleScopeLabel(scope: PodTaskPeopleScope): string {
   return PEOPLE_SCOPE_LABELS[scope];
 }
 
-function coercePeriodScope(raw: unknown): ProjectTaskPeriodScope {
-  if (isString(raw) && isProjectTaskPeriodScope(raw)) {
+function coercePeriodScope(raw: unknown): PodTaskPeriodScope {
+  if (isString(raw) && isPodTaskPeriodScope(raw)) {
     return raw;
   }
   return "active";
@@ -76,22 +76,22 @@ export function taskOwnerFilterToSearchParams(
   return params;
 }
 
-export function buildProjectTasksListSwrKey(
+export function buildPodTasksListSwrKey(
   workspaceSId: string,
-  spaceId: string,
+  podId: string,
   filter: TaskOwnerFilter
 ): string {
-  const base = `/api/w/${workspaceSId}/spaces/${spaceId}/project_tasks`;
+  const base = `/api/w/${workspaceSId}/spaces/${podId}/project_tasks`;
   const qs = taskOwnerFilterToSearchParams(filter).toString();
   return qs.length > 0 ? `${base}?${qs}` : base;
 }
 
-export function isProjectTasksListSwrKey(
+export function isPodTasksListSwrKey(
   key: unknown,
   workspaceSId: string,
-  spaceId: string
+  podId: string
 ): boolean {
-  const prefix = `/api/w/${workspaceSId}/spaces/${spaceId}/project_tasks`;
+  const prefix = `/api/w/${workspaceSId}/spaces/${podId}/project_tasks`;
   return (
     typeof key === "string" && (key === prefix || key.startsWith(`${prefix}?`))
   );

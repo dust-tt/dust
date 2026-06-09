@@ -3,9 +3,9 @@ import {
   makeColumnsForUnifiedCredits,
 } from "@app/components/poke/credits/columns";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
+import type { PokeStripeSubscriptionWire } from "@app/lib/api/poke/workspace_info";
 import { safeLazy, Tooltip } from "@dust-tt/sparkle";
 import { Suspense } from "react";
-import type Stripe from "stripe";
 
 const PokeProgrammaticCostChart = safeLazy(() =>
   import("@app/components/poke/credits/PokeProgrammaticCostChart").then(
@@ -30,7 +30,7 @@ function PokeChartFallback() {
 }
 
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import type { PokeUnifiedCreditRow } from "@app/pages/api/poke/workspaces/[wId]/credits";
+import type { PokeUnifiedCreditRow } from "@app/lib/api/poke/credits";
 import type { PokeCreditsData } from "@app/poke/swr/credits";
 import { usePokeCredits } from "@app/poke/swr/credits";
 import type { SubscriptionType } from "@app/types/plan";
@@ -41,7 +41,7 @@ const ONE_DOLLAR_MICRO_USD = 1_000_000;
 interface CreditsDataTableProps {
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  stripeSubscription: Stripe.Subscription | null;
+  stripeSubscription: PokeStripeSubscriptionWire | null;
   loadOnInit?: boolean;
 }
 
@@ -92,7 +92,7 @@ export function CreditsDataTable({
   return (
     <>
       <PokeDataTableConditionalFetch<PokeCreditsData, PokeCreditsData>
-        header="Credits"
+        header="API Usage"
         owner={owner}
         loadOnInit={loadOnInit}
         useSWRHook={usePokeCredits}

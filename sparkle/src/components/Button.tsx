@@ -8,7 +8,7 @@ import {
 import type { SpinnerProps } from "@sparkle/components/Spinner";
 import { Spinner } from "@sparkle/components/Spinner";
 import { Tooltip } from "@sparkle/components/Tooltip";
-import { ChevronDownIcon } from "@sparkle/icons/app";
+import { ChevronDown } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
@@ -36,7 +36,7 @@ export const REGULAR_BUTTON_SIZES = [
   "sm",
   "md",
 ] as const;
-export const ICON_ONLY_SIZES = ["icon-xs", "icon"] as const;
+export const ICON_ONLY_SIZES = ["icon-xs", "icon", "icon-sm"] as const;
 export const SMALL_BUTTON_SIZES = ["icon-xs", "icon", "xmini", "mini"] as const;
 
 export type RegularButtonSize = (typeof REGULAR_BUTTON_SIZES)[number];
@@ -161,6 +161,7 @@ const buttonVariants = cva(
       size: {
         "icon-xs": "s-h-6 s-w-6 s-gap-1 s-shrink-0",
         icon: "s-h-7 s-w-7 s-gap-1.5 s-shrink-0",
+        "icon-sm": "s-h-9 s-w-9 s-gap-2 s-shrink-0",
         xmini: "s-h-6 s-px-1.5 s-gap-1 s-shrink-0",
         mini: "s-h-7 s-px-2 s-gap-1.5 s-shrink-0",
         xs: "s-h-7 s-px-2.5 s-gap-1.5 s-shrink-0",
@@ -170,6 +171,7 @@ const buttonVariants = cva(
       rounded: {
         "icon-xs": "s-rounded-lg",
         icon: "s-rounded-lg",
+        "icon-sm": "s-rounded-xl",
         xmini: "s-rounded-lg",
         mini: "s-rounded-lg",
         xs: "s-rounded-lg",
@@ -191,6 +193,7 @@ const labelVariants = cva("", {
     size: {
       "icon-xs": "s-hidden",
       icon: "s-hidden",
+      "icon-sm": "s-hidden",
       xmini: "",
       mini: "",
       xs: "",
@@ -299,6 +302,7 @@ type CounterSizeType = "xs" | "sm" | "md";
 export const ICON_SIZE_MAP: Record<ButtonSize, IconSizeType> = {
   "icon-xs": "xs",
   icon: "sm",
+  "icon-sm": "sm",
   xmini: "xs",
   mini: "sm",
   xs: "xs",
@@ -309,6 +313,7 @@ export const ICON_SIZE_MAP: Record<ButtonSize, IconSizeType> = {
 const COUNTER_SIZE_MAP: Record<ButtonSize, CounterSizeType> = {
   "icon-xs": "xs",
   icon: "xs",
+  "icon-sm": "sm",
   xmini: "xs",
   mini: "xs",
   xs: "xs",
@@ -321,6 +326,7 @@ const loadingContainerVariants = cva("-s-mx-0.5", {
     size: {
       "icon-xs": "s-w-5 s-px-0.5",
       icon: "s-w-5 s-px-0.5",
+      "icon-sm": "",
       xmini: "s-w-5 s-px-0.5",
       mini: "s-w-5 s-px-0.5",
       xs: "s-w-5 s-px-0.5",
@@ -340,6 +346,7 @@ const selectButtonSizeVariants = cva("", {
       xmini: "s-w-auto s-px-1.5",
       mini: "s-w-auto s-px-2",
       icon: "s-w-auto s-px-2",
+      "icon-sm": "",
       xs: "",
       sm: "",
       md: "",
@@ -482,7 +489,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             )}
           </div>
         )}
-        {isSelect && renderChevron(ChevronDownIcon, isLoading ? "" : "-s-mr-1")}
+        {isSelect && renderChevron(ChevronDown, isLoading ? "" : "-s-mr-1")}
       </>
     );
 

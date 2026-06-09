@@ -9,8 +9,12 @@ import {
   filterSkillDefinitions,
   type GlobalSkillDefinition,
 } from "@app/lib/resources/skill/code_defined/shared";
+import { skillAuthoringSkill } from "@app/lib/resources/skill/code_defined/skill_authoring";
+import { supportSkill } from "@app/lib/resources/skill/code_defined/support";
+import { workspaceAnalyticsSkill } from "@app/lib/resources/skill/code_defined/workspace_analytics";
 import { xlsxSkill } from "@app/lib/resources/skill/code_defined/xlsx";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
+import { serializeSkillTag } from "@app/lib/skills/format";
 
 // Registry is a simple array.
 const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([
@@ -19,6 +23,9 @@ const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([
   mentionUsersSkill,
   pptxSkill,
   projectsSkill,
+  skillAuthoringSkill,
+  supportSkill,
+  workspaceAnalyticsSkill,
   xlsxSkill,
 ] as const);
 
@@ -54,6 +61,19 @@ export class GlobalSkillsRegistry {
   ): Promise<GlobalSkillDefinition[]> {
     return filterSkillDefinitions(auth, GLOBAL_SKILLS_ARRAY, where, {
       isDefault: true,
+    });
+  }
+
+  static serializeSkillTag(sId: GlobalSkillId): string {
+    const skill = this.getByIdInternal(sId);
+    if (!skill) {
+      throw new Error(`Unknown global skill: ${sId}`);
+    }
+
+    return serializeSkillTag({
+      id: skill.sId,
+      icon: skill.icon,
+      name: skill.name,
     });
   }
 

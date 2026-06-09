@@ -1,14 +1,15 @@
-import { Hono } from "hono";
-
-import { apiError } from "@front-api/middleware/utils";
-import { z } from "zod";
-
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { isString } from "@app/types/shared/utils/general";
-
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
-import { validate } from "@front-api/middleware/validator";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
+
+const ParamsSchema = z.object({
+  cId: z.string(),
+});
 
 const ConversationToolActionRequestSchema = z.object({
   action: z.enum(["add", "delete"]),
@@ -16,11 +17,12 @@ const ConversationToolActionRequestSchema = z.object({
 });
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/tools.
-const app = new Hono();
+const app = workspaceApp();
 
-app.get("/", async (c) => {
-  const auth = c.get("auth");
-  const conversationId = c.req.param("cId") ?? "";
+/** @ignoreswagger */
+app.get("/", validate("param", ParamsSchema), async (ctx) => {
+  const auth = ctx.get("auth");
+  const { cId: conversationId } = ctx.req.valid("param");
 
   const conversationRes =
     await ConversationResource.fetchConversationWithoutContent(
@@ -28,11 +30,11 @@ app.get("/", async (c) => {
       conversationId
     );
   if (conversationRes.isErr()) {
-    return apiErrorForConversation(c, conversationRes.error);
+    return apiErrorForConversation(ctx, conversationRes.error);
   }
 
   const conversationWithoutContent = conversationRes.value;
-  const agentConfigurationId = c.req.query("agent_configuration_id");
+  const agentConfigurationId = ctx.req.query("agent_configuration_id");
 
   const conversationMCPServerViews =
     await ConversationResource.fetchMCPServerViews(
@@ -54,15 +56,16 @@ app.get("/", async (c) => {
 
   const tools = mcpServerViews.map((v) => v.toJSON());
 
-  return c.json({ tools });
+  return ctx.json({ tools });
 });
 
 app.post(
   "/",
+  validate("param", ParamsSchema),
   validate("json", ConversationToolActionRequestSchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const conversationId = c.req.param("cId") ?? "";
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { cId: conversationId } = ctx.req.valid("param");
 
     const conversationRes =
       await ConversationResource.fetchConversationWithoutContent(
@@ -70,11 +73,11 @@ app.post(
         conversationId
       );
     if (conversationRes.isErr()) {
-      return apiErrorForConversation(c, conversationRes.error);
+      return apiErrorForConversation(ctx, conversationRes.error);
     }
 
     const conversationWithoutContent = conversationRes.value;
-    const { action, mcp_server_view_id } = c.req.valid("json");
+    const { action, mcp_server_view_id } = ctx.req.valid("json");
 
     const mcpServerView = await MCPServerViewResource.fetchById(
       auth,
@@ -82,7 +85,7 @@ app.post(
     );
 
     if (!mcpServerView) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "mcp_server_view_not_found",
@@ -99,7 +102,7 @@ app.post(
       agentConfigurationId: null,
     });
     if (upsertResult.isErr()) {
-      return apiError(c, {
+      return apiError(ctx, {
         status_code: 500,
         api_error: {
           type: "internal_server_error",
@@ -108,7 +111,7 @@ app.post(
       });
     }
 
-    return c.json({ success: true });
+    return ctx.json({ success: true });
   }
 );
 

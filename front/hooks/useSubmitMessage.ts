@@ -1,6 +1,6 @@
+import type { PostMessagesResponseBody } from "@app/lib/api/assistant/messages";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
-import type { PostMessagesResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages";
 import type {
   ClientMessageOrigin,
   SubmitMessageError,
@@ -154,7 +154,11 @@ export function useSubmitMessage({
               ? "plan_limit_reached_error"
               : data.error.type === "credits_exhausted"
                 ? "credits_exhausted_error"
-                : "message_send_error",
+                : data.error.type === "user_cap_reached"
+                  ? "user_cap_reached_error"
+                  : data.error.type === "no_seat"
+                    ? "no_seat_error"
+                    : "message_send_error",
           title: "Your message could not be sent.",
           // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           message: data.error.message || "Please try again or contact us.",

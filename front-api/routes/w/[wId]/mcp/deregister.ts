@@ -1,9 +1,8 @@
-import { Hono } from "hono";
-import { z } from "zod";
-
 import { deregisterMCPServer } from "@app/lib/api/actions/mcp/client_side_registry";
-
-import { validate } from "@front-api/middleware/validator";
+import { clearDustDesktopClientSideMCPServerRegistration } from "@app/lib/api/actions/mcp/dust_desktop";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 const PostMCPDeregisterRequestBodySchema = z.object({
   serverId: z.string(),
@@ -14,18 +13,20 @@ export type PostMCPDeregisterRequestBody = z.infer<
 >;
 
 // Mounted at /api/w/:wId/mcp/deregister.
-const app = new Hono();
+const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostMCPDeregisterRequestBodySchema),
-  async (c) => {
-    const auth = c.get("auth");
-    const { serverId } = c.req.valid("json");
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { serverId } = ctx.req.valid("json");
 
     await deregisterMCPServer(auth, { serverId });
+    await clearDustDesktopClientSideMCPServerRegistration(auth, { serverId });
 
-    return c.json({ success: true });
+    return ctx.json({ success: true });
   }
 );
 

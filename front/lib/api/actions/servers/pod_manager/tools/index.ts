@@ -1,5 +1,5 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { makeProjectConfigurationURI } from "@app/lib/actions/mcp_internal_actions/project_configuration_uri";
+import { makePodConfigurationURI } from "@app/lib/actions/mcp_internal_actions/pod_configuration_uri";
 import type {
   ToolDefinition,
   ToolHandlers,
@@ -11,16 +11,22 @@ import {
   FILES_LIST_ACTION_NAME,
   FILES_SERVER_NAME,
 } from "@app/lib/api/actions/servers/files/metadata";
-import { listProjectFiles } from "@app/lib/api/actions/servers/files/tools/utils";
 import { runIncludeDataRetrieval } from "@app/lib/api/actions/servers/include_data/include_function";
+import { buildPodSearchDataSources } from "@app/lib/api/actions/servers/pod_manager/build_pod_search_data_sources";
 import {
   buildProjectRetrieveDataSources,
-  getProjectSpace,
-  getWritableProjectContext,
+  getPod,
+  getWritablePodContext,
   makeSuccessResponse,
   withErrorHandling,
 } from "@app/lib/api/actions/servers/pod_manager/helpers";
-import { POD_MANAGER_TOOLS_METADATA } from "@app/lib/api/actions/servers/pod_manager/metadata";
+import {
+  LIST_MEMBERS_TOOL_NAME,
+  POD_MANAGER_TOOLS_METADATA,
+  SEMANTIC_SEARCH_TOOL_NAME,
+  UPDATE_MEMBERS_TOOL_NAME,
+} from "@app/lib/api/actions/servers/pod_manager/metadata";
+import { searchFunction } from "@app/lib/api/actions/servers/search/tools";
 import { resolveAgentConfigurationIdByName } from "@app/lib/api/assistant/configuration/agent";
 import {
   createConversation,
@@ -32,23 +38,28 @@ import {
   getLightConversation,
 } from "@app/lib/api/assistant/conversation/fetch";
 import config from "@app/lib/api/config";
+import { DustFileSystem, SCOPED_PREFIX_POD } from "@app/lib/api/file_system";
 import {
   addContentNodeToProject,
   listProjectContextAttachments,
   removeContentNodesFromProject,
 } from "@app/lib/api/projects/context";
 import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
+import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
+import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/project-added-as-member";
+import { seedInitialPodTasks } from "@app/lib/project_task/seed_initial_pod_tasks";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { ProjectMetadataBlob } from "@app/lib/resources/project_metadata_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { getConversationRoute, getProjectRoute } from "@app/lib/utils/router";
-import { areOpenProjectsAllowed } from "@app/lib/workspace_policies";
+import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
+import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import {
   isUserMessageType,
   type UserMessageOrigin,
@@ -89,7 +100,7 @@ export function createProjectManagerTools(
   const handlers: ToolHandlers<typeof POD_MANAGER_TOOLS_METADATA> = {
     add_content_node: async (params) => {
       return withErrorHandling(async () => {
-        const contextRes = await getWritableProjectContext(auth, {
+        const contextRes = await getWritablePodContext(auth, {
           agentLoopContext,
           dustPod: params.dustPod,
         });
@@ -97,7 +108,7 @@ export function createProjectManagerTools(
           return contextRes;
         }
 
-        const { space } = contextRes.value;
+        const { pod } = contextRes.value;
 
         const dataSourceId = extractDataSourceIdFromNodeId(
           params.dataSourceNodeId
@@ -144,7 +155,7 @@ export function createProjectManagerTools(
         }
 
         const upsertRes = await addContentNodeToProject(auth, {
-          space,
+          space: pod,
           contentFragment: {
             title: params.title,
             url: params.url,
@@ -179,7 +190,7 @@ export function createProjectManagerTools(
 
     remove_content_node: async (params) => {
       return withErrorHandling(async () => {
-        const contextRes = await getWritableProjectContext(auth, {
+        const contextRes = await getWritablePodContext(auth, {
           agentLoopContext,
           dustPod: params.dustPod,
         });
@@ -187,10 +198,10 @@ export function createProjectManagerTools(
           return contextRes;
         }
 
-        const { space } = contextRes.value;
+        const { pod } = contextRes.value;
 
         const removeRes = await removeContentNodesFromProject(auth, {
-          space,
+          space: pod,
           nodes: [
             {
               nodeId: params.nodeId,
@@ -216,9 +227,9 @@ export function createProjectManagerTools(
       }, "Failed to remove linked content from Pod");
     },
 
-    edit_description: async (params) => {
+    edit_information: async (params) => {
       return withErrorHandling(async () => {
-        const contextRes = await getWritableProjectContext(auth, {
+        const contextRes = await getPod(auth, {
           agentLoopContext,
           dustPod: params.dustPod,
         });
@@ -226,38 +237,88 @@ export function createProjectManagerTools(
           return contextRes;
         }
 
-        const { space } = contextRes.value;
-        const { description } = params;
+        const { pod } = contextRes.value;
 
-        // Fetch or create project metadata.
-        const metadata = await ProjectMetadataResource.fetchBySpace(
-          auth,
-          space
-        );
+        if (!pod.canAdministrate(auth)) {
+          return new Err(
+            new MCPError(
+              "You do not have permission to edit this Pod's information",
+              { tracked: false }
+            )
+          );
+        }
 
+        const { title, description, pinnedFramePath } = params;
+        if (
+          title === undefined &&
+          description === undefined &&
+          pinnedFramePath === undefined
+        ) {
+          return new Err(
+            new MCPError(
+              "At least one of title, description, or pinnedFramePath must be provided",
+              { tracked: false }
+            )
+          );
+        }
+
+        const updates: ProjectMetadataBlob & { title?: string } = {};
+
+        if (title !== undefined) {
+          const updateNameRes = await pod.updateName(auth, title);
+          if (updateNameRes.isErr()) {
+            return new Err(
+              new MCPError(updateNameRes.error.message, { tracked: false })
+            );
+          }
+          updates.title = title.trim();
+        }
+
+        if (description !== undefined) {
+          updates.description = description;
+        }
+
+        if (pinnedFramePath !== undefined) {
+          const validation = await validatePinnedFramePath(
+            auth,
+            pod,
+            pinnedFramePath
+          );
+          if (validation.isErr()) {
+            return new Err(
+              new MCPError(validation.error.message, { tracked: false })
+            );
+          }
+
+          // Use the normalized path.
+          updates.pinnedFramePath = validation.value;
+        }
+
+        const { title: _title, ...podUpdates } = updates;
+        let metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
         if (!metadata) {
-          // Create metadata if it doesn't exist.
-          await ProjectMetadataResource.makeNew(auth, space, {
-            description,
-          });
+          metadata = await ProjectMetadataResource.makeNew(
+            auth,
+            pod,
+            podUpdates
+          );
         } else {
-          // Update existing metadata.
-          await metadata.updateDescription(description);
+          await metadata.updateDescriptionAndPinnedFramePath(podUpdates);
         }
 
         return new Ok(
           makeSuccessResponse({
             success: true,
-            description,
-            message: "Pod description updated successfully.",
+            ...updates,
+            message: "Pod information updated successfully.",
           })
         );
-      }, "Failed to edit Pod description");
+      }, "Failed to edit Pod information");
     },
 
-    get_information: async (params) => {
+    [UPDATE_MEMBERS_TOOL_NAME]: async (params) => {
       return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, {
+        const contextRes = await getPod(auth, {
           agentLoopContext,
           dustPod: params.dustPod,
         });
@@ -265,19 +326,98 @@ export function createProjectManagerTools(
           return contextRes;
         }
 
-        const { space } = contextRes.value;
+        const { pod } = contextRes.value;
+
+        if (!pod.canAdministrate(auth)) {
+          return new Err(
+            new MCPError("You do not have permission to update Pod members", {
+              tracked: false,
+            })
+          );
+        }
+
+        const addMemberIds = params.addMemberIds ?? [];
+        const removeMemberIds = params.removeMemberIds ?? [];
+
+        if (addMemberIds.length === 0 && removeMemberIds.length === 0) {
+          return new Err(
+            new MCPError(
+              "At least one of addMemberIds or removeMemberIds must be provided",
+              { tracked: false }
+            )
+          );
+        }
+
+        const added: string[] = [];
+        const removed: string[] = [];
+
+        if (addMemberIds.length > 0) {
+          const uniqueAddIds = [...new Set(addMemberIds)];
+          const addMembersRes = await pod.addMembers(auth, {
+            userIds: uniqueAddIds,
+          });
+          if (addMembersRes.isErr()) {
+            return new Err(
+              new MCPError(
+                `Failed to add members: ${addMembersRes.error.message}`,
+                { tracked: false }
+              )
+            );
+          }
+          added.push(...addMembersRes.value.map((user) => user.sId));
+          notifyProjectMembersAdded(auth, {
+            project: pod.toJSON(),
+            addedUserIds: uniqueAddIds,
+          });
+        }
+
+        if (removeMemberIds.length > 0) {
+          const uniqueRemoveIds = [...new Set(removeMemberIds)];
+          const removeMembersRes = await pod.removeMembers(auth, {
+            userIds: uniqueRemoveIds,
+          });
+          if (removeMembersRes.isErr()) {
+            return new Err(
+              new MCPError(
+                `Failed to remove members: ${removeMembersRes.error.message}`,
+                { tracked: false }
+              )
+            );
+          }
+          removed.push(...removeMembersRes.value.map((user) => user.sId));
+        }
+
+        return new Ok(
+          makeSuccessResponse({
+            success: true,
+            added,
+            removed,
+            message: `Pod members updated successfully.${added.length > 0 ? ` Added: ${added.join(", ")}.` : ""}${removed.length > 0 ? ` Removed: ${removed.join(", ")}.` : ""}`,
+          })
+        );
+      }, "Failed to update Pod members");
+    },
+
+    get_information: async (params) => {
+      return withErrorHandling(async () => {
+        const contextRes = await getPod(auth, {
+          agentLoopContext,
+          dustPod: params.dustPod,
+        });
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
+
+        const { pod: pod } = contextRes.value;
         const owner = auth.getNonNullableWorkspace();
 
         // Fetch project metadata
-        const metadata = await ProjectMetadataResource.fetchBySpace(
-          auth,
-          space
-        );
+        const metadata = await ProjectMetadataResource.fetchBySpace(auth, pod);
 
         // Linked content nodes (Company Data references) have no other discovery surface, so we
-        // surface them here. Project files do (they live under `project/<rel>` scoped paths and
-        // are discovered through the `files` MCP server), so we only report a count plus a hint.
-        const attachments = await listProjectContextAttachments(auth, space);
+        // surface them here. Pod files do (they live under `pod-{podId}/<rel>` scoped paths and are
+        // discovered through the `files` MCP server), so we only report a count plus a hint.
+        const attachments = await listProjectContextAttachments(auth, pod);
         const contentNodes = attachments
           .filter(isContentNodeAttachmentType)
           .map((node) => ({
@@ -286,30 +426,36 @@ export function createProjectManagerTools(
             dataSourceViewId: node.nodeDataSourceViewId,
           }));
 
-        const projectFilesRes = await listProjectFiles(auth, space);
-        if (projectFilesRes.isErr()) {
-          return projectFilesRes;
+        const fsResult = await DustFileSystem.forPod(auth, pod);
+        if (fsResult.isErr()) {
+          return new Err(
+            new MCPError("Failed to initialise file system for this Pod.", {
+              tracked: true,
+            })
+          );
         }
-        const projectFileCount = projectFilesRes.value.filter(
-          (e) => !e.isDirectory
-        ).length;
+        const podFiles = await fsResult.value.list(
+          `${SCOPED_PREFIX_POD}${pod.sId}`
+        );
+        const projectFileCount = podFiles.filter((e) => !e.isDirectory).length;
 
         // Construct project URL
-        const projectPath = getProjectRoute(owner.sId, space.sId);
+        const projectPath = getPodRoute(owner.sId, pod.sId);
         const projectUrl = `${config.getAppUrl()}${projectPath}`;
 
         return new Ok(
           makeSuccessResponse({
             success: true,
             pod: {
-              spaceId: space.sId,
-              name: space.name,
+              id: pod.sId,
+              name: pod.name,
               url: projectUrl,
               description: metadata?.description ?? null,
+              pinnedFramePath: metadata?.pinnedFramePath ?? null,
               contentNodes,
               files: {
                 count: projectFileCount,
-                hint: `Use \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` with \`scope: "project"\` to enumerate.`,
+                hint: `Use \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` with \`scope: { type: "pod" }\` to enumerate.`,
               },
             },
             message: "Successfully retrieved Pod information",
@@ -317,9 +463,9 @@ export function createProjectManagerTools(
         );
       }, "Failed to get Pod information");
     },
-    list_members: async (params) => {
+    [LIST_MEMBERS_TOOL_NAME]: async (params) => {
       return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, {
+        const contextRes = await getPod(auth, {
           agentLoopContext,
           dustPod: params.dustPod,
         });
@@ -327,7 +473,7 @@ export function createProjectManagerTools(
           return contextRes;
         }
 
-        const { space } = contextRes.value;
+        const { pod } = contextRes.value;
         const { limit = 20, pageCursor } = params;
 
         const decodedPageOffset = pageCursor
@@ -348,7 +494,7 @@ export function createProjectManagerTools(
         }
 
         const { groupsToProcess, allGroupMemberships } =
-          await space.fetchManualGroupsMemberships(auth, {
+          await pod.fetchManualGroupsMemberships(auth, {
             shouldIncludeAllMembers: true,
           });
 
@@ -426,7 +572,7 @@ export function createProjectManagerTools(
               hasMore: false,
               nextPageCursor: null,
               members: [],
-              message: `No members found in Pod "${space.name}".`,
+              message: `No members found in Pod "${pod.name}".`,
             })
           );
         }
@@ -444,7 +590,7 @@ export function createProjectManagerTools(
             hasMore,
             nextPageCursor,
             members: pageMembers,
-            message: `Found ${pageMembers.length} member(s) in Pod "${space.name}" (page)${hasMore ? ". Pass nextPageCursor to fetch more members." : ""}.`,
+            message: `Found ${pageMembers.length} member(s) in Pod "${pod.name}" (page)${hasMore ? ". Pass nextPageCursor to fetch more members." : ""}.`,
           })
         );
       }, "Failed to list Pod members");
@@ -455,30 +601,30 @@ export function createProjectManagerTools(
         const workspaceSId = owner.sId;
         const { nonArchivedSpaces } =
           await listNonArchivedMemberSpacesWithMetadata(auth);
-        const memberProjects = nonArchivedSpaces
+        const memberPods = nonArchivedSpaces
           .filter((space) => space.isProject())
           .sort((a, b) =>
             a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
           );
 
-        const projects = memberProjects.map((space) => ({
-          spaceId: space.sId,
-          name: space.name,
+        const pods = memberPods.map((pod) => ({
+          id: pod.sId,
+          name: pod.name,
           dustPod: {
-            uri: makeProjectConfigurationURI(workspaceSId, space.sId),
-            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT,
+            uri: makePodConfigurationURI(workspaceSId, pod.sId),
+            mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
           },
         }));
 
         return new Ok(
           makeSuccessResponse({
             success: true,
-            count: projects.length,
-            pods: projects,
+            count: pods.length,
+            pods,
             message:
-              projects.length === 0
+              pods.length === 0
                 ? "No non-archived Pods found where you are a space member."
-                : `Found ${projects.length} Pod(s). Use each entry's dustPod as the dustPod argument for other pod_manager tools.`,
+                : `Found ${pods.length} Pod(s). Use each entry's dustPod as the dustPod argument for other pod_manager tools.`,
           })
         );
       }, "Failed to list Pods");
@@ -487,7 +633,7 @@ export function createProjectManagerTools(
       return withErrorHandling(async () => {
         const owner = auth.getNonNullableWorkspace();
 
-        if (params.visibility === "open" && !areOpenProjectsAllowed(owner)) {
+        if (params.visibility === "open" && !areOpenPodsAllowed(owner)) {
           return new Err(
             new MCPError(
               "Open Pods are disabled by your workspace admin. Create a private Pod instead.",
@@ -496,17 +642,13 @@ export function createProjectManagerTools(
           );
         }
 
-        const createSpaceRes = await createSpaceAndGroup(
-          auth,
-          {
-            name: params.title,
-            isRestricted: params.visibility !== "open",
-            spaceKind: "project",
-            managementMode: "manual",
-            memberIds: [],
-          },
-          { seedInitialTasks: params.seedInitialTasks ?? false }
-        );
+        const createSpaceRes = await createSpaceAndGroup(auth, {
+          name: params.title,
+          isRestricted: params.visibility !== "open",
+          spaceKind: "project",
+          managementMode: "manual",
+          memberIds: [],
+        });
 
         if (createSpaceRes.isErr()) {
           const error = createSpaceRes.error;
@@ -545,17 +687,17 @@ export function createProjectManagerTools(
           }
         }
 
-        const projectSpace = createSpaceRes.value;
+        const pod = createSpaceRes.value;
 
         if (params.description) {
           const metadata = await ProjectMetadataResource.fetchBySpace(
             auth,
-            projectSpace
+            pod
           );
           if (metadata) {
             await metadata.updateDescription(params.description);
           } else {
-            await ProjectMetadataResource.makeNew(auth, projectSpace, {
+            await ProjectMetadataResource.makeNew(auth, pod, {
               description: params.description,
             });
           }
@@ -563,7 +705,7 @@ export function createProjectManagerTools(
 
         if (params.memberIds && params.memberIds.length > 0) {
           const uniqueMemberIds = [...new Set(params.memberIds)];
-          const addMembersRes = await projectSpace.addMembers(auth, {
+          const addMembersRes = await pod.addMembers(auth, {
             userIds: uniqueMemberIds,
           });
           if (addMembersRes.isErr()) {
@@ -576,25 +718,39 @@ export function createProjectManagerTools(
           }
         }
 
-        const projectUrl = `${config.getAppUrl()}${getProjectRoute(
+        if (params.seedInitialTasks) {
+          const seedResult = await seedInitialPodTasks(auth, pod);
+          if (
+            seedResult.isErr() &&
+            seedResult.error.code === "internal_error"
+          ) {
+            return new Err(
+              new MCPError("Pod created but failed to seed initial tasks.", {
+                tracked: false,
+              })
+            );
+          }
+        }
+
+        const projectUrl = `${config.getAppUrl()}${getPodRoute(
           owner.sId,
-          projectSpace.sId
+          pod.sId
         )}`;
 
         return new Ok(
           makeSuccessResponse({
             success: true,
             pod: {
-              spaceId: projectSpace.sId,
-              title: projectSpace.name,
-              visibility: projectSpace.isOpen() ? "open" : "private",
+              id: pod.sId,
+              title: pod.name,
+              visibility: pod.isOpen() ? "open" : "private",
               dustPod: {
-                uri: makeProjectConfigurationURI(owner.sId, projectSpace.sId),
-                mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT,
+                uri: makePodConfigurationURI(owner.sId, pod.sId),
+                mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,
               },
               url: projectUrl,
             },
-            message: `Pod "${projectSpace.name}" created successfully.`,
+            message: `Pod "${pod.name}" created successfully.`,
           })
         );
       }, "Failed to create Pod");
@@ -610,7 +766,7 @@ export function createProjectManagerTools(
           );
         }
 
-        const contextRes = await getProjectSpace(auth, {
+        const contextRes = await getPod(auth, {
           agentLoopContext,
           dustPod: params.dustPod,
         });
@@ -618,9 +774,9 @@ export function createProjectManagerTools(
           return contextRes;
         }
 
-        const { space } = contextRes.value;
+        const { pod } = contextRes.value;
         const dataSources = await buildProjectRetrieveDataSources(auth, {
-          space,
+          space: pod,
           onlyGroupConversationsAndConnectedData: false,
         });
 
@@ -650,9 +806,18 @@ export function createProjectManagerTools(
       }, "Failed to retrieve recent Pod documents");
     },
 
-    create_conversation: async (params) => {
+    [SEMANTIC_SEARCH_TOOL_NAME]: async (params) => {
       return withErrorHandling(async () => {
-        const contextRes = await getWritableProjectContext(auth, {
+        if (!agentLoopContext?.runContext) {
+          return new Err(
+            new MCPError("No conversation context available", {
+              tracked: false,
+            })
+          );
+        }
+
+        const scope = params.searchScope ?? "all";
+        const contextRes = await getPod(auth, {
           agentLoopContext,
           dustPod: params.dustPod,
         });
@@ -660,8 +825,42 @@ export function createProjectManagerTools(
           return contextRes;
         }
 
-        const { space } = contextRes.value;
-        const user = auth.getNonNullableUser();
+        const { pod } = contextRes.value;
+        const dataSources = await buildPodSearchDataSources(auth, pod, scope);
+
+        if (dataSources.length === 0) {
+          return new Err(
+            new MCPError(
+              scope === "conversations"
+                ? "No Pod data source available to search conversations, or the Pod connector is not linked (required to scope transcript documents)."
+                : "No Pod data sources available to search for this scope.",
+              { tracked: false }
+            )
+          );
+        }
+
+        return searchFunction(auth, {
+          query: params.query,
+          relativeTimeFrame: params.relativeTimeFrame ?? "all",
+          dataSources,
+          nodeIds: params.nodeIds,
+          agentLoopContext,
+        });
+      }, "Failed to search Pod");
+    },
+
+    create_conversation: async (params) => {
+      return withErrorHandling(async () => {
+        const contextRes = await getWritablePodContext(auth, {
+          agentLoopContext,
+          dustPod: params.dustPod,
+        });
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
+
+        const { pod } = contextRes.value;
+        const user = auth.user();
         const owner = auth.getNonNullableWorkspace();
 
         // Get origin and timezone from the current conversation
@@ -706,7 +905,7 @@ export function createProjectManagerTools(
         const conversation = await createConversation(auth, {
           title: params.title,
           visibility: "unlisted",
-          spaceId: space.id,
+          spaceId: pod.id,
         });
 
         // Post user message
@@ -716,7 +915,9 @@ export function createProjectManagerTools(
           mentions,
           context: {
             username: agentName,
-            fullName: `@${agentName} on behalf of ${user.fullName()}`,
+            fullName: user
+              ? `@${agentName} on behalf of ${user.fullName()}`
+              : `@${agentName}`,
             email: null,
             profilePictureUrl: agentProfilePictureUrl,
             timezone,
@@ -752,7 +953,7 @@ export function createProjectManagerTools(
             conversationId: conversation.sId,
             conversationUrl,
             userMessageId: messageRes.value.userMessage.sId,
-            message: `Conversation created successfully in Pod "${space.name}"`,
+            message: `Conversation created successfully in Pod "${pod.name}"`,
           })
         );
       }, "Failed to create conversation");
@@ -760,7 +961,7 @@ export function createProjectManagerTools(
 
     list_conversations: async (params) => {
       return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, {
+        const contextRes = await getPod(auth, {
           agentLoopContext,
           dustPod: params.dustPod,
         });
@@ -768,7 +969,7 @@ export function createProjectManagerTools(
           return contextRes;
         }
 
-        const { space } = contextRes.value;
+        const { pod } = contextRes.value;
         const {
           unreadOnly = false,
           limit = 20,
@@ -793,7 +994,7 @@ export function createProjectManagerTools(
           } = await ConversationResource.listConversationsInSpacePaginated(
             auth,
             {
-              spaceId: space.sId,
+              spaceId: pod.sId,
               options: listOptions,
               pagination: {
                 limit,
@@ -806,7 +1007,7 @@ export function createProjectManagerTools(
             return new Ok([
               {
                 type: "text" as const,
-                text: `No conversations found in Pod "${space.name}" updated on or after ${new Date(updatedSinceMs).toISOString()}.`,
+                text: `No conversations found in Pod "${pod.name}" updated on or after ${new Date(updatedSinceMs).toISOString()}.`,
               },
             ]);
           }
@@ -844,14 +1045,14 @@ export function createProjectManagerTools(
               hasMore,
               nextPageCursor,
               conversations: conversationsPayload,
-              message: `Found ${conversationsPayload.length} conversation(s) in Pod "${space.name}" (page)${hasMore ? ". Pass nextPageCursor to fetch older updates in this window." : ""}.`,
+              message: `Found ${conversationsPayload.length} conversation(s) in Pod "${pod.name}" (page)${hasMore ? ". Pass nextPageCursor to fetch older updates in this window." : ""}.`,
             })
           );
         }
 
         const spaceConversations =
           await ConversationResource.listConversationsInSpace(auth, {
-            spaceId: space.sId,
+            spaceId: pod.sId,
             options: listOptions,
           });
 
@@ -864,7 +1065,7 @@ export function createProjectManagerTools(
           return new Ok([
             {
               type: "text" as const,
-              text: `No unread conversations found in Pod "${space.name}" updated on or after ${new Date(updatedSinceMs).toISOString()}.`,
+              text: `No unread conversations found in Pod "${pod.name}" updated on or after ${new Date(updatedSinceMs).toISOString()}.`,
             },
           ]);
         }
@@ -900,7 +1101,7 @@ export function createProjectManagerTools(
             includeMessages,
             updatedSince: updatedSinceMs,
             conversations: conversationsPayload,
-            message: `Found ${pageResources.length} unread conversation(s) in Pod "${space.name}"${unreadResources.length > limit ? ` (showing first ${limit} of ${unreadResources.length})` : ""}.`,
+            message: `Found ${pageResources.length} unread conversation(s) in Pod "${pod.name}"${unreadResources.length > limit ? ` (showing first ${limit} of ${unreadResources.length})` : ""}.`,
           })
         );
       }, "Failed to list Pod conversations");
@@ -908,7 +1109,7 @@ export function createProjectManagerTools(
 
     add_message_to_conversation: async (params) => {
       return withErrorHandling(async () => {
-        const contextRes = await getWritableProjectContext(auth, {
+        const contextRes = await getWritablePodContext(auth, {
           agentLoopContext,
           dustPod: params.dustPod,
         });
@@ -916,8 +1117,8 @@ export function createProjectManagerTools(
           return contextRes;
         }
 
-        const { space } = contextRes.value;
-        const user = auth.getNonNullableUser();
+        const { pod } = contextRes.value;
+        const user = auth.user();
         const owner = auth.getNonNullableWorkspace();
 
         const conversationId =
@@ -947,7 +1148,7 @@ export function createProjectManagerTools(
         }
 
         const conversation = conversationRes.value;
-        if (conversation.spaceId !== space.sId) {
+        if (conversation.spaceId !== pod.sId) {
           return new Err(
             new MCPError("Conversation is not in this Pod", {
               tracked: false,
@@ -996,7 +1197,9 @@ export function createProjectManagerTools(
           mentions,
           context: {
             username: agentName,
-            fullName: `@${agentName} on behalf of ${user.fullName()}`,
+            fullName: user
+              ? `@${agentName} on behalf of ${user.fullName()}`
+              : `@${agentName}`,
             email: null,
             profilePictureUrl: agentProfilePictureUrl,
             timezone,
@@ -1032,7 +1235,7 @@ export function createProjectManagerTools(
             conversationId: conversation.sId,
             conversationUrl,
             userMessageId: messageRes.value.userMessage.sId,
-            message: `Message posted to conversation in Pod "${space.name}".`,
+            message: `Message posted to conversation in Pod "${pod.name}".`,
           })
         );
       }, "Failed to add message to conversation");

@@ -1,4 +1,8 @@
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
+import {
+  dispatchPaygDisabled,
+  dispatchPaygEnabled,
+} from "@app/lib/api/metronome/credit_state_dispatcher";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { getDefaultDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/daily_cap";
 import type { Authenticator } from "@app/lib/auth";
@@ -10,11 +14,18 @@ import {
   startOrResumeEnterprisePAYG,
   stopEnterprisePAYG,
 } from "@app/lib/credits/payg";
+import { PAYG_ELIGIBLE_TIERS } from "@app/lib/metronome/types";
+import {
+  isEnterprisePlanPrefix,
+  PRO_PLAN_SEAT_39_CODE,
+} from "@app/lib/plans/plan_codes";
 import {
   getStripeSubscription,
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
@@ -174,7 +185,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
         variant: "toggle",
         label: "Pay-as-you-go",
         description:
-          "Enable pay-as-you-go billing (enterprise only). When enabled, programmatic usage will still be possible after free and committed credits are exhausted. Requires a spending cap.",
+          "Enable pay-as-you-go billing. When enabled, programmatic usage will still be possible after free and committed credits are exhausted. Requires a spending cap. Available for enterprise (Stripe or Metronome) and business (Metronome only).",
         async: true,
       },
       paygCapDollars: {
@@ -201,6 +212,11 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
         dependsOn: { field: "customDailyCapEnabled", value: true },
       },
     },
+  },
+
+  isApplicableTo: (auth) => {
+    const plan = auth.plan();
+    return plan !== null && !isCreditPricedPlan(plan);
   },
 
   populateAsyncArgs: async (auth) => {
@@ -259,6 +275,16 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
   },
 
   execute: async (auth, _, args) => {
+    const plan = auth.plan();
+    if (plan && isCreditPricedPlan(plan)) {
+      return new Err(
+        new Error(
+          "This plugin is not applicable to credit-priced plan workspaces. " +
+            "Use 'Manage Credit Usage Configuration' instead."
+        )
+      );
+    }
+
     const parseResult = ProgrammaticUsageConfigurationSchema.safeParse(args);
 
     if (!parseResult.success) {
@@ -290,13 +316,28 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
     }
 
     if (paygEnabled) {
-      if (
-        !stripeSubscription ||
-        !isEnterpriseSubscription(stripeSubscription)
-      ) {
-        return new Err(
-          new Error("PAYG can only be enabled for enterprise subscriptions.")
-        );
+      if (stripeSubscription) {
+        if (!isEnterpriseSubscription(stripeSubscription)) {
+          return new Err(
+            new Error(
+              "PAYG can only be enabled for enterprise Stripe subscriptions."
+            )
+          );
+        }
+      } else {
+        const planCode = subscription?.plan.code ?? "";
+        const isEligible =
+          isEnterprisePlanPrefix(planCode) ||
+          planCode === PRO_PLAN_SEAT_39_CODE;
+        if (!isEligible) {
+          return new Err(
+            new Error(
+              `PAYG can only be enabled for ${PAYG_ELIGIBLE_TIERS.join(
+                " or "
+              )} plans.`
+            )
+          );
+        }
       }
     }
 
@@ -340,32 +381,70 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       }
     }
 
-    // Handle PAYG enable/disable
-    if (paygEnabled && stripeSubscription) {
+    const workspace = auth.getNonNullableWorkspace();
+    if (paygEnabled) {
       assert(
         paygCapDollars !== undefined,
         "[Unreachable] PaygEnabled but paygCapDollars undefined"
       );
       const paygCapMicroUsd = Math.round(paygCapDollars * 1_000_000);
-      const paygResult = await startOrResumeEnterprisePAYG({
-        auth,
-        stripeSubscription,
-        paygCapMicroUsd,
-      });
-      if (paygResult.isErr()) {
-        return paygResult;
-      }
-    } else {
-      // Check if PAYG was previously enabled and needs to be stopped
-      const refreshedConfig =
-        await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-      if (refreshedConfig?.paygCapMicroUsd !== null && stripeSubscription) {
-        const stopResult = await stopEnterprisePAYG({
+      if (stripeSubscription) {
+        const paygResult = await startOrResumeEnterprisePAYG({
           auth,
           stripeSubscription,
+          paygCapMicroUsd,
         });
-        if (stopResult.isErr()) {
-          return stopResult;
+        if (paygResult.isErr()) {
+          return paygResult;
+        }
+      } else {
+        const refreshedConfig =
+          await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+        if (refreshedConfig) {
+          const updateResult = await refreshedConfig.updateConfiguration(auth, {
+            paygCapMicroUsd,
+          });
+          if (updateResult.isErr()) {
+            return updateResult;
+          }
+        }
+        // Note: the Metronome AWU PAYG cap alert is no longer driven from
+        // here. AWU concerns live on `credit_usage_configuration` and are
+        // managed via the "Manage Credit Usage Configuration" plugin.
+        const workspaceResource = await WorkspaceResource.fetchById(
+          workspace.sId
+        );
+        if (workspaceResource) {
+          await dispatchPaygEnabled({ workspace: workspaceResource });
+        }
+      }
+    } else {
+      const refreshedConfig =
+        await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+      if (refreshedConfig?.paygCapMicroUsd !== null) {
+        if (stripeSubscription) {
+          const stopResult = await stopEnterprisePAYG({
+            auth,
+            stripeSubscription,
+          });
+          if (stopResult.isErr()) {
+            return stopResult;
+          }
+        } else if (refreshedConfig) {
+          const clearResult = await refreshedConfig.updateConfiguration(auth, {
+            paygCapMicroUsd: null,
+          });
+          if (clearResult.isErr()) {
+            return clearResult;
+          }
+          // Note: clearing the Metronome AWU PAYG cap alert lives on the
+          // "Manage Credit Usage Configuration" plugin now.
+          const workspaceResource = await WorkspaceResource.fetchById(
+            workspace.sId
+          );
+          if (workspaceResource) {
+            await dispatchPaygDisabled({ workspace: workspaceResource });
+          }
         }
       }
     }

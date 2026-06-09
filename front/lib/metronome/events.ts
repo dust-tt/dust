@@ -6,7 +6,13 @@ import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { createHash } from "crypto";
 
-import type { MetronomeEvent } from "./types";
+import {
+  USAGE_TYPE_FREE,
+  USAGE_TYPE_GROUP_KEY,
+  USAGE_TYPE_PROGRAMMATIC,
+  USAGE_TYPE_USER,
+} from "./constants";
+import type { MetronomeEvent, UsageType } from "./types";
 
 const MAX_TRANSACTION_ID_LENGTH = 128;
 const MAX_PROPERTY_VALUE_BYTES = 128;
@@ -42,108 +48,106 @@ function truncatePropertyValue(value: string): string {
 // ---------------------------------------------------------------------------
 // Tool category mapping
 // ---------------------------------------------------------------------------
+// Basic: 1 AWU
+// Advanced: 3 AWU
+export const TOOL_CATEGORIES = ["basic", "advanced"] as const;
 
-export const TOOL_CATEGORIES = [
-  "retrieval",
-  "deep_research",
-  "reasoning",
-  "connectors",
-  "generation",
-  "agents",
-  "actions",
-  "platform",
-] as const;
+export type ToolCategory = (typeof TOOL_CATEGORIES)[number];
 
-type ToolCategory = (typeof TOOL_CATEGORIES)[number];
+// AWU price per tool invocation by category (1 AWU = $0.01). Canonical source
+// for both the Tool Usage rate-card prices (scripts/metronome_setup.ts) and the
+// runtime per-user AWU spend computation (per_user_usage.ts) — keep both in
+// sync by importing from here rather than redefining.
+export const TOOL_CATEGORY_AWU_WEIGHTS: Record<ToolCategory, number> = {
+  basic: 1,
+  advanced: 3,
+};
+
+export function isToolCategory(value: string): value is ToolCategory {
+  return value in TOOL_CATEGORY_AWU_WEIGHTS;
+}
 
 // Exhaustive map — TypeScript will error if a new internal MCP server is added
 // without being categorized here.
 const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
-  // Retrieval — searching knowledge bases and data sources.
-  search: "retrieval",
-  query_tables_v2: "retrieval",
-  data_warehouses: "retrieval",
-  data_sources_file_system: "retrieval",
-  include_data: "retrieval",
-  conversation_files: "retrieval",
-  files: "retrieval",
+  // Basic (1 AWU) — web search, orchestration, platform utilities.
+  "web_search_&_browse": "basic",
+  run_agent: "basic",
+  agent_router: "basic",
+  agent_sidekick_agent_state: "basic",
+  agent_sidekick_context: "basic",
+  agent_memory: "basic",
+  run_dust_app: "basic",
+  common_utilities: "basic",
+  toolsets: "basic",
+  user_mentions: "basic",
+  missing_action_catcher: "basic",
+  primitive_types_debugger: "basic",
+  jit_testing: "basic",
+  skill_authoring: "basic",
+  skill_management: "basic",
+  schedules_management: "basic",
+  pod_manager: "basic",
+  pod_tasks: "basic",
+  poke: "basic",
+  ask_user_question: "basic",
+  wakeups: "basic",
+  plan_mode: "basic",
 
-  // Deep research — web search, browsing, HTTP.
-  "web_search_&_browse": "deep_research",
-  http_client: "deep_research",
-
-  // Connectors — third-party platform integrations.
-  confluence: "connectors",
-  databricks: "connectors",
-  fathom: "connectors",
-  freshservice: "connectors",
-  github: "connectors",
-  gmail: "connectors",
-  google_calendar: "connectors",
-  google_drive: "connectors",
-  google_sheets: "connectors",
-  hubspot: "connectors",
-  jira: "connectors",
-  luma: "connectors",
-  microsoft_drive: "connectors",
-  microsoft_excel: "connectors",
-  microsoft_teams: "connectors",
-  monday: "connectors",
-  notion: "connectors",
-  openai_usage: "connectors",
-  outlook_calendar: "connectors",
-  outlook: "connectors",
-  productboard: "connectors",
-  salesforce: "connectors",
-  salesloft: "connectors",
-  slab: "connectors",
-  slack: "connectors",
-  slack_bot: "connectors",
-  snowflake: "connectors",
-  statuspage: "connectors",
-  ukg_ready: "connectors",
-  val_town: "connectors",
-  vanta: "connectors",
-  front: "connectors",
-  gong: "connectors",
-  zendesk: "connectors",
-  ashby: "connectors",
-  clari_copilot: "connectors",
-
-  // Generation — file/image/sound creation.
-  file_generation: "generation",
-  image_generation: "generation",
-  sound_studio: "generation",
-  speech_generator: "generation",
-  slideshow: "generation",
-  interactive_content: "generation",
-
-  // Agents — running other agents, routing, sidekick.
-  run_agent: "agents",
-  agent_router: "agents",
-  agent_sidekick_agent_state: "agents",
-  agent_sidekick_context: "agents",
-  agent_management: "agents",
-  agent_memory: "agents",
-  run_dust_app: "agents",
-
-  // Platform — internal utilities, management.
-  extract_data: "platform",
-  common_utilities: "platform",
-  toolsets: "platform",
-  user_mentions: "platform",
-  missing_action_catcher: "platform",
-  primitive_types_debugger: "platform",
-  jit_testing: "platform",
-  skill_management: "platform",
-  schedules_management: "platform",
-  pod_manager: "platform",
-  pod_tasks: "platform",
-  poke: "platform",
-  sandbox: "platform",
-  ask_user_question: "platform",
-  wakeups: "platform",
-  plan_mode: "platform",
+  // Advanced (3 AWU) — retrieval, MCP read/write, data warehouse, generation, sandbox
+  search: "advanced",
+  query_tables_v2: "advanced",
+  data_warehouses: "advanced",
+  data_sources_file_system: "advanced",
+  include_data: "advanced",
+  conversation_files: "advanced",
+  files: "advanced",
+  extract_data: "advanced",
+  http_client: "advanced",
+  sandbox: "advanced",
+  file_generation: "advanced",
+  image_generation: "advanced",
+  sound_studio: "advanced",
+  speech_generator: "advanced",
+  slideshow: "advanced",
+  interactive_content: "advanced",
+  confluence: "advanced",
+  databricks: "advanced",
+  fathom: "advanced",
+  freshservice: "advanced",
+  github: "advanced",
+  gmail: "advanced",
+  google_calendar: "advanced",
+  google_drive: "advanced",
+  google_sheets: "advanced",
+  hubspot: "advanced",
+  jira: "advanced",
+  luma: "advanced",
+  microsoft_drive: "advanced",
+  microsoft_excel: "advanced",
+  microsoft_teams: "advanced",
+  monday: "advanced",
+  notion: "advanced",
+  openai_usage: "advanced",
+  workspace_analytics: "advanced",
+  outlook_calendar: "advanced",
+  outlook: "advanced",
+  productboard: "advanced",
+  salesforce: "advanced",
+  salesloft: "advanced",
+  slab: "advanced",
+  slack: "advanced",
+  slack_bot: "advanced",
+  snowflake: "advanced",
+  statuspage: "advanced",
+  ukg_ready: "advanced",
+  val_town: "advanced",
+  vanta: "advanced",
+  front: "advanced",
+  gong: "advanced",
+  zendesk: "advanced",
+  ashby: "advanced",
+  clari_copilot: "advanced",
 };
 
 export function getToolCategory(
@@ -153,10 +157,118 @@ export function getToolCategory(
     !internalMCPServerName ||
     !isInternalMCPServerName(internalMCPServerName)
   ) {
-    // External MCP servers (user-configured remote servers) or unknown names.
-    return "actions";
+    // External MCP servers (user-configured remote servers) fall into advanced
+    // as "Custom MCP call".
+    return "advanced";
   }
   return TOOL_CATEGORY_MAP[internalMCPServerName];
+}
+
+// ---------------------------------------------------------------------------
+// Usage type helpers
+// ---------------------------------------------------------------------------
+
+// Origins whose entire conversation is free (platform-assistive, not
+// user-requested output).
+const FREE_ORIGINS: ReadonlySet<string> = new Set<string>(["agent_sidekick"]);
+
+// Internal MCP servers whose tool invocations are always free regardless of
+// the message-level usage type (platform plumbing, not user output).
+const FREE_TOOL_SERVERS: ReadonlySet<string> = new Set<string>([
+  "agent_router",
+  "common_utilities",
+  "toolsets",
+  "agent_memory",
+]);
+
+export function isFreeOrigin(origin: string): boolean {
+  return FREE_ORIGINS.has(origin);
+}
+
+export function getUsageType(
+  isProgrammaticUsage: boolean,
+  origin: string
+): UsageType {
+  if (isFreeOrigin(origin)) {
+    return USAGE_TYPE_FREE;
+  }
+  return isProgrammaticUsage ? USAGE_TYPE_PROGRAMMATIC : USAGE_TYPE_USER;
+}
+
+// A tool invocation is always free (priced at 0 in the rate card) when its
+// internal MCP server is platform plumbing — see FREE_TOOL_SERVERS.
+export function isFreeToolServer(
+  internalMCPServerName: string | null
+): boolean {
+  return (
+    internalMCPServerName !== null &&
+    FREE_TOOL_SERVERS.has(internalMCPServerName)
+  );
+}
+
+function getToolUsageType(
+  baseUsageType: UsageType,
+  internalMCPServerName: string | null
+): UsageType {
+  if (isFreeToolServer(internalMCPServerName)) {
+    return USAGE_TYPE_FREE;
+  }
+  return baseUsageType;
+}
+
+// ---------------------------------------------------------------------------
+// AWU credit conversion helpers
+// ---------------------------------------------------------------------------
+// These are the single source of truth for converting raw usage into AWU
+// credits. They are used both when emitting Metronome billing events (below)
+// and when surfacing the cost of a message/conversation to the frontend, so
+// the displayed credits always match what is billed.
+
+// Convert a raw model-compute cost in microUSD into AWU credits.
+// 1 AWU credit = $0.0085 of compute (margin baked in), so 1 credit = 8500
+// microUSD. Rounded up, matching the Metronome event conversion.
+export function awuFromMicroUsd(microUsd: number): number {
+  return Math.ceil(microUsd / 0.85 / 10_000);
+}
+
+// Intelligence (AI compute) credits for a set of run usages. Usages are
+// grouped by (providerId, modelId) and converted per group before summing —
+// this mirrors `buildLlmUsageEvents` so the total equals the billed amount.
+export function intelligenceAwuFromRunUsages(
+  runUsages: RunUsageType[]
+): number {
+  const costByModel = new Map<string, number>();
+  for (const usage of runUsages) {
+    // Need this grouping to rightfully apply the Math.ceil in awuFromMicroUsd
+    const key = `${usage.providerId}|${usage.modelId}`;
+    costByModel.set(key, (costByModel.get(key) ?? 0) + usage.costMicroUsd);
+  }
+
+  let total = 0;
+  for (const costMicroUsd of costByModel.values()) {
+    total += awuFromMicroUsd(costMicroUsd);
+  }
+  return total;
+}
+
+// Tool (platform action) credits for a set of executed actions. Each action
+// costs a fixed number of credits depending on its category (basic = 1,
+// advanced = 3), except free tools (FREE_TOOL_SERVERS, e.g. agent_memory) which
+// are priced at 0 in the rate card and therefore contribute nothing. Callers
+// should pass only final-status actions (matching the usage_queue extraction)
+// so this equals the billed amount.
+export function toolAwuFromActions(
+  actions: { internalMCPServerName: string | null }[]
+): number {
+  return actions.reduce((total, action) => {
+    if (isFreeToolServer(action.internalMCPServerName)) {
+      return total;
+    }
+    return (
+      total +
+      TOOL_CATEGORY_AWU_WEIGHTS[getToolCategory(action.internalMCPServerName)]
+    );
+  }, 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -177,11 +289,12 @@ export function buildLlmUsageEvents({
   userId,
   agentMessageId,
   agentId,
+  subAgentId,
   parentAgentMessageId,
   runKey,
   runUsages,
   origin,
-  isProgrammaticUsage,
+  usageType,
   authMethod,
   apiKeyName,
   messageStatus,
@@ -194,11 +307,12 @@ export function buildLlmUsageEvents({
   userId: string | null;
   agentMessageId: string;
   agentId: string | null;
+  subAgentId: string | null;
   parentAgentMessageId: string | null;
   runKey: string;
   runUsages: RunUsageType[];
   origin: UserMessageOrigin;
-  isProgrammaticUsage: boolean;
+  usageType: UsageType;
   authMethod: string | null;
   apiKeyName: string | null;
   messageStatus: string;
@@ -254,6 +368,7 @@ export function buildLlmUsageEvents({
       agent_message_id: agentMessageId,
       conversation_id: conversationId,
       agent_id: agentId ?? "unknown",
+      sub_agent_id: subAgentId ?? "none",
       parent_agent_message_id: parentAgentMessageId ?? "none",
       provider_id: group.providerId,
       model_id: group.modelId,
@@ -263,12 +378,13 @@ export function buildLlmUsageEvents({
       cache_creation_tokens: group.cacheCreationTokens,
       // Provider cost without markup — markup is applied in Metronome rate card. Only used for legacy rates.
       cost_micro_usd: group.costMicroUsd,
-      // TODO: This is a temporary conversion factor. Includes markup. Actual cost TBD.
-      cost_awu: Math.ceil((group.costMicroUsd * 1.3) / 10_000),
+      // 1 AWU credit = $0.0085
+      cost_awu: awuFromMicroUsd(group.costMicroUsd),
       // TODO: Remove is_programmatic_usage & is_free_usage, this is replaced by single property "usage type"
-      is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
-      is_free_usage: "false",
-      usage_type: isProgrammaticUsage ? "programmatic" : "user",
+      is_programmatic_usage:
+        usageType === USAGE_TYPE_PROGRAMMATIC ? "true" : "false",
+      is_free_usage: usageType === USAGE_TYPE_FREE ? "true" : "false",
+      [USAGE_TYPE_GROUP_KEY]: usageType,
       auth_method: authMethod ?? "unknown",
       api_key_name: apiKeyName ?? "unknown",
       message_status: messageStatus,
@@ -304,11 +420,12 @@ export function buildToolUseEvents({
   userId,
   agentMessageId,
   agentId,
+  subAgentId,
   parentAgentMessageId,
   runKey,
   actions,
   origin,
-  isProgrammaticUsage,
+  usageType,
   authMethod,
   apiKeyName,
   messageStatus,
@@ -320,11 +437,12 @@ export function buildToolUseEvents({
   userId: string | null;
   agentMessageId: string;
   agentId: string | null;
+  subAgentId: string | null;
   parentAgentMessageId: string | null;
   runKey: string;
   actions: ToolAction[];
   origin: UserMessageOrigin;
-  isProgrammaticUsage: boolean;
+  usageType: UsageType;
   authMethod: string | null;
   apiKeyName: string | null;
   messageStatus: string;
@@ -351,42 +469,50 @@ export function buildToolUseEvents({
     }
   }
 
-  return [...groups.values()].map(({ action, count, totalDurationMs }) => ({
-    transaction_id: truncateTransactionId(
-      `tool3-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${action.toolName}-${action.mcpServerId ?? ""}-${action.status}`
-    ),
-    customer_id: workspaceId,
-    event_type: "tool_use_v3",
-    timestamp,
-    properties: {
-      workspace_id: workspaceId,
-      user_id: userId ?? "unknown",
-      agent_message_id: agentMessageId,
-      conversation_id: conversationId,
-      agent_id: agentId ?? "unknown",
-      parent_agent_message_id: parentAgentMessageId ?? "none",
-      auth_method: authMethod ?? "unknown",
-      api_key_name: apiKeyName ?? "unknown",
-      tool_name: truncatePropertyValue(action.toolName),
-      mcp_server_id: truncatePropertyValue(action.mcpServerId ?? ""),
-      internal_mcp_server_name: truncatePropertyValue(
-        action.internalMCPServerName ?? ""
+  return [...groups.values()].map(({ action, count, totalDurationMs }) => {
+    const effectiveUsageType = getToolUsageType(
+      usageType,
+      action.internalMCPServerName
+    );
+    return {
+      transaction_id: truncateTransactionId(
+        `tool3-${workspaceId}-${conversationId}-${agentMessageId}-${runKey}-${action.toolName}-${action.mcpServerId ?? ""}-${action.status}`
       ),
-      tool_category: getToolCategory(action.internalMCPServerName),
-      // Constant grouping key — used as presentation_group_key in Metronome to
-      // aggregate all tool categories into a single "Tool Usage" invoice line.
-      tool_group: "tools",
-      status: action.status,
-      count,
-      total_execution_duration_ms: totalDurationMs,
-      // TODO: Remove is_programmatic_usage, this is replaced by single property "usage type"
-      is_programmatic_usage: isProgrammaticUsage ? "true" : "false",
-      usage_type: isProgrammaticUsage ? "programmatic" : "user",
-      message_status: messageStatus,
-      is_sub_agent_message: isSubAgentMessage ? "true" : "false",
-      origin,
-    },
-  }));
+      customer_id: workspaceId,
+      event_type: "tool_use_v3",
+      timestamp,
+      properties: {
+        workspace_id: workspaceId,
+        user_id: userId ?? "unknown",
+        agent_message_id: agentMessageId,
+        conversation_id: conversationId,
+        agent_id: agentId ?? "unknown",
+        sub_agent_id: subAgentId ?? "none",
+        parent_agent_message_id: parentAgentMessageId ?? "none",
+        auth_method: authMethod ?? "unknown",
+        api_key_name: apiKeyName ?? "unknown",
+        tool_name: truncatePropertyValue(action.toolName),
+        mcp_server_id: truncatePropertyValue(action.mcpServerId ?? ""),
+        internal_mcp_server_name: truncatePropertyValue(
+          action.internalMCPServerName ?? ""
+        ),
+        tool_category: getToolCategory(action.internalMCPServerName),
+        // Constant grouping key — used as presentation_group_key in Metronome to
+        // aggregate all tool categories into a single "Tool Usage" invoice line.
+        tool_group: "tools",
+        status: action.status,
+        count,
+        total_execution_duration_ms: totalDurationMs,
+        // TODO: Remove is_programmatic_usage, this is replaced by single property "usage type"
+        is_programmatic_usage:
+          effectiveUsageType === USAGE_TYPE_PROGRAMMATIC ? "true" : "false",
+        [USAGE_TYPE_GROUP_KEY]: effectiveUsageType,
+        message_status: messageStatus,
+        is_sub_agent_message: isSubAgentMessage ? "true" : "false",
+        origin,
+      },
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------

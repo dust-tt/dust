@@ -6,10 +6,9 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import { useDebounce } from "@app/hooks/useDebounce";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import {
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
   isFreePlan,
   isFriendsAndFamilyPlan,
   isOldFreePlan,
@@ -18,6 +17,7 @@ import {
 import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
 import { usePokeRegion } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import type { PokeWorkspaceWithRegion } from "@app/poke/swr/search";
 import { usePokeWorkspacesAllRegions } from "@app/poke/swr/search";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -99,7 +99,7 @@ function WorkspaceList({
                         <label
                           className={classNames(
                             "rounded px-1 text-sm text-gray-500 text-white",
-                            isEntreprisePlanPrefix(ws.subscription.plan.code) &&
+                            isEnterprisePlanPrefix(ws.subscription.plan.code) &&
                               "bg-red-500",
                             isFriendsAndFamilyPlan(ws.subscription.plan.code) &&
                               "bg-pink-500",
@@ -137,7 +137,7 @@ export function DashboardPage() {
  * SPA mode: Search workspaces across all regions.
  */
 function DashboardPageSPA() {
-  useDocumentTitle("Poke - Home");
+  usePokePageMetadata({ name: "Home" });
 
   const { regionInfo, setRegionInfo } = useRegionContext();
   const { regionData } = usePokeRegion();

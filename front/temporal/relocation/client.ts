@@ -1,4 +1,3 @@
-import type { RegionType } from "@app/lib/api/regions/config";
 import type {
   CreateDataSourceProjectResult,
   DataSourceCoreIds,
@@ -9,6 +8,7 @@ import {
   workspaceRelocateCoreDataSourceResourcesWorkflow,
   workspaceRelocationWorkflow,
 } from "@app/temporal/relocation/workflows";
+import type { RegionType } from "@app/types/region";
 
 export async function launchWorkspaceRelocationWorkflow({
   workspaceId,

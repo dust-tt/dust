@@ -1,8 +1,8 @@
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
+import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
 import {
   Button,
@@ -18,9 +18,13 @@ type HttpMethod = "GET" | "POST";
 
 export function NotionRequestsPage() {
   const owner = useWorkspace();
-  useDocumentTitle(`Poke - ${owner.name} - Notion Requests`);
 
   const dsId = useRequiredPathParam("dsId");
+  usePokePageMetadata({
+    name: owner.name,
+    subtitle: "Notion Requests",
+    sId: dsId,
+  });
   const { isDark } = useTheme();
   const [url, setUrl] = useState("");
   const [method, setMethod] = useState<HttpMethod>("GET");

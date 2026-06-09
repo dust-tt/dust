@@ -19,6 +19,7 @@ import {
 import type { StepContext } from "@app/lib/actions/types";
 import {
   isFileAuthorizationInfo,
+  isSandboxChildActionInfo,
   isUserQuestionResumeState,
 } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
@@ -54,6 +55,7 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
@@ -81,6 +83,15 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 import { AgentStepContentModel } from "../models/agent/agent_step_content";
+
+export type GetMCPActionsResult = {
+  actions: (AgentMCPActionType & {
+    conversationId: string;
+    messageId: string;
+  })[];
+  nextCursor: string | null;
+  totalCount: number;
+};
 
 // Batch size for fetching output items to avoid loading too many large rows at once.
 const OUTPUT_ITEMS_BATCH_SIZE = 32;
@@ -203,26 +214,33 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       blob.toolConfiguration.toolServerId
     );
 
-    const action = await AgentMCPActionModel.create(
-      {
-        ...blob,
-        workspaceId: workspace.id,
-      },
-      { transaction }
-    );
+    const action = await withTransaction(async (t) => {
+      const agentMCPAction = await AgentMCPActionModel.create(
+        {
+          ...blob,
+          workspaceId: workspace.id,
+        },
+        { transaction: t }
+      );
+
+      await AgentStepContentToolExecutionModel.create(
+        {
+          workspaceId: workspace.id,
+          agentMessageId: blob.agentMessageId,
+          conversationId: conversation.id,
+          agentMCPActionId: agentMCPAction.id,
+          stepContentId: stepContent.id,
+        },
+        { transaction: t }
+      );
+
+      return agentMCPAction;
+    }, transaction);
 
     assert(
       stepContent.isFunctionCallContent(),
       "Step content is not a function call."
     );
-
-    await AgentStepContentToolExecutionModel.create({
-      workspaceId: workspace.id,
-      agentMessageId: blob.agentMessageId,
-      conversationId: conversation.id,
-      agentMCPActionId: action.id,
-      stepContentId: stepContent.id,
-    });
 
     return new this(this.model, action.get(), stepContent, {
       internalMCPServerName,
@@ -621,7 +639,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    let agentStepContentToolExecutions =
+    const agentStepContentToolExecutions =
       await AgentStepContentToolExecutionModel.findAll({
         where: {
           workspaceId,
@@ -638,7 +656,16 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     const stepContentsMap = new Map(stepContents.map((s) => [s.id, s]));
 
-    return agentStepContentToolExecutions.map((row) => {
+    // Sandbox-child actions share their parent's stepContent and must not
+    // surface as separate executions in the conversation timeline.
+    const visibleExecutions = agentStepContentToolExecutions.filter(
+      (row) =>
+        !isSandboxChildActionInfo(
+          row.agentMCPAction.stepContext.sandboxChildActionInfo
+        )
+    );
+
+    return visibleExecutions.map((row) => {
       const a = row.agentMCPAction;
       const stepContent = stepContentsMap.get(row.stepContentId);
 
@@ -660,15 +687,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
   }
 
-  static async listByAgentMessageIds(
-    auth: Authenticator,
-    agentMessageIds: ModelId[]
-  ): Promise<AgentMCPActionResource[]> {
-    return this.baseFetch(auth, {
-      where: { agentMessageId: { [Op.in]: agentMessageIds } },
-    });
-  }
-
   static async listModelIdsByAgentMessageIds(
     auth: Authenticator,
     agentMessageIds: ModelId[]
@@ -686,6 +704,15 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     });
 
     return actions.map((action) => action.id);
+  }
+
+  static async listByAgentMessageIds(
+    auth: Authenticator,
+    agentMessageIds: ModelId[]
+  ): Promise<AgentMCPActionResource[]> {
+    return this.baseFetch(auth, {
+      where: { agentMessageId: { [Op.in]: agentMessageIds } },
+    });
   }
 
   static async listBlockedActionsForAgentMessage(
@@ -728,14 +755,26 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     }>
   ): Promise<AgentMCPActionOutputItemModel[]> {
     const outputItems = await AgentMCPActionOutputItemModel.bulkCreate(
-      contents.map((c) => ({
-        agentMCPActionId: this.id,
-        // Write content to DB (kept during migration period to ease rollback).
-        content: c.content,
-        citations: getCitationsFromToolOutput([c.content]),
-        fileId: c.fileId,
-        workspaceId: this.workspaceId,
-      }))
+      contents.map((c) => {
+        const { generatedFilePath, generatedFileContentType } =
+          isToolGeneratedFilePath(c.content)
+            ? {
+                generatedFilePath: c.content.resource.path,
+                generatedFileContentType: c.content.resource.contentType,
+              }
+            : { generatedFilePath: null, generatedFileContentType: null };
+
+        return {
+          agentMCPActionId: this.id,
+          // Write content to DB (kept during migration period to ease rollback).
+          content: c.content,
+          citations: getCitationsFromToolOutput([c.content]),
+          fileId: c.fileId,
+          workspaceId: this.workspaceId,
+          generatedFilePath,
+          generatedFileContentType,
+        };
+      })
     );
 
     const gcsResult = await batchWriteContentsToGcs(
@@ -1078,6 +1117,19 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
                     filePath: o.content.resource.path,
                     title: o.content.resource.title,
                     contentType: o.content.resource.contentType,
+                    snippet: null,
+                    hidden: false,
+                  };
+                }
+
+                // Fallback for light rendering (ignoreContent: true excludes the content column).
+                if (o.generatedFilePath && o.generatedFileContentType) {
+                  const filePath = o.generatedFilePath;
+                  return {
+                    fileId: null,
+                    filePath,
+                    title: filePath.split("/").pop() ?? filePath,
+                    contentType: o.generatedFileContentType,
                     snippet: null,
                     hidden: false,
                   };

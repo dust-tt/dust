@@ -26,6 +26,7 @@ import {
   batchRenderMessages,
   batchRenderUserMessagesWithoutMentions,
 } from "@app/lib/api/assistant/messages";
+import { isProviderWhitelisted } from "@app/lib/api/assistant/models";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
@@ -56,12 +57,18 @@ import {
   isProgrammaticUsage,
 } from "@app/lib/api/programmatic_usage/tracking";
 import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/projects/context";
-import { isModelAvailable, isProviderWhitelisted } from "@app/lib/assistant";
+import { config as regionConfig } from "@app/lib/api/regions/config";
+import { isModelAvailable } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
-import { isLegacyPlan } from "@app/lib/metronome/plan_type";
-import { isUserBlocked } from "@app/lib/metronome/user_block";
+import {
+  getWorkspaceCreditPoolStatus,
+  getWorkspaceProgrammaticCreditStatus,
+  isApiBlocked,
+  isProgrammaticApiBlocked,
+  isUserBlocked,
+} from "@app/lib/metronome/user_block";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
   AgentMCPActionModel,
@@ -131,7 +138,7 @@ import {
   ConversationError,
   isAgentMessageType,
   isCompactionMessageType,
-  isProjectConversation,
+  isPodConversation,
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
@@ -144,7 +151,9 @@ import type {
   ContentFragmentContextType,
   ContentFragmentType,
 } from "@app/types/content_fragment";
-import type { APIErrorWithStatusCode } from "@app/types/error";
+import { isContentFragmentType } from "@app/types/content_fragment";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -158,6 +167,27 @@ import { col } from "sequelize";
 
 // Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
 const PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE = 3;
+
+// Concurrency limits for pool-credit workspaces based on pool credit state.
+// Prevents close-to-0 attacks where many requests are sent simultaneously
+// before Metronome debits settle.
+const POOL_CREDIT_CONCURRENCY_LIMITS: Record<string, number> = {
+  active: 1000,
+  active_low_balance: 5,
+  active_critical_balance: 1,
+};
+
+// Concurrency limits for programmatic API calls based on the workspace
+// programmatic monthly cap state. Same shape and intent as the pool limits:
+// once the workspace is close to its monthly cap, tighten in-flight
+// programmatic requests so concurrent calls can't overshoot before
+// Metronome debits settle. `depleted` is handled upstream by
+// `isProgrammaticApiBlocked`.
+const PROGRAMMATIC_CREDIT_CONCURRENCY_LIMITS: Record<string, number> = {
+  active: 1000,
+  active_low_balance: 5,
+  active_critical_balance: 1,
+};
 
 /** Citations and generated files aggregated from source MCP output items (e.g. branch merge). */
 export type CitationsAndFilesFromOutputItemsType = {
@@ -220,7 +250,7 @@ export async function createConversation(
 
   const conversationAsJson = conversation.toJSON();
 
-  if (isProjectConversation(conversationAsJson)) {
+  if (isPodConversation(conversationAsJson)) {
     notifyNewProjectConversation(auth, {
       conversation: conversationAsJson,
     });
@@ -529,7 +559,7 @@ export async function postUserMessage(
       userMessage: UserMessageType;
       agentMessages: AgentMessageType[];
     },
-    APIErrorWithStatusCode
+    APIErrorWithContentfulStatusCode
   >
 > {
   const user = auth.user();
@@ -548,26 +578,30 @@ export async function postUserMessage(
   }
 
   const featureFlags = await getFeatureFlags(auth);
-  const isPartOfProject = isProjectConversation(conversation);
+  const isPartOfPod = isPodConversation(conversation);
 
-  if (isPartOfProject) {
+  if (isPartOfPod) {
     // Check if the user is a member of the space.
-    const space = await SpaceResource.fetchById(auth, conversation.spaceId);
-    if (!space) {
+    const pod = await SpaceResource.fetchById(auth, conversation.spaceId);
+    if (!pod) {
       return new Err({
         status_code: 404,
         api_error: {
           type: "space_not_found",
-          message: "Space not found",
+          message: "Pod not found",
         },
       });
     }
-    if (!space.isMember(auth)) {
+    // If the Pod is open and there is no user in the context (eg: slack bot message),
+    // we allow the message to be posted.
+    const skipMembershipCheck =
+      pod.isOpen() && !auth.user() && doNotAssociateUser === true;
+    if (!skipMembershipCheck && !pod.isMember(auth)) {
       return new Err({
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
-          message: "You are not a member of the project.",
+          message: "You are not a member of the Pod.",
         },
       });
     }
@@ -609,6 +643,18 @@ export async function postUserMessage(
   const limitResult = await checkMessagesLimit(auth, { mentions, context });
   if (limitResult.isErr()) {
     return limitResult;
+  }
+
+  // Block posting until GCS files have been copied into the child conversation.
+  if (conversation.forkingData?.forkedFrom?.fileCopyStatus === "pending") {
+    return new Err({
+      status_code: 409,
+      api_error: {
+        type: "invalid_request_error",
+        message:
+          "User messages cannot be posted while the forked conversation is being prepared.",
+      },
+    });
   }
 
   // Block posting while compaction is in progress, for now. It's not too hard to add support for
@@ -740,7 +786,12 @@ export async function postUserMessage(
     const supportedModelConfig = getSupportedModelConfig(agentConfig.model);
     if (
       supportedModelConfig &&
-      !isModelAvailable(supportedModelConfig, featureFlags, plan)
+      !isModelAvailable(supportedModelConfig, {
+        featureFlags,
+        plan,
+        regionalModelsOnly: owner.regionalModelsOnly,
+        region: regionConfig.getCurrentRegion(),
+      })
     ) {
       return new Err({
         status_code: 400,
@@ -752,7 +803,7 @@ export async function postUserMessage(
     }
 
     // When the agent is not usable, we will create a branch.
-    if (isPartOfProject) {
+    if (isPartOfPod) {
       const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
         configuration: agentConfig,
         conversation,
@@ -784,62 +835,75 @@ export async function postUserMessage(
         logger.info(
           "Message has user mentions, for now we do not support branching with user mentions."
         );
-      } else if (conversation.content.length === 0) {
-        // Create an invisible anchor message so the branch has a previousMessageId
-        // to reference.
-        const anchorMessage = await createUserMessage(auth, {
-          conversation,
-          content: "",
-          metadata: {
-            type: "create",
-            user: user.toJSON(),
-            rank: 0,
-            context: {
-              ...context,
-              origin: "branch_anchor",
-            },
-          },
-          transaction: t,
-        });
-
-        const branch = await ConversationBranchResource.makeNew(
-          auth,
-          {
-            conversationId: conversation.id,
-            previousMessageId: anchorMessage.id,
-            state: "open",
-            userId: user.id,
-          },
-          t
-        );
-
-        conversation.branchId = branch.sId;
-        nextMessageRank = 1;
       } else {
-        // Get the last message in the conversation.
-        const previousMessage =
-          conversation.content[conversation.content.length - 1].at(-1);
-        if (!previousMessage) {
-          logger.error(
-            "Last message in conversation has no content, cannot create branch."
-          );
-        } else {
-          // Create a new branch for the conversation.
+        const latestMessages = removeNulls(
+          conversation.content.map((versions) => versions.at(-1))
+        );
+        const shouldCreateAnchorMessage =
+          latestMessages.length === 0 ||
+          latestMessages.every(isContentFragmentType);
+
+        if (shouldCreateAnchorMessage) {
+          // Create an invisible anchor message so the branch has a previousMessageId
+          // to reference. If the conversation only contains content fragments, keep
+          // them before the anchor so they remain attached to the branch context.
+          const anchorMessageRank =
+            latestMessages.length > 0
+              ? Math.max(...latestMessages.map((m) => m.rank)) + 1
+              : 0;
+          const anchorMessage = await createUserMessage(auth, {
+            conversation,
+            content: "",
+            metadata: {
+              type: "create",
+              user: user.toJSON(),
+              rank: anchorMessageRank,
+              context: {
+                ...context,
+                origin: "branch_anchor",
+              },
+            },
+            transaction: t,
+          });
+
           const branch = await ConversationBranchResource.makeNew(
             auth,
             {
               conversationId: conversation.id,
-              previousMessageId: previousMessage.id,
+              previousMessageId: anchorMessage.id,
               state: "open",
               userId: user.id,
             },
             t
           );
 
-          // Update the conversation with the new branch id so the rest of the functions will operate on the branch.
           conversation.branchId = branch.sId;
-          // Set the next message rank to the rank of the previous message plus one.
-          nextMessageRank = previousMessage.rank + 1;
+          nextMessageRank = anchorMessageRank + 1;
+        } else {
+          // Get the last message in the conversation.
+          const previousMessage = latestMessages.at(-1);
+          if (!previousMessage) {
+            logger.error(
+              "Last message in conversation has no content, cannot create branch."
+            );
+          } else {
+            // Create a new branch for the conversation.
+            const branch = await ConversationBranchResource.makeNew(
+              auth,
+              {
+                conversationId: conversation.id,
+                previousMessageId: previousMessage.id,
+                state: "open",
+                userId: user.id,
+              },
+              t
+            );
+
+            // Update the conversation with the new branch id so the rest of the functions will operate on the branch.
+            conversation.branchId = branch.sId;
+            // Set the next message rank to the rank of the previous message plus one.
+            nextMessageRank = previousMessage.rank + 1;
+          }
         }
       }
     }
@@ -860,10 +924,13 @@ export async function postUserMessage(
       transaction: t,
     });
 
-    // Enrich context with auth data for analytics tracking.
+    // Enrich context with auth data for analytics tracking. When an attribution
+    // key is set (internal system-key calls like run_agent forward the original
+    // caller's key name), attribute usage to it instead of the request's own key;
+    // this drives api_key_name in usage analytics without affecting authorization.
     const enrichedContext: UserMessageContext = {
       ...context,
-      apiKeyId: auth.key()?.id ?? null,
+      apiKeyId: auth.attributionKeyModelId() ?? auth.key()?.id ?? null,
       authMethod: auth.authMethod(),
     };
 
@@ -1102,7 +1169,7 @@ export async function editUserMessage(
 ): Promise<
   Result<
     { userMessage: UserMessageType; agentMessages: AgentMessageType[] },
-    APIErrorWithStatusCode
+    APIErrorWithContentfulStatusCode
   >
 > {
   const user = auth.user();
@@ -1134,6 +1201,14 @@ export async function editUserMessage(
   );
   if (canInteractRes.isErr()) {
     return canInteractRes;
+  }
+
+  const editLimitResult = await checkMessagesLimit(auth, {
+    mentions,
+    context: message.context,
+  });
+  if (editLimitResult.isErr()) {
+    return editLimitResult;
   }
 
   let userMessage: UserMessageType | null = null;
@@ -1658,7 +1733,7 @@ export async function retryAgentMessage(
     conversation: ConversationType;
     message: AgentMessageType;
   }
-): Promise<Result<AgentMessageType, APIErrorWithStatusCode>> {
+): Promise<Result<AgentMessageType, APIErrorWithContentfulStatusCode>> {
   // Find the parent user message to get the original context for rate limiting.
   // This ensures retries are counted with the same origin (web vs programmatic) as the original.
   const parentUserMessage = conversation.content
@@ -1703,7 +1778,7 @@ export async function retryAgentMessage(
     });
   }
 
-  if (isProjectConversation(conversation)) {
+  if (isPodConversation(conversation)) {
     const canAgentBeUsed = await canAgentBeUsedInProjectConversation(auth, {
       configuration: retryAgentConfiguration,
       conversation,
@@ -1890,7 +1965,7 @@ export async function postNewContentFragment(
 
   // Project conversations only allow content fragments from the project space or the global space.
   if (
-    isProjectConversation(conversation) &&
+    isPodConversation(conversation) &&
     isContentFragmentInputWithContentNode(cf)
   ) {
     const dsView = await DataSourceViewResource.fetchById(
@@ -1914,7 +1989,7 @@ export async function postNewContentFragment(
 
   // If the user attaches a project-context file to a project conversation, reuse the existing
   // project content fragment and only create the message row at send time.
-  if (isProjectConversation(conversation) && "fileId" in cf) {
+  if (isPodConversation(conversation) && "fileId" in cf) {
     const project = await SpaceResource.fetchById(auth, conversation.spaceId);
     if (project?.isProject()) {
       const r = await fetchLatestProjectContextFileContentFragment(
@@ -2362,33 +2437,148 @@ async function checkMessagesLimit(
     mentions: MentionType[];
     context: UserMessageContext;
   }
-): Promise<Result<void, APIErrorWithStatusCode>> {
+): Promise<Result<void, APIErrorWithContentfulStatusCode>> {
   // Skip rate limiting for system-initiated messages (e.g. reinforced agent workflows).
   if (!auth.user() && !auth.key() && auth.authMethod() === "internal") {
     return new Ok(undefined);
   }
 
-  // Block users flagged by the Metronome `alerts.spend_threshold_reached`
-  // webhook. The flag is set per (workspace, user) in Redis and is only
-  // checked for non-legacy Metronome plans.
+  // Credit-state + programmatic rate-limit gate. Two systems coexist:
+  // - Credit-priced (Metronome) plans: workspace pool + per-user cap, cached in Redis.
+  //   For API calls (no user), only the workspace pool applies via `isApiBlocked`.
+  //   Pool-balance concurrency limiting (`checkPoolCreditConcurrencyLimit`) prevents
+  //   close-to-0 attacks where many requests overshoot the pool before debits settle.
+  // - Legacy plans: programmatic credits checked via `checkProgrammaticUsageLimits`,
+  //   plus a credit-balance-scaled pre-emptive rate limit (`checkProgrammaticUsageRateLimit`).
   const owner = auth.getNonNullableWorkspace();
-  if (owner.metronomeCustomerId) {
-    const onLegacyPlan = await isLegacyPlan(owner.sId);
-    if (!onLegacyPlan) {
-      const user = auth.user();
-      if (user) {
-        const blocked = await isUserBlocked(owner.sId, user.sId);
-        if (blocked) {
-          return new Err({
-            status_code: 403,
-            api_error: {
-              type: "credits_exhausted",
-              message:
-                "Your workspace has run out of credits. Please purchase more credits to continue.",
-            },
-          });
-        }
+  const plan = auth.subscription()?.plan;
+  const user = auth.user();
+
+  if (user) {
+    const membership =
+      await MembershipResource.getActiveMembershipOfUserInWorkspace({
+        user,
+        workspace: owner,
+      });
+    if (membership?.seatType === "none") {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "no_seat",
+          message:
+            "You don't have a seat in this workspace. Ask a workspace admin " +
+            "to assign you one to start sending messages.",
+        },
+      });
+    }
+  }
+
+  if (owner.metronomeCustomerId && plan && isCreditPricedPlan(plan)) {
+    const blockedReason = user
+      ? await isUserBlocked(owner.sId, user.sId)
+      : (await isApiBlocked(owner.sId))
+        ? ("credits_exhausted" as const)
+        : null;
+    if (blockedReason === "user_cap_reached") {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "user_cap_reached",
+          message: "You have reached your personal usage cap.",
+        },
+      });
+    }
+    if (blockedReason === "credits_exhausted") {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "credits_exhausted",
+          message: "Your workspace has run out of credits.",
+        },
+      });
+    }
+
+    // Pre-emptive concurrency limit based on pool credit state. Prevents
+    // close-to-0 attacks where many requests are sent simultaneously before
+    // Metronome debits settle.
+    const poolLimit = await checkPoolCreditConcurrencyLimit(auth);
+    if (poolLimit.isLimitReached && poolLimit.limitType) {
+      return new Err({
+        status_code: 429,
+        api_error: {
+          type: poolLimit.limitType,
+          message: getMessageLimitErrorMessage({
+            limitType: poolLimit.limitType,
+            message: poolLimit.message,
+          }),
+        },
+      });
+    }
+
+    // Programmatic monthly cap: block programmatic calls when the cap is reached.
+    if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
+      const programmaticBlocked = await isProgrammaticApiBlocked(owner.sId);
+      if (programmaticBlocked) {
+        return new Err({
+          status_code: 429,
+          api_error: {
+            type: "rate_limit_error",
+            message:
+              "Your workspace has reached its programmatic monthly spending cap. Please contact support to increase it.",
+          },
+        });
       }
+
+      // Pre-emptive concurrency limit based on the programmatic monthly cap
+      // state. Same close-to-0 defense as the pool concurrency limit above,
+      // but scoped to programmatic API traffic.
+      const programmaticLimit =
+        await checkProgrammaticCreditConcurrencyLimit(auth);
+      if (programmaticLimit.isLimitReached && programmaticLimit.limitType) {
+        return new Err({
+          status_code: 429,
+          api_error: {
+            type: programmaticLimit.limitType,
+            message: getMessageLimitErrorMessage({
+              limitType: programmaticLimit.limitType,
+              message: programmaticLimit.message,
+            }),
+          },
+        });
+      }
+    }
+  } else if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
+    const limitsResult = await checkProgrammaticUsageLimits(auth);
+    if (limitsResult.isErr()) {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: limitsResult.error.type,
+          message: getMessageLimitErrorMessage({
+            limitType: limitsResult.error.type,
+            message: limitsResult.error.message,
+          }),
+        },
+      });
+    }
+
+    // Pre-emptive, credit-balance-scaled rate limit. Defends against the race
+    // between in-flight programmatic requests and credit-debit settlement.
+    // Reads legacy CreditResource balances, so it must only run on legacy plans
+    // — on credit-priced plans the equivalent guard must come from the Metronome
+    // pool (see TODO above).
+    const rateLimit = await checkProgrammaticUsageRateLimit(auth);
+    if (rateLimit.isLimitReached && rateLimit.limitType) {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: rateLimit.limitType,
+          message: getMessageLimitErrorMessage({
+            limitType: rateLimit.limitType,
+            message: rateLimit.message,
+          }),
+        },
+      });
     }
   }
 
@@ -2409,6 +2599,102 @@ async function checkMessagesLimit(
     });
   }
   return new Ok(undefined);
+}
+
+// For pool-credit (Metronome) plans, apply concurrency limiting based on
+// the workspace pool credit state. When credits are running low the limit
+// tightens so in-flight requests can't overshoot the pool before Metronome
+// debits settle.
+async function checkPoolCreditConcurrencyLimit(
+  auth: Authenticator
+): Promise<MessageLimit> {
+  const owner = auth.getNonNullableWorkspace();
+  const status = await getWorkspaceCreditPoolStatus(owner.sId);
+
+  const maxConcurrent = POOL_CREDIT_CONCURRENCY_LIMITS[status];
+  if (maxConcurrent === undefined) {
+    // depleted / overage — handled by isUserBlocked / isApiBlocked upstream.
+    return { isLimitReached: false, limitType: null };
+  }
+
+  const remaining = await rateLimiter({
+    key: `pool_credit_concurrency:${owner.sId}`,
+    maxPerTimeframe: maxConcurrent,
+    timeframeSeconds: 60,
+    logger,
+  });
+
+  if (remaining <= 0) {
+    logger.info(
+      {
+        workspaceId: owner.sId,
+        poolCreditStatus: status,
+        maxConcurrent,
+      },
+      "Pool credit concurrency limit triggered."
+    );
+
+    getStatsDClient().increment(
+      "assistant.rate_limiter.pool_credit.concurrency_limit_triggered",
+      1,
+      { workspace_id: owner.sId }
+    );
+
+    return {
+      isLimitReached: true,
+      limitType: "rate_limit_error",
+    };
+  }
+
+  return { isLimitReached: false, limitType: null };
+}
+
+// For programmatic API calls on pool-credit (Metronome) plans, apply
+// concurrency limiting based on the workspace programmatic credit state.
+// Same close-to-0 defense as the pool concurrency limit, but driven by the
+// programmatic monthly cap state machine.
+async function checkProgrammaticCreditConcurrencyLimit(
+  auth: Authenticator
+): Promise<MessageLimit> {
+  const owner = auth.getNonNullableWorkspace();
+  const status = await getWorkspaceProgrammaticCreditStatus(owner.sId);
+
+  const maxConcurrent = PROGRAMMATIC_CREDIT_CONCURRENCY_LIMITS[status];
+  if (maxConcurrent === undefined) {
+    // depleted — handled by isProgrammaticApiBlocked upstream.
+    return { isLimitReached: false, limitType: null };
+  }
+
+  const remaining = await rateLimiter({
+    key: `programmatic_credit_concurrency:${owner.sId}`,
+    maxPerTimeframe: maxConcurrent,
+    timeframeSeconds: 60,
+    logger,
+  });
+
+  if (remaining <= 0) {
+    logger.info(
+      {
+        workspaceId: owner.sId,
+        programmaticCreditStatus: status,
+        maxConcurrent,
+      },
+      "Programmatic credit concurrency limit triggered."
+    );
+
+    getStatsDClient().increment(
+      "assistant.rate_limiter.programmatic_credit.concurrency_limit_triggered",
+      1,
+      { workspace_id: owner.sId }
+    );
+
+    return {
+      isLimitReached: true,
+      limitType: "rate_limit_error",
+    };
+  }
+
+  return { isLimitReached: false, limitType: null };
 }
 
 // For programmatic usage, apply credit-based rate limiting.
@@ -2580,22 +2866,10 @@ async function isMessagesLimitReached(
     };
   }
 
+  // Credit-state and programmatic rate-limit checks live in `checkMessagesLimit`
+  // (the caller). Programmatic flows skip the per-seat workspace fair-use cap
+  // below, since they are gated by credits / pool balance instead.
   if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
-    const limitsResult = await checkProgrammaticUsageLimits(auth);
-    if (limitsResult.isErr()) {
-      return {
-        isLimitReached: true,
-        limitType: limitsResult.error.type,
-        message: limitsResult.error.message,
-      };
-    }
-
-    const programmaticUsageRateLimit =
-      await checkProgrammaticUsageRateLimit(auth);
-    if (programmaticUsageRateLimit.isLimitReached) {
-      return programmaticUsageRateLimit;
-    }
-
     return {
       isLimitReached: false,
       limitType: null,

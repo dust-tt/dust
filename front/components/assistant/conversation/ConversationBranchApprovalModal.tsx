@@ -11,9 +11,9 @@ import {
   useConversationBranchActions,
 } from "@app/hooks/conversations";
 import { useAppRouter } from "@app/lib/platform";
-import { getProjectRoute } from "@app/lib/utils/router";
+import { getPodRoute } from "@app/lib/utils/router";
 import {
-  ArrowLeftIcon,
+  ArrowLeft,
   ScrollArea,
   Sheet,
   SheetContent,
@@ -153,7 +153,7 @@ export function ConversationBranchApprovalModal({
                     owner={context.owner}
                     messageId={selectedMessage.sId}
                     virtuosoMsg={selectedMessage}
-                    closeIcon={ArrowLeftIcon}
+                    closeIcon={ArrowLeft}
                     onClose={() => {
                       setSelectedMessage(null);
                       setSelectedTab("messages");
@@ -191,7 +191,7 @@ export function ConversationBranchApprovalModal({
                     // the project page rather than a stale conversation view.
                     if (conversationDeleted && context.conversation?.spaceId) {
                       void router.push(
-                        getProjectRoute(
+                        getPodRoute(
                           context.owner.sId,
                           context.conversation.spaceId
                         )

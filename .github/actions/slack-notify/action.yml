@@ -157,10 +157,12 @@ runs:
         JSON_PAYLOAD=$(jq -c -n \
           --arg channel "${{ inputs.channel }}" \
           --arg ts "${{ inputs.thread_ts }}" \
+          --arg text "$HEADER_TEXT" \
           --argjson blocks "$BLOCKS" \
           '{
             channel: $channel,
             thread_ts: $ts,
+            text: $text,
             blocks: $blocks,
             method: "chat.postMessage"
           }')

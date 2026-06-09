@@ -1,6 +1,13 @@
 import type { MistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
-import { MISTRAL_PROVIDER_ID } from "@app/lib/api/llm/clients/mistral/types";
-import { toToolChoiceParam } from "@app/lib/api/llm/clients/mistral/utils";
+import {
+  MISTRAL_PROVIDER_ID,
+  overwriteLLMParameters,
+} from "@app/lib/api/llm/clients/mistral/types";
+import {
+  MISTRAL_REASONING_EFFORT_MAPPING,
+  toResponseFormatParam,
+  toToolChoiceParam,
+} from "@app/lib/api/llm/clients/mistral/utils";
 import {
   toMessage,
   toTool,
@@ -67,7 +74,7 @@ export class MistralLLM extends LLM<MistralChatStreamRequest> {
     auth: Authenticator,
     llmParameters: LLMParameters & { modelId: MistralWhitelistedModelId }
   ) {
-    super(auth, MISTRAL_PROVIDER_ID, llmParameters);
+    super(auth, MISTRAL_PROVIDER_ID, overwriteLLMParameters(llmParameters));
 
     const { MISTRAL_API_KEY } = llmParameters.credentials;
     assert(MISTRAL_API_KEY, "MISTRAL_API_KEY credential is required");
@@ -94,6 +101,10 @@ export class MistralLLM extends LLM<MistralChatStreamRequest> {
       model: this.modelId,
       messages,
       temperature: this.temperature ?? undefined,
+      reasoningEffort: this.reasoningEffort
+        ? MISTRAL_REASONING_EFFORT_MAPPING[this.reasoningEffort]
+        : undefined,
+      responseFormat: toResponseFormatParam(this.responseFormat),
       toolChoice: toToolChoiceParam(specifications, forceToolCall),
       tools: specifications.map(toTool),
     };
@@ -166,7 +177,11 @@ export class MistralLLM extends LLM<MistralChatStreamRequest> {
   override async getBatchStatus(batchId: string): Promise<BatchStatus> {
     const job = await this.client.batch.jobs.get({ jobId: batchId });
 
-    switch (job.status) {
+    // Narrow OpenEnum to known values for exhaustive switching.
+    const jobStatus =
+      job.status as (typeof BatchJobStatus)[keyof typeof BatchJobStatus];
+
+    switch (jobStatus) {
       case BatchJobStatus.Success:
         return "ready";
       case BatchJobStatus.Failed:
@@ -182,7 +197,7 @@ export class MistralLLM extends LLM<MistralChatStreamRequest> {
       case BatchJobStatus.CancellationRequested:
         return "computing";
       default:
-        assertNever(job.status);
+        assertNever(jobStatus);
     }
   }
 

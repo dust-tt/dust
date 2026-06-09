@@ -13,8 +13,19 @@ import { assertNever } from "./shared/utils/assert_never";
 
 export type WorkspaceSegmentationType = "interesting" | null;
 
-export const ROLES = ["admin", "builder", "user", "none"] as const;
-export const ACTIVE_ROLES = ["admin", "builder", "user"] as const;
+export const ROLES = [
+  "admin",
+  "business_admin",
+  "builder",
+  "user",
+  "none",
+] as const;
+export const ACTIVE_ROLES = [
+  "admin",
+  "business_admin",
+  "builder",
+  "user",
+] as const;
 export const ANONYMOUS_USER_IMAGE_URL = "/static/humanavatar/anonymous.png";
 
 function keyObject<T extends readonly string[]>(
@@ -107,6 +118,40 @@ export type UserTypeWithWorkspace = UserType & {
 };
 
 /**
+ * Minimal essential user representation returned by user-listing endpoints for
+ * non-admin callers. Admin callers receive the full `UserType` or
+ * `UserTypeWithWorkspace`.
+ */
+export type LightUserType = Pick<
+  UserType,
+  "sId" | "firstName" | "lastName" | "fullName" | "image" | "email"
+>;
+
+export type LightUserTypeWithWorkspace = LightUserType & {
+  workspace: WorkspaceType;
+};
+
+export function toLightUser(user: UserType): LightUserType {
+  return {
+    sId: user.sId,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    fullName: user.fullName,
+    image: user.image,
+    email: user.email,
+  };
+}
+
+export function toLightUserWithWorkspace(
+  user: UserTypeWithWorkspace
+): LightUserTypeWithWorkspace {
+  return {
+    ...toLightUser(user),
+    workspace: user.workspace,
+  };
+}
+
+/**
  * @swaggerschema PrivateUser (swagger_private_schemas.ts)
  */
 export type UserTypeWithWorkspaces = UserType & {
@@ -158,6 +203,7 @@ export function isAdmin(
   switch (owner.role) {
     case "admin":
       return true;
+    case "business_admin":
     case "builder":
     case "user":
     case "none":
@@ -175,6 +221,7 @@ export function isBuilder(
   }
   switch (owner.role) {
     case "admin":
+    case "business_admin":
     case "builder":
       return true;
     case "user":
@@ -193,6 +240,7 @@ export function isUser(
   }
   switch (owner.role) {
     case "admin":
+    case "business_admin":
     case "builder":
     case "user":
       return true;
@@ -228,6 +276,15 @@ export function isOnlyAdmin(
     return false;
   }
   return owner.role === "admin";
+}
+
+export function isOnlyBusinessAdmin(
+  owner: WorkspaceType | null
+): owner is WorkspaceType & { role: "business_admin" } {
+  if (!owner) {
+    return false;
+  }
+  return owner.role === "business_admin";
 }
 
 const DustUserEmailHeader = "x-api-user-email";

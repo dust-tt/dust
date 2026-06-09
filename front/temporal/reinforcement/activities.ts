@@ -14,6 +14,10 @@ import { getRemainingDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/da
 import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import {
+  isApiBlocked,
+  isProgrammaticApiBlocked,
+} from "@app/lib/metronome/user_block";
+import {
   AgentMessageModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
@@ -76,6 +80,7 @@ import {
 } from "@app/temporal/agent_loop/activities/usage_tracking";
 import { ensureReinforcementWorkspaceSchedules } from "@app/temporal/reinforcement/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import { isCreditPricedPlan } from "@app/types/plan";
 import { ApplicationFailure } from "@temporalio/common";
 import { Op } from "sequelize";
 
@@ -112,7 +117,6 @@ async function reportSelfImprovingSkillsStepUsage({
     return;
   }
 
-  const authType = auth.toJSON();
   // Reinforcement messages are created with default version 0 and are never
   // retried at a higher version (Temporal retries create new message sIds).
   const agentLoopArgs: AgentLoopArgs = {
@@ -129,9 +133,9 @@ async function reportSelfImprovingSkillsStepUsage({
 
   try {
     await Promise.all([
-      launchAgentMessageAnalytics(authType, agentLoopArgs),
-      launchTrackProgrammaticUsage(authType, agentLoopArgs),
-      launchEmitMetronomeUsageEvents(authType, agentLoopArgs),
+      launchAgentMessageAnalytics(auth, agentLoopArgs),
+      launchTrackProgrammaticUsage(auth, agentLoopArgs),
+      launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
     ]);
   } catch (err) {
     logger.warn(
@@ -178,7 +182,9 @@ async function runReinforcedSkillsStep({
   approvedSourceSuggestionIds: string[];
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
-  const llm = await getReinforcedSkillsLLM(auth, operationType);
+  const llm = await getReinforcedSkillsLLM(auth, operationType, {
+    forBatch: false,
+  });
   if (!llm) {
     logger.error(
       { contextId, workspaceId: auth.getNonNullableWorkspace().sId },
@@ -460,17 +466,18 @@ export async function recordSelfImprovingSkillsUsageActivity({
     const runs = await RunResource.listByDustRunIds(auth, {
       dustRunIds: allDustRunIds,
     });
+    const runByModelId = new Map(runs.map((run) => [run.id, run]));
+    const runUsages = await RunResource.listRunUsagesForRuns(auth, { runs });
 
-    for (const run of runs) {
-      const usages = await run.listRunUsages(auth);
-      const runCostMicroUsd = usages.reduce(
-        (sum, usage) => sum + usage.costMicroUsd,
-        0
-      );
+    for (const usage of runUsages) {
+      const dustRunId = runByModelId.get(usage.runModelId)?.dustRunId;
+      if (!dustRunId) {
+        continue;
+      }
 
       runCostMicroUsdByDustRunId.set(
-        run.dustRunId,
-        (runCostMicroUsdByDustRunId.get(run.dustRunId) ?? 0) + runCostMicroUsd
+        dustRunId,
+        (runCostMicroUsdByDustRunId.get(dustRunId) ?? 0) + usage.costMicroUsd
       );
     }
   }
@@ -578,12 +585,24 @@ export async function getReinforcementSettingsActivity({
     );
   const globalCapMicroUsd = getReinforcementMonthlyCapMicroUsd(workspace);
 
-  const programmaticUsageLimitReached = (
-    await checkProgrammaticUsageLimits(auth)
-  ).isErr();
+  // Credit-priced plans check pool + programmatic cap via Metronome state;
+  // legacy plans check programmatic credits via CreditResource.
+  const plan = auth.subscription()?.plan;
+  let programmaticUsageLimitReached: boolean;
+  if (plan && isCreditPricedPlan(plan) && workspace.metronomeCustomerId) {
+    programmaticUsageLimitReached =
+      (await isApiBlocked(workspace.sId)) ||
+      (await isProgrammaticApiBlocked(workspace.sId));
+  } else {
+    // Legacy check for not metronome workspaces
+    programmaticUsageLimitReached = (
+      await checkProgrammaticUsageLimits(auth)
+    ).isErr();
+  }
 
   // Compute remaining programmatic budget: total remaining credits capped by
   // the daily usage allowance.
+  // TODO(fabien): use credit pool remaining credit here too.
   const remainingCreditsMicroUsd =
     await CreditResource.getRemainingMicroUsd(auth);
   const remainingDailyCapMicroUsd = await getRemainingDailyCapMicroUsd(auth);
@@ -923,7 +942,8 @@ export async function checkBatchStatusActivity({
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforcement_analyze_conversation"
+    "reinforcement_analyze_conversation",
+    { forBatch: true }
   );
   if (!llm) {
     throw ApplicationFailure.nonRetryable(
@@ -961,7 +981,8 @@ export async function startSkillConversationAnalysisBatchActivity({
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforcement_analyze_conversation"
+    "reinforcement_analyze_conversation",
+    { forBatch: true }
   );
   if (!llm) {
     logger.warn(
@@ -1093,7 +1114,8 @@ export async function processSkillConversationAnalysisBatchResultActivity({
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforcement_analyze_conversation"
+    "reinforcement_analyze_conversation",
+    { forBatch: true }
   );
   if (!llm) {
     return [];
@@ -1256,7 +1278,8 @@ export async function startSkillAggregationBatchActivity({
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforcement_aggregate_suggestions"
+    "reinforcement_aggregate_suggestions",
+    { forBatch: true }
   );
   if (!llm) {
     logger.warn(
@@ -1366,7 +1389,8 @@ export async function processSkillAggregationBatchResultActivity({
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforcement_aggregate_suggestions"
+    "reinforcement_aggregate_suggestions",
+    { forBatch: true }
   );
   if (!llm) {
     return {

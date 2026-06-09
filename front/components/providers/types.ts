@@ -1,7 +1,4 @@
-export {
-  REASONING_MODEL_CONFIGS,
-  USED_MODEL_CONFIGS,
-} from "@app/components/providers/model_configs";
+export { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
 
 import type { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import {

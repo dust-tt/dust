@@ -1,14 +1,23 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockDeregisterMCPServer } = vi.hoisted(() => ({
   mockDeregisterMCPServer: vi.fn(),
 }));
 
-vi.mock("@app/lib/api/actions/mcp/client_side_registry", () => ({
-  deregisterMCPServer: mockDeregisterMCPServer,
-}));
+vi.mock(
+  "@app/lib/api/actions/mcp/client_side_registry",
+  async (importOriginal) => {
+    const actual =
+      await importOriginal<
+        typeof import("@app/lib/api/actions/mcp/client_side_registry")
+      >();
+    return {
+      ...actual,
+      deregisterMCPServer: mockDeregisterMCPServer,
+    };
+  }
+);
 
 import { honoApp } from "@front-api/app";
 
@@ -31,7 +40,7 @@ function post(workspace: { sId: string }, body: unknown) {
 describe("POST /api/w/:wId/mcp/deregister", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockDeregisterMCPServer.mockResolvedValue(undefined);
+    mockDeregisterMCPServer.mockResolvedValue(true);
   });
 
   it("should deregister a server successfully", async () => {

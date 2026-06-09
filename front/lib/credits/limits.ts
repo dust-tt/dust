@@ -2,7 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { countEligibleUsersForCredits } from "@app/lib/credits/common";
 import { getCustomerPaymentStatus } from "@app/lib/credits/free";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { isEnterpriseSubscription } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
@@ -52,19 +52,26 @@ export async function getCreditPurchaseLimits(
   const isEnterprise =
     context.type === "stripe-subscription"
       ? isEnterpriseSubscription(context.stripeSubscription)
-      : isEntreprisePlanPrefix(context.subscription.getPlan().code);
+      : isEnterprisePlanPrefix(context.subscription.getPlan().code);
 
   const { cycleStart, cycleEnd } = getCycleBounds(context);
 
   if (isEnterprise) {
-    // Enterprise limit: max($1000, half of pay-as-you-go cap).
-    const programmaticConfig =
-      await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-    const paygCapMicroUsd = programmaticConfig?.paygCapMicroUsd ?? 0;
-    const enterpriseMaxMicroUsd = Math.max(
-      MIN_ENTERPRISE_CREDIT_MICRO_USD,
-      Math.floor(paygCapMicroUsd / 2)
-    );
+    // Enterprise limit:
+    //  - Stripe-billed (legacy programmatic): max($1000, half of PAYG cap)
+    //    derived from `programmatic_usage_configuration.paygCapMicroUsd`.
+    //  - Metronome (credit-priced): flat $1000 floor. The credit-config PAYG
+    //    cap is in AWU credits and isn't used to gate fiat credit purchases.
+    let enterpriseMaxMicroUsd = MIN_ENTERPRISE_CREDIT_MICRO_USD;
+    if (context.type === "stripe-subscription") {
+      const programmaticConfig =
+        await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+      const paygCapMicroUsd = programmaticConfig?.paygCapMicroUsd ?? 0;
+      enterpriseMaxMicroUsd = Math.max(
+        MIN_ENTERPRISE_CREDIT_MICRO_USD,
+        Math.floor(paygCapMicroUsd / 2)
+      );
+    }
 
     const alreadyPurchased =
       await CreditResource.sumCommittedCreditsPurchasedInPeriod(

@@ -21,6 +21,7 @@ import {
   isHiddenMessageOrigin,
   isLightAgentMessageType,
   isLightAgentMessageWithActionsType,
+  isTerminalAgentMessageStatus,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
 
@@ -30,6 +31,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
+import type { MutableRefObject } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -138,6 +140,8 @@ export type VirtuosoMessageListContext = {
   projectSpaceName?: string;
   branchIdToApprove?: string;
   setBranchIdToApprove?: (branchId: string | null) => void;
+  isAutoScrollEnabledRef: MutableRefObject<boolean>;
+  isNoSeat?: boolean;
 };
 
 export const areSameRankAndBranch = (
@@ -211,6 +215,39 @@ export const makeInitialMessageStreamState = (
       pendingToolCalls: [],
     },
   };
+};
+
+// Returns true when the message still matches the output of makeInitialMessageStreamState —
+// i.e. no SSE event has moved it beyond the initial "thinking" state yet.
+// The rest-spread exhaustiveness check below ensures that adding a new field to
+// AgentMessageWithStreaming["streaming"] without handling it here is a compile error.
+export const isAtInitialStreamState = (
+  msg: AgentMessageWithStreaming
+): boolean => {
+  const {
+    agentState,
+    isRetrying,
+    pendingToolCalls,
+    inlineActivitySteps,
+    actionProgress,
+    lastUpdated: _lastUpdated, // always "now" at creation; not comparable
+    ...rest
+  } = msg.streaming;
+
+  // Fails to compile if a new streaming field is added without an explicit
+  // decision about whether to check it here.
+  void (rest satisfies Record<PropertyKey, never>);
+
+  return (
+    !isTerminalAgentMessageStatus(msg.status) &&
+    msg.content === null &&
+    msg.chainOfThought === null &&
+    agentState === "thinking" &&
+    !isRetrying &&
+    pendingToolCalls.length === 0 &&
+    inlineActivitySteps.length === 0 &&
+    actionProgress.size === 0
+  );
 };
 
 export const isSidekickBootstrapMessage = (

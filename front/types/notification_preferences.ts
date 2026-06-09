@@ -71,7 +71,7 @@ export type NotificationCondition =
 export const DEFAULT_NOTIFICATION_CONDITION: NotificationCondition =
   "all_messages";
 
-export type UserProjectNotificationPreference = {
+export type UserPodNotificationPreference = {
   sId: string;
   spaceId: string;
   userId: string;
@@ -106,9 +106,24 @@ export const PROVIDER_CREDENTIALS_HEALTH_UPDATED_TRIGGER_ID =
 export const PROVIDER_CREDENTIALS_HEALTH_UPDATED_TAG =
   "provider-credentials-health" as const;
 
+export const USER_AWU_CAP_REACHED_TRIGGER_ID = "user-awu-cap-reached" as const;
+export const USER_AWU_CAP_REACHED_TAG = "user-awu-cap-reached" as const;
+
+export const BALANCE_THRESHOLD_REACHED_TRIGGER_ID =
+  "balance-threshold-reached" as const;
+export const BALANCE_THRESHOLD_REACHED_TAG =
+  "balance-threshold-reached" as const;
+
+export const PROGRAMMATIC_CAP_REACHED_TRIGGER_ID =
+  "programmatic-cap-reached" as const;
+export const PROGRAMMATIC_CAP_REACHED_TAG = "programmatic-cap-reached" as const;
+
 export type WorkflowTriggerId =
   | typeof CONVERSATION_UNREAD_TRIGGER_ID
   | typeof PROJECT_ADDED_AS_MEMBER_TRIGGER_ID
   | typeof AGENT_SUGGESTIONS_READY_TRIGGER_ID
   | typeof SKILL_SUGGESTIONS_READY_TRIGGER_ID
-  | typeof PROVIDER_CREDENTIALS_HEALTH_UPDATED_TRIGGER_ID;
+  | typeof PROVIDER_CREDENTIALS_HEALTH_UPDATED_TRIGGER_ID
+  | typeof USER_AWU_CAP_REACHED_TRIGGER_ID
+  | typeof BALANCE_THRESHOLD_REACHED_TRIGGER_ID
+  | typeof PROGRAMMATIC_CAP_REACHED_TRIGGER_ID;
