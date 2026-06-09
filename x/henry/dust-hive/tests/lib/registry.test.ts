@@ -23,6 +23,26 @@ describe("registry", () => {
       expect(config.cwd).toBe("front-api");
       expect(config.needsNvm).toBe(true);
       expect(config.needsEnvSh).toBe(true);
+      expect(config.portKey).toBe("frontApi");
+      expect(config.readinessCheck).toBeDefined();
+      expect(config.readinessCheck?.type).toBe("http");
+    });
+
+    it("marketing config has correct settings", () => {
+      const config = SERVICE_REGISTRY.marketing;
+      expect(config.cwd).toBe("marketing");
+      expect(config.needsNvm).toBe(true);
+      expect(config.needsEnvSh).toBe(true);
+      expect(config.portKey).toBe("marketing");
+      expect(config.readinessCheck).toBeDefined();
+      expect(config.readinessCheck?.type).toBe("http");
+    });
+
+    it("proxy config has correct settings", () => {
+      const config = SERVICE_REGISTRY.proxy;
+      expect(config.cwd).toBe("x/henry/dust-hive");
+      expect(config.needsNvm).toBe(false);
+      expect(config.needsEnvSh).toBe(false);
       expect(config.portKey).toBe("front");
       expect(config.readinessCheck).toBeDefined();
       expect(config.readinessCheck?.type).toBe("http");
@@ -75,6 +95,8 @@ describe("registry", () => {
 
     it("includes all other services", () => {
       expect(WARM_SERVICES).toContain("front-api");
+      expect(WARM_SERVICES).toContain("marketing");
+      expect(WARM_SERVICES).toContain("proxy");
       expect(WARM_SERVICES).toContain("core");
       expect(WARM_SERVICES).toContain("oauth");
       expect(WARM_SERVICES).toContain("connectors");
@@ -83,8 +105,8 @@ describe("registry", () => {
       expect(WARM_SERVICES).toContain("front-spa-app");
     });
 
-    it("has 7 services (all except sparkle, sdk, and viz)", () => {
-      expect(WARM_SERVICES).toHaveLength(7);
+    it("has 9 services (all except sparkle, sdk, viz)", () => {
+      expect(WARM_SERVICES).toHaveLength(9);
     });
   });
 
@@ -96,11 +118,25 @@ describe("registry", () => {
       expect(Array.isArray(checks)).toBe(true);
     });
 
-    it("includes the front-api health check", () => {
+    it("includes the proxy health check on the main port", () => {
       const checks = getHealthChecks(ports);
-      const frontCheck = checks.find((c) => c.service === "front-api");
-      expect(frontCheck).toBeDefined();
-      expect(frontCheck?.url).toBe("http://localhost:10000/api/healthz");
+      const proxyCheck = checks.find((c) => c.service === "proxy");
+      expect(proxyCheck).toBeDefined();
+      expect(proxyCheck?.url).toBe("http://localhost:10000/__hive/healthz");
+    });
+
+    it("includes the front-api health check on its own port", () => {
+      const checks = getHealthChecks(ports);
+      const frontApiCheck = checks.find((c) => c.service === "front-api");
+      expect(frontApiCheck).toBeDefined();
+      expect(frontApiCheck?.url).toBe("http://localhost:10003/api/healthz");
+    });
+
+    it("includes the marketing health check on its own port", () => {
+      const checks = getHealthChecks(ports);
+      const marketingCheck = checks.find((c) => c.service === "marketing");
+      expect(marketingCheck).toBeDefined();
+      expect(marketingCheck?.url).toBe("http://localhost:10004/");
     });
 
     it("includes core health check", () => {
@@ -124,8 +160,11 @@ describe("registry", () => {
       const secondPorts = calculatePorts(11000);
       const checks = getHealthChecks(secondPorts);
 
-      const frontCheck = checks.find((c) => c.service === "front-api");
-      expect(frontCheck?.url).toBe("http://localhost:11000/api/healthz");
+      const proxyCheck = checks.find((c) => c.service === "proxy");
+      expect(proxyCheck?.url).toBe("http://localhost:11000/__hive/healthz");
+
+      const frontApiCheck = checks.find((c) => c.service === "front-api");
+      expect(frontApiCheck?.url).toBe("http://localhost:11003/api/healthz");
 
       const coreCheck = checks.find((c) => c.service === "core");
       expect(coreCheck?.url).toBe("http://localhost:11001/");
@@ -151,11 +190,21 @@ describe("registry", () => {
       expect(command).toBe("npm run watch");
     });
 
-    it("front-api binds IPv4, forbids next, and runs npm run dev", () => {
+    it("front-api binds IPv4 on its dedicated port, forbids next, and runs npm run dev", () => {
       const command = SERVICE_REGISTRY["front-api"].buildCommand(mockEnv);
       expect(command).toBe(
-        "HOSTNAME=127.0.0.1 NODE_ENV=development NODE_OPTIONS=--require=./forbid-next.cjs npm run dev"
+        "HOSTNAME=127.0.0.1 PORT=10003 NODE_ENV=development NODE_OPTIONS=--require=./forbid-next.cjs npm run dev"
       );
+    });
+
+    it("marketing passes -p with the marketing port", () => {
+      const command = SERVICE_REGISTRY.marketing.buildCommand(mockEnv);
+      expect(command).toBe("npm run dev -- -p 10004");
+    });
+
+    it("proxy receives all three ports as argv", () => {
+      const command = SERVICE_REGISTRY.proxy.buildCommand(mockEnv);
+      expect(command).toBe("bun run src/proxy-daemon.ts 10000 10003 10004");
     });
 
     it("core returns cargo run --bin core-api", () => {

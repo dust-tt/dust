@@ -223,6 +223,8 @@ const TAB_NAMES: Record<ServiceName, string> = {
   sparkle: "sparkle",
   sdk: "sdk",
   "front-api": "front-api",
+  marketing: "marketing",
+  proxy: "proxy",
   core: "core",
   oauth: "oauth",
   connectors: "connectors",

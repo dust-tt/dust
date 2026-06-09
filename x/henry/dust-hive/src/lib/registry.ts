@@ -63,11 +63,37 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     // HOSTNAME=127.0.0.1 forces an IPv4 bind: "localhost" resolves to ::1 on
     // macOS, but the port forwarder connects upstream over IPv4, so without
     // this the forwarded port (3000) cannot reach front-api.
-    buildCommand: () =>
-      "HOSTNAME=127.0.0.1 NODE_ENV=development NODE_OPTIONS=--require=./forbid-next.cjs npm run dev",
+    // Inline PORT= shadows the env.sh `PORT=ports.front` export so front-api
+    // binds its own dedicated port instead of stealing the proxy port.
+    buildCommand: (env) =>
+      `HOSTNAME=127.0.0.1 PORT=${env.ports.frontApi} NODE_ENV=development NODE_OPTIONS=--require=./forbid-next.cjs npm run dev`,
     readinessCheck: {
       type: "http",
-      url: (ports) => `http://localhost:${ports.front}/api/healthz`,
+      url: (ports) => `http://localhost:${ports.frontApi}/api/healthz`,
+    },
+    portKey: "frontApi",
+  },
+  marketing: {
+    cwd: "marketing",
+    needsNvm: true,
+    needsEnvSh: true,
+    // -p overrides PORT inherited from env.sh.
+    buildCommand: (env) => `npm run dev -- -p ${env.ports.marketing}`,
+    readinessCheck: {
+      type: "http",
+      url: (ports) => `http://localhost:${ports.marketing}/`,
+    },
+    portKey: "marketing",
+  },
+  proxy: {
+    cwd: "x/henry/dust-hive",
+    needsNvm: false,
+    needsEnvSh: false,
+    buildCommand: (env) =>
+      `bun run src/proxy-daemon.ts ${env.ports.front} ${env.ports.frontApi} ${env.ports.marketing}`,
+    readinessCheck: {
+      type: "http",
+      url: (ports) => `http://localhost:${ports.front}/__hive/healthz`,
     },
     portKey: "front",
   },
