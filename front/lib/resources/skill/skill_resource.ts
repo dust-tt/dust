@@ -65,10 +65,9 @@ import type {
 } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
-import {
-  type ConversationType,
-  type ConversationWithoutContentType,
-  isPodConversation,
+import type {
+  ConversationType,
+  ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import type {
   SkillReinforcementMode,
@@ -1436,30 +1435,52 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       discoverableSkills = await this.listDiscoverable(auth);
     }
 
-    // System skills are always treated as enabled when present in the agent configuration.
-    const systemSkills = allAgentSkills.filter((s) => s.isSystemSkill);
-
     const sortByName = (a: SkillResource, b: SkillResource) =>
       a.name.localeCompare(b.name);
 
-    // Project skill is always enabled for project conversations, enable it if it's not enabled already.
-    const projectSkill =
-      conversation &&
-      isPodConversation(conversation) &&
-      !systemSkills.some((s) => s.globalSId === "projects") &&
-      !conversationEnabledSkills.some((s) => s.globalSId === "projects")
-        ? await SkillResource.fetchBySkillReferences(
-            auth,
-            [{ globalSkillId: "projects", customSkillId: null }],
-            { agentLoopData }
-          )
-        : [];
+    // System skills are always treated as enabled when present in the agent configuration.
+    const configSystemSkills = allAgentSkills.filter((s) => s.isSystemSkill);
 
-    // Compute the enabled skills: conversation-enabled skills + project skill.
-    const enabledSkills = [
-      ...conversationEnabledSkills.sort(sortByName),
-      ...projectSkill,
+    // Code-defined skills can opt into being auto-enabled for the agent loop without being
+    // added to the agent configuration, either always (e.g. the Computer) or for a given
+    // context (e.g. Pods in a Pod conversation). `findAll` already drops restricted skills, so
+    // a flag-gated skill only shows up once its feature flag is on.
+    const enabledGlobalSkillIds = new Set(
+      removeNulls([
+        ...configSystemSkills.map((s) => s.globalSId),
+        ...conversationEnabledSkills.map((s) => s.globalSId),
+      ])
+    );
+    const codeDefinedDefs = [
+      ...(await SystemSkillsRegistry.findAll(auth)),
+      ...(await GlobalSkillsRegistry.findAll(auth)),
     ];
+    const autoEnabledRefs = codeDefinedDefs
+      .filter(
+        (def) =>
+          def.isAutoEnabledForAgentLoop?.({
+            agentConfiguration,
+            conversation,
+          }) && !enabledGlobalSkillIds.has(def.sId)
+      )
+      .map((def) => ({ globalSkillId: def.sId, customSkillId: null }));
+    const autoEnabledSkills = autoEnabledRefs.length
+      ? await this.fetchBySkillReferences(auth, autoEnabledRefs, {
+          agentLoopData,
+        })
+      : [];
+
+    // System skills land in `systemSkills` (always enabled); auto-enabled global skills join
+    // the conversation-enabled skills.
+    const systemSkills = [
+      ...configSystemSkills,
+      ...autoEnabledSkills.filter((s) => s.isSystemSkill),
+    ];
+
+    const enabledSkills = [
+      ...conversationEnabledSkills,
+      ...autoEnabledSkills.filter((s) => !s.isSystemSkill),
+    ].sort(sortByName);
 
     const augmentedEnabledSkills = await this.augmentSkillsWithExtendedSkills(
       auth,
