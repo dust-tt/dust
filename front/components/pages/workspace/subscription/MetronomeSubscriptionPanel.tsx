@@ -30,6 +30,7 @@ import {
   ButtonsSwitch,
   ButtonsSwitchList,
   Chip,
+  ContentMessage,
   CreditCard01,
   Dialog,
   DialogContainer,
@@ -69,6 +70,9 @@ export function CancelMetronomeSubscriptionDialog({
   isSaving,
   periodEndLabel,
 }: CancelMetronomeSubscriptionDialogProps) {
+  // "July 12, 2026" → "July 12"
+  const shortDate = periodEndLabel ? periodEndLabel.split(",")[0] : null;
+
   return (
     <Dialog
       open={show}
@@ -80,11 +84,16 @@ export function CancelMetronomeSubscriptionDialog({
     >
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>Cancel subscription</DialogTitle>
+          <DialogTitle>Cancel your subscription</DialogTitle>
           <DialogDescription>
-            {periodEndLabel
-              ? `Your subscription will end on ${periodEndLabel}. Until then you keep full access.`
-              : "Your subscription will end at the end of the current billing period. Until then you keep full access."}
+            {periodEndLabel ? (
+              <>
+                Your plan will remain active until{" "}
+                <span className="font-bold">{periodEndLabel}</span>.
+              </>
+            ) : (
+              "Your plan will remain active until the end of the current billing period."
+            )}
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
@@ -93,16 +102,71 @@ export function CancelMetronomeSubscriptionDialog({
               <Spinner variant="dark" size="md" />
             </div>
           ) : (
-            <div className="font-bold">Are you sure you want to proceed?</div>
+            <div className="flex flex-col gap-4">
+              {periodEndLabel && (
+                <ContentMessage size="sm" variant="highlight">
+                  You can resume your subscription any time before{" "}
+                  {periodEndLabel} with no interruption to your plan.
+                </ContentMessage>
+              )}
+              <div className="flex flex-col gap-3">
+                <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                  What happens next
+                </div>
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                      {shortDate
+                        ? `Until ${shortDate}`
+                        : "Until your plan ends"}
+                    </div>
+                    <div className="text-sm text-muted-foreground ark:text-muted-foreground-night">
+                      Everything works exactly as it does today. You keep full
+                      access to your workspace.
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                      {shortDate
+                        ? `After ${shortDate}`
+                        : "After your plan ends"}
+                    </div>
+                    <div className="text-sm text-muted-foreground ark:text-muted-foreground-night">
+                      Your workspace becomes read-only. Members keep their
+                      accounts and can still sign in to view content.
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                      Your data
+                    </div>
+                    <div className="text-sm text-muted-foreground ark:text-muted-foreground-night">
+                      Agents, conversations, and connected data sources are
+                      preserved for 90 days. Reactivate any time during that
+                      window.
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                      Invoices
+                    </div>
+                    <div className="text-sm text-muted-foreground ark:text-muted-foreground-night">
+                      Past invoices remain available indefinitely from this
+                      page.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Keep subscription",
+            label: "Keep my subscription",
             variant: "outline",
           }}
           rightButtonProps={{
-            label: "Cancel subscription",
+            label: "Cancel Subscription",
             variant: "warning",
             onClick: onValidate,
           }}
