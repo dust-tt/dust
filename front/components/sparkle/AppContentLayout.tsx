@@ -6,8 +6,10 @@ import { useAppLayout } from "@app/components/sparkle/AppLayoutContext";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
 import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
+import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import { isAdmin } from "@app/types/user";
 import { cn } from "@dust-tt/sparkle";
 import type React from "react";
@@ -18,15 +20,17 @@ interface AppContentLayoutProps {
 
 interface AppContentInnerWrapperProps {
   isNavigationBarOpen: boolean;
+  isMobile: boolean;
+  isFullScreen: boolean;
   children: React.ReactNode;
 }
 
 function AppContentInnerWrapper({
   isNavigationBarOpen,
+  isMobile,
+  isFullScreen,
   children,
 }: AppContentInnerWrapperProps) {
-  const isMobile = useIsMobile();
-
   if (isMobile) {
     return (
       <div className="bg-content-background dark:bg-content-background-night">
@@ -39,7 +43,7 @@ function AppContentInnerWrapper({
     <div
       className={cn(
         "m-2 rounded-xl flex-1 overflow-y-scroll bg-content-background dark:bg-content-background-night border border-border dark:border-border-night",
-        !isNavigationBarOpen && "ml-5"
+        !isNavigationBarOpen && !isFullScreen && "ml-5"
       )}
       style={{
         boxShadow:
@@ -53,6 +57,7 @@ function AppContentInnerWrapper({
 
 export function AppContentLayout({ children }: AppContentLayoutProps) {
   const owner = useWorkspace();
+  const isMobile = useIsMobile();
   const { subscription, user } = useAuth();
   const {
     contentClassName,
@@ -64,6 +69,9 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
     subNavigation,
     title,
   } = useAppLayout();
+  const [fullScreenHash] = useHashParam(FULL_SCREEN_HASH_PARAM);
+
+  const isFullScreen = fullScreenHash === "true";
 
   const hasTitleBar = !!title || hasTitle;
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -73,7 +81,7 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
     useDesktopNavigation();
 
   return (
-    <div className="flex h-dvh flex-row">
+    <div className="flex flex-row h-dvh">
       <Navigation
         hideSidebar={hideSidebar}
         isNavigationBarOpen={isNavigationBarOpen}
@@ -82,6 +90,8 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
         subscription={subscription}
         navChildren={navChildren}
         subNavigation={subNavigation}
+        isFullScreen={isFullScreen}
+        isMobile={isMobile}
       />
 
       <div
@@ -91,7 +101,11 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
           "dark:bg-app-background-night dark:text-foreground-night"
         )}
       >
-        <AppContentInnerWrapper isNavigationBarOpen={isNavigationBarOpen}>
+        <AppContentInnerWrapper
+          isNavigationBarOpen={isNavigationBarOpen}
+          isMobile={isMobile}
+          isFullScreen={isFullScreen}
+        >
           <SubscriptionEndBanner
             isAdmin={isAdmin(owner)}
             owner={owner}

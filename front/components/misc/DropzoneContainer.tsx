@@ -57,7 +57,7 @@ export function DropzoneContainer({
     <div
       {...getRootProps()}
       className={cn(
-        isMobile ? "h-full" : "h-[calc(100dvh-48px-0.5rem)]",
+        isMobile ? "h-[calc(100dvh-3rem)]" : `h-[calc(100dvh-3rem-0.5rem)]`,
         "flex min-h-0 w-full flex-col items-center"
       )}
       onPaste={onPaste}
