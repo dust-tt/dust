@@ -1,9 +1,10 @@
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { AppType } from "@app/types/app";
+import { hasPermission } from "@app/types/permissions";
 import { isCreditPricedPlan, type SubscriptionType } from "@app/types/plan";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
-import { isAdmin, isBuilder } from "@app/types/user";
+import { isAdmin, isBuilder, isOnlyBusinessAdmin } from "@app/types/user";
 import {
   BarChart01,
   Brackets,
@@ -132,6 +133,9 @@ export type AppLayoutNavigation = {
   hasSeparator?: boolean;
   current: boolean;
   featureFlag?: WhitelistableFeature;
+  // When true, the item is shown but greyed out and not navigable (the current
+  // role lacks the permission to access it).
+  disabled?: boolean;
 };
 
 export type TabAppLayoutNavigation = {
@@ -195,7 +199,7 @@ export const getTopNavigationTabs = (
     ref: spaceMenuButtonRef,
   });
 
-  if (isAdmin(owner)) {
+  if (isAdmin(owner) || isOnlyBusinessAdmin(owner)) {
     nav.push({
       id: "settings",
       label: "Admin",
@@ -239,145 +243,159 @@ export const subNavigationAdmin = ({
 }): SidebarNavigation[] => {
   const nav: SidebarNavigation[] = [];
 
-  if (!isBuilder(owner)) {
+  // Admins and business admins see the admin sidebar; builders and members do
+  // not. Each item is then individually enabled/disabled based on permission.
+  if (!isAdmin(owner) && !isOnlyBusinessAdmin(owner)) {
     return nav;
   }
 
   const isCurrent = (id: SubNavigationAdminId): boolean =>
     matchesRoutePattern(currentRoute, ADMIN_ROUTE_PATTERNS[id]);
 
-  if (isAdmin(owner)) {
-    nav.push({
-      id: "workspace",
-      label: "Workspace",
-      menus: [
-        {
-          id: "members",
-          label: "People",
-          icon: Users01,
-          href: `/w/${owner.sId}/members`,
-          current: isCurrent("members"),
-        },
-        {
-          id: "identity_and_provisioning",
-          label: "Identity & Provisioning",
-          icon: Fingerprint04,
-          href: `/w/${owner.sId}/identity-and-provisioning`,
-          current: isCurrent("identity_and_provisioning"),
-        },
-        {
-          id: "workspace",
-          label: "Workspace Settings",
-          icon: Building04,
-          href: `/w/${owner.sId}/workspace`,
-          current: isCurrent("workspace"),
-        },
-        ...(isCreditPricedPlan(subscription.plan)
-          ? [
-              {
-                id: "usage" as const,
-                label: "Usage",
-                icon: PieChart01,
-                href: `/w/${owner.sId}/usage`,
-                current: isCurrent("usage"),
-              },
-            ]
-          : []),
-        {
-          id: "model_providers",
-          label: "Model Providers",
-          icon: Brain,
-          href: `/w/${owner.sId}/model-providers`,
-          current: isCurrent("model_providers"),
-        },
-        {
-          id: "analytics",
-          label: "Analytics",
-          icon: BarChart01,
-          href: `/w/${owner.sId}/analytics`,
-          current: isCurrent("analytics"),
-        },
-        isCreditPricedPlan(subscription.plan)
-          ? {
-              id: "billing",
-              label: "Billing",
-              icon: CreditCard01,
-              href: `/w/${owner.sId}/billing`,
-              current: isCurrent("billing"),
-            }
-          : {
-              id: "subscription",
-              label: "Subscription",
-              icon: CreditCard01,
-              href: `/w/${owner.sId}/subscription`,
-              current: isCurrent("subscription"),
+  nav.push({
+    id: "workspace",
+    label: "Workspace",
+    menus: [
+      {
+        id: "members",
+        label: "People",
+        icon: Users01,
+        href: `/w/${owner.sId}/members`,
+        current: isCurrent("members"),
+        disabled: !hasPermission(owner.role, "workspace:manage_members"),
+      },
+      {
+        id: "identity_and_provisioning",
+        label: "Identity & Provisioning",
+        icon: Fingerprint04,
+        href: `/w/${owner.sId}/identity-and-provisioning`,
+        current: isCurrent("identity_and_provisioning"),
+        disabled: !hasPermission(owner.role, "workspace:admin"),
+      },
+      {
+        id: "workspace",
+        label: "Workspace Settings",
+        icon: Building04,
+        href: `/w/${owner.sId}/workspace`,
+        current: isCurrent("workspace"),
+        disabled: !hasPermission(owner.role, "workspace:admin"),
+      },
+      ...(isCreditPricedPlan(subscription.plan)
+        ? [
+            {
+              id: "usage" as const,
+              label: "Usage",
+              icon: PieChart01,
+              href: `/w/${owner.sId}/usage`,
+              current: isCurrent("usage"),
+              disabled: !hasPermission(owner.role, "workspace:admin"),
             },
-      ],
-    });
+          ]
+        : []),
+      {
+        id: "model_providers",
+        label: "Model Providers",
+        icon: Brain,
+        href: `/w/${owner.sId}/model-providers`,
+        current: isCurrent("model_providers"),
+        disabled: !hasPermission(owner.role, "workspace:admin"),
+      },
+      {
+        id: "analytics",
+        label: "Analytics",
+        icon: BarChart01,
+        href: `/w/${owner.sId}/analytics`,
+        current: isCurrent("analytics"),
+        disabled: !hasPermission(owner.role, "workspace:admin"),
+      },
+      isCreditPricedPlan(subscription.plan)
+        ? {
+            id: "billing",
+            label: "Billing",
+            icon: CreditCard01,
+            href: `/w/${owner.sId}/billing`,
+            current: isCurrent("billing"),
+            disabled: !hasPermission(owner.role, "workspace:admin"),
+          }
+        : {
+            id: "subscription",
+            label: "Subscription",
+            icon: CreditCard01,
+            href: `/w/${owner.sId}/subscription`,
+            current: isCurrent("subscription"),
+            disabled: !hasPermission(owner.role, "workspace:admin"),
+          },
+    ],
+  });
 
-    nav.push({
-      id: "api",
-      label: "API & Programmatic",
-      menus: [
-        {
-          id: "api_keys",
-          label: "API Keys",
-          icon: Lock01,
-          href: `/w/${owner.sId}/developers/api-keys`,
-          current: isCurrent("api_keys"),
-        },
-        ...(isCreditPricedPlan(subscription.plan)
-          ? []
-          : [
-              {
-                id: "credits_usage" as const,
-                label: "Programmatic Usage",
-                icon: Zap,
-                href: `/w/${owner.sId}/developers/credits-usage`,
-                current: isCurrent("credits_usage"),
-              },
-            ]),
-      ],
-    });
+  nav.push({
+    id: "api",
+    label: "API & Programmatic",
+    menus: [
+      {
+        id: "api_keys",
+        label: "API Keys",
+        icon: Lock01,
+        href: `/w/${owner.sId}/developers/api-keys`,
+        current: isCurrent("api_keys"),
+        disabled: !hasPermission(owner.role, "workspace:admin"),
+      },
+      ...(isCreditPricedPlan(subscription.plan)
+        ? []
+        : [
+            {
+              id: "credits_usage" as const,
+              label: "Programmatic Usage",
+              icon: Zap,
+              href: `/w/${owner.sId}/developers/credits-usage`,
+              current: isCurrent("credits_usage"),
+              disabled: !hasPermission(owner.role, "workspace:admin"),
+            },
+          ]),
+    ],
+  });
 
-    nav.push({
-      id: "developers",
-      label: "Builder Tools",
-      menus: [
-        {
-          id: "providers",
-          label: "App Credentials",
-          icon: Shapes,
-          href: `/w/${owner.sId}/developers/providers`,
-          current: isCurrent("providers"),
-          featureFlag: "legacy_dust_apps",
-        },
-        {
-          id: "dev_secrets",
-          label: "Secrets",
-          icon: Brackets,
-          href: `/w/${owner.sId}/developers/dev-secrets`,
-          current: isCurrent("dev_secrets"),
-        },
-        {
-          id: "sandbox",
-          label: "Computer",
-          icon: Globe01,
-          href: `/w/${owner.sId}/developers/sandbox`,
-          current: isCurrent("sandbox"),
-          featureFlag: "sandbox_workspace_admin",
-        },
-        {
-          id: "self_improving_skills",
-          label: "Self-Improving Skills",
-          icon: Stars02,
-          href: `/w/${owner.sId}/developers/self-improving-skills`,
-          current: isCurrent("self_improving_skills"),
-          featureFlag: "reinforcement_ui",
-        },
-      ],
-    });
-  }
+  nav.push({
+    id: "developers",
+    label: "Builder Tools",
+    menus: [
+      {
+        id: "providers",
+        label: "App Credentials",
+        icon: Shapes,
+        href: `/w/${owner.sId}/developers/providers`,
+        current: isCurrent("providers"),
+        featureFlag: "legacy_dust_apps",
+        disabled: !hasPermission(owner.role, "workspace:admin"),
+      },
+      {
+        id: "dev_secrets",
+        label: "Secrets",
+        icon: Brackets,
+        href: `/w/${owner.sId}/developers/dev-secrets`,
+        current: isCurrent("dev_secrets"),
+        disabled: !hasPermission(owner.role, "workspace:admin"),
+      },
+      {
+        id: "sandbox",
+        label: "Computer",
+        icon: Globe01,
+        href: `/w/${owner.sId}/developers/sandbox`,
+        current: isCurrent("sandbox"),
+        featureFlag: "sandbox_workspace_admin",
+        disabled: !hasPermission(owner.role, "workspace:admin"),
+      },
+      {
+        id: "self_improving_skills",
+        label: "Self-Improving Skills",
+        icon: Stars02,
+        href: `/w/${owner.sId}/developers/self-improving-skills`,
+        current: isCurrent("self_improving_skills"),
+        featureFlag: "reinforcement_ui",
+        disabled: !hasPermission(owner.role, "workspace:admin"),
+      },
+    ],
+  });
 
   return nav;
 };

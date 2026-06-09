@@ -136,6 +136,7 @@ export const NavigationSidebar = React.forwardRef<
                             <NavigationListItem
                               key={menu.id}
                               selected={menu.current}
+                              disabled={menu.disabled}
                               label={menu.label}
                               icon={menu.icon}
                               href={menu.href}
