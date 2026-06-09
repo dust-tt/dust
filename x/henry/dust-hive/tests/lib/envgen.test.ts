@@ -136,5 +136,16 @@ describe("envgen", () => {
       const content = generateEnvSh("test", ports);
       expect(content.endsWith("\n")).toBe(true);
     });
+
+    it("uses front port for DUST_AUTH_REDIRECT_BASE_URL when dynamicWorkosRedirect is enabled", () => {
+      const content = generateEnvSh("test", ports, { dynamicWorkosRedirect: true });
+      expect(content).toContain("export DUST_AUTH_REDIRECT_BASE_URL=http://localhost:10000");
+      expect(content).not.toContain("export DUST_AUTH_REDIRECT_BASE_URL=http://localhost:3000");
+    });
+
+    it("defaults DUST_AUTH_REDIRECT_BASE_URL to :3000 when dynamicWorkosRedirect is false", () => {
+      const content = generateEnvSh("test", ports, { dynamicWorkosRedirect: false });
+      expect(content).toContain("export DUST_AUTH_REDIRECT_BASE_URL=http://localhost:3000");
+    });
   });
 });

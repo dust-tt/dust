@@ -8,6 +8,9 @@ export interface Settings {
   useGitSpice?: boolean;
   // Terminal multiplexer to use (default: "zellij")
   multiplexer?: MultiplexerType;
+  // If true, env.sh uses the hive's front port for DUST_AUTH_REDIRECT_BASE_URL
+  // instead of the stable :3000 forwarder port (default: false).
+  dynamicWorkosRedirect?: boolean;
 }
 
 const DEFAULT_SETTINGS: Settings = {};
