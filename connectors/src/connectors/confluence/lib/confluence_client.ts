@@ -67,39 +67,43 @@ const ConfluencePageCodec = t.intersection([
   CatchAllCodec,
 ]);
 
-const SearchBaseContentCodec = t.type({
-  id: t.string,
-  status: t.string,
-  title: t.string,
+const SearchBaseContentCodec = t.intersection([
+  t.type({
+    id: t.string,
+    status: t.string,
 
-  // Version info.
-  version: t.type({
-    number: t.number,
-  }),
+    // Version info.
+    version: t.type({
+      number: t.number,
+    }),
 
-  // Restrictions.
-  restrictions: t.type({
-    read: t.type({
-      restrictions: t.type({
-        user: t.type({
-          results: t.array(t.unknown),
-        }),
-        group: t.type({
-          results: t.array(t.unknown),
+    // Restrictions.
+    restrictions: t.type({
+      read: t.type({
+        restrictions: t.type({
+          user: t.type({
+            results: t.array(t.unknown),
+          }),
+          group: t.type({
+            results: t.array(t.unknown),
+          }),
         }),
       }),
     }),
+
+    // Ancestors (parent chain).
+    ancestors: t.array(
+      t.type({
+        id: t.string,
+        type: t.string,
+        title: t.union([t.undefined, t.string]),
+      })
+    ),
   }),
 
-  // Ancestors (parent chain).
-  ancestors: t.array(
-    t.type({
-      id: t.string,
-      type: t.string,
-      title: t.union([t.undefined, t.string]),
-    })
-  ),
-});
+  // title is absent for some space overview pages in the legacy search API. Only used by the CLI.
+  t.partial({ title: t.string }),
+]);
 
 const SearchConfluencePageCodec = t.intersection([
   SearchBaseContentCodec,
