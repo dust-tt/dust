@@ -282,11 +282,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable Microsoft sensitivity labels for data classification on connectors and MCP servers",
     stage: "on_demand",
   },
-  deferred_conversation_creation: {
-    description:
-      "Create conversations in two steps (conversation first, first message in background) for faster navigation to the conversation page",
-    stage: "dust_only",
-  },
   conversation_search_indexing: {
     description: "Enable ES indexing of conversations on mutation (write path)",
     stage: "dust_only",
