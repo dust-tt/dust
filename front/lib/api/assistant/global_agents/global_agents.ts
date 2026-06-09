@@ -1,4 +1,5 @@
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
+import { _getAnalystGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/analyst";
 import {
   _getClaude3_7GlobalAgent,
   _getClaude3GlobalAgent,
@@ -492,6 +493,12 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsWorkspaceContext: true,
   },
   [GLOBAL_AGENTS_SID.REINFORCEMENT]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.ANALYST]: {
     injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
@@ -1287,6 +1294,9 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.REINFORCEMENT:
       agentConfiguration = _getReinforcementGlobalAgent();
       break;
+    case GLOBAL_AGENTS_SID.ANALYST:
+      agentConfiguration = _getAnalystGlobalAgent({ auth });
+      break;
     case GLOBAL_AGENTS_SID.NOOP:
       // we want only to have it in development
       if (isDevelopment()) {
@@ -1429,6 +1439,11 @@ export async function getGlobalAgents(
   if (!flags.includes("openai_o1_high_reasoning_feature")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.O1_HIGH_REASONING
+    );
+  }
+  if (!flags.includes("workspace_analytics")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.ANALYST
     );
   }
   const DUST_INTERNAL_AGENTS: readonly GLOBAL_AGENTS_SID[] = [

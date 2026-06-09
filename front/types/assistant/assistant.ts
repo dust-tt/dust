@@ -143,6 +143,8 @@ export enum GLOBAL_AGENTS_SID {
   MISTRAL_SMALL = "mistral",
   GEMINI_PRO = "gemini-pro",
 
+  ANALYST = "analyst",
+
   NOOP = "noop",
 }
 
