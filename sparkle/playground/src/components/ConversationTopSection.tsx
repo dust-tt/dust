@@ -14,10 +14,8 @@ export function ConversationTopSection({
   children,
 }: ConversationTopSectionProps) {
   return (
-    <div className="s-flex s-h-[30%] s-min-h-60 s-max-h-[320px] s-flex-none s-items-center s-justify-center s-px-4">
-      <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-4">
-        {children}
-      </div>
+    <div className="s-flex s-flex-col s-gap-4 s-h-[30%] s-min-h-60 s-max-h-[320px] s-w-[100%] s-max-w-3xl s-mx-auto s-flex-none s-items-center s-justify-center s-px-4">
+      {children}
     </div>
   );
 }

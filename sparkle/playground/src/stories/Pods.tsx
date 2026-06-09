@@ -62,6 +62,7 @@ import { GroupConversationView } from "../components/GroupConversationView";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
 import {
   type AgentSort,
+  type AgentType,
   NewConversation,
   NewConversationActionBar,
   type WelcomeAgentTab,
@@ -234,8 +235,11 @@ function Pods() {
   const [isAgentsDropdownOpen, setIsAgentsDropdownOpen] = useState(false);
   const [welcomeAgentTab, setWelcomeAgentTab] =
     useState<WelcomeAgentTab>("favorites");
-  const [welcomeAgentSort, setWelcomeAgentSort] =
-    useState<AgentSort>("popularity");
+  const [welcomeAgentSort, setWelcomeAgentSort] = useState<AgentSort>("custom");
+  const [welcomeAgentType, setWelcomeAgentType] = useState<AgentType>("all");
+  const [welcomeAgentCategory, setWelcomeAgentCategory] = useState<
+    string | null
+  >(null);
   const [isWelcomeToolbarPinned, setIsWelcomeToolbarPinned] = useState(false);
   const [inboxHideTriggered, setInboxHideTriggered] = useState(false);
   const [spaceNotificationPreferences, setSpaceNotificationPreferences] =
@@ -798,6 +802,10 @@ function Pods() {
         onAgentTabChange={setWelcomeAgentTab}
         agentSort={welcomeAgentSort}
         onAgentSortChange={setWelcomeAgentSort}
+        agentType={welcomeAgentType}
+        onAgentTypeChange={setWelcomeAgentType}
+        agentCategory={welcomeAgentCategory}
+        onAgentCategoryChange={setWelcomeAgentCategory}
         onToolbarPinnedChange={setIsWelcomeToolbarPinned}
       />
     );
@@ -951,6 +959,10 @@ function Pods() {
             onValueChange={setWelcomeAgentTab}
             agentSort={welcomeAgentSort}
             onAgentSortChange={setWelcomeAgentSort}
+            agentType={welcomeAgentType}
+            onAgentTypeChange={setWelcomeAgentType}
+            agentCategory={welcomeAgentCategory}
+            onAgentCategoryChange={setWelcomeAgentCategory}
           />
         </div>
       );

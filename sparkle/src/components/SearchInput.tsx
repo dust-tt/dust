@@ -57,6 +57,10 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
 
     // Mirror the Button size -> icon size scale (see ICON_SIZE_MAP in Button).
     const iconSize = size === "md" ? "md" : size === "sm" ? "sm" : "xs";
+    // Align the trailing icon with the Input horizontal padding (see
+    // sizeVariantStyles in Input) so it sits flush with the text padding.
+    const iconPadding =
+      size === "md" ? "s-px-3" : size === "sm" ? "s-px-2" : "s-px-1.5";
 
     return (
       <div className={cn("s-relative", className)}>
@@ -91,7 +95,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           ) : (
             <div
               className={cn(
-                "s-px-2",
+                iconPadding,
                 disabled
                   ? "s-text-muted-foreground dark:s-text-muted-foreground-night"
                   : "s-text-foreground dark:s-text-foreground-night"
@@ -99,7 +103,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             >
               <Icon
                 visual={SearchMd}
-                size="xs"
+                size={iconSize}
                 className="s-text-muted-foreground dark:s-text-muted-foreground-night"
               />
             </div>

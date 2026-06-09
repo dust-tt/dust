@@ -1,7 +1,6 @@
 import {
   AnimatedText,
   Archive,
-  Download01,
   ArrowRight,
   Upload01,
   Avatar,
@@ -36,6 +35,10 @@ import {
   EmptyCTA,
   EmptyCTAButton,
   Folder,
+  Plus,
+  File01,
+  Table,
+  ActionFrame,
   Icon,
   Input,
   CheckDone01,
@@ -99,7 +102,6 @@ import type {
   Space,
   User,
 } from "../data/types";
-import { getRandomGreetingForName } from "../data/greetings";
 import { getUserById } from "../data/users";
 import {
   DATA_SOURCE_FILE_DRAG_MIME,
@@ -1379,13 +1381,50 @@ export function GroupConversationView({
 }: GroupConversationViewProps) {
   const [searchText, setSearchText] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const currentUserFirstName = currentUserId
-    ? (getUserById(currentUserId)?.firstName ?? "there")
-    : "there";
-  const [greeting, setGreeting] = useState<string>("");
-  useEffect(() => {
-    setGreeting(getRandomGreetingForName(currentUserFirstName));
-  }, [currentUserFirstName]);
+  // Greeting per tab uses the pod name: "<Pod>'s <Tab>", centered horizontally.
+  const renderPodGreeting = (tabLabel: string) => (
+    <h2 className="s-heading-2xl s-text-center">
+      <span className="s-text-foreground dark:s-text-foreground-night">
+        {space.name}
+      </span>
+      <span className="s-text-faint dark:s-text-faint-night">
+        {`'s ${tabLabel}`}
+      </span>
+    </h2>
+  );
+  // Shared "Create" CTA for the Files tab so the empty state and the populated
+  // toolbar expose the exact same button and menu.
+  const renderCreateFilesMenu = () => (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <Button variant="primary" icon={Plus} label="Create" isSelect />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuItem icon={File01} label="Doc" onClick={() => {}} />
+        <DropdownMenuItem
+          icon={Table}
+          label="Spreadsheet"
+          onClick={() => {}}
+        />
+        <DropdownMenuItem
+          icon={ActionFrame}
+          label="Frame"
+          onClick={() => {}}
+        />
+        <DropdownMenuItem icon={Folder} label="Folder" onClick={() => {}} />
+        <DropdownMenuItem
+          icon={UploadCloud02}
+          label="Upload File"
+          onClick={() => {}}
+        />
+        <DropdownMenuItem
+          icon={CloudArrowLeftRight}
+          label="From Company data"
+          onClick={() => {}}
+        />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
   const [personalConversationFilter, setPersonalConversationFilter] =
     useState<MyPodConversationFilter>("all");
   const [selectedConversationRow, setSelectedConversationRow] = useState<{
@@ -3588,12 +3627,11 @@ export function GroupConversationView({
           value="conversations"
           topBox={
             <>
-              {greeting && (
-                <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-                  {greeting}
-                </h2>
-              )}
-              <InputBar placeholder={`Start a conversation in ${space.name}`} />
+              {renderPodGreeting("Conversations")}
+              <InputBar
+                autoFocus
+                placeholder={`Start a conversation in ${space.name}`}
+              />
             </>
           }
         >
@@ -3934,11 +3972,7 @@ export function GroupConversationView({
           contentClassName="s-gap-4"
           topBox={
             <>
-              {greeting && (
-                <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
-                  {greeting}
-                </h2>
-              )}
+              {renderPodGreeting("Tasks")}
               <TodoInputBar
                 placeholder="Describe the tasks to create"
                 onCreateTasks={handleCreateTodoSuggestions}
@@ -4377,22 +4411,31 @@ export function GroupConversationView({
         <GroupConversationTabContent
           value="knowledge"
           contentClassName="s-gap-3"
-        >
-          {dataSources.length === 0 ? (
-            <EmptyCTA
-              message="No files in this room yet."
-              action={<EmptyCTAButton icon={Download01} label="Add files" />}
-            />
-          ) : (
+          topBox={
             <>
-              <div className="s-flex s-gap-2">
+              {renderPodGreeting("Files")}
+              {dataSources.length > 0 && (
                 <SearchInput
                   name="knowledge-search"
                   value={knowledgeSearchText}
                   onChange={setKnowledgeSearchText}
                   placeholder="Search files..."
-                  className="s-flex-1"
+                  size="md"
+                  className="s-w-full"
                 />
+              )}
+            </>
+          }
+        >
+          {dataSources.length === 0 ? (
+            <EmptyCTA
+              message="No files in this room yet."
+              action={renderCreateFilesMenu()}
+            />
+          ) : (
+            <>
+              <div className="s-flex s-items-center s-justify-between s-gap-2">
+                {renderCreateFilesMenu()}
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -4421,33 +4464,6 @@ export function GroupConversationView({
                         icon={List}
                       />
                     </DropdownMenuRadioGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <DropdownMenu modal={false}>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      icon={Download01}
-                      label="Add files"
-                      isSelect
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      icon={CloudArrowLeftRight}
-                      label="From Company Data"
-                      onClick={() => {}}
-                    />
-                    <DropdownMenuItem
-                      icon={Folder}
-                      label="New folder"
-                      onClick={() => {}}
-                    />
-                    <DropdownMenuItem
-                      icon={UploadCloud02}
-                      label="Upload file"
-                      onClick={() => {}}
-                    />
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>

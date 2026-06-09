@@ -32,25 +32,75 @@ import { type ComponentType, useEffect, useRef, useState } from "react";
 import { mockAgents, mockUsers } from "../data";
 import type { Agent, Space } from "../data/types";
 import { ConversationTopSection } from "./ConversationTopSection";
+import type { FreeButtonSwitchOption } from "./FreeButtonSwitch";
 import { FreeButtonSwitch } from "./FreeButtonSwitch";
 import { InputBar } from "./InputBar";
 
-// "browse" is only the id of the dropdown option in the switch; it is never an
-// active tab value.
+// "browse" and "category" are only ids of dropdown options in the switch; they
+// are never active tab values.
 export type WelcomeAgentTab =
   | "favorites"
   | "discover"
   | "my_agents"
   | "browse"
-  | `cat:${string}`;
+  | "category";
 
-export type AgentSort = "popularity" | "usage" | "alphabetical";
+export type AgentSort =
+  | "popularity"
+  | "usage"
+  | "alpha_asc"
+  | "alpha_desc"
+  | "custom";
 
 const AGENT_SORT_LABELS: Record<AgentSort, string> = {
   popularity: "By popularity",
   usage: "By usage",
-  alphabetical: "Alphabetical",
+  alpha_asc: "Alphabetical (A→Z)",
+  alpha_desc: "Alphabetical (Z→A)",
+  custom: "Custom",
 };
+
+export type AgentType = "all" | "agents" | "skills";
+
+const AGENT_TYPE_LABELS: Record<AgentType, string> = {
+  all: "All",
+  agents: "Agents",
+  skills: "Skills",
+};
+
+// Order options available per tab. Favorites supports a manual "custom" order
+// (and no popularity/usage); the other tabs expose popularity/usage instead.
+const ORDER_OPTIONS_BY_TAB: Record<
+  "favorites" | "discover" | "my_agents",
+  AgentSort[]
+> = {
+  favorites: ["alpha_asc", "alpha_desc", "custom"],
+  discover: ["alpha_asc", "alpha_desc", "popularity", "usage"],
+  my_agents: ["alpha_asc", "alpha_desc", "popularity", "usage"],
+};
+
+const DEFAULT_SORT_BY_TAB: Record<
+  "favorites" | "discover" | "my_agents",
+  AgentSort
+> = {
+  favorites: "custom",
+  discover: "popularity",
+  my_agents: "popularity",
+};
+
+function getOrderOptionsForTab(tab: WelcomeAgentTab): AgentSort[] {
+  if (tab === "favorites" || tab === "discover" || tab === "my_agents") {
+    return ORDER_OPTIONS_BY_TAB[tab];
+  }
+  return ORDER_OPTIONS_BY_TAB.discover;
+}
+
+function getDefaultSortForTab(tab: WelcomeAgentTab): AgentSort {
+  if (tab === "favorites" || tab === "discover" || tab === "my_agents") {
+    return DEFAULT_SORT_BY_TAB[tab];
+  }
+  return DEFAULT_SORT_BY_TAB.discover;
+}
 
 // Skills live alongside agents in the browser. A skill is rendered with a
 // highlight-tinted avatar (highlight-50 background, highlight-700 icon).
@@ -156,10 +206,6 @@ function itemMatchesCategory(itemId: string, categoryId: string): boolean {
   return def ? def.itemIds.includes(itemId) : false;
 }
 
-function getActiveCategoryId(value: WelcomeAgentTab): string | null {
-  return value.startsWith("cat:") ? value.slice("cat:".length) : null;
-}
-
 function getCategoryTitle(categoryId: string): string {
   return CATEGORIES.find((c) => c.id === categoryId)?.title ?? "Category";
 }
@@ -171,12 +217,46 @@ export function NewConversationActionBar({
   onValueChange,
   agentSort,
   onAgentSortChange,
+  agentType,
+  onAgentTypeChange,
+  agentCategory,
+  onAgentCategoryChange,
 }: {
   value: WelcomeAgentTab;
   onValueChange: (v: WelcomeAgentTab) => void;
   agentSort: AgentSort;
   onAgentSortChange: (sort: AgentSort) => void;
+  agentType: AgentType;
+  onAgentTypeChange: (type: AgentType) => void;
+  agentCategory: string | null;
+  onAgentCategoryChange: (category: string | null) => void;
 }) {
+  const categoryLabel =
+    agentCategory != null ? getCategoryTitle(agentCategory) : "All categories";
+
+  // Category control, pinned at the end right before the sort/filter button.
+  // Only shown while the Discover tab is active; it animates in on mount.
+  const categoryOption: FreeButtonSwitchOption<WelcomeAgentTab> = {
+    value: "category",
+    pinned: "end",
+    variant: "ghost-secondary",
+    defaultLabel: categoryLabel,
+    tooltip: "Filter by category",
+    className: "s-animate-in s-fade-in-0 s-slide-in-from-left-2 s-duration-200",
+    dropdownSections: [
+      {
+        label: "Category",
+        kind: "radio",
+        value: agentCategory ?? "all",
+        onValueChange: (v) => onAgentCategoryChange(v === "all" ? null : v),
+        items: [
+          { value: "all", label: "All categories" },
+          ...CATEGORIES.map((c) => ({ value: c.id, label: c.title })),
+        ],
+      },
+    ],
+  };
+
   return (
     <div className="s-flex s-w-full s-items-center s-gap-2">
       <FreeButtonSwitch<WelcomeAgentTab>
@@ -186,37 +266,33 @@ export function NewConversationActionBar({
           { value: "favorites", label: "Favorites" },
           { value: "discover", label: "Discover" },
           { value: "my_agents", label: "Mine" },
+          ...(value === "discover" ? [categoryOption] : []),
           {
             value: "browse",
             pinned: "end",
             icon: FilterLines,
-            defaultLabel: "Sort & filter",
-            tooltip: "Order and categories",
+            tooltip: "Type and order",
             dropdownSections: [
+              {
+                label: "Type",
+                kind: "radio",
+                value: agentType,
+                onValueChange: (v) => onAgentTypeChange(v as AgentType),
+                items: [
+                  { value: "all", label: AGENT_TYPE_LABELS.all },
+                  { value: "agents", label: AGENT_TYPE_LABELS.agents },
+                  { value: "skills", label: AGENT_TYPE_LABELS.skills },
+                ],
+              },
               {
                 label: "Order",
                 kind: "radio",
                 value: agentSort,
                 onValueChange: (v) => onAgentSortChange(v as AgentSort),
-                items: [
-                  { value: "popularity", label: AGENT_SORT_LABELS.popularity },
-                  { value: "usage", label: AGENT_SORT_LABELS.usage },
-                  {
-                    value: "alphabetical",
-                    label: AGENT_SORT_LABELS.alphabetical,
-                  },
-                ],
-              },
-              {
-                label: "Category",
-                kind: "tab",
-                items: [
-                  { value: "discover", label: "All" },
-                  ...CATEGORIES.map((c) => ({
-                    value: `cat:${c.id}`,
-                    label: c.title,
-                  })),
-                ],
+                items: getOrderOptionsForTab(value).map((sort) => ({
+                  value: sort,
+                  label: AGENT_SORT_LABELS[sort],
+                })),
               },
             ],
           },
@@ -254,6 +330,10 @@ interface NewConversationProps {
   onAgentTabChange: (tab: WelcomeAgentTab) => void;
   agentSort: AgentSort;
   onAgentSortChange: (sort: AgentSort) => void;
+  agentType: AgentType;
+  onAgentTypeChange: (type: AgentType) => void;
+  agentCategory: string | null;
+  onAgentCategoryChange: (category: string | null) => void;
   onToolbarPinnedChange: (pinned: boolean) => void;
 }
 
@@ -264,6 +344,10 @@ export function NewConversation({
   onAgentTabChange,
   agentSort,
   onAgentSortChange,
+  agentType,
+  onAgentTypeChange,
+  agentCategory,
+  onAgentCategoryChange,
   onToolbarPinnedChange,
 }: NewConversationProps) {
   // Pod targeted by the new conversation (null = My Pod).
@@ -317,6 +401,14 @@ export function NewConversation({
     setDisplayTab(agentTab);
   }, [agentTab, displayTab]);
 
+  // Keep the active order valid for the current tab (e.g. "custom" is only
+  // offered on Favorites, popularity/usage only on the other tabs).
+  useEffect(() => {
+    if (!getOrderOptionsForTab(agentTab).includes(agentSort)) {
+      onAgentSortChange(getDefaultSortForTab(agentTab));
+    }
+  }, [agentTab, agentSort, onAgentSortChange]);
+
   const selectedNewPod =
     newConversationPodId != null
       ? spaces.find((s) => s.id === newConversationPodId)
@@ -327,6 +419,26 @@ export function NewConversation({
       ? Cube01
       : CubeOutline
     : User03;
+
+  const podRadioGroup = (
+    <DropdownMenuRadioGroup
+      value={newConversationPodId ?? "my-pod"}
+      onValueChange={(v) => setNewConversationPodId(v === "my-pod" ? null : v)}
+    >
+      <DropdownMenuRadioItem value="my-pod" label="My Pod" icon={User03} />
+      {spaces.map((space) => {
+        const isRestricted = space.id.charCodeAt(space.id.length - 1) % 2 === 0;
+        return (
+          <DropdownMenuRadioItem
+            key={space.id}
+            value={space.id}
+            label={space.name}
+            icon={isRestricted ? Cube01 : CubeOutline}
+          />
+        );
+      })}
+    </DropdownMenuRadioGroup>
+  );
 
   const itemHash = (id: string) =>
     id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
@@ -352,14 +464,26 @@ export function NewConversation({
     i.name.toLowerCase().includes(query) ||
     i.description.toLowerCase().includes(query);
 
+  const matchesType = (i: BrowserItem) =>
+    agentType === "all" ||
+    (agentType === "agents" && i.kind === "agent") ||
+    (agentType === "skills" && i.kind === "skill");
+
   const usageMessages = (id: string) => (itemHash(id) % 4800) + 48;
 
   const compareItems = (a: BrowserItem, b: BrowserItem) => {
-    if (agentSort === "alphabetical") {
+    if (agentSort === "alpha_asc") {
       return a.name.localeCompare(b.name);
+    }
+    if (agentSort === "alpha_desc") {
+      return b.name.localeCompare(a.name);
     }
     if (agentSort === "usage") {
       return usageMessages(b.id) - usageMessages(a.id);
+    }
+    if (agentSort === "custom") {
+      // Keep the underlying insertion order.
+      return 0;
     }
     return itemHash(b.id) - itemHash(a.id);
   };
@@ -367,14 +491,18 @@ export function NewConversation({
   // Flat, sorted list for the Favorites / Mine tabs.
   const displayedItems =
     displayTab === "favorites" || displayTab === "my_agents"
-      ? [...itemsByTab[displayTab]].sort(compareItems)
+      ? [...itemsByTab[displayTab]]
+          .filter(matchesType)
+          .filter(matchesQuery)
+          .sort(compareItems)
       : [];
 
-  // Active category tab (cat:<id>): a flat, filtered, ordered list.
-  const activeCategoryId = getActiveCategoryId(displayTab);
+  // Active category on Discover: a flat, filtered, ordered list.
+  const activeCategoryId = displayTab === "discover" ? agentCategory : null;
   const categoryItems = activeCategoryId
     ? allItems
         .filter((i) => itemMatchesCategory(i.id, activeCategoryId))
+        .filter(matchesType)
         .filter(matchesQuery)
         .sort(compareItems)
     : [];
@@ -403,7 +531,10 @@ export function NewConversation({
   ]
     .map((category) => ({
       ...category,
-      items: category.items.filter(matchesQuery).sort(compareItems),
+      items: category.items
+        .filter(matchesType)
+        .filter(matchesQuery)
+        .sort(compareItems),
     }))
     .filter((category) => category.items.length > 0);
 
@@ -506,56 +637,44 @@ export function NewConversation({
         <div className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
           {greeting}
         </div>
-        <div className="s-flex s-items-center s-gap-3">
-          <div className="s-min-w-0 s-flex-1 s-heading-lg s-text-foreground dark:s-text-foreground-night">
-            New conversation
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                isSelect
-                icon={newPodIcon}
-                label={newPodLabel}
-                tooltip="Choose a pod"
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuRadioGroup
-                value={newConversationPodId ?? "my-pod"}
-                onValueChange={(v) =>
-                  setNewConversationPodId(v === "my-pod" ? null : v)
-                }
-              >
-                <DropdownMenuRadioItem
-                  value="my-pod"
-                  label="My Pod"
-                  icon={User03}
+        <InputBar
+          placeholder="Ask a question"
+          beforeSendButton={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost-secondary"
+                  size="xs"
+                  icon={newPodIcon}
+                  label={`in ${newPodLabel}`}
+                  tooltip={`Create conversation in ${newPodLabel}`}
+                  className="s-max-w-[180px]"
+                  isSelect
+                  isRounded
                 />
-                {spaces.map((space) => {
-                  const isRestricted =
-                    space.id.charCodeAt(space.id.length - 1) % 2 === 0;
-                  return (
-                    <DropdownMenuRadioItem
-                      key={space.id}
-                      value={space.id}
-                      label={space.name}
-                      icon={isRestricted ? Cube01 : CubeOutline}
-                    />
-                  );
-                })}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        <InputBar placeholder="Ask a question" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {podRadioGroup}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          }
+        />
       </ConversationTopSection>
       {/* Bottom portion: grows with its content; the page scrolls as a whole. */}
       <div className="s-flex s-flex-none s-justify-center s-px-4 s-pb-8">
         <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-3">
-          <div className="s-heading-base s-text-foreground dark:s-text-foreground-night">
-            Agents & Skills
+          <div className="s-mx-auto s-flex s-w-full s-max-w-3xl s-flex-col s-gap-3 s-px-4 s-text-center s-pb-8">
+            <div className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+              Agents & Skills
+            </div>
+            <SearchInput
+              name="new-conversation-agent-search"
+              value={agentSearch}
+              onChange={setAgentSearch}
+              placeholder="Search skills and agents"
+              size="md"
+              className="s-w-full"
+            />
           </div>
           <div ref={sentinelRef} />
           <NewConversationActionBar
@@ -563,16 +682,13 @@ export function NewConversation({
             onValueChange={onAgentTabChange}
             agentSort={agentSort}
             onAgentSortChange={onAgentSortChange}
+            agentType={agentType}
+            onAgentTypeChange={onAgentTypeChange}
+            agentCategory={agentCategory}
+            onAgentCategoryChange={onAgentCategoryChange}
           />
-          {displayTab === "discover" ? (
-            <div className="s-flex s-flex-col s-gap-6 s-pt-1">
-              <SearchInput
-                name="new-conversation-agent-search"
-                value={agentSearch}
-                onChange={setAgentSearch}
-                placeholder="Search skills and agents"
-                className="s-w-full"
-              />
+          {displayTab === "discover" && !activeCategoryId ? (
+            <div className="s-flex s-flex-col s-gap-6">
               {discoverCategories.map((category) => (
                 <div key={category.title} className="s-flex s-flex-col s-gap-3">
                   <div className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
@@ -585,14 +701,7 @@ export function NewConversation({
               ))}
             </div>
           ) : activeCategoryId ? (
-            <div className="s-flex s-flex-col s-gap-3 s-pt-1">
-              <SearchInput
-                name="new-conversation-agent-search"
-                value={agentSearch}
-                onChange={setAgentSearch}
-                placeholder="Search skills and agents"
-                className="s-w-full"
-              />
+            <div className="s-flex s-flex-col s-gap-3">
               <div className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
                 {getCategoryTitle(activeCategoryId)}
               </div>

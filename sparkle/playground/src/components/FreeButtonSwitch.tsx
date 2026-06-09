@@ -1,7 +1,6 @@
 import {
   AnimatedText,
   Button,
-  File02,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
@@ -12,7 +11,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  Separator,
+  File02,
   XClose,
   type ButtonProps,
 } from "@dust-tt/sparkle";
@@ -78,6 +77,10 @@ export interface FreeButtonSwitchOption<TValue extends string> {
   dropdownSections?: FreeButtonSwitchDropdownSection[];
   // Label shown on the dropdown button when no "tab" item is currently active.
   defaultLabel?: string;
+  // Extra classes applied to the option's wrapper (e.g. entrance animations).
+  className?: string;
+  // Forces the button variant, overriding the active/inactive defaults.
+  variant?: ButtonProps["variant"];
 }
 
 type FreeButtonSwitchSize = "xmini" | "mini" | "xs" | "sm" | "md";
@@ -407,7 +410,9 @@ export function FreeButtonSwitch<TValue extends string>({
 
       const dropdownButton = (
         <Button
-          variant={isActive ? activeVariant : inactiveVariant}
+          variant={
+            option.variant ?? (isActive ? activeVariant : inactiveVariant)
+          }
           size={size}
           isSelect
           label={hideLabels ? undefined : dropdownLabel}
@@ -421,14 +426,20 @@ export function FreeButtonSwitch<TValue extends string>({
       // duplicate portaled menus.
       if (!interactive) {
         return (
-          <div key={option.id ?? option.value} className="s-shrink-0">
+          <div
+            key={option.id ?? option.value}
+            className={cn("s-shrink-0", option.className)}
+          >
             {dropdownButton}
           </div>
         );
       }
 
       return (
-        <div key={option.id ?? option.value} className="s-shrink-0">
+        <div
+          key={option.id ?? option.value}
+          className={cn("s-shrink-0", option.className)}
+        >
           <DropdownMenu>
             <DropdownMenuTrigger asChild>{dropdownButton}</DropdownMenuTrigger>
             <DropdownMenuContent>
@@ -469,7 +480,10 @@ export function FreeButtonSwitch<TValue extends string>({
 
     const button = (
       <Button
-        variant={option.value === value ? activeVariant : inactiveVariant}
+        variant={
+          option.variant ??
+          (option.value === value ? activeVariant : inactiveVariant)
+        }
         size={size}
         label={hideLabels ? undefined : option.label}
         icon={option.icon}
@@ -481,7 +495,10 @@ export function FreeButtonSwitch<TValue extends string>({
 
     if (!interactive) {
       return (
-        <div key={option.id ?? option.value} className="s-shrink-0">
+        <div
+          key={option.id ?? option.value}
+          className={cn("s-shrink-0", option.className)}
+        >
           {button}
         </div>
       );
@@ -492,6 +509,7 @@ export function FreeButtonSwitch<TValue extends string>({
         key={option.id ?? option.value}
         className={cn(
           "s-shrink-0 s-rounded-lg s-transition-colors",
+          option.className,
           isDraggable && "s-cursor-grab active:s-cursor-grabbing",
           draggingTabValue === option.value && "s-opacity-50",
           dropTargetValue === option.value &&
@@ -542,14 +560,11 @@ export function FreeButtonSwitch<TValue extends string>({
         )}
       </div>
       {pinnedEndOptions.length > 0 && (
-        <>
-          <Separator orientation="vertical" className="s-h-5" />
-          <div className="s-flex s-shrink-0 s-items-center s-gap-1">
-            {pinnedEndOptions.map((option) =>
-              renderOptionButton(option, hideLabels, interactive)
-            )}
-          </div>
-        </>
+        <div className="s-flex s-shrink-0 s-items-center s-gap-1">
+          {pinnedEndOptions.map((option) =>
+            renderOptionButton(option, hideLabels, interactive)
+          )}
+        </div>
       )}
     </>
   );
