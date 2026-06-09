@@ -12,6 +12,7 @@ import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/Usag
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { formatCredits } from "@app/lib/client/credits";
 import { isEnterprisePlanPrefix, isUpgraded } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import {
@@ -48,10 +49,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { useCallback, useContext, useEffect, useState } from "react";
-
-function formatCredits(credits: number): string {
-  return Math.round(credits).toLocaleString("en-US");
-}
 
 const DEFAULT_PAGE_SIZE = 25;
 

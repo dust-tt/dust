@@ -4,6 +4,7 @@ import {
 } from "@app/components/checkout/PaymentMethodRow";
 import { useAwuPurchase } from "@app/hooks/useAwuPurchase";
 import config from "@app/lib/api/config";
+import { formatCredits } from "@app/lib/client/credits";
 import type { AwuPurchaseInfo } from "@app/lib/credits/awu_purchase";
 import {
   MAX_AWU_PURCHASE_CREDITS_PER_CYCLE,
@@ -43,10 +44,6 @@ type TopUpTab = "one-time" | "automatic";
 const QUICK_SELECT_AMOUNTS = [10, 50, 100] as const;
 
 const supportEmail = config.getSupportEmailAddress().email;
-
-function formatCredits(credits: number): string {
-  return Math.round(credits).toLocaleString("en-US");
-}
 
 function formatPaymentMethodLabel(
   pm:

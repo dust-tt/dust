@@ -2,6 +2,7 @@ import { CreditStateLogsLink } from "@app/components/poke/credits/CreditStateLog
 import { ReconcileCreditStateButton } from "@app/components/poke/credits/ReconcileCreditStateButton";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
+import { formatCredits } from "@app/lib/client/credits";
 import { getMetronomeAlertUrl } from "@app/lib/metronome/urls";
 import { usePokeMembersUsage } from "@app/poke/swr/credits";
 import type { UserCreditState } from "@app/types/memberships";
@@ -42,10 +43,6 @@ function MemberSortHeader({ direction, onToggle }: MemberSortHeaderProps) {
 }
 
 const DEFAULT_PAGE_SIZE = 25;
-
-function formatCredits(credits: number): string {
-  return Math.round(credits).toLocaleString("en-US");
-}
 
 const USER_CREDIT_STATE_CHIP_COLOR: Record<
   UserCreditState,
