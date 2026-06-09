@@ -20,6 +20,11 @@ import type { CreationOptional } from "sequelize";
  *   Metronome `spend_threshold_reached` alert on the workspace's customer.
  *   Independent from `paygEnabled` — the cap can be set even when PAYG is
  *   disabled, and PAYG can be enabled without a cap.
+ * - allowMemberUpgradeRequests: Whether non-admin members who reach their
+ *   per-user spend limit can request a spend-limit upgrade from the product.
+ *   Defaults to true.
+ * - upgradeRequestEmailEnabled: Whether workspace admins are emailed when a
+ *   member requests an upgrade. Defaults to true.
  *
  * The credit-cap-warning notification settings (whether to warn, and at which
  * balance) are NOT stored here: they are derived from the workspace's Metronome
@@ -32,6 +37,8 @@ export class CreditUsageConfigurationModel extends WorkspaceAwareModel<CreditUsa
   declare defaultDiscountPercent: number;
   declare paygEnabled: CreationOptional<boolean>;
   declare usageCapCredits: number | null;
+  declare allowMemberUpgradeRequests: CreationOptional<boolean>;
+  declare upgradeRequestEmailEnabled: CreationOptional<boolean>;
 }
 
 CreditUsageConfigurationModel.init(
@@ -73,6 +80,16 @@ CreditUsageConfigurationModel.init(
           }
         },
       },
+    },
+    allowMemberUpgradeRequests: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    upgradeRequestEmailEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
     },
   },
   {
