@@ -47,6 +47,8 @@ function getAuditLogDecision(
   }
 }
 
+type ApprovalRequestAuditStatus = "active" | "retry" | "stale";
+
 function extractDataSourceId(input: unknown): string | null {
   if (isString(input)) {
     return input.split("/").pop() ?? input;
@@ -77,12 +79,14 @@ async function emitToolApprovalDecidedAuditEvent({
   auth,
   conversationId,
   messageId,
+  requestStatus,
 }: {
   action: AgentMCPActionResource;
   approvalState: ActionApprovalStateType;
   auth: Authenticator;
   conversationId: string;
   messageId: string;
+  requestStatus: ApprovalRequestAuditStatus;
 }): Promise<void> {
   try {
     const owner = auth.getNonNullableWorkspace();
@@ -102,7 +106,7 @@ async function emitToolApprovalDecidedAuditEvent({
         })
       : null;
 
-    void emitAuditLogEvent({
+    const auditEvent = emitAuditLogEvent({
       auth,
       action: "tool.approval_decided",
       targets: [
@@ -121,17 +125,30 @@ async function emitToolApprovalDecidedAuditEvent({
       ],
       context: getAuditLogContext(auth),
       metadata: {
+        action_id: String(action.sId),
         tool_name: String(action.toolConfiguration.originalName),
         mcp_server_name: String(action.toolConfiguration.mcpServerName),
         conversation_id: String(conversationId),
         message_id: String(messageId),
         decision: getAuditLogDecision(approvalState),
+        request_status: requestStatus,
         deciding_user_id: user?.sId ?? "unknown",
         deciding_user_email: user?.email ?? "unknown",
         accessed_data_source_ids: extractAccessedDataSourceIds(
           action.augmentedInputs
         ),
       },
+    });
+    void auditEvent.catch((error) => {
+      logger.error(
+        {
+          ...normalizeError(error),
+          actionId: action.sId,
+          conversationId,
+          messageId,
+        },
+        "Failed to emit tool approval decision audit event"
+      );
     });
   } catch (error) {
     logger.error(
@@ -210,11 +227,42 @@ export async function validateAction(
     );
   }
 
+  const activeRequestStatus: ApprovalRequestAuditStatus =
+    agentMessageVersion > 0 ? "retry" : "active";
+
   if (action.status !== "blocked_validation_required") {
     return new Err(
       new DustError(
         "action_not_blocked",
         `Action is not blocked: ${action.status}`
+      )
+    );
+  }
+
+  const currentBlockedActions =
+    await AgentMCPActionResource.listBlockedActionsForConversation(
+      auth,
+      conversation
+    );
+  const isCurrentBlockedAction = currentBlockedActions.some(
+    (blockedAction) =>
+      blockedAction.actionId === actionId && blockedAction.messageId === messageId
+  );
+
+  if (!isCurrentBlockedAction) {
+    void emitToolApprovalDecidedAuditEvent({
+      action,
+      approvalState,
+      auth,
+      conversationId,
+      messageId,
+      requestStatus: "stale",
+    });
+
+    return new Err(
+      new DustError(
+        "action_not_blocked",
+        "Action request is stale and can no longer be validated"
       )
     );
   }
@@ -280,6 +328,7 @@ export async function validateAction(
     auth,
     conversationId,
     messageId,
+    requestStatus: activeRequestStatus,
   });
 
   // Remove the tool approval request event from the message channel.

@@ -24,6 +24,7 @@ vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
   return {
     ...actual,
     emitAuditLogEvent: vi.fn().mockResolvedValue(undefined),
+    emitAuditLogEventDirect: vi.fn().mockResolvedValue(undefined),
   };
 });
 
@@ -46,7 +47,10 @@ import {
   publishAgentMessagesEvents,
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
-import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
+import {
+  emitAuditLogEvent,
+  emitAuditLogEventDirect,
+} from "@app/lib/api/audit/workos_audit";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import { Authenticator } from "@app/lib/auth";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
@@ -64,6 +68,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
+import { emitToolExecutedAuditEvent } from "@app/temporal/agent_loop/activities/run_tool";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -911,6 +916,122 @@ describe("validateAction", () => {
     return { agentMessageMessage, agentMessageRow };
   }
 
+  function makeActionConfiguration(): MCPToolConfigurationType {
+    return {
+      id: 1,
+      sId: generateRandomModelSId(),
+      type: "mcp_configuration",
+      name: "test_tool",
+      description: null,
+      inputSchema: { type: "object" },
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
+      timeFrame: null,
+      jsonSchema: null,
+      additionalConfiguration: {},
+      mcpServerViewId: "test-server-view",
+      dustAppConfiguration: null,
+      secretName: null,
+      dustProject: null,
+      internalMCPServerId: null,
+      availability: "auto",
+      permission: "low",
+      toolServerId: "test-server",
+      retryPolicy: "no_retry",
+      originalName: "test_tool",
+      mcpServerName: "test_server",
+    };
+  }
+
+  async function createAgentMessageForAudit({
+    agentConfiguration,
+    parentId,
+    version = 0,
+  }: {
+    agentConfiguration: { sId: string; version: number };
+    parentId: number;
+    version?: number;
+  }) {
+    const agentMessageRow = await AgentMessageModel.create({
+      workspaceId: workspace.id,
+      status: "created",
+      agentConfigurationId: agentConfiguration.sId,
+      agentConfigurationVersion: agentConfiguration.version,
+      skipToolsValidation: false,
+    });
+
+    const agentMessageMessage = await MessageModel.create({
+      workspaceId: workspace.id,
+      sId: generateRandomModelSId(),
+      conversationId: conversation.id,
+      rank: 1,
+      version,
+      parentId,
+      agentMessageId: agentMessageRow.id,
+    });
+
+    const fetchedConversation = await getConversation(auth, conversation.sId);
+    expect(fetchedConversation.isOk()).toBe(true);
+    if (!fetchedConversation.isOk()) {
+      throw new Error("Failed to fetch conversation");
+    }
+
+    const agentMessage = fetchedConversation.value.content
+      .flat()
+      .find(
+        (message): message is AgentMessageType =>
+          message.type === "agent_message" &&
+          message.sId === agentMessageMessage.sId
+      );
+    expect(agentMessage).toBeDefined();
+    if (!agentMessage) {
+      throw new Error("Failed to find agent message");
+    }
+
+    return { agentMessage, agentMessageMessage, agentMessageRow };
+  }
+
+  async function createAuditedMCPAction({
+    agentMessage,
+    augmentedInputs = {},
+  }: {
+    agentMessage: AgentMessageType;
+    augmentedInputs?: Record<string, unknown>;
+  }) {
+    const stepContent = await AgentStepContentResource.createNewVersion({
+      workspaceId: workspace.id,
+      agentMessageId: agentMessage.agentMessageId,
+      step: 1,
+      index: stepContentIndex++,
+      type: "function_call",
+      value: {
+        type: "function_call",
+        value: {
+          id: generateRandomModelSId(),
+          name: "test_tool",
+          arguments: "{}",
+        },
+      },
+    });
+
+    return createMCPAction(auth, {
+      actionConfiguration: makeActionConfiguration(),
+      agentMessage,
+      augmentedInputs,
+      conversation,
+      status: "blocked_validation_required",
+      stepContent,
+      stepContext: {
+        citationsCount: 0,
+        citationsOffset: 0,
+        resumeState: null,
+        retrievalTopK: 10,
+        websearchResultCount: 5,
+      },
+    });
+  }
+
   function getAuditLogEventCalls(
     action: "tool.approval_decided" | "tool.approval_requested"
   ) {
@@ -918,6 +1039,13 @@ describe("validateAction", () => {
       .mocked(emitAuditLogEvent)
       .mock.calls.map(([event]) => event)
       .filter((event) => event.action === action);
+  }
+
+  function getExecutedAuditLogEventCalls() {
+    return vi
+      .mocked(emitAuditLogEventDirect)
+      .mock.calls.map(([event]) => event)
+      .filter((event) => event.action === "tool.executed");
   }
 
   async function waitForAuditLogEventCalls(
@@ -1028,7 +1156,7 @@ describe("validateAction", () => {
         mcpServerName: "test_server",
       };
 
-      await createMCPAction(auth, {
+      const action = await createMCPAction(auth, {
         actionConfiguration,
         agentMessage,
         augmentedInputs: {},
@@ -1056,10 +1184,148 @@ describe("validateAction", () => {
           { type: "tool", id: "test_tool", name: "test_tool" },
         ],
         metadata: {
+          action_id: action.sId,
           tool_name: "test_tool",
           mcp_server_name: "test_server",
           conversation_id: conversation.sId,
           message_id: agentMessageMessage.sId,
+          request_status: "active",
+          accessed_data_source_ids: "",
+        },
+      });
+    });
+
+    it("should mark retry-created approval requests with a new action id", async () => {
+      const { messageRow } = await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Test message",
+      });
+
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        { name: "Test Agent" }
+      );
+
+      const v0AgentMessage = await createAgentMessageForAudit({
+        agentConfiguration: agentConfig,
+        parentId: messageRow.id,
+      });
+      const v1AgentMessage = await createAgentMessageForAudit({
+        agentConfiguration: agentConfig,
+        parentId: messageRow.id,
+        version: 1,
+      });
+
+      const v0Action = await createAuditedMCPAction({
+        agentMessage: v0AgentMessage.agentMessage,
+      });
+      const v1Action = await createAuditedMCPAction({
+        agentMessage: v1AgentMessage.agentMessage,
+      });
+
+      const requestedEvents = await waitForAuditLogEventCalls(
+        "tool.approval_requested"
+      );
+      expect(requestedEvents).toHaveLength(2);
+
+      const v0Request = requestedEvents.find(
+        (event) => event.metadata?.action_id === v0Action.sId
+      );
+      const v1Request = requestedEvents.find(
+        (event) => event.metadata?.action_id === v1Action.sId
+      );
+
+      expect(v0Request?.metadata).toMatchObject({
+        action_id: v0Action.sId,
+        message_id: v0AgentMessage.agentMessageMessage.sId,
+        request_status: "active",
+      });
+      expect(v1Request?.metadata).toMatchObject({
+        action_id: v1Action.sId,
+        message_id: v1AgentMessage.agentMessageMessage.sId,
+        request_status: "retry",
+      });
+      expect(v0Action.sId).not.toBe(v1Action.sId);
+    });
+
+    it("should join one approved action to exactly one execution event", async () => {
+      const { messageRow } = await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Test message",
+      });
+
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        { name: "Test Agent" }
+      );
+      const { agentMessage, agentMessageMessage } =
+        await createAgentMessageForAudit({
+          agentConfiguration: agentConfig,
+          parentId: messageRow.id,
+        });
+
+      const action = await createAuditedMCPAction({
+        agentMessage,
+        augmentedInputs: {
+          dataSources: [{ uri: "dust://data_sources/dsv_test" }],
+        },
+      });
+
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      const result = await validateAction(auth, conversationResource!, {
+        actionId: action.sId,
+        approvalState: "approved",
+        messageId: agentMessageMessage.sId,
+      });
+      expect(result.isOk()).toBe(true);
+
+      emitToolExecutedAuditEvent({
+        action,
+        agentConfiguration: agentConfig,
+        auth,
+        conversation,
+        executionId: action.sId,
+        messageId: agentMessageMessage.sId,
+      });
+
+      const requestedEvents = await waitForAuditLogEventCalls(
+        "tool.approval_requested"
+      );
+      const decidedEvents = await waitForAuditLogEventCalls(
+        "tool.approval_decided"
+      );
+      const executedEvents = getExecutedAuditLogEventCalls();
+
+      expect(
+        requestedEvents.filter(
+          (event) => event.metadata?.action_id === action.sId
+        )
+      ).toHaveLength(1);
+      expect(
+        decidedEvents.filter((event) => event.metadata?.action_id === action.sId)
+      ).toHaveLength(1);
+      expect(
+        executedEvents.filter(
+          (event) => event.metadata?.action_id === action.sId
+        )
+      ).toHaveLength(1);
+      expect(executedEvents[0]).toMatchObject({
+        action: "tool.executed",
+        metadata: {
+          action_id: action.sId,
+          execution_id: action.sId,
+          conversation_id: conversation.sId,
+          message_id: agentMessageMessage.sId,
+          accessed_data_source_ids: "dsv_test",
         },
       });
     });
@@ -1323,11 +1589,13 @@ describe("validateAction", () => {
           { type: "tool", id: "test_tool", name: "test_tool" },
         ],
         metadata: {
+          action_id: actionId,
           tool_name: "test_tool",
           mcp_server_name: "test_server",
           conversation_id: conversation.sId,
           message_id: agentMessageMessage.sId,
           decision: "approved",
+          request_status: "active",
           deciding_user_id: user.sId,
           deciding_user_email: user.email,
           accessed_data_source_ids: "dsv_test",
@@ -1519,16 +1787,162 @@ describe("validateAction", () => {
           { type: "tool", id: "test_tool", name: "test_tool" },
         ],
         metadata: {
+          action_id: actionId,
           tool_name: "test_tool",
           mcp_server_name: "test_server",
           conversation_id: conversation.sId,
           message_id: agentMessageMessage.sId,
           decision: "rejected",
+          request_status: "active",
           deciding_user_id: user.sId,
           deciding_user_email: user.email,
           accessed_data_source_ids: "",
         },
       });
+      expect(getExecutedAuditLogEventCalls()).toHaveLength(0);
+    });
+
+    it("should mark stale validation so it cannot join to a later execution", async () => {
+      const { messageRow } = await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Test message",
+      });
+
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        { name: "Test Agent" }
+      );
+
+      const v0AgentMessage = await createAgentMessageForAudit({
+        agentConfiguration: agentConfig,
+        parentId: messageRow.id,
+      });
+      const staleAction = await createBlockedAction({
+        agentMessageId: v0AgentMessage.agentMessageRow.id,
+      });
+
+      const v1AgentMessage = await createAgentMessageForAudit({
+        agentConfiguration: agentConfig,
+        parentId: messageRow.id,
+        version: 1,
+      });
+      const currentAction = await createBlockedAction({
+        agentMessageId: v1AgentMessage.agentMessageRow.id,
+      });
+
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      const staleResult = await validateAction(auth, conversationResource!, {
+        actionId: staleAction.actionId,
+        approvalState: "approved",
+        messageId: v0AgentMessage.agentMessageMessage.sId,
+      });
+
+      expect(staleResult.isErr()).toBe(true);
+      if (staleResult.isErr()) {
+        expect(staleResult.error.code).toBe("action_not_blocked");
+      }
+      await staleAction.action.reload();
+      expect(staleAction.action.status).toBe("blocked_validation_required");
+      expect(vi.mocked(launchAgentLoopWorkflow)).not.toHaveBeenCalled();
+
+      const staleDecisions = await waitForAuditLogEventCalls(
+        "tool.approval_decided"
+      );
+      expect(staleDecisions).toHaveLength(1);
+      expect(staleDecisions[0]).toMatchObject({
+        action: "tool.approval_decided",
+        metadata: {
+          action_id: staleAction.actionId,
+          decision: "approved",
+          request_status: "stale",
+          message_id: v0AgentMessage.agentMessageMessage.sId,
+        },
+      });
+
+      const currentResult = await validateAction(auth, conversationResource!, {
+        actionId: currentAction.actionId,
+        approvalState: "approved",
+        messageId: v1AgentMessage.agentMessageMessage.sId,
+      });
+      expect(currentResult.isOk()).toBe(true);
+
+      const currentActionResource = await AgentMCPActionResource.fetchById(
+        auth,
+        currentAction.actionId
+      );
+      expect(currentActionResource).not.toBeNull();
+      if (!currentActionResource) {
+        throw new Error("Failed to fetch current action");
+      }
+
+      emitToolExecutedAuditEvent({
+        action: currentActionResource,
+        agentConfiguration: agentConfig,
+        auth,
+        conversation,
+        executionId: currentAction.actionId,
+        messageId: v1AgentMessage.agentMessageMessage.sId,
+      });
+
+      const executedEvents = getExecutedAuditLogEventCalls();
+      expect(executedEvents).toHaveLength(1);
+      expect(executedEvents[0].metadata?.action_id).toBe(
+        currentAction.actionId
+      );
+      expect(executedEvents[0].metadata?.action_id).not.toBe(
+        staleAction.actionId
+      );
+    });
+
+    it("should keep approval outcome when audit emission rejects", async () => {
+      const { messageRow } = await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Test message",
+      });
+
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        { name: "Test Agent" }
+      );
+      const { agentMessageMessage, agentMessageRow } =
+        await createAgentMessageForAudit({
+          agentConfiguration: agentConfig,
+          parentId: messageRow.id,
+        });
+
+      const { action, actionId } = await createBlockedAction({
+        agentMessageId: agentMessageRow.id,
+      });
+
+      vi.mocked(emitAuditLogEvent).mockRejectedValueOnce(
+        new Error("audit failed")
+      );
+
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      const result = await validateAction(auth, conversationResource!, {
+        actionId,
+        approvalState: "approved",
+        messageId: agentMessageMessage.sId,
+      });
+
+      expect(result.isOk()).toBe(true);
+      await action.reload();
+      expect(action.status).toBe("ready_allowed_explicitly");
+      expect(vi.mocked(launchAgentLoopWorkflow)).toHaveBeenCalled();
     });
   });
 

@@ -17,7 +17,32 @@ import type {
   AgentMessageType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
+import { isString } from "@app/types/shared/utils/general";
 import omit from "lodash/omit";
+
+function extractDataSourceId(input: unknown): string | null {
+  if (isString(input)) {
+    return input.split("/").pop() ?? input;
+  }
+
+  if (!input || typeof input !== "object" || !("uri" in input)) {
+    return null;
+  }
+
+  const { uri } = input;
+  return isString(uri) ? uri.split("/").pop() ?? uri : null;
+}
+
+function extractAccessedDataSourceIds(
+  inputs: Record<string, unknown>
+): string {
+  const dataSources = inputs.dataSources;
+  if (!Array.isArray(dataSources)) {
+    return "";
+  }
+
+  return dataSources.map(extractDataSourceId).filter(isString).join(",");
+}
 
 /**
  * Creates an MCP action in the database and returns both the DB record and the type object.
@@ -75,10 +100,15 @@ export async function createMCPAction(
       ],
       context: getAuditLogContext(auth),
       metadata: {
+        action_id: String(action.sId),
         tool_name: String(toolConfiguration.originalName),
         mcp_server_name: String(toolConfiguration.mcpServerName),
         conversation_id: String(conversation.sId),
         message_id: String(agentMessage.sId),
+        request_status: agentMessage.version > 0 ? "retry" : "active",
+        accessed_data_source_ids: extractAccessedDataSourceIds(
+          action.augmentedInputs
+        ),
       },
     });
   }

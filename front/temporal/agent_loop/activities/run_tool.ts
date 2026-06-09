@@ -26,6 +26,7 @@ import {
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   startActiveObservation,
   updateActiveObservation,
@@ -82,6 +83,67 @@ function extractDataSourceIds(
     result.accessed_table_ids = formatAccessedIdsSample(ids);
   }
   return result;
+}
+
+type ToolExecutedAuditAgentConfiguration = {
+  sId: string;
+  name: string;
+};
+
+type ToolExecutedAuditConversation = {
+  owner: LightWorkspaceType;
+  sId: string;
+  triggerId?: string | null;
+};
+
+export function emitToolExecutedAuditEvent({
+  action,
+  agentConfiguration,
+  auth,
+  conversation,
+  executionId,
+  messageId,
+}: {
+  action: AgentMCPActionResource;
+  agentConfiguration: ToolExecutedAuditAgentConfiguration;
+  auth: Authenticator;
+  conversation: ToolExecutedAuditConversation;
+  executionId: string;
+  messageId: string;
+}): void {
+  void emitAuditLogEventDirect({
+    workspace: conversation.owner,
+    action: "tool.executed",
+    actor: {
+      type: "agent",
+      id: agentConfiguration.sId,
+      name: agentConfiguration.name,
+    },
+    targets: [
+      buildAuditLogTarget("workspace", conversation.owner),
+      buildAuditLogTarget("agent", agentConfiguration),
+      buildAuditLogTarget("tool", {
+        sId: action.toolConfiguration.name,
+        name: action.toolConfiguration.originalName,
+      }),
+    ],
+    context: { location: auth.clientIp() ?? "internal" },
+    metadata: {
+      action_id: action.sId,
+      execution_id: executionId,
+      tool_name: action.toolConfiguration.originalName,
+      tool_type: isLightClientSideMCPToolConfiguration(action.toolConfiguration)
+        ? "remote"
+        : "internal",
+      mcp_server_name: action.toolConfiguration.mcpServerName,
+      conversation_id: conversation.sId,
+      message_id: messageId,
+      ...(conversation.triggerId ? { trigger_id: conversation.triggerId } : {}),
+      initiating_user_id: auth.user()?.sId ?? "unknown",
+      initiating_user_email: auth.user()?.email ?? "unknown",
+      ...extractDataSourceIds(action.augmentedInputs),
+    },
+  });
 }
 
 export async function runToolActivity(
@@ -401,39 +463,13 @@ async function executeToolStreaming(
           { asType: "tool" }
         );
 
-        void emitAuditLogEventDirect({
-          workspace: conversation.owner,
-          action: "tool.executed",
-          actor: {
-            type: "agent",
-            id: agentConfiguration.sId,
-            name: agentConfiguration.name,
-          },
-          targets: [
-            buildAuditLogTarget("workspace", conversation.owner),
-            buildAuditLogTarget("agent", agentConfiguration),
-            buildAuditLogTarget("tool", {
-              sId: action.toolConfiguration.name,
-              name: action.toolConfiguration.originalName,
-            }),
-          ],
-          context: { location: auth.clientIp() ?? "internal" },
-          metadata: {
-            tool_name: action.toolConfiguration.originalName,
-            tool_type: isLightClientSideMCPToolConfiguration(
-              action.toolConfiguration
-            )
-              ? "remote"
-              : "internal",
-            mcp_server_name: action.toolConfiguration.mcpServerName,
-            conversation_id: conversation.sId,
-            ...(conversation.triggerId
-              ? { trigger_id: conversation.triggerId }
-              : {}),
-            initiating_user_id: auth.user()?.sId ?? "unknown",
-            initiating_user_email: auth.user()?.email ?? "unknown",
-            ...extractDataSourceIds(action.augmentedInputs),
-          },
+        emitToolExecutedAuditEvent({
+          action,
+          agentConfiguration,
+          auth,
+          conversation,
+          executionId: event.action.sId,
+          messageId: agentMessage.sId,
         });
 
         await handleNonDeferredEvents(auth, {

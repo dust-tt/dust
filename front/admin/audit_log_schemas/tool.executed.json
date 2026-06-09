@@ -12,10 +12,13 @@
     }
   ],
   "metadata": {
+    "action_id": "string",
+    "execution_id": "string",
     "tool_name": "string",
     "tool_type": "string",
     "mcp_server_name": "string",
     "conversation_id": "string",
+    "message_id": "string",
     "trigger_id": "string",
     "accessed_data_source_ids": "string",
     "accessed_table_ids": "string",

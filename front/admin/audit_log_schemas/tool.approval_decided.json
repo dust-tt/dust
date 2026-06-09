@@ -12,11 +12,13 @@
     }
   ],
   "metadata": {
+    "action_id": "string",
     "tool_name": "string",
     "mcp_server_name": "string",
     "conversation_id": "string",
     "message_id": "string",
     "decision": "string",
+    "request_status": "string",
     "deciding_user_id": "string",
     "deciding_user_email": "string",
     "accessed_data_source_ids": "string",
