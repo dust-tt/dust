@@ -37,6 +37,9 @@ interface EditSpendLimitModalProps {
   member: MemberUsageType | null;
   owner: WorkspaceType;
   onSavingChange?: (memberId: string, isSaving: boolean) => void;
+  // Fired once the spend limit has been persisted successfully (not on cancel
+  // or a load error). Used to resolve a linked upgrade request as approved.
+  onSaved?: () => void;
 }
 
 export function EditSpendLimitModal({
@@ -45,6 +48,7 @@ export function EditSpendLimitModal({
   member,
   owner,
   onSavingChange,
+  onSaved,
 }: EditSpendLimitModalProps) {
   // Keep the last non-null member so the dialog can render its content through
   // the exit animation after the parent has cleared `member`.
@@ -170,6 +174,7 @@ export function EditSpendLimitModal({
         limit,
       });
       if (body) {
+        onSaved?.();
         onClose();
       }
     } finally {

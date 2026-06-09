@@ -1,0 +1,108 @@
+import { useSendNotification } from "@app/hooks/useNotification";
+import type { GetUpgradeRequestsResponseBody } from "@app/lib/api/credits/upgrade_requests";
+import { clientFetch } from "@app/lib/egress/client";
+import { invalidateMembersUsage } from "@app/lib/swr/memberships";
+import {
+  emptyArray,
+  getErrorFromResponse,
+  useFetcher,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
+import type { MembershipUpgradeRequestStatus } from "@app/types/memberships";
+import { useCallback } from "react";
+import type { Fetcher } from "swr";
+
+function upgradeRequestsUrl(workspaceId: string): string {
+  return `/api/w/${workspaceId}/credits/upgrade-requests`;
+}
+
+// Admin-only: pending upgrade requests for the workspace. Fetched on the Usage
+// page both to render the Requests tab and to back its count badge, so it is
+// not gated behind tab visibility.
+export function useUpgradeRequests({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const upgradeRequestsFetcher: Fetcher<GetUpgradeRequestsResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    upgradeRequestsUrl(workspaceId),
+    upgradeRequestsFetcher,
+    { disabled }
+  );
+
+  const requests = data?.requests ?? emptyArray();
+
+  return {
+    upgradeRequests: requests,
+    isUpgradeRequestsLoading: !error && !data && !disabled,
+    isUpgradeRequestsError: !!error,
+    mutateUpgradeRequests: mutate,
+  };
+}
+
+export function useResolveUpgradeRequest({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutate } = useSWRWithDefaults(upgradeRequestsUrl(workspaceId), null);
+
+  const doResolveUpgradeRequest = useCallback(
+    async ({
+      requestId,
+      requesterName,
+      status,
+    }: {
+      requestId: string;
+      requesterName: string;
+      status: Exclude<MembershipUpgradeRequestStatus, "pending">;
+    }): Promise<boolean> => {
+      const res = await clientFetch(
+        `${upgradeRequestsUrl(workspaceId)}/${requestId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to resolve upgrade request",
+          description: errorData.message,
+        });
+        return false;
+      }
+
+      // Resolving removes the request from the pending list and may change the
+      // member's seat / limit, so refresh both surfaces.
+      await mutate();
+      await invalidateMembersUsage(workspaceId);
+
+      sendNotification({
+        type: "success",
+        title:
+          status === "approved"
+            ? "Upgrade request approved"
+            : "Upgrade request denied",
+        description:
+          status === "approved"
+            ? `${requesterName}'s upgrade request has been approved.`
+            : `${requesterName}'s upgrade request has been denied.`,
+      });
+      return true;
+    },
+    [workspaceId, sendNotification, mutate]
+  );
+
+  return { doResolveUpgradeRequest };
+}
