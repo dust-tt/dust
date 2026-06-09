@@ -1,10 +1,10 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes, Op } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreditType } from "@app/types/credits";
 import { CREDIT_TYPES } from "@app/types/credits";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes, Op } from "@app/lib/resources/storage/data_types";
 
 /**
  * CreditModel stores consumable monetary credits for programmatic API usage.

@@ -1,5 +1,6 @@
 import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -8,7 +9,6 @@ import type {
   LabsTranscriptsProviderType,
 } from "@app/types/labs";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "@app/lib/resources/storage/data_types";
 
 export class LabsTranscriptsConfigurationModel extends WorkspaceAwareModel<LabsTranscriptsConfigurationModel> {
   declare createdAt: CreationOptional<Date>;

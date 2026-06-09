@@ -1,6 +1,10 @@
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   AgentSuggestionKind,
@@ -8,7 +12,6 @@ import type {
   SuggestionPayload,
 } from "@app/types/suggestions/agent_suggestion";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@app/lib/resources/storage/data_types";
 
 export class AgentSuggestionModel extends WorkspaceAwareModel<AgentSuggestionModel> {
   declare createdAt: CreationOptional<Date>;

@@ -1,5 +1,9 @@
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { FileModel } from "@app/lib/resources/storage/models/files";
@@ -13,7 +17,6 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import isNil from "lodash/isNil";
 import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
-import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@app/lib/resources/storage/data_types";
 
 const SKILL_MODEL_ATTRIBUTES = {
   createdAt: {

@@ -1,4 +1,8 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import {
   SoftDeletableWorkspaceAwareModel,
@@ -7,7 +11,6 @@ import {
 import type { AppVisibility } from "@app/types/app";
 import type { DatasetSchema } from "@app/types/dataset";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@app/lib/resources/storage/data_types";
 
 // TODO(2024-10-04 flav) Remove visibility from here.
 export class AppModel extends SoftDeletableWorkspaceAwareModel<AppModel> {

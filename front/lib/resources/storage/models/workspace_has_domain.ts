@@ -1,7 +1,7 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional } from "sequelize";
-import { DataTypes } from "@app/lib/resources/storage/data_types";
 
 export class WorkspaceHasDomainModel extends WorkspaceAwareModel<WorkspaceHasDomainModel> {
   declare createdAt: CreationOptional<Date>;

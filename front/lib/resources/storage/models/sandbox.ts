@@ -1,8 +1,8 @@
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes, Op } from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes, Op } from "@app/lib/resources/storage/data_types";
 
 export type SandboxStatus =
   | "running"

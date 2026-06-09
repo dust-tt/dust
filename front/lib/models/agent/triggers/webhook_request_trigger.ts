@@ -1,8 +1,11 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@app/lib/resources/storage/data_types";
 
 import { TriggerModel } from "./triggers";
 import { WebhookRequestModel } from "./webhook_request";

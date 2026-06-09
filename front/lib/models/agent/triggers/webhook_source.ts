@@ -1,11 +1,14 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   WebhookProvider,
   WebhookSourceSignatureAlgorithm,
 } from "@app/types/triggers/webhooks";
 import type { CreationOptional } from "sequelize";
-import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@app/lib/resources/storage/data_types";
 
 export class WebhookSourceModel extends WorkspaceAwareModel<WebhookSourceModel> {
   declare createdAt: CreationOptional<Date>;

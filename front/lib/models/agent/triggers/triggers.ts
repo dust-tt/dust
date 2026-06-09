@@ -1,6 +1,10 @@
 import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
@@ -15,7 +19,6 @@ import {
   isValidTriggerStatus,
 } from "@app/types/assistant/triggers";
 import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@app/lib/resources/storage/data_types";
 
 export class TriggerModel extends WorkspaceAwareModel<TriggerModel> {
   declare createdAt: CreationOptional<Date>;

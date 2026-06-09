@@ -1,10 +1,10 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { RoleType } from "@app/types/user";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "@app/lib/resources/storage/data_types";
 
 export class KeyModel extends WorkspaceAwareModel<KeyModel> {
   declare createdAt: CreationOptional<Date>;

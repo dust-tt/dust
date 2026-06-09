@@ -7,6 +7,7 @@ import {
   SkillConfigurationModel,
 } from "@app/lib/models/skill";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes, Op } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ConversationSkillOrigin } from "@app/types/assistant/conversation_skills";
@@ -16,7 +17,6 @@ import type {
   ModelAttributes,
   NonAttribute,
 } from "sequelize";
-import { DataTypes, Op } from "@app/lib/resources/storage/data_types";
 
 const SKILL_IN_CONVERSATION_MODEL_ATTRIBUTES = {
   createdAt: {

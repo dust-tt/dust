@@ -1,6 +1,7 @@
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { TagModel } from "@app/lib/models/tags";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 import type { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
@@ -9,7 +10,6 @@ import type {
   ForeignKey,
   NonAttribute,
 } from "sequelize";
-import { DataTypes } from "@app/lib/resources/storage/data_types";
 
 export class TagAgentModel extends WorkspaceAwareModel<TagAgentModel> {
   declare id: CreationOptional<number>;

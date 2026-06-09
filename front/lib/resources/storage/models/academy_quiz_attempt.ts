@@ -1,8 +1,8 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "@app/lib/resources/storage/data_types";
 
 export const ACADEMY_CONTENT_TYPES = ["course", "lesson", "chapter"] as const;
 export type AcademyContentType = (typeof ACADEMY_CONTENT_TYPES)[number];

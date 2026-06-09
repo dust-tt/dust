@@ -1,10 +1,13 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { PodTaskSourceType } from "@app/types/project_task";
 import type { TaskVersionedActionItem } from "@app/types/takeaways";
 import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@app/lib/resources/storage/data_types";
 
 // ── Shared attributes ────────────────────────────────────────────────────────
 // Used by both the main table and the version snapshot table so that

@@ -1,3 +1,4 @@
+import { DataTypes, Model } from "@app/lib/resources/storage/data_types";
 import type {
   CreationOptional,
   InferAttributes,
@@ -6,7 +7,6 @@ import type {
   ModelAttributes,
   ModelStatic,
 } from "sequelize";
-import { DataTypes, Model } from "@app/lib/resources/storage/data_types";
 
 interface BaseModelAttributes {
   id?: {

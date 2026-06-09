@@ -6,9 +6,12 @@ import { DEFAULT_MCP_ACTION_VERSION } from "@app/lib/actions/constants";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPToolType } from "@app/lib/api/mcp";
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional } from "sequelize";
-import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@app/lib/resources/storage/data_types";
 
 export class RemoteMCPServerModel extends WorkspaceAwareModel<RemoteMCPServerModel> {
   declare createdAt: CreationOptional<Date>;

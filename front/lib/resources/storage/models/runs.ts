@@ -1,8 +1,8 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "@app/lib/resources/storage/data_types";
 
 export class RunModel extends WorkspaceAwareModel<RunModel> {
   declare createdAt: CreationOptional<Date>;

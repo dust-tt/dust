@@ -4,6 +4,12 @@ import type { ConversationBranchModel } from "@app/lib/models/agent/conversation
 import type { ConversationForkModel } from "@app/lib/models/agent/conversation_fork";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+  literal,
+  Op,
+} from "@app/lib/resources/storage/data_types";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
@@ -20,7 +26,6 @@ import type {
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT, literal, Op } from "@app/lib/resources/storage/data_types";
 
 export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare createdAt: CreationOptional<Date>;

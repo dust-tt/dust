@@ -1,4 +1,5 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
@@ -16,7 +17,6 @@ import type {
   NonAttribute,
   Transaction,
 } from "sequelize";
-import { DataTypes } from "@app/lib/resources/storage/data_types";
 
 export class PlanModel extends BaseModel<PlanModel> {
   declare createdAt: CreationOptional<Date>;

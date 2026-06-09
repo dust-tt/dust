@@ -6,6 +6,10 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
@@ -16,7 +20,6 @@ import { isTimeFrame } from "@app/types/shared/utils/time_frame";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@app/lib/resources/storage/data_types";
 
 export type AdditionalConfigurationValueType =
   | boolean
