@@ -275,6 +275,6 @@ export function ConversationContainerVirtuoso({
   return activeConversationId ? (
     body
   ) : (
-    <ScrollArea className="grow px-4 md:px-8">{body}</ScrollArea>
+      <ScrollArea className="grow px-4 md:px-8">{body}</ScrollArea>
   );
 }
