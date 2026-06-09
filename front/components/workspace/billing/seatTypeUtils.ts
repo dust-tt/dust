@@ -10,14 +10,24 @@ export const SEAT_TYPE_ICONS: Record<string, ComponentType> = {
 
 export function seatTypeAvatarColors(seatType: MembershipSeatType) {
   switch (seatType) {
-    case "free":
-      return { backgroundColor: "bg-gray-100", iconColor: "text-gray-600" };
+    case "pro":
+      return { backgroundColor: "bg-blue-100", iconColor: "text-blue-600" };
     case "max":
       return {
         backgroundColor: "bg-golden-100",
         iconColor: "text-golden-600",
       };
     default:
-      return { backgroundColor: "bg-blue-100", iconColor: "text-blue-600" };
+      return { backgroundColor: "bg-gray-100", iconColor: "text-gray-600" };
   }
+}
+
+export function formatAmount(cents: number, currency: string): string {
+  const locale = currency.toUpperCase() === "USD" ? "en-US" : "fr-FR";
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(cents / 100);
 }

@@ -14,6 +14,7 @@ import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, Spinner } from "@dust-tt/sparkle";
 import { useState } from "react";
+import { formatAmount } from "./seatTypeUtils";
 
 type SubscriptionStatus = "active" | "cancelled" | "ended";
 
@@ -45,16 +46,6 @@ interface NextInvoiceOverviewProps {
 
 function formatBillingPeriod(period: string): string {
   return period.charAt(0).toUpperCase() + period.slice(1);
-}
-
-function formatAmount(cents: number, currency: string): string {
-  const locale = currency.toUpperCase() === "USD" ? "en-US" : "fr-FR";
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(cents / 100);
 }
 
 export function NextInvoiceOverview({

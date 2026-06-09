@@ -808,18 +808,14 @@ export function useMetronomeInvoice({
 export function useMetronomeInvoiceLines({
   workspaceId,
   disabled,
-  fiatOnly,
 }: {
   workspaceId: string;
   disabled?: boolean;
-  fiatOnly?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const linesFetcher: Fetcher<GetMetronomeInvoiceLinesResponseBody> = fetcher;
 
-  const url = fiatOnly
-    ? `/api/w/${workspaceId}/metronome/invoice/lines?fiatOnly=true`
-    : `/api/w/${workspaceId}/metronome/invoice/lines`;
+  const url = `/api/w/${workspaceId}/metronome/invoice/lines`;
 
   const { data, error, mutate } = useSWRWithDefaults(url, linesFetcher, {
     disabled,

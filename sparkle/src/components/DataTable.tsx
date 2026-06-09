@@ -1071,7 +1071,7 @@ DataTable.Cell = function Cell({
     <td
       className={cn(
         cellHeight,
-        "s-truncate s-px-2 s-py-2",
+        "s-truncate s-px-2",
         column.columnDef.meta?.className,
         className
       )}

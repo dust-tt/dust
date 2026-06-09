@@ -219,11 +219,17 @@ app.get(
 
     const currency = creditTypeIdToCurrency(invoice.credit_type.id);
 
-    const fiatOnly = ctx.req.query("fiatOnly") === "true";
-    const fiatCreditTypeIds = new Set([CREDIT_TYPE_USD_ID, CREDIT_TYPE_EUR_ID]);
-
     const lineItems = invoice.line_items
-      .filter((item) => !fiatOnly || fiatCreditTypeIds.has(item.credit_type.id))
+      .filter((item) => {
+        const itemCurrency = creditTypeIdToCurrency(item.credit_type.id);
+        return !!currency && !!itemCurrency && itemCurrency === currency;
+      })
+      .filter((item) => item.total >= 0)
+      .filter(
+        (item) =>
+          !item.applied_commit_or_credit ||
+          item.applied_commit_or_credit?.type !== "CREDIT"
+      )
       .map((item) => {
         const itemCurrency = creditTypeIdToCurrency(item.credit_type.id);
         return {
@@ -240,7 +246,7 @@ app.get(
         };
       });
 
-    return ctx.json({ currency, lineItems });
+    return ctx.json({ currency, lineItems, items: invoice.line_items });
   }
 );
 

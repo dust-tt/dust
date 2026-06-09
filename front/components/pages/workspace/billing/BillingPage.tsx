@@ -2,8 +2,8 @@ import { BillingInformation } from "@app/components/workspace/billing/BillingInf
 import { BillingOverview } from "@app/components/workspace/billing/BillingOverview";
 import { BillingSeatsOverview } from "@app/components/workspace/billing/BillingSeatsOverview";
 import { BillingUpgrade } from "@app/components/workspace/billing/BillingUpgrade";
-import { InvoiceSeatsPreview } from "@app/components/workspace/billing/InvoiceSeatsPreview";
 import { NextInvoiceOverview } from "@app/components/workspace/billing/NextInvoiceOverview";
+import { NextInvoicePreview } from "@app/components/workspace/billing/NextInvoicePreview";
 import { RecentInvoices } from "@app/components/workspace/billing/RecentInvoices";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
@@ -46,7 +46,7 @@ export function BillingPage() {
         <TabsContent value="invoices">
           <div className="flex flex-col mt-8 gap-8">
             <NextInvoiceOverview owner={owner} subscription={subscription} />
-            <InvoiceSeatsPreview owner={owner} subscription={subscription} />
+            <NextInvoicePreview owner={owner} subscription={subscription} />
             <RecentInvoices owner={owner} />
           </div>
         </TabsContent>
