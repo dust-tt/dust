@@ -12,6 +12,7 @@ import type {
 import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { getCapabilitySortName } from "@app/lib/capabilities/sort";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -58,7 +59,7 @@ export function filterInputBarSlashSuggestions({
       .map((skill) => ({
         kind: "skill" as const,
         skill,
-        sortName: skill.name.toLowerCase(),
+        sortName: getCapabilitySortName(skill.name),
       })),
     ...serverViews
       .filter((serverView) => isJITMCPServerView(serverView))
@@ -72,7 +73,7 @@ export function filterInputBarSlashSuggestions({
       .map((serverView) => ({
         kind: "tool" as const,
         serverView,
-        sortName: getToolSlashCommandLabel(serverView).toLowerCase(),
+        sortName: getCapabilitySortName(getToolSlashCommandLabel(serverView)),
       })),
   ];
 

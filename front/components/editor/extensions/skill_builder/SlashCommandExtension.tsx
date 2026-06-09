@@ -17,6 +17,7 @@ import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_bu
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { getCapabilitySortName } from "@app/lib/capabilities/sort";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Attachment01 } from "@dust-tt/sparkle";
@@ -130,7 +131,7 @@ function filterSkillBuilderSlashCommandCapabilities({
         .map((skill) => ({
           kind: "skill" as const,
           skill,
-          sortName: skill.name.toLowerCase(),
+          sortName: getCapabilitySortName(skill.name),
         })),
       ...tools
         .filter((tool) =>
@@ -142,7 +143,7 @@ function filterSkillBuilderSlashCommandCapabilities({
         .map((tool) => ({
           kind: "tool" as const,
           tool,
-          sortName: getToolSlashCommandLabel(tool).toLowerCase(),
+          sortName: getCapabilitySortName(getToolSlashCommandLabel(tool)),
         })),
     ],
   });

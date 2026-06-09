@@ -61,4 +61,29 @@ describe("filterInputBarSlashSuggestions", () => {
       )
     ).toEqual(["Google Drive", "Generate Daily Report"]);
   });
+
+  it("orders skills alphabetically without a query", async () => {
+    const { auth } = await createPrivateApiMockRequest();
+    const zedSkill = await SkillFactory.create(auth, {
+      name: "Zed",
+      userFacingDescription: "",
+    });
+    const alphaSkill = await SkillFactory.create(auth, {
+      name: "Alpha",
+      userFacingDescription: "",
+    });
+
+    const result = filterInputBarSlashSuggestions({
+      query: "",
+      selectedMCPServerViewIds: new Set(),
+      serverViews: [],
+      skills: [zedSkill.toJSON(auth), alphaSkill.toJSON(auth)],
+    });
+
+    expect(
+      result.map((capability) =>
+        capability.kind === "skill" ? capability.skill.name : ""
+      )
+    ).toEqual(["Alpha", "Zed"]);
+  });
 });

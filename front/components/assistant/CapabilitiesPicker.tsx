@@ -9,6 +9,10 @@ import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal
 import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
+import {
+  compareCapabilitiesByName,
+  getCapabilitySortName,
+} from "@app/lib/capabilities/sort";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import {
   useAvailableMCPServers,
@@ -495,7 +499,7 @@ export function CapabilitiesPicker({
           id: `skills-picker-${skill.sId}`,
           icon: getSkillAvatarIcon(skill.icon),
           label: skill.name,
-          sortName: skill.name.toLowerCase(),
+          sortName: getCapabilitySortName(skill.name),
           description,
         });
       }
@@ -522,7 +526,7 @@ export function CapabilitiesPicker({
           id: `capabilities-picker-${serverView.sId}`,
           icon: () => getAvatar(serverView.server),
           label,
-          sortName: label.toLowerCase(),
+          sortName: getCapabilitySortName(label),
           description,
         });
       }
@@ -555,7 +559,7 @@ export function CapabilitiesPicker({
           id: `tools-to-install-${server.sId}`,
           icon: () => getAvatar(server),
           label,
-          sortName: label.toLowerCase(),
+          sortName: getCapabilitySortName(label),
           description,
         });
       }
@@ -570,7 +574,7 @@ export function CapabilitiesPicker({
         return groupComparison;
       }
 
-      return a.sortName.localeCompare(b.sortName);
+      return compareCapabilitiesByName(a, b);
     });
   })();
 

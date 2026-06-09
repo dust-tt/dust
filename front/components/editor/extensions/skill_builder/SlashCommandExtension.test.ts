@@ -169,6 +169,26 @@ describe("buildSkillBuilderSlashCommandItems", () => {
     });
   });
 
+  it("orders skills alphabetically without a query", () => {
+    const result = buildSkillBuilderSlashCommandItems({
+      baseItems: [],
+      includeSkillSuggestions: true,
+      query: "",
+      skills: [
+        skillSuggestion({
+          name: "Zed",
+          sId: "skill_zed",
+        }),
+        skillSuggestion({
+          name: "Alpha",
+          sId: "skill_alpha",
+        }),
+      ],
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["skill_alpha", "skill_zed"]);
+  });
+
   it("labels the first tool section when there are no matching skills", () => {
     const result = buildSkillBuilderSlashCommandItems({
       baseItems: [],
