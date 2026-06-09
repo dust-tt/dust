@@ -3,8 +3,11 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
+import type { RequestContext } from "@app/types/shared/utils/request_context";
+import { runWithRequestContext } from "@app/types/shared/utils/request_context";
 import { getClientIpFromContext } from "@front-api/lib/request";
 import { createMiddleware } from "hono/factory";
+import { routePath } from "hono/route";
 
 type RequestLoggerEnv = {
   Variables: {
@@ -28,27 +31,42 @@ export const requestLogger = createMiddleware<RequestLoggerEnv>(
       return next();
     }
 
+    // Mutable: `route` starts as the raw URL path and is updated to the matched
+    // route pattern in the finally block (routePath is only set after routing).
+    // Any unhandled rejection fired from the handler will see the updated value
+    // because routing completes before the handler (and any fire-and-forget
+    // promises it spawns) run.
+    const reqCtx: RequestContext = {
+      method: c.req.method,
+      route: c.req.path,
+      url: c.req.path,
+    };
+
     const startMs = performance.now();
-    try {
-      await next();
-    } finally {
-      const routePath = c.req.routePath;
-      if (routePath) {
-        // dd-trace's Hono auto-instrumentation can land on a wildcard
-        // middleware path (e.g. `/api/w/:wId/*` from
-        // `app.use("*", workspaceAuth())`) instead of the matched handler
-        // route. Override with Hono's own routePath, which always points at
-        // the handler that ran.
-        const span = tracer.scope().active();
-        if (span) {
-          span.setTag("resource.name", `${c.req.method} ${routePath}`);
+    await runWithRequestContext(reqCtx, async () => {
+      try {
+        await next();
+      } finally {
+        const _routePath = routePath(c);
+        if (_routePath) {
+          // dd-trace's Hono auto-instrumentation can land on a wildcard
+          // middleware path (e.g. `/api/w/:wId/*` from
+          // `app.use("*", workspaceAuth())`) instead of the matched handler
+          // route. Override with Hono's own routePath, which always points at
+          // the handler that ran.
+          const span = tracer.scope().active();
+          if (span) {
+            span.setTag("resource.name", `${c.req.method} ${_routePath}`);
+          }
+          reqCtx.route = _routePath;
         }
       }
-    }
+    });
+
     const durationMs = Math.round(performance.now() - startMs);
 
     const statusCode = c.res.status;
-    const route = c.req.routePath ?? c.req.path;
+    const route = routePath(c) ?? c.req.path;
 
     const clientIp = getClientIpFromContext(c);
 
