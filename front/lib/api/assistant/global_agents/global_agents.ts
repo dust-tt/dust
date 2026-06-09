@@ -39,6 +39,9 @@ import {
   _getDustKimiGlobalAgent,
   _getDustKimiHighGlobalAgent,
   _getDustKimiMediumGlobalAgent,
+  _getDustLionelGlobalAgent,
+  _getDustLionelHighGlobalAgent,
+  _getDustLionelMediumGlobalAgent,
   _getDustMinimaxGlobalAgent,
   _getDustMinimaxHighGlobalAgent,
   _getDustMinimaxMediumGlobalAgent,
@@ -1213,13 +1216,34 @@ function getGlobalAgent({
         hasDeepDive,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_LIONEL:
+      agentConfiguration = _getDustLionelGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM:
+      agentConfiguration = _getDustLionelMediumGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH:
+      agentConfiguration = _getDustLionelHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
     // Active custom-model dust-* agents.
     case GLOBAL_AGENTS_SID.DUST_CHAWI:
     case GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM:
     case GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH:
-    case GLOBAL_AGENTS_SID.DUST_LIONEL:
-    case GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM:
-    case GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH:
       agentConfiguration = _getCustomModelDustLikeGlobalAgent(
         auth,
         {
