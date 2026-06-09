@@ -7,7 +7,10 @@ const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const config: StorybookConfig = {
   stories: ["../src/**/*.mdx", "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
 
-  staticDirs: [{ from: "../../front/public/static", to: "/static" }],
+  staticDirs: [
+    { from: "../../front/public/static", to: "/static" },
+    { from: "./assets", to: "/brand" },
+  ],
 
   addons: ["@storybook/addon-themes", "@chromatic-com/storybook"],
 
