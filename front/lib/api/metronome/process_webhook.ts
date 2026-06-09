@@ -59,6 +59,8 @@ import {
   CONTRACT_CREDIT_TYPE_POOL,
   getCreditTypeAwuId,
   getProductExcessCreditsId,
+  PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY,
+  PAYMENT_GATE_TYPE_SUBSCRIPTION_ACTIVATION,
   PLAN_CODE_CUSTOM_FIELD_KEY,
   USAGE_TYPE_GROUP_KEY,
   USAGE_TYPE_PROGRAMMATIC,
@@ -1304,6 +1306,21 @@ export async function processMetronomeWebhook({
         logger.info(
           { contractId, workspaceId: workspace.sId },
           `[Metronome Webhook] contract.start: no ${PLAN_CODE_CUSTOM_FIELD_KEY} custom field, leaving subscription alone`
+        );
+        break;
+      }
+
+      // Payment-gated subscription activation: skip the automatic swap here.
+      // The payment_gate.payment_status webhook handles the plan switch once
+      // payment succeeds, ensuring the workspace stays on CP_FREE_PLAN until paid.
+      const paymentGateType =
+        contractResult.value.custom_fields?.[
+          PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY
+        ];
+      if (paymentGateType === PAYMENT_GATE_TYPE_SUBSCRIPTION_ACTIVATION) {
+        logger.info(
+          { contractId, workspaceId: workspace.sId },
+          "[Metronome Webhook] contract.start: payment-gated activation contract, skipping — payment_gate.payment_status will activate"
         );
         break;
       }

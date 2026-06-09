@@ -19,6 +19,7 @@ import {
   CONTRACT_CREDIT_TYPE_POOL,
   CREDIT_TYPE_USD_ID,
   DEV_CREDIT_TYPE_AWU_ID,
+  PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY,
   PLAN_CODE_CUSTOM_FIELD_KEY,
   PROD_CREDIT_TYPE_AWU_ID,
   SEAT_TYPE_CUSTOM_FIELD_KEY,
@@ -1407,6 +1408,7 @@ const CUSTOM_FIELD_KEYS: Array<{
   { entity: "contract", key: "MAU_TIERS" },
   { entity: "contract", key: "MAU_THRESHOLD" },
   { entity: "contract", key: PLAN_CODE_CUSTOM_FIELD_KEY },
+  { entity: "contract", key: PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY },
   // Stamped on individual contract_credit instances to identify excess
   // recurring credits ("excess") vs. workspace-pool credits ("pool"). Lets
   // the default ContractCredit-balance alerts filter on value="pool" to

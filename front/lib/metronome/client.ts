@@ -744,6 +744,7 @@ export async function createMetronomeContract({
   startingAt,
   enableStripeBilling,
   planCode,
+  additionalCustomFields,
 }: {
   metronomeCustomerId: string;
   /** Mutually exclusive with `packageId`. */
@@ -758,6 +759,11 @@ export async function createMetronomeContract({
   // webhook can swap the workspace's subscription onto this plan when the
   // contract becomes active.
   planCode: string;
+  // Additional custom fields merged with PLAN_CODE_CUSTOM_FIELD_KEY when
+  // stamping the contract. Used to signal payment-gated activation flows
+  // (DUST_PAYMENT_GATE_TYPE) so the contract.start webhook can skip the
+  // automatic subscription swap.
+  additionalCustomFields?: Record<string, string>;
 }): Promise<Result<{ contractId: string }, Error>> {
   if (!packageAlias === !packageId) {
     return new Err(
@@ -831,7 +837,10 @@ export async function createMetronomeContract({
 
   const customFieldsResult = await setMetronomeContractCustomFields({
     contractId,
-    customFields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: planCode },
+    customFields: {
+      [PLAN_CODE_CUSTOM_FIELD_KEY]: planCode,
+      ...additionalCustomFields,
+    },
   });
   if (customFieldsResult.isErr()) {
     return new Err(customFieldsResult.error);

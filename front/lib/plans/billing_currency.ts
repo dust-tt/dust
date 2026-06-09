@@ -93,6 +93,7 @@ export function resolvePackageAliasForCurrency(
     "legacy-business": "legacy-business-eur",
     "legacy-pro-annual": "legacy-pro-annual-eur",
     "legacy-enterprise": "legacy-enterprise-eur",
+    "business-usd": "business-eur",
   };
 
   return eurAliases[baseAlias] ?? baseAlias;

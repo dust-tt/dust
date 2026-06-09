@@ -84,6 +84,13 @@ export const CREDIT_TYPE_EUR_ID = "58f0be15-cc47-4220-bdaf-072ab0e44f96";
 
 export const PLAN_CODE_CUSTOM_FIELD_KEY = "DUST_PLAN_CODE";
 
+// Custom field stamped on payment-gated contracts to identify the activation
+// flow type. The contract.start webhook checks this field and skips the
+// automatic subscription swap when set — payment_gate.payment_status handles it.
+export const PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY = "DUST_PAYMENT_GATE_TYPE";
+export const PAYMENT_GATE_TYPE_SUBSCRIPTION_ACTIVATION =
+  "subscription_activation";
+
 // Custom field stamped on every seat-style product (Workspace / Pro / Max /
 // Free / future seat tiers). Value is the membership seat type ("workspace"
 // | "pro" | "max" | "free"). Lets runtime code identify which subscription
