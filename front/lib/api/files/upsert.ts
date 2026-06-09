@@ -562,8 +562,9 @@ const maybeApplyProcessing: ProcessingFunction = async (
             workspaceId: auth.workspace()?.sId,
             fileId: file.sId,
             contentType: file.contentType,
-            fileSize: file.fileSize,
-            error: res.error,
+            fileSizeBytes: file.fileSize,
+            errorCode: res.error.code,
+            err: res.error,
           },
           "Conversation file exceeds data source indexing quota; skipping indexing and keeping the attachment available."
         );

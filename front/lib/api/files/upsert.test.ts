@@ -20,6 +20,8 @@ import type { WorkspaceType } from "@app/types/user";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const OVER_QUOTA_FILE_SIZE_BYTES = 6 * 1_024 * 1_024;
+
 // Mock the data_sources module to spy on upsertTable
 vi.mock(import("../data_sources"), async (importOriginal) => {
   const mod = await importOriginal();
@@ -132,7 +134,7 @@ describe("processAndUpsertToDataSource", () => {
     const file = await FileFactory.create(auth, null, {
       contentType: "text/plain",
       fileName: "large-conversation-file.txt",
-      fileSize: 6 * 1024 * 1024,
+      fileSize: OVER_QUOTA_FILE_SIZE_BYTES,
       status: "ready",
       useCase: "conversation",
       useCaseMetadata: {
@@ -169,7 +171,7 @@ describe("processAndUpsertToDataSource", () => {
     const file = await FileFactory.create(auth, null, {
       contentType: "text/plain",
       fileName: "large-folder-file.txt",
-      fileSize: 6 * 1024 * 1024,
+      fileSize: OVER_QUOTA_FILE_SIZE_BYTES,
       status: "ready",
       useCase: "folders_document",
     });
