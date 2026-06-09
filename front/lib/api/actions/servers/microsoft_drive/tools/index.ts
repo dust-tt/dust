@@ -658,6 +658,47 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
     }
   },
 
+  rename_drive_item: async (
+    { itemId, driveId, siteId, name },
+    { authInfo }
+  ) => {
+    const client = await getGraphClient(authInfo);
+    if (!client) {
+      return new Err(
+        new MCPError("Failed to authenticate with Microsoft Graph")
+      );
+    }
+
+    try {
+      const endpoint = await getDriveItemEndpoint(itemId, driveId, siteId);
+      const response = await client.api(endpoint).patch({ name });
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              success: true,
+              message: "Item renamed successfully",
+              item: {
+                id: response.id,
+                name: response.name,
+                webUrl: response.webUrl,
+                lastModifiedDateTime: response.lastModifiedDateTime,
+              },
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      return new Err(
+        new MCPError(normalizeError(err).message || "Failed to rename item")
+      );
+    }
+  },
+
   copy_file: async (
     { itemId, driveId, siteId, parentReference, name },
     { authInfo }

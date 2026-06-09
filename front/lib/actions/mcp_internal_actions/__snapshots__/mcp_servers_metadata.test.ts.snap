@@ -367,6 +367,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "copy_file": "never_ask",
     "get_file_content": "never_ask",
     "list_drive_items": "never_ask",
+    "rename_drive_item": "medium",
     "search_drive_items": "never_ask",
     "search_in_files": "never_ask",
     "update_word_document": "high",
