@@ -65,7 +65,11 @@ interface InlineKnowledgeChipProps {
   title: string;
 }
 
-function InlineKnowledgeIcon({ node }: { node: KnowledgeNode }) {
+interface InlineKnowledgeIconProps {
+  node: KnowledgeNode;
+}
+
+function InlineKnowledgeIcon({ node }: InlineKnowledgeIconProps) {
   if (
     isWebsite(node.dataSourceView.dataSource) ||
     isFolder(node.dataSourceView.dataSource)

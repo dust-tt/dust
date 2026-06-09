@@ -9,7 +9,7 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { NodeViewProps } from "@tiptap/react";
 import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
 interface ToolNodeWithViewOptions {
   onToolDetails?: (tool: MCPServerViewType) => void;
@@ -75,10 +75,7 @@ function ToolNodeView({
     display.kind === "tool" && display.view && onToolDetails
       ? () => onToolDetails(display.view)
       : undefined;
-  const handleRemove = useCallback(() => {
-    deleteNode();
-  }, [deleteNode]);
-  const onRemove = editor.isEditable ? handleRemove : undefined;
+  const onRemove = editor.isEditable ? deleteNode : undefined;
 
   return (
     <NodeViewWrapper className="inline-flex align-middle">
