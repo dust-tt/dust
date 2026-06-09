@@ -179,10 +179,10 @@ type AdminPage =
   | "capabilities"
   // Security
   | "identity"
-  | "audit"
   // Workspace
   | "workspace"
   | "models"
+  | "analytics"
   // Developer
   | "api_keys"
   | "programmatic"
@@ -673,9 +673,9 @@ const ROLE_ACCESS: Record<Role, AdminPage[]> = {
     "people",
     "capabilities",
     "identity",
-    "audit",
     "workspace",
     "models",
+    "analytics",
     "api_keys",
     "programmatic",
     "credentials",
@@ -687,12 +687,13 @@ const ROLE_ACCESS: Record<Role, AdminPage[]> = {
     "people",
     "capabilities",
     "models",
+    "analytics",
     "api_keys",
     "programmatic",
     "credentials",
     "secrets",
   ],
-  security_admin: ["people", "identity", "audit"],
+  security_admin: ["people", "identity"],
   billing_admin: ["billing", "usage"],
 };
 
@@ -4148,41 +4149,28 @@ interface NavSpec {
 
 const NAV_SECTIONS: { title: string; items: NavSpec[] }[] = [
   {
-    title: "Team",
-    items: [{ id: "people", label: "People", icon: Users01 }],
-  },
-  {
-    title: "Access Control",
-    items: [{ id: "capabilities", label: "Capabilities", icon: Toggle01Left }],
-  },
-  {
-    title: "Security",
-    items: [
-      { id: "identity", label: "Identity & SSO", icon: Fingerprint04 },
-      { id: "audit", label: "Audit Logs", icon: Shield01 },
-    ],
-  },
-  {
     title: "Workspace",
     items: [
-      { id: "workspace", label: "Settings", icon: Tool01 },
+      { id: "people", label: "People", icon: Users01 },
+      { id: "capabilities", label: "Governance", icon: Toggle01Left },
+      { id: "identity", label: "Identity & provisioning", icon: Fingerprint04 },
+      { id: "workspace", label: "Workspace Settings", icon: Tool01 },
+      { id: "usage", label: "Usage", icon: PieChart01 },
       { id: "models", label: "Model Providers", icon: Server01 },
+      { id: "analytics", label: "Analytics", icon: BarChart01 },
+      { id: "billing", label: "Billing", icon: CreditCard01 },
     ],
   },
   {
-    title: "Developer",
+    title: "API & Programmatic",
+    items: [{ id: "api_keys", label: "API Keys", icon: Key01 }],
+  },
+  {
+    title: "Builder Tools",
     items: [
-      { id: "api_keys", label: "API Keys", icon: Key01 },
-      { id: "programmatic", label: "Programmatic", icon: Code01 },
       { id: "credentials", label: "App Credentials", icon: PuzzlePiece01 },
       { id: "secrets", label: "Secrets", icon: Lock01 },
-    ],
-  },
-  {
-    title: "Billing",
-    items: [
-      { id: "billing", label: "Plan & Invoices", icon: CreditCard01 },
-      { id: "usage", label: "Usage", icon: PieChart01 },
+      { id: "programmatic", label: "Programmatic", icon: Code01 },
     ],
   },
 ];
@@ -4421,12 +4409,8 @@ export default function AdminGovernanceV2() {
           />
         ) : effectivePage === "identity" ? (
           <IdentityPage role={role} />
-        ) : effectivePage === "audit" ? (
-          <PlaceholderPage
-            title="Audit Logs"
-            description="View workspace activity and security events."
-            icon={Shield01}
-          />
+        ) : effectivePage === "analytics" ? (
+          <AnalyticsPage />
         ) : effectivePage === "billing" ? (
           <BillingPage />
         ) : effectivePage === "usage" ? (
