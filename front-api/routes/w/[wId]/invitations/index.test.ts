@@ -116,6 +116,58 @@ describe("POST /api/w/:wId/invitations", () => {
     expect((await response.json()).error.type).toBe("workspace_auth_error");
   });
 
+  it("returns 403 when a business admin tries to invite a new admin", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "business_admin",
+    });
+
+    const response = await honoApp.request(invitationsUrl(workspace.sId), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify([
+        { email: "new-user@example.com", role: "user" },
+        { email: "new-admin@example.com", role: "admin" },
+      ]),
+    });
+
+    expect(response.status).toBe(403);
+    const data = await response.json();
+    expect(data.error.type).toBe("workspace_auth_error");
+    expect(data.error.message).toBe(
+      "You do not have permission to invite members as admin."
+    );
+
+    // No invitation should have been created.
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const invitations =
+      await MembershipInvitationResource.getPendingInvitations(adminAuth);
+    expect(invitations).toHaveLength(0);
+  });
+
+  it("allows a business admin to invite non-admin members", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "business_admin",
+    });
+
+    const response = await honoApp.request(invitationsUrl(workspace.sId), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify([
+        { email: "new-user@example.com", role: "user" },
+        { email: "new-builder@example.com", role: "builder" },
+      ]),
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data).toHaveLength(2);
+    expect(data.every((r: { success: boolean }) => r.success)).toBe(true);
+  });
+
   it("creates invitations for multiple new emails in a single request", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "POST",

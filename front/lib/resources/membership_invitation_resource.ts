@@ -101,9 +101,9 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
         revoked: [],
       };
     }
-    if (!auth.isAdmin()) {
+    if (!auth.hasPermission("workspace:manage_members")) {
       throw new Error(
-        "Only users that are `admins` for the current workspace can see membership invitations or modify it."
+        "You do not have permission to see or modify membership invitations."
       );
     }
     const oneDayAgo = new Date();
@@ -306,9 +306,9 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     if (!owner) {
       return [];
     }
-    if (!auth.isAdmin()) {
+    if (!auth.hasPermission("workspace:manage_members")) {
       throw new Error(
-        "Only users that are `admins` for the current workspace can see membership invitations or modify it."
+        "You do not have permission to see or modify membership invitations."
       );
     }
 

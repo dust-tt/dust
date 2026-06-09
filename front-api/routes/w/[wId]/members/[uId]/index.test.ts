@@ -282,6 +282,118 @@ describe("POST /api/w/:wId/members/:uId", () => {
     });
   });
 
+  describe("business admin escalation guard", () => {
+    it("should return 403 when business admin tries to change an admin's role", async () => {
+      const { workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "business_admin",
+      });
+
+      const targetAdmin = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetAdmin, {
+        role: "admin",
+      });
+
+      const response = await honoApp.request(
+        memberUrl(workspace.sId, targetAdmin.sId),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: "user" }),
+        }
+      );
+
+      expect(response.status).toBe(403);
+      const data = await response.json();
+      expect(data.error.type).toBe("workspace_auth_error");
+      expect(data.error.message).toBe(
+        "You do not have permission to assign or modify the admin role."
+      );
+    });
+
+    it("should return 403 when business admin tries to promote a user to admin", async () => {
+      const { workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "business_admin",
+      });
+
+      const targetUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetUser, {
+        role: "user",
+      });
+
+      const response = await honoApp.request(
+        memberUrl(workspace.sId, targetUser.sId),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: "admin" }),
+        }
+      );
+
+      expect(response.status).toBe(403);
+      const data = await response.json();
+      expect(data.error.type).toBe("workspace_auth_error");
+      expect(data.error.message).toBe(
+        "You do not have permission to assign or modify the admin role."
+      );
+    });
+
+    it("should return 403 when business admin tries to revoke an admin", async () => {
+      const { workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "business_admin",
+      });
+
+      const targetAdmin = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetAdmin, {
+        role: "admin",
+      });
+
+      const response = await honoApp.request(
+        memberUrl(workspace.sId, targetAdmin.sId),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: "revoked" }),
+        }
+      );
+
+      expect(response.status).toBe(403);
+      const data = await response.json();
+      expect(data.error.type).toBe("workspace_auth_error");
+      expect(data.error.message).toBe(
+        "You do not have permission to assign or modify the admin role."
+      );
+    });
+
+    it("should return 200 when business admin changes a non-admin user's role", async () => {
+      const { workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "business_admin",
+      });
+
+      const targetUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, targetUser, {
+        role: "user",
+      });
+
+      const response = await honoApp.request(
+        memberUrl(workspace.sId, targetUser.sId),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: "builder" }),
+        }
+      );
+
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.member).toBeDefined();
+      expect(data.member.workspaces[0].role).toBe("builder");
+    });
+  });
+
   describe("GET /api/w/:wId/members/:uId", () => {
     const allowedAttributes = new Set([
       "id",
