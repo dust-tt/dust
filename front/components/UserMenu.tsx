@@ -294,20 +294,6 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
               <DropdownMenuSubContent>
                 <DropdownMenuLabel label="Learn about Dust" />
                 <DropdownMenuItem
-                  label="Quickstart Guide"
-                  icon={Lightbulb04}
-                  onClick={() =>
-                    router.push(
-                      {
-                        pathname: router.pathname,
-                        query: { ...router.query, quickGuide: "true" },
-                      },
-                      undefined,
-                      { shallow: true }
-                    )
-                  }
-                />
-                <DropdownMenuItem
                   label="Guides & Documentation"
                   icon={BookOpen01}
                   href="https://docs.dust.tt"
