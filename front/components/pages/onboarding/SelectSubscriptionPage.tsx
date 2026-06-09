@@ -5,6 +5,7 @@ import {
 } from "@app/components/workspace/seat_styles";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
+  CP_FREE_PLAN_CREDITS,
   CP_MAX_SEAT_COST_MONTHLY,
   CP_MAX_SEAT_COST_YEARLY,
   CP_PRO_SEAT_COST_MONTHLY,
@@ -191,7 +192,7 @@ export function SelectSubscriptionPage() {
               icon={LayerSingle}
               seatType="free"
               name="Free"
-              credits="300"
+              credits={CP_FREE_PLAN_CREDITS.toLocaleString()}
               creditsLabel="credits"
               priceLabel="One-time · never expires"
               features={[

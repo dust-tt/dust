@@ -18,6 +18,12 @@ export const CP_PRO_SEAT_COST_YEARLY = 24;
 export const CP_MAX_SEAT_COST_MONTHLY = 150;
 export const CP_MAX_SEAT_COST_YEARLY = 120;
 
+// Lifetime AWU credits granted once per seat on the credit-priced Free plan.
+// Mirrors the server-side source of truth `FREE_SEAT_LIFETIME_AWU_CREDITS` in
+// `front/lib/metronome/setup_new_pricing.ts` (that module is server-only and
+// cannot be imported client-side).
+export const CP_FREE_PLAN_CREDITS = 300;
+
 export function formatPriceWithCurrency(
   price: number,
   currency: SupportedCurrency
