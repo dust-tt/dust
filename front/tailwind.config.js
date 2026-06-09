@@ -2,8 +2,6 @@
 const colors = require("tailwindcss/colors");
 const preset = require("@dust-tt/sparkle/tailwind-preset");
 
-const TITLE_HEIGHT = "3rem";
-
 module.exports = {
   presets: [preset],
   content: [
@@ -13,7 +11,7 @@ module.exports = {
   theme: {
     extend: {
       height: {
-        title: TITLE_HEIGHT,
+        title: "3rem",
         container: "var(--panel-height)", // defined in global.css,
       },
       fontWeight: {
