@@ -1,16 +1,16 @@
 import {
   Avatar,
-  BarChart01V2,
+  BarChart01,
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
   Card,
-  ChatBubbleLeftRightIcon,
+  IntersectDust,
   Checkbox,
   Chip,
-  Code01V2,
-  Cog6ToothIcon,
-  CreditCard01V2,
+  Code01,
+  Settings01,
+  CreditCard01,
   DataTable,
   Dialog,
   DialogContent,
@@ -21,54 +21,65 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Fingerprint04V2,
-  FolderIcon,
-  Globe01V2,
+  Fingerprint04,
+  Folder,
+  Globe01,
   Input,
-  Key01V2,
+  Key01,
   Label,
   ListGroup,
   ListItem,
-  Lock01V2,
+  Lock01,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListItem,
   Page,
-  PieChart01V2,
-  PlusIcon,
-  PuzzlePiece01V2,
+  PieChart01,
+  Plus,
+  PuzzlePiece01,
   ScrollArea,
   ScrollBar,
   SearchInput,
-  Server01V2,
+  Server01,
   SliderToggle,
-  Tool01V2,
-  Shield01V2,
-  PackageV2,
+  Tool01,
+  Shield01,
+  Package,
   Sheet,
   SheetContent,
   SheetFooter,
   SheetHeader,
   SheetTitle,
+  LayoutLeft,
+  NavTabPill,
+  NavTabPillContent,
+  NavTabPillList,
+  NavTabPillTrigger,
   SidebarLayout,
   type SidebarLayoutRef,
-  SpaceOpenIcon,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
+  Planet,
+  SpaceOpen,
   TextArea,
-  UserGroupIcon,
-  Users01V2,
-  XMarkIcon,
+  Users01,
+  XClose,
+  CloudArrowLeftRight,
+  Lightning01,
+  ShapesPlus,
 } from "@dust-tt/sparkle";
 import {
+  AmplitudeLogo,
+  AsanaLogo,
+  AshbyLogo,
+  AttioLogo,
   BigQueryLogo,
   ConfluenceLogo,
+  FathomLogo,
   GithubLogo,
   GongLogo,
   DriveLogo,
   IntercomLogo,
+  JiraLogo,
+  LinearLogo,
   MicrosoftLogo,
   NotionLogo,
   SlackLogo,
@@ -167,6 +178,13 @@ type AdminPage =
   | "secrets"
   | "billing"
   | "usage";
+
+type SpacesPage =
+  | "list"
+  | "connections"
+  | "connection_detail"
+  | "tools"
+  | "triggers";
 
 // Full member role set
 type MemberRole = "admin" | "manager" | "builder" | "user";
@@ -367,7 +385,7 @@ const INITIAL_MEMBERS: MemberRow[] = [
 const GROUPS: GroupRow[] = [
   { id: "g1", name: "Design Team", memberCount: 16, type: "provisioned" },
   { id: "g2", name: "Engineering Team", memberCount: 16, type: "provisioned" },
-  { id: "g3", name: "Managers", memberCount: 16, type: "provisioned" },
+  { id: "g3", name: "Business Admins", memberCount: 16, type: "provisioned" },
   { id: "g4", name: "Marketing", memberCount: 16, type: "manual" },
 ];
 
@@ -445,13 +463,13 @@ const USAGE_MEMBERS: UsageMemberRow[] = [
 
 // Role labels for the admin panel role switcher
 const ROLE_LABELS: Record<Role, string> = {
-  admin: "Admin",
-  manager: "Manager",
+  admin: "Super Admin",
+  manager: "Business Admin",
 };
 
-// M1 access model:
-// admin: full access to everything
-// manager: people + analytics only
+// M1 access model (per permission matrix):
+// Super Admin: full access to everything
+// Business Admin: people, analytics, usage — connectors only if delegated by Super Admin
 const ROLE_ACCESS: Record<Role, AdminPage[]> = {
   admin: [
     "people",
@@ -466,7 +484,7 @@ const ROLE_ACCESS: Record<Role, AdminPage[]> = {
     "billing",
     "usage",
   ],
-  manager: ["people", "analytics"],
+  manager: ["people", "analytics", "usage"],
 };
 
 const STATUS_LABELS: Record<MemberRow["status"], string> = {
@@ -483,19 +501,20 @@ const ROLE_DISPLAY: Record<
     color: "green" | "blue" | "warning" | "highlight" | "primary";
   }
 > = {
-  admin: { label: "Admin", color: "green" },
-  manager: { label: "Manager", color: "warning" },
+  admin: { label: "Super Admin", color: "green" },
+  manager: { label: "Business Admin", color: "warning" },
   builder: { label: "Builder", color: "primary" },
-  user: { label: "User", color: "blue" },
+  user: { label: "Member", color: "blue" },
 };
 
 const ROLE_DESCRIPTIONS: Record<MemberRole, string> = {
   admin:
-    "Full access: SSO, billing, connectors, members, spaces, groups, analytics and workspace settings.",
+    "Full access: SSO/identity setup, billing, connectors, sensitive governance & infra settings, members & roles, groups, spaces, and workspace analytics.",
   manager:
-    "Can manage members, spaces, groups and analytics. No access to SSO, billing, connectors or infrastructure settings.",
-  builder: "Can create and publish agents. No admin access.",
-  user: "Can use agents in the workspace.",
+    "Can manage members & roles, groups, and see workspace analytics. Can manage connectors only if granted by a Super Admin.",
+  builder:
+    "Can create and publish agents and skills. No admin access. (Deprecated in M2)",
+  user: "Default role for most users. Can use agents in the workspace.",
 };
 
 const DOMAIN_STATUS_COLOR: Record<
@@ -658,7 +677,7 @@ function PeoplePage({
   const [search, setSearch] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmails, setInviteEmails] = useState("");
-  const [inviteRole, setInviteRole] = useState("Manager");
+  const [inviteRole, setInviteRole] = useState("Business Admin");
   const [selectedGroup, setSelectedGroup] = useState<GroupRow | null>(null);
   const [selectedMember, setSelectedMember] = useState<MemberRow | null>(null);
   const [memberPlan, setMemberPlan] = useState<MemberRole>("user");
@@ -752,16 +771,21 @@ function PeoplePage({
             m.name.toLowerCase().includes(search.toLowerCase()) ||
             m.email.toLowerCase().includes(search.toLowerCase())
         )
-        .map((m) => ({
-          ...m,
-          onClick: canEdit
-            ? () => {
-                setSelectedMember(m);
-                setMemberPlan(m.role);
-              }
-            : undefined,
-        })),
-    [search, members, canEdit]
+        .map((m) => {
+          // Managers cannot edit admin members
+          const canEditThisMember =
+            canEdit && !(role === "manager" && m.role === "admin");
+          return {
+            ...m,
+            onClick: canEditThisMember
+              ? () => {
+                  setSelectedMember(m);
+                  setMemberPlan(m.role);
+                }
+              : undefined,
+          };
+        }),
+    [search, members, canEdit, role]
   );
 
   const handleInvite = () => {
@@ -774,9 +798,9 @@ function PeoplePage({
       return;
     }
     const invitedRole: MemberRole =
-      inviteRole === "Admin"
+      inviteRole === "Super Admin"
         ? "admin"
-        : inviteRole === "Manager"
+        : inviteRole === "Business Admin"
           ? "manager"
           : inviteRole === "Builder"
             ? "builder"
@@ -809,8 +833,8 @@ function PeoplePage({
     <Page>
       <Page.Header
         title="People"
-        description="Manage team members, their roles and group memberships."
-        icon={Users01V2}
+        description="Manage team members and workspace roles."
+        icon={Users01}
       />
       <div className="s-mt-4">
         <Page.Vertical gap="md">
@@ -826,7 +850,7 @@ function PeoplePage({
             {canEdit && (
               <span className="ag-btn-press">
                 <Button
-                  icon={PlusIcon}
+                  icon={Plus}
                   label="Invite members"
                   variant="primary"
                   size="sm"
@@ -861,12 +885,14 @@ function PeoplePage({
           <div className="s-flex s-flex-col s-gap-4 s-flex-1 s-overflow-auto s-px-6 s-py-4">
             <Page.Vertical gap="xs">
               <Label>Email addresses (comma or newline separated):</Label>
-              <TextArea
-                placeholder="Email addresses, comma or newline separated"
-                value={inviteEmails}
-                onChange={(e) => setInviteEmails(e.target.value)}
-                minRows={4}
-              />
+              <div className="s-w-full">
+                <TextArea
+                  placeholder="Email addresses, comma or newline separated"
+                  value={inviteEmails}
+                  onChange={(e) => setInviteEmails(e.target.value)}
+                  minRows={4}
+                />
+              </div>
             </Page.Vertical>
             <Page.Vertical gap="xs">
               <Label>Role</Label>
@@ -880,21 +906,28 @@ function PeoplePage({
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
-                  {(["Admin", "Manager", "Builder", "User"] as const).map(
-                    (r) => (
+                  {(
+                    [
+                      "Super Admin",
+                      "Business Admin",
+                      "Builder",
+                      "Member",
+                    ] as const
+                  )
+                    .filter((r) => !(role === "manager" && r === "Super Admin"))
+                    .map((r) => (
                       <DropdownMenuItem
                         key={r}
                         label={r}
                         onClick={() => setInviteRole(r)}
                       />
-                    )
-                  )}
+                    ))}
                 </DropdownMenuContent>
               </DropdownMenu>
               <Page.P variant="secondary" size="sm">
-                {inviteRole === "Admin"
+                {inviteRole === "Super Admin"
                   ? ROLE_DESCRIPTIONS.admin
-                  : inviteRole === "Manager"
+                  : inviteRole === "Business Admin"
                     ? ROLE_DESCRIPTIONS.manager
                     : inviteRole === "Builder"
                       ? ROLE_DESCRIPTIONS.builder
@@ -937,13 +970,13 @@ function PeoplePage({
       >
         <DialogContent size="md">
           <DialogHeader>
-            <DialogTitle>Assign Admin role?</DialogTitle>
+            <DialogTitle>Assign Super Admin role?</DialogTitle>
           </DialogHeader>
           <div className="s-px-5 s-py-2">
             <Page.P variant="secondary" size="sm">
-              Admin grants full access to all workspace settings including SSO,
-              billing, and infrastructure. This is a sensitive action - are you
-              sure you want to grant this role?
+              Super Admin grants full access to all workspace settings including
+              SSO/identity, billing, sensitive governance & infra settings. This
+              is a highly sensitive action — are you sure?
             </Page.P>
           </div>
           <DialogFooter
@@ -953,7 +986,7 @@ function PeoplePage({
               onClick: () => setConfirmAdmin(false),
             }}
             rightButtonProps={{
-              label: "Grant Admin",
+              label: "Grant Super Admin",
               variant: "warning",
               onClick: () => {
                 setMemberPlan("admin");
@@ -1007,19 +1040,19 @@ function PeoplePage({
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    {(
-                      ["admin", "manager", "builder", "user"] as MemberRole[]
-                    ).map((p) => (
-                      <DropdownMenuItem
-                        key={p}
-                        label={ROLE_DISPLAY[p].label}
-                        onClick={() =>
-                          p === "admin"
-                            ? setConfirmAdmin(true)
-                            : setMemberPlan(p)
-                        }
-                      />
-                    ))}
+                    {(["admin", "manager", "builder", "user"] as MemberRole[])
+                      .filter((p) => !(role === "manager" && p === "admin"))
+                      .map((p) => (
+                        <DropdownMenuItem
+                          key={p}
+                          label={ROLE_DISPLAY[p].label}
+                          onClick={() =>
+                            p === "admin"
+                              ? setConfirmAdmin(true)
+                              : setMemberPlan(p)
+                          }
+                        />
+                      ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
                 <Page.P variant="secondary" size="sm">
@@ -1098,9 +1131,7 @@ function IdentityPage({ role }: { role: Role }) {
                   label={status.charAt(0).toUpperCase() + status.slice(1)}
                   size="sm"
                 />
-                {canEdit && (
-                  <Button icon={XMarkIcon} variant="ghost" size="xs" />
-                )}
+                {canEdit && <Button icon={XClose} variant="ghost" size="xs" />}
               </Page.Horizontal>
             </DataTable.CellContent>
           );
@@ -1113,9 +1144,9 @@ function IdentityPage({ role }: { role: Role }) {
   return (
     <Page>
       <Page.Header
-        title="Identity and provisioning"
+        title="Identity & provisioning"
         description="Verify your domain, manage team members and their permissions."
-        icon={Globe01V2}
+        icon={Fingerprint04}
       />
 
       <Page.Vertical gap="sm">
@@ -1125,12 +1156,7 @@ function IdentityPage({ role }: { role: Role }) {
         />
         <DataTable data={DOMAINS} columns={domainColumns} />
         {canEdit && (
-          <Button
-            icon={PlusIcon}
-            label="Add domain"
-            variant="primary"
-            size="sm"
-          />
+          <Button icon={Plus} label="Add domain" variant="primary" size="sm" />
         )}
       </Page.Vertical>
 
@@ -1208,7 +1234,7 @@ function BillingPage() {
       <Page.Header
         title="Billing"
         description="Change your subscription and edit your billing information."
-        icon={CreditCard01V2}
+        icon={CreditCard01}
       />
 
       {/* Current plan card */}
@@ -1473,7 +1499,7 @@ function UsagePage() {
       <Page.Header
         title="Usage"
         description="Manage the usage of your Dust workspace."
-        icon={BarChart01V2}
+        icon={BarChart01}
       />
 
       <div className="s-flex s-flex-col s-items-start s-gap-3 s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4">
@@ -1518,7 +1544,7 @@ function UsagePage() {
           title="Members"
           action={{
             label: "Invite members",
-            icon: PlusIcon,
+            icon: Plus,
             variant: "primary",
             size: "sm",
           }}
@@ -1698,7 +1724,7 @@ function AnalyticsPage() {
         <Page.Header
           title="Analytics"
           description="Track how your team uses Dust."
-          icon={BarChart01V2}
+          icon={BarChart01}
         />
         <Button variant="outline" label="Last 30 days" isSelect size="sm" />
       </div>
@@ -2196,7 +2222,7 @@ function ModelProvidersPage() {
       <Page.Header
         title="Model Providers"
         description="Configure model providers."
-        icon={Server01V2}
+        icon={Server01}
       />
 
       {/* Embedding provider */}
@@ -2332,6 +2358,7 @@ interface ConnectionRow {
   managedByAvatar: string;
   delegates: string[];
   logo: React.ComponentType<{ className?: string }>;
+  configured: boolean;
   onClick?: () => void;
 }
 
@@ -2343,6 +2370,7 @@ const INITIAL_CONNECTIONS: Omit<ConnectionRow, "onClick">[] = [
     managedByAvatar: "OL",
     delegates: [],
     logo: BigQueryLogo,
+    configured: true,
   },
   {
     name: "Confluence",
@@ -2351,6 +2379,7 @@ const INITIAL_CONNECTIONS: Omit<ConnectionRow, "onClick">[] = [
     managedByAvatar: "FR",
     delegates: [],
     logo: ConfluenceLogo,
+    configured: true,
   },
   {
     name: "GitHub",
@@ -2359,14 +2388,16 @@ const INITIAL_CONNECTIONS: Omit<ConnectionRow, "onClick">[] = [
     managedByAvatar: "GH",
     delegates: [],
     logo: GithubLogo,
+    configured: true,
   },
   {
     name: "Gong",
-    usedBy: 115,
-    lastSync: "46min ago",
-    managedByAvatar: "GO",
+    usedBy: 0,
+    lastSync: "—",
+    managedByAvatar: "",
     delegates: [],
     logo: GongLogo,
+    configured: false,
   },
   {
     name: "Google Drive",
@@ -2375,6 +2406,7 @@ const INITIAL_CONNECTIONS: Omit<ConnectionRow, "onClick">[] = [
     managedByAvatar: "OL",
     delegates: [],
     logo: DriveLogo,
+    configured: true,
   },
   {
     name: "Intercom",
@@ -2383,6 +2415,7 @@ const INITIAL_CONNECTIONS: Omit<ConnectionRow, "onClick">[] = [
     managedByAvatar: "IN",
     delegates: [],
     logo: IntercomLogo,
+    configured: true,
   },
   {
     name: "Microsoft",
@@ -2391,6 +2424,7 @@ const INITIAL_CONNECTIONS: Omit<ConnectionRow, "onClick">[] = [
     managedByAvatar: "MS",
     delegates: [],
     logo: MicrosoftLogo,
+    configured: true,
   },
   {
     name: "Notion",
@@ -2399,6 +2433,7 @@ const INITIAL_CONNECTIONS: Omit<ConnectionRow, "onClick">[] = [
     managedByAvatar: "OL",
     delegates: [],
     logo: NotionLogo,
+    configured: true,
   },
   {
     name: "Slack",
@@ -2407,6 +2442,7 @@ const INITIAL_CONNECTIONS: Omit<ConnectionRow, "onClick">[] = [
     managedByAvatar: "OL",
     delegates: [],
     logo: SlackLogo,
+    configured: true,
   },
   {
     name: "Slack (community)",
@@ -2415,6 +2451,7 @@ const INITIAL_CONNECTIONS: Omit<ConnectionRow, "onClick">[] = [
     managedByAvatar: "SC",
     delegates: [],
     logo: SlackLogo,
+    configured: true,
   },
   {
     name: "Snowflake",
@@ -2423,6 +2460,7 @@ const INITIAL_CONNECTIONS: Omit<ConnectionRow, "onClick">[] = [
     managedByAvatar: "SW",
     delegates: [],
     logo: SnowflakeLogo,
+    configured: true,
   },
   {
     name: "Zendesk",
@@ -2431,6 +2469,7 @@ const INITIAL_CONNECTIONS: Omit<ConnectionRow, "onClick">[] = [
     managedByAvatar: "ZD",
     delegates: [],
     logo: ZendeskLogo,
+    configured: true,
   },
 ];
 
@@ -2438,8 +2477,14 @@ const INITIAL_CONNECTIONS: Omit<ConnectionRow, "onClick">[] = [
 
 function SpacesSidebarNav({
   onConnectionsClick,
+  onToolsClick,
+  onTriggersClick,
+  role,
 }: {
   onConnectionsClick: () => void;
+  onToolsClick: () => void;
+  onTriggersClick: () => void;
+  role: Role;
 }) {
   return (
     <ScrollArea className="s-flex-1">
@@ -2447,19 +2492,19 @@ function SpacesSidebarNav({
       <NavigationList className="s-px-2 s-py-2">
         <NavigationListCollapsibleSection label="Administration" defaultOpen>
           <NavigationListItem
-            icon={PuzzlePiece01V2}
+            icon={CloudArrowLeftRight}
             label="Connections"
             onClick={onConnectionsClick}
           />
           <NavigationListItem
-            icon={Tool01V2}
+            icon={ShapesPlus}
             label="Tools"
-            onClick={() => {}}
+            onClick={onToolsClick}
           />
           <NavigationListItem
-            icon={Code01V2}
+            icon={Lightning01}
             label="Triggers"
-            onClick={() => {}}
+            onClick={onTriggersClick}
           />
         </NavigationListCollapsibleSection>
 
@@ -2467,7 +2512,7 @@ function SpacesSidebarNav({
           {OPEN_SPACES.map((s) => (
             <NavigationListItem
               key={s}
-              icon={Globe01V2}
+              icon={Globe01}
               label={s}
               onClick={() => {}}
             />
@@ -2478,20 +2523,21 @@ function SpacesSidebarNav({
           {RESTRICTED_SPACES_MEMBER.map((s) => (
             <NavigationListItem
               key={s}
-              icon={Lock01V2}
+              icon={Lock01}
               label={s}
               onClick={() => {}}
             />
           ))}
-          {RESTRICTED_SPACES_NO_ACCESS.map((s) => (
-            <div key={s} className="s-opacity-50">
-              <NavigationListItem
-                icon={Lock01V2}
-                label={s}
-                onClick={() => {}}
-              />
-            </div>
-          ))}
+          {role === "admin" &&
+            RESTRICTED_SPACES_NO_ACCESS.map((s) => (
+              <div key={s} className="s-opacity-50">
+                <NavigationListItem
+                  icon={Lock01}
+                  label={s}
+                  onClick={() => {}}
+                />
+              </div>
+            ))}
         </NavigationListCollapsibleSection>
       </NavigationList>
     </ScrollArea>
@@ -2581,8 +2627,8 @@ function ManageConnectionSheet({
           {role === "admin" && (
             <Page.Vertical gap="sm">
               <Page.SectionHeader
-                title="Delegate to Managers"
-                description="Managers selected here can edit this connection's settings and select which data is synced."
+                title="Delegate to Business Admins"
+                description="Business Admins selected here can edit this connection's settings and select which data is synced."
               />
               <SearchInput
                 name="delegate-search"
@@ -2593,7 +2639,7 @@ function ManageConnectionSheet({
               />
               {filteredManagers.length === 0 ? (
                 <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night s-py-2">
-                  No managers found
+                  No business admins found
                 </p>
               ) : (
                 <ListGroup className="s-w-full">
@@ -2671,17 +2717,39 @@ function ManageConnectionSheet({
 
 // ─── Connections Page ─────────────────────────────────────────────────────────
 
+// Connections the manager currently has access to (simulates delegation)
+const MANAGER_ACCESSIBLE = new Set(["Notion", "Slack", "Google Drive"]);
+
 function ConnectionsPage({
   connections,
   onManage,
   onOpenDetail,
   role,
+  managers,
 }: {
   connections: ConnectionRow[];
   onManage: (conn: ConnectionRow) => void;
   onOpenDetail: (conn: ConnectionRow) => void;
   role: Role;
+  managers: MemberRow[];
 }) {
+  const [search, setSearch] = useState("");
+  const [requestTarget, setRequestTarget] = useState<ConnectionRow | null>(
+    null
+  );
+  const [requestMessage, setRequestMessage] = useState("");
+  const [requestedIds, setRequestedIds] = useState<string[]>([]);
+  const [configureTarget, setConfigureTarget] = useState<ConnectionRow | null>(
+    null
+  );
+  const [configureDelegateIds, setConfigureDelegateIds] = useState<string[]>(
+    []
+  );
+  const [configureDelegateSearch, setConfigureDelegateSearch] = useState("");
+
+  const isAccessible = (conn: ConnectionRow) =>
+    role === "admin" || MANAGER_ACCESSIBLE.has(conn.name);
+
   const columns = useMemo<ColumnDef<ConnectionRow>[]>(
     () => [
       {
@@ -2691,9 +2759,13 @@ function ConnectionsPage({
         cell: (info) => {
           const row = info.row.original;
           const Logo = row.logo;
+          const accessible =
+            role === "admin" || MANAGER_ACCESSIBLE.has(row.name);
           return (
             <DataTable.CellContent>
-              <div className="s-flex s-items-center s-gap-3">
+              <div
+                className={`s-flex s-items-center s-gap-3${!accessible ? " s-opacity-40" : ""}`}
+              >
                 <div className="s-h-6 s-w-6 s-shrink-0">
                   <Logo className="s-h-6 s-w-6" />
                 </div>
@@ -2709,87 +2781,381 @@ function ConnectionsPage({
         accessorKey: "usedBy",
         header: "Used By",
         meta: { className: "s-w-28" },
-        cell: (info) => (
-          <DataTable.CellContent>
-            <div className="s-flex s-items-center s-gap-1 s-text-muted-foreground dark:s-text-muted-foreground-night">
-              <UserGroupIcon className="s-h-3.5 s-w-3.5" />
-              <span>{info.getValue() as number}</span>
-            </div>
-          </DataTable.CellContent>
-        ),
+        cell: (info) => {
+          const row = info.row.original;
+          const accessible =
+            role === "admin" || MANAGER_ACCESSIBLE.has(row.name);
+          return (
+            <DataTable.CellContent>
+              <div
+                className={`s-flex s-items-center s-gap-1 s-text-muted-foreground dark:s-text-muted-foreground-night${!accessible ? " s-opacity-40" : ""}`}
+              >
+                <Users01 className="s-h-3.5 s-w-3.5" />
+                <span>{info.getValue() as number}</span>
+              </div>
+            </DataTable.CellContent>
+          );
+        },
       },
       {
         accessorKey: "managedByAvatar",
         header: "Managed By",
         meta: { className: "s-w-28" },
-        cell: (info) => (
-          <DataTable.CellContent>
-            <Avatar name={info.getValue() as string} size="xs" isRounded />
-          </DataTable.CellContent>
-        ),
+        cell: (info) => {
+          const row = info.row.original;
+          const accessible =
+            role === "admin" || MANAGER_ACCESSIBLE.has(row.name);
+          return (
+            <DataTable.CellContent>
+              <div className={!accessible ? "s-opacity-40" : ""}>
+                <Avatar name={info.getValue() as string} size="xs" isRounded />
+              </div>
+            </DataTable.CellContent>
+          );
+        },
       },
       {
         accessorKey: "lastSync",
         header: "Last Sync",
         meta: { className: "s-w-32" },
-        cell: (info) => (
-          <DataTable.CellContent>
-            <span className="s-text-muted-foreground dark:s-text-muted-foreground-night s-whitespace-nowrap">
-              {info.getValue() as string}
-            </span>
-          </DataTable.CellContent>
-        ),
+        cell: (info) => {
+          const row = info.row.original;
+          const accessible =
+            role === "admin" || MANAGER_ACCESSIBLE.has(row.name);
+          return (
+            <DataTable.CellContent>
+              <span
+                className={`s-text-muted-foreground dark:s-text-muted-foreground-night s-whitespace-nowrap${!accessible ? " s-opacity-40" : ""}`}
+              >
+                {info.getValue() as string}
+              </span>
+            </DataTable.CellContent>
+          );
+        },
       },
-      ...(role === "admin"
-        ? [
-            {
-              id: "manage",
-              header: "",
-              meta: { className: "s-w-24" },
-              cell: (info: { row: { original: ConnectionRow } }) => (
-                <DataTable.CellContent>
+      {
+        id: "action",
+        header: "",
+        meta: { className: "s-w-36" },
+        cell: (info: { row: { original: ConnectionRow } }) => {
+          const row = info.row.original;
+          const accessible = isAccessible(row);
+          const requested = requestedIds.includes(row.name);
+          if (role === "admin" || (role === "manager" && accessible)) {
+            return (
+              <DataTable.CellContent>
+                {row.configured ? (
                   <Button
                     variant="outline"
                     size="xs"
-                    icon={Cog6ToothIcon}
+                    icon={Settings01}
                     label="Manage"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onManage(info.row.original);
+                      onManage(row);
                     }}
                   />
-                </DataTable.CellContent>
-              ),
-            } as ColumnDef<ConnectionRow>,
-          ]
-        : []),
+                ) : role === "admin" ? (
+                  <Button
+                    variant="primary"
+                    size="xs"
+                    label="Configure"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConfigureTarget(row);
+                      setConfigureDelegateIds([]);
+                      setConfigureDelegateSearch("");
+                    }}
+                  />
+                ) : null}
+              </DataTable.CellContent>
+            );
+          }
+          if (!accessible) {
+            return (
+              <DataTable.CellContent>
+                {requested ? (
+                  <Chip label="Requested" size="xs" color="warning" />
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    label="Request access"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setRequestTarget(row);
+                    }}
+                  />
+                )}
+              </DataTable.CellContent>
+            );
+          }
+          return <DataTable.CellContent />;
+        },
+      },
     ],
-    [role, onManage]
+    [role, onManage, requestedIds, setConfigureTarget]
   );
 
-  const rows = connections.map((c) => ({
-    ...c,
-    onClick: () => onOpenDetail(c),
-  }));
+  const rows = connections
+    .filter(
+      (c) => !search || c.name.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => (a.configured === b.configured ? 0 : a.configured ? -1 : 1))
+    .map((c) => ({
+      ...c,
+      onClick: isAccessible(c) ? () => onOpenDetail(c) : undefined,
+    }));
 
   return (
     <div className="s-flex s-flex-col s-h-full">
       <Page>
-        <div className="s-flex s-items-start s-justify-between">
-          <Page.Header
-            title="Connections Admin"
-            description="Authorize connections and control what data Dust can access."
-            icon={PuzzlePiece01V2}
+        <div className="s-w-full">
+          <SearchInput
+            name="search-connections"
+            placeholder="Search in Connections"
+            value={search}
+            onChange={setSearch}
           />
-          <Button
-            variant="primary"
-            size="sm"
-            label="Add Connections"
-            icon={PlusIcon}
-          />
+        </div>
+        <div className="s-flex s-w-full s-items-center s-justify-between">
+          <div className="s-flex s-items-center s-gap-2">
+            <CloudArrowLeftRight className="s-h-4 s-w-4 s-text-foreground dark:s-text-foreground-night" />
+            <span className="s-heading-base s-text-foreground dark:s-text-foreground-night">
+              Connections
+            </span>
+          </div>
         </div>
         <DataTable data={rows} columns={columns} className="s-w-full" />
       </Page>
+
+      {/* Request Access Sheet */}
+      <Sheet
+        open={!!requestTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRequestTarget(null);
+            setRequestMessage("");
+          }
+        }}
+      >
+        <SheetContent size="lg">
+          <SheetHeader>
+            <SheetTitle>Request access to {requestTarget?.name}</SheetTitle>
+          </SheetHeader>
+          <div className="s-flex s-flex-col s-gap-5 s-p-5">
+            {requestTarget && (
+              <div className="s-flex s-items-center s-gap-3 s-rounded-xl s-bg-muted-background dark:s-bg-muted-background-night s-p-4">
+                <div className="s-h-8 s-w-8 s-shrink-0">
+                  <requestTarget.logo className="s-h-8 s-w-8" />
+                </div>
+                <div className="s-flex s-flex-col">
+                  <span className="s-heading-sm s-text-foreground dark:s-text-foreground-night">
+                    {requestTarget.name}
+                  </span>
+                  <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    {requestTarget.usedBy} users · Last sync{" "}
+                    {requestTarget.lastSync}
+                  </span>
+                </div>
+              </div>
+            )}
+            <div className="s-flex s-flex-col s-gap-2">
+              <Label>Why do you need access?</Label>
+              <TextArea
+                placeholder="Explain why your team needs access to this data source..."
+                value={requestMessage}
+                onChange={(e) => setRequestMessage(e.target.value)}
+                minRows={4}
+              />
+              <Page.P variant="secondary" size="sm">
+                Your request will be sent to the Super Admin for approval.
+              </Page.P>
+            </div>
+          </div>
+          <SheetFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: () => {
+                setRequestTarget(null);
+                setRequestMessage("");
+              },
+            }}
+            rightButtonProps={{
+              label: "Send request",
+              variant: "primary",
+              disabled: !requestMessage.trim(),
+              onClick: () => {
+                if (requestTarget) {
+                  setRequestedIds((prev) => [...prev, requestTarget.name]);
+                }
+                setRequestTarget(null);
+                setRequestMessage("");
+              },
+            }}
+          />
+        </SheetContent>
+      </Sheet>
+
+      {/* Configure Connection Sheet */}
+      <Sheet
+        open={!!configureTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfigureTarget(null);
+            setConfigureDelegateIds([]);
+            setConfigureDelegateSearch("");
+          }
+        }}
+      >
+        <SheetContent size="lg">
+          <SheetHeader>
+            <SheetTitle>
+              Configure{configureTarget ? ` ${configureTarget.name}` : ""}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="s-flex s-flex-col s-gap-5 s-px-6 s-py-4">
+            {configureTarget && (
+              <div className="s-flex s-items-center s-gap-3 s-rounded-xl s-bg-muted-background dark:s-bg-muted-background-night s-p-4">
+                <configureTarget.logo className="s-h-8 s-w-8 s-shrink-0" />
+                <div className="s-flex s-flex-col">
+                  <span className="s-heading-sm s-text-foreground dark:s-text-foreground-night">
+                    {configureTarget.name}
+                  </span>
+                  <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    Not configured yet
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Option A — configure yourself */}
+            <div className="s-flex s-items-start s-justify-between s-gap-4 s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4">
+              <div className="s-flex s-flex-col s-gap-1">
+                <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                  Set up yourself
+                </span>
+                <Page.P variant="secondary" size="sm">
+                  Connect your account and configure the data source directly.
+                </Page.P>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                label="Set up"
+                onClick={() => setConfigureTarget(null)}
+              />
+            </div>
+
+            {/* Option B — delegate to a manager */}
+            <div className="s-flex s-flex-col s-gap-3">
+              <div className="s-flex s-flex-col s-gap-1">
+                <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                  Delegate to a Business Admin
+                </span>
+                <Page.P variant="secondary" size="sm">
+                  Assign a Business Admin to configure and maintain this
+                  connection.
+                </Page.P>
+              </div>
+              <SearchInput
+                name="configure-delegate-search"
+                placeholder="Search by name or email"
+                value={configureDelegateSearch}
+                onChange={setConfigureDelegateSearch}
+              />
+              {(() => {
+                const filtered = managers
+                  .filter((m) => m.role === "manager")
+                  .filter(
+                    (m) =>
+                      !configureDelegateSearch ||
+                      m.name
+                        .toLowerCase()
+                        .includes(configureDelegateSearch.toLowerCase()) ||
+                      m.email
+                        .toLowerCase()
+                        .includes(configureDelegateSearch.toLowerCase())
+                  );
+                return filtered.length === 0 ? (
+                  <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night s-py-2">
+                    No business admins found
+                  </p>
+                ) : (
+                  <ListGroup className="s-w-full">
+                    {filtered.map((m, i) => (
+                      <ListItem
+                        key={m.id}
+                        onClick={() =>
+                          setConfigureDelegateIds((prev) =>
+                            prev.includes(m.id)
+                              ? prev.filter((x) => x !== m.id)
+                              : [...prev, m.id]
+                          )
+                        }
+                        hasSeparator={i < filtered.length - 1}
+                        itemsAlignment="center"
+                      >
+                        <Checkbox
+                          checked={configureDelegateIds.includes(m.id)}
+                          onCheckedChange={() =>
+                            setConfigureDelegateIds((prev) =>
+                              prev.includes(m.id)
+                                ? prev.filter((x) => x !== m.id)
+                                : [...prev, m.id]
+                            )
+                          }
+                        />
+                        <Avatar
+                          size="sm"
+                          name={m.name}
+                          visual={m.visual}
+                          isRounded
+                        />
+                        <div className="s-flex s-flex-1 s-min-w-0 s-flex-col">
+                          <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                            {m.name}
+                          </span>
+                          <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                            {m.email}
+                          </span>
+                        </div>
+                        <Chip
+                          label={ROLE_DISPLAY[m.role].label}
+                          color={ROLE_DISPLAY[m.role].color}
+                          size="xs"
+                        />
+                      </ListItem>
+                    ))}
+                  </ListGroup>
+                );
+              })()}
+            </div>
+          </div>
+          <SheetFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: () => {
+                setConfigureTarget(null);
+                setConfigureDelegateIds([]);
+                setConfigureDelegateSearch("");
+              },
+            }}
+            rightButtonProps={{
+              label: "Delegate",
+              variant: "primary",
+              disabled: configureDelegateIds.length === 0,
+              onClick: () => {
+                setConfigureTarget(null);
+                setConfigureDelegateIds([]);
+                setConfigureDelegateSearch("");
+              },
+            }}
+          />
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
@@ -2839,7 +3205,7 @@ function ConnectionDetailPage({
         cell: (info) => (
           <DataTable.CellContent>
             <div className="s-flex s-items-center s-gap-2">
-              <FolderIcon className="s-h-4 s-w-4 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+              <Folder className="s-h-4 s-w-4 s-text-muted-foreground dark:s-text-muted-foreground-night" />
               <span className="s-font-medium s-text-foreground dark:s-text-foreground-night">
                 {info.getValue() as string}
               </span>
@@ -2872,7 +3238,7 @@ function ConnectionDetailPage({
           className="s-hover:underline s-cursor-pointer"
           onClick={onBack}
         >
-          Connected Data
+          Connections
         </button>
         <span>/</span>
         <div className="s-flex s-items-center s-gap-1.5 s-font-medium s-text-foreground dark:s-text-foreground-night">
@@ -2887,7 +3253,7 @@ function ConnectionDetailPage({
           <Button
             variant="primary"
             size="sm"
-            icon={Cog6ToothIcon}
+            icon={Settings01}
             label={`Manage ${connection.name}`}
             onClick={() => onManage(connection)}
           />
@@ -2899,31 +3265,851 @@ function ConnectionDetailPage({
   );
 }
 
+// ─── Tools Page ───────────────────────────────────────────────────────────────
+
+interface M1ToolRow {
+  id: string;
+  name: string;
+  description: string;
+  usedBy: number;
+  availability: "Workspace" | "Personal";
+  account?: string;
+  byAvatar: string;
+  byName: string;
+  lastUpdated: string;
+  color: string;
+  initial: string;
+  onClick?: () => void;
+}
+
+const M1_TOOLS_DATA: M1ToolRow[] = [
+  {
+    id: "airtable",
+    name: "Airtable",
+    description: "Call a tool to answer a question.",
+    usedBy: 0,
+    availability: "Personal",
+    account: "Adèle",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Jun, 2026",
+    color: "#F82B60",
+    initial: "⊞",
+  },
+  {
+    id: "apollo-gtm",
+    name: "Apollo Gtm",
+    description: "Call this tool to search people",
+    usedBy: 15,
+    availability: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Jun, 2026",
+    color: "#F82B60",
+    initial: "⊞",
+  },
+  {
+    id: "asana",
+    name: "Asana",
+    description: "Call a tool to answer a question.",
+    usedBy: 0,
+    availability: "Workspace",
+    account: "Personal",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Jun, 2026",
+    color: "#FC636B",
+    initial: "◉",
+  },
+  {
+    id: "asana2",
+    name: "Asana",
+    description: "Call a tool to answer a question.",
+    usedBy: 0,
+    availability: "Workspace",
+    account: "Personal",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Jun, 2026",
+    color: "#FC636B",
+    initial: "◉",
+  },
+  {
+    id: "ashby",
+    name: "Ashby",
+    description: "Access and manage Ashby ATS data.",
+    usedBy: 51,
+    availability: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=14",
+    byName: "Aubin",
+    lastUpdated: "Nov, 2025",
+    color: "#5B6BFF",
+    initial: "A",
+  },
+  {
+    id: "ashby3",
+    name: "Ashby 3",
+    description: "Access and manage Ashby ATS data.",
+    usedBy: 0,
+    availability: "Workspace",
+    account: "aubin 2",
+    byAvatar: "https://i.pravatar.cc/150?img=14",
+    byName: "Aubin",
+    lastUpdated: "May, 2026",
+    color: "#5B6BFF",
+    initial: "A",
+  },
+  {
+    id: "ashby-gina",
+    name: "Ashby Gina Test",
+    description: "Access and manage Ashby ATS data.",
+    usedBy: 0,
+    availability: "Workspace",
+    account: "TALENT (for demo testing)",
+    byAvatar: "https://i.pravatar.cc/150?img=47",
+    byName: "Gina",
+    lastUpdated: "Mar, 2026",
+    color: "#5B6BFF",
+    initial: "A",
+  },
+  {
+    id: "attio",
+    name: "Attio",
+    description:
+      "Attio is the CRM for modern go-to-market teams. It has a highly flexible data model and is built on allowing you to build your CRM exactly to your business model...",
+    usedBy: 1,
+    availability: "Workspace",
+    account: "Personal",
+    byAvatar: "https://i.pravatar.cc/150?img=7",
+    byName: "Marie",
+    lastUpdated: "Jun, 2026",
+    color: "#1C1C1C",
+    initial: "A",
+  },
+  {
+    id: "bitly",
+    name: "Bitly",
+    description: "Call a tool to answer a question.",
+    usedBy: 0,
+    availability: "Workspace",
+    account: "Shared",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Jun, 2026",
+    color: "#EE6123",
+    initial: "@",
+  },
+  {
+    id: "brand-fetch",
+    name: "Brand Fetch",
+    description: "Call a tool to answer a question.",
+    usedBy: 5,
+    availability: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Jun, 2026",
+    color: "#00B8D9",
+    initial: "⊞",
+  },
+  {
+    id: "bsr-fathom",
+    name: "Bsr Fathom 2",
+    description:
+      "Access Fathom meeting recordings, transcripts, summaries, and action items.",
+    usedBy: 1,
+    availability: "Workspace",
+    account: "Personal",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Mar, 2026",
+    color: "#00B4D8",
+    initial: "▶",
+  },
+  {
+    id: "cakewalk",
+    name: "Cakewalk",
+    description: "Cakewalk Access Controls",
+    usedBy: 1,
+    availability: "Workspace",
+    account: "z",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Jun, 2026",
+    color: "#6B7280",
+    initial: "⊞",
+  },
+  {
+    id: "canva",
+    name: "Canva MCP Server",
+    description: "Call a tool to answer a question.",
+    usedBy: 0,
+    availability: "Workspace",
+    account: "Personal",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Jun, 2026",
+    color: "#7D2AE8",
+    initial: "C",
+  },
+  {
+    id: "cc-enrich",
+    name: "Cc Enrich Linked In Profile",
+    description: "Call a tool to answer a question.",
+    usedBy: 0,
+    availability: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Jun, 2026",
+    color: "#0A66C2",
+    initial: "↓",
+  },
+  {
+    id: "cc-email",
+    name: "Cc Find Email",
+    description: "Call a tool to answer a question.",
+    usedBy: 0,
+    availability: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Jun, 2026",
+    color: "#0984E3",
+    initial: "⊞",
+  },
+  {
+    id: "cc-companies",
+    name: "Cc Find Lookalike Companies",
+    description: "Call a tool to answer a question.",
+    usedBy: 0,
+    availability: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Jun, 2026",
+    color: "#0984E3",
+    initial: "★",
+  },
+  {
+    id: "cc-phone",
+    name: "Cc Find Phone",
+    description: "Call a tool to answer a question.",
+    usedBy: 0,
+    availability: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Jun, 2026",
+    color: "#0984E3",
+    initial: "✆",
+  },
+];
+
+const ADD_TOOLS_LIST: {
+  name: string;
+  logo: React.ComponentType<{ className?: string }> | null;
+  color?: string;
+}[] = [
+  { name: "Amplitude", logo: AmplitudeLogo },
+  { name: "Amplitude Europe", logo: AmplitudeLogo },
+  { name: "Apify", logo: null, color: "#FF6B35" },
+  { name: "Asana", logo: AsanaLogo },
+  { name: "Ashby", logo: AshbyLogo },
+  { name: "Attio", logo: AttioLogo },
+  { name: "BigQuery", logo: BigQueryLogo },
+  { name: "Confluence", logo: ConfluenceLogo },
+  { name: "Google Drive", logo: DriveLogo },
+  { name: "Gong", logo: GongLogo },
+  { name: "Intercom", logo: IntercomLogo },
+  { name: "Jira", logo: JiraLogo },
+  { name: "Linear", logo: LinearLogo },
+  { name: "Microsoft", logo: MicrosoftLogo },
+  { name: "Notion", logo: NotionLogo },
+  { name: "Slack", logo: SlackLogo },
+  { name: "Snowflake", logo: SnowflakeLogo },
+  { name: "Zendesk", logo: ZendeskLogo },
+];
+
+function ToolsPage({ role }: { role: Role }) {
+  const [search, setSearch] = useState("");
+  const [toolsSearch, setToolsSearch] = useState("");
+  const filteredAddTools = ADD_TOOLS_LIST.filter((t) =>
+    t.name.toLowerCase().includes(toolsSearch.toLowerCase())
+  );
+  const filtered = M1_TOOLS_DATA.filter(
+    (t) =>
+      t.name.toLowerCase().includes(search.toLowerCase()) ||
+      t.description.toLowerCase().includes(search.toLowerCase())
+  );
+  const columns = useMemo<ColumnDef<M1ToolRow>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        header: "Name",
+        meta: { className: "s-w-full" },
+        cell: (info) => {
+          const row = info.row.original;
+          return (
+            <DataTable.CellContent>
+              <div className="s-flex s-items-center s-gap-3">
+                <div
+                  className="s-flex s-h-6 s-w-6 s-shrink-0 s-items-center s-justify-center s-rounded-md s-text-white s-text-xs"
+                  style={{ backgroundColor: row.color }}
+                />
+                <div className="s-flex s-min-w-0 s-flex-col">
+                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                    {row.name}
+                  </span>
+                  <span className="s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    {row.description}
+                  </span>
+                </div>
+              </div>
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        accessorKey: "usedBy",
+        header: "Used By",
+        meta: { className: "s-w-28" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <div className="s-flex s-items-center s-gap-1 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <Users01 className="s-h-4 s-w-4" />
+              <span>{info.getValue() as number}</span>
+            </div>
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        accessorKey: "availability",
+        header: "Availability",
+        meta: { className: "s-w-32" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              {info.getValue() as string}
+            </span>
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        accessorKey: "account",
+        header: "Account",
+        meta: { className: "s-w-40" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              {(info.getValue() as string | undefined) ?? ""}
+            </span>
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        accessorKey: "byName",
+        header: "By",
+        meta: { className: "s-w-12" },
+        cell: (info) => {
+          const row = info.row.original;
+          return (
+            <DataTable.CellContent>
+              <Avatar
+                visual={row.byAvatar}
+                name={row.byName}
+                size="xs"
+                isRounded
+              />
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        accessorKey: "lastUpdated",
+        header: "Last Updated",
+        meta: { className: "s-w-32" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              {info.getValue() as string}
+            </span>
+          </DataTable.CellContent>
+        ),
+      },
+    ],
+    []
+  );
+  return (
+    <Page>
+      <div className="s-w-full">
+        <SearchInput
+          name="search-tools"
+          placeholder="Search in Tools"
+          value={search}
+          onChange={setSearch}
+        />
+      </div>
+      <div className="s-flex s-w-full s-items-center s-justify-between">
+        <div className="s-flex s-items-center s-gap-2">
+          <ShapesPlus className="s-h-4 s-w-4 s-text-foreground dark:s-text-foreground-night" />
+          <span className="s-heading-base s-text-foreground dark:s-text-foreground-night">
+            Tools
+          </span>
+        </div>
+        <DropdownMenu
+          onOpenChange={(open) => {
+            if (!open) setToolsSearch("");
+          }}
+        >
+          <DropdownMenuTrigger asChild>
+            <Button icon={Plus} label="Add Tools" variant="primary" size="sm" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="s-w-[420px]"
+            dropdownHeaders={
+              <div className="s-flex s-items-center s-gap-2 s-p-2 s-border-b s-border-border dark:s-border-border-night">
+                <div className="s-flex-1">
+                  <SearchInput
+                    name="tools-search"
+                    placeholder="Search tools..."
+                    value={toolsSearch}
+                    onChange={setToolsSearch}
+                  />
+                </div>
+                <Button
+                  icon={Plus}
+                  label="Add MCP Server"
+                  variant="primary"
+                  size="sm"
+                  disabled={role === "manager"}
+                  tooltip={
+                    role === "manager"
+                      ? "Only Super Admins can add MCP servers."
+                      : undefined
+                  }
+                />
+              </div>
+            }
+          >
+            {filteredAddTools.map((tool) => (
+              <DropdownMenuItem
+                key={tool.name}
+                label={tool.name}
+                icon={
+                  <div className="s-flex s-h-10 s-w-10 s-shrink-0 s-items-center s-justify-center s-overflow-hidden s-rounded-xl s-border s-border-border dark:s-border-border-night">
+                    {tool.logo ? (
+                      <tool.logo className="s-h-8 s-w-8" />
+                    ) : (
+                      <div
+                        className="s-h-10 s-w-10 s-rounded-xl"
+                        style={{ backgroundColor: tool.color ?? "#888" }}
+                      />
+                    )}
+                  </div>
+                }
+              />
+            ))}
+            {filteredAddTools.length === 0 && (
+              <div className="s-px-3 s-py-4 s-text-center s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                No tools found
+              </div>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      <DataTable data={filtered} columns={columns} />
+    </Page>
+  );
+}
+
+// ─── Triggers Page ────────────────────────────────────────────────────────────
+
+interface M1TriggerRow {
+  id: string;
+  name: string;
+  description?: string;
+  provider: "Custom" | "Github" | "Zendesk" | "Slack";
+  usedBy: number;
+  access: string;
+  byAvatar: string;
+  byName: string;
+  lastUpdated: string;
+  onClick?: () => void;
+}
+
+const M1_TRIGGERS_DATA: M1TriggerRow[] = [
+  {
+    id: "jiratest",
+    name: "JiraTest",
+    provider: "Custom",
+    usedBy: 0,
+    access: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Oct, 2025",
+  },
+  {
+    id: "alban-test",
+    name: "Alban Test",
+    provider: "Github",
+    usedBy: 0,
+    access: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=33",
+    byName: "Alban",
+    lastUpdated: "Oct, 2025",
+  },
+  {
+    id: "jiratest2",
+    name: "JiraTest2",
+    provider: "Custom",
+    usedBy: 0,
+    access: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Oct, 2025",
+  },
+  {
+    id: "freshservice",
+    name: "FreshserviceTest",
+    provider: "Custom",
+    usedBy: 1,
+    access: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Oct, 2025",
+  },
+  {
+    id: "freshservice2",
+    name: "Freshservice2",
+    provider: "Custom",
+    usedBy: 0,
+    access: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Oct, 2025",
+  },
+  {
+    id: "github-issues",
+    name: "Github (dust-tt/dust issues)",
+    provider: "Github",
+    usedBy: 0,
+    access: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Oct, 2025",
+  },
+  {
+    id: "dust-modjo",
+    name: "DUST MODJO",
+    provider: "Custom",
+    usedBy: 0,
+    access: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=33",
+    byName: "Alban",
+    lastUpdated: "Oct, 2025",
+  },
+  {
+    id: "okal-test",
+    name: "Okal Test A",
+    provider: "Custom",
+    usedBy: 1,
+    access: "Okal's Private Space",
+    byAvatar: "https://i.pravatar.cc/150?img=9",
+    byName: "Okal",
+    lastUpdated: "Oct, 2025",
+  },
+  {
+    id: "gong",
+    name: "Gong",
+    provider: "Custom",
+    usedBy: 0,
+    access: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Oct, 2025",
+  },
+  {
+    id: "frank-github",
+    name: "Frank_GithubTest",
+    provider: "Custom",
+    usedBy: 0,
+    access: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Oct, 2025",
+  },
+  {
+    id: "verity-webhook",
+    name: "@Verity's Webhook",
+    provider: "Custom",
+    usedBy: 0,
+    access: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Oct, 2025",
+  },
+  {
+    id: "iliassistant-webhook",
+    name: "@iliassistant's Webhook",
+    provider: "Custom",
+    usedBy: 0,
+    access: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Oct, 2025",
+  },
+  {
+    id: "source-mail",
+    name: "Source mail",
+    provider: "Custom",
+    usedBy: 0,
+    access: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Nov, 2025",
+  },
+  {
+    id: "github-tasks",
+    name: "Github (dust-tt/tasks)",
+    provider: "Github",
+    usedBy: 0,
+    access: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Oct, 2025",
+  },
+  {
+    id: "junior",
+    name: "@junior",
+    provider: "Custom",
+    usedBy: 0,
+    access: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=3",
+    byName: "Alex",
+    lastUpdated: "Oct, 2025",
+  },
+  {
+    id: "zendesk-test",
+    name: "Zendesk test Fabien",
+    description: "Testing zendesk connection with d3v-dust",
+    provider: "Zendesk",
+    usedBy: 1,
+    access: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=7",
+    byName: "Fabien",
+    lastUpdated: "Oct, 2025",
+  },
+  {
+    id: "github-adrien",
+    name: "Github Adrien",
+    provider: "Github",
+    usedBy: 0,
+    access: "Workspace",
+    byAvatar: "https://i.pravatar.cc/150?img=14",
+    byName: "Adrien",
+    lastUpdated: "Oct, 2025",
+  },
+];
+
+const ADD_SOURCES_LIST: {
+  name: string;
+  logo: React.ComponentType<{ className?: string }> | null;
+  adminOnly?: boolean;
+}[] = [
+  { name: "Fathom", logo: FathomLogo },
+  { name: "GitHub", logo: GithubLogo },
+  { name: "Jira", logo: JiraLogo },
+  { name: "Linear", logo: LinearLogo },
+  { name: "Zendesk", logo: ZendeskLogo },
+  { name: "Custom Webhook", logo: null, adminOnly: true },
+];
+
+function TriggersPage({ role }: { role: Role }) {
+  const [search, setSearch] = useState("");
+  const filtered = M1_TRIGGERS_DATA.filter((t) =>
+    t.name.toLowerCase().includes(search.toLowerCase())
+  );
+  const columns = useMemo<ColumnDef<M1TriggerRow>[]>(
+    () => [
+      {
+        accessorKey: "name",
+        header: "Name",
+        meta: { className: "s-w-full" },
+        cell: (info) => {
+          const row = info.row.original;
+          const ProviderLogo =
+            row.provider === "Github"
+              ? GithubLogo
+              : row.provider === "Zendesk"
+                ? ZendeskLogo
+                : null;
+          return (
+            <DataTable.CellContent>
+              <div className="s-flex s-items-center s-gap-3">
+                <div className="s-flex s-h-6 s-w-6 s-shrink-0 s-items-center s-justify-center s-rounded-full s-border s-border-border dark:s-border-border-night s-bg-muted-background dark:s-bg-muted-background-night">
+                  {ProviderLogo ? (
+                    <ProviderLogo className="s-h-4 s-w-4" />
+                  ) : (
+                    <Globe01 className="s-h-3.5 s-w-3.5 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                  )}
+                </div>
+                <div className="s-flex s-min-w-0 s-flex-col">
+                  <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                    {row.name}
+                  </span>
+                  {row.description && (
+                    <span className="s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                      {row.description}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        accessorKey: "provider",
+        header: "Provider",
+        meta: { className: "s-w-24" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              {info.getValue() as string}
+            </span>
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        accessorKey: "usedBy",
+        header: "Used By",
+        meta: { className: "s-w-24" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <div className="s-flex s-items-center s-gap-1 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <Users01 className="s-h-4 s-w-4" />
+              <span>{info.getValue() as number}</span>
+            </div>
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        accessorKey: "access",
+        header: "Access",
+        meta: { className: "s-w-32" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              {info.getValue() as string}
+            </span>
+          </DataTable.CellContent>
+        ),
+      },
+      {
+        accessorKey: "byName",
+        header: "By",
+        meta: { className: "s-w-12" },
+        cell: (info) => {
+          const row = info.row.original;
+          return (
+            <DataTable.CellContent>
+              <Avatar
+                visual={row.byAvatar}
+                name={row.byName}
+                size="xs"
+                isRounded
+              />
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        accessorKey: "lastUpdated",
+        header: "Last Updated",
+        meta: { className: "s-w-32" },
+        cell: (info) => (
+          <DataTable.CellContent>
+            <span className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              {info.getValue() as string}
+            </span>
+          </DataTable.CellContent>
+        ),
+      },
+    ],
+    []
+  );
+  return (
+    <Page>
+      <div className="s-w-full">
+        <SearchInput
+          name="search-triggers"
+          placeholder="Search in Triggers"
+          value={search}
+          onChange={setSearch}
+        />
+      </div>
+      <div className="s-flex s-w-full s-items-center s-justify-between">
+        <div className="s-flex s-items-center s-gap-2">
+          <Lightning01 className="s-h-4 s-w-4 s-text-foreground dark:s-text-foreground-night" />
+          <span className="s-heading-base s-text-foreground dark:s-text-foreground-night">
+            Triggers
+          </span>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              icon={Plus}
+              label="Add Source"
+              variant="primary"
+              size="sm"
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {ADD_SOURCES_LIST.map((source) => {
+              const isDisabled = source.adminOnly && role === "manager";
+              return (
+                <DropdownMenuItem
+                  key={source.name}
+                  label={source.name}
+                  icon={source.logo ?? Globe01}
+                  disabled={isDisabled}
+                />
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      <Page.P variant="secondary" size="sm">
+        Here you can add new trigger sources to your workspace. Once created,
+        those sources can be used in the Agent Builder to trigger Agents.
+      </Page.P>
+      <DataTable data={filtered} columns={columns} />
+    </Page>
+  );
+}
+
 // M1 nav: mirrors the current admin panel structure exactly.
 // "People & Security" is split into People (operator+) and Identity & SSO (admin only).
 const NAV_SECTIONS: { title: string; items: NavSpec[] }[] = [
   {
     title: "Workspace",
     items: [
-      { id: "people", label: "People", icon: Users01V2 },
-      { id: "identity", label: "Identity & SSO", icon: Fingerprint04V2 },
-      { id: "workspace", label: "Workspace Settings", icon: Tool01V2 },
-      { id: "usage", label: "Usage", icon: PieChart01V2 },
-      { id: "models", label: "Model Providers", icon: Server01V2 },
-      { id: "analytics", label: "Analytics", icon: BarChart01V2 },
-      { id: "billing", label: "Billing", icon: CreditCard01V2 },
+      { id: "people", label: "People", icon: Users01 },
+      { id: "identity", label: "Identity & provisioning", icon: Fingerprint04 },
+      { id: "workspace", label: "Workspace Settings", icon: Tool01 },
+      { id: "usage", label: "Usage", icon: PieChart01 },
+      { id: "models", label: "Model Providers", icon: Server01 },
+      { id: "analytics", label: "Analytics", icon: BarChart01 },
+      { id: "billing", label: "Billing", icon: CreditCard01 },
     ],
   },
   {
     title: "API & Programmatic",
-    items: [{ id: "api_keys", label: "API Keys", icon: Key01V2 }],
+    items: [{ id: "api_keys", label: "API Keys", icon: Key01 }],
   },
   {
     title: "Builder Tools",
     items: [
-      { id: "credentials", label: "App Credentials", icon: PackageV2 },
-      { id: "secrets", label: "Secrets", icon: Lock01V2 },
-      { id: "programmatic", label: "Programmatic", icon: Code01V2 },
+      { id: "credentials", label: "App Credentials", icon: Package },
+      { id: "secrets", label: "Secrets", icon: Lock01 },
+      { id: "programmatic", label: "Programmatic", icon: Code01 },
     ],
   },
 ];
@@ -2941,9 +4127,7 @@ export default function AdminGovernanceM1() {
   const [members, setMembers] = useState<MemberRow[]>(INITIAL_MEMBERS);
   const [groups, setGroups] = useState<GroupRow[]>(GROUPS);
   // Spaces / Connections state
-  const [spacesPage, setSpacesPage] = useState<
-    "list" | "connections" | "connection_detail"
-  >("list");
+  const [spacesPage, setSpacesPage] = useState<SpacesPage>("connections");
   const [connections, setConnections] = useState<ConnectionRow[]>([
     ...INITIAL_CONNECTIONS,
   ]);
@@ -2959,38 +4143,50 @@ export default function AdminGovernanceM1() {
     : (access[0] ?? "people");
 
   const sidebar = (
-    <div className="s-flex s-h-full s-flex-col s-border-r s-border-border s-bg-muted-background dark:s-border-border-night dark:s-bg-muted-background-night">
-      <Tabs
+    <div className="s-flex s-h-full s-flex-col s-border-r s-border-border s-bg-app-background dark:s-border-border-night dark:s-bg-app-background-night">
+      <NavTabPill
         value={activeTab}
-        onValueChange={(v) => setActiveTab(v as typeof activeTab)}
+        onValueChange={(v) => {
+          setActiveTab(v as typeof activeTab);
+          if (v === "spaces") setSpacesPage("connections");
+        }}
         className="s-flex s-min-h-0 s-flex-1 s-flex-col"
       >
-        <TabsList className="s-mt-3 s-px-2">
-          <TabsTrigger
-            value="chat"
-            label="Chat"
-            icon={ChatBubbleLeftRightIcon}
-          />
-          <TabsTrigger value="spaces" label="Spaces" icon={SpaceOpenIcon} />
-          <TabsTrigger value="admin" icon={Cog6ToothIcon} />
-        </TabsList>
+        <NavTabPillList className="s-px-3 s-pt-3 s-pb-1">
+          <NavTabPillTrigger value="chat" icon={IntersectDust}>
+            Chat
+          </NavTabPillTrigger>
+          <NavTabPillTrigger value="spaces" icon={Planet}>
+            Spaces
+          </NavTabPillTrigger>
+          <NavTabPillTrigger value="admin" icon={Settings01}>
+            Admin
+          </NavTabPillTrigger>
+          <div className="s-flex s-flex-grow s-justify-end">
+            <NavTabPillTrigger
+              value="collapse"
+              icon={LayoutLeft}
+              onClick={() => sidebarRef.current?.toggle()}
+            />
+          </div>
+        </NavTabPillList>
 
         {/* Spaces sidebar */}
-        <TabsContent
+        <NavTabPillContent
           value="spaces"
-          className="s-flex s-min-h-0 s-flex-1 s-flex-col"
+          className="data-[state=active]:s-flex s-min-h-0 s-flex-1 s-flex-col"
         >
           <SpacesSidebarNav
-            onConnectionsClick={() => {
-              setSpacesPage("connections");
-              setActiveTab("spaces");
-            }}
+            role={role}
+            onConnectionsClick={() => setSpacesPage("connections")}
+            onToolsClick={() => setSpacesPage("tools")}
+            onTriggersClick={() => setSpacesPage("triggers")}
           />
-        </TabsContent>
+        </NavTabPillContent>
 
-        <TabsContent
+        <NavTabPillContent
           value="admin"
-          className="s-flex s-min-h-0 s-flex-1 s-flex-col"
+          className="data-[state=active]:s-flex s-min-h-0 s-flex-1 s-flex-col"
         >
           <ScrollArea className="s-flex-1">
             <ScrollBar orientation="vertical" size="minimal" />
@@ -3009,7 +4205,7 @@ export default function AdminGovernanceM1() {
                         className={`ag-nav-item${!accessible ? " s-opacity-40" : ""}`}
                       >
                         <NavigationListItem
-                          icon={accessible ? item.icon : Lock01V2}
+                          icon={accessible ? item.icon : Lock01}
                           label={item.label}
                           selected={effectivePage === item.id && accessible}
                           onClick={() => {
@@ -3027,8 +4223,13 @@ export default function AdminGovernanceM1() {
               ))}
             </NavigationList>
           </ScrollArea>
-        </TabsContent>
-      </Tabs>
+        </NavTabPillContent>
+
+        <NavTabPillContent
+          value="chat"
+          className="data-[state=active]:s-flex s-min-h-0 s-flex-1 s-flex-col"
+        />
+      </NavTabPill>
 
       {/* Bottom bar */}
       <div className="s-flex s-h-14 s-items-center s-justify-between s-gap-2 s-border-t s-border-border s-pl-1 s-pr-2 dark:s-border-border-night">
@@ -3075,72 +4276,21 @@ export default function AdminGovernanceM1() {
   const content = (
     <ScrollArea className="s-h-full s-bg-background dark:s-bg-background-night">
       <ScrollBar orientation="vertical" size="minimal" />
-      {/* Role switcher */}
-      <div className="s-flex s-justify-end s-px-6 s-pt-4 s-pb-0">
-        <div className="s-flex s-items-center s-gap-2">
-          <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-            View as:
-          </span>
-          <ButtonsSwitchList
-            size="xs"
-            defaultValue={role}
-            onValueChange={(v) => setRole(v as Role)}
-          >
-            <ButtonsSwitch value="admin" label="Admin" />
-            <ButtonsSwitch value="manager" label="Manager" />
-          </ButtonsSwitchList>
-        </div>
-      </div>
 
       {/* Spaces content */}
       {activeTab === "spaces" && (
         <div key={spacesPage} className="ag-page-in">
           {spacesPage === "connections" ? (
-            (() => {
-              // Managers only see connections they've been delegated to
-              const visibleConnections =
-                role === "admin"
-                  ? connections
-                  : connections.filter((c) =>
-                      c.delegates.some((d) =>
-                        members.find(
-                          (m) => m.name === d && m.role === "manager"
-                        )
-                      )
-                    );
-
-              if (role === "manager" && visibleConnections.length === 0) {
-                return (
-                  <Page>
-                    <Page.Header
-                      title="Connections"
-                      description="Manage data source connections for your workspace."
-                      icon={PuzzlePiece01V2}
-                    />
-                    <div className="s-flex s-flex-col s-items-center s-justify-center s-rounded-xl s-border s-border-dashed s-border-border dark:s-border-border-night s-py-16 s-gap-3 s-text-center">
-                      <Lock01V2 className="s-h-6 s-w-6 s-text-muted-foreground dark:s-text-muted-foreground-night" />
-                      <Page.P variant="secondary">
-                        You have not been granted access to any connections.
-                        <br />
-                        Contact an Admin to request access.
-                      </Page.P>
-                    </div>
-                  </Page>
-                );
-              }
-
-              return (
-                <ConnectionsPage
-                  connections={visibleConnections}
-                  role={role}
-                  onManage={(conn) => setManagingConn(conn)}
-                  onOpenDetail={(conn) => {
-                    setActiveConnection(conn);
-                    setSpacesPage("connection_detail");
-                  }}
-                />
-              );
-            })()
+            <ConnectionsPage
+              connections={connections}
+              role={role}
+              managers={members}
+              onManage={(conn) => setManagingConn(conn)}
+              onOpenDetail={(conn) => {
+                setActiveConnection(conn);
+                setSpacesPage("connection_detail");
+              }}
+            />
           ) : spacesPage === "connection_detail" && activeConnection ? (
             <ConnectionDetailPage
               connection={activeConnection}
@@ -3148,12 +4298,16 @@ export default function AdminGovernanceM1() {
               onBack={() => setSpacesPage("connections")}
               onManage={(conn) => setManagingConn(conn)}
             />
+          ) : spacesPage === "tools" ? (
+            <ToolsPage role={role} />
+          ) : spacesPage === "triggers" ? (
+            <TriggersPage role={role} />
           ) : (
             <Page>
               <Page.Header
                 title="Spaces"
                 description="Manage your workspace spaces."
-                icon={SpaceOpenIcon}
+                icon={SpaceOpen}
               />
               <div className="s-flex s-items-center s-justify-center s-rounded-xl s-border s-border-dashed s-border-border dark:s-border-border-night s-p-12">
                 <Page.P variant="secondary">
@@ -3187,7 +4341,7 @@ export default function AdminGovernanceM1() {
             <PlaceholderPage
               title="Workspace Settings"
               description="Configure your workspace preferences."
-              icon={Cog6ToothIcon}
+              icon={Settings01}
             />
           ) : effectivePage === "models" ? (
             <ModelProvidersPage />
@@ -3195,25 +4349,25 @@ export default function AdminGovernanceM1() {
             <PlaceholderPage
               title="API Keys"
               description="Manage API keys for programmatic access."
-              icon={Key01V2}
+              icon={Key01}
             />
           ) : effectivePage === "programmatic" ? (
             <PlaceholderPage
               title="Programmatic usage"
               description="Track API usage and quotas."
-              icon={Code01V2}
+              icon={Code01}
             />
           ) : effectivePage === "credentials" ? (
             <PlaceholderPage
               title="App Credentials"
               description="Manage application credentials."
-              icon={PuzzlePiece01V2}
+              icon={PuzzlePiece01}
             />
           ) : (
             <PlaceholderPage
               title="Secrets"
               description="Manage workspace secrets."
-              icon={Lock01V2}
+              icon={Lock01}
             />
           )}
         </div>
@@ -3251,7 +4405,7 @@ export default function AdminGovernanceM1() {
           <div className="s-flex s-flex-col s-gap-3 s-px-5 s-py-4">
             <div className="s-flex s-items-start s-gap-3">
               <div className="s-rounded-full s-bg-muted-background dark:s-bg-muted-background-night s-p-3 s-shrink-0">
-                <Lock01V2 className="s-h-5 s-w-5 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                <Lock01 className="s-h-5 s-w-5 s-text-muted-foreground dark:s-text-muted-foreground-night" />
               </div>
               <div className="s-flex s-flex-col s-gap-1">
                 <Page.P size="sm">
@@ -3262,8 +4416,8 @@ export default function AdminGovernanceM1() {
                   role.
                 </Page.P>
                 <Page.P variant="secondary" size="sm">
-                  Managers cannot access Infrastructure settings. Contact your
-                  Admin to get access.
+                  Business Admins cannot access Infrastructure settings. Contact
+                  your Admin to get access.
                 </Page.P>
               </div>
             </div>

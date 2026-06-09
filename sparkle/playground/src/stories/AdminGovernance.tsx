@@ -1,16 +1,16 @@
 import {
   Avatar,
-  BarChart01V2,
+  BarChart01,
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
   Card,
-  ChatBubbleLeftRightIcon,
+  MessageChatSquare,
   Checkbox,
   Chip,
-  Code01V2,
-  Cog6ToothIcon,
-  CreditCard01V2,
+  Code01,
+  Settings01,
+  CreditCard01,
   DataTable,
   Dialog,
   DialogContent,
@@ -21,26 +21,26 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Fingerprint04V2,
-  Globe01V2,
+  Fingerprint04,
+  Globe01,
   Input,
-  Key01V2,
+  Key01,
   Label,
-  Lock01V2,
+  Lock01,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListItem,
   Page,
-  PieChart01V2,
-  PlusIcon,
-  PuzzlePiece01V2,
+  PieChart01,
+  Plus,
+  PuzzlePiece01,
   ScrollArea,
   ScrollBar,
   SearchInput,
-  Server01V2,
+  Server01,
   SliderToggle,
-  Toggle01LeftV2,
-  Tool01V2,
+  Toggle01Left,
+  Tool01,
   Sheet,
   SheetContent,
   SheetFooter,
@@ -48,15 +48,14 @@ import {
   SheetTitle,
   SidebarLayout,
   type SidebarLayoutRef,
-  SpaceOpenIcon,
+  SpaceOpen,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
   TextArea,
-  UserGroupIcon,
-  Users01V2,
-  XMarkIcon,
+  Users01,
+  XClose,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo, useRef, useState } from "react";
@@ -814,7 +813,7 @@ function PeoplePage({
           return (
             <DataTable.CellContent>
               <div className="s-flex s-items-center s-gap-3">
-                <UserGroupIcon className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                <Users01 className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
                 <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
                   {row.name}
                 </span>
@@ -948,7 +947,7 @@ function PeoplePage({
       <Page.Header
         title="People"
         description="Verify your domain, manage team individual, groups and their permissions."
-        icon={Users01V2}
+        icon={Users01}
       />
       <Tabs
         value={sub}
@@ -977,7 +976,7 @@ function PeoplePage({
                 {canEdit && (
                   <span className="ag-btn-press">
                     <Button
-                      icon={PlusIcon}
+                      icon={Plus}
                       label="Invite members"
                       variant="primary"
                       size="sm"
@@ -1088,7 +1087,7 @@ function PeoplePage({
                 {canEdit && (
                   <span className="ag-btn-press">
                     <Button
-                      icon={PlusIcon}
+                      icon={Plus}
                       label="Create group"
                       variant="primary"
                       size="sm"
@@ -1485,9 +1484,7 @@ function IdentityPage({ role }: { role: Role }) {
                   label={status.charAt(0).toUpperCase() + status.slice(1)}
                   size="sm"
                 />
-                {canEdit && (
-                  <Button icon={XMarkIcon} variant="ghost" size="xs" />
-                )}
+                {canEdit && <Button icon={XClose} variant="ghost" size="xs" />}
               </Page.Horizontal>
             </DataTable.CellContent>
           );
@@ -1502,7 +1499,7 @@ function IdentityPage({ role }: { role: Role }) {
       <Page.Header
         title="Identity & provisioning"
         description="Verify your domain, manage team members and their permissions."
-        icon={Globe01V2}
+        icon={Globe01}
       />
 
       <Page.Vertical gap="sm">
@@ -1512,12 +1509,7 @@ function IdentityPage({ role }: { role: Role }) {
         />
         <DataTable data={DOMAINS} columns={domainColumns} />
         {canEdit && (
-          <Button
-            icon={PlusIcon}
-            label="Add domain"
-            variant="primary"
-            size="sm"
-          />
+          <Button icon={Plus} label="Add domain" variant="primary" size="sm" />
         )}
       </Page.Vertical>
 
@@ -1647,7 +1639,7 @@ function GovernanceRow({
                 <Button
                   variant="outline"
                   size="xs"
-                  icon={PlusIcon}
+                  icon={Plus}
                   label="Add a group"
                   isSelect
                 />
@@ -1723,7 +1715,7 @@ function GovernancePage({
       <Page.Header
         title="Governance"
         description="Control what members can create and publish. Use groups to grant exceptions."
-        icon={Cog6ToothIcon}
+        icon={Settings01}
       />
       <div className="s-w-full s-rounded-xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3">
         <Page.P variant="secondary" size="sm">
@@ -1807,7 +1799,7 @@ function GovernancePage({
                 <Button
                   variant="ghost"
                   size="xs"
-                  icon={PlusIcon}
+                  icon={Plus}
                   label="Assign member"
                   onClick={() =>
                     setAssignTarget(
@@ -1852,7 +1844,7 @@ function BillingPage() {
       <Page.Header
         title="Billing"
         description="Change your subscription and edit your billing information."
-        icon={CreditCard01V2}
+        icon={CreditCard01}
       />
 
       {/* Current plan card */}
@@ -2117,7 +2109,7 @@ function UsagePage() {
       <Page.Header
         title="Usage"
         description="Manage the usage of your Dust workspace."
-        icon={BarChart01V2}
+        icon={BarChart01}
       />
 
       <div className="s-flex s-flex-col s-items-start s-gap-3 s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4">
@@ -2162,7 +2154,7 @@ function UsagePage() {
           title="Members"
           action={{
             label: "Invite members",
-            icon: PlusIcon,
+            icon: Plus,
             variant: "primary",
             size: "sm",
           }}
@@ -2345,7 +2337,7 @@ function AnalyticsPage() {
         <Page.Header
           title="Analytics"
           description="Track how your team uses Dust."
-          icon={BarChart01V2}
+          icon={BarChart01}
         />
         <Button variant="outline" label="Last 30 days" isSelect size="sm" />
       </div>
@@ -2843,7 +2835,7 @@ function ModelProvidersPage() {
       <Page.Header
         title="Model Providers"
         description="Configure model providers."
-        icon={Server01V2}
+        icon={Server01}
       />
 
       {/* Embedding provider */}
@@ -2945,7 +2937,7 @@ function LockedPage({ pageLabel, role }: { pageLabel: string; role: Role }) {
     <Page>
       <div className="s-flex s-flex-col s-items-center s-justify-center s-py-24 s-text-center s-gap-5 s-max-w-sm s-mx-auto">
         <div className="s-rounded-full s-bg-muted-background dark:s-bg-muted-background-night s-p-5">
-          <Lock01V2 className="s-h-8 s-w-8 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+          <Lock01 className="s-h-8 s-w-8 s-text-muted-foreground dark:s-text-muted-foreground-night" />
         </div>
         <Page.Vertical gap="xs" align="center">
           <Page.H variant="h4">{pageLabel} is managed by Super Admin</Page.H>
@@ -2969,32 +2961,32 @@ const NAV_SECTIONS: { title: string; items: NavSpec[] }[] = [
   {
     title: "Workspace Management",
     items: [
-      { id: "people", label: "People", icon: Users01V2 },
+      { id: "people", label: "People", icon: Users01 },
       {
         id: "identity",
         label: "Identity & provisioning",
-        icon: Fingerprint04V2,
+        icon: Fingerprint04,
       },
-      { id: "governance", label: "Governance", icon: Toggle01LeftV2 },
-      { id: "workspace", label: "Workspace Settings", icon: Tool01V2 },
-      { id: "models", label: "Model Providers", icon: Server01V2 },
-      { id: "analytics", label: "Analytics", icon: BarChart01V2 },
-      { id: "billing", label: "Billing", icon: CreditCard01V2 },
-      { id: "usage", label: "Usage", icon: PieChart01V2 },
+      { id: "governance", label: "Governance", icon: Toggle01Left },
+      { id: "workspace", label: "Workspace Settings", icon: Tool01 },
+      { id: "models", label: "Model Providers", icon: Server01 },
+      { id: "analytics", label: "Analytics", icon: BarChart01 },
+      { id: "billing", label: "Billing", icon: CreditCard01 },
+      { id: "usage", label: "Usage", icon: PieChart01 },
     ],
   },
   {
     title: "API Keys & Programmatic",
     items: [
-      { id: "api_keys", label: "API Keys", icon: Key01V2 },
-      { id: "programmatic", label: "Programmatic usage", icon: Code01V2 },
+      { id: "api_keys", label: "API Keys", icon: Key01 },
+      { id: "programmatic", label: "Programmatic usage", icon: Code01 },
     ],
   },
   {
     title: "Builder Tools Management",
     items: [
-      { id: "credentials", label: "App Credentials", icon: PuzzlePiece01V2 },
-      { id: "secrets", label: "Secrets", icon: Lock01V2 },
+      { id: "credentials", label: "App Credentials", icon: PuzzlePiece01 },
+      { id: "secrets", label: "Secrets", icon: Lock01 },
     ],
   },
 ];
@@ -3027,13 +3019,9 @@ export default function AdminGovernance() {
     <div className="s-flex s-h-full s-flex-col s-border-r s-border-border s-bg-muted-background dark:s-border-border-night dark:s-bg-muted-background-night">
       <Tabs value="admin" className="s-flex s-min-h-0 s-flex-1 s-flex-col">
         <TabsList className="s-mt-3 s-px-2">
-          <TabsTrigger
-            value="chat"
-            label="Chat"
-            icon={ChatBubbleLeftRightIcon}
-          />
-          <TabsTrigger value="spaces" label="Spaces" icon={SpaceOpenIcon} />
-          <TabsTrigger value="admin" icon={Cog6ToothIcon} />
+          <TabsTrigger value="chat" label="Chat" icon={MessageChatSquare} />
+          <TabsTrigger value="spaces" label="Spaces" icon={SpaceOpen} />
+          <TabsTrigger value="admin" icon={Settings01} />
         </TabsList>
 
         <TabsContent
@@ -3057,7 +3045,7 @@ export default function AdminGovernance() {
                         className={`ag-nav-item${!accessible ? " s-opacity-40" : ""}`}
                       >
                         <NavigationListItem
-                          icon={accessible ? item.icon : Lock01V2}
+                          icon={accessible ? item.icon : Lock01}
                           label={item.label}
                           selected={effectivePage === item.id && accessible}
                           onClick={() => {
@@ -3166,7 +3154,7 @@ export default function AdminGovernance() {
           <PlaceholderPage
             title="Workspace Settings"
             description="Configure your workspace preferences."
-            icon={Cog6ToothIcon}
+            icon={Settings01}
           />
         ) : effectivePage === "models" ? (
           <ModelProvidersPage />
@@ -3174,25 +3162,25 @@ export default function AdminGovernance() {
           <PlaceholderPage
             title="API Keys"
             description="Manage API keys for programmatic access."
-            icon={Lock01V2}
+            icon={Lock01}
           />
         ) : effectivePage === "programmatic" ? (
           <PlaceholderPage
             title="Programmatic usage"
             description="Track API usage and quotas."
-            icon={Code01V2}
+            icon={Code01}
           />
         ) : effectivePage === "credentials" ? (
           <PlaceholderPage
             title="App Credentials"
             description="Manage application credentials."
-            icon={PuzzlePiece01V2}
+            icon={PuzzlePiece01}
           />
         ) : (
           <PlaceholderPage
             title="Secrets"
             description="Manage workspace secrets."
-            icon={Lock01V2}
+            icon={Lock01}
           />
         )}
       </div>

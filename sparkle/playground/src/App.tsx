@@ -16,14 +16,18 @@ import { useEffect, useState } from "react";
 const storyModules = import.meta.glob("./stories/*.tsx", { eager: true });
 
 // Extract story names and components (exclude TemplateSelection - only reachable via dropdown in Pods)
+const DISABLED_STORIES = new Set(["AdminGovernance", "AdminGovernanceV2"]);
+
 const stories = Object.entries(storyModules)
   .map(([path, module]: [string, any]) => {
     const fileName = path.split("/").pop()?.replace(".tsx", "") || "";
-    const displayName = (module as { storyName?: string }).storyName ?? fileName;
+    const displayName =
+      (module as { storyName?: string }).storyName ?? fileName;
     return {
       name: fileName,
       displayName,
       component: (module as { default: React.ComponentType }).default,
+      disabled: DISABLED_STORIES.has(fileName),
     };
   })
   .filter((s) => s.name !== "TemplateSelection");
@@ -76,10 +80,20 @@ function StoryList({
           {stories.map((story, index) => (
             <ListItem
               key={story.name}
-              onClick={() => onSelectStory(story.name)}
+              onClick={
+                story.disabled ? undefined : () => onSelectStory(story.name)
+              }
               hasSeparator={index < stories.length - 1}
             >
-              <div className="text-foreground">{story.displayName}</div>
+              <div
+                className={
+                  story.disabled
+                    ? "text-muted-foreground opacity-40 cursor-not-allowed select-none"
+                    : "text-foreground"
+                }
+              >
+                {story.displayName}
+              </div>
             </ListItem>
           ))}
         </ListGroup>
