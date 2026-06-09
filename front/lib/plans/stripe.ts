@@ -336,7 +336,7 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
     customer_creation: "always",
     payment_method_types: allowedPaymentMethods,
     metadata,
-    billing_address_collection: "auto",
+    billing_address_collection: "required",
     tax_id_collection: {
       enabled: true,
     },
