@@ -379,7 +379,7 @@ export const CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   recommendedExhaustiveTopK: 64,
   largeModel: true,
   description:
-    "Anthropic's Claude Fable 5 model, their most intelligent model, a new tier above Opus (200k context).",
+    "Anthropic's Claude Fable 5 model, their most intelligent model, a new tier above Opus (400k context).",
   shortDescription: "Anthropic's most powerful model.",
   isLegacy: false,
   isLatest: false,
