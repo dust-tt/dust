@@ -70,7 +70,6 @@ const ConfluencePageCodec = t.intersection([
 const SearchBaseContentCodec = t.type({
   id: t.string,
   status: t.string,
-  title: t.string,
 
   // Version info.
   version: t.type({
