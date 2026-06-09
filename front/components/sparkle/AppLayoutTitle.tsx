@@ -6,7 +6,6 @@ interface AppLayoutTitleProps {
   className?: string;
 }
 
-
 export function AppLayoutTitle({ children, className }: AppLayoutTitleProps) {
   return (
     <div

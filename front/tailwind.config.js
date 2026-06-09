@@ -14,12 +14,9 @@ module.exports = {
     extend: {
       height: {
         title: TITLE_HEIGHT,
-        "container-with-title-mobile":
-          `calc(100dvh - ${TITLE_HEIGHT})`,
-        "container-with-title-desktop":
-          `calc(100dvh - ${TITLE_HEIGHT} - 0.5rem)`,
-        "container-without-title":
-          "calc(100dvh - 0.5rem)",
+        "container-with-title-mobile": `calc(100dvh - ${TITLE_HEIGHT})`,
+        "container-with-title-desktop": `calc(100dvh - ${TITLE_HEIGHT} - 0.5rem)`,
+        "container-without-title": "calc(100dvh - 0.5rem)",
       },
       fontWeight: {
         medium: "450",

@@ -57,7 +57,9 @@ export function DropzoneContainer({
     <div
       {...getRootProps()}
       className={cn(
-        isMobile ? "h-container-with-title-mobile" : "h-container-with-title-desktop",
+        isMobile
+          ? "h-container-with-title-mobile"
+          : "h-container-with-title-desktop",
         "flex min-h-0 w-full flex-col items-center"
       )}
       onPaste={onPaste}
