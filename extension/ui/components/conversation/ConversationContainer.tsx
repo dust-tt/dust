@@ -1,7 +1,6 @@
 import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { HEADER_HEIGHT_CLASSNAME } from "@app/components/sparkle/AppLayoutTitle";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { SubscriptionType } from "@app/types/plan";
@@ -121,8 +120,7 @@ export const ConversationContainer = ({
           {/* Hamburger button overlaid in the pl-14 area of AppLayoutTitle header */}
           <div
             className={cn(
-              "absolute left-0 top-0 z-10 flex shrink-0 items-center px-2",
-              HEADER_HEIGHT_CLASSNAME
+              "absolute left-0 top-0 z-10 flex shrink-0 items-center px-2 h-title",
             )}
           >
             <Button
