@@ -61,8 +61,8 @@ const METRONOME_CUSTOMER_IDS = [
   "e789fe0f-eeba-4d11-98d1-2b1576266426",
 ];
 
-const EXPECTED_PRICE_EUR = 39;
-const NEW_PRICE_EUR = 45;
+const RIGHT_PRICE_EUR = 39;
+const WRONG_PRICE_EUR = 45;
 
 async function applyRateOverrideForCustomer(
   metronomeCustomerId: string,
@@ -98,36 +98,35 @@ async function applyRateOverrideForCustomer(
           ))
     );
 
-    if (!existingOverride) {
-      logger.warn(
-        { metronomeCustomerId, contractId },
-        "[Override] No entitled Platform Seat override found on contract, skipping"
-      );
-      continue;
-    }
+    if (existingOverride) {
+      const currentPrice = existingOverride.overwrite_rate?.price;
 
-    const currentPrice = existingOverride.overwrite_rate?.price;
+      if (currentPrice === RIGHT_PRICE_EUR) {
+        logger.info(
+          { metronomeCustomerId, contractId },
+          `[Override] Platform Seat already at ${RIGHT_PRICE_EUR} EUR, skipping`
+        );
+        continue;
+      }
 
-    if (currentPrice === NEW_PRICE_EUR) {
+      if (currentPrice !== WRONG_PRICE_EUR) {
+        logger.warn(
+          { metronomeCustomerId, contractId, currentPrice },
+          `[Override] Unexpected Platform Seat price (expected ${WRONG_PRICE_EUR} EUR), skipping`
+        );
+        continue;
+      }
+    } else {
       logger.info(
         { metronomeCustomerId, contractId },
-        "[Override] Platform Seat already at 45 EUR, skipping"
+        `[Override] No existing Platform Seat override — will create one at ${RIGHT_PRICE_EUR} EUR`
       );
-      continue;
-    }
-
-    if (currentPrice !== EXPECTED_PRICE_EUR) {
-      logger.warn(
-        { metronomeCustomerId, contractId, currentPrice },
-        "[Override] Unexpected Platform Seat price (expected 39 EUR), skipping"
-      );
-      continue;
     }
 
     if (!execute) {
       logger.info(
         { metronomeCustomerId, contractId },
-        "[Override] [DRY RUN] Would override Platform Seat from 39 EUR to 45 EUR"
+        `[Override] [DRY RUN] Would override Platform Seat from ${WRONG_PRICE_EUR} EUR to ${RIGHT_PRICE_EUR} EUR`
       );
       continue;
     }
@@ -149,7 +148,7 @@ async function applyRateOverrideForCustomer(
             ],
             overwrite_rate: {
               rate_type: "FLAT" as const,
-              price: NEW_PRICE_EUR,
+              price: RIGHT_PRICE_EUR,
               credit_type_id: CREDIT_TYPE_EUR_ID,
             },
           },
@@ -157,7 +156,7 @@ async function applyRateOverrideForCustomer(
       });
       logger.info(
         { metronomeCustomerId, contractId },
-        "[Override] Successfully overrode Platform Seat to 45 EUR"
+        `[Override] Successfully overrode Platform Seat to ${RIGHT_PRICE_EUR} EUR`
       );
     } catch (err) {
       logger.error(
