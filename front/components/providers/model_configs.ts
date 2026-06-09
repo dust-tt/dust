@@ -25,10 +25,10 @@ import {
   MISTRAL_SMALL_MODEL_CONFIG,
 } from "@app/types/assistant/models/mistral";
 import {
-  GPT_5_5_MODEL_CONFIG,
   GPT_5_4_MINI_MODEL_CONFIG,
   GPT_5_4_MODEL_CONFIG,
   GPT_5_4_NANO_MODEL_CONFIG,
+  GPT_5_5_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
   GPT_5_NANO_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
