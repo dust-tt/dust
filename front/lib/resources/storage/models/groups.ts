@@ -3,7 +3,7 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
 import type { GroupKind } from "@app/types/groups";
 import { isGlobalGroupKind, isSystemGroupKind } from "@app/types/groups";
 import type { CreationOptional, Transaction } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 
 export class GroupModel extends WorkspaceAwareModel<GroupModel> {
   declare createdAt: CreationOptional<Date>;

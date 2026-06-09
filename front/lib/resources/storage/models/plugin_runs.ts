@@ -3,7 +3,7 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import type { SupportedResourceType } from "@app/types/poke/plugins";
 import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 
 export const POKE_PLUGIN_RUN_MAX_RESULT_AND_ERROR_LENGTH = 4096;
 export const POKE_PLUGIN_RUN_MAX_ARGS_LENGTH = 1024;

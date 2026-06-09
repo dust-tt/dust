@@ -19,7 +19,7 @@ import type {
   UpdateOptions,
   WhereOptions,
 } from "sequelize";
-import { DataTypes, Op } from "sequelize";
+import { DataTypes, Op } from "@app/lib/resources/storage/data_types";
 import type { ModelHooks } from "sequelize/lib/hooks";
 
 // Log only 1 time out of 100 on average.

@@ -7,7 +7,7 @@ import type {
   CreationOptional,
   ForeignKey,
 } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 
 export class GroupAgentModel extends WorkspaceAwareModel<GroupAgentModel> {
   declare id: CreationOptional<number>;

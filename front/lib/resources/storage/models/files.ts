@@ -11,12 +11,12 @@ import type {
 } from "@app/types/files";
 import {
   type CreationOptional,
-  DataTypes,
+  DataTypes, DANGEROUSLY_UNBOUNDED_TEXT,
   type ForeignKey,
   literal,
   type NonAttribute,
   Op,
-} from "sequelize";
+} from "@app/lib/resources/storage/data_types";
 
 export class FileModel extends WorkspaceAwareModel<FileModel> {
   declare createdAt: CreationOptional<Date>;
@@ -79,7 +79,7 @@ FileModel.init(
       defaultValue: null,
     },
     snippet: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
       defaultValue: null,
     },

@@ -2,7 +2,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 
 export class GlobalFeatureFlagModel extends BaseModel<GlobalFeatureFlagModel> {
   declare id: CreationOptional<number>;

@@ -8,7 +8,7 @@ import type { MCPToolType } from "@app/lib/api/mcp";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@app/lib/resources/storage/data_types";
 
 export class RemoteMCPServerModel extends WorkspaceAwareModel<RemoteMCPServerModel> {
   declare createdAt: CreationOptional<Date>;
@@ -52,7 +52,7 @@ RemoteMCPServerModel.init(
       allowNull: false,
     },
     version: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
       defaultValue: DEFAULT_MCP_ACTION_VERSION,
     },
@@ -61,7 +61,7 @@ RemoteMCPServerModel.init(
       allowNull: false,
     },
     cachedDescription: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     cachedTools: {
@@ -74,12 +74,12 @@ RemoteMCPServerModel.init(
       allowNull: true,
     },
     lastError: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
       defaultValue: null,
     },
     sharedSecret: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     authorization: {

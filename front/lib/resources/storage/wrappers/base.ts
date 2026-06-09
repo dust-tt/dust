@@ -6,7 +6,7 @@ import type {
   ModelAttributes,
   ModelStatic,
 } from "sequelize";
-import { DataTypes, Model } from "sequelize";
+import { DataTypes, Model } from "@app/lib/resources/storage/data_types";
 
 interface BaseModelAttributes {
   id?: {

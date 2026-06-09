@@ -13,7 +13,7 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import isNil from "lodash/isNil";
 import type { CreationOptional, ForeignKey, ModelAttributes } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@app/lib/resources/storage/data_types";
 
 const SKILL_MODEL_ATTRIBUTES = {
   createdAt: {
@@ -31,23 +31,23 @@ const SKILL_MODEL_ATTRIBUTES = {
     allowNull: false,
   },
   name: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: false,
   },
   agentFacingDescription: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: false,
   },
   userFacingDescription: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: true,
   },
   instructions: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: false,
   },
   instructionsHtml: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: true,
   },
   requestedSpaceIds: {
@@ -55,11 +55,11 @@ const SKILL_MODEL_ATTRIBUTES = {
     allowNull: false,
   },
   icon: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: true,
   },
   extendedSkillId: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: true,
   },
   source: {
@@ -345,7 +345,7 @@ SkillFileAttachmentModel.init(
       },
     },
     fileName: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
   },

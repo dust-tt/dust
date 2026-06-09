@@ -8,7 +8,7 @@ import type {
   UserCreditState,
 } from "@app/types/memberships";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes, Op } from "sequelize";
+import { DataTypes, Op } from "@app/lib/resources/storage/data_types";
 
 export class MembershipModel extends WorkspaceAwareModel<MembershipModel> {
   declare createdAt: CreationOptional<Date>;

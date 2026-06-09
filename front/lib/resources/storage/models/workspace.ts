@@ -12,7 +12,7 @@ import type {
   WorkspaceSharingPolicy,
 } from "@app/types/user";
 import type { CreationOptional, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 
 const DEFAULT_SHARING_POLICY: WorkspaceSharingPolicy = "all_scopes";
 

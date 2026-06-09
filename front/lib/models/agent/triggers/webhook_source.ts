@@ -5,7 +5,7 @@ import type {
   WebhookSourceSignatureAlgorithm,
 } from "@app/types/triggers/webhooks";
 import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@app/lib/resources/storage/data_types";
 
 export class WebhookSourceModel extends WorkspaceAwareModel<WebhookSourceModel> {
   declare createdAt: CreationOptional<Date>;
@@ -41,11 +41,11 @@ WebhookSourceModel.init(
       allowNull: false,
     },
     secret: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     urlSecret: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     signatureHeader: {
@@ -69,7 +69,7 @@ WebhookSourceModel.init(
       allowNull: true,
     },
     oauthConnectionId: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
   },

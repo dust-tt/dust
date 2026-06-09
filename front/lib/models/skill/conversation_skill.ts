@@ -16,7 +16,7 @@ import type {
   ModelAttributes,
   NonAttribute,
 } from "sequelize";
-import { DataTypes, Op } from "sequelize";
+import { DataTypes, Op } from "@app/lib/resources/storage/data_types";
 
 const SKILL_IN_CONVERSATION_MODEL_ATTRIBUTES = {
   createdAt: {

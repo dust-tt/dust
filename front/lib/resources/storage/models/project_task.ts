@@ -10,7 +10,7 @@ import type {
   PodTaskStatus,
 } from "@app/types/project_task";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@app/lib/resources/storage/data_types";
 
 // ── Shared attributes ───────────────────────────────────────────────────────
 // Used by both the main table and the version snapshot table so that
@@ -74,7 +74,7 @@ const PROJECT_TODO_MODEL_ATTRIBUTES = {
     comment: "Category of the todo: to_do, to_know.",
   },
   text: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: false,
   },
   status: {
@@ -87,12 +87,12 @@ const PROJECT_TODO_MODEL_ATTRIBUTES = {
     allowNull: true,
   },
   actorRationale: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: true,
     comment: "Explanation for why the actor made a change.",
   },
   agentInstructions: {
-    type: DataTypes.TEXT,
+    type: DANGEROUSLY_UNBOUNDED_TEXT,
     allowNull: true,
     comment:
       "Optional kickoff instructions for the agent when this todo is started.",
@@ -437,11 +437,11 @@ ProjectTaskSourceModel.init(
         "String identifier of the source (conversation sId, external URL/ID, etc.) that led to creating this todo.",
     },
     sourceTitle: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     sourceUrl: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
   },

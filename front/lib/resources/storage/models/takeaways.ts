@@ -4,7 +4,7 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
 import type { PodTaskSourceType } from "@app/types/project_task";
 import type { TaskVersionedActionItem } from "@app/types/takeaways";
 import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@app/lib/resources/storage/data_types";
 
 // ── Shared attributes ────────────────────────────────────────────────────────
 // Used by both the main table and the version snapshot table so that
@@ -171,11 +171,11 @@ TakeawaySourcesModel.init(
         "String identifier of the source (internal SID or external URL/ID) that produced this takeaway.",
     },
     sourceTitle: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     sourceUrl: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
   },

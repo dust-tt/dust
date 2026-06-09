@@ -7,7 +7,7 @@ import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wra
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@app/lib/resources/storage/data_types";
 
 export class MCPServerViewModel extends SoftDeletableWorkspaceAwareModel<MCPServerViewModel> {
   declare createdAt: CreationOptional<Date>;
@@ -95,7 +95,7 @@ MCPServerViewModel.init(
       },
     },
     oauthScope: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
   },

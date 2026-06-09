@@ -5,7 +5,7 @@ import {
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes, Op } from "sequelize";
+import { DataTypes, Op } from "@app/lib/resources/storage/data_types";
 
 export class SkillReferenceModel extends WorkspaceAwareModel<SkillReferenceModel> {
   declare createdAt: CreationOptional<Date>;

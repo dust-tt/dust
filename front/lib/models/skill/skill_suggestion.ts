@@ -10,7 +10,7 @@ import type {
   SkillSuggestionState,
 } from "@app/types/suggestions/skill_suggestion";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes, Op } from "sequelize";
+import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT, Op } from "@app/lib/resources/storage/data_types";
 
 export class SkillSuggestionModel extends WorkspaceAwareModel<SkillSuggestionModel> {
   declare createdAt: CreationOptional<Date>;
@@ -61,7 +61,7 @@ SkillSuggestionModel.init(
       allowNull: false,
     },
     analysis: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     title: {

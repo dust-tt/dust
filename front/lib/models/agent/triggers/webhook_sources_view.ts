@@ -4,7 +4,7 @@ import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@app/lib/resources/storage/data_types";
 
 export class WebhookSourcesViewModel extends SoftDeletableWorkspaceAwareModel<WebhookSourcesViewModel> {
   declare createdAt: CreationOptional<Date>;
@@ -51,7 +51,7 @@ WebhookSourcesViewModel.init(
       allowNull: true,
     },
     description: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     icon: {

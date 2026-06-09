@@ -3,7 +3,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 
 export class AgentStepContentModel extends WorkspaceAwareModel<AgentStepContentModel> {
   declare createdAt: CreationOptional<Date>;

@@ -1,7 +1,7 @@
 import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@app/lib/resources/storage/data_types";
 
 export class InternalMCPServerCredentialModel extends WorkspaceAwareModel<InternalMCPServerCredentialModel> {
   declare createdAt: CreationOptional<Date>;
@@ -30,7 +30,7 @@ InternalMCPServerCredentialModel.init(
       allowNull: false,
     },
     sharedSecret: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     customHeaders: {
@@ -39,7 +39,7 @@ InternalMCPServerCredentialModel.init(
       defaultValue: null,
     },
     encryptedKey: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
       defaultValue: null,
     },

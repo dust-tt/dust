@@ -7,7 +7,7 @@ import {
   type NotificationCondition,
 } from "@app/types/notification_preferences";
 import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 
 export class UserProjectPreferencesModel extends WorkspaceAwareModel<UserProjectPreferencesModel> {
   declare createdAt: CreationOptional<Date>;

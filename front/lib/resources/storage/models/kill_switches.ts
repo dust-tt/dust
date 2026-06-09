@@ -2,7 +2,7 @@ import type { KillSwitchType } from "@app/lib/poke/types";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 
 export class KillSwitchModel extends BaseModel<KillSwitchModel> {
   declare id: CreationOptional<number>;

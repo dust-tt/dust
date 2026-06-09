@@ -20,7 +20,7 @@ import type {
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes, literal, Op } from "sequelize";
+import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT, literal, Op } from "@app/lib/resources/storage/data_types";
 
 export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -60,7 +60,7 @@ ConversationModel.init(
       allowNull: false,
     },
     title: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     visibility: {
@@ -309,7 +309,7 @@ UserMessageModel.init(
       defaultValue: DataTypes.NOW,
     },
     content: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     // TODO(MCP Clean-up): Remove these once we have migrated to the new MCP server ids.
@@ -480,7 +480,7 @@ AgentMessageModel.init(
       allowNull: true,
     },
     errorMessage: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     errorMetadata: {
@@ -598,7 +598,7 @@ AgentMessageFeedbackModel.init(
       allowNull: true,
     },
     content: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     isConversationShared: {
@@ -707,7 +707,7 @@ CompactionMessageModel.init(
       defaultValue: "created",
     },
     content: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
   },

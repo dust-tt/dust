@@ -4,7 +4,7 @@ import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { UserProviderType } from "@app/types/user";
 import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes, Op } from "sequelize";
+import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT, Op } from "@app/lib/resources/storage/data_types";
 
 export class UserModel extends BaseModel<UserModel> {
   declare createdAt: CreationOptional<Date>;
@@ -132,7 +132,7 @@ UserMetadataModel.init(
       allowNull: false,
     },
     value: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
   },

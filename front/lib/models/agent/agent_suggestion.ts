@@ -8,7 +8,7 @@ import type {
   SuggestionPayload,
 } from "@app/types/suggestions/agent_suggestion";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@app/lib/resources/storage/data_types";
 
 export class AgentSuggestionModel extends WorkspaceAwareModel<AgentSuggestionModel> {
   declare createdAt: CreationOptional<Date>;
@@ -56,7 +56,7 @@ AgentSuggestionModel.init(
         "JSONB payload containing the suggestion details, structure depends on kind",
     },
     analysis: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
       comment:
         "Optional analysis/reasoning explaining why this suggestion was made",

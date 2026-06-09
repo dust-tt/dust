@@ -2,7 +2,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { MembershipSeatType } from "@app/types/memberships";
 import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 
 /**
  * Per-(workspace, seat-type) seat configuration.

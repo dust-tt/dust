@@ -7,7 +7,7 @@ import {
 import type { AppVisibility } from "@app/types/app";
 import type { DatasetSchema } from "@app/types/dataset";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@app/lib/resources/storage/data_types";
 
 // TODO(2024-10-04 flav) Remove visibility from here.
 export class AppModel extends SoftDeletableWorkspaceAwareModel<AppModel> {
@@ -58,13 +58,13 @@ AppModel.init(
       allowNull: false,
     },
     savedSpecification: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
     },
     savedConfig: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
     },
     savedRun: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
     },
     dustAPIProjectId: {
       type: DataTypes.STRING,
@@ -116,7 +116,7 @@ ProviderModel.init(
       allowNull: false,
     },
     config: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
   },

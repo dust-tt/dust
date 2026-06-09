@@ -16,7 +16,7 @@ import type {
   NonAttribute,
   Transaction,
 } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 
 export class PlanModel extends BaseModel<PlanModel> {
   declare createdAt: CreationOptional<Date>;

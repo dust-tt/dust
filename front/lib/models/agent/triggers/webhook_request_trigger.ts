@@ -2,7 +2,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
+import { DataTypes, DANGEROUSLY_UNBOUNDED_TEXT } from "@app/lib/resources/storage/data_types";
 
 import { TriggerModel } from "./triggers";
 import { WebhookRequestModel } from "./webhook_request";
@@ -43,7 +43,7 @@ WebhookRequestTriggerModel.init(
       defaultValue: "not_matched",
     },
     errorMessage: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
       defaultValue: null,
     },

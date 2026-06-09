@@ -4,7 +4,7 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
 import type { CreditType } from "@app/types/credits";
 import { CREDIT_TYPES } from "@app/types/credits";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes, Op } from "sequelize";
+import { DataTypes, Op } from "@app/lib/resources/storage/data_types";
 
 /**
  * CreditModel stores consumable monetary credits for programmatic API usage.
