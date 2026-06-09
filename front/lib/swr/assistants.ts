@@ -690,7 +690,7 @@ export function useUpdateUserFavorite({
 
         if (res.ok) {
           sendNotification({
-            title: `Assistant ${
+            title: `Agent ${
               userFavorite ? "added to favorites" : "removed from favorites"
             }`,
             type: "success",
@@ -701,7 +701,7 @@ export function useUpdateUserFavorite({
         } else {
           const data = await res.json();
           sendNotification({
-            title: `Error ${userFavorite ? "adding" : "removing"} Assistant`,
+            title: `Error ${userFavorite ? "adding" : "removing"} Agent`,
             description: data.error.message,
             type: "error",
           });
