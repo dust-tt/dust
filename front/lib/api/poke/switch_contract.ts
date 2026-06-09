@@ -18,7 +18,7 @@ import {
   CURRENCY_TO_CREDIT_TYPE_ID,
   getCreditTypeAwuId,
   getProductPrepaidCommitId,
-  getProductSeatSubscriptionCreditsId,
+  getProductSeatSubscriptionCommitId,
 } from "@app/lib/metronome/constants";
 import {
   applySeatRateOverrides,
@@ -688,9 +688,7 @@ export async function switchContract({
         const commitResult = await addPrepaidCommitToContract({
           metronomeCustomerId,
           metronomeContractId,
-          // "Seat Individual Credits" — the fiat seat-credit product (named
-          // "credit" but denominated in the contract's fiat currency).
-          productId: getProductSeatSubscriptionCreditsId(),
+          productId: getProductSeatSubscriptionCommitId(),
           accessAmount: accessAmountNative,
           accessCreditTypeId: fiatCreditTypeId,
           accessStartingAt: alignedStart,
