@@ -14,6 +14,8 @@ import type {
 } from "@app/lib/metronome/invoice";
 import type { SupportedCurrency } from "@app/types/currency";
 import type { BillingPeriod } from "@app/types/plan";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -37,12 +39,16 @@ function inferBillingPeriod(startMs: number, endMs: number): BillingPeriod {
   return spanDays > 60 ? "yearly" : "monthly";
 }
 
-function findCurrentInvoice(
-  invoices: Invoice[],
+async function findCurrentInvoice(
+  metronomeCustomerId: string,
   metronomeContractId: string
-): Invoice | undefined {
+): Promise<Result<Invoice | undefined, Error>> {
+  const invoicesResult = await listMetronomeDraftInvoices(metronomeCustomerId);
+  if (invoicesResult.isErr()) {
+    return new Err(invoicesResult.error);
+  }
   const nowMs = Date.now();
-  return invoices.find((inv) => {
+  const invoice = invoicesResult.value.find((inv) => {
     if (inv.contract_id !== metronomeContractId) {
       return false;
     }
@@ -53,6 +59,7 @@ function findCurrentInvoice(
     const endMs = new Date(inv.end_timestamp).getTime();
     return startMs <= nowMs && nowMs < endMs;
   });
+  return new Ok(invoice);
 }
 
 // Mounted at /api/w/:wId/metronome/invoice.
@@ -77,22 +84,21 @@ app.get(
       return ctx.json({ invoice: null });
     }
 
-    const invoicesResult =
-      await listMetronomeDraftInvoices(metronomeCustomerId);
-    if (invoicesResult.isErr()) {
+    const invoiceResult = await findCurrentInvoice(
+      metronomeCustomerId,
+      metronomeContractId
+    );
+    if (invoiceResult.isErr()) {
       return apiError(ctx, {
         status_code: 502,
         api_error: {
           type: "internal_server_error",
-          message: `Failed to fetch Metronome draft invoices: ${invoicesResult.error.message}`,
+          message: `Failed to fetch Metronome draft invoices: ${invoiceResult.error.message}`,
         },
       });
     }
 
-    const invoice = findCurrentInvoice(
-      invoicesResult.value,
-      metronomeContractId
-    );
+    const invoice = invoiceResult.value;
 
     if (!invoice || !invoice.start_timestamp || !invoice.end_timestamp) {
       return ctx.json({ invoice: null });
@@ -196,22 +202,21 @@ app.get(
       return ctx.json({ currency: null, lineItems: [] });
     }
 
-    const invoicesResult =
-      await listMetronomeDraftInvoices(metronomeCustomerId);
-    if (invoicesResult.isErr()) {
+    const invoiceResult = await findCurrentInvoice(
+      metronomeCustomerId,
+      metronomeContractId
+    );
+    if (invoiceResult.isErr()) {
       return apiError(ctx, {
         status_code: 502,
         api_error: {
           type: "internal_server_error",
-          message: `Failed to fetch Metronome draft invoices: ${invoicesResult.error.message}`,
+          message: `Failed to fetch Metronome draft invoices: ${invoiceResult.error.message}`,
         },
       });
     }
 
-    const invoice = findCurrentInvoice(
-      invoicesResult.value,
-      metronomeContractId
-    );
+    const invoice = invoiceResult.value;
 
     if (!invoice) {
       return ctx.json({ currency: null, lineItems: [] });

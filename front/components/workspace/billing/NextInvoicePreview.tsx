@@ -95,7 +95,7 @@ function buildColumns(currency: string): ColumnDef<InvoiceRow>[] {
 
         if (isGroup) {
           return (
-            <div className="flex cursor-pointer items-center gap-1">
+            <div className="flex cursor-pointer items-center gap-3">
               {seatType && avatarColors ? (
                 <Avatar
                   icon={SEAT_TYPE_ICONS[seatType]}
@@ -115,7 +115,7 @@ function buildColumns(currency: string): ColumnDef<InvoiceRow>[] {
         }
 
         return (
-          <div className={cn("flex items-center gap-1", isChild && "pl-5")}>
+          <div className={cn("flex items-center gap-3", isChild && "pl-5")}>
             {seatType && avatarColors ? (
               <Avatar
                 icon={SEAT_TYPE_ICONS[seatType]}

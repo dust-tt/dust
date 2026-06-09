@@ -11,7 +11,7 @@ import {
 } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Avatar, Cube01, Icon, Spinner, User01 } from "@dust-tt/sparkle";
+import { Avatar, Chip, Cube01, Icon, Spinner, User01 } from "@dust-tt/sparkle";
 
 function seatTypeGroup(seatType: MembershipSeatType): MembershipSeatType {
   switch (seatType) {
@@ -156,7 +156,7 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
   );
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {orderedPlansWithMembers.map(
         ({ seatType, primaryPlan, membersCount, unassignedCount }) => {
           const avatarColors = seatTypeAvatarColors(seatType);
@@ -166,16 +166,25 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
               key={seatType}
               className="flex min-h-28 flex-col gap-4 rounded-lg bg-muted-background p-4 dark:bg-muted-background-night"
             >
-              <div className="flex items-center gap-2">
-                <Avatar
-                  icon={SEAT_TYPE_ICONS[seatType] ?? Cube01}
-                  size="xs"
-                  backgroundColor={avatarColors.backgroundColor}
-                  iconColor={avatarColors.iconColor}
-                />
-                <div className="truncate text-base font-semibold text-foreground dark:text-foreground-night">
-                  {primaryPlan.name.replace("Seat", "seat")}
+              <div className="flex justify-between">
+                <div className="flex items-center gap-2">
+                  <Avatar
+                    icon={SEAT_TYPE_ICONS[seatType] ?? Cube01}
+                    size="xs"
+                    backgroundColor={avatarColors.backgroundColor}
+                    iconColor={avatarColors.iconColor}
+                  />
+                  <div className="truncate text-base font-semibold text-foreground dark:text-foreground-night">
+                    {primaryPlan.name.replace("Seat", "seat")}
+                  </div>
                 </div>
+                {unassignedCount !== null && unassignedCount > 0 && (
+                  <Chip
+                    label={`${unassignedCount.toLocaleString()} available`}
+                    size="mini"
+                    color="highlight"
+                  />
+                )}
               </div>
 
               <div className="flex flex-col gap-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
@@ -184,9 +193,6 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
                   <span>
                     {membersCount.toLocaleString()}{" "}
                     {membersCount === 1 ? "seat assigned" : "seats assigned"}
-                    {unassignedCount !== null && unassignedCount > 0
-                      ? ` - ${unassignedCount.toLocaleString()} available`
-                      : ""}
                   </span>
                 </div>
                 {primaryPlan.awuCredits > 0 && (
