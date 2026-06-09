@@ -253,8 +253,8 @@ export function subFilter(a: string, b: string) {
 }
 
 /**
- * Compares two strings for fuzzy sorting against a query
- * First sort by substring, then by spread of subfilter, then exact match, then lexicographic order.
+ * Compares two strings for fuzzy relevance against a query.
+ * First sort by substring, then by spread of subfilter, then exact match.
  */
 export function compareForFuzzySort(query: string, a: string, b: string) {
   const normalizedQuery = query.toLowerCase();
@@ -297,7 +297,14 @@ export function compareForFuzzySort(query: string, a: string, b: string) {
     return 1;
   }
 
-  return normalizedA.localeCompare(normalizedB);
+  return 0;
+}
+
+export function compareForFuzzySortLex(query: string, a: string, b: string) {
+  return (
+    compareForFuzzySort(query, a, b) ||
+    a.toLowerCase().localeCompare(b.toLowerCase())
+  );
 }
 
 export function filterAndSortAgents(

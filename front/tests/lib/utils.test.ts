@@ -1,4 +1,4 @@
-import { compareForFuzzySort } from "@app/lib/utils";
+import { compareForFuzzySort, compareForFuzzySortLex } from "@app/lib/utils";
 import { expect, test } from "vitest";
 
 test("compareForFuzzySort should correctly compare strings", () => {
@@ -15,14 +15,15 @@ test("compareForFuzzySort should correctly compare strings", () => {
     { query: "c", a: "c", b: "RadicalFeedback" },
     { query: "issuebot", a: "issueBot", b: "FDEIssueBot" },
     { query: "issuebot", a: "ISSUEBOT", b: "FDEIssueBot" },
+  ];
+
+  const dataEqual = [
+    { query: "sql", a: "sqlGod", b: "sqlGod" },
     { query: "eng", a: "eng1", b: "eng2" },
     { query: "gp", a: "gpt-4", b: "gpt-5" },
     { query: "test", a: "testl", b: "testlong" },
+    { query: "test", a: "testlonger", b: "longtest" },
   ];
-
-  const dataEqual = [{ query: "sql", a: "sqlGod", b: "sqlGod" }];
-
-  const dataGreaterThan = [{ query: "test", a: "testlonger", b: "longtest" }];
 
   for (const d of dataLessThan) {
     expect(
@@ -37,13 +38,6 @@ test("compareForFuzzySort should correctly compare strings", () => {
       `Expected compareForFuzzySort("${d.query}", "${d.a}", "${d.b}") to return 0`
     ).toBe(0);
   }
-
-  for (const d of dataGreaterThan) {
-    expect(
-      compareForFuzzySort(d.query, d.a, d.b),
-      `Expected compareForFuzzySort("${d.query}", "${d.a}", "${d.b}") to be greater than 0`
-    ).toBeGreaterThan(0);
-  }
 });
 
 test("compareForFuzzySort stays symmetric for normalized exact matches", () => {
@@ -52,4 +46,13 @@ test("compareForFuzzySort stays symmetric for normalized exact matches", () => {
 
   expect(compareForFuzzySort(query, query, normalizedExactMatch)).toBe(0);
   expect(compareForFuzzySort(query, normalizedExactMatch, query)).toBe(0);
+});
+
+test("compareForFuzzySortLex breaks fuzzy ties lexicographically", () => {
+  expect(compareForFuzzySortLex("eng", "eng1", "eng2")).toBeLessThan(0);
+  expect(compareForFuzzySortLex("gp", "gpt-4", "gpt-5")).toBeLessThan(0);
+  expect(compareForFuzzySortLex("test", "testl", "testlong")).toBeLessThan(0);
+  expect(
+    compareForFuzzySortLex("test", "testlonger", "longtest")
+  ).toBeGreaterThan(0);
 });

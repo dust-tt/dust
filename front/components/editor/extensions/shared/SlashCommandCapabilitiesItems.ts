@@ -6,7 +6,7 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
-import { compareForFuzzySort, subFilter } from "@app/lib/utils";
+import { compareForFuzzySortLex, subFilter } from "@app/lib/utils";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 
 export const SELECT_SKILL_SLASH_COMMAND_ACTION = "select-skill";
@@ -40,7 +40,7 @@ export function sortSlashCommandCapabilityMatches<
 >({ items, normalizedQuery }: { items: T[]; normalizedQuery: string }): T[] {
   return items.toSorted((a, b) => {
     if (normalizedQuery.length > 0) {
-      return compareForFuzzySort(normalizedQuery, a.sortName, b.sortName);
+      return compareForFuzzySortLex(normalizedQuery, a.sortName, b.sortName);
     }
 
     return a.sortName.localeCompare(b.sortName);

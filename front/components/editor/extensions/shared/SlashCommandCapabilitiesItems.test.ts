@@ -81,6 +81,18 @@ describe("sortSlashCommandCapabilityMatches", () => {
 
     expect(result.map((item) => item.id)).toEqual(["a", "z"]);
   });
+
+  it("breaks fuzzy ties alphabetically when a query is provided", () => {
+    const result = sortSlashCommandCapabilityMatches({
+      normalizedQuery: "test",
+      items: [
+        { id: "testlonger", sortName: "testlonger" },
+        { id: "longtest", sortName: "longtest" },
+      ],
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["longtest", "testlonger"]);
+  });
 });
 
 describe("getToolSlashCommandItem", () => {
