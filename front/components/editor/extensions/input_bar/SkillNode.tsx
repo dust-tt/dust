@@ -31,6 +31,7 @@ export const SkillNode = SkillNodeBase.extend<SkillNodeOptions>({
           attrs: props.node.attrs,
         }}
         onDetails={this.options.onSkillDetails}
+        onRemove={props.editor.isEditable ? props.deleteNode : undefined}
       />
     ));
   },
