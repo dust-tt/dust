@@ -525,7 +525,6 @@ export default function SwitchContractDialog({
                   name="stripeCustomerId"
                   title="Stripe Customer Id (optional for free plans)"
                   placeholder="cus_1234567890"
-                  readOnly={stripeCustomerId !== null}
                 />
                 {isCurrencyLoading && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
