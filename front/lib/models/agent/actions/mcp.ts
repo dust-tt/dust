@@ -397,12 +397,12 @@ AgentMCPActionOutputItemModel.init(
       },
     },
     generatedFilePath: {
-      type: DataTypes.TEXT,
+      type: DataTypes.STRING(4096),
       allowNull: true,
       defaultValue: null,
     },
     generatedFileContentType: {
-      type: DataTypes.TEXT,
+      type: DataTypes.STRING(255),
       allowNull: true,
       defaultValue: null,
     },
