@@ -35,7 +35,7 @@ export function PodLayout({ children, owner, user }: PodLayoutProps) {
   return (
     <AssistantLayout owner={owner} user={user}>
       <ErrorBoundary fallback={<UncaughtPodErrorFallback />}>
-        <div className="flex h-full w-full flex-col">
+        <div className="flex h-container w-full flex-col">
           <FileDropProvider>
             <GenerationContextProvider>{children}</GenerationContextProvider>
           </FileDropProvider>
