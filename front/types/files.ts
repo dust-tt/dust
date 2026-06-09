@@ -853,13 +853,27 @@ export function extensionsForContentType(
   return [];
 }
 
+function isFormatAllowedForUseCase(
+  format: (typeof FILE_FORMATS)[keyof typeof FILE_FORMATS],
+  useCase?: FileUseCase
+): boolean {
+  if (!("allowedFileUploadUseCases" in format)) {
+    return true;
+  }
+  return useCase
+    ? format.allowedFileUploadUseCases.some((uc) => uc === useCase)
+    : false;
+}
+
 export function getSupportedFileExtensions(
-  cat: FileFormatCategory | undefined = undefined
+  cat?: FileFormatCategory,
+  useCase?: FileUseCase
 ) {
   return uniq(
     removeNulls(
       Object.values(FILE_FORMATS).flatMap((format) =>
-        !("allowedFileUploadUseCases" in format) && (!cat || format.cat === cat)
+        isFormatAllowedForUseCase(format, useCase) &&
+        (!cat || format.cat === cat)
           ? format.exts
           : []
       )
@@ -867,11 +881,11 @@ export function getSupportedFileExtensions(
   );
 }
 
-export function getSupportedNonImageFileExtensions() {
+export function getSupportedNonImageFileExtensions(useCase?: FileUseCase) {
   return uniq(
     removeNulls(
       Object.values(FILE_FORMATS).flatMap((format) =>
-        !("allowedFileUploadUseCases" in format) && format.cat !== "image"
+        isFormatAllowedForUseCase(format, useCase) && format.cat !== "image"
           ? format.exts
           : []
       )
@@ -879,11 +893,11 @@ export function getSupportedNonImageFileExtensions() {
   );
 }
 
-export function getSupportedNonImageMimeTypes() {
+export function getSupportedNonImageMimeTypes(useCase?: FileUseCase) {
   return uniq(
     removeNulls(
       Object.entries(FILE_FORMATS).map(([key, value]) =>
-        !("allowedFileUploadUseCases" in value) && value.cat !== "image"
+        isFormatAllowedForUseCase(value, useCase) && value.cat !== "image"
           ? (key as SupportedNonImageContentType)
           : null
       )
