@@ -520,7 +520,7 @@ export const VisualizationActionIframe = forwardRef<
         </div>
       </div>
       {showSpinner && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background dark:bg-background-night">
+        <div className="absolute inset-0 flex items-center justify-center bg-panel-background dark:bg-panel-background-night">
           <Spinner size="xl" variant="color" />
         </div>
       )}

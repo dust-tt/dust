@@ -14,7 +14,7 @@ module.exports = {
     extend: {
       height: {
         title: TITLE_HEIGHT,
-        container: "var(--panel-height)" // defined in global.css,
+        container: "var(--panel-height)", // defined in global.css,
       },
       fontWeight: {
         medium: "450",
