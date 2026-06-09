@@ -166,6 +166,13 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     cache_creation_input_tokens: 6.25,
     cache_read_input_tokens: 0.5,
   },
+  // https://platform.claude.com/docs/en/about-claude/models/overview
+  "claude-fable-5": {
+    input: 10.0,
+    output: 50.0,
+    cache_creation_input_tokens: 12.5,
+    cache_read_input_tokens: 1.0,
+  },
   "claude-sonnet-4-6": {
     input: 3.0,
     output: 15.0,

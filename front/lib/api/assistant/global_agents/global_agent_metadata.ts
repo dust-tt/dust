@@ -458,8 +458,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.DUST_LIONEL,
         name: "dust-lionel",
-        description:
-          "Same as dust but running a custom model for internal testing.",
+        description: "Same as dust but running Claude Fable 5.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM:

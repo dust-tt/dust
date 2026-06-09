@@ -43,6 +43,7 @@ import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
+  CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
   CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
@@ -585,6 +586,42 @@ export function _getDustAntHighGlobalAgent(
   });
 }
 
+export function _getDustLionelGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_LIONEL,
+    name: "dust-lionel",
+    preferredModelConfiguration: CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
+  });
+}
+
+export function _getDustLionelMediumGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM,
+    name: "dust-lionel-medium",
+    preferredModelConfiguration: CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+  });
+}
+
+export function _getDustLionelHighGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH,
+    name: "dust-lionel-high",
+    preferredModelConfiguration: CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "high",
+  });
+}
+
 export function _getDustKimiGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs
@@ -1085,30 +1122,6 @@ export const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
     {
       name: "dust-chawi-high",
       customModelIndex: 0,
-      preferredReasoningEffort: "high",
-    },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_LIONEL,
-    {
-      name: "dust-lionel",
-      customModelIndex: 1,
-      preferredReasoningEffort: "light",
-    },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM,
-    {
-      name: "dust-lionel-medium",
-      customModelIndex: 1,
-      preferredReasoningEffort: "medium",
-    },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH,
-    {
-      name: "dust-lionel-high",
-      customModelIndex: 1,
       preferredReasoningEffort: "high",
     },
   ],

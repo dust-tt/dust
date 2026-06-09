@@ -43,6 +43,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to Claude 4.5 Opus model in the agent builder",
     stage: "on_demand",
   },
+  claude_fable_5_feature: {
+    description:
+      "Access to Claude Fable 5 model (served through the EAP Anthropic key)",
+    stage: "dust_only",
+  },
   deepseek_feature: {
     description:
       "Access to DeepSeek models (they cannot use tool so can't be selected in the agent builder)",
