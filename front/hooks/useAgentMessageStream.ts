@@ -5,7 +5,10 @@ import type {
   VirtuosoMessage,
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
-import { isAgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
+import {
+  isAgentMessageWithStreaming,
+  makeInitialMessageStreamState,
+} from "@app/components/assistant/conversation/types";
 import { useConversationContextUsage } from "@app/hooks/conversations";
 import { useEventSource } from "@app/hooks/useEventSource";
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
@@ -15,10 +18,16 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getActionOneLineLabel } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
+import type { FetchConversationMessageResponseLight } from "@app/lib/api/assistant/messages";
+import { clientFetch } from "@app/lib/egress/client";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   InlineActivityStep,
   LightAgentMessageWithActionsType,
+} from "@app/types/assistant/conversation";
+import {
+  isLightAgentMessageType,
+  isTerminalAgentMessageStatus,
 } from "@app/types/assistant/conversation";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -34,6 +43,16 @@ import {
 } from "react";
 
 const TOKEN_BUFFER_THRESHOLD_MS = 500;
+
+// Stale-stream watchdog (see effect in useAgentMessageStream): how often we
+// check for a silent stream, and how long the stream must have been silent
+// before we reconcile against the persisted message. A healthy live stream
+// delivers events far more often than the threshold; a stream waiting on a
+// long silent tool call legitimately goes quiet, in which case the
+// reconciliation fetch is a cheap no-op (the persisted status is still
+// "created").
+const STALE_STREAM_CHECK_INTERVAL_MS = 30_000;
+const STALE_STREAM_RECONCILE_THRESHOLD_MS = 60_000;
 
 type VirtuosoMethods = VirtuosoMessageListMethods<
   VirtuosoMessage,
@@ -395,6 +414,13 @@ export function useAgentMessageStream({
   // Returning null from buildEventSourceURL breaks the loop at the source.
   const isStreamTerminated = useRef(false);
 
+  // Timestamp of the last SSE event actually processed (not deduplicated) for
+  // this message. Used by the stale-stream watchdog below to detect a stream
+  // that looks alive from the connection's point of view but no longer
+  // delivers events.
+  const lastEventReceivedAt = useRef<number>(Date.now());
+  const isReconcileInFlight = useRef(false);
+
   useEffect(() => {
     return () => {
       updateMessageThrottled.cancel();
@@ -462,6 +488,7 @@ export function useAgentMessageStream({
         }
         seenEventIds.current.add(eventPayload.eventId);
       }
+      lastEventReceivedAt.current = Date.now();
       const eventType = eventPayload.data.type;
       switch (eventType) {
         case "end-of-stream":
@@ -850,6 +877,107 @@ export function useAgentMessageStream({
       updateMessageThrottled,
     ]
   );
+
+  // Stale-stream watchdog — self-healing safety net for the "infinite
+  // streaming" class of bugs.
+  //
+  // The Virtuoso entry for a message is only ever finalized by a terminal SSE
+  // event (agent_message_success & co). If the client permanently misses that
+  // event, the message stays visually "streaming" until a full page reload,
+  // even though the agent finished long ago. There are real-world ways to
+  // permanently miss it: the Redis stream backing replays has a 10-minute TTL
+  // (a laptop asleep / tab frozen / network partition longer than that and
+  // the terminal event is gone from history), transient pub/sub delivery loss
+  // right before the stream expires, or any future client-side race — several
+  // have been fixed already and the class keeps resurfacing.
+  //
+  // Instead of chasing each trigger, reconcile with the source of truth: when
+  // the stream has been silent for STALE_STREAM_RECONCILE_THRESHOLD_MS while
+  // the message is still "created", fetch the persisted message. If it
+  // reached a terminal status, apply the server-rendered view (the exact data
+  // a reload would show) and terminate the stream. If it is still running
+  // (long tool call, pending validation, ...), this is a no-op and the live
+  // stream is left untouched.
+  useEffect(() => {
+    if (!shouldStream || !conversationId) {
+      return;
+    }
+
+    const reconcileWithPersistedMessage = async () => {
+      if (isStreamTerminated.current || isReconcileInFlight.current) {
+        return;
+      }
+      if (
+        Date.now() - lastEventReceivedAt.current <
+        STALE_STREAM_RECONCILE_THRESHOLD_MS
+      ) {
+        return;
+      }
+      isReconcileInFlight.current = true;
+      try {
+        const response = await clientFetch(
+          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${sId}?viewType=light`
+        );
+        if (!response.ok) {
+          return;
+        }
+        const { message }: FetchConversationMessageResponseLight =
+          await response.json();
+        if (
+          !isLightAgentMessageType(message) ||
+          message.sId !== sId ||
+          !isTerminalAgentMessageStatus(message.status)
+        ) {
+          // The agent is genuinely still running — leave the live stream
+          // alone and let the next tick check again.
+          return;
+        }
+        // A terminal event may have raced us while the fetch was in flight;
+        // it already finalized the message, nothing left to do.
+        if (isStreamTerminated.current) {
+          return;
+        }
+        isStreamTerminated.current = true;
+        updateMessageThrottled.cancel();
+        methods.data.map((m) =>
+          isAgentMessageWithStreaming(m) && m.sId === sId
+            ? makeInitialMessageStreamState(message)
+            : m
+        );
+      } catch {
+        // Network errors are fine to swallow: the next watchdog tick retries.
+      } finally {
+        isReconcileInFlight.current = false;
+      }
+    };
+
+    const intervalId = setInterval(
+      () => void reconcileWithPersistedMessage(),
+      STALE_STREAM_CHECK_INTERVAL_MS
+    );
+
+    // Coming back from sleep / app switch is the most common way to end up
+    // past the replay window — check immediately instead of waiting for the
+    // next tick (the staleness threshold still gates the actual fetch).
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void reconcileWithPersistedMessage();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [
+    shouldStream,
+    conversationId,
+    owner.sId,
+    sId,
+    methods,
+    updateMessageThrottled,
+  ]);
 
   const { isError } = useEventSource(
     buildEventSourceURL,
