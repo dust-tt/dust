@@ -300,13 +300,6 @@ export function compareForFuzzySort(query: string, a: string, b: string) {
   return 0;
 }
 
-export function compareForFuzzySortLex(query: string, a: string, b: string) {
-  return (
-    compareForFuzzySort(query, a, b) ||
-    a.toLowerCase().localeCompare(b.toLowerCase())
-  );
-}
-
 export function filterAndSortAgents(
   agents: LightAgentConfigurationType[],
   searchText: string

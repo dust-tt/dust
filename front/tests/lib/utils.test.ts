@@ -1,4 +1,4 @@
-import { compareForFuzzySort, compareForFuzzySortLex } from "@app/lib/utils";
+import { compareForFuzzySort } from "@app/lib/utils";
 import { expect, test } from "vitest";
 
 test("compareForFuzzySort should correctly compare strings", () => {
@@ -46,13 +46,4 @@ test("compareForFuzzySort stays symmetric for normalized exact matches", () => {
 
   expect(compareForFuzzySort(query, query, normalizedExactMatch)).toBe(0);
   expect(compareForFuzzySort(query, normalizedExactMatch, query)).toBe(0);
-});
-
-test("compareForFuzzySortLex breaks fuzzy ties lexicographically", () => {
-  expect(compareForFuzzySortLex("eng", "eng1", "eng2")).toBeLessThan(0);
-  expect(compareForFuzzySortLex("gp", "gpt-4", "gpt-5")).toBeLessThan(0);
-  expect(compareForFuzzySortLex("test", "testl", "testlong")).toBeLessThan(0);
-  expect(
-    compareForFuzzySortLex("test", "testlonger", "longtest")
-  ).toBeGreaterThan(0);
 });
