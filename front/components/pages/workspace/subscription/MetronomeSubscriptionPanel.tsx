@@ -142,7 +142,7 @@ export function CancelMetronomeSubscriptionDialog({
                     </div>
                     <div className="text-sm text-muted-foreground ark:text-muted-foreground-night">
                       Agents, conversations, and connected data sources are
-                      preserved for 90 days. Reactivate any time during that
+                      preserved for 30 days. Reactivate any time during that
                       window.
                     </div>
                   </div>
