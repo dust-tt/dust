@@ -54,7 +54,7 @@ const ConfluencePageCodec = t.intersection([
       t.undefined,
     ]),
     id: t.string,
-    title: t.string,
+    title: t.union([t.string, t.null]),
     spaceId: t.string,
     version: t.type({
       number: t.number,

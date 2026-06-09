@@ -38,6 +38,10 @@ import TurndownService from "turndown";
 
 const turndownService = new TurndownService();
 
+function getConfluencePageTitle(page: { title: string | null }): string {
+  return page.title ?? "Untitled";
+}
+
 async function markPageHasVisited({
   connectorId,
   pageId,
@@ -91,6 +95,7 @@ export async function confluenceUpsertPageToDataSource({
   const markdown = turndownService.turndown(page.body.view.value);
   const pageCreatedAt = new Date(page.createdAt);
   const lastPageVersionCreatedAt = new Date(page.version.createdAt);
+  const title = getConfluencePageTitle(page);
 
   if (!markdown) {
     logger.warn({ ...loggerArgs }, "Upserting page with empty content.");
@@ -115,7 +120,7 @@ export async function confluenceUpsertPageToDataSource({
   const tags = [
     `createdAt:${pageCreatedAt.getTime()}`,
     `space:${spaceName}`,
-    `title:${page.title}`,
+    `title:${title}`,
     `updatedAt:${lastPageVersionCreatedAt.getTime()}`,
     `version:${page.version.number}`,
     ...filterCustomTags(customTags, localLogger),
@@ -123,7 +128,7 @@ export async function confluenceUpsertPageToDataSource({
 
   const renderedPage = await renderDocumentTitleAndContent({
     dataSourceConfig,
-    title: `Page ${page.title}`,
+    title: `Page ${title}`,
     createdAt: pageCreatedAt,
     updatedAt: lastPageVersionCreatedAt,
     content: renderedMarkdown,
@@ -151,7 +156,7 @@ export async function confluenceUpsertPageToDataSource({
     tags,
     timestampMs: lastPageVersionCreatedAt.getTime(),
     upsertContext: { sync_type: syncType },
-    title: page.title,
+    title,
     mimeType: INTERNAL_MIME_TYPES.CONFLUENCE.PAGE,
     async: true,
   });
@@ -178,7 +183,7 @@ export async function upsertConfluencePageInDb(
     parentId: page.parentId,
     parentType: page.parentType,
     spaceId: page.spaceId,
-    title: page.title,
+    title: getConfluencePageTitle(page),
     version: page.version.number,
   });
 }
