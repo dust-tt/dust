@@ -72,26 +72,25 @@ export function getSkillAvatarIcon(
     return SkillAvatar;
   }
 
-  return ({ className, ...props }) =>
+  return ({ className, size, ...props }) =>
     React.createElement(
       "div",
       {
-        className: cn("relative inline-flex", className),
-        title: DUST_PROVIDED_SKILL_LABEL,
+        className: cn("relative inline-flex overflow-visible", className),
       },
-      React.createElement(SkillAvatar, { className, ...props }),
+      React.createElement(SkillAvatar, { size: size ?? "xxs", ...props }),
       React.createElement(
         "span",
         {
           className: cn(
-            "pointer-events-none absolute -bottom-0.5 -right-0.5",
-            "flex h-3 w-3 items-center justify-center rounded-[3px]",
+            "pointer-events-none absolute bottom-0 right-0",
+            "flex h-2 w-2 items-center justify-center rounded-[2px]",
             "bg-background shadow-sm ring-1 ring-border",
             "dark:bg-background-night dark:ring-border-night"
           ),
         },
         React.createElement(DustLogoSquare, {
-          className: "h-2.5 w-2.5",
+          className: "h-1.5 w-1.5",
         })
       )
     );
