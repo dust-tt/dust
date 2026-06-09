@@ -18,7 +18,7 @@ import type {
   MCPServerTypeWithViews,
   MCPServerViewType,
 } from "@app/lib/api/mcp";
-import { getSkillAvatarIcon } from "@app/lib/skill";
+import { getSkillAvatarIconForSkill } from "@app/lib/skill";
 import { useMCPServers, useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -133,7 +133,7 @@ export function AssistantSkillsToolsSection({
               </div>
             ) : (
               sortedSkills.map((skill) => {
-                const SkillAvatar = getSkillAvatarIcon(skill.icon);
+                const SkillAvatar = getSkillAvatarIconForSkill(skill);
                 return (
                   <div
                     className="flex flex-row items-center gap-2"

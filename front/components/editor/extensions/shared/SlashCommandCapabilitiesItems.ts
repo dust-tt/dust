@@ -7,7 +7,7 @@ import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   DUST_PROVIDED_SKILL_LABEL,
-  getSkillAvatarIcon,
+  getSkillAvatarIconForSkill,
   isDustProvidedSkill,
 } from "@app/lib/skill";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
@@ -80,7 +80,7 @@ export function getSkillSlashCommandItem(
       skill,
     },
     description: skill.userFacingDescription,
-    icon: getSkillAvatarIcon(skill.icon, { isDustProvided }),
+    icon: getSkillAvatarIconForSkill(skill),
     id: skill.sId,
     label: skill.name,
     sectionLabel,

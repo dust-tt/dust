@@ -1,5 +1,5 @@
 import { LinkWrapper } from "@app/lib/platform";
-import { getSkillAvatarIcon } from "@app/lib/skill";
+import { getSkillAvatarIconForSkill } from "@app/lib/skill";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Icon, LinkExternal01, Spinner } from "@dust-tt/sparkle";
@@ -38,7 +38,7 @@ export function SimilarSkillsDisplay({
       </div>
       <div className="space-y-3">
         {similarSkills.map((skill) => {
-          const SkillAvatar = getSkillAvatarIcon(skill.icon);
+          const SkillAvatar = getSkillAvatarIconForSkill(skill);
 
           return (
             <div key={skill.sId} className="flex items-start gap-3">

@@ -1,4 +1,4 @@
-import { getSkillAvatarIcon } from "@app/lib/skill";
+import { getSkillAvatarIconForSkill } from "@app/lib/skill";
 import {
   useSkillsWithRelations,
   useUpdateSkillReinforcement,
@@ -34,6 +34,7 @@ type RowData = {
   sId: string;
   name: string;
   icon: string | null;
+  editedBy: number | null;
   editors: UserType[] | null;
   enabled: boolean;
   pendingEnabled: boolean | null;
@@ -64,7 +65,7 @@ const COLUMNS: ColumnDef<RowData, unknown>[] = [
     header: "Name",
     accessorKey: "name",
     cell: (info: CellContext<RowData, unknown>) => {
-      const SkillAvatar = getSkillAvatarIcon(info.row.original.icon);
+      const SkillAvatar = getSkillAvatarIconForSkill(info.row.original);
       return (
         <DataTable.CellContent>
           <div className="flex flex-row items-center gap-2 py-3">
@@ -379,6 +380,7 @@ export function SelfImprovingSkillsListSection({
             sId: skill.sId,
             name: skill.name,
             icon: skill.icon,
+            editedBy: skill.editedBy,
             editors: skill.relations.editors,
             enabled,
             pendingEnabled: pendingEnabledBySkillId[skill.sId] ?? null,

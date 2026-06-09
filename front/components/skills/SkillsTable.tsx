@@ -2,7 +2,7 @@ import { ArchiveSkillDialog } from "@app/components/skills/ArchiveSkillDialog";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useAppRouter } from "@app/lib/platform";
-import { getSkillAvatarIcon } from "@app/lib/skill";
+import { getSkillAvatarIconForSkill } from "@app/lib/skill";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
@@ -19,6 +19,7 @@ import { useMemo, useState } from "react";
 type RowData = {
   name: string;
   icon: string | null;
+  editedBy: number | null;
   description: string;
   editors: UserType[] | null;
   usage: SkillUsageType;
@@ -32,7 +33,7 @@ const nameColumn = {
   header: "Name",
   accessorKey: "name",
   cell: (info: CellContext<RowData, string>) => {
-    const SkillAvatar = getSkillAvatarIcon(info.row.original.icon);
+    const SkillAvatar = getSkillAvatarIconForSkill(info.row.original);
 
     return (
       <DataTable.CellContent>
@@ -180,6 +181,7 @@ export function SkillsTable({
       skills.map((skill) => ({
         name: skill.name,
         icon: skill.icon,
+        editedBy: skill.editedBy,
         description: skill.userFacingDescription,
         editors: skill.relations.editors,
         usage: skill.relations.usage,

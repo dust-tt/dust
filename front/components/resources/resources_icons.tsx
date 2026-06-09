@@ -19,6 +19,7 @@ import {
   ConfluenceLogo,
   ContentsquareLogo,
   CostoryLogo,
+  cn,
   DriveLogo,
   FaceSmile,
   FathomLogo,
@@ -109,6 +110,27 @@ import { isCustomResourceIconType } from "@app/components/resources/resources_ic
 
 interface ResourceAvatarProps extends ComponentProps<typeof Avatar> {}
 
+type ResourceAvatarSize = NonNullable<ComponentProps<typeof Avatar>["size"]>;
+
+const AVATAR_BADGE_CLASSES: Record<
+  ResourceAvatarSize,
+  { badge: string; icon: string }
+> = {
+  xxs: { badge: "h-2.5 w-2.5 rounded-[2px]", icon: "h-2 w-2" },
+  xs: { badge: "h-3 w-3 rounded-[3px]", icon: "h-2.5 w-2.5" },
+  sm: { badge: "h-3.5 w-3.5 rounded-[3px]", icon: "h-3 w-3" },
+  md: { badge: "h-4 w-4 rounded", icon: "h-3.5 w-3.5" },
+  lg: { badge: "h-5 w-5 rounded-md", icon: "h-4 w-4" },
+  xl: { badge: "h-6 w-6 rounded-md", icon: "h-5 w-5" },
+  "2xl": { badge: "h-8 w-8 rounded-lg", icon: "h-7 w-7" },
+  auto: { badge: "h-6 w-6 rounded-md", icon: "h-5 w-5" },
+};
+
+interface ResourceAvatarWithBadgeProps extends ResourceAvatarProps {
+  badgeIcon: ComponentType<{ className?: string }>;
+  badgeSize: ResourceAvatarSize;
+}
+
 /**
  * As Avatar are not made to support dark/light mode switch, this renders a `Avatar` component for resources icons with support for dark mode.
  * If `iconColor` or `backgroundColor` are not provided, sensible defaults are applied for both light and dark themes.
@@ -126,6 +148,31 @@ export function ResourceAvatar({
       }
       {...props}
     />
+  );
+}
+
+export function ResourceAvatarWithBadge({
+  badgeIcon: BadgeIcon,
+  badgeSize,
+  className,
+  ...props
+}: ResourceAvatarWithBadgeProps) {
+  const badgeClasses = AVATAR_BADGE_CLASSES[badgeSize];
+
+  return (
+    <div className={cn("relative inline-flex overflow-visible", className)}>
+      <ResourceAvatar className={className} {...props} />
+      <span
+        className={cn(
+          "pointer-events-none absolute bottom-0 right-0",
+          "flex items-center justify-center bg-background shadow-sm ring-1 ring-border",
+          "dark:bg-background-night dark:ring-border-night",
+          badgeClasses.badge
+        )}
+      >
+        <BadgeIcon className={badgeClasses.icon} />
+      </span>
+    </div>
   );
 }
 

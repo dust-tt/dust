@@ -11,7 +11,7 @@ import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils"
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
 import {
   DUST_PROVIDED_SKILL_LABEL,
-  getSkillAvatarIcon,
+  getSkillAvatarIconForSkill,
   isDustProvidedSkill,
 } from "@app/lib/skill";
 import {
@@ -504,7 +504,7 @@ export function CapabilitiesPicker({
           kind: "skill",
           skill,
           id: `skills-picker-${skill.sId}`,
-          icon: getSkillAvatarIcon(skill.icon, { isDustProvided }),
+          icon: getSkillAvatarIconForSkill(skill),
           label: skill.name,
           sortName: skill.name.toLowerCase(),
           description,

@@ -3,6 +3,7 @@ import {
   isCustomResourceIconType,
   isInternalAllowedIcon,
   ResourceAvatar,
+  ResourceAvatarWithBadge,
 } from "@app/components/resources/resources_icons";
 import type {
   SkillRelations,
@@ -22,15 +23,15 @@ export const SKILL_AVATAR_BACKGROUND_COLOR =
 export const SKILL_AVATAR_ICON_COLOR =
   "text-highlight dark:text-highlight-night";
 
-type SkillAvatarIconProps = {
+interface SkillAvatarIconProps {
   className?: string;
   size?: AvatarSizeType;
   name?: string;
-};
+}
 
-type SkillAvatarIconOptions = {
+interface SkillAvatarIconOptions {
   isDustProvided?: boolean;
-};
+}
 
 export function isDustProvidedSkill(
   skill: Pick<SkillWithoutInstructionsAndToolsType, "editedBy">
@@ -43,12 +44,14 @@ export function getSkillAvatarIcon(
   { isDustProvided = false }: SkillAvatarIconOptions = {}
 ): React.ComponentType<SkillAvatarIconProps> {
   let SkillAvatar: React.ComponentType<SkillAvatarIconProps>;
+  let skillIcon: React.ComponentType<{ className?: string }> = SKILL_ICON;
 
   if (
     iconString &&
     (isCustomResourceIconType(iconString) || isInternalAllowedIcon(iconString))
   ) {
     const icon = getIcon(iconString);
+    skillIcon = icon;
     SkillAvatar = (props) =>
       React.createElement(ResourceAvatar, {
         icon,
@@ -72,28 +75,29 @@ export function getSkillAvatarIcon(
     return SkillAvatar;
   }
 
-  return ({ className, size, ...props }) =>
-    React.createElement(
-      "div",
-      {
-        className: cn("relative inline-flex overflow-visible", className),
-      },
-      React.createElement(SkillAvatar, { size: size ?? "xxs", ...props }),
-      React.createElement(
-        "span",
-        {
-          className: cn(
-            "pointer-events-none absolute bottom-0 right-0",
-            "flex h-2.5 w-2.5 items-center justify-center rounded-[2px]",
-            "bg-background shadow-sm ring-1 ring-border",
-            "dark:bg-background-night dark:ring-border-night"
-          ),
-        },
-        React.createElement(DustLogoSquare, {
-          className: "h-2 w-2",
-        })
-      )
-    );
+  return ({ className, size, ...props }) => {
+    const avatarSize = size ?? "sm";
+    const badgeSize = size ?? (className ? "xxs" : "sm");
+
+    return React.createElement(ResourceAvatarWithBadge, {
+      badgeIcon: DustLogoSquare,
+      badgeSize,
+      className,
+      icon: skillIcon,
+      size: avatarSize,
+      backgroundColor: SKILL_AVATAR_BACKGROUND_COLOR,
+      iconColor: SKILL_AVATAR_ICON_COLOR,
+      ...props,
+    });
+  };
+}
+
+export function getSkillAvatarIconForSkill(
+  skill: Pick<SkillWithoutInstructionsAndToolsType, "editedBy" | "icon">
+) {
+  return getSkillAvatarIcon(skill.icon, {
+    isDustProvided: isDustProvidedSkill(skill),
+  });
 }
 
 export function getSkillIcon(

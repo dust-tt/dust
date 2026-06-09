@@ -9,7 +9,7 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { getSkillAvatarIcon } from "@app/lib/skill";
+import { getSkillAvatarIconForSkill } from "@app/lib/skill";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
@@ -173,7 +173,7 @@ export function SkillInfoTab({
           </div>
           <div className="grid grid-cols-2 gap-2">
             {childSkills.map((childSkill) => {
-              const SkillAvatar = getSkillAvatarIcon(childSkill.icon);
+              const SkillAvatar = getSkillAvatarIconForSkill(childSkill);
 
               return (
                 <Tooltip
@@ -227,7 +227,7 @@ export function SkillInfoTab({
           ) : (
             <div className="grid grid-cols-2 gap-2">
               {discoverableSkills.map((s) => {
-                const SkillAvatar = getSkillAvatarIcon(s.icon);
+                const SkillAvatar = getSkillAvatarIconForSkill(s);
                 return (
                   <Tooltip
                     key={s.sId}

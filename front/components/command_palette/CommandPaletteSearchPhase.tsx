@@ -4,7 +4,7 @@ import {
   ItemTitle,
   KeyboardHints,
 } from "@app/components/command_palette/CommandPaletteItems";
-import { getSkillAvatarIcon } from "@app/lib/skill";
+import { getSkillAvatarIconForSkill } from "@app/lib/skill";
 import { getSpaceIcon } from "@app/lib/spaces";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
@@ -234,7 +234,7 @@ export function CommandPaletteSearchPhase({
             <ItemTitle>Skills</ItemTitle>
             {skills.map((skill, i) => {
               const globalIndex = agents.length + pods.length + i;
-              const SkillAvatar = getSkillAvatarIcon(skill.icon);
+              const SkillAvatar = getSkillAvatarIconForSkill(skill);
               return (
                 <ItemRow
                   key={skill.sId}
