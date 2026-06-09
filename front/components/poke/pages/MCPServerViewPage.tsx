@@ -1,3 +1,4 @@
+import { ToolsConfigTable } from "@app/components/poke/mcp_server_views/tools_config";
 import { ViewMCPServerViewTable } from "@app/components/poke/mcp_server_views/view";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
@@ -63,7 +64,10 @@ export function MCPServerViewPage() {
         </LinkWrapper>
       </h3>
       <div className="flex flex-row gap-x-6">
-        <ViewMCPServerViewTable mcpServerView={mcpServerView} owner={owner} />
+        <div className="flex flex-col">
+          <ViewMCPServerViewTable mcpServerView={mcpServerView} owner={owner} />
+          <ToolsConfigTable mcpServerView={mcpServerView} />
+        </div>
         <div className="mt-4 flex grow flex-col gap-y-4">
           <PluginList
             pluginResourceTarget={{
