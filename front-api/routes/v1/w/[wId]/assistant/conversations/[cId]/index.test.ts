@@ -42,6 +42,25 @@ function getConversation(
   );
 }
 
+function patchConversation(
+  workspace: { sId: string },
+  key: { secret: string },
+  cId: string,
+  body: unknown
+) {
+  return honoApp.request(
+    `/api/v1/w/${workspace.sId}/assistant/conversations/${cId}`,
+    {
+      method: "PATCH",
+      headers: {
+        authorization: `Bearer ${key.secret}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
+    }
+  );
+}
+
 describe("GET /api/v1/w/[wId]/assistant/conversations/[cId]", () => {
   it("returns 200 when private conversation URLs are disabled", async () => {
     const { workspace, key, conversation } = await setupGetRequest();
@@ -106,5 +125,25 @@ describe("GET /api/v1/w/[wId]/assistant/conversations/[cId]", () => {
     const response = await getConversation(workspace, key, conversation.sId);
 
     expect(response.status).toBe(200);
+  });
+});
+
+describe("PATCH /api/v1/w/[wId]/assistant/conversations/[cId]", () => {
+  it("updates a conversation title with API key auth", async () => {
+    const { workspace, key, conversation } = await setupGetRequest();
+
+    const response = await patchConversation(workspace, key, conversation.sId, {
+      title: "Updated Conversation Title",
+    });
+
+    const data = await response.json();
+    expect(response.status, JSON.stringify(data)).toBe(200);
+    expect(data.success).toBe(true);
+
+    const getResponse = await getConversation(workspace, key, conversation.sId);
+    const getData = await getResponse.json();
+
+    expect(getResponse.status, JSON.stringify(getData)).toBe(200);
+    expect(getData.conversation.title).toBe("Updated Conversation Title");
   });
 });

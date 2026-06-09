@@ -1571,8 +1571,8 @@
         }
       },
       "patch": {
-        "summary": "Update conversation read status",
-        "description": "Mark a conversation as read or unread in the workspace identified by {wId}.",
+        "summary": "Update a conversation",
+        "description": "Update a conversation's title or mark it as read or unread in the workspace identified by {wId}.",
         "tags": [
           "Conversations"
         ],
@@ -1606,19 +1606,37 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "read": {
-                    "type": "boolean"
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "read"
+                    ],
+                    "properties": {
+                      "read": {
+                        "type": "boolean"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "title"
+                    ],
+                    "properties": {
+                      "title": {
+                        "type": "string"
+                      }
+                    }
                   }
-                }
+                ]
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Conversation marked as read successfully.",
+            "description": "Conversation updated successfully.",
             "content": {
               "application/json": {
                 "schema": {
