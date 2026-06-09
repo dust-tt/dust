@@ -109,25 +109,29 @@ export async function computeAndStoreAgentMessageCredits(
 
   const user = auth.user();
   const plan = auth.plan();
-  if (user && plan && costCredits !== null && costCredits > 0) {
-    const { maxAwuCredits, maxAwuCreditsTimeframe } = plan.limits.assistant;
-    if (maxAwuCredits !== -1) {
-      // We use rateLimiter infrastructure to enforce the fair use but ignore failure here since
-      // this is run post message execution. The next agent loop will be stopped if we dropped to 0.
-      await rateLimiter({
-        key: makeFairUseAwuCreditsRateLimitKeyForUser(
-          auth.getNonNullableWorkspace(),
-          user.toJSON(),
-          maxAwuCreditsTimeframe
-        ),
-        maxPerTimeframe: maxAwuCredits,
-        timeframeSeconds: getTimeframeSecondsFromLiteral(
-          maxAwuCreditsTimeframe
-        ),
-        incrementBy: costCredits,
-        logger,
-      });
-    }
+  const assistantLimits = plan?.limits.assistant;
+  if (
+    user &&
+    assistantLimits &&
+    costCredits !== null &&
+    costCredits > 0 &&
+    assistantLimits.maxAwuCredits !== -1
+  ) {
+    // We use rateLimiter infrastructure to enforce the fair use but ignore failure here since
+    // this is run post message execution. The next agent loop will be stopped if we dropped to 0.
+    await rateLimiter({
+      key: makeFairUseAwuCreditsRateLimitKeyForUser(
+        auth.getNonNullableWorkspace(),
+        user.toJSON(),
+        assistantLimits.maxAwuCreditsTimeframe
+      ),
+      maxPerTimeframe: assistantLimits.maxAwuCredits,
+      timeframeSeconds: getTimeframeSecondsFromLiteral(
+        assistantLimits.maxAwuCreditsTimeframe
+      ),
+      incrementBy: costCredits,
+      logger,
+    });
   }
 
   return costCredits;
