@@ -12,7 +12,7 @@ export function AppLayoutTitle({ children, className }: AppLayoutTitleProps) {
     <div
       className={cn(
         "h-title",
-        "flex w-full shrink-0 flex-col border-b border-separator px-4 pl-14 lg:pl-4",
+        "flex w-full shrink-0 flex-col border-b border-separator px-4 pl-14 lg:pl-1",
         "bg-content-background dark:bg-content-background-night",
         "dark:border-separator-night",
         // When no children, only show on mobile for hamburger menu alignment.
