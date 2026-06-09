@@ -11,6 +11,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { File } from "formidable";
 import { IncomingForm } from "formidable";
 import type { IncomingMessage } from "http";
+import * as iconv from "iconv-lite";
 import type { Writable } from "stream";
 
 export const parseUploadRequest = async (
@@ -102,6 +103,44 @@ export const parseUploadRequest = async (
   }
 };
 
+/**
+ * Detects the encoding of a buffer and decodes it to a string.
+ * Checks for UTF-16 BOM markers and falls back to UTF-8.
+ *
+ * Files exported from Windows tools (Notepad, Excel CSV) are frequently UTF-16
+ * with a BOM; decoding those as UTF-8 produces interleaved NUL bytes (0x00)
+ * that PostgreSQL later rejects ("invalid byte sequence for encoding UTF8:
+ * 0x00"). iconv-lite strips the BOM as part of decoding.
+ *
+ * Mirrors `decodeBuffer` in connectors (`src/connectors/shared/file.ts`).
+ */
+export function decodeBuffer(data: Uint8Array): string {
+  const buffer = Buffer.from(data);
+
+  // Check for UTF-16 LE BOM (FF FE)
+  if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe) {
+    return iconv.decode(buffer, "utf16le");
+  }
+
+  // Check for UTF-16 BE BOM (FE FF)
+  if (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff) {
+    return iconv.decode(buffer, "utf16be");
+  }
+
+  // Check for UTF-8 BOM (EF BB BF)
+  if (
+    buffer.length >= 3 &&
+    buffer[0] === 0xef &&
+    buffer[1] === 0xbb &&
+    buffer[2] === 0xbf
+  ) {
+    return iconv.decode(buffer, "utf8");
+  }
+
+  // Default to UTF-8 without BOM
+  return buffer.toString("utf-8");
+}
+
 export async function getFileContent(
   auth: Authenticator,
   file: FileResource,
@@ -116,7 +155,7 @@ export async function getFileContent(
     return null;
   }
 
-  return bufferResult.value.toString("utf-8");
+  return decodeBuffer(bufferResult.value);
 }
 
 export function getUpdatedContentAndOccurrences({
