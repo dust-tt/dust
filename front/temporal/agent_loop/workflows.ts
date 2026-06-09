@@ -16,8 +16,7 @@ import {
   TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS,
 } from "@app/temporal/agent_loop/config";
 import {
-  isRunModelLLMUnresponsiveError,
-  isTerminalRunModelTimeout,
+  isTerminalRunModelLLMUnresponsiveFailure,
 } from "@app/temporal/agent_loop/lib/workflow_failures";
 import { makeAgentLoopConversationTitleWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import {
@@ -336,10 +335,10 @@ export async function agentLoopWorkflow({
   } catch (err) {
     const workflowError = err instanceof Error ? err : new Error(String(err));
     // The activity publishes user-facing model errors when our code regains control. We swallow
-    // only terminal Temporal timeouts whose failure chain proves the blocked work was an LLM
-    // provider timeout, so unrelated infrastructure timeouts still surface as workflow failures.
+    // terminal runModel failures whose failure chain proves the blocked work was an LLM
+    // provider timeout, so unrelated infrastructure failures still surface as workflow failures.
     const shouldSwallowWorkflowFailure =
-      isTerminalRunModelTimeout(err) && isRunModelLLMUnresponsiveError(err);
+      isTerminalRunModelLLMUnresponsiveFailure(err);
 
     // Notify error in a non-cancellable scope to ensure it runs even if the workflow is canceled.
     // Pass this execution's runIds and startStep to finalize so tracking

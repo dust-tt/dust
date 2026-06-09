@@ -48,6 +48,20 @@ export function isTerminalRunModelTimeout(
   );
 }
 
+export function isTerminalRunModelLLMUnresponsiveFailure(
+  error: unknown
+): error is ActivityFailure {
+  if (!isRunModelActivityFailure(error)) {
+    return false;
+  }
+
+  if (!isTerminalRetryState(error.retryState)) {
+    return false;
+  }
+
+  return isRunModelLLMUnresponsiveError(error);
+}
+
 export function isRunModelLLMUnresponsiveError(error: unknown): boolean {
   if (!(error instanceof Error)) {
     return false;

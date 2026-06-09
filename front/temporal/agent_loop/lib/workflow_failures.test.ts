@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import { makeRunModelLLMError } from "./run_model_errors";
 import {
   isRunModelLLMUnresponsiveError,
+  isTerminalRunModelLLMUnresponsiveFailure,
   isTerminalRunModelTimeout,
   RUN_MODEL_ACTIVITY_NAME,
 } from "./workflow_failures";
@@ -62,10 +63,32 @@ function makeActivityFailure({
   );
 }
 
-function shouldSwallowWorkflowFailure(error: unknown): boolean {
-  return (
-    isTerminalRunModelTimeout(error) && isRunModelLLMUnresponsiveError(error)
+function makeApplicationActivityFailure({
+  activityType = RUN_MODEL_ACTIVITY_NAME,
+  llmErrorType = "llm_timeout_error",
+  llmErrorMessage = LLM_TIMEOUT_MESSAGE,
+  retryState = RetryState.MAXIMUM_ATTEMPTS_REACHED,
+}: {
+  activityType?: string;
+  llmErrorType?: LLMErrorType;
+  llmErrorMessage?: string;
+  retryState?: RetryState;
+} = {}) {
+  return new ActivityFailure(
+    "Activity task failed",
+    activityType,
+    "activity-id",
+    retryState,
+    "worker-id",
+    makeRunModelLLMError({
+      type: llmErrorType,
+      message: llmErrorMessage,
+    })
   );
+}
+
+function shouldSwallowWorkflowFailure(error: unknown): boolean {
+  return isTerminalRunModelLLMUnresponsiveFailure(error);
 }
 
 describe("workflow failure predicates", () => {
@@ -75,6 +98,36 @@ describe("workflow failure predicates", () => {
     expect(isTerminalRunModelTimeout(failure)).toBe(true);
     expect(isRunModelLLMUnresponsiveError(failure)).toBe(true);
     expect(shouldSwallowWorkflowFailure(failure)).toBe(true);
+  });
+
+  it("matches terminal runModel LLM application failures", () => {
+    const failure = makeApplicationActivityFailure();
+
+    expect(isTerminalRunModelTimeout(failure)).toBe(false);
+    expect(isRunModelLLMUnresponsiveError(failure)).toBe(true);
+    expect(isTerminalRunModelLLMUnresponsiveFailure(failure)).toBe(true);
+    expect(shouldSwallowWorkflowFailure(failure)).toBe(true);
+  });
+
+  it("ignores non-terminal runModel LLM application failures", () => {
+    const failure = makeApplicationActivityFailure({
+      retryState: RetryState.IN_PROGRESS,
+    });
+
+    expect(isRunModelLLMUnresponsiveError(failure)).toBe(true);
+    expect(isTerminalRunModelLLMUnresponsiveFailure(failure)).toBe(false);
+    expect(shouldSwallowWorkflowFailure(failure)).toBe(false);
+  });
+
+  it("ignores terminal runModel non-timeout application failures", () => {
+    const failure = makeApplicationActivityFailure({
+      llmErrorType: "rate_limit_error",
+      llmErrorMessage: "Too many requests.",
+    });
+
+    expect(isRunModelLLMUnresponsiveError(failure)).toBe(false);
+    expect(isTerminalRunModelLLMUnresponsiveFailure(failure)).toBe(false);
+    expect(shouldSwallowWorkflowFailure(failure)).toBe(false);
   });
 
   it("matches terminal StartToClose timeouts with an LLM request timeout cause", () => {
