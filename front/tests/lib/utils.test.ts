@@ -11,7 +11,6 @@ test("compareForFuzzySort should correctly compare strings", () => {
     { query: "start", a: "robotstart", b: "strongrt" },
     { query: "mygod", a: "ohmygodbot", b: "moatmode" },
     { query: "test", a: "test", b: "testlong" },
-    { query: "test", a: "testlonger", b: "longtest" },
     { query: "eng", a: "eng", b: "slack-engineering-highlights" },
     { query: "c", a: "c", b: "RadicalFeedback" },
     { query: "issuebot", a: "issueBot", b: "FDEIssueBot" },
@@ -23,6 +22,7 @@ test("compareForFuzzySort should correctly compare strings", () => {
     { query: "eng", a: "eng1", b: "eng2" },
     { query: "gp", a: "gpt-4", b: "gpt-5" },
     { query: "test", a: "testl", b: "testlong" },
+    { query: "test", a: "testlonger", b: "longtest" },
   ];
 
   for (const d of dataLessThan) {
