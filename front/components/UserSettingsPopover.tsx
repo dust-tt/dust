@@ -5,7 +5,14 @@ import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
+import {
+  useAwuPoolSummary,
+  useCreditPurchaseInfo,
+  useMyUsage,
+  useSeatPlan,
+} from "@app/lib/swr/credits";
 import { usePatchUser, useUser } from "@app/lib/swr/user";
 import type { WorkspaceType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
@@ -27,7 +34,6 @@ import {
   Edit04,
   Input,
   Label,
-  LinkExternal01,
   Moon01,
   NavigationList,
   NavigationListItem,
@@ -46,6 +52,8 @@ import {
   Zap,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ExternalLinkIcon } from "lucide-react";
+import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -104,33 +112,56 @@ function SectionContent({
 
 // ─── Usage ────────────────────────────────────────────────────────────────────
 
-function CreditRow({
-  label,
-  description,
-}: {
-  label: string;
-  description: string;
-}) {
-  return (
-    <div className="flex items-center justify-between">
-      <div className="flex flex-col gap-0.5">
-        <span className="flex items-center gap-1">
-          <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-            {label}
-          </span>
-        </span>
-        <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-          {description}
-        </span>
-      </div>
-      <span className="flex items-center gap-1 text-xs text-muted-foreground opacity-90 dark:text-muted-foreground-night">
-        10000/<span className="font-medium">10000</span>
-      </span>
-    </div>
-  );
+function formatCredits(credits: number): string {
+  return Math.round(credits).toLocaleString("en-US");
 }
 
-function UsageSection() {
+function ordinalDay(day: number): string {
+  const suffix =
+    day >= 11 && day <= 13
+      ? "th"
+      : day % 10 === 1
+        ? "st"
+        : day % 10 === 2
+          ? "nd"
+          : day % 10 === 3
+            ? "rd"
+            : "th";
+  return `${day}${suffix}`;
+}
+
+function UsageSection({ owner }: { owner: WorkspaceType }) {
+  const { isAdmin, subscription } = useAuth();
+  const { isCreditPurchaseInfoLoading, billingCycleStartDay } =
+    useCreditPurchaseInfo({
+      workspaceId: owner.sId,
+    });
+  const {
+    totalRemainingCredits,
+    totalActiveCredits,
+    overageCredits,
+    resetDate,
+    isAwuPoolSummaryLoading,
+    isAwuPoolSummaryError,
+  } = useAwuPoolSummary({ workspaceId: owner.sId });
+  const { myUsage, isMyUsageLoading } = useMyUsage({ workspaceId: owner.sId });
+  const { seatPlans } = useSeatPlan({ workspaceId: owner.sId });
+
+  const seatName =
+    (myUsage?.seatType ? seatPlans[myUsage.seatType]?.name : null) ??
+    subscription.plan.name;
+
+  const isLoading =
+    isAwuPoolSummaryLoading || isCreditPurchaseInfoLoading || isMyUsageLoading;
+  const totalConsumedCredits = Math.max(
+    0,
+    totalActiveCredits - totalRemainingCredits
+  );
+  const consumedPercentage =
+    totalActiveCredits > 0
+      ? Math.min((totalConsumedCredits / totalActiveCredits) * 100, 100)
+      : 0;
+
   return (
     <SectionContent
       title="Usage"
@@ -143,44 +174,108 @@ function UsageSection() {
               <Stars02 className="h-3 w-3 text-highlight-500" />
             </span>
             <span className="text-base font-semibold text-foreground dark:text-foreground-night">
-              Pro plan
+              {seatName}
             </span>
           </span>
-          <Button variant="primary" size="xs" label="Request for upgrade" />
+          {isAdmin && (
+            <Button
+              variant="primary"
+              size="xs"
+              label="Request for upgrade"
+              href={`/w/${owner.sId}/usage`}
+            />
+          )}
         </div>
         <Separator />
-        <div className="flex flex-col gap-4">
-          <CreditRow
-            label="Personal Credit"
-            description="Every 14th of the months"
-          />
-          <CreditRow
-            label="Workspace Credit"
-            description="Your access to your Workspace credit pools"
-          />
-        </div>
-        <Separator />
-        <p className="cursor-pointer text-center text-xs text-muted-foreground underline dark:text-muted-foreground-night">
-          Request more credit
-        </p>
+        {isLoading ? (
+          <div className="flex justify-center py-2">
+            <Spinner size="sm" />
+          </div>
+        ) : isAwuPoolSummaryError ? (
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Failed to load credits data.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+                Workspace Credits Pool
+              </span>
+              <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                {formatCredits(totalConsumedCredits)} /{" "}
+                {formatCredits(totalActiveCredits)}
+              </span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10 dark:bg-muted-foreground-night/10">
+              <div
+                className="h-full bg-highlight transition-all dark:bg-highlight-night"
+                style={{ width: `${consumedPercentage}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-xs text-muted-foreground dark:text-muted-foreground-night">
+              {overageCredits !== null && overageCredits > 0 ? (
+                <span>{formatCredits(overageCredits)} overage credits</span>
+              ) : (
+                <span />
+              )}
+              {resetDate && (
+                <span>
+                  Resets{" "}
+                  {new Date(resetDate).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </span>
+              )}
+            </div>
+            {myUsage && myUsage.memberUsageLimit !== null && (
+              <>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="flex items-center gap-1.5 text-sm font-medium text-foreground dark:text-foreground-night">
+                      <User01 className="h-3.5 w-3.5" />
+                      Personal Credit
+                    </span>
+                    {billingCycleStartDay !== null && (
+                      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                        Every {ordinalDay(billingCycleStartDay)} of the month
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                    {formatCredits(myUsage.consumedFromAllowanceAwuCredits)}
+                    <span className="font-medium">
+                      /{formatCredits(myUsage.memberUsageLimit)}
+                    </span>
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </section>
 
-      <section className="flex items-center justify-between border-b border-border pb-4 dark:border-border-night">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-            Invoices
-          </span>
-          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Access and download your invoices
-          </span>
-        </div>
-        <Button
-          variant="outline"
-          size="xs"
-          label="Billing"
-          icon={LinkExternal01}
-        />
-      </section>
+      {isAdmin && (
+        <section className="flex items-center justify-between border-b border-border pb-4 dark:border-border-night">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+              Invoices
+            </span>
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              Access and download your invoices
+            </span>
+          </div>
+          <Button
+            variant="outline"
+            size="xs"
+            label="Billing"
+            icon={ExternalLinkIcon}
+            href={`/w/${owner.sId}/billing`}
+            target="_blank"
+          />
+        </section>
+      )}
     </SectionContent>
   );
 }
@@ -647,7 +742,7 @@ export function UserSettingsPopover({
             {activeSection === "personal" && (
               <PersonalInfoSection owner={owner} />
             )}
-            {activeSection === "usage" && <UsageSection />}
+            {activeSection === "usage" && <UsageSection owner={owner} />}
             {activeSection === "customization" && <CustomizationSection />}
             {activeSection === "notifications" && (
               <NotificationsSection owner={owner} />

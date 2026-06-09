@@ -1,5 +1,6 @@
 import type { AwuPoolSummaryResponseBody } from "@app/lib/api/credits/awu_pool_summary";
 import type { GetMembersSeatsResponseBody } from "@app/lib/api/credits/members_seats";
+import type { GetMemberUsageResponseBody } from "@app/lib/api/credits/members_usage";
 import type { GetCreditPurchaseInfoResponseBody } from "@app/lib/api/credits/purchase";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import type { GetAwuPurchaseInfoResponseBody } from "@app/lib/credits/awu_purchase";
@@ -325,6 +326,29 @@ export function useAwuPurchaseInfo({
     isAwuPurchaseInfoValidating: isValidating,
     isAwuPurchaseInfoError: error,
     mutateAwuPurchaseInfo: mutate,
+  };
+}
+
+export function useMyUsage({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const myUsageFetcher: Fetcher<GetMemberUsageResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/credits/my-usage`,
+    myUsageFetcher,
+    { disabled }
+  );
+
+  return {
+    myUsage: data?.member ?? null,
+    isMyUsageLoading: !error && !data && !disabled,
+    isMyUsageError: error,
   };
 }
 

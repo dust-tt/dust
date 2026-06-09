@@ -13,6 +13,7 @@ import awuPoolSummary from "./awu-pool-summary";
 import membersSeats from "./members-seats";
 import membersUsage from "./members-usage";
 import metronomeBalances from "./metronome-balances";
+import myUsage from "./my-usage";
 import purchase from "./purchase";
 import usageConfiguration from "./usage-configuration";
 
@@ -23,6 +24,7 @@ app.route("/awu-pool-summary", awuPoolSummary);
 app.route("/members-seats", membersSeats);
 app.route("/members-usage", membersUsage);
 app.route("/metronome-balances", metronomeBalances);
+app.route("/my-usage", myUsage);
 app.route("/purchase", purchase);
 app.route("/usage-configuration", usageConfiguration);
 
