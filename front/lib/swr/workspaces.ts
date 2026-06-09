@@ -1307,6 +1307,7 @@ export function useCheckBusinessActivation({
 
   return {
     checkoutPayment: data?.checkoutPayment ?? null,
+    invoiceUrl: data?.invoiceUrl ?? null,
     isCheckoutPaymentLoading: !error && !data && !disabled && !!contractId,
     isCheckoutPaymentError: !!error,
   };

@@ -1,5 +1,6 @@
 import {
   type BusinessActivationRequestError,
+  fetchStripeHostedInvoiceUrl,
   type GetBusinessActivationResponseBody,
   type PostBusinessActivationResponseBody,
   processBusinessActivation,
@@ -34,12 +35,26 @@ app.get(
       });
     }
 
+    const workspace = auth.getNonNullableWorkspace();
     const checkoutPayment = await getCheckoutPaymentStatus({
-      workspaceId: auth.getNonNullableWorkspace().sId,
+      workspaceId: workspace.sId,
       contractId,
     });
 
-    return ctx.json({ checkoutPayment });
+    let invoiceUrl: string | undefined;
+    if (
+      checkoutPayment?.status === "succeeded" &&
+      checkoutPayment.invoiceId &&
+      workspace.metronomeCustomerId
+    ) {
+      invoiceUrl =
+        (await fetchStripeHostedInvoiceUrl({
+          metronomeCustomerId: workspace.metronomeCustomerId,
+          metronomeInvoiceId: checkoutPayment.invoiceId,
+        })) ?? undefined;
+    }
+
+    return ctx.json({ checkoutPayment, invoiceUrl });
   }
 );
 

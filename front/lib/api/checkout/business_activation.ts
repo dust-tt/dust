@@ -16,6 +16,7 @@ import { metronomeAmount } from "@app/lib/metronome/amounts";
 import {
   addPaymentGatedCommitToContract,
   floorToHourISO,
+  getMetronomeClient,
 } from "@app/lib/metronome/client";
 import {
   CURRENCY_TO_CREDIT_TYPE_ID,
@@ -618,6 +619,57 @@ export async function handleSubscriptionActivationFailure({
 export { checkoutToMembershipSeatType };
 
 // ---------------------------------------------------------------------------
+// Invoice URL retrieval — called from the GET /checkout/business-activation
+// handler when status is "succeeded".
+// ---------------------------------------------------------------------------
+
+/**
+ * Given a Metronome invoice ID, retrieves the Stripe hosted_invoice_url via:
+ *   Metronome invoices.retrieve → external_invoice.invoice_id (Stripe ID)
+ *   → Stripe invoices.retrieve → hosted_invoice_url
+ *
+ * Returns null on any failure so callers can treat the URL as optional.
+ */
+export async function fetchStripeHostedInvoiceUrl({
+  metronomeCustomerId,
+  metronomeInvoiceId,
+}: {
+  metronomeCustomerId: string;
+  metronomeInvoiceId: string;
+}): Promise<string | null> {
+  try {
+    const { data: invoice } =
+      await getMetronomeClient().v1.customers.invoices.retrieve({
+        customer_id: metronomeCustomerId,
+        invoice_id: metronomeInvoiceId,
+      });
+
+    const stripeInvoiceId =
+      invoice.external_invoice?.billing_provider_type === "stripe"
+        ? invoice.external_invoice.invoice_id
+        : undefined;
+
+    if (!stripeInvoiceId) {
+      logger.warn(
+        { metronomeCustomerId, metronomeInvoiceId },
+        "[Business Activation] No Stripe invoice ID found on Metronome invoice"
+      );
+      return null;
+    }
+
+    const stripe = getStripeClient();
+    const stripeInvoice = await stripe.invoices.retrieve(stripeInvoiceId);
+    return stripeInvoice.hosted_invoice_url ?? null;
+  } catch (err) {
+    logger.warn(
+      { metronomeCustomerId, metronomeInvoiceId, err },
+      "[Business Activation] Failed to fetch Stripe hosted invoice URL"
+    );
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // HTTP-layer entry point — called from the POST /checkout/business-activation
 // route handler.
 // ---------------------------------------------------------------------------
@@ -650,6 +702,7 @@ export type PostBusinessActivationResponseBody =
 
 export type GetBusinessActivationResponseBody = {
   checkoutPayment: CheckoutPayment | null;
+  invoiceUrl?: string;
 };
 
 /**
