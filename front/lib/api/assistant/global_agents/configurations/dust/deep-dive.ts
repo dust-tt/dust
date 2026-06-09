@@ -33,7 +33,7 @@ import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
-  CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+  CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import { GPT_5_5_MODEL_CONFIG } from "@app/types/assistant/models/openai";
@@ -445,7 +445,7 @@ export function _getDeepDiveGlobalAgent(
     shouldUseOpus(auth) &&
     isProviderWhitelisted(auth, "anthropic")
       ? {
-          modelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+          modelConfiguration: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
           reasoningEffort: modelConfig?.reasoningEffort ?? ("medium" as const),
         }
       : null;
