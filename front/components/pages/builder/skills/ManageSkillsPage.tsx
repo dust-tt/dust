@@ -269,7 +269,7 @@ export function ManageSkillsPage() {
           owner={owner}
         />
       )}
-      <div className="flex w-full flex-col gap-8 pb-4 pt-2 lg:pt-8">
+      <div className="flex w-full flex-col gap-8 pb-4">
         <Page.Header
           title="Manage Skills"
           icon={SKILL_ICON}
