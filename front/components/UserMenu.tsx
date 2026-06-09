@@ -228,13 +228,11 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
 
   return (
     <>
-      {hasFeature("user_settings_v2") && (
-        <UserSettingsPopover
-          open={settingsOpen}
-          onOpenChange={setSettingsOpen}
-          owner={owner}
-        />
-      )}
+      <UserSettingsPopover
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        owner={owner}
+      />
       <DropdownMenu>
         <DropdownMenuTrigger className="hover:bg-sidebar-hover data-[state=open]:bg-sidebar-hover dark:hover:bg-sidebar-hover-night dark:data-[state=open]:bg-sidebar-hover-night rounded-xl p-2 m-2">
           <div className="group flex cursor-pointer items-center justify-between gap-2">
@@ -374,20 +372,13 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
 
           <DropdownMenuLabel label="Account" />
           {subscription?.plan.limits.canUseProduct && (
-            <>
-              <DropdownMenuItem
-                label="Personal Settings"
-                icon={User01}
-                href={`/w/${owner.sId}/me`}
-              />
-              {hasFeature("user_settings_v2") && (
-                <DropdownMenuItem
-                  label="Personal Settings — Beta"
-                  icon={User01}
-                  onSelect={() => setSettingsOpen(true)}
-                />
-              )}
-            </>
+            <DropdownMenuItem
+              label="Personal Settings"
+              icon={User01}
+              {...(hasFeature("user_settings_v2")
+                ? { onSelect: () => setSettingsOpen(true) }
+                : { href: `/w/${owner.sId}/me` })}
+            />
           )}
 
           <DropdownMenuItem
