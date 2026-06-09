@@ -17,7 +17,7 @@ module.exports = {
         title: TITLE_HEIGHT,
         "container-with-title-mobile": `calc(100dvh - ${TITLE_HEIGHT})`,
         "container-with-title-desktop": `calc(100dvh - ${TITLE_HEIGHT} - ${CONTAINER_SPACING})`,
-        "container": `calc(100dvh - ${CONTAINER_SPACING})`,
+        container: `calc(100dvh - ${CONTAINER_SPACING})`,
       },
       fontWeight: {
         medium: "450",
