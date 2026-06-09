@@ -1,20 +1,10 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
+import type { PokeMCPServerViewListItemType } from "@app/lib/api/poke/mcp_server_views";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { LinkWrapper } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
-interface MCPServerView {
-  sId: string;
-  name: string | null;
-  createdAt: number;
-  updatedAt: number;
-  spaceId: string;
-  serverType: string;
-  server: {
-    sId: string;
-    name: string;
-    description: string;
-  };
+interface MCPServerView extends PokeMCPServerViewListItemType {
   editedAt?: number;
   editedBy?: string;
   mcpServerViewLink: string;
@@ -70,10 +60,10 @@ export function makeColumnsForMCPServerViews(): ColumnDef<MCPServerView>[] {
       ),
     },
     {
-      accessorKey: "space",
+      accessorKey: "space.name",
       cell: ({ row }) => {
-        const { spaceLink, spaceId } = row.original;
-        return <LinkWrapper href={spaceLink}>{spaceId}</LinkWrapper>;
+        const { spaceLink, space } = row.original;
+        return <LinkWrapper href={spaceLink}>{space.name}</LinkWrapper>;
       },
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Space" />

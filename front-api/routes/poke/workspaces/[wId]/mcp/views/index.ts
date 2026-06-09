@@ -33,7 +33,17 @@ app.get(
     }
 
     return ctx.json({
-      serverViews: mcpServerViews.map((sv) => sv.toJSON()),
+      serverViews: mcpServerViews.map((sv) => {
+        const space = sv.space.toJSON();
+        return {
+          ...sv.toJSON(),
+          space: {
+            sId: space.sId,
+            name: space.name,
+            kind: space.kind,
+          },
+        };
+      }),
     });
   }
 );
