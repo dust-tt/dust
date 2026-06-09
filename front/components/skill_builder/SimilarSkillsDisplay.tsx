@@ -38,7 +38,7 @@ export function SimilarSkillsDisplay({
       </div>
       <div className="space-y-3">
         {similarSkills.map((skill) => {
-          const SkillAvatar = getSkillAvatarIcon(skill.icon);
+          const SkillAvatar = getSkillAvatarIcon(skill);
 
           return (
             <div key={skill.sId} className="flex items-start gap-3">

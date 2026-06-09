@@ -133,7 +133,7 @@ export function AssistantSkillsToolsSection({
               </div>
             ) : (
               sortedSkills.map((skill) => {
-                const SkillAvatar = getSkillAvatarIcon(skill.icon);
+                const SkillAvatar = getSkillAvatarIcon(skill);
                 return (
                   <div
                     className="flex flex-row items-center gap-2"

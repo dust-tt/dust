@@ -157,7 +157,7 @@ const DescriptionSection = ({
       day: "2-digit",
     });
 
-  const SkillAvatar = getSkillAvatarIcon(skill.icon);
+  const SkillAvatar = getSkillAvatarIcon(skill);
 
   return (
     <div className="flex flex-col items-center gap-4 pt-4">

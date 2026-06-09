@@ -31,7 +31,7 @@ function SuggestedSkillCard({
   const router = useAppRouter();
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
   const [isAddingSkill, setIsAddingSkill] = useState(false);
-  const SkillAvatar = getSkillAvatarIcon(skill.icon);
+  const SkillAvatar = getSkillAvatarIcon(skill);
   const updateSkillEditors = useUpdateSkillEditors({
     owner,
     skillId: skill.sId,

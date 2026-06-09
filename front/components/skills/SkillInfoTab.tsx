@@ -173,7 +173,7 @@ export function SkillInfoTab({
           </div>
           <div className="grid grid-cols-2 gap-2">
             {childSkills.map((childSkill) => {
-              const SkillAvatar = getSkillAvatarIcon(childSkill.icon);
+              const SkillAvatar = getSkillAvatarIcon(childSkill);
 
               return (
                 <Tooltip
@@ -227,7 +227,7 @@ export function SkillInfoTab({
           ) : (
             <div className="grid grid-cols-2 gap-2">
               {discoverableSkills.map((s) => {
-                const SkillAvatar = getSkillAvatarIcon(s.icon);
+                const SkillAvatar = getSkillAvatarIcon(s);
                 return (
                   <Tooltip
                     key={s.sId}

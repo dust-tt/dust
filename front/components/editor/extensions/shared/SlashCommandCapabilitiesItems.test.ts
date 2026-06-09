@@ -2,8 +2,10 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { describe, expect, it } from "vitest";
 
 import {
+  getSkillSlashCommandItem,
   getToolSlashCommandItem,
   matchesSlashCommandCapabilityQuery,
+  type SlashCommandSkillSuggestion,
   type SlashCommandToolSuggestion,
   sortSlashCommandCapabilityMatches,
 } from "./SlashCommandCapabilitiesItems";
@@ -52,6 +54,25 @@ function toolSuggestion({
   };
 }
 
+function skillSuggestion({
+  editedBy = 1,
+  icon = null,
+  requestedSpaceIds = [],
+  sId,
+  userFacingDescription = "Draft structured memos.",
+  name,
+}: Pick<SlashCommandSkillSuggestion, "name" | "sId"> &
+  Partial<SlashCommandSkillSuggestion>): SlashCommandSkillSuggestion {
+  return {
+    editedBy,
+    icon,
+    name,
+    requestedSpaceIds,
+    sId,
+    userFacingDescription,
+  };
+}
+
 describe("matchesSlashCommandCapabilityQuery", () => {
   it("matches capability labels with fuzzy slash query matching", () => {
     expect(
@@ -92,6 +113,31 @@ describe("sortSlashCommandCapabilityMatches", () => {
     });
 
     expect(result.map((item) => item.id)).toEqual(["longtest", "testlonger"]);
+  });
+});
+
+describe("getSkillSlashCommandItem", () => {
+  it("builds a slash command item that keeps the selected skill", () => {
+    const skill = skillSuggestion({
+      name: "Create memo",
+      sId: "skill_create_memo",
+      userFacingDescription: "Draft structured memos.",
+    });
+
+    const item = getSkillSlashCommandItem(skill, {
+      sectionLabel: "Capabilities",
+    });
+
+    expect(item).toMatchObject({
+      action: "select-skill",
+      data: {
+        skill,
+      },
+      description: "Draft structured memos.",
+      id: "skill_create_memo",
+      label: "Create memo",
+      sectionLabel: "Capabilities",
+    });
   });
 });
 

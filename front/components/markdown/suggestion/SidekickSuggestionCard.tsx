@@ -391,7 +391,7 @@ function SkillSuggestionCard({ agentSuggestion }: SkillSuggestionCardProps) {
   return (
     <ActionCardBlock
       {...labels}
-      visual={<Avatar icon={getSkillAvatarIcon(skill.icon)} size="sm" />}
+      visual={<Avatar icon={getSkillAvatarIcon(skill)} size="sm" />}
       description={analysis ?? undefined}
       state={cardState}
       rejectedTitle={`${skill.name} skill suggestion rejected`}

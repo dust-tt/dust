@@ -123,7 +123,9 @@ export function CommandPaletteActionPhase({
     item.kind === "agent" ? (
       <Avatar visual={item.agent.pictureUrl} size="xs" />
     ) : (
-      React.createElement(getSkillAvatarIcon(item.skill.icon), { size: "xs" })
+      React.createElement(getSkillAvatarIcon(item.skill), {
+        size: "xs",
+      })
     );
 
   return (

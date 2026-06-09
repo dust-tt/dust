@@ -234,7 +234,7 @@ export function CommandPaletteSearchPhase({
             <ItemTitle>Skills</ItemTitle>
             {skills.map((skill, i) => {
               const globalIndex = agents.length + pods.length + i;
-              const SkillAvatar = getSkillAvatarIcon(skill.icon);
+              const SkillAvatar = getSkillAvatarIcon(skill);
               return (
                 <ItemRow
                   key={skill.sId}
