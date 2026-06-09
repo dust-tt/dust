@@ -3,7 +3,6 @@
  * ISC License
  */
 
-import { useAppRouter } from "@app/lib/platform";
 import { useCallback, useEffect, useState } from "react";
 
 const getUrlFromLocation = (location: Location) => {
@@ -48,8 +47,6 @@ export const useHashParam = (
   key: string,
   defaultValue?: string
 ): [string | undefined, Setter] => {
-  const router = useAppRouter();
-
   // Hold the internal value for the search param defined by "key" in the hash.
   const [innerValue, setInnerValue] = useState<{
     val: string | undefined;
@@ -62,64 +59,76 @@ export const useHashParam = (
     options: DEFAULT_OPTIONS,
   });
 
-  // Listen to hash change events and update the internal value if the hash is removed.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
+  // Listen to hash/popstate changes and sync the internal value.
   useEffect(() => {
-    const onEventComplete = (url: string) => {
-      const hash = getHashFromUrl(url);
-      // If there's no hash after route change, clear the content.
-      if (!hash && innerValue) {
-        setInnerValue({ val: undefined, options: DEFAULT_OPTIONS });
-      }
-    };
-
-    router.events.on("hashChangeComplete", onEventComplete);
-    router.events.on("routeChangeComplete", onEventComplete);
-    return () => {
-      router.events.off("hashChangeComplete", onEventComplete);
-      router.events.off("routeChangeComplete", onEventComplete);
-    };
-  }, [router.events, innerValue, setInnerValue]);
-
-  // Listen to innerValue changes and update the hash in the router if there is a mismatch.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  useEffect(() => {
-    if (typeof window !== "undefined" && router.isReady) {
-      // get current hash from window.location, DO NOT DEFAULT TO DEFAULT VALUE.
-      const currentHash = getHashParam(
-        getUrlFromLocation(window.location),
-        key
-      );
-      if (currentHash !== innerValue.val) {
-        const { pathname, search } = window.location;
-        const [prefix, searchParams] = getHashSearchParams(
-          getUrlFromLocation(window.location)
+    const onHashChange = () => {
+      const hash = getHashFromUrl(getUrlFromLocation(window.location));
+      if (!hash) {
+        setInnerValue((prev) =>
+          prev.val !== undefined
+            ? { val: undefined, options: DEFAULT_OPTIONS }
+            : prev
         );
-
-        if (typeof innerValue.val === "undefined" || innerValue.val === "") {
-          searchParams.delete(key);
-        } else {
-          searchParams.set(key, innerValue.val);
-        }
-
-        const hashSearch = searchParams.toString();
-        const hash = hashSearch ? `${prefix}?${hashSearch}` : prefix;
-        const newUrl = `${pathname}${search}${hash ? `#${hash}` : ""}`;
-
-        if (innerValue.options.history === "replace") {
-          window.history.replaceState(window.history.state, "", newUrl);
-        } else {
-          void router.push(newUrl);
-        }
+      } else {
+        const newVal = getHashParam(
+          getUrlFromLocation(window.location),
+          key,
+          defaultValue
+        );
+        setInnerValue((prev) =>
+          prev.val !== newVal
+            ? { val: newVal, options: DEFAULT_OPTIONS }
+            : prev
+        );
       }
+    };
+
+    window.addEventListener("hashchange", onHashChange);
+    window.addEventListener("popstate", onHashChange);
+    return () => {
+      window.removeEventListener("hashchange", onHashChange);
+      window.removeEventListener("popstate", onHashChange);
+    };
+  }, [key, defaultValue]);
+
+  // Listen to innerValue changes and update the hash in the URL if there is a mismatch.
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
     }
-    // Router object reference changes between renders, excluding it prevents unnecessary updates,
-    // some of which cause an infinite rendering loop.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultValue, innerValue, key, router.isReady]);
+
+    // Get current hash from window.location, DO NOT DEFAULT TO DEFAULT VALUE.
+    const currentHash = getHashParam(getUrlFromLocation(window.location), key);
+    if (currentHash !== innerValue.val) {
+      const { pathname, search } = window.location;
+      const [prefix, searchParams] = getHashSearchParams(
+        getUrlFromLocation(window.location)
+      );
+
+      if (typeof innerValue.val === "undefined" || innerValue.val === "") {
+        searchParams.delete(key);
+      } else {
+        searchParams.set(key, innerValue.val);
+      }
+
+      const hashSearch = searchParams.toString();
+      const hash = hashSearch ? `${prefix}?${hashSearch}` : prefix;
+      const newUrl = `${pathname}${search}${hash ? `#${hash}` : ""}`;
+
+      if (innerValue.options.history === "replace") {
+        window.history.replaceState(window.history.state, "", newUrl);
+      } else {
+        window.history.pushState(window.history.state, "", newUrl);
+      }
+
+      // pushState/replaceState don't fire hashchange, so notify other
+      // useHashParam instances manually.
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    }
+  }, [defaultValue, innerValue, key]);
 
   const setValue = useCallback<Setter>(
-    async (
+    (
       newValue?: string | Updater,
       options: SetterOptions = DEFAULT_OPTIONS
     ) => {
