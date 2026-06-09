@@ -162,7 +162,7 @@ export function SetupNotionPrivateIntegrationModal({
             <>
               <div>
                 <Page.SectionHeader title="Integration Token" />
-                <p className="mb-4 mt-2 text-sm text-muted-foreground">
+                <p className="mb-4 mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                   Paste your Notion integration token below.
                 </p>
                 <Input
@@ -190,7 +190,7 @@ export function SetupNotionPrivateIntegrationModal({
                 <>
                   <div>
                     <Page.SectionHeader title="Webhook URL" />
-                    <p className="mb-4 mt-2 text-sm text-muted-foreground">
+                    <p className="mb-4 mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                       Use this URL to set up Notion webhooks.
                     </p>
                     <div className="relative w-full">
@@ -225,7 +225,7 @@ export function SetupNotionPrivateIntegrationModal({
 
                   <div>
                     <Page.SectionHeader title="Verification Token" />
-                    <p className="mb-4 mt-2 text-sm text-muted-foreground">
+                    <p className="mb-4 mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                       {webhookConfig.verificationToken
                         ? "Use this token to verify your webhook in Notion."
                         : "Set the webhook URL in your Notion integration and come back here to get the token."}

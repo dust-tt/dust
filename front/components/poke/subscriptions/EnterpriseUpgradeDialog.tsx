@@ -259,7 +259,7 @@ export default function EnterpriseUpgradeDialog({
                   {useMetronomePath ? (
                     <>
                       {isPackagesLoading && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                           <Spinner size="sm" />
                           <span>Loading Metronome packages...</span>
                         </div>

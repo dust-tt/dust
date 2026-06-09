@@ -515,7 +515,7 @@ export const SpaceResourcesList = ({
   const actionButtons = (
     <>
       {isSystemSpace && category === "managed" && (
-        <div className="flex items-center justify-center text-sm font-normal text-muted-foreground">
+        <div className="flex items-center justify-center text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
           <AddConnectionMenu
             owner={owner}
             plan={plan}

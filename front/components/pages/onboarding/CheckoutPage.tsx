@@ -506,7 +506,7 @@ export function CheckoutPage() {
             <h1 className="text-5xl font-semibold text-foreground">
               {planDisplayName}
             </h1>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               {billingPeriod === "yearly"
                 ? "billed annually"
                 : "billed monthly"}
@@ -515,7 +515,7 @@ export function CheckoutPage() {
 
           <div className="flex flex-col text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Price per seat</span>
+              <span className="text-muted-foreground dark:text-muted-foreground-night">Price per seat</span>
               <span>
                 {getPriceAsString({
                   currency,
@@ -526,7 +526,7 @@ export function CheckoutPage() {
               </span>
             </div>
             <div className="mt-3 flex justify-between">
-              <span className="text-muted-foreground">Number of seats</span>
+              <span className="text-muted-foreground dark:text-muted-foreground-night">Number of seats</span>
               <span>
                 {showActualTax ? preparePayment.seatCount : seatCountForSummary}
               </span>
@@ -607,7 +607,7 @@ export function CheckoutPage() {
                       })}
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                     {getPriceAsString({
                       currency,
                       priceInCents: appliedCoupon.amount * 100,
@@ -660,7 +660,7 @@ export function CheckoutPage() {
                     })}
                   </span>
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">
+                <p className="mt-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
                   Your country selection determines the applicable taxes and
                   billing currency.
                 </p>
@@ -750,7 +750,7 @@ function RightPane({
               <h2 className="text-2xl font-semibold text-foreground">
                 Couldn&apos;t load payment details
               </h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Your payment was not processed and you have not been charged.
                 Please try again.
                 <br />
@@ -780,7 +780,7 @@ function RightPane({
                 <h2 className="text-2xl font-semibold text-foreground">
                   Select payment method
                 </h2>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                   Your available payment method is shown below
                 </p>
               </div>
@@ -814,7 +814,7 @@ function RightPane({
       return (
         <div className="flex flex-col items-center gap-4">
           <Spinner size="lg" />
-          <p className="text-sm text-muted-foreground">Processing payment…</p>
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">Processing payment…</p>
         </div>
       );
 
@@ -822,7 +822,7 @@ function RightPane({
       return (
         <div className="flex flex-col items-center gap-4">
           <Spinner size="lg" />
-          <p className="text-sm text-muted-foreground">Processing payment…</p>
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">Processing payment…</p>
         </div>
       );
 
@@ -845,7 +845,7 @@ function RightPane({
               <h2 className="text-2xl font-semibold text-foreground">
                 Something went wrong in your subscription
               </h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Your payment was processed but we encountered an issue setting
                 up your subscription. Please contact us at{" "}
                 <a
@@ -868,7 +868,7 @@ function RightPane({
               <h2 className="text-2xl font-semibold text-foreground">
                 Payment could not be processed
               </h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Your subscription could not be activated. You have not been
                 charged. Please try again.
                 <br />
@@ -894,7 +894,7 @@ function RightPane({
               <h2 className="text-2xl font-semibold text-foreground">
                 Coupon no longer valid
               </h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 This coupon is no longer valid. You have not been charged.
                 Please try again with a different code.
               </p>
@@ -910,7 +910,7 @@ function RightPane({
             <h2 className="text-2xl font-semibold text-foreground">
               Payment failed
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               Your payment could not be processed and you have not been charged.
               Please try again.
               <br />

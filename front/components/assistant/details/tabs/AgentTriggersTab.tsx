@@ -133,7 +133,7 @@ export function AgentTriggersTab({
           <Spinner variant="dark" />
         </div>
       ) : filteredTriggers.length === 0 ? (
-        <div className="text-muted-foreground text-sm">
+        <div className="text-muted-foreground dark:text-muted-foreground-night text-sm">
           You have no triggers set up for this agent yet.
         </div>
       ) : (

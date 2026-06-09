@@ -164,7 +164,7 @@ export function EditSpaceManagedDataSourcesViews({
                 {deletedViewsWithUsage.map((view) => (
                   <li key={view.sId} className="font-medium">
                     {getDisplayNameForDataSource(view.dataSource)}{" "}
-                    <span className="italic text-muted-foreground">
+                    <span className="italic text-muted-foreground dark:text-muted-foreground-night">
                       (used by {view.usage.count} agent
                       {view.usage.count > 1 ? "s" : ""})
                     </span>

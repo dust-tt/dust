@@ -11,7 +11,7 @@ export function WakeUpMessage({ message }: WakeUpMessageProps) {
 
   return (
     <div className="flex items-center justify-center gap-1.5">
-      <span className="text-sm text-muted-foreground">
+      <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         {label} · {formatTimestring(message.created)}
       </span>
     </div>

@@ -393,7 +393,7 @@ export function ActiveSubscriptionTable({
               </div>
               <CancelPendingSubscriptionButton owner={owner} />
             </div>
-            <p className="pb-2 text-xs text-muted-foreground">
+            <p className="pb-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
               Provisioned in DB. The `contract.start` Metronome webhook will
               flip it to active and end the current subscription.
             </p>
