@@ -44,4 +44,10 @@ describe("spaRedirect middleware", () => {
 
     expect(response.status).toBe(200);
   });
+
+  it("does not redirect /api routes", async () => {
+    const response = await honoApp.request("/api/healthz");
+
+    expect(response.headers.get("location")).toBeNull();
+  });
 });

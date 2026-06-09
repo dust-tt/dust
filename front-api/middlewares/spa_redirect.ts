@@ -33,10 +33,19 @@ function isPokePath(pathname: string): boolean {
  * front-edge.dust.tt) and must be 302-redirected to the appropriate SPA origin.
  */
 export const spaRedirect: MiddlewareHandler = async (ctx, next) => {
-  const { pathname, search } = new URL(ctx.req.url);
+  // `ctx.req.path` is the parsed pathname without the cost of building a URL.
+  const pathname = ctx.req.path;
+
+  // SPA redirects never apply to API routes, which are by far the hottest path.
+  // Bail out before any further checks (and before parsing the URL for its query
+  // string) so /api requests don't pay for these checks on every request.
+  if (pathname.startsWith("/api/")) {
+    return next();
+  }
 
   // Redirect /poke/* to the poke SPA app (the poke server handles its own auth).
   if (isPokePath(pathname)) {
+    const { search } = new URL(ctx.req.url);
     const pathAfterPoke = pathname.slice("/poke".length); // leading slash or empty
     return ctx.redirect(
       `${config.getPokeAppUrl()}${pathAfterPoke}${search}`,
@@ -46,6 +55,7 @@ export const spaRedirect: MiddlewareHandler = async (ctx, next) => {
 
   // Redirect SPA paths to the main SPA app.
   if (isSpaPath(pathname)) {
+    const { search } = new URL(ctx.req.url);
     return ctx.redirect(`${config.getAppUrl()}${pathname}${search}`, 302);
   }
 
