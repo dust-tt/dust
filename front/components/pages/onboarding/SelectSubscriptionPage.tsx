@@ -1,8 +1,8 @@
+import { UserMenu } from "@app/components/UserMenu";
 import {
   getSeatBarClasses,
   getSeatIconColorClass,
 } from "@app/components/workspace/seat_styles";
-import { UserMenu } from "@app/components/UserMenu";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
   CP_MAX_SEAT_COST_MONTHLY,
@@ -95,7 +95,11 @@ function PlanCard({
       <ul className="mt-6 flex flex-col gap-3">
         {features.map((feature) => (
           <li key={feature} className="flex items-start gap-2">
-            <Icon visual={Check} size="sm" className="mt-0.5 text-primary-500" />
+            <Icon
+              visual={Check}
+              size="sm"
+              className="mt-0.5 text-primary-500"
+            />
             <span className="text-sm text-foreground dark:text-foreground-night">
               {feature}
             </span>
@@ -142,8 +146,12 @@ export function SelectSubscriptionPage() {
 
   const isYearly = billingPeriod === "yearly";
   const period = isYearly ? "yearly" : "monthly";
-  const proSeatCost = isYearly ? CP_PRO_SEAT_COST_YEARLY : CP_PRO_SEAT_COST_MONTHLY;
-  const maxSeatCost = isYearly ? CP_MAX_SEAT_COST_YEARLY : CP_MAX_SEAT_COST_MONTHLY;
+  const proSeatCostDollars = isYearly
+    ? CP_PRO_SEAT_COST_YEARLY
+    : CP_PRO_SEAT_COST_MONTHLY;
+  const maxSeatCostDollars = isYearly
+    ? CP_MAX_SEAT_COST_YEARLY
+    : CP_MAX_SEAT_COST_MONTHLY;
 
   return (
     <>
@@ -166,7 +174,9 @@ export function SelectSubscriptionPage() {
 
         <ButtonsSwitchList
           defaultValue="monthly"
-          onValueChange={(value) => setBillingPeriod(value as BillingPeriod)}
+          onValueChange={(value) =>
+            setBillingPeriod(value === "yearly" ? "yearly" : "monthly")
+          }
         >
           <ButtonsSwitch value="monthly" label="Monthly" />
           <div className="flex items-center gap-1.5">
@@ -214,7 +224,7 @@ export function SelectSubscriptionPage() {
               name="Pro"
               credits="8,000"
               creditsLabel="credits/mo"
-              priceLabel={`$${proSeatCost}/seat/mo · billed ${period}`}
+              priceLabel={`$${proSeatCostDollars}/seat/mo · billed ${period}`}
               features={[
                 "Refills every month",
                 "Full access to every Dust feature",
@@ -241,7 +251,7 @@ export function SelectSubscriptionPage() {
               name="Max"
               credits="40,000"
               creditsLabel="credits/mo"
-              priceLabel={`$${maxSeatCost}/seat/mo · billed ${period}`}
+              priceLabel={`$${maxSeatCostDollars}/seat/mo · billed ${period}`}
               features={[
                 "Refills every month",
                 "Full access to every Dust feature",

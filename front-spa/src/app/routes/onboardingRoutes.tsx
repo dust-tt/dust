@@ -15,9 +15,7 @@ const TrialPage = withSuspense(
 );
 const SelectSubscriptionPage = withSuspense(
   () =>
-    import(
-      "@dust-tt/front/components/pages/onboarding/SelectSubscriptionPage"
-    ),
+    import("@dust-tt/front/components/pages/onboarding/SelectSubscriptionPage"),
   "SelectSubscriptionPage"
 );
 const TrialEndedPage = withSuspense(
