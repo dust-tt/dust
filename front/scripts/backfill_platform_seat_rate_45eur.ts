@@ -137,7 +137,7 @@ async function applyRateOverrideForCustomer(
         contract_id: contractId,
         add_overrides: [
           {
-            starting_at: floorToHourISO(new Date()),
+            starting_at: floorToHourISO(new Date(contract.starting_at)),
             type: "OVERWRITE" as const,
             entitled: true,
             override_specifiers: [
