@@ -60,7 +60,8 @@ const BATCH_PAYLOAD_BUILD_CONCURRENCY = 10;
  *  Slot 3 – messages[0]: equipped skills  (5min TTL, stable per agent within a workspace;
  *                                          set in conversation_to_anthropic.ts when name="system")
  *  Slot 4 – Anthropic API: automatic cache_control (5min TTL, auto-placed at last cacheable block;
- *                                          added as top-level field in buildStreamRequestPayload)
+ *                                          added as top-level field in buildStreamRequestPayload;
+ *                                          NOT added on Vertex AI to stay within the 4-slot limit)
  *         – Vertex AI:     explicit last-message breakpoint (5min TTL; Vertex does not support
  *                                          automatic caching, so the last message is marked
  *                                          explicitly via isLast in buildBaseRequestPayload)
@@ -212,7 +213,9 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       output_config: outputFormat
         ? { ...basePayload.output_config, format: outputFormat }
         : basePayload.output_config,
-      cache_control: { type: "ephemeral" },
+      // Automatic caching is not supported on Vertex AI; the explicit breakpoints in
+      // buildBaseRequestPayload (isFirst and isLast) cover Vertex instead.
+      ...(!this.useVertex ? { cache_control: { type: "ephemeral" } } : {}),
       model: getModel(this.useVertex, { modelId: this.modelId }),
     };
   }
