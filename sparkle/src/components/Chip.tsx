@@ -264,7 +264,7 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
         {onRemove && (
           <ChipButton
             icon={XClose}
-            size={size === "mini" ? "xs" : "sm"}
+            size={size === "sm" ? "sm" : "xs"}
             className={cn("-s-mr-1", closeIconVariants[color || "primary"])}
             aria-label="Remove"
             onClick={(e) => {
