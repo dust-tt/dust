@@ -14,6 +14,7 @@ import {
   MARKETING_PARAMS,
 } from "@marketing/lib/utils/utm";
 import { isString } from "@marketing/types/shared/utils/general";
+import { useServerPageView } from "@marketing/hooks/useServerPageView";
 import posthog from "posthog-js";
 import { PostHogProvider } from "posthog-js/react";
 import { useEffect, useMemo, useRef } from "react";
@@ -64,6 +65,8 @@ interface PostHogTrackerInnerProps {
 function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
   const router = useAppRouter();
   const [cookies] = useCookies([DUST_COOKIES_ACCEPTED]);
+
+  useServerPageView();
 
   const { wId } = router.query;
   const workspaceId = isString(wId) ? wId : undefined;
