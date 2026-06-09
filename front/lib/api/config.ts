@@ -49,14 +49,6 @@ const config = {
       return override;
     }
 
-    // Remove this when transitioned to DUST_INTERNAL_API_URL
-    override = EnvironmentConfig.getOptionalEnvVariable(
-      "DUST_INTERNAL_CLIENT_FACING_URL"
-    );
-    if (override) {
-      return override;
-    }
-
     // Using process.env here to make sure the function is usable on the client side.
     if (!process.env.NEXT_PUBLIC_DUST_API_URL) {
       throw new Error("NEXT_PUBLIC_DUST_API_URL is not set");
