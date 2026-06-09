@@ -116,19 +116,6 @@ async function applyRateOverrideForCustomer(
       );
       return;
     }
-
-    if (currentPrice !== WRONG_PRICE_EUR) {
-      logger.warn(
-        { metronomeCustomerId, contractId, currentPrice },
-        `[Override] Unexpected Platform Seat price (expected ${WRONG_PRICE_EUR} EUR), skipping`
-      );
-      return;
-    }
-  } else {
-    logger.info(
-      { metronomeCustomerId, contractId },
-      `[Override] No existing Platform Seat override — will create one at ${RIGHT_PRICE_EUR} EUR`
-    );
   }
 
   if (!execute) {
