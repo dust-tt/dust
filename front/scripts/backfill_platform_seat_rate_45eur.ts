@@ -72,12 +72,13 @@ async function applyRateOverrideForCustomer(
   const client = getMetronomeClient();
   const workspaceSeatProductId = getProductWorkspaceSeatId();
 
-  let contracts;
+  let contract;
   try {
     const response = await client.v2.contracts.list({
       customer_id: metronomeCustomerId,
+      covering_date: new Date().toISOString(),
     });
-    contracts = response.data;
+    contract = response.data[0];
   } catch (err) {
     logger.error(
       { metronomeCustomerId, error: normalizeError(err).message },
@@ -86,84 +87,90 @@ async function applyRateOverrideForCustomer(
     return;
   }
 
-  for (const contract of contracts) {
-    const contractId = contract.id;
-
-    const existingOverride = (contract.overrides ?? []).find(
-      (o) =>
-        o.entitled === true &&
-        (o.product?.id === workspaceSeatProductId ||
-          (o.override_specifiers ?? []).some(
-            (s) => s.product_id === workspaceSeatProductId
-          ))
+  if (!contract) {
+    logger.warn(
+      { metronomeCustomerId },
+      "[Override] No active contract found, skipping"
     );
+    return;
+  }
 
-    if (existingOverride) {
-      const currentPrice = existingOverride.overwrite_rate?.price;
+  const contractId = contract.id;
 
-      if (currentPrice === RIGHT_PRICE_EUR) {
-        logger.info(
-          { metronomeCustomerId, contractId },
-          `[Override] Platform Seat already at ${RIGHT_PRICE_EUR} EUR, skipping`
-        );
-        continue;
-      }
+  const existingOverride = (contract.overrides ?? []).find(
+    (o) =>
+      o.entitled === true &&
+      (o.product?.id === workspaceSeatProductId ||
+        (o.override_specifiers ?? []).some(
+          (s) => s.product_id === workspaceSeatProductId
+        ))
+  );
 
-      if (currentPrice !== WRONG_PRICE_EUR) {
-        logger.warn(
-          { metronomeCustomerId, contractId, currentPrice },
-          `[Override] Unexpected Platform Seat price (expected ${WRONG_PRICE_EUR} EUR), skipping`
-        );
-        continue;
-      }
-    } else {
+  if (existingOverride) {
+    const currentPrice = existingOverride.overwrite_rate?.price;
+
+    if (currentPrice === RIGHT_PRICE_EUR) {
       logger.info(
         { metronomeCustomerId, contractId },
-        `[Override] No existing Platform Seat override — will create one at ${RIGHT_PRICE_EUR} EUR`
+        `[Override] Platform Seat already at ${RIGHT_PRICE_EUR} EUR, skipping`
       );
+      return;
     }
 
-    if (!execute) {
-      logger.info(
-        { metronomeCustomerId, contractId },
-        `[Override] [DRY RUN] Would override Platform Seat from ${WRONG_PRICE_EUR} EUR to ${RIGHT_PRICE_EUR} EUR`
+    if (currentPrice !== WRONG_PRICE_EUR) {
+      logger.warn(
+        { metronomeCustomerId, contractId, currentPrice },
+        `[Override] Unexpected Platform Seat price (expected ${WRONG_PRICE_EUR} EUR), skipping`
       );
-      continue;
+      return;
     }
+  } else {
+    logger.info(
+      { metronomeCustomerId, contractId },
+      `[Override] No existing Platform Seat override — will create one at ${RIGHT_PRICE_EUR} EUR`
+    );
+  }
 
-    try {
-      await client.v2.contracts.edit({
-        customer_id: metronomeCustomerId,
-        contract_id: contractId,
-        add_overrides: [
-          {
-            starting_at: floorToHourISO(new Date(contract.starting_at)),
-            type: "OVERWRITE" as const,
-            entitled: true,
-            override_specifiers: [
-              {
-                product_id: workspaceSeatProductId,
-                billing_frequency: "MONTHLY" as const,
-              },
-            ],
-            overwrite_rate: {
-              rate_type: "FLAT" as const,
-              price: RIGHT_PRICE_EUR,
-              credit_type_id: CREDIT_TYPE_EUR_ID,
+  if (!execute) {
+    logger.info(
+      { metronomeCustomerId, contractId },
+      `[Override] [DRY RUN] Would override Platform Seat from ${WRONG_PRICE_EUR} EUR to ${RIGHT_PRICE_EUR} EUR`
+    );
+    return;
+  }
+
+  try {
+    await client.v2.contracts.edit({
+      customer_id: metronomeCustomerId,
+      contract_id: contractId,
+      add_overrides: [
+        {
+          starting_at: floorToHourISO(new Date(contract.starting_at)),
+          type: "OVERWRITE" as const,
+          entitled: true,
+          override_specifiers: [
+            {
+              product_id: workspaceSeatProductId,
+              billing_frequency: "MONTHLY" as const,
             },
+          ],
+          overwrite_rate: {
+            rate_type: "FLAT" as const,
+            price: RIGHT_PRICE_EUR,
+            credit_type_id: CREDIT_TYPE_EUR_ID,
           },
-        ],
-      });
-      logger.info(
-        { metronomeCustomerId, contractId },
-        `[Override] Successfully overrode Platform Seat to ${RIGHT_PRICE_EUR} EUR`
-      );
-    } catch (err) {
-      logger.error(
-        { metronomeCustomerId, contractId, error: normalizeError(err).message },
-        "[Override] Failed to add override"
-      );
-    }
+        },
+      ],
+    });
+    logger.info(
+      { metronomeCustomerId, contractId },
+      `[Override] Successfully overrode Platform Seat to ${RIGHT_PRICE_EUR} EUR`
+    );
+  } catch (err) {
+    logger.error(
+      { metronomeCustomerId, contractId, error: normalizeError(err).message },
+      "[Override] Failed to add override"
+    );
   }
 }
 
