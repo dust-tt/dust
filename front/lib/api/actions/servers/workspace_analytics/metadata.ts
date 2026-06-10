@@ -40,6 +40,18 @@ const getAgentDetailsSchema = {
     ),
 };
 
+const getTopSkillsSchema = {
+  ...timeWindowSchemaShape,
+  ...usageFilterSchema,
+  limit: z
+    .number()
+    .int()
+    .positive()
+    .max(100)
+    .optional()
+    .describe("Maximum number of skills to return (default 25, max 100)."),
+};
+
 export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
   get_top_agents: {
     description:
@@ -81,6 +93,19 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Retrieving agent details",
       done: "Retrieved agent details",
+    },
+  },
+  get_top_skills: {
+    description:
+      "Return the workspace's most-used skills over a time window (defaults " +
+      "to the current calendar month), ranked by execution count. Optionally " +
+      "filter by source (context_origin), agent, or user. Use this to answer " +
+      "which skills are used most. Admin-only.",
+    schema: getTopSkillsSchema,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving top skills",
+      done: "Retrieved top skills",
     },
   },
 });
