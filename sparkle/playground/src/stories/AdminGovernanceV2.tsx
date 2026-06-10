@@ -73,12 +73,15 @@ import {
 } from "@dust-tt/sparkle";
 import {
   AmplitudeLogo,
+  AnthropicLogo,
   AsanaLogo,
   AshbyLogo,
   AttioLogo,
   BigQueryLogo,
   ConfluenceLogo,
   FathomLogo,
+  FireworksLogo,
+  GeminiLogo,
   GithubLogo,
   GongLogo,
   DriveLogo,
@@ -86,7 +89,9 @@ import {
   JiraLogo,
   LinearLogo,
   MicrosoftLogo,
+  MistralLogo,
   NotionLogo,
+  OpenaiLogo,
   SlackLogo,
   SnowflakeLogo,
   ZendeskLogo,
@@ -185,7 +190,6 @@ type AdminPage =
   | "identity"
   // Workspace
   | "workspace"
-  | "models"
   | "analytics"
   // Developer
   | "api_keys"
@@ -649,7 +653,6 @@ const ROLE_ACCESS: Record<Role, AdminPage[]> = {
     "capabilities",
     "identity",
     "workspace",
-    "models",
     "analytics",
     "api_keys",
     "programmatic",
@@ -661,7 +664,6 @@ const ROLE_ACCESS: Record<Role, AdminPage[]> = {
   admin: [
     "people",
     "capabilities",
-    "models",
     "analytics",
     "api_keys",
     "programmatic",
@@ -1969,18 +1971,119 @@ function GovernanceRow({
   );
 }
 
+function ModelGovernanceRow({
+  provider,
+  model,
+  canEdit,
+  groups,
+  onChange,
+}: {
+  provider: ProviderDef;
+  model: ModelDef;
+  canEdit: boolean;
+  groups: GroupRow[];
+  onChange: (access: ModelDef["access"], modelGroups: string[]) => void;
+}) {
+  return (
+    <div className="s-flex s-w-full s-flex-col s-gap-3 s-px-5 s-py-4">
+      <div className="s-flex s-w-full s-items-center s-justify-between s-gap-4">
+        <div className="s-flex s-min-w-0 s-flex-1 s-items-center s-gap-2.5">
+          <provider.Logo className="s-h-5 s-w-5 s-shrink-0" />
+          <div className="s-flex s-min-w-0 s-flex-1 s-flex-col s-gap-0.5">
+            <div className="s-flex s-items-center s-gap-1.5">
+              <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                {model.name}
+              </span>
+            </div>
+            <Page.P variant="secondary" size="sm">
+              {model.description}
+            </Page.P>
+          </div>
+        </div>
+        <ButtonsSwitchList
+          key={model.access}
+          size="xs"
+          defaultValue={model.access}
+          onValueChange={(v) =>
+            canEdit && onChange(v as ModelDef["access"], model.groups)
+          }
+          disabled={!canEdit}
+        >
+          <ButtonsSwitch value="everyone" label="Everyone" />
+          <ButtonsSwitch value="groups" label="Groups" />
+          <ButtonsSwitch value="disabled" label="Disabled" />
+        </ButtonsSwitchList>
+      </div>
+      {model.access === "groups" && (
+        <div className="ag-section-in s-flex s-items-center s-gap-2 s-flex-wrap s-pl-7">
+          {canEdit && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="xs"
+                  icon={Plus}
+                  label="Add a group"
+                  isSelect
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {groups
+                  .filter((g) => !model.groups.includes(g.name))
+                  .map((g) => (
+                    <DropdownMenuItem
+                      key={g.id}
+                      label={g.name}
+                      onClick={() =>
+                        onChange("groups", [...model.groups, g.name])
+                      }
+                    />
+                  ))}
+                {groups.filter((g) => !model.groups.includes(g.name)).length ===
+                  0 && <DropdownMenuItem label="All groups added" disabled />}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          {model.groups.map((g) => (
+            <span key={g} className="ag-chip-in">
+              <Chip
+                label={g}
+                size="xs"
+                color="highlight"
+                onRemove={
+                  canEdit
+                    ? () =>
+                        onChange(
+                          "groups",
+                          model.groups.filter((x) => x !== g)
+                        )
+                    : undefined
+                }
+              />
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function GovernancePage({
   role,
   settings,
   setSettings,
   groups,
   onNavigateToGroups,
+  providers,
+  setProviders,
 }: {
   role: Role;
   settings: GovernanceSetting[];
   setSettings: (s: GovernanceSetting[]) => void;
   groups: GroupRow[];
   onNavigateToGroups: () => void;
+  providers: ProviderDef[];
+  setProviders: (p: ProviderDef[]) => void;
 }) {
   const canEdit = role === "super_admin" || role === "admin";
   const update = (updated: GovernanceSetting) =>
@@ -2091,6 +2194,49 @@ function GovernancePage({
           </div>
         ))}
       </Page.Vertical>
+
+      <Page.Separator />
+      <Page.SectionHeader title="Models" />
+      {providers.map((provider, pIdx) => (
+        <div key={provider.id} className="s-flex s-w-full s-flex-col s-gap-3">
+          {pIdx > 0 && <Page.Separator />}
+          {/* Provider sub-header */}
+          <div className="s-flex s-items-center s-gap-2">
+            <provider.Logo className="s-h-5 s-w-5 s-shrink-0" />
+            <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+              {provider.name}
+            </span>
+          </div>
+          {/* All models in one full-width bordered container */}
+          <div className="s-w-full s-rounded-xl s-border s-border-border dark:s-border-border-night s-divide-y s-divide-border dark:s-divide-border-night">
+            {provider.models.map((model) => (
+              <ModelGovernanceRow
+                key={`${provider.id}:${model.name}`}
+                provider={provider}
+                model={model}
+                canEdit={canEdit}
+                groups={groups}
+                onChange={(access, modelGroups) => {
+                  setProviders(
+                    providers.map((p) =>
+                      p.id === provider.id
+                        ? {
+                            ...p,
+                            models: p.models.map((m) =>
+                              m.name === model.name
+                                ? { ...m, access, groups: modelGroups }
+                                : m
+                            ),
+                          }
+                        : p
+                    )
+                  );
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
 
       {/* Assign member sheets */}
       <MemberPickerSheet
@@ -3103,14 +3249,14 @@ interface ModelDef {
   name: string;
   description: string;
   tier: ModelTier;
-  enabled: boolean;
+  access: "everyone" | "groups" | "disabled";
+  groups: string[]; // group names that have access when access === "groups"
 }
 
 interface ProviderDef {
   id: string;
   name: string;
-  logo: string;
-  logoBg: string;
+  Logo: React.ComponentType<{ className?: string }>;
   models: ModelDef[];
 }
 
@@ -3139,290 +3285,172 @@ const INITIAL_PROVIDERS: ProviderDef[] = [
   {
     id: "openai",
     name: "OpenAI",
-    logo: "O",
-    logoBg: "s-bg-black",
+    Logo: OpenaiLogo,
     models: [
       {
         name: "GPT 5.5",
         description: "OpenAI's latest cutting-edge model",
         tier: "balanced",
-        enabled: false,
+        access: "disabled",
+        groups: [],
       },
       {
         name: "GPT mini",
         description: "OpenAI Small Model",
         tier: "cheap",
-        enabled: true,
+        access: "everyone",
+        groups: [],
       },
       {
         name: "GPT Nano",
         description: "OpenAI Small Model",
         tier: "cheap",
-        enabled: true,
+        access: "everyone",
+        groups: [],
       },
       {
         name: "o3",
         description: "OpenAI Cutting-edge Model",
         tier: "expensive",
-        enabled: true,
+        access: "groups",
+        groups: ["Engineering Team", "Managers"],
       },
       {
         name: "o4",
         description: "OpenAI Premier Model",
         tier: "expensive",
-        enabled: false,
+        access: "disabled",
+        groups: [],
       },
     ],
   },
   {
     id: "anthropic",
     name: "Anthropic",
-    logo: "A",
-    logoBg: "s-bg-[#cc785c]",
+    Logo: AnthropicLogo,
     models: [
       {
         name: "Claude 4.5 Haiku",
         description: "Anthropic Latest Flagship Model",
         tier: "fast",
-        enabled: true,
+        access: "everyone",
+        groups: [],
       },
       {
         name: "Claude 4.5 Sonnet",
         description: "Anthropic Balanced Model",
         tier: "balanced",
-        enabled: true,
+        access: "everyone",
+        groups: [],
       },
       {
         name: "Claude Opus 4.6",
         description: "Anthropic Premier Model",
         tier: "premier",
-        enabled: false,
+        access: "groups",
+        groups: ["Managers"],
       },
     ],
   },
   {
     id: "mistral",
     name: "Mistral AI",
-    logo: "M",
-    logoBg: "s-bg-[#fa6705]",
+    Logo: MistralLogo,
     models: [
       {
         name: "Mistral Large",
         description: "Mistral AI Flagship Model",
         tier: "flagship",
-        enabled: false,
+        access: "disabled",
+        groups: [],
       },
       {
         name: "Mistral Small",
         description: "Mistral AI Cutting-edge Model",
         tier: "cheap",
-        enabled: true,
+        access: "everyone",
+        groups: [],
       },
       {
         name: "Mistral Codestral",
         description: "Mistral AI Premier Model",
         tier: "premier",
-        enabled: false,
+        access: "groups",
+        groups: ["Engineering Team"],
       },
     ],
   },
   {
     id: "gemini",
     name: "Gemini",
-    logo: "G",
-    logoBg: "s-bg-[#4285f4]",
+    Logo: GeminiLogo,
     models: [
       {
         name: "Gemini 3.1 Focus",
         description: "Gemini Latest Flagship Model",
         tier: "flagship",
-        enabled: false,
+        access: "disabled",
+        groups: [],
       },
       {
         name: "Gemini 3 Flash",
         description: "Gemini Small Model",
         tier: "fast",
-        enabled: true,
+        access: "everyone",
+        groups: [],
       },
       {
         name: "Gemini 3.1 Pro",
         description: "Gemini Balanced Model",
         tier: "balanced",
-        enabled: false,
+        access: "disabled",
+        groups: [],
       },
     ],
   },
   {
     id: "fireworks",
     name: "Fireworks",
-    logo: "8×",
-    logoBg: "s-bg-[#7c3aed]",
+    Logo: FireworksLogo,
     models: [
       {
         name: "DeepSeek V4 Pro",
         description: "Fireworks Latest Flagship Model",
         tier: "flagship",
-        enabled: false,
+        access: "disabled",
+        groups: [],
       },
       {
         name: "Kimi 2.5",
         description: "Fireworks Small Model",
         tier: "cheap",
-        enabled: false,
+        access: "disabled",
+        groups: [],
       },
       {
         name: "MiniMax M2.5",
         description: "Fireworks Small Model",
         tier: "cheap",
-        enabled: true,
+        access: "everyone",
+        groups: [],
       },
       {
         name: "Kimi K2 Instruct",
         description: "Fireworks Premier Model",
         tier: "premier",
-        enabled: false,
+        access: "disabled",
+        groups: [],
       },
       {
         name: "GLM-5",
         description: "Fireworks Cutting-edge Model",
         tier: "expensive",
-        enabled: false,
+        access: "disabled",
+        groups: [],
       },
     ],
   },
 ];
-
-function ModelProvidersPage() {
-  const [providers, setProviders] = useState<ProviderDef[]>(INITIAL_PROVIDERS);
-  const [makeAllAvailable, setMakeAllAvailable] = useState(false);
-  const [embeddingProvider, setEmbeddingProvider] = useState("OpenAI");
-
-  const toggleModel = (providerId: string, modelName: string) => {
-    setProviders((prev) =>
-      prev.map((p) =>
-        p.id === providerId
-          ? {
-              ...p,
-              models: p.models.map((m) =>
-                m.name === modelName ? { ...m, enabled: !m.enabled } : m
-              ),
-            }
-          : p
-      )
-    );
-  };
-
-  const handleMakeAll = (val: boolean) => {
-    setMakeAllAvailable(val);
-    if (val) {
-      setProviders((prev) =>
-        prev.map((p) => ({
-          ...p,
-          models: p.models.map((m) => ({ ...m, enabled: true })),
-        }))
-      );
-    }
-  };
-
-  return (
-    <Page>
-      <Page.Header
-        title="Model Providers"
-        description="Configure model providers."
-        icon={Server01}
-      />
-
-      {/* Embedding provider */}
-      <div className="s-flex s-w-full s-items-start s-justify-between s-gap-6 s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4">
-        <Page.Vertical gap="xs" sizing="grow">
-          <Page.H variant="h6">Embedding provider</Page.H>
-          <Page.P variant="secondary" size="sm">
-            Embedding models are used to create numerical representations of
-            your data powering the semantic search capabilities of your agents.
-          </Page.P>
-        </Page.Vertical>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              label={embeddingProvider}
-              isSelect
-              size="sm"
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            {["OpenAI", "Anthropic", "Mistral AI"].map((p) => (
-              <DropdownMenuItem
-                key={p}
-                label={p}
-                onClick={() => setEmbeddingProvider(p)}
-              />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      {/* Make all available */}
-      <div className="s-flex s-w-full s-items-center s-justify-between s-gap-4">
-        <Page.P size="sm">Make all models available</Page.P>
-        <SliderToggle
-          selected={makeAllAvailable}
-          onClick={() => handleMakeAll(!makeAllAvailable)}
-          size="sm"
-        />
-      </div>
-
-      {/* Provider sections */}
-      {providers.map((provider) => (
-        <Page.Vertical key={provider.id} gap="xs">
-          {/* Provider header */}
-          <div className="s-flex s-items-center s-gap-2 s-py-2">
-            <div
-              className={`s-flex s-h-6 s-w-6 s-items-center s-justify-center s-rounded-full ${provider.logoBg} s-text-[10px] s-font-bold s-text-white s-shrink-0`}
-            >
-              {provider.logo}
-            </div>
-            <Page.H variant="h6">{provider.name}</Page.H>
-            <Page.P variant="secondary" size="sm">
-              {provider.models.length} models
-            </Page.P>
-          </div>
-
-          {/* Model rows */}
-          <div className="s-w-full s-flex s-flex-col s-divide-y s-divide-border dark:s-divide-border-night s-rounded-xl s-border s-border-border dark:s-border-border-night">
-            {provider.models.map((model) => (
-              <div
-                key={model.name}
-                className="ag-model-row s-flex s-w-full s-items-center s-justify-between s-gap-4 s-px-4 s-py-3"
-              >
-                <div className="s-flex s-flex-col s-gap-0.5 s-flex-1 s-min-w-0">
-                  <div className="s-flex s-items-center s-gap-1.5">
-                    <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
-                      {model.name}
-                    </span>
-                    <Chip
-                      label={TIER_LABELS[model.tier]}
-                      color={TIER_COLORS[model.tier]}
-                      size="xs"
-                    />
-                  </div>
-                  <Page.P variant="secondary" size="sm">
-                    {model.description}
-                  </Page.P>
-                </div>
-                <SliderToggle
-                  selected={model.enabled}
-                  onClick={() => toggleModel(provider.id, model.name)}
-                  size="xs"
-                />
-              </div>
-            ))}
-          </div>
-        </Page.Vertical>
-      ))}
-    </Page>
-  );
-}
 
 // ─── Spaces Sidebar Nav ───────────────────────────────────────────────────────
 
@@ -4620,7 +4648,6 @@ const NAV_SECTIONS: { title: string; items: NavSpec[] }[] = [
       { id: "capabilities", label: "Governance", icon: Toggle01Left },
       { id: "workspace", label: "Workspace Settings", icon: Tool01 },
       { id: "usage", label: "Usage", icon: PieChart01 },
-      { id: "models", label: "Model Providers", icon: Server01 },
       { id: "analytics", label: "Analytics", icon: BarChart01 },
       { id: "billing", label: "Billing", icon: CreditCard01 },
     ],
@@ -4662,6 +4689,7 @@ export default function AdminGovernanceV2() {
   const [groups, setGroups] = useState<GroupRow[]>(GROUPS);
   const [governance, setGovernance] =
     useState<GovernanceSetting[]>(INITIAL_GOVERNANCE);
+  const [providers, setProviders] = useState<ProviderDef[]>(INITIAL_PROVIDERS);
   const [connections, setConnections] = useState<ConnectionRow[]>([
     ...INITIAL_CONNECTIONS,
   ]);
@@ -4870,6 +4898,8 @@ export default function AdminGovernanceV2() {
             setSettings={setGovernance}
             groups={groups}
             onNavigateToGroups={() => setActivePage("people" as AdminPage)}
+            providers={providers}
+            setProviders={setProviders}
           />
         ) : effectivePage === "identity" ? (
           <IdentityPage role={role} />
@@ -4885,8 +4915,6 @@ export default function AdminGovernanceV2() {
             description="Configure your workspace preferences."
             icon={Tool01}
           />
-        ) : effectivePage === "models" ? (
-          <ModelProvidersPage />
         ) : effectivePage === "api_keys" ? (
           <PlaceholderPage
             title="API Keys"
