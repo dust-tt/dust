@@ -1,7 +1,5 @@
 import {
   generateCSVFileAndSnippet,
-  generateJSONFileAndSnippet,
-  generatePlainTextFile,
   uploadFileToConversationDataSource,
 } from "@app/lib/actions/action_file_helpers";
 import { DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY } from "@app/lib/actions/constants";
@@ -9,15 +7,19 @@ import type {
   LightServerSideMCPToolConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type {
+  ToolGeneratedFilePathType,
+  ToolGeneratedFileType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { getDatasetSchema } from "@app/lib/api/datasets";
+import { writeToToolOutputsFolder } from "@app/lib/api/files/action_output_fs";
+import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import type { Authenticator } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AppResource } from "@app/lib/resources/app_resource";
-import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import type { BlockRunConfig, SpecificationBlockType } from "@app/types/app";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -156,8 +158,16 @@ export async function processDustFileOutput(
   sanitizedOutput: DustFileOutput,
   conversation: ConversationWithoutContentType,
   appName: string
-): Promise<{ type: "resource"; resource: ToolGeneratedFileType }[]> {
-  const content: { type: "resource"; resource: ToolGeneratedFileType }[] = [];
+): Promise<
+  {
+    type: "resource";
+    resource: ToolGeneratedFileType | ToolGeneratedFilePathType;
+  }[]
+> {
+  const content: {
+    type: "resource";
+    resource: ToolGeneratedFileType | ToolGeneratedFilePathType;
+  }[] = [];
 
   const containsValidStructuredOutput = (
     output: DustFileOutput
@@ -204,10 +214,7 @@ export async function processDustFileOutput(
       results: sanitizedOutput.__dust_file?.content ?? [],
     });
 
-    await uploadFileToConversationDataSource({
-      auth,
-      file: csvFile,
-    });
+    await uploadFileToConversationDataSource({ auth, file: csvFile });
 
     content.push({
       type: "resource",
@@ -224,50 +231,41 @@ export async function processDustFileOutput(
 
     delete sanitizedOutput.__dust_file;
   } else if (containsValidDocumentOutput(sanitizedOutput)) {
-    let fileTitle = "";
-    let file: FileResource;
+    const rawContent = sanitizedOutput.__dust_file?.content ?? "";
+    const jsonOutputRes = safeParseJSON(rawContent);
 
-    const jsonOutputRes = safeParseJSON(
-      sanitizedOutput.__dust_file?.content ?? ""
-    );
+    let fileName: string;
+    let fileContent: string;
+    let contentType: "application/json" | "text/plain";
+
     if (jsonOutputRes.isOk()) {
-      // If the output is a valid json object, generate a json file.
-      fileTitle = getDustAppRunResultsFileTitle({
-        appName,
-        resultsFileContentType: "application/json",
-      });
-      const { jsonFile } = await generateJSONFileAndSnippet(auth, {
-        title: fileTitle,
-        conversationId: conversation.sId,
-        data: jsonOutputRes.value,
-      });
-      file = jsonFile;
+      fileContent = JSON.stringify(jsonOutputRes.value, null, 2);
+      contentType = "application/json";
+      fileName = makeFileName({ name: appName, ext: ".json" });
     } else {
-      // If the output is not a valid json object, generate a text file.
-      fileTitle = getDustAppRunResultsFileTitle({
-        appName,
-        resultsFileContentType: "text/plain",
-      });
-
-      file = await generatePlainTextFile(auth, {
-        title: fileTitle,
-        conversationId: conversation.sId,
-        content: sanitizedOutput.__dust_file?.content ?? "",
-      });
+      fileContent = rawContent;
+      contentType = "text/plain";
+      fileName = makeFileName({ name: appName, ext: ".txt" });
     }
 
-    content.push({
-      type: "resource",
-      resource: {
-        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-        uri: `file://${file.id}`,
-        fileId: file.sId,
-        title: fileTitle,
-        contentType: file.contentType,
-        snippet: file.snippet,
-        text: `Generated text file: ${fileTitle}`,
-      },
+    const result = await writeToToolOutputsFolder(auth, conversation, {
+      fileName,
+      content: fileContent,
+      contentType,
     });
+    if (result.isOk()) {
+      content.push({
+        type: "resource",
+        resource: {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH,
+          uri: result.value,
+          path: result.value,
+          title: fileName,
+          contentType,
+          text: `Generated file: ${fileName}`,
+        },
+      });
+    }
 
     delete sanitizedOutput.__dust_file;
   }

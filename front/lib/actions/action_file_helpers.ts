@@ -9,59 +9,12 @@ import logger from "@app/logger/logger";
 import type { CoreAPIDataSourceDocumentSection } from "@app/types/core/data_source";
 
 /**
- * Generate a plain text file.
- * Save the file to the database and return it.
- */
-export async function generatePlainTextFile(
-  auth: Authenticator,
-  {
-    title,
-    conversationId,
-    content,
-    snippet,
-    hideFromUser,
-    skipDataSourceIndexing,
-  }: {
-    title: string;
-    conversationId: string;
-    content: string;
-    snippet?: string;
-    hideFromUser?: boolean;
-    skipDataSourceIndexing?: boolean;
-  }
-): Promise<FileResource> {
-  const workspace = auth.getNonNullableWorkspace();
-  const user = auth.user();
-
-  const plainTextFile = await FileResource.makeNew({
-    workspaceId: workspace.id,
-    userId: user?.id ?? null,
-    contentType: "text/plain",
-    fileName: title,
-    fileSize: Buffer.byteLength(content),
-    useCase: "tool_output",
-    useCaseMetadata: {
-      conversationId,
-      ...(hideFromUser ? { hideFromUser: true } : {}),
-      ...(skipDataSourceIndexing ? { skipDataSourceIndexing: true } : {}),
-    },
-    snippet,
-  });
-
-  await processAndStoreFile(auth, {
-    file: plainTextFile,
-    content: {
-      type: "string",
-      value: content,
-    },
-  });
-
-  return plainTextFile;
-}
-
-/**
  * Generate a CSV file and a snippet of the file.
  * Save the file to the database and return the file and the snippet.
+ *
+ * TODO(FILE_SYSTEM/COMPUTER): migrate to DustFileSystem once query_tables is ported to the computer world.
+ * Kept on FileResource because tabular results are indexed into the conversation SQLite data
+ * source so query_tables can re-query them.
  */
 export async function generateCSVFileAndSnippet(
   auth: Authenticator,

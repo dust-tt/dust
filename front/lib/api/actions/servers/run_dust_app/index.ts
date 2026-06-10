@@ -1,6 +1,9 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type {
+  ToolGeneratedFilePathType,
+  ToolGeneratedFileType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -126,7 +129,10 @@ export default async function createServer(
       handler: async (params) => {
         const content: (
           | TextContent
-          | { type: "resource"; resource: ToolGeneratedFileType }
+          | {
+              type: "resource";
+              resource: ToolGeneratedFileType | ToolGeneratedFilePathType;
+            }
         )[] = [];
 
         const preparedParams = await prepareParamsWithHistory(
