@@ -16,7 +16,7 @@ import {
   REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
 
-export const INTERACTIVE_CONTENT_TOOLS_PROSE_BEFORE_AUTHORING = `\
+const INTERACTIVE_CONTENT_TOOLS_PROSE_BEFORE_AUTHORING = `\
 ## CREATING VISUALIZATIONS WITH INTERACTIVE CONTENT
 
 You have access to an Interactive Content system that allows you to create and update executable files. When creating visualizations, you should create files instead of using the :::visualization directive.
@@ -148,7 +148,7 @@ Fix syntax errors before the file can be created/edited.
 - Renaming only changes the file name; the content remains unchanged
 `;
 
-export const INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING = `\
+const INTERACTIVE_CONTENT_TOOLS_PROSE_AFTER_AUTHORING = `\
 - When to Create Files:
   - Create files for data visualizations such as graphs, charts, and plots
   - Create files for complex visualizations that require user interaction

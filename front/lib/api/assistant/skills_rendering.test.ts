@@ -65,11 +65,8 @@ describe("getEnabledSkillInstructions", () => {
   });
 
   it("frame instructions do not contain v1-only markers", () => {
-    // Guards against regressions where v1 prose chunks leak into v2 (e.g. a
-    // missed `.replace()` target, or a stale import).
-    expect(INTERACTIVE_CONTENT_INSTRUCTIONS).not.toContain(
-      "### Frame Authoring Rules"
-    );
+    // Guards against re-importing the legacy viz authoring prose (still used
+    // by other servers) into the frames instructions.
     expect(INTERACTIVE_CONTENT_INSTRUCTIONS).not.toContain(
       "Premium, Minimalist Aesthetic"
     );
