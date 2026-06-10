@@ -3148,3 +3148,34 @@ export async function* listMetronomeAlerts(
     yield entry;
   }
 }
+
+// Retrieve a single customer alert by its Metronome id, including its enforced
+// `custom_field_filters` and `uniqueness_key`. Returns null when no API key is
+// configured. Used to resolve a per-user credit alert's target user from the
+// `alert_id` carried in the webhook (the payload omits both the filters and the
+// uniqueness key).
+export async function getMetronomeAlertById({
+  metronomeCustomerId,
+  alertId,
+}: {
+  metronomeCustomerId: string;
+  alertId: string;
+}): Promise<Result<CustomerAlert | null, Error>> {
+  if (!config.getMetronomeApiKey()) {
+    return new Ok(null);
+  }
+  try {
+    const response = await getMetronomeClient().v1.customers.alerts.retrieve({
+      customer_id: metronomeCustomerId,
+      alert_id: alertId,
+    });
+    return new Ok(response.data);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, alertId },
+      "[Metronome] Failed to retrieve alert by id"
+    );
+    return new Err(error);
+  }
+}
