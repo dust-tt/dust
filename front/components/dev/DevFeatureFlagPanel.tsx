@@ -9,7 +9,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
 
 import { ColorOverridePanel } from "./ColorOverridePanel";
 import {
@@ -78,7 +77,10 @@ function DockedToolbar({ serverFlags, onSwitchMode }: DockedToolbarProps) {
   });
 
   return (
-    <div style={S.docked}>
+    <div
+      style={S.docked}
+      className="text-muted-foreground dark:text-muted-foreground-night"
+    >
       <div style={S.dockedBar}>
         <ToolbarControls
           metrics={metrics}
@@ -200,6 +202,7 @@ function FloatingPanel({ serverFlags, onSwitchMode }: FloatingPanelProps) {
           metrics={metrics}
           expanded={activePanel}
           onTogglePanel={togglePanel}
+          compact
           actions={
             <button
               style={S.dockedIconBtn}
@@ -245,15 +248,13 @@ export function DevFeatureFlagPanel({ serverFlags }: DevFeatureFlagPanelProps) {
     injectFontFamilyStyles(readFontFamilyOverrides());
   }, []);
 
-  // Reserve space at the bottom of the page when docked.
   useEffect(() => {
-    if (dockMode === "docked") {
-      document.documentElement.style.paddingBottom = `${DOCK_BAR_HEIGHT}px`;
-    } else {
-      document.documentElement.style.paddingBottom = "";
-    }
+    document.documentElement.style.setProperty(
+      "--dev-bar-height",
+      dockMode === "docked" ? `${DOCK_BAR_HEIGHT}px` : "0px"
+    );
     return () => {
-      document.documentElement.style.paddingBottom = "";
+      document.documentElement.style.setProperty("--dev-bar-height", "0px");
     };
   }, [dockMode]);
 
@@ -267,13 +268,10 @@ export function DevFeatureFlagPanel({ serverFlags }: DevFeatureFlagPanelProps) {
     return null;
   }
 
-  return createPortal(
-    dockMode === "docked" ? (
-      <DockedToolbar serverFlags={serverFlags} onSwitchMode={switchMode} />
-    ) : (
-      <FloatingPanel serverFlags={serverFlags} onSwitchMode={switchMode} />
-    ),
-    document.body
+  return dockMode === "docked" ? (
+    <DockedToolbar serverFlags={serverFlags} onSwitchMode={switchMode} />
+  ) : (
+    <FloatingPanel serverFlags={serverFlags} onSwitchMode={switchMode} />
   );
 }
 
