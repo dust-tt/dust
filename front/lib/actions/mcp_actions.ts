@@ -63,7 +63,7 @@ import {
   makeToolInterruptionError,
   shouldRetryToolInterruption,
 } from "@app/lib/actions/tool_interruptions";
-import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type {
   AgentLoopListToolsContextType,
   AgentLoopRunContextType,
@@ -1031,11 +1031,12 @@ export async function tryListMCPTools(
       const processedTools: MCPToolConfigurationType[] = [];
 
       for (const toolConfig of rawToolsFromServer) {
-        let toolName: string;
         // Fix the tool name to be valid for the model.
-        try {
-          toolName = getPrefixedToolName(action.name, toolConfig.name);
-        } catch (error) {
+        const toolNameRes = tryGetPrefixedToolName(
+          action.name,
+          toolConfig.name
+        );
+        if (toolNameRes.isErr()) {
           logger.warn(
             {
               workspaceId: owner.sId,
@@ -1044,12 +1045,13 @@ export async function tryListMCPTools(
               actionId: action.sId,
               mcpServerName: action.name,
               toolName: toolConfig.name,
-              error: error,
+              error: toolNameRes.error,
             },
             `Invalid tool name, skipping the tool.`
           );
           continue;
         }
+        const toolName = toolNameRes.value;
 
         // Check that all tools arguments names are valid for the model (a-zA-Z0-9_.-).
         const toolArgumentsNames = Object.keys(

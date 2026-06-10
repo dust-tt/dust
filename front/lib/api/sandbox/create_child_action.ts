@@ -6,7 +6,7 @@ import {
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import { getApprovalArgsLabel } from "@app/lib/actions/tool_approval_labels";
-import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
@@ -24,7 +24,6 @@ import { launchSandboxChildToolWorkflow } from "@app/temporal/agent_loop/client"
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export type CreateSandboxChildActionResult = {
   actionId: string;
@@ -144,18 +143,17 @@ export async function createSandboxChildAction(
   // function-call name the model sees on direct calls (e.g.
   // `salesforce__update_object`), while `dsbx` sends the raw tool name. Align
   // the configuration name so approval checks and recordings share one key.
-  // `getPrefixedToolName` throws on oversized tool names; `toolName` is
-  // sandbox-workload-controlled input, so surface that as a request error.
-  let prefixedToolName: string;
-  try {
-    prefixedToolName = getPrefixedToolName(serverSideConfig.name, toolName);
-  } catch (err) {
-    return new Err(normalizeError(err));
+  const prefixedToolNameRes = tryGetPrefixedToolName(
+    serverSideConfig.name,
+    toolName
+  );
+  if (prefixedToolNameRes.isErr()) {
+    return prefixedToolNameRes;
   }
 
   const fullToolConfiguration = {
     ...toolConfiguration,
-    name: prefixedToolName,
+    name: prefixedToolNameRes.value,
   };
 
   const validateInputsResult = validateToolInputs(rawInputs);
