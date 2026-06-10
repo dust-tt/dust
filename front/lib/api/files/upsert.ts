@@ -46,8 +46,8 @@ import {
 // User-facing message for CSVs that core cannot decode to UTF-8 (e.g. exotic encodings that
 // charset detection cannot transcode). Surfaced as-is by the file upload endpoints and the
 // conversation attachment flow.
-export const NON_UTF8_CSV_ERROR_MESSAGE =
-  "This CSV file is not UTF-8 encoded. In Excel, use File > Save As > 'CSV UTF-8 (Comma delimited)' and upload the file again.";
+export const CSV_UNSUPPORTED_ENCODING_ERROR_MESSAGE =
+  "This CSV file uses an unsupported encoding. In Excel, use File > Save As > 'CSV UTF-8 (Comma delimited)' and upload the file again.";
 
 // /!\ Matches on the wording of core's CSV decode errors (`decode_to_utf8` in
 // core/src/databases/csv.rs), which all mention "UTF-8". Keep both sides in sync.
@@ -673,7 +673,10 @@ export async function processAndUpsertToDataSource(
         "Rewriting non-UTF-8 CSV error to user-facing message."
       );
       return new Err(
-        new DustError("invalid_csv_content", NON_UTF8_CSV_ERROR_MESSAGE)
+        new DustError(
+          "invalid_csv_content",
+          CSV_UNSUPPORTED_ENCODING_ERROR_MESSAGE
+        )
       );
     }
     return new Err<DustError>(processingRes.error);

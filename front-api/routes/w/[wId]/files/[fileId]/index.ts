@@ -161,7 +161,7 @@ const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
  *                 file:
  *                   $ref: '#/components/schemas/PrivateFileWithUploadUrl'
  *       400:
- *         description: Invalid file content (e.g. a CSV that is not UTF-8 encoded)
+ *         description: Invalid file content (e.g. a CSV with an unsupported encoding)
  *       403:
  *         description: Permission denied
  *       404:

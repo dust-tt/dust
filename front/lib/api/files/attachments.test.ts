@@ -1,7 +1,7 @@
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import {
-  NON_UTF8_CSV_ERROR_MESSAGE,
+  CSV_UNSUPPORTED_ENCODING_ERROR_MESSAGE,
   processAndUpsertToDataSource,
 } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
@@ -113,7 +113,12 @@ describe("maybeUpsertFileAttachment", () => {
     });
 
     vi.mocked(processAndUpsertToDataSource).mockResolvedValue(
-      new Err(new DustError("invalid_csv_content", NON_UTF8_CSV_ERROR_MESSAGE))
+      new Err(
+        new DustError(
+          "invalid_csv_content",
+          CSV_UNSUPPORTED_ENCODING_ERROR_MESSAGE
+        )
+      )
     );
 
     const result = await maybeUpsertFileAttachment(auth, {
@@ -124,7 +129,9 @@ describe("maybeUpsertFileAttachment", () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.message).toContain('"report.csv"');
-      expect(result.error.message).toContain(NON_UTF8_CSV_ERROR_MESSAGE);
+      expect(result.error.message).toContain(
+        CSV_UNSUPPORTED_ENCODING_ERROR_MESSAGE
+      );
     }
   });
 
