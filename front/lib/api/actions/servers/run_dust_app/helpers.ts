@@ -253,19 +253,21 @@ export async function processDustFileOutput(
       content: fileContent,
       contentType,
     });
-    if (result.isOk()) {
-      content.push({
-        type: "resource",
-        resource: {
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH,
-          uri: result.value,
-          path: result.value,
-          title: fileName,
-          contentType,
-          text: `Generated file: ${fileName}`,
-        },
-      });
+    if (result.isErr()) {
+      throw result.error;
     }
+
+    content.push({
+      type: "resource",
+      resource: {
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH,
+        uri: result.value,
+        path: result.value,
+        title: fileName,
+        contentType,
+        text: `Generated file: ${fileName}`,
+      },
+    });
 
     delete sanitizedOutput.__dust_file;
   }
