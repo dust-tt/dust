@@ -161,9 +161,7 @@ export const NavigationSidebar = React.forwardRef<
         // Only mount when the plan has a fair-use credits limit so that the
         // fair-use-credits endpoint is never called for unlimited plans.
         subscription.plan.limits.assistant.maxAwuCredits !== -1 && (
-          <div className="mx-3 mb-3">
-            <FairUseCreditsUsage workspaceId={owner.sId} />
-          </div>
+          <FairUseCreditsUsage workspaceId={owner.sId} />
         )
       )}
       {user && (
