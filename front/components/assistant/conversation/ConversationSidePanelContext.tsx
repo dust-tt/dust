@@ -1,4 +1,5 @@
 import type { AgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
+import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useHashParam } from "@app/hooks/useHashParams";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
@@ -174,6 +175,27 @@ export function ConversationSidePanelProvider({
     },
     [setCurrentPanel, setData, data, closePanel, currentPanel]
   );
+
+  // Close the panel when switching conversations: the provider stays mounted
+  // across conversation navigation and useHashParam does not re-sync on
+  // pushState navigation, so without this the previous conversation's panel
+  // (e.g. a Frame) stays open. Skip the null -> id transition so a panel
+  // auto-opened while creating a new conversation is not closed when the
+  // conversation gets its id, and skip the initial mount to keep deep links
+  // (#spt=...&spid=...) working.
+  const activeConversationId = useActiveConversationId();
+  const previousConversationIdRef = React.useRef(activeConversationId);
+  useEffect(() => {
+    const previousConversationId = previousConversationIdRef.current;
+    previousConversationIdRef.current = activeConversationId;
+
+    if (
+      previousConversationId &&
+      previousConversationId !== activeConversationId
+    ) {
+      closePanel();
+    }
+  }, [activeConversationId, closePanel]);
 
   // Initialize panel state from URL hash parameters
   useEffect(() => {
