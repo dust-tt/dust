@@ -184,7 +184,7 @@ describe("isUploadSupportedForContentType", () => {
 });
 
 describe("processAndStoreFile", () => {
-  it("should store extracted text from PDF with text/plain content type", async () => {
+  it("should store PDF as original only (no pre-processing; extraction is lazy via extract_text tool)", async () => {
     const { authenticator: auth } = await createResourceTest({
       role: "admin",
     });
@@ -207,11 +207,10 @@ describe("processAndStoreFile", () => {
       `Expected Ok, got: ${result.isErr() ? JSON.stringify(result.error) : ""}`
     );
 
-    // Should have 2 writes: original (application/pdf) + processed (text/plain).
+    // Only one write: original (application/pdf). No processed version is created at upload time.
     const writes = fileStorageMock.writeStreamCalls;
-    expect(writes).toHaveLength(2);
+    expect(writes).toHaveLength(1);
     expect(writes[0].contentType).toBe("application/pdf");
-    expect(writes[1].contentType).toBe("text/plain");
   });
 
   it("should not create a processed version for plain text files", async () => {
