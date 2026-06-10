@@ -672,7 +672,7 @@ export function CheckoutPage() {
 
       {/* Right pane: phase-dependent content — centered except when showing the Stripe iframe */}
       <div
-        className={`flex w-1/2 flex-col overflow-y-auto p-24 ${phase === "card_capture" && clientSecret ? "" : phase === "payment_review" ? "justify-center" : "items-center justify-center"}`}
+        className={`flex w-1/2 flex-col overflow-y-auto bg-white p-24 ${phase === "card_capture" && clientSecret ? "" : phase === "payment_review" ? "justify-center" : "items-center justify-center"}`}
       >
         <RightPane
           phase={phase}
