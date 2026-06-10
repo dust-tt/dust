@@ -518,7 +518,7 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
   // Show selected knowledge.
   if (selectedItems.length > 0) {
     return (
-      <NodeViewWrapper className="inline" data-drag-handle="">
+      <NodeViewWrapper className="inline-flex align-middle" data-drag-handle="">
         <KnowledgeDisplayComponent
           item={selectedItems[0]}
           owner={owner}
