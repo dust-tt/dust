@@ -19,9 +19,13 @@ import { useEffect, useState } from "react";
 
 interface UsageSettingsCardProps {
   workspaceId: string;
+  readOnly: boolean;
 }
 
-export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
+export function UsageSettingsCard({
+  workspaceId,
+  readOnly,
+}: UsageSettingsCardProps) {
   const { defaultUserSpendLimit, isDefaultUserSpendLimitLoading } =
     useDefaultUserSpendLimit({ workspaceId });
   const { doUpdateDefaultUserSpendLimit } = useUpdateDefaultUserSpendLimit({
@@ -82,7 +86,7 @@ export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
   };
 
   const isDefaultLimitInputDisabled =
-    isSavingLimit || isDefaultUserSpendLimitLoading;
+    readOnly || isSavingLimit || isDefaultUserSpendLimitLoading;
 
   return (
     <Page.Vertical gap="sm" align="stretch">
@@ -125,7 +129,11 @@ export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
           action={
             <SliderToggle
               selected={usageSettings.allowUpgradeRequest}
-              disabled={isSavingAllowUpgradeRequest || isUsageSettingsLoading}
+              disabled={
+                readOnly ||
+                isSavingAllowUpgradeRequest ||
+                isUsageSettingsLoading
+              }
               onClick={() => void handleToggleAllowUpgradeRequest()}
             />
           }

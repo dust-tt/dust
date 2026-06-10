@@ -138,6 +138,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Admin-only workspace usage analytics: the workspace_analytics MCP server, its skill, and the Workspace Analyst agent.",
     stage: "on_demand",
   },
+  usage_page_read_only: {
+    description:
+      "Allow legacy-contract workspaces to view the Usage page in read-only mode (analytics and member spend visible; all actions disabled).",
+    stage: "on_demand",
+  },
   xai_feature: {
     description: "Access to xAI models in the agent builder",
     stage: "on_demand",

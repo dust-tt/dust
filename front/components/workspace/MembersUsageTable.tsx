@@ -431,6 +431,7 @@ interface MembersUsageTableProps {
   seatChangePendingMemberIds: ReadonlySet<string>;
   seatTypeFilter: MembershipSeatType | "none" | null;
   isSeatBased: boolean;
+  readOnly: boolean;
   onChangeSeat: (member: MemberUsageType) => void;
   onRemoveSeat: (member: MemberUsageType) => void;
   onEditSpendLimit: (member: MemberUsageType) => void;
@@ -448,6 +449,7 @@ export function MembersUsageTable({
   seatChangePendingMemberIds,
   seatTypeFilter,
   isSeatBased,
+  readOnly,
   onChangeSeat,
   onRemoveSeat,
   onEditSpendLimit,
@@ -502,6 +504,7 @@ export function MembersUsageTable({
                 {
                   kind: "item" as const,
                   label: m.seatType ? "Change seat type" : "Assign seat",
+                  disabled: readOnly,
                   onClick: () => onChangeSeat(m),
                 },
               ]
@@ -509,6 +512,7 @@ export function MembersUsageTable({
           {
             kind: "item" as const,
             label: "Edit spend limit",
+            disabled: readOnly,
             onClick: () => onEditSpendLimit(m),
           },
           // Only members who currently hold a billable seat can have it removed.
@@ -518,6 +522,7 @@ export function MembersUsageTable({
                   kind: "item" as const,
                   label: "Remove seat",
                   variant: "warning" as const,
+                  disabled: readOnly,
                   onClick: () => onRemoveSeat(m),
                 },
               ]
@@ -529,6 +534,7 @@ export function MembersUsageTable({
       totalAllowedUsagePendingMemberIds,
       seatChangePendingMemberIds,
       isSeatBased,
+      readOnly,
       onChangeSeat,
       onRemoveSeat,
       onEditSpendLimit,

@@ -59,11 +59,13 @@ export function InviteEmailButtonWithModal({
   prefillText,
   perSeatPricing,
   onInviteClick,
+  disabled = false,
 }: {
   owner: WorkspaceType;
   prefillText: string;
   perSeatPricing: SubscriptionPerSeatPricing | null;
   onInviteClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  disabled?: boolean;
 }) {
   const [inviteEmails, setInviteEmails] = useState<string>("");
   const { inviteEmailsList, emailError } =
@@ -202,6 +204,7 @@ export function InviteEmailButtonWithModal({
           label="Invite members"
           variant="primary"
           onClick={onInviteClick}
+          disabled={disabled}
         />
       </SheetTrigger>
       <SheetContent size="lg">

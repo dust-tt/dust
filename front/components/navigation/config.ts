@@ -233,7 +233,7 @@ export const getTopNavigationTabs = (
 export const subNavigationAdmin = ({
   owner,
   currentRoute,
-  featureFlags: _featureFlags,
+  featureFlags,
   subscription,
 }: {
   owner: WorkspaceType;
@@ -285,7 +285,8 @@ export const subNavigationAdmin = ({
         current: isCurrent("workspace"),
         disabled: !hasWorkspaceAdminPermission,
       },
-      ...(isCreditPricedPlan(subscription.plan)
+      ...(isCreditPricedPlan(subscription.plan) ||
+      featureFlags.includes("usage_page_read_only")
         ? [
             {
               id: "usage" as const,
