@@ -645,7 +645,8 @@ export const ExtractResultResourceSchema = z.object({
   text: z.string(),
 
   // File metadata
-  fileId: z.string(),
+  path: z.string().optional(), // scoped DustFileSystem path (new records)
+  fileId: z.string().optional(), // legacy FileResource sId (old records)
   title: z.string(),
   contentType: z.string(),
   snippet: z.string().nullable(),

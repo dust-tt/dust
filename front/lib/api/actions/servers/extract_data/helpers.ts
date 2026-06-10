@@ -1,12 +1,13 @@
-import { generateJSONFileAndSnippet } from "@app/lib/actions/action_file_helpers";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import type { CoreDataSourceSearchCriteria } from "@app/lib/api/assistant/process_data_sources";
+import { writeToToolOutputsFolder } from "@app/lib/api/files/action_output_fs";
+import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
+import { getFilePathDownloadUrl } from "@app/lib/swr/files";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ConversationType,
@@ -26,21 +27,6 @@ export type ProcessActionOutputsType = {
   data: unknown[];
   total_documents?: number;
 };
-
-/**
- * Generates a title for an extract results JSON file based on the schema
- */
-export function getExtractFileTitle({
-  schema,
-}: {
-  schema: JSONSchema | null;
-}): string {
-  const schemaNames = Object.keys(schema?.properties ?? {}).join("_");
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const title = schema?.title || schemaNames || "extract_results";
-  // Make sure title is truncated to 100 characters
-  return `${title.substring(0, 100)}.json`;
-}
 
 export async function getCoreDataSourceSearchCriterias(
   auth: Authenticator,
@@ -157,25 +143,71 @@ export async function generateProcessToolOutput({
   jsonSchema: JSONSchema;
   timeFrame: TimeFrame | null;
   objective: string;
+}): Promise<
+  Result<
+    { processToolOutput: ReturnType<typeof buildProcessToolOutput> },
+    Error
+  >
+> {
+  const schemaNames = Object.keys(jsonSchema?.properties ?? {}).join("_");
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+  const stem = (
+    jsonSchema?.title ||
+    schemaNames ||
+    "extract_results"
+  ).substring(0, EXTRACT_RESULT_FILE_STEM_MAX_LENGTH);
+  const fileName = makeFileName({ name: stem, ext: ".json" });
+  const content = JSON.stringify(outputs?.data ?? [], null, 2);
+
+  const writeResult = await writeToToolOutputsFolder(auth, conversation, {
+    fileName,
+    content,
+    contentType: "application/json",
+  });
+  if (writeResult.isErr()) {
+    return writeResult;
+  }
+
+  const owner = auth.getNonNullableWorkspace();
+  return new Ok({
+    processToolOutput: buildProcessToolOutput({
+      outputs,
+      timeFrame,
+      objective,
+      fileName,
+      content,
+      scopedPath: writeResult.value,
+      downloadUri: getFilePathDownloadUrl(owner, writeResult.value),
+    }),
+  });
+}
+
+const EXTRACT_RESULT_FILE_STEM_MAX_LENGTH = 100;
+const EXTRACT_RESULT_SNIPPET_MAX_LENGTH = 1000;
+
+function buildProcessToolOutput({
+  outputs,
+  timeFrame,
+  objective,
+  fileName,
+  content,
+  scopedPath,
+  downloadUri,
+}: {
+  outputs: ProcessActionOutputsType | null;
+  timeFrame: TimeFrame | null;
+  objective: string;
+  fileName: string;
+  content: string;
+  scopedPath: string;
+  downloadUri: string;
 }) {
-  const fileTitle = getExtractFileTitle({
-    schema: jsonSchema,
-  });
-  const { jsonFile, jsonSnippet } = await generateJSONFileAndSnippet(auth, {
-    title: fileTitle,
-    conversationId: conversation.sId,
-    data: outputs?.data,
-  });
-  const generatedFile: ActionGeneratedFileType = {
-    fileId: jsonFile.sId,
-    title: fileTitle,
-    contentType: jsonFile.contentType,
-    snippet: jsonSnippet,
-    isInProjectContext: jsonFile.useCase === "project_context",
-    createdAt: jsonFile.createdAt.getTime(),
-    updatedAt: jsonFile.updatedAt.getTime(),
-    hidden: jsonFile.useCaseMetadata?.hideFromUser ?? false,
-  };
+  const snippet =
+    content.length > EXTRACT_RESULT_SNIPPET_MAX_LENGTH
+      ? content.substring(0, EXTRACT_RESULT_SNIPPET_MAX_LENGTH) +
+        "... (truncated)"
+      : content;
+
   const timeFrameAsString = timeFrame
     ? "the last " +
       (timeFrame.duration > 1
@@ -189,29 +221,26 @@ export async function generateProcessToolOutput({
       ? outputs.data.map((d) => JSON.stringify(d)).join("\n")
       : "(none)");
 
-  return {
-    jsonFile,
-    processToolOutput: [
-      {
-        type: "resource" as const,
-        resource: {
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_QUERY,
-          text: `Extracted from ${outputs?.total_documents} documents over ${timeFrameAsString}.\nObjective: ${objective}`,
-          uri: "",
-        },
+  return [
+    {
+      type: "resource" as const,
+      resource: {
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_QUERY,
+        text: `Extracted from ${outputs?.total_documents} documents over ${timeFrameAsString}.\nObjective: ${objective}`,
+        uri: "",
       },
-      {
-        type: "resource" as const,
-        resource: {
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_RESULT,
-          text: extractResult,
-          uri: jsonFile.getPrivateUrl(auth),
-          fileId: generatedFile.fileId,
-          title: generatedFile.title,
-          contentType: generatedFile.contentType,
-          snippet: generatedFile.snippet,
-        },
+    },
+    {
+      type: "resource" as const,
+      resource: {
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_RESULT,
+        text: extractResult,
+        uri: downloadUri,
+        path: scopedPath,
+        title: fileName,
+        contentType: "application/json" as const,
+        snippet,
       },
-    ],
-  };
+    },
+  ];
 }

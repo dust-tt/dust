@@ -30,7 +30,8 @@ interface MCPExtractActionResultsProps {
     text: string;
     uri: string;
     mimeType: string;
-    fileId: string;
+    path?: string;
+    fileId?: string;
     title: string;
     contentType: string;
     snippet: string | null;
