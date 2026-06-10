@@ -289,6 +289,17 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
           message: "Failed to upsert the file.",
           error: rUpsert.error,
         });
+        // Invalid CSV content is a user error (e.g. unsupported encoding); surface the
+        // actionable message instead of a generic 500.
+        if (rUpsert.error.code === "invalid_csv_content") {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: rUpsert.error.message,
+            },
+          });
+        }
         return apiError(ctx, {
           status_code: 500,
           api_error: {

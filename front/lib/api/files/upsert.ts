@@ -43,6 +43,16 @@ import {
   // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 } from "@dust-tt/client";
 
+// User-facing message for CSVs that core cannot decode to UTF-8 (e.g. exotic encodings that
+// charset detection cannot transcode). Surfaced as-is by the file upload endpoints and the
+// conversation attachment flow.
+export const NON_UTF8_CSV_ERROR_MESSAGE =
+  "This CSV file is not UTF-8 encoded. In Excel, use File > Save As > 'CSV UTF-8 (Comma delimited)' and upload the file again.";
+
+export function isNonUtf8CsvError(error: DustError): boolean {
+  return error.code === "invalid_csv_content" && /utf-?8/i.test(error.message);
+}
+
 export interface UpsertFileToDataSourceRequestBody {
   fileId: string;
   upsertArgs?:
@@ -649,6 +659,14 @@ export async function processAndUpsertToDataSource(
   ]);
 
   if (processingRes.isErr()) {
+    // Replace core's raw CSV parse error with an actionable message for the user.
+    if (isNonUtf8CsvError(processingRes.error)) {
+      return new Err<DustError>({
+        name: "dust_error",
+        code: "invalid_csv_content",
+        message: NON_UTF8_CSV_ERROR_MESSAGE,
+      });
+    }
     return new Err<DustError>(processingRes.error);
   }
 

@@ -1,7 +1,9 @@
+import { DustError } from "@app/lib/error";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { Err } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -452,6 +454,47 @@ describe("POST /api/w/:wId/files/:fileId", () => {
 
     expect(response.status).toBe(200);
     expect(processAndUpsertToDataSource).toHaveBeenCalled();
+  });
+
+  it("should return a 400 with the upsert error message on invalid CSV content", async () => {
+    const { processAndUpsertToDataSource } = await import(
+      "@app/lib/api/files/upsert"
+    );
+
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [new Date()],
+    });
+
+    const file = await FileFactory.create(auth, user, {
+      contentType: "text/csv",
+      fileName: "report.csv",
+      fileSize: 1024,
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: {
+        conversationId: conversation.sId,
+      },
+    });
+
+    const csvErrorMessage = "This CSV file is not UTF-8 encoded.";
+    vi.mocked(processAndUpsertToDataSource).mockResolvedValueOnce(
+      new Err(new DustError("invalid_csv_content", csvErrorMessage))
+    );
+
+    const response = await honoApp.request(fileUrl(workspace, file.sId), {
+      method: "POST",
+    });
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error.type).toBe("invalid_request_error");
+    expect(body.error.message).toBe(csvErrorMessage);
   });
 
   it("should not upsert raw sandbox delimited conversation files", async () => {

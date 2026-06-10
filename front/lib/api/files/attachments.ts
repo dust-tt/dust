@@ -6,10 +6,11 @@ import {
 } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 // When we send the attachments at the conversation creation, we are missing the useCaseMetadata
@@ -40,8 +41,9 @@ export async function maybeUpsertFileAttachment(
 
   if (filesIds.length > 0) {
     const fileResources = await FileResource.fetchByIds(auth, filesIds);
-    await Promise.all([
-      ...fileResources.map(async (fileResource) => {
+    const results = await concurrentExecutor(
+      fileResources,
+      async (fileResource): Promise<Result<undefined, Error>> => {
         if (
           fileResource.useCase === "conversation" &&
           !fileResource.useCaseMetadata?.conversationId
@@ -83,12 +85,25 @@ export async function maybeUpsertFileAttachment(
                 error: r.error,
               });
 
-              return r;
+              return new Err(
+                new Error(
+                  `Failed to attach the file "${fileResource.fileName}": ${r.error.message}`
+                )
+              );
             }
           }
         }
-      }),
-    ]);
+        return new Ok(undefined);
+      },
+      { concurrency: 4 }
+    );
+
+    const failures = removeNulls(
+      results.map((r) => (r.isErr() ? r.error : null))
+    );
+    if (failures.length > 0) {
+      return new Err(new Error(failures.map((e) => e.message).join(" ")));
+    }
   }
   return new Ok(undefined);
 }

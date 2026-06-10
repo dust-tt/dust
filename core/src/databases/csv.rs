@@ -52,7 +52,8 @@ impl GoogleCloudStorageCSVContent {
         // This is not the most efficient as we download the entire file here but we will
         // materialize it in memory as Vec<Row> anyway so that's not a massive difference.
         let content = Object::download(bucket, path).await?;
-        // csv_async only accepts UTF-8; transcode if the file starts with a UTF-16 BOM.
+        // csv_async only accepts UTF-8; transcode UTF-16 (BOM-based) and detected single-byte
+        // encodings (e.g. Windows-1252 produced by Excel's default "Save as CSV").
         let content = Self::decode_to_utf8(content)?;
         let rdr = std::io::Cursor::new(content);
 
@@ -89,7 +90,41 @@ impl GoogleCloudStorageCSVContent {
         if content.starts_with(&UTF16_BE_BOM) {
             return Self::utf16_to_utf8(&content[2..], false);
         }
-        Ok(content)
+        // Happy path: valid UTF-8 passes through untouched.
+        if std::str::from_utf8(&content).is_ok() {
+            return Ok(content);
+        }
+        Self::detected_charset_to_utf8(&content)
+    }
+
+    fn detected_charset_to_utf8(content: &[u8]) -> Result<Vec<u8>> {
+        // NUL bytes never appear in text encoded with a single-byte charset; treat the content
+        // as binary rather than transcoding it to mojibake.
+        if content.contains(&0) {
+            return Err(anyhow!(
+                "CSV content is not valid UTF-8 and appears to be binary"
+            ));
+        }
+
+        let mut detector = chardetng::EncodingDetector::new();
+        detector.feed(content, true);
+        // `allow_utf8: false` is safe: content was already checked not to be valid UTF-8.
+        let encoding = detector.guess(None, false);
+
+        let (decoded, _, had_errors) = encoding.decode(content);
+        if had_errors {
+            return Err(anyhow!(
+                "CSV content is not valid UTF-8 and failed to transcode \
+                  from detected charset {}",
+                encoding.name()
+            ));
+        }
+
+        info!(
+            charset = encoding.name(),
+            "Transcoded non-UTF-8 CSV content"
+        );
+        Ok(decoded.into_owned().into_bytes())
     }
 
     fn utf16_to_utf8(bytes: &[u8], little_endian: bool) -> Result<Vec<u8>> {
@@ -562,6 +597,56 @@ BAR,acme";
             GoogleCloudStorageCSVContent::decode_to_utf8(utf16_le_emoji)?,
             "a\t🦄".as_bytes().to_vec()
         );
+
+        // Valid UTF-8 with non-ASCII passes through untouched.
+        let utf8_accents = "name,note\ncafé,“quoted”".as_bytes().to_vec();
+        assert_eq!(
+            GoogleCloudStorageCSVContent::decode_to_utf8(utf8_accents.clone())?,
+            utf8_accents
+        );
+
+        // Windows-1252 without BOM (Excel's default "Save as CSV"): accented characters and
+        // smart quotes transcode to UTF-8.
+        let mut windows_1252 = b"name,note\ncaf".to_vec();
+        windows_1252.push(0xE9); // é
+        windows_1252.extend_from_slice(b",");
+        windows_1252.push(0x93); // “
+        windows_1252.extend_from_slice(b"quoted");
+        windows_1252.push(0x94); // ”
+        assert_eq!(
+            GoogleCloudStorageCSVContent::decode_to_utf8(windows_1252)?,
+            "name,note\ncafé,“quoted”".as_bytes().to_vec()
+        );
+
+        // Genuinely binary content (NUL bytes, invalid UTF-8) fails cleanly.
+        let binary = vec![0x89, 0x50, 0x4E, 0x47, 0x00, 0x00, 0x00, 0x0D, 0xFF, 0x81];
+        let res = GoogleCloudStorageCSVContent::decode_to_utf8(binary);
+        assert!(res.is_err());
+        assert!(res.unwrap_err().to_string().contains("binary"));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_csv_to_rows_windows_1252() -> anyhow::Result<()> {
+        // End-to-end: a Windows-1252 CSV (no BOM) parses into rows with properly transcoded
+        // values.
+        let mut csv = b"name,price\ncaf".to_vec();
+        csv.push(0xE9); // é
+        csv.extend_from_slice(b",3\nth");
+        csv.push(0xE9); // é
+        csv.extend_from_slice(b",2");
+
+        let content = GoogleCloudStorageCSVContent::decode_to_utf8(csv)?;
+        let (delimiter, rdr) =
+            GoogleCloudStorageCSVContent::find_delimiter(std::io::Cursor::new(content)).await?;
+        let rows = GoogleCloudStorageCSVContent::csv_to_rows(rdr, delimiter).await?;
+
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].value()["name"], "café");
+        assert_eq!(rows[0].value()["price"], 3.0);
+        assert_eq!(rows[1].value()["name"], "thé");
+        assert_eq!(rows[1].value()["price"], 2.0);
 
         Ok(())
     }
