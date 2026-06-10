@@ -37,3 +37,10 @@ vi.mock("@app/lib/api/config", async (importOriginal) => {
     getVizPublicUrl: () => "https://viz.dust.tt",
   });
 });
+
+vi.mock("@app/lib/api/mcp_server/urls", async (importOriginal) => {
+  return {
+    ...(await importOriginal()),
+    getMcpResourceServerUrl: () => "http://localhost:3000/mcp",
+  };
+});
