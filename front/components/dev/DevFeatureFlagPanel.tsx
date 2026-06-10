@@ -15,10 +15,7 @@ import {
   getFeatureFlagOverrides,
   writeFeatureFlagOverrides,
 } from "./devFeatureFlagOverrides";
-import {
-  type DockMode,
-  type ExpandedPanel,
-} from "./devModeConfig";
+import type { DockMode, ExpandedPanel } from "./devModeConfig";
 import { DEV_MODE_STORAGE_KEY } from "./devModeConstants";
 import { S } from "./devPanelStyles";
 import {
@@ -76,7 +73,10 @@ function DockedToolbar({ serverFlags, onSwitchMode }: DockedToolbarProps) {
   });
 
   return (
-    <div style={S.docked} className="text-muted-foreground dark:text-muted-foreground-night">
+    <div
+      style={S.docked}
+      className="text-muted-foreground dark:text-muted-foreground-night"
+    >
       <div style={S.dockedBar}>
         <ToolbarControls
           metrics={metrics}
