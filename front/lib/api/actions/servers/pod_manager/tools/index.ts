@@ -455,6 +455,9 @@ export function createProjectManagerTools(
               contentNodes,
               files: {
                 count: projectFileCount,
+                // The Pod page defaults to the conversations tab; the `#files` anchor is required
+                // for links meant to land on the Pod's files (e.g. when referencing a frame).
+                url: `${projectUrl}#files`,
                 hint: `Use \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\` with \`scope: { type: "pod" }\` to enumerate.`,
               },
             },

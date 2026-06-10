@@ -6,7 +6,10 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { buildInteractiveContentFileNotification } from "@app/lib/api/actions/servers/interactive_content/helpers";
+import {
+  buildInteractiveContentFileNotification,
+  getPodFrameLinkNotice,
+} from "@app/lib/api/actions/servers/interactive_content/helpers";
 import { INTERACTIVE_CONTENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { fetchTemplateContent } from "@app/lib/api/actions/servers/interactive_content/template_utils";
 import {
@@ -153,6 +156,7 @@ export function createInteractiveContentTools(
       if (referencedFilesChangeNotice) {
         responseText += referencedFilesChangeNotice;
       }
+      responseText += getPodFrameLinkNotice(auth, fileResource);
 
       if (_meta?.progressToken) {
         const notification: MCPProgressNotificationType =
@@ -218,7 +222,9 @@ export function createInteractiveContentTools(
       return new Ok([
         {
           type: "text",
-          text: `File '${fileResource.sId}' reverted successfully.`,
+          text:
+            `File '${fileResource.sId}' reverted successfully.` +
+            getPodFrameLinkNotice(auth, fileResource),
         },
       ]);
     },
@@ -245,7 +251,9 @@ export function createInteractiveContentTools(
 
       const fileResource = result.value;
 
-      const responseText = `File '${fileResource.sId}' renamed successfully to '${fileResource.fileName}'.`;
+      const responseText =
+        `File '${fileResource.sId}' renamed successfully to '${fileResource.fileName}'.` +
+        getPodFrameLinkNotice(auth, fileResource);
 
       if (_meta?.progressToken) {
         const notification: MCPProgressNotificationType =

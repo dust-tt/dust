@@ -1,5 +1,28 @@
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
+import { getPodRoute } from "@app/lib/utils/router";
+
+/**
+ * For frames that live in a Pod (`project_context` files), returns a notice pointing the agent at
+ * the Pod's Files tab — the most precise UI location for such frames (there is no per-file deep
+ * link on the Pod page). Returns the empty string for other files.
+ */
+export function getPodFrameLinkNotice(
+  auth: Authenticator,
+  fileResource: FileResource
+): string {
+  const { useCase, useCaseMetadata } = fileResource;
+  if (useCase !== "project_context" || !useCaseMetadata?.spaceId) {
+    return "";
+  }
+
+  const owner = auth.getNonNullableWorkspace();
+  const url = `${config.getAppUrl()}${getPodRoute(owner.sId, useCaseMetadata.spaceId)}#files`;
+
+  return ` This frame lives in a Pod; when linking to it in your response, use ${url}`;
+}
 
 /**
  * Builds a progress notification for interactive content file operations.
