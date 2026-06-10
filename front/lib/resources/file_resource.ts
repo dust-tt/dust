@@ -911,13 +911,18 @@ export class FileResource extends BaseResource<FileModel> {
     // explicit chunkSize: the SDK buffers each chunk and retries it on
     // transient errors (per the Storage retryOptions). Small files keep the
     // single-request upload, which avoids the resumable initiation round trip.
+    // fileSize is the declared size of the original content, so processed and
+    // public writes of a large file pay the resumable overhead even when their
+    // payload is small (e.g. an audio transcript): accepted for simplicity.
     const resumable = this.fileSize >= GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES;
 
     return this.getBucketForVersion(version)
       .file(this.getCloudStoragePath(auth, version))
       .createWriteStream({
         resumable,
-        ...(resumable && { chunkSize: GCS_RESUMABLE_UPLOAD_CHUNK_SIZE_BYTES }),
+        chunkSize: resumable
+          ? GCS_RESUMABLE_UPLOAD_CHUNK_SIZE_BYTES
+          : undefined,
         contentType: overrideContentType ?? this.contentType,
       });
   }
