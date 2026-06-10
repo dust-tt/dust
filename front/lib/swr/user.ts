@@ -283,11 +283,6 @@ export function useWorkspaceUsageStatus({
 
   return {
     awuStatus: data?.awuStatus ?? "normal",
-    fairUseAwuCreditsState: data?.fairUseAwuCreditsState ?? {
-      limit: -1,
-      timeframe: "lifetime",
-      count: 0,
-    },
     poolCreditState: data?.poolCreditState ?? "active",
     programmaticCreditStatus: data?.programmaticCreditStatus ?? "active",
     balanceThresholdReached: data?.balanceThresholdReached ?? false,

@@ -63,10 +63,13 @@ const DEFAULT_FAIR_USE_AWU_CREDITS_STATUS: FairUseAwuCreditsStatus = {
 
 export type GetWorkspaceUsageStatusResponseBody = {
   awuStatus: "normal" | "warned" | "blocked";
-  fairUseAwuCreditsState: FairUseAwuCreditsStatus;
   poolCreditState: WorkspacePoolCreditState;
   programmaticCreditStatus: ProgrammaticCreditStatus;
   balanceThresholdReached: boolean;
+};
+
+export type GetFairUseCreditsResponseBody = {
+  fairUseAwuCreditsState: FairUseAwuCreditsStatus;
 };
 
 const REDIS_ORIGIN = "metronome_limit" as const;
