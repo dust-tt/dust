@@ -36,14 +36,18 @@ impl JiraConnectionProvider {
         JiraConnectionProvider {}
     }
 
-    fn handle_refresh_request_error(&self, error: ProviderHttpRequestError) -> ProviderError {
+    fn handle_refresh_request_error(
+        &self,
+        connection: &Connection,
+        error: ProviderHttpRequestError,
+    ) -> ProviderError {
+        log_jira_refresh_error(connection, &error);
+
         match &error {
             ProviderHttpRequestError::RequestFailed {
                 status, message, ..
             } => {
-                let is_revoked = is_jira_refresh_token_revoked(*status, message);
-                info!(message, is_revoked, status, "JIRA refresh OAuth error");
-                if is_revoked {
+                if is_jira_refresh_token_revoked(*status, message) {
                     ProviderError::TokenRevokedError
                 } else {
                     self.default_handle_provider_request_error(error)
@@ -65,6 +69,27 @@ fn is_jira_refresh_token_revoked(status: u16, message: &str) -> bool {
         || message.contains(JIRA_INVALID_REFRESH_TOKEN_WITH_SPACES_FRAGMENT)
         || message.contains(JIRA_INVALID_REFRESH_TOKEN_GENERIC_FRAGMENT)
         || message.contains(JIRA_GLOBAL_REVOCATION_FRAGMENT)
+}
+
+fn log_jira_refresh_error(connection: &Connection, error: &ProviderHttpRequestError) {
+    match error {
+        ProviderHttpRequestError::RequestFailed {
+            status, message, ..
+        } => {
+            let is_revoked = is_jira_refresh_token_revoked(*status, message);
+            info!(
+                connection_id = connection.connection_id(),
+                status, message, is_revoked, "JIRA refresh OAuth error"
+            );
+        }
+        _ => {
+            info!(
+                connection_id = connection.connection_id(),
+                error = %error,
+                "JIRA refresh OAuth error"
+            );
+        }
+    }
 }
 
 /// JIRA documentation: https://developer.atlassian.com/cloud/jira/platform/oauth-2-3lo-apps/
@@ -159,7 +184,7 @@ impl Provider for JiraConnectionProvider {
 
         let raw_json = execute_request(ConnectionProvider::Jira, req)
             .await
-            .map_err(|e| self.handle_refresh_request_error(e))?;
+            .map_err(|e| self.handle_refresh_request_error(connection, e))?;
 
         let access_token = match raw_json["access_token"].as_str() {
             Some(token) => token,
@@ -216,9 +241,27 @@ impl Provider for JiraConnectionProvider {
 mod tests {
     use super::{is_jira_refresh_token_revoked, JiraConnectionProvider};
     use crate::oauth::{
-        connection::{ConnectionProvider, Provider, ProviderError},
+        connection::{Connection, ConnectionProvider, ConnectionStatus, Provider, ProviderError},
         providers::utils::ProviderHttpRequestError,
     };
+    use serde_json::json;
+
+    fn test_jira_connection(metadata: serde_json::Value) -> Connection {
+        Connection::new(
+            "con_test".to_string(),
+            0,
+            ConnectionProvider::Jira,
+            ConnectionStatus::Finalized,
+            metadata,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
+    }
 
     #[test]
     fn detects_jira_revoked_refresh_token_errors() {
@@ -243,12 +286,19 @@ mod tests {
     #[test]
     fn maps_revoked_refresh_failures_to_token_revoked_error() {
         let provider = JiraConnectionProvider::new();
-        let error =
-            provider.handle_refresh_request_error(ProviderHttpRequestError::RequestFailed {
+        let connection = test_jira_connection(json!({
+            "workspace_id": "jGdvDdLddV",
+            "user_id": "cj7cEVNGfx",
+            "use_case": "platform_actions",
+        }));
+        let error = provider.handle_refresh_request_error(
+            &connection,
+            ProviderHttpRequestError::RequestFailed {
                 provider: ConnectionProvider::Jira,
                 status: 400,
                 message: "invalid_grant".to_string(),
-            });
+            },
+        );
 
         assert!(matches!(error, ProviderError::TokenRevokedError));
     }
