@@ -1,3 +1,8 @@
+import { FILE_OFFLOAD_TEXT_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
+import {
+  TRUNCATED_SUFFIX,
+  TRUNCATED_TEXT_SIZE,
+} from "@app/lib/api/files/snippet";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
@@ -149,6 +154,58 @@ describe("renderLightContentFragmentForModel", () => {
       expect((result?.content[0] as { text: string }).text).toContain(
         "<pastedContent"
       );
+    });
+
+    it("inlines a below-threshold paste in full without truncation", async () => {
+      const pasteContent = "Some pasted content that fits inline.";
+      const result = await renderLightContentFragmentForModel(
+        authenticator,
+        makeFileFragment("text/vnd.dust.attachment.pasted", {
+          snippet: pasteContent,
+        }),
+        visionModel,
+        { excludeImages: false, useFileSystem: false }
+      );
+      const text = (result?.content[0] as { text: string }).text;
+      expect(text).toContain(
+        `<pastedContent name="file">${pasteContent}</pastedContent>`
+      );
+      expect(text).not.toContain('truncated="true"');
+    });
+
+    it("renders an above-threshold paste as a truncated snippet with path", async () => {
+      const snippet = "a".repeat(TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX;
+      const result = await renderLightContentFragmentForModel(
+        authenticator,
+        makeFileFragment("text/vnd.dust.attachment.pasted", {
+          snippet,
+          path: "conversation-conv123/pasted-text-1.txt",
+        }),
+        visionModel,
+        { excludeImages: false, useFileSystem: false }
+      );
+      const text = (result?.content[0] as { text: string }).text;
+      expect(text).toContain('truncated="true"');
+      expect(text).toContain('path="conversation-conv123/pasted-text-1.txt"');
+    });
+
+    it("re-truncates a legacy oversized stored snippet so the full paste is not inlined", async () => {
+      const fullPaste = "b".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES + 1);
+      const result = await renderLightContentFragmentForModel(
+        authenticator,
+        makeFileFragment("text/vnd.dust.attachment.pasted", {
+          snippet: fullPaste,
+          path: "conversation-conv123/pasted-text-1.txt",
+        }),
+        visionModel,
+        { excludeImages: false, useFileSystem: false }
+      );
+      const text = (result?.content[0] as { text: string }).text;
+      expect(text).not.toContain(fullPaste);
+      expect(text.length).toBeLessThan(1024);
+      expect(text).toContain('truncated="true"');
+      expect(text).toContain('path="conversation-conv123/pasted-text-1.txt"');
+      expect(text).toContain(TRUNCATED_SUFFIX);
     });
 
     it("renders an image with excludeImages as <attachment> with description", async () => {

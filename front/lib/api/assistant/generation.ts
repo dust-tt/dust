@@ -1,3 +1,4 @@
+import { FILE_OFFLOAD_TEXT_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
 import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   ENABLE_SKILL_TOOL_NAME,
@@ -25,10 +26,7 @@ import {
   type EnabledSkill,
   resolveSkillInstructions,
 } from "@app/lib/api/assistant/skills_rendering";
-import {
-  PASTED_CONTENT_MAX_CHARACTERS,
-  TRUNCATED_SNIPPET_SIZE,
-} from "@app/lib/api/files/snippet";
+import { TRUNCATED_SNIPPET_SIZE } from "@app/lib/api/files/snippet";
 import type {
   StructuredSystemPrompt,
   SystemPromptContext,
@@ -291,8 +289,8 @@ function constructPastedContentSection(): string {
   return (
     "# PASTED CONTENT\n" +
     "The conversation history may contain large pasted contents, indicated by <pastedContent> tags. " +
-    `Pasted content below ${PASTED_CONTENT_MAX_CHARACTERS} chars contains the full text (no tool call needed). ` +
-    `Above ${PASTED_CONTENT_MAX_CHARACTERS} chars, the attribute \`truncated="true"\` is set, only a ${TRUNCATED_SNIPPET_SIZE}-char snippet is shown, and the full pasted content can be accessed through file utilities on the associated file.\n`
+    `Pasted content below ${FILE_OFFLOAD_TEXT_SIZE_BYTES} bytes contains the full text (no tool call needed). ` +
+    `Above ${FILE_OFFLOAD_TEXT_SIZE_BYTES} bytes, the attribute \`truncated="true"\` is set, only a ${TRUNCATED_SNIPPET_SIZE}-char snippet is shown, and the full pasted content can be accessed through file utilities on the associated file.\n`
   );
 }
 

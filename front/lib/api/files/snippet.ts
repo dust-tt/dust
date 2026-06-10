@@ -1,4 +1,8 @@
 import { isPastedFile } from "@app/components/assistant/conversation/input_bar/pasted_utils";
+import {
+  computeTextByteSize,
+  FILE_OFFLOAD_TEXT_SIZE_BYTES,
+} from "@app/lib/actions/action_output_limits";
 import config from "@app/lib/api/config";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -16,11 +20,17 @@ import { Err, Ok } from "@app/types/shared/result";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isSupportedPlainTextContentType } from "@dust-tt/client";
 
-export const PASTED_CONTENT_MAX_CHARACTERS = 128 * 1024;
 export const TRUNCATED_SUFFIX = "... (truncated)";
 export const TRUNCATED_SNIPPET_SIZE = 256;
 export const TRUNCATED_TEXT_SIZE =
   TRUNCATED_SNIPPET_SIZE - TRUNCATED_SUFFIX.length;
+
+// Pasted content is inlined in full in the rendered conversation only while it stays below the
+// same threshold used to offload large tool outputs to files. Beyond that, only a truncated
+// snippet is inlined and the model reads the full content through the conversation file tools.
+export function isPastedContentOverInlineLimit(content: string): boolean {
+  return computeTextByteSize(content) > FILE_OFFLOAD_TEXT_SIZE_BYTES;
+}
 
 export async function generateSnippet(
   auth: Authenticator,
@@ -70,11 +80,11 @@ export async function generateSnippet(
     }
 
     if (isPastedFile(file.contentType)) {
-      // Include the full pasted text up to 128K characters. Beyond that, truncate to 256
-      // characters like a regular text file to avoid blowing up the conversation context.
-      // We really want to avoid having a snippet which is both large and truncated,
+      // Include the full pasted text up to the tool-output offload threshold. Beyond that,
+      // truncate to 256 characters like a regular text file to avoid blowing up the conversation
+      // context. We really want to avoid having a snippet which is both large and truncated,
       // otherwise the model will pay the cost of the large snippet + read the file.
-      if (content.length > PASTED_CONTENT_MAX_CHARACTERS) {
+      if (isPastedContentOverInlineLimit(content)) {
         return new Ok(content.slice(0, TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX);
       }
       return new Ok(content);

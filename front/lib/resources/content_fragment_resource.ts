@@ -13,7 +13,7 @@ import config from "@app/lib/api/config";
 import { SCOPED_PREFIX_CONVERSATION } from "@app/lib/api/file_system";
 import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
 import {
-  PASTED_CONTENT_MAX_CHARACTERS,
+  isPastedContentOverInlineLimit,
   TRUNCATED_SNIPPET_SIZE,
   TRUNCATED_SUFFIX,
   TRUNCATED_TEXT_SIZE,
@@ -1165,7 +1165,7 @@ export async function getContentFragmentFromAttachmentFile(
 
     // Check if this is a pasted content (large paste) - use simplified XML format
     if (isPastedFile(attachment.contentType)) {
-      const truncated = content.length > PASTED_CONTENT_MAX_CHARACTERS;
+      const truncated = isPastedContentOverInlineLimit(content);
       const truncatedContent = truncated
         ? content.slice(0, TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX
         : content;
@@ -1274,10 +1274,17 @@ export async function renderLightContentFragmentForModel(
 
   // Pasted content is always inlined regardless of feature flags.
   if (fileStringId && isPastedFile(contentType)) {
-    const snippet = attachment.snippet ?? "";
+    const storedSnippet = attachment.snippet ?? "";
+    // Snippets stored before the inline threshold was lowered may contain the full paste:
+    // re-truncate at render time so a large paste never blows up the model context.
+    const oversizedSnippet = isPastedContentOverInlineLimit(storedSnippet);
+    const snippet = oversizedSnippet
+      ? storedSnippet.slice(0, TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX
+      : storedSnippet;
     const truncated =
-      snippet.length === TRUNCATED_SNIPPET_SIZE &&
-      snippet.endsWith(TRUNCATED_SUFFIX);
+      oversizedSnippet ||
+      (snippet.length === TRUNCATED_SNIPPET_SIZE &&
+        snippet.endsWith(TRUNCATED_SUFFIX));
     return {
       role: "content_fragment",
       name: `attach_pasted_content`,
