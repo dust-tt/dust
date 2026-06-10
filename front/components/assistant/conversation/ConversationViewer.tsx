@@ -205,6 +205,58 @@ export function getBranchedInsertIndex(
   return rankOffset === -1 ? data.length : rankOffset;
 }
 
+// Upserts a message into the Virtuoso list: replaces the entry at the same
+// rank/branch (typically an optimistic placeholder), or inserts it at the
+// right position. Used by both the conversation SSE handlers and the
+// post-message response reconciliation in `handleSubmit`, so that whichever
+// path runs second is a no-op.
+//
+// For agent messages, guard against overwriting a message that the
+// message-level SSE has already partially or fully streamed: two independent
+// paths feed each message:
+//   1. Conversation stream / POST response — structural events (this function)
+//   2. Message stream — generation_tokens, tool_* (content events)
+// When the conversation stream drops and reconnects, the server replays
+// agent_message_new with the message's original "created" payload: null
+// content, agentState = "thinking", empty steps. Replacing the Virtuoso entry
+// with that stale payload would wipe whatever the message stream already
+// delivered, so we skip the replace when the existing entry is the same
+// logical message (same sId) and has already progressed past its initial
+// state.
+//
+// Retries carry a new sId at the same rank/branch, so they always fall
+// through to the replace path.
+export function upsertMessageInList(
+  data: VirtuosoMessageListMethods<
+    VirtuosoMessage,
+    VirtuosoMessageListContext
+  >["data"],
+  message: VirtuosoMessage
+): void {
+  const predicate = getPredicateForRankAndBranch(message);
+  const exists = data.find(predicate);
+
+  if (exists) {
+    const shouldSkipReplace =
+      isAgentMessageWithStreaming(exists) &&
+      exists.sId === message.sId &&
+      !isAtInitialStreamState(exists);
+
+    if (!shouldSkipReplace) {
+      data.map((m) => (predicate(m) ? message : m));
+    }
+  } else {
+    const currentData = data.get();
+    const offset = getBranchedInsertIndex(currentData, message);
+
+    if (offset < currentData.length) {
+      data.insert([message], offset);
+    } else {
+      data.append([message]);
+    }
+  }
+}
+
 function makeConversationForkNoticeMessage(
   sourceMessage: VirtuosoMessage,
   forkedChild: ConversationForkedChildType
@@ -815,56 +867,10 @@ export const ConversationViewer = ({
                 getLightAgentMessageFromAgentMessage(event.message)
               );
 
-              // Replace the message in the exist list data, or append.
-              const predicate = getPredicateForRankAndBranch(agentMessage);
-              const exists =
-                virtuosoMessageListRef.current.data.find(predicate);
-
-              if (exists) {
-                // Guard against conversation SSE replays overwriting a message
-                // that the message-level SSE has already partially or fully
-                // streamed.
-                //
-                // Two independent SSE streams feed each message:
-                //   1. Conversation stream — carries agent_message_new (structural events)
-                //   2. Message stream      — carries generation_tokens, tool_* (content events)
-                //
-                // When the conversation stream drops and reconnects, the server
-                // replays agent_message_new with the message's original "created"
-                // payload: null content, agentState = "thinking", empty steps.
-                // Replacing the Virtuoso entry with that stale payload would wipe
-                // whatever the message stream already delivered, so we skip the
-                // replace when the existing entry is the same logical message
-                // (same sId) and has already progressed past its initial state.
-                //
-                // Retries carry a new sId at the same rank/branch, so they
-                // always fall through to the replace path.
-                const shouldSkipReplace =
-                  isAgentMessageWithStreaming(exists) &&
-                  exists.sId === agentMessage.sId &&
-                  !isAtInitialStreamState(exists);
-
-                if (!shouldSkipReplace) {
-                  virtuosoMessageListRef.current.data.map((m) =>
-                    predicate(m) ? agentMessage : m
-                  );
-                }
-              } else {
-                const currentData = virtuosoMessageListRef.current.data.get();
-                const offset = getBranchedInsertIndex(
-                  currentData,
-                  agentMessage
-                );
-
-                if (offset < currentData.length) {
-                  virtuosoMessageListRef.current.data.insert(
-                    [agentMessage],
-                    offset
-                  );
-                } else {
-                  virtuosoMessageListRef.current.data.append([agentMessage]);
-                }
-              }
+              upsertMessageInList(
+                virtuosoMessageListRef.current.data,
+                agentMessage
+              );
 
               if (agentMessage.branchId) {
                 setBranchIdToApprove(agentMessage.branchId);
@@ -1255,6 +1261,7 @@ export const ConversationViewer = ({
         const {
           message: messageFromBackend,
           contentFragments: contentFragmentsFromBackend,
+          agentMessages: agentMessagesFromBackend,
         } = result.value;
 
         // If the message was created in a branch, we remove the placeholder user message and the placeholder agent messages from the list.
@@ -1268,15 +1275,67 @@ export const ConversationViewer = ({
           );
         }
 
-        // map() is how we update the state of virtuoso messages.
-        virtuosoMessageListRef.current.data.map((m) =>
-          areSameRankAndBranch(m, placeholderUserMsg)
-            ? {
-                ...messageFromBackend,
-                contentFragments: contentFragmentsFromBackend,
-              }
-            : m
+        const userMessageFromBackend = {
+          ...messageFromBackend,
+          contentFragments: contentFragmentsFromBackend,
+        };
+
+        if (messageFromBackend.branchId) {
+          // Branch case: the placeholders were just deleted, so there is no
+          // entry left to map. The user message normally arrives through the
+          // conversation SSE (user_message_new), but that event can be lost
+          // while the stream is reconnecting — upsert it from the POST
+          // response.
+          upsertMessageInList(
+            virtuosoMessageListRef.current.data,
+            userMessageFromBackend
+          );
+        } else {
+          // map() is how we update the state of virtuoso messages.
+          virtuosoMessageListRef.current.data.map((m) =>
+            areSameRankAndBranch(m, placeholderUserMsg)
+              ? userMessageFromBackend
+              : m
+          );
+        }
+
+        // The conversation SSE (agent_message_new) is the fast path for
+        // swapping the optimistic agent placeholders with the real messages,
+        // but events published while the stream is reconnecting can be lost
+        // (their Redis history has a short TTL), which would leave a
+        // placeholder stuck blank forever: its "placeholder" agentState
+        // renders nothing and blocks the message-level stream. The POST
+        // response carries the created agent messages, so reconcile from it
+        // as the guaranteed path. upsertMessageInList is a no-op for
+        // messages the SSE already swapped and progressed.
+        for (const agentMessageFromBackend of agentMessagesFromBackend) {
+          const agentMessage = makeInitialMessageStreamState(
+            getLightAgentMessageFromAgentMessage(agentMessageFromBackend)
+          );
+          upsertMessageInList(
+            virtuosoMessageListRef.current.data,
+            agentMessage
+          );
+          if (agentMessage.branchId) {
+            setBranchIdToApprove(agentMessage.branchId);
+          }
+        }
+
+        // Placeholders whose predicted rank didn't match any real agent
+        // message (e.g. the loaded page was stale so the predicted rank
+        // drifted) were not swapped above: remove the orphans.
+        const placeholderAgentSids = new Set(
+          placeholderAgentMessages.map((m) => m.sId)
         );
+        while (
+          virtuosoMessageListRef.current.data
+            .get()
+            .some((m) => placeholderAgentSids.has(m.sId))
+        ) {
+          virtuosoMessageListRef.current.data.findAndDelete((m) =>
+            placeholderAgentSids.has(m.sId)
+          );
+        }
 
         // When there are pending user mentions, MentionValidationRequired
         // renders below the user message — scroll to the bottom so the action

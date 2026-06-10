@@ -1,5 +1,11 @@
-import { getBranchedInsertIndex } from "@app/components/assistant/conversation/ConversationViewer";
-import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
+import {
+  getBranchedInsertIndex,
+  upsertMessageInList,
+} from "@app/components/assistant/conversation/ConversationViewer";
+import type {
+  AgentMessageWithStreaming,
+  VirtuosoMessage,
+} from "@app/components/assistant/conversation/types";
 import { describe, expect, it } from "vitest";
 
 describe("getBranchedInsertIndex", () => {
@@ -165,5 +171,172 @@ describe("getBranchedInsertIndex", () => {
     const index = getBranchedInsertIndex(data, newMessage);
     // Pure rank-based behavior: before first rank > 2 (i.e. before rank 3)
     expect(index).toBe(2);
+  });
+});
+
+describe("upsertMessageInList", () => {
+  const makeAgentMessage = ({
+    rank,
+    branchId = null,
+    sId,
+    agentState = "thinking",
+    content = null,
+  }: {
+    rank: number;
+    branchId?: string | null;
+    sId: string;
+    agentState?: AgentMessageWithStreaming["streaming"]["agentState"];
+    content?: string | null;
+  }): AgentMessageWithStreaming =>
+    ({
+      sId,
+      rank,
+      branchId,
+      type: "agent_message",
+      status: "created",
+      content,
+      chainOfThought: null,
+      streaming: {
+        agentState,
+        isRetrying: false,
+        lastUpdated: new Date(),
+        actionProgress: new Map(),
+        pendingToolCalls: [],
+        inlineActivitySteps: [],
+      },
+    }) as unknown as AgentMessageWithStreaming;
+
+  const makeFakeListData = (initial: VirtuosoMessage[]) => {
+    let items = [...initial];
+    const data = {
+      get: () => items,
+      find: (predicate: (m: VirtuosoMessage) => boolean) =>
+        items.find(predicate),
+      map: (fn: (m: VirtuosoMessage) => VirtuosoMessage) => {
+        items = items.map(fn);
+      },
+      insert: (msgs: VirtuosoMessage[], index: number) => {
+        items = [...items.slice(0, index), ...msgs, ...items.slice(index)];
+      },
+      append: (msgs: VirtuosoMessage[]) => {
+        items = [...items, ...msgs];
+      },
+    };
+    return data as unknown as Parameters<typeof upsertMessageInList>[0];
+  };
+
+  it("replaces the optimistic placeholder at the same rank/branch", () => {
+    const placeholder = makeAgentMessage({
+      rank: 2,
+      sId: "placeholder-agent-message-123",
+      agentState: "placeholder",
+    });
+    const data = makeFakeListData([placeholder]);
+
+    const real = makeAgentMessage({ rank: 2, sId: "real-sid" });
+    upsertMessageInList(data, real);
+
+    const items = data.get();
+    expect(items).toHaveLength(1);
+    expect(items[0].sId).toBe("real-sid");
+    expect((items[0] as AgentMessageWithStreaming).streaming.agentState).toBe(
+      "thinking"
+    );
+  });
+
+  it("does not overwrite a message that already progressed past its initial state", () => {
+    const progressed = makeAgentMessage({
+      rank: 2,
+      sId: "real-sid",
+      agentState: "writing",
+      content: "already streamed content",
+    });
+    const data = makeFakeListData([progressed]);
+
+    // Replay of agent_message_new with the original "created" payload.
+    const replay = makeAgentMessage({ rank: 2, sId: "real-sid" });
+    upsertMessageInList(data, replay);
+
+    const items = data.get();
+    expect(items).toHaveLength(1);
+    expect((items[0] as AgentMessageWithStreaming).content).toBe(
+      "already streamed content"
+    );
+  });
+
+  it("replaces the same message when it is still at its initial state", () => {
+    const initial = makeAgentMessage({ rank: 2, sId: "real-sid" });
+    const data = makeFakeListData([initial]);
+
+    const replay = makeAgentMessage({ rank: 2, sId: "real-sid" });
+    upsertMessageInList(data, replay);
+
+    const items = data.get();
+    expect(items).toHaveLength(1);
+    expect(items[0]).toBe(replay);
+  });
+
+  it("inserts the message when no entry matches its rank/branch", () => {
+    const existing = makeAgentMessage({ rank: 1, sId: "old-sid" });
+    const data = makeFakeListData([existing]);
+
+    const real = makeAgentMessage({ rank: 3, sId: "real-sid" });
+    upsertMessageInList(data, real);
+
+    const items = data.get();
+    expect(items.map((m) => m.sId)).toEqual(["old-sid", "real-sid"]);
+  });
+
+  it("retry with a new sId at the same rank/branch replaces the previous message", () => {
+    const previous = makeAgentMessage({
+      rank: 2,
+      sId: "v1-sid",
+      agentState: "writing",
+      content: "v1 content",
+    });
+    const data = makeFakeListData([previous]);
+
+    const retry = makeAgentMessage({ rank: 2, sId: "v2-sid" });
+    upsertMessageInList(data, retry);
+
+    const items = data.get();
+    expect(items).toHaveLength(1);
+    expect(items[0].sId).toBe("v2-sid");
+  });
+
+  it("inserts a user message in its branch when no entry matches (branch reconciliation)", () => {
+    const makeUserMessage = (
+      rank: number,
+      branchId: string | null,
+      sId: string
+    ): VirtuosoMessage =>
+      ({
+        sId,
+        rank,
+        branchId,
+        type: "user_message",
+        contentFragments: [],
+        context: { origin: "web" },
+      }) as unknown as VirtuosoMessage;
+
+    const mainThread = [
+      makeUserMessage(0, null, "user-0"),
+      makeAgentMessage({ rank: 1, sId: "agent-1" }),
+    ];
+    const data = makeFakeListData(mainThread);
+
+    const branchUserMessage = makeUserMessage(2, "branch-a", "branch-user");
+    upsertMessageInList(data, branchUserMessage);
+
+    expect(data.get().map((m) => m.sId)).toEqual([
+      "user-0",
+      "agent-1",
+      "branch-user",
+    ]);
+
+    // A second upsert (e.g. the SSE arriving after the POST response) is
+    // idempotent: it replaces the entry instead of duplicating it.
+    upsertMessageInList(data, branchUserMessage);
+    expect(data.get()).toHaveLength(3);
   });
 });
