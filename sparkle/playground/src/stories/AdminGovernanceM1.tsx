@@ -678,6 +678,10 @@ function PeoplePage({
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmails, setInviteEmails] = useState("");
   const [inviteRole, setInviteRole] = useState("Business Admin");
+  const [inviteBilling, setInviteBilling] = useState<"monthly" | "yearly">(
+    "monthly"
+  );
+  const [invitePlan, setInvitePlan] = useState<"free" | "pro" | "max">("pro");
   const [selectedGroup, setSelectedGroup] = useState<GroupRow | null>(null);
   const [selectedMember, setSelectedMember] = useState<MemberRow | null>(null);
   const [memberPlan, setMemberPlan] = useState<MemberRole>("user");
@@ -876,79 +880,152 @@ function PeoplePage({
         </Page.Vertical>
       </div>
 
-      {/* Invite members sheet */}
-      <Sheet open={inviteOpen} onOpenChange={setInviteOpen}>
-        <SheetContent side="right" size="lg">
-          <SheetHeader>
-            <SheetTitle>Invite new users</SheetTitle>
-          </SheetHeader>
-          <div className="s-flex s-flex-col s-gap-4 s-flex-1 s-overflow-auto s-px-6 s-py-4">
+      {/* Invite members modal */}
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Invite new users</DialogTitle>
+          </DialogHeader>
+          <div className="s-flex s-flex-col s-gap-5 s-px-5 s-py-4">
+            {/* Email input */}
             <Page.Vertical gap="xs">
-              <Label>Email addresses (comma or newline separated):</Label>
-              <div className="s-w-full">
-                <TextArea
-                  placeholder="Email addresses, comma or newline separated"
-                  value={inviteEmails}
-                  onChange={(e) => setInviteEmails(e.target.value)}
-                  minRows={4}
+              <Label>Email addresses</Label>
+              <Input
+                placeholder="Email addresses, comma separated"
+                value={inviteEmails}
+                onChange={(e) => setInviteEmails(e.target.value)}
+                name="invite-emails"
+              />
+            </Page.Vertical>
+
+            {/* Role picker */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  label={inviteRole}
+                  icon={Users01}
+                  isSelect
+                  size="sm"
+                  className="s-self-start"
                 />
-              </div>
-            </Page.Vertical>
-            <Page.Vertical gap="xs">
-              <Label>Role</Label>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    label={inviteRole}
-                    isSelect
-                    size="sm"
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {(
-                    [
-                      "Super Admin",
-                      "Business Admin",
-                      "Builder",
-                      "Member",
-                    ] as const
-                  )
-                    .filter((r) => !(role === "manager" && r === "Super Admin"))
-                    .map((r) => (
-                      <DropdownMenuItem
-                        key={r}
-                        label={r}
-                        onClick={() => setInviteRole(r)}
-                      />
-                    ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Page.P variant="secondary" size="sm">
-                {inviteRole === "Super Admin"
-                  ? ROLE_DESCRIPTIONS.admin
-                  : inviteRole === "Business Admin"
-                    ? ROLE_DESCRIPTIONS.manager
-                    : inviteRole === "Builder"
-                      ? ROLE_DESCRIPTIONS.builder
-                      : ROLE_DESCRIPTIONS.user}
-              </Page.P>
-            </Page.Vertical>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {(
+                  [
+                    "Super Admin",
+                    "Business Admin",
+                    "Builder",
+                    "Member",
+                  ] as const
+                )
+                  .filter((r) => !(role === "manager" && r === "Super Admin"))
+                  .map((r) => (
+                    <DropdownMenuItem
+                      key={r}
+                      label={r}
+                      onClick={() => setInviteRole(r)}
+                    />
+                  ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Billing toggle */}
+            <ButtonsSwitchList
+              size="sm"
+              defaultValue="monthly"
+              onValueChange={(v) => setInviteBilling(v as "monthly" | "yearly")}
+            >
+              <ButtonsSwitch value="monthly" label="Monthly" />
+              <ButtonsSwitch value="yearly" label="Yearly" />
+              <span className="s-text-xs s-font-semibold s-text-success-500 s-px-1">
+                -30%
+              </span>
+            </ButtonsSwitchList>
+
+            {/* Plan cards */}
+            <div className="s-flex s-flex-col s-gap-2">
+              {(
+                [
+                  {
+                    id: "free",
+                    label: "Free",
+                    credits: "300 credits lifetime",
+                    price: null,
+                    available: 10,
+                    emoji: "🆓",
+                  },
+                  {
+                    id: "pro",
+                    label: "Pro",
+                    credits: "7,000 credits per month",
+                    price:
+                      inviteBilling === "monthly" ? "$24.99/mo" : "$17.49/mo",
+                    available: null,
+                    emoji: "🔵",
+                  },
+                  {
+                    id: "max",
+                    label: "Max",
+                    credits: "28,000 credits per month",
+                    price:
+                      inviteBilling === "monthly" ? "$119.99/mo" : "$83.99/mo",
+                    available: null,
+                    emoji: "🟡",
+                  },
+                ] as const
+              ).map((plan) => (
+                <button
+                  key={plan.id}
+                  type="button"
+                  onClick={() => setInvitePlan(plan.id)}
+                  className={`s-w-full s-flex s-items-center s-justify-between s-rounded-xl s-border s-px-4 s-py-3 s-text-left s-transition-colors ${
+                    invitePlan === plan.id
+                      ? "s-border-highlight-500 s-bg-highlight-50 dark:s-bg-highlight-900/20"
+                      : "s-border-border dark:s-border-border-night hover:s-bg-muted-background dark:hover:s-bg-muted-background-night"
+                  }`}
+                >
+                  <div className="s-flex s-items-center s-gap-3">
+                    <span className="s-text-xl">{plan.emoji}</span>
+                    <div className="s-flex s-flex-col s-gap-0.5">
+                      <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                        {plan.label}
+                      </span>
+                      <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                        {plan.credits}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="s-flex s-items-center s-gap-2">
+                    {plan.available !== null && (
+                      <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                        {plan.available} Available
+                      </span>
+                    )}
+                    {plan.price && (
+                      <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                        {plan.price}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
-          <SheetFooter
+          <DialogFooter
             leftButtonProps={{
               label: "Cancel",
               onClick: () => setInviteOpen(false),
               variant: "outline",
             }}
             rightButtonProps={{
-              label: "Send invite",
+              label: "Validate",
               onClick: handleInvite,
               variant: "primary",
             }}
           />
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit group sheet */}
       <MemberPickerSheet
