@@ -652,7 +652,6 @@ export function UsagePage() {
                     requests={filteredUpgradeRequests}
                     isLoading={isUpgradeRequestsLoading}
                     isSeatBased={isSeatBased}
-                    isTopWorkspacePlan={isEnterprise}
                     highestSeatTypeOrder={highestSeatTypeOrder}
                     pendingRequestIds={resolvingRequestIds}
                     onUpgradePlan={handleUpgradePlanRequest}
