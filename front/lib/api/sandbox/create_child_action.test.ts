@@ -60,7 +60,7 @@ describe("createSandboxChildAction", () => {
   let conversation: ConversationType;
   let agentMessage: AgentMessageType;
   let view: MCPServerViewResource;
-  let serverSId: string;
+  let serverId: string;
   let parentActionId: string;
 
   beforeEach(async () => {
@@ -79,7 +79,7 @@ describe("createSandboxChildAction", () => {
         },
       ],
     });
-    serverSId = server.sId;
+    serverId = server.sId;
     view = await MCPServerViewFactory.create(
       workspace,
       server.sId,
@@ -191,7 +191,7 @@ describe("createSandboxChildAction", () => {
     { enabled = true }: { enabled?: boolean } = {}
   ) {
     await RemoteMCPServerToolMetadataResource.updateOrCreateSettings(auth, {
-      serverSId,
+      serverSId: serverId,
       toolName: TOOL_NAME,
       permission,
       enabled,
@@ -240,7 +240,7 @@ describe("createSandboxChildAction", () => {
     // prior "always approve" on a direct (non-sandbox) call records.
     const directCallToolName = await getDirectCallToolName();
     await auth.getNonNullableUser().createToolApproval(auth, {
-      mcpServerId: serverSId,
+      mcpServerId: serverId,
       toolName: directCallToolName,
       agentId: agentConfig.sId,
       argsAndValues: {},
@@ -305,7 +305,7 @@ describe("createSandboxChildAction", () => {
     });
     const otherView = await MCPServerViewFactory.create(
       workspace,
-      serverSId,
+      serverId,
       refreshedOtherSpace
     );
     await AgentMCPServerConfigurationFactory.create(auth, refreshedOtherSpace, {
@@ -334,7 +334,7 @@ describe("createSandboxChildAction", () => {
     );
 
     await auth.getNonNullableUser().createToolApproval(auth, {
-      mcpServerId: serverSId,
+      mcpServerId: serverId,
       toolName: disambiguatedKey,
       agentId: agentConfig.sId,
       argsAndValues: {},
