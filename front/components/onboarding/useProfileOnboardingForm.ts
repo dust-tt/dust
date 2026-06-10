@@ -17,7 +17,7 @@ import { useEffect, useMemo, useState } from "react";
 
 interface UseProfileOnboardingFormProps {
   // Called once the profile has been successfully submitted.
-  onCompleted: () => Promise<void> | void;
+  onCompleted: (result: { isFirstAdmin: boolean }) => Promise<void> | void;
 }
 
 /**
@@ -94,7 +94,7 @@ export function useProfileOnboardingForm({
       });
     }
 
-    await onCompleted();
+    await onCompleted({ isFirstAdmin });
   });
 
   const handleProfileNext = () => {

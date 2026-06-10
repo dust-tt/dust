@@ -5,6 +5,7 @@ import {
 import { useProfileOnboardingForm } from "@app/components/onboarding/useProfileOnboardingForm";
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { useIsMetronomeCheckout } from "@app/lib/client/subscription";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { Spinner } from "@dust-tt/sparkle";
@@ -13,6 +14,7 @@ export function WelcomePage() {
   const { workspace, isAdmin } = useAuth();
   const router = useAppRouter();
   const conversationId = useSearchParam("cId");
+  const isMetronomeCheckout = useIsMetronomeCheckout();
 
   const form = useProfileOnboardingForm({
     onCompleted: async () => {
@@ -24,6 +26,20 @@ export function WelcomePage() {
       );
     },
   });
+
+  // With the credit-priced checkout flow, the profile form is collected in-app
+  // (onboarding dialog): send the user into the workspace. For the first admin
+  // pre-checkout, the paywall redirects them to the plan selection page first.
+  if (isMetronomeCheckout) {
+    void router.replace(
+      `/w/${workspace.sId}${conversationId ? `?cId=${conversationId}` : ""}`
+    );
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   // Show loading while fetching welcome data.
   if (form.isWelcomeDataLoading) {

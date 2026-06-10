@@ -93,8 +93,15 @@ export function VerifyPage() {
   }, [step]);
 
   const goToWorkspace = useCallback(() => {
-    void router.push(`/w/${workspace.sId}/conversation/new?welcome=true`);
-  }, [router, workspace.sId]);
+    if (isMetronomeCheckout) {
+      // With the credit-priced checkout flow, the profile form is collected
+      // in-app (onboarding dialog), which triggers the welcome conversation
+      // once submitted: enter the workspace directly.
+      void router.push(`/w/${workspace.sId}`);
+    } else {
+      void router.push(`/w/${workspace.sId}/conversation/new?welcome=true`);
+    }
+  }, [router, workspace.sId, isMetronomeCheckout]);
 
   const handleSendCode = async () => {
     setPhoneError(null);

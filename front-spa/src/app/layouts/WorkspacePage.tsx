@@ -1,3 +1,4 @@
+import { ProfileOnboardingDialog } from "@dust-tt/front/components/onboarding/ProfileOnboardingDialog";
 import { AppAuthContextLayout } from "@dust-tt/front/components/sparkle/AppAuthContextLayout";
 import { computeIsMetronomeCheckout } from "@dust-tt/front/lib/client/subscription";
 import { useKillSwitches } from "@dust-tt/front/lib/swr/kill";
@@ -73,6 +74,9 @@ export function WorkspacePage({ children }: WorkspacePageProps) {
 
   return (
     <AppAuthContextLayout authContext={authContext}>
+      {isMetronomeCheckout && isRequireCanUseProduct && (
+        <ProfileOnboardingDialog />
+      )}
       {children ?? <Outlet />}
     </AppAuthContextLayout>
   );
