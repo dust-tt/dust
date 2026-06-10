@@ -44,7 +44,6 @@ import {
   isAwuPurchaseInvoice,
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
-  isFirstPeriodInvoice,
   isSubscriptionActivationInvoice,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
@@ -845,19 +844,13 @@ export async function processStripeWebhookEvent({
       const invoice = event.data.object as Stripe.Invoice;
       const isMetronomeInvoice = typeof invoice.subscription !== "string";
       const isCreditPurchase = isCreditPurchaseInvoice(invoice);
-      const isFirstPeriod = isFirstPeriodInvoice(invoice);
       const isAwuPurchase = isAwuPurchaseInvoice(invoice);
 
       // Only Metronome subscription invoices need the force-charge.
       // Stripe-subscription invoices have their own auto-charge flow;
       // credit-purchase, first-period, and AWU purchase invoices have
       // their own flow too.
-      if (
-        isMetronomeInvoice &&
-        !isCreditPurchase &&
-        !isFirstPeriod &&
-        !isAwuPurchase
-      ) {
+      if (isMetronomeInvoice && !isCreditPurchase && !isAwuPurchase) {
         await forceChargeMetronomeFinalizedInvoice(invoice, stripe);
       }
 
@@ -878,12 +871,6 @@ export async function processStripeWebhookEvent({
       // First-invoice failures during subscription creation are handled
       // by Stripe's own dunning retries — nothing to do.
       if (invoice.billing_reason === "subscription_create") {
-        break;
-      }
-
-      // First-invoice failures during metronomone checkout are handled
-      // directly in return to failure of pay API — nothing to do.
-      if (isFirstPeriodInvoice(invoice)) {
         break;
       }
 

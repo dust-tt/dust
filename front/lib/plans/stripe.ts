@@ -1,7 +1,6 @@
 import type { CheckoutSeatType } from "@app/lib/api/checkout/types";
 import config from "@app/lib/api/config";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
-import { WORKSPACE_SEAT_PRODUCT_NAME } from "@app/lib/metronome/setup_common";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { PHONE_TRIAL_ENABLED } from "@app/lib/plans/trial/constants";
@@ -409,88 +408,6 @@ export async function calculateTax({
   }
 }
 
-async function makeFirstPeriodInvoiceForCustomer({
-  stripeCustomerId,
-  paymentMethodId,
-  billingPeriod,
-  pricePerSeatCents,
-  seatCount,
-  couponAmountCents,
-  setupSessionId,
-  workspaceId,
-  currency,
-  couponCode,
-}: {
-  stripeCustomerId: string;
-  paymentMethodId: string;
-  billingPeriod: string;
-  pricePerSeatCents: number;
-  seatCount: number;
-  couponAmountCents?: number;
-  setupSessionId: string;
-  workspaceId: string;
-  currency: SupportedCurrency;
-  couponCode?: string;
-}): Promise<Result<Stripe.Invoice, { error_message: string }>> {
-  const stripe = getStripeClient();
-  try {
-    const invoice = await stripe.invoices.create(
-      {
-        customer: stripeCustomerId,
-        collection_method: "charge_automatically",
-        default_payment_method: paymentMethodId,
-        currency,
-        automatic_tax: { enabled: true },
-        auto_advance: false,
-        metadata: {
-          metronome_first_period: "true",
-          setup_session_id: setupSessionId,
-          workspace_id: workspaceId,
-          ...(couponCode ? { coupon_code: couponCode } : {}),
-        },
-      },
-      { idempotencyKey: `first-period-invoice-${setupSessionId}` }
-    );
-
-    await stripe.invoiceItems.create({
-      customer: stripeCustomerId,
-      unit_amount: pricePerSeatCents,
-      quantity: seatCount,
-      currency,
-      description: `${WORKSPACE_SEAT_PRODUCT_NAME} (${billingPeriod})`,
-      invoice: invoice.id,
-    });
-
-    if (couponCode && couponAmountCents && couponAmountCents > 0) {
-      const effectiveCouponAmountCents = Math.min(
-        pricePerSeatCents * seatCount,
-        couponAmountCents
-      );
-      await stripe.invoiceItems.create({
-        customer: stripeCustomerId,
-        amount: -effectiveCouponAmountCents,
-        currency,
-        description: `Coupon: ${couponCode}`,
-        invoice: invoice.id,
-      });
-    }
-
-    return new Ok(invoice);
-  } catch (error) {
-    logger.error(
-      {
-        stripeCustomerId,
-        stripeError: true,
-        error: normalizeError(error).message,
-      },
-      "[Stripe] Failed to create first-period invoice"
-    );
-    return new Err({
-      error_message: `Failed to create invoice: ${normalizeError(error).message}`,
-    });
-  }
-}
-
 export async function setStripeCustomerDefaultPaymentMethod({
   stripeCustomerId,
   paymentMethodId,
@@ -520,108 +437,6 @@ export async function setStripeCustomerDefaultPaymentMethod({
       error_message: normalizeError(error).message,
     });
   }
-}
-
-export async function chargeFirstPeriodInvoice({
-  stripeCustomerId,
-  paymentMethodId,
-  billingPeriod,
-  pricePerSeatCents,
-  seatCount,
-  couponAmountCents,
-  setupSessionId,
-  workspaceId,
-  currency,
-  couponCode,
-}: {
-  stripeCustomerId: string;
-  paymentMethodId: string;
-  billingPeriod: string;
-  pricePerSeatCents: number;
-  seatCount: number;
-  couponAmountCents?: number;
-  setupSessionId: string;
-  workspaceId: string;
-  currency: SupportedCurrency;
-  couponCode?: string;
-}): Promise<Result<void, { error_message: string }>> {
-  const invoiceResult = await makeFirstPeriodInvoiceForCustomer({
-    stripeCustomerId,
-    paymentMethodId,
-    billingPeriod,
-    pricePerSeatCents,
-    seatCount,
-    couponAmountCents,
-    setupSessionId,
-    workspaceId,
-    currency,
-    couponCode,
-  });
-  if (invoiceResult.isErr()) {
-    logger.error(
-      {
-        workspaceId,
-        error: normalizeError(invoiceResult.error).message,
-      },
-      "[Checkout] Failed to create first-period invoice"
-    );
-    return invoiceResult;
-  }
-
-  const finalizeResult = await finalizeInvoice(invoiceResult.value);
-  if (finalizeResult.isErr()) {
-    logger.error(
-      {
-        workspaceId,
-        error: normalizeError(finalizeResult.error).message,
-        invoiceId: invoiceResult.value.id,
-      },
-      "[Checkout] Failed to finalize first-period invoice"
-    );
-    return finalizeResult;
-  }
-
-  // If invoice corresponds to a zero amount (for example with coupon applied)
-  // then it is automatically set as paid by Stripe and we do not need to pay it.
-  if (finalizeResult.value.status == "paid") {
-    return new Ok(undefined);
-  }
-
-  const stripe = getStripeClient();
-  try {
-    const payResult = await stripe.invoices.pay(finalizeResult.value.id, {
-      expand: ["payment_intent"],
-    });
-
-    const paymentIntent = payResult.payment_intent;
-    if (payResult.status !== "paid") {
-      logger.error(
-        {
-          workspaceId,
-          invoiceId: finalizeResult.value.id,
-          invoiceStatus: payResult.status,
-          paymentIntentStatus:
-            paymentIntent && !isString(paymentIntent)
-              ? paymentIntent.status
-              : paymentIntent,
-        },
-        "[Checkout] First-period invoice payment failed"
-      );
-      return new Err({ error_message: "Invoice payment failed" });
-    }
-  } catch (payError) {
-    logger.error(
-      {
-        workspaceId,
-        error: normalizeError(payError).message,
-        invoiceId: finalizeResult.value.id,
-      },
-      "[Checkout] First-period invoice payment failed"
-    );
-    return new Err({ error_message: normalizeError(payError).message });
-  }
-
-  return new Ok(undefined);
 }
 
 /**
@@ -1093,13 +908,6 @@ export function isSubscriptionActivationInvoice(
   invoice: Stripe.Invoice
 ): boolean {
   return invoice.metadata?.subscription_activation === "true";
-}
-
-/**
- * Checks if a Stripe invoice is for a Metronome first-period charge.
- */
-export function isFirstPeriodInvoice(invoice: Stripe.Invoice): boolean {
-  return invoice.metadata?.metronome_first_period === "true";
 }
 
 /**
