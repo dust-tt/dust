@@ -708,6 +708,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_top_skills": "never_ask",
     "get_top_tools": "never_ask",
     "get_top_users": "never_ask",
+    "get_usage_timeseries": "never_ask",
   },
   "zendesk": {
     "draft_reply": "low",

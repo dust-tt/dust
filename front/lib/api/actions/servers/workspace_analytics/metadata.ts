@@ -38,6 +38,25 @@ const getAgentDetailsSchema = {
     ),
 };
 
+const getUsageTimeseriesSchema = {
+  ...timeWindowSchemaShape,
+  ...usageFilterSchema,
+  metric: z
+    .enum(["messages", "skills", "tools"])
+    .optional()
+    .describe(
+      "What to plot over time. 'messages' (default): messages, conversations " +
+        "and active users. 'skills'/'tools': executions and unique users."
+    ),
+  granularity: z
+    .enum(["day", "week"])
+    .optional()
+    .describe(
+      "Bucket granularity (default day). Only applies to the messages metric; " +
+        "skills and tools are always daily."
+    ),
+};
+
 export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
   get_top_agents: {
     description:
@@ -105,6 +124,21 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Retrieving top tools",
       done: "Retrieved top tools",
+    },
+  },
+  get_usage_timeseries: {
+    description:
+      "Return a usage time series over a window (defaults to the last 30 " +
+      "days). The metric parameter selects what is plotted: messages " +
+      "(messages/conversations/active users, default), skills, or tools " +
+      "(executions/unique users). Use this for any trend over time — it is a " +
+      "single call, do not call other tools once per day. Combine with the " +
+      "source/agent/user filters to narrow. Chart the result. Admin-only.",
+    schema: getUsageTimeseriesSchema,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving usage time series",
+      done: "Retrieved usage time series",
     },
   },
 });
