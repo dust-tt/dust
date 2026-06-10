@@ -1,0 +1,15 @@
+{
+  "action": "membership.upgrade_request_resolved",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "user"
+    }
+  ],
+  "metadata": {
+    "status": "string",
+    "request_sid": "string"
+  }
+}
