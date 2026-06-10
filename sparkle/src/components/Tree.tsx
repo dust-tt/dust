@@ -83,12 +83,12 @@ const treeItemStyleClasses = {
   base: "s-group/tree s-flex s-cursor-default s-flex-row s-items-center s-gap-2 s-h-9",
   isNavigatableBase: "s-rounded-xl s-pl-1.5 s-pr-3 s-ease-out s-cursor-pointer",
   isNavigatableUnselected: cn(
-    "s-bg-primary-100/0 dark:s-bg-primary-100-night/0",
-    "hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night"
+    "s-bg-sidebar-foreground/0 dark:s-bg-sidebar-foreground-night/0",
+    "hover:s-bg-sidebar-foreground dark:hover:s-bg-sidebar-foreground-night"
   ),
   isNavigatableSelected: cn(
     "s-font-medium",
-    "s-bg-primary-100 dark:s-bg-primary-100-night"
+    "s-bg-sidebar-foreground dark:s-bg-sidebar-foreground-night"
   ),
 };
 

@@ -36,6 +36,7 @@ const customColors = {
     400: "#A6A09B",
     300: "#D6D3D1",
     200: "#E7E5E4",
+    150: "#EEEEEC",
     100: "#F5F5F4",
     50: "#FBFAF9",
     25: "#FDFDFC",
@@ -718,9 +719,9 @@ module.exports = {
             DEFAULT: customColors.stone[800],
             night: "#D6D3D1",
           },
-          hover: {
-            DEFAULT: customColors.stone[100],
-            night: colors.gray[800], // to be updated,
+          foreground: {
+            DEFAULT: customColors.stone[150],
+            night: colors.gray[800],
           },
         },
         info: {
