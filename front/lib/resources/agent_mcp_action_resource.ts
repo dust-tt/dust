@@ -752,6 +752,33 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   }
 
   /**
+   * Denies the given actions, guarded on them still being in a blocked status so a concurrent
+   * approval (which flips the action to a ready status) is not clobbered. Returns the number of
+   * actions actually denied.
+   */
+  static async denyIfStillBlocked(
+    auth: Authenticator,
+    { actionModelIds }: { actionModelIds: ModelId[] }
+  ): Promise<number> {
+    if (actionModelIds.length === 0) {
+      return 0;
+    }
+
+    const [affectedCount] = await AgentMCPActionModel.update(
+      { status: "denied" },
+      {
+        where: {
+          id: { [Op.in]: actionModelIds },
+          workspaceId: auth.getNonNullableWorkspace().id,
+          status: { [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES },
+        },
+      }
+    );
+
+    return affectedCount;
+  }
+
+  /**
    * Creates output items in DB and writes their content to GCS.
    * Content is also written to DB to ease rollback during the migration period.
    */

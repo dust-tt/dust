@@ -2560,6 +2560,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Err(new ConversationError("conversation_not_found"));
     }
 
+    return this.clearActionRequiredForConversation(auth, conversation);
+  }
+
+  static async clearActionRequiredForConversation(
+    auth: Authenticator,
+    conversation: ConversationResource
+  ) {
     const updated = await ConversationParticipantModel.update(
       { actionRequired: false },
       {

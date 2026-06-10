@@ -40,11 +40,13 @@ export async function resolveBlockedActionsForTerminatedMessage(
     return;
   }
 
-  // Sequential DB updates are fine here: the number of blocked actions is bounded by the
-  // per-step action limit.
-  for (const action of blockedActions) {
-    await action.updateStatus("denied");
-  }
+  // All blocked statuses are denied, not only manual approvals: whatever input the tool was
+  // waiting for (approval, authentication, user answer), the terminated message will never
+  // consume it. The update is guarded on the action still being blocked, so a concurrent
+  // approval is not clobbered.
+  await AgentMCPActionResource.denyIfStillBlocked(auth, {
+    actionModelIds: blockedActions.map((a) => a.id),
+  });
 
   logger.info(
     {
@@ -97,6 +99,9 @@ export async function clearActionRequiredIfNoBlockedActions(
     );
 
   if (blockedActions.length === 0) {
-    await ConversationResource.clearActionRequired(auth, conversationId);
+    await ConversationResource.clearActionRequiredForConversation(
+      auth,
+      conversation
+    );
   }
 }
