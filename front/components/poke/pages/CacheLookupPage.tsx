@@ -1,6 +1,7 @@
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { RedisCacheResult, RedisInstance } from "@app/lib/api/poke/cache";
 import {
+  usePokeCacheDeleteAll,
   usePokeCacheInvalidate,
   usePokeCacheLookup,
 } from "@app/poke/swr/cache";
@@ -8,6 +9,7 @@ import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import type { CacheResourceDefinition } from "@app/types/shared/cache_resource_registry";
 import {
   buildCacheKey,
+  buildCacheKeyPattern,
   CACHE_RESOURCE_REGISTRY,
 } from "@app/types/shared/cache_resource_registry";
 import {
@@ -408,6 +410,110 @@ function RawKeyForm({ onSubmit }: RawKeyFormProps) {
   );
 }
 
+function ResourceInvalidateForm() {
+  const [selectedResource, setSelectedResource] =
+    useState<CacheResourceDefinition | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const { doDeleteAll, isDeletingAll } = usePokeCacheDeleteAll();
+
+  const pattern = selectedResource
+    ? buildCacheKeyPattern(selectedResource)
+    : null;
+
+  return (
+    <div className="space-y-4 py-4">
+      <div>
+        <Label className="mb-1 block">Resource Type</Label>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              isSelect
+              label={selectedResource?.label ?? "Select a resource..."}
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-72">
+            {CACHE_RESOURCE_REGISTRY.map((resource) => (
+              <DropdownMenuItem
+                key={resource.id}
+                onClick={() => setSelectedResource(resource)}
+              >
+                {resource.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {selectedResource && !pattern && (
+        <ContentMessage
+          variant="warning"
+          size="sm"
+          title="This resource does not support bulk invalidation."
+        />
+      )}
+
+      {selectedResource && pattern && (
+        <>
+          <div>
+            <Label isMuted>Key Pattern</Label>
+            <code className="mt-1 block break-all rounded bg-muted-background p-2 text-xs text-muted-foreground dark:bg-muted-background-night dark:text-muted-foreground-night">
+              {pattern}
+            </code>
+          </div>
+
+          <Button
+            label={isDeletingAll ? "Deleting..." : "Invalidate entire cache"}
+            variant="warning"
+            disabled={isDeletingAll}
+            onClick={() => setShowConfirm(true)}
+          />
+
+          <Dialog
+            open={showConfirm}
+            onOpenChange={(open) => {
+              if (!open) {
+                setShowConfirm(false);
+              }
+            }}
+          >
+            <DialogContent size="md" isAlertDialog>
+              <DialogHeader hideButton>
+                <DialogTitle>Delete all cache entries?</DialogTitle>
+              </DialogHeader>
+              <DialogContainer>
+                <p>
+                  This will delete all{" "}
+                  <span className="font-bold">{selectedResource.label}</span>{" "}
+                  entries matching <code className="break-all">{pattern}</code>{" "}
+                  from Cache Redis (REDIS_CACHE_URI). This action cannot be
+                  undone.
+                </p>
+              </DialogContainer>
+              <DialogFooter
+                leftButtonProps={{
+                  label: "Cancel",
+                  variant: "outline",
+                }}
+                rightButtonProps={{
+                  label: "Invalidate all",
+                  variant: "warning",
+                  onClick: async () => {
+                    await doDeleteAll({ resourceId: selectedResource.id });
+                    setShowConfirm(false);
+                  },
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function CacheLookupPage() {
   usePokePageMetadata({ name: "Cache Lookup" });
 
@@ -457,8 +563,9 @@ export function CacheLookupPage() {
           <div className="w-80 shrink-0 rounded-lg bg-background p-4 dark:bg-background-night">
             <Tabs defaultValue="resource">
               <TabsList>
-                <TabsTrigger value="resource" label="Resource Lookup" />
-                <TabsTrigger value="raw" label="Raw Key" />
+                <TabsTrigger value="resource" label="Resource" />
+                <TabsTrigger value="raw" label="Raw" />
+                <TabsTrigger value="invalidate" label="Invalidate" />
               </TabsList>
 
               <TabsContent value="resource">
@@ -467,6 +574,10 @@ export function CacheLookupPage() {
 
               <TabsContent value="raw">
                 <RawKeyForm onSubmit={setQuery} />
+              </TabsContent>
+
+              <TabsContent value="invalidate">
+                <ResourceInvalidateForm />
               </TabsContent>
             </Tabs>
           </div>

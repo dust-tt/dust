@@ -1,4 +1,5 @@
 import type {
+  DeleteAllPokeCacheResponseBody,
   DeletePokeCacheResponseBody,
   GetPokeCacheResponseBody,
   RedisCacheResult,
@@ -7,6 +8,7 @@ import { runOnRedis, runOnRedisCache } from "@app/lib/api/redis";
 import logger from "@app/logger/logger";
 import {
   buildCacheKey,
+  buildCacheKeyPattern,
   getCacheResourceById,
 } from "@app/types/shared/cache_resource_registry";
 import { isString } from "@app/types/shared/utils/general";
@@ -183,6 +185,77 @@ app.delete("/", async (ctx): HandlerResult<DeletePokeCacheResponseBody> => {
     key: cacheKey,
     redisInstance,
     deleted: true,
+  });
+});
+
+const DELETE_ALL_BATCH_SIZE = 500;
+
+// Deletes all cache entries of a resource type by scanning for its key pattern. Only targets the
+// cache Redis instance since `cacheWithRedis` exclusively writes there.
+app.delete("/all", async (ctx): HandlerResult<DeleteAllPokeCacheResponseBody> => {
+  const resourceId = ctx.req.query("resourceId");
+  if (!isString(resourceId)) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "The 'resourceId' query parameter must be provided.",
+      },
+    });
+  }
+
+  const resource = getCacheResourceById(resourceId);
+  if (!resource) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Unknown resource ID: '${resourceId}'.`,
+      },
+    });
+  }
+
+  const pattern = buildCacheKeyPattern(resource);
+  if (!pattern) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Resource '${resourceId}' does not support bulk deletion.`,
+      },
+    });
+  }
+
+  const deletedCount = await runOnRedisCache(
+    { origin: "poke_cache_invalidation" },
+    async (client) => {
+      let count = 0;
+      let batch: string[] = [];
+      for await (const key of client.scanIterator({
+        MATCH: pattern,
+        COUNT: DELETE_ALL_BATCH_SIZE,
+      })) {
+        batch.push(key);
+        if (batch.length >= DELETE_ALL_BATCH_SIZE) {
+          count += await client.del(batch);
+          batch = [];
+        }
+      }
+      if (batch.length > 0) {
+        count += await client.del(batch);
+      }
+      return count;
+    }
+  );
+
+  logger.info(
+    { redisKeyPattern: pattern, deletedCount },
+    "Poke cache bulk invalidation performed"
+  );
+
+  return ctx.json({
+    pattern,
+    deletedCount,
   });
 });
 
