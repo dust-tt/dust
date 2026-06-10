@@ -473,6 +473,7 @@ export async function switchContract({
     swapAt,
     enableStripeBilling: body.stripeCustomerId !== undefined,
     planCode: body.planCode,
+    fromContractId: currentSubscription?.metronomeContractId ?? undefined,
   });
   if (provisionResult.isErr()) {
     return new Err(

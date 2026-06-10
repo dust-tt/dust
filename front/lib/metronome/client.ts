@@ -766,6 +766,7 @@ export async function createMetronomeContract({
   enableStripeBilling,
   planCode,
   additionalCustomFields,
+  fromContractId,
 }: {
   metronomeCustomerId: string;
   /** Mutually exclusive with `packageId`. */
@@ -785,6 +786,11 @@ export async function createMetronomeContract({
   // (DUST_PAYMENT_GATE_TYPE) so the contract.start webhook can skip the
   // automatic subscription swap.
   additionalCustomFields?: Record<string, string>;
+  // When set, the contract is created as a RENEWAL transition from this prior
+  // contract: Metronome records the lineage and automatically ends the prior
+  // contract at `startingAt`. Unused commit balance only carries over for
+  // commits that were created with a `rollover_fraction`
+  fromContractId?: string;
 }): Promise<Result<{ contractId: string }, Error>> {
   if (!packageAlias === !packageId) {
     return new Err(
@@ -802,6 +808,15 @@ export async function createMetronomeContract({
   // side, and re-running them is what makes the overall function recoverable.
   let contractId: string;
   let recovered = false;
+
+  // TODO: Metronome also exposes a SUPERSEDE transition type (mid-term
+  // replacement semantics), but it is currently feature-flagged on their side
+  // and not enabled for our account. Revisit using it once Metronome rolls it
+  // out — it may fit some switch scenarios better than RENEWAL.
+  const transition = fromContractId
+    ? { type: "RENEWAL" as const, from_contract_id: fromContractId }
+    : undefined;
+
   try {
     const response = await getMetronomeClient().v1.contracts.create({
       customer_id: metronomeCustomerId,
@@ -809,6 +824,7 @@ export async function createMetronomeContract({
       ...(packageId ? { package_id: packageId } : {}),
       starting_at: startingAtISO,
       ...(uniquenessKey ? { uniqueness_key: uniquenessKey } : {}),
+      ...(transition ? { transition } : {}),
     });
     contractId = response.data.id;
   } catch (err) {
