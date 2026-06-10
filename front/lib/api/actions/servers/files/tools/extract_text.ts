@@ -117,7 +117,8 @@ export async function extractTextHandler(
   if (writeResult.isErr()) {
     return new Err(
       new MCPError(
-        `Failed to write extracted text to \`${outputPath}\`: ${writeResult.error.message}`
+        `Failed to write extracted text to \`${outputPath}\`: ${writeResult.error.message}`,
+        { tracked: true }
       )
     );
   }
