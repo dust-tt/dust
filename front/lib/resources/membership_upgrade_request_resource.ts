@@ -61,32 +61,28 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     { user }: { user: UserResource }
   ): Promise<Result<MembershipUpgradeRequestResource, Error>> {
     const workspace = auth.getNonNullableWorkspace();
-    try {
-      const row = await withTransaction(async (transaction) => {
-        const existing = await this.model.findOne({
-          where: {
-            workspaceId: workspace.id,
-            userId: user.id,
-            status: "pending",
-          },
-          transaction,
-        });
-        if (existing) {
-          return existing;
-        }
-        return this.model.create(
-          {
-            workspaceId: workspace.id,
-            userId: user.id,
-            status: "pending",
-          },
-          { transaction }
-        );
+    const row = await withTransaction(async (transaction) => {
+      const existing = await this.model.findOne({
+        where: {
+          workspaceId: workspace.id,
+          userId: user.id,
+          status: "pending",
+        },
+        transaction,
       });
-      return new Ok(new this(this.model, row.get(), { requester: user }));
-    } catch (err) {
-      return new Err(normalizeError(err));
-    }
+      if (existing) {
+        return existing;
+      }
+      return this.model.create(
+        {
+          workspaceId: workspace.id,
+          userId: user.id,
+          status: "pending",
+        },
+        { transaction }
+      );
+    });
+    return new Ok(new this(this.model, row.get(), { requester: user }));
   }
 
   static async getPendingForUser(
