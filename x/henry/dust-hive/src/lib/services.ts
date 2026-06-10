@@ -1,10 +1,14 @@
 // Service names - array order defines start order, reverse for stop order.
-// The API is served exclusively by front-api (Hono); the old Next server
-// (`front`) no longer serves any endpoint and is not run by the hive.
+//
+// The "front" service is gone: its public port slot (base+0) now hosts the
+// in-hive HTTP `proxy` that routes /api/* to front-api and everything else to
+// marketing. front-api lives on its own dedicated port (frontApi slot).
 export const ALL_SERVICES = [
   "sdk",
   "sparkle",
   "front-api",
+  "marketing",
+  "proxy",
   "core",
   "oauth",
   "connectors",

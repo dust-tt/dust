@@ -21,7 +21,7 @@ interface WarmOptions {
   forcePorts?: boolean;
 }
 
-// Routes to pre-compile when warming the front service
+// Routes to pre-compile when warming front-api
 // These compile in parallel with the health check to minimize total wait time
 const CRITICAL_ROUTES = [
   "/api/auth-context", // Auth context API (no workspace)
@@ -30,22 +30,18 @@ const CRITICAL_ROUTES = [
   "/api/poke/workspaces/precompile/auth-context", // Poke auth context API (with workspace)
 ];
 
+// Marketing routes to pre-compile.
+const MARKETING_ROUTES = ["/", "/home"];
+
 const ENSURE_MCP_SERVER_VIEWS_COMMAND =
   "npx tsx ./scripts/ensure_all_mcp_server_views_created.ts --execute";
 const MCP_SERVER_VIEWS_ERROR_SUMMARY_PATTERN = /Migration completed with \d+ errors/;
 
-// Start pre-warming critical Next.js routes immediately (with retry)
-// Uses curl --retry to wait for server to be available, then triggers compilation
-// This runs IN PARALLEL with health check, so all routes compile simultaneously
-function startPreWarmingImmediately(port: number): void {
-  logger.step("Pre-compiling critical pages (parallel with health check)...");
-
+// Spawn a detached curl that retries until the server accepts the connection,
+// then triggers route compilation. Output is discarded; failures are silent.
+function preWarmRoutes(port: number, routes: readonly string[]): void {
   const baseUrl = `http://localhost:${port}`;
-
-  // Spawn detached curl processes with retry - they'll wait for server then compile
-  // --retry 60 --retry-delay 1 = retry every 1s for up to 60s
-  // --retry-connrefused = retry on connection refused (server not ready yet)
-  for (const route of CRITICAL_ROUTES) {
+  for (const route of routes) {
     Bun.spawn(
       [
         "curl",
@@ -154,8 +150,8 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
   const dockerRunning = await isDockerRunning(env.name);
 
   if (dockerRunning) {
-    const frontRunning = await isServiceRunning(env.name, "front-api");
-    if (frontRunning) {
+    const proxyRunning = await isServiceRunning(env.name, "proxy");
+    if (proxyRunning) {
       logger.info(`Environment '${env.name}' is already warm`);
       return Ok(undefined);
     }
@@ -165,7 +161,14 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
   console.log();
 
   // Clean up orphaned processes on service ports
-  const portServices: ServiceName[] = ["front-api", "core", "connectors", "oauth"];
+  const portServices: ServiceName[] = [
+    "proxy",
+    "front-api",
+    "marketing",
+    "core",
+    "connectors",
+    "oauth",
+  ];
   const servicePids = await Promise.all(portServices.map((service) => readPid(env.name, service)));
   const allowedPids = new Set(servicePids.filter((pid): pid is number => pid !== null));
   const { killedPorts, blockedPorts } = await cleanupServicePorts(env.ports, {
@@ -189,8 +192,8 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
   // Check if first warm (needs initialization)
   const needsInit = !(await isInitialized(env.name));
 
-  // Start Docker + front + pre-warming all in parallel
-  // Front can compile pages while Docker starts and init runs
+  // Start Docker + front-api + marketing + proxy + pre-warming all in parallel
+  // Next.js can compile pages while Docker starts and init runs
   // This maximizes parallelism - by the time init is done, pages are compiled
   logger.info("Starting Docker, services, and page compilation (all parallel)...");
   console.log();
@@ -198,12 +201,20 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
   // Start Docker (don't await - let it run in background)
   const dockerPromise = startDocker(env);
 
-  // Start front-api immediately so it can begin building.
-  // It will retry connections to DB/Redis until they're ready
-  await startService(env, "front-api");
+  // Start front-api and marketing immediately to begin page compilation
+  // They will retry connections to DB/Redis until they're ready
+  await Promise.all([startService(env, "front-api"), startService(env, "marketing")]);
 
-  // Start pre-warming immediately - curls will retry until front-api is ready.
-  startPreWarmingImmediately(env.ports.front);
+  // Start pre-warming immediately - curls will retry until Next.js is ready
+  // Pages compile while Docker containers start and init runs
+  logger.step("Pre-compiling critical pages (parallel with health check)...");
+  preWarmRoutes(env.ports.frontApi, CRITICAL_ROUTES);
+  preWarmRoutes(env.ports.marketing, MARKETING_ROUTES);
+
+  // Start the proxy. It listens on ports.front and routes /api/* to front-api,
+  // /m/api/* and /* to marketing. It does not need its upstreams healthy to
+  // start (it returns 502 until they are).
+  await startService(env, "proxy");
 
   // Now wait for Docker and start other services
   await dockerPromise;
@@ -277,14 +288,16 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
 
   // Wait for services with health checks
   // Pre-warming is already running in parallel (started above)
-  // Start forwarder as soon as front-api is healthy (don't wait for core/oauth)
+  // Start forwarder as soon as the proxy is healthy (it owns ports.front).
   logger.step("Waiting for services to be healthy...");
   await Promise.all([
-    waitForServiceReady(env, "front-api").then(async () => {
+    waitForServiceReady(env, "proxy").then(async () => {
       if (!noForward) {
         await startForwarder(env.ports.base, env.name);
       }
     }),
+    waitForServiceReady(env, "front-api"),
+    waitForServiceReady(env, "marketing"),
     waitForServiceReady(env, "core"),
     waitForServiceReady(env, "oauth"),
   ]);
@@ -299,7 +312,9 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
   console.log();
   logger.success(`Environment '${env.name}' is now warm! (${elapsed}s)`);
   console.log();
-  console.log(`  front-api:   http://localhost:${env.ports.front}`);
+  console.log(`  Proxy:       http://localhost:${env.ports.front}    (public entry)`);
+  console.log(`  Marketing:   http://localhost:${env.ports.marketing}`);
+  console.log(`  front-api:   http://localhost:${env.ports.frontApi}`);
   console.log(`  Core:        http://localhost:${env.ports.core}`);
   console.log(`  Connectors:  http://localhost:${env.ports.connectors}`);
   console.log(`  Front app:   http://localhost:${env.ports.frontSpaApp}`);

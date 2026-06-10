@@ -3,7 +3,7 @@
 // Usage: bun run forward-daemon.ts <base-port>
 //
 // Port mappings (standard → env):
-//   3000 → base + 0 (front)
+//   3000 → base + 0 (proxy)
 //   3001 → base + 1 (core)
 //   3002 → base + 2 (connectors)
 //   3006 → base + 6 (oauth)

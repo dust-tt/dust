@@ -10,6 +10,8 @@ describe("ports", () => {
       expect(ports.front).toBe(10000);
       expect(ports.core).toBe(10001);
       expect(ports.connectors).toBe(10002);
+      expect(ports.frontApi).toBe(10003);
+      expect(ports.marketing).toBe(10004);
       expect(ports.oauth).toBe(10006);
       expect(ports.viz).toBe(10007);
       expect(ports.postgres).toBe(10432);
@@ -27,6 +29,8 @@ describe("ports", () => {
       expect(ports.front).toBe(11000);
       expect(ports.core).toBe(11001);
       expect(ports.connectors).toBe(11002);
+      expect(ports.frontApi).toBe(11003);
+      expect(ports.marketing).toBe(11004);
       expect(ports.oauth).toBe(11006);
       expect(ports.postgres).toBe(11432);
       expect(ports.redis).toBe(11379);
@@ -39,6 +43,8 @@ describe("ports", () => {
       expect(ports.front).toBe(base + PORT_OFFSETS.front);
       expect(ports.core).toBe(base + PORT_OFFSETS.core);
       expect(ports.connectors).toBe(base + PORT_OFFSETS.connectors);
+      expect(ports.frontApi).toBe(base + PORT_OFFSETS.frontApi);
+      expect(ports.marketing).toBe(base + PORT_OFFSETS.marketing);
       expect(ports.oauth).toBe(base + PORT_OFFSETS.oauth);
       expect(ports.viz).toBe(base + PORT_OFFSETS.viz);
       expect(ports.postgres).toBe(base + PORT_OFFSETS.postgres);
