@@ -105,30 +105,22 @@ describe("resolveRelayedErrorReply", () => {
     expect(resolved.message).toContain("Email agents are disabled");
   });
 
-  it("keeps the local error when it is at least as informative as the source error", () => {
-    const localError = makeError("email_agents_disabled");
+  it.each([
+    ["user_not_found", "email_agents_disabled"],
+    ["email_agents_disabled", "email_agents_disabled"],
+    ["workspace_not_found", "workspace_not_found"],
+  ] as const)("keeps the local error when source %s is not more informative than local %s", (sourceType, localType) => {
+    const localError = makeError(localType);
     expect(
       resolveRelayedErrorReply({
         headers: {
           ...RELAYED_HEADERS,
-          [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: "user_not_found",
+          [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: sourceType,
         },
         localError,
         senderEmail: SENDER_EMAIL,
       })
     ).toBe(localError);
-
-    const sameTypeLocalError = makeError("email_agents_disabled");
-    expect(
-      resolveRelayedErrorReply({
-        headers: {
-          ...RELAYED_HEADERS,
-          [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: "email_agents_disabled",
-        },
-        localError: sameTypeLocalError,
-        senderEmail: SENDER_EMAIL,
-      })
-    ).toBe(sameTypeLocalError);
   });
 
   it("keeps the local error when it is not relay-eligible", () => {

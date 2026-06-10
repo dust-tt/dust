@@ -41,7 +41,7 @@ export const EMAIL_WEBHOOK_RELAY_HEADER = "x-dust-email-webhook-relayed";
 export const EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER =
   "x-dust-email-webhook-source-region";
 export const EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER =
-  "x-dust-email-webhook-relay-source-error";
+  "x-dust-email-webhook-source-error";
 export const EMAIL_WEBHOOK_RELAY_HEADER_VALUE = "1";
 
 export function isRelayedWebhookRequest(headers: EmailWebhookHeaders): boolean {
@@ -119,6 +119,8 @@ export function resolveRelayedErrorReply({
   }
 
   switch (sourceErrorType) {
+    // Unreachable given the informativeness check above (rank 0 is never strictly
+    // greater), kept for exhaustiveness.
     case "user_not_found":
       return makeUserNotFoundEmailTriggerError(senderEmail);
     case "workspace_not_found":
