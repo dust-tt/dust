@@ -170,7 +170,9 @@ export function getToolCategory(
 
 // Origins whose entire conversation is free (platform-assistive, not
 // user-requested output).
-const FREE_ORIGINS: ReadonlySet<string> = new Set<string>(["agent_sidekick"]);
+export const FREE_ORIGINS: ReadonlySet<string> = new Set<string>([
+  "agent_sidekick",
+]);
 
 // Internal MCP servers whose tool invocations are always free regardless of
 // the message-level usage type (platform plumbing, not user output).

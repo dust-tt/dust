@@ -38,6 +38,28 @@ const getAgentDetailsSchema = {
     ),
 };
 
+const getCreditUsageSchema = {
+  ...timeWindowSchemaShape,
+  ...usageFilterSchema,
+  groupBy: z
+    .enum(["agent", "user", "none"])
+    .optional()
+    .describe(
+      "Break the estimated credits down by top 'agent' or 'user', or 'none' " +
+        "(default) for the workspace total only."
+    ),
+  limit: z
+    .number()
+    .int()
+    .positive()
+    .max(MAX_RESULTS)
+    .optional()
+    .describe(
+      `When grouping, the maximum number of rows to return ` +
+        `(default ${DEFAULT_RESULTS}, max ${MAX_RESULTS}).`
+    ),
+};
+
 const getUsageTimeseriesSchema = {
   ...timeWindowSchemaShape,
   ...usageFilterSchema,
@@ -124,6 +146,23 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Retrieving top tools",
       done: "Retrieved top tools",
+    },
+  },
+  get_credit_usage: {
+    description:
+      "Estimate AWU credit consumption over a time window (defaults to the " +
+      "current calendar month), optionally broken down by the top agents or " +
+      "users. Credits combine model compute and tool usage, mirroring how " +
+      "billing computes them. IMPORTANT: these figures are ESTIMATES derived " +
+      "from usage logs — always tell the user they are approximate and point " +
+      "them to the workspace Usage page for exact, billed credit amounts. " +
+      "Optionally filter by source (context_origin), agent, or user. " +
+      "Admin-only.",
+    schema: getCreditUsageSchema,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Estimating credit usage",
+      done: "Estimated credit usage",
     },
   },
   get_usage_timeseries: {
