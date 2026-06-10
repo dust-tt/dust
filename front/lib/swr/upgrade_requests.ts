@@ -84,10 +84,15 @@ export function useResolveUpgradeRequest({
         return false;
       }
 
-      // Resolving removes the request from the pending list and may change the
-      // member's seat / limit, so refresh both surfaces.
-      await mutate();
-      await invalidateMembersUsage(workspaceId);
+      // Resolving always removes the request from the pending list. Only an
+      // approval edits the member's seat / limit, so the members-usage surface
+      // only needs refreshing on approve.
+      await Promise.all([
+        mutate(),
+        status === "approved"
+          ? invalidateMembersUsage(workspaceId)
+          : Promise.resolve(),
+      ]);
 
       switch (status) {
         case "approved":
