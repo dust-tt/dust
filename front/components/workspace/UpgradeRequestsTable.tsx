@@ -63,14 +63,12 @@ const requestedColumn: ColumnDef<RowData, string> = {
 
 function buildActionsColumn({
   isSeatBased,
-  isTopWorkspacePlan,
   highestSeatTypeOrder,
   onUpgradePlan,
   onEditLimit,
   onDeny,
 }: {
   isSeatBased: boolean;
-  isTopWorkspacePlan: boolean;
   highestSeatTypeOrder: number | null;
   onUpgradePlan: (request: MembershipUpgradeRequestType) => void;
   onEditLimit: (request: MembershipUpgradeRequestType) => void;
@@ -91,13 +89,12 @@ function buildActionsColumn({
         );
       }
       // Hide "Upgrade plan" when there is no higher seat tier to move the
-      // requester to: the workspace is already on its top plan, or the
-      // requester's current seat is at/above the highest offered seat tier.
+      // requester to: their current seat is already at/above the highest seat
+      // tier offered to the workspace.
       const requesterSeatOrder =
         SEAT_TYPE_ORDER[request.requester.seatType ?? "none"];
       const canUpgradePlan =
         isSeatBased &&
-        !isTopWorkspacePlan &&
         highestSeatTypeOrder !== null &&
         requesterSeatOrder < highestSeatTypeOrder;
       return (
@@ -137,7 +134,6 @@ interface UpgradeRequestsTableProps {
   requests: MembershipUpgradeRequestType[];
   isLoading: boolean;
   isSeatBased: boolean;
-  isTopWorkspacePlan: boolean;
   highestSeatTypeOrder: number | null;
   pendingRequestIds: ReadonlySet<string>;
   onUpgradePlan: (request: MembershipUpgradeRequestType) => void;
@@ -149,7 +145,6 @@ export function UpgradeRequestsTable({
   requests,
   isLoading,
   isSeatBased,
-  isTopWorkspacePlan,
   highestSeatTypeOrder,
   pendingRequestIds,
   onUpgradePlan,
@@ -177,21 +172,13 @@ export function UpgradeRequestsTable({
       requestedColumn,
       buildActionsColumn({
         isSeatBased,
-        isTopWorkspacePlan,
         highestSeatTypeOrder,
         onUpgradePlan,
         onEditLimit,
         onDeny,
       }),
     ],
-    [
-      isSeatBased,
-      isTopWorkspacePlan,
-      highestSeatTypeOrder,
-      onUpgradePlan,
-      onEditLimit,
-      onDeny,
-    ]
+    [isSeatBased, highestSeatTypeOrder, onUpgradePlan, onEditLimit, onDeny]
   );
 
   if (isLoading) {
