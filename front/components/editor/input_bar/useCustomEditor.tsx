@@ -8,6 +8,7 @@ import {
 import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { InputBarKnowledgeSearchNode } from "@app/components/editor/extensions/input_bar/KnowledgeSearchNodeWithView";
+import { MarkdownPasteExtension } from "@app/components/editor/extensions/input_bar/MarkdownPasteExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
 import { SkillNode } from "@app/components/editor/extensions/input_bar/SkillNode";
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
@@ -421,6 +422,7 @@ export const buildEditorExtensions = ({
       },
     }),
     Markdown,
+    MarkdownPasteExtension,
     DataSourceLinkExtension,
     LinkExtension.configure({
       HTMLAttributes: {
