@@ -2,7 +2,7 @@ import {
   useUpdateUsageNotifications,
   useUsageNotifications,
 } from "@app/lib/swr/usage_settings";
-import { Input, Page, SettingsList } from "@dust-tt/sparkle";
+import { Input, Page, SettingsList, SliderToggle } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 interface UsageNotificationsCardProps {
@@ -22,6 +22,19 @@ export function UsageNotificationsCard({
     useState<string>("");
   const [isSavingBalanceThreshold, setIsSavingBalanceThreshold] =
     useState(false);
+  const [isSavingUpgradeRequestEmail, setIsSavingUpgradeRequestEmail] =
+    useState(false);
+
+  const handleToggleUpgradeRequestEmail = async () => {
+    setIsSavingUpgradeRequestEmail(true);
+    try {
+      await doUpdateUsageNotifications({
+        upgradeRequestEmail: !usageNotifications.upgradeRequestEmail,
+      });
+    } finally {
+      setIsSavingUpgradeRequestEmail(false);
+    }
+  };
 
   useEffect(() => {
     // Defaults to 0 when no threshold is configured (warning off).
@@ -90,6 +103,19 @@ export function UsageNotificationsCard({
                 credits
               </span>
             </div>
+          }
+        />
+        <SettingsList.Row
+          title="Upgrade request"
+          description="Email all workspace admins when a member requests a spend-limit upgrade."
+          action={
+            <SliderToggle
+              selected={usageNotifications.upgradeRequestEmail}
+              disabled={
+                isSavingUpgradeRequestEmail || isUsageNotificationsLoading
+              }
+              onClick={() => void handleToggleUpgradeRequestEmail()}
+            />
           }
         />
       </SettingsList>
