@@ -93,11 +93,12 @@ export function getSkillAvatarIcon(
 
   return ({ className, size, ...props }) => {
     const avatarSize = size ?? "sm";
-    const badgeSize = size ?? "sm";
+    // Size is relative to avatar, not equal to avatar size.
+    const relativeBadgeSize = size ?? "sm";
 
     return React.createElement(ResourceAvatarWithBadge, {
       badgeIcon: DustLogoSquare,
-      badgeSize,
+      badgeSize: relativeBadgeSize,
       className: size ? className : undefined,
       icon: skillIcon,
       size: avatarSize,
