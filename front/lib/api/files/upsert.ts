@@ -28,6 +28,7 @@ import type {
 import {
   isInteractiveContentType,
   isSupportedAudioContentType,
+  isSupportedFontContentType,
   isSupportedImageContentType,
   TABLE_PREFIX,
 } from "@app/types/files";
@@ -518,6 +519,11 @@ const getProcessingFunction = ({
 
   // Processing is assumed to be irrelevant for internal mime types.
   if (isDustMimeType(contentType)) {
+    return undefined;
+  }
+
+  // Fonts are binary assets used as-is — no processing needed.
+  if (isSupportedFontContentType(contentType)) {
     return undefined;
   }
 

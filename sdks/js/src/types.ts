@@ -238,6 +238,14 @@ export const supportedAudioFileFormats = {
   "video/webm": [".webm"],
 } as const;
 
+export const supportedFontFileFormats = {
+  "font/woff": [".woff"],
+  "font/woff2": [".woff2"],
+  "font/otf": [".otf"],
+  "font/ttf": [".ttf"],
+  "font/collection": [".ttc", ".otc"],
+} as const;
+
 // Webhook trigger endpoint (skeleton) response type
 export const PostWebhookTriggerResponseSchema = z.object({
   success: z.literal(true),
@@ -279,6 +287,7 @@ const SupportedContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedOtherFileFormats
   | keyof typeof supportedImageFileFormats
   | keyof typeof supportedAudioFileFormats
+  | keyof typeof supportedFontFileFormats
   | (typeof INTERNAL_MIME_TYPES_VALUES)[number]
   // Legacy content types still retuned by the API when rendering old messages.
   | "dust-application/slack"
@@ -288,6 +297,7 @@ const SupportedFileContentFragmentTypeSchema = FlexibleEnumSchema<
   | keyof typeof supportedOtherFileFormats
   | keyof typeof supportedImageFileFormats
   | keyof typeof supportedAudioFileFormats
+  | keyof typeof supportedFontFileFormats
 >();
 
 const FrameContentTypeSchema = z.literal("application/vnd.dust.frame");
