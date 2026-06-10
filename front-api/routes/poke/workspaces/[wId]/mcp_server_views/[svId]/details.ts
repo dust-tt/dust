@@ -37,7 +37,29 @@ app.get(
       auth
     );
 
-    return ctx.json({ mcpServerView: mcpServerViewJSON });
+    const allViews = await MCPServerViewResource.listByMCPServer(
+      auth,
+      mcpServerView.mcpServerId
+    );
+    const spaceViews = allViews
+      .filter((view) => view.space.kind !== "system")
+      .map((view) => {
+        const json = view.toJSON();
+        return {
+          sId: view.sId,
+          spaceId: view.space.sId,
+          space: {
+            sId: view.space.sId,
+            name: view.space.name,
+            kind: view.space.kind,
+          },
+          createdAt: json.createdAt,
+          editedBy: json.editedByUser?.fullName ?? null,
+          editedAt: json.editedByUser?.editedAt ?? null,
+        };
+      });
+
+    return ctx.json({ mcpServerView: mcpServerViewJSON, spaceViews });
   }
 );
 
