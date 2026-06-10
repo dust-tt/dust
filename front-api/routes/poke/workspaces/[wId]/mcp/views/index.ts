@@ -8,6 +8,7 @@ import { z } from "zod";
 
 const QuerySchema = z.object({
   globalSpaceOnly: z.enum(["true", "false"]).optional(),
+  systemSpaceOnly: z.enum(["true", "false"]).optional(),
 });
 
 // Mounted at /api/poke/workspaces/:wId/mcp/views.
@@ -19,10 +20,12 @@ app.get(
   validate("query", QuerySchema),
   async (ctx): HandlerResult<PokeListMCPServerViews> => {
     const auth = ctx.get("auth");
-    const { globalSpaceOnly } = ctx.req.valid("query");
+    const { globalSpaceOnly, systemSpaceOnly } = ctx.req.valid("query");
 
     let mcpServerViews: MCPServerViewResource[];
-    if (globalSpaceOnly === "true") {
+    if (systemSpaceOnly === "true") {
+      mcpServerViews = await MCPServerViewResource.listForSystemSpace(auth);
+    } else if (globalSpaceOnly === "true") {
       const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
       mcpServerViews = await MCPServerViewResource.listBySpace(
         auth,

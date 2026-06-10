@@ -10,6 +10,16 @@ export type PokeListMCPServerViews = {
   serverViews: PokeMCPServerViewListItemType[];
 };
 
+export type PokeMCPServerViewSpaceAvailabilityType = {
+  sId: string;
+  spaceId: string;
+  space: Pick<SpaceType, "sId" | "name" | "kind">;
+  createdAt: number;
+  editedBy: string | null;
+  editedAt: number | null;
+};
+
 export type PokeGetMCPServerViewDetails = {
   mcpServerView: PokeMCPServerViewType;
+  spaceViews: PokeMCPServerViewSpaceAvailabilityType[];
 };

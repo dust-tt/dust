@@ -58,6 +58,7 @@ interface DataTableProps<TData, TValue> {
   // caller) instead of the built-in client-side global filter.
   search?: string;
   onSearchChange?: (search: string) => void;
+  onRowClick?: (row: TData) => void;
 }
 
 export function PokeDataTable<TData, TValue>({
@@ -74,6 +75,7 @@ export function PokeDataTable<TData, TValue>({
   onSortingChange,
   search,
   onSearchChange,
+  onRowClick,
 }: DataTableProps<TData, TValue>) {
   const isServerSide = serverSideRowCount !== undefined;
   const isServerSearch = onSearchChange !== undefined;
@@ -199,6 +201,10 @@ export function PokeDataTable<TData, TValue>({
                 <PokeTableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  className={onRowClick ? "cursor-pointer" : undefined}
+                  onClick={
+                    onRowClick ? () => onRowClick(row.original) : undefined
+                  }
                 >
                   {row.getVisibleCells().map((cell) => (
                     <PokeTableCell key={cell.id}>

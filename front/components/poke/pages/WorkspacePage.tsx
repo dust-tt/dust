@@ -277,7 +277,7 @@ export function WorkspacePage() {
               <TabsTrigger value="datasourceviews" label="Data Source Views" />
               <TabsTrigger value="featureflags" label="Feature Flags" />
               <TabsTrigger value="groups" label="Groups" />
-              <TabsTrigger value="mcpviews" label="MCP Server Views" />
+              <TabsTrigger value="mcpviews" label="MCP" />
               <TabsTrigger value="pods" label="Pods" />
               <TabsTrigger value="skills" label="Skills" />
               <TabsTrigger value="spaces" label="Spaces" />
@@ -296,7 +296,11 @@ export function WorkspacePage() {
               <DataSourceViewsDataTable owner={owner} loadOnInit />
             </TabsContent>
             <TabsContent value="mcpviews">
-              <MCPServerViewsDataTable owner={owner} loadOnInit />
+              <MCPServerViewsDataTable
+                owner={owner}
+                loadOnInit
+                systemSpaceOnly
+              />
             </TabsContent>
             <TabsContent value="pods">
               <ProjectsDataTable owner={owner} loadOnInit />
