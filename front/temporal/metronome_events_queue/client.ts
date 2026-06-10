@@ -2,7 +2,10 @@ import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/metronome_events_queue/config";
-import { metronomeEventsWorkflow } from "@app/temporal/metronome_events_queue/workflows";
+import {
+  cleanMetronomeInvoiceWorkflow,
+  metronomeEventsWorkflow,
+} from "@app/temporal/metronome_events_queue/workflows";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -62,6 +65,55 @@ export async function launchMetronomeEventsWorkflow({
       logger.info(
         { workflowId, eventId: event.id, eventType: event.type, workspaceId },
         "[Metronome Events] Workflow already started (duplicate delivery), skipping"
+      );
+      return new Ok("already_started");
+    }
+    return new Err(normalizeError(err));
+  }
+}
+
+// Defer the clean workflow so Metronome has finished writing all line items on
+// the freshly created Stripe draft before we fetch and edit it.
+const CLEAN_INVOICE_START_DELAY_MS = 60 * 1_000;
+
+/**
+ * Schedules cleaning + finalization of a Metronome-pushed Stripe draft invoice,
+ * deferred by `CLEAN_INVOICE_START_DELAY_MS` (via Temporal `startDelay`, not a
+ * `sleep`). The workflow id is derived from the invoice id so Stripe's
+ * at-least-once `invoice.created` redeliveries dedup to a single workflow;
+ * `ALLOW_DUPLICATE_FAILED_ONLY` lets a redelivery restart it if a prior attempt
+ * ultimately failed.
+ */
+export async function launchCleanMetronomeInvoiceWorkflow({
+  invoiceId,
+  workspaceId,
+}: {
+  invoiceId: string;
+  workspaceId: string;
+}): Promise<Result<LaunchMetronomeEventsWorkflowOutcome, Error>> {
+  const client = await getTemporalClientForFrontNamespace();
+  const workflowId = `clean-metronome-invoice-${invoiceId}`;
+
+  try {
+    await client.workflow.start(cleanMetronomeInvoiceWorkflow, {
+      args: [{ invoiceId, workspaceId }],
+      memo: { invoiceId, workspaceId },
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      workflowIdReusePolicy: WorkflowIdReusePolicy.ALLOW_DUPLICATE_FAILED_ONLY,
+      startDelay: CLEAN_INVOICE_START_DELAY_MS,
+    });
+
+    logger.info(
+      { workflowId, invoiceId, workspaceId },
+      "[Metronome Events] Started invoice clean workflow"
+    );
+    return new Ok("started");
+  } catch (err) {
+    if (err instanceof WorkflowExecutionAlreadyStartedError) {
+      logger.info(
+        { workflowId, invoiceId, workspaceId },
+        "[Metronome Events] Invoice clean workflow already started (duplicate delivery), skipping"
       );
       return new Ok("already_started");
     }

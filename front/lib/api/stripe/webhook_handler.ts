@@ -45,6 +45,7 @@ import {
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
   isFirstPeriodInvoice,
+  isMetronomePushedInvoice,
   isSubscriptionActivationInvoice,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
@@ -57,6 +58,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { launchCleanMetronomeInvoiceWorkflow } from "@app/temporal/metronome_events_queue/client";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import { launchWorkOSWorkspaceSubscriptionCreatedWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
@@ -832,6 +834,49 @@ export async function processStripeWebhookEvent({
         // pending-purchase eligibility check works.
       } else {
         await ctx.subscription.clearPaymentFailingStatus();
+      }
+      break;
+    }
+
+    case "invoice.created": {
+      const invoice = event.data.object as Stripe.Invoice;
+
+      // Only Metronome-pushed draft invoices are eligible for line cleaning.
+      if (!isMetronomePushedInvoice(invoice) || invoice.status !== "draft") {
+        break;
+      }
+
+      const metronomeCustomerId = invoice.metadata?.metronome_customer_id;
+      const workspace = metronomeCustomerId
+        ? await WorkspaceResource.fetchByMetronomeCustomerId(
+            metronomeCustomerId
+          )
+        : null;
+      if (!workspace) {
+        logger.warn(
+          { invoiceId: invoice.id, metronomeCustomerId },
+          "[Stripe Webhook] invoice.created: workspace not found for Metronome invoice, skipping clean"
+        );
+        break;
+      }
+
+      // Defer cleaning so Metronome finishes writing all line items before we
+      // touch the draft; the workflow re-fetches and self-gates (draft +
+      // not-yet-cleaned) and finalizes explicitly.
+      const launchResult = await launchCleanMetronomeInvoiceWorkflow({
+        invoiceId: invoice.id,
+        workspaceId: workspace.sId,
+      });
+      if (launchResult.isErr()) {
+        logger.error(
+          {
+            invoiceId: invoice.id,
+            workspaceId: workspace.sId,
+            error: launchResult.error,
+            stripeError: true,
+          },
+          "[Stripe Webhook] Failed to launch invoice clean workflow"
+        );
       }
       break;
     }
