@@ -15,9 +15,7 @@ interface FairUseCreditsUsageProps {
   workspaceId: string;
 }
 
-export function FairUseCreditsUsage({
-  workspaceId,
-}: FairUseCreditsUsageProps) {
+export function FairUseCreditsUsage({ workspaceId }: FairUseCreditsUsageProps) {
   const { fairUseAwuCreditsState, mutateFairUseCredits } = useFairUseCredits({
     workspaceId,
   });
