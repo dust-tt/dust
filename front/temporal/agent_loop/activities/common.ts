@@ -301,7 +301,8 @@ export async function processEventForDatabase(
       break;
 
     case "agent_generation_cancelled":
-      // Store cancellation in database.
+      // Store cancellation in database. Also resolves blocked actions of the cancelled message
+      // (via updateAgentMessageWithFinalStatus).
       await updateAgentMessageDBAndMemory(auth, {
         agentMessage,
         conversation,

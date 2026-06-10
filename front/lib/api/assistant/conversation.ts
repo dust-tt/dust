@@ -6,6 +6,7 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
+import { resolveBlockedActionsForTerminatedMessage } from "@app/lib/api/assistant/conversation/blocked_actions";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import {
   getConversationRankVersionLock,
@@ -143,6 +144,7 @@ import {
   isCompactionMessageType,
   isPodConversation,
   isUserMessageType,
+  UNRESUMABLE_AGENT_MESSAGE_STATUSES,
 } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
 import {
@@ -3212,6 +3214,16 @@ export async function updateAgentMessageWithFinalStatus(
       agentMessage: agentMessages[0] ?? null,
     };
   });
+
+  // The agent message will never resume: tools still waiting on user input (e.g. a manual
+  // approval that the user skipped by interrupting the message) will never run. Resolve them so
+  // the conversation doesn't stay flagged as requiring an action in the inbox.
+  if (UNRESUMABLE_AGENT_MESSAGE_STATUSES.includes(status)) {
+    await resolveBlockedActionsForTerminatedMessage(auth, {
+      conversation,
+      agentMessage,
+    });
+  }
 
   // Publish events and launch agent loop outside of the advisory lock.
   if (promotedUserMessages.length > 0) {

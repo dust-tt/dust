@@ -66,6 +66,7 @@ import type {
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentFunctionCallContentType } from "@app/types/assistant/agent_message_content";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { UNRESUMABLE_AGENT_MESSAGE_STATUSES } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -323,6 +324,12 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
             "agentConfigurationId",
             "agentConfigurationVersion",
           ],
+          // A blocked action is only actionable while its agent message can still resume:
+          // exclude actions left behind by messages that were interrupted, cancelled or failed
+          // before their blocked tools got resolved.
+          where: {
+            status: { [Op.notIn]: UNRESUMABLE_AGENT_MESSAGE_STATUSES },
+          },
           include: [
             {
               model: MessageModel,

@@ -12,6 +12,7 @@ import {
   AgentMCPActionOutputItemModel,
 } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
+import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import {
   GCS_CONTENT_CACHE_TTL_MS,
   gcsContentCacheKey,
@@ -285,6 +286,62 @@ describe("listBlockedActionsForConversation", () => {
     // Only the blocked action should be returned, not the succeeded one.
     expect(result).toHaveLength(1);
     expect(result[0].status).toBe("blocked_validation_required");
+  });
+
+  it("should not return blocked actions whose agent message can no longer resume", async () => {
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+    });
+
+    // Create user message at rank 0.
+    const userMessageRow = await ConversationFactory.createUserMessageWithRank({
+      auth,
+      workspace,
+      conversationId: conversation.id,
+      rank: 0,
+      content: "Test message",
+    });
+
+    // Create agent message at rank 1 with a blocked action.
+    const agentMessageRow =
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversation.id,
+        rank: 1,
+        agentConfigurationId: agentConfig.sId,
+        agentConfigurationVersion: agentConfig.version,
+        parentId: userMessageRow.id,
+      });
+
+    await createBlockedAction({
+      agentMessageId: agentMessageRow.agentMessageId!,
+    });
+
+    // Interrupt the agent message (e.g. the user skipped it), leaving the blocked action behind.
+    await AgentMessageModel.update(
+      { status: "interrupted" },
+      {
+        where: {
+          id: agentMessageRow.agentMessageId!,
+          workspaceId: workspace.id,
+        },
+      }
+    );
+
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    expect(conversationResource).not.toBeNull();
+
+    const result =
+      await AgentMCPActionResource.listBlockedActionsForConversation(
+        auth,
+        conversationResource!
+      );
+
+    // The blocked action is not actionable anymore: it must not be returned.
+    expect(result).toEqual([]);
   });
 
   it("should only return blocked actions from the latest agent message version at a given rank", async () => {
