@@ -5,6 +5,7 @@ import {
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { WEBSEARCH_PROVIDER_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   AGENT_ROUTER_SERVER_NAME,
   SUGGEST_AGENTS_TOOL_NAME,
@@ -78,6 +79,11 @@ interface DustLikeGlobalAgentArgs {
   // When set, the @dust agent defaults to GPT 5.5 (medium reasoning) instead of
   // Claude Sonnet 4.6. Gated by the `dust_agent_gpt_5_5_default` feature flag.
   preferGpt55DefaultModel?: boolean;
+  websearchProvider?:
+    | "firecrawl"
+    | "serper"
+    | "parallel"
+    | "parallel_task";
 }
 
 const INSTRUCTION_SECTIONS = {
@@ -265,6 +271,7 @@ function _getDustLikeGlobalAgent(
     preferredReasoningEffort,
     requiredPreferredModelConfiguration,
     omittedThinking,
+    websearchProvider,
   }: {
     agentId: GLOBAL_AGENTS_SID;
     name: string;
@@ -272,6 +279,11 @@ function _getDustLikeGlobalAgent(
     preferredReasoningEffort?: ReasoningEffort;
     requiredPreferredModelConfiguration?: boolean;
     omittedThinking?: boolean;
+    websearchProvider?:
+      | "firecrawl"
+      | "serper"
+      | "parallel"
+      | "parallel_task";
   }
 ): (AgentConfigurationType & { omittedThinking?: boolean }) | null {
   const {
@@ -379,6 +391,9 @@ function _getDustLikeGlobalAgent(
         ..._getDefaultWebActionsForGlobalAgent({
           agentId,
           mcpServerViews,
+          additionalConfiguration: {
+            [WEBSEARCH_PROVIDER_SWITCH]: websearchProvider ?? "firecrawl",
+          },
         }),
       ],
       maxStepsPerRun: 0,
@@ -401,6 +416,9 @@ function _getDustLikeGlobalAgent(
     ..._getDefaultWebActionsForGlobalAgent({
       agentId,
       mcpServerViews,
+      additionalConfiguration: {
+        [WEBSEARCH_PROVIDER_SWITCH]: websearchProvider ?? "firecrawl",
+      },
     }),
     ..._getToolsetsToolsConfiguration({
       agentId,
@@ -497,6 +515,36 @@ export function _getDustGlobalAgent(
       ? GPT_5_5_MODEL_CONFIG
       : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
+  });
+}
+
+export function _getDustParallelGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_PARALLEL,
+    name: "dust-parallel",
+    preferredModelConfiguration: args.preferGpt55DefaultModel
+      ? GPT_5_5_MODEL_CONFIG
+      : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+    websearchProvider: "parallel",
+  });
+}
+
+export function _getDustParallelTaskGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_PARALLEL_TASK,
+    name: "dust-parallel-task",
+    preferredModelConfiguration: args.preferGpt55DefaultModel
+      ? GPT_5_5_MODEL_CONFIG
+      : CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
+    preferredReasoningEffort: "medium",
+    websearchProvider: "parallel_task",
   });
 }
 

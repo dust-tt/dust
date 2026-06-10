@@ -10,6 +10,7 @@ import type { RegionRedirectError } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import type { RegionType } from "@app/types/region";
+import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -371,6 +372,14 @@ export function getForcedApiUrlRedirect({
   requestHost: string | undefined;
 }): RegionRedirectError | null {
   if (!enabled) {
+    return null;
+  }
+
+  // The target URLs are hardcoded production hostnames. In development (where
+  // ACTIVATE_ALL_FEATURES_DEV enables every flag, including force_us_api_url)
+  // redirecting the SPA to a production API host can never work — it only
+  // produces CORS failures — so the flag is a no-op locally.
+  if (isDevelopment()) {
     return null;
   }
 

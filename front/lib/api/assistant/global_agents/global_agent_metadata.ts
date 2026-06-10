@@ -631,6 +631,22 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "An agent with context on your company data.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_PARALLEL:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_PARALLEL,
+        name: "dust-parallel",
+        description:
+          "An agent with context on your company data using Parallel for web search.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_PARALLEL_TASK:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_PARALLEL_TASK,
+        name: "dust-parallel-task",
+        description:
+          "An agent with context on your company data using Parallel Task API for deep web research.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST_HIGH:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_HIGH,

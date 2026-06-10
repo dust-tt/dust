@@ -1637,7 +1637,12 @@ export function getFeatureFlags(
       if (err) {
         reject(err);
       } else {
-        resolve(result ?? []);
+        let flags = result ?? [];
+        // Never redirect the SPA to us-api.dust.tt in dev — it causes CORS errors.
+        if (isDevelopment()) {
+          flags = flags.filter((f) => f !== "force_us_api_url");
+        }
+        resolve(flags);
       }
     });
   });

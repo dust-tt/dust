@@ -4,7 +4,10 @@ import {
 } from "@app/lib/actions/action_file_helpers";
 import { FILE_OFFLOAD_SNIPPET_LENGTH } from "@app/lib/actions/action_output_limits";
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { USE_SUMMARY_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  USE_SUMMARY_SWITCH,
+  WEBSEARCH_PROVIDER_SWITCH,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   BrowseResultResourceType,
   WebsearchResultResourceType,
@@ -38,6 +41,13 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 const MIN_CHARACTERS_TO_SUMMARIZE = 16_000;
 const BROWSE_MAX_TOKENS_LIMIT = 32_000;
 const DEFAULT_WEBSEARCH_MODEL_CONFIG = GPT_4O_MODEL_CONFIG;
+const SUPPORTED_WEBSEARCH_PROVIDERS = [
+  "firecrawl",
+  "serper",
+  "parallel",
+  "parallel_task",
+] as const;
+type WebSearchProvider = (typeof SUPPORTED_WEBSEARCH_PROVIDERS)[number];
 
 async function handleWebsearch(
   { query }: { query: string },
@@ -55,8 +65,11 @@ async function handleWebsearch(
   const { websearchResultCount, citationsOffset } =
     agentLoopRunContext.stepContext;
 
+  const configuredProvider = getConfiguredWebsearchProvider(
+    agentLoopRunContext.toolConfiguration
+  );
   const websearchRes = await webSearch({
-    provider: "firecrawl",
+    provider: configuredProvider,
     query,
     num: websearchResultCount,
   });
@@ -89,6 +102,29 @@ async function handleWebsearch(
       resource: result,
     }))
   );
+}
+
+function getConfiguredWebsearchProvider(
+  toolConfiguration: unknown
+): WebSearchProvider {
+  if (
+    isLightServerSideMCPToolConfiguration(toolConfiguration) &&
+    typeof toolConfiguration.additionalConfiguration[WEBSEARCH_PROVIDER_SWITCH] === "string"
+  ) {
+    const provider = toolConfiguration.additionalConfiguration[
+      WEBSEARCH_PROVIDER_SWITCH
+    ] as string;
+    if (isSupportedWebsearchProvider(provider)) {
+      return provider;
+    }
+  }
+  return "firecrawl";
+}
+
+function isSupportedWebsearchProvider(
+  value: string
+): value is WebSearchProvider {
+  return (SUPPORTED_WEBSEARCH_PROVIDERS as readonly string[]).includes(value);
 }
 
 async function handleWebbrowser(

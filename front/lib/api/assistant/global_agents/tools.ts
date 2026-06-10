@@ -78,9 +78,11 @@ export async function getDataSourcesAndWorkspaceIdForGlobalAgents(
 export function _getDefaultWebActionsForGlobalAgent({
   agentId,
   mcpServerViews,
+  additionalConfiguration = {},
 }: {
   agentId: GLOBAL_AGENTS_SID;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+  additionalConfiguration?: Record<string, boolean | number | string>;
 }): ServerSideMCPServerConfigurationType[] {
   const { "web_search_&_browse": webSearchBrowseMCPServerView } =
     mcpServerViews;
@@ -101,7 +103,7 @@ export function _getDefaultWebActionsForGlobalAgent({
       dataSources: null,
       tables: null,
       childAgentId: null,
-      additionalConfiguration: {},
+      additionalConfiguration,
       timeFrame: null,
       dustAppConfiguration: null,
       jsonSchema: null,

@@ -1,0 +1,21 @@
+{
+  "name": "race-eval",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build ./src/cli.ts --outdir ./dist --target bun",
+    "typecheck": "tsc --noEmit",
+    "run": "bun run src/cli.ts"
+  },
+  "dependencies": {
+    "@dust-tt/client": "^1.2.6",
+    "commander": "^12.1.0",
+    "csv-parse": "^5.5.6",
+    "openai": "^4.104.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.19",
+    "typescript": "^5.9.2"
+  }
+}

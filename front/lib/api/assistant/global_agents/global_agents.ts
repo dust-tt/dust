@@ -51,6 +51,8 @@ import {
   _getDustOaiHighGlobalAgent,
   _getDustOaiMediumGlobalAgent,
   _getDustOmittedGlobalAgent,
+  _getDustParallelGlobalAgent,
+  _getDustParallelTaskGlobalAgent,
   _getDustQuickGlobalAgent,
   _getDustQuickMediumGlobalAgent,
   getCustomModelDustGlobalAgentIndex,
@@ -131,6 +133,18 @@ const GLOBAL_AGENT_FLAGS: Record<
   }
 > = {
   [GLOBAL_AGENTS_SID.DUST]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_PARALLEL]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_PARALLEL_TASK]: {
     injectsMemory: true,
     injectsToolsets: true,
     injectsUserContext: false,
@@ -931,6 +945,28 @@ function getGlobalAgent({
         preferGpt55DefaultModel,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_PARALLEL:
+      agentConfiguration = _getDustParallelGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        globalAgentContext,
+        excludeProviders,
+        preferGpt55DefaultModel,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_PARALLEL_TASK:
+      agentConfiguration = _getDustParallelTaskGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        globalAgentContext,
+        excludeProviders,
+        preferGpt55DefaultModel,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST_HIGH:
       agentConfiguration = _getDustHighGlobalAgent(auth, {
         settings,
@@ -1448,6 +1484,7 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_GOOG_PRO,
     GLOBAL_AGENTS_SID.DUST_GOOG_PRO_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_GOOG_PRO_HIGH,
+    GLOBAL_AGENTS_SID.DUST_PARALLEL_TASK,
     GLOBAL_AGENTS_SID.DUST_NEXT,
     GLOBAL_AGENTS_SID.DUST_NEXT_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_NEXT_HIGH,

@@ -13,6 +13,7 @@ const credentials = dustManagedServiceCredentials();
 
 const SERPAPI_BASE_URL = "https://serpapi.com";
 const SERPER_BASE_URL = "https://google.serper.dev";
+const PARALLEL_BASE_URL = "https://api.parallel.ai";
 
 export type BaseWebSearchParams = {
   query: string;
@@ -30,12 +31,35 @@ export type SerpapiParams = {
 
 export type SerperParams = {
   provider: "serper";
-  api_key: string;
+  api_key?: string;
 };
 
 export type FirecrawlParams = {
   provider: "firecrawl";
   api_key?: string;
+};
+
+export type ParallelParams = {
+  provider: "parallel";
+  api_key?: string;
+};
+
+export type ParallelTaskProcessor =
+  | "lite"
+  | "lite-fast"
+  | "base"
+  | "base-fast"
+  | "core"
+  | "core-fast"
+  | "pro"
+  | "pro-fast"
+  | "ultra"
+  | "ultra-fast";
+
+export type ParallelTaskParams = {
+  provider: "parallel_task";
+  api_key?: string;
+  processor?: ParallelTaskProcessor;
 };
 
 const serpapiDefaultOptions = {
@@ -46,7 +70,13 @@ const serpapiDefaultOptions = {
 } satisfies Omit<BaseWebSearchParams & SerpapiParams, "query">;
 
 export type SearchParams = BaseWebSearchParams &
-  (SerpapiParams | SerperParams | FirecrawlParams);
+  (
+    | SerpapiParams
+    | SerperParams
+    | FirecrawlParams
+    | ParallelParams
+    | ParallelTaskParams
+  );
 
 export type SearchResultItem = {
   title: string;
@@ -129,23 +159,42 @@ const serpapiSearch = async (
 const serperSearch = async (
   options: BaseWebSearchParams & SerperParams
 ): Promise<Result<SearchResponse, Error>> => {
-  if (options.api_key == null) {
-    return new Err(new Error("DUST_MANAGED_SERP_API_KEY is missing"));
+  const serperApiKey = options.api_key ?? credentials.SERPER_API_KEY;
+  if (serperApiKey == null || serperApiKey.length === 0) {
+    return new Err(new Error("utils/websearch: a DUST_MANAGED_SERPER_API_KEY is required"));
   }
 
   // eslint-disable-next-line no-restricted-globals
   const res = await fetch(`${SERPER_BASE_URL}/search`, {
     method: "POST",
     headers: {
-      "X-API-KEY": options.api_key,
+      "X-API-KEY": serperApiKey,
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify(options),
+    // Serper expects the query under `q`.
+    body: JSON.stringify({
+      q: options.query,
+      num: options.num ?? serpapiDefaultOptions.num,
+      ...(options.page ? { page: options.page } : {}),
+    }),
   });
 
   if (res.ok) {
     const json = await res.json();
-    // WARN: need to format Serper results before using
-    return new Ok(json);
+    const entries = Array.isArray(json?.organic) ? json.organic : [];
+    const results: SearchResultItem[] = removeNulls(
+      entries.map((entry: any) => {
+        if (!entry?.link) {
+          return null;
+        }
+        return {
+          title: entry.title ?? entry.link,
+          link: entry.link,
+          snippet: entry.snippet ?? "",
+        };
+      })
+    );
+    return new Ok(results);
   }
 
   // TODO: Remove once we have a proper error handling.
@@ -219,6 +268,190 @@ const firecrawlSearch = async ({
   return new Ok(results);
 };
 
+const parallelSearch = async ({
+  query,
+  num,
+  api_key,
+}: BaseWebSearchParams & ParallelParams): Promise<
+  Result<SearchResponse, Error>
+> => {
+  const parallelApiKey = api_key ?? credentials.PARALLEL_API_KEY;
+
+  if (!parallelApiKey) {
+    return new Err(
+      new Error("utils/websearch: a DUST_MANAGED_PARALLEL_API_KEY is required")
+    );
+  }
+
+  // eslint-disable-next-line no-restricted-globals
+  const res = await fetch(`${PARALLEL_BASE_URL}/v1/search`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": parallelApiKey,
+    },
+    body: JSON.stringify({
+      objective: query,
+      search_queries: [query],
+    }),
+  });
+
+  if (!res.ok) {
+    logger.error(
+      { status: res.status, statusText: res.statusText },
+      "Bad request on Parallel search"
+    );
+    return new Err(
+      new Error(`Bad request on Parallel search: ${res.statusText}`)
+    );
+  }
+
+  const json = await res.json();
+  const entries = Array.isArray(json?.results) ? json.results : [];
+  const results: SearchResultItem[] = removeNulls(
+    entries.map((entry: any) => {
+      const link = entry.url;
+      if (typeof link !== "string" || link.length === 0) {
+        return null;
+      }
+      const excerpts = Array.isArray(entry.excerpts)
+        ? entry.excerpts.filter((e: unknown) => typeof e === "string")
+        : [];
+      return {
+        title: entry.title ?? link,
+        link,
+        snippet: excerpts.join("\n"),
+      };
+    })
+  );
+
+  return new Ok(results.slice(0, num ?? serpapiDefaultOptions.num));
+};
+
+const parallelTaskSearch = async ({
+  query,
+  api_key,
+  processor = "pro-fast",
+}: BaseWebSearchParams & ParallelTaskParams): Promise<
+  Result<SearchResponse, Error>
+> => {
+  const parallelApiKey = api_key ?? credentials.PARALLEL_API_KEY;
+
+  if (!parallelApiKey) {
+    return new Err(
+      new Error("utils/websearch: a DUST_MANAGED_PARALLEL_API_KEY is required")
+    );
+  }
+
+  // 1) Create task run.
+  // eslint-disable-next-line no-restricted-globals
+  const createRes = await fetch(`${PARALLEL_BASE_URL}/v1/tasks/runs`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": parallelApiKey,
+    },
+    body: JSON.stringify({
+      input: query,
+      processor,
+      task_spec: {
+        output_schema: {
+          type: "text",
+        },
+      },
+    }),
+  });
+
+  if (!createRes.ok) {
+    logger.error(
+      { status: createRes.status, statusText: createRes.statusText },
+      "Bad request on Parallel task run create"
+    );
+    return new Err(
+      new Error(
+        `Bad request on Parallel task run create: ${createRes.statusText}`
+      )
+    );
+  }
+
+  const createJson = await createRes.json();
+  const runId = createJson?.run_id;
+  if (typeof runId !== "string" || runId.length === 0) {
+    return new Err(new Error("Parallel task run create missing run_id"));
+  }
+
+  // 2) Retrieve final result (blocking endpoint for pro/pro-fast style runs).
+  // eslint-disable-next-line no-restricted-globals
+  const resultRes = await fetch(`${PARALLEL_BASE_URL}/v1/tasks/runs/${runId}/result`, {
+    method: "GET",
+    headers: {
+      "x-api-key": parallelApiKey,
+    },
+  });
+
+  if (!resultRes.ok) {
+    logger.error(
+      { status: resultRes.status, statusText: resultRes.statusText, runId },
+      "Bad request on Parallel task run result"
+    );
+    return new Err(
+      new Error(
+        `Bad request on Parallel task run result: ${resultRes.statusText}`
+      )
+    );
+  }
+
+  const resultJson = await resultRes.json();
+  const outputContent =
+    (typeof resultJson?.output?.content === "string" &&
+      resultJson.output.content) ||
+    (typeof resultJson?.result?.output?.content === "string" &&
+      resultJson.result.output.content) ||
+    "";
+
+  const basis =
+    resultJson?.output?.basis ??
+    resultJson?.result?.output?.basis ??
+    [];
+
+  const citationItems: SearchResultItem[] = Array.isArray(basis)
+    ? removeNulls(
+        basis.flatMap((entry: any) => {
+          const citations = Array.isArray(entry?.citations)
+            ? entry.citations
+            : [];
+          return citations.map((citation: any) => {
+            const link = citation?.url ?? citation?.uri;
+            if (typeof link !== "string" || link.length === 0) {
+              return null;
+            }
+            return {
+              title:
+                (typeof citation?.title === "string" && citation.title) ||
+                (typeof entry?.field === "string" && entry.field) ||
+                "Parallel Task citation",
+              link,
+              snippet:
+                (typeof citation?.excerpt === "string" && citation.excerpt) ||
+                (typeof citation?.text === "string" && citation.text) ||
+                "",
+            };
+          });
+        })
+      )
+    : [];
+
+  // The synthesized research output is the primary value of the Task API;
+  // citations come after it as supporting sources.
+  const contentItem: SearchResultItem = {
+    title: "Parallel Task research result",
+    link: `https://api.parallel.ai/v1/tasks/runs/${runId}/result`,
+    snippet: outputContent || "Parallel Task completed without text output.",
+  };
+
+  return new Ok([contentItem, ...citationItems]);
+};
+
 /**
  * Make a web search using SerpAPI, Serper or Firecrawl
  * @param {SearchParams} params
@@ -239,6 +472,12 @@ export const webSearch = async (
     }
     case "firecrawl": {
       return firecrawlSearch(params);
+    }
+    case "parallel": {
+      return parallelSearch(params);
+    }
+    case "parallel_task": {
+      return parallelTaskSearch(params);
     }
     default:
       assertNever(provider);
