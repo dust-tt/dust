@@ -28,6 +28,21 @@ export type WorkspaceLimit =
   | "user_credits_exhausted"
   | "no_seat";
 
+function formatLimitTimeframe(timeframe: string): string {
+  switch (timeframe) {
+    case "day":
+      return "over the past 24 hours";
+    case "week":
+      return "over the past 7 days";
+    case "month":
+      return "over the past 30 days";
+    case "lifetime":
+      return "for your current plan";
+    default:
+      return `per ${timeframe}`;
+  }
+}
+
 function getLimitPromptForCode(
   router: AppRouter,
   owner: WorkspaceType,
@@ -110,6 +125,9 @@ function getLimitPromptForCode(
       };
 
     case "message_limit": {
+      const assistantLimits = subscription.plan.limits.assistant;
+      const isAwuCreditsFairUseLimit = assistantLimits.maxAwuCredits !== -1;
+
       if (isFreeTrialPhonePlan(subscription.plan.code)) {
         return {
           title: "Dust trial message limit reached",
@@ -153,26 +171,53 @@ function getLimitPromptForCode(
           ),
         };
       } else {
-        return {
-          title: "Message quota exceeded",
-          validateLabel: "Ok",
-          children: (
-            <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-              We've paused messaging for your workspace due to our fair usage
-              policy. Your workspace has reached its shared limit of{" "}
-              {subscription.plan.limits.assistant.maxMessages} messages per user
-              over the past 24 hours. This total limit is collectively shared by
-              all users in the workspace. Check our{" "}
-              <Hoverable
-                variant="highlight"
-                onClick={() => displayFairUseModal()}
-              >
-                Fair Use policy
-              </Hoverable>
-              &nbsp; to learn more.
-            </p>
-          ),
-        };
+        if (isAwuCreditsFairUseLimit) {
+          return {
+            title: "Credit quota exceeded",
+            validateLabel: "Ok",
+            children: (
+              <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                We've paused messaging for your account due to our fair usage
+                policy. Your account has reached its limit of{" "}
+                {assistantLimits.maxAwuCredits} credits{" "}
+                {formatLimitTimeframe(assistantLimits.maxAwuCreditsTimeframe)}.
+                Check our{" "}
+                <Hoverable
+                  variant="highlight"
+                  onClick={() => displayFairUseModal()}
+                >
+                  Fair Use policy
+                </Hoverable>
+                &nbsp; to learn more.
+              </p>
+            ),
+          };
+        } else {
+          return {
+            title: "Message quota exceeded",
+            validateLabel: "Ok",
+            children: (
+              <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                We've paused messaging for your workspace due to our fair usage
+                policy. Your workspace has reached its shared limit of{" "}
+                {subscription.plan.limits.assistant.maxMessages} messages per
+                user{" "}
+                {formatLimitTimeframe(
+                  subscription.plan.limits.assistant.maxMessagesTimeframe
+                )}
+                . This total limit is collectively shared by all users in the
+                workspace. Check our{" "}
+                <Hoverable
+                  variant="highlight"
+                  onClick={() => displayFairUseModal()}
+                >
+                  Fair Use policy
+                </Hoverable>
+                &nbsp; to learn more.
+              </p>
+            ),
+          };
+        }
       }
     }
 
