@@ -111,6 +111,12 @@ import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_mod
 
 export type FileVersion = "processed" | "original" | "public";
 
+// Threshold above which file uploads switch from a single multipart POST to a
+// resumable upload (see getWriteStream). Chunk size must be a multiple of
+// 256 KiB; GCS recommends at least 8 MiB for performance.
+const GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES = 8 * 1024 * 1024;
+const GCS_RESUMABLE_UPLOAD_CHUNK_SIZE_BYTES = 8 * 1024 * 1024;
+
 const FRAME_CONTENT_TYPES = new Set([
   frameContentType,
   frameSlideshowContentType,
@@ -898,10 +904,20 @@ export class FileResource extends BaseResource<FileModel> {
     version: FileVersion;
     overrideContentType?: string;
   }): Writable {
+    // Non-resumable streamed uploads are sent as a single multipart POST that
+    // the SDK cannot retry (the stream is not replayable): one transient
+    // connection reset fails the whole upload. Large files hold the connection
+    // long enough to make resets likely, so upload them resumably with an
+    // explicit chunkSize: the SDK buffers each chunk and retries it on
+    // transient errors (per the Storage retryOptions). Small files keep the
+    // single-request upload, which avoids the resumable initiation round trip.
+    const resumable = this.fileSize >= GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES;
+
     return this.getBucketForVersion(version)
       .file(this.getCloudStoragePath(auth, version))
       .createWriteStream({
-        resumable: false,
+        resumable,
+        ...(resumable && { chunkSize: GCS_RESUMABLE_UPLOAD_CHUNK_SIZE_BYTES }),
         contentType: overrideContentType ?? this.contentType,
       });
   }

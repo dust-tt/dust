@@ -55,6 +55,52 @@ function isRetryableGCSError(err: ApiError): boolean {
   );
 }
 
+/**
+ * Retry an operation that fails with a transient GCS error ("socket hang up"
+ * and other errors the SDK considers retryable).
+ *
+ * Needed for streamed uploads, which bypass the SDK's built-in retryOptions.
+ * Only use when the operation can safely be re-run from scratch (e.g. the
+ * source stream can be re-created on each attempt).
+ */
+export async function withRetryOnTransientGCSError<T>(
+  operation: () => Promise<T>,
+  {
+    operationName,
+    logContext,
+  }: { operationName: string; logContext: Record<string, unknown> }
+): Promise<T> {
+  for (let attempt = 1; attempt <= GCS_COPY_MAX_RETRIES; attempt++) {
+    try {
+      return await operation();
+    } catch (err) {
+      if (
+        attempt === GCS_COPY_MAX_RETRIES ||
+        !isRetryableGCSError(err as ApiError)
+      ) {
+        throw err;
+      }
+
+      const delayMs = GCS_COPY_BASE_DELAY_MS * attempt ** 2;
+
+      logger.warn(
+        {
+          error: normalizeError(err),
+          ...logContext,
+          attempt,
+          maxRetries: GCS_COPY_MAX_RETRIES,
+          delayMs,
+        },
+        `GCS ${operationName} failed, retrying.`
+      );
+
+      await setTimeoutAsync(delayMs);
+    }
+  }
+
+  throw new Error("Unreachable: GCS retry loop exited without returning.");
+}
+
 export class FileStorage {
   private readonly bucket: Bucket;
   private readonly storage: Storage;
@@ -82,8 +128,8 @@ export class FileStorage {
     // Stream-based uploads via pipeline() + createWriteStream() bypass the
     // SDK's built-in retryOptions, so we need application-level retry.
     // Since the source is a local file we can safely re-create the read stream.
-    for (let attempt = 1; attempt <= GCS_COPY_MAX_RETRIES; attempt++) {
-      try {
+    await withRetryOnTransientGCSError(
+      async () => {
         const gcsFile = this.file(destPath);
         const fileStream = fs.createReadStream(file.filepath);
 
@@ -95,32 +141,12 @@ export class FileStorage {
             },
           })
         );
-
-        return;
-      } catch (err) {
-        if (
-          attempt === GCS_COPY_MAX_RETRIES ||
-          !isRetryableGCSError(err as ApiError)
-        ) {
-          throw err;
-        }
-
-        const delayMs = GCS_COPY_BASE_DELAY_MS * attempt ** 2;
-
-        logger.warn(
-          {
-            error: normalizeError(err),
-            destPath,
-            attempt,
-            maxRetries: GCS_COPY_MAX_RETRIES,
-            delayMs,
-          },
-          "GCS file upload failed (stream), retrying."
-        );
-
-        await setTimeoutAsync(delayMs);
+      },
+      {
+        operationName: "file upload (stream)",
+        logContext: { destPath },
       }
-    }
+    );
   }
 
   async uploadRawContentToBucket({

@@ -46,6 +46,10 @@ class FileStorageMock {
 
     return {
       FileStorage: vi.fn().mockImplementation(createStorage),
+      // Passthrough: run the operation once, without retry or backoff.
+      withRetryOnTransientGCSError: vi.fn(
+        async (operation: () => Promise<unknown>) => operation()
+      ),
       getPrivateUploadBucket: vi.fn(createStorage),
       getPublicUploadBucket: vi.fn(createStorage),
       getUpsertQueueBucket: vi.fn(createStorage),
