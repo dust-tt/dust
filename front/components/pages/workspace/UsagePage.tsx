@@ -78,7 +78,7 @@ function memberFromUpgradeRequest(
     name: request.requester.name,
     email: request.requester.email,
     image: request.requester.image,
-    seatType: null,
+    seatType: request.requester.seatType,
     memberUsageLimit: null,
     seatBalanceAwu: null,
     consumedAwuCredits: 0,
