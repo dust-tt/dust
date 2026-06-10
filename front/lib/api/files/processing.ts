@@ -12,6 +12,7 @@ import { parseUploadRequest } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
 import type { DustError } from "@app/lib/error";
+import { withRetryOnTransientGCSError } from "@app/lib/file_storage";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { transcribeFile } from "@app/lib/utils/transcribe_service";
 import logger from "@app/logger/logger";
@@ -332,14 +333,28 @@ export const extractTextFromAudioAndUpload: ProcessingFunction = async (
       );
     }
 
-    // 4) Store transcript in processed version as plain text.
+    // 4) Store transcript in processed version as plain text. The source is an
+    //    in-memory string, so the streams can safely be re-created on each
+    //    retry attempt.
     const transcript = tr.value;
-    const writeStream = file.getWriteStream({
-      auth,
-      version: "processed",
-      overrideContentType: "text/plain", // Explicitly set content type to plain text as it's a transcription
-    });
-    await pipeline(Readable.from(transcript), writeStream);
+    await withRetryOnTransientGCSError(
+      () =>
+        pipeline(
+          Readable.from(transcript),
+          file.getWriteStream({
+            auth,
+            version: "processed",
+            overrideContentType: "text/plain", // Explicitly set content type to plain text as it's a transcription
+          })
+        ),
+      {
+        operationName: "transcript upload",
+        logContext: {
+          fileModelId: file.id,
+          workspaceId: auth.workspace()?.sId,
+        },
+      }
+    );
 
     return new Ok(undefined);
   } catch (err) {
@@ -659,9 +674,22 @@ export async function processAndStoreFile(
 
   try {
     if (content.type === "string") {
-      await pipeline(
-        Readable.from(content.value),
-        file.getWriteStream({ auth, version: "original" })
+      // The source is an in-memory string, so the streams can safely be
+      // re-created on each attempt.
+      const stringContent = content.value;
+      await withRetryOnTransientGCSError(
+        () =>
+          pipeline(
+            Readable.from(stringContent),
+            file.getWriteStream({ auth, version: "original" })
+          ),
+        {
+          operationName: "file upload (string content)",
+          logContext: {
+            fileModelId: file.id,
+            workspaceId: auth.workspace()?.sId,
+          },
+        }
       );
     } else if (content.type === "readable") {
       await pipeline(
