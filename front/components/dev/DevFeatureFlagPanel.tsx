@@ -15,7 +15,7 @@ import {
   getFeatureFlagOverrides,
   writeFeatureFlagOverrides,
 } from "./devFeatureFlagOverrides";
-import type { DockMode, ExpandedPanel } from "./devModeConfig";
+import { DOCK_BAR_HEIGHT, type DockMode, type ExpandedPanel } from "./devModeConfig";
 import { DEV_MODE_STORAGE_KEY } from "./devModeConstants";
 import { S } from "./devPanelStyles";
 import {
@@ -243,6 +243,16 @@ export function DevFeatureFlagPanel({ serverFlags }: DevFeatureFlagPanelProps) {
     injectTypoStyles(readTypoOverrides());
     injectFontFamilyStyles(readFontFamilyOverrides());
   }, []);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--dev-bar-height",
+      dockMode === "docked" ? `${DOCK_BAR_HEIGHT}px` : "0px"
+    );
+    return () => {
+      document.documentElement.style.setProperty("--dev-bar-height", "0px");
+    };
+  }, [dockMode]);
 
   const switchMode = useCallback(() => {
     const next = dockMode === "docked" ? "floating" : "docked";
