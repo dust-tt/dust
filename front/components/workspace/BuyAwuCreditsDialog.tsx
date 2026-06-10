@@ -417,7 +417,7 @@ export function BuyAwuCreditsDialog({
                         <p className="text-sm font-medium text-foreground dark:text-foreground-night">
                           Payment method
                         </p>
-                        <div className="flex w-full items-center justify-between rounded-lg border border-separator bg-muted px-4 py-3">
+                        <div className="flex w-full items-center justify-between rounded-lg border border-separator bg-muted dark:bg-muted-night px-4 py-3">
                           <div className="flex items-center gap-3">
                             {awuPurchaseInfo.paymentMethod.type === "card" ? (
                               <CardBrandIcon
