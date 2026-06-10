@@ -15,7 +15,11 @@ import {
   getFeatureFlagOverrides,
   writeFeatureFlagOverrides,
 } from "./devFeatureFlagOverrides";
-import { DOCK_BAR_HEIGHT, type DockMode, type ExpandedPanel } from "./devModeConfig";
+import {
+  DOCK_BAR_HEIGHT,
+  type DockMode,
+  type ExpandedPanel,
+} from "./devModeConfig";
 import { DEV_MODE_STORAGE_KEY } from "./devModeConstants";
 import { S } from "./devPanelStyles";
 import {
