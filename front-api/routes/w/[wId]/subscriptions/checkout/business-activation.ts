@@ -1,11 +1,11 @@
 import {
   type BusinessActivationRequestError,
   type GetBusinessActivationResponseBody,
+  getBusinessActivationStatus,
   type PostBusinessActivationResponseBody,
   processBusinessActivation,
 } from "@app/lib/api/checkout/business_activation";
 import { PostCheckoutPaymentBodySchema } from "@app/lib/api/checkout/payment";
-import { getCheckoutPaymentStatus } from "@app/lib/credits/checkout_payment_status";
 import { wakeLock } from "@app/lib/wake_lock";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -34,12 +34,8 @@ app.get(
       });
     }
 
-    const checkoutPayment = await getCheckoutPaymentStatus({
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      contractId,
-    });
-
-    return ctx.json({ checkoutPayment });
+    const workspace = auth.getNonNullableWorkspace();
+    return ctx.json(await getBusinessActivationStatus(workspace, contractId));
   }
 );
 

@@ -28,6 +28,7 @@ import {
 import type { CouponType } from "@app/types/coupon";
 import type { BillingPeriod } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   CheckCircle,
@@ -70,7 +71,7 @@ type CheckoutPhase =
   | "payment_review" // Phase 2 — tax breakdown + confirm button
   | "confirming" // Phase 3 — POST /payment in progress
   | "waiting_for_payment" // Phase 4 — polling Redis for Metronome webhook result
-  | "activating" // Phase 5 — mutating auth context, redirecting
+  | "checkout_success" // Phase 5 — success screen, user continues manually
   | "error"; // Terminal error
 
 type PhaseError =
@@ -116,6 +117,7 @@ export function CheckoutPage() {
   const [pendingContractId, setPendingContractId] = useState<string | null>(
     null
   );
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   // Prevents initSession from firing before URL params have been read on mount.
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -178,7 +180,7 @@ export function CheckoutPage() {
   }, [livePreparePayment]);
 
   // Poll checkout payment status while in waiting_for_payment phase.
-  const { checkoutPayment } = useCheckBusinessActivation({
+  const { checkoutPayment, invoiceUrl } = useCheckBusinessActivation({
     workspaceId: owner.sId,
     contractId: pendingContractId,
     disabled: phase !== "waiting_for_payment",
@@ -191,20 +193,15 @@ export function CheckoutPage() {
       return;
     }
     if (checkoutPayment.status === "succeeded") {
-      setPhase("activating");
-      void (async () => {
-        await Promise.all([
-          mutateAuthContext(),
-          new Promise<void>((resolve) => setTimeout(resolve, 2000)),
-        ]);
-        void router.replace(`/w/${owner.sId}`);
-      })();
+      setReceiptUrl(invoiceUrl);
+      setPhase("checkout_success");
+      void mutateAuthContext();
     } else if (checkoutPayment.status === "failed") {
       setPhaseError({ kind: "activation_failed" });
       setPhase("error");
     }
     // pending: keep polling
-  }, [phase, checkoutPayment, mutateAuthContext, router, owner.sId]);
+  }, [phase, checkoutPayment, invoiceUrl, mutateAuthContext]);
 
   const {
     register: registerCoupon,
@@ -374,21 +371,14 @@ export function CheckoutPage() {
       return;
     }
 
-    // Payment and provisioning succeeded — show success state for 2s, then redirect.
-    setPhase("activating");
-    await Promise.all([
-      mutateAuthContext(),
-      new Promise<void>((resolve) => setTimeout(resolve, 2000)),
-    ]);
-    void router.replace(`/w/${owner.sId}`);
+    setPhase("checkout_success");
+    void mutateAuthContext();
   }, [
     setupSessionId,
     isMetronomeCheckout,
     initiateBusinessActivation,
     confirmPayment,
     mutateAuthContext,
-    router,
-    owner.sId,
   ]);
 
   const handleCardCaptureComplete = useCallback(() => {
@@ -490,6 +480,16 @@ export function CheckoutPage() {
       <main className="flex min-h-screen items-center justify-center">
         <Spinner size="xl" />
       </main>
+    );
+  }
+
+  if (phase === "checkout_success") {
+    return (
+      <CheckoutSuccessPage
+        seatType={seatType}
+        receiptUrl={receiptUrl}
+        owner={owner}
+      />
     );
   }
 
@@ -698,6 +698,57 @@ export function CheckoutPage() {
   );
 }
 
+interface CheckoutSuccessPageProps {
+  seatType: "pro" | "max" | null;
+  receiptUrl: string | null;
+  owner: LightWorkspaceType;
+}
+
+function CheckoutSuccessPage({
+  seatType,
+  receiptUrl,
+  owner,
+}: CheckoutSuccessPageProps) {
+  const router = useAppRouter();
+
+  return (
+    <main className="flex h-screen flex-col items-center justify-center gap-4 bg-white px-6 pb-24 pt-6">
+      <Icon visual={CheckCircle} size="2xl" className="text-success-500" />
+      <div className="flex flex-col items-center gap-4 text-center">
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+          You&apos;re all set!
+        </h1>
+        <p className="text-base text-muted-foreground">
+          Your{" "}
+          <span className="font-semibold">
+            {seatType === "max" ? "Max" : "Pro"}
+          </span>{" "}
+          seat is ready with{" "}
+          <span className="font-semibold">
+            {seatType === "max" ? "40,000" : "8,000"}
+          </span>{" "}
+          credits a month. Let&apos;s build something.
+        </p>
+      </div>
+      <div className="flex gap-4">
+        {receiptUrl && (
+          <Button
+            label="View receipt"
+            variant="outline"
+            size="md"
+            onClick={() => window.open(receiptUrl, "_blank")}
+          />
+        )}
+        <Button
+          label="Start building"
+          size="md"
+          onClick={() => void router.replace(`/w/${owner.sId}`)}
+        />
+      </div>
+    </main>
+  );
+}
+
 interface RightPaneProps {
   phase: CheckoutPhase;
   phaseError: PhaseError | null;
@@ -834,15 +885,8 @@ function RightPane({
         </div>
       );
 
-    case "activating":
-      return (
-        <div className="flex flex-col items-center gap-6 text-center">
-          <Icon visual={CheckCircle} size="2xl" className="text-success-500" />
-          <h2 className="text-2xl font-semibold text-foreground">
-            Thanks for subscribing
-          </h2>
-        </div>
-      );
+    case "checkout_success":
+      return null;
 
     case "error": {
       if (phaseError?.kind === "metronome_error") {
