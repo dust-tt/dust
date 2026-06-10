@@ -64,6 +64,7 @@ export { default as MicrosoftWordLogo } from "./MicrosoftWord";
 export { default as MiroLogo } from "./Miro";
 export { default as MistralLogo } from "./Mistral";
 export { default as MondayLogo } from "./Monday";
+export { default as NaptaLogo } from "./Napta";
 export { default as NetSuiteLogo } from "./NetSuite";
 export { default as NotionLogo } from "./Notion";
 export { default as OfficeLogo } from "./Office";
