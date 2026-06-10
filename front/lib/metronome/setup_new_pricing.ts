@@ -18,7 +18,6 @@ import {
 import { TOOL_CATEGORIES } from "@app/lib/metronome/events";
 import {
   BILLING_CYCLE_CONFIG_FIRST_OF_MONTH,
-  FREE_SEAT_CREDIT_NAME,
   FREE_SEAT_PRODUCT_NAME,
   getCreditTypeAwuId,
   getFreeExcessRecurringCredits,
@@ -52,10 +51,6 @@ import {
 // so these values aren't referenced anywhere else.
 export const PRO_SEAT_MONTHLY_AWU_CREDITS = 8000;
 export const MAX_SEAT_MONTHLY_AWU_CREDITS = 40000;
-// Per-seat AWU grant carried by the Free Seat subscription. Granted once
-// per seat on contract start and valid for the lifetime of the contract.
-// Never refilled.
-const FREE_SEAT_LIFETIME_AWU_CREDITS = 300;
 
 export const NEW_METRICS: MetricDef[] = [
   // Tool invocation metric — counts tool uses, group keys cover both user and
@@ -402,38 +397,6 @@ const ALL_SEAT_SUBSCRIPTIONS: PackageSubscription[] = [
   FREE_SEAT_SUBSCRIPTION,
 ];
 
-// Per-seat INDIVIDUAL AWU credit attached to the Free Seat SEAT_BASED
-// subscription. Issued exactly once per seat:
-//   - `duration: { value: 1, unit: "DAYS" }` stops the recurrence after the
-//     first commit (which fires on contract start / seat assignment), so the
-//     credit is never re-issued.
-//   - `commit_duration: { value: 100, unit: "YEARS" }`... not supported by
-//     Metronome (`PERIODS` only), so we approximate with 100 ANNUAL periods
-//     — effectively the lifetime of any reasonable contract.
-//   - Not prorated on seat increase: a new free seat always gets the full
-//     300 AWU grant regardless of when in the period it was added.
-function getFreeSeatLifetimeAwuCredits(): RecurringCreditDef {
-  return {
-    product_name: "Seat Individual Credits",
-    access_amount: {
-      credit_type_id: getCreditTypeAwuId(),
-      unit_price: FREE_SEAT_LIFETIME_AWU_CREDITS,
-    },
-    commit_duration: { value: 100, unit: "PERIODS" },
-    priority: 200,
-    starting_at_offset: { unit: "DAYS", value: 0 },
-    applicable_product_tags: [USAGE_TAG],
-    recurrence_frequency: "ANNUAL",
-    duration: { value: 1, unit: "DAYS" },
-    name: FREE_SEAT_CREDIT_NAME,
-    subscription_config: {
-      subscription_temporary_id: FREE_SEAT_SUBSCRIPTION.temporary_id,
-      allocation: "INDIVIDUAL",
-      apply_seat_increase_config: { is_prorated: false },
-    },
-  };
-}
-
 // Per-seat INDIVIDUAL AWU credits for both the monthly and annual subscription
 // of a seat pair (same per-seat allocation regardless of billing frequency).
 function buildPerSeatCredits(
@@ -452,9 +415,10 @@ function buildPerSeatCredits(
 
 // Full recurring-credit set tied to the seat subscriptions above, carried by
 // every non-legacy package: per-seat INDIVIDUAL AWU allocations for each Pro /
-// Max seat (monthly + annual), the one-shot Free Seat lifetime grant, and the
-// AWU excess credit. A credit attached to a dormant seat never materializes (the
-// subscription has no seats).
+// Max seat (monthly + annual) and the AWU excess credit. A credit attached to a
+// dormant seat never materializes (the subscription has no seats). Free seats
+// get their AWU grant from a per-user contract credit created at seat-assignment
+// time (see `grantFreeSeatCredits`), not from a recurring credit here.
 function getAllSeatRecurringCredits(): RecurringCreditDef[] {
   return [
     ...buildPerSeatCredits(
@@ -467,7 +431,6 @@ function getAllSeatRecurringCredits(): RecurringCreditDef[] {
       MAX_SEAT_MONTHLY_AWU_CREDITS,
       MAX_SEAT_CREDIT_NAME
     ),
-    getFreeSeatLifetimeAwuCredits(),
     getFreeExcessRecurringCredits(
       getCreditTypeAwuId(),
       DEFAULT_AWU_EXCESS_RECURRING_AMOUNT

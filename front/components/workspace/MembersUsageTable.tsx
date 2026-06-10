@@ -2,6 +2,7 @@ import {
   getSeatBarClasses,
   getSeatIconColorClass,
   MUTED_BAR_CLASSES,
+  OVERAGE_BAR_CLASSES,
 } from "@app/components/workspace/seat_styles";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { formatCredits } from "@app/lib/client/credits";
@@ -146,18 +147,25 @@ function AwuUsageBar({
   const seatColors = getSeatBarClasses(seatType);
   const allowance = memberUsageLimit ?? 0;
 
-  // The bar is up to four contiguous sections, each with its own tooltip:
-  //   seat consumed · seat remaining · pool consumed · pool remaining
-  // Zero-width sections are skipped, so in practice it renders as:
-  //   - within allowance:   seat consumed · seat remaining · pool remaining
-  //   - overflowed to pool: seat consumed · pool consumed · pool remaining
-  //   - no seat allowance:  pool consumed · pool remaining
-  // `pool remaining` is omitted when the user is uncapped (no finite headroom).
+  // The bar splits consumption into seat → pool → overage:
+  //   seat consumed · seat remaining · pool consumed · pool remaining · overage
+  // `poolLimit` is the headroom on top of the seat allowance (null = uncapped).
+  // A seat with no pool (poolLimit === 0, e.g. free) shows no pool section —
+  // any spend beyond the seat allowance is overage. Zero-width sections are
+  // skipped. `pool remaining` is omitted when uncapped (no finite headroom).
   const seatConsumed = consumedFromAllowance;
   const seatRemaining = Math.max(0, allowance - seatConsumed);
-  const poolConsumed = consumedFromPool;
+  const poolLimit = limit !== null ? Math.max(0, limit - allowance) : null;
+  // Of the pool consumption, the part within the pool limit vs. the overage
+  // beyond it (only capped seats can have overage).
+  const poolConsumed =
+    poolLimit !== null
+      ? Math.min(consumedFromPool, poolLimit)
+      : consumedFromPool;
   const poolRemaining =
-    limit !== null ? Math.max(0, limit - allowance - poolConsumed) : null;
+    poolLimit !== null ? Math.max(0, poolLimit - poolConsumed) : null;
+  const overage =
+    poolLimit !== null ? Math.max(0, consumedFromPool - poolLimit) : 0;
 
   const sections: Array<{
     key: string;
@@ -197,12 +205,16 @@ function AwuUsageBar({
       label: `${formatCredits(poolRemaining)} credits remaining before spend limit`,
     });
   }
+  // Overage is surfaced in the tooltip only, not as a bar segment.
 
   const total = sections.reduce((sum, s) => sum + s.value, 0);
 
   const hasSeatSections = seatConsumed > 0 || seatRemaining > 0;
+  // Only surface the pool when there's actually a pool to spend from: a finite
+  // positive limit, or uncapped (null). A zero pool limit (free) has no pool.
   const hasPoolSections =
-    poolConsumed > 0 || (poolRemaining !== null && poolRemaining > 0);
+    (poolLimit === null || poolLimit > 0) &&
+    (poolConsumed > 0 || (poolRemaining !== null && poolRemaining > 0));
 
   const tooltipLines: Array<{
     track: string;
@@ -219,15 +231,22 @@ function AwuUsageBar({
     });
   }
   if (hasPoolSections) {
-    const poolTotal = limit !== null ? limit - allowance : null;
     tooltipLines.push({
       track: MUTED_BAR_CLASSES.track,
       fill: MUTED_BAR_CLASSES.fill,
       legend: "Pool usage",
       usage:
-        poolTotal !== null
-          ? `${formatCredits(poolConsumed)} credits used out of ${formatCredits(poolTotal)}`
+        poolLimit !== null
+          ? `${formatCredits(poolConsumed)} credits used out of ${formatCredits(poolLimit)}`
           : `${formatCredits(poolConsumed)} credits used`,
+    });
+  }
+  if (overage > 0) {
+    tooltipLines.push({
+      track: OVERAGE_BAR_CLASSES.track,
+      fill: OVERAGE_BAR_CLASSES.fill,
+      legend: "Overage",
+      usage: `${formatCredits(overage)} credits over the spend limit`,
     });
   }
 

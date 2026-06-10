@@ -26,6 +26,13 @@ export const MUTED_BAR_CLASSES = {
   fill: SEAT_TIER_STYLES.muted.barFill,
 };
 
+// Overage bar colors (spend beyond the seat allowance + pool limit) — red, to
+// signal the user is over their cap.
+export const OVERAGE_BAR_CLASSES = {
+  track: "bg-red-200 dark:bg-red-200-night",
+  fill: "bg-red-700 dark:bg-red-700-night",
+};
+
 // Seat icon text color: golden for max, highlight blue for pro, muted grey
 // otherwise (free / none / workspace).
 export function getSeatIconColorClass(seatType: MembershipSeatType): string {
