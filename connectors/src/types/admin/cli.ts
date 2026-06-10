@@ -695,8 +695,9 @@ export type SnowflakeFetchTableResponseType = z.infer<
 export const TemporalCommandSchema = z.object({
   majorCommand: z.literal("temporal"),
   command: z.union([
-    z.literal("find-unprocessed-workflows"),
     z.literal("check-queue"),
+    z.literal("find-unprocessed-workflows"),
+    z.literal("stop-workflow"),
   ]),
   args: cliArgs,
 });
@@ -707,6 +708,14 @@ export const TemporalCheckQueueResponseSchema = z.object({
 });
 export type TemporalCheckQueueResponseType = z.infer<
   typeof TemporalCheckQueueResponseSchema
+>;
+
+export const TemporalStopWorkflowResponseSchema = z.object({
+  workflowId: z.string(),
+  terminated: z.boolean(),
+});
+export type TemporalStopWorkflowResponseType = z.infer<
+  typeof TemporalStopWorkflowResponseSchema
 >;
 
 export const TemporalUnprocessedWorkflowsResponseSchema = z.object({
@@ -899,6 +908,7 @@ export const AdminResponseSchema = z.union([
   SnowflakeFetchSchemaResponseSchema,
   SnowflakeFetchTableResponseSchema,
   TemporalCheckQueueResponseSchema,
+  TemporalStopWorkflowResponseSchema,
   TemporalUnprocessedWorkflowsResponseSchema,
   ZendeskCheckIsAdminResponseSchema,
   ZendeskCountTicketsResponseSchema,
