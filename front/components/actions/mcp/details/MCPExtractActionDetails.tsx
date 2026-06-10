@@ -4,7 +4,9 @@ import {
   isExtractQueryResourceType,
   isExtractResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { getFilePathDownloadUrl } from "@app/lib/swr/files";
 import { isTimeFrame } from "@app/types/shared/utils/time_frame";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Citation,
   CitationIcons,
@@ -26,6 +28,7 @@ interface MCPExtractActionQueryProps {
 }
 
 interface MCPExtractActionResultsProps {
+  owner: LightWorkspaceType;
   resultResource?: {
     text: string;
     uri: string;
@@ -42,6 +45,7 @@ export function MCPExtractActionDetails({
   toolParams,
   toolOutput,
   displayContext,
+  owner,
 }: ToolExecutionDetailsProps) {
   const queryResource = toolOutput
     ?.filter(isExtractQueryResourceType)
@@ -93,7 +97,10 @@ export function MCPExtractActionDetails({
             <span className="font-medium text-foreground dark:text-foreground-night">
               Results
             </span>
-            <MCPExtractActionResults resultResource={resultResource} />
+            <MCPExtractActionResults
+              owner={owner}
+              resultResource={resultResource}
+            />
           </div>
         )}
       </div>
@@ -132,6 +139,7 @@ function MCPExtractActionQuery({
 }
 
 function MCPExtractActionResults({
+  owner,
   resultResource,
 }: MCPExtractActionResultsProps) {
   const [isDownloading, setIsDownloading] = useState(false);
@@ -144,12 +152,18 @@ function MCPExtractActionResults({
     );
   }
 
+  const downloadUrl = resultResource.path
+    ? getFilePathDownloadUrl(owner, resultResource.path)
+    : resultResource.uri || null;
+
   const handleDownload = async () => {
+    if (!downloadUrl) {
+      return;
+    }
+
     setIsDownloading(true);
     try {
-      window.open(resultResource.uri, "_blank");
-    } catch (error) {
-      console.error("Download failed:", error);
+      window.open(downloadUrl, "_blank");
     } finally {
       setIsDownloading(false);
     }
@@ -161,7 +175,7 @@ function MCPExtractActionResults({
         <Citation
           className="w-48 min-w-48 max-w-48"
           containerClassName="my-2"
-          onClick={handleDownload}
+          onClick={downloadUrl ? handleDownload : undefined}
           tooltip={resultResource.title}
           isLoading={isDownloading}
         >

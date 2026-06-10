@@ -7,7 +7,6 @@ import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
-import { getFilePathDownloadUrl } from "@app/lib/swr/files";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ConversationType,
@@ -129,6 +128,9 @@ export async function getPromptForProcessDustApp({
   );
 }
 
+const EXTRACT_RESULT_FILE_STEM_MAX_LENGTH = 100;
+const EXTRACT_RESULT_SNIPPET_MAX_LENGTH = 1000;
+
 export async function generateProcessToolOutput({
   auth,
   conversation,
@@ -168,7 +170,6 @@ export async function generateProcessToolOutput({
     return writeResult;
   }
 
-  const owner = auth.getNonNullableWorkspace();
   return new Ok({
     processToolOutput: buildProcessToolOutput({
       outputs,
@@ -177,13 +178,9 @@ export async function generateProcessToolOutput({
       fileName,
       content,
       scopedPath: writeResult.value,
-      downloadUri: getFilePathDownloadUrl(owner, writeResult.value),
     }),
   });
 }
-
-const EXTRACT_RESULT_FILE_STEM_MAX_LENGTH = 100;
-const EXTRACT_RESULT_SNIPPET_MAX_LENGTH = 1000;
 
 function buildProcessToolOutput({
   outputs,
@@ -192,7 +189,6 @@ function buildProcessToolOutput({
   fileName,
   content,
   scopedPath,
-  downloadUri,
 }: {
   outputs: ProcessActionOutputsType | null;
   timeFrame: TimeFrame | null;
@@ -200,7 +196,6 @@ function buildProcessToolOutput({
   fileName: string;
   content: string;
   scopedPath: string;
-  downloadUri: string;
 }) {
   const snippet =
     content.length > EXTRACT_RESULT_SNIPPET_MAX_LENGTH
@@ -235,7 +230,7 @@ function buildProcessToolOutput({
       resource: {
         mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_RESULT,
         text: extractResult,
-        uri: downloadUri,
+        uri: "",
         path: scopedPath,
         title: fileName,
         contentType: "application/json" as const,
