@@ -10,6 +10,34 @@ use std::time::Duration;
 use tokio::time::timeout;
 use tracing::{error, info};
 
+pub fn network_error_kind(error: &reqwest::Error) -> &'static str {
+    if error.is_timeout() {
+        "timeout"
+    } else if error.is_connect() {
+        "connect"
+    } else if error.is_request() {
+        "request"
+    } else if error.is_body() {
+        "body"
+    } else if error.is_decode() {
+        "decode"
+    } else if error.is_status() {
+        "status"
+    } else {
+        "unknown"
+    }
+}
+
+pub fn error_source_chain(error: &(dyn std::error::Error + '_)) -> String {
+    let mut parts = vec![error.to_string()];
+    let mut current = error.source();
+    while let Some(source) = current {
+        parts.push(source.to_string());
+        current = source.source();
+    }
+    parts.join(" | ")
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum ProviderHttpRequestError {
     #[error("Network error: {0}")]

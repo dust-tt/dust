@@ -14,9 +14,9 @@ use async_trait::async_trait;
 use lazy_static::lazy_static;
 use serde_json::json;
 use std::env;
-use tracing::info;
+use tracing::{error, info};
 
-use super::utils::ProviderHttpRequestError;
+use super::utils::{error_source_chain, network_error_kind, ProviderHttpRequestError};
 
 lazy_static! {
     static ref OAUTH_JIRA_CLIENT_ID: String = env::var("OAUTH_JIRA_CLIENT_ID").unwrap();
@@ -77,15 +77,36 @@ fn log_jira_refresh_error(connection: &Connection, error: &ProviderHttpRequestEr
             status, message, ..
         } => {
             let is_revoked = is_jira_refresh_token_revoked(*status, message);
-            info!(
+            error!(
                 connection_id = connection.connection_id(),
                 status, message, is_revoked, "JIRA refresh OAuth error"
             );
         }
-        _ => {
-            info!(
+        ProviderHttpRequestError::NetworkError(e) => {
+            error!(
                 connection_id = connection.connection_id(),
-                error = %error,
+                error_kind = network_error_kind(e),
+                error_message = %e,
+                error_chain = %error_source_chain(e),
+                url = ?e.url().map(|u| u.as_str()),
+                http_status = ?e.status().map(|s| s.as_u16()),
+                is_connect = e.is_connect(),
+                is_timeout = e.is_timeout(),
+                "JIRA refresh OAuth error"
+            );
+        }
+        ProviderHttpRequestError::Timeout => {
+            error!(
+                connection_id = connection.connection_id(),
+                error_kind = "timeout",
+                "JIRA refresh OAuth error"
+            );
+        }
+        ProviderHttpRequestError::InvalidResponse(e) => {
+            error!(
+                connection_id = connection.connection_id(),
+                error = %e,
+                error_chain = %error_source_chain(e.as_ref()),
                 "JIRA refresh OAuth error"
             );
         }
