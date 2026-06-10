@@ -92,6 +92,8 @@ export function ConversationSidePanelProvider({
   const [currentPanel, setCurrentPanel] = useHashParam(
     SIDE_PANEL_TYPE_HASH_PARAM
   );
+  const activeConversationId = useActiveConversationId();
+  const previousConversationIdRef = React.useRef(activeConversationId);
 
   const panelRef = React.useRef<ImperativePanelHandle | null>(null);
   const [virtuosoMsg, setVirtuosoMsg] =
@@ -182,9 +184,8 @@ export function ConversationSidePanelProvider({
   // (e.g. a Frame) stays open. Skip the null -> id transition so a panel
   // auto-opened while creating a new conversation is not closed when the
   // conversation gets its id, and skip the initial mount to keep deep links
-  // (#spt=...&spid=...) working.
-  const activeConversationId = useActiveConversationId();
-  const previousConversationIdRef = React.useRef(activeConversationId);
+  // (#spt=...&spid=...) working. The id -> null transition (navigating to a
+  // new conversation) does close the panel.
   useEffect(() => {
     const previousConversationId = previousConversationIdRef.current;
     previousConversationIdRef.current = activeConversationId;
