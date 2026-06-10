@@ -67,7 +67,7 @@ app.post(
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
-          message: "You do not have permission to invite members as admin.",
+          message: "You do not have permission to invite members.",
         },
       });
     }

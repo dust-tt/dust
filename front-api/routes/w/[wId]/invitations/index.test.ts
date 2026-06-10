@@ -135,7 +135,7 @@ describe("POST /api/w/:wId/invitations", () => {
     const data = await response.json();
     expect(data.error.type).toBe("workspace_auth_error");
     expect(data.error.message).toBe(
-      "You do not have permission to invite members as admin."
+      "You do not have permission to invite members."
     );
 
     // No invitation should have been created.

@@ -4,8 +4,6 @@ import {
   devFlagSubscribe,
 } from "@app/components/dev/devFlagOverrideStore";
 import { DEV_MODE_ACTIVE } from "@app/components/dev/devModeConstants";
-import type { Permission } from "@app/types/permissions";
-import { hasPermission } from "@app/types/permissions";
 import type { SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
@@ -72,15 +70,6 @@ export function useFeatureFlags() {
   );
 
   return { featureFlags, hasFeature };
-}
-
-export function useHasPermission(): (permission: Permission) => boolean {
-  const { workspace } = useAuth();
-
-  return useCallback(
-    (permission: Permission) => hasPermission(workspace.role, permission),
-    [workspace.role]
-  );
 }
 
 export function useWorkspace(): LightWorkspaceType {

@@ -1,7 +1,10 @@
 import { AdminLayout } from "@dust-tt/front/components/layouts/AdminLayout";
-import { useHasPermission } from "@dust-tt/front/lib/auth/AuthContext";
+import { useAuth } from "@dust-tt/front/lib/auth/AuthContext";
 import Custom404 from "@dust-tt/front/pages/404";
-import type { Permission } from "@dust-tt/front/types/permissions";
+import {
+  hasPermission,
+  type Permission,
+} from "@dust-tt/front/types/permissions";
 import { Outlet } from "react-router-dom";
 
 interface RequirePermissionProps {
@@ -11,9 +14,9 @@ interface RequirePermissionProps {
 export function RequirePermissionLayout({
   permission,
 }: RequirePermissionProps) {
-  const hasPermission = useHasPermission();
+  const { workspace } = useAuth();
 
-  if (!hasPermission(permission)) {
+  if (!hasPermission(workspace.role, permission)) {
     return <Custom404 />;
   }
 

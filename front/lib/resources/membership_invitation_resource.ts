@@ -103,7 +103,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     }
     if (!auth.hasPermission("workspace:manage_members")) {
       throw new Error(
-        "You do not have permission to see or modify membership invitations."
+        "You do not have permission to manage membership invitations."
       );
     }
     const oneDayAgo = new Date();
@@ -308,7 +308,7 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     }
     if (!auth.hasPermission("workspace:manage_members")) {
       throw new Error(
-        "You do not have permission to see or modify membership invitations."
+        "You do not have permission to manage membership invitations."
       );
     }
 
