@@ -1,6 +1,6 @@
 import {
   bucketsToArray,
-  formatUTCDateFromMillis,
+  formatDateFromMillis,
   searchAnalytics,
 } from "@app/lib/api/elasticsearch";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -176,7 +176,7 @@ export async function fetchActiveUsersMetrics(
 
     points.push({
       timestamp,
-      date: formatUTCDateFromMillis(timestamp),
+      date: formatDateFromMillis(timestamp, timezone),
       dau,
       wau,
       mau,

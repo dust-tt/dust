@@ -1,6 +1,6 @@
 import {
   bucketsToArray,
-  formatUTCDateFromMillis,
+  formatDateFromMillis,
   searchAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Result } from "@app/types/shared/result";
@@ -158,7 +158,7 @@ export async function fetchContextOriginDailyBreakdown(
   const points: ContextOriginDailyPoint[] = [];
 
   for (const dateBucket of dateBuckets) {
-    const date = formatUTCDateFromMillis(dateBucket.key);
+    const date = formatDateFromMillis(dateBucket.key, timezone);
     const originBuckets = bucketsToArray<OriginSubBucket>(
       dateBucket.by_origin?.buckets
     );
