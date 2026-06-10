@@ -1,6 +1,6 @@
 import { updateMembershipSeatAndTrack } from "@app/lib/api/membership";
 import {
-  isMetronomeCheckoutEnabled,
+  isMetronomeBillingEnabled,
   restoreWorkspaceAfterSubscription,
 } from "@app/lib/api/subscription";
 import { Authenticator } from "@app/lib/auth";
@@ -752,7 +752,7 @@ export async function processBusinessActivation(
     BusinessActivationRequestError
   >
 > {
-  if (!(await isMetronomeCheckoutEnabled(auth))) {
+  if (!(await isMetronomeBillingEnabled(auth))) {
     return new Err({ type: "checkout_not_enabled" });
   }
 

@@ -55,16 +55,6 @@ export async function isMetronomeBillingEnabled(
   return hasFlag || !killed;
 }
 
-export async function isMetronomeCheckoutEnabled(
-  auth: Authenticator
-): Promise<boolean> {
-  const [metronomeBilling, hasCheckoutFlag] = await Promise.all([
-    isMetronomeBillingEnabled(auth),
-    hasFeatureFlag(auth, "metronome_cp_checkout"),
-  ]);
-  return metronomeBilling && hasCheckoutFlag;
-}
-
 /**
  * Restores a workspace to full functionality after subscription activation/reactivation.
  * This function is called when:

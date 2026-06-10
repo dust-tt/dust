@@ -775,7 +775,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "use_vertex_for_supported_models"
   | "metronome_billing_usage_page"
   | "user_settings_v2"
-  | "metronome_cp_checkout"
   | "admin_governance"
 >();
 
