@@ -969,7 +969,7 @@ describe("FileResource", () => {
       expect(path).toContain("/original");
     });
 
-    it("should resolve to 'processed' version for PDF files", async () => {
+    it("should resolve to 'original' version for PDF files (no pre-processing; lazy via extract_text tool)", async () => {
       const { authenticator: auth } = await createResourceTest({
         role: "admin",
       });
@@ -984,10 +984,10 @@ describe("FileResource", () => {
       });
 
       const { path } = file.getContentBucketAndPath(auth);
-      expect(path).toContain("/processed");
+      expect(path).toContain("/original");
     });
 
-    it("should resolve to 'processed' version for Word documents", async () => {
+    it("should resolve to 'original' version for Word documents (no pre-processing; lazy via extract_text tool)", async () => {
       const { authenticator: auth } = await createResourceTest({
         role: "admin",
       });
@@ -1003,7 +1003,7 @@ describe("FileResource", () => {
       });
 
       const { path } = file.getContentBucketAndPath(auth);
-      expect(path).toContain("/processed");
+      expect(path).toContain("/original");
     });
 
     it("should resolve to 'original' version for spreadsheets when file processing is skipped", async () => {
