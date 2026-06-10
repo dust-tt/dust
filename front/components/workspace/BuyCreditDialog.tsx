@@ -504,7 +504,7 @@ export function BuyCreditDialog({
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col gap-4">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Credit purchases become available once you upgrade to a paid
                 plan. If you need credits during your trial, please contact our
                 support team.
@@ -550,7 +550,7 @@ export function BuyCreditDialog({
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col gap-4">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Please ensure your subscription is active and your payment
                 method is up to date. If you need assistance, please contact our
                 support team.
@@ -596,7 +596,7 @@ export function BuyCreditDialog({
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col gap-4">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Please complete your pending payment before making a new
                 purchase or contact support to cancel your pending payments.{" "}
                 <a
@@ -646,7 +646,7 @@ export function BuyCreditDialog({
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col gap-4">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Your credit purchase limit resets at the start of your next
                 billing cycle. If you need additional credits before then,
                 please contact our support team.

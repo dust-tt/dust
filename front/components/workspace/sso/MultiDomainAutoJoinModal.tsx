@@ -118,7 +118,7 @@ export function MultiDomainAutoJoinModal({
         </DialogHeader>
         <DialogContainer>
           <div className="flex flex-col gap-4">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               Select which domains should allow users to automatically join your
               workspace when they sign up with a matching email address.
             </p>

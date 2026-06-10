@@ -163,7 +163,7 @@ export function TaskOverflowMenu({ task }: TaskOverflowMenuProps) {
                       ))}
                     </>
                   ) : (
-                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                    <div className="px-3 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                       No members found
                     </div>
                   )}

@@ -185,14 +185,14 @@ function AudioFileRenderer({
       </audio>
       {content.text && (
         <div className="flex flex-col gap-2">
-          <h4 className="text-sm font-semibold text-muted-foreground">
+          <h4 className="text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
             Transcript
           </h4>
           <TextContent text={content.text} />
         </div>
       )}
       {!content.text && (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
           No transcript available.
         </p>
       )}
@@ -426,7 +426,7 @@ export function FilePreviewSheet({
 
     if (hasError) {
       return (
-        <div className="flex h-48 w-full items-center justify-center text-muted-foreground">
+        <div className="flex h-48 w-full items-center justify-center text-muted-foreground dark:text-muted-foreground-night">
           <p>Unable to preview this file. You can download it instead.</p>
         </div>
       );

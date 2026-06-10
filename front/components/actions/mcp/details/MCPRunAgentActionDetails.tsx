@@ -342,7 +342,7 @@ function MCPRunAgentActionDetailsDisplay({
                     content={query}
                     isStreaming={false}
                     forcedTextSize="text-sm"
-                    textColor="text-muted-foreground"
+                    textColor="text-muted-foreground dark:text-muted-foreground-night"
                     isLastMessage={false}
                     additionalMarkdownPlugins={additionalMarkdownPlugins}
                     additionalMarkdownComponents={additionalMarkdownComponents}

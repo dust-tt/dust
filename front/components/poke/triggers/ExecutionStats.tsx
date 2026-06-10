@@ -31,7 +31,7 @@ export function ExecutionStats({ owner, triggerId }: ExecutionStatsProps) {
     return (
       <div className="border-material-200 flex flex-col rounded-lg border p-4">
         <h2 className="text-md pb-4 font-bold">Execution Stats</h2>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
           Error loading execution stats.
         </p>
       </div>
@@ -93,7 +93,7 @@ export function ExecutionStats({ owner, triggerId }: ExecutionStatsProps) {
 
               return (
                 <div key={day.date} className="flex items-center gap-2 text-xs">
-                  <span className="w-20 shrink-0 text-muted-foreground">
+                  <span className="w-20 shrink-0 text-muted-foreground dark:text-muted-foreground-night">
                     {day.date}
                   </span>
                   <div className="flex-1">

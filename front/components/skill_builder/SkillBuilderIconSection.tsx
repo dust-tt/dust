@@ -39,7 +39,9 @@ export function SkillBuilderIconSection() {
         <div className="group relative">
           <Avatar
             size="lg"
-            visual={<IconComponent className="h-8 w-8 text-muted-foreground" />}
+            visual={
+              <IconComponent className="h-8 w-8 text-muted-foreground dark:text-muted-foreground-night" />
+            }
           />
           <Button
             variant="outline"

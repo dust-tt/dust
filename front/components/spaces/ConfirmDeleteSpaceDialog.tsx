@@ -75,7 +75,7 @@ export function ConfirmDeleteSpaceDialog({
                 />
               )}
               <div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                   Are you sure you want to permanently delete space {spaceName}?
                   This action cannot be undone.
                 </p>

@@ -202,11 +202,11 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
           sorting={[{ id: "agentName", desc: false }]}
         />
       ) : triggers.length === 0 ? (
-        <div className="py-8 text-center text-muted-foreground">
+        <div className="py-8 text-center text-muted-foreground dark:text-muted-foreground-night">
           You haven't created any triggers yet.
         </div>
       ) : (
-        <div className="py-8 text-center text-muted-foreground">
+        <div className="py-8 text-center text-muted-foreground dark:text-muted-foreground-night">
           No triggers match your search criteria.
         </div>
       )}

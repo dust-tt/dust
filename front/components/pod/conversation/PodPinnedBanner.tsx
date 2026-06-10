@@ -128,11 +128,17 @@ function PodPinnedBannerCollapsedAffordance({
     <div className="mb-2 flex min-w-0 items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
       <Pin02 className="h-3.5 w-3.5 shrink-0" />
       <span className="shrink-0">Frame</span>
-      <span aria-hidden className="shrink-0 text-muted-foreground/50">
+      <span
+        aria-hidden
+        className="shrink-0 text-muted-foreground/50 dark:text-muted-foreground-night/50"
+      >
         ·
       </span>
       <span className="min-w-0 truncate">{fileName}</span>
-      <span aria-hidden className="shrink-0 text-muted-foreground/50">
+      <span
+        aria-hidden
+        className="shrink-0 text-muted-foreground/50 dark:text-muted-foreground-night/50"
+      >
         ·
       </span>
       <Button label="Show" variant="ghost" size="xs" onClick={onShow} />

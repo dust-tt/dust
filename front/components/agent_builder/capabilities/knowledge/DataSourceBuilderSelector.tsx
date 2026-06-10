@@ -297,7 +297,7 @@ export const DataSourceBuilderSelector = ({
           <div className="text-lg font-medium text-foreground">
             No data sources available
           </div>
-          <div className="max-w-sm text-muted-foreground">
+          <div className="max-w-sm text-muted-foreground dark:text-muted-foreground-night">
             Connect data sources or ask your admin to set them up
           </div>
           <div>
@@ -331,7 +331,7 @@ export const DataSourceBuilderSelector = ({
           {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
           {(currentNode || currentDataSourceView) && isSearching && (
             <div className="flex items-center gap-1 px-1 py-1">
-              <span className="mr-2 text-sm text-muted-foreground">
+              <span className="mr-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Searching in:
               </span>
               <div className="flex space-x-3 overflow-hidden rounded-md">
@@ -347,7 +347,8 @@ export const DataSourceBuilderSelector = ({
                           ""
                   }
                   className={cn(
-                    searchScope !== "node" && "text-muted-foreground"
+                    searchScope !== "node" &&
+                      "text-muted-foreground dark:text-muted-foreground-night"
                   )}
                 />
                 <Separator orientation="vertical" />
@@ -356,7 +357,8 @@ export const DataSourceBuilderSelector = ({
                   variant={searchScope === "space" ? "outline" : "ghost"}
                   label={`All ${currentSpace?.name}`}
                   className={cn(
-                    searchScope !== "space" && "text-muted-foreground"
+                    searchScope !== "space" &&
+                      "text-muted-foreground dark:text-muted-foreground-night"
                   )}
                 />
               </div>

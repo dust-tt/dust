@@ -101,7 +101,7 @@ export function RunsPage() {
                       "dark:border-border-night dark:bg-primary-300 dark:text-foreground-night dark:hover:bg-primary-200"
                     )
                   : cn(
-                      "border-border bg-background text-muted-foreground hover:bg-muted-background hover:text-muted-foreground",
+                      "border-border bg-background text-muted-foreground dark:text-muted-foreground-night hover:bg-muted-background hover:text-muted-foreground",
                       "dark:border-border-night dark:bg-background-night dark:text-muted-foreground-night dark:hover:bg-muted-background-night dark:hover:text-muted-foreground-night"
                     ),
                 tabIdx === 0 ? "rounded-l-2xl border-r-0" : "",

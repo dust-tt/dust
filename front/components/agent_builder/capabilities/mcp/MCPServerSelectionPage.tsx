@@ -115,7 +115,7 @@ export function MCPServerSelectionPage({
           <div className="mb-2 text-lg font-medium text-foreground">
             No tool matches your search
           </div>
-          <div className="max-w-sm text-muted-foreground">
+          <div className="max-w-sm text-muted-foreground dark:text-muted-foreground-night">
             No tools found. Try a different search term.
           </div>
         </div>
