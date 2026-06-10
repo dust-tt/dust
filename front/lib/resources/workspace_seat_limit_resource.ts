@@ -14,10 +14,12 @@ import type { Attributes, ModelStatic, Transaction } from "sequelize";
 /**
  * The seat configuration for a single seat type.
  *
- * (`maxSeats` — a hard cap — will be added later.)
+ * - `minSeats`: billing floor (count billed to Metronome when actual headcount is lower).
+ * - `maxSeats`: hard assignment cap; null means no cap.
  */
 export type SeatLimit = {
   minSeats: number;
+  maxSeats: number | null;
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -38,7 +40,7 @@ export class WorkspaceSeatLimitResource extends BaseResource<WorkspaceSeatLimitM
   /**
    * Returns the configured per-seat-type limits for a workspace, keyed by seat
    * type. Seat types without a row are simply absent from the map (callers
-   * treat that as "no floor").
+   * treat that as "no floor / no cap").
    */
   static async fetchByWorkspace({
     workspace,
@@ -51,7 +53,10 @@ export class WorkspaceSeatLimitResource extends BaseResource<WorkspaceSeatLimitM
     const result = new Map<MembershipSeatType, SeatLimit>();
     for (const row of rows) {
       if (isMembershipSeatType(row.seatType)) {
-        result.set(row.seatType, { minSeats: row.minSeats });
+        result.set(row.seatType, {
+          minSeats: row.minSeats,
+          maxSeats: row.maxSeats ?? null,
+        });
       }
     }
     return result;
@@ -59,30 +64,48 @@ export class WorkspaceSeatLimitResource extends BaseResource<WorkspaceSeatLimitM
 
   /**
    * Create or update the configured limit for a (workspace, seat type).
+   * Rejects when `maxSeats` is set and less than `minSeats`.
    */
   static async upsert({
     workspace,
     seatType,
     minSeats,
+    maxSeats,
     transaction,
   }: {
     workspace: LightWorkspaceType;
     seatType: MembershipSeatType;
     minSeats: number;
+    maxSeats?: number | null;
     transaction?: Transaction;
-  }): Promise<void> {
+  }): Promise<Result<void, Error>> {
+    if (maxSeats !== null && maxSeats !== undefined && maxSeats < minSeats) {
+      return new Err(
+        new Error(
+          `maxSeats (${maxSeats}) must be greater than or equal to minSeats (${minSeats}).`
+        )
+      );
+    }
+    const fields: {
+      minSeats: number;
+      maxSeats?: number | null;
+    } = { minSeats };
+    if (maxSeats !== undefined) {
+      fields.maxSeats = maxSeats;
+    }
     const existing = await this.model.findOne({
       where: { workspaceId: workspace.id, seatType },
       transaction,
     });
     if (existing) {
-      await existing.update({ minSeats }, { transaction });
-      return;
+      await existing.update(fields, { transaction });
+      return new Ok(undefined);
     }
     await this.model.create(
-      { workspaceId: workspace.id, seatType, minSeats },
+      { workspaceId: workspace.id, seatType, ...fields },
       { transaction }
     );
+    return new Ok(undefined);
   }
 
   /**

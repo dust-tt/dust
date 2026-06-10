@@ -452,11 +452,14 @@ export async function switchContract({
     }
     // A deselected seat carries no billing floor — clear any existing one.
     if (seat.selected && seat.minSeats > 0) {
-      await WorkspaceSeatLimitResource.upsert({
+      const upsertResult = await WorkspaceSeatLimitResource.upsert({
         workspace: owner,
         seatType: seat.seatType,
         minSeats: seat.minSeats,
       });
+      if (upsertResult.isErr()) {
+        throw upsertResult.error;
+      }
     } else {
       await WorkspaceSeatLimitResource.remove({
         workspace: owner,

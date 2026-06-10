@@ -26,6 +26,7 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -97,14 +98,27 @@ async function resolveSeatTypeForNewMembership(
   // otherwise.
   const limitsActive =
     planLimits.maxFreeUsers !== -1 || planLimits.maxLifetimeFreeUsers !== -1;
-  const [productSeatTypes, isReturningMember, freeSeatCounts] =
+  const [productSeatTypes, isReturningMember, freeSeatCounts, seatLimits] =
     await Promise.all([
       getProductSeatTypes(),
       MembershipResource.hasAnyMembershipOfUserInWorkspace({ user, workspace }),
       limitsActive
         ? MembershipResource.getFreeSeatCounts({ workspace })
         : Promise.resolve(undefined),
+      WorkspaceSeatLimitResource.fetchByWorkspace({ workspace }),
     ]);
+
+  // Only fetch per-seat-type counts when at least one tier has a maxSeats cap
+  // configured
+  const hasAnyCap = [...seatLimits.values()].some(
+    (l) => l.maxSeats !== null && l.maxSeats !== undefined
+  );
+  const seatCounts = hasAnyCap
+    ? await MembershipResource.getActiveSeatTypeCountsForWorkspace({
+        workspace,
+      })
+    : undefined;
+
   const defaultSeatType = getDefaultSeatTypeForContract(
     contract,
     productSeatTypes,
@@ -116,6 +130,8 @@ async function resolveSeatTypeForNewMembership(
         maxActiveFreeUsers: planLimits.maxFreeUsers,
         maxLifetimeFreeUsers: planLimits.maxLifetimeFreeUsers,
       },
+      seatLimits,
+      seatCounts,
     }
   );
   if (!defaultSeatType) {
@@ -555,7 +571,13 @@ export async function updateMembershipSeatAndTrack({
       newSeatType: MembershipSeatType;
       scheduledSeatChangeAt: Date | undefined;
     },
-    { type: "not_found" | "metronome_error" | "free_seat_not_allowed" }
+    {
+      type:
+        | "not_found"
+        | "metronome_error"
+        | "free_seat_not_allowed"
+        | "seat_limit_reached";
+    }
   >
 > {
   const membership =
@@ -575,6 +597,25 @@ export async function updateMembershipSeatAndTrack({
   // (no twice-free). A free→free noop is unaffected: nothing is written.
   if (newSeatType === "free" && previousSeatType !== "free") {
     return new Err({ type: "free_seat_not_allowed" });
+  }
+
+  // Enforce the per-seat-type hard cap. Assigning to `none` (removing a seat)
+  // is always allowed. Same-type noops are also allowed (no net change).
+  if (newSeatType !== "none" && newSeatType !== previousSeatType) {
+    const seatLimits = await WorkspaceSeatLimitResource.fetchByWorkspace({
+      workspace,
+    });
+    const limit = seatLimits.get(newSeatType);
+    if (limit?.maxSeats !== null && limit?.maxSeats !== undefined) {
+      const seatCounts =
+        await MembershipResource.getActiveSeatTypeCountsForWorkspace({
+          workspace,
+        });
+      const currentCount = seatCounts[newSeatType] ?? 0;
+      if (currentCount >= limit.maxSeats) {
+        return new Err({ type: "seat_limit_reached" });
+      }
+    }
   }
 
   const scheduledRow =
