@@ -6,11 +6,11 @@ import {
 import { ProPlansTable } from "@app/components/plans/ProPlansTable";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useIsMetronomeCheckout } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { isFreeTrialPhonePlan, isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
-import { useKillSwitches } from "@app/lib/swr/kill";
 import { useUser } from "@app/lib/swr/user";
 import {
   useSubscriptionStatus,
@@ -359,14 +359,7 @@ function LegacySubscribePage() {
 }
 
 export function SubscribePage() {
-  const { hasFeature } = useFeatureFlags();
-  const { killSwitches } = useKillSwitches();
-
-  const isMetronomeEnabled =
-    hasFeature("metronome_billing") ||
-    !killSwitches?.includes("global_disable_metronome_billing");
-  const isMetronomeCheckout =
-    isMetronomeEnabled && hasFeature("metronome_cp_checkout");
+  const isMetronomeCheckout = useIsMetronomeCheckout();
 
   if (isMetronomeCheckout) {
     return <CPSubscribePage />;

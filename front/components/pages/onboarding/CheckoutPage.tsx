@@ -1,6 +1,6 @@
 import { PaymentMethodRow } from "@app/components/checkout/PaymentMethodRow";
 import config from "@app/lib/api/config";
-import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   BUSINESS_PLAN_COST_MONTHLY,
   CP_MAX_SEAT_COST_MONTHLY,
@@ -10,11 +10,11 @@ import {
   getPriceAsString,
   PRO_PLAN_COST_MONTHLY,
   PRO_PLAN_COST_YEARLY,
+  useIsMetronomeCheckout,
   useUserBillingCurrency,
 } from "@app/lib/client/subscription";
 import { isWhitelistedBusinessPlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
-import { useKillSwitches } from "@app/lib/swr/kill";
 import {
   useAuthContext,
   useCheckBusinessActivation,
@@ -108,13 +108,7 @@ export function CheckoutPage() {
   const { mutateAuthContext } = useAuthContext({ workspaceId: owner.sId });
 
   // Determine if CP checkout is enabled.
-  const { hasFeature } = useFeatureFlags();
-  const { killSwitches } = useKillSwitches();
-  const isMetronomeEnabled =
-    hasFeature("metronome_billing") ||
-    !killSwitches?.includes("global_disable_metronome_billing");
-  const isMetronomeCheckout =
-    isMetronomeEnabled && hasFeature("metronome_cp_checkout") && !!seatType;
+  const isMetronomeCheckout = useIsMetronomeCheckout() && !!seatType;
 
   const [phase, setPhase] = useState<CheckoutPhase>("card_capture");
   const [phaseError, setPhaseError] = useState<PhaseError | null>(null);

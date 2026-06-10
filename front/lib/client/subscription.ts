@@ -1,7 +1,9 @@
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getBillingCurrencyForCountry } from "@app/lib/plans/billing_currency";
+import type { KillSwitchType } from "@app/lib/poke/types";
 import { useGeolocation } from "@app/lib/swr/geo";
 import type { SupportedCurrency } from "@app/types/currency";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { useKillSwitches } from "../swr/kill";
 
 // If mention the price of the PRO plan in a few different places in the code base,
@@ -23,6 +25,34 @@ export const CP_MAX_SEAT_COST_YEARLY = 120;
 // `front/lib/metronome/setup_new_pricing.ts` (that module is server-only and
 // cannot be imported client-side).
 export const CP_FREE_PLAN_CREDITS = 300;
+
+/**
+ * Client-side mirror of the server-side `isMetronomeCheckoutEnabled` gate: the
+ * credit-priced checkout flow is enabled when Metronome billing is on (feature
+ * flag, or kill switch not active) and the workspace has the
+ * `metronome_cp_checkout` feature flag.
+ *
+ * Prefer the `useIsMetronomeCheckout` hook; this helper is for components that
+ * render outside the auth context provider (e.g. the SPA workspace layout).
+ */
+export function computeIsMetronomeCheckout({
+  featureFlags,
+  killSwitches,
+}: {
+  featureFlags: WhitelistableFeature[];
+  killSwitches: KillSwitchType[] | null | undefined;
+}): boolean {
+  const isMetronomeEnabled =
+    featureFlags.includes("metronome_billing") ||
+    !killSwitches?.includes("global_disable_metronome_billing");
+  return isMetronomeEnabled && featureFlags.includes("metronome_cp_checkout");
+}
+
+export function useIsMetronomeCheckout(): boolean {
+  const { featureFlags } = useFeatureFlags();
+  const { killSwitches } = useKillSwitches();
+  return computeIsMetronomeCheckout({ featureFlags, killSwitches });
+}
 
 export function formatPriceWithCurrency(
   price: number,

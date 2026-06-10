@@ -100,6 +100,16 @@ export function useUserApprovals(owner: LightWorkspaceType) {
   };
 }
 
+export function useCompleteUserOnboarding() {
+  const completeUserOnboarding = async () => {
+    return clientFetch("/api/user/onboarding/complete", {
+      method: "POST",
+    });
+  };
+
+  return { completeUserOnboarding };
+}
+
 export function useDeleteMetadata() {
   const deleteMetadata = async (prefix: string) => {
     return clientFetch(`/api/user/metadata/${encodeURIComponent(prefix)}`, {
