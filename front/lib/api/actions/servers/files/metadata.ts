@@ -35,10 +35,7 @@ const LIST_DESCRIPTION_PREFIX =
   "content type, and size in KB. " +
   "Scoped paths can be used to reference or display a file in a response, " +
   "or passed to other tools that accept a file path. " +
-  "Some files have an auto-generated `*.processed.<ext>` sibling carrying a " +
-  "model-friendly representation of their source: a resized version for images, " +
-  "a transcript for audio, or extracted text for PDFs and other documents. " +
-  `Read the sibling with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` to access the content of binary sources.`;
+  "Processed siblings (e.g. audio transcripts) are listed alongside their source with an annotation.";
 
 const SCOPED_PATH_HINT =
   "Paths use `conversation-<id>/...` or `pod-<id>/...` for any conversation or Pod you can access; " +
@@ -176,8 +173,8 @@ const FILES_TOOLS_COMMON_METADATA = {
       "Use `offset` to start at a specific line and `limit` to control how many lines to return. " +
       "When the output is truncated, a footer indicates the next offset to use. " +
       "For images (JPEG, PNG, GIF), returns a vision block the model can inspect directly. " +
-      "For binary sources such as PDFs, scanned documents, or audio files, prefer the " +
-      `\`*.processed.<ext>\` sibling listed in \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\`. It carries the extracted text or transcript.`,
+      "For binary documents (PDF, DOCX, PPTX, etc.), call " +
+      `\`${getPrefixedToolName(FILES_SERVER_NAME, FILES_EXTRACT_TEXT_ACTION_NAME)}\` first to extract their text content.`,
     schema: {
       path: z
         .string()
@@ -318,10 +315,7 @@ export const FILES_SERVER = {
       "Files include user uploads, sandbox outputs, and tool results. " +
       "Scoped paths such as `conversation-<id>/chart.png` or `pod-<id>/spec.md` identify files " +
       "and can be used to reference, display, or link them in responses. " +
-      "Files whose name follows the `*.processed.<ext>` pattern are auto-generated " +
-      "model-friendly representations of their source (resized image, audio transcript, " +
-      "or text extracted from a document). Read those siblings to access the content " +
-      "of binary uploads.",
+      "Processed siblings (resized images, audio transcripts) are listed alongside their source with an annotation.",
     authorization: null,
     icon: "ActionDocumentTextIcon" as const,
     documentationUrl: null,
