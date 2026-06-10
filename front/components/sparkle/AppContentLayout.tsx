@@ -97,7 +97,7 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
 
       <div
         className={cn(
-          "relative flex w-full flex-1 flex-col overflow-x-hidden",
+          "relative flex h-dvh w-full flex-1 flex-col overflow-x-hidden",
           "bg-app-background text-foreground",
           "dark:bg-app-background-night dark:text-foreground-night"
         )}
