@@ -13,6 +13,7 @@ import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getRemainingDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/daily_cap";
 import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import { intelligenceAwuFromRunUsages } from "@app/lib/metronome/events";
 import {
   isApiBlocked,
   isProgrammaticApiBlocked,
@@ -65,6 +66,7 @@ import {
 } from "@app/lib/reinforcement/workspace_check";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
+import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { SelfImprovingSkillsUsageCreateBlob } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
@@ -350,20 +352,22 @@ function getReinforcedSkillIdsFromMetadata(
   ];
 }
 
-function splitPriceMicroUsdAcrossSkills(
-  priceMicroUsd: number,
+// Splits an integer amount (micro-USD or AWU credits) evenly across skills,
+// distributing the remainder one unit at a time so the parts sum to the total.
+function splitAmountAcrossSkills(
+  totalAmount: number,
   skillCount: number
 ): number[] {
   if (skillCount <= 0) {
     return [];
   }
 
-  const basePriceMicroUsd = Math.floor(priceMicroUsd / skillCount);
-  const remainderMicroUsd = priceMicroUsd % skillCount;
+  const baseAmount = Math.floor(totalAmount / skillCount);
+  const remainder = totalAmount % skillCount;
 
   return Array.from(
     { length: skillCount },
-    (_, index) => basePriceMicroUsd + (index < remainderMicroUsd ? 1 : 0)
+    (_, index) => baseAmount + (index < remainder ? 1 : 0)
   );
 }
 
@@ -382,6 +386,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
   conversationsProcessed: number;
   usagesCreated: number;
   totalPriceMicroUsd: number;
+  totalPriceAwuCredits: number;
 }> {
   const uniqueConversationIds = [...new Set(conversationIds)];
   if (uniqueConversationIds.length === 0) {
@@ -389,6 +394,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
       conversationsProcessed: 0,
       usagesCreated: 0,
       totalPriceMicroUsd: 0,
+      totalPriceAwuCredits: 0,
     };
   }
 
@@ -416,6 +422,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
       conversationsProcessed: 0,
       usagesCreated: 0,
       totalPriceMicroUsd: 0,
+      totalPriceAwuCredits: 0,
     };
   }
 
@@ -461,7 +468,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
     ),
   ];
 
-  const runCostMicroUsdByDustRunId = new Map<string, number>();
+  const runUsagesByDustRunId = new Map<string, RunUsageType[]>();
   if (allDustRunIds.length > 0) {
     const runs = await RunResource.listByDustRunIds(auth, {
       dustRunIds: allDustRunIds,
@@ -475,10 +482,9 @@ export async function recordSelfImprovingSkillsUsageActivity({
         continue;
       }
 
-      runCostMicroUsdByDustRunId.set(
-        dustRunId,
-        (runCostMicroUsdByDustRunId.get(dustRunId) ?? 0) + usage.costMicroUsd
-      );
+      const usagesForRun = runUsagesByDustRunId.get(dustRunId) ?? [];
+      usagesForRun.push(usage);
+      runUsagesByDustRunId.set(dustRunId, usagesForRun);
     }
   }
 
@@ -494,13 +500,16 @@ export async function recordSelfImprovingSkillsUsageActivity({
 
   const usages: SelfImprovingSkillsUsageCreateBlob[] = [];
   let totalPriceMicroUsd = 0;
+  let totalPriceAwuCredits = 0;
 
   for (const { conversation, skillIds } of conversationsWithSkills) {
     const dustRunIds =
       runIdsByConversationModelId.get(conversation.id) ?? new Set<string>();
-    const conversationPriceMicroUsd = [...dustRunIds].reduce(
-      (sum, dustRunId) =>
-        sum + (runCostMicroUsdByDustRunId.get(dustRunId) ?? 0),
+    const conversationRunUsages = [...dustRunIds].flatMap(
+      (dustRunId) => runUsagesByDustRunId.get(dustRunId) ?? []
+    );
+    const conversationPriceMicroUsd = conversationRunUsages.reduce(
+      (sum, usage) => sum + usage.costMicroUsd,
       0
     );
 
@@ -508,11 +517,23 @@ export async function recordSelfImprovingSkillsUsageActivity({
       continue;
     }
 
+    // AWU credits as billed to Metronome (margin baked in). The canonical
+    // conversion rounds up per (provider, model) group, applied here at
+    // conversation granularity.
+    const conversationPriceAwuCredits = intelligenceAwuFromRunUsages(
+      conversationRunUsages
+    );
+
     totalPriceMicroUsd += conversationPriceMicroUsd;
+    totalPriceAwuCredits += conversationPriceAwuCredits;
     // A single conversation being analysed can have several skill enabled it it
     // In that case we split the cost of analysis evenly per skill.
-    const prices = splitPriceMicroUsdAcrossSkills(
+    const prices = splitAmountAcrossSkills(
       conversationPriceMicroUsd,
+      skillIds.length
+    );
+    const credits = splitAmountAcrossSkills(
+      conversationPriceAwuCredits,
       skillIds.length
     );
 
@@ -523,6 +544,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
         skillId: skillModelIdById.get(skillIds[i]) ?? null,
         conversationId: conversation.id,
         priceMicroUsd: prices[i],
+        priceAwuCredits: credits[i],
       });
     }
   }
@@ -539,6 +561,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
       conversationCount: conversationModelIds.length,
       usageCount: createdUsages.length,
       totalPriceMicroUsd,
+      totalPriceAwuCredits,
     },
     "ReinforcedSkills: recorded self-improving skills usage"
   );
@@ -547,6 +570,7 @@ export async function recordSelfImprovingSkillsUsageActivity({
     conversationsProcessed: conversationModelIds.length,
     usagesCreated: createdUsages.length,
     totalPriceMicroUsd,
+    totalPriceAwuCredits,
   };
 }
 

@@ -11,7 +11,13 @@ export class SelfImprovingSkillsUsageModel extends WorkspaceAwareModel<SelfImpro
 
   declare skillId: ForeignKey<SkillConfigurationModel["id"]> | null;
   declare conversationId: ForeignKey<ConversationModel["id"]> | null;
+  // Old deprecated Micro USD values, kept for legacy workspaces not
+  // yet using metronome.
+  // margin not included
   declare priceMicroUsd: number;
+  // AWU credits as billed to Metronome (margin baked in). 0 on rows recorded
+  // before the column was introduced.
+  declare priceAwuCredits: CreationOptional<number>;
 }
 
 SelfImprovingSkillsUsageModel.init(
@@ -45,6 +51,11 @@ SelfImprovingSkillsUsageModel.init(
     priceMicroUsd: {
       type: DataTypes.BIGINT,
       allowNull: false,
+    },
+    priceAwuCredits: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      defaultValue: 0,
     },
   },
   {
