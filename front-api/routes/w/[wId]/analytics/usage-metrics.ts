@@ -1,7 +1,10 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import type { GetWorkspaceUsageMetricsResponse } from "@app/lib/api/assistant/observability/messages_metrics";
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
-import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import {
+  buildAgentAnalyticsBaseQuery,
+  daysToInstantRange,
+} from "@app/lib/api/assistant/observability/utils";
 import { timezoneSchema } from "@app/lib/api/timezone";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureHasPermission } from "@front-api/middlewares/ensure_role";
@@ -30,9 +33,11 @@ app.get(
     const { days, interval, timezone } = ctx.req.valid("query");
     const owner = auth.getNonNullableWorkspace();
 
+    const { startDate, endDate } = daysToInstantRange(days, timezone);
     const baseQuery = buildAgentAnalyticsBaseQuery({
       workspaceId: owner.sId,
-      days,
+      startDate,
+      endDate,
     });
 
     const usageMetricsResult = await fetchMessageMetrics(

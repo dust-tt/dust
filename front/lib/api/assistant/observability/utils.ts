@@ -14,6 +14,24 @@ export function daysToDateRange(
   return { startDate: start, endDate: end };
 }
 
+// Tz-aware [start-of-day (days-1 ago), now] window as ISO instants. Mirrors the
+// window the workspace_analytics tools resolve for a relative "last N days"
+// period, so the dashboard and the analyst agent query the exact same range.
+export function daysToInstantRange(
+  days: number,
+  timezone: string = "UTC"
+): { startDate: string; endDate: string } {
+  const now = moment.tz(timezone);
+  return {
+    startDate: now
+      .clone()
+      .subtract(days - 1, "days")
+      .startOf("day")
+      .toISOString(),
+    endDate: now.toISOString(),
+  };
+}
+
 function termFilter(
   field: string,
   value: string | string[] | undefined

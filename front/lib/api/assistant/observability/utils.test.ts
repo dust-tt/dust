@@ -1,4 +1,8 @@
-import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import {
+  buildAgentAnalyticsBaseQuery,
+  daysToInstantRange,
+} from "@app/lib/api/assistant/observability/utils";
+import moment from "moment-timezone";
 import { describe, expect, it } from "vitest";
 
 describe("buildAgentAnalyticsBaseQuery", () => {
@@ -60,5 +64,25 @@ describe("buildAgentAnalyticsBaseQuery", () => {
       agentId: "a1",
       agentIds: ["a2"],
     });
+  });
+});
+
+describe("daysToInstantRange", () => {
+  it("spans N calendar days ending now, anchored at start-of-day in the tz", () => {
+    const timezone = "America/New_York";
+    const { startDate, endDate } = daysToInstantRange(30, timezone);
+
+    const start = moment.tz(startDate, timezone);
+    const end = moment.tz(endDate, timezone);
+
+    expect(start.format("HH:mm:ss.SSS")).toBe("00:00:00.000");
+    expect(end.startOf("day").diff(start, "days")).toBe(29);
+  });
+
+  it("includes the whole current day (end is now, not start-of-day)", () => {
+    const { endDate } = daysToInstantRange(7, "UTC");
+    expect(moment.utc(endDate).diff(moment.utc(), "minutes")).toBeGreaterThan(
+      -2
+    );
   });
 });
