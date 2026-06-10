@@ -707,6 +707,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "databricks_tool"
   | "deepseek_feature"
   | "dev_mcp_actions"
+  | "exa_mcp"
   | "disable_formatting_prompt"
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
