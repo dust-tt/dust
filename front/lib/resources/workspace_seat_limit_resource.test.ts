@@ -11,36 +11,88 @@ describe("WorkspaceSeatLimitResource", () => {
     workspace = await WorkspaceFactory.basic();
   });
 
-  it("upserts and fetches a seat limit", async () => {
-    await WorkspaceSeatLimitResource.upsert({
+  it("upserts and fetches a seat limit (minSeats only)", async () => {
+    const result = await WorkspaceSeatLimitResource.upsert({
       workspace,
       seatType: "pro",
       minSeats: 5,
     });
+    expect(result.isOk()).toBe(true);
 
     const limits = await WorkspaceSeatLimitResource.fetchByWorkspace({
       workspace,
     });
-    expect(limits.get("pro")).toEqual({ minSeats: 5 });
+    expect(limits.get("pro")).toEqual({ minSeats: 5, maxSeats: null });
   });
 
-  it("updates minSeats on a second upsert for the same seat type", async () => {
+  it("upserts and fetches a seat limit with maxSeats", async () => {
+    const result = await WorkspaceSeatLimitResource.upsert({
+      workspace,
+      seatType: "pro",
+      minSeats: 5,
+      maxSeats: 20,
+    });
+    expect(result.isOk()).toBe(true);
+
+    const limits = await WorkspaceSeatLimitResource.fetchByWorkspace({
+      workspace,
+    });
+    expect(limits.get("pro")).toEqual({ minSeats: 5, maxSeats: 20 });
+  });
+
+  it("rejects upsert when maxSeats < minSeats", async () => {
+    const result = await WorkspaceSeatLimitResource.upsert({
+      workspace,
+      seatType: "pro",
+      minSeats: 10,
+      maxSeats: 5,
+    });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toMatch(/maxSeats.*minSeats/);
+    }
+
+    const limits = await WorkspaceSeatLimitResource.fetchByWorkspace({
+      workspace,
+    });
+    expect(limits.has("pro")).toBe(false);
+  });
+
+  it("allows maxSeats equal to minSeats", async () => {
+    const result = await WorkspaceSeatLimitResource.upsert({
+      workspace,
+      seatType: "pro",
+      minSeats: 5,
+      maxSeats: 5,
+    });
+    expect(result.isOk()).toBe(true);
+
+    const limits = await WorkspaceSeatLimitResource.fetchByWorkspace({
+      workspace,
+    });
+    expect(limits.get("pro")).toEqual({ minSeats: 5, maxSeats: 5 });
+  });
+
+  it("updates minSeats and maxSeats on a second upsert for the same seat type", async () => {
     await WorkspaceSeatLimitResource.upsert({
       workspace,
       seatType: "pro",
       minSeats: 5,
+      maxSeats: 10,
     });
-    await WorkspaceSeatLimitResource.upsert({
+    const result = await WorkspaceSeatLimitResource.upsert({
       workspace,
       seatType: "pro",
       minSeats: 8,
+      maxSeats: 15,
     });
+    expect(result.isOk()).toBe(true);
 
     const limits = await WorkspaceSeatLimitResource.fetchByWorkspace({
       workspace,
     });
     expect(limits.size).toBe(1);
-    expect(limits.get("pro")).toEqual({ minSeats: 8 });
+    expect(limits.get("pro")).toEqual({ minSeats: 8, maxSeats: 15 });
   });
 
   it("keeps limits for distinct seat types independent", async () => {
@@ -48,6 +100,7 @@ describe("WorkspaceSeatLimitResource", () => {
       workspace,
       seatType: "pro",
       minSeats: 3,
+      maxSeats: 10,
     });
     await WorkspaceSeatLimitResource.upsert({
       workspace,
@@ -58,8 +111,8 @@ describe("WorkspaceSeatLimitResource", () => {
     const limits = await WorkspaceSeatLimitResource.fetchByWorkspace({
       workspace,
     });
-    expect(limits.get("pro")).toEqual({ minSeats: 3 });
-    expect(limits.get("max")).toEqual({ minSeats: 1 });
+    expect(limits.get("pro")).toEqual({ minSeats: 3, maxSeats: 10 });
+    expect(limits.get("max")).toEqual({ minSeats: 1, maxSeats: null });
   });
 
   it("removes a configured limit", async () => {
@@ -67,6 +120,7 @@ describe("WorkspaceSeatLimitResource", () => {
       workspace,
       seatType: "pro",
       minSeats: 5,
+      maxSeats: 20,
     });
 
     const removed = await WorkspaceSeatLimitResource.remove({

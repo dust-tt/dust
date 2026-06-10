@@ -91,6 +91,15 @@ app.patch(
                 "The free seat is reserved for first-time members and cannot be assigned again.",
             },
           });
+        case "seat_limit_reached":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "The seat type has reached its maximum capacity for this workspace.",
+            },
+          });
         case "metronome_error":
           return apiError(ctx, {
             status_code: 502,

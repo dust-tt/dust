@@ -16,6 +16,11 @@ const SeatLimitArgsSchema = z.object({
     .number()
     .int("Min seats must be an integer")
     .min(0, "Min seats must be at least 0"),
+  maxSeats: z
+    .number()
+    .int("Max seats must be an integer")
+    .min(1, "Max seats must be at least 1")
+    .optional(),
 });
 
 export const manageSeatLimitsPlugin = createPlugin({
@@ -23,10 +28,11 @@ export const manageSeatLimitsPlugin = createPlugin({
     id: "manage-seat-limits",
     name: "Manage Seat Limits",
     description:
-      "Configure the per-seat-type minimum seat count for this workspace. " +
+      "Configure the per-seat-type minimum and maximum seat counts for this workspace. " +
       "The minimum is the billing floor sent to Metronome even when fewer " +
       "members hold that seat (the shortfall is billed as unassigned seats). " +
-      "Disabling removes the floor for the selected seat type.",
+      "The maximum is a hard cap — assignments into an at-cap tier are rejected. " +
+      "Disabling removes the floor and cap for the selected seat type.",
     resourceTypes: ["workspaces"],
     args: {
       seatType: {
@@ -42,15 +48,23 @@ export const manageSeatLimitsPlugin = createPlugin({
       enabled: {
         type: "boolean",
         variant: "toggle",
-        label: "Enable floor",
+        label: "Enable limits",
         description:
-          "When off, removes any configured minimum for the selected seat type.",
+          "When off, removes any configured minimum and maximum for the selected seat type.",
       },
       minSeats: {
         type: "number",
         variant: "text",
         label: "Min seats",
         description: "Billing floor — minimum seats billed for this type.",
+        dependsOn: { field: "enabled", value: true },
+      },
+      maxSeats: {
+        type: "number",
+        variant: "text",
+        label: "Max seats",
+        description:
+          "Hard cap — maximum seats assignable for this type. Leave blank for no cap.",
         dependsOn: { field: "enabled", value: true },
       },
     },
@@ -73,30 +87,35 @@ export const manageSeatLimitsPlugin = createPlugin({
 
     let message: string;
     if (!args.enabled) {
-      // Disable: drop any configured floor for this seat type.
+      // Disable: drop any configured floor/cap for this seat type.
       const removed = await WorkspaceSeatLimitResource.remove({
         workspace,
         seatType,
       });
       message = removed
-        ? `Removed seat floor for '${seatType}'.`
-        : `No seat floor was configured for '${seatType}'.`;
+        ? `Removed seat limits for '${seatType}'.`
+        : `No seat limits were configured for '${seatType}'.`;
     } else {
       const parseResult = SeatLimitArgsSchema.safeParse(args);
       if (!parseResult.success) {
         return new Err(new Error(fromError(parseResult.error).toString()));
       }
 
-      const { minSeats } = parseResult.data;
-      await WorkspaceSeatLimitResource.upsert({
+      const { minSeats, maxSeats } = parseResult.data;
+      const upsertResult = await WorkspaceSeatLimitResource.upsert({
         workspace,
         seatType,
         minSeats,
+        maxSeats: maxSeats ?? null,
       });
-      message = `Seat floor for '${seatType}' saved: min ${minSeats}.`;
+      if (upsertResult.isErr()) {
+        return new Err(upsertResult.error);
+      }
+      const maxDesc = maxSeats !== undefined ? `, max ${maxSeats}` : ", no cap";
+      message = `Seat limits for '${seatType}' saved: min ${minSeats}${maxDesc}.`;
     }
 
-    // Re-sync seats to Metronome so the new floor is reflected immediately.
+    // Re-sync seats to Metronome so the new limits are reflected immediately.
     const syncResult = await launchMetronomeSeatCountSyncWorkflow({
       workspaceId: workspace.sId,
     });

@@ -2,6 +2,7 @@ import { listMetronomeProducts } from "@app/lib/metronome/client";
 import { SEAT_TYPE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
+import type { SeatLimit } from "@app/lib/resources/workspace_seat_limit_resource";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import type {
   MembershipSeatType,
@@ -164,11 +165,15 @@ export function getDefaultSeatTypeForContract(
     useFreeSeat = true,
     freeSeatCounts,
     freeSeatLimits,
+    seatLimits,
+    seatCounts,
   }: {
     isReturningMember?: boolean;
     useFreeSeat?: boolean;
     freeSeatCounts?: FreeSeatCounts;
     freeSeatLimits?: FreeSeatLimits;
+    seatLimits?: Map<MembershipSeatType, SeatLimit>;
+    seatCounts?: Partial<Record<MembershipSeatType, number>>;
   } = {}
 ): MembershipSeatType | undefined {
   const seatTypesOnContract = [
@@ -186,6 +191,13 @@ export function getDefaultSeatTypeForContract(
     // deterministic when two tiers share an allowance (e.g. workspace = 0
     // and free = 0 on a hybrid contract).
     .sort((a, b) => a.awu - b.awu || a.seatType.localeCompare(b.seatType));
+
+  // Track whether any tier was skipped because it hit its maxSeats cap.
+  // If every tier is capped (and none was skippable for another reason), we
+  // return "none" instead of undefined so callers assign the member to the
+  // "no seat" tier rather than throwing.
+  let anyTierAtMaxCap = false;
+
   for (const { seatType } of ordered) {
     if (seatType === "free") {
       if (isReturningMember || !useFreeSeat) {
@@ -208,9 +220,25 @@ export function getDefaultSeatTypeForContract(
         continue;
       }
     }
+
+    // Skip this tier if it has a maxSeats cap and is at capacity.
+    const limit = seatLimits?.get(seatType);
+    if (limit?.maxSeats !== null && limit?.maxSeats !== undefined) {
+      const assignedCount = seatCounts?.[seatType] ?? 0;
+      if (assignedCount >= limit.maxSeats) {
+        anyTierAtMaxCap = true;
+        continue;
+      }
+    }
+
     return seatType;
   }
-  return undefined;
+
+  // All tiers were skipped: if at least one was capped by maxSeats, signal
+  // "no seat" so the caller assigns the member to the none tier. Otherwise
+  // (e.g. only the free tier exists and it is exhausted) return undefined so
+  // the caller can surface the appropriate error.
+  return anyTierAtMaxCap ? "none" : undefined;
 }
 
 /**

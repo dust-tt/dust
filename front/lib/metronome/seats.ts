@@ -635,7 +635,9 @@ export async function syncSeatCount({
         // (free / unlimited tiers) and Metronome doesn't bill them per-seat.
         const actualQuantity = desiredSIdsAt(seatType, Date.now()).length;
         // Clamp up to the configured billing floor: below `minSeats` we still
-        // bill the floor.
+        // bill the floor. `maxSeats` is deliberately NOT applied here — it is
+        // an assignment-time cap, and billing must always reflect the actual
+        // assigned count so members holding a seat are never unbilled.
         const quantity = clampSeatCountToMin(actualQuantity, seatLimit);
         logger.info(
           {
@@ -679,6 +681,8 @@ export async function syncSeatCount({
 /**
  * Clamp a seat count up to the configured `minSeats` billing floor. Counts at
  * or above the floor (or with no limit configured) are returned unchanged.
+ * `maxSeats` is intentionally not applied: it caps new assignments, never the
+ * billed quantity — billing must reflect the seats actually held.
  */
 function clampSeatCountToMin(
   count: number,
@@ -730,6 +734,10 @@ async function reconcileSeatBasedSegment({
   const { assignedSeatIds, unassignedSeats: currentUnassigned } =
     currentResult.value;
 
+  // `maxSeats` is deliberately not enforced here: it caps new assignments
+  // (`seat_limit_reached` upstream), never the synced state. Every member who
+  // actually holds a seat must stay assigned and billed in Metronome — e.g.
+  // when an admin lowers the cap below the current headcount.
   const desired = new Set(desiredSIds);
   const current = new Set(assignedSeatIds);
   const addSeatIds = desiredSIds.filter((id) => !current.has(id));

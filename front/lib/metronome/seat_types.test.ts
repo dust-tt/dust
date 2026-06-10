@@ -3,6 +3,7 @@ import {
   getDefaultSeatTypeForContract,
   getSeatSubscriptionsFromContract,
 } from "@app/lib/metronome/seat_types";
+import type { SeatLimit } from "@app/lib/resources/workspace_seat_limit_resource";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { describe, expect, it } from "vitest";
 
@@ -45,6 +46,104 @@ describe("getDefaultSeatTypeForContract — entitlement", () => {
     expect(getDefaultSeatTypeForContract(contract, productSeatTypes)).toBe(
       "workspace_yearly"
     );
+  });
+});
+
+// maxSeats cap: skips tiers at capacity; returns "none" when all capped.
+describe("getDefaultSeatTypeForContract — maxSeats cap", () => {
+  const productSeatTypes = new Map<string, MembershipSeatType>([
+    ["pro-product", "pro"],
+    ["max-product", "max"],
+  ]);
+
+  // Contract with two entitled seat types: pro (lower AWU) and max.
+  const contract = {
+    subscriptions: [
+      {
+        id: "sub_pro",
+        subscription_rate: { product: { id: "pro-product", name: "Pro" } },
+      },
+      {
+        id: "sub_max",
+        subscription_rate: { product: { id: "max-product", name: "Max" } },
+      },
+    ],
+    recurring_credits: [],
+    overrides: [
+      { entitled: true, product: { id: "pro-product" } },
+      { entitled: true, product: { id: "max-product" } },
+    ],
+  } as unknown as CachedContract;
+
+  it("skips a capped tier and falls through to the next", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 0, maxSeats: 2 }],
+    ]);
+    // Pro is at cap (2 assigned, maxSeats=2); should fall through to max.
+    const seatCounts: Partial<Record<MembershipSeatType, number>> = {
+      pro: 2,
+    };
+    expect(
+      getDefaultSeatTypeForContract(contract, productSeatTypes, {
+        seatLimits,
+        seatCounts,
+      })
+    ).toBe("max");
+  });
+
+  it("returns none when all tiers are at their maxSeats cap", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 0, maxSeats: 2 }],
+      ["max", { minSeats: 0, maxSeats: 1 }],
+    ]);
+    const seatCounts: Partial<Record<MembershipSeatType, number>> = {
+      pro: 2,
+      max: 1,
+    };
+    expect(
+      getDefaultSeatTypeForContract(contract, productSeatTypes, {
+        seatLimits,
+        seatCounts,
+      })
+    ).toBe("none");
+  });
+
+  it("assigns normally when no tiers are at cap", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 0, maxSeats: 10 }],
+    ]);
+    const seatCounts: Partial<Record<MembershipSeatType, number>> = {
+      pro: 5,
+    };
+    // Both tiers have 0 AWU; tie-break is alphabetical, so "max" < "pro".
+    // Neither is capped, so the first sorted tier ("max") is assigned.
+    expect(
+      getDefaultSeatTypeForContract(contract, productSeatTypes, {
+        seatLimits,
+        seatCounts,
+      })
+    ).toBe("max");
+  });
+
+  it("legacy: no-seat-subscription contract returns workspace regardless of caps", () => {
+    const legacyContract = {
+      subscriptions: [],
+      recurring_credits: [],
+      overrides: [],
+    } as unknown as CachedContract;
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["workspace", { minSeats: 0, maxSeats: 0 }],
+    ]);
+    const seatCounts: Partial<Record<MembershipSeatType, number>> = {
+      workspace: 99,
+    };
+    // The early-return for no subscriptions runs before cap logic.
+    expect(
+      getDefaultSeatTypeForContract(legacyContract, productSeatTypes, {
+        seatLimits,
+        seatCounts,
+      })
+    ).toBe("workspace");
   });
 });
 
