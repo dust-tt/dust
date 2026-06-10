@@ -1,4 +1,7 @@
-import { createMetronomeCredit } from "@app/lib/metronome/client";
+import {
+  createMetronomeContract,
+  createMetronomeCredit,
+} from "@app/lib/metronome/client";
 import type { Result } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -22,13 +25,21 @@ function unwrapErr<T>(result: Result<T, Error>): Error {
 // Mocks
 // ---------------------------------------------------------------------------
 
-const { mockCreate, mockList, MockConflictError } = vi.hoisted(() => {
+const {
+  mockCreate,
+  mockList,
+  mockContractsCreate,
+  mockSetCustomFieldValues,
+  MockConflictError,
+} = vi.hoisted(() => {
   class MockConflictError extends Error {
     status = 409;
   }
   return {
     mockCreate: vi.fn(),
     mockList: vi.fn(),
+    mockContractsCreate: vi.fn(),
+    mockSetCustomFieldValues: vi.fn(),
     MockConflictError,
   };
 });
@@ -41,6 +52,8 @@ vi.mock("@metronome/sdk", () => {
         customers: {
           credits: { create: mockCreate, list: mockList },
         },
+        contracts: { create: mockContractsCreate },
+        customFields: { setValues: mockSetCustomFieldValues },
       },
     };
   }
@@ -75,6 +88,11 @@ beforeEach(() => {
   mockCreate.mockReset();
   mockList.mockReset();
   mockCreate.mockResolvedValue({ data: { id: "credit-id-1" } });
+
+  mockContractsCreate.mockReset();
+  mockContractsCreate.mockResolvedValue({ data: { id: "contract-id-1" } });
+  mockSetCustomFieldValues.mockReset();
+  mockSetCustomFieldValues.mockResolvedValue(undefined);
 });
 
 // ---------------------------------------------------------------------------
@@ -133,5 +151,43 @@ describe("createMetronomeCredit", () => {
     const result = await createMetronomeCredit(BASE_PARAMS);
 
     expect(unwrapErr(result).message).toMatch(/network error/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createMetronomeContract — transition payload
+// ---------------------------------------------------------------------------
+
+describe("createMetronomeContract", () => {
+  const BASE_CONTRACT_PARAMS = {
+    metronomeCustomerId: "cust-1",
+    packageAlias: "legacy-pro-monthly",
+    startingAt: new Date("2026-04-01T00:00:00.000Z"),
+    enableStripeBilling: false,
+    planCode: "PRO_PLAN_SEAT_29",
+  };
+
+  it("omits the transition when no fromContractId is given", async () => {
+    const result = await createMetronomeContract(BASE_CONTRACT_PARAMS);
+
+    expect(result.isOk()).toBe(true);
+    expect(mockContractsCreate).toHaveBeenCalledTimes(1);
+    expect(mockContractsCreate.mock.calls[0][0]).not.toHaveProperty(
+      "transition"
+    );
+  });
+
+  it("sends a RENEWAL transition when fromContractId is given", async () => {
+    const result = await createMetronomeContract({
+      ...BASE_CONTRACT_PARAMS,
+      fromContractId: "prior-contract",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockContractsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        transition: { type: "RENEWAL", from_contract_id: "prior-contract" },
+      })
+    );
   });
 });
