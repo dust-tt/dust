@@ -937,17 +937,21 @@ function PeoplePage({
             </DropdownMenu>
 
             {/* Billing toggle */}
-            <ButtonsSwitchList
-              size="sm"
-              defaultValue="monthly"
-              onValueChange={(v) => setInviteBilling(v as "monthly" | "yearly")}
-            >
-              <ButtonsSwitch value="monthly" label="Monthly" />
-              <ButtonsSwitch value="yearly" label="Yearly" />
-              <span className="s-text-xs s-font-semibold s-text-success-500 s-px-1">
+            <div className="s-flex s-items-center s-gap-2 s-self-start">
+              <ButtonsSwitchList
+                size="sm"
+                defaultValue="monthly"
+                onValueChange={(v) =>
+                  setInviteBilling(v as "monthly" | "yearly")
+                }
+              >
+                <ButtonsSwitch value="monthly" label="Monthly" />
+                <ButtonsSwitch value="yearly" label="Yearly" />
+              </ButtonsSwitchList>
+              <span className="s-text-xs s-font-semibold s-text-success-500">
                 -30%
               </span>
-            </ButtonsSwitchList>
+            </div>
 
             {/* Plan cards */}
             <div className="s-flex s-flex-col s-gap-2">
