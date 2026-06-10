@@ -30,15 +30,16 @@ type Info = CellContext<RowData, string>;
 
 const nameColumn = buildMemberNameColumn<RowData>();
 
+const REASON_LABEL = "Reached credit limit";
+
 const reasonColumn: ColumnDef<RowData, string> = {
   id: "reason" as const,
   header: "",
   enableSorting: false,
-  accessorFn: () => "Reached credit limit",
   cell: () => (
     <DataTable.CellContent>
       <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        Reached credit limit
+        {REASON_LABEL}
       </span>
     </DataTable.CellContent>
   ),
