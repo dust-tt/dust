@@ -5,6 +5,7 @@ import type { ConversationSidePanelType } from "@app/types/conversation_side_pan
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
   FILES_SIDE_PANEL_TYPE,
+  FULL_SCREEN_HASH_PARAM,
   INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
   PLAN_SIDE_PANEL_TYPE,
   SIDE_PANEL_HASH_PARAM,
@@ -92,6 +93,7 @@ export function ConversationSidePanelProvider({
   const [currentPanel, setCurrentPanel] = useHashParam(
     SIDE_PANEL_TYPE_HASH_PARAM
   );
+  const [, setFullScreenHash] = useHashParam(FULL_SCREEN_HASH_PARAM);
   const activeConversationId = useActiveConversationId();
   const previousConversationIdRef = React.useRef(activeConversationId);
 
@@ -194,9 +196,12 @@ export function ConversationSidePanelProvider({
       previousConversationId &&
       previousConversationId !== activeConversationId
     ) {
+      // Also exit full screen, mirroring FrameRenderer's close button: without
+      // this the layout stays in full screen mode after the panel is gone.
+      setFullScreenHash(undefined);
       closePanel();
     }
-  }, [activeConversationId, closePanel]);
+  }, [activeConversationId, closePanel, setFullScreenHash]);
 
   // Initialize panel state from URL hash parameters
   useEffect(() => {
