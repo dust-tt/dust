@@ -19,6 +19,7 @@ import {
   PRO_PLAN_COST_YEARLY,
 } from "@app/lib/client/subscription";
 import {
+  BUSINESS_USD_PACKAGE_ALIAS,
   LEGACY_BUSINESS_PACKAGE_ALIAS,
   LEGACY_PRO_ANNUAL_PACKAGE_ALIAS,
   LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
@@ -113,7 +114,7 @@ async function createCPCheckoutUrl(
   const { clientSecret, sessionId } =
     await createEmbeddedMetronomeSetupCheckoutSession({
       allowedPaymentMethods: ["card"],
-      metronomePackageAlias: "business-usd",
+      metronomePackageAlias: BUSINESS_USD_PACKAGE_ALIAS,
       owner,
       planCode: CREDIT_PRICED_BUSINESS_PLAN_CODE,
       billingPeriod,

@@ -282,7 +282,7 @@ export function getLegacyRateCards(): RateCardDef[] {
       name: "Legacy Business EUR",
       description:
         "Grandfathered Business plan (EUR). 45€/seat via seat subscription. AI usage 30% markup.",
-      aliases: [{ name: "legacy-business-eur" }],
+      aliases: [{ name: LEGACY_BUSINESS_EUR_PACKAGE_ALIAS }],
       fiat_credit_type_id: CREDIT_TYPE_EUR_ID,
       credit_type_conversions: [
         {
