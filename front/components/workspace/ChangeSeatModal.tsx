@@ -19,6 +19,7 @@ import {
   isMembershipSeatType,
   type MembershipSeatType,
 } from "@app/types/memberships";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   AlertCircle,
@@ -55,6 +56,9 @@ function toCheckoutParams(
     case "workspace_yearly":
     case "none":
     case "free":
+      return null;
+    default:
+      assertNeverAndIgnore(seatType);
       return null;
   }
 }
