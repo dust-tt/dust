@@ -316,11 +316,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Skip injecting the OpenAI formatting meta prompt entirely (no markdown/paragraph style guidance)",
     stage: "dust_only",
   },
-  metronome_cp_checkout: {
-    description:
-      "Enable the Metronome-owned payment-gated checkout flow for Business plan activation (replaces direct Stripe charge).",
-    stage: "dust_only",
-  },
   dust_desktop: {
     description:
       "Auto-attach the Dust Desktop client-side MCP server to agent runs when registered for the user.",

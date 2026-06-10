@@ -27,10 +27,11 @@ export const CP_MAX_SEAT_COST_YEARLY = 120;
 export const CP_FREE_PLAN_CREDITS = 300;
 
 /**
- * Client-side mirror of the server-side `isMetronomeCheckoutEnabled` gate: the
- * credit-priced checkout flow is enabled when Metronome billing is on (feature
- * flag, or kill switch not active) and the workspace has the
- * `metronome_cp_checkout` feature flag.
+ * Client-side mirror of the server-side `isMetronomeBillingEnabled` gate: the
+ * credit-priced checkout flow follows Metronome billing, which is enabled by
+ * default for all workspaces. The `global_disable_metronome_billing` kill
+ * switch turns it off globally; the `metronome_billing` feature flag
+ * re-enables it for individual workspaces.
  *
  * Prefer the `useIsMetronomeCheckout` hook; this helper is for components that
  * render outside the auth context provider (e.g. the SPA workspace layout).
@@ -42,10 +43,10 @@ export function computeIsMetronomeCheckout({
   featureFlags: WhitelistableFeature[];
   killSwitches: KillSwitchType[] | null | undefined;
 }): boolean {
-  const isMetronomeEnabled =
+  return (
     featureFlags.includes("metronome_billing") ||
-    !killSwitches?.includes("global_disable_metronome_billing");
-  return isMetronomeEnabled && featureFlags.includes("metronome_cp_checkout");
+    !killSwitches?.includes("global_disable_metronome_billing")
+  );
 }
 
 export function useIsMetronomeCheckout(): boolean {

@@ -39,7 +39,7 @@ export function VerifyPage() {
   });
 
   // Same gate as the one that routes to /select-subscription (see
-  // `isMetronomeCheckoutEnabled` and SubscribePage): the credit-priced checkout
+  // `isMetronomeBillingEnabled` and SubscribePage): the credit-priced checkout
   // flow gets the new phone verification copy and a welcome screen at the end.
   const isMetronomeCheckout = useIsMetronomeCheckout();
 

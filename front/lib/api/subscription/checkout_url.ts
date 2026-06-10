@@ -4,10 +4,7 @@ import type {
   CheckoutSeatType,
 } from "@app/lib/api/checkout/types";
 import { CheckoutSeatTypeSchema } from "@app/lib/api/checkout/types";
-import {
-  isMetronomeBillingEnabled,
-  isMetronomeCheckoutEnabled,
-} from "@app/lib/api/subscription";
+import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import type { Authenticator } from "@app/lib/auth";
 import {
   BUSINESS_PLAN_COST_MONTHLY,
@@ -42,7 +39,7 @@ import { z } from "zod";
 export const PostSubscriptionRequestBody = z.object({
   billingPeriod: z.enum(["monthly", "yearly"]),
   couponCode: z.string().optional(),
-  // CP self-serve checkout fields (only used when metronome_cp_checkout is enabled)
+  // CP self-serve checkout fields (only used when Metronome billing is enabled)
   seatType: CheckoutSeatTypeSchema.optional(),
   targetUserId: z.string().optional(),
 });
@@ -214,7 +211,7 @@ export async function createCheckoutUrl(
     targetUserId?: string;
   }
 ): Promise<Result<CheckoutUrlResult, CheckoutUrlError>> {
-  const useMetronomeCheckout = await isMetronomeCheckoutEnabled(auth);
+  const useMetronomeCheckout = await isMetronomeBillingEnabled(auth);
   if (useMetronomeCheckout) {
     if (!seatType || !targetUserId) {
       return new Err({ type: "missing_cp_fields" });
