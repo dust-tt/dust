@@ -54,7 +54,10 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { decodeHtmlEntities, stripMarkdown } from "@app/types/shared/utils/markdown";
+import {
+  decodeHtmlEntities,
+  stripMarkdown,
+} from "@app/types/shared/utils/markdown";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { UserType } from "@app/types/user";
 import { workflow } from "@novu/framework";
@@ -224,9 +227,7 @@ const getConversationDetails = async ({
   // Decode HTML entities in conversation title (e.g. from email subjects
   // that may contain &amp;, &lt;, etc.) so notification subjects/bodies
   // display clean text.
-  const subject = decodeHtmlEntities(
-    getConversationDisplayTitle(conversation)
-  );
+  const subject = decodeHtmlEntities(getConversationDisplayTitle(conversation));
   const isFromTrigger = !!conversation.triggerId;
 
   // Retrieve the message that triggered the notification.
