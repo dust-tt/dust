@@ -7,6 +7,7 @@ import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDial
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
+import { UpgradeRequestsTable } from "@app/components/workspace/UpgradeRequestsTable";
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
@@ -30,11 +31,19 @@ import {
   useUpdateMemberSeatType,
 } from "@app/lib/swr/memberships";
 import {
+  useResolveUpgradeRequest,
+  useUpgradeRequests,
+} from "@app/lib/swr/upgrade_requests";
+import {
   useAwuUsage,
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
 } from "@app/lib/swr/workspaces";
-import type { MembershipSeatType } from "@app/types/memberships";
+import type {
+  MembershipSeatType,
+  MembershipUpgradeRequestType,
+} from "@app/types/memberships";
+import { SEAT_TYPE_ORDER } from "@app/types/memberships";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { isAdmin } from "@app/types/user";
 import {
@@ -51,9 +60,42 @@ import {
   PieChart01,
   SearchInput,
   Spinner,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+
+// Build a minimal member from an upgrade request to feed the reused seat / spend
+// limit modals.
+function memberFromUpgradeRequest(
+  request: MembershipUpgradeRequestType
+): MemberUsageType {
+  return {
+    sId: request.requester.sId,
+    name: request.requester.name,
+    email: request.requester.email,
+    image: request.requester.image,
+    seatType: null,
+    memberUsageLimit: null,
+    seatBalanceAwu: null,
+    consumedAwuCredits: 0,
+    consumedFromAllowanceAwuCredits: 0,
+    consumedFromPoolAwuCredits: 0,
+    billingFrequency: null,
+    scheduledSeatType: null,
+    scheduledSeatChangeAt: null,
+    spendLimitAwuCredits: null,
+    spendLimitSource: "none",
+    spendLimitAlertId: null,
+    spendLimitWarningAlertId: null,
+    freeCreditLowAlert: null,
+    freeCreditEmptyAlert: null,
+    creditState: "capped",
+  };
+}
 
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -152,6 +194,122 @@ export function UsagePage() {
       }),
     []
   );
+  // Admin-only Requests tab: pending member-initiated upgrade requests, resolved
+  // by approving (via the seat / spend-limit modals) or denying.
+  const isWorkspaceAdmin = isAdmin(owner);
+  const [membersTab, setMembersTab] = useState<"members" | "requests">(
+    "members"
+  );
+  const { upgradeRequests, isUpgradeRequestsLoading } = useUpgradeRequests({
+    workspaceId: owner.sId,
+    disabled: !isWorkspaceAdmin,
+  });
+
+  const filteredUpgradeRequests = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    return upgradeRequests.filter((request) => {
+      if (request.status !== "pending") {
+        return false;
+      }
+      if (!normalizedSearch) {
+        return true;
+      }
+      const { name, email } = request.requester;
+      return (
+        name.toLowerCase().includes(normalizedSearch) ||
+        (email?.toLowerCase().includes(normalizedSearch) ?? false)
+      );
+    });
+  }, [upgradeRequests, searchTerm]);
+  const { doResolveUpgradeRequest } = useResolveUpgradeRequest({
+    workspaceId: owner.sId,
+  });
+  const [resolvingRequestIds, setResolvingRequestIds] = useState<
+    ReadonlySet<string>
+  >(() => new Set());
+  const setRequestResolving = useCallback(
+    (requestId: string, isResolving: boolean) =>
+      setResolvingRequestIds((prev) => {
+        const next = new Set(prev);
+        next[isResolving ? "add" : "delete"](requestId);
+        return next;
+      }),
+    []
+  );
+  // When a seat / spend-limit modal was opened to resolve a request, this holds
+  // the request to mark approved once the modal saves. Null when the modal was
+  // opened from the members table.
+  const [pendingApproveRequestId, setPendingApproveRequestId] = useState<
+    string | null
+  >(null);
+  const handleChangeSeatFromTable = useCallback((member: MemberUsageType) => {
+    setPendingApproveRequestId(null);
+    setChangeSeatMember(member);
+  }, []);
+  const handleEditSpendLimitFromTable = useCallback(
+    (member: MemberUsageType) => {
+      setPendingApproveRequestId(null);
+      setEditSpendLimitMember(member);
+    },
+    []
+  );
+  const handleUpgradePlanRequest = useCallback(
+    (request: MembershipUpgradeRequestType) => {
+      setPendingApproveRequestId(request.sId);
+      setChangeSeatMember(memberFromUpgradeRequest(request));
+    },
+    []
+  );
+  const handleEditLimitRequest = useCallback(
+    (request: MembershipUpgradeRequestType) => {
+      setPendingApproveRequestId(request.sId);
+      setEditSpendLimitMember(memberFromUpgradeRequest(request));
+    },
+    []
+  );
+  const handleApproveOnModalSaved = useCallback(() => {
+    if (!pendingApproveRequestId) {
+      return;
+    }
+    const requestId = pendingApproveRequestId;
+    const request = upgradeRequests.find((r) => r.sId === requestId);
+    setRequestResolving(requestId, true);
+    void doResolveUpgradeRequest({
+      requestId,
+      requesterName: request?.requester.name ?? "Member",
+      status: "approved",
+    }).finally(() => setRequestResolving(requestId, false));
+  }, [
+    pendingApproveRequestId,
+    upgradeRequests,
+    doResolveUpgradeRequest,
+    setRequestResolving,
+  ]);
+  const handleDenyRequest = useCallback(
+    async (request: MembershipUpgradeRequestType) => {
+      const confirmed = await confirm({
+        title: "Deny upgrade request",
+        message: `Deny ${request.requester.name}'s request to increase their spend limit?`,
+        validateLabel: "Deny",
+        validateVariant: "warning",
+      });
+      if (!confirmed) {
+        return;
+      }
+      setRequestResolving(request.sId, true);
+      try {
+        await doResolveUpgradeRequest({
+          requestId: request.sId,
+          requesterName: request.requester.name,
+          status: "denied",
+        });
+      } finally {
+        setRequestResolving(request.sId, false);
+      }
+    },
+    [confirm, doResolveUpgradeRequest, setRequestResolving]
+  );
+
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
   useEffect(() => {
@@ -228,6 +386,19 @@ export function UsagePage() {
 
   const plan = subscription.plan;
   const isEnterprise = isEnterprisePlanPrefix(plan.code);
+
+  // Tier order of the most premium seat plan offered to the workspace. A
+  // requester whose current seat is already at (or above) this tier has no
+  // higher plan to upgrade to, so the "Upgrade plan" action is hidden for them.
+  const highestSeatTypeOrder = useMemo(() => {
+    let highest: number | null = null;
+    for (const [seatType, order] of Object.entries(SEAT_TYPE_ORDER)) {
+      if (seatType in seatPlans && (highest === null || order > highest)) {
+        highest = order;
+      }
+    }
+    return highest;
+  }, [seatPlans]);
   const isManualInvitationsEnabled =
     owner.metadata?.disableManualInvitations !== true;
 
@@ -256,6 +427,89 @@ export function UsagePage() {
   if (!canViewUsage) {
     return null;
   }
+
+  const searchAndInviteRow = (
+    <div className="flex flex-row gap-2">
+      <SearchInput
+        placeholder="Search members"
+        value={searchTerm}
+        name="search"
+        onChange={setSearchTerm}
+        className="w-full"
+      />
+      {isManualInvitationsEnabled && (
+        <InviteEmailButtonWithModal
+          owner={owner}
+          prefillText=""
+          perSeatPricing={perSeatPricing}
+          onInviteClick={onInviteClick}
+          disabled={isReadOnly}
+        />
+      )}
+    </div>
+  );
+
+  const seatFilterDropdown = isSeatBased ? (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          label={
+            seatTypeFilter === "none"
+              ? "No seat"
+              : seatTypeFilter
+                ? seatTypeFilter.charAt(0).toUpperCase() +
+                  seatTypeFilter.slice(1)
+                : "All seats"
+          }
+          size="sm"
+          isSelect
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          label="All seats"
+          onClick={() => setSeatTypeFilter(null)}
+        />
+        <DropdownMenuItem
+          label="No seat"
+          onClick={() => setSeatTypeFilter("none")}
+        />
+        <DropdownMenuItem
+          label="Free"
+          onClick={() => setSeatTypeFilter("free")}
+        />
+        <DropdownMenuItem
+          label="Pro"
+          onClick={() => setSeatTypeFilter("pro")}
+        />
+        <DropdownMenuItem
+          label="Max"
+          onClick={() => setSeatTypeFilter("max")}
+        />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ) : null;
+
+  const membersTable = (
+    <MembersUsageTable
+      members={membersUsage}
+      isLoading={isMembersUsageLoading}
+      readOnly={isReadOnly}
+      totalAllowedUsagePendingMemberIds={totalAllowedUsagePendingMemberIds}
+      seatChangePendingMemberIds={seatChangePendingMemberIds}
+      seatTypeFilter={seatTypeFilter}
+      isSeatBased={isSeatBased}
+      onChangeSeat={handleChangeSeatFromTable}
+      onRemoveSeat={onRemoveSeat}
+      onEditSpendLimit={handleEditSpendLimitFromTable}
+      pagination={pagination}
+      setPagination={setPagination}
+      totalRowCount={totalMembersUsage}
+      sorting={sorting}
+      setSorting={handleSetSorting}
+    />
+  );
 
   return (
     <>
@@ -365,86 +619,59 @@ export function UsagePage() {
           <span className="heading-2xl text-foreground dark:text-foreground-night">
             Members
           </span>
-          <div className="flex flex-row gap-2">
-            <SearchInput
-              placeholder="Search members"
-              value={searchTerm}
-              name="search"
-              onChange={setSearchTerm}
-              className="w-full"
-            />
-            {isManualInvitationsEnabled && (
-              <InviteEmailButtonWithModal
-                owner={owner}
-                prefillText=""
-                perSeatPricing={perSeatPricing}
-                onInviteClick={onInviteClick}
-                disabled={isReadOnly}
-              />
-            )}
-          </div>
-          {isSeatBased && (
-            <div className="flex flex-row justify-end">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    label={
-                      seatTypeFilter === "none"
-                        ? "No seat"
-                        : seatTypeFilter
-                          ? seatTypeFilter.charAt(0).toUpperCase() +
-                            seatTypeFilter.slice(1)
-                          : "All seats"
+          {searchAndInviteRow}
+          {isWorkspaceAdmin ? (
+            <Tabs
+              value={membersTab}
+              onValueChange={(value) =>
+                setMembersTab(value === "requests" ? "requests" : "members")
+              }
+            >
+              <div className="flex flex-row items-center justify-between gap-2">
+                <TabsList border={false} className="w-auto">
+                  <TabsTrigger value="members" label="Members" />
+                  <TabsTrigger
+                    value="requests"
+                    label="Requests"
+                    isCounter
+                    counterValue={
+                      filteredUpgradeRequests.length > 0
+                        ? String(filteredUpgradeRequests.length)
+                        : undefined
                     }
-                    size="sm"
-                    isSelect
                   />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    label="All seats"
-                    onClick={() => setSeatTypeFilter(null)}
+                </TabsList>
+                {membersTab === "members" && seatFilterDropdown}
+              </div>
+              <TabsContent value="members">
+                <div className="pt-2">{membersTable}</div>
+              </TabsContent>
+              <TabsContent value="requests">
+                <div className="pt-2">
+                  <UpgradeRequestsTable
+                    requests={filteredUpgradeRequests}
+                    isLoading={isUpgradeRequestsLoading}
+                    isSeatBased={isSeatBased}
+                    isTopWorkspacePlan={isEnterprise}
+                    highestSeatTypeOrder={highestSeatTypeOrder}
+                    pendingRequestIds={resolvingRequestIds}
+                    onUpgradePlan={handleUpgradePlanRequest}
+                    onEditLimit={handleEditLimitRequest}
+                    onDeny={handleDenyRequest}
                   />
-                  <DropdownMenuItem
-                    label="No seat"
-                    onClick={() => setSeatTypeFilter("none")}
-                  />
-                  <DropdownMenuItem
-                    label="Free"
-                    onClick={() => setSeatTypeFilter("free")}
-                  />
-                  <DropdownMenuItem
-                    label="Pro"
-                    onClick={() => setSeatTypeFilter("pro")}
-                  />
-                  <DropdownMenuItem
-                    label="Max"
-                    onClick={() => setSeatTypeFilter("max")}
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <>
+              {seatFilterDropdown && (
+                <div className="flex flex-row justify-end">
+                  {seatFilterDropdown}
+                </div>
+              )}
+              {membersTable}
+            </>
           )}
-          <MembersUsageTable
-            members={membersUsage}
-            isLoading={isMembersUsageLoading}
-            readOnly={isReadOnly}
-            totalAllowedUsagePendingMemberIds={
-              totalAllowedUsagePendingMemberIds
-            }
-            seatChangePendingMemberIds={seatChangePendingMemberIds}
-            seatTypeFilter={seatTypeFilter}
-            isSeatBased={isSeatBased}
-            onChangeSeat={setChangeSeatMember}
-            onRemoveSeat={onRemoveSeat}
-            onEditSpendLimit={setEditSpendLimitMember}
-            pagination={pagination}
-            setPagination={setPagination}
-            totalRowCount={totalMembersUsage}
-            sorting={sorting}
-            setSorting={handleSetSorting}
-          />
         </Page.Vertical>
 
         {inviteBlockedPopupReason && (
@@ -460,19 +687,27 @@ export function UsagePage() {
 
         <ChangeSeatModal
           isOpen={changeSeatMember !== null}
-          onClose={() => setChangeSeatMember(null)}
+          onClose={() => {
+            setChangeSeatMember(null);
+            setPendingApproveRequestId(null);
+          }}
           member={changeSeatMember}
           owner={owner}
           seatPlans={seatPlans}
           onSavingChange={handleSeatChangePendingChange}
+          onSaved={handleApproveOnModalSaved}
         />
 
         <EditSpendLimitModal
           isOpen={editSpendLimitMember !== null}
-          onClose={() => setEditSpendLimitMember(null)}
+          onClose={() => {
+            setEditSpendLimitMember(null);
+            setPendingApproveRequestId(null);
+          }}
           member={editSpendLimitMember}
           owner={owner}
           onSavingChange={handleUsagePendingChange}
+          onSaved={handleApproveOnModalSaved}
         />
       </div>
     </>
