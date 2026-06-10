@@ -1,72 +1,21 @@
-import { useMetronomeInvoice } from "@app/lib/swr/workspaces";
-import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { SubscriptionType } from "@app/types/plan";
-import type { LightWorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useSubscriptionContext } from "./SubscriptionContext";
+import type { SubscriptionStatus } from "./SubscriptionStatusChip";
+import { SubscriptionStatusChip } from "./SubscriptionStatusChip";
 import { formatAmount } from "./seatTypeUtils";
-
-type SubscriptionStatus = "active" | "cancelled" | "ended";
-
-const STATUS_BADGE: Record<
-  SubscriptionStatus,
-  { badgeLabel: string; badgeClassName: string }
-> = {
-  active: {
-    badgeLabel: "ACTIVE",
-    badgeClassName:
-      "rounded-md bg-blue-100 px-1.5 py-1 text-xs font-semibold text-blue-900 dark:bg-blue-100-night dark:text-blue-900-night",
-  },
-  cancelled: {
-    badgeLabel: "CANCELLED",
-    badgeClassName:
-      "rounded-md bg-warning-100 px-1.5 py-1 text-xs font-semibold text-warning-900 dark:bg-warning-100-night dark:text-warning-900-night",
-  },
-  ended: {
-    badgeLabel: "ENDED",
-    badgeClassName:
-      "rounded-md bg-red-100 px-1.5 py-1 text-xs font-semibold text-red-900 dark:bg-red-100-night dark:text-red-900-night",
-  },
-};
-
-interface NextInvoiceOverviewProps {
-  owner: LightWorkspaceType;
-  subscription: SubscriptionType;
-}
 
 function formatBillingPeriod(period: string): string {
   return period.charAt(0).toUpperCase() + period.slice(1);
 }
 
-export function NextInvoiceOverview({
-  owner,
-  subscription,
-}: NextInvoiceOverviewProps) {
-  const { invoice, isMetronomeInvoiceLoading } = useMetronomeInvoice({
-    workspaceId: owner.sId,
-    disabled: !subscription.metronomeContractId,
-  });
-
-  const isCancellationScheduled =
-    subscription.endDate !== null || subscription.requestCancelAt !== null;
-  const subscriptionEndsAtMs =
-    subscription.endDate ??
-    (isCancellationScheduled ? (invoice?.currentPeriodEndMs ?? null) : null);
-
-  const periodEndLabel = invoice
-    ? formatTimestampToFriendlyDate(invoice.currentPeriodEndMs, "short")
-    : null;
-  const subscriptionEndLabel = subscriptionEndsAtMs
-    ? formatTimestampToFriendlyDate(subscriptionEndsAtMs, "short")
-    : null;
-
-  const [subscriptionStatus] = useState<SubscriptionStatus>(() =>
-    isCancellationScheduled && subscriptionEndsAtMs !== null
-      ? subscriptionEndsAtMs <= Date.now()
-        ? "ended"
-        : "cancelled"
-      : "active"
-  );
+export function NextInvoiceOverview() {
+  const {
+    invoice,
+    isMetronomeInvoiceLoading,
+    subscriptionStatus,
+    periodEndLabel,
+    subscriptionEndLabel,
+  } = useSubscriptionContext();
 
   const periodLabel: Record<SubscriptionStatus, string | null> = {
     active: invoice
@@ -96,9 +45,7 @@ export function NextInvoiceOverview({
             <span className="text-lg font-semibold text-foreground dark:text-foreground-night">
               Next Bill preview
             </span>
-            <span className={STATUS_BADGE[subscriptionStatus].badgeClassName}>
-              {STATUS_BADGE[subscriptionStatus].badgeLabel}
-            </span>
+            <SubscriptionStatusChip />
           </div>
           <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             A preview of what your invoice will look like based on your recent

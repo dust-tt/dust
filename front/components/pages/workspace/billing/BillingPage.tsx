@@ -5,6 +5,7 @@ import { BillingUpgrade } from "@app/components/workspace/billing/BillingUpgrade
 import { NextInvoiceOverview } from "@app/components/workspace/billing/NextInvoiceOverview";
 import { NextInvoicePreview } from "@app/components/workspace/billing/NextInvoicePreview";
 import { RecentInvoices } from "@app/components/workspace/billing/RecentInvoices";
+import { SubscriptionProvider } from "@app/components/workspace/billing/SubscriptionContext";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
   CreditCard01,
@@ -25,32 +26,34 @@ export function BillingPage() {
         icon={CreditCard01}
         description="Change your subscription and edit your billing information."
       />
-      <Tabs defaultValue="billing-information">
-        <TabsList>
-          <TabsTrigger
-            value="billing-information"
-            label="Billing information"
-          />
-          <TabsTrigger value="invoices" label="Invoices" />
-        </TabsList>
-        <TabsContent value="billing-information">
-          <div className="flex flex-col mt-8 gap-8">
-            <div className="flex flex-col gap-4">
-              <BillingOverview owner={owner} subscription={subscription} />
-              <BillingSeatsOverview owner={owner} />
+      <SubscriptionProvider owner={owner} subscription={subscription}>
+        <Tabs defaultValue="billing-information">
+          <TabsList>
+            <TabsTrigger
+              value="billing-information"
+              label="Billing information"
+            />
+            <TabsTrigger value="invoices" label="Invoices" />
+          </TabsList>
+          <TabsContent value="billing-information">
+            <div className="flex flex-col mt-8 gap-8">
+              <div className="flex flex-col gap-4">
+                <BillingOverview />
+                <BillingSeatsOverview owner={owner} />
+              </div>
+              <BillingUpgrade owner={owner} subscription={subscription} />
+              <BillingInformation owner={owner} />
             </div>
-            <BillingUpgrade owner={owner} subscription={subscription} />
-            <BillingInformation owner={owner} />
-          </div>
-        </TabsContent>
-        <TabsContent value="invoices">
-          <div className="flex flex-col mt-8 gap-8">
-            <NextInvoiceOverview owner={owner} subscription={subscription} />
-            <NextInvoicePreview owner={owner} subscription={subscription} />
-            <RecentInvoices owner={owner} />
-          </div>
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+          <TabsContent value="invoices">
+            <div className="flex flex-col mt-8 gap-8">
+              <NextInvoiceOverview />
+              <NextInvoicePreview owner={owner} subscription={subscription} />
+              <RecentInvoices owner={owner} />
+            </div>
+          </TabsContent>
+        </Tabs>
+      </SubscriptionProvider>
     </Page.Vertical>
   );
 }

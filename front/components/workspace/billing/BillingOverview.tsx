@@ -1,18 +1,10 @@
-import { CancelMetronomeSubscriptionDialog } from "@app/components/pages/workspace/subscription/MetronomeSubscriptionPanel";
 import {
-  useCancelMetronomeContract,
-  useReactivateMetronomeContract,
-} from "@app/hooks/useMetronomeContractLifecycleAction";
+  CancelMetronomeSubscriptionDialog,
+  ReactivateMetronomeSubscriptionDialog,
+} from "@app/components/pages/workspace/subscription/MetronomeSubscriptionPanel";
 import { getPriceAsString } from "@app/lib/client/subscription";
-import { useSubmitFunction } from "@app/lib/client/utils";
-import { isBusinessPlanPrefix } from "@app/lib/plans/plan_codes";
-import { useAppRouter } from "@app/lib/platform";
-import { useMetronomeInvoice } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { SubscriptionType } from "@app/types/plan";
-import { isSubscriptionMetronomeBilled } from "@app/types/plan";
-import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   Calendar,
@@ -21,76 +13,27 @@ import {
   Spinner,
   Upload01,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
-
-interface BillingOverviewProps {
-  owner: LightWorkspaceType;
-  subscription: SubscriptionType;
-}
+import { useSubscriptionContext } from "./SubscriptionContext";
+import { SubscriptionStatusChip } from "./SubscriptionStatusChip";
 
 function formatBillingPeriod(period: string): string {
   return period.charAt(0).toUpperCase() + period.slice(1);
 }
 
-export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
-  const router = useAppRouter();
-  const [showCancelDialog, setShowCancelDialog] = useState(false);
-
-  const { invoice, isMetronomeInvoiceLoading } = useMetronomeInvoice({
-    workspaceId: owner.sId,
-    disabled: !subscription.metronomeContractId,
-  });
-  const { cancelMetronomeContract, isCancellingMetronomeContract } =
-    useCancelMetronomeContract({
-      workspaceId: owner.sId,
-    });
-  const { reactivateMetronomeContract, isReactivatingMetronomeContract } =
-    useReactivateMetronomeContract({
-      workspaceId: owner.sId,
-    });
-  const { submit: cancelSubscription, isSubmitting: isCancelling } =
-    useSubmitFunction(async () => {
-      try {
-        const success = await cancelMetronomeContract();
-        if (success) {
-          router.reload();
-        }
-      } finally {
-        setShowCancelDialog(false);
-      }
-    });
-  const { submit: reactivateSubscription, isSubmitting: isReactivating } =
-    useSubmitFunction(async () => {
-      const success = await reactivateMetronomeContract();
-      if (success) {
-        router.reload();
-      }
-    });
-
-  const isCancellablePlan =
-    isSubscriptionMetronomeBilled(subscription) &&
-    isBusinessPlanPrefix(subscription.plan.code);
-  const isCancellationScheduled =
-    subscription.endDate !== null || subscription.requestCancelAt !== null;
-  const subscriptionEndsAtMs =
-    subscription.endDate ??
-    (isCancellationScheduled ? (invoice?.currentPeriodEndMs ?? null) : null);
-  const canCancelSubscription = isCancellablePlan && !isCancellationScheduled;
-  const canReactivateSubscription =
-    isCancellablePlan &&
-    isCancellationScheduled &&
-    subscriptionEndsAtMs !== null &&
-    subscriptionEndsAtMs > Date.now();
-  const isCancellingSubscription =
-    isCancelling || isCancellingMetronomeContract;
-  const isReactivatingSubscription =
-    isReactivating || isReactivatingMetronomeContract;
-  const periodEndLabel = invoice
-    ? formatTimestampToFriendlyDate(invoice.currentPeriodEndMs, "short")
-    : null;
-  const subscriptionEndLabel = subscriptionEndsAtMs
-    ? formatTimestampToFriendlyDate(subscriptionEndsAtMs, "short")
-    : null;
+export function BillingOverview() {
+  const {
+    subscription,
+    invoice,
+    isMetronomeInvoiceLoading,
+    isCancellationScheduled,
+    canCancelSubscription,
+    canReactivateSubscription,
+    isCancellingSubscription,
+    isReactivatingSubscription,
+    subscriptionEndLabel,
+    setShowCancelDialog,
+    setShowReactivateDialog,
+  } = useSubscriptionContext();
 
   if (isMetronomeInvoiceLoading) {
     return (
@@ -102,13 +45,8 @@ export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
 
   return (
     <>
-      <CancelMetronomeSubscriptionDialog
-        show={showCancelDialog}
-        onClose={() => setShowCancelDialog(false)}
-        onValidate={cancelSubscription}
-        isSaving={isCancellingSubscription}
-        periodEndLabel={periodEndLabel}
-      />
+      <CancelMetronomeSubscriptionDialog />
+      <ReactivateMetronomeSubscriptionDialog />
 
       <div className="flex flex-col gap-4 rounded-lg bg-muted-background p-4 dark:bg-muted-background-night">
         <div className="flex items-center justify-between gap-4">
@@ -116,15 +54,7 @@ export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
             <div className="truncate text-base font-semibold text-foreground dark:text-foreground-night">
               {subscription.plan.name}
             </div>
-            <div
-              className={
-                isCancellationScheduled
-                  ? "rounded-md bg-warning-100 px-2 py-1 text-xs text-warning-900 dark:bg-warning-100-night dark:text-warning-900-night"
-                  : "rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-900 dark:bg-gray-100-night dark:text-gray-900-night"
-              }
-            >
-              {isCancellationScheduled ? "Cancelled" : "Current"}
-            </div>
+            <SubscriptionStatusChip />
           </div>
           {canReactivateSubscription ? (
             <Button
@@ -136,7 +66,7 @@ export function BillingOverview({ owner, subscription }: BillingOverviewProps) {
                 TRACKING_AREAS.AUTH,
                 "subscription_reactivate",
                 () => {
-                  void reactivateSubscription();
+                  setShowReactivateDialog(true);
                 }
               )}
             />
