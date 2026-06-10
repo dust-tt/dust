@@ -28,11 +28,7 @@ export function normalizeOAuthUrl(url: string): string {
 
 export function getMcpResourceServerUrl(): string {
   return normalizeOAuthUrl(
-    (
-      EnvironmentConfig.getOptionalEnvVariable("DUST_API_URL") ??
-      EnvironmentConfig.getOptionalEnvVariable("DUST_INTERNAL_API_URL") ??
-      "https://us-api.dust.tt"
-    ).trim() + "/mcp"
+    EnvironmentConfig.getEnvVariable("DUST_CLIENT_FACING_URL").trim() + "/mcp"
   );
 }
 
