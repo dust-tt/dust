@@ -63,7 +63,7 @@ import {
   makeToolInterruptionError,
   shouldRetryToolInterruption,
 } from "@app/lib/actions/tool_interruptions";
-import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type {
   AgentLoopListToolsContextType,
   AgentLoopRunContextType,
@@ -833,7 +833,7 @@ type AgentLoopListToolsContextWithoutConfigurationType = Omit<
  * When multiple server-side configs share the same name but have different viewIds (e.g.,
  * the same server in different spaces), prepends the space name to disambiguate them.
  */
-async function disambiguateServerNamesBySpace(
+export async function disambiguateServerNamesBySpace(
   auth: Authenticator,
   configs: MCPServerConfigurationType[]
 ): Promise<MCPServerConfigurationType[]> {
@@ -891,7 +891,7 @@ async function disambiguateServerNamesBySpace(
  * Deduplicates MCP server configurations by view ID and name.
  * Priority order: agent actions > client-side > skill servers > JIT servers.
  */
-function deduplicateMCPServerConfigurations({
+export function deduplicateMCPServerConfigurations({
   agentActions,
   clientSideActions,
   skillServers,
@@ -1031,11 +1031,12 @@ export async function tryListMCPTools(
       const processedTools: MCPToolConfigurationType[] = [];
 
       for (const toolConfig of rawToolsFromServer) {
-        let toolName: string;
         // Fix the tool name to be valid for the model.
-        try {
-          toolName = getPrefixedToolName(action.name, toolConfig.name);
-        } catch (error) {
+        const toolNameRes = tryGetPrefixedToolName(
+          action.name,
+          toolConfig.name
+        );
+        if (toolNameRes.isErr()) {
           logger.warn(
             {
               workspaceId: owner.sId,
@@ -1044,12 +1045,13 @@ export async function tryListMCPTools(
               actionId: action.sId,
               mcpServerName: action.name,
               toolName: toolConfig.name,
-              error: error,
+              error: toolNameRes.error,
             },
             `Invalid tool name, skipping the tool.`
           );
           continue;
         }
+        const toolName = toolNameRes.value;
 
         // Check that all tools arguments names are valid for the model (a-zA-Z0-9_.-).
         const toolArgumentsNames = Object.keys(
@@ -1236,7 +1238,7 @@ export async function listToolsForServerSideMCPServer(
   );
 }
 
-async function buildToolConfigurationsFromRawTools(
+export async function buildToolConfigurationsFromRawTools(
   auth: Authenticator,
   mcpServerId: string,
   config: ServerSideMCPServerConfigurationType,

@@ -18,6 +18,7 @@ vi.mock("@app/lib/api/redis-hybrid-manager", () => ({
   }),
 }));
 
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
@@ -759,9 +760,19 @@ describe("validateAction", () => {
   async function createBlockedAction({
     agentMessageId,
     status = "blocked_validation_required",
+    functionCallName = "test_tool",
+    configurationName = "test_tool",
+    permission = "low",
+    argumentsRequiringApproval,
+    augmentedInputs = {},
   }: {
     agentMessageId: number;
     status?: ToolExecutionStatus;
+    functionCallName?: string;
+    configurationName?: string;
+    permission?: MCPToolStakeLevelType;
+    argumentsRequiringApproval?: string[];
+    augmentedInputs?: Record<string, unknown>;
   }) {
     const functionCallId = generateRandomModelSId();
     const currentIndex = stepContentIndex++;
@@ -778,7 +789,7 @@ describe("validateAction", () => {
         type: "function_call",
         value: {
           id: functionCallId,
-          name: "test_tool",
+          name: functionCallName,
           arguments: "{}",
         },
       },
@@ -789,7 +800,7 @@ describe("validateAction", () => {
       id: 1,
       sId: generateRandomModelSId(),
       type: "mcp_configuration",
-      name: "test_tool",
+      name: configurationName,
       dataSources: null,
       tables: null,
       childAgentId: null,
@@ -802,11 +813,12 @@ describe("validateAction", () => {
       dustProject: null,
       internalMCPServerId: null,
       availability: "auto",
-      permission: "low",
+      permission,
       toolServerId: "test-server",
       retryPolicy: "no_retry",
-      originalName: "test_tool",
+      originalName: configurationName,
       mcpServerName: "test_server",
+      argumentsRequiringApproval,
     };
 
     // Create MCP action
@@ -816,7 +828,7 @@ describe("validateAction", () => {
       mcpServerConfigurationId: generateRandomModelSId(),
       status,
       citationsAllocated: 0,
-      augmentedInputs: {},
+      augmentedInputs,
       toolConfiguration,
       stepContentId: stepContent.id,
       stepContext: {
@@ -1304,6 +1316,127 @@ describe("validateAction", () => {
       // Verify action status was updated to denied
       await action.reload();
       expect(action.status).toBe("denied");
+    });
+  });
+
+  describe("always_approved recording", () => {
+    // Creates the user message → agent message chain shared by both tests.
+    async function createAgentMessageChain() {
+      const { messageRow } = await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Test message",
+      });
+
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        { name: "Test Agent" }
+      );
+
+      const agentMessageMessage =
+        await ConversationFactory.createAgentMessageWithRank({
+          workspace,
+          conversationId: conversation.id,
+          rank: 1,
+          agentConfigurationId: agentConfig.sId,
+          parentId: messageRow.id,
+        });
+      if (!agentMessageMessage.agentMessageId) {
+        throw new Error("Expected an agent message id on the message row.");
+      }
+
+      return {
+        agentConfig,
+        agentMessageId: agentMessageMessage.agentMessageId,
+        agentMessageMessage,
+      };
+    }
+
+    it("records medium-stake approvals under the tool configuration name, not the function-call name", async () => {
+      const { agentConfig, agentMessageId, agentMessageMessage } =
+        await createAgentMessageChain();
+
+      // Sandbox child actions share their parent's step content, so the
+      // function-call name is the parent sandbox tool, not the child tool.
+      const { actionId } = await createBlockedAction({
+        agentMessageId,
+        functionCallName: "sandbox__bash",
+        configurationName: "salesforce__update_object",
+        permission: "medium",
+        argumentsRequiringApproval: ["objectName"],
+        augmentedInputs: { objectName: "Contact", records: [{ Id: "1" }] },
+      });
+
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      const result = await validateAction(auth, conversationResource!, {
+        actionId,
+        approvalState: "always_approved",
+        messageId: agentMessageMessage.sId,
+      });
+      expect(result.isOk()).toBe(true);
+
+      const user = auth.getNonNullableUser();
+      expect(
+        await user.hasApprovedTool(auth, {
+          mcpServerId: "test-server",
+          toolName: "salesforce__update_object",
+          agentId: agentConfig.sId,
+          argsAndValues: { objectName: "Contact" },
+        })
+      ).toBe(true);
+      expect(
+        await user.hasApprovedTool(auth, {
+          mcpServerId: "test-server",
+          toolName: "sandbox__bash",
+          agentId: agentConfig.sId,
+          argsAndValues: { objectName: "Contact" },
+        })
+      ).toBe(false);
+    });
+
+    it("records low-stake approvals under the tool configuration name, not the function-call name", async () => {
+      const { agentMessageId, agentMessageMessage } =
+        await createAgentMessageChain();
+
+      const { actionId } = await createBlockedAction({
+        agentMessageId,
+        functionCallName: "sandbox__bash",
+        configurationName: "salesforce__execute_read_query",
+        permission: "low",
+      });
+
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      const result = await validateAction(auth, conversationResource!, {
+        actionId,
+        approvalState: "always_approved",
+        messageId: agentMessageMessage.sId,
+      });
+      expect(result.isOk()).toBe(true);
+
+      const user = auth.getNonNullableUser();
+      expect(
+        await user.hasApprovedTool(auth, {
+          mcpServerId: "test-server",
+          toolName: "salesforce__execute_read_query",
+        })
+      ).toBe(true);
+      expect(
+        await user.hasApprovedTool(auth, {
+          mcpServerId: "test-server",
+          toolName: "sandbox__bash",
+        })
+      ).toBe(false);
     });
   });
 
