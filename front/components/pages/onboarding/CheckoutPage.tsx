@@ -515,7 +515,9 @@ export function CheckoutPage() {
 
           <div className="flex flex-col text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground dark:text-muted-foreground-night">Price per seat</span>
+              <span className="text-muted-foreground dark:text-muted-foreground-night">
+                Price per seat
+              </span>
               <span>
                 {getPriceAsString({
                   currency,
@@ -526,7 +528,9 @@ export function CheckoutPage() {
               </span>
             </div>
             <div className="mt-3 flex justify-between">
-              <span className="text-muted-foreground dark:text-muted-foreground-night">Number of seats</span>
+              <span className="text-muted-foreground dark:text-muted-foreground-night">
+                Number of seats
+              </span>
               <span>
                 {showActualTax ? preparePayment.seatCount : seatCountForSummary}
               </span>
@@ -814,7 +818,9 @@ function RightPane({
       return (
         <div className="flex flex-col items-center gap-4">
           <Spinner size="lg" />
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">Processing payment…</p>
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Processing payment…
+          </p>
         </div>
       );
 
@@ -822,7 +828,9 @@ function RightPane({
       return (
         <div className="flex flex-col items-center gap-4">
           <Spinner size="lg" />
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">Processing payment…</p>
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Processing payment…
+          </p>
         </div>
       );
 
