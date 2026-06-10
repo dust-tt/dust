@@ -18,7 +18,7 @@ import {
   updateCrawlerCrawlFrequency,
 } from "@connectors/connectors/webcrawler/temporal/client";
 import { zendesk } from "@connectors/connectors/zendesk/lib/cli";
-import { getTemporalClient } from "@connectors/lib/temporal";
+import { getTemporalClient, terminateWorkflow } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type {
@@ -30,6 +30,7 @@ import type {
   ConnectorsCommandType,
   TemporalCheckQueueResponseType,
   TemporalCommandType,
+  TemporalStopWorkflowResponseType,
   TemporalUnprocessedWorkflowsResponseType,
   WebcrawlerCommandType,
 } from "@connectors/types";
@@ -486,6 +487,7 @@ export const temporal = async ({
 }: TemporalCommandType): Promise<
   | AdminSuccessResponseType
   | TemporalCheckQueueResponseType
+  | TemporalStopWorkflowResponseType
   | TemporalUnprocessedWorkflowsResponseType
 > => {
   const logger = topLogger.child({ majorCommand: "temporal", command, args });
@@ -543,6 +545,18 @@ export const temporal = async ({
           .filter((q) => q.pollers === 0)
           .map((q) => q.queue),
       };
+    }
+
+    case "stop-workflow": {
+      const { workflowId, reason } = args;
+      if (!workflowId) {
+        throw new Error("Missing --workflowId argument");
+      }
+      const terminated = await terminateWorkflow(
+        workflowId,
+        reason ?? "Terminated via CLI"
+      );
+      return { workflowId, terminated };
     }
   }
 };
