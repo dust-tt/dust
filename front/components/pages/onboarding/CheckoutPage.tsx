@@ -28,6 +28,7 @@ import {
 import type { CouponType } from "@app/types/coupon";
 import type { BillingPeriod } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   CheckCircle,
@@ -484,40 +485,11 @@ export function CheckoutPage() {
 
   if (phase === "checkout_success") {
     return (
-      <main className="flex h-screen flex-col items-center justify-center gap-4 px-6 pb-24 pt-6">
-        <Icon visual={CheckCircle} size="2xl" className="text-success-500" />
-        <div className="flex flex-col items-center gap-4 text-center">
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-            You&apos;re all set!
-          </h1>
-          <p className="text-base text-muted-foreground">
-            Your{" "}
-            <span className="font-semibold">
-              {seatType === "max" ? "Max" : "Pro"}
-            </span>{" "}
-            seat is ready with{" "}
-            <span className="font-semibold">
-              {seatType === "max" ? "40,000" : "8,000"}
-            </span>{" "}
-            credits a month. Let&apos;s build something.
-          </p>
-        </div>
-        <div className="flex gap-4">
-          {receiptUrl && (
-            <Button
-              label="View receipt"
-              variant="outline"
-              size="md"
-              onClick={() => window.open(receiptUrl, "_blank")}
-            />
-          )}
-          <Button
-            label="Start building"
-            size="md"
-            onClick={() => void router.replace(`/w/${owner.sId}`)}
-          />
-        </div>
-      </main>
+      <CheckoutSuccessPage
+        seatType={seatType}
+        receiptUrl={receiptUrl}
+        owner={owner}
+      />
     );
   }
 
@@ -720,6 +692,57 @@ export function CheckoutPage() {
           onRestart={handleRestart}
           onConfirmPayment={handleConfirmPayment}
           onCardCaptureComplete={handleCardCaptureComplete}
+        />
+      </div>
+    </main>
+  );
+}
+
+interface CheckoutSuccessPageProps {
+  seatType: "pro" | "max" | null;
+  receiptUrl: string | null;
+  owner: LightWorkspaceType;
+}
+
+function CheckoutSuccessPage({
+  seatType,
+  receiptUrl,
+  owner,
+}: CheckoutSuccessPageProps) {
+  const router = useAppRouter();
+
+  return (
+    <main className="flex h-screen flex-col items-center justify-center gap-4 bg-white px-6 pb-24 pt-6">
+      <Icon visual={CheckCircle} size="2xl" className="text-success-500" />
+      <div className="flex flex-col items-center gap-4 text-center">
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+          You&apos;re all set!
+        </h1>
+        <p className="text-base text-muted-foreground">
+          Your{" "}
+          <span className="font-semibold">
+            {seatType === "max" ? "Max" : "Pro"}
+          </span>{" "}
+          seat is ready with{" "}
+          <span className="font-semibold">
+            {seatType === "max" ? "40,000" : "8,000"}
+          </span>{" "}
+          credits a month. Let&apos;s build something.
+        </p>
+      </div>
+      <div className="flex gap-4">
+        {receiptUrl && (
+          <Button
+            label="View receipt"
+            variant="outline"
+            size="md"
+            onClick={() => window.open(receiptUrl, "_blank")}
+          />
+        )}
+        <Button
+          label="Start building"
+          size="md"
+          onClick={() => void router.replace(`/w/${owner.sId}`)}
         />
       </div>
     </main>
