@@ -27,6 +27,9 @@ import {
   Input,
   Key01,
   Label,
+  LayerSingle,
+  LayersThree01,
+  LayersTwo01,
   ListGroup,
   ListItem,
   Lock01,
@@ -890,12 +893,15 @@ function PeoplePage({
             {/* Email input */}
             <Page.Vertical gap="xs">
               <Label>Email addresses</Label>
-              <Input
-                placeholder="Email addresses, comma separated"
-                value={inviteEmails}
-                onChange={(e) => setInviteEmails(e.target.value)}
-                name="invite-emails"
-              />
+              <div className="s-w-full">
+                <Input
+                  placeholder="Email addresses, comma separated"
+                  value={inviteEmails}
+                  onChange={(e) => setInviteEmails(e.target.value)}
+                  name="invite-emails"
+                  className="s-w-full"
+                />
+              </div>
             </Page.Vertical>
 
             {/* Role picker */}
@@ -953,7 +959,7 @@ function PeoplePage({
                     credits: "300 credits lifetime",
                     price: null,
                     available: 10,
-                    emoji: "🆓",
+                    Icon: LayerSingle,
                   },
                   {
                     id: "pro",
@@ -962,7 +968,7 @@ function PeoplePage({
                     price:
                       inviteBilling === "monthly" ? "$24.99/mo" : "$17.49/mo",
                     available: null,
-                    emoji: "🔵",
+                    Icon: LayersTwo01,
                   },
                   {
                     id: "max",
@@ -971,7 +977,7 @@ function PeoplePage({
                     price:
                       inviteBilling === "monthly" ? "$119.99/mo" : "$83.99/mo",
                     available: null,
-                    emoji: "🟡",
+                    Icon: LayersThree01,
                   },
                 ] as const
               ).map((plan) => (
@@ -986,7 +992,7 @@ function PeoplePage({
                   }`}
                 >
                   <div className="s-flex s-items-center s-gap-3">
-                    <span className="s-text-xl">{plan.emoji}</span>
+                    <plan.Icon className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
                     <div className="s-flex s-flex-col s-gap-0.5">
                       <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
                         {plan.label}
