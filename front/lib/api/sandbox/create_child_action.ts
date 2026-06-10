@@ -2,16 +2,19 @@ import {
   FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
 } from "@app/lib/actions/constants";
-import { makeServerSideMCPToolConfigurations } from "@app/lib/actions/mcp_actions";
+import {
+  getToolExtraFields,
+  makeServerSideMCPToolConfigurations,
+} from "@app/lib/actions/mcp_actions";
 import {
   getAvailabilityOfInternalMCPServerById,
   getInternalMCPServerDisplayedAs,
   getInternalMCPServerNameFromSId,
-  getInternalMCPServerToolStakes,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import { getApprovalArgsLabel } from "@app/lib/actions/tool_approval_labels";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
@@ -25,6 +28,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { launchSandboxChildToolWorkflow } from "@app/temporal/agent_loop/client";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
@@ -123,20 +127,39 @@ export async function createSandboxChildAction(
     );
   }
 
+  // Resolve stakes, enabled state and approval-requiring arguments exactly like
+  // the direct agent-loop path (`buildToolConfigurationsFromRawTools`), so that
+  // approvals recorded on direct tool calls apply to sandbox child calls too.
+  const metadata = await RemoteMCPServerToolMetadataResource.fetchByServerId(
+    auth,
+    view.mcpServerId
+  );
+  const extraFieldsRes = getToolExtraFields(view.mcpServerId, metadata);
+  if (extraFieldsRes.isErr()) {
+    return extraFieldsRes;
+  }
+  const {
+    toolsEnabled,
+    toolsStakes,
+    toolsRetryPolicies,
+    serverTimeoutMs,
+    toolsArgumentsRequiringApproval,
+  } = extraFieldsRes.value;
+
+  if (toolsEnabled[toolName] === false) {
+    return new Err(new Error("Tool is disabled for this server."));
+  }
+
   const availability = getAvailabilityOfInternalMCPServerById(view.mcpServerId);
-  const internalServerName = getInternalMCPServerNameFromSId(view.mcpServerId);
-  const serverDefaultStake = internalServerName
-    ? getInternalMCPServerToolStakes(internalServerName)[toolName]
-    : undefined;
 
   const stakeLevel =
-    view.getToolPermission(toolName) ??
-    serverDefaultStake ??
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    toolsStakes[toolName] ||
     (availability === "manual"
       ? FALLBACK_MCP_TOOL_STAKE_LEVEL
       : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL);
 
-  const [fullToolConfiguration] = makeServerSideMCPToolConfigurations(
+  const [toolConfiguration] = makeServerSideMCPToolConfigurations(
     serverSideConfig,
     [
       {
@@ -145,16 +168,32 @@ export async function createSandboxChildAction(
         availability,
         stakeLevel,
         toolServerId: view.mcpServerId,
-        retryPolicy: DEFAULT_MCP_TOOL_RETRY_POLICY,
+        ...(serverTimeoutMs && { timeoutMs: serverTimeoutMs }),
+        retryPolicy:
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          toolsRetryPolicies?.[toolName] ||
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          toolsRetryPolicies?.["default"] ||
+          DEFAULT_MCP_TOOL_RETRY_POLICY,
       },
-    ]
+    ],
+    toolsArgumentsRequiringApproval
   );
 
-  if (!fullToolConfiguration) {
+  if (!toolConfiguration) {
     return new Err(
       new Error("Tool is not available to this agent or conversation.")
     );
   }
+
+  // User tool approvals ("low"/"medium" stakes) are keyed on the prefixed
+  // function-call name the model sees on direct calls (e.g.
+  // `salesforce__update_object`), while `dsbx` sends the raw tool name. Align
+  // the configuration name so approval checks and recordings share one key.
+  const fullToolConfiguration = {
+    ...toolConfiguration,
+    name: getPrefixedToolName(serverSideConfig.name, toolName),
+  };
 
   const validateInputsResult = validateToolInputs(rawInputs);
   if (validateInputsResult.isErr()) {

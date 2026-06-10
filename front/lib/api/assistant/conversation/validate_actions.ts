@@ -109,9 +109,13 @@ export async function validateAction(
   if (approvalState === "always_approved" && user) {
     switch (action.toolConfiguration.permission) {
       case "low":
+        // Key the approval on the configuration name, not the step content's
+        // function-call name: sandbox child actions share their parent's step
+        // content, so `action.functionCallName` would be the parent sandbox
+        // tool there. Both names are identical for direct tool calls.
         await setUserAlwaysApprovedTool(auth, {
           mcpServerId: action.toolConfiguration.toolServerId,
-          functionCallName: action.functionCallName,
+          functionCallName: action.toolConfiguration.name,
         });
         break;
       case "medium":
@@ -129,9 +133,11 @@ export async function validateAction(
             action.augmentedInputs
           );
 
+          // Same as the "low" case: use the configuration name so sandbox
+          // child approvals are keyed on the tool, not the parent sandbox tool.
           await user.createToolApproval(auth, {
             mcpServerId: action.toolConfiguration.toolServerId,
-            toolName: action.functionCallName,
+            toolName: action.toolConfiguration.name,
             agentId: agentMessage.agentConfigurationId,
             argsAndValues,
           });
