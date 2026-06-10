@@ -1,13 +1,5 @@
-import {
-  generatePlainTextFile,
-  uploadFileToConversationDataSource,
-} from "@app/lib/actions/action_file_helpers";
-import {
-  computeTextByteSize,
-  FILE_OFFLOAD_RESOURCE_SIZE_BYTES,
-  FILE_OFFLOAD_SNIPPET_LENGTH,
-  FILE_OFFLOAD_TEXT_SIZE_BYTES,
-} from "@app/lib/actions/action_output_limits";
+import { uploadFileToConversationDataSource } from "@app/lib/actions/action_file_helpers";
+import { FILE_OFFLOAD_SNIPPET_LENGTH } from "@app/lib/actions/action_output_limits";
 import type {
   LightMCPToolConfigurationType,
   MCPToolConfigurationType,
@@ -55,12 +47,6 @@ import {
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { extname } from "path";
 import type { Logger } from "pino";
-
-const TEXT_OFFLOAD_EXEMPT_MCP_SERVERS: readonly string[] = [
-  "conversation_files",
-  "files",
-  "sandbox",
-];
 
 /**
  * Recursively sanitizes all string values in an object by removing null bytes and lone surrogates.
@@ -198,39 +184,22 @@ export async function processToolResults(
 
       switch (block.type) {
         case "text": {
-          // If the text is too large we create a file and return a resource block that references the file.
-          // These files are offloaded purely for size reasons. the model reads them directly via the
-          // "cat" approach and never uses semantic search on them. `skipDataSourceIndexing` prevents
-          // them from being indexed in Qdrant, which would bloat the vector store for no benefit.
-          if (
-            computeTextByteSize(block.text) > FILE_OFFLOAD_TEXT_SIZE_BYTES &&
-            !TEXT_OFFLOAD_EXEMPT_MCP_SERVERS.includes(
-              toolConfiguration.mcpServerName
-            )
-          ) {
-            const fileName = `${toolConfiguration.mcpServerName}_${timestamp}_${idx}.txt`;
+          // If persistToolOutput wrote this block to DustFileSystem (too large), return a resource
+          // block pointing at the scoped path. The model reads it via the `cat` tool.
+          if (res.value !== null) {
             const snippet =
               block.text.substring(0, FILE_OFFLOAD_SNIPPET_LENGTH) +
               "... (truncated)";
-
-            const file = await generatePlainTextFile(auth, {
-              title: fileName,
-              conversationId: conversation.sId,
-              content: block.text,
-              snippet,
-              hideFromUser: true,
-              skipDataSourceIndexing: true,
-            });
             return {
               content: {
                 type: "resource",
                 resource: {
-                  uri: file.getPublicUrl(auth),
+                  uri: res.value.scopedPath,
                   mimeType: "text/plain",
                   text: snippet,
                 },
               },
-              file,
+              file: null,
             };
           }
           return {
@@ -375,27 +344,13 @@ export async function processToolResults(
             // Sanitize the entire resource object to remove null bytes from all string fields
             const sanitizedResource = sanitizeStringsDeep(block.resource);
 
-            // If the resource text is too large, we create a file and return a resource block that references the file.
-            // Same as the text block case above: offloaded for size, not for search. Skip Qdrant indexing.
-            if (
-              text &&
-              computeTextByteSize(text) > FILE_OFFLOAD_RESOURCE_SIZE_BYTES
-            ) {
-              const fileName =
-                block.resource.uri?.split("/").pop() ??
-                `resource_${Date.now()}.txt`;
+            // Large resource text was already offloaded by persistToolOutput above.
+            if (res.value !== null) {
               const snippet =
-                text.substring(0, FILE_OFFLOAD_SNIPPET_LENGTH) +
-                "... (truncated)";
-
-              const file = await generatePlainTextFile(auth, {
-                title: fileName,
-                conversationId: conversation.sId,
-                content: text,
-                snippet,
-                hideFromUser: true,
-                skipDataSourceIndexing: true,
-              });
+                text !== null
+                  ? text.substring(0, FILE_OFFLOAD_SNIPPET_LENGTH) +
+                    "... (truncated)"
+                  : "";
               return {
                 content: {
                   type: block.type,
@@ -404,7 +359,7 @@ export async function processToolResults(
                     text: snippet,
                   },
                 },
-                file,
+                file: null,
               };
             }
             return {

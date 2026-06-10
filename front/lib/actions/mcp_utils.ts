@@ -1,6 +1,6 @@
 // All mime types are okay to use from the public API.
 
-import { FILE_OFFLOAD_RESOURCE_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
+import { FILE_OFFLOAD_IMAGE_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
 import {
   isBlobResource,
   isRunAgentQueryResourceType,
@@ -190,7 +190,7 @@ export async function handleBase64Upload(
     };
   }
 
-  if (base64Data.length > FILE_OFFLOAD_RESOURCE_SIZE_BYTES) {
+  if (base64Data.length > FILE_OFFLOAD_IMAGE_SIZE_BYTES) {
     return {
       content: {
         type: "text",

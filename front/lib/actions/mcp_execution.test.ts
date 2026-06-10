@@ -1,5 +1,4 @@
 import {
-  FILE_OFFLOAD_RESOURCE_SIZE_BYTES,
   FILE_OFFLOAD_SNIPPET_LENGTH,
   FILE_OFFLOAD_TEXT_SIZE_BYTES,
 } from "@app/lib/actions/action_output_limits";
@@ -114,16 +113,15 @@ describe("processToolResults", () => {
       expect(stored.resource.text).toContain("... (truncated)");
     }
 
-    // Offloaded files must not be indexed in Qdrant. Models read them directly.
-    expect(generatedFiles).toHaveLength(1);
-    expect(generatedFiles[0].skipDataSourceIndexing).toBe(true);
+    // Offloaded to DustFileSystem, so generatedFiles is empty.
+    expect(generatedFiles).toHaveLength(0);
   });
 
   it("should store snippet for large resource text", async () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
 
-    // Generate resource text that exceeds FILE_OFFLOAD_RESOURCE_SIZE_BYTES (20MB).
-    const largeResourceText = "y".repeat(FILE_OFFLOAD_RESOURCE_SIZE_BYTES + 1);
+    // Generate resource text that exceeds FILE_OFFLOAD_TEXT_SIZE_BYTES (20KB).
+    const largeResourceText = "y".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES + 1);
 
     const { outputItems, generatedFiles } = await processToolResults(auth, {
       action,
@@ -149,9 +147,8 @@ describe("processToolResults", () => {
       expect(stored.resource.text).toContain("... (truncated)");
     }
 
-    // Offloaded files must not be indexed in Qdrant. Models read them directly.
-    expect(generatedFiles).toHaveLength(1);
-    expect(generatedFiles[0].skipDataSourceIndexing).toBe(true);
+    // Offloaded to DustFileSystem, so generatedFiles is empty.
+    expect(generatedFiles).toHaveLength(0);
   });
 
   it("should keep small text content as-is", async () => {

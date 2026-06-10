@@ -1,3 +1,5 @@
+import { FILE_OFFLOAD_TEXT_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
+import { isResourceContentWithText } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { SCOPED_PREFIX_CONVERSATION } from "@app/lib/api/file_system/types";
 import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
@@ -99,6 +101,27 @@ export async function persistToolOutput(
     const result = await writeToToolOutputsFolder(auth, conversation, {
       fileName,
       content: block.text,
+      contentType,
+    });
+    if (result.isErr()) {
+      return result;
+    }
+
+    return new Ok({ fileName, scopedPath: result.value, contentType });
+  }
+
+  // Resource blocks whose text exceeds the offload threshold.
+  if (
+    isResourceContentWithText(block) &&
+    Buffer.byteLength(block.resource.text, "utf8") >
+      FILE_OFFLOAD_TEXT_SIZE_BYTES
+  ) {
+    const text = block.resource.text;
+    const { fileName, contentType } = inferTextFileMetadata(text, toolName);
+
+    const result = await writeToToolOutputsFolder(auth, conversation, {
+      fileName,
+      content: text,
       contentType,
     });
     if (result.isErr()) {
