@@ -1,12 +1,11 @@
 import {
   type BusinessActivationRequestError,
-  fetchStripeHostedInvoiceUrl,
   type GetBusinessActivationResponseBody,
+  getBusinessActivationStatus,
   type PostBusinessActivationResponseBody,
   processBusinessActivation,
 } from "@app/lib/api/checkout/business_activation";
 import { PostCheckoutPaymentBodySchema } from "@app/lib/api/checkout/payment";
-import { getCheckoutPaymentStatus } from "@app/lib/credits/checkout_payment_status";
 import { wakeLock } from "@app/lib/wake_lock";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -36,25 +35,7 @@ app.get(
     }
 
     const workspace = auth.getNonNullableWorkspace();
-    const checkoutPayment = await getCheckoutPaymentStatus({
-      workspaceId: workspace.sId,
-      contractId,
-    });
-
-    let invoiceUrl: string | undefined;
-    if (
-      checkoutPayment?.status === "succeeded" &&
-      checkoutPayment.invoiceId &&
-      workspace.metronomeCustomerId
-    ) {
-      invoiceUrl =
-        (await fetchStripeHostedInvoiceUrl({
-          metronomeCustomerId: workspace.metronomeCustomerId,
-          metronomeInvoiceId: checkoutPayment.invoiceId,
-        })) ?? undefined;
-    }
-
-    return ctx.json({ checkoutPayment, invoiceUrl });
+    return ctx.json(await getBusinessActivationStatus(workspace, contractId));
   }
 );
 

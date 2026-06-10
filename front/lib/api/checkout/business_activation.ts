@@ -65,6 +65,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   type CheckoutBillingPeriod,
   CheckoutBillingPeriodSchema,
@@ -704,6 +705,36 @@ export type GetBusinessActivationResponseBody = {
   checkoutPayment: CheckoutPayment | null;
   invoiceUrl?: string;
 };
+
+/**
+ * Returns the checkout payment status and, when payment has succeeded, the
+ * Stripe hosted invoice URL. Coordinates the two sequential external-service
+ * calls so the GET handler stays thin.
+ */
+export async function getBusinessActivationStatus(
+  workspace: LightWorkspaceType,
+  contractId: string
+): Promise<GetBusinessActivationResponseBody> {
+  const checkoutPayment = await getCheckoutPaymentStatus({
+    workspaceId: workspace.sId,
+    contractId,
+  });
+
+  let invoiceUrl: string | undefined;
+  if (
+    checkoutPayment?.status === "succeeded" &&
+    checkoutPayment.invoiceId &&
+    workspace.metronomeCustomerId
+  ) {
+    invoiceUrl =
+      (await fetchStripeHostedInvoiceUrl({
+        metronomeCustomerId: workspace.metronomeCustomerId,
+        metronomeInvoiceId: checkoutPayment.invoiceId,
+      })) ?? undefined;
+  }
+
+  return { checkoutPayment, invoiceUrl };
+}
 
 /**
  * Validate the completed Stripe setup session and kick off a payment-gated
