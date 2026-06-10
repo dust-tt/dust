@@ -115,8 +115,7 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
           {/* Temporary measure to preserve title existence on smaller screens.
            * Page has no title, prepend empty AppLayoutTitle. */}
           {!hasTitleBar && (
-            <div className="flex min-h-0 flex-1 flex-col h-panel">
-              <ScrollArea>
+            <div className="flex min-h-0 flex-1 flex-col h-panel overflow-y-auto">
                 <AppLayoutTitle />
                 {contentWidth ? (
                   <div
@@ -138,7 +137,6 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
                 ) : (
                   children
                 )}
-              </ScrollArea>
             </div>
           )}
           {hasTitleBar && (
