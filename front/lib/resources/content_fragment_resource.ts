@@ -13,10 +13,11 @@ import config from "@app/lib/api/config";
 import { SCOPED_PREFIX_CONVERSATION } from "@app/lib/api/file_system";
 import { getConversationFilesBasePath } from "@app/lib/api/files/mount_path";
 import {
-  PASTED_CONTENT_MAX_CHARACTERS,
+  isPastedContentOverInlineLimit,
   TRUNCATED_SNIPPET_SIZE,
   TRUNCATED_SUFFIX,
-  TRUNCATED_TEXT_SIZE,
+  truncateLegacyPastedSnippet,
+  truncateSnippet,
 } from "@app/lib/api/files/snippet";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -1165,10 +1166,8 @@ export async function getContentFragmentFromAttachmentFile(
 
     // Check if this is a pasted content (large paste) - use simplified XML format
     if (isPastedFile(attachment.contentType)) {
-      const truncated = content.length > PASTED_CONTENT_MAX_CHARACTERS;
-      const truncatedContent = truncated
-        ? content.slice(0, TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX
-        : content;
+      const truncated = isPastedContentOverInlineLimit(content);
+      const truncatedContent = truncated ? truncateSnippet(content) : content;
 
       return new Ok({
         role: "content_fragment",
@@ -1261,10 +1260,11 @@ export async function renderLightContentFragmentForModel(
     };
   }
 
-  const attachment = getAttachmentFromContentFragment(message);
-  if (!attachment) {
+  const rawAttachment = getAttachmentFromContentFragment(message);
+  if (!rawAttachment) {
     return null;
   }
+  const attachment = truncateLegacyPastedSnippet(rawAttachment);
 
   // Get fileId directly from the message based on content fragment type.
   const fileStringId =

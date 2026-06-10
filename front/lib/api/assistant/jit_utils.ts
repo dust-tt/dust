@@ -8,6 +8,7 @@ import {
   getAttachmentFromContentFragment,
   makeFileAttachment,
 } from "@app/lib/api/assistant/conversation/attachments";
+import { truncateLegacyPastedSnippet } from "@app/lib/api/files/snippet";
 import type { Authenticator } from "@app/lib/auth";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
@@ -35,7 +36,10 @@ export async function listAttachments(
 
       const attachment = getAttachmentFromContentFragment(m);
       if (attachment) {
-        attachments.set(m.contentFragmentId, attachment);
+        attachments.set(
+          m.contentFragmentId,
+          truncateLegacyPastedSnippet(attachment)
+        );
       }
     } else if (isAgentMessageType(m)) {
       const generatedFiles = m.actions.flatMap((a) => a.generatedFiles);
