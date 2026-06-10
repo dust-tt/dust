@@ -142,7 +142,7 @@ export async function resolveUpgradeRequest(
   }
 
   const resolvedByUser = auth.getNonNullableUser();
-  const result = await request.resolve(auth, { status, resolvedByUser });
+  const result = await request.markAsResolved(auth, { status, resolvedByUser });
   if (result.isErr()) {
     return new Err(
       new UpgradeRequestError("request_not_pending", result.error.message)
