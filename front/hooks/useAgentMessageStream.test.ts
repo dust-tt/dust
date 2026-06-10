@@ -41,6 +41,13 @@ vi.mock("@app/hooks/conversations", () => ({
   }),
 }));
 
+const mockClientFetch = vi.fn();
+
+vi.mock("@app/lib/egress/client", () => ({
+  clientFetch: (...args: unknown[]) => mockClientFetch(...args),
+  clientEventSource: vi.fn(),
+}));
+
 vi.mock("@virtuoso.dev/message-list", () => ({
   useVirtuosoMethods: () => mockUseVirtuosoMethods(),
 }));
@@ -140,6 +147,7 @@ beforeEach(() => {
   mockUseEventSource.mockReset();
   mockMutateContextUsage.mockReset();
   mockUseVirtuosoMethods.mockReset();
+  mockClientFetch.mockReset();
 });
 
 afterEach(() => {
@@ -937,5 +945,186 @@ describe("useAgentMessageStream", () => {
         id: "cot-0-0",
       },
     ]);
+  });
+});
+
+describe("useAgentMessageStream stale-stream watchdog", () => {
+  function setupHook() {
+    let currentMessage = makeInitialMessageStreamState(
+      makeLightAgentMessage({ content: null, chainOfThought: null })
+    );
+    let onEventCallback: ((event: string) => void) | null = null;
+
+    mockUseVirtuosoMethods.mockReturnValue(
+      makeVirtuosoMethodsMock(
+        (
+          updater: (message: typeof currentMessage) => typeof currentMessage
+        ) => {
+          currentMessage = updater(currentMessage);
+          return [currentMessage];
+        }
+      )
+    );
+
+    mockUseEventSource.mockImplementation(
+      (
+        _buildURL: unknown,
+        callback: (event: string) => void
+      ): { isError: null } => {
+        onEventCallback = callback;
+        return { isError: null };
+      }
+    );
+
+    renderHook(() =>
+      useAgentMessageStream({
+        agentMessage: currentMessage,
+        conversationId: "conv_123",
+        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+        owner: mockOwner,
+        streamId: "stream_123",
+      })
+    );
+
+    return {
+      getMessage: () => currentMessage,
+      sendEvent: (event: object) => onEventCallback!(JSON.stringify(event)),
+    };
+  }
+
+  it("reconciles a silently finished message with the persisted state", async () => {
+    vi.useFakeTimers();
+    const { getMessage } = setupHook();
+
+    mockClientFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        message: makeLightAgentMessage({
+          status: "succeeded",
+          content: "Persisted final answer.",
+          chainOfThought: "Persisted final thinking.",
+          activitySteps: [
+            {
+              type: "thinking",
+              content: "Persisted final thinking.",
+              id: "cot-0-0",
+            },
+          ],
+        }),
+      }),
+    });
+
+    // No event ever arrives. The tick at 60s passes the staleness threshold
+    // and reconciles with the persisted (terminal) message.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+
+    expect(mockClientFetch).toHaveBeenCalledWith(
+      "/api/w/w_test/assistant/conversations/conv_123/messages/msg_123?viewType=light"
+    );
+    const message = getMessage();
+    expect(message.status).toBe("succeeded");
+    expect(message.content).toBe("Persisted final answer.");
+    expect(message.streaming.agentState).toBe("done");
+    expect(message.streaming.inlineActivitySteps).toEqual([
+      {
+        type: "thinking",
+        content: "Persisted final thinking.",
+        id: "cot-0-0",
+      },
+    ]);
+  });
+
+  it("does not reconcile while events are still flowing", async () => {
+    vi.useFakeTimers();
+    const { sendEvent } = setupHook();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(45_000);
+    });
+    act(() => {
+      sendEvent({
+        eventId: "1-0",
+        data: {
+          type: "generation_tokens",
+          created: Date.now(),
+          configurationId: "agent_123",
+          messageId: "msg_123",
+          text: "Hello",
+          classification: "tokens",
+        },
+      });
+    });
+    // Ticks at 60s and 90s are both within the staleness threshold of the
+    // event received at 45s.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(45_000);
+    });
+
+    expect(mockClientFetch).not.toHaveBeenCalled();
+  });
+
+  it("leaves the stream alone when the persisted message is still running", async () => {
+    vi.useFakeTimers();
+    const { getMessage } = setupHook();
+
+    mockClientFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        message: makeLightAgentMessage({ status: "created" }),
+      }),
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+
+    expect(mockClientFetch).toHaveBeenCalledTimes(1);
+    const message = getMessage();
+    expect(message.status).toBe("created");
+    expect(message.streaming.agentState).toBe("thinking");
+
+    // The watchdog keeps checking on subsequent ticks.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    expect(mockClientFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not reconcile after a terminal event was processed", async () => {
+    vi.useFakeTimers();
+    const { sendEvent, getMessage } = setupHook();
+
+    act(() => {
+      sendEvent({
+        eventId: "1-0",
+        data: {
+          type: "agent_message_success",
+          created: Date.now(),
+          configurationId: "agent_123",
+          messageId: "msg_123",
+          message: {
+            ...makeLightAgentMessage({
+              status: "succeeded",
+              content: "Live final answer.",
+            }),
+            actions: [],
+          },
+          contentView: {
+            content: "Live final answer.",
+            chainOfThought: null,
+            activitySteps: [],
+          },
+        },
+      });
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(180_000);
+    });
+
+    expect(mockClientFetch).not.toHaveBeenCalled();
+    expect(getMessage().streaming.agentState).toBe("done");
   });
 });
