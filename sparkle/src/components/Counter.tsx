@@ -9,7 +9,7 @@ const counterVariants = cva(
   {
     variants: {
       size: {
-        xs: "s-h-4 s-min-w-[16px] s-px-0.5 s-heading-xs",
+        xs: "s-h-4 s-min-w-[16px] s-px-0.5 s-text-sm",
         sm: "s-h-5 s-min-w-[20px] s-px-1 s-heading-xs",
         md: "s-h-6 s-min-w-[24px] s-px-1.5 s-heading-sm",
       },
