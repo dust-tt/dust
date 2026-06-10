@@ -140,16 +140,9 @@ const NavigationListItem = React.forwardRef<
               disabled && "s-pointer-events-none s-cursor-default s-opacity-50"
             )}
           >
-            {icon && !disabled && (
+            {(icon || disabled) && (
               <Icon
-                visual={icon}
-                size="xs"
-                className="s-m-0.5 s-text-muted-foreground dark:s-text-muted-foreground-night"
-              />
-            )}
-            {disabled && (
-              <Icon
-                visual={Lock01}
+                visual={disabled ? Lock01 : icon}
                 size="xs"
                 className="s-m-0.5 s-text-muted-foreground dark:s-text-muted-foreground-night"
               />
