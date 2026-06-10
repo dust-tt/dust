@@ -225,6 +225,7 @@ export async function provisionMetronomeContract({
   planCode,
   additionalCustomFields,
   enableSeatSync = true,
+  fromContractId,
 }: {
   metronomeCustomerId: string;
   workspace: LightWorkspaceType;
@@ -236,6 +237,7 @@ export async function provisionMetronomeContract({
   planCode: string;
   additionalCustomFields?: Record<string, string>;
   enableSeatSync?: boolean;
+  fromContractId?: string;
 }): Promise<Result<{ metronomeContractId: string }, Error>> {
   const alignedStart = new Date(
     swapAt === "current-hour"
@@ -263,6 +265,7 @@ export async function provisionMetronomeContract({
     enableStripeBilling,
     planCode,
     additionalCustomFields,
+    fromContractId,
   });
   if (contractResult.isErr()) {
     return new Err(contractResult.error);
@@ -282,6 +285,12 @@ export async function provisionMetronomeContract({
   const newStartMs = alignedStart.getTime();
   for (const existing of contractsResult.value) {
     if (existing.id === metronomeContractId) {
+      continue;
+    }
+    // The RENEWAL transition already ends the prior contract at `alignedStart`;
+    // calling updateEndDate on it again is redundant and Metronome can reject
+    // editing a contract that has been transitioned from.
+    if (existing.id === fromContractId) {
       continue;
     }
     if (existing.archived_at) {
