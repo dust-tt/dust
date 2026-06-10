@@ -1,8 +1,11 @@
 import { PhoneNumberCodeInput } from "@app/components/trial/PhoneNumberCodeInput";
 import { PhoneNumberInput } from "@app/components/trial/PhoneNumberInput";
 import config from "@app/lib/api/config";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { CP_FREE_PLAN_CREDITS } from "@app/lib/client/subscription";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import {
+  CP_FREE_PLAN_CREDITS,
+  useIsMetronomeCheckout,
+} from "@app/lib/client/subscription";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   CODE_LENGTH,
@@ -11,7 +14,6 @@ import {
   RESEND_COOLDOWN_SECONDS,
 } from "@app/lib/plans/trial/phone";
 import { useAppRouter } from "@app/lib/platform";
-import { useKillSwitches } from "@app/lib/swr/kill";
 import { useAuthContext, useVerifyData } from "@app/lib/swr/workspaces";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
@@ -32,8 +34,6 @@ type Step = "captcha" | "phone" | "code" | "done";
 export function VerifyPage() {
   const { workspace } = useAuth();
   const router = useAppRouter();
-  const { hasFeature } = useFeatureFlags();
-  const { killSwitches } = useKillSwitches();
   const { mutateAuthContext } = useAuthContext({
     workspaceId: workspace.sId,
   });
@@ -41,11 +41,7 @@ export function VerifyPage() {
   // Same gate as the one that routes to /select-subscription (see
   // `isMetronomeCheckoutEnabled` and SubscribePage): the credit-priced checkout
   // flow gets the new phone verification copy and a welcome screen at the end.
-  const isMetronomeEnabled =
-    hasFeature("metronome_billing") ||
-    !killSwitches?.includes("global_disable_metronome_billing");
-  const isMetronomeCheckout =
-    isMetronomeEnabled && hasFeature("metronome_cp_checkout");
+  const isMetronomeCheckout = useIsMetronomeCheckout();
 
   const {
     verifyData,
