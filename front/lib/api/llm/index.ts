@@ -21,9 +21,11 @@ import { XaiLLM } from "@app/lib/api/llm/clients/xai";
 import { isXaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
+import { config as regionConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
+import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
 
@@ -135,9 +137,12 @@ export async function getLLM(
 
   const featureFlags = await getFeatureFlags(auth);
 
+  const plan = auth.getNonNullablePlan();
   const useVertexPrerequisite =
-    featureFlags.includes("use_vertex_for_supported_models") &&
-    !auth.getNonNullablePlan().isByok;
+    !plan.isByok &&
+    regionConfig.getCurrentRegion() === "europe-west1" &&
+    (isCreditPricedPlanPrefix(plan.code) ||
+      featureFlags.includes("use_vertex_for_supported_models"));
 
   if (isGoogleAIStudioWhitelistedModelId(modelId)) {
     const useVertex =
