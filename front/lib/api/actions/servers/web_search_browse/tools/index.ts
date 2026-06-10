@@ -20,6 +20,10 @@ import { WEB_SEARCH_BROWSE_TOOLS_METADATA } from "@app/lib/api/actions/servers/w
 import { getRefs } from "@app/lib/api/assistant/citations";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { WorkspaceMetadata } from "@app/lib/api/workspace";
+import {
+  isWebBrowseProvider,
+  isWebSearchProvider,
+} from "@app/lib/api/workspace";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -56,10 +60,22 @@ async function handleWebsearch(
   const { websearchResultCount, citationsOffset } =
     agentLoopRunContext.stepContext;
 
-  const { webSearchProvider } =
-    (extra.auth.getNonNullableWorkspace().metadata as WorkspaceMetadata) ?? {};
+  const rawSearchProvider = (
+    (extra.auth.getNonNullableWorkspace().metadata as WorkspaceMetadata) ?? {}
+  ).webSearchProvider;
+  if (
+    rawSearchProvider !== undefined &&
+    !isWebSearchProvider(rawSearchProvider)
+  ) {
+    logger.warn(
+      { rawSearchProvider },
+      "Invalid webSearchProvider in workspace metadata"
+    );
+  }
   const websearchRes = await webSearch({
-    provider: webSearchProvider ?? "firecrawl",
+    provider: isWebSearchProvider(rawSearchProvider)
+      ? rawSearchProvider
+      : "firecrawl",
     query,
     num: websearchResultCount,
   });
@@ -122,10 +138,23 @@ async function handleWebbrowser(
     "global_disable_firecrawl"
   );
 
-  const { webBrowseProvider } =
-    (extra.auth.getNonNullableWorkspace().metadata as WorkspaceMetadata) ?? {};
-  const browsingProvider =
-    webBrowseProvider ?? (isFirecrawlDisabled ? "spider" : "firecrawl");
+  const rawBrowseProvider = (
+    (extra.auth.getNonNullableWorkspace().metadata as WorkspaceMetadata) ?? {}
+  ).webBrowseProvider;
+  if (
+    rawBrowseProvider !== undefined &&
+    !isWebBrowseProvider(rawBrowseProvider)
+  ) {
+    logger.warn(
+      { rawBrowseProvider },
+      "Invalid webBrowseProvider in workspace metadata"
+    );
+  }
+  const browsingProvider = isWebBrowseProvider(rawBrowseProvider)
+    ? rawBrowseProvider
+    : isFirecrawlDisabled
+      ? "spider"
+      : "firecrawl";
 
   const results = await browseUrls(urls, 8, "markdown", {
     screenshotMode,
