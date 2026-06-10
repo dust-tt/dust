@@ -176,7 +176,7 @@ function* handleMessageStreamEvent(
       // updated. Log and ignore rather than crashing the stream with a throw.
       // Only log the event type to avoid dumping prompt/response content.
       logger.warn(
-        { eventType },
+        { eventType, ...metadata },
         "Unhandled Anthropic message stream event type, ignoring."
       );
       assertNeverAndIgnore(messageStreamEvent);
@@ -244,7 +244,7 @@ function* handleContentBlockStart(
       // New content block types may appear (e.g. via a new beta) before the
       // SDK types and this client are updated. Ignore rather than crash.
       logger.warn(
-        { blockType },
+        { blockType, ...metadata },
         "Unhandled Anthropic content block type, ignoring."
       );
       assertNeverAndIgnore(blockType);
@@ -289,7 +289,7 @@ function* handleContentBlockDelta(
       // New delta types may appear (e.g. via a new beta) before the SDK types
       // and this client are updated. Ignore rather than crash.
       logger.warn(
-        { deltaType },
+        { deltaType, ...metadata },
         "Unhandled Anthropic content block delta type, ignoring."
       );
       assertNeverAndIgnore(event.delta);
