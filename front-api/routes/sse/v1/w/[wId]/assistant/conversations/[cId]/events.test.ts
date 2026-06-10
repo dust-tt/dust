@@ -183,16 +183,30 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/events", () => {
   it("propagates the client disconnect to the event source and stops", async () => {
     const { workspace, key, conversation } = await setupConversation();
     const abortObserved = vi.fn();
+    let resolveWaitingForAbort: (() => void) | undefined;
+    const waitingForAbort = new Promise<void>((resolve) => {
+      resolveWaitingForAbort = resolve;
+    });
 
     vi.mocked(getConversationEvents).mockImplementation(async function* ({
       signal,
     }) {
       yield titleEvent("first");
+      resolveWaitingForAbort?.();
       await new Promise<void>((resolve) => {
-        signal.addEventListener("abort", () => {
+        if (signal.aborted) {
           abortObserved();
           resolve();
-        });
+          return;
+        }
+        signal.addEventListener(
+          "abort",
+          () => {
+            abortObserved();
+            resolve();
+          },
+          { once: true }
+        );
       });
       yield titleEvent("never-sent");
     });
@@ -207,8 +221,20 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/events", () => {
     }
 
     const reader = response.body.getReader();
-    const first = await reader.read();
-    expect(new TextDecoder().decode(first.value)).toContain("first");
+    const decoder = new TextDecoder();
+    let received = "";
+    while (!received.includes("first")) {
+      const chunk = await reader.read();
+      if (chunk.done) {
+        break;
+      }
+      received += decoder.decode(chunk.value);
+    }
+    expect(received).toContain("first");
+
+    // Wait until the event source is blocked on the abort signal before
+    // simulating a client disconnect.
+    await waitingForAbort;
 
     // Cancelling the reader simulates a client disconnect, which Hono surfaces
     // through `s.onAbort` -> the AbortController passed to the event source.

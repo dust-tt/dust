@@ -1,7 +1,6 @@
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { PostConversationsResponseBody } from "@app/lib/api/assistant/conversation/types";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
 import { useFetcher } from "@app/lib/swr/swr";
@@ -40,7 +39,6 @@ export function useCreateConversationWithMessage({
 }) {
   const { fetcher } = useFetcher();
   const contextOrigin = useClientType();
-  const { hasFeature } = useFeatureFlags();
   const sendNotification = useSendNotification();
   const { setPendingFirstMessage, clearPendingFirstMessage } =
     useContext(InputBarContext);
@@ -96,15 +94,7 @@ export function useCreateConversationWithMessage({
       } = messageData;
       const origin = messageOrigin ?? contextOrigin;
 
-      // `selectedMCPServerViewIds` (conversation-level tools) are only wired up by
-      // the conversations endpoint when an initial message is posted (it calls
-      // `upsertMCPServerViews` inside `if (message)`), and the messages endpoint drops
-      // them. Until that's wired through, deferring with tools would silently lose
-      // them, so we keep the combined call in that case.
-      const canDefer =
-        deferMessage && hasFeature("deferred_conversation_creation");
-
-      if (canDefer) {
+      if (deferMessage) {
         const createBody: z.infer<
           typeof InternalPostConversationsRequestBodySchema
         > = {
@@ -239,7 +229,6 @@ export function useCreateConversationWithMessage({
       user,
       fetcher,
       contextOrigin,
-      hasFeature,
       sendNotification,
       setPendingFirstMessage,
       clearPendingFirstMessage,

@@ -202,6 +202,8 @@ runs:
             "${LATEST_TAGS[@]}" \
             --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
             --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
+            --build-arg DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust \
+            --build-arg DD_GIT_COMMIT_SHA=${{ inputs.commit_sha_long }} \
             ${build_args[@]} \
             --push \
             .
@@ -225,6 +227,8 @@ runs:
             "${LATEST_TAGS_WORKERS[@]}" \
             --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
             --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
+            --build-arg DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust \
+            --build-arg DD_GIT_COMMIT_SHA=${{ inputs.commit_sha_long }} \
             ${build_args[@]} \
             --push \
             .
@@ -250,6 +254,8 @@ runs:
             "${LATEST_TAGS_API[@]}" \
             --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
             --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
+            --build-arg DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust \
+            --build-arg DD_GIT_COMMIT_SHA=${{ inputs.commit_sha_long }} \
             ${build_args[@]} \
             --push \
             .
@@ -266,6 +272,8 @@ runs:
             "${LATEST_TAGS[@]}" \
             --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
             --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
+            --build-arg DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust \
+            --build-arg DD_GIT_COMMIT_SHA=${{ inputs.commit_sha_long }} \
             ${build_args[@]} \
             --push \
             .

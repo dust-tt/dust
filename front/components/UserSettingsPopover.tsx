@@ -6,6 +6,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { formatCredits } from "@app/lib/client/credits";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import {
   useAwuPoolSummary,
@@ -111,10 +112,6 @@ function SectionContent({
 }
 
 // ─── Usage ────────────────────────────────────────────────────────────────────
-
-function formatCredits(credits: number): string {
-  return Math.round(credits).toLocaleString("en-US");
-}
 
 function ordinalDay(day: number): string {
   const suffix =

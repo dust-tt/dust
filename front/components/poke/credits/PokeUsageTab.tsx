@@ -7,6 +7,7 @@ import type {
   PokeProgrammaticAlerts,
   PokeStripeSubscriptionWire,
 } from "@app/lib/api/poke/workspace_info";
+import { formatCredits } from "@app/lib/client/credits";
 import type { DefaultMetronomeAlerts } from "@app/lib/metronome/alerts/default_alerts";
 import type {
   MetronomeAlertRef,
@@ -40,10 +41,6 @@ interface PokeUsageTabProps {
   programmaticAlerts: PokeProgrammaticAlerts;
   usageCapAlert: MetronomeAlertRef | null;
   defaultAlerts: DefaultMetronomeAlerts;
-}
-
-function formatCredits(credits: number): string {
-  return Math.round(credits).toLocaleString("en-US");
 }
 
 // Maps a Metronome alert's evaluation status to a Chip color and readable

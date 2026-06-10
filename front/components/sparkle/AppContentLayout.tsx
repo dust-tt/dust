@@ -12,7 +12,7 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import { isAdmin } from "@app/types/user";
-import { cn, ScrollArea } from "@dust-tt/sparkle";
+import { cn } from "@dust-tt/sparkle";
 import type React from "react";
 import { lazy, Suspense } from "react";
 
@@ -130,30 +130,28 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
             {/* Temporary measure to preserve title existence on smaller screens.
              * Page has no title, prepend empty AppLayoutTitle. */}
             {!hasTitleBar && (
-              <div className="flex min-h-0 flex-1 flex-col h-panel">
-                <ScrollArea>
-                  <AppLayoutTitle />
-                  {contentWidth ? (
+              <div className="flex min-h-0 flex-1 flex-col h-panel overflow-y-auto">
+                <AppLayoutTitle />
+                {contentWidth ? (
+                  <div
+                    className={cn(
+                      "flex h-full w-full flex-col items-center overflow-y-auto",
+                      contentWidth === "centered" ? "pt-4" : "pt-8",
+                      contentClassName
+                    )}
+                  >
                     <div
                       className={cn(
-                        "flex h-full w-full flex-col items-center overflow-y-auto",
-                        contentWidth === "centered" ? "pt-4" : "pt-8",
-                        contentClassName
+                        "flex w-full grow flex-col px-4 sm:px-8",
+                        contentWidth === "centered" && "max-w-4xl"
                       )}
                     >
-                      <div
-                        className={cn(
-                          "flex w-full grow flex-col px-4 sm:px-8",
-                          contentWidth === "centered" && "max-w-4xl"
-                        )}
-                      >
-                        {children}
-                      </div>
+                      {children}
                     </div>
-                  ) : (
-                    children
-                  )}
-                </ScrollArea>
+                  </div>
+                ) : (
+                  children
+                )}
               </div>
             )}
             {hasTitleBar && (

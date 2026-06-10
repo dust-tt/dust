@@ -46,6 +46,7 @@ export type GetWorkspaceUsageStatusResponseBody = {
   awuStatus: "normal" | "warned" | "blocked";
   poolCreditState: WorkspacePoolCreditState;
   programmaticCreditStatus: ProgrammaticCreditStatus;
+  balanceThresholdReached: boolean;
 };
 
 const REDIS_ORIGIN = "metronome_limit" as const;
@@ -64,6 +65,10 @@ function buildWorkspaceProgrammaticCreditStatusKey(
   return `metronome:programmatic_credit_status:${workspaceId}`;
 }
 
+function buildWorkspaceBalanceThresholdReachedKey(workspaceId: string): string {
+  return `metronome:balance_threshold_warning:${workspaceId}`;
+}
+
 async function setFlag(key: string, value: string): Promise<void> {
   await runOnRedis({ origin: REDIS_ORIGIN }, async (client) => {
     await client.set(key, value);
@@ -79,6 +84,34 @@ export async function isUserAwuWarned(
 ): Promise<boolean> {
   const state = await getUserCreditState(workspaceId, userId);
   return state === "on_pool_low_balance" || state === "user_seat_low_balance";
+}
+
+// Workspace credit-balance threshold reached (admin-configured early warning).
+// Unlike the other warnings this cannot be derived from a credit state: the
+// threshold is an arbitrary amount the admin picks, not a system pool state, so
+// it gets its own flag — set by the webhook when the workspace's own
+// balance-threshold alert fires and cleared when the balance recovers. No DB
+// fallback: a cold-cache miss reads as "not reached" until the next webhook.
+
+export async function setWorkspaceBalanceThresholdReached(
+  workspaceId: string
+): Promise<void> {
+  await setFlag(buildWorkspaceBalanceThresholdReachedKey(workspaceId), "1");
+}
+
+export async function clearWorkspaceBalanceThresholdReached(
+  workspaceId: string
+): Promise<void> {
+  await setFlag(buildWorkspaceBalanceThresholdReachedKey(workspaceId), "0");
+}
+
+export async function isWorkspaceBalanceThresholdReached(
+  workspaceId: string
+): Promise<boolean> {
+  const val = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
+    client.get(buildWorkspaceBalanceThresholdReachedKey(workspaceId))
+  );
+  return val === "1";
 }
 
 // Unified read

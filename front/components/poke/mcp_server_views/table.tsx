@@ -2,13 +2,18 @@ import { makeColumnsForMCPServerViews } from "@app/components/poke/mcp_server_vi
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { PokeMCPServerViewListItemType } from "@app/lib/api/poke/mcp_server_views";
-import { usePokeMCPServerViews } from "@app/poke/swr/mcp_server_views";
+import { useAppRouter } from "@app/lib/platform";
+import {
+  usePokeMCPServerViews,
+  usePokeSystemSpaceMCPServerViews,
+} from "@app/poke/swr/mcp_server_views";
 import type { LightWorkspaceType } from "@app/types/user";
 
 interface MCPServerViewsDataTableProps {
   owner: LightWorkspaceType;
   spaceId?: string;
   loadOnInit?: boolean;
+  systemSpaceOnly?: boolean;
 }
 
 function prepareMCPServerViewsForDisplay(
@@ -37,18 +42,28 @@ export function MCPServerViewsDataTable({
   owner,
   spaceId,
   loadOnInit,
+  systemSpaceOnly = false,
 }: MCPServerViewsDataTableProps) {
+  const router = useAppRouter();
+
   return (
     <PokeDataTableConditionalFetch
-      header="MCP Server Views"
+      header={systemSpaceOnly ? "MCP Servers" : "MCP Server Views"}
       owner={owner}
       loadOnInit={loadOnInit}
-      useSWRHook={usePokeMCPServerViews}
+      useSWRHook={
+        systemSpaceOnly
+          ? usePokeSystemSpaceMCPServerViews
+          : usePokeMCPServerViews
+      }
     >
       {(data) => (
         <PokeDataTable
-          columns={makeColumnsForMCPServerViews()}
+          columns={makeColumnsForMCPServerViews({
+            hideSpaceColumn: systemSpaceOnly,
+          })}
           data={prepareMCPServerViewsForDisplay(owner, data, spaceId)}
+          onRowClick={(row) => void router.push(row.mcpServerViewLink)}
         />
       )}
     </PokeDataTableConditionalFetch>

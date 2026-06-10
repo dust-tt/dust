@@ -80,14 +80,16 @@ export function PaymentMethodRow({
   onRestart,
 }: PaymentMethodRowProps) {
   return (
-    <div className="flex w-full items-center justify-between rounded-lg border border-separator bg-muted px-4 py-3">
-      <div className="flex items-center gap-3">
-        {paymentMethod.type === "card" ? (
-          <CardBrandIcon brand={paymentMethod.brand} width={38} height={24} />
-        ) : (
-          <GenericFlatIcon width={38} height={24} />
-        )}
-        <span className="text-sm font-medium">
+    <div className="flex w-full items-center justify-between rounded-xl bg-gray-50 p-3">
+      <div className="flex items-center gap-2">
+        <div className="overflow-hidden rounded-[4px] border border-gray-100">
+          {paymentMethod.type === "card" ? (
+            <CardBrandIcon brand={paymentMethod.brand} width={34} height={24} />
+          ) : (
+            <GenericFlatIcon width={34} height={24} />
+          )}
+        </div>
+        <span className="text-sm font-semibold">
           {paymentMethod.type === "card"
             ? `${formatBrandName(paymentMethod.brand)} •••• ${paymentMethod.last4}`
             : `IBAN •••• ${paymentMethod.last4}`}

@@ -31,14 +31,13 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
   Button,
   CheckCircle,
+  Chip,
   DustLogoSquare,
   Icon,
   Input,
-  Lock01,
   Spinner,
   Tag01,
   XCircle,
-  XClose,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -495,16 +494,15 @@ export function CheckoutPage() {
   }
 
   return (
-    <main className="flex min-h-screen">
+    <main className="flex h-screen overflow-hidden">
       {/* Left pane: order summary + coupon */}
-      <div className="flex w-1/2 flex-col gap-14 p-24">
+      <div className="flex w-1/2 flex-col gap-14 overflow-y-auto bg-gray-50 p-24">
         <div>
           <Icon visual={DustLogoSquare} size="lg" />
         </div>
 
         <div className="flex flex-col gap-11">
           <div className="flex flex-col">
-            <span className="text-base text-muted-foreground">Your plan</span>
             <h1 className="text-5xl font-semibold text-foreground">
               {planDisplayName}
             </h1>
@@ -517,9 +515,7 @@ export function CheckoutPage() {
 
           <div className="flex flex-col text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">
-                Price per seat (excl. taxes)
-              </span>
+              <span className="text-muted-foreground">Price per seat</span>
               <span>
                 {getPriceAsString({
                   currency,
@@ -535,9 +531,9 @@ export function CheckoutPage() {
                 {showActualTax ? preparePayment.seatCount : seatCountForSummary}
               </span>
             </div>
-            <div className="mt-6 flex justify-between border-t border-separator pt-3 font-medium">
-              <span>Subtotal (excl. taxes)</span>
-              <span>
+            <div className="mt-6 flex justify-between border-t border-separator pt-3">
+              <span className="text-lg">Subtotal</span>
+              <span className="text-base">
                 {getPriceAsString({
                   currency,
                   priceInCents: showActualTax
@@ -547,114 +543,126 @@ export function CheckoutPage() {
               </span>
             </div>
 
-            {!appliedCoupon &&
-              phase === "card_capture" &&
-              (showCouponInput ? (
-                <div className="mt-4 flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Enter promotion code"
-                      {...registerCoupon("couponCode")}
-                      disabled={isApplyingCoupon}
-                      className="flex-1"
-                    />
-                    <Button
-                      label={isApplyingCoupon ? "Applying…" : "Apply"}
-                      disabled={isApplyingCoupon || !couponCodeValue.trim()}
-                      onClick={handleApplyCoupon}
-                      size="sm"
-                      variant="outline"
-                    />
-                  </div>
-                  {couponErrors.couponCode && (
-                    <p className="text-sm text-warning-500">
-                      {couponErrors.couponCode.message}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="mt-4 flex flex-col gap-2">
-                  <Button
-                    label="Add promotion code"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowCouponInput(true)}
-                    className="self-start bg-muted"
-                  />
-                </div>
-              ))}
-
-            {appliedCoupon && (
-              <div className="mt-4 flex flex-col gap-1">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 rounded-md bg-muted px-2 py-1 text-sm text-muted-foreground">
-                    <Icon visual={Tag01} size="xs" />
-                    <span className="font-medium">{appliedCoupon.code}</span>
-                    {phase === "card_capture" && (
-                      <button
-                        type="button"
-                        onClick={handleRemoveCoupon}
-                        className="ml-0.5 hover:text-foreground"
-                      >
-                        <Icon visual={XClose} size="xs" />
-                      </button>
+            <div
+              className={
+                phase === "card_capture" || appliedCoupon ? "min-h-20" : ""
+              }
+            >
+              {!appliedCoupon &&
+                phase === "card_capture" &&
+                (showCouponInput ? (
+                  <div className="my-4 flex flex-col gap-2">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Enter promotion code"
+                        {...registerCoupon("couponCode")}
+                        disabled={isApplyingCoupon}
+                        className="flex-1"
+                      />
+                      <Button
+                        label={isApplyingCoupon ? "Applying…" : "Apply"}
+                        disabled={isApplyingCoupon || !couponCodeValue.trim()}
+                        onClick={handleApplyCoupon}
+                        size="sm"
+                        variant="outline"
+                      />
+                    </div>
+                    {couponErrors.couponCode && (
+                      <p className="text-sm text-warning-500">
+                        {couponErrors.couponCode.message}
+                      </p>
                     )}
                   </div>
-                  <span className="text-sm text-success-500">
-                    −
-                    {getPriceAsString({
-                      currency,
-                      priceInCents: couponDiscountCents,
-                    })}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {getPriceAsString({
-                    currency,
-                    priceInCents: appliedCoupon.amount * 100,
-                  })}
-                  {appliedCoupon.durationMonths !== null
-                    ? ` for ${appliedCoupon.durationMonths} month${appliedCoupon.durationMonths > 1 ? "s" : ""}`
-                    : " valid once"}
-                </p>
-              </div>
-            )}
+                ) : (
+                  <div className="my-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowCouponInput(true)}
+                      className="text-sm font-semibold underline"
+                    >
+                      Add promotion code
+                    </button>
+                  </div>
+                ))}
 
-            {showActualTax ? (
-              <>
-                <div className="mt-6 flex justify-between border-t border-separator pt-3 text-sm text-muted-foreground">
-                  <span>Tax</span>
-                  <span>
+              {appliedCoupon && (
+                <div className="my-4 flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <Chip
+                      size="xs"
+                      color="primary"
+                      icon={Tag01}
+                      label={appliedCoupon.code}
+                      onRemove={
+                        phase === "card_capture"
+                          ? handleRemoveCoupon
+                          : undefined
+                      }
+                    />
+                    <span className="text-sm text-success-500">
+                      −
+                      {getPriceAsString({
+                        currency,
+                        priceInCents: couponDiscountCents,
+                      })}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
                     {getPriceAsString({
                       currency,
-                      priceInCents: preparePayment.taxCents,
+                      priceInCents: appliedCoupon.amount * 100,
                     })}
+                    {appliedCoupon.durationMonths !== null
+                      ? ` valid for ${appliedCoupon.durationMonths} month${appliedCoupon.durationMonths > 1 ? "s" : ""}`
+                      : " valid for 1 month"}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {phase !== "card_capture" ? (
+              <>
+                <div className="mt-3 flex justify-between">
+                  <span className="text-lg">Taxes</span>
+                  <span className="text-base">
+                    {showActualTax
+                      ? getPriceAsString({
+                          currency,
+                          priceInCents: preparePayment.taxCents,
+                        })
+                      : "—"}
                   </span>
                 </div>
-                <div className="mt-3 flex justify-between text-base font-semibold">
-                  <span>Total due today</span>
-                  <span>
-                    {getPriceAsString({
-                      currency,
-                      priceInCents: preparePayment.totalCents,
-                    })}
+                <div className="mt-3 flex justify-between border-t border-separator pt-3">
+                  <span className="text-lg font-semibold">
+                    Total due with taxes
+                  </span>
+                  <span className="text-base font-semibold">
+                    {showActualTax
+                      ? getPriceAsString({
+                          currency,
+                          priceInCents: preparePayment.totalCents,
+                        })
+                      : "—"}
                   </span>
                 </div>
               </>
             ) : (
               <>
-                <div className="mt-6 flex justify-between border-t border-separator pt-3 text-base font-semibold">
-                  <span>Total due today (excl. taxes)</span>
-                  <span>
+                <div className="flex justify-between border-t border-separator pt-3">
+                  <span className="text-lg font-semibold">
+                    Total due excl. taxes
+                  </span>
+                  <span className="text-base font-semibold">
                     {getPriceAsString({
                       currency,
                       priceInCents: totalDueTodayCents,
                     })}
                   </span>
                 </div>
-                <p className="mt-11 text-xs text-muted-foreground">
-                  Final currency and tax amount are determined by the country
-                  entered in the payment form.
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Your country selection determines the applicable taxes and
+                  billing currency.
                 </p>
               </>
             )}
@@ -664,7 +672,7 @@ export function CheckoutPage() {
 
       {/* Right pane: phase-dependent content — centered except when showing the Stripe iframe */}
       <div
-        className={`flex w-1/2 flex-col p-24 ${phase === "card_capture" && clientSecret ? "" : "items-center justify-center"}`}
+        className={`flex w-1/2 flex-col overflow-y-auto bg-white p-24 ${phase === "card_capture" && clientSecret ? "" : phase === "payment_review" ? "justify-center" : "items-center justify-center"}`}
       >
         <RightPane
           phase={phase}
@@ -761,11 +769,21 @@ function RightPane({
         );
       }
       return (
-        <div className="flex w-full flex-col items-center gap-6">
+        <div
+          className={`flex w-full flex-col gap-4 ${isPreparePaymentLoading ? "items-center" : ""}`}
+        >
           {isPreparePaymentLoading ? (
             <Spinner size="lg" />
           ) : (
             <>
+              <div className="flex flex-col gap-1">
+                <h2 className="text-2xl font-semibold text-foreground">
+                  Select payment method
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Your available payment method is shown below
+                </p>
+              </div>
               {cardBrand && cardLast4 ? (
                 <PaymentMethodRow
                   paymentMethod={{
@@ -785,7 +803,6 @@ function RightPane({
                 label="Confirm payment"
                 onClick={onConfirmPayment}
                 size="md"
-                icon={Lock01}
                 className="w-full"
               />
             </>

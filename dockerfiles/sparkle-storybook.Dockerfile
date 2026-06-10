@@ -29,4 +29,11 @@ COPY --from=builder /app/sparkle/storybook-static/ /usr/share/nginx/html/storybo
 COPY --from=builder /app/sparkle/playground/dist/ /usr/share/nginx/html/playground/
 COPY dockerfiles/sparkle/sparkle-storybook-nginx.conf /etc/nginx/conf.d/default.conf
 
+ARG COMMIT_HASH
+ARG COMMIT_HASH_LONG
+ARG DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust
+ARG DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
+ENV DD_GIT_REPOSITORY_URL=${DD_GIT_REPOSITORY_URL}
+ENV DD_GIT_COMMIT_SHA=${DD_GIT_COMMIT_SHA}
+
 EXPOSE 80

@@ -275,6 +275,7 @@ export function useWorkspaceUsageStatus({
     awuStatus: data?.awuStatus ?? "normal",
     poolCreditState: data?.poolCreditState ?? "active",
     programmaticCreditStatus: data?.programmaticCreditStatus ?? "active",
+    balanceThresholdReached: data?.balanceThresholdReached ?? false,
     isUsageStatusLoading: !error && !data && !disabled,
   };
 }

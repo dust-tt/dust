@@ -2,7 +2,10 @@ import {
   handleSubscriptionActivationFailure,
   handleSubscriptionActivationSuccess,
 } from "@app/lib/api/checkout/business_activation";
-import { maybeNotifyAdminsBalanceThresholdReached } from "@app/lib/api/credits/balance_threshold_alert";
+import {
+  maybeClearAdminsBalanceThresholdReached,
+  maybeNotifyAdminsBalanceThresholdReached,
+} from "@app/lib/api/credits/balance_threshold_alert";
 import {
   dispatchCreditsAdded,
   dispatchLowBalance,
@@ -1008,6 +1011,14 @@ export async function processMetronomeWebhook({
       await dispatchCreditsAdded({
         workspace,
         newBalanceAwu: event.properties.remaining_balance ?? 0,
+      });
+
+      // If this is the workspace's own configured balance-threshold alert,
+      // clear the warning banner now that the balance has recovered.
+      await maybeClearAdminsBalanceThresholdReached({
+        metronomeCustomerId: workspace.metronomeCustomerId,
+        workspaceId: workspace.sId,
+        alertId: event.properties.alert_id ?? null,
       });
       logger.info(
         {
