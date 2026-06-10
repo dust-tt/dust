@@ -833,7 +833,7 @@ type AgentLoopListToolsContextWithoutConfigurationType = Omit<
  * When multiple server-side configs share the same name but have different viewIds (e.g.,
  * the same server in different spaces), prepends the space name to disambiguate them.
  */
-async function disambiguateServerNamesBySpace(
+export async function disambiguateServerNamesBySpace(
   auth: Authenticator,
   configs: MCPServerConfigurationType[]
 ): Promise<MCPServerConfigurationType[]> {
@@ -891,7 +891,7 @@ async function disambiguateServerNamesBySpace(
  * Deduplicates MCP server configurations by view ID and name.
  * Priority order: agent actions > client-side > skill servers > JIT servers.
  */
-function deduplicateMCPServerConfigurations({
+export function deduplicateMCPServerConfigurations({
   agentActions,
   clientSideActions,
   skillServers,

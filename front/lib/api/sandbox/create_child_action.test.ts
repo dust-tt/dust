@@ -21,17 +21,19 @@ vi.mock(
   }
 );
 
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { createSandboxChildAction } from "@app/lib/api/sandbox/create_child_action";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { launchSandboxChildToolWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -40,11 +42,13 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
   ConversationType,
 } from "@app/types/assistant/conversation";
+import { slugify } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 
 const TOOL_NAME = "tool";
@@ -168,14 +172,15 @@ describe("createSandboxChildAction", () => {
   });
 
   async function callChildTool(
-    rawInputs: Record<string, unknown> = { objectName: "Contact" }
+    rawInputs: Record<string, unknown> = { objectName: "Contact" },
+    { serverViewId = view.sId }: { serverViewId?: string } = {}
   ) {
     return createSandboxChildAction(auth, {
       parentActionId,
       agentId: agentConfig.sId,
       conversationId: conversation.sId,
       agentMessageId: agentMessage.sId,
-      serverViewId: view.sId,
+      serverViewId,
       toolName: TOOL_NAME,
       rawInputs,
     });
@@ -276,6 +281,79 @@ describe("createSandboxChildAction", () => {
     );
     expect(child?.status).toBe("ready_allowed_implicitly");
     expect(vi.mocked(launchSandboxChildToolWorkflow)).toHaveBeenCalledTimes(1);
+  });
+
+  it("keys approvals on the space-disambiguated name when same-named servers are attached", async () => {
+    await setToolPermission("medium");
+
+    // Attach a second view of the same server from another space. The direct
+    // path space-prefixes both colliding config names before prefixing tools,
+    // so approval keys carry the space name.
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const otherSpace = await SpaceFactory.regular(workspace);
+    const refreshedOtherSpace = await SpaceResource.fetchById(
+      adminAuth,
+      otherSpace.sId
+    );
+    if (!refreshedOtherSpace) {
+      throw new Error("Expected the other space to exist.");
+    }
+    await refreshedOtherSpace.addMembers(adminAuth, {
+      userIds: [auth.getNonNullableUser().sId],
+    });
+    const otherView = await MCPServerViewFactory.create(
+      workspace,
+      serverSId,
+      refreshedOtherSpace
+    );
+    await AgentMCPServerConfigurationFactory.create(auth, refreshedOtherSpace, {
+      agent: agentConfig,
+      mcpServerView: otherView,
+    });
+    // Refresh auth so the new space membership is visible to the child path.
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      auth.getNonNullableUser().sId,
+      workspace.sId
+    );
+
+    const fullConfig = await getAgentConfiguration(auth, {
+      agentId: agentConfig.sId,
+      variant: "full",
+    });
+    const rawConfigName = fullConfig?.actions
+      .filter(isServerSideMCPServerConfiguration)
+      .find((a) => a.mcpServerViewId === otherView.sId)?.name;
+    if (!rawConfigName) {
+      throw new Error("Expected the second MCP server view on the agent.");
+    }
+    const disambiguatedKey = getPrefixedToolName(
+      `${slugify(refreshedOtherSpace.name)}${TOOL_NAME_SEPARATOR}${rawConfigName}`,
+      TOOL_NAME
+    );
+
+    await auth.getNonNullableUser().createToolApproval(auth, {
+      mcpServerId: serverSId,
+      toolName: disambiguatedKey,
+      agentId: agentConfig.sId,
+      argsAndValues: {},
+    });
+
+    const result = await callChildTool(undefined, {
+      serverViewId: otherView.sId,
+    });
+    if (result.isErr()) {
+      throw result.error;
+    }
+    expect(result.value.pauseSandbox).toBeUndefined();
+
+    const child = await AgentMCPActionResource.fetchById(
+      auth,
+      result.value.actionId
+    );
+    expect(child?.status).toBe("ready_allowed_implicitly");
+    expect(child?.toolConfiguration.name).toBe(disambiguatedKey);
   });
 
   it("rejects tools disabled by an admin", async () => {

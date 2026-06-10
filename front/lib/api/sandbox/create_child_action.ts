@@ -1,4 +1,8 @@
-import { buildToolConfigurationsFromRawTools } from "@app/lib/actions/mcp_actions";
+import {
+  buildToolConfigurationsFromRawTools,
+  deduplicateMCPServerConfigurations,
+  disambiguateServerNamesBySpace,
+} from "@app/lib/actions/mcp_actions";
 import {
   getInternalMCPServerDisplayedAs,
   getInternalMCPServerNameFromSId,
@@ -13,6 +17,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
+import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import { pauseSandboxBashForBlockedChild } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
@@ -97,19 +102,34 @@ export async function createSandboxChildAction(
     return new Err(new Error("Agent message not found."));
   }
 
-  // JIT servers cover tools added via the conversation input bar.
-  let serverSideConfig = agentConfiguration.actions
+  // JIT servers cover tools added via the conversation input bar, skill
+  // servers cover tools attached through skills. Resolve the server config
+  // through the same deduplication and space-name disambiguation as the direct
+  // agent-loop path (`tryListMCPTools`): when several configs share a name
+  // across spaces, the model-visible name is space-prefixed, and approval keys
+  // are derived from it.
+  const { servers: jitServers } = await getJITServers(auth, {
+    agentConfiguration,
+    conversation,
+    attachments: [],
+  });
+  const skillServers = await resolveSkillMCPServers(auth, {
+    agentConfiguration,
+    conversation,
+  });
+
+  const serverConfigs = await disambiguateServerNamesBySpace(
+    auth,
+    deduplicateMCPServerConfigurations({
+      agentActions: agentConfiguration.actions,
+      clientSideActions: [],
+      skillServers,
+      jitServers,
+    })
+  );
+  const serverSideConfig = serverConfigs
     .filter(isServerSideMCPServerConfiguration)
     .find((a) => a.mcpServerViewId === view.sId);
-
-  if (!serverSideConfig) {
-    const { servers: jitServers } = await getJITServers(auth, {
-      agentConfiguration,
-      conversation,
-      attachments: [],
-    });
-    serverSideConfig = jitServers.find((s) => s.mcpServerViewId === view.sId);
-  }
 
   if (!serverSideConfig) {
     return new Err(
