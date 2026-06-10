@@ -720,7 +720,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_spa"
   | "fireworks_new_model_feature"
   | "force_us_api_url"
-  | "frames_skill_v2"
   | "gemini_3_1_pro_feature"
   | "clari_copilot_mcp"
   | "google_sheets_tool"
