@@ -510,7 +510,9 @@ export function EmailTemplatesPage() {
           </div>
           {isRendering ? (
             <div className="flex items-center justify-center rounded-lg border p-8">
-              <p className="text-muted-foreground">Rendering...</p>
+              <p className="text-muted-foreground dark:text-muted-foreground-night">
+                Rendering...
+              </p>
             </div>
           ) : (
             <div

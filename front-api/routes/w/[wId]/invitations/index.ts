@@ -8,7 +8,7 @@ import {
 } from "@app/lib/api/invitation";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureHasPermission } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
@@ -17,7 +17,7 @@ import invitationById from "./[iId]";
 // Mounted under /api/w/:wId/invitations.
 const app = workspaceApp();
 
-app.use("*", ensureIsAdmin());
+app.use("*", ensureHasPermission("workspace:manage_members"));
 
 /** @ignoreswagger */
 app.get(
@@ -56,6 +56,21 @@ app.post(
     }
 
     const invitationRequests = ctx.req.valid("json");
+
+    // Escalation guard: inviting a member as admin requires the
+    // manage_admin_role permission, so business admins cannot invite new admins.
+    if (
+      invitationRequests.some((r) => r.role === "admin") &&
+      !auth.hasPermission("workspace:manage_admin_role")
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "You do not have permission to invite members.",
+        },
+      });
+    }
 
     const invitationRes = await handleMembershipInvitations(auth, {
       owner,

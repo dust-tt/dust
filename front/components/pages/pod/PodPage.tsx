@@ -65,7 +65,7 @@ export function PodPage() {
       <div className="flex h-full w-full items-center justify-center">
         <div className="text-center">
           <h2 className="text-lg font-semibold">Pod not found</h2>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground dark:text-muted-foreground-night">
             The Pod you&apos;re looking for doesn&apos;t exist or you don&apos;t
             have access to it.
           </p>

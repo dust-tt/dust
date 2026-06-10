@@ -616,7 +616,7 @@ export default function DatasetView({
                                 <Button
                                   size="icon"
                                   variant="ghost"
-                                  className="text-muted-foreground"
+                                  className="text-muted-foreground dark:text-muted-foreground-night"
                                   icon={XCircle}
                                   tooltip="Delete property"
                                   onClick={() => {
@@ -627,7 +627,7 @@ export default function DatasetView({
                                 <Button
                                   size="icon"
                                   variant="ghost"
-                                  className="text-muted-foreground"
+                                  className="text-muted-foreground dark:text-muted-foreground-night"
                                   icon={PlusCircle}
                                   onClick={() => {
                                     handleNewKey(j);
@@ -642,7 +642,7 @@ export default function DatasetView({
                     </div>
                     <div className="bg-muted-background dark:bg-muted-background-night sm:col-span-7">
                       {readOnly ? (
-                        <span className="block cursor-pointer whitespace-nowrap px-4 py-2 text-sm text-muted-foreground">
+                        <span className="block cursor-pointer whitespace-nowrap px-4 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                           {datasetTypes[j] ? datasetTypes[j] : "string"}
                         </span>
                       ) : (
@@ -777,7 +777,7 @@ export default function DatasetView({
                                 "w-full resize-none border-0 bg-transparent px-1 py-0 font-mono font-normal ring-0 focus:ring-0",
                                 readOnly
                                   ? "text-primary-500"
-                                  : "dark:text-text-muted-foreground-night text-muted-foreground"
+                                  : "dark:text-text-muted-foreground-night text-muted-foreground dark:text-muted-foreground-night"
                               )}
                               readOnly={readOnly}
                               value={d[k]}

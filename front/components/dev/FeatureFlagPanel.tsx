@@ -110,7 +110,7 @@ export function FeatureFlagPanel({
           <div style={S.flagDesc}>
             {WHITELISTABLE_FEATURES_CONFIG[flag].description}
             {isServerOn && (
-              <span style={{ color: "#7fdbca", marginLeft: 4 }}>
+              <span style={{ color: "#00897B", marginLeft: 4 }}>
                 (server: on)
               </span>
             )}
@@ -118,7 +118,7 @@ export function FeatureFlagPanel({
         </div>
         <div style={S.triToggle}>
           <button
-            style={S.toggleBtn(active, "#7fdbca")}
+            style={S.toggleBtn(active, "#00897B")}
             onClick={() =>
               setFlagState(flag, state === "on" ? "default" : "on")
             }

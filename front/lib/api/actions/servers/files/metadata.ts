@@ -19,6 +19,7 @@ export const FILES_DELETE_ACTION_NAME = "delete" as const;
 export const FILES_COPY_ACTION_NAME = "copy" as const;
 export const FILES_MOVE_ACTION_NAME = "move" as const;
 export const FILES_RESOLVE_ACTION_NAME = "resolve" as const;
+export const FILES_EXTRACT_TEXT_ACTION_NAME = "extract_text" as const;
 
 export const CAT_LINES_DEFAULT = 200;
 export const CAT_LINES_MAX = 500;
@@ -278,9 +279,31 @@ const FILES_TOOLS_COMMON_METADATA = {
   },
 };
 
+const EXTRACT_TEXT_TOOL = {
+  description:
+    "Extract text from a binary document (PDF, DOCX, DOC, PPTX, PPT, XLSX, XLS) " +
+    "and save the result as a plain-text file next to the source. " +
+    "Returns the scoped path of the extracted file. " +
+    `Use this before \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` or \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_GREP_ACTION_NAME)}\` ` +
+    "on binary documents that cannot be read as text.",
+  schema: {
+    path: z
+      .string()
+      .describe(
+        `Scoped path to the binary document (e.g. \`conversation-<id>/report.pdf\`)`
+      ),
+  },
+  stake: "never_ask" as const,
+  displayLabels: {
+    running: "Extracting text from document",
+    done: "Extracted text from document",
+  },
+};
+
 export const FILES_TOOLS_METADATA = createToolsRecord({
   [FILES_LIST_ACTION_NAME]: LIST_TOOL,
   ...FILES_TOOLS_COMMON_METADATA,
+  [FILES_EXTRACT_TEXT_ACTION_NAME]: EXTRACT_TEXT_TOOL,
   [FILES_COPY_ACTION_NAME]: COPY_TOOL,
   [FILES_MOVE_ACTION_NAME]: MOVE_TOOL,
 });

@@ -303,7 +303,7 @@ function SearchResults({
               <Spinner size="sm" />
             </div>
           ) : allPods.length === 0 ? (
-            <div className="px-3 py-2 text-sm text-muted-foreground">
+            <div className="px-3 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
               No results found
             </div>
           ) : (
@@ -371,7 +371,7 @@ function SearchResults({
           }
         >
           {allConversations.length === 0 && !showConversationsLoading ? (
-            <div className="px-3 py-2 text-sm text-muted-foreground">
+            <div className="px-3 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
               No results found
             </div>
           ) : (

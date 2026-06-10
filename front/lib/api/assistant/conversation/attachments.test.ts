@@ -63,12 +63,16 @@ describe("makeFileAttachment", () => {
 
 function makeFileContentFragment({
   isInProjectContext = false,
+  skipDataSourceIndexing = false,
   skipFileProcessing = false,
   snippet = "snippet",
+  contentType = "text/csv",
 }: {
   isInProjectContext?: boolean;
+  skipDataSourceIndexing?: boolean;
   skipFileProcessing?: boolean;
   snippet?: string | null;
+  contentType?: "text/csv" | "text/plain";
 }): FileContentFragmentType {
   return {
     type: "content_fragment",
@@ -80,8 +84,8 @@ function makeFileContentFragment({
     rank: 0,
     branchId: null,
     sourceUrl: null,
-    title: "data.csv",
-    contentType: "text/csv",
+    title: contentType === "text/plain" ? "data.txt" : "data.csv",
+    contentType,
     context: {
       username: null,
       fullName: null,
@@ -93,6 +97,7 @@ function makeFileContentFragment({
     expiredReason: null,
     contentFragmentType: "file",
     path: "conversation/data.csv",
+    skipDataSourceIndexing,
     skipFileProcessing,
     fileId: "fil_123",
     snippet,
@@ -171,6 +176,18 @@ describe("renderAttachmentXml", () => {
 });
 
 describe("getAttachmentFromFileContentFragment", () => {
+  it("keeps skipped text files includable without advertising semantic search", () => {
+    const attachment = getAttachmentFromFileContentFragment(
+      makeFileContentFragment({
+        contentType: "text/plain",
+        skipDataSourceIndexing: true,
+      })
+    );
+
+    expect(attachment?.isIncludable).toBe(true);
+    expect(attachment?.isSearchable).toBe(false);
+  });
+
   it("suppresses queryable and includable hints for raw sandbox delimited files", () => {
     const attachment = getAttachmentFromFileContentFragment(
       makeFileContentFragment({ skipFileProcessing: true })

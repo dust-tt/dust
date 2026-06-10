@@ -1,5 +1,6 @@
 import { displayRole, ROLES_DATA } from "@app/components/members/Roles";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
+import { hasPermission } from "@app/types/permissions";
 import type { ActiveRoleType } from "@app/types/user";
 import { ACTIVE_ROLES } from "@app/types/user";
 import {
@@ -24,14 +25,32 @@ export function RoleDropDown({
   disabled = false,
 }: RoleDropDownProps) {
   const { hasFeature } = useFeatureFlags();
+  const workspace = useWorkspace();
+  const canManageAdminRole = hasPermission(
+    workspace.role,
+    "workspace:manage_admin_role"
+  );
 
-  // `business_admin` can only be assigned when the
-  // workspace has the `admin_governance` feature flag.
-  const availableRoles = hasFeature("admin_governance")
-    ? ACTIVE_ROLES
-    : ACTIVE_ROLES.filter((role) => role !== "business_admin");
+  const availableRoles = ACTIVE_ROLES.filter((role) => {
+    // `business_admin` can only be assigned when the workspace has the
+    // `admin_governance` feature flag.
+    if (role === "business_admin" && !hasFeature("admin_governance")) {
+      return false;
+    }
+    // `admin` can only be assigned by those allowed to manage the admin role
+    // (matches the server-side escalation guard).
+    if (role === "admin" && !canManageAdminRole) {
+      return false;
+    }
+    return true;
+  });
 
-  if (disabled) {
+  // Lock the selector entirely when the target is an admin and the caller
+  // cannot manage the admin role (they may neither demote nor revoke admins).
+  const isLocked =
+    disabled || (selectedRole === "admin" && !canManageAdminRole);
+
+  if (isLocked) {
     return (
       <Chip
         color={ROLES_DATA[selectedRole]["color"]}

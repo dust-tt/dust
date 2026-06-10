@@ -1,7 +1,3 @@
-import {
-  generatePlainTextFile,
-  uploadFileToConversationDataSource,
-} from "@app/lib/actions/action_file_helpers";
 import { FILE_OFFLOAD_SNIPPET_LENGTH } from "@app/lib/actions/action_output_limits";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { USE_SUMMARY_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -18,6 +14,8 @@ import { summarizeWithLLM } from "@app/lib/actions/mcp_internal_actions/utils/we
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { WEB_SEARCH_BROWSE_TOOLS_METADATA } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import { getRefs } from "@app/lib/api/assistant/citations";
+import { writeToToolOutputsFolder } from "@app/lib/api/files/action_output_fs";
+import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
@@ -128,7 +126,6 @@ async function handleWebbrowser(
 
   if (useSummarization) {
     const runCtx = agentLoopContext.runContext;
-    const conversationId = runCtx.conversation.sId;
     const { citationsOffset, websearchResultCount } = runCtx.stepContext;
     const refs = getRefs().slice(
       citationsOffset,
@@ -191,33 +188,34 @@ async function handleWebbrowser(
 
         const snippet = snippetRes.value.slice(0, FILE_OFFLOAD_SNIPPET_LENGTH);
 
-        const baseTitle = title ?? result.url;
-        const fileTitle = `${baseTitle}`;
-        const file = await generatePlainTextFile(auth, {
-          title: fileTitle,
-          conversationId,
-          content: fileContent,
-          snippet,
-          hideFromUser: true,
-          // No need to index web page content in Qdrant.
-          skipDataSourceIndexing: true,
+        const fileTitle = title ?? result.url;
+        const fileName = makeFileName({
+          name: fileTitle,
+          ext: ".txt",
         });
 
-        await uploadFileToConversationDataSource({ auth, file });
+        const writeResult = await writeToToolOutputsFolder(
+          auth,
+          runCtx.conversation,
+          { fileName, content: fileContent, contentType: "text/plain" }
+        );
 
-        const fileResource = {
-          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-          fileId: file.sId,
+        if (writeResult.isErr()) {
+          throw writeResult.error;
+        }
+
+        const filePathResource = {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH,
+          path: writeResult.value,
+          uri: writeResult.value,
           title: fileTitle,
-          contentType: file.contentType,
-          snippet,
-          uri: file.getPublicUrl(auth),
-          text: "Web page content archived as a file.",
+          contentType: "text/plain",
+          text: snippet,
         };
 
         contentBlocks.push({
           type: "resource",
-          resource: fileResource,
+          resource: filePathResource,
         });
 
         const ref = refs.shift();
@@ -225,7 +223,7 @@ async function handleWebbrowser(
           const websearchResultResource = {
             mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.WEBSEARCH_RESULT,
             title: title ?? result.url,
-            text: `Full web page content available as file ${file.sId}`,
+            text: `Full web page content archived at ${fileName}`,
             uri: result.url,
             reference: ref,
           };

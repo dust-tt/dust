@@ -47,6 +47,8 @@ export const AUDIT_ACTIONS = [
   "member.bulk_invited",
   "member.bulk_revoked",
   "member.spend_limit_updated",
+  "membership.upgrade_request_created",
+  "membership.upgrade_request_resolved",
   // Domains & SSO.
   "domain.verified",
   "domain.verification_failed",

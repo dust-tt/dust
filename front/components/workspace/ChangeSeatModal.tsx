@@ -1,10 +1,17 @@
+import type {
+  CheckoutBillingPeriod,
+  CheckoutSeatType,
+} from "@app/lib/api/checkout/types";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import type {
   SeatBillingFrequency,
   SeatPlanResponseBody,
   SeatTypeInfo,
 } from "@app/lib/api/credits/seat_plan";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { SEAT_PRODUCT_YEARLY_SUFFIX } from "@app/lib/metronome/constants";
+import { isFreePlan } from "@app/lib/plans/plan_codes";
+import { useAppRouter } from "@app/lib/platform";
 import { useUpdateMemberSeatType } from "@app/lib/swr/memberships";
 import type { SupportedCurrency } from "@app/types/currency";
 import { CURRENCY_SYMBOLS } from "@app/types/currency";
@@ -12,6 +19,7 @@ import {
   isMembershipSeatType,
   type MembershipSeatType,
 } from "@app/types/memberships";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   AlertCircle,
@@ -31,6 +39,29 @@ import {
   SeatMax,
 } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
+
+function toCheckoutParams(
+  seatType: MembershipSeatType
+): { seatType: CheckoutSeatType; billingPeriod: CheckoutBillingPeriod } | null {
+  switch (seatType) {
+    case "pro":
+      return { seatType: "pro", billingPeriod: "monthly" };
+    case "pro_yearly":
+      return { seatType: "pro", billingPeriod: "yearly" };
+    case "max":
+      return { seatType: "max", billingPeriod: "monthly" };
+    case "max_yearly":
+      return { seatType: "max", billingPeriod: "yearly" };
+    case "workspace":
+    case "workspace_yearly":
+    case "none":
+    case "free":
+      return null;
+    default:
+      assertNeverAndIgnore(seatType);
+      return null;
+  }
+}
 
 // Per-seat-type display icon. The label / name comes from the API
 // (`SeatTypeInfo.name`) so adding a new seat tier only requires tagging the
@@ -180,6 +211,9 @@ export function ChangeSeatModal({
   seatPlans,
   onSavingChange,
 }: ChangeSeatModalProps) {
+  const { subscription } = useAuth();
+  const router = useAppRouter();
+  const useCheckoutPath = isFreePlan(subscription.plan.code);
   // Keep the last non-null member so the dialog can render its content through
   // the exit animation after the parent has cleared `member`.
   const lastMemberRef = useRef<MemberUsageType | null>(null);
@@ -336,6 +370,21 @@ export function ChangeSeatModal({
     if (!selectedSeat || !displayedMember) {
       return;
     }
+
+    if (useCheckoutPath) {
+      const params = toCheckoutParams(selectedSeat);
+      if (params) {
+        const query = new URLSearchParams({
+          ...params,
+          targetUserId: displayedMember.sId,
+        });
+        void router.push(
+          `/w/${owner.sId}/subscription/checkout?${query.toString()}`
+        );
+      }
+      return;
+    }
+
     if (selectedSeat === currentSeatType && !isCancellingScheduledChange) {
       onClose();
       return;
@@ -470,13 +519,14 @@ export function ChangeSeatModal({
             onClick: onClose,
           }}
           rightButtonProps={{
-            label: "Validate",
+            label: useCheckoutPath ? "Continue to checkout" : "Validate",
             variant: "primary",
-            disabled:
-              isSaving ||
-              !selectedSeat ||
-              (selectedSeat === currentSeatType &&
-                !isCancellingScheduledChange),
+            disabled: useCheckoutPath
+              ? !selectedSeat || !toCheckoutParams(selectedSeat)
+              : isSaving ||
+                !selectedSeat ||
+                (selectedSeat === currentSeatType &&
+                  !isCancellingScheduledChange),
             onClick: handleValidate,
           }}
         />

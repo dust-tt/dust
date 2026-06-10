@@ -4,21 +4,16 @@ import type {
   CheckoutSeatType,
 } from "@app/lib/api/checkout/types";
 import { CheckoutSeatTypeSchema } from "@app/lib/api/checkout/types";
-import {
-  isMetronomeBillingEnabled,
-  isMetronomeCheckoutEnabled,
-} from "@app/lib/api/subscription";
+import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import type { Authenticator } from "@app/lib/auth";
 import {
-  BUSINESS_PLAN_COST_MONTHLY,
   CP_MAX_SEAT_COST_MONTHLY,
   CP_MAX_SEAT_COST_YEARLY,
   CP_PRO_SEAT_COST_MONTHLY,
   CP_PRO_SEAT_COST_YEARLY,
-  PRO_PLAN_COST_MONTHLY,
-  PRO_PLAN_COST_YEARLY,
 } from "@app/lib/client/subscription";
 import {
+  BUSINESS_USD_PACKAGE_ALIAS,
   LEGACY_BUSINESS_PACKAGE_ALIAS,
   LEGACY_PRO_ANNUAL_PACKAGE_ALIAS,
   LEGACY_PRO_MONTHLY_PACKAGE_ALIAS,
@@ -33,7 +28,6 @@ import {
   createStripeSubscriptionCheckoutSession,
   type SupportedPaymentMethod,
 } from "@app/lib/plans/stripe";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { BillingPeriod, CheckoutUrlResult } from "@app/types/plan";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { z } from "zod";
@@ -41,7 +35,7 @@ import { z } from "zod";
 export const PostSubscriptionRequestBody = z.object({
   billingPeriod: z.enum(["monthly", "yearly"]),
   couponCode: z.string().optional(),
-  // CP self-serve checkout fields (only used when metronome_cp_checkout is enabled)
+  // CP self-serve checkout fields (only used when Metronome billing is enabled)
   seatType: CheckoutSeatTypeSchema.optional(),
   targetUserId: z.string().optional(),
 });
@@ -113,7 +107,7 @@ async function createCPCheckoutUrl(
   const { clientSecret, sessionId } =
     await createEmbeddedMetronomeSetupCheckoutSession({
       allowedPaymentMethods: ["card"],
-      metronomePackageAlias: "business-usd",
+      metronomePackageAlias: BUSINESS_USD_PACKAGE_ALIAS,
       owner,
       planCode: CREDIT_PRICED_BUSINESS_PLAN_CODE,
       billingPeriod,
@@ -123,51 +117,6 @@ async function createCPCheckoutUrl(
       user,
       seatType,
       targetUserId,
-    });
-
-  return { mode: "embedded", clientSecret, sessionId };
-}
-
-async function createLegacyMetronomeCheckoutUrl(
-  auth: Authenticator,
-  billingPeriod: BillingPeriod,
-  {
-    planParams,
-    couponCode,
-  }: {
-    planParams: LegacyPlanParams;
-    couponCode?: string;
-  }
-): Promise<CheckoutUrlResult> {
-  const owner = auth.getNonNullableWorkspace();
-  const user = auth.getNonNullableUser().toJSON();
-  const { planCode, allowedPaymentMethods, metronomePackageAlias, isBusiness } =
-    planParams;
-
-  const seatCount = await MembershipResource.countActiveSeatsInWorkspace(
-    owner.sId
-  );
-
-  const pricePerMonth = isBusiness
-    ? BUSINESS_PLAN_COST_MONTHLY
-    : billingPeriod === "yearly"
-      ? PRO_PLAN_COST_YEARLY
-      : PRO_PLAN_COST_MONTHLY;
-  const pricePerMonthCents = pricePerMonth * 100;
-  const monthsInPeriod = !isBusiness && billingPeriod === "yearly" ? 12 : 1;
-  const pricePerSeatCents = pricePerMonthCents * monthsInPeriod;
-
-  const { clientSecret, sessionId } =
-    await createEmbeddedMetronomeSetupCheckoutSession({
-      allowedPaymentMethods,
-      metronomePackageAlias,
-      owner,
-      planCode,
-      billingPeriod,
-      seatCount,
-      pricePerSeatCents,
-      couponCode,
-      user,
     });
 
   return { mode: "embedded", clientSecret, sessionId };
@@ -213,8 +162,8 @@ export async function createCheckoutUrl(
     targetUserId?: string;
   }
 ): Promise<Result<CheckoutUrlResult, CheckoutUrlError>> {
-  const useMetronomeCheckout = await isMetronomeCheckoutEnabled(auth);
-  if (useMetronomeCheckout) {
+  const useMetronomeBilling = await isMetronomeBillingEnabled(auth);
+  if (useMetronomeBilling) {
     if (!seatType || !targetUserId) {
       return new Err({ type: "missing_cp_fields" });
     }
@@ -228,6 +177,8 @@ export async function createCheckoutUrl(
     );
   }
 
+  // Metronome billing is disabled here (otherwise the credit-priced checkout
+  // above would have returned): fall back to the legacy Stripe checkout.
   const owner = auth.getNonNullableWorkspace();
   const subscription = auth.getNonNullableSubscriptionResource();
 
@@ -238,16 +189,6 @@ export async function createCheckoutUrl(
   }
 
   const planParams = resolveLegacyPlanParams(owner, billingPeriod);
-
-  const useMetronomeBilling = await isMetronomeBillingEnabled(auth);
-  if (useMetronomeBilling) {
-    return new Ok(
-      await createLegacyMetronomeCheckoutUrl(auth, billingPeriod, {
-        planParams,
-        couponCode,
-      })
-    );
-  }
 
   return new Ok(
     await createLegacyStripeCheckoutUrl(auth, billingPeriod, planParams)

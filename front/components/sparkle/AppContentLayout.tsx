@@ -1,4 +1,5 @@
 import { CommandPalette } from "@app/components/command_palette/CommandPalette";
+import { DEV_MODE_ACTIVE } from "@app/components/dev/devModeConstants";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { Navigation } from "@app/components/navigation/Navigation";
 import { SubscriptionEndBanner } from "@app/components/navigation/TrialBanner";
@@ -13,6 +14,19 @@ import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import { isAdmin } from "@app/types/user";
 import { cn } from "@dust-tt/sparkle";
 import type React from "react";
+import { lazy, Suspense } from "react";
+
+// Lazy-load the dev panel only when dev mode is active.
+// The module is never fetched/parsed/executed when dev mode is off.
+const DevFeatureFlagPanel = DEV_MODE_ACTIVE
+  ? lazy(() =>
+      // Dynamic import is necessary here: the dev panel must not be bundled
+      // in the main chunk — it should only load when dev mode is active.
+      import("@app/components/dev/DevFeatureFlagPanel").then((m) => ({
+        default: m.DevFeatureFlagPanel,
+      }))
+    )
+  : null;
 
 interface AppContentLayoutProps {
   children: React.ReactNode;
@@ -59,7 +73,7 @@ function AppContentInnerWrapper({
 export function AppContentLayout({ children }: AppContentLayoutProps) {
   const owner = useWorkspace();
   const isMobile = useIsMobile();
-  const { subscription, user } = useAuth();
+  const { featureFlags, subscription, user } = useAuth();
   const {
     contentClassName,
     contentWidth,
@@ -82,77 +96,47 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
     useDesktopNavigation();
 
   return (
-    <div className="flex flex-row sm:h-dvh h-full">
-      <Navigation
-        hideSidebar={hideSidebar}
-        isNavigationBarOpen={isNavigationBarOpen}
-        setNavigationBarOpen={setIsNavigationBarOpen}
-        owner={owner}
-        subscription={subscription}
-        navChildren={navChildren}
-        subNavigation={subNavigation}
-        isFullScreen={isFullScreen}
-        isMobile={isMobile}
-      />
-
-      <div
-        className={cn(
-          "relative flex h-dvh w-full flex-1 flex-col overflow-x-hidden",
-          "bg-app-background text-foreground",
-          "dark:bg-app-background-night dark:text-foreground-night"
-        )}
-      >
-        <AppContentInnerWrapper
+    <div className="flex h-dvh flex-col">
+      <div className="flex min-h-0 flex-1 flex-row">
+        <Navigation
+          hideSidebar={hideSidebar}
           isNavigationBarOpen={isNavigationBarOpen}
-          isMobile={isMobile}
+          setNavigationBarOpen={setIsNavigationBarOpen}
+          owner={owner}
+          subscription={subscription}
+          navChildren={navChildren}
+          subNavigation={subNavigation}
           isFullScreen={isFullScreen}
-        >
-          <SubscriptionEndBanner
-            isAdmin={isAdmin(owner)}
-            owner={owner}
-            subscription={subscription}
-          />
-          {/* Temporary measure to preserve title existence on smaller screens.
-           * Page has no title, prepend empty AppLayoutTitle. */}
-          {!hasTitleBar && (
-            <div className="flex min-h-0 flex-1 flex-col h-panel overflow-y-auto">
-              <AppLayoutTitle />
-              {contentWidth ? (
-                <div
-                  className={cn(
-                    "flex h-full w-full flex-col items-center overflow-y-auto",
-                    contentWidth === "centered" ? "pt-4" : "pt-8",
-                    contentClassName
-                  )}
-                >
-                  <div
-                    className={cn(
-                      "flex w-full grow flex-col px-4 sm:px-8",
-                      contentWidth === "centered" && "max-w-4xl"
-                    )}
-                  >
-                    {children}
-                  </div>
-                </div>
-              ) : (
-                children
-              )}
-            </div>
+          isMobile={isMobile}
+        />
+
+        <div
+          className={cn(
+            "relative flex h-full w-full flex-1 flex-col overflow-x-hidden",
+            "bg-app-background text-foreground",
+            "dark:bg-app-background-night dark:text-foreground-night"
           )}
-          {hasTitleBar && (
-            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-              {contentWidth ? (
-                <>
-                  {title}
+        >
+          <AppContentInnerWrapper
+            isNavigationBarOpen={isNavigationBarOpen}
+            isMobile={isMobile}
+            isFullScreen={isFullScreen}
+          >
+            <SubscriptionEndBanner
+              isAdmin={isAdmin(owner)}
+              owner={owner}
+              subscription={subscription}
+            />
+            {/* Temporary measure to preserve title existence on smaller screens.
+             * Page has no title, prepend empty AppLayoutTitle. */}
+            {!hasTitleBar && (
+              <div className="flex min-h-0 flex-1 flex-col h-panel overflow-y-auto">
+                <AppLayoutTitle />
+                {contentWidth ? (
                   <div
                     className={cn(
-                      "flex w-full flex-col items-center overflow-y-auto",
-                      contentWidth === "centered"
-                        ? cn(
-                            title ? "h-[calc(100vh-3.5rem)]" : "h-full",
-                            "pt-4"
-                          )
-                        : "h-full pt-8",
+                      "flex h-full w-full flex-col items-center overflow-y-auto",
+                      contentWidth === "centered" ? "pt-4" : "pt-8",
                       contentClassName
                     )}
                   >
@@ -165,15 +149,52 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
                       {children}
                     </div>
                   </div>
-                </>
-              ) : (
-                children
-              )}
-            </div>
-          )}
-        </AppContentInnerWrapper>
+                ) : (
+                  children
+                )}
+              </div>
+            )}
+            {hasTitleBar && (
+              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                {contentWidth ? (
+                  <>
+                    {title}
+                    <div
+                      className={cn(
+                        "flex w-full flex-col items-center overflow-y-auto",
+                        contentWidth === "centered"
+                          ? cn(
+                              title ? "h-[calc(100vh-3.5rem)]" : "h-full",
+                              "pt-4"
+                            )
+                          : "h-full pt-8",
+                        contentClassName
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "flex w-full grow flex-col px-4 sm:px-8",
+                          contentWidth === "centered" && "max-w-4xl"
+                        )}
+                      >
+                        {children}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  children
+                )}
+              </div>
+            )}
+          </AppContentInnerWrapper>
+        </div>
+        <CommandPalette owner={owner} user={user} />
       </div>
-      <CommandPalette owner={owner} user={user} />
+      {DevFeatureFlagPanel && (
+        <Suspense fallback={null}>
+          <DevFeatureFlagPanel serverFlags={featureFlags} />
+        </Suspense>
+      )}
     </div>
   );
 }

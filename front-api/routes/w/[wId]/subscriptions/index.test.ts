@@ -95,12 +95,16 @@ describe("POST /api/w/:wId/subscriptions", () => {
   });
 
   it("returns embedded clientSecret and sessionId by default", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace, user } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
     });
 
-    const response = await post(workspace, { billingPeriod: "monthly" });
+    const response = await post(workspace, {
+      billingPeriod: "monthly",
+      seatType: "pro",
+      targetUserId: user.sId,
+    });
 
     expect(response.status).toBe(200);
     const data = await response.json();
@@ -109,8 +113,19 @@ describe("POST /api/w/:wId/subscriptions", () => {
     expect(data.sessionId).toEqual(TEST_SESSION_ID);
   });
 
+  it("returns 400 when seat fields are missing while metronome billing is enabled", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    const response = await post(workspace, { billingPeriod: "monthly" });
+
+    expect(response.status).toBe(400);
+  });
+
   it("returns embedded clientSecret when metronome_billing flag overrides the kill switch", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest({
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
     });
@@ -120,7 +135,11 @@ describe("POST /api/w/:wId/subscriptions", () => {
     );
     await FeatureFlagFactory.basic(auth, "metronome_billing");
 
-    const response = await post(workspace, { billingPeriod: "monthly" });
+    const response = await post(workspace, {
+      billingPeriod: "monthly",
+      seatType: "pro",
+      targetUserId: user.sId,
+    });
 
     expect(response.status).toBe(200);
     const data = await response.json();

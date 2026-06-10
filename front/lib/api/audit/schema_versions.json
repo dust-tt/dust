@@ -39,6 +39,8 @@
   "membership.origin_updated": 5,
   "membership.revoked": 4,
   "membership.role_updated": 6,
+  "membership.upgrade_request_created": 1,
+  "membership.upgrade_request_resolved": 1,
   "oauth.authorized": 3,
   "oauth.initiated": 3,
   "oauth.revoked": 2,

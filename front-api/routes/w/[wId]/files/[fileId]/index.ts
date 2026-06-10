@@ -160,6 +160,8 @@ const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
  *               properties:
  *                 file:
  *                   $ref: '#/components/schemas/PrivateFileWithUploadUrl'
+ *       400:
+ *         description: Invalid file content (e.g. a CSV with an unsupported encoding)
  *       403:
  *         description: Permission denied
  *       404:
@@ -416,6 +418,26 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
       );
 
       if (rUpsert.isErr()) {
+        // Invalid CSV content is a user error (e.g. unsupported encoding); surface the
+        // actionable message instead of a generic 500.
+        if (rUpsert.error.code === "invalid_csv_content") {
+          logger.warn({
+            fileModelId: file.id,
+            workspaceId: auth.workspace()?.sId,
+            contentType: file.contentType,
+            useCase: file.useCase,
+            useCaseMetadata: file.useCaseMetadata,
+            message: "Invalid CSV content on file upsert.",
+            error: rUpsert.error,
+          });
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: rUpsert.error.message,
+            },
+          });
+        }
         logger.error({
           fileModelId: file.id,
           workspaceId: auth.workspace()?.sId,

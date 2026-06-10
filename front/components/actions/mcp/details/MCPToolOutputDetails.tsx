@@ -48,7 +48,7 @@ export function ThinkingBlock({ resource }: ThinkingBlockProps) {
             content={resource.text}
             isStreaming={false}
             forcedTextSize="text-sm"
-            textColor="text-muted-foreground"
+            textColor="text-muted-foreground dark:text-muted-foreground-night"
             isLastMessage={false}
           />
         </ContentMessage>

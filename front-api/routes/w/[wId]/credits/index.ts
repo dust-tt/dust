@@ -15,6 +15,7 @@ import membersUsage from "./members-usage";
 import metronomeBalances from "./metronome-balances";
 import myUsage from "./my-usage";
 import purchase from "./purchase";
+import upgradeRequests from "./upgrade-requests";
 import usageConfiguration from "./usage-configuration";
 
 // Mounted at /api/w/:wId/credits.
@@ -26,6 +27,7 @@ app.route("/members-usage", membersUsage);
 app.route("/metronome-balances", metronomeBalances);
 app.route("/my-usage", myUsage);
 app.route("/purchase", purchase);
+app.route("/upgrade-requests", upgradeRequests);
 app.route("/usage-configuration", usageConfiguration);
 
 /** @ignoreswagger */

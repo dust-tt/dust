@@ -1,6 +1,6 @@
 import { PaymentMethodRow } from "@app/components/checkout/PaymentMethodRow";
 import config from "@app/lib/api/config";
-import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   BUSINESS_PLAN_COST_MONTHLY,
   CP_MAX_SEAT_COST_MONTHLY,
@@ -10,11 +10,11 @@ import {
   getPriceAsString,
   PRO_PLAN_COST_MONTHLY,
   PRO_PLAN_COST_YEARLY,
+  useIsMetronomeCheckout,
   useUserBillingCurrency,
 } from "@app/lib/client/subscription";
 import { isWhitelistedBusinessPlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
-import { useKillSwitches } from "@app/lib/swr/kill";
 import {
   useAuthContext,
   useCheckBusinessActivation,
@@ -28,6 +28,7 @@ import {
 import type { CouponType } from "@app/types/coupon";
 import type { BillingPeriod } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   CheckCircle,
@@ -45,7 +46,13 @@ import {
   EmbeddedCheckoutProvider,
 } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -70,7 +77,7 @@ type CheckoutPhase =
   | "payment_review" // Phase 2 — tax breakdown + confirm button
   | "confirming" // Phase 3 — POST /payment in progress
   | "waiting_for_payment" // Phase 4 — polling Redis for Metronome webhook result
-  | "activating" // Phase 5 — mutating auth context, redirecting
+  | "checkout_success" // Phase 5 — success screen, user continues manually
   | "error"; // Terminal error
 
 type PhaseError =
@@ -101,13 +108,7 @@ export function CheckoutPage() {
   const { mutateAuthContext } = useAuthContext({ workspaceId: owner.sId });
 
   // Determine if CP checkout is enabled.
-  const { hasFeature } = useFeatureFlags();
-  const { killSwitches } = useKillSwitches();
-  const isMetronomeEnabled =
-    hasFeature("metronome_billing") ||
-    !killSwitches?.includes("global_disable_metronome_billing");
-  const isMetronomeCheckout =
-    isMetronomeEnabled && hasFeature("metronome_cp_checkout") && !!seatType;
+  const isMetronomeCheckout = useIsMetronomeCheckout() && !!seatType;
 
   const [phase, setPhase] = useState<CheckoutPhase>("card_capture");
   const [phaseError, setPhaseError] = useState<PhaseError | null>(null);
@@ -116,6 +117,7 @@ export function CheckoutPage() {
   const [pendingContractId, setPendingContractId] = useState<string | null>(
     null
   );
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   // Prevents initSession from firing before URL params have been read on mount.
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -150,13 +152,12 @@ export function CheckoutPage() {
   const { createSession, isCreating } = useCreateCheckoutSession({
     workspaceId: owner.sId,
   });
-  const { confirmPayment, isConfirming: isConfirmingLegacy } =
-    useConfirmPayment({
-      workspaceId: owner.sId,
-    });
-  const { initiateBusinessActivation, isInitiating } =
-    useInitiateBusinessActivation({ workspaceId: owner.sId });
-  const isConfirming = isMetronomeCheckout ? isInitiating : isConfirmingLegacy;
+  const { confirmPayment } = useConfirmPayment({
+    workspaceId: owner.sId,
+  });
+  const { initiateBusinessActivation } = useInitiateBusinessActivation({
+    workspaceId: owner.sId,
+  });
   const { validateCoupon } = useValidateCoupon({ workspaceId: owner.sId });
 
   const {
@@ -178,7 +179,7 @@ export function CheckoutPage() {
   }, [livePreparePayment]);
 
   // Poll checkout payment status while in waiting_for_payment phase.
-  const { checkoutPayment } = useCheckBusinessActivation({
+  const { checkoutPayment, invoiceUrl } = useCheckBusinessActivation({
     workspaceId: owner.sId,
     contractId: pendingContractId,
     disabled: phase !== "waiting_for_payment",
@@ -191,20 +192,15 @@ export function CheckoutPage() {
       return;
     }
     if (checkoutPayment.status === "succeeded") {
-      setPhase("activating");
-      void (async () => {
-        await Promise.all([
-          mutateAuthContext(),
-          new Promise<void>((resolve) => setTimeout(resolve, 2000)),
-        ]);
-        void router.replace(`/w/${owner.sId}`);
-      })();
+      setReceiptUrl(invoiceUrl);
+      setPhase("checkout_success");
+      void mutateAuthContext();
     } else if (checkoutPayment.status === "failed") {
       setPhaseError({ kind: "activation_failed" });
       setPhase("error");
     }
     // pending: keep polling
-  }, [phase, checkoutPayment, mutateAuthContext, router, owner.sId]);
+  }, [phase, checkoutPayment, invoiceUrl, mutateAuthContext]);
 
   const {
     register: registerCoupon,
@@ -374,21 +370,14 @@ export function CheckoutPage() {
       return;
     }
 
-    // Payment and provisioning succeeded — show success state for 2s, then redirect.
-    setPhase("activating");
-    await Promise.all([
-      mutateAuthContext(),
-      new Promise<void>((resolve) => setTimeout(resolve, 2000)),
-    ]);
-    void router.replace(`/w/${owner.sId}`);
+    setPhase("checkout_success");
+    void mutateAuthContext();
   }, [
     setupSessionId,
     isMetronomeCheckout,
     initiateBusinessActivation,
     confirmPayment,
     mutateAuthContext,
-    router,
-    owner.sId,
   ]);
 
   const handleCardCaptureComplete = useCallback(() => {
@@ -493,6 +482,16 @@ export function CheckoutPage() {
     );
   }
 
+  if (phase === "checkout_success") {
+    return (
+      <CheckoutSuccessPage
+        seatType={seatType}
+        receiptUrl={receiptUrl}
+        owner={owner}
+      />
+    );
+  }
+
   return (
     <main className="flex h-screen overflow-hidden">
       {/* Left pane: order summary + coupon */}
@@ -506,7 +505,7 @@ export function CheckoutPage() {
             <h1 className="text-5xl font-semibold text-foreground">
               {planDisplayName}
             </h1>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               {billingPeriod === "yearly"
                 ? "billed annually"
                 : "billed monthly"}
@@ -515,7 +514,9 @@ export function CheckoutPage() {
 
           <div className="flex flex-col text-sm">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Price per seat</span>
+              <span className="text-muted-foreground dark:text-muted-foreground-night">
+                Price per seat
+              </span>
               <span>
                 {getPriceAsString({
                   currency,
@@ -526,7 +527,9 @@ export function CheckoutPage() {
               </span>
             </div>
             <div className="mt-3 flex justify-between">
-              <span className="text-muted-foreground">Number of seats</span>
+              <span className="text-muted-foreground dark:text-muted-foreground-night">
+                Number of seats
+              </span>
               <span>
                 {showActualTax ? preparePayment.seatCount : seatCountForSummary}
               </span>
@@ -607,7 +610,7 @@ export function CheckoutPage() {
                       })}
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                     {getPriceAsString({
                       currency,
                       priceInCents: appliedCoupon.amount * 100,
@@ -660,7 +663,7 @@ export function CheckoutPage() {
                     })}
                   </span>
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">
+                <p className="mt-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
                   Your country selection determines the applicable taxes and
                   billing currency.
                 </p>
@@ -679,7 +682,6 @@ export function CheckoutPage() {
           phaseError={phaseError}
           clientSecret={clientSecret}
           isCreating={isCreating}
-          isConfirming={isConfirming}
           isPreparePaymentLoading={isPreparePaymentLoading}
           isPreparePaymentError={isPreparePaymentError}
           cardBrand={preparePayment?.cardBrand}
@@ -694,12 +696,62 @@ export function CheckoutPage() {
   );
 }
 
+interface CheckoutSuccessPageProps {
+  seatType: "pro" | "max" | null;
+  receiptUrl: string | null;
+  owner: LightWorkspaceType;
+}
+
+function CheckoutSuccessPage({
+  seatType,
+  receiptUrl,
+  owner,
+}: CheckoutSuccessPageProps) {
+  const router = useAppRouter();
+
+  return (
+    <main className="flex h-screen flex-col items-center justify-center gap-4 bg-white px-6 pb-24 pt-6">
+      <Icon visual={CheckCircle} size="2xl" className="text-success-500" />
+      <div className="flex flex-col items-center gap-4 text-center">
+        <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+          You&apos;re all set!
+        </h1>
+        <p className="text-base text-muted-foreground">
+          Your{" "}
+          <span className="font-semibold">
+            {seatType === "max" ? "Max" : "Pro"}
+          </span>{" "}
+          seat is ready with{" "}
+          <span className="font-semibold">
+            {seatType === "max" ? "40,000" : "8,000"}
+          </span>{" "}
+          credits a month. Let&apos;s build something.
+        </p>
+      </div>
+      <div className="flex gap-4">
+        {receiptUrl && (
+          <Button
+            label="View receipt"
+            variant="outline"
+            size="md"
+            onClick={() => window.open(receiptUrl, "_blank")}
+          />
+        )}
+        <Button
+          label="Start building"
+          size="md"
+          onClick={() => void router.replace(`/w/${owner.sId}`)}
+        />
+      </div>
+    </main>
+  );
+}
+
 interface RightPaneProps {
   phase: CheckoutPhase;
   phaseError: PhaseError | null;
   clientSecret: string | null;
   isCreating: boolean;
-  isConfirming: boolean;
   isPreparePaymentLoading: boolean;
   isPreparePaymentError: boolean;
   cardBrand?: string;
@@ -715,7 +767,6 @@ function RightPane({
   phaseError,
   clientSecret,
   isCreating,
-  isConfirming,
   isPreparePaymentLoading,
   isPreparePaymentError,
   cardBrand,
@@ -744,13 +795,10 @@ function RightPane({
     case "payment_review":
       if (isPreparePaymentError) {
         return (
-          <div className="flex flex-col items-center gap-6 text-center">
-            <Icon visual={XCircle} size="2xl" className="text-warning-500" />
-            <div className="flex flex-col gap-3">
-              <h2 className="text-2xl font-semibold text-foreground">
-                Couldn&apos;t load payment details
-              </h2>
-              <p className="text-sm text-muted-foreground">
+          <CheckoutError
+            title="Couldn't load payment details"
+            description={
+              <>
                 Your payment was not processed and you have not been charged.
                 Please try again.
                 <br />
@@ -762,10 +810,10 @@ function RightPane({
                   support@dust.tt
                 </a>
                 .
-              </p>
-            </div>
-            <Button label="Try again" onClick={onRestart} />
-          </div>
+              </>
+            }
+            onRetry={onRestart}
+          />
         );
       }
       return (
@@ -780,7 +828,7 @@ function RightPane({
                 <h2 className="text-2xl font-semibold text-foreground">
                   Select payment method
                 </h2>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                   Your available payment method is shown below
                 </p>
               </div>
@@ -814,7 +862,9 @@ function RightPane({
       return (
         <div className="flex flex-col items-center gap-4">
           <Spinner size="lg" />
-          <p className="text-sm text-muted-foreground">Processing payment…</p>
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Processing payment…
+          </p>
         </div>
       );
 
@@ -822,115 +872,95 @@ function RightPane({
       return (
         <div className="flex flex-col items-center gap-4">
           <Spinner size="lg" />
-          <p className="text-sm text-muted-foreground">Processing payment…</p>
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Processing payment…
+          </p>
         </div>
       );
 
-    case "activating":
-      return (
-        <div className="flex flex-col items-center gap-6 text-center">
-          <Icon visual={CheckCircle} size="2xl" className="text-success-500" />
-          <h2 className="text-2xl font-semibold text-foreground">
-            Thanks for subscribing
-          </h2>
-        </div>
-      );
+    case "checkout_success":
+      return null;
 
-    case "error": {
-      if (phaseError?.kind === "metronome_error") {
-        return (
-          <div className="flex flex-col items-center gap-6 text-center">
-            <Icon visual={XCircle} size="2xl" className="text-warning-500" />
-            <div className="flex flex-col gap-3">
-              <h2 className="text-2xl font-semibold text-foreground">
-                Something went wrong in your subscription
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Your payment was processed but we encountered an issue setting
-                up your subscription. Please contact us at{" "}
-                <a
-                  href="mailto:support@dust.tt"
-                  className="text-primary underline"
-                >
-                  support@dust.tt
-                </a>{" "}
-                and we&apos;ll get this sorted out right away.
-              </p>
-            </div>
-          </div>
-        );
+    case "error":
+      switch (phaseError?.kind) {
+        case "metronome_error":
+          return (
+            <CheckoutError
+              title="Something went wrong with your subscription"
+              description={
+                <>
+                  Your subscription could not be activated. You have not been
+                  charged. Please try again.
+                  <br />
+                  If the issue persists, contact us at{" "}
+                  <a
+                    href="mailto:support@dust.tt"
+                    className="text-primary underline"
+                  >
+                    support@dust.tt
+                  </a>
+                  .
+                </>
+              }
+              onRetry={onRestart}
+            />
+          );
+        case "invalid_coupon":
+          return (
+            <CheckoutError
+              title="Coupon no longer valid"
+              description="This coupon is no longer valid. You have not been charged. Please try again with a different code."
+              onRetry={onRestart}
+            />
+          );
+        case "setup_failed":
+        case "payment_failed":
+        case "activation_failed":
+        default:
+          return (
+            <CheckoutError
+              title="Payment failed"
+              description={
+                <>
+                  Your payment could not be processed and you have not been
+                  charged. Please try again.
+                  <br />
+                  If the issue persists, contact us at{" "}
+                  <a
+                    href="mailto:support@dust.tt"
+                    className="text-primary underline"
+                  >
+                    support@dust.tt
+                  </a>
+                  .
+                </>
+              }
+              onRetry={onRestart}
+            />
+          );
       }
-      if (phaseError?.kind === "activation_failed") {
-        return (
-          <div className="flex flex-col items-center gap-6 text-center">
-            <Icon visual={XCircle} size="2xl" className="text-warning-500" />
-            <div className="flex flex-col gap-3">
-              <h2 className="text-2xl font-semibold text-foreground">
-                Payment could not be processed
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Your subscription could not be activated. You have not been
-                charged. Please try again.
-                <br />
-                If the issue persists, contact us at{" "}
-                <a
-                  href="mailto:support@dust.tt"
-                  className="text-primary underline"
-                >
-                  support@dust.tt
-                </a>
-                .
-              </p>
-            </div>
-            <Button label="Try again" onClick={onRestart} />
-          </div>
-        );
-      }
-      if (phaseError?.kind === "invalid_coupon") {
-        return (
-          <div className="flex flex-col items-center gap-6 text-center">
-            <Icon visual={XCircle} size="2xl" className="text-warning-500" />
-            <div className="flex flex-col gap-3">
-              <h2 className="text-2xl font-semibold text-foreground">
-                Coupon no longer valid
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                This coupon is no longer valid. You have not been charged.
-                Please try again with a different code.
-              </p>
-            </div>
-            <Button label="Try again" onClick={onRestart} />
-          </div>
-        );
-      }
-      return (
-        <div className="flex flex-col items-center gap-6 text-center">
-          <Icon visual={XCircle} size="2xl" className="text-warning-500" />
-          <div className="flex flex-col gap-3">
-            <h2 className="text-2xl font-semibold text-foreground">
-              Payment failed
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Your payment could not be processed and you have not been charged.
-              Please try again.
-              <br />
-              If the issue persists, contact us at{" "}
-              <a
-                href="mailto:support@dust.tt"
-                className="text-primary underline"
-              >
-                support@dust.tt
-              </a>
-              .
-            </p>
-          </div>
-          <Button label="Try again" onClick={onRestart} />
-        </div>
-      );
-    }
 
     default:
       assertNeverAndIgnore(phase);
       return null;
   }
+}
+
+interface CheckoutErrorProps {
+  title: string;
+  description: ReactNode;
+  onRetry?: () => void;
+}
+
+function CheckoutError({ title, description, onRetry }: CheckoutErrorProps) {
+  return (
+    <div className="flex flex-col items-center gap-6 text-center">
+      <Icon visual={XCircle} size="2xl" className="text-warning-500" />
+      <div className="flex flex-col gap-3">
+        <h2 className="text-2xl font-semibold text-foreground">{title}</h2>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+      {onRetry && <Button label="Try again" onClick={onRetry} />}
+    </div>
+  );
 }

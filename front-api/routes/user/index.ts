@@ -19,6 +19,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import metadata from "./metadata";
+import onboarding from "./onboarding";
 
 const PatchUserBodySchema = z.object({
   firstName: z.string(),
@@ -285,5 +286,6 @@ app.patch(
 );
 
 app.route("/metadata", metadata);
+app.route("/onboarding", onboarding);
 
 export default app;

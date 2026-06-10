@@ -20,6 +20,11 @@ export interface CacheResourceDefinition {
   fnName: string;
   params: CacheResourceParam[];
   buildResolverKey: (params: Record<string, string>) => string;
+  // Redis glob pattern matching the resolver keys of all entries of this resource type. Used by
+  // poke to bulk-delete every cache entry for the resource. Omit when the full key (fnName +
+  // resolver key) is too generic to match safely (e.g. an anonymous fnName with an unprefixed
+  // resolver key).
+  resolverKeyPattern?: string;
 }
 
 export function buildCacheKey(
@@ -27,6 +32,15 @@ export function buildCacheKey(
   params: Record<string, string>
 ): string {
   return `cacheWithRedis-${resource.fnName}-${resource.buildResolverKey(params)}`;
+}
+
+export function buildCacheKeyPattern(
+  resource: CacheResourceDefinition
+): string | null {
+  if (!resource.resolverKeyPattern) {
+    return null;
+  }
+  return `cacheWithRedis-${resource.fnName}-${resource.resolverKeyPattern}`;
 }
 
 export const WORKSPACE_CACHE_KEY_VERSION = 2;
@@ -46,6 +60,7 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
     ],
     buildResolverKey: (p) =>
       `workspace:v${WORKSPACE_CACHE_KEY_VERSION}:${p.wId}`,
+    resolverKeyPattern: `workspace:v${WORKSPACE_CACHE_KEY_VERSION}:*`,
   },
   {
     id: "user_by_workos_id",
@@ -60,6 +75,7 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) => `user:workos:${p.workOSUserId}`,
+    resolverKeyPattern: "user:workos:*",
   },
   {
     id: "subscription_by_workspace",
@@ -75,6 +91,7 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
     ],
     buildResolverKey: (p) =>
       `subscription:active:workspaceId:${p.workspaceModelId}`,
+    resolverKeyPattern: "subscription:active:workspaceId:*",
   },
   {
     id: "membership_role",
@@ -96,6 +113,7 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
     ],
     buildResolverKey: (p) =>
       `role:user:${p.userModelId}:workspace:${p.workspaceModelId}`,
+    resolverKeyPattern: "role:user:*",
   },
   {
     id: "membership_seats",
@@ -110,6 +128,7 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) => `count-active-seats-in-workspace:${p.workspaceId}`,
+    resolverKeyPattern: "count-active-seats-in-workspace:*",
   },
   {
     id: "workos_orgs_for_user",
@@ -124,6 +143,7 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) => `workos-orgs-${p.userId}`,
+    resolverKeyPattern: "workos-orgs-*",
   },
   {
     id: "workspace_region",
@@ -138,6 +158,7 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) => `workspace-region:${p.wId}`,
+    resolverKeyPattern: "workspace-region:*",
   },
   {
     id: "provider_status",
@@ -152,6 +173,7 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) => `provider-status-${p.region}`,
+    resolverKeyPattern: "provider-status-*",
   },
   {
     id: "dust_status",
@@ -166,6 +188,7 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) => `dust-status-${p.region}`,
+    resolverKeyPattern: "dust-status-*",
   },
   {
     id: "key_monthly_cap",
@@ -180,6 +203,7 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) => `key-cap:${p.keyId}`,
+    resolverKeyPattern: "key-cap:*",
   },
   {
     id: "slack_channels",
@@ -208,6 +232,7 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) => `slack_users_${p.mcpServerId}`,
+    resolverKeyPattern: "slack_users_*",
   },
   {
     id: "metronome_balance_threshold",
@@ -228,6 +253,8 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) => `${p.metronomeCustomerId}-${p.workspaceId}`,
+    // The resolver key has no static prefix; the unique fnName scopes the pattern.
+    resolverKeyPattern: "*",
   },
   {
     id: "metronome_per_user_cap_alert_ids",
@@ -248,6 +275,8 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) => `${p.metronomeCustomerId}-${p.workspaceId}`,
+    // The resolver key has no static prefix; the unique fnName scopes the pattern.
+    resolverKeyPattern: "*",
   },
   {
     id: "metronome_default_cap_thresholds_by_seat_type",
@@ -268,6 +297,8 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) => `${p.metronomeCustomerId}-${p.workspaceId}`,
+    // The resolver key has no static prefix; the unique fnName scopes the pattern.
+    resolverKeyPattern: "*",
   },
   {
     id: "metronome_workspace_alert_ids",
@@ -288,6 +319,8 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) => `${p.metronomeCustomerId}-${p.workspaceId}`,
+    // The resolver key has no static prefix; the unique fnName scopes the pattern.
+    resolverKeyPattern: "*",
   },
 ];
 

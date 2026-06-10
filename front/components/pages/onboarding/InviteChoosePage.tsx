@@ -51,7 +51,7 @@ export function InviteChoosePage() {
         </div>
         <div className="flex flex-col gap-4">
           {pendingInvitations.length === 0 ? (
-            <div className="body-sm text-muted-foreground">
+            <div className="body-sm text-muted-foreground dark:text-muted-foreground-night">
               We couldn&apos;t find any pending invitations for{" "}
               {user?.email ?? "your account"}. Please contact your workspace
               admin or try another email address.

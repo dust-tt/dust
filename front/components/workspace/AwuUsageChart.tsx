@@ -17,7 +17,7 @@ import type {
   AwuUsageGroupByType,
   GetAwuUsageResponse,
 } from "@app/lib/api/analytics/awu_usage";
-import { formatCredits } from "@app/lib/client/credits";
+import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { useAwuUsage } from "@app/lib/swr/workspaces";
 import {
@@ -651,7 +651,7 @@ export function BaseAwuUsageChart({
           tickLine={false}
           axisLine={false}
           tickMargin={8}
-          tickFormatter={(value) => formatCredits(value)}
+          tickFormatter={(value) => formatCreditsCompact(value)}
         />
         <Tooltip
           content={(props: TooltipContentProps<number, string>) =>

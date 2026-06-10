@@ -245,7 +245,7 @@ export function useCapabilitiesPageAndFooter({
             content: mcpServerView ? (
               <MCPServerInfoPage infoMCPServerView={mcpServerView} />
             ) : (
-              <div className="p-4 text-muted-foreground">
+              <div className="p-4 text-muted-foreground dark:text-muted-foreground-night">
                 Tool information not available.
               </div>
             ),

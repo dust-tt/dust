@@ -2,6 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { MembershipUpgradeRequestModel } from "@app/lib/resources/storage/models/membership_upgrade_requests";
 import {
   UserMetadataModel,
   UserModel,
@@ -545,6 +546,17 @@ export class UserResource extends BaseResource<UserModel> {
     await this.deleteAllMetadata(auth);
 
     try {
+      // Upgrade requests reference the user with an `ON DELETE RESTRICT` FK on
+      // `userId`, so they must be removed before the user row. Rows where the
+      // user is only the resolver (`resolvedByUserId`, `ON DELETE SET NULL`)
+      // clean up on their own.
+      await MembershipUpgradeRequestModel.destroy({
+        where: {
+          userId: this.id,
+        },
+        transaction,
+      });
+
       await this.model.destroy({
         where: {
           id: this.id,
@@ -566,6 +578,15 @@ export class UserResource extends BaseResource<UserModel> {
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
     try {
+      // See `delete` — the `ON DELETE RESTRICT` FK on `userId` requires removing
+      // upgrade requests before the user row.
+      await MembershipUpgradeRequestModel.destroy({
+        where: {
+          userId: this.id,
+        },
+        transaction,
+      });
+
       await this.model.destroy({
         where: {
           id: this.id,

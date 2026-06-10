@@ -218,6 +218,29 @@ export function isSpendingFromPersonalSeat(state: UserCreditState): boolean {
   }
 }
 
+export const MEMBERSHIP_UPGRADE_REQUEST_PENDING_STATUS = "pending";
+export const MEMBERSHIP_UPGRADE_REQUEST_STATUSES = [
+  MEMBERSHIP_UPGRADE_REQUEST_PENDING_STATUS,
+  "approved",
+  "denied",
+] as const;
+
+export type MembershipUpgradeRequestStatus =
+  (typeof MEMBERSHIP_UPGRADE_REQUEST_STATUSES)[number];
+
+export interface MembershipUpgradeRequestType {
+  sId: string;
+  status: MembershipUpgradeRequestStatus;
+  createdAt: number;
+  resolvedAt: number | null;
+  requester: {
+    sId: string;
+    name: string;
+    email: string | null;
+    image: string | null;
+  };
+}
+
 // Fraction of the personal seat balance / per-user cap at which the
 // low-balance warning bands kick in. Mirrors the seat-low-balance guards in
 // `lib/metronome/user_credit_state_machine.ts` (threshold === 0.2 * allowance)

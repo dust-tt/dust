@@ -1,36 +1,62 @@
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { SCOPED_PREFIX_CONVERSATION } from "@app/lib/api/file_system/types";
 import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import {
   resolveResourceOutput,
   shouldOffloadTextBlock,
 } from "@app/lib/api/files/action_output_fs/registry";
-import { getConversationToolOutputsBasePath } from "@app/lib/api/files/mount_path";
+import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { AllSupportedFileContentType } from "@app/types/files";
+import { Err, Ok, type Result } from "@app/types/shared/result";
 import { slugify } from "@app/types/shared/utils/string_utils";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
-// Action output file system.
-//
-// Writes qualifying tool output blocks to the conversation's tool outputs GCS path (see
-// `getConversationToolOutputsBasePath`) as a side effect of processToolResults. Files are
-// conversation-scoped and are not tracked in the database. They are cleaned up when the
-// conversation is scrubbed.
-//
-// Two cases are handled:
-//   1. Resource blocks whose mimeType is registered in resolveResourceOutput.
-//   2. Plain text blocks that exceed FILE_OFFLOAD_TEXT_SIZE_BYTES (with JSON sniffing for a better
-//      file extension).
-
 export interface PersistedToolOutput {
-  // Filename within the tool outputs folder — what the model and sandbox use.
+  contentType: AllSupportedFileContentType;
   fileName: string;
+  scopedPath: string;
 }
 
 /**
- * Attempts to persist a tool output block to the conversation's tool outputs GCS path.
- * Returns null if the block does not qualify for persistence.
+ * Writes content to the conversation's .tool_outputs folder via DustFileSystem.
+ * Returns the scoped path (e.g. "conversation-{cId}/.tool_outputs/{fileName}") on success.
+ */
+export async function writeToToolOutputsFolder(
+  auth: Authenticator,
+  conversation: ConversationType,
+  {
+    fileName,
+    content,
+    contentType,
+  }: {
+    fileName: string;
+    content: string | Buffer;
+    contentType: AllSupportedFileContentType;
+  }
+): Promise<Result<string, Error>> {
+  const fsResult = await DustFileSystem.forConversation(auth, conversation);
+  if (fsResult.isErr()) {
+    return new Err(new Error(fsResult.error.message));
+  }
+
+  const scopedPath = `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/${TOOL_OUTPUTS_FOLDER_NAME}/${fileName}`;
+  const writeResult = await fsResult.value.write(
+    scopedPath,
+    content,
+    contentType
+  );
+  if (writeResult.isErr()) {
+    return new Err(new Error(writeResult.error.message));
+  }
+
+  return new Ok(scopedPath);
+}
+
+/**
+ * Attempts to persist a tool output block to the conversation's .tool_outputs folder via
+ * DustFileSystem. Returns null if the block does not qualify for persistence.
  *
  * Call this as a side effect from processToolResults.
  */
@@ -39,13 +65,7 @@ export async function persistToolOutput(
   conversation: ConversationType,
   block: CallToolResult["content"][number],
   { toolName, serverName }: { toolName: string; serverName: string }
-): Promise<PersistedToolOutput | null> {
-  const owner = auth.getNonNullableWorkspace();
-  const basePath = getConversationToolOutputsBasePath({
-    workspaceId: owner.sId,
-    conversationId: conversation.sId,
-  });
-
+): Promise<Result<PersistedToolOutput | null, Error>> {
   // Resource blocks (registered mimeTypes).
   const resolved = resolveResourceOutput(block);
   if (resolved) {
@@ -53,13 +73,20 @@ export async function persistToolOutput(
     const ext = storageContentType === "application/json" ? ".json" : ".md";
     const fileName = makeFileName({ name: rawName, ext });
 
-    await getPrivateUploadBucket().uploadRawContentToBucket({
+    const result = await writeToToolOutputsFolder(auth, conversation, {
+      fileName,
       content,
       contentType: storageContentType,
-      filePath: `${basePath}${fileName}`,
     });
+    if (result.isErr()) {
+      return result;
+    }
 
-    return { fileName };
+    return new Ok({
+      fileName,
+      scopedPath: result.value,
+      contentType: storageContentType,
+    });
   }
 
   // Text blocks above the offload threshold.
@@ -69,16 +96,19 @@ export async function persistToolOutput(
       toolName
     );
 
-    await getPrivateUploadBucket().uploadRawContentToBucket({
+    const result = await writeToToolOutputsFolder(auth, conversation, {
+      fileName,
       content: block.text,
       contentType,
-      filePath: `${basePath}${fileName}`,
     });
+    if (result.isErr()) {
+      return result;
+    }
 
-    return { fileName };
+    return new Ok({ fileName, scopedPath: result.value, contentType });
   }
 
-  return null;
+  return new Ok(null);
 }
 
 /**

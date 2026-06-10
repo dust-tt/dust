@@ -92,7 +92,7 @@ export function ViewFolderAPIModal({
               <div className="rounded-lg bg-muted-background p-4 shadow-sm dark:bg-muted-background-night">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                       Space ID:
                     </span>
                     <code className="rounded bg-background px-2 py-1 font-mono text-sm font-semibold text-foreground shadow-sm">
@@ -100,7 +100,7 @@ export function ViewFolderAPIModal({
                     </code>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                       Data Source ID:
                     </span>
                     <code className="rounded bg-background px-2 py-1 font-mono text-sm font-semibold text-foreground shadow-sm">

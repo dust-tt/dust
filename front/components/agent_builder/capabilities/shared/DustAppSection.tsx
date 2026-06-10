@@ -203,7 +203,7 @@ export function DustAppSection() {
             <div className="flex w-full">
               <div className="flex w-full flex-grow flex-col gap-1 overflow-hidden">
                 <div className="flex items-center gap-2">
-                  <Terminal className="h-6 w-6 text-muted-foreground" />
+                  <Terminal className="h-6 w-6 text-muted-foreground dark:text-muted-foreground-night" />
                   <div className="text-md font-medium">{field.value.name}</div>
                 </div>
                 <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -230,7 +230,7 @@ export function DustAppSection() {
               <div className="mb-2 text-lg font-medium text-foreground">
                 No Dust Apps available for this space
               </div>
-              <div className="max-w-sm text-muted-foreground">
+              <div className="max-w-sm text-muted-foreground dark:text-muted-foreground-night">
                 Create one or ask your admin to install apps from other spaces.
               </div>
             </div>

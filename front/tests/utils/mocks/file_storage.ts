@@ -6,6 +6,12 @@ export interface WriteStreamCall {
   contentType: string | undefined;
 }
 
+export interface SaveFileCall {
+  filePath: string;
+  content: Buffer | string;
+  contentType: string | undefined;
+}
+
 /**
  * Mock for @app/lib/file_storage. Globally registered in vite.setup.ts.
  *
@@ -19,10 +25,15 @@ export interface WriteStreamCall {
  */
 class FileStorageMock {
   private _writeStreamCalls: WriteStreamCall[] = [];
+  private _saveFileCalls: SaveFileCall[] = [];
   private _existsPredicate: (filePath: string) => boolean = () => true;
 
   get writeStreamCalls(): readonly WriteStreamCall[] {
     return this._writeStreamCalls;
+  }
+
+  get saveFileCalls(): readonly SaveFileCall[] {
+    return this._saveFileCalls;
   }
 
   /**
@@ -35,6 +46,7 @@ class FileStorageMock {
 
   reset(): void {
     this._writeStreamCalls.length = 0;
+    this._saveFileCalls.length = 0;
     this._existsPredicate = () => true;
   }
 
@@ -46,6 +58,10 @@ class FileStorageMock {
 
     return {
       FileStorage: vi.fn().mockImplementation(createStorage),
+      // Passthrough: run the operation once, without retry or backoff.
+      withRetryOnTransientGCSError: vi.fn(
+        async (operation: () => Promise<unknown>) => operation()
+      ),
       getPrivateUploadBucket: vi.fn(createStorage),
       getPublicUploadBucket: vi.fn(createStorage),
       getUpsertQueueBucket: vi.fn(createStorage),
@@ -78,7 +94,18 @@ class FileStorageMock {
         .mockResolvedValue([{ contentType: "text/plain", size: "0" }]),
       getSignedUrl: vi.fn().mockResolvedValue(["https://signed-url.test"]),
       publicUrl: vi.fn().mockReturnValue("https://public-url.test"),
-      save: vi.fn().mockResolvedValue(undefined),
+      save: vi
+        .fn()
+        .mockImplementation(
+          (content: Buffer | string, opts?: { contentType?: string }) => {
+            this._saveFileCalls.push({
+              filePath: filePath ?? "unknown",
+              content,
+              contentType: opts?.contentType,
+            });
+            return Promise.resolve(undefined);
+          }
+        ),
     };
   }
 

@@ -25,6 +25,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
 import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -135,6 +136,7 @@ export async function scrubWorkspaceData({
   await deleteAgentMemories(auth);
   await deleteSkills(auth);
   await deleteOnboardingTasks(auth);
+  await deleteMembershipUpgradeRequests(auth);
   await deleteTags(auth);
   await deleteSandboxEnvVars(auth);
   await deleteDatasources(auth);
@@ -246,6 +248,10 @@ async function deleteSkills(auth: Authenticator) {
 
 async function deleteOnboardingTasks(auth: Authenticator) {
   await OnboardingTaskResource.deleteAllForWorkspace(auth);
+}
+
+async function deleteMembershipUpgradeRequests(auth: Authenticator) {
+  await MembershipUpgradeRequestResource.deleteAllForWorkspace(auth);
 }
 
 async function deleteTags(auth: Authenticator) {

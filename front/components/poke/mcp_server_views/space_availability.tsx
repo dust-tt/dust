@@ -33,6 +33,7 @@ export function MCPServerSpaceAvailabilityTable({
           <PokeTableHeader>
             <PokeTableRow>
               <PokeTableHead>Space</PokeTableHead>
+              <PokeTableHead>View ID</PokeTableHead>
               <PokeTableHead>Kind</PokeTableHead>
               <PokeTableHead>Added by</PokeTableHead>
               <PokeTableHead>Added at</PokeTableHead>
@@ -45,6 +46,7 @@ export function MCPServerSpaceAvailabilityTable({
                   href={`/poke/${owner.sId}/spaces/${view.spaceId}/mcp_server_views/${view.sId}`}
                   content={view.space.name}
                 />
+                <PokeTableCell>{view.sId}</PokeTableCell>
                 <PokeTableCell>{view.space.kind}</PokeTableCell>
                 <PokeTableCell>{view.editedBy ?? ""}</PokeTableCell>
                 <PokeTableCell>

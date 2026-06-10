@@ -1,4 +1,3 @@
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -72,9 +71,13 @@ export const createPrivateApiMockRequest = async ({
     ? UserFactory.superUser()
     : UserFactory.basic());
 
-  const { globalGroup, systemGroup } = await GroupFactory.defaults(workspace);
-  const systemSpace = await SpaceFactory.system(workspace, systemGroup);
-  const globalSpace = await SpaceFactory.global(workspace, globalGroup);
+  // Use the idempotent defaults so this helper can be called more than once on
+  // the same workspace (e.g. to re-authenticate as a different role).
+  const adminAuth = await Authenticator.internalAdminForWorkspace(
+    workspace.sId
+  );
+  const { globalGroup, systemGroup, globalSpace, systemSpace } =
+    await SpaceFactory.defaults(adminAuth);
 
   const membership = await MembershipFactory.associate(workspace, user, {
     role,

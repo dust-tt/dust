@@ -12,6 +12,9 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 // are never rejected.
 export const MAX_QUERY_WINDOW_DAYS = 100;
 
+export const DEFAULT_RESULTS = 25;
+export const MAX_RESULTS = 100;
+
 export const ANALYTICS_PERIODS = [
   "this_month",
   "last_7_days",

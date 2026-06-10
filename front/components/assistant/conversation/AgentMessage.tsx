@@ -652,7 +652,7 @@ export function AgentMessage({
           await cancelMessage([sId]);
         }}
         icon={Stop}
-        className="text-muted-foreground"
+        className="text-muted-foreground dark:text-muted-foreground-night"
       />
     );
   }
@@ -874,7 +874,7 @@ export function AgentMessage({
           size="xs"
           onClick={handleCopyToClipboard}
           icon={isCopied ? ClipboardCheck : Clipboard}
-          className="text-muted-foreground"
+          className="text-muted-foreground dark:text-muted-foreground-night"
         />
         <DropdownMenu onOpenChange={setIsMenuOpen}>
           <DropdownMenuTrigger asChild>
@@ -882,7 +882,7 @@ export function AgentMessage({
               variant="outline"
               size="xs"
               icon={DotsHorizontal}
-              className="text-muted-foreground"
+              className="text-muted-foreground dark:text-muted-foreground-night"
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -1030,7 +1030,7 @@ export function AgentMessage({
           className="flex flex-col gap-5"
           defaultCollapsed={!isLastMessage}
           footer={footerButtons}
-          buttonClassName="text-muted-foreground"
+          buttonClassName="text-muted-foreground dark:text-muted-foreground-night"
         >
           {messageContent}
         </TruncatedContent>
@@ -1427,7 +1427,7 @@ function AgentMessageContent({
                     variant="outline"
                     size="xs"
                     icon={DotsHorizontal}
-                    className="text-muted-foreground"
+                    className="text-muted-foreground dark:text-muted-foreground-night"
                   />
                 }
                 items={[

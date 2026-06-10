@@ -17,6 +17,7 @@ import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
+import { formatMicroUsdCompact } from "@app/lib/client/credits";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { clientFetch } from "@app/lib/egress/client";
 import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
@@ -760,7 +761,7 @@ export function BaseProgrammaticCostChart({
           tickLine={false}
           axisLine={false}
           tickMargin={8}
-          tickFormatter={(value) => `$${(value / 1_000_000).toFixed(0)}`}
+          tickFormatter={(value) => formatMicroUsdCompact(value)}
         />
         <Tooltip
           content={(props: TooltipContentProps<number, string>) =>

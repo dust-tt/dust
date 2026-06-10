@@ -142,7 +142,7 @@ export function AgentPicker({
             />
           ))
         ) : (
-          <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+          <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
             No results found
           </div>
         )}

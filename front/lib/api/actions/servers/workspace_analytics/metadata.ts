@@ -1,6 +1,8 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
+  DEFAULT_RESULTS,
+  MAX_RESULTS,
   timeWindowSchemaShape,
   usageFilterSchema,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
@@ -8,35 +10,50 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-const getTopAgentsSchema = {
+const topListSchema = (entityPlural: string) => ({
   ...timeWindowSchemaShape,
   ...usageFilterSchema,
   limit: z
     .number()
     .int()
     .positive()
-    .max(100)
+    .max(MAX_RESULTS)
     .optional()
-    .describe("Maximum number of agents to return (default 25, max 100)."),
-};
+    .describe(
+      `Maximum number of ${entityPlural} to return ` +
+        `(default ${DEFAULT_RESULTS}, max ${MAX_RESULTS}).`
+    ),
+});
 
-const getTopUsersSchema = {
-  ...timeWindowSchemaShape,
-  ...usageFilterSchema,
-  limit: z
-    .number()
-    .int()
-    .positive()
-    .max(100)
-    .optional()
-    .describe("Maximum number of users to return (default 25, max 100)."),
-};
+const getTopAgentsSchema = topListSchema("agents");
+const getTopUsersSchema = topListSchema("users");
+const getTopSkillsSchema = topListSchema("skills");
+const getTopToolsSchema = topListSchema("tools");
 
 const getAgentDetailsSchema = {
   agentId: z
     .string()
     .describe(
       "The agent's id (sId), as returned by get_top_agents or other tools."
+    ),
+};
+
+const getUsageTimeseriesSchema = {
+  ...timeWindowSchemaShape,
+  ...usageFilterSchema,
+  metric: z
+    .enum(["messages", "skills", "tools"])
+    .optional()
+    .describe(
+      "What to plot over time. 'messages' (default): messages, conversations " +
+        "and active users. 'skills'/'tools': executions and unique users."
+    ),
+  granularity: z
+    .enum(["day", "week"])
+    .optional()
+    .describe(
+      "Bucket granularity (default day). Only applies to the messages metric; " +
+        "skills and tools are always daily."
     ),
 };
 
@@ -81,6 +98,47 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Retrieving agent details",
       done: "Retrieved agent details",
+    },
+  },
+  get_top_skills: {
+    description:
+      "Return the workspace's most-used skills over a time window (defaults " +
+      "to the current calendar month), ranked by execution count. Optionally " +
+      "filter by source (context_origin), agent, or user. Use this to answer " +
+      "which skills are used most. Admin-only.",
+    schema: getTopSkillsSchema,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving top skills",
+      done: "Retrieved top skills",
+    },
+  },
+  get_top_tools: {
+    description:
+      "Return the workspace's most-used tools (by MCP server) over a time " +
+      "window (defaults to the current calendar month), ranked by execution " +
+      "count. Optionally filter by source (context_origin), agent, or user. " +
+      "Use this to answer which tools are used most. Admin-only.",
+    schema: getTopToolsSchema,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving top tools",
+      done: "Retrieved top tools",
+    },
+  },
+  get_usage_timeseries: {
+    description:
+      "Return a usage time series over a window (defaults to the last 30 " +
+      "days). The metric parameter selects what is plotted: messages " +
+      "(messages/conversations/active users, default), skills, or tools " +
+      "(executions/unique users). Use this for any trend over time — it is a " +
+      "single call, do not call other tools once per day. Combine with the " +
+      "source/agent/user filters to narrow. Chart the result. Admin-only.",
+    schema: getUsageTimeseriesSchema,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving usage time series",
+      done: "Retrieved usage time series",
     },
   },
 });

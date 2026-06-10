@@ -14,6 +14,7 @@ import {
 } from "@sparkle/components/LinkWrapper";
 import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
 import { TypingAnimation } from "@sparkle/components/TypingAnimation";
+import { Lock01 } from "@sparkle/icons";
 import {
   ChevronDown,
   ChevronUp,
@@ -52,6 +53,7 @@ interface NavigationListItemProps
   extends React.HTMLAttributes<HTMLDivElement>,
     Omit<LinkWrapperProps, "children" | "className"> {
   selected?: boolean;
+  disabled?: boolean;
   label?: string;
   labelAnimation?: "none" | "typing" | "streaming";
   onTypingAnimationComplete?: () => void;
@@ -72,6 +74,7 @@ const NavigationListItem = React.forwardRef<
     {
       className,
       selected,
+      disabled,
       label,
       labelAnimation = "none",
       onTypingAnimationComplete,
@@ -114,16 +117,18 @@ const NavigationListItem = React.forwardRef<
         ref={ref}
         data-nav="menu-button"
         data-selected={selected}
+        data-disabled={disabled}
         {...props}
       >
         <LinkWrapper
-          href={href}
+          href={disabled ? undefined : href}
           target={target}
           rel={rel}
           replace={replace}
           shallow={shallow}
         >
           <div
+            aria-disabled={disabled}
             className={cn(
               "s-peer/menu-button",
               "s-text-primary dark:s-text-primary-night s-font-medium",
@@ -131,12 +136,13 @@ const NavigationListItem = React.forwardRef<
               "s-items-center s-outline-none s-rounded-lg s-text-sm s-p-2 s-transition-colors",
               "data-[disabled]:s-pointer-events-none",
               "hover:s-bg-sidebar-foreground dark:hover:s-bg-sidebar-foreground-night",
-              selected && "s-bg-sidebar-foreground dark:s-bg-sidebar-foreground-night"
+              selected && "s-bg-sidebar-foreground dark:s-bg-sidebar-foreground-night",
+              disabled && "s-pointer-events-none s-cursor-default s-opacity-50"
             )}
           >
-            {icon && (
+            {(icon || disabled) && (
               <Icon
-                visual={icon}
+                visual={disabled ? Lock01 : icon}
                 size="xs"
                 className="s-m-0.5 s-text-muted-foreground dark:s-text-muted-foreground-night"
               />

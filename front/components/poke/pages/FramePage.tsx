@@ -55,7 +55,7 @@ export function FramePage() {
         <div className="text-lg font-medium text-red-600">
           Failed to load file
         </div>
-        <div className="mt-2 text-sm text-muted-foreground">
+        <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
           The file may not exist or there was an error fetching it.
         </div>
       </div>
@@ -80,7 +80,7 @@ export function FramePage() {
           <h1 className="text-2xl font-bold">
             File Details (Interactive Content)
           </h1>
-          <div className="text-sm text-muted-foreground">
+          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             File ID: <code className="text-xs">{file.sId}</code>
           </div>
         </div>
@@ -107,24 +107,32 @@ export function FramePage() {
           </div>
           <div className="grid grid-cols-2 gap-4 p-4">
             <div>
-              <div className="text-sm text-muted-foreground">File ID</div>
+              <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                File ID
+              </div>
               <div className="font-mono text-sm">{file.sId}</div>
             </div>
             <div>
-              <div className="text-sm text-muted-foreground">File Name</div>
+              <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                File Name
+              </div>
               <div className="font-mono text-sm">{file.fileName}</div>
             </div>
             <div>
-              <div className="text-sm text-muted-foreground">Content Type</div>
+              <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                Content Type
+              </div>
               <div className="font-mono text-sm">{file.contentType}</div>
             </div>
             <div>
-              <div className="text-sm text-muted-foreground">Use Case</div>
+              <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                Use Case
+              </div>
               <div className="font-mono text-sm">{file.useCase}</div>
             </div>
             {file.useCaseMetadata?.conversationId && (
               <div className="col-span-2">
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                   Conversation
                 </div>
                 <div className="flex items-center gap-2">
@@ -181,13 +189,13 @@ export function FramePage() {
               <div className="flex flex-col gap-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                       Share Scope
                     </div>
                     <div className="font-mono text-sm">{shareInfo.scope}</div>
                   </div>
                   <div>
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                       Shared At
                     </div>
                     <div className="font-mono text-sm">
@@ -195,7 +203,7 @@ export function FramePage() {
                     </div>
                   </div>
                   <div className="col-span-2">
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                       Share URL
                     </div>
                     <div className="flex items-center gap-2">
@@ -222,7 +230,7 @@ export function FramePage() {
                   return (
                     <>
                       <div>
-                        <div className="mb-2 text-sm text-muted-foreground">
+                        <div className="mb-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                           Active Grants ({activeGrants.length})
                         </div>
                         {activeGrants.length > 0 ? (
@@ -233,7 +241,7 @@ export function FramePage() {
                                 className="flex items-center justify-between rounded border px-3 py-2 text-sm"
                               >
                                 <span className="font-mono">{grant.email}</span>
-                                <div className="flex items-center gap-3 text-muted-foreground">
+                                <div className="flex items-center gap-3 text-muted-foreground dark:text-muted-foreground-night">
                                   {grant.blockedByPolicy && (
                                     <Chip
                                       color="warning"
@@ -257,14 +265,14 @@ export function FramePage() {
                             ))}
                           </div>
                         ) : (
-                          <div className="text-sm text-muted-foreground">
+                          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                             No active grants.
                           </div>
                         )}
                       </div>
                       {revokedGrants.length > 0 && (
                         <div>
-                          <div className="mb-2 text-sm text-muted-foreground">
+                          <div className="mb-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                             Revoked Grants ({revokedGrants.length})
                           </div>
                           <div className="flex flex-col gap-2">
@@ -276,7 +284,7 @@ export function FramePage() {
                                 <span className="font-mono line-through">
                                   {grant.email}
                                 </span>
-                                <div className="flex items-center gap-3 text-muted-foreground">
+                                <div className="flex items-center gap-3 text-muted-foreground dark:text-muted-foreground-night">
                                   <Chip
                                     color="primary"
                                     label="Revoked"
@@ -310,7 +318,7 @@ export function FramePage() {
                 })()}
               </div>
             ) : (
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 No sharing configured.
               </div>
             )}

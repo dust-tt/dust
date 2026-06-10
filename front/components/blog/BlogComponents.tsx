@@ -21,7 +21,7 @@ export function BlogHeader() {
         priority
       />
       <H1 className="text-5xl">Blog</H1>
-      <P className="max-w-2xl text-center text-muted-foreground">
+      <P className="max-w-2xl text-center text-muted-foreground dark:text-muted-foreground-night">
         Learn more about Dust, get product updates, AI agents best practices and
         more.
       </P>
@@ -92,7 +92,7 @@ export function BlogPostCard({ post }: BlogPostCardProps) {
         />
       )}
       <div className="flex h-full flex-col gap-3 px-6 py-6">
-        <span className="text-sm text-muted-foreground">
+        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
           {formatTimestampToFriendlyDate(
             new Date(post.createdAt).getTime(),
             "short"
@@ -100,7 +100,9 @@ export function BlogPostCard({ post }: BlogPostCardProps) {
         </span>
         <h3 className="text-xl font-semibold text-foreground">{post.title}</h3>
         {post.description && (
-          <p className="text-base text-muted-foreground">{post.description}</p>
+          <p className="text-base text-muted-foreground dark:text-muted-foreground-night">
+            {post.description}
+          </p>
         )}
         <div className="mt-auto flex flex-wrap gap-2">
           {post.tags.map((tag) => (
@@ -129,7 +131,10 @@ export function BlogPostGrid({ posts, emptyMessage }: BlogPostGridProps) {
         posts.map((post) => <BlogPostCard key={post.id} post={post} />)
       ) : (
         <div className="col-span-full py-12 text-center">
-          <P size="md" className="text-muted-foreground">
+          <P
+            size="md"
+            className="text-muted-foreground dark:text-muted-foreground-night"
+          >
             {emptyMessage ?? "No blog posts available."}
           </P>
         </div>
@@ -167,7 +172,7 @@ export function FeaturedPost({ post }: FeaturedPostProps) {
             {post.tags.map((tag) => (
               <Chip key={tag} label={tag} size="xs" color="primary" />
             ))}
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               {formatTimestampToFriendlyDate(
                 new Date(post.createdAt).getTime(),
                 "short"
@@ -183,7 +188,9 @@ export function FeaturedPost({ post }: FeaturedPostProps) {
             </h2>
           </LinkWrapper>
           {post.description && (
-            <P className="text-muted-foreground">{post.description}</P>
+            <P className="text-muted-foreground dark:text-muted-foreground-night">
+              {post.description}
+            </P>
           )}
           <div className="flex flex-wrap gap-3">
             <Button
@@ -230,7 +237,7 @@ export function SeoArticleList({ posts }: SeoArticleListProps) {
               <span className="text-base font-medium text-foreground">
                 {post.title}
               </span>
-              <span className="shrink-0 text-sm text-muted-foreground">
+              <span className="shrink-0 text-sm text-muted-foreground dark:text-muted-foreground-night">
                 {formatTimestampToFriendlyDate(
                   new Date(post.createdAt).getTime(),
                   "short"

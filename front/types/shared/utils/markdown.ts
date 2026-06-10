@@ -109,7 +109,7 @@ const HTML_ENTITY_PATTERN = new RegExp(
   "g"
 );
 
-function decodeHtmlEntities(text: string): string {
+export function decodeHtmlEntities(text: string): string {
   return text.replace(
     HTML_ENTITY_PATTERN,
     (match) => HTML_ENTITIES[match] ?? match

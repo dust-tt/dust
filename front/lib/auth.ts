@@ -28,6 +28,8 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
+import type { Permission } from "@app/types/permissions";
+import { hasPermission } from "@app/types/permissions";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
 import type {
@@ -951,6 +953,10 @@ export class Authenticator {
 
   isAdmin(): boolean {
     return isAdmin(this.workspace());
+  }
+
+  hasPermission(permission: Permission): boolean {
+    return hasPermission(this.role(), permission);
   }
 
   isSystemKey(): boolean {

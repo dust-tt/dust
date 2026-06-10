@@ -220,7 +220,7 @@ export const MentionDropdown = forwardRef<
               ))}
             </div>
           ) : (
-            <div className="flex h-12 w-full items-center justify-center text-sm text-muted-foreground">
+            <div className="flex h-12 w-full items-center justify-center text-sm text-muted-foreground dark:text-muted-foreground-night">
               No result
             </div>
           )}

@@ -51,7 +51,7 @@ export const APIKeyCreationSheet = ({
         </SheetHeader>
         <SheetContainer>
           <div className="mt-4">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               Your API key will remain visible for 10 minutes only. You can use
               it to authenticate with the Dust API.
             </p>

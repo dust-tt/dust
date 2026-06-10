@@ -191,7 +191,11 @@ export function FeedbackSelector({
         onClick={handleButtonClick}
         icon={MagicWand02}
         label={buttonLabel}
-        className={feedback ? "" : "text-muted-foreground"}
+        className={
+          feedback
+            ? ""
+            : "text-muted-foreground dark:text-muted-foreground-night"
+        }
       />
 
       <Dialog
@@ -330,7 +334,7 @@ export function FeedbackSelector({
                               ? "Share conversation with the Dust team"
                               : "Share conversation with the agent’s editors"}
                           </Label>
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                             {isGlobalAgent
                               ? `Helps the Dust team improve @${agentName}`
                               : "Helps editors improve the agent"}

@@ -8,7 +8,6 @@ import { processToolResults } from "@app/lib/actions/mcp_execution";
 import type { DataSourceNodeContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import { Authenticator } from "@app/lib/auth";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
@@ -17,6 +16,7 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
@@ -232,7 +232,7 @@ describe("processToolResults", () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
-    vi.mocked(getPrivateUploadBucket).mockClear();
+    fileStorageMock.reset();
 
     const dataSourceNodeResult: DataSourceNodeContentType = {
       mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_CONTENT,
@@ -264,23 +264,15 @@ describe("processToolResults", () => {
       toolConfiguration,
     });
 
-    const uploadCalls = vi
-      .mocked(getPrivateUploadBucket)
-      .mock.results.flatMap((r) =>
-        r.type === "return"
-          ? vi.mocked(r.value.uploadRawContentToBucket).mock.calls
-          : []
-      );
-
-    const toolOutputWrite = uploadCalls.find((call) =>
-      call[0].filePath.includes(`${TOOL_OUTPUTS_FOLDER_NAME}/`)
+    const toolOutputWrite = fileStorageMock.saveFileCalls.find((call) =>
+      call.filePath.includes(`${TOOL_OUTPUTS_FOLDER_NAME}/`)
     );
     expect(toolOutputWrite).toBeDefined();
-    expect(toolOutputWrite?.[0].filePath).toMatch(
+    expect(toolOutputWrite?.filePath).toMatch(
       new RegExp(`${TOOL_OUTPUTS_FOLDER_NAME}/\\d+_my_notion_page\\.md$`)
     );
-    expect(toolOutputWrite?.[0].content).toBe(
-      "# My Notion Page\n\nSome content here."
+    expect(toolOutputWrite?.content).toEqual(
+      Buffer.from("# My Notion Page\n\nSome content here.")
     );
   });
 
@@ -288,7 +280,7 @@ describe("processToolResults", () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
-    vi.mocked(getPrivateUploadBucket).mockClear();
+    fileStorageMock.reset();
 
     const largeText = "hello world ".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES);
 
@@ -300,20 +292,12 @@ describe("processToolResults", () => {
       toolConfiguration,
     });
 
-    const uploadCalls = vi
-      .mocked(getPrivateUploadBucket)
-      .mock.results.flatMap((r) =>
-        r.type === "return"
-          ? vi.mocked(r.value.uploadRawContentToBucket).mock.calls
-          : []
-      );
-
-    const toolOutputWrite = uploadCalls.find((call) =>
-      call[0].filePath.includes(`${TOOL_OUTPUTS_FOLDER_NAME}/`)
+    const toolOutputWrite = fileStorageMock.saveFileCalls.find((call) =>
+      call.filePath.includes(`${TOOL_OUTPUTS_FOLDER_NAME}/`)
     );
 
     expect(toolOutputWrite).toBeDefined();
-    expect(toolOutputWrite?.[0].filePath).toMatch(
+    expect(toolOutputWrite?.filePath).toMatch(
       new RegExp(`${TOOL_OUTPUTS_FOLDER_NAME}/\\d+_test_tool\\.txt$`)
     );
   });
@@ -322,7 +306,7 @@ describe("processToolResults", () => {
     const { auth, conversation, action, toolConfiguration } = await setupTest();
     await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
-    vi.mocked(getPrivateUploadBucket).mockClear();
+    fileStorageMock.reset();
 
     const largeJson = JSON.stringify({
       data: "x".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES),
@@ -336,19 +320,11 @@ describe("processToolResults", () => {
       toolConfiguration,
     });
 
-    const uploadCalls = vi
-      .mocked(getPrivateUploadBucket)
-      .mock.results.flatMap((r) =>
-        r.type === "return"
-          ? vi.mocked(r.value.uploadRawContentToBucket).mock.calls
-          : []
-      );
-
-    const toolOutputWrite = uploadCalls.find((call) =>
-      call[0].filePath.includes(`${TOOL_OUTPUTS_FOLDER_NAME}/`)
+    const toolOutputWrite = fileStorageMock.saveFileCalls.find((call) =>
+      call.filePath.includes(`${TOOL_OUTPUTS_FOLDER_NAME}/`)
     );
     expect(toolOutputWrite).toBeDefined();
-    expect(toolOutputWrite?.[0].filePath).toMatch(
+    expect(toolOutputWrite?.filePath).toMatch(
       new RegExp(`${TOOL_OUTPUTS_FOLDER_NAME}/\\d+_test_tool\\.json$`)
     );
   });

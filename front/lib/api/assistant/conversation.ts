@@ -34,6 +34,7 @@ import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE,
   MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
   makeAgentMentionsRateLimitKeyForWorkspace,
+  makeFairUseAwuCreditsRateLimitKeyForUser,
   makeKeyCapRateLimitKey,
   makeMessageRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspaceActor,
@@ -101,6 +102,7 @@ import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
+  getRateLimiterCount,
   getTimeframeSecondsFromLiteral,
   rateLimiter,
 } from "@app/lib/utils/rate_limiter";
@@ -2913,7 +2915,42 @@ async function isMessagesLimitReached(
   }
 
   // Checking plan limit
-  const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
+  const {
+    maxAwuCredits,
+    maxAwuCreditsTimeframe,
+    maxMessages,
+    maxMessagesTimeframe,
+  } = plan.limits.assistant;
+
+  const user = auth.user();
+  if (user && maxAwuCredits !== -1) {
+    const result = await getRateLimiterCount({
+      key: makeFairUseAwuCreditsRateLimitKeyForUser(
+        owner,
+        user.toJSON(),
+        maxAwuCreditsTimeframe
+      ),
+      timeframeSeconds: getTimeframeSecondsFromLiteral(maxAwuCreditsTimeframe),
+    });
+
+    if (result.isOk() && result.value >= maxAwuCredits) {
+      return {
+        isLimitReached: true,
+        limitType: "plan_message_limit_exceeded",
+      };
+    }
+
+    if (result.isErr()) {
+      logger.error(
+        {
+          workspaceId: owner.sId,
+          userId: user.sId,
+          error: result.error,
+        },
+        "Failed to read fair-use AWU credits rate limit."
+      );
+    }
+  }
 
   if (plan.limits.assistant.maxMessages === -1) {
     return {

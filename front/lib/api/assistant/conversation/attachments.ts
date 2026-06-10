@@ -227,7 +227,10 @@ export function getAttachmentFromFileContentFragment(
   const isIncludable =
     !shouldSuppressTabularHints &&
     isConversationIncludableFileContentType(cf.contentType);
-  const isSearchable = canDoJIT && isSearchableContentType(cf.contentType);
+  const isSearchable =
+    canDoJIT &&
+    isSearchableContentType(cf.contentType) &&
+    cf.skipDataSourceIndexing !== true;
   const creator: AttachmentCreator | null = cf.context.fullName
     ? {
         type: "user",

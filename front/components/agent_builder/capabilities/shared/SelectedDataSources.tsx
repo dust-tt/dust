@@ -153,7 +153,9 @@ function DataSourceTreeItem({
   );
 
   const actions = spaceName ? (
-    <span className="text-xs text-muted-foreground">{spaceName}</span>
+    <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+      {spaceName}
+    </span>
   ) : undefined;
 
   // If entire data source is selected and no specific nodes, show as leaf

@@ -1,9 +1,12 @@
+import { useSendNotification } from "@app/hooks/useNotification";
 import type {
+  DeleteAllPokeCacheResponseBody,
   GetPokeCacheResponseBody,
   RedisInstance,
 } from "@app/lib/api/poke/cache";
 import { clientFetch } from "@app/lib/egress/client";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { useState } from "react";
 import type { Fetcher } from "swr";
 
@@ -92,4 +95,57 @@ export function usePokeCacheInvalidate() {
   };
 
   return { doInvalidate, isInvalidating };
+}
+
+export function usePokeCacheDeleteAll() {
+  const sendNotification = useSendNotification();
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
+
+  const doDeleteAll = async ({
+    resourceId,
+  }: {
+    resourceId: string;
+  }): Promise<boolean> => {
+    setIsDeletingAll(true);
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.set("resourceId", resourceId);
+
+      const res = await clientFetch(
+        `/api/poke/cache/all?${queryParams.toString()}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        sendNotification({
+          title: "Failed to delete cache entries",
+          description: errorData.error?.message ?? "Unknown error",
+          type: "error",
+        });
+        return false;
+      }
+
+      const body: DeleteAllPokeCacheResponseBody = await res.json();
+      sendNotification({
+        title: "Cache entries deleted",
+        description: `Deleted ${body.deletedCount} entries matching '${body.pattern}'.`,
+        type: "success",
+      });
+      return true;
+    } catch (error) {
+      sendNotification({
+        title: "Failed to delete cache entries",
+        description: normalizeError(error).message,
+        type: "error",
+      });
+      return false;
+    } finally {
+      setIsDeletingAll(false);
+    }
+  };
+
+  return { doDeleteAll, isDeletingAll };
 }

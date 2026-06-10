@@ -182,10 +182,19 @@ export async function processToolResults(
   }[] = await concurrentExecutor(
     toolCallResultContent,
     async (block, idx) => {
-      await persistToolOutput(auth, conversation, block, {
+      const res = await persistToolOutput(auth, conversation, block, {
         toolName: toolConfiguration.name,
         serverName: toolConfiguration.mcpServerName,
       });
+      if (res.isErr()) {
+        return {
+          content: {
+            type: "text",
+            text: "Failed to save the tool output.",
+          },
+          file: null,
+        };
+      }
 
       switch (block.type) {
         case "text": {
@@ -232,6 +241,7 @@ export async function processToolResults(
             file: null,
           };
         }
+
         case "image": {
           const fileName = isResourceWithName(block)
             ? block.name
@@ -246,12 +256,14 @@ export async function processToolResults(
             fileUseCaseMetadata,
           });
         }
+
         case "audio": {
           return {
             content: block,
             file: null,
           };
         }
+
         case "resource": {
           // File path only, pass through as-is.
           if (isToolGeneratedFilePath(block)) {
@@ -407,6 +419,7 @@ export async function processToolResults(
             };
           }
         }
+
         case "resource_link": {
           return {
             content: block,

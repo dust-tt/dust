@@ -10,7 +10,7 @@ export function PokeDataTablePagination<TData>({
 }: DataTablePaginationProps<TData>) {
   return (
     <div className="flex items-center justify-between px-2">
-      <div className="flex-1 text-sm text-muted-foreground">
+      <div className="flex-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
         Total of{" "}
         {table.options.manualPagination
           ? table.getRowCount()

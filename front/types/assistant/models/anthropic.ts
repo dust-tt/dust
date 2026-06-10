@@ -409,6 +409,9 @@ export const CLAUDE_FABLE_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
     featureFlag: "claude_fable_5_feature",
   },
   customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
+  // Fable 5's safety classifiers can decline a request; retry server-side on
+  // Opus 4.8 so the user still gets an answer in one round trip.
+  fallbackModels: [CLAUDE_OPUS_4_8_MODEL_ID],
   // Served from a separate Anthropic workspace (EAP), like the EAP custom
   // models. Forces non-Vertex routing.
   useEapKey: true,

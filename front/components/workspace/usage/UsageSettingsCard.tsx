@@ -1,12 +1,20 @@
 import {
   useDefaultUserSpendLimit,
   useUpdateDefaultUserSpendLimit,
+  useUpdateUsageSettings,
+  useUsageSettings,
 } from "@app/lib/swr/usage_settings";
 import {
   MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
 } from "@app/types/credits";
-import { Input, Page, SettingsList, Spinner } from "@dust-tt/sparkle";
+import {
+  Input,
+  Page,
+  SettingsList,
+  SliderToggle,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 interface UsageSettingsCardProps {
@@ -19,9 +27,26 @@ export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
   const { doUpdateDefaultUserSpendLimit } = useUpdateDefaultUserSpendLimit({
     workspaceId,
   });
+  const { usageSettings, isUsageSettingsLoading } = useUsageSettings({
+    workspaceId,
+  });
+  const { doUpdateUsageSettings } = useUpdateUsageSettings({ workspaceId });
 
   const [defaultLimitInput, setDefaultLimitInput] = useState<string>("");
   const [isSavingLimit, setIsSavingLimit] = useState(false);
+  const [isSavingAllowUpgradeRequest, setIsSavingAllowUpgradeRequest] =
+    useState(false);
+
+  const handleToggleAllowUpgradeRequest = async () => {
+    setIsSavingAllowUpgradeRequest(true);
+    try {
+      await doUpdateUsageSettings({
+        allowUpgradeRequest: !usageSettings.allowUpgradeRequest,
+      });
+    } finally {
+      setIsSavingAllowUpgradeRequest(false);
+    }
+  };
 
   useEffect(() => {
     if (defaultUserSpendLimit?.awuCredits !== undefined) {
@@ -92,6 +117,17 @@ export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
                 </span>
               )}
             </div>
+          }
+        />
+        <SettingsList.Row
+          title="Upgrade request"
+          description="Allow members who reach their pool credit limit to request an upgrade. Workspace admins review requests on the Usage page."
+          action={
+            <SliderToggle
+              selected={usageSettings.allowUpgradeRequest}
+              disabled={isSavingAllowUpgradeRequest || isUsageSettingsLoading}
+              onClick={() => void handleToggleAllowUpgradeRequest()}
+            />
           }
         />
       </SettingsList>

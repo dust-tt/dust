@@ -15,27 +15,6 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { z } from "zod";
-
-export type CreditUsageConfigurationBody = {
-  // Credit balance (in AWU credits) below which workspace admins are emailed.
-  // `null` means no threshold is configured (the warning is off). Derived from
-  // the workspace's Metronome balance-threshold alert.
-  balanceThresholdCredits: number | null;
-};
-
-export type GetCreditUsageConfigurationResponseBody = {
-  configuration: CreditUsageConfigurationBody;
-};
-
-export type PatchCreditUsageConfigurationResponseBody = {
-  configuration: CreditUsageConfigurationBody;
-};
-
-export const PatchCreditUsageConfigurationRequestBody = z.object({
-  // 0 (or null) clears the threshold; a positive value enables the alert.
-  balanceThresholdCredits: z.number().int().min(0).nullable(),
-});
 
 /**
  * Read the workspace's credit-balance-threshold notification setting.

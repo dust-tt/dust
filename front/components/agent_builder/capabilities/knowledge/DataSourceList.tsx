@@ -357,7 +357,7 @@ export function DataSourceList({
             {headerTitle && <div>{headerTitle}</div>}
           </div>
           {additionalColumns.length > 0 && (
-            <div className="ml-3 flex w-1/3 items-center gap-3 text-muted-foreground">
+            <div className="ml-3 flex w-1/3 items-center gap-3 text-muted-foreground dark:text-muted-foreground-night">
               {additionalColumns.map((col, idx) => (
                 <div key={idx} className="min-w-0 flex-1 truncate text-left">
                   {col.title}
@@ -405,7 +405,7 @@ export function DataSourceList({
               </div>
 
               {additionalColumns.length > 0 && (
-                <div className="ml-3 flex w-1/3 items-start gap-3 text-sm text-muted-foreground">
+                <div className="ml-3 flex w-1/3 items-start gap-3 text-sm text-muted-foreground dark:text-muted-foreground-night">
                   {additionalColumns.map((col, idx) => (
                     <div
                       key={idx}

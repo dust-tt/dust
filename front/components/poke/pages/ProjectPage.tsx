@@ -27,7 +27,7 @@ export function ProjectPage({ details }: ProjectPageProps) {
         </LinkWrapper>
       </h3>
       {metadata?.description && (
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
           {metadata.description}
         </p>
       )}

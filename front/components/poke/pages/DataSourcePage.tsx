@@ -180,7 +180,7 @@ function FolderDisplay({
                 }
               >
                 <ContextItem.Description>
-                  <div className="pt-2 text-sm text-muted-foreground">
+                  <div className="pt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                     {Math.floor(d.text_size / 1024)} kb,{" "}
                     {timeAgoFrom(d.timestamp)} ago
                   </div>
@@ -257,7 +257,7 @@ function FolderDisplay({
                 }
               >
                 <ContextItem.Description>
-                  <div className="pt-2 text-sm text-muted-foreground">
+                  <div className="pt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                     {timeAgoFrom(t.timestamp)} ago
                   </div>
                 </ContextItem.Description>
@@ -812,7 +812,7 @@ function ZendeskTicketCheck({
               )}
             </div>
             {ticketDetails.ticket && (
-              <div className="ml-4 pt-2 text-xs text-muted-foreground">
+              <div className="ml-4 pt-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
                 <div className="mb-1 font-bold">Details</div>
                 <JsonViewer
                   theme={isDark ? "dark" : "light"}

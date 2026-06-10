@@ -606,6 +606,9 @@
  *           type: string
  *           nullable: true
  *           description: Path of this file inside the sandbox conversation mount.
+ *         skipDataSourceIndexing:
+ *           type: boolean
+ *           description: Whether data source indexing was skipped for this file.
  *         skipFileProcessing:
  *           type: boolean
  *           description: Whether upload-time file processing was skipped.

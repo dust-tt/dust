@@ -146,4 +146,102 @@ describe("POST /api/w/:wId/invitations/:iId", () => {
     expect(reloaded?.initialRole).toBe("admin");
     expect(reloaded?.status).toBe("pending");
   });
+
+  it("returns 403 when a business admin tries to elevate an invitation to admin", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "business_admin",
+    });
+    const invitation = await MembershipInvitationFactory.create(workspace, {
+      inviteEmail: "to-elevate@example.com",
+      status: "pending",
+      initialRole: "user",
+    });
+
+    const response = await honoApp.request(
+      invitationUrl(workspace.sId, invitation.sId),
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "pending", initialRole: "admin" }),
+      }
+    );
+
+    expect(response.status).toBe(403);
+    const data = await response.json();
+    expect(data.error.type).toBe("workspace_auth_error");
+    expect(data.error.message).toBe(
+      "You do not have permission to manage admin invitations."
+    );
+
+    // The role must not have changed.
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const reloaded = await MembershipInvitationResource.fetchById(
+      adminAuth,
+      invitation.sId
+    );
+    expect(reloaded?.initialRole).toBe("user");
+  });
+
+  it("returns 403 when a business admin tries to modify an existing admin invitation", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "business_admin",
+    });
+    const invitation = await MembershipInvitationFactory.create(workspace, {
+      inviteEmail: "existing-admin@example.com",
+      status: "pending",
+      initialRole: "admin",
+    });
+
+    const response = await honoApp.request(
+      invitationUrl(workspace.sId, invitation.sId),
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "revoked", initialRole: "admin" }),
+      }
+    );
+
+    expect(response.status).toBe(403);
+    expect((await response.json()).error.message).toBe(
+      "You do not have permission to manage admin invitations."
+    );
+
+    // The invitation must remain untouched.
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const reloaded = await MembershipInvitationResource.fetchById(
+      adminAuth,
+      invitation.sId
+    );
+    expect(reloaded?.status).toBe("pending");
+  });
+
+  it("allows a business admin to revoke a non-admin invitation", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "business_admin",
+    });
+    const invitation = await MembershipInvitationFactory.create(workspace, {
+      inviteEmail: "to-revoke@example.com",
+      status: "pending",
+      initialRole: "user",
+    });
+
+    const response = await honoApp.request(
+      invitationUrl(workspace.sId, invitation.sId),
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "revoked", initialRole: "user" }),
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).invitation.status).toBe("revoked");
+  });
 });
