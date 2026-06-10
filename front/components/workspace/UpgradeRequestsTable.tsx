@@ -158,17 +158,15 @@ export function UpgradeRequestsTable({
 }: UpgradeRequestsTableProps) {
   const rows: RowData[] = useMemo(
     () =>
-      requests
-        .filter((request) => request.status === "pending")
-        .map((request) => ({
-          sId: request.sId,
-          name: request.requester.name,
-          email: request.requester.email,
-          image: request.requester.image,
-          createdAt: request.createdAt,
-          request,
-          isPending: pendingRequestIds.has(request.sId),
-        })),
+      requests.map((request) => ({
+        sId: request.sId,
+        name: request.requester.name,
+        email: request.requester.email,
+        image: request.requester.image,
+        createdAt: request.createdAt,
+        request,
+        isPending: pendingRequestIds.has(request.sId),
+      })),
     [requests, pendingRequestIds]
   );
 
