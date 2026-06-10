@@ -19,3 +19,8 @@ export type DeletePokeCacheResponseBody = {
   redisInstance: RedisInstance;
   deleted: true;
 };
+
+export type DeleteAllPokeCacheResponseBody = {
+  pattern: string;
+  deletedCount: number;
+};
