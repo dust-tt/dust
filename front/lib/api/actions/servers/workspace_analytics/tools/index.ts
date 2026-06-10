@@ -9,9 +9,14 @@ import {
   resolveTimeWindow,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { fetchAvailableSkills } from "@app/lib/api/assistant/observability/skill_usage";
+import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
+import {
+  fetchAvailableSkills,
+  fetchSkillUsageMetrics,
+} from "@app/lib/api/assistant/observability/skill_usage";
 import {
   fetchAvailableTools,
+  fetchToolUsageMetrics,
   resolveServerDisplayNames,
 } from "@app/lib/api/assistant/observability/tool_usage";
 import { fetchTopAgents } from "@app/lib/api/assistant/observability/top_agents";
@@ -19,6 +24,7 @@ import { fetchTopUsers } from "@app/lib/api/assistant/observability/top_users";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types/shared/result";
+import moment from "moment-timezone";
 
 function scopedBaseQuery(
   auth: Authenticator,
@@ -306,6 +312,122 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
         type: "text" as const,
         text:
           `Most-used tools for ${label} (${tz}), most used first:\n` +
+          lines.join("\n"),
+      },
+    ]);
+  },
+
+  get_usage_timeseries: async (
+    {
+      metric,
+      granularity,
+      period,
+      startDate,
+      endDate,
+      timezone,
+      source,
+      agentIds,
+      userIds,
+    },
+    { auth }
+  ) => {
+    const denied = workspaceAdminGuard(auth);
+    if (denied) {
+      return new Err(denied);
+    }
+
+    const window = resolveTimeWindow(
+      { period, startDate, endDate, timezone },
+      "last_30_days"
+    );
+    if (window.isErr()) {
+      return new Err(new MCPError(window.error, { tracked: false }));
+    }
+
+    const baseQuery = scopedBaseQuery(auth, window.value, {
+      source,
+      agentIds,
+      userIds,
+    });
+    const { label, timezone: tz } = window.value;
+    const selectedMetric = metric ?? "messages";
+
+    if (selectedMetric === "messages") {
+      const interval = granularity ?? "day";
+      const result = await fetchMessageMetrics(
+        baseQuery,
+        interval,
+        ["conversations", "activeUsers"],
+        tz
+      );
+      if (result.isErr()) {
+        return new Err(
+          new MCPError(
+            `Failed to retrieve usage time series: ${result.error.message}`
+          )
+        );
+      }
+      if (result.value.length === 0) {
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `No messages usage recorded for ${label} (${tz}).`,
+          },
+        ]);
+      }
+      const lines = result.value.map((point) => {
+        const date = moment.tz(point.timestamp, tz).format("YYYY-MM-DD");
+        return (
+          `${date}: ${point.count} messages, ` +
+          `${point.conversations} conversations, ` +
+          `${point.activeUsers} active users`
+        );
+      });
+      return new Ok([
+        {
+          type: "text" as const,
+          text:
+            `messages usage per ${interval} for ${label} (${tz}):\n` +
+            lines.join("\n"),
+        },
+      ]);
+    }
+
+    const result =
+      selectedMetric === "skills"
+        ? await fetchSkillUsageMetrics(baseQuery, null, tz)
+        : await fetchToolUsageMetrics(baseQuery, null, tz);
+    if (result.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to retrieve usage time series: ${result.error.message}`
+        )
+      );
+    }
+
+    const points: {
+      date: string;
+      executionCount: number;
+      uniqueUsers: number;
+    }[] = result.value;
+    if (points.length === 0) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `No ${selectedMetric} usage recorded for ${label} (${tz}).`,
+        },
+      ]);
+    }
+    const lines = points.map(
+      (point) =>
+        `${point.date}: ${point.executionCount} executions, ` +
+        `${point.uniqueUsers} unique users`
+    );
+    return new Ok([
+      {
+        type: "text" as const,
+        text:
+          `${selectedMetric} usage per day for ${label} (${tz}):\n` +
           lines.join("\n"),
       },
     ]);
