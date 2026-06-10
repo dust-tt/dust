@@ -91,3 +91,9 @@ export const getSpaceRoute = (workspaceId: string, spaceId: string) => {
 export const getPodRoute = (workspaceId: string, spaceId: string) => {
   return `/w/${workspaceId}/pods/${spaceId}`;
 };
+
+// The Pod page defaults to the conversations tab; the `#files` hash (consumed by
+// useSpaceProjectTabs) makes the link land on the Files tab.
+export const getPodFilesRoute = (workspaceId: string, spaceId: string) => {
+  return `${getPodRoute(workspaceId, spaceId)}#files`;
+};

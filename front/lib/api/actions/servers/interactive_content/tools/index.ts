@@ -291,7 +291,8 @@ export function createInteractiveContentTools(
           type: "text",
           text:
             `File '${fileResource.sId}' (${fileResource.fileName}) retrieved ` +
-            `successfully. Content:\n\n${content}`,
+            `successfully. Content:\n\n${content}` +
+            getPodFrameLinkNotice(auth, fileResource),
         },
       ]);
     },

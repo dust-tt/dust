@@ -2,7 +2,7 @@ import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
-import { getPodRoute } from "@app/lib/utils/router";
+import { getPodFilesRoute } from "@app/lib/utils/router";
 
 /**
  * For frames that live in a Pod (`project_context` files), returns a notice pointing the agent at
@@ -19,9 +19,9 @@ export function getPodFrameLinkNotice(
   }
 
   const owner = auth.getNonNullableWorkspace();
-  const url = `${config.getAppUrl()}${getPodRoute(owner.sId, useCaseMetadata.spaceId)}#files`;
+  const url = `${config.getAppUrl()}${getPodFilesRoute(owner.sId, useCaseMetadata.spaceId)}`;
 
-  return ` This frame lives in a Pod; when linking to it in your response, use ${url}`;
+  return `\n\nThis frame lives in a Pod; when linking to it in your response, use ${url}`;
 }
 
 /**

@@ -28,8 +28,11 @@ describe("getPodFrameLinkNotice", () => {
       useCaseMetadata: { spaceId: space.sId },
     });
 
-    expect(getPodFrameLinkNotice(auth, file)).toContain(
-      `https://app.dust.tt/w/${workspace.sId}/pods/${space.sId}#files`
+    // The URL must terminate the notice: a trailing period would break the link when the model
+    // copies it verbatim.
+    expect(getPodFrameLinkNotice(auth, file)).toBe(
+      "\n\nThis frame lives in a Pod; when linking to it in your response, " +
+        `use https://app.dust.tt/w/${workspace.sId}/pods/${space.sId}#files`
     );
   });
 
