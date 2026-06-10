@@ -16,9 +16,19 @@ const main = async () => {
   });
 
   if (argv._.length < 2) {
-    throw new Error(
-      "Expects object type and command as first two arguments, eg: `cli connectors stop ...`"
-    );
+    console.error("Usage: cli <majorCommand> <command> [--arg=value ...]");
+    console.error("");
+    console.error("Available commands:");
+    console.error("");
+    for (const schema of AdminCommandSchema.types) {
+      const majorCommand = String(schema.props.majorCommand.value);
+      const subCommands = schema.props.command.types.map((c) =>
+        String(c.value)
+      );
+      console.error(`  ${majorCommand}:`);
+      console.error(`    ${subCommands.join(", ")}`);
+    }
+    process.exit(0);
   }
 
   const [objectType, command] = argv._;
