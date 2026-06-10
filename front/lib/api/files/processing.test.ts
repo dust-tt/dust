@@ -43,23 +43,23 @@ describe("hasProcessedVersion", () => {
     expect(hasProcessedVersion("image/svg+xml")).toBe(false);
   });
 
-  it("should return true for PDF files (text extraction)", () => {
-    expect(hasProcessedVersion("application/pdf")).toBe(true);
+  it("should return false for PDF files (lazy extraction via extract_text tool)", () => {
+    expect(hasProcessedVersion("application/pdf")).toBe(false);
   });
 
-  it("should return true for Word documents (text extraction)", () => {
+  it("should return false for Word documents (lazy extraction via extract_text tool)", () => {
     expect(
       hasProcessedVersion(
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
       )
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("should return true for image files (resize)", () => {
     expect(hasProcessedVersion("image/png")).toBe(true);
   });
 
-  it("should return true for Excel files (text extraction)", () => {
+  it("should return true for Excel files (text extraction required for table upsert)", () => {
     expect(
       hasProcessedVersion(
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -78,16 +78,16 @@ describe("getProcessedContentType", () => {
     expect(getProcessedContentType("application/json")).toBeUndefined();
   });
 
-  it("should return text/plain for PDFs", () => {
-    expect(getProcessedContentType("application/pdf")).toBe("text/plain");
+  it("should return undefined for PDFs (no pre-processing; use extract_text tool)", () => {
+    expect(getProcessedContentType("application/pdf")).toBeUndefined();
   });
 
-  it("should return text/plain for Word documents", () => {
+  it("should return undefined for Word documents (no pre-processing; use extract_text tool)", () => {
     expect(
       getProcessedContentType(
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
       )
-    ).toBe("text/plain");
+    ).toBeUndefined();
   });
 
   it("should return text/plain for audio files", () => {

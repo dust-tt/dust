@@ -252,7 +252,7 @@ const extractTextFromFileAndUpload: ProcessingFunction = async (
     const writeStream = file.getWriteStream({
       auth,
       version: "processed",
-      overrideContentType: "text/plain", // Text extractor extracts plain text from binary documents.
+      overrideContentType: "text/plain",
     });
 
     await pipeline(processedStream, writeStream);
@@ -443,58 +443,8 @@ const PROCESSING_BY_CONTENT_TYPE = new Map<
     },
   ],
 
-  // Documents (text extracted via Tika -> plain text).
-  [
-    "application/pdf",
-    {
-      process: extractTextFromFileAndUpload,
-      processedContentType: "text/plain",
-    },
-  ],
-  [
-    "application/msword",
-    {
-      process: extractTextFromFileAndUpload,
-      processedContentType: "text/plain",
-    },
-  ],
-  [
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    {
-      process: extractTextFromFileAndUpload,
-      processedContentType: "text/plain",
-    },
-  ],
-  [
-    "application/vnd.ms-powerpoint",
-    {
-      process: extractTextFromFileAndUpload,
-      processedContentType: "text/plain",
-    },
-  ],
-  [
-    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    {
-      process: extractTextFromFileAndUpload,
-      processedContentType: "text/plain",
-    },
-  ],
-  [
-    "application/vnd.google-apps.document",
-    {
-      process: extractTextFromFileAndUpload,
-      processedContentType: "text/plain",
-    },
-  ],
-  [
-    "application/vnd.google-apps.presentation",
-    {
-      process: extractTextFromFileAndUpload,
-      processedContentType: "text/plain",
-    },
-  ],
-
-  // Excel (text extracted via Tika -> HTML table).
+  // Spreadsheets: served through the conversation data source as queryable tables until we
+  // settle on handing this off to the computer/sandbox.
   [
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     {
