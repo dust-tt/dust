@@ -4,7 +4,10 @@ import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
 import { getMetronomeProgrammaticCapAlertStates } from "@app/lib/metronome/alerts/programmatic_cap";
 import type { MetronomeCapAlertInfo } from "@app/lib/metronome/alerts/spend_limits";
 import { getCachedDefaultCapThresholdsBySeatType } from "@app/lib/metronome/alerts/spend_limits";
-import { listMetronomeSeatBalances } from "@app/lib/metronome/client";
+import {
+  listContractPerUserCreditBalances,
+  listMetronomeSeatBalances,
+} from "@app/lib/metronome/client";
 import {
   awuSeatBalanceForUser,
   fetchLiveUserCreditInputs,
@@ -389,6 +392,25 @@ export async function reconcileWorkspaceUserCreditStates({
   }
   const seatBalances = seatBalancesResult.value;
 
+  // Free seats hold a per-user contract credit, not a seat balance, so they're
+  // absent from `listMetronomeSeatBalances`. Read their balances separately so a
+  // free user with credit remaining lands on `user_seat` (not `on_pool`) and is
+  // moved to `capped` once exhausted. A read failure leaves the map empty —
+  // free users then fall back to the seat-balance path (null) as before.
+  const perUserCreditBalancesResult = await listContractPerUserCreditBalances({
+    metronomeCustomerId,
+    metronomeContractId,
+  });
+  if (perUserCreditBalancesResult.isErr()) {
+    logger.warn(
+      { workspaceId, err: perUserCreditBalancesResult.error },
+      "[ReconcileCreditState] Failed to load per-user credit balances"
+    );
+  }
+  const perUserCreditBalances = perUserCreditBalancesResult.isOk()
+    ? perUserCreditBalancesResult.value
+    : new Map<string, { balanceAwu: number; startingBalanceAwu: number }>();
+
   // The cap-threshold caches (Metronome alert list / contract) and the
   // membership query (DB) can genuinely throw, so they stay wrapped — the
   // ERR1-authorised case. The per-user overrides themselves come from the
@@ -454,7 +476,15 @@ export async function reconcileWorkspaceUserCreditStates({
           ? (defaultCaps[normalizedSeatType]?.threshold ?? null)
           : null;
 
-    const seat = awuSeatBalanceForUser(seatBalances, userId);
+    // Seat balance comes from `listMetronomeSeatBalances` for pro/max; free
+    // seats read their per-user credit balance instead (not a seat balance).
+    // Pro/max read their seat balance. `expectedUserCreditState` decides routing
+    // from the seat type — a free seat is never `on_pool`, and a null (unknown)
+    // balance leaves it on the seat rather than mis-capping it.
+    const seat =
+      awuSeatBalanceForUser(seatBalances, userId) ??
+      perUserCreditBalances.get(userId) ??
+      null;
     const expectedState = expectedUserCreditState({
       seatType,
       seatBalanceAwu: seat?.balanceAwu ?? null,
