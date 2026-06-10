@@ -54,7 +54,7 @@ export function PodPage() {
 
   if (isPodsInfoLoading) {
     return (
-      <div className="flex h-full w-full items-center justify-center">
+      <div className="flex h-full w-full items-center justify-center mt-8">
         <Spinner />
       </div>
     );
@@ -79,7 +79,7 @@ export function PodPage() {
       <Tabs
         value={currentTab}
         onValueChange={(value) => handleTabChange(value as PodTab)}
-        className="flex min-h-0 flex-1 flex-col overflow-hidden pt-3"
+        className="flex min-h-0 flex-1 flex-col overflow-hidden pt-2"
       >
         <div className="flex shrink-0 items-start justify-between border-b border-separator pl-14 pr-6 lg:px-6 dark:border-separator-night">
           <TabsList border={false}>

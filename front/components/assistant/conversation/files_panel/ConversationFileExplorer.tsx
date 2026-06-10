@@ -58,7 +58,7 @@ export function ConversationFileExplorer({
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-panel min-h-0 flex-col">
       <AppLayoutTitle>
         <div className="flex h-full items-center justify-between gap-2">
           {isPod ? (
@@ -80,7 +80,7 @@ export function ConversationFileExplorer({
               />
             </ButtonGroup>
           ) : (
-            <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+            <span className="text-sm text-foreground dark:text-foreground-night">
               Conversation Files
             </span>
           )}

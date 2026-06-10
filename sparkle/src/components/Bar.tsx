@@ -22,8 +22,8 @@ const barVariants = cva("s-flex s-flex-row s-items-center s-gap-3 s-px-4", {
         "s-relative s-z-10 s-border-border s-bg-background dark:s-border-border-night dark:s-bg-background-night",
     },
     size: {
-      sm: "s-h-14",
-      md: "s-h-16",
+      sm: "s-h-12",
+      md: "s-h-14",
     },
   },
   compoundVariants: [

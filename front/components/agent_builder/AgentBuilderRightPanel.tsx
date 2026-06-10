@@ -35,7 +35,7 @@ function PanelHeader({
   onTabChange,
 }: PanelHeaderProps) {
   return (
-    <div className="flex h-16 items-end">
+    <div className="flex h-14 items-end">
       {isPreviewPanelOpen ? (
         <div className="flex w-full items-center">
           <ScrollArea aria-orientation="horizontal" className="flex-1">

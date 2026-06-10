@@ -436,7 +436,7 @@ export const VisualizationActionIframe = forwardRef<
               />
             </div>
           ) : (
-            <div className="relative flex h-full w-full shrink-0 items-center justify-center">
+            <div className="relative flex h-panel w-full shrink-0 items-center justify-center">
               {codeFullyGenerated && !isErrored && (
                 <div
                   style={
@@ -465,7 +465,7 @@ export const VisualizationActionIframe = forwardRef<
               )}
 
               {isErrored && !retryClicked && !isPublic && (
-                <div className="flex h-full w-full items-center justify-center p-6">
+                <div className="flex h-panel w-full items-center justify-center p-6">
                   <ContentMessage
                     title="Visualization failed"
                     variant="warning"
@@ -520,7 +520,7 @@ export const VisualizationActionIframe = forwardRef<
         </div>
       </div>
       {showSpinner && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background dark:bg-background-night">
+        <div className="absolute inset-0 flex items-center justify-center bg-panel-background dark:bg-panel-background-night">
           <Spinner size="xl" variant="color" />
         </div>
       )}

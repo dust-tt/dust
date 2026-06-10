@@ -97,6 +97,7 @@ import {
   NavigationListLabel,
   Plus,
   Robot,
+  ScrollArea,
   Spinner,
   Star01,
   Trash01,
@@ -1564,9 +1565,9 @@ function NavigationListWithInbox({
   );
 
   return (
-    <div
+    <ScrollArea
       ref={scrollContainerRef}
-      className="dd-privacy-mask h-full w-full overflow-y-auto"
+      className="dd-privacy-mask h-full w-full"
     >
       <div className="flex flex-col gap-4">
         <AnimatePresence initial={false}>
@@ -1679,6 +1680,6 @@ function NavigationListWithInbox({
           </NavigationListCollapsibleSection>
         </NavigationList>
       </div>
-    </div>
+    </ScrollArea>
   );
 }

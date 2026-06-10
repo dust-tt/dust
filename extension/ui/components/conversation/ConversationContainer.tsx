@@ -5,7 +5,7 @@ import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { SubscriptionType } from "@app/types/plan";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { Button, Menu01 } from "@dust-tt/sparkle";
+import { Button, cn, Menu01 } from "@dust-tt/sparkle";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { sendGetSessionInfoMessage } from "@extension/shared/messages";
 import { ExtensionInputBarProvider } from "@extension/ui/components/conversation/ExtensionInputBarProvider";
@@ -118,7 +118,11 @@ export const ConversationContainer = ({
       {conversation && currentPanel && (
         <div className="fixed inset-0 z-50 flex flex-col bg-background dark:bg-background-night">
           {/* Hamburger button overlaid in the pl-14 area of AppLayoutTitle header */}
-          <div className="absolute left-0 top-0 z-10 flex h-[58px] shrink-0 items-center px-2">
+          <div
+            className={cn(
+              "absolute left-0 top-0 z-10 flex shrink-0 items-center px-2 h-title"
+            )}
+          >
             <Button
               variant="ghost"
               icon={Menu01}

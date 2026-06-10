@@ -23,6 +23,8 @@
   }
 
   :root {
+    --panel-height: 100dvh;
+
     /* Chart tokens (light): exact shadcn palette */
     --chart-1: 211 100% 78%;
     --chart-2: 216 100% 58%;
@@ -38,6 +40,12 @@
     --chart-3: 221 97% 54%;
     --chart-4: 225 84% 49%;
     --chart-5: 227 76% 41%;
+  }
+}
+
+@media (min-width: 768px) {
+  :root {
+    --panel-height: calc(100dvh - 1rem);
   }
 }
 
