@@ -2,6 +2,7 @@ import { FILE_OFFLOAD_TEXT_SIZE_BYTES } from "@app/lib/actions/action_output_lim
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { SCOPED_PREFIX_CONVERSATION } from "@app/lib/api/file_system/types";
 import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
+import { isResourceContentWithText } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
   resolveResourceOutput,
   shouldOffloadTextBlock,
@@ -111,11 +112,8 @@ export async function persistToolOutput(
 
   // Resource blocks whose text exceeds the offload threshold.
   if (
-    block.type === "resource" &&
-    "text" in block.resource &&
-    typeof block.resource.text === "string" &&
-    Buffer.byteLength(block.resource.text, "utf8") >
-      FILE_OFFLOAD_TEXT_SIZE_BYTES
+    isResourceContentWithText(block) &&
+    Buffer.byteLength(block.resource.text, "utf8") > FILE_OFFLOAD_TEXT_SIZE_BYTES
   ) {
     const text = block.resource.text;
     const { fileName, contentType } = inferTextFileMetadata(text, toolName);
