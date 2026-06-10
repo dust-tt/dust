@@ -32,8 +32,9 @@ import { IncomingForm } from "formidable";
 import { readFile } from "fs/promises";
 
 /**
- * Node-style headers shape, matching both `NextApiRequest["headers"]` and the
- * record built from `Headers.forEach(...)` in the Hono adapter.
+ * Node-style headers shape: matches the record built from
+ * `Headers.forEach(...)` in the Hono adapter and the legacy `IncomingMessage`
+ * headers shape.
  */
 export type EmailWebhookHeaders = Record<string, string | string[] | undefined>;
 

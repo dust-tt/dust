@@ -1,10 +1,10 @@
+import type { IncomingMessage, ServerResponse } from "node:http";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { WorkspaceType } from "@app/types/user";
-import type { NextApiRequest, NextApiResponse } from "next";
 import type { RequestMethod } from "node-mocks-http";
 import { createMocks } from "node-mocks-http";
 import { vi } from "vitest";
@@ -14,18 +14,10 @@ import { setupWorkOSMocks } from "./mocks/workos";
 // Setup WorkOS mocks
 setupWorkOSMocks();
 
-// Mock the getSession function to return the user without going through the workos session
-vi.mock(import("../../lib/auth"), async (importOriginal) => {
-  const mod = await importOriginal();
-  return {
-    ...mod,
-    getSession: vi.fn(),
-  };
-});
-
-// Hono middlewares bypass `getSession` and call `getWorkOSSessionWithSetCookies`
-// directly. Mock it here so tests using `createPrivateApiMockRequest` against
-// Hono routes resolve the same authenticated session as Next tests.
+// Hono middlewares call `getWorkOSSessionWithSetCookies` directly to resolve a
+// session from the workos cookie. Mock it here so tests using
+// `createPrivateApiMockRequest` against Hono routes resolve the same
+// authenticated session.
 vi.mock(import("../../lib/api/workos/user"), async (importOriginal) => {
   const mod = await importOriginal();
   return {
@@ -35,7 +27,7 @@ vi.mock(import("../../lib/api/workos/user"), async (importOriginal) => {
 });
 
 import { getWorkOSSessionWithSetCookies } from "../../lib/api/workos/user";
-import { Authenticator, getSession } from "../../lib/auth";
+import { Authenticator } from "../../lib/auth";
 
 /**
  * Creates a mock request with authentication for testing private API endpoints.
@@ -47,13 +39,6 @@ import { Authenticator, getSession } from "../../lib/auth";
  * @param options Configuration options
  * @param options.method HTTP method to use for the request (default: "GET")
  * @param options.role Role to assign to the user in the workspace (default: "user")
- * @returns Object containing:
- *   - req: Mocked NextApiRequest
- *   - res: Mocked NextApiResponse
- *   - workspace: Created test workspace
- *   - user: Created test user
- *   - membership: Created workspace membership
- *   - globalGroup: Created global group for the workspace
  */
 export const createPrivateApiMockRequest = async ({
   method = "GET",
@@ -83,7 +68,6 @@ export const createPrivateApiMockRequest = async ({
     role,
   });
 
-  // Mock the getSession function to return the user without going through the workos session
   const session = {
     type: "workos" as const,
     sessionId: "test-session-id",
@@ -101,13 +85,12 @@ export const createPrivateApiMockRequest = async ({
     organizationId: workspace.workOSOrganizationId ?? undefined,
     region: "us-central1" as const,
   };
-  vi.mocked(getSession).mockReturnValue(Promise.resolve(session));
   vi.mocked(getWorkOSSessionWithSetCookies).mockResolvedValue({
     session,
     setCookies: [],
   });
 
-  const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+  const { req, res } = createMocks<IncomingMessage, ServerResponse>({
     method: method,
     query: { wId: workspace.sId },
     headers: {},

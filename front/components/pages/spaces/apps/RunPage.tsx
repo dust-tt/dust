@@ -1,12 +1,12 @@
 import CopyRun from "@app/components/app/CopyRun";
 import SpecRunView from "@app/components/app/SpecRunView";
 import { ConfirmContext } from "@app/components/Confirm";
+import Custom404 from "@app/components/pages/Custom404";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { cleanSpecificationFromCore } from "@app/lib/specification";
 import { useApp, useRunWithSpec } from "@app/lib/swr/apps";
-import Custom404 from "@app/pages/404";
 import { Button, CheckCircle, Clock, Spinner } from "@dust-tt/sparkle";
 import { useContext, useState } from "react";
 

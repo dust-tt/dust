@@ -1,6 +1,6 @@
 import { AdminLayout } from "@dust-tt/front/components/layouts/AdminLayout";
+import Custom404 from "@dust-tt/front/components/pages/Custom404";
 import { useAuth } from "@dust-tt/front/lib/auth/AuthContext";
-import Custom404 from "@dust-tt/front/pages/404";
 import {
   hasPermission,
   type Permission,

@@ -2,7 +2,7 @@ import config from "@app/lib/api/config";
 import type { MiddlewareHandler } from "hono";
 
 // Paths served by the main SPA app (front-spa) — redirect these to the SPA
-// origin. Mirrors `SPA_PATH_PREFIXES` in `front/middleware.ts`.
+// origin when they reach this Hono server.
 const SPA_PATH_PREFIXES = [
   "/w",
   "/invite-choose",
@@ -27,10 +27,9 @@ function isPokePath(pathname: string): boolean {
 }
 
 /**
- * Mirrors the SPA / poke redirects in `front/middleware.ts` (the Next.js Edge
- * middleware) for requests served natively by Hono. Browser paths served by
- * the separate SPA apps (front-spa, poke) reach this origin (e.g.
- * front-edge.dust.tt) and must be 302-redirected to the appropriate SPA origin.
+ * Browser paths served by the separate SPA apps (front-spa, poke) sometimes
+ * reach this origin (e.g. front-edge.dust.tt) — 302-redirect them to the
+ * appropriate SPA origin so the user lands on the right app.
  */
 export const spaRedirect: MiddlewareHandler = async (ctx, next) => {
   // `ctx.req.path` is the parsed pathname without the cost of building a URL.

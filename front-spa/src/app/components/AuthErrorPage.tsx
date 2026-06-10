@@ -1,4 +1,4 @@
-import Custom404 from "@dust-tt/front/pages/404";
+import Custom404 from "@dust-tt/front/components/pages/Custom404";
 import type { APIErrorResponse } from "@dust-tt/front/types/error";
 import { isAPIErrorResponse } from "@dust-tt/front/types/error";
 import { AlertCircle, Button, Icon } from "@dust-tt/sparkle";

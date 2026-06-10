@@ -1,7 +1,7 @@
+import Custom404 from "@app/components/pages/Custom404";
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
 import { useJoinData } from "@app/lib/swr/workspaces";
-import Custom404 from "@app/pages/404";
 import {
   AlertCircle,
   Button,
