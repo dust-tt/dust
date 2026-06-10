@@ -9,6 +9,7 @@ import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -19,8 +20,6 @@ import { slugify } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const OVER_QUOTA_FILE_SIZE_BYTES = 6 * 1_024 * 1_024;
 
 // Mock the data_sources module to spy on upsertTable
 vi.mock(import("../data_sources"), async (importOriginal) => {
@@ -84,10 +83,23 @@ vi.mock(import("../files/processing"), async (importOriginal) => {
 describe("processAndUpsertToDataSource", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;
+  let overQuotaFileSizeBytes: number;
 
   beforeEach(async () => {
     // Create a workspace using WorkspaceFactory
     workspace = await WorkspaceFactory.basic();
+
+    // Derive the over-quota size from the workspace plan so the tests follow
+    // along if the document size limit is tweaked.
+    const subscription =
+      await SubscriptionResource.fetchLastByWorkspace(workspace);
+    if (!subscription) {
+      throw new Error("Expected the test workspace to have a subscription.");
+    }
+    overQuotaFileSizeBytes =
+      (subscription.getPlan().limits.dataSources.documents.sizeMb + 1) *
+      1024 *
+      1024;
 
     // Mock auth
     auth = {
@@ -134,7 +146,7 @@ describe("processAndUpsertToDataSource", () => {
     const file = await FileFactory.create(auth, null, {
       contentType: "text/plain",
       fileName: "large-conversation-file.txt",
-      fileSize: OVER_QUOTA_FILE_SIZE_BYTES,
+      fileSize: overQuotaFileSizeBytes,
       status: "ready",
       useCase: "conversation",
       useCaseMetadata: {
@@ -171,7 +183,7 @@ describe("processAndUpsertToDataSource", () => {
     const file = await FileFactory.create(auth, null, {
       contentType: "text/plain",
       fileName: "large-folder-file.txt",
-      fileSize: OVER_QUOTA_FILE_SIZE_BYTES,
+      fileSize: overQuotaFileSizeBytes,
       status: "ready",
       useCase: "folders_document",
     });
