@@ -1,13 +1,12 @@
+import {
+  BillingPeriodSwitch,
+  PaidPlanCards,
+  type PaidPlanTier,
+} from "@app/components/pages/onboarding/SubscriptionPlans";
 import { ProPlansTable } from "@app/components/plans/ProPlansTable";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
-import {
-  CP_MAX_SEAT_COST_MONTHLY,
-  CP_MAX_SEAT_COST_YEARLY,
-  CP_PRO_SEAT_COST_MONTHLY,
-  CP_PRO_SEAT_COST_YEARLY,
-} from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { isFreeTrialPhonePlan, isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
@@ -20,15 +19,7 @@ import {
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { BillingPeriod } from "@app/types/plan";
 import { isDevelopment } from "@app/types/shared/env";
-import {
-  BarHeader,
-  Button,
-  ButtonGroup,
-  Chip,
-  Lock01,
-  Page,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { BarHeader, Button, Lock01, Page, Spinner } from "@dust-tt/sparkle";
 import { CreditCardIcon } from "@heroicons/react/20/solid";
 import React, { useEffect } from "react";
 
@@ -41,16 +32,12 @@ function CPSubscribePage() {
 
   const [billingPeriod, setBillingPeriod] =
     React.useState<BillingPeriod>("monthly");
-  const [seatType, setSeatType] = React.useState<"pro" | "max">("pro");
 
   const { submit: handleSubscribe } = useSubmitFunction(
-    async (params: {
-      seatType: "pro" | "max";
-      billingPeriod: BillingPeriod;
-    }) => {
+    async (seatType: PaidPlanTier) => {
       const query = new URLSearchParams({
-        seatType: params.seatType,
-        billingPeriod: params.billingPeriod,
+        seatType,
+        billingPeriod,
         targetUserId: authUser.sId,
       });
       await router.push(
@@ -110,7 +97,7 @@ function CPSubscribePage() {
   return (
     <>
       <BarHeader
-        title="Subscribe to Business"
+        title="Choose your plan"
         className="ml-10 lg:ml-0"
         rightActions={
           <div className="flex flex-row items-center">
@@ -120,132 +107,25 @@ function CPSubscribePage() {
           </div>
         }
       />
-      <Page>
-        <div className="flex h-full flex-col items-center justify-center gap-8">
-          {/* Placeholder banner */}
-          <div className="w-full max-w-xl rounded-xl border border-warning-200 bg-warning-100 p-4 text-center dark:border-warning-200-night dark:bg-warning-100-night">
-            <p className="text-lg font-bold text-foreground dark:text-foreground-night">
-              Placeholder — Page to be designed
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
-              This page has not been designed yet.
-            </p>
-          </div>
-          <div className="flex flex-col items-center gap-2 text-center">
-            <Page.Header
-              icon={CreditCardIcon}
-              title="Choose your Business plan"
-            />
-            <Page.P>
-              Select a seat type and billing period to get started.
-            </Page.P>
-          </div>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-8 px-4 py-16">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <h1 className="text-4xl font-bold text-foreground dark:text-foreground-night">
+            Choose your plan to continue
+          </h1>
+          <p className="text-lg text-muted-foreground dark:text-muted-foreground-night">
+            You can change it anytime from the admin page.
+          </p>
+        </div>
 
-          {/* Billing period toggle */}
-          <div className="flex items-center gap-3">
-            <ButtonGroup>
-              <Button
-                size="sm"
-                variant={billingPeriod === "monthly" ? "primary" : "outline"}
-                label="Monthly"
-                onClick={() => setBillingPeriod("monthly")}
-              />
-              <Button
-                size="sm"
-                variant={billingPeriod === "yearly" ? "primary" : "outline"}
-                label="Yearly"
-                onClick={() => setBillingPeriod("yearly")}
-              />
-            </ButtonGroup>
-            {billingPeriod === "yearly" && (
-              <Chip size="xs" color="green" label="Save 20%" />
-            )}
-          </div>
+        <BillingPeriodSwitch onValueChange={setBillingPeriod} />
 
-          {/* Seat type cards */}
-          <div className="flex w-full max-w-xl flex-col gap-4">
-            {(
-              [
-                {
-                  type: "pro" as const,
-                  name: "Pro",
-                  monthlyPrice: `$${CP_PRO_SEAT_COST_MONTHLY}/mo`,
-                  yearlyPrice: `$${CP_PRO_SEAT_COST_YEARLY}/mo`,
-                  yearlyTotal: `$${CP_PRO_SEAT_COST_YEARLY * 12} billed yearly`,
-                  creditsLabel: "8,000 credits/month",
-                },
-                {
-                  type: "max" as const,
-                  name: "Max",
-                  monthlyPrice: `$${CP_MAX_SEAT_COST_MONTHLY}/mo`,
-                  yearlyPrice: `$${CP_MAX_SEAT_COST_YEARLY}/mo`,
-                  yearlyTotal: `$${CP_MAX_SEAT_COST_YEARLY * 12} billed yearly`,
-                  creditsLabel: "40,000 credits/month",
-                },
-              ] satisfies Array<{
-                type: "pro" | "max";
-                name: string;
-                monthlyPrice: string;
-                yearlyPrice: string;
-                yearlyTotal: string;
-                creditsLabel: string;
-              }>
-            ).map((seat) => (
-              <button
-                key={seat.type}
-                type="button"
-                onClick={() => setSeatType(seat.type)}
-                className={`flex w-full flex-col gap-2 rounded-xl border-2 p-5 text-left transition-colors ${
-                  seatType === seat.type
-                    ? "border-highlight-500 bg-highlight-500/10"
-                    : "border-separator dark:border-separator-night hover:border-muted-foreground/40"
-                }`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-lg font-semibold text-foreground dark:text-foreground-night">
-                      {seat.name}
-                    </span>
-                    <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                      {seat.creditsLabel}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end gap-0.5">
-                    <span className="text-xl font-bold text-foreground dark:text-foreground-night">
-                      {billingPeriod === "monthly"
-                        ? seat.monthlyPrice
-                        : seat.yearlyPrice}
-                    </span>
-                    {billingPeriod === "yearly" && (
-                      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                        {seat.yearlyTotal}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-
-          <Button
-            variant="primary"
-            label="Continue to checkout"
-            icon={CreditCardIcon}
-            size="sm"
-            onClick={withTracking(
-              TRACKING_AREAS.AUTH,
-              "cp_subscription_start",
-              () => {
-                void handleSubscribe({ seatType, billingPeriod });
-              },
-              {
-                seat_type: seatType,
-                billing_period: billingPeriod,
-              }
-            )}
+        <div className="flex w-full max-w-2xl flex-col gap-4 sm:flex-row">
+          <PaidPlanCards
+            billingPeriod={billingPeriod}
+            onSubscribe={(seatType) => void handleSubscribe(seatType)}
           />
         </div>
-      </Page>
+      </div>
     </>
   );
 }
