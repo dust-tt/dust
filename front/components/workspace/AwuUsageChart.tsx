@@ -17,6 +17,7 @@ import type {
   AwuUsageGroupByType,
   GetAwuUsageResponse,
 } from "@app/lib/api/analytics/awu_usage";
+import { formatCredits } from "@app/lib/client/credits";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { useAwuUsage } from "@app/lib/swr/workspaces";
 import {
@@ -55,11 +56,6 @@ type ChartDataPoint = {
   timestamp: number;
   [key: string]: string | number | undefined;
 };
-
-// All values are AWU credits — never USD/microUsd.
-function formatCredits(credits: number): string {
-  return Math.round(credits).toLocaleString("en-US");
-}
 
 const GROUP_BY_OPTIONS: {
   value: AwuUsageGroupByType;
