@@ -52,7 +52,6 @@ const PostSkillRequestBodySchema = z.intersection(
     attachedKnowledge: z.array(AttachedKnowledgeSchema),
     instructionsHtml: z.string().nullable(),
     additionalRequestedSpaceIds: z.array(z.string()).optional(),
-    referencedSkillIds: z.array(z.string()).optional(),
     fileAttachments: z.array(z.object({ fileId: z.string() })).optional(),
     isDefault: z.boolean().optional(),
     reinforcement: z.enum(SKILL_REINFORCEMENT_MODES).optional(),
@@ -343,7 +342,6 @@ app.post(
       });
     }
 
-    const referencedSkillIds = uniq(body.referencedSkillIds ?? []);
     const featureFlags = await getFeatureFlags(auth);
 
     // Validate file attachments if provided (gated behind sandbox_tools).
@@ -428,7 +426,6 @@ app.post(
         mcpServerViews,
         attachedKnowledge: attachedKnowledgeWithDataSourceViews,
         fileAttachments: files,
-        referencedSkillIds,
       }
     );
 

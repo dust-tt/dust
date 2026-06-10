@@ -50,7 +50,6 @@ const PatchSkillRequestBodySchema = z.object({
   attachedKnowledge: z.array(AttachedKnowledgeSchema),
   instructionsHtml: z.string().nullable(),
   additionalRequestedSpaceIds: z.array(z.string()).optional(),
-  referencedSkillIds: z.array(z.string()).optional(),
   fileAttachments: z.array(z.object({ fileId: z.string() })).optional(),
   isDefault: z.boolean().optional(),
   reinforcement: z.enum(["auto", "on", "off"]).optional(),
@@ -317,14 +316,6 @@ app.patch(
       ...additionalRequestedSpaceIds,
     ]);
 
-    const referencedSkillIds =
-      body.referencedSkillIds !== undefined
-        ? uniq(
-            body.referencedSkillIds.filter(
-              (referencedSkillId) => referencedSkillId !== skill.sId
-            )
-          )
-        : undefined;
     const featureFlags = await getFeatureFlags(auth);
 
     // Validate file attachments if provided (gated behind sandbox_tools).
@@ -393,7 +384,6 @@ app.patch(
       name,
       reinforcement: body.reinforcement,
       requestedSpaceIds,
-      referencedSkillIds,
       userFacingDescription: body.userFacingDescription,
       ...(shouldActivate ? { status: "active" as const } : {}),
     });

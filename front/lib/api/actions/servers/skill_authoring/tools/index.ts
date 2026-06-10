@@ -297,7 +297,6 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       {
         mcpServerViews: [],
         attachedKnowledge: [],
-        referencedSkillIds: [],
       }
     );
 
@@ -469,14 +468,6 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
 
     const attachedKnowledge = await skill.getAttachedKnowledge(auth);
 
-    // When the instructions change, re-derive the referenced skills from the new
-    // text so the nested-skill links stay in sync with the tags (the builder UI
-    // does the same). Leave them untouched when the instructions are unchanged.
-    const referencedSkillIds =
-      resolvedInstructions !== undefined
-        ? extractUniqueSkillReferenceIds(resolvedInstructions)
-        : undefined;
-
     await skill.updateSkill(auth, {
       agentFacingDescription:
         agentFacingDescription ?? skill.agentFacingDescription,
@@ -490,7 +481,6 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       mcpServerViews: skill.mcpServerViews,
       name: trimmedName,
       requestedSpaceIds: skill.requestedSpaceIds,
-      referencedSkillIds,
       userFacingDescription:
         userFacingDescription ?? skill.userFacingDescription,
     });
