@@ -1,4 +1,5 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import {
@@ -6,7 +7,6 @@ import {
   type MembershipUpgradeRequestStatus,
 } from "@app/types/memberships";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
 
 // A member-initiated request to have their per-user spend limit raised by a
 // workspace admin. A member can have at most one `pending` request at a time
