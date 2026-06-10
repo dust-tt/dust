@@ -197,7 +197,7 @@ export async function sendCreditUsageAlertEmail({
   await sendEmailWithTemplate({
     to: email,
     from: config.getSupportEmailAddress(),
-    subject: `[Dust] Credit usage alert - ${percentUsed}% of your credits consumed`,
+    subject: `[Dust] Credit usage alert: ${percentUsed}% of your credits consumed`,
     body: `
       <p>You're receiving this as Admin of the Dust workspace <strong>${workspace.name}</strong>.</p>
       <p>Your workspace has consumed <strong>${percentUsed}%</strong> of its available programmatic usage credits.</p>
