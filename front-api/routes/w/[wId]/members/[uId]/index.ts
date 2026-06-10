@@ -104,7 +104,9 @@ app.post(
 
     const featureFlags = await getFeatureFlags(auth);
     const body = ctx.req.valid("json");
-    const isAdmin = auth.isAdmin();
+
+    const canManageMembers = auth.hasPermission("workspace:manage_members");
+    const canManageAdmins = auth.hasPermission("workspace:manage_admin_role");
 
     // Allow Dust Super User to force role for testing
     const allowForSuperUserTesting =
@@ -112,13 +114,12 @@ app.post(
       auth.isDustSuperUser() &&
       body.force === "true";
 
-    if (!isAdmin && !allowForSuperUserTesting) {
+    if (!canManageMembers && !allowForSuperUserTesting) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
-          message:
-            "Only users that are `admins` for the current workspace can modify memberships.",
+          message: "You do not have permission to modify memberships.",
         },
       });
     }
@@ -130,6 +131,32 @@ app.post(
         api_error: {
           type: "workspace_user_not_found",
           message: "The user requested was not found.",
+        },
+      });
+    }
+
+    // Escalation guard: only those who can manage admins may assign the `admin`
+    // role or change the role of an existing admin.
+    const currentMembership =
+      await MembershipResource.getLatestMembershipOfUserInWorkspace({
+        user,
+        workspace: owner,
+      });
+    const targetIsAdmin =
+      currentMembership?.role === "admin" && !currentMembership.isRevoked();
+    const assigningAdmin = body.role === "admin";
+
+    if (
+      (targetIsAdmin || assigningAdmin) &&
+      !canManageAdmins &&
+      !allowForSuperUserTesting
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message:
+            "You do not have permission to assign or modify the admin role.",
         },
       });
     }

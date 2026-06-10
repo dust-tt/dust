@@ -208,7 +208,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     user: UserResource | UserType
   ) {
     assert(
-      auth.isAdmin() || auth.user()?.id === user.id,
+      auth.hasPermission("workspace:manage_members") ||
+        auth.user()?.id === user.id,
       "Triggers can only be listed by admins or by their editor."
     );
 

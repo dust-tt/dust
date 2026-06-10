@@ -63,8 +63,9 @@ app.get(
       query
     );
 
-    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
-    if (auth.isAdmin()) {
+    // Callers without member-management permission receive only minimal
+    // essential user data (LightUserType).
+    if (auth.hasPermission("workspace:manage_members")) {
       return ctx.json({ members, total });
     }
 

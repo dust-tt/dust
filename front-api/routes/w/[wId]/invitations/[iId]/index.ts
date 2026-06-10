@@ -7,7 +7,7 @@ import type { PostMemberInvitationsResponseBody } from "@app/lib/api/invitation"
 import { PostMemberInvitationBodySchema } from "@app/lib/api/invitation";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureHasPermission } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -19,7 +19,7 @@ const ParamsSchema = z.object({
 // Mounted under /api/w/:wId/invitations/:iId.
 const app = workspaceApp();
 
-app.use("*", ensureIsAdmin());
+app.use("*", ensureHasPermission("workspace:manage_members"));
 
 /** @ignoreswagger */
 app.post(
@@ -47,6 +47,21 @@ app.post(
     const body = ctx.req.valid("json");
     const previousStatus = invitation.status;
     const previousRole = invitation.initialRole;
+
+    // Escalation guard: elevating an invitation to `admin`, or modifying/
+    // revoking one that is already `admin`, requires the manage_admin_role
+    // permission — so business admins cannot use the edit path to grant admin.
+    const targetsAdmin =
+      previousRole === "admin" || body.initialRole === "admin";
+    if (targetsAdmin && !auth.hasPermission("workspace:manage_admin_role")) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "You do not have permission to manage admin invitations.",
+        },
+      });
+    }
 
     await invitation.updateStatus(body.status);
     await invitation.updateRole(body.initialRole);
