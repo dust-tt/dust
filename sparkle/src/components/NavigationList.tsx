@@ -14,6 +14,7 @@ import {
 } from "@sparkle/components/LinkWrapper";
 import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
 import { TypingAnimation } from "@sparkle/components/TypingAnimation";
+import { Lock01 } from "@sparkle/icons";
 import {
   ChevronDown,
   ChevronUp,
@@ -139,9 +140,16 @@ const NavigationListItem = React.forwardRef<
               disabled && "s-pointer-events-none s-cursor-default s-opacity-50"
             )}
           >
-            {icon && (
+            {icon && !disabled && (
               <Icon
                 visual={icon}
+                size="xs"
+                className="s-m-0.5 s-text-muted-foreground dark:s-text-muted-foreground-night"
+              />
+            )}
+            {disabled && (
+              <Icon
+                visual={Lock01}
                 size="xs"
                 className="s-m-0.5 s-text-muted-foreground dark:s-text-muted-foreground-night"
               />

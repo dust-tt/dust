@@ -1,4 +1,4 @@
-import { RequirePermissionLayout } from "@spa/app/layouts/RequirePermission";
+import { RequirePermissionLayout } from "@spa/app/layouts/RequirePermissionLayout";
 import { withSuspense } from "@spa/app/routes/withSuspense";
 import type { RouteObject } from "react-router-dom";
 
@@ -100,6 +100,10 @@ export const adminRoutes: RouteObject[] = [
     children: [{ path: "members", element: <MembersPage /> }],
   },
   {
+    element: <RequirePermissionLayout permission="workspace:view_analytics" />,
+    children: [{ path: "analytics", element: <AnalyticsPage /> }],
+  },
+  {
     // Admin-only areas.
     element: <RequirePermissionLayout permission="workspace:admin" />,
     children: [
@@ -109,7 +113,6 @@ export const adminRoutes: RouteObject[] = [
       },
       { path: "model-providers", element: <ModelProvidersPage /> },
       { path: "workspace", element: <WorkspaceSettingsPage /> },
-      { path: "analytics", element: <AnalyticsPage /> },
       { path: "usage", element: <UsagePage /> },
       { path: "subscription", element: <SubscriptionPage /> },
       { path: "billing", element: <BillingPage /> },

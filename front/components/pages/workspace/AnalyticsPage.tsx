@@ -9,18 +9,19 @@ import { WorkspaceToolUsageChart } from "@app/components/workspace/analytics/Wor
 import { WorkspaceTopAgentsTable } from "@app/components/workspace/analytics/WorkspaceTopAgentsTable";
 import { WorkspaceTopUsersTable } from "@app/components/workspace/analytics/WorkspaceTopUsersTable";
 import { WorkspaceUsageChart } from "@app/components/workspace/analytics/WorkspaceUsageChart";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
 import datadogLogger from "@app/logger/datadogLogger";
 import { isAPIErrorResponse } from "@app/types/error";
+import { hasPermission } from "@app/types/permissions";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { BarChart01, Page } from "@dust-tt/sparkle";
 import { useState } from "react";
 
 export function AnalyticsPage() {
   const owner = useWorkspace();
-  const { isAdmin } = useAuth();
+  const canSeeAnalytics = hasPermission(owner.role, "workspace:view_analytics");
   const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
   const [includeInactive, setIncludeInactive] = useState(true);
   const [period, setPeriod] =
@@ -28,7 +29,7 @@ export function AnalyticsPage() {
 
   const { subscriptions } = useWorkspaceSubscriptions({
     owner,
-    disabled: !isAdmin,
+    disabled: !canSeeAnalytics,
   });
 
   const handleDownload = async (selectedMonth: string | null) => {

@@ -311,7 +311,7 @@ export const subNavigationAdmin = ({
         icon: BarChart01,
         href: `/w/${owner.sId}/analytics`,
         current: isCurrent("analytics"),
-        disabled: !hasWorkspaceAdminPermission,
+        disabled: !hasPermission(owner.role, "workspace:view_analytics"),
       },
       isCreditPricedPlan(subscription.plan)
         ? {
