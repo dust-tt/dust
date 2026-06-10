@@ -96,8 +96,10 @@ export async function activateCreditPricedFreePlan(
   const contractResult = await provisionMetronomeContract({
     metronomeCustomerId,
     workspace: lightWorkspace,
+    // For Free plan, we directly use the Business USD package
+    // to directly have access to all the seats in the contract for upgrades
     packageAlias: BUSINESS_USD_PACKAGE_ALIAS,
-    uniquenessKey: `cp-free-plan-${lightWorkspace.sId}-${now.toDateString()}`,
+    uniquenessKey: `cp-business-for-free-plan-${owner.sId}}`,
     startingAt: now,
     swapAt: "current-hour",
     enableStripeBilling: false,

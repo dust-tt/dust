@@ -31,9 +31,11 @@ export const LEGACY_BUSINESS_EUR_PACKAGE_ALIAS = "legacy-business-eur";
 export const LEGACY_ENTERPRISE_EUR_PACKAGE_ALIAS = "legacy-enterprise-eur";
 
 // Aliases for new packages
-export const FREE_PACKAGE_ALIAS = "free-plan";
 export const BUSINESS_USD_PACKAGE_ALIAS = "business-usd";
 export const BUSINESS_EUR_PACKAGE_ALIAS = "business-eur";
+// We now use directly the Business USD package for Free plan
+// to have access to all the seats for future upgrades
+export const DEPRECATED_FREE_PACKAGE_ALIAS = "free-plan";
 
 export type MetronomePackageTier = "free" | "pro" | "business" | "enterprise";
 
