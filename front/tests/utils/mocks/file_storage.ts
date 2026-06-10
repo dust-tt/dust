@@ -90,16 +90,18 @@ class FileStorageMock {
         .mockResolvedValue([{ contentType: "text/plain", size: "0" }]),
       getSignedUrl: vi.fn().mockResolvedValue(["https://signed-url.test"]),
       publicUrl: vi.fn().mockReturnValue("https://public-url.test"),
-      save: vi.fn().mockImplementation(
-        (content: Buffer | string, opts?: { contentType?: string }) => {
-          this._saveFileCalls.push({
-            filePath: filePath ?? "unknown",
-            content,
-            contentType: opts?.contentType,
-          });
-          return Promise.resolve(undefined);
-        }
-      ),
+      save: vi
+        .fn()
+        .mockImplementation(
+          (content: Buffer | string, opts?: { contentType?: string }) => {
+            this._saveFileCalls.push({
+              filePath: filePath ?? "unknown",
+              content,
+              contentType: opts?.contentType,
+            });
+            return Promise.resolve(undefined);
+          }
+        ),
     };
   }
 
