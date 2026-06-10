@@ -26,6 +26,8 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import type { DatasetSchema } from "@app/types/dataset";
 import type { SupportedFileContentType } from "@app/types/files";
 import { extensionsForContentType } from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { ZodRawShape } from "zod";
@@ -159,10 +161,10 @@ export async function processDustFileOutput(
   conversation: ConversationWithoutContentType,
   appName: string
 ): Promise<
-  {
-    type: "resource";
-    resource: ToolGeneratedFileType | ToolGeneratedFilePathType;
-  }[]
+  Result<
+    { type: "resource"; resource: ToolGeneratedFileType | ToolGeneratedFilePathType }[],
+    Error
+  >
 > {
   const content: {
     type: "resource";
@@ -254,7 +256,7 @@ export async function processDustFileOutput(
       contentType,
     });
     if (result.isErr()) {
-      throw result.error;
+      return result;
     }
 
     content.push({
@@ -272,7 +274,7 @@ export async function processDustFileOutput(
     delete sanitizedOutput.__dust_file;
   }
 
-  return content;
+  return new Ok(content);
 }
 
 export async function prepareParamsWithHistory(

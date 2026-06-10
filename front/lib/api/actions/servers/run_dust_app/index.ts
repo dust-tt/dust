@@ -205,13 +205,16 @@ export default async function createServer(
           containsFileOutput(sanitizedOutput) &&
           agentLoopContext.runContext?.conversation
         ) {
-          const fileContent = await processDustFileOutput(
+          const fileContentResult = await processDustFileOutput(
             auth,
             sanitizedOutput,
             agentLoopContext.runContext.conversation,
             app.name
           );
-          content.push(...fileContent);
+          if (fileContentResult.isErr()) {
+            return new Err(new MCPError(fileContentResult.error.message));
+          }
+          content.push(...fileContentResult.value);
         }
 
         content.push({
