@@ -172,19 +172,15 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     if (this.status !== "pending") {
       return new Err(new Error("Request is not pending."));
     }
-    try {
-      await this.update(
-        {
-          status,
-          resolvedByUserId: resolvedByUser.id,
-          resolvedAt: new Date(),
-        },
-        transaction
-      );
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(normalizeError(err));
-    }
+    await this.update(
+      {
+        status,
+        resolvedByUserId: resolvedByUser.id,
+        resolvedAt: new Date(),
+      },
+      transaction
+    );
+    return new Ok(undefined);
   }
 
   async delete(
