@@ -1,7 +1,7 @@
+import { buildMemberNameColumn } from "@app/components/workspace/member_name_column";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { MembershipUpgradeRequestType } from "@app/types/memberships";
 import { SEAT_TYPE_ORDER } from "@app/types/memberships";
-import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
   Button,
   Check,
@@ -28,28 +28,7 @@ type RowData = {
 
 type Info = CellContext<RowData, string>;
 
-const nameColumn: ColumnDef<RowData, string> = {
-  id: "name" as const,
-  header: "Name",
-  enableSorting: true,
-  accessorFn: (row) => row.name,
-  cell: (info: Info) => (
-    <DataTable.CellContent
-      avatarUrl={info.row.original.image ?? ANONYMOUS_USER_IMAGE_URL}
-      roundedAvatar
-    >
-      <div>
-        <div>{info.row.original.name}</div>
-        {info.row.original.email &&
-          info.row.original.email !== info.row.original.name && (
-            <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-              {info.row.original.email}
-            </div>
-          )}
-      </div>
-    </DataTable.CellContent>
-  ),
-};
+const nameColumn = buildMemberNameColumn<RowData>();
 
 const reasonColumn: ColumnDef<RowData, string> = {
   id: "reason" as const,
