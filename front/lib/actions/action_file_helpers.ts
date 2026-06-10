@@ -85,6 +85,9 @@ export async function generateCSVFileAndSnippet(
  * Generate a json file representing a table as a section.
  * This type of file is used to store the results of a tool call coming up from a csv in a way that can be searched.
  * Save it to the database and return it.
+ *
+ * TODO(FILE_SYSTEM/COMPUTER): remove once semantic search for tool outputs is killed.
+ * The section file only exists to feed the indexing pipeline for text search within query results.
  */
 export async function generateSectionFile(
   auth: Authenticator,
