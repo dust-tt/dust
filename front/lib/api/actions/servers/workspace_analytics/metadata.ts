@@ -1,6 +1,8 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
+  DEFAULT_RESULTS,
+  MAX_RESULTS,
   timeWindowSchemaShape,
   usageFilterSchema,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
@@ -8,29 +10,25 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-const getTopAgentsSchema = {
+const topListSchema = (entityPlural: string) => ({
   ...timeWindowSchemaShape,
   ...usageFilterSchema,
   limit: z
     .number()
     .int()
     .positive()
-    .max(100)
+    .max(MAX_RESULTS)
     .optional()
-    .describe("Maximum number of agents to return (default 25, max 100)."),
-};
+    .describe(
+      `Maximum number of ${entityPlural} to return ` +
+        `(default ${DEFAULT_RESULTS}, max ${MAX_RESULTS}).`
+    ),
+});
 
-const getTopUsersSchema = {
-  ...timeWindowSchemaShape,
-  ...usageFilterSchema,
-  limit: z
-    .number()
-    .int()
-    .positive()
-    .max(100)
-    .optional()
-    .describe("Maximum number of users to return (default 25, max 100)."),
-};
+const getTopAgentsSchema = topListSchema("agents");
+const getTopUsersSchema = topListSchema("users");
+const getTopSkillsSchema = topListSchema("skills");
+const getTopToolsSchema = topListSchema("tools");
 
 const getAgentDetailsSchema = {
   agentId: z
@@ -38,18 +36,6 @@ const getAgentDetailsSchema = {
     .describe(
       "The agent's id (sId), as returned by get_top_agents or other tools."
     ),
-};
-
-const getTopSkillsSchema = {
-  ...timeWindowSchemaShape,
-  ...usageFilterSchema,
-  limit: z
-    .number()
-    .int()
-    .positive()
-    .max(100)
-    .optional()
-    .describe("Maximum number of skills to return (default 25, max 100)."),
 };
 
 export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
@@ -106,6 +92,19 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Retrieving top skills",
       done: "Retrieved top skills",
+    },
+  },
+  get_top_tools: {
+    description:
+      "Return the workspace's most-used tools (by MCP server) over a time " +
+      "window (defaults to the current calendar month), ranked by execution " +
+      "count. Optionally filter by source (context_origin), agent, or user. " +
+      "Use this to answer which tools are used most. Admin-only.",
+    schema: getTopToolsSchema,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving top tools",
+      done: "Retrieved top tools",
     },
   },
 });
