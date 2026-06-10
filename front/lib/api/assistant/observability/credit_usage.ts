@@ -51,6 +51,12 @@ type CreditUsageAggs = {
   by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
 };
 
+// Total credits (LLM + tool) cannot be ordered on inside a single ES terms
+// aggregation, so we overfetch the most active groups, compute credits for each,
+// then rank in JS. This caps how many groups we pull before ranking; workspaces
+// with more distinct agents/users than this fall back to an approximate top-N.
+const CREDIT_RANKING_FETCH = 500;
+
 const toolsNestedAgg: estypes.AggregationsAggregationContainer = {
   nested: { path: "tools_used" },
   aggs: {
@@ -142,7 +148,11 @@ export async function fetchCreditUsage(
     };
   if (groupBy !== "none") {
     aggregations.by_group = {
-      terms: { field: groupField, size: limit, order: { llm_cost: "desc" } },
+      terms: {
+        field: groupField,
+        size: Math.max(limit, CREDIT_RANKING_FETCH),
+        order: { _count: "desc" },
+      },
       aggs: {
         llm_cost: { sum: { field: "tokens.cost_micro_usd" } },
         tools: toolsNestedAgg,
@@ -183,28 +193,36 @@ export async function fetchCreditUsage(
   }
 
   const buckets = bucketsToArray<GroupBucket>(aggs?.by_group?.buckets);
+
+  const ranked = buckets
+    .map((bucket) => {
+      const groupKey = String(bucket.key);
+      const rowLlm = awuFromMicroUsd(bucket.llm_cost?.value ?? 0);
+      const rowTool = toolCreditsFromServerBuckets(
+        bucketsToArray<ServerBucket>(bucket.tools?.by_server?.buckets)
+      );
+      return {
+        groupKey,
+        llmCredits: rowLlm,
+        toolCredits: rowTool,
+        totalCredits: rowLlm + rowTool,
+      };
+    })
+    .sort((a, b) => b.totalCredits - a.totalCredits)
+    .slice(0, limit);
+
   const namesById = await resolveGroupNames(
     auth,
     groupBy,
-    buckets.map((bucket) => String(bucket.key))
+    ranked.map((row) => row.groupKey)
   );
 
-  const rows: CreditUsageRow[] = buckets.map((bucket) => {
-    const groupKey = String(bucket.key);
-    const rowLlm = awuFromMicroUsd(bucket.llm_cost?.value ?? 0);
-    const rowTool = toolCreditsFromServerBuckets(
-      bucketsToArray<ServerBucket>(bucket.tools?.by_server?.buckets)
-    );
-    return {
-      groupKey,
-      name:
-        namesById.get(groupKey) ??
-        (groupBy === "agent" ? "Unknown agent" : "Programmatic usage"),
-      llmCredits: rowLlm,
-      toolCredits: rowTool,
-      totalCredits: rowLlm + rowTool,
-    };
-  });
+  const rows: CreditUsageRow[] = ranked.map((row) => ({
+    ...row,
+    name:
+      namesById.get(row.groupKey) ??
+      (groupBy === "agent" ? "Unknown agent" : "Programmatic usage"),
+  }));
 
   return new Ok({ llmCredits, toolCredits, totalCredits, rows });
 }
