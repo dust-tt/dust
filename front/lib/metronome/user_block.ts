@@ -18,10 +18,15 @@
 // DB transaction commit via `invalidateCacheAfterCommit`, and cache misses fall
 // back to DB and repopulate the relevant keys.
 //
+import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
 import { runOnRedis } from "@app/lib/api/redis";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import {
+  getRateLimiterCount,
+  getTimeframeSecondsFromLiteral,
+} from "@app/lib/utils/rate_limiter";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type {
@@ -37,13 +42,28 @@ import {
   isSpendingFromPersonalSeat,
   isUserCreditState,
 } from "@app/types/memberships";
+import type { MaxAwuCreditsTimeframeType, PlanType } from "@app/types/plan";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 export type UserBlockedReason = "credits_exhausted" | "user_cap_reached";
 
 export type ProgrammaticCreditStatus = "active" | "warned" | "depleted";
 
+export type FairUseAwuCreditsStatus = {
+  limit: number;
+  timeframe: MaxAwuCreditsTimeframeType;
+  count: number;
+};
+
+const DEFAULT_FAIR_USE_AWU_CREDITS_STATUS: FairUseAwuCreditsStatus = {
+  limit: -1,
+  timeframe: "lifetime",
+  count: 0,
+};
+
 export type GetWorkspaceUsageStatusResponseBody = {
   awuStatus: "normal" | "warned" | "blocked";
+  fairUseAwuCreditsState: FairUseAwuCreditsStatus;
   poolCreditState: WorkspacePoolCreditState;
   programmaticCreditStatus: ProgrammaticCreditStatus;
   balanceThresholdReached: boolean;
@@ -112,6 +132,59 @@ export async function isWorkspaceBalanceThresholdReached(
     client.get(buildWorkspaceBalanceThresholdReachedKey(workspaceId))
   );
   return val === "1";
+}
+
+export async function getFairUseAwuCreditsStatus({
+  workspace,
+  user,
+  plan,
+}: {
+  workspace: LightWorkspaceType;
+  user: UserType;
+  plan: PlanType | null;
+}): Promise<FairUseAwuCreditsStatus> {
+  if (!plan) {
+    return DEFAULT_FAIR_USE_AWU_CREDITS_STATUS;
+  }
+
+  const { maxAwuCredits: limit, maxAwuCreditsTimeframe: timeframe } =
+    plan.limits.assistant;
+
+  if (limit === -1) {
+    return {
+      limit,
+      timeframe,
+      count: 0,
+    };
+  }
+
+  const result = await getRateLimiterCount({
+    key: makeFairUseAwuCreditsRateLimitKeyForUser(workspace, user, timeframe),
+    timeframeSeconds: getTimeframeSecondsFromLiteral(timeframe),
+  });
+
+  if (result.isErr()) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        userId: user.sId,
+        error: result.error,
+      },
+      "Failed to read fair-use AWU credits usage status."
+    );
+
+    return {
+      limit,
+      timeframe,
+      count: 0,
+    };
+  }
+
+  return {
+    limit,
+    timeframe,
+    count: Math.min(result.value, limit),
+  };
 }
 
 // Unified read

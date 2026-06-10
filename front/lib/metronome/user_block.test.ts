@@ -1,4 +1,8 @@
+import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
+import { renderPlanFromModel } from "@app/lib/plans/renderers";
+import type { MaxAwuCreditsTimeframeType } from "@app/types/plan";
 import {
+  getFairUseAwuCreditsStatus,
   getWorkspaceCreditPoolStatus,
   isUserBlocked,
 } from "@app/lib/metronome/user_block";
@@ -9,6 +13,7 @@ const {
   mockFetchWorkspaceById,
   mockFetchUserById,
   mockGetActiveMembershipOfUserInWorkspace,
+  mockGetRateLimiterCount,
   mockRunOnRedis,
 } = vi.hoisted(() => {
   const redisValues = new Map<string, string>();
@@ -34,6 +39,7 @@ const {
     mockFetchWorkspaceById: vi.fn(),
     mockFetchUserById: vi.fn(),
     mockGetActiveMembershipOfUserInWorkspace: vi.fn(),
+    mockGetRateLimiterCount: vi.fn(),
     mockRunOnRedis,
   };
 });
@@ -63,6 +69,12 @@ vi.mock("@app/lib/resources/membership_resource", () => ({
 
 vi.mock("@app/lib/workspace", () => ({
   renderLightWorkspaceType: vi.fn(({ workspace }) => workspace),
+}));
+
+vi.mock("@app/lib/utils/rate_limiter", () => ({
+  expireRateLimiterKey: vi.fn(),
+  getRateLimiterCount: mockGetRateLimiterCount,
+  getTimeframeSecondsFromLiteral: vi.fn(() => 60 * 60 * 24),
 }));
 
 vi.mock("@app/logger/logger", () => ({
@@ -265,6 +277,77 @@ describe("isUserBlocked", () => {
     expect(redisValues.get("metronome:pool_credit_status:ws_test")).toBe(
       "depleted"
     );
+  });
+});
+
+describe("getFairUseAwuCreditsStatus", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const workspace = {
+    id: 42,
+    sId: "ws_test",
+  };
+
+  const user = {
+    id: 7,
+    sId: "u_test",
+  };
+
+  function makePlan({
+    maxAwuCredits,
+    maxAwuCreditsTimeframe,
+  }: {
+    maxAwuCredits: number;
+    maxAwuCreditsTimeframe: MaxAwuCreditsTimeframeType;
+  }) {
+    return renderPlanFromModel({
+      plan: {
+        ...FREE_NO_PLAN_DATA,
+        maxAwuCredits,
+        maxAwuCreditsTimeframe,
+      },
+    });
+  }
+
+  it("does not read Redis when the AWU fair-use limit is unlimited", async () => {
+    const status = await getFairUseAwuCreditsStatus({
+      workspace,
+      user,
+      plan: makePlan({ maxAwuCredits: -1, maxAwuCreditsTimeframe: "day" }),
+    });
+
+    expect(status).toEqual({
+      limit: -1,
+      timeframe: "day",
+      count: 0,
+    });
+    expect(mockGetRateLimiterCount).not.toHaveBeenCalled();
+  });
+
+  it("reads the Redis-backed AWU fair-use usage for finite limits", async () => {
+    mockGetRateLimiterCount.mockResolvedValue({
+      isErr: () => false,
+      isOk: () => true,
+      value: 12,
+    });
+
+    const status = await getFairUseAwuCreditsStatus({
+      workspace,
+      user,
+      plan: makePlan({ maxAwuCredits: 100, maxAwuCreditsTimeframe: "day" }),
+    });
+
+    expect(status).toEqual({
+      limit: 100,
+      timeframe: "day",
+      count: 12,
+    });
+    expect(mockGetRateLimiterCount).toHaveBeenCalledWith({
+      key: "workspace:42:user:7:fair_use_awu_credit_count:day",
+      timeframeSeconds: 60 * 60 * 24,
+    });
   });
 });
 

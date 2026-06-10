@@ -3,6 +3,7 @@ import type {
   ProgrammaticCreditStatus,
 } from "@app/lib/metronome/user_block";
 import {
+  getFairUseAwuCreditsStatus,
   getWorkspaceCreditPoolStatus,
   getWorkspaceProgrammaticCreditStatus,
   isUserAwuWarned,
@@ -23,13 +24,20 @@ app.get(
     const auth = ctx.get("auth");
     const workspace = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
-
     const plan = auth.plan();
+
+    const fairUseAwuCreditsState = await getFairUseAwuCreditsStatus({
+      workspace,
+      user: user.toJSON(),
+      plan: auth.plan(),
+    });
+
     const isCreditPriced = plan && isCreditPricedPlan(plan);
     // Workspaces not on Metronome billing have no usage status to report.
     if (!workspace.metronomeCustomerId || !isCreditPriced) {
       return ctx.json({
         awuStatus: "normal",
+        fairUseAwuCreditsState,
         poolCreditState: "active",
         programmaticCreditStatus: "active",
         balanceThresholdReached: false,
@@ -67,6 +75,7 @@ app.get(
 
     return ctx.json({
       awuStatus,
+      fairUseAwuCreditsState,
       poolCreditState,
       programmaticCreditStatus,
       balanceThresholdReached,
