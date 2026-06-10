@@ -16,6 +16,6 @@ export const framesSkill = {
     "content tool is mentioned.",
   instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
   mcpServers: [{ name: "interactive_content" }],
-  version: 2,
+  version: 3,
   icon: "ActionFrameIcon",
 } as const satisfies GlobalSkillDefinition;

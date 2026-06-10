@@ -1,11 +1,5 @@
-import {
-  INTERACTIVE_CONTENT_INSTRUCTIONS,
-  INTERACTIVE_CONTENT_INSTRUCTIONS_V2,
-} from "@app/lib/api/actions/servers/interactive_content/instructions";
-import {
-  getEnabledSkillInstructions,
-  resolveSkillInstructions,
-} from "@app/lib/api/assistant/skills_rendering";
+import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/api/actions/servers/interactive_content/instructions";
+import { getEnabledSkillInstructions } from "@app/lib/api/assistant/skills_rendering";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { describe, expect, it } from "vitest";
 
@@ -57,30 +51,6 @@ describe("getEnabledSkillInstructions", () => {
     );
   });
 
-  it("uses default frame instructions when the v2 flag is off", () => {
-    expect(
-      resolveSkillInstructions({
-        skill: {
-          sId: "frames",
-          instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
-        },
-        useFramesV2: false,
-      })
-    ).toBe(INTERACTIVE_CONTENT_INSTRUCTIONS);
-  });
-
-  it("uses v2 frame instructions when the v2 flag is on", () => {
-    expect(
-      resolveSkillInstructions({
-        skill: {
-          sId: "frames",
-          instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
-        },
-        useFramesV2: true,
-      })
-    ).toBe(INTERACTIVE_CONTENT_INSTRUCTIONS_V2);
-  });
-
   it("renders enabled frame skill messages with v2 authoring prose", () => {
     const skill = makeEnabledSkill({
       sId: "frames",
@@ -88,34 +58,20 @@ describe("getEnabledSkillInstructions", () => {
       instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
     });
 
-    const instructions = getEnabledSkillInstructions(skill, {
-      useFramesV2: true,
-    });
+    const instructions = getEnabledSkillInstructions(skill);
 
     expect(instructions).toContain("### Rendering Context");
     expect(instructions).toContain("### Creating Files");
   });
 
-  it("v2 frame instructions do not contain v1-only markers", () => {
+  it("frame instructions do not contain v1-only markers", () => {
     // Guards against regressions where v1 prose chunks leak into v2 (e.g. a
     // missed `.replace()` target, or a stale import).
-    expect(INTERACTIVE_CONTENT_INSTRUCTIONS_V2).not.toContain(
+    expect(INTERACTIVE_CONTENT_INSTRUCTIONS).not.toContain(
       "### Frame Authoring Rules"
     );
-    expect(INTERACTIVE_CONTENT_INSTRUCTIONS_V2).not.toContain(
+    expect(INTERACTIVE_CONTENT_INSTRUCTIONS).not.toContain(
       "Premium, Minimalist Aesthetic"
     );
-  });
-
-  it("does not change non-frame skill instructions when the v2 flag is on", () => {
-    expect(
-      resolveSkillInstructions({
-        skill: {
-          sId: "research",
-          instructions: "Use the research process.",
-        },
-        useFramesV2: true,
-      })
-    ).toBe("Use the research process.");
   });
 });

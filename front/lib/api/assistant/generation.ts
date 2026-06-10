@@ -22,10 +22,7 @@ import {
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/global_agents";
-import {
-  type EnabledSkill,
-  resolveSkillInstructions,
-} from "@app/lib/api/assistant/skills_rendering";
+import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import { TRUNCATED_SNIPPET_SIZE } from "@app/lib/api/files/snippet";
 import type {
   StructuredSystemPrompt,
@@ -204,10 +201,8 @@ function constructToolsSection({
 
 function constructSkillsSection({
   systemSkills,
-  useFramesV2,
 }: {
   systemSkills: SkillResource[];
-  useFramesV2: boolean;
 }): string {
   const toolDisplayName = `${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}`;
 
@@ -238,11 +233,7 @@ function constructSkillsSection({
       "The following baseline skills are always active for this agent:\n" +
       systemSkills
         .map(
-          (skill) =>
-            `<${skill.name}>\n${resolveSkillInstructions({
-              skill,
-              useFramesV2,
-            })}\n</${skill.name}>`
+          (skill) => `<${skill.name}>\n${skill.instructions}\n</${skill.name}>`
         )
         .join("\n") +
       "\n";
@@ -405,7 +396,6 @@ export function constructPromptMultiActions(
     projectContext,
     isNewFileExplorer = false,
     hasSandboxTools = false,
-    useFramesV2 = false,
     disableFormattingPrompt = false,
   }: {
     userMessage: UserMessageType;
@@ -427,7 +417,6 @@ export function constructPromptMultiActions(
     projectContext?: string;
     isNewFileExplorer?: boolean;
     hasSandboxTools?: boolean;
-    useFramesV2?: boolean;
     disableFormattingPrompt?: boolean;
   }
 ): SystemPromptSections {
@@ -467,7 +456,6 @@ export function constructPromptMultiActions(
   });
   const skillsSection = constructSkillsSection({
     systemSkills,
-    useFramesV2,
   });
   const attachmentsSection = isNewFileExplorer
     ? constructAttachmentsSectionNewFileExplorer({ hasSandboxTools })
