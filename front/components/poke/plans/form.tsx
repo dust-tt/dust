@@ -1,7 +1,9 @@
 import { classNames } from "@app/lib/utils";
 import type { PlanType } from "@app/types/plan";
 import {
+  isMaxAwuCreditsTimeframeType,
   isMaxMessagesTimeframeType,
+  MAX_AWU_CREDITS_TIMEFRAMES,
   MAX_MESSAGE_TIMEFRAMES,
 } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -96,7 +98,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
   if (!isMaxMessagesTimeframeType(editingPlan.maxMessagesTimeframe)) {
     throw new Error("Invalid maxMessagesTimeframe");
   }
-  if (!isMaxMessagesTimeframeType(editingPlan.maxAwuCreditsTimeframe)) {
+  if (!isMaxAwuCreditsTimeframeType(editingPlan.maxAwuCreditsTimeframe)) {
     throw new Error("Invalid maxAwuCreditsTimeframe");
   }
 
@@ -301,7 +303,7 @@ export const PLAN_FIELDS = {
     width: "medium",
     title: "/ Timeframe / Seat",
     error: (plan: EditingPlanType) =>
-      errorCheckMaxMessageTimeframe(plan.maxAwuCreditsTimeframe),
+      errorCheckMaxAwuCreditsTimeframe(plan.maxAwuCreditsTimeframe),
   },
   isDeepDiveAllowed: {
     type: "boolean",
@@ -517,6 +519,16 @@ const errorCheckNumber = (value: string | number | undefined | null) => {
 const errorCheckMaxMessageTimeframe = (value: string) => {
   if (!isMaxMessagesTimeframeType(value)) {
     return `Invalid messages timeframe. Must be one of ${MAX_MESSAGE_TIMEFRAMES.join(
+      ", "
+    )}. Is: ${value}`;
+  }
+
+  return null;
+};
+
+const errorCheckMaxAwuCreditsTimeframe = (value: string) => {
+  if (!isMaxAwuCreditsTimeframeType(value)) {
+    return `Invalid AWU credits timeframe. Must be one of ${MAX_AWU_CREDITS_TIMEFRAMES.join(
       ", "
     )}. Is: ${value}`;
   }
