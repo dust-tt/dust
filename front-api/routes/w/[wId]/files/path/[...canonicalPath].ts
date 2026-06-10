@@ -6,7 +6,6 @@ import {
   renameCanonicalFile,
   streamThumbnail,
 } from "@app/lib/api/files/file_system_ops";
-import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
@@ -163,21 +162,11 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
   }
 
   const nodeStream = readResult.value;
-  const webStream = new ReadableStream({
-    start(controller) {
-      nodeStream.on("data", (chunk) => controller.enqueue(chunk));
-      nodeStream.on("end", () => controller.close());
-      nodeStream.on("error", (err) => {
-        logger.error({ err, canonicalPath }, "Error streaming canonical file");
-        controller.error(err);
-      });
-    },
-    cancel() {
-      nodeStream.destroy();
-    },
-  });
 
-  return new Response(webStream, { status: 200, headers });
+  return new Response(readableToReadableStream(nodeStream), {
+    status: 200,
+    headers,
+  });
 });
 
 app.on(
