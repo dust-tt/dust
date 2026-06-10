@@ -35,6 +35,7 @@ import domains from "./domains";
 import dsync from "./dsync";
 import dustAppSecrets from "./dust_app_secrets";
 import extension from "./extension";
+import fairUseCredits from "./fair-use-credits";
 import featureFlags from "./feature-flags";
 import files from "./files";
 import googleDrivePickerToken from "./google_drive/picker_token";
@@ -251,6 +252,10 @@ app.use(
 );
 app.use(
   "/usage-status/*",
+  workspaceAuth({ doesNotRequireCanUseProduct: true })
+);
+app.use(
+  "/fair-use-credits/*",
   workspaceAuth({ doesNotRequireCanUseProduct: true })
 );
 app.use("/seats/count", workspaceAuth({ doesNotRequireCanUseProduct: true }));
@@ -602,6 +607,7 @@ app.route("/domains", domains);
 app.route("/dsync", dsync);
 app.route("/dust_app_secrets", dustAppSecrets);
 app.route("/extension", extension);
+app.route("/fair-use-credits", fairUseCredits);
 app.route("/files", files);
 app.route("/google_drive/picker_token", googleDrivePickerToken);
 app.route(
