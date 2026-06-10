@@ -181,13 +181,9 @@ export function ConversationSidePanelProvider({
   );
 
   // Close the panel when switching conversations: the provider stays mounted
-  // across conversation navigation and useHashParam does not re-sync on
-  // pushState navigation, so without this the previous conversation's panel
-  // (e.g. a Frame) stays open. Skip the null -> id transition so a panel
-  // auto-opened while creating a new conversation is not closed when the
-  // conversation gets its id, and skip the initial mount to keep deep links
-  // (#spt=...&spid=...) working. The id -> null transition (navigating to a
-  // new conversation) does close the panel.
+  // across navigation and useHashParam does not re-sync on pushState, so the
+  // previous conversation's panel would otherwise stay open. Skips the initial
+  // mount (deep links) and the null -> id transition (new conversation flow).
   useEffect(() => {
     const previousConversationId = previousConversationIdRef.current;
     previousConversationIdRef.current = activeConversationId;
@@ -196,8 +192,7 @@ export function ConversationSidePanelProvider({
       previousConversationId &&
       previousConversationId !== activeConversationId
     ) {
-      // Also exit full screen, mirroring FrameRenderer's close button: without
-      // this the layout stays in full screen mode after the panel is gone.
+      // Exit full screen too, mirroring FrameRenderer's close button.
       setFullScreenHash(undefined);
       closePanel();
     }
