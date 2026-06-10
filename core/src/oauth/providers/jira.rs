@@ -58,6 +58,31 @@ impl JiraConnectionProvider {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+struct AtlassianOAuthErrorDetails {
+    error: Option<String>,
+    error_description: Option<String>,
+}
+
+fn parse_atlassian_oauth_error(response_body: &str) -> AtlassianOAuthErrorDetails {
+    match serde_json::from_str::<serde_json::Value>(response_body) {
+        Ok(json) => AtlassianOAuthErrorDetails {
+            error: json
+                .get("error")
+                .and_then(|value| value.as_str())
+                .map(String::from),
+            error_description: json
+                .get("error_description")
+                .and_then(|value| value.as_str())
+                .map(String::from),
+        },
+        Err(_) => AtlassianOAuthErrorDetails {
+            error: None,
+            error_description: None,
+        },
+    }
+}
+
 fn is_jira_refresh_token_revoked(status: u16, message: &str) -> bool {
     if !matches!(status, 400 | 401 | 403) {
         return false;
@@ -77,9 +102,15 @@ fn log_jira_refresh_error(connection: &Connection, error: &ProviderHttpRequestEr
             status, message, ..
         } => {
             let is_revoked = is_jira_refresh_token_revoked(*status, message);
+            let atlassian_error = parse_atlassian_oauth_error(message);
             error!(
                 connection_id = connection.connection_id(),
-                status, message, is_revoked, "JIRA refresh OAuth error"
+                status,
+                response_body = message,
+                oauth_error = ?atlassian_error.error,
+                oauth_error_description = ?atlassian_error.error_description,
+                is_revoked,
+                "JIRA refresh OAuth error"
             );
         }
         ProviderHttpRequestError::NetworkError(e) => {
@@ -260,7 +291,10 @@ impl Provider for JiraConnectionProvider {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_jira_refresh_token_revoked, JiraConnectionProvider};
+    use super::{
+        is_jira_refresh_token_revoked, parse_atlassian_oauth_error, AtlassianOAuthErrorDetails,
+        JiraConnectionProvider,
+    };
     use crate::oauth::{
         connection::{Connection, ConnectionProvider, ConnectionStatus, Provider, ProviderError},
         providers::utils::ProviderHttpRequestError,
@@ -282,6 +316,30 @@ mod tests {
             None,
             None,
         )
+    }
+
+    #[test]
+    fn parses_atlassian_oauth_error_json() {
+        assert_eq!(
+            parse_atlassian_oauth_error(
+                r#"{"error":"invalid_grant","error_description":"Unknown or invalid refresh token."}"#
+            ),
+            AtlassianOAuthErrorDetails {
+                error: Some("invalid_grant".to_string()),
+                error_description: Some("Unknown or invalid refresh token.".to_string()),
+            }
+        );
+    }
+
+    #[test]
+    fn ignores_non_json_atlassian_error_bodies() {
+        assert_eq!(
+            parse_atlassian_oauth_error("invalid_grant"),
+            AtlassianOAuthErrorDetails {
+                error: None,
+                error_description: None,
+            }
+        );
     }
 
     #[test]
