@@ -201,6 +201,9 @@ interface ChangeSeatModalProps {
   owner: WorkspaceType;
   seatPlans: SeatPlanResponseBody;
   onSavingChange?: (memberId: string, isSaving: boolean) => void;
+  // Fired once the seat change has been persisted successfully (not on cancel
+  // or a no-op close). Used to resolve a linked upgrade request as approved.
+  onSaved?: () => void;
 }
 
 export function ChangeSeatModal({
@@ -210,6 +213,7 @@ export function ChangeSeatModal({
   owner,
   seatPlans,
   onSavingChange,
+  onSaved,
 }: ChangeSeatModalProps) {
   const { subscription } = useAuth();
   const router = useAppRouter();
@@ -403,6 +407,7 @@ export function ChangeSeatModal({
         hasSeatPool: (seatPlans[selectedSeat]?.awuCredits ?? 0) > 0,
       });
       if (ok) {
+        onSaved?.();
         onClose();
       }
     } finally {
