@@ -585,7 +585,8 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
    * Persist a pending (created_backend_only) subscription for a workspace that
    * is provisioning a new Metronome contract via a future-effective swap. If a
    * prior pending sub exists it is ended (status: "ended") within the same
-   * transaction — the prior contract is sunset on Metronome's side by the
+   * transaction — the prior contract is ended on Metronome's side either by the
+   * RENEWAL transition (when the switch passes `fromContractId`) or by the
    * overlap-sunset pass in `provisionMetronomeContract`.
    *
    * The row flips to "active" when the matching `contract.start` webhook
@@ -1116,6 +1117,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         swapAt: "current-hour",
         enableStripeBilling: isSubscriptionMetronomeBilled(this.toJSON()),
         planCode: PRO_PLAN_SEAT_39_CODE,
+        fromContractId: this.metronomeContractId,
       });
       if (result.isErr() && !this.isMetronomeShadowBilled) {
         return new Err(result.error);
