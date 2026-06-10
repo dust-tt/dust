@@ -42,12 +42,14 @@ describe("GET /api/w/:wId/skills/reinforcement_spend", () => {
         skillId: skill.id,
         conversationId: null,
         priceMicroUsd: 1_500_000,
+        priceAwuCredits: 177,
       },
       {
         createdAt: inCurrentMonth,
         skillId: skill.id,
         conversationId: null,
         priceMicroUsd: 500_000,
+        priceAwuCredits: 59,
       },
       // Excluded: before the current period start.
       {
@@ -55,6 +57,7 @@ describe("GET /api/w/:wId/skills/reinforcement_spend", () => {
         skillId: skill.id,
         conversationId: null,
         priceMicroUsd: 999_000_000,
+        priceAwuCredits: 117_530,
       },
       // Different skill, in-period.
       {
@@ -62,16 +65,24 @@ describe("GET /api/w/:wId/skills/reinforcement_spend", () => {
         skillId: otherSkill.id,
         conversationId: null,
         priceMicroUsd: 7_000_000,
+        priceAwuCredits: 824,
       },
     ]);
 
     const response = await get(workspace);
 
     expect(response.status).toBe(200);
-    const { spentMicroUsdBySkillId } = await response.json();
+    const { spentMicroUsdBySkillId, spentAwuCreditsBySkillId } =
+      await response.json();
+    // Micro-USD spend includes the markup.
     expect(spentMicroUsdBySkillId).toEqual({
       [skill.sId]: 2_600_000,
       [otherSkill.sId]: 9_100_000,
+    });
+    // AWU credits already include the margin: no markup applied.
+    expect(spentAwuCreditsBySkillId).toEqual({
+      [skill.sId]: 236,
+      [otherSkill.sId]: 824,
     });
   });
 
@@ -88,7 +99,9 @@ describe("GET /api/w/:wId/skills/reinforcement_spend", () => {
     const response = await get(workspace);
 
     expect(response.status).toBe(200);
-    expect((await response.json()).spentMicroUsdBySkillId).toEqual({});
+    const body = await response.json();
+    expect(body.spentMicroUsdBySkillId).toEqual({});
+    expect(body.spentAwuCreditsBySkillId).toEqual({});
   });
 
   it("returns 403 for non-admin users", async () => {

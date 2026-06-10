@@ -24,7 +24,7 @@ app.get(
     });
 
     const spentByModelId =
-      await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdWithMarkupAfterDateForSkills(
+      await SelfImprovingSkillsUsageResource.getSumSpendWithMarkupAfterDateForSkills(
         auth,
         {
           createdAfter: (await getCurrentPeriod(auth)).cycleStart,
@@ -33,14 +33,21 @@ app.get(
       );
 
     const spentMicroUsdBySkillId: Record<string, number> = {};
+    const spentAwuCreditsBySkillId: Record<string, number> = {};
     for (const skill of skills) {
       const spent = spentByModelId.get(skill.id);
-      if (spent && spent > 0) {
-        spentMicroUsdBySkillId[skill.sId] = spent;
+      if (!spent) {
+        continue;
+      }
+      if (spent.priceMicroUsd > 0) {
+        spentMicroUsdBySkillId[skill.sId] = spent.priceMicroUsd;
+      }
+      if (spent.priceAwuCredits > 0) {
+        spentAwuCreditsBySkillId[skill.sId] = spent.priceAwuCredits;
       }
     }
 
-    return ctx.json({ spentMicroUsdBySkillId });
+    return ctx.json({ spentMicroUsdBySkillId, spentAwuCreditsBySkillId });
   }
 );
 

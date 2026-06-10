@@ -20,6 +20,9 @@ export type PostSkillResponseBody = {
 export type GetReinforcementDailySpendResponseBody = {
   // ISO date strings ("YYYY-MM-DD") → spend in microUSD for that day.
   dailySpendMicroUsd: Record<string, number>;
+  // ISO date strings ("YYYY-MM-DD") → spend in AWU credits for that day
+  // (margin included, as billed to Metronome).
+  dailySpendAwuCredits: Record<string, number>;
   periodStartDate: string;
   periodEndDate: string;
 };
@@ -52,4 +55,8 @@ export type GetSkillsSpendResponseBody = {
   // Map from skill sId to total spent in the current billing period (microUSD).
   // Skills with no usage in the period are omitted.
   spentMicroUsdBySkillId: Record<string, number>;
+  // Map from skill sId to total spent in the current billing period in AWU
+  // credits (margin included, as billed to Metronome). Skills with no usage
+  // in the period are omitted.
+  spentAwuCreditsBySkillId: Record<string, number>;
 };

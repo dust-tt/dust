@@ -602,8 +602,8 @@ export async function getReinforcementSettingsActivity({
 
   const workspace = auth.getNonNullableWorkspace();
   const { cycleStart: periodStart } = await getCurrentPeriod(auth);
-  const globalConsumptionMicroUsd =
-    await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDate(
+  const { priceMicroUsd: globalConsumptionMicroUsd } =
+    await SelfImprovingSkillsUsageResource.getSumSpendAfterDate(
       auth,
       periodStart
     );
