@@ -156,6 +156,9 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
       "billing computes them. IMPORTANT: these figures are ESTIMATES derived " +
       "from usage logs — always tell the user they are approximate and point " +
       "them to the workspace Usage page for exact, billed credit amounts. " +
+      "When grouped by agent or user in very large workspaces, the ranking is " +
+      "also approximate: it is computed from the most active groups by message " +
+      "volume and may miss low-message, high-tool-usage outliers." +
       "Optionally filter by source (context_origin), agent, or user. " +
       "Admin-only.",
     schema: getCreditUsageSchema,
