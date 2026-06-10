@@ -20,12 +20,16 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DotsHorizontal,
   Fingerprint04,
   Folder,
   Globe01,
   Input,
   Key01,
   Label,
+  LayerSingle,
+  LayersThree01,
+  LayersTwo01,
   Lock01,
   NavigationList,
   NavigationListCollapsibleSection,
@@ -206,6 +210,9 @@ interface MemberRow {
   name: string;
   email: string;
   role: MemberRole;
+  seat: "max" | "pro" | "free";
+  usage?: number;
+  limit?: number | null;
   status: "active" | "active_provisioned" | "invited" | "auto_joined";
   groupCount: number;
   groupIds: string[];
@@ -228,17 +235,6 @@ interface DomainRow {
   onClick?: () => void;
 }
 
-interface UsageMemberRow {
-  id: string;
-  name: string;
-  email: string;
-  seat: "max" | "pro" | "free";
-  period: "annual" | "monthly" | null;
-  usage: number;
-  limit: number | null;
-  onClick?: () => void;
-}
-
 interface GovernanceSetting {
   id: string;
   label: string;
@@ -255,6 +251,9 @@ const INITIAL_MEMBERS: MemberRow[] = [
     name: "Olivia Rhye",
     email: "olivia@acme.com",
     role: "super_admin",
+    seat: "max",
+    usage: 8237,
+    limit: null,
     status: "active_provisioned",
     groupCount: 1,
     groupIds: ["g1"],
@@ -265,6 +264,9 @@ const INITIAL_MEMBERS: MemberRow[] = [
     name: "Phoenix Baker",
     email: "phoenix@acme.com",
     role: "admin",
+    seat: "max",
+    usage: 6327,
+    limit: 268001,
     status: "active",
     groupCount: 1,
     groupIds: ["g2"],
@@ -275,6 +277,9 @@ const INITIAL_MEMBERS: MemberRow[] = [
     name: "Lana Steiner",
     email: "lana@acme.com",
     role: "admin",
+    seat: "pro",
+    usage: 10856,
+    limit: 268001,
     status: "active",
     groupCount: 3,
     groupIds: ["g1", "g2", "g3"],
@@ -285,6 +290,9 @@ const INITIAL_MEMBERS: MemberRow[] = [
     name: "Demi Wilkinson",
     email: "demi@acme.com",
     role: "member",
+    seat: "pro",
+    usage: 0,
+    limit: 260001,
     status: "active",
     groupCount: 1,
     groupIds: ["g4"],
@@ -295,6 +303,9 @@ const INITIAL_MEMBERS: MemberRow[] = [
     name: "Candice Wu",
     email: "candice@acme.com",
     role: "member",
+    seat: "max",
+    usage: 9328,
+    limit: 268001,
     status: "active_provisioned",
     groupCount: 2,
     groupIds: ["g3", "g4"],
@@ -305,6 +316,9 @@ const INITIAL_MEMBERS: MemberRow[] = [
     name: "Natali Craig",
     email: "natali@acme.com",
     role: "member",
+    seat: "free",
+    usage: 142,
+    limit: 5000,
     status: "invited",
     groupCount: 0,
     groupIds: [],
@@ -315,6 +329,9 @@ const INITIAL_MEMBERS: MemberRow[] = [
     name: "Drew Cano",
     email: "drew@acme.com",
     role: "member",
+    seat: "free",
+    usage: 3891,
+    limit: 5000,
     status: "auto_joined",
     groupCount: 1,
     groupIds: ["g4"],
@@ -325,6 +342,9 @@ const INITIAL_MEMBERS: MemberRow[] = [
     name: "Orlando Diggs",
     email: "orlando@acme.com",
     role: "admin",
+    seat: "pro",
+    usage: 15420,
+    limit: 84000,
     status: "active",
     groupCount: 2,
     groupIds: ["g1", "g3"],
@@ -335,6 +355,9 @@ const INITIAL_MEMBERS: MemberRow[] = [
     name: "Sia Fuentes",
     email: "sia@acme.com",
     role: "member",
+    seat: "pro",
+    usage: 72300,
+    limit: 84000,
     status: "active",
     groupCount: 1,
     groupIds: ["g2"],
@@ -345,6 +368,9 @@ const INITIAL_MEMBERS: MemberRow[] = [
     name: "Koray Okumus",
     email: "koray@acme.com",
     role: "member",
+    seat: "free",
+    usage: 0,
+    limit: 5000,
     status: "active",
     groupCount: 0,
     groupIds: [],
@@ -355,6 +381,9 @@ const INITIAL_MEMBERS: MemberRow[] = [
     name: "Amélie Laurent",
     email: "amelie@acme.com",
     role: "member",
+    seat: "pro",
+    usage: 41200,
+    limit: 84000,
     status: "active_provisioned",
     groupCount: 1,
     groupIds: ["g2"],
@@ -365,6 +394,9 @@ const INITIAL_MEMBERS: MemberRow[] = [
     name: "Ryan Hartmann",
     email: "ryan@acme.com",
     role: "member",
+    seat: "free",
+    usage: 2100,
+    limit: 5000,
     status: "active",
     groupCount: 1,
     groupIds: ["g4"],
@@ -375,6 +407,9 @@ const INITIAL_MEMBERS: MemberRow[] = [
     name: "Sofia Christopoulos",
     email: "sofia@acme.com",
     role: "member",
+    seat: "free",
+    usage: 880,
+    limit: 5000,
     status: "invited",
     groupCount: 0,
     groupIds: [],
@@ -385,6 +420,9 @@ const INITIAL_MEMBERS: MemberRow[] = [
     name: "Marcus Webb",
     email: "marcus@acme.com",
     role: "member",
+    seat: "pro",
+    usage: 33750,
+    limit: 84000,
     status: "active",
     groupCount: 2,
     groupIds: ["g1", "g4"],
@@ -395,6 +433,9 @@ const INITIAL_MEMBERS: MemberRow[] = [
     name: "Yuki Tanaka",
     email: "yuki@acme.com",
     role: "member",
+    seat: "max",
+    usage: 198400,
+    limit: null,
     status: "auto_joined",
     groupCount: 1,
     groupIds: ["g3"],
@@ -413,72 +454,6 @@ const DOMAINS: DomainRow[] = [
   { id: "d1", domain: "@dust.us", status: "verified" },
   { id: "d2", domain: "@dust.com", status: "pending" },
   { id: "d3", domain: "@dust.tt", status: "failed" },
-];
-
-const USAGE_MEMBERS: UsageMemberRow[] = [
-  {
-    id: "m1",
-    name: "Olivia Rhye",
-    email: "olivia@acme.com",
-    seat: "max",
-    period: "annual",
-    usage: 8237,
-    limit: null,
-  },
-  {
-    id: "m2",
-    name: "Phoenix Baker",
-    email: "phoenix@acme.com",
-    seat: "max",
-    period: "monthly",
-    usage: 6739,
-    limit: 10000,
-  },
-  {
-    id: "m3",
-    name: "Lana Steiner",
-    email: "lana@acme.com",
-    seat: "max",
-    period: "monthly",
-    usage: 0,
-    limit: 1000,
-  },
-  {
-    id: "m4",
-    name: "Demi Wilkinson",
-    email: "demi@acme.com",
-    seat: "max",
-    period: "monthly",
-    usage: 1254,
-    limit: null,
-  },
-  {
-    id: "m5",
-    name: "Candice Wu",
-    email: "candice@acme.com",
-    seat: "pro",
-    period: "monthly",
-    usage: 300,
-    limit: 1000,
-  },
-  {
-    id: "m6",
-    name: "Natali Craig",
-    email: "natali@acme.com",
-    seat: "pro",
-    period: "annual",
-    usage: 2739,
-    limit: 4000,
-  },
-  {
-    id: "m7",
-    name: "Drew Cano",
-    email: "drew@acme.com",
-    seat: "free",
-    period: null,
-    usage: 15739,
-    limit: null,
-  },
 ];
 
 const INITIAL_GOVERNANCE: GovernanceSetting[] = [
@@ -662,7 +637,7 @@ const INITIAL_CONNECTIONS: Omit<ConnectionRow, "onClick">[] = [
 
 const ROLE_LABELS: Record<Role, string> = {
   super_admin: "Super Admin",
-  admin: "Operator",
+  admin: "Business Admin",
   security_admin: "Security Admin",
   billing_admin: "Billing Admin",
 };
@@ -712,7 +687,7 @@ const ROLE_DISPLAY: Record<
   }
 > = {
   super_admin: { label: "Super Admin", color: "green" },
-  admin: { label: "Operator", color: "green" },
+  admin: { label: "Business Admin", color: "green" },
   security_admin: { label: "Security Admin", color: "warning" },
   billing_admin: { label: "Billing Admin", color: "highlight" },
   member: { label: "Member", color: "blue" },
@@ -904,13 +879,21 @@ function PeoplePage({
   const [search, setSearch] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmails, setInviteEmails] = useState("");
-  const [inviteRole, setInviteRole] = useState("Operator");
+  const [inviteRole, setInviteRole] = useState("Select role");
+  const [inviteBilling, setInviteBilling] = useState<"monthly" | "yearly">(
+    "monthly"
+  );
+  const [invitePlan, setInvitePlan] = useState<"free" | "pro" | "max">("pro");
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [selectedGroup, setSelectedGroup] = useState<GroupRow | null>(null);
   const [selectedMember, setSelectedMember] = useState<MemberRow | null>(null);
   const [memberPlan, setMemberPlan] = useState<MemberRole>("member");
+  const [editSeat, setEditSeat] = useState<"free" | "pro" | "max">("free");
   const [confirmSuperAdmin, setConfirmSuperAdmin] = useState(false);
+  const [confirmSeatUpgrade, setConfirmSeatUpgrade] = useState<
+    "pro" | "max" | null
+  >(null);
   const canEdit = role === "super_admin" || role === "admin";
 
   const memberColumns = useMemo<ColumnDef<MemberRow>[]>(
@@ -961,6 +944,26 @@ function PeoplePage({
         },
       },
       {
+        accessorKey: "seat",
+        header: "Seat",
+        meta: { className: "s-w-20" },
+        cell: (info) => {
+          const seat = info.getValue() as MemberRow["seat"];
+          const seatColors: Record<MemberRow["seat"], string> = {
+            max: "s-text-amber-500",
+            pro: "s-text-blue-500",
+            free: "s-text-slate-400",
+          };
+          return (
+            <DataTable.CellContent>
+              <span className={`s-text-sm s-font-semibold ${seatColors[seat]}`}>
+                {seat.charAt(0).toUpperCase() + seat.slice(1)}
+              </span>
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
         accessorKey: "status",
         header: "Status",
         meta: { className: "s-w-40" },
@@ -986,6 +989,25 @@ function PeoplePage({
             </DataTable.CellContent>
           );
         },
+      },
+      {
+        id: "actions",
+        header: "",
+        meta: { className: "s-w-10" },
+        cell: () => (
+          <DataTable.CellContent>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button icon={DotsHorizontal} variant="ghost" size="xs" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem label="Change seat type" />
+                <DropdownMenuItem label="Edit spend limit" />
+                <DropdownMenuItem label="Remove seat" variant="warning" />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </DataTable.CellContent>
+        ),
       },
     ],
     []
@@ -1050,6 +1072,7 @@ function PeoplePage({
             ? () => {
                 setSelectedMember(m);
                 setMemberPlan(m.role);
+                setEditSeat(m.seat);
               }
             : undefined,
         })),
@@ -1078,17 +1101,22 @@ function PeoplePage({
       setInviteOpen(false);
       return;
     }
-    const plan =
+    const invitedRole: MemberRole =
       inviteRole === "Super Admin"
-        ? "admin"
-        : inviteRole === "Operator"
+        ? "super_admin"
+        : inviteRole === "Business Admin"
           ? "admin"
-          : "member";
+          : inviteRole === "Security Admin"
+            ? "security_admin"
+            : inviteRole === "Billing Admin"
+              ? "billing_admin"
+              : "member";
     const newMembers: MemberRow[] = emails.map((email, i) => ({
       id: `invited-${Date.now()}-${i}`,
       name: email.split("@")[0],
       email,
-      role: (plan === "admin" ? "admin" : "member") as MemberRole,
+      role: invitedRole,
+      seat: invitePlan,
       status: "invited" as const,
       groupCount: 0,
       groupIds: [],
@@ -1236,61 +1264,156 @@ function PeoplePage({
         </TabsContent>
       </Tabs>
 
-      {/* Invite members sheet */}
-      <Sheet open={inviteOpen} onOpenChange={setInviteOpen}>
-        <SheetContent side="right" size="lg">
-          <SheetHeader>
-            <SheetTitle>Invite new users</SheetTitle>
-          </SheetHeader>
-          <div className="s-flex s-flex-col s-gap-4 s-flex-1 s-overflow-auto s-px-6 s-py-4">
+      {/* Invite members modal */}
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Invite new users</DialogTitle>
+          </DialogHeader>
+          <div className="s-flex s-flex-col s-gap-5 s-px-5 s-py-4">
+            {/* Email input */}
             <Page.Vertical gap="xs">
-              <Label>Email addresses (comma or newline separated):</Label>
+              <Label>Email addresses</Label>
               <div className="s-w-full">
-                <TextArea
-                  placeholder="Email addresses, comma or newline separated"
+                <Input
+                  placeholder="Email addresses, comma separated"
                   value={inviteEmails}
                   onChange={(e) => setInviteEmails(e.target.value)}
-                  minRows={4}
+                  name="invite-emails"
+                  className="s-w-full"
                 />
               </div>
             </Page.Vertical>
-            <Page.Vertical gap="xs">
-              <Label>Role</Label>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    label={inviteRole}
-                    isSelect
-                    size="sm"
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  {["Super Admin", "Operator", "Member"].map((r) => (
+
+            {/* Role picker */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  label={inviteRole}
+                  icon={Users01}
+                  isSelect
+                  size="sm"
+                  className="s-self-start"
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {(
+                  [
+                    "Super Admin",
+                    "Business Admin",
+                    "Security Admin",
+                    "Billing Admin",
+                    "Member",
+                  ] as const
+                )
+                  .filter(
+                    (r) => !(role !== "super_admin" && r === "Super Admin")
+                  )
+                  .map((r) => (
                     <DropdownMenuItem
                       key={r}
                       label={r}
                       onClick={() => setInviteRole(r)}
                     />
                   ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </Page.Vertical>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Billing toggle */}
+            <ButtonsSwitchList
+              size="sm"
+              defaultValue="monthly"
+              onValueChange={(v) => setInviteBilling(v as "monthly" | "yearly")}
+              className="s-self-start"
+            >
+              <ButtonsSwitch value="monthly" label="Monthly" />
+              <ButtonsSwitch value="yearly" label="Yearly" />
+            </ButtonsSwitchList>
+
+            {/* Plan cards */}
+            <div className="s-flex s-flex-col s-gap-2">
+              {(
+                [
+                  {
+                    id: "free",
+                    label: "Free",
+                    credits: "300 credits lifetime",
+                    price: null,
+                    available: 10,
+                    Icon: LayerSingle,
+                  },
+                  {
+                    id: "pro",
+                    label: "Pro",
+                    credits: "7,000 credits per month",
+                    price:
+                      inviteBilling === "monthly" ? "$24.99/mo" : "$17.49/mo",
+                    available: null,
+                    Icon: LayersTwo01,
+                  },
+                  {
+                    id: "max",
+                    label: "Max",
+                    credits: "28,000 credits per month",
+                    price:
+                      inviteBilling === "monthly" ? "$119.99/mo" : "$83.99/mo",
+                    available: null,
+                    Icon: LayersThree01,
+                  },
+                ] as const
+              ).map((plan) => (
+                <button
+                  key={plan.id}
+                  type="button"
+                  onClick={() => setInvitePlan(plan.id)}
+                  className={`s-w-full s-flex s-items-center s-justify-between s-rounded-xl s-border s-px-4 s-py-3 s-text-left s-transition-colors ${
+                    invitePlan === plan.id
+                      ? "s-border-highlight-500 s-bg-highlight-50 dark:s-bg-highlight-900/20"
+                      : "s-border-border dark:s-border-border-night hover:s-bg-muted-background dark:hover:s-bg-muted-background-night"
+                  }`}
+                >
+                  <div className="s-flex s-items-center s-gap-3">
+                    <plan.Icon className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                    <div className="s-flex s-flex-col s-gap-0.5">
+                      <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                        {plan.label}
+                      </span>
+                      <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                        {plan.credits}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="s-flex s-items-center s-gap-2">
+                    {plan.available !== null && (
+                      <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                        {plan.available} Available
+                      </span>
+                    )}
+                    {plan.price && (
+                      <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                        {plan.price}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
-          <SheetFooter
+          <DialogFooter
             leftButtonProps={{
               label: "Cancel",
               onClick: () => setInviteOpen(false),
               variant: "outline",
             }}
             rightButtonProps={{
-              label: "Send invite",
+              label: "Validate",
               onClick: handleInvite,
               variant: "primary",
             }}
           />
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* Create group sheet */}
       <Sheet open={createGroupOpen} onOpenChange={setCreateGroupOpen}>
@@ -1380,17 +1503,17 @@ function PeoplePage({
         </DialogContent>
       </Dialog>
 
-      {/* Member detail sheet */}
+      {/* Member detail modal */}
       {selectedMember && (
-        <Sheet
+        <Dialog
           open={!!selectedMember}
           onOpenChange={() => setSelectedMember(null)}
         >
-          <SheetContent side="right" size="lg">
-            <SheetHeader>
-              <SheetTitle>Members</SheetTitle>
-            </SheetHeader>
-            <div className="s-flex s-flex-col s-gap-6 s-flex-1 s-overflow-auto s-px-6 s-py-4">
+          <DialogContent size="md">
+            <DialogHeader>
+              <DialogTitle>Edit member</DialogTitle>
+            </DialogHeader>
+            <div className="s-flex s-flex-col s-gap-5 s-px-5 s-py-4">
               {/* Member identity */}
               <div className="s-flex s-items-center s-gap-3">
                 <Avatar
@@ -1443,6 +1566,68 @@ function PeoplePage({
                 </Page.P>
               </div>
 
+              {/* Seat type */}
+              <div className="s-flex s-flex-col s-gap-2">
+                <Label>Seat type</Label>
+                <div className="s-flex s-flex-col s-gap-2">
+                  {(
+                    [
+                      {
+                        id: "free",
+                        label: "Free",
+                        credits: "300 credits lifetime",
+                        price: null,
+                        Icon: LayerSingle,
+                      },
+                      {
+                        id: "pro",
+                        label: "Pro",
+                        credits: "7,000 credits per month",
+                        price: "$24.99/mo",
+                        Icon: LayersTwo01,
+                      },
+                      {
+                        id: "max",
+                        label: "Max",
+                        credits: "28,000 credits per month",
+                        price: "$119.99/mo",
+                        Icon: LayersThree01,
+                      },
+                    ] as const
+                  ).map((plan) => {
+                    return (
+                      <button
+                        key={plan.id}
+                        type="button"
+                        onClick={() => setEditSeat(plan.id)}
+                        className={`s-w-full s-flex s-items-center s-justify-between s-rounded-xl s-border s-px-4 s-py-3 s-text-left s-transition-colors ${
+                          editSeat === plan.id
+                            ? "s-border-highlight-500 s-bg-highlight-50 dark:s-bg-highlight-900/20"
+                            : "s-border-border dark:s-border-border-night hover:s-bg-muted-background dark:hover:s-bg-muted-background-night"
+                        }`}
+                      >
+                        <div className="s-flex s-items-center s-gap-3">
+                          <plan.Icon className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                          <div className="s-flex s-flex-col s-gap-0.5">
+                            <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                              {plan.label}
+                            </span>
+                            <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                              {plan.credits}
+                            </span>
+                          </div>
+                        </div>
+                        {plan.price && (
+                          <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                            {plan.price}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Danger zone */}
               <div className="s-flex s-flex-col s-gap-2">
                 <Button
@@ -1457,30 +1642,93 @@ function PeoplePage({
                 </Page.P>
               </div>
             </div>
-            <SheetFooter
+            <DialogFooter
               leftButtonProps={{
                 label: "Cancel",
                 onClick: () => setSelectedMember(null),
                 variant: "outline",
               }}
               rightButtonProps={{
-                label: "Update role",
+                label: "Update",
                 variant: "primary",
                 onClick: () => {
-                  setMembers(
-                    members.map((m) =>
-                      m.id === selectedMember.id
-                        ? { ...m, plan: memberPlan }
-                        : m
-                    )
-                  );
-                  setSelectedMember(null);
+                  const SEAT_RANK = { free: 0, pro: 1, max: 2 };
+                  const isUpgrade =
+                    SEAT_RANK[editSeat] > SEAT_RANK[selectedMember.seat];
+                  if (
+                    role === "admin" &&
+                    isUpgrade &&
+                    (editSeat === "pro" || editSeat === "max")
+                  ) {
+                    setConfirmSeatUpgrade(editSeat);
+                  } else {
+                    setMembers(
+                      members.map((m) =>
+                        m.id === selectedMember.id
+                          ? { ...m, plan: memberPlan, seat: editSeat }
+                          : m
+                      )
+                    );
+                    setSelectedMember(null);
+                  }
                 },
               }}
             />
-          </SheetContent>
-        </Sheet>
+          </DialogContent>
+        </Dialog>
       )}
+
+      {/* Seat upgrade confirmation (Business Admin only) */}
+      <Dialog
+        open={!!confirmSeatUpgrade}
+        onOpenChange={(open) => {
+          if (!open) setConfirmSeatUpgrade(null);
+        }}
+      >
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Confirm seat upgrade</DialogTitle>
+          </DialogHeader>
+          <div className="s-px-5 s-py-4">
+            <Page.P variant="secondary">
+              Upgrading{" "}
+              <span className="s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                {selectedMember?.name}
+              </span>{" "}
+              to a{" "}
+              <span className="s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                {confirmSeatUpgrade === "pro" ? "Pro" : "Max"}
+              </span>{" "}
+              seat will add a recurring charge to your company's subscription.
+              Are you sure you want to proceed?
+            </Page.P>
+          </div>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              onClick: () => setConfirmSeatUpgrade(null),
+              variant: "outline",
+            }}
+            rightButtonProps={{
+              label: "Confirm upgrade",
+              variant: "primary",
+              onClick: () => {
+                if (confirmSeatUpgrade && selectedMember) {
+                  setMembers(
+                    members.map((m) =>
+                      m.id === selectedMember.id
+                        ? { ...m, plan: memberPlan, seat: confirmSeatUpgrade }
+                        : m
+                    )
+                  );
+                }
+                setConfirmSeatUpgrade(null);
+                setSelectedMember(null);
+              },
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </Page>
   );
 }
@@ -1530,7 +1778,7 @@ function IdentityPage({ role }: { role: Role }) {
       <Page.Header
         title="Identity & provisioning"
         description="Verify your domain, manage team members and their permissions."
-        icon={Globe01}
+        icon={Fingerprint04}
       />
 
       <Page.Vertical gap="sm">
@@ -1746,7 +1994,7 @@ function GovernancePage({
       <Page.Header
         title="Governance"
         description="Control what members can create and publish. Use groups to grant exceptions."
-        icon={Settings01}
+        icon={Toggle01Left}
       />
       <div className="s-w-full s-rounded-xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3">
         <Page.P variant="secondary" size="sm">
@@ -2032,14 +2280,64 @@ function BillingPage() {
 
 // ─── Usage Page (Billing Admin) ───────────────────────────────────────────────
 
-function UsagePage() {
-  const seatColors: Record<UsageMemberRow["seat"], string> = {
+function UsagePage({
+  role,
+  members,
+  setMembers,
+}: {
+  role: Role;
+  members: MemberRow[];
+  setMembers: (m: MemberRow[]) => void;
+}) {
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteEmails, setInviteEmails] = useState("");
+  const [inviteRole, setInviteRole] = useState("Select role");
+  const [inviteBilling, setInviteBilling] = useState<"monthly" | "yearly">(
+    "monthly"
+  );
+  const [invitePlan, setInvitePlan] = useState<"free" | "pro" | "max">("pro");
+
+  const handleInvite = () => {
+    const emails = inviteEmails
+      .split(/[\n,]+/)
+      .map((e) => e.trim())
+      .filter((e) => e.includes("@"));
+    if (emails.length === 0) {
+      setInviteOpen(false);
+      return;
+    }
+    const invitedRole: MemberRole =
+      inviteRole === "Super Admin"
+        ? "super_admin"
+        : inviteRole === "Business Admin"
+          ? "admin"
+          : inviteRole === "Security Admin"
+            ? "security_admin"
+            : inviteRole === "Billing Admin"
+              ? "billing_admin"
+              : "member";
+    const newMembers: MemberRow[] = emails.map((email, i) => ({
+      id: `invited-${Date.now()}-${i}`,
+      name: email.split("@")[0],
+      email,
+      role: invitedRole,
+      seat: invitePlan,
+      status: "invited" as const,
+      groupCount: 0,
+      groupIds: [],
+    }));
+    setMembers([...members, ...newMembers]);
+    setInviteEmails("");
+    setInviteOpen(false);
+  };
+
+  const seatColors: Record<MemberRow["seat"], string> = {
     max: "s-text-amber-500",
     pro: "s-text-blue-500",
     free: "s-text-slate-400",
   };
 
-  const usageColumns = useMemo<ColumnDef<UsageMemberRow>[]>(
+  const usageColumns = useMemo<ColumnDef<MemberRow>[]>(
     () => [
       {
         accessorKey: "name",
@@ -2067,9 +2365,9 @@ function UsagePage() {
       {
         accessorKey: "seat",
         header: "Seat",
-        meta: { className: "s-w-24" },
+        meta: { className: "s-w-20" },
         cell: (info) => {
-          const seat = info.getValue() as UsageMemberRow["seat"];
+          const seat = info.getValue() as MemberRow["seat"];
           return (
             <DataTable.CellContent>
               <span className={`s-text-sm s-font-semibold ${seatColors[seat]}`}>
@@ -2080,56 +2378,77 @@ function UsagePage() {
         },
       },
       {
-        accessorKey: "period",
-        header: "Period",
-        meta: { className: "s-w-28" },
+        accessorKey: "role",
+        header: "Role",
+        meta: { className: "s-w-32" },
         cell: (info) => {
-          const period = info.getValue() as UsageMemberRow["period"];
+          const r = info.getValue() as MemberRole;
           return (
-            <DataTable.BasicCellContent
-              label={
-                period ? period.charAt(0).toUpperCase() + period.slice(1) : "—"
-              }
-            />
+            <DataTable.CellContent>
+              <Chip
+                color={ROLE_DISPLAY[r].color}
+                label={ROLE_DISPLAY[r].label}
+                size="xs"
+              />
+            </DataTable.CellContent>
           );
         },
       },
       {
-        accessorKey: "usage",
-        header: "Credit usage",
-        meta: { className: "s-w-48" },
+        id: "creditsUsage",
+        header: "Credits Usage",
+        meta: { className: "s-w-56" },
         cell: (info) => {
           const row = info.row.original;
-          const pct = row.limit
-            ? Math.min(100, (row.usage / row.limit) * 100)
-            : 0;
+          const usage = row.usage ?? 0;
+          const limit = row.limit;
+          const pct = limit ? Math.min(100, (usage / limit) * 100) : 0;
           return (
             <DataTable.CellContent>
               <div className="s-flex s-items-center s-gap-2">
-                <span className="s-text-sm s-text-foreground dark:s-text-foreground-night s-w-14">
-                  {row.usage.toLocaleString()}
+                <span className="s-text-sm s-tabular-nums s-text-foreground dark:s-text-foreground-night s-w-14 s-text-right">
+                  {usage.toLocaleString()}
                 </span>
-                {row.limit ? (
-                  <div className="s-flex s-flex-1 s-items-center s-gap-1">
-                    <div className="s-h-1.5 s-flex-1 s-rounded-full s-bg-muted-background dark:s-bg-muted-background-night">
+                {limit ? (
+                  <div className="s-flex s-flex-1 s-flex-col s-gap-0.5">
+                    <div className="s-h-1 s-w-full s-rounded-full s-bg-muted-background dark:s-bg-muted-background-night">
                       <div
                         className="s-h-full s-rounded-full s-bg-primary-500"
                         style={{ width: `${pct}%` }}
                       />
                     </div>
-                    <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night s-w-14 s-text-right">
-                      {row.limit.toLocaleString()}
+                    <span className="s-text-xs s-tabular-nums s-text-muted-foreground dark:s-text-muted-foreground-night s-text-right">
+                      {limit.toLocaleString()}
                     </span>
                   </div>
                 ) : (
                   <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
-                    ∞
+                    —
                   </span>
                 )}
               </div>
             </DataTable.CellContent>
           );
         },
+      },
+      {
+        id: "actions",
+        header: "",
+        meta: { className: "s-w-10" },
+        cell: () => (
+          <DataTable.CellContent>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button icon={DotsHorizontal} variant="ghost" size="xs" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem label="Change seat type" />
+                <DropdownMenuItem label="Edit spend limit" />
+                <DropdownMenuItem label="Remove seat" variant="warning" />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </DataTable.CellContent>
+        ),
       },
     ],
     []
@@ -2140,7 +2459,7 @@ function UsagePage() {
       <Page.Header
         title="Usage"
         description="Manage the usage of your Dust workspace."
-        icon={BarChart01}
+        icon={PieChart01}
       />
 
       <div className="s-flex s-flex-col s-items-start s-gap-3 s-rounded-xl s-border s-border-border dark:s-border-border-night s-p-4">
@@ -2188,10 +2507,155 @@ function UsagePage() {
             icon: Plus,
             variant: "primary",
             size: "sm",
+            onClick: () => setInviteOpen(true),
           }}
         />
-        <DataTable data={USAGE_MEMBERS} columns={usageColumns} />
+        <DataTable data={members} columns={usageColumns} />
       </Page.Vertical>
+
+      {/* Invite modal */}
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Invite new users</DialogTitle>
+          </DialogHeader>
+          <div className="s-flex s-flex-col s-gap-5 s-px-5 s-py-4">
+            <Page.Vertical gap="xs">
+              <Label>Email addresses</Label>
+              <div className="s-w-full">
+                <Input
+                  placeholder="Email addresses, comma separated"
+                  value={inviteEmails}
+                  onChange={(e) => setInviteEmails(e.target.value)}
+                  name="invite-emails-usage"
+                  className="s-w-full"
+                />
+              </div>
+            </Page.Vertical>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  label={inviteRole}
+                  icon={Users01}
+                  isSelect
+                  size="sm"
+                  className="s-self-start"
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {(
+                  [
+                    "Super Admin",
+                    "Business Admin",
+                    "Security Admin",
+                    "Billing Admin",
+                    "Member",
+                  ] as const
+                )
+                  .filter(
+                    (r) => !(role !== "super_admin" && r === "Super Admin")
+                  )
+                  .map((r) => (
+                    <DropdownMenuItem
+                      key={r}
+                      label={r}
+                      onClick={() => setInviteRole(r)}
+                    />
+                  ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <ButtonsSwitchList
+              size="sm"
+              defaultValue="monthly"
+              onValueChange={(v) => setInviteBilling(v as "monthly" | "yearly")}
+              className="s-self-start"
+            >
+              <ButtonsSwitch value="monthly" label="Monthly" />
+              <ButtonsSwitch value="yearly" label="Yearly" />
+            </ButtonsSwitchList>
+            <div className="s-flex s-flex-col s-gap-2">
+              {(
+                [
+                  {
+                    id: "free",
+                    label: "Free",
+                    credits: "300 credits lifetime",
+                    price: null,
+                    available: 10,
+                    Icon: LayerSingle,
+                  },
+                  {
+                    id: "pro",
+                    label: "Pro",
+                    credits: "7,000 credits per month",
+                    price:
+                      inviteBilling === "monthly" ? "$24.99/mo" : "$17.49/mo",
+                    available: null,
+                    Icon: LayersTwo01,
+                  },
+                  {
+                    id: "max",
+                    label: "Max",
+                    credits: "28,000 credits per month",
+                    price:
+                      inviteBilling === "monthly" ? "$119.99/mo" : "$83.99/mo",
+                    available: null,
+                    Icon: LayersThree01,
+                  },
+                ] as const
+              ).map((plan) => (
+                <button
+                  key={plan.id}
+                  type="button"
+                  onClick={() => setInvitePlan(plan.id)}
+                  className={`s-w-full s-flex s-items-center s-justify-between s-rounded-xl s-border s-px-4 s-py-3 s-text-left s-transition-colors ${
+                    invitePlan === plan.id
+                      ? "s-border-highlight-500 s-bg-highlight-50 dark:s-bg-highlight-900/20"
+                      : "s-border-border dark:s-border-border-night hover:s-bg-muted-background dark:hover:s-bg-muted-background-night"
+                  }`}
+                >
+                  <div className="s-flex s-items-center s-gap-3">
+                    <plan.Icon className="s-h-5 s-w-5 s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night" />
+                    <div className="s-flex s-flex-col s-gap-0.5">
+                      <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                        {plan.label}
+                      </span>
+                      <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                        {plan.credits}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="s-flex s-items-center s-gap-2">
+                    {plan.available !== null && (
+                      <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                        {plan.available} Available
+                      </span>
+                    )}
+                    {plan.price && (
+                      <span className="s-text-sm s-font-semibold s-text-foreground dark:s-text-foreground-night">
+                        {plan.price}
+                      </span>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              onClick: () => setInviteOpen(false),
+              variant: "outline",
+            }}
+            rightButtonProps={{
+              label: "Validate",
+              onClick: handleInvite,
+              variant: "primary",
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </Page>
   );
 }
@@ -3835,7 +4299,7 @@ function ToolsPage({ role }: { role: Role }) {
                   disabled={!canAddMcp}
                   tooltip={
                     !canAddMcp
-                      ? "Only Super Admins and Operators can add MCP servers."
+                      ? "Only Super Admins and Business Admins can add MCP servers."
                       : undefined
                   }
                 />
@@ -4414,12 +4878,12 @@ export default function AdminGovernanceV2() {
         ) : effectivePage === "billing" ? (
           <BillingPage />
         ) : effectivePage === "usage" ? (
-          <UsagePage />
+          <UsagePage role={role} members={members} setMembers={setMembers} />
         ) : effectivePage === "workspace" ? (
           <PlaceholderPage
             title="Workspace Settings"
             description="Configure your workspace preferences."
-            icon={Settings01}
+            icon={Tool01}
           />
         ) : effectivePage === "models" ? (
           <ModelProvidersPage />
@@ -4427,7 +4891,7 @@ export default function AdminGovernanceV2() {
           <PlaceholderPage
             title="API Keys"
             description="Manage API keys for programmatic access."
-            icon={Lock01}
+            icon={Key01}
           />
         ) : effectivePage === "programmatic" ? (
           <PlaceholderPage
