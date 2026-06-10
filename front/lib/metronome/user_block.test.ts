@@ -87,13 +87,13 @@ describe("isUserBlocked", () => {
     expect(mockGetActiveMembershipOfUserInWorkspace).not.toHaveBeenCalled();
   });
 
-  it("returns 'credits_exhausted' when the pool is depleted, even if user is also capped", async () => {
+  it("returns 'user_cap_reached' when the user is capped, even if the pool is also depleted", async () => {
     redisValues.set("metronome:user_credit_state:ws_test:u_test", "capped");
     redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
 
     const blocked = await isUserBlocked("ws_test", "u_test");
 
-    expect(blocked).toBe("credits_exhausted");
+    expect(blocked).toBe("user_cap_reached");
   });
 
   it("returns null when user is on_pool and pool is active", async () => {
