@@ -23,6 +23,7 @@ import { readAnonymousIdFromCookies } from "@app/lib/utils/anonymous_id";
 import type { UTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
+import { ONBOARDING_PROFILE_PENDING_METADATA_KEY } from "@app/types/onboarding";
 import type { LightWorkspaceType } from "@app/types/user";
 
 export interface PerformLoginOptions {
@@ -314,10 +315,19 @@ export async function performLogin(
     };
   }
 
+  const isFirstLogin = user.lastLoginAt === null;
+
   const redirectOptions: Parameters<typeof buildPostLoginUrl>[1] = {
-    welcome: user.lastLoginAt === null,
+    welcome: isFirstLogin,
     utmParams: Object.keys(utmParams).length > 0 ? utmParams : undefined,
   };
+
+  if (isFirstLogin) {
+    // Mark the profile onboarding (name, job type, favorite platforms) as
+    // pending. Cleared when the user submits the profile form, either on the
+    // /welcome page or in the in-app onboarding dialog (credit-priced flow).
+    await user.setMetadata(ONBOARDING_PROFILE_PENDING_METADATA_KEY, "true");
+  }
 
   await user.recordLoginActivity();
 

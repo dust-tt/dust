@@ -8,7 +8,7 @@ import {
 } from "@app/components/onboarding/ProfileOnboardingSteps";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { usePatchUser } from "@app/lib/swr/user";
+import { useCompleteUserOnboarding, usePatchUser } from "@app/lib/swr/user";
 import { useWelcomeData } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { getStoredUTMParams } from "@app/lib/utils/utm";
@@ -30,6 +30,7 @@ export function useProfileOnboardingForm({
 }: UseProfileOnboardingFormProps) {
   const { workspace, user } = useAuth();
   const { patchUser } = usePatchUser();
+  const { completeUserOnboarding } = useCompleteUserOnboarding();
 
   const { welcomeData, isFirstAdmin, emailProvider, isWelcomeDataLoading } =
     useWelcomeData({ workspaceId: workspace.sId });
@@ -74,6 +75,10 @@ export function useProfileOnboardingForm({
       emailProvider,
       workspace.sId
     );
+
+    // Clear the pending profile onboarding marker from the user metadata
+    // (set at the user's first login).
+    await completeUserOnboarding();
 
     if (typeof window !== "undefined") {
       window.dataLayer = window.dataLayer ?? [];
