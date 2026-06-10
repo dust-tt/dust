@@ -28,6 +28,7 @@ describe("workspace_analytics tools", () => {
     "get_top_users",
     "get_agent_details",
     "get_top_skills",
+    "get_top_tools",
   ])("%s refuses non-admin callers", async (toolName) => {
     const workspace = await WorkspaceFactory.basic();
     await GroupFactory.defaults(workspace);

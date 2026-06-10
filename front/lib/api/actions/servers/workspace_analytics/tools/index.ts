@@ -3,15 +3,41 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { workspaceAdminGuard } from "@app/lib/actions/mcp_internal_actions/utils";
 import { WORKSPACE_ANALYTICS_TOOLS_METADATA } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
-import { resolveTimeWindow } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
+import type { ResolvedTimeWindow } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
+import {
+  DEFAULT_RESULTS,
+  resolveTimeWindow,
+} from "@app/lib/api/actions/servers/workspace_analytics/query_input";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { fetchAvailableSkills } from "@app/lib/api/assistant/observability/skill_usage";
+import {
+  fetchAvailableTools,
+  resolveServerDisplayNames,
+} from "@app/lib/api/assistant/observability/tool_usage";
 import { fetchTopAgents } from "@app/lib/api/assistant/observability/top_agents";
 import { fetchTopUsers } from "@app/lib/api/assistant/observability/top_users";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import type { Authenticator } from "@app/lib/auth";
 import { Err, Ok } from "@app/types/shared/result";
 
-const DEFAULT_LIMIT = 25;
+function scopedBaseQuery(
+  auth: Authenticator,
+  window: ResolvedTimeWindow,
+  {
+    source,
+    agentIds,
+    userIds,
+  }: { source?: string; agentIds?: string[]; userIds?: string[] }
+) {
+  return buildAgentAnalyticsBaseQuery({
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    startDate: window.startDate,
+    endDate: window.endDate,
+    contextOrigin: source,
+    agentIds,
+    userIds,
+  });
+}
 
 const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
   get_top_agents: async (
@@ -31,7 +57,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     const result = await fetchTopAgents(auth, {
       startDate: window.value.startDate,
       endDate: window.value.endDate,
-      limit: limit ?? DEFAULT_LIMIT,
+      limit: limit ?? DEFAULT_RESULTS,
       contextOrigin: source,
       agentIds,
       userIds,
@@ -87,7 +113,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     const result = await fetchTopUsers(auth, {
       startDate: window.value.startDate,
       endDate: window.value.endDate,
-      limit: limit ?? DEFAULT_LIMIT,
+      limit: limit ?? DEFAULT_RESULTS,
       contextOrigin: source,
       agentIds,
       userIds,
@@ -182,11 +208,8 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
       return new Err(new MCPError(window.error, { tracked: false }));
     }
 
-    const baseQuery = buildAgentAnalyticsBaseQuery({
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      startDate: window.value.startDate,
-      endDate: window.value.endDate,
-      contextOrigin: source,
+    const baseQuery = scopedBaseQuery(auth, window.value, {
+      source,
       agentIds,
       userIds,
     });
@@ -199,7 +222,7 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     }
 
     const { label, timezone: tz } = window.value;
-    const skills = result.value.slice(0, limit ?? DEFAULT_LIMIT);
+    const skills = result.value.slice(0, limit ?? DEFAULT_RESULTS);
 
     if (skills.length === 0) {
       return new Ok([
@@ -220,6 +243,69 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
         type: "text" as const,
         text:
           `Most-used skills for ${label} (${tz}), most used first:\n` +
+          lines.join("\n"),
+      },
+    ]);
+  },
+
+  get_top_tools: async (
+    { limit, period, startDate, endDate, timezone, source, agentIds, userIds },
+    { auth }
+  ) => {
+    const denied = workspaceAdminGuard(auth);
+    if (denied) {
+      return new Err(denied);
+    }
+
+    const window = resolveTimeWindow({ period, startDate, endDate, timezone });
+    if (window.isErr()) {
+      return new Err(new MCPError(window.error, { tracked: false }));
+    }
+
+    const baseQuery = scopedBaseQuery(auth, window.value, {
+      source,
+      agentIds,
+      userIds,
+    });
+
+    const result = await fetchAvailableTools(baseQuery);
+    if (result.isErr()) {
+      return new Err(
+        new MCPError(`Failed to retrieve tool usage: ${result.error.message}`)
+      );
+    }
+
+    const { label, timezone: tz } = window.value;
+    const top = result.value.slice(0, limit ?? DEFAULT_RESULTS);
+
+    if (top.length === 0) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `No tool usage recorded for ${label} (${tz}).`,
+        },
+      ]);
+    }
+
+    const displayNames = await resolveServerDisplayNames(
+      auth,
+      top.map((tool) => tool.serverName)
+    );
+
+    const lines = top.map((tool, index) => {
+      const displayName = displayNames.get(tool.serverName) ?? tool.displayName;
+      const name =
+        displayName === tool.serverName
+          ? displayName
+          : `${displayName} [${tool.serverName}]`;
+      return `${index + 1}. ${name} — ${tool.totalExecutions} executions`;
+    });
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text:
+          `Most-used tools for ${label} (${tz}), most used first:\n` +
           lines.join("\n"),
       },
     ]);

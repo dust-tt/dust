@@ -705,6 +705,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_agent_details": "never_ask",
     "get_top_agents": "never_ask",
     "get_top_skills": "never_ask",
+    "get_top_tools": "never_ask",
     "get_top_users": "never_ask",
   },
   "zendesk": {
