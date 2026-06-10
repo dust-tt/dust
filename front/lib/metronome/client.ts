@@ -2054,7 +2054,6 @@ export async function listMetronomeBalances(
       // them via the ContractCreditOrCommit filter).
       if (
         onlyPoolCredits &&
-        entry.type === "CREDIT" &&
         entry.custom_fields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY] !==
           CONTRACT_CREDIT_TYPE_POOL
       ) {
@@ -2068,6 +2067,60 @@ export async function listMetronomeBalances(
     logger.error(
       { error, metronomeCustomerId },
       "[Metronome] Failed to list balances"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Get the combined net balance a customer can use right now across all
+ * pertinent commits and credits, denominated in `creditTypeId`. Unlike
+ * `listMetronomeBalances`, this delegates the reduction to Metronome and
+ * returns a single number, so it can't surface per-schedule details.
+ *
+ * By default it restricts to pool credits/commits via the
+ * `DUST_CONTRACT_CREDIT_TYPE=pool` custom field — mirroring the
+ * `onlyPoolCredits` filter of `listMetronomeBalances`.
+ */
+export async function getNetBalance(
+  metronomeCustomerId: string,
+  {
+    creditTypeId,
+    onlyPoolCredits = true,
+  }: {
+    creditTypeId?: string;
+    onlyPoolCredits?: boolean;
+  } = {}
+): Promise<Result<number, Error>> {
+  if (!config.getMetronomeApiKey()) {
+    return new Ok(0);
+  }
+
+  const client = getMetronomeClient();
+
+  try {
+    const response = await client.v1.contracts.getNetBalance({
+      customer_id: metronomeCustomerId,
+      ...(creditTypeId !== undefined ? { credit_type_id: creditTypeId } : {}),
+      ...(onlyPoolCredits
+        ? {
+            filters: [
+              {
+                custom_fields: {
+                  [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]:
+                    CONTRACT_CREDIT_TYPE_POOL,
+                },
+              },
+            ],
+          }
+        : {}),
+    });
+    return new Ok(response.data.balance);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId },
+      "[Metronome] Failed to get net balance"
     );
     return new Err(error);
   }
