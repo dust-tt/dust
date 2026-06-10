@@ -38,6 +38,7 @@ import type {
   MembershipSeatType,
   MembershipUpgradeRequestType,
 } from "@app/types/memberships";
+import { SEAT_TYPE_ORDER } from "@app/types/memberships";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { isAdmin } from "@app/types/user";
 import {
@@ -61,7 +62,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
-
 
 // Build a minimal member from an upgrade request to feed the reused seat / spend
 // limit modals.
@@ -352,6 +352,19 @@ export function UsagePage() {
 
   const plan = subscription.plan;
   const isEnterprise = isEnterprisePlanPrefix(plan.code);
+
+  // Tier order of the most premium seat plan offered to the workspace. A
+  // requester whose current seat is already at (or above) this tier has no
+  // higher plan to upgrade to, so the "Upgrade plan" action is hidden for them.
+  const highestSeatTypeOrder = useMemo(() => {
+    let highest: number | null = null;
+    for (const [seatType, order] of Object.entries(SEAT_TYPE_ORDER)) {
+      if (seatType in seatPlans && (highest === null || order > highest)) {
+        highest = order;
+      }
+    }
+    return highest;
+  }, [seatPlans]);
   const isManualInvitationsEnabled =
     owner.metadata?.disableManualInvitations !== true;
 
@@ -591,6 +604,8 @@ export function UsagePage() {
                     requests={filteredUpgradeRequests}
                     isLoading={isUpgradeRequestsLoading}
                     isSeatBased={isSeatBased}
+                    isTopWorkspacePlan={isEnterprise}
+                    highestSeatTypeOrder={highestSeatTypeOrder}
                     pendingRequestIds={resolvingRequestIds}
                     onUpgradePlan={handleUpgradePlanRequest}
                     onEditLimit={handleEditLimitRequest}

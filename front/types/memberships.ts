@@ -238,6 +238,7 @@ export interface MembershipUpgradeRequestType {
     name: string;
     email: string | null;
     image: string | null;
+    seatType: MembershipSeatType | null;
   };
 }
 

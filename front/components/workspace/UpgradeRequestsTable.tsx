@@ -1,5 +1,6 @@
 import { timeAgoFrom } from "@app/lib/utils";
 import type { MembershipUpgradeRequestType } from "@app/types/memberships";
+import { SEAT_TYPE_ORDER } from "@app/types/memberships";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
   Button,
@@ -82,11 +83,15 @@ const requestedColumn: ColumnDef<RowData, string> = {
 
 function buildActionsColumn({
   isSeatBased,
+  isTopWorkspacePlan,
+  highestSeatTypeOrder,
   onUpgradePlan,
   onEditLimit,
   onDeny,
 }: {
   isSeatBased: boolean;
+  isTopWorkspacePlan: boolean;
+  highestSeatTypeOrder: number | null;
   onUpgradePlan: (request: MembershipUpgradeRequestType) => void;
   onEditLimit: (request: MembershipUpgradeRequestType) => void;
   onDeny: (request: MembershipUpgradeRequestType) => void;
@@ -105,6 +110,16 @@ function buildActionsColumn({
           </div>
         );
       }
+      // Hide "Upgrade plan" when there is no higher seat tier to move the
+      // requester to: the workspace is already on its top plan, or the
+      // requester's current seat is at/above the highest offered seat tier.
+      const requesterSeatOrder =
+        SEAT_TYPE_ORDER[request.requester.seatType ?? "none"];
+      const canUpgradePlan =
+        isSeatBased &&
+        !isTopWorkspacePlan &&
+        highestSeatTypeOrder !== null &&
+        requesterSeatOrder < highestSeatTypeOrder;
       return (
         <div className="flex w-full items-center justify-end gap-2">
           <Button
@@ -114,7 +129,7 @@ function buildActionsColumn({
             label="Deny"
             onClick={() => onDeny(request)}
           />
-          {isSeatBased && (
+          {canUpgradePlan && (
             <Button
               size="sm"
               variant="highlight-secondary"
@@ -142,6 +157,8 @@ interface UpgradeRequestsTableProps {
   requests: MembershipUpgradeRequestType[];
   isLoading: boolean;
   isSeatBased: boolean;
+  isTopWorkspacePlan: boolean;
+  highestSeatTypeOrder: number | null;
   pendingRequestIds: ReadonlySet<string>;
   onUpgradePlan: (request: MembershipUpgradeRequestType) => void;
   onEditLimit: (request: MembershipUpgradeRequestType) => void;
@@ -152,6 +169,8 @@ export function UpgradeRequestsTable({
   requests,
   isLoading,
   isSeatBased,
+  isTopWorkspacePlan,
+  highestSeatTypeOrder,
   pendingRequestIds,
   onUpgradePlan,
   onEditLimit,
@@ -178,9 +197,23 @@ export function UpgradeRequestsTable({
       nameColumn,
       reasonColumn,
       requestedColumn,
-      buildActionsColumn({ isSeatBased, onUpgradePlan, onEditLimit, onDeny }),
+      buildActionsColumn({
+        isSeatBased,
+        isTopWorkspacePlan,
+        highestSeatTypeOrder,
+        onUpgradePlan,
+        onEditLimit,
+        onDeny,
+      }),
     ],
-    [isSeatBased, onUpgradePlan, onEditLimit, onDeny]
+    [
+      isSeatBased,
+      isTopWorkspacePlan,
+      highestSeatTypeOrder,
+      onUpgradePlan,
+      onEditLimit,
+      onDeny,
+    ]
   );
 
   if (isLoading) {
