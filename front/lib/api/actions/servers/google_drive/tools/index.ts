@@ -27,13 +27,13 @@ import {
   GOOGLE_DRIVE_WRITE_TOOLS_METADATA,
   MAX_CONTENT_SIZE,
   MAX_FILE_SIZE,
-  SUPPORTED_MIMETYPES,
 } from "@app/lib/api/actions/servers/google_drive/metadata";
 import { resolveDocOperations } from "@app/lib/api/actions/servers/google_drive/resolution/docs_resolver";
 import { resolveSpreadsheetOperations } from "@app/lib/api/actions/servers/google_drive/resolution/sheets_resolver";
 import { resolvePresentationOperations } from "@app/lib/api/actions/servers/google_drive/resolution/slides_resolver";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
+import { isTextExtractionSupportedContentType } from "@app/types/shared/text_extraction";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { Common } from "googleapis";
 import { Readable } from "stream";
@@ -76,6 +76,53 @@ export function buildBinaryFileResource({
 
 const EXTRACTION_FAILED_PLACEHOLDER =
   "[Text extraction failed — file attached as binary resource]";
+
+const XLSX_MIMETYPE =
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+const GOOGLE_APPS_MIMETYPE_PREFIX = "application/vnd.google-apps.";
+
+/**
+ * Extracts text from a downloaded binary file when the type is supported and
+ * always builds a binary resource block so downstream tools (sandbox upload,
+ * file viewer, etc.) can consume the raw bytes.
+ */
+async function extractTextAndBuildResource({
+  buffer,
+  mimeType,
+  fileName,
+  fileId,
+}: {
+  buffer: Buffer;
+  mimeType: string;
+  fileName: string | null | undefined;
+  fileId: string;
+}): Promise<{ content: string; binaryResource: BinaryFileResourceBlock }> {
+  let content: string;
+  if (isTextExtractionSupportedContentType(mimeType)) {
+    const extractionResult = await extractTextFromBuffer(buffer, mimeType);
+    if (extractionResult.isErr()) {
+      logger.warn(
+        {
+          fileId,
+          mimeType,
+          error: extractionResult.error,
+        },
+        "Text extraction failed for Google Drive binary file"
+      );
+    }
+    content = extractionResult.isOk()
+      ? extractionResult.value
+      : EXTRACTION_FAILED_PLACEHOLDER;
+  } else {
+    content = `[No text extraction available for file type ${mimeType} — file attached as binary resource]`;
+  }
+
+  return {
+    content,
+    binaryResource: buildBinaryFileResource({ buffer, fileName, mimeType }),
+  };
+}
 
 /**
  * Normalizes GaxiosError code to string for comparison.
@@ -394,23 +441,41 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
     }
 
     try {
+      const metadataFields =
+        "id, name, mimeType, size, shortcutDetails, capabilities(canEdit,canComment,canShare,canCopy)";
+
       // First, get file metadata to determine the mimetype
       const fileMetadata = await drive.files.get({
         fileId,
         supportsAllDrives: true,
-        fields:
-          "id, name, mimeType, size, capabilities(canEdit,canComment,canShare,canCopy)",
+        fields: metadataFields,
       });
-      const file = fileMetadata.data;
+      let file = fileMetadata.data;
+      let effectiveFileId = fileId;
 
-      if (!file.mimeType || !SUPPORTED_MIMETYPES.includes(file.mimeType)) {
-        return new Err(
-          new MCPError(
-            `Unsupported file type: ${file.mimeType}. Supported types: ${SUPPORTED_MIMETYPES.join(", ")}`,
-            {
+      // Resolve shortcuts to their target file so the content of the target
+      // is returned instead of an error.
+      if (file.mimeType === `${GOOGLE_APPS_MIMETYPE_PREFIX}shortcut`) {
+        const targetId = file.shortcutDetails?.targetId;
+        if (!targetId) {
+          return new Err(
+            new MCPError("This shortcut has no target file.", {
               tracked: false,
-            }
-          )
+            })
+          );
+        }
+        const targetMetadata = await drive.files.get({
+          fileId: targetId,
+          supportsAllDrives: true,
+          fields: metadataFields,
+        });
+        file = targetMetadata.data;
+        effectiveFileId = targetId;
+      }
+
+      if (!file.mimeType) {
+        return new Err(
+          new MCPError("The file has no mime type.", { tracked: false })
         );
       }
       if (file.size && parseInt(file.size, 10) > MAX_FILE_SIZE) {
@@ -432,7 +497,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         case "application/vnd.google-apps.presentation": {
           // Export Google Docs and Presentations as plain text
           const exportRes = await drive.files.export({
-            fileId,
+            fileId: effectiveFileId,
             mimeType: "text/plain",
           });
           if (typeof exportRes.data !== "string") {
@@ -443,12 +508,36 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
           content = exportRes.data;
           break;
         }
+        case "application/vnd.google-apps.spreadsheet": {
+          // Export Google Sheets as XLSX so the raw file can be consumed by
+          // downstream tools, with extracted text alongside. Note that the
+          // export API is capped at 10MB by Google.
+          const exportRes = await drive.files.export(
+            { fileId: effectiveFileId, mimeType: XLSX_MIMETYPE },
+            { responseType: "arraybuffer" }
+          );
+          if (!(exportRes.data instanceof ArrayBuffer)) {
+            return new Err(
+              new MCPError("Failed to export spreadsheet as XLSX")
+            );
+          }
+          const fileName = file.name?.endsWith(".xlsx")
+            ? file.name
+            : `${file.name ?? "spreadsheet"}.xlsx`;
+          ({ content, binaryResource } = await extractTextAndBuildResource({
+            buffer: Buffer.from(exportRes.data),
+            mimeType: XLSX_MIMETYPE,
+            fileName,
+            fileId: effectiveFileId,
+          }));
+          break;
+        }
         case "text/plain":
         case "text/markdown":
         case "text/csv": {
           // Download regular text files
           const downloadRes = await drive.files.get({
-            fileId,
+            fileId: effectiveFileId,
             alt: "media",
           });
 
@@ -460,15 +549,27 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
           content = downloadRes.data;
           break;
         }
-        case "application/pdf":
-        case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-        case "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
-          // Binary documents: download as an arraybuffer, extract text via Tika
-          // (OCR enabled), and always attach the raw bytes as a resource block
-          // so downstream tools can consume the file even when extraction yields
-          // little or nothing.
+        default: {
+          // Remaining Google-native types (folders, forms, maps, ...) have no
+          // binary representation that can be downloaded.
+          if (file.mimeType.startsWith(GOOGLE_APPS_MIMETYPE_PREFIX)) {
+            return new Err(
+              new MCPError(
+                `Unsupported Google-native file type: ${file.mimeType}.`,
+                {
+                  tracked: false,
+                }
+              )
+            );
+          }
+
+          // Any other file (XLSX, PDF, Office, images, ...): download the raw
+          // bytes in their original format, extract text via Tika (OCR
+          // enabled) when supported, and always attach the raw bytes as a
+          // resource block so downstream tools can consume the file even when
+          // extraction yields little or nothing.
           const downloadRes = await drive.files.get(
-            { fileId, alt: "media" },
+            { fileId: effectiveFileId, alt: "media" },
             { responseType: "arraybuffer" }
           );
           if (!(downloadRes.data instanceof ArrayBuffer)) {
@@ -476,38 +577,14 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
               new MCPError("Failed to download file content as arraybuffer")
             );
           }
-          const buffer = Buffer.from(downloadRes.data);
-
-          const extractionResult = await extractTextFromBuffer(
-            buffer,
-            file.mimeType
-          );
-          if (extractionResult.isErr()) {
-            logger.warn(
-              {
-                fileId,
-                mimeType: file.mimeType,
-                error: extractionResult.error,
-              },
-              "Text extraction failed for Google Drive binary file"
-            );
-          }
-          content = extractionResult.isOk()
-            ? extractionResult.value
-            : EXTRACTION_FAILED_PLACEHOLDER;
-          binaryResource = buildBinaryFileResource({
-            buffer,
-            fileName: file.name,
+          ({ content, binaryResource } = await extractTextAndBuildResource({
+            buffer: Buffer.from(downloadRes.data),
             mimeType: file.mimeType,
-          });
+            fileName: file.name,
+            fileId: effectiveFileId,
+          }));
           break;
         }
-        default:
-          return new Err(
-            new MCPError(`Unsupported file type: ${file.mimeType}`, {
-              tracked: false,
-            })
-          );
       }
 
       // Apply offset and limit

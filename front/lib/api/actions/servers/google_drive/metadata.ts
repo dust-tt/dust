@@ -7,18 +7,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-export const SUPPORTED_MIMETYPES = [
-  "application/vnd.google-apps.document",
-  "application/vnd.google-apps.presentation",
-  "application/vnd.google-apps.spreadsheet",
-  "text/plain",
-  "text/markdown",
-  "text/csv",
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-];
-
 export const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
 export const MAX_FILE_SIZE = 64 * 1024 * 1024; // 64 MB max original file size
 
@@ -122,7 +110,11 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     },
   },
   get_file_content: {
-    description: `Get the content of a Google Drive file (Docs, Slides, Sheets, text, PDF, PowerPoint, Word) as text with offset-based pagination. Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}.`,
+    description:
+      "Get the content of a Google Drive file as text with offset-based pagination. " +
+      "Google Docs and Slides are exported as plain text. Google Sheets are exported as XLSX. " +
+      "Any other file (XLSX, PDF, Office, images, ...) is downloaded in its original format. " +
+      "Binary files are attached to the conversation so other tools can use them, alongside extracted text when available.",
     schema: {
       fileId: z
         .string()
