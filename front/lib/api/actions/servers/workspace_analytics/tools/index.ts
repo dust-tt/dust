@@ -5,8 +5,10 @@ import { workspaceAdminGuard } from "@app/lib/actions/mcp_internal_actions/utils
 import { WORKSPACE_ANALYTICS_TOOLS_METADATA } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
 import { resolveTimeWindow } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { fetchAvailableSkills } from "@app/lib/api/assistant/observability/skill_usage";
 import { fetchTopAgents } from "@app/lib/api/assistant/observability/top_agents";
 import { fetchTopUsers } from "@app/lib/api/assistant/observability/top_users";
+import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import { Err, Ok } from "@app/types/shared/result";
 
 const DEFAULT_LIMIT = 25;
@@ -162,6 +164,63 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
           `- Tools: ${toolNames || "none"}\n\n` +
           "Instructions (full system prompt):\n" +
           `${agent.instructions ?? "(no instructions)"}`,
+      },
+    ]);
+  },
+
+  get_top_skills: async (
+    { limit, period, startDate, endDate, timezone, source, agentIds, userIds },
+    { auth }
+  ) => {
+    const denied = workspaceAdminGuard(auth);
+    if (denied) {
+      return new Err(denied);
+    }
+
+    const window = resolveTimeWindow({ period, startDate, endDate, timezone });
+    if (window.isErr()) {
+      return new Err(new MCPError(window.error, { tracked: false }));
+    }
+
+    const baseQuery = buildAgentAnalyticsBaseQuery({
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      startDate: window.value.startDate,
+      endDate: window.value.endDate,
+      contextOrigin: source,
+      agentIds,
+      userIds,
+    });
+
+    const result = await fetchAvailableSkills(baseQuery);
+    if (result.isErr()) {
+      return new Err(
+        new MCPError(`Failed to retrieve skill usage: ${result.error.message}`)
+      );
+    }
+
+    const { label, timezone: tz } = window.value;
+    const skills = result.value.slice(0, limit ?? DEFAULT_LIMIT);
+
+    if (skills.length === 0) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `No skill usage recorded for ${label} (${tz}).`,
+        },
+      ]);
+    }
+
+    const lines = skills.map(
+      (skill, index) =>
+        `${index + 1}. ${skill.skillName} — ${skill.totalExecutions} executions`
+    );
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text:
+          `Most-used skills for ${label} (${tz}), most used first:\n` +
+          lines.join("\n"),
       },
     ]);
   },
