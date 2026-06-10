@@ -17,6 +17,46 @@ function upgradeRequestsUrl(workspaceId: string): string {
   return `/api/w/${workspaceId}/credits/upgrade-requests`;
 }
 
+function usageStatusUrl(workspaceId: string): string {
+  return `/api/w/${workspaceId}/usage-status`;
+}
+
+// Member-initiated: request a spend-limit upgrade for the current user. On
+// success the usage-status read is revalidated so the banner reflects the now
+// pending request.
+export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
+  const sendNotification = useSendNotification();
+  const { mutate } = useSWRWithDefaults(usageStatusUrl(workspaceId), null);
+
+  const doRequestUpgrade = useCallback(async (): Promise<boolean> => {
+    const res = await clientFetch(upgradeRequestsUrl(workspaceId), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+
+    if (!res.ok) {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Failed to request an upgrade",
+        description: errorData.message,
+      });
+      return false;
+    }
+
+    await mutate();
+    sendNotification({
+      type: "success",
+      title: "Upgrade requested",
+      description: "Your workspace admins have been notified.",
+    });
+    return true;
+  }, [workspaceId, sendNotification, mutate]);
+
+  return { doRequestUpgrade };
+}
+
 // Admin-only: pending upgrade requests for the workspace. Fetched on the Usage
 // page both to render the Requests tab and to back its count badge, so it is
 // not gated behind tab visibility.

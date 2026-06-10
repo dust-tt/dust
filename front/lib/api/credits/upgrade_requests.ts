@@ -4,6 +4,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
 import type {
@@ -106,6 +107,47 @@ export async function createUpgradeRequest(
   // `upgradeRequestEmail` notification toggle).
 
   return new Ok(request.toJSON());
+}
+
+export type UpgradeRequestAvailability = {
+  canRequestUpgrade: boolean;
+  hasPendingUpgradeRequest: boolean;
+};
+
+// Whether the current member may request a spend-limit upgrade, and whether they
+// already have a pending one. Used by the usage-status endpoint to drive the
+// in-product CTA, so kept cheap: nothing is fetched for admins (who resolve
+// requests rather than make them) or for members who are not near their limit.
+export async function getUpgradeRequestAvailabilityForUser(
+  auth: Authenticator,
+  { isNearOrAtLimit }: { isNearOrAtLimit: boolean }
+): Promise<UpgradeRequestAvailability> {
+  const unavailable: UpgradeRequestAvailability = {
+    canRequestUpgrade: false,
+    hasPendingUpgradeRequest: false,
+  };
+
+  const user = auth.user();
+  if (auth.isAdmin() || !isNearOrAtLimit || !user) {
+    return unavailable;
+  }
+
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  // Enabled by default when no configuration row exists yet (mirrors the
+  // default in `getUsageConfiguration`).
+  if (config && !config.allowMemberUpgradeRequests) {
+    return unavailable;
+  }
+
+  const pending = await MembershipUpgradeRequestResource.getPendingForUser(
+    auth,
+    { user }
+  );
+  return {
+    canRequestUpgrade: true,
+    hasPendingUpgradeRequest: pending !== null,
+  };
 }
 
 // Admin-only: list pending upgrade requests for the workspace.

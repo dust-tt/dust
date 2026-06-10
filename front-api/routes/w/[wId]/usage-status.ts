@@ -1,3 +1,4 @@
+import { getUpgradeRequestAvailabilityForUser } from "@app/lib/api/credits/upgrade_requests";
 import type {
   GetWorkspaceUsageStatusResponseBody,
   ProgrammaticCreditStatus,
@@ -34,6 +35,8 @@ app.get(
         programmaticCreditStatus: "active",
         balanceThresholdReached: false,
         noSeat: false,
+        canRequestUpgrade: false,
+        hasPendingUpgradeRequest: false,
       });
     }
 
@@ -68,12 +71,19 @@ app.get(
       programmaticCreditStatus = "warned";
     }
 
+    const { canRequestUpgrade, hasPendingUpgradeRequest } =
+      await getUpgradeRequestAvailabilityForUser(auth, {
+        isNearOrAtLimit: awuStatus !== "normal",
+      });
+
     return ctx.json({
       awuStatus,
       poolCreditState,
       programmaticCreditStatus,
       balanceThresholdReached,
       noSeat,
+      canRequestUpgrade,
+      hasPendingUpgradeRequest,
     });
   }
 );
