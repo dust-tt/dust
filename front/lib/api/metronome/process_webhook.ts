@@ -231,7 +231,7 @@ async function stampContractCreditType({
     }
 
     // Per-user free-seat credits are stamped "free_seat" at creation (see
-    // `addFreeSeatCreditToContract`), so they hit the already-stamped early
+    // `addPerUserCreditToContract`), so they hit the already-stamped early
     // return above and are never re-stamped "pool" here.
 
     if (credit.product.id === getProductExcessCreditsId()) {

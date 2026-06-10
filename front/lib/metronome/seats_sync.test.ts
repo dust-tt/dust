@@ -13,6 +13,12 @@ const {
   mockGetActiveMemberships,
   mockGetScheduledFutureMemberships,
   mockFetchSeatLimits,
+  mockListPerUserCreditUserIds,
+  mockListPerUserCreditBalances,
+  mockAddPerUserCredit,
+  mockArchiveContractCredit,
+  mockUpsertPerUserCreditAlerts,
+  mockClearPerUserCreditAlerts,
 } = vi.hoisted(() => ({
   mockGetProductSeatTypes: vi.fn(),
   mockUpdateSubscriptionQuantity: vi.fn(),
@@ -21,6 +27,12 @@ const {
   mockGetActiveMemberships: vi.fn(),
   mockGetScheduledFutureMemberships: vi.fn(),
   mockFetchSeatLimits: vi.fn(),
+  mockListPerUserCreditUserIds: vi.fn(),
+  mockListPerUserCreditBalances: vi.fn(),
+  mockAddPerUserCredit: vi.fn(),
+  mockArchiveContractCredit: vi.fn(),
+  mockUpsertPerUserCreditAlerts: vi.fn(),
+  mockClearPerUserCreditAlerts: vi.fn(),
 }));
 
 vi.mock("@app/lib/metronome/client", () => ({
@@ -29,6 +41,15 @@ vi.mock("@app/lib/metronome/client", () => ({
   updateSubscriptionSeats: mockUpdateSubscriptionSeats,
   getMetronomeSubscriptionSeatState: mockGetSeatState,
   getMetronomeSubscriptionAssignedSeatIds: vi.fn(),
+  listContractPerUserCreditUserIds: mockListPerUserCreditUserIds,
+  listContractPerUserCreditBalances: mockListPerUserCreditBalances,
+  addPerUserCreditToContract: mockAddPerUserCredit,
+  archiveContractCredit: mockArchiveContractCredit,
+}));
+
+vi.mock("@app/lib/metronome/alerts/per_user_credit_balance", () => ({
+  upsertPerUserCreditBalanceAlerts: mockUpsertPerUserCreditAlerts,
+  clearPerUserCreditBalanceAlerts: mockClearPerUserCreditAlerts,
 }));
 
 vi.mock("@app/lib/metronome/seat_types", async () => {
@@ -81,6 +102,14 @@ describe("syncSeatCount min clamping", () => {
     mockGetScheduledFutureMemberships.mockResolvedValue([]);
     mockUpdateSubscriptionQuantity.mockResolvedValue(new Ok(undefined));
     mockUpdateSubscriptionSeats.mockResolvedValue(new Ok(undefined));
+    // Free-seat credit grant/revoke runs on every syncSeatCount; default to
+    // "no existing credits" so the clamping tests (no free seats) are no-ops.
+    mockListPerUserCreditUserIds.mockResolvedValue(new Ok(new Set()));
+    mockListPerUserCreditBalances.mockResolvedValue(new Ok(new Map()));
+    mockAddPerUserCredit.mockResolvedValue(new Ok(null));
+    mockArchiveContractCredit.mockResolvedValue(new Ok(undefined));
+    mockUpsertPerUserCreditAlerts.mockResolvedValue(new Ok(undefined));
+    mockClearPerUserCreditAlerts.mockResolvedValue(new Ok(undefined));
   });
 
   it("clamps a QUANTITY_ONLY count up to the configured minSeats", async () => {
