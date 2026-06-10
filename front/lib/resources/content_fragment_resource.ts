@@ -16,7 +16,8 @@ import {
   isPastedContentOverInlineLimit,
   TRUNCATED_SNIPPET_SIZE,
   TRUNCATED_SUFFIX,
-  TRUNCATED_TEXT_SIZE,
+  truncateLegacyPastedSnippet,
+  truncateSnippet,
 } from "@app/lib/api/files/snippet";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -1166,9 +1167,7 @@ export async function getContentFragmentFromAttachmentFile(
     // Check if this is a pasted content (large paste) - use simplified XML format
     if (isPastedFile(attachment.contentType)) {
       const truncated = isPastedContentOverInlineLimit(content);
-      const truncatedContent = truncated
-        ? content.slice(0, TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX
-        : content;
+      const truncatedContent = truncated ? truncateSnippet(content) : content;
 
       return new Ok({
         role: "content_fragment",
@@ -1261,10 +1260,11 @@ export async function renderLightContentFragmentForModel(
     };
   }
 
-  const attachment = getAttachmentFromContentFragment(message);
-  if (!attachment) {
+  const rawAttachment = getAttachmentFromContentFragment(message);
+  if (!rawAttachment) {
     return null;
   }
+  const attachment = truncateLegacyPastedSnippet(rawAttachment);
 
   // Get fileId directly from the message based on content fragment type.
   const fileStringId =
@@ -1274,17 +1274,10 @@ export async function renderLightContentFragmentForModel(
 
   // Pasted content is always inlined regardless of feature flags.
   if (fileStringId && isPastedFile(contentType)) {
-    const storedSnippet = attachment.snippet ?? "";
-    // Snippets stored before the inline threshold was lowered may contain the full paste:
-    // re-truncate at render time so a large paste never blows up the model context.
-    const oversizedSnippet = isPastedContentOverInlineLimit(storedSnippet);
-    const snippet = oversizedSnippet
-      ? storedSnippet.slice(0, TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX
-      : storedSnippet;
+    const snippet = attachment.snippet ?? "";
     const truncated =
-      oversizedSnippet ||
-      (snippet.length === TRUNCATED_SNIPPET_SIZE &&
-        snippet.endsWith(TRUNCATED_SUFFIX));
+      snippet.length === TRUNCATED_SNIPPET_SIZE &&
+      snippet.endsWith(TRUNCATED_SUFFIX);
     return {
       role: "content_fragment",
       name: `attach_pasted_content`,

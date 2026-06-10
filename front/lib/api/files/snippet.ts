@@ -32,6 +32,25 @@ export function isPastedContentOverInlineLimit(content: string): boolean {
   return computeTextByteSize(content) > FILE_OFFLOAD_TEXT_SIZE_BYTES;
 }
 
+export function truncateSnippet(content: string): string {
+  return content.slice(0, TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX;
+}
+
+// Snippets of pasted content stored before the inline limit was lowered may contain the full
+// paste (up to 128KB). Re-truncate them so consumers never inline an oversized paste.
+export function truncateLegacyPastedSnippet<
+  T extends { contentType: string; snippet: string | null },
+>(attachment: T): T {
+  if (
+    isPastedFile(attachment.contentType) &&
+    attachment.snippet !== null &&
+    isPastedContentOverInlineLimit(attachment.snippet)
+  ) {
+    return { ...attachment, snippet: truncateSnippet(attachment.snippet) };
+  }
+  return attachment;
+}
+
 export async function generateSnippet(
   auth: Authenticator,
   {
@@ -67,7 +86,7 @@ export async function generateSnippet(
 
     let snippet = `${file.contentType} file with headers: ${schemaRes.value.schema.map((c) => c.name).join(",")}`;
     if (snippet.length > TRUNCATED_SNIPPET_SIZE) {
-      snippet = snippet.slice(0, TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX;
+      snippet = truncateSnippet(snippet);
     }
 
     return new Ok(snippet);
@@ -85,14 +104,14 @@ export async function generateSnippet(
       // context. We really want to avoid having a snippet which is both large and truncated,
       // otherwise the model will pay the cost of the large snippet + read the file.
       if (isPastedContentOverInlineLimit(content)) {
-        return new Ok(content.slice(0, TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX);
+        return new Ok(truncateSnippet(content));
       }
       return new Ok(content);
     }
 
     // Take the first 256 characters
     if (content.length > TRUNCATED_SNIPPET_SIZE) {
-      return new Ok(content.slice(0, TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX);
+      return new Ok(truncateSnippet(content));
     } else {
       return new Ok(content);
     }
@@ -106,7 +125,7 @@ export async function generateSnippet(
 
     let snippet = `Audio file: ${content}`;
     if (snippet.length > TRUNCATED_SNIPPET_SIZE) {
-      snippet = snippet.slice(0, TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX;
+      snippet = truncateSnippet(snippet);
     }
 
     return new Ok(snippet);

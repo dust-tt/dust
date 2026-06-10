@@ -8,6 +8,8 @@ import { getSupportedModelConfigs } from "@app/lib/llms/model_configurations";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import type { ContentFragmentMessageTypeModel } from "@app/types/assistant/generation";
+import { isTextContent } from "@app/types/assistant/generation";
 import type {
   ContentNodeContentFragmentType,
   FileContentFragmentType,
@@ -98,6 +100,14 @@ function makeContentNodeFragment(): ContentNodeContentFragmentType {
   };
 }
 
+function getTextContent(result: ContentFragmentMessageTypeModel | null) {
+  const item = result?.content[0];
+  if (!item || !isTextContent(item)) {
+    throw new Error("Expected a text content item");
+  }
+  return item.text;
+}
+
 const visionModel = getSupportedModelConfigs().find((m) => m.supportsVision)!;
 const nonVisionModel = getSupportedModelConfigs().find(
   (m) => !m.supportsVision
@@ -166,14 +176,14 @@ describe("renderLightContentFragmentForModel", () => {
         visionModel,
         { excludeImages: false, useFileSystem: false }
       );
-      const text = (result?.content[0] as { text: string }).text;
+      const text = getTextContent(result);
       expect(text).toContain(
         `<pastedContent name="file">${pasteContent}</pastedContent>`
       );
       expect(text).not.toContain('truncated="true"');
     });
 
-    it("renders an above-threshold paste as a truncated snippet with path", async () => {
+    it("renders a stored truncated paste snippet with truncated and path attributes", async () => {
       const snippet = "a".repeat(TRUNCATED_TEXT_SIZE) + TRUNCATED_SUFFIX;
       const result = await renderLightContentFragmentForModel(
         authenticator,
@@ -184,7 +194,7 @@ describe("renderLightContentFragmentForModel", () => {
         visionModel,
         { excludeImages: false, useFileSystem: false }
       );
-      const text = (result?.content[0] as { text: string }).text;
+      const text = getTextContent(result);
       expect(text).toContain('truncated="true"');
       expect(text).toContain('path="conversation-conv123/pasted-text-1.txt"');
     });
@@ -200,11 +210,29 @@ describe("renderLightContentFragmentForModel", () => {
         visionModel,
         { excludeImages: false, useFileSystem: false }
       );
-      const text = (result?.content[0] as { text: string }).text;
+      const text = getTextContent(result);
       expect(text).not.toContain(fullPaste);
       expect(text.length).toBeLessThan(1024);
       expect(text).toContain('truncated="true"');
       expect(text).toContain('path="conversation-conv123/pasted-text-1.txt"');
+      expect(text).toContain(TRUNCATED_SUFFIX);
+    });
+
+    it("snippets a paste that is under the limit in characters but over in bytes", async () => {
+      // 2 bytes per char in UTF-8: under the limit in characters, over it in bytes.
+      const fullPaste = "é".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES - 100);
+      const result = await renderLightContentFragmentForModel(
+        authenticator,
+        makeFileFragment("text/vnd.dust.attachment.pasted", {
+          snippet: fullPaste,
+          path: "conversation-conv123/pasted-text-1.txt",
+        }),
+        visionModel,
+        { excludeImages: false, useFileSystem: false }
+      );
+      const text = getTextContent(result);
+      expect(text).not.toContain(fullPaste);
+      expect(text).toContain('truncated="true"');
       expect(text).toContain(TRUNCATED_SUFFIX);
     });
 
