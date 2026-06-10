@@ -252,9 +252,9 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
         placeholder: "e.g. abc123",
       },
     ],
-    buildResolverKey: (p) => `${p.metronomeCustomerId}-${p.workspaceId}`,
-    // The resolver key has no static prefix; the unique fnName scopes the pattern.
-    resolverKeyPattern: "*",
+    buildResolverKey: (p) =>
+      `balance-threshold-${p.metronomeCustomerId}-${p.workspaceId}`,
+    resolverKeyPattern: "balance-threshold-*",
   },
   {
     id: "metronome_per_user_cap_alert_ids",
@@ -274,9 +274,9 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
         placeholder: "e.g. abc123",
       },
     ],
-    buildResolverKey: (p) => `${p.metronomeCustomerId}-${p.workspaceId}`,
-    // The resolver key has no static prefix; the unique fnName scopes the pattern.
-    resolverKeyPattern: "*",
+    buildResolverKey: (p) =>
+      `per-user-cap-alert-${p.metronomeCustomerId}-${p.workspaceId}`,
+    resolverKeyPattern: "per-user-cap-alert-*",
   },
   {
     id: "metronome_default_cap_thresholds_by_seat_type",
@@ -296,9 +296,9 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
         placeholder: "e.g. abc123",
       },
     ],
-    buildResolverKey: (p) => `${p.metronomeCustomerId}-${p.workspaceId}`,
-    // The resolver key has no static prefix; the unique fnName scopes the pattern.
-    resolverKeyPattern: "*",
+    buildResolverKey: (p) =>
+      `cap-threshold-by-seat-${p.metronomeCustomerId}-${p.workspaceId}`,
+    resolverKeyPattern: "cap-threshold-by-seat-*",
   },
   {
     id: "metronome_workspace_alert_ids",
@@ -318,9 +318,9 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
         placeholder: "e.g. abc123",
       },
     ],
-    buildResolverKey: (p) => `${p.metronomeCustomerId}-${p.workspaceId}`,
-    // The resolver key has no static prefix; the unique fnName scopes the pattern.
-    resolverKeyPattern: "*",
+    buildResolverKey: (p) =>
+      `metronome-alerts-${p.metronomeCustomerId}-${p.workspaceId}`,
+    resolverKeyPattern: "metronome-alerts-*",
   },
 ];
 
