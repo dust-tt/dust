@@ -1840,6 +1840,7 @@ const APIErrorTypeSchema = FlexibleEnumSchema<
   | "user_not_found"
   | "unprocessable_entity"
   | "workspace_auth_error"
+  | "workspace_can_use_product_required_error"
   | "workspace_not_found"
   | "workspace_user_not_found"
 >();
