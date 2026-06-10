@@ -41,8 +41,10 @@ import {
   WORKSPACE_SEAT_PRODUCT_NAME,
 } from "@app/lib/metronome/setup_common";
 import {
+  BUSINESS_EUR_PACKAGE_ALIAS,
+  BUSINESS_USD_PACKAGE_ALIAS,
   DEFAULT_AWU_EXCESS_RECURRING_AMOUNT,
-  FREE_PACKAGE_ALIAS,
+  DEPRECATED_FREE_PACKAGE_ALIAS,
 } from "@app/lib/metronome/types";
 
 // Per-seat AWU allocations stamped onto recurring credits at package creation.
@@ -630,7 +632,7 @@ export function getNewPackages(): PackageDef[] {
     // upgrade/downgrade between seat tiers via seat moves.
     {
       name: "Business USD",
-      aliases: [{ name: "business-usd" }],
+      aliases: [{ name: BUSINESS_USD_PACKAGE_ALIAS }],
       rate_card_name: "Standard USD",
       subscriptions: ALL_SEAT_SUBSCRIPTIONS,
       scheduled_charges_on_usage_invoices: "ALL",
@@ -652,7 +654,7 @@ export function getNewPackages(): PackageDef[] {
     },
     {
       name: "Business EUR",
-      aliases: [{ name: "business-eur" }],
+      aliases: [{ name: BUSINESS_EUR_PACKAGE_ALIAS }],
       rate_card_name: "Standard EUR",
       subscriptions: ALL_SEAT_SUBSCRIPTIONS,
       scheduled_charges_on_usage_invoices: "ALL",
@@ -675,7 +677,7 @@ export function getNewPackages(): PackageDef[] {
     // Free plan — entitles only the Free Seat.
     {
       name: "Free plan",
-      aliases: [{ name: FREE_PACKAGE_ALIAS }],
+      aliases: [{ name: DEPRECATED_FREE_PACKAGE_ALIAS }],
       rate_card_name: "Free plan",
       subscriptions: ALL_SEAT_SUBSCRIPTIONS,
       scheduled_charges_on_usage_invoices: "ALL",

@@ -24,6 +24,7 @@ import {
   recordCheckoutPaymentSyncFailure,
   setCheckoutPaymentPending,
 } from "@app/lib/credits/checkout_payment_status";
+import { BUSINESS_USD_PACKAGE_ALIAS } from "@app/lib/metronome/types";
 
 const BASE_INPUT = {
   workspaceId: "ws_test",
@@ -34,7 +35,7 @@ const BASE_INPUT = {
   billingPeriod: "monthly" as const,
   currency: "usd" as const,
   initialAmountCents: 3000,
-  metronomePackageAlias: "business-usd",
+  metronomePackageAlias: BUSINESS_USD_PACKAGE_ALIAS,
   planCode: "CP_BUSINESS_PLAN",
   uniquenessKey: "checkout-payment-ws_test-contract_abc",
 };
