@@ -52,6 +52,7 @@ interface NavigationListItemProps
   extends React.HTMLAttributes<HTMLDivElement>,
     Omit<LinkWrapperProps, "children" | "className"> {
   selected?: boolean;
+  disabled?: boolean;
   label?: string;
   labelAnimation?: "none" | "typing" | "streaming";
   onTypingAnimationComplete?: () => void;
@@ -72,6 +73,7 @@ const NavigationListItem = React.forwardRef<
     {
       className,
       selected,
+      disabled,
       label,
       labelAnimation = "none",
       onTypingAnimationComplete,
@@ -114,16 +116,18 @@ const NavigationListItem = React.forwardRef<
         ref={ref}
         data-nav="menu-button"
         data-selected={selected}
+        data-disabled={disabled}
         {...props}
       >
         <LinkWrapper
-          href={href}
+          href={disabled ? undefined : href}
           target={target}
           rel={rel}
           replace={replace}
           shallow={shallow}
         >
           <div
+            aria-disabled={disabled}
             className={cn(
               "s-peer/menu-button",
               "s-text-primary dark:s-text-primary-night s-font-medium",
@@ -131,7 +135,8 @@ const NavigationListItem = React.forwardRef<
               "s-items-center s-outline-none s-rounded-lg s-text-sm s-p-2 s-transition-colors",
               "data-[disabled]:s-pointer-events-none",
               "hover:s-bg-stone-100 dark:hover:s-bg-primary-200-night",
-              selected && "s-bg-stone-100 dark:s-bg-primary-200-night"
+              selected && "s-bg-stone-100 dark:s-bg-primary-200-night",
+              disabled && "s-pointer-events-none s-cursor-default s-opacity-50"
             )}
           >
             {icon && (
