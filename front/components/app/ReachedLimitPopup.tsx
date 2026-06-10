@@ -177,12 +177,11 @@ function getLimitPromptForCode(
             validateLabel: "Ok",
             children: (
               <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                We've paused messaging for your workspace due to our fair usage
-                policy. Your workspace has reached its shared limit of{" "}
-                {assistantLimits.maxAwuCredits} credits per user{" "}
+                We've paused messaging for your account due to our fair usage
+                policy. Your account has reached its limit of{" "}
+                {assistantLimits.maxAwuCredits} credits{" "}
                 {formatLimitTimeframe(assistantLimits.maxAwuCreditsTimeframe)}.
-                This total limit is collectively shared by all users in the
-                workspace. Check our{" "}
+                Check our{" "}
                 <Hoverable
                   variant="highlight"
                   onClick={() => displayFairUseModal()}
