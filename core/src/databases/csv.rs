@@ -98,6 +98,9 @@ impl GoogleCloudStorageCSVContent {
     }
 
     fn detected_charset_to_utf8(content: &[u8]) -> Result<Vec<u8>> {
+        // /!\ front matches on "UTF-8" in these error messages to surface an actionable
+        // message to the user (`isNonUtf8CsvError` in front/lib/api/files/upsert.ts). Keep
+        // both sides in sync.
         // NUL bytes never appear in text encoded with a single-byte charset; treat the content
         // as binary rather than transcoding it to mojibake.
         if content.contains(&0) {
@@ -622,7 +625,10 @@ BAR,acme";
         let binary = vec![0x89, 0x50, 0x4E, 0x47, 0x00, 0x00, 0x00, 0x0D, 0xFF, 0x81];
         let res = GoogleCloudStorageCSVContent::decode_to_utf8(binary);
         assert!(res.is_err());
-        assert!(res.unwrap_err().to_string().contains("binary"));
+        let err = res.unwrap_err().to_string();
+        assert!(err.contains("binary"));
+        // front matches on "UTF-8" in decode error messages; pin the wording.
+        assert!(err.contains("UTF-8"));
 
         Ok(())
     }

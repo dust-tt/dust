@@ -128,6 +128,27 @@ describe("maybeUpsertFileAttachment", () => {
     }
   });
 
+  it("does not block the attachment on internal upsert errors", async () => {
+    const file = await FileFactory.create(auth, null, {
+      contentType: "text/csv",
+      fileName: "report.csv",
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+    });
+
+    vi.mocked(processAndUpsertToDataSource).mockResolvedValue(
+      new Err(new DustError("internal_error", "Failed to generate snippet."))
+    );
+
+    const result = await maybeUpsertFileAttachment(auth, {
+      contentFragments: [{ fileId: file.sId }],
+      conversation,
+    });
+
+    expect(result.isOk()).toBe(true);
+  });
+
   it("does not re-run when conversationId is already set", async () => {
     const file = await FileFactory.create(auth, null, {
       contentType: "text/plain",

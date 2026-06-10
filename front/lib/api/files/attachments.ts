@@ -64,7 +64,16 @@ export async function maybeUpsertFileAttachment(
                 fileResource
               );
             if (jitDataSource.isErr()) {
-              return jitDataSource;
+              logger.warn({
+                fileModelId: fileResource.id,
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                contentType: fileResource.contentType,
+                useCase: fileResource.useCase,
+                useCaseMetadata: fileResource.useCaseMetadata,
+                message: "Failed to get or create JIT data source.",
+                error: jitDataSource.error,
+              });
+              return new Ok(undefined);
             }
 
             const r = await processAndUpsertToDataSource(
@@ -85,11 +94,18 @@ export async function maybeUpsertFileAttachment(
                 error: r.error,
               });
 
-              return new Err(
-                new Error(
-                  `Failed to attach the file "${fileResource.fileName}": ${r.error.message}`
-                )
-              );
+              // Only surface user-actionable failures (e.g. a CSV the user can re-save in a
+              // supported encoding); transient internal errors must not block the conversation.
+              if (
+                r.error.code === "invalid_csv_content" ||
+                r.error.code === "invalid_file"
+              ) {
+                return new Err(
+                  new Error(
+                    `Failed to attach the file "${fileResource.fileName}": ${r.error.message}`
+                  )
+                );
+              }
             }
           }
         }
@@ -102,7 +118,7 @@ export async function maybeUpsertFileAttachment(
       results.map((r) => (r.isErr() ? r.error : null))
     );
     if (failures.length > 0) {
-      return new Err(new Error(failures.map((e) => e.message).join(" ")));
+      return new Err(new Error(failures.map((e) => e.message).join("; ")));
     }
   }
   return new Ok(undefined);

@@ -49,7 +49,9 @@ import {
 export const NON_UTF8_CSV_ERROR_MESSAGE =
   "This CSV file is not UTF-8 encoded. In Excel, use File > Save As > 'CSV UTF-8 (Comma delimited)' and upload the file again.";
 
-export function isNonUtf8CsvError(error: DustError): boolean {
+// /!\ Matches on the wording of core's CSV decode errors (`decode_to_utf8` in
+// core/src/databases/csv.rs), which all mention "UTF-8". Keep both sides in sync.
+function isNonUtf8CsvError(error: DustError): boolean {
   return error.code === "invalid_csv_content" && /utf-?8/i.test(error.message);
 }
 
@@ -661,6 +663,15 @@ export async function processAndUpsertToDataSource(
   if (processingRes.isErr()) {
     // Replace core's raw CSV parse error with an actionable message for the user.
     if (isNonUtf8CsvError(processingRes.error)) {
+      // The original message carries the detected charset; keep it in the logs.
+      logger.info(
+        {
+          workspaceId: auth.workspace()?.sId,
+          fileId: file.sId,
+          coreErrorMessage: processingRes.error.message,
+        },
+        "Rewriting non-UTF-8 CSV error to user-facing message."
+      );
       return new Err<DustError>({
         name: "dust_error",
         code: "invalid_csv_content",
