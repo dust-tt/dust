@@ -92,7 +92,7 @@ export function SpaceLayout({ children }: SpaceLayoutProps) {
           <Spinner />
         </div>
       ) : (
-        <div className="flex w-full flex-col">
+        <div className="flex w-full flex-col pb-4">
           <Page.Vertical gap="lg" align="stretch">
             {
               // Message to admins that are not members of the space.
