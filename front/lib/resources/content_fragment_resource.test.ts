@@ -218,24 +218,6 @@ describe("renderLightContentFragmentForModel", () => {
       expect(text).toContain(TRUNCATED_SUFFIX);
     });
 
-    it("snippets a paste that is under the limit in characters but over in bytes", async () => {
-      // 2 bytes per char in UTF-8: under the limit in characters, over it in bytes.
-      const fullPaste = "é".repeat(FILE_OFFLOAD_TEXT_SIZE_BYTES - 100);
-      const result = await renderLightContentFragmentForModel(
-        authenticator,
-        makeFileFragment("text/vnd.dust.attachment.pasted", {
-          snippet: fullPaste,
-          path: "conversation-conv123/pasted-text-1.txt",
-        }),
-        visionModel,
-        { excludeImages: false, useFileSystem: false }
-      );
-      const text = getTextContent(result);
-      expect(text).not.toContain(fullPaste);
-      expect(text).toContain('truncated="true"');
-      expect(text).toContain(TRUNCATED_SUFFIX);
-    });
-
     it("renders an image with excludeImages as <attachment> with description", async () => {
       const result = await renderLightContentFragmentForModel(
         authenticator,

@@ -289,7 +289,7 @@ function constructPastedContentSection(): string {
   return (
     "# PASTED CONTENT\n" +
     "The conversation history may contain large pasted contents, indicated by <pastedContent> tags. " +
-    `Pasted content of at most ${FILE_OFFLOAD_TEXT_SIZE_BYTES} bytes contains the full text (no tool call needed). ` +
+    `Pasted content of at most ${FILE_OFFLOAD_TEXT_SIZE_BYTES} chars contains the full text (no tool call needed). ` +
     `Beyond that, the attribute \`truncated="true"\` is set, only a ${TRUNCATED_SNIPPET_SIZE}-char snippet is shown, and the full pasted content can be accessed through file utilities on the associated file.\n`
   );
 }

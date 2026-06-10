@@ -1,8 +1,5 @@
 import { isPastedFile } from "@app/components/assistant/conversation/input_bar/pasted_utils";
-import {
-  computeTextByteSize,
-  FILE_OFFLOAD_TEXT_SIZE_BYTES,
-} from "@app/lib/actions/action_output_limits";
+import { FILE_OFFLOAD_TEXT_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
 import config from "@app/lib/api/config";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -28,8 +25,10 @@ export const TRUNCATED_TEXT_SIZE =
 // Pasted content is inlined in full in the rendered conversation only while it stays below the
 // same threshold used to offload large tool outputs to files. Beyond that, only a truncated
 // snippet is inlined and the model reads the full content through the conversation file tools.
+// For ASCII-dominant text, 1 char ≈ 1 byte, so we use FILE_OFFLOAD_TEXT_SIZE_BYTES directly as
+// a character count to keep everything here in a single unit.
 export function isPastedContentOverInlineLimit(content: string): boolean {
-  return computeTextByteSize(content) > FILE_OFFLOAD_TEXT_SIZE_BYTES;
+  return content.length > FILE_OFFLOAD_TEXT_SIZE_BYTES;
 }
 
 export function truncateSnippet(content: string): string {
