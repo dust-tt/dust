@@ -5,13 +5,11 @@ import {
 } from "@app/components/workspace/seat_styles";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { formatCredits } from "@app/lib/client/credits";
-import type { BillingFrequency } from "@app/lib/metronome/types";
 import {
   isMembershipSeatType,
   type MembershipSeatType,
   SEAT_TYPE_ORDER,
 } from "@app/types/memberships";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
   AlertCircle,
@@ -46,7 +44,6 @@ type RowData = {
   consumedFromAllowanceAwuCredits: number;
   consumedFromPoolAwuCredits: number;
   spendLimitAwuCredits: number | null;
-  billingFrequency: BillingFrequency | null;
   scheduledSeatType: MembershipSeatType | null;
   scheduledSeatChangeAt: string | null;
   isTotalAllowedUsagePending: boolean;
@@ -66,8 +63,7 @@ const SEAT_TYPE_ICONS: Partial<
 };
 
 // Yearly seat types are billed yearly but render in the table identically to
-// their monthly counterpart — the billing cadence is shown in the dedicated
-// billing frequency column. Strip the suffix for icon lookup and display.
+// their monthly counterpart. Strip the suffix for icon lookup and display.
 function getDisplaySeatType(seatType: MembershipSeatType): MembershipSeatType {
   if (seatType.endsWith("_yearly")) {
     const stripped = seatType.slice(0, -"_yearly".length);
@@ -369,41 +365,6 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
   },
 };
 
-const billingFrequencyColumn: ColumnDef<RowData, string> = {
-  id: "billingFrequency" as const,
-  header: "Period",
-  enableSorting: false,
-  accessorFn: (row) => row.billingFrequency ?? "",
-  cell: (info: Info) => {
-    const freq = info.row.original.billingFrequency;
-    let label: string;
-    switch (freq) {
-      case "MONTHLY":
-        label = "Monthly";
-        break;
-      case "ANNUAL":
-        label = "Annual";
-        break;
-      case null:
-        label = "—";
-        break;
-      default:
-        assertNeverAndIgnore(freq);
-        label = "—";
-    }
-    return (
-      <DataTable.CellContent>
-        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          {label}
-        </span>
-      </DataTable.CellContent>
-    );
-  },
-  meta: {
-    className: "w-24",
-  },
-};
-
 const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
   id: "consumedAwuCredits" as const,
   header: () => <span>Credits usage</span>,
@@ -448,17 +409,12 @@ const actionsColumn: ColumnDef<RowData, string> = {
 
 function buildColumns({
   isSeatBased,
-  displayPeriodColumn,
 }: {
   isSeatBased: boolean;
-  displayPeriodColumn: boolean;
 }): ColumnDef<RowData, string>[] {
   const optionalColumns = [];
   if (isSeatBased) {
     optionalColumns.push(seatTypeColumn);
-  }
-  if (displayPeriodColumn) {
-    optionalColumns.push(billingFrequencyColumn);
   }
   return [
     nameColumn,
@@ -534,7 +490,6 @@ export function MembersUsageTable({
         consumedFromAllowanceAwuCredits: m.consumedFromAllowanceAwuCredits,
         consumedFromPoolAwuCredits: m.consumedFromPoolAwuCredits,
         spendLimitAwuCredits: m.spendLimitAwuCredits,
-        billingFrequency: m.billingFrequency,
         scheduledSeatType: m.scheduledSeatType,
         scheduledSeatChangeAt: m.scheduledSeatChangeAt,
         isTotalAllowedUsagePending: totalAllowedUsagePendingMemberIds.has(
@@ -580,15 +535,7 @@ export function MembersUsageTable({
     ]
   );
 
-  const displayPeriodColumn = useMemo(
-    () => rows.some((row) => !!row.billingFrequency),
-    [rows]
-  );
-
-  const columns = useMemo(
-    () => buildColumns({ isSeatBased, displayPeriodColumn }),
-    [isSeatBased, displayPeriodColumn]
-  );
+  const columns = useMemo(() => buildColumns({ isSeatBased }), [isSeatBased]);
 
   if (isLoading) {
     return (
