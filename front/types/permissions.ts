@@ -5,13 +5,17 @@ type WorkspacePermission =
   | "workspace:manage_members"
   // Grant, modify, or revoke the `admin` role
   | "workspace:manage_admin_role"
+  | "workspace:view_analytics"
   // Catch-all for admin-only areas (settings, billing, API, developer tools,
   // analytics, ...). Todo(admin_permissions): split into finer-grained permissions
   | "workspace:admin";
 
 export type Permission = WorkspacePermission;
 
-const BUSINESS_ADMIN_PERMISSIONS: Permission[] = ["workspace:manage_members"];
+const BUSINESS_ADMIN_PERMISSIONS: Permission[] = [
+  "workspace:manage_members",
+  "workspace:view_analytics",
+];
 
 const ADMIN_PERMISSIONS: Permission[] = [
   ...BUSINESS_ADMIN_PERMISSIONS,

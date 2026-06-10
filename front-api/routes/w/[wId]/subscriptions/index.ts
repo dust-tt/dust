@@ -19,7 +19,10 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import {
+  ensureHasPermission,
+  ensureIsAdmin,
+} from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -37,13 +40,15 @@ export type PatchSubscriptionResponseBody = {
 };
 
 // Mounted under /api/w/:wId/subscriptions. The bare `/` handles GET, POST,
-// and PATCH on the workspace's subscription itself; admin-only.
+// and PATCH on the workspace's subscription itself. POST/PATCH are admin-only;
+// GET is also available to users with the `workspace:see_analytics` permission
+// (the analytics page reads it to derive the activity-report date range).
 const app = workspaceApp();
 
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsAdmin(),
+  ensureHasPermission("workspace:view_analytics"),
   async (ctx): HandlerResult<GetSubscriptionsResponseBody> => {
     const auth = ctx.get("auth");
 

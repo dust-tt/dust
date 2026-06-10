@@ -5,7 +5,7 @@ import type { GetWorkspaceAnalyticsOverviewResponse } from "@app/lib/api/workspa
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { estypes } from "@elastic/elasticsearch";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureHasPermission } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -23,58 +23,64 @@ type OverviewAggs = {
 const app = workspaceApp();
 
 /** @ignoreswagger */
-app.get("/", ensureIsAdmin(), validate("query", QuerySchema), async (ctx) => {
-  const auth = ctx.get("auth");
+app.get(
+  "/",
+  ensureHasPermission("workspace:view_analytics"),
+  validate("query", QuerySchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
 
-  const { days } = ctx.req.valid("query");
-  const owner = auth.getNonNullableWorkspace();
+    const { days } = ctx.req.valid("query");
+    const owner = auth.getNonNullableWorkspace();
 
-  const totalMembers = await MembershipResource.countActiveMembersForWorkspace({
-    workspace: owner,
-  });
+    const totalMembers =
+      await MembershipResource.countActiveMembersForWorkspace({
+        workspace: owner,
+      });
 
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
-    days,
-  });
+    const baseQuery = buildAgentAnalyticsBaseQuery({
+      workspaceId: owner.sId,
+      days,
+    });
 
-  const result = await searchAnalytics<never, OverviewAggs>(
-    {
-      bool: {
-        filter: [baseQuery, { exists: { field: "user_id" } }],
-      },
-    },
-    {
-      aggregations: {
-        unique_users: {
-          cardinality: {
-            field: "user_id",
-          },
+    const result = await searchAnalytics<never, OverviewAggs>(
+      {
+        bool: {
+          filter: [baseQuery, { exists: { field: "user_id" } }],
         },
       },
-      size: 0,
+      {
+        aggregations: {
+          unique_users: {
+            cardinality: {
+              field: "user_id",
+            },
+          },
+        },
+        size: 0,
+      }
+    );
+
+    if (result.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: `Failed to retrieve analytics overview: ${fromError(result.error).toString()}`,
+        },
+      });
     }
-  );
 
-  if (result.isErr()) {
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: `Failed to retrieve analytics overview: ${fromError(result.error).toString()}`,
-      },
-    });
+    const activeUsers = Math.round(
+      result.value.aggregations?.unique_users?.value ?? 0
+    );
+
+    const body: GetWorkspaceAnalyticsOverviewResponse = {
+      totalMembers,
+      activeUsers,
+    };
+    return ctx.json(body);
   }
-
-  const activeUsers = Math.round(
-    result.value.aggregations?.unique_users?.value ?? 0
-  );
-
-  const body: GetWorkspaceAnalyticsOverviewResponse = {
-    totalMembers,
-    activeUsers,
-  };
-  return ctx.json(body);
-});
+);
 
 export default app;
