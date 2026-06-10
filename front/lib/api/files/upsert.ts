@@ -553,6 +553,30 @@ const maybeApplyProcessing: ProcessingFunction = async (
       upsertArgs,
     });
     if (res.isErr()) {
+      if (
+        file.useCase === "conversation" &&
+        res.error.code === "data_source_quota_error"
+      ) {
+        logger.warn(
+          {
+            workspaceId: auth.workspace()?.sId,
+            fileId: file.sId,
+            contentType: file.contentType,
+            fileSizeBytes: file.fileSize,
+            errorCode: res.error.code,
+            err: res.error,
+          },
+          "Conversation file exceeds data source indexing quota; skipping indexing and keeping the attachment available."
+        );
+
+        await file.setUseCaseMetadata(auth, {
+          ...(file.useCaseMetadata ?? {}),
+          skipDataSourceIndexing: true,
+        });
+
+        return new Ok(undefined);
+      }
+
       return res;
     }
 

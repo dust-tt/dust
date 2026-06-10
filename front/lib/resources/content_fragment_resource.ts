@@ -806,6 +806,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
           contentFragmentType: "file",
           expiredReason: fr.expiredReason,
           path: null,
+          skipDataSourceIndexing: false,
           skipFileProcessing: false,
           fileId: null,
           snippet: null,
@@ -864,6 +865,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       let isInProjectContext = false;
       let hidden = true;
       let path: string | null = null;
+      let skipDataSourceIndexing = false;
       let skipFileProcessing = false;
 
       if (fileResource) {
@@ -875,6 +877,8 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         sourceIcon = fileResource.useCaseMetadata?.sourceIcon ?? null;
         isInProjectContext = !!fileResource.useCaseMetadata?.spaceId;
         hidden = !!fileResource.useCaseMetadata?.hideFromUser;
+        skipDataSourceIndexing =
+          fileResource.useCaseMetadata?.skipDataSourceIndexing === true;
         skipFileProcessing =
           fileResource.useCaseMetadata?.skipFileProcessing === true;
         path = getConversationFilePath({
@@ -897,6 +901,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
         contentFragmentType: "file",
         expiredReason: null,
         path,
+        skipDataSourceIndexing,
         skipFileProcessing,
         fileId: fileStringId,
         snippet,
