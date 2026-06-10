@@ -1,7 +1,8 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
+import tailwindColors from "tailwindcss/colors";
 
-import { cn } from "@sparkle/lib";
+import { customColors } from "@sparkle/lib/colors";
 
 const meta = {
   title: "Foundations/Colors",
@@ -15,6 +16,91 @@ const meta = {
 } satisfies Meta;
 
 export default meta;
+
+// The swatches below build their class names dynamically (e.g.
+// `s-bg-${family}-${shade}`), which Tailwind's JIT scanner cannot see, so the
+// corresponding `s-bg-*` utilities are never generated and the swatches render
+// blank. Instead we resolve each token to its hex value and apply it via an
+// inline style — independent of Tailwind utility generation.
+//
+// Families mirror the design-system theme: Sparkle overrides gray/blue/green/
+// rose/golden (from `customColors`); the remaining product families fall back
+// to Tailwind's defaults.
+type Palette = Record<string, string>;
+const families: Record<string, Palette> = {
+  gray: customColors.gray,
+  blue: customColors.blue,
+  green: customColors.green,
+  rose: customColors.rose,
+  golden: customColors.golden,
+  violet: tailwindColors.violet,
+  pink: tailwindColors.pink,
+  red: tailwindColors.red,
+  orange: tailwindColors.orange,
+  lime: tailwindColors.lime,
+  emerald: tailwindColors.emerald,
+};
+
+// Semantic tokens map onto a base family; in dark mode their shade is inverted
+// (matching the theme's auto-generated `-night` values). `muted` is a fixed tint.
+const semanticBase: Palette = {
+  primary: "gray",
+  highlight: "blue",
+  success: "green",
+  warning: "rose",
+  info: "golden",
+};
+const semanticMuted: Palette = {
+  primary: customColors.gray[500],
+  highlight: "#8EB2D3",
+  success: "#A9B8A9",
+  warning: "#D5AAA1",
+  info: "#E1C99B",
+};
+
+const resolveColor = (token: string, isDark: boolean): string | undefined => {
+  if (token === "background") {
+    return isDark ? customColors.gray[950] : "#FFFFFF";
+  }
+  if (token === "muted-background") {
+    return isDark ? customColors.gray[900] : customColors.gray[50];
+  }
+
+  const dash = token.lastIndexOf("-");
+  const family = token.slice(0, dash);
+  const shade = token.slice(dash + 1);
+
+  if (family in semanticBase) {
+    if (shade === "muted") {
+      return semanticMuted[family];
+    }
+    const base = families[semanticBase[family]];
+    const nightShade = Math.min(950, 1000 - Number(shade));
+    return base[isDark ? String(nightShade) : shade];
+  }
+
+  // Raw and extended palettes are absolute colors; show the same value in both
+  // themes.
+  return families[family]?.[shade];
+};
+
+// Track the active theme so semantic swatches can preview their dark value.
+const useIsDark = () => {
+  const [isDark, setIsDark] = React.useState(
+    () =>
+      typeof document !== "undefined" &&
+      document.documentElement.classList.contains("s-dark")
+  );
+  React.useEffect(() => {
+    const el = document.documentElement;
+    const update = () => setIsDark(el.classList.contains("s-dark"));
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(el, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+  return isDark;
+};
 
 // Color families to display
 const colorFamilies = ["gray", "rose", "green", "blue", "golden"] as const;
@@ -66,34 +152,24 @@ const semanticShades = [
   "muted",
 ] as const;
 
-const ColorSwatch = ({
-  colorClass,
-  label,
-}: {
-  colorClass: string;
-  label: string;
-}) => (
-  <div className="s-flex s-flex-col s-gap-2">
-    <div
-      className={cn(
-        "s-h-16 s-w-24 s-rounded-lg s-border s-border-border dark:s-border-border-night",
-        colorClass
-      )}
-      style={{
-        position: "relative",
-      }}
-    >
-      <div className="s-absolute s-bottom-1 s-left-1 s-font-mono s-text-[10px] s-opacity-50">
-        {getComputedStyle(document.documentElement)
-          .getPropertyValue(
-            `--${colorClass.replace("s-bg-", "").replace(":", "-")}`
-          )
-          .trim()}
+const ColorSwatch = ({ token, label }: { token: string; label: string }) => {
+  const isDark = useIsDark();
+  const color = resolveColor(token, isDark);
+
+  return (
+    <div className="s-flex s-flex-col s-gap-2">
+      <div
+        className="s-relative s-h-16 s-w-24 s-rounded-lg s-border s-border-border dark:s-border-border-night"
+        style={{ backgroundColor: color }}
+      >
+        <div className="s-absolute s-bottom-1 s-left-1 s-font-mono s-text-[10px] s-text-foreground s-opacity-50 dark:s-text-foreground-night">
+          {color ?? "—"}
+        </div>
       </div>
+      <div className="s-font-mono s-text-xs">{label}</div>
     </div>
-    <div className="s-font-mono s-text-xs">{label}</div>
-  </div>
-);
+  );
+};
 
 export const UIColorPalette = () => {
   return (
@@ -111,7 +187,7 @@ export const UIColorPalette = () => {
             {shades.map((shade) => (
               <div key={shade}>
                 <ColorSwatch
-                  colorClass={`s-bg-${family}-${shade} dark:s-bg-${family}-${shade}-night`}
+                  token={`${family}-${shade}`}
                   label={`${family}-${shade}`}
                 />
               </div>
@@ -139,7 +215,7 @@ export const SemanticColorPalette = () => {
             {semanticShades.map((shade) => (
               <div key={shade}>
                 <ColorSwatch
-                  colorClass={`s-bg-${family}-${shade} dark:s-bg-${family}-${shade}-night`}
+                  token={`${family}-${shade}`}
                   label={`${family}-${shade}`}
                 />
               </div>
@@ -216,7 +292,7 @@ export const BrandColorPalette = () => {
             {family.shades.map((shade) => (
               <div key={shade.name}>
                 <ColorSwatch
-                  colorClass={`s-bg-${family.name}-${shade.shade} dark:s-bg-${family.name}-${shade.shade}-night`}
+                  token={`${family.name}-${shade.shade}`}
                   label={shade.name}
                 />
               </div>
@@ -250,7 +326,7 @@ export const ExtendedColorPalette = () => {
             {shades.map((shade) => (
               <div key={shade}>
                 <ColorSwatch
-                  colorClass={`s-bg-${family}-${shade} dark:s-bg-${family}-${shade}-night`}
+                  token={`${family}-${shade}`}
                   label={`${family}-${shade}`}
                 />
               </div>
@@ -276,10 +352,7 @@ export const BackgroundColors = () => {
       <div className="s-flex s-flex-wrap s-gap-4">
         {backgroundColors.map((bg) => (
           <div key={bg}>
-            <ColorSwatch
-              colorClass={`s-bg-${bg} dark:s-bg-${bg}-night`}
-              label={bg}
-            />
+            <ColorSwatch token={bg} label={bg} />
           </div>
         ))}
       </div>
