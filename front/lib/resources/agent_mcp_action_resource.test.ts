@@ -4,7 +4,6 @@ import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
-import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import {
   GCS_CONTENT_CACHE_TTL_MS,
   gcsContentCacheKey,
@@ -242,15 +241,11 @@ describe("listBlockedActionsForConversation", () => {
     });
 
     // Interrupt the agent message (e.g. the user skipped it), leaving the blocked action behind.
-    await AgentMessageModel.update(
-      { status: "interrupted" },
-      {
-        where: {
-          id: agentMessageRow.agentMessageId!,
-          workspaceId: workspace.id,
-        },
-      }
-    );
+    await ConversationFactory.setAgentMessageStatus({
+      workspace,
+      agentMessageModelId: agentMessageRow.agentMessageId!,
+      status: "interrupted",
+    });
 
     const conversationResource = await ConversationResource.fetchById(
       auth,

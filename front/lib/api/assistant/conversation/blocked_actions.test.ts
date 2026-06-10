@@ -16,7 +16,6 @@ import {
   resolveBlockedActionsForTerminatedMessage,
 } from "@app/lib/api/assistant/conversation/blocked_actions";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
@@ -180,10 +179,11 @@ describe("blocked actions resolution", () => {
 
       // Simulate a legacy stuck conversation: the message was interrupted while its blocked
       // action was left pending.
-      await AgentMessageModel.update(
-        { status: "interrupted" },
-        { where: { id: agentMessageRowId, workspaceId: workspace.id } }
-      );
+      await ConversationFactory.setAgentMessageStatus({
+        workspace,
+        agentMessageModelId: agentMessageRowId,
+        status: "interrupted",
+      });
 
       await ConversationResource.markAsActionRequired(auth, { conversation });
       expect(await getActionRequired()).toBe(true);

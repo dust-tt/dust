@@ -16,6 +16,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
+  AgentMessageStatus,
   AgentMessageType,
   ConversationType,
   ConversationVisibility,
@@ -317,6 +318,24 @@ export class ConversationFactory {
       agentMessageId: agentMessageRow.id,
       workspaceId: workspace.id,
     });
+  }
+
+  /**
+   * Sets the status of an agent message, e.g. to simulate a message that was interrupted.
+   */
+  static async setAgentMessageStatus({
+    workspace,
+    agentMessageModelId,
+    status,
+  }: {
+    workspace: WorkspaceType;
+    agentMessageModelId: ModelId;
+    status: AgentMessageStatus;
+  }): Promise<void> {
+    await AgentMessageModel.update(
+      { status },
+      { where: { id: agentMessageModelId, workspaceId: workspace.id } }
+    );
   }
 
   /**
