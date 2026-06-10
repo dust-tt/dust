@@ -16,8 +16,8 @@ import { useEffect, useState } from "react";
 const storyModules = import.meta.glob("./stories/*.tsx", { eager: true });
 
 // Extract story names and components (exclude TemplateSelection - only reachable via dropdown in Pods)
-const DISABLED_STORIES = new Set([
-  "AdminGovernance",
+const DISABLED_STORIES = new Set(["AdminGovernance"]);
+const HIDDEN_STORIES = new Set([
   "AgentBuilder",
   "Conversation",
   "Frame",
@@ -39,7 +39,7 @@ const stories = Object.entries(storyModules)
       disabled: DISABLED_STORIES.has(fileName),
     };
   })
-  .filter((s) => s.name !== "TemplateSelection");
+  .filter((s) => s.name !== "TemplateSelection" && !HIDDEN_STORIES.has(s.name));
 
 type Theme = "light" | "dark";
 const THEME_STORAGE_KEY = "sparkle-playground-theme";
