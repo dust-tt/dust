@@ -126,6 +126,19 @@ describe("handleFileAccessError", () => {
     }
   });
 
+  it("should return a non-auth error for 403 export size limit errors", async () => {
+    const result = await handleFileAccessError(
+      createGaxiosError(403, "This file is too large to be exported."),
+      "test-file-id",
+      createMockExtra("my-connection")
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("too large to be exported");
+    }
+  });
+
   it("should return OAuth re-auth for general 403 errors without permission keywords", async () => {
     const result = await handleFileAccessError(
       createGaxiosError(403, "Forbidden"),
@@ -476,7 +489,9 @@ describe("get_file_content", () => {
       { responseType: "arraybuffer" }
     );
     if (result.isOk()) {
-      const [, resourceBlock] = result.value as any[];
+      const [textBlock, resourceBlock] = result.value as any[];
+      const payload = JSON.parse(textBlock.text);
+      expect(payload.fileId).toBe("target-id");
       expect(resourceBlock.resource.uri).toBe("data.xlsx");
     }
   });

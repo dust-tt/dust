@@ -82,6 +82,9 @@ const XLSX_MIMETYPE =
 
 const GOOGLE_APPS_MIMETYPE_PREFIX = "application/vnd.google-apps.";
 
+const FILE_METADATA_FIELDS =
+  "id, name, mimeType, size, shortcutDetails, capabilities(canEdit,canComment,canShare,canCopy)";
+
 /**
  * Extracts text from a downloaded binary file when the type is supported and
  * always builds a binary resource block so downstream tools (sandbox upload,
@@ -154,6 +157,17 @@ export async function handleFileAccessError(
     const message = err.message?.toLowerCase() ?? "";
 
     // Check for file-specific permission issues that should trigger file picker
+    // Export size limit errors are 403s but are not auth issues: Google caps
+    // file exports at 10MB.
+    if (status === "403" && message.includes("too large")) {
+      return new Err(
+        new MCPError(
+          "This file is too large to be exported (Google caps exports at 10MB). For spreadsheets, use get_spreadsheet and get_worksheet to read the data instead.",
+          { tracked: false }
+        )
+      );
+    }
+
     if (
       (status === "403" || status === "404") &&
       (message.includes("caller does not have permission") ||
@@ -441,20 +455,18 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
     }
 
     try {
-      const metadataFields =
-        "id, name, mimeType, size, shortcutDetails, capabilities(canEdit,canComment,canShare,canCopy)";
-
       // First, get file metadata to determine the mimetype
       const fileMetadata = await drive.files.get({
         fileId,
         supportsAllDrives: true,
-        fields: metadataFields,
+        fields: FILE_METADATA_FIELDS,
       });
       let file = fileMetadata.data;
       let effectiveFileId = fileId;
 
       // Resolve shortcuts to their target file so the content of the target
-      // is returned instead of an error.
+      // is returned instead of an error. Note that errors on the target are
+      // attributed to the shortcut's fileId in handleFileAccessError below.
       if (file.mimeType === `${GOOGLE_APPS_MIMETYPE_PREFIX}shortcut`) {
         const targetId = file.shortcutDetails?.targetId;
         if (!targetId) {
@@ -467,7 +479,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         const targetMetadata = await drive.files.get({
           fileId: targetId,
           supportsAllDrives: true,
-          fields: metadataFields,
+          fields: FILE_METADATA_FIELDS,
         });
         file = targetMetadata.data;
         effectiveFileId = targetId;
@@ -604,7 +616,9 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
           type: "text" as const,
           text: JSON.stringify(
             {
-              fileId,
+              // The resolved file (shortcuts are resolved to their target), so
+              // follow-up tool calls target the right id.
+              fileId: effectiveFileId,
               fileName: file.name,
               mimeType: file.mimeType,
               capabilities: {
