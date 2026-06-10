@@ -1334,34 +1334,33 @@ describe("validateAction", () => {
         { name: "Test Agent" }
       );
 
-      const agentMessageRow = await AgentMessageModel.create({
-        workspaceId: workspace.id,
-        status: "created",
-        agentConfigurationId: agentConfig.sId,
-        agentConfigurationVersion: 0,
-        skipToolsValidation: false,
-      });
+      const agentMessageMessage =
+        await ConversationFactory.createAgentMessageWithRank({
+          workspace,
+          conversationId: conversation.id,
+          rank: 1,
+          agentConfigurationId: agentConfig.sId,
+          parentId: messageRow.id,
+        });
+      if (!agentMessageMessage.agentMessageId) {
+        throw new Error("Expected an agent message id on the message row.");
+      }
 
-      const agentMessageMessage = await MessageModel.create({
-        workspaceId: workspace.id,
-        sId: generateRandomModelSId(),
-        conversationId: conversation.id,
-        rank: 1,
-        parentId: messageRow.id,
-        agentMessageId: agentMessageRow.id,
-      });
-
-      return { agentConfig, agentMessageRow, agentMessageMessage };
+      return {
+        agentConfig,
+        agentMessageId: agentMessageMessage.agentMessageId,
+        agentMessageMessage,
+      };
     }
 
     it("records medium-stake approvals under the tool configuration name, not the function-call name", async () => {
-      const { agentConfig, agentMessageRow, agentMessageMessage } =
+      const { agentConfig, agentMessageId, agentMessageMessage } =
         await createAgentMessageChain();
 
       // Sandbox child actions share their parent's step content, so the
       // function-call name is the parent sandbox tool, not the child tool.
       const { actionId } = await createBlockedAction({
-        agentMessageId: agentMessageRow.id,
+        agentMessageId,
         functionCallName: "sandbox__bash",
         configurationName: "salesforce__update_object",
         permission: "medium",
@@ -1402,11 +1401,11 @@ describe("validateAction", () => {
     });
 
     it("records low-stake approvals under the tool configuration name, not the function-call name", async () => {
-      const { agentMessageRow, agentMessageMessage } =
+      const { agentMessageId, agentMessageMessage } =
         await createAgentMessageChain();
 
       const { actionId } = await createBlockedAction({
-        agentMessageId: agentMessageRow.id,
+        agentMessageId,
         functionCallName: "sandbox__bash",
         configurationName: "salesforce__execute_read_query",
         permission: "low",

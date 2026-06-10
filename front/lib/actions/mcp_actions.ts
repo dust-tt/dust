@@ -1236,7 +1236,7 @@ export async function listToolsForServerSideMCPServer(
   );
 }
 
-async function buildToolConfigurationsFromRawTools(
+export async function buildToolConfigurationsFromRawTools(
   auth: Authenticator,
   mcpServerId: string,
   config: ServerSideMCPServerConfigurationType,

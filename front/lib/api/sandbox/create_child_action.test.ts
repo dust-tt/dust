@@ -28,10 +28,8 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { createSandboxChildAction } from "@app/lib/api/sandbox/create_child_action";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
-import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
-import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -108,12 +106,11 @@ describe("createSandboxChildAction", () => {
 
     // Parent sandbox bash action whose step content carries the sandbox tool
     // function-call name, as in production.
-    const stepContent = await AgentStepContentModel.create({
+    const stepContent = await AgentStepContentResource.createNewVersion({
       workspaceId: workspace.id,
       agentMessageId: agentMessage.agentMessageId,
       step: 0,
       index: 0,
-      version: 0,
       type: "function_call",
       value: {
         type: "function_call",
@@ -147,34 +144,27 @@ describe("createSandboxChildAction", () => {
       originalName: "bash",
       mcpServerName: "sandbox",
     };
-    const parentAction = await AgentMCPActionModel.create({
-      workspaceId: workspace.id,
-      agentMessageId: agentMessage.agentMessageId,
-      mcpServerConfigurationId: generateRandomModelSId(),
-      status: "running",
-      citationsAllocated: 0,
-      augmentedInputs: {},
-      toolConfiguration: parentToolConfiguration,
-      stepContentId: stepContent.id,
-      stepContext: {
-        citationsCount: 0,
-        citationsOffset: 0,
-        resumeState: null,
-        retrievalTopK: 10,
-        websearchResultCount: 5,
-      },
-    });
-    await AgentStepContentToolExecutionModel.create({
-      workspaceId: workspace.id,
-      conversationId: conversation.id,
-      agentMessageId: agentMessage.agentMessageId,
-      agentMCPActionId: parentAction.id,
-      stepContentId: stepContent.id,
-    });
-    parentActionId = AgentMCPActionResource.modelIdToSId({
-      id: parentAction.id,
-      workspaceId: workspace.id,
-    });
+    const parentAction = await AgentMCPActionResource.makeNew(
+      auth,
+      { conversation: conversationResult.value, stepContent },
+      {
+        agentMessageId: agentMessage.agentMessageId,
+        augmentedInputs: {},
+        citationsAllocated: 0,
+        mcpServerConfigurationId: generateRandomModelSId(),
+        status: "running",
+        stepContentId: stepContent.id,
+        stepContext: {
+          citationsCount: 0,
+          citationsOffset: 0,
+          resumeState: null,
+          retrievalTopK: 10,
+          websearchResultCount: 5,
+        },
+        toolConfiguration: parentToolConfiguration,
+      }
+    );
+    parentActionId = parentAction.sId;
   });
 
   async function callChildTool(
@@ -191,12 +181,15 @@ describe("createSandboxChildAction", () => {
     });
   }
 
-  async function setToolPermission(permission: "medium" | "never_ask") {
+  async function setToolPermission(
+    permission: "medium" | "never_ask",
+    { enabled = true }: { enabled?: boolean } = {}
+  ) {
     await RemoteMCPServerToolMetadataResource.updateOrCreateSettings(auth, {
       serverSId,
       toolName: TOOL_NAME,
       permission,
-      enabled: true,
+      enabled,
     });
   }
 
@@ -221,7 +214,6 @@ describe("createSandboxChildAction", () => {
 
     const result = await callChildTool();
 
-    expect(result.isOk()).toBe(true);
     if (result.isErr()) {
       throw result.error;
     }
@@ -251,7 +243,6 @@ describe("createSandboxChildAction", () => {
 
     const result = await callChildTool();
 
-    expect(result.isOk()).toBe(true);
     if (result.isErr()) {
       throw result.error;
     }
@@ -274,7 +265,6 @@ describe("createSandboxChildAction", () => {
 
     const result = await callChildTool();
 
-    expect(result.isOk()).toBe(true);
     if (result.isErr()) {
       throw result.error;
     }
@@ -288,10 +278,24 @@ describe("createSandboxChildAction", () => {
     expect(vi.mocked(launchSandboxChildToolWorkflow)).toHaveBeenCalledTimes(1);
   });
 
+  it("rejects tools disabled by an admin", async () => {
+    await setToolPermission("never_ask", { enabled: false });
+
+    const result = await callChildTool();
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("Expected the disabled tool call to fail.");
+    }
+    expect(result.error.message).toBe(
+      "Tool is not available to this agent or conversation."
+    );
+    expect(vi.mocked(launchSandboxChildToolWorkflow)).not.toHaveBeenCalled();
+  });
+
   it("defaults to high stake and blocks when the tool has no configured permission", async () => {
     const result = await callChildTool();
 
-    expect(result.isOk()).toBe(true);
     if (result.isErr()) {
       throw result.error;
     }

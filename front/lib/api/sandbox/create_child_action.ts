@@ -1,13 +1,5 @@
+import { buildToolConfigurationsFromRawTools } from "@app/lib/actions/mcp_actions";
 import {
-  FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
-  FALLBACK_MCP_TOOL_STAKE_LEVEL,
-} from "@app/lib/actions/constants";
-import {
-  getToolExtraFields,
-  makeServerSideMCPToolConfigurations,
-} from "@app/lib/actions/mcp_actions";
-import {
-  getAvailabilityOfInternalMCPServerById,
   getInternalMCPServerDisplayedAs,
   getInternalMCPServerNameFromSId,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -21,19 +13,18 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
-import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import { pauseSandboxBashForBlockedChild } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { launchSandboxChildToolWorkflow } from "@app/temporal/agent_loop/client";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export type CreateSandboxChildActionResult = {
   actionId: string;
@@ -127,58 +118,21 @@ export async function createSandboxChildAction(
     );
   }
 
-  // Resolve stakes, enabled state and approval-requiring arguments exactly like
-  // the direct agent-loop path (`buildToolConfigurationsFromRawTools`), so that
-  // approvals recorded on direct tool calls apply to sandbox child calls too.
-  const metadata = await RemoteMCPServerToolMetadataResource.fetchByServerId(
+  // Resolve the tool configuration (stake, enabled state, approval-requiring
+  // arguments, retry policy, timeout) through the same code path as direct
+  // agent-loop tool calls, so that approvals recorded on direct calls apply to
+  // sandbox child calls too.
+  const toolConfigurationsRes = await buildToolConfigurationsFromRawTools(
     auth,
-    view.mcpServerId
-  );
-  const extraFieldsRes = getToolExtraFields(view.mcpServerId, metadata);
-  if (extraFieldsRes.isErr()) {
-    return extraFieldsRes;
-  }
-  const {
-    toolsEnabled,
-    toolsStakes,
-    toolsRetryPolicies,
-    serverTimeoutMs,
-    toolsArgumentsRequiringApproval,
-  } = extraFieldsRes.value;
-
-  if (toolsEnabled[toolName] === false) {
-    return new Err(new Error("Tool is disabled for this server."));
-  }
-
-  const availability = getAvailabilityOfInternalMCPServerById(view.mcpServerId);
-
-  const stakeLevel =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    toolsStakes[toolName] ||
-    (availability === "manual"
-      ? FALLBACK_MCP_TOOL_STAKE_LEVEL
-      : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL);
-
-  const [toolConfiguration] = makeServerSideMCPToolConfigurations(
+    view.mcpServerId,
     serverSideConfig,
-    [
-      {
-        name: toolName,
-        description: "",
-        availability,
-        stakeLevel,
-        toolServerId: view.mcpServerId,
-        ...(serverTimeoutMs && { timeoutMs: serverTimeoutMs }),
-        retryPolicy:
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          toolsRetryPolicies?.[toolName] ||
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          toolsRetryPolicies?.["default"] ||
-          DEFAULT_MCP_TOOL_RETRY_POLICY,
-      },
-    ],
-    toolsArgumentsRequiringApproval
+    [{ name: toolName, description: "" }]
   );
+  if (toolConfigurationsRes.isErr()) {
+    return toolConfigurationsRes;
+  }
+  // Empty when the tool has been disabled by an admin.
+  const [toolConfiguration] = toolConfigurationsRes.value;
 
   if (!toolConfiguration) {
     return new Err(
@@ -190,9 +144,18 @@ export async function createSandboxChildAction(
   // function-call name the model sees on direct calls (e.g.
   // `salesforce__update_object`), while `dsbx` sends the raw tool name. Align
   // the configuration name so approval checks and recordings share one key.
+  // `getPrefixedToolName` throws on oversized tool names; `toolName` is
+  // sandbox-workload-controlled input, so surface that as a request error.
+  let prefixedToolName: string;
+  try {
+    prefixedToolName = getPrefixedToolName(serverSideConfig.name, toolName);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+
   const fullToolConfiguration = {
     ...toolConfiguration,
-    name: getPrefixedToolName(serverSideConfig.name, toolName),
+    name: prefixedToolName,
   };
 
   const validateInputsResult = validateToolInputs(rawInputs);
