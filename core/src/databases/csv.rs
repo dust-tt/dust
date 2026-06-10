@@ -623,12 +623,15 @@ BAR,acme";
 
         // Genuinely binary content (NUL bytes, invalid UTF-8) fails cleanly.
         let binary = vec![0x89, 0x50, 0x4E, 0x47, 0x00, 0x00, 0x00, 0x0D, 0xFF, 0x81];
-        let res = GoogleCloudStorageCSVContent::decode_to_utf8(binary);
-        assert!(res.is_err());
-        let err = res.unwrap_err().to_string();
-        assert!(err.contains("binary"));
-        // front matches on "UTF-8" in decode error messages; pin the wording.
-        assert!(err.contains("UTF-8"));
+        match GoogleCloudStorageCSVContent::decode_to_utf8(binary) {
+            Ok(_) => panic!("expected binary content to fail decoding"),
+            Err(e) => {
+                let msg = e.to_string();
+                assert!(msg.contains("binary"));
+                // front matches on "UTF-8" in decode error messages; pin the wording.
+                assert!(msg.contains("UTF-8"));
+            }
+        }
 
         Ok(())
     }

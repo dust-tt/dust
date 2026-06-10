@@ -672,11 +672,9 @@ export async function processAndUpsertToDataSource(
         },
         "Rewriting non-UTF-8 CSV error to user-facing message."
       );
-      return new Err<DustError>({
-        name: "dust_error",
-        code: "invalid_csv_content",
-        message: NON_UTF8_CSV_ERROR_MESSAGE,
-      });
+      return new Err(
+        new DustError("invalid_csv_content", NON_UTF8_CSV_ERROR_MESSAGE)
+      );
     }
     return new Err<DustError>(processingRes.error);
   }
