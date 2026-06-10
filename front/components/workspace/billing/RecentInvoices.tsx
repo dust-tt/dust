@@ -2,12 +2,8 @@ import type { BillingInvoice } from "@app/lib/api/billing/invoices";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useRecentBillingInvoices } from "@app/lib/swr/workspaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { LightWorkspaceType } from "@app/types/user";
 import { Button, Spinner } from "@dust-tt/sparkle";
-
-interface RecentInvoicesProps {
-  owner: LightWorkspaceType;
-}
+import { useSubscriptionContext } from "./SubscriptionContext";
 
 function getInvoiceLabel(invoice: BillingInvoice): string {
   return invoice.description ?? invoice.number ?? "Invoice";
@@ -17,7 +13,8 @@ function getInvoiceUrl(invoice: BillingInvoice): string | null {
   return invoice.hostedInvoiceUrl ?? invoice.invoicePdf;
 }
 
-export function RecentInvoices({ owner }: RecentInvoicesProps) {
+export function RecentInvoices() {
+  const { owner } = useSubscriptionContext();
   const { billingInvoices, isBillingInvoicesLoading } =
     useRecentBillingInvoices({
       workspaceId: owner.sId,

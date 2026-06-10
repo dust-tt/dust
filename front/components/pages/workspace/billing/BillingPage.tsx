@@ -41,15 +41,15 @@ export function BillingPage() {
                 <BillingOverview />
                 <BillingSeatsOverview owner={owner} />
               </div>
-              <BillingUpgrade owner={owner} subscription={subscription} />
-              <BillingInformation owner={owner} />
+              <BillingUpgrade />
+              <BillingInformation />
             </div>
           </TabsContent>
           <TabsContent value="invoices">
             <div className="flex flex-col mt-8 gap-8">
               <NextInvoiceOverview />
-              <NextInvoicePreview owner={owner} subscription={subscription} />
-              <RecentInvoices owner={owner} />
+              <NextInvoicePreview />
+              <RecentInvoices />
             </div>
           </TabsContent>
         </Tabs>
