@@ -17,20 +17,20 @@ import type { estypes } from "@elastic/elasticsearch";
 
 export type CreditGroupBy = "agent" | "user" | "none";
 
-export interface CreditUsageRow {
+export type CreditUsageRow = {
   groupKey: string;
   name: string;
   llmCredits: number;
   toolCredits: number;
   totalCredits: number;
-}
+};
 
-export interface CreditUsageResult {
+export type CreditUsageResult = {
   llmCredits: number;
   toolCredits: number;
   totalCredits: number;
   rows: CreditUsageRow[];
-}
+};
 
 type ServerBucket = { key: string; doc_count: number };
 
@@ -40,7 +40,6 @@ type ToolsNestedAgg = {
 
 type GroupBucket = {
   key: string;
-  doc_count: number;
   llm_cost?: estypes.AggregationsSumAggregate;
   tools?: ToolsNestedAgg;
 };
