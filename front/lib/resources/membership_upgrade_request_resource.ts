@@ -16,22 +16,6 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
-type RequesterInfo = {
-  sId: string;
-  name: string;
-  email: string | null;
-  image: string | null;
-};
-
-function serializeRequester(user: UserResource): RequesterInfo {
-  return {
-    sId: user.sId,
-    name: user.fullName() || user.name,
-    email: user.email ?? null,
-    image: user.imageUrl ?? null,
-  };
-}
-
 export interface MembershipUpgradeRequestResource
   extends ReadonlyAttributesType<MembershipUpgradeRequestModel> {}
 
@@ -40,12 +24,12 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
   static model: ModelStaticWorkspaceAware<MembershipUpgradeRequestModel> =
     MembershipUpgradeRequestModel;
 
-  readonly requester: RequesterInfo;
+  readonly requester: UserResource;
 
   constructor(
     _: ModelStatic<MembershipUpgradeRequestModel>,
     blob: Attributes<MembershipUpgradeRequestModel>,
-    { requester }: { requester: RequesterInfo }
+    { requester }: { requester: UserResource }
   ) {
     super(MembershipUpgradeRequestModel, blob);
     this.requester = requester;
@@ -77,7 +61,6 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     { user }: { user: UserResource }
   ): Promise<Result<MembershipUpgradeRequestResource, Error>> {
     const workspace = auth.getNonNullableWorkspace();
-    const requester = serializeRequester(user);
     try {
       const row = await withTransaction(async (transaction) => {
         const existing = await this.model.findOne({
@@ -100,7 +83,7 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
           { transaction }
         );
       });
-      return new Ok(new this(this.model, row.get(), { requester }));
+      return new Ok(new this(this.model, row.get(), { requester: user }));
     } catch (err) {
       return new Err(normalizeError(err));
     }
@@ -121,9 +104,7 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     if (!row) {
       return null;
     }
-    return new this(this.model, row.get(), {
-      requester: serializeRequester(user),
-    });
+    return new this(this.model, row.get(), { requester: user });
   }
 
   static async listPendingByWorkspace(
@@ -148,9 +129,7 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
       if (!user) {
         return [];
       }
-      return [
-        new this(this.model, r.get(), { requester: serializeRequester(user) }),
-      ];
+      return [new this(this.model, r.get(), { requester: user })];
     });
   }
 
@@ -173,9 +152,7 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     if (!user) {
       return null;
     }
-    return new this(this.model, row.get(), {
-      requester: serializeRequester(user),
-    });
+    return new this(this.model, row.get(), { requester: user });
   }
 
   // Mark the request as resolved by an admin. Only a `pending` request can be
@@ -242,7 +219,12 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
       status: this.status,
       createdAt: this.createdAt.getTime(),
       resolvedAt: this.resolvedAt ? this.resolvedAt.getTime() : null,
-      requester: this.requester,
+      requester: {
+        sId: this.requester.sId,
+        name: this.requester.fullName() || this.requester.name,
+        email: this.requester.email ?? null,
+        image: this.requester.imageUrl ?? null,
+      },
     };
   }
 
