@@ -53,6 +53,23 @@ describe("buildEditorExtensions", () => {
     editor.destroy();
   });
 
+  // Simulate a plain-text paste by dispatching a paste event with a stubbed
+  // clipboardData (jsdom has no DataTransfer / ClipboardEvent).
+  function pasteText(text: string) {
+    editor.commands.focus();
+    const clipboardData = {
+      getData: (type: string) =>
+        type === "text/plain" || type === "text" ? text : "",
+      types: ["text/plain"],
+      files: [] as unknown[],
+    };
+    const event = Object.assign(
+      new Event("paste", { bubbles: true, cancelable: true }),
+      { clipboardData }
+    );
+    editor.view.dom.dispatchEvent(event);
+  }
+
   it("should handle codeblocks", () => {
     editor.commands.setContent(
       "```javascript\nconsole.log('Hello, world!');\n```",
@@ -224,6 +241,42 @@ describe("buildEditorExtensions", () => {
 - world
 
 &nbsp;`);
+  });
+
+  it("parses pasted markdown so a bullet + bold on the same line is not corrupted", () => {
+    pasteText(
+      "Brief me on today's workload.\n" +
+        "  * List in one table: overdue and in-progress tasks.\n" +
+        "  * List today's **meetings** in order, based on _my local time_."
+    );
+
+    const markdown = editor.getMarkdown();
+
+    expect(markdown).toContain("- List in one table:");
+    expect(markdown).toContain(
+      "- List today's **meetings** in order, based on *my local time*."
+    );
+  });
+
+  it("parses pasted markdown inserted between existing paragraphs", () => {
+    editor.commands.setContent("Hello \n\nworld", { contentType: "markdown" });
+    editor.commands.focus();
+    editor.commands.setTextSelection(8); // start of the "world" paragraph
+
+    pasteText(
+      "Brief me on today's workload.\n" +
+        "  * List in one table: overdue and in-progress tasks.\n" +
+        "  * List today's **meetings** in order, based on _my local time_."
+    );
+
+    const markdown = editor.getMarkdown();
+
+    // The pasted markdown is parsed (not mangled) and inserted before "world".
+    expect(markdown).toContain(
+      "- List today's **meetings** in order, based on *my local time*."
+    );
+    expect(markdown.startsWith("Hello")).toBe(true);
+    expect(markdown.trimEnd().endsWith("world")).toBe(true);
   });
 
   it("does not open slash suggestions for pasted slashes", () => {
