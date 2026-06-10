@@ -367,64 +367,30 @@ module.exports = {
         "sidebar-side-spacing": "0.75rem",
       },
       transitionTimingFunction: {
-        /* ── ease-out family ──────────────────────────────
-           For user-initiated interactions: anything ENTERING
-           or EXITING the screen (dropdowns, tooltips, modals).
-           Fast start = instant, responsive feel.
-           Sorted weak → strong: pick stronger curves for
-           bigger elements that need a more dramatic settle. */
-        "out-quad": "cubic-bezier(0.25, 0.46, 0.45, 0.94)", // subtle: button press, small fades
-        "out-cubic": "cubic-bezier(0.215, 0.61, 0.355, 1)", // the everyday default
+        "out-quad": "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+        "out-cubic": "cubic-bezier(0.215, 0.61, 0.355, 1)",
         "out-quart": "cubic-bezier(0.165, 0.84, 0.44, 1)",
-        "out-quint": "cubic-bezier(0.23, 1, 0.32, 1)", // pronounced settle: modals, drawers
-        "out-expo": "cubic-bezier(0.19, 1, 0.22, 1)", // very snappy: large surfaces, sheets
-
-        /* ── ease-in-out family ───────────────────────────
-           For elements ALREADY ON SCREEN that move or morph
-           (tab indicators, reordering, resizing, carousels).
-           Mimics natural motion: accelerate, then brake.
-           Never use these for enter/exit — the slow start
-           delays feedback. */
-        "in-out-quad": "cubic-bezier(0.455, 0.03, 0.515, 0.955)", // gentle: small position shifts
-        "in-out-cubic": "cubic-bezier(0.645, 0.045, 0.355, 1)", // standard on-screen movement
-        "in-out-quint": "cubic-bezier(0.86, 0, 0.07, 1)", // dramatic: full-screen morphs
-
-        /* ── semantic aliases ─────────────────────────────
-           Prefer these in components so you can retune the
-           whole system from one place. */
-        enter: "cubic-bezier(0.215, 0.61, 0.355, 1)", // ease-enter: tooltips, dropdowns, popovers
-        emphasized: "cubic-bezier(0.23, 1, 0.32, 1)", // ease-emphasized: modals, drawers
-        move: "cubic-bezier(0.455, 0.03, 0.515, 0.955)", // ease-move: tab indicators, reorder
-
-        /* Deliberately missing: ease-in. It delays visual
-           feedback and makes UI feel sluggish — there is no
-           valid product-UI use for it.
-           For hover/color transitions use the built-in `ease-[ease]`
-           or just the default. For marquees/progress use the
-           built-in `ease-linear` — never linear for interactive
-           elements. */
-        "in-quad": "cubic-bezier(.55, .085, .68, .53)", // Legacy Do not use
-        "in-cubic": "cubic-bezier(.550, .055, .675, .19)", // Legacy Do not use
-        "in-quart": "cubic-bezier(.895, .03, .685, .22)", // Legacy Do not use
-        "in-quint": "cubic-bezier(.755, .05, .855, .06)", // Legacy Do not use
-        "in-expo": "cubic-bezier(.95, .05, .795, .035)", // Legacy Do not use
-        "in-circ": "cubic-bezier(.6, .04, .98, .335)", // Legacy Do not use
+        "out-quint": "cubic-bezier(0.23, 1, 0.32, 1)",
+        "out-expo": "cubic-bezier(0.19, 1, 0.22, 1)",
+        "in-out-quad": "cubic-bezier(0.455, 0.03, 0.515, 0.955)",
+        "in-out-cubic": "cubic-bezier(0.645, 0.045, 0.355, 1)",
+        "in-out-quint": "cubic-bezier(0.86, 0, 0.07, 1)",
+        enter: "cubic-bezier(0.215, 0.61, 0.355, 1)",
+        emphasized: "cubic-bezier(0.23, 1, 0.32, 1)",
+        move: "cubic-bezier(0.455, 0.03, 0.515, 0.955)",
+        "in-quad": "cubic-bezier(.55, .085, .68, .53)",
+        "in-cubic": "cubic-bezier(.550, .055, .675, .19)",
+        "in-quart": "cubic-bezier(.895, .03, .685, .22)",
+        "in-quint": "cubic-bezier(.755, .05, .855, .06)",
+        "in-expo": "cubic-bezier(.95, .05, .795, .035)",
+        "in-circ": "cubic-bezier(.6, .04, .98, .335)",
       },
       transitionDuration: {
-        /* Built-in duration-100/150/200/300 cover the primitives:
-           100ms  micro-interactions (press, toggle)
-           150ms  hover & color transitions
-           200ms  standard UI (tooltips, dropdowns)
-           300ms  modals/drawers — the ceiling for product UI.
-           Anything used 100+ times/day: no animation at all.
-           These semantic names encode the "exits ~20% faster
-           than entrances" rule so you don't have to remember it. */
-        enter: "200ms", // duration-enter: standard UI appearing
-        exit: "160ms", // duration-exit: same element leaving
-        "modal-enter": "300ms", // duration-modal-enter: largest surfaces
-        "modal-exit": "240ms", // duration-modal-exit
+        enter: "200ms",
+        exit: "160ms",
+        "modal-enter": "300ms",
+        "modal-exit": "240ms",
       },
-
       borderRadius: {
         "4xl": "2rem",
       },
