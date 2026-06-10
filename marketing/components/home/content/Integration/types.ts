@@ -30,7 +30,11 @@ export interface IntegrationBase {
   name: string;
   type: IntegrationType;
   description: string;
-  icon: InternalAllowedIconType;
+  // Icon name as returned by the integrations API — a Sparkle platform logo
+  // name (e.g. "GammaLogo"). Resolve at render time via Sparkle's
+  // `getPlatformLogo(name, fallback)`; front may ship logos newer than the
+  // Sparkle bundled here, so a runtime fallback is required.
+  icon: string;
   documentationUrl: string | null;
   authorizationRequired: boolean;
   tools: IntegrationTool[];

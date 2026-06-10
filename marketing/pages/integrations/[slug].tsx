@@ -8,12 +8,10 @@ import type {
   IntegrationEnrichment,
   IntegrationPageConfig,
 } from "@marketing/components/home/content/Integration/types";
-import {
-  buildIntegrationRegistry,
-  getRelatedIntegrations,
-} from "@marketing/components/home/content/Integration/utils/integrationRegistry";
+import { getRelatedIntegrations } from "@marketing/components/home/content/Integration/utils/integrationRegistry";
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
-import type { GetStaticPaths, GetStaticProps } from "next";
+import { fetchPublicIntegrations } from "@marketing/lib/api/integrations";
+import type { GetServerSideProps } from "next";
 import type { ReactElement } from "react";
 
 interface IntegrationPageProps {
@@ -21,34 +19,21 @@ interface IntegrationPageProps {
   relatedIntegrations: IntegrationBase[];
 }
 
-export const getStaticPaths: GetStaticPaths = async () => {
-  const integrations = buildIntegrationRegistry();
-
-  return {
-    paths: integrations.map((integration) => ({
-      params: { slug: integration.slug },
-    })),
-    fallback: false,
-  };
-};
-
-export const getStaticProps: GetStaticProps<IntegrationPageProps> = async ({
-  params,
-}) => {
+export const getServerSideProps: GetServerSideProps<
+  IntegrationPageProps
+> = async ({ params }) => {
   const slug = params?.slug as string;
-  const integrations = buildIntegrationRegistry();
+  const integrations = await fetchPublicIntegrations();
   const integration = integrations.find((i) => i.slug === slug);
 
   if (!integration) {
     return { notFound: true };
   }
 
-  // Get enrichment if available (use null instead of undefined for JSON serialization)
   const enrichment: IntegrationEnrichment | null =
     integrationEnrichments[slug] ?? null;
 
-  // Get related integrations
-  const related = getRelatedIntegrations(integration, 4);
+  const related = getRelatedIntegrations(integrations, integration, 4);
 
   return {
     props: {
