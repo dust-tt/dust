@@ -9,6 +9,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { MembershipUpgradeRequestStatus } from "@app/types/memberships";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
@@ -88,17 +89,24 @@ export function useResolveUpgradeRequest({
       await mutate();
       await invalidateMembersUsage(workspaceId);
 
-      sendNotification({
-        type: "success",
-        title:
-          status === "approved"
-            ? "Upgrade request approved"
-            : "Upgrade request denied",
-        description:
-          status === "approved"
-            ? `${requesterName}'s upgrade request has been approved.`
-            : `${requesterName}'s upgrade request has been denied.`,
-      });
+      switch (status) {
+        case "approved":
+          sendNotification({
+            type: "success",
+            title: "Upgrade request approved",
+            description: `${requesterName}'s upgrade request has been approved.`,
+          });
+          break;
+        case "denied":
+          sendNotification({
+            type: "success",
+            title: "Upgrade request denied",
+            description: `${requesterName}'s upgrade request has been denied.`,
+          });
+          break;
+        default:
+          assertNeverAndIgnore(status);
+      }
       return true;
     },
     [workspaceId, sendNotification, mutate]
