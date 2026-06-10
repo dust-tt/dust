@@ -162,7 +162,10 @@ export async function processDustFileOutput(
   appName: string
 ): Promise<
   Result<
-    { type: "resource"; resource: ToolGeneratedFileType | ToolGeneratedFilePathType }[],
+    {
+      type: "resource";
+      resource: ToolGeneratedFileType | ToolGeneratedFilePathType;
+    }[],
     Error
   >
 > {
