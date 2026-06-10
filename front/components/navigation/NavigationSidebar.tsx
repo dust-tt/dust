@@ -1,3 +1,4 @@
+import { FairUseCreditsUsage } from "@app/components/app/FairUseCreditsUsage";
 import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { SidebarBanners } from "@app/components/navigation/AppStatusBanner";
@@ -152,10 +153,16 @@ export const NavigationSidebar = React.forwardRef<
         )}
       </div>
       <div className="flex grow flex-col">{children}</div>
-      {subscription.plan.code === FREE_TRIAL_PHONE_PLAN_CODE && (
+      {subscription.plan.code === FREE_TRIAL_PHONE_PLAN_CODE ? (
         <div className="mx-3 mb-3">
           <TrialMessageUsage isAdmin={isAdmin(owner)} workspaceId={owner.sId} />
         </div>
+      ) : (
+        // Only mount when the plan has a fair-use credits limit so that the
+        // fair-use-credits endpoint is never called for unlimited plans.
+        subscription.plan.limits.assistant.maxAwuCredits !== -1 && (
+          <FairUseCreditsUsage workspaceId={owner.sId} />
+        )
       )}
       {user && (
         <UserMenu user={user} owner={owner} subscription={subscription} />
