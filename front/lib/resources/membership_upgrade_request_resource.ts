@@ -4,6 +4,7 @@ import { MembershipUpgradeRequestModel } from "@app/lib/resources/storage/models
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
+import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
@@ -85,31 +86,18 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     return new Ok(new this(this.model, row.get(), { requester: user }));
   }
 
-  static async getPendingForUser(
+  private static async baseFetch(
     auth: Authenticator,
-    { user }: { user: UserResource }
-  ): Promise<MembershipUpgradeRequestResource | null> {
-    const workspace = auth.getNonNullableWorkspace();
-    const row = await this.model.findOne({
-      where: {
-        workspaceId: workspace.id,
-        userId: user.id,
-        status: "pending",
-      },
-    });
-    if (!row) {
-      return null;
-    }
-    return new this(this.model, row.get(), { requester: user });
-  }
-
-  static async listPendingByWorkspace(
-    auth: Authenticator
+    options?: ResourceFindOptions<MembershipUpgradeRequestModel>
   ): Promise<MembershipUpgradeRequestResource[]> {
-    const workspace = auth.getNonNullableWorkspace();
+    const { where, ...otherOptions } = options ?? {};
+
     const rows = await this.model.findAll({
-      where: { workspaceId: workspace.id, status: "pending" },
-      order: [["createdAt", "DESC"]],
+      where: {
+        ...where,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      ...otherOptions,
     });
     if (rows.length === 0) {
       return [];
@@ -121,39 +109,56 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     const requesterByModelId = new Map(requesters.map((u) => [u.id, u]));
 
     return rows.flatMap((r) => {
-      const user = requesterByModelId.get(r.userId);
-      if (!user) {
+      const requester = requesterByModelId.get(r.userId);
+      if (!requester) {
         return [];
       }
-      return [new this(this.model, r.get(), { requester: user })];
+      return [new this(this.model, r.get(), { requester })];
     });
   }
 
+  static async getPendingForUser(
+    auth: Authenticator,
+    { user }: { user: UserResource }
+  ): Promise<MembershipUpgradeRequestResource | null> {
+    const [request] = await this.baseFetch(auth, {
+      where: { userId: user.id, status: "pending" },
+    });
+    return request ?? null;
+  }
+
+  static async listPendingByWorkspace(
+    auth: Authenticator
+  ): Promise<MembershipUpgradeRequestResource[]> {
+    if (!auth.isAdmin()) {
+      return [];
+    }
+    return this.baseFetch(auth, {
+      where: { status: "pending" },
+      order: [["createdAt", "DESC"]],
+    });
+  }
+
+  // Fetching an arbitrary request by id is an admin-only operation (the admin
+  // resolves it).
   static async fetchById(
     auth: Authenticator,
     membershipUpgradeRequestId: string
   ): Promise<MembershipUpgradeRequestResource | null> {
-    const workspace = auth.getNonNullableWorkspace();
-    const id = getResourceIdFromSId(membershipUpgradeRequestId);
-    if (!id) {
+    if (!auth.isAdmin()) {
       return null;
     }
-    const row = await this.model.findOne({
-      where: { id, workspaceId: workspace.id },
-    });
-    if (!row) {
+    const modelId = getResourceIdFromSId(membershipUpgradeRequestId);
+    if (!modelId) {
       return null;
     }
-    const user = await UserResource.fetchByModelId(row.userId);
-    if (!user) {
-      return null;
-    }
-    return new this(this.model, row.get(), { requester: user });
+    const [request] = await this.baseFetch(auth, { where: { id: modelId } });
+    return request ?? null;
   }
 
   // Mark the request as resolved by an admin. Only a `pending` request can be
   // resolved; resolving an already-resolved request is rejected.
-  async resolve(
+  async markAsResolved(
     auth: Authenticator,
     {
       status,
