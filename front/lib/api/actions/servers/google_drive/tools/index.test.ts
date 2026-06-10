@@ -7,6 +7,7 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { Common } from "googleapis";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { BinaryFileResourceBlock } from "./index";
 import { buildBinaryFileResource, handleFileAccessError, TOOLS } from "./index";
 
 vi.mock("@app/lib/api/actions/servers/google_drive/helpers", () => ({
@@ -248,10 +249,56 @@ describe("get_file_content", () => {
   const XLSX_MIMETYPE =
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
+  // Partial stub: the get_file_content handler only reads authInfo and
+  // agentLoopContext. Same pattern as the other MCP tool tests (files/tools).
   const extra = {
     authInfo: undefined,
     agentLoopContext: undefined,
-  } as ToolHandlerExtra;
+  } as unknown as ToolHandlerExtra;
+
+  function isTextBlock(
+    block: unknown
+  ): block is { type: "text"; text: string } {
+    return (
+      typeof block === "object" &&
+      block !== null &&
+      "type" in block &&
+      block.type === "text" &&
+      "text" in block &&
+      typeof block.text === "string"
+    );
+  }
+
+  function isBinaryFileResourceBlock(
+    block: unknown
+  ): block is BinaryFileResourceBlock {
+    return (
+      typeof block === "object" &&
+      block !== null &&
+      "type" in block &&
+      block.type === "resource" &&
+      "resource" in block &&
+      typeof block.resource === "object" &&
+      block.resource !== null
+    );
+  }
+
+  function getBlocks(result: Awaited<ReturnType<typeof callTool>>): {
+    payload: Record<string, unknown>;
+    resourceBlock: BinaryFileResourceBlock | null;
+  } {
+    if (result.isErr()) {
+      throw new Error(`Expected Ok result, got: ${result.error.message}`);
+    }
+    const [first, second] = result.value;
+    if (!isTextBlock(first)) {
+      throw new Error("Expected the first block to be a text block");
+    }
+    return {
+      payload: JSON.parse(first.text),
+      resourceBlock: isBinaryFileResourceBlock(second) ? second : null,
+    };
+  }
 
   // Builds the ArrayBuffer with the global constructor so the handler's
   // `instanceof ArrayBuffer` check passes under the jsdom test environment.
@@ -274,6 +321,8 @@ describe("get_file_content", () => {
   }
 
   function mockDrive(fakeDrive: ReturnType<typeof createFakeDrive>) {
+    // The fake client only implements the methods the handler calls; same
+    // mock pattern as the other MCP tool tests (files/tools).
     vi.mocked(getDriveClient).mockResolvedValue(
       fakeDrive as unknown as Awaited<ReturnType<typeof getDriveClient>>
     );
@@ -318,19 +367,14 @@ describe("get_file_content", () => {
 
     const result = await callTool("f1");
 
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      const [textBlock, resourceBlock] = result.value as any[];
-      const payload = JSON.parse(textBlock.text);
-      expect(payload.mimeType).toBe(XLSX_MIMETYPE);
-      expect(payload.content).toBe("a,b,c");
-      expect(resourceBlock.type).toBe("resource");
-      expect(resourceBlock.resource.mimeType).toBe(XLSX_MIMETYPE);
-      expect(resourceBlock.resource.uri).toBe("data.xlsx");
-      expect(resourceBlock.resource.blob).toBe(
-        Buffer.from("xlsx-bytes").toString("base64")
-      );
-    }
+    const { payload, resourceBlock } = getBlocks(result);
+    expect(payload.mimeType).toBe(XLSX_MIMETYPE);
+    expect(payload.content).toBe("a,b,c");
+    expect(resourceBlock?.resource.mimeType).toBe(XLSX_MIMETYPE);
+    expect(resourceBlock?.resource.uri).toBe("data.xlsx");
+    expect(resourceBlock?.resource.blob).toBe(
+      Buffer.from("xlsx-bytes").toString("base64")
+    );
   });
 
   it("attaches files without text extraction support (PNG) with a placeholder", async () => {
@@ -354,14 +398,10 @@ describe("get_file_content", () => {
     const result = await callTool("f1");
 
     expect(extractTextFromBuffer).not.toHaveBeenCalled();
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      const [textBlock, resourceBlock] = result.value as any[];
-      const payload = JSON.parse(textBlock.text);
-      expect(payload.content).toContain("No text extraction available");
-      expect(resourceBlock.resource.mimeType).toBe("image/png");
-      expect(resourceBlock.resource.uri).toBe("chart.png");
-    }
+    const { payload, resourceBlock } = getBlocks(result);
+    expect(payload.content).toContain("No text extraction available");
+    expect(resourceBlock?.resource.mimeType).toBe("image/png");
+    expect(resourceBlock?.resource.uri).toBe("chart.png");
   });
 
   it("exports Google Sheets as XLSX and attaches the file", async () => {
@@ -386,14 +426,10 @@ describe("get_file_content", () => {
       { fileId: "f1", mimeType: XLSX_MIMETYPE },
       { responseType: "arraybuffer" }
     );
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      const [textBlock, resourceBlock] = result.value as any[];
-      const payload = JSON.parse(textBlock.text);
-      expect(payload.content).toBe("rows");
-      expect(resourceBlock.resource.mimeType).toBe(XLSX_MIMETYPE);
-      expect(resourceBlock.resource.uri).toBe("Budget.xlsx");
-    }
+    const { payload, resourceBlock } = getBlocks(result);
+    expect(payload.content).toBe("rows");
+    expect(resourceBlock?.resource.mimeType).toBe(XLSX_MIMETYPE);
+    expect(resourceBlock?.resource.uri).toBe("Budget.xlsx");
   });
 
   it("attaches the binary resource with a placeholder when extraction fails", async () => {
@@ -419,13 +455,9 @@ describe("get_file_content", () => {
 
     const result = await callTool("f1");
 
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      const [textBlock, resourceBlock] = result.value as any[];
-      const payload = JSON.parse(textBlock.text);
-      expect(payload.content).toContain("Text extraction failed");
-      expect(resourceBlock.resource.uri).toBe("scan.pdf");
-    }
+    const { payload, resourceBlock } = getBlocks(result);
+    expect(payload.content).toContain("Text extraction failed");
+    expect(resourceBlock?.resource.uri).toBe("scan.pdf");
   });
 
   it("errors on Google-native types without a binary representation", async () => {
@@ -483,16 +515,12 @@ describe("get_file_content", () => {
 
     const result = await callTool("shortcut-id");
 
-    expect(result.isOk()).toBe(true);
     expect(fakeDrive.files.get).toHaveBeenCalledWith(
       expect.objectContaining({ fileId: "target-id", alt: "media" }),
       { responseType: "arraybuffer" }
     );
-    if (result.isOk()) {
-      const [textBlock, resourceBlock] = result.value as any[];
-      const payload = JSON.parse(textBlock.text);
-      expect(payload.fileId).toBe("target-id");
-      expect(resourceBlock.resource.uri).toBe("data.xlsx");
-    }
+    const { payload, resourceBlock } = getBlocks(result);
+    expect(payload.fileId).toBe("target-id");
+    expect(resourceBlock?.resource.uri).toBe("data.xlsx");
   });
 });
