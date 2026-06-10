@@ -1,7 +1,10 @@
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { MembershipUpgradeRequestStatus } from "@app/types/memberships";
+import {
+  MEMBERSHIP_UPGRADE_REQUEST_PENDING_STATUS,
+  type MembershipUpgradeRequestStatus,
+} from "@app/types/memberships";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
@@ -42,7 +45,7 @@ MembershipUpgradeRequestModel.init(
     status: {
       type: DataTypes.STRING(16),
       allowNull: false,
-      defaultValue: "pending",
+      defaultValue: MEMBERSHIP_UPGRADE_REQUEST_PENDING_STATUS,
     },
     resolvedAt: {
       type: DataTypes.DATE,

@@ -218,8 +218,9 @@ export function isSpendingFromPersonalSeat(state: UserCreditState): boolean {
   }
 }
 
+export const MEMBERSHIP_UPGRADE_REQUEST_PENDING_STATUS = "pending";
 export const MEMBERSHIP_UPGRADE_REQUEST_STATUSES = [
-  "pending",
+  MEMBERSHIP_UPGRADE_REQUEST_PENDING_STATUS,
   "approved",
   "denied",
 ] as const;
