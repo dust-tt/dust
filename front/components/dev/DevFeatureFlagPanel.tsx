@@ -9,7 +9,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { createPortal } from "react-dom";
 
 import { ColorOverridePanel } from "./ColorOverridePanel";
 import {
@@ -17,7 +16,6 @@ import {
   writeFeatureFlagOverrides,
 } from "./devFeatureFlagOverrides";
 import {
-  DOCK_BAR_HEIGHT,
   type DockMode,
   type ExpandedPanel,
 } from "./devModeConfig";
@@ -78,7 +76,7 @@ function DockedToolbar({ serverFlags, onSwitchMode }: DockedToolbarProps) {
   });
 
   return (
-    <div style={S.docked}>
+    <div style={S.docked} className="text-muted-foreground dark:text-muted-foreground-night">
       <div style={S.dockedBar}>
         <ToolbarControls
           metrics={metrics}
@@ -200,6 +198,7 @@ function FloatingPanel({ serverFlags, onSwitchMode }: FloatingPanelProps) {
           metrics={metrics}
           expanded={activePanel}
           onTogglePanel={togglePanel}
+          compact
           actions={
             <button
               style={S.dockedIconBtn}
@@ -245,18 +244,6 @@ export function DevFeatureFlagPanel({ serverFlags }: DevFeatureFlagPanelProps) {
     injectFontFamilyStyles(readFontFamilyOverrides());
   }, []);
 
-  // Reserve space at the bottom of the page when docked.
-  useEffect(() => {
-    if (dockMode === "docked") {
-      document.documentElement.style.paddingBottom = `${DOCK_BAR_HEIGHT}px`;
-    } else {
-      document.documentElement.style.paddingBottom = "";
-    }
-    return () => {
-      document.documentElement.style.paddingBottom = "";
-    };
-  }, [dockMode]);
-
   const switchMode = useCallback(() => {
     const next = dockMode === "docked" ? "floating" : "docked";
     setDockMode(next);
@@ -267,13 +254,10 @@ export function DevFeatureFlagPanel({ serverFlags }: DevFeatureFlagPanelProps) {
     return null;
   }
 
-  return createPortal(
-    dockMode === "docked" ? (
-      <DockedToolbar serverFlags={serverFlags} onSwitchMode={switchMode} />
-    ) : (
-      <FloatingPanel serverFlags={serverFlags} onSwitchMode={switchMode} />
-    ),
-    document.body
+  return dockMode === "docked" ? (
+    <DockedToolbar serverFlags={serverFlags} onSwitchMode={switchMode} />
+  ) : (
+    <FloatingPanel serverFlags={serverFlags} onSwitchMode={switchMode} />
   );
 }
 

@@ -18,6 +18,7 @@ interface ToolbarControlsProps {
   expanded: ExpandedPanel;
   onTogglePanel: (panel: "flags" | "colors" | "typo") => void;
   actions?: ReactNode;
+  compact?: boolean;
 }
 
 export function ToolbarControls({
@@ -25,6 +26,7 @@ export function ToolbarControls({
   expanded,
   onTogglePanel,
   actions,
+  compact,
 }: ToolbarControlsProps) {
   const { theme, setTheme } = useTheme();
   const overrideCount = Object.keys(getFeatureFlagOverrides()).length;
@@ -38,10 +40,6 @@ export function ToolbarControls({
   return (
     <>
       <div style={S.dockedSection}>
-        <span style={{ color: "#7fdbca", fontWeight: 700, fontSize: 11 }}>
-          {"Dev"}
-        </span>
-        <span style={S.dockedSep} />
         {THEME_OPTIONS.map((t) => (
           <button
             key={t}
@@ -56,7 +54,7 @@ export function ToolbarControls({
           style={S.dockedTextBtn(expanded === "flags")}
           onClick={() => onTogglePanel("flags")}
         >
-          Flags
+          {compact ? "F" : "Flags"}
           {overrideCount > 0 && (
             <span style={S.dockedBadge}>{overrideCount}</span>
           )}
@@ -65,7 +63,7 @@ export function ToolbarControls({
           style={S.dockedTextBtn(expanded === "colors")}
           onClick={() => onTogglePanel("colors")}
         >
-          Colors
+          {compact ? "C" : "Colors"}
           {colorOverrideCount > 0 && (
             <span style={S.dockedBadge}>{colorOverrideCount}</span>
           )}
@@ -74,7 +72,7 @@ export function ToolbarControls({
           style={S.dockedTextBtn(expanded === "typo")}
           onClick={() => onTogglePanel("typo")}
         >
-          Typography
+          {compact ? "T" : "Typography"}
           {typoOverrideCount > 0 && (
             <span style={S.dockedBadge}>{typoOverrideCount}</span>
           )}
@@ -82,7 +80,7 @@ export function ToolbarControls({
       </div>
 
       <div style={S.dockedSection}>
-        <PerfBar metrics={metrics} />
+        <PerfBar metrics={metrics} compact={compact} />
         {actions && (
           <>
             <span style={S.dockedSep} />
