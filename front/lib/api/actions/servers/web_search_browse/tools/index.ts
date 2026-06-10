@@ -17,6 +17,11 @@ import { getRefs } from "@app/lib/api/assistant/citations";
 import { writeToToolOutputsFolder } from "@app/lib/api/files/action_output_fs";
 import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import type { WorkspaceMetadata } from "@app/lib/api/workspace";
+import {
+  isWebBrowseProvider,
+  isWebSearchProvider,
+} from "@app/lib/api/workspace";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -53,8 +58,22 @@ async function handleWebsearch(
   const { websearchResultCount, citationsOffset } =
     agentLoopRunContext.stepContext;
 
+  const rawSearchProvider = (
+    (extra.auth.getNonNullableWorkspace().metadata as WorkspaceMetadata) ?? {}
+  ).webSearchProvider;
+  if (
+    rawSearchProvider !== undefined &&
+    !isWebSearchProvider(rawSearchProvider)
+  ) {
+    logger.warn(
+      { rawSearchProvider },
+      "Invalid webSearchProvider in workspace metadata"
+    );
+  }
   const websearchRes = await webSearch({
-    provider: "firecrawl",
+    provider: isWebSearchProvider(rawSearchProvider)
+      ? rawSearchProvider
+      : "firecrawl",
     query,
     num: websearchResultCount,
   });
@@ -116,7 +135,24 @@ async function handleWebbrowser(
   const isFirecrawlDisabled = await KillSwitchResource.isKillSwitchEnabled(
     "global_disable_firecrawl"
   );
-  const browsingProvider = isFirecrawlDisabled ? "spider" : "firecrawl";
+
+  const rawBrowseProvider = (
+    (extra.auth.getNonNullableWorkspace().metadata as WorkspaceMetadata) ?? {}
+  ).webBrowseProvider;
+  if (
+    rawBrowseProvider !== undefined &&
+    !isWebBrowseProvider(rawBrowseProvider)
+  ) {
+    logger.warn(
+      { rawBrowseProvider },
+      "Invalid webBrowseProvider in workspace metadata"
+    );
+  }
+  const browsingProvider = isWebBrowseProvider(rawBrowseProvider)
+    ? rawBrowseProvider
+    : isFirecrawlDisabled
+      ? "spider"
+      : "firecrawl";
 
   const results = await browseUrls(urls, 8, "markdown", {
     screenshotMode,

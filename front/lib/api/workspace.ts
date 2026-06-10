@@ -518,6 +518,24 @@ type WorkspaceKillSwitchValue =
   | typeof WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE
   | WorkspaceConversationKillSwitchValue;
 
+export const WEB_SEARCH_PROVIDERS = ["exa", "firecrawl"] as const;
+export type WebSearchProvider = (typeof WEB_SEARCH_PROVIDERS)[number];
+
+export const WEB_BROWSE_PROVIDERS = ["exa", "firecrawl", "spider"] as const;
+export type WebBrowseProvider = (typeof WEB_BROWSE_PROVIDERS)[number];
+
+export function isWebSearchProvider(
+  value: unknown
+): value is WebSearchProvider {
+  return WEB_SEARCH_PROVIDERS.includes(value as WebSearchProvider);
+}
+
+export function isWebBrowseProvider(
+  value: unknown
+): value is WebBrowseProvider {
+  return WEB_BROWSE_PROVIDERS.includes(value as WebBrowseProvider);
+}
+
 export interface WorkspaceMetadata {
   maintenance?: "relocation" | "relocation-done";
   killSwitched?: WorkspaceKillSwitchValue;
@@ -539,6 +557,8 @@ export interface WorkspaceMetadata {
   sandboxAllowAgentEgressRequests?: boolean;
   reinforcementCapMicroUsd?: number;
   selfImprovementCapPerSkillMicroUsd?: number;
+  webSearchProvider?: WebSearchProvider;
+  webBrowseProvider?: WebBrowseProvider;
 }
 
 export async function updateWorkspaceMetadata(
