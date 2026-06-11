@@ -1,29 +1,32 @@
 // All mime types are okay to use from the public API.
 
 import { FILE_OFFLOAD_IMAGE_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
+import type {
+  ToolGeneratedFilePathType,
+  ToolGeneratedFileType,
+} from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import {
-  isBlobResource,
   isRunAgentQueryResourceType,
   isToolGeneratedFile,
   isToolMarkerResourceType,
+  TOOL_GENERATED_FILE_MIME_TYPE,
+  TOOL_GENERATED_FILE_PATH_MIME_TYPE,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
 import {
   makeFileAttachment,
   renderAttachmentXml,
 } from "@app/lib/api/assistant/conversation/attachments";
+import { writeToConversationFolder } from "@app/lib/api/files/action_output_fs";
+import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import type { ProcessAndStoreFileError } from "@app/lib/api/files/processing";
-import {
-  uploadBase64DataToFileStorage,
-  uploadBase64ImageToFileStorage,
-} from "@app/lib/api/files/upload";
+import { uploadBase64ImageToFileStorage } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { FileModel } from "@app/lib/resources/storage/models/files";
 import logger from "@app/logger/logger";
+import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
-  FileUseCase,
-  FileUseCaseMetadata,
   SupportedFileContentType,
   SupportedImageContentType,
 } from "@app/types/files";
@@ -35,6 +38,7 @@ import { hasNullUnicodeCharacter } from "@app/types/shared/utils/string_utils";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isSupportedImageContentType } from "@dust-tt/client";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { basename, extname } from "path";
 
 type ResourceInfo =
   | { type: "image"; contentType: SupportedImageContentType }
@@ -162,17 +166,13 @@ export async function handleBase64Upload(
   {
     base64Data,
     fileName,
-    block,
     mimeType,
-    fileUseCase,
-    fileUseCaseMetadata,
+    conversation,
   }: {
     base64Data: string;
     mimeType: string;
     fileName: string;
-    block: CallToolResult["content"][number];
-    fileUseCase: FileUseCase;
-    fileUseCaseMetadata: FileUseCaseMetadata;
+    conversation: ConversationType;
   }
 ): Promise<{
   content: CallToolResult["content"][number];
@@ -200,55 +200,90 @@ export async function handleBase64Upload(
     };
   }
 
-  let uploadResult: Result<FileResource, ProcessAndStoreFileError>;
-
   if (resourceInfo.type === "image") {
-    uploadResult = await uploadBase64ImageToFileStorage(auth, {
-      base64: base64Data,
-      contentType: resourceInfo.contentType,
-      fileName,
-      useCase: fileUseCase,
-      useCaseMetadata: fileUseCaseMetadata,
-    });
-  } else {
-    uploadResult = await uploadBase64DataToFileStorage(auth, {
-      base64: base64Data,
-      contentType: resourceInfo.contentType,
-      fileName,
-      useCase: fileUseCase,
-      useCaseMetadata: fileUseCaseMetadata,
-    });
-  }
+    // Images stay on FileResource so they go through the resize pipeline.
+    // Tool-generated images can be fed back to the model for vision tasks,
+    // so correct sizing matters.
+    const uploadResult: Result<FileResource, ProcessAndStoreFileError> =
+      await uploadBase64ImageToFileStorage(auth, {
+        base64: base64Data,
+        contentType: resourceInfo.contentType,
+        fileName,
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
 
-  if (uploadResult.isErr()) {
-    logger.error(
-      {
-        action: "mcp_tool",
-        tool: `generate_${resourceInfo.type}`,
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        error: uploadResult.error,
-      },
-      `Failed to save the generated ${resourceInfo.type}.`
-    );
+    if (uploadResult.isErr()) {
+      logger.error(
+        {
+          action: "mcp_tool",
+          tool: "generate_image",
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          error: uploadResult.error,
+        },
+        "Failed to save the generated image."
+      );
+      return {
+        content: { type: "text", text: "Failed to save the generated image." },
+        file: null,
+      };
+    }
+
+    const resource: ToolGeneratedFileType = {
+      mimeType: TOOL_GENERATED_FILE_MIME_TYPE,
+      uri: `file://${uploadResult.value.sId}`,
+      fileId: uploadResult.value.sId,
+      title: fileName,
+      contentType: resourceInfo.contentType,
+      snippet: uploadResult.value.snippet,
+      text: `Generated image: ${fileName}`,
+    };
 
     return {
       content: {
-        type: "text",
-        text: `Failed to save the generated ${resourceInfo.type}.`,
+        type: "resource",
+        resource,
       },
+      file: uploadResult.value,
+    };
+  }
+
+  const ext = extname(fileName);
+  const uniqueFileName = makeFileName({ name: basename(fileName, ext), ext });
+
+  const writeResult = await writeToConversationFolder(auth, conversation, {
+    fileName: uniqueFileName,
+    content: Buffer.from(base64Data, "base64"),
+    contentType: resourceInfo.contentType,
+  });
+
+  if (writeResult.isErr()) {
+    logger.error(
+      {
+        action: "mcp_tool",
+        tool: "generate_file",
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        error: writeResult.error,
+      },
+      "Failed to save the generated file."
+    );
+    return {
+      content: { type: "text", text: "Failed to save the generated file." },
       file: null,
     };
   }
 
+  const resource: ToolGeneratedFilePathType = {
+    mimeType: TOOL_GENERATED_FILE_PATH_MIME_TYPE,
+    uri: writeResult.value,
+    path: writeResult.value,
+    title: uniqueFileName,
+    contentType: resourceInfo.contentType,
+    text: `Generated file: ${uniqueFileName}`,
+  };
+
   return {
-    content: {
-      ...block,
-      // Remove the data from the block to avoid storing it in the database.
-      ...(block.type === "image" ? { data: "" } : {}),
-      ...(isBlobResource(block)
-        ? { resource: { ...block.resource, blob: "" } }
-        : {}),
-    },
-    file: uploadResult.value,
+    content: { type: "resource", resource },
+    file: null,
   };
 }

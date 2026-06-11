@@ -22,6 +22,43 @@ export interface PersistedToolOutput {
 }
 
 /**
+ * Writes content to the conversation root via DustFileSystem.
+ * Returns the scoped path (e.g. "conversation-{cId}/{fileName}") on success.
+ * Use for user-facing generated files (PDFs, audio, etc.) that should be visible at the top level.
+ * Use writeToToolOutputsFolder for internal outputs the model reads back during execution.
+ */
+export async function writeToConversationFolder(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType,
+  {
+    content,
+    contentType,
+    fileName,
+  }: {
+    content: string | Buffer;
+    contentType: AllSupportedFileContentType;
+    fileName: string;
+  }
+): Promise<Result<string, Error>> {
+  const fsResult = await DustFileSystem.forConversation(auth, conversation);
+  if (fsResult.isErr()) {
+    return new Err(new Error(fsResult.error.message));
+  }
+
+  const scopedPath = `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/${fileName}`;
+  const writeResult = await fsResult.value.write(
+    scopedPath,
+    content,
+    contentType
+  );
+  if (writeResult.isErr()) {
+    return new Err(new Error(writeResult.error.message));
+  }
+
+  return new Ok(scopedPath);
+}
+
+/**
  * Writes content to the conversation's .tool_outputs folder via DustFileSystem.
  * Returns the scoped path (e.g. "conversation-{cId}/.tool_outputs/{fileName}") on success.
  */

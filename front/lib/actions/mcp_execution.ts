@@ -220,9 +220,7 @@ export async function processToolResults(
             base64Data: block.data,
             mimeType: block.mimeType,
             fileName,
-            block,
-            fileUseCase,
-            fileUseCaseMetadata,
+            conversation,
           });
         }
 
@@ -297,10 +295,8 @@ export async function processToolResults(
               return handleBase64Upload(auth, {
                 base64Data: block.resource.blob,
                 mimeType: block.resource.mimeType,
-                fileName: fileName,
-                block,
-                fileUseCase,
-                fileUseCaseMetadata,
+                fileName,
+                conversation,
               });
             }
 
