@@ -22,27 +22,30 @@ function getMaxSizePixels(file: FileResource): number {
   if (file.useCase === "avatar") {
     return AVATAR_IMG_MAX_SIZE_PIXELS;
   }
+
   if (file.useCase === "workspace_branding") {
     return file.useCaseMetadata?.asset === "favicon"
       ? BRANDING_FAVICON_MAX_SIZE_PIXELS
       : BRANDING_LOGO_MAX_SIZE_PIXELS;
   }
+
   return CONVERSATION_IMG_MAX_SIZE_PIXELS;
 }
 
-const createReadableFromUrl = async (url: string): Promise<Readable> => {
+async function createReadableFromUrl(url: string): Promise<Readable> {
   const response = await untrustedFetch(url);
   if (!response.ok || !response.body) {
     throw new Error(`Failed to fetch from URL: ${response.statusText}`);
   }
-  return Readable.fromWeb(response.body);
-};
 
-const rasterizeSvg = async (
+  return Readable.fromWeb(response.body);
+}
+
+async function rasterizeSvg(
   auth: Authenticator,
   file: FileResource,
   maxSizePixels: number
-): Promise<Result<undefined, Error>> => {
+): Promise<Result<undefined, Error>> {
   try {
     const readStream = file.getReadStream({ auth, version: "original" });
     const writeStream = file.getWriteStream({
@@ -50,6 +53,7 @@ const rasterizeSvg = async (
       version: "processed",
       overrideContentType: "image/png",
     });
+
     await pipeline(
       readStream,
       sharp()
@@ -60,23 +64,24 @@ const rasterizeSvg = async (
         .png(),
       writeStream
     );
+
     return new Ok(undefined);
   } catch (err) {
     return new Err(
       new Error(`Failed rasterizing SVG: ${normalizeError(err).message}`)
     );
   }
-};
+}
 
 /**
  * Resize a raster image and write it to the "processed" version. Skips ConvertAPI when the image
  * is already within the size limit.
  */
-const resizeRasterImage = async (
+async function resizeRasterImage(
   auth: Authenticator,
   file: FileResource,
   maxSizePixels: number
-): Promise<Result<undefined, Error>> => {
+): Promise<Result<undefined, Error>> {
   // Check dimensions before calling ConvertAPI.
   try {
     const readStreamForProbe = file.getReadStream({
@@ -189,12 +194,12 @@ const resizeRasterImage = async (
       new Error(`Failed resizing image. ${normalizeError(err).message}`)
     );
   }
-};
+}
 
-export const processImage = async (
+export async function processImage(
   auth: Authenticator,
   file: FileResource
-): Promise<Result<undefined, Error>> => {
+): Promise<Result<undefined, Error>> {
   const maxSizePixels = getMaxSizePixels(file);
 
   if (file.contentType === "image/svg+xml") {
@@ -222,4 +227,4 @@ export const processImage = async (
   }
 
   return new Ok(undefined);
-};
+}
