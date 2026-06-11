@@ -158,6 +158,50 @@ pub fn build_evil() -> Vec<EvilFile> {
         });
     }
 
+    // 10b. Hostile number formats in styles.xml: fraction formats with huge
+    // placeholder runs (denominator-scan DoS) and absurd fixed denominators.
+    // Formatting must stay bounded; never hang or panic.
+    {
+        let mut wb = GenWorkbook::new();
+        let frac_dos = wb.add_style(crate::GenStyle {
+            num_fmt: Some(format!("?/{}", "?".repeat(40))),
+            ..crate::GenStyle::default()
+        });
+        let frac_fixed = wb.add_style(crate::GenStyle {
+            num_fmt: Some("# ?/99999999999999999999".to_string()),
+            ..crate::GenStyle::default()
+        });
+        let deep_sections = wb.add_style(crate::GenStyle {
+            num_fmt: Some("0;".repeat(200)),
+            ..crate::GenStyle::default()
+        });
+        let mut sheet = GenSheet::new("evilfmt");
+        sheet.styled(0, 0, GenValue::Number(0.333333333), frac_dos);
+        sheet.styled(0, 1, GenValue::Number(0.5), frac_fixed);
+        sheet.styled(0, 2, GenValue::Number(-1.0), deep_sections);
+        sheet.styled(0, 3, GenValue::Number(1e300), frac_dos);
+        wb.sheets.push(sheet);
+        out.push(EvilFile {
+            name: "hostile_numfmt.xlsx".to_string(),
+            bytes: write_xlsx(&wb),
+            expectation: "ok",
+        });
+    }
+
+    // 10c. Overflow-length A1 refs in cells, merges and hyperlinks: a long
+    // letter run must be rejected, not overflow into a wrapped column index.
+    {
+        let long_ref = format!("{}1", "A".repeat(30));
+        let parts = workbook_parts_with_sheet(&format!(
+            r#"<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="{long_ref}"><v>1</v></c><c r="B1"><v>2</v></c></row></sheetData><mergeCells count="1"><mergeCell ref="A1:{long_ref}"/></mergeCells></worksheet>"#
+        ));
+        out.push(EvilFile {
+            name: "overflow_refs.xlsx".to_string(),
+            bytes: zip_parts(&parts),
+            expectation: "ok",
+        });
+    }
+
     // 11. Zip-bomb-ish: a sheet XML with a hugely repetitive ~22 MB body that
     // compresses ~1000x. The per-part size cap must defuse anything larger.
     {

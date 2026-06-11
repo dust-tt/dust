@@ -126,6 +126,20 @@ pub fn get_viewport(
         (None, false)
     };
 
+    // Pre-filter hyperlinks to the viewport (like merges above) so the
+    // per-cell lookup scans a handful of entries, not the sheet's whole
+    // (cap-bounded but potentially large) hyperlink list.
+    let hyperlinks: Vec<&crate::workbook::Hyperlink> = sheet
+        .hyperlinks
+        .iter()
+        .filter(|h| {
+            h.range.start_row <= r1
+                && h.range.end_row >= r0
+                && h.range.start_col <= c1
+                && h.range.end_col >= c0
+        })
+        .collect();
+
     let row_list: Vec<u32> = sheet.rows_in_range(r0, r1).collect();
     for row in row_list {
         let span = sheet.row_slice(row, c0, c1);
@@ -145,8 +159,7 @@ pub fn get_viewport(
                 },
             };
             let (merge_span, is_merged_secondary) = merge_lookup(row, col);
-            let hyperlink = sheet
-                .hyperlinks
+            let hyperlink = hyperlinks
                 .iter()
                 .find(|h| h.range.contains(row, col))
                 .map(|h| h.target.clone());

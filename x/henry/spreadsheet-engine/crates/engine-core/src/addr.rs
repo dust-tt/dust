@@ -26,9 +26,14 @@ pub fn parse_a1(s: &str) -> Option<(u32, u32)> {
     let mut i = 0;
     while i < bytes.len() && bytes[i].is_ascii_alphabetic() {
         col = col * 26 + (bytes[i].to_ascii_uppercase() - b'A' + 1) as u64;
+        // Bounds-check inside the loop: refs are attacker-controlled and a
+        // long letter run would overflow u64 (and could wrap into range).
+        if col > MAX_COLS as u64 {
+            return None;
+        }
         i += 1;
     }
-    if i == 0 || i == bytes.len() || col == 0 || col > MAX_COLS as u64 {
+    if i == 0 || i == bytes.len() || col == 0 {
         return None;
     }
     let mut row: u64 = 0;

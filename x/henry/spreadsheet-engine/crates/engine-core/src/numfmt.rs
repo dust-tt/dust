@@ -518,13 +518,25 @@ pub fn format_number(value: f64, fmt: &str, date1904: bool, locale: &Locale) -> 
     }
     let sections: Vec<Section> = split_sections(fmt).into_iter().map(parse_section).collect();
     let (section, negate) = pick_number_section(&sections, value);
-    if section.is_general
-        || (!section.has_digits
-            && !section.has_date
-            && !section.has_text
-            && section.toks.is_empty())
-    {
-        let text = format_general(if negate { -value } else { value }, locale);
+    // An explicitly empty role section hides the value ("0;;" hides
+    // negatives) — but only when the format has other, non-empty sections;
+    // a fully empty format string means General.
+    if section.toks.is_empty() && sections.len() > 1 {
+        return FormattedCell {
+            text: String::new(),
+            align: Align::Right,
+            is_date: false,
+            color: section.color,
+        };
+    }
+    if section.is_general || section.toks.is_empty() {
+        // General sections keep surrounding literals (`"USD "General`).
+        let general = format_general(if negate { value.abs() } else { value }, locale);
+        let text = if section.toks.len() > 1 {
+            render_text_section(section, &general)
+        } else {
+            general
+        };
         return FormattedCell {
             text,
             align: Align::Right,
@@ -896,10 +908,14 @@ fn analyze_number_section(section: &Section) -> NumberLayout<'_> {
             }
         }
         if num_ph > 0 && (den_ph > 0 || fixed.is_some()) {
+            // Format codes are attacker-controlled (styles.xml): clamp the
+            // denominator width so best_fraction's 1..=10^n scan stays
+            // bounded (Excel itself caps fraction precision around here).
+            const MAX_FRACTION_PLACEHOLDERS: usize = 4;
             fraction = Some(FractionSpec {
-                num_placeholders: num_ph,
-                den_placeholders: den_ph,
-                fixed_denominator: fixed,
+                num_placeholders: num_ph.min(MAX_FRACTION_PLACEHOLDERS),
+                den_placeholders: den_ph.min(MAX_FRACTION_PLACEHOLDERS),
+                fixed_denominator: fixed.map(|d| d.min(99_999)),
                 start,
             });
         }
@@ -1343,7 +1359,9 @@ fn render_fraction(
         None => best_fraction(frac_value, max_den),
     };
 
-    let (whole, num) = if num == den && den > 0 {
+    // Rounding can push the fraction to a whole unit; only roll it into the
+    // integer part when the format HAS one ("?/?" of 1.0 stays "1/1").
+    let (whole, num) = if num == den && den > 0 && has_int_part {
         (whole + 1, 0)
     } else {
         (whole, num)
@@ -1450,10 +1468,18 @@ struct DateParts {
     elapsed_seconds: f64,
 }
 
+/// Largest representable Excel serial: 9999-12-31 in the 1900 system. Beyond
+/// this Excel fills the cell with #; we must also never feed huge serials
+/// into the i64 civil-date math (overflow).
+const MAX_DATE_SERIAL: f64 = 2_958_465.0;
+
 /// Convert an Excel serial to date parts. Handles the 1900 Lotus leap-year bug
 /// (serial 60 renders as the nonexistent 1900-02-29) and the 1904 system.
 fn serial_to_parts(serial: f64, date1904: bool, subsecond_digits: u8) -> Option<DateParts> {
     if serial < 0.0 && !date1904 {
+        return None;
+    }
+    if !(-MAX_DATE_SERIAL..=MAX_DATE_SERIAL).contains(&serial) {
         return None;
     }
     let mut day_serial = serial.floor();
@@ -1904,5 +1930,69 @@ mod tests {
         assert!(t.contains("1,234.50"), "got: {t}");
         let t = fmt(-1234.5, builtin_format(44).unwrap());
         assert!(t.contains("1,234.50") && t.contains('('), "got: {t}");
+    }
+
+    #[test]
+    fn hostile_fraction_formats_stay_bounded() {
+        // Format codes come from attacker-controlled styles.xml: denominator
+        // width is clamped so the best-fraction scan cannot hang or overflow.
+        assert_eq!(fmt(0.5, "?/????????????????????"), "1/2");
+        let t = fmt(0.333333333, "#????????????/????????????");
+        assert!(t.contains('/'), "got: {t}");
+        assert_eq!(
+            fmt(0.5, "# ?/9999999"),
+            " 50000/99999",
+            "fixed denominator clamped"
+        );
+        // A fixed denominator too large for u64 fails to parse: no fraction,
+        // but also no hang or panic.
+        let t = fmt(0.5, "# ?/99999999999999999999");
+        assert!(!t.is_empty());
+    }
+
+    #[test]
+    fn pure_fractions_keep_whole_units() {
+        assert_eq!(fmt(1.0, "?/?"), "1/1");
+        assert_eq!(fmt(2.0, "?/2"), "4/2");
+        // With an integer part, rounding still rolls over.
+        assert_eq!(fmt(0.999, "# ?/?"), "1");
+    }
+
+    #[test]
+    fn empty_sections_hide_values() {
+        assert_eq!(
+            fmt(-5.0, "0;"),
+            "",
+            "empty negative section hides the value"
+        );
+        assert_eq!(fmt(0.0, "0;-0;"), "", "empty zero section hides the value");
+        assert_eq!(fmt(5.0, "0;"), "5");
+        // A fully empty format string still means General.
+        assert_eq!(fmt(5.0, ""), "5");
+    }
+
+    #[test]
+    fn general_sections_keep_literals() {
+        assert_eq!(fmt(5.0, "\"USD \"General"), "USD 5");
+        assert_eq!(fmt(5.0, "General\" units\""), "5 units");
+    }
+
+    #[test]
+    fn out_of_range_serials_render_markers() {
+        assert_eq!(fmt(1e300, "yyyy-mm-dd"), "#####");
+        assert_eq!(fmt(3_000_000.0, "yyyy-mm-dd"), "#####", "past 9999-12-31");
+        assert_eq!(
+            fmt(2_958_465.0, "yyyy-mm-dd"),
+            "9999-12-31",
+            "the last representable day"
+        );
+        assert_eq!(fmt(-1.0, "yyyy-mm-dd"), "#####");
+    }
+
+    #[test]
+    fn hostile_a1_refs_are_rejected() {
+        // Belongs with addr tests but pinned here too: overflow-length refs.
+        assert_eq!(crate::addr::parse_a1("AAAAAAAAAAAAAA1"), None);
+        assert_eq!(crate::addr::parse_a1(&"A".repeat(100_000)), None);
     }
 }

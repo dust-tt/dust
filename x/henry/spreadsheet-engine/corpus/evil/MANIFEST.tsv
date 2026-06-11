@@ -39,6 +39,8 @@ invalid_xml.xlsx	partial
 deep_nesting.xlsx	partial
 merges_100k.xlsx	ok
 million_char_cell.xlsx	ok
+hostile_numfmt.xlsx	ok
+overflow_refs.xlsx	ok
 high_ratio.xlsx	ok
 fake_xls.xlsx	UNSUPPORTED_FORMAT
 encrypted.xlsx	ENCRYPTED

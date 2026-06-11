@@ -82,12 +82,10 @@ pub fn open_xlsx(bytes: Vec<u8>, opts: OpenOptions) -> Result<Workbook> {
             .and_then(|rid| rels.iter().find(|r| r.id == rid))
             .filter(|r| r.kind.ends_with("worksheet"))
             .map(|r| container.resolve_relative(&workbook_part, &r.target));
-        let dim_hint = None; // Filled from <dimension> only at activation; never trusted.
         sheets.push(SheetSlot::Pending(PendingSheet {
             name: s.name,
             visibility: s.visibility,
             part,
-            dim_hint,
         }));
     }
 

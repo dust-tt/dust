@@ -5,7 +5,7 @@
 use crate::error::{BudgetKind, EngineError, Result};
 use crate::style::StyleTable;
 use crate::value::CellValue;
-use crate::workbook::{OpenOptions, SheetBuilder, SheetSlot, SheetVisibility, Workbook};
+use crate::workbook::{OpenOptions, SheetBuilder, SheetVisibility, Workbook};
 
 const SNIFF_BYTES: usize = 64 * 1024;
 const CANDIDATE_DELIMITERS: [u8; 4] = [b',', b';', b'\t', b'|'];
@@ -99,16 +99,14 @@ pub fn open_csv(bytes: Vec<u8>, opts: OpenOptions, sheet_name: &str) -> Result<W
     }
 
     let sheet = builder.finish();
-    Ok(Workbook {
-        date1904: false,
-        shared: Default::default(),
-        styles: StyleTable::default(),
-        defined_names: Vec::new(),
-        sheets: vec![SheetSlot::Loaded(Box::new(sheet))],
-        container: None,
-        opts,
-        total_cells_loaded: 0,
-    })
+    let mut workbook = Workbook::from_sheets(
+        vec![sheet],
+        Default::default(),
+        StyleTable::default(),
+        false,
+    );
+    workbook.opts = opts;
+    Ok(workbook)
 }
 
 /// Conservative numeric detection for alignment hints: plain decimal /

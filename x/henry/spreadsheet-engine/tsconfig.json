@@ -18,6 +18,6 @@
       "@dust/sheet-engine-worker/node-host": ["./ts/worker/src/node-host.ts"]
     }
   },
-  "include": ["ts/**/*.ts", "ts/**/*.tsx", "scripts/**/*.mjs"],
+  "include": ["ts/**/*.ts", "ts/**/*.tsx"],
   "exclude": ["**/node_modules", "ts/worker/wasm"]
 }

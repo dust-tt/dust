@@ -64,7 +64,10 @@ its own** — `numfmt.rs` output is painted verbatim.
    cleared in an effect *after* the render that commits a row batch, so that
    commit render paints stale (empty) cells. The adapter schedules controller
    identity changes shortly after each delivered batch (`paintTick`), forcing
-   a repaint from the fresh batch without touching `revision`.
+   a repaint from the fresh batch without touching `revision`. This is a
+   heuristic, not a guarantee: the kit commits batches inside
+   `startTransition`, so the ticks are staggered (0/120/400 ms) to outlast a
+   delayed commit; in a live browser any interaction also repaints.
 5. **Identity stability.** `getRowsBatchAsync` and `activeSheet` sit in the
    grid's effect dependency arrays. Unstable identities cause refetch loops;
    the adapter memoizes the controller and keeps `getRowsBatchAsync` stable.

@@ -21,8 +21,9 @@ serde_json = "1"
 thiserror = "2"
 ryu = "1"
 
-# panic stays "unwind": engine-wasm catches panics at every entry point and maps
-# them to a typed INTERNAL error instead of killing the worker (handoff §4).
+# panic stays "unwind" for the native targets: the evil-corpus and fuzz-lite
+# tests assert panic-freedom via catch_unwind. (wasm32 has no unwinding; traps
+# are mapped to typed INTERNAL errors in the worker shim instead.)
 [profile.release]
 opt-level = 3
 lto = "fat"

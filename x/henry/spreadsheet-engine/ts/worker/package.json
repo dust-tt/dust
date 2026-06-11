@@ -10,8 +10,5 @@
   },
   "dependencies": {
     "@dust/sheet-engine-client": "*"
-  },
-  "scripts": {
-    "test": "vitest run"
   }
 }

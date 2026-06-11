@@ -7,14 +7,13 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@dust/sheet-engine-client": "*",
-    "@dust/sheet-engine-worker": "*"
+    "@dust/sheet-engine-client": "*"
   },
   "peerDependencies": {
     "@extend-ai/react-xlsx": ">=0.10",
     "react": ">=18"
   },
-  "scripts": {
-    "test": "vitest run"
+  "devDependencies": {
+    "@dust/sheet-engine-worker": "*"
   }
 }

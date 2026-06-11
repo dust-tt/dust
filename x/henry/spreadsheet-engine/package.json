@@ -14,7 +14,7 @@
     "gen:numfmt-table": "node scripts/gen-numfmt-table.mjs",
     "diff:sheetjs": "node scripts/diff-sheetjs.mjs",
     "size:wasm": "node scripts/check-wasm-size.mjs",
-    "test": "npm run test --workspaces --if-present"
+    "test": "vitest run"
   },
   "devDependencies": {
     "@extend-ai/react-xlsx": "0.10.2",

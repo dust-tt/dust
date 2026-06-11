@@ -74,6 +74,9 @@ export class SheetEngineClient {
       typeof FinalizationRegistry === "undefined"
         ? null
         : new FinalizationRegistry((handleId) => {
+            if (this.closed) {
+              return; // worker gone; nothing left to leak
+            }
             // Reaching here means an explicit close() was missed.
             console.warn(`[sheet-engine] workbook handle ${handleId} leaked; closing via FinalizationRegistry backstop`);
             this.send({ id: this.allocId(), op: "close", handle: handleId });
@@ -107,8 +110,20 @@ export class SheetEngineClient {
         break;
       case "error":
         this.pending.delete(response.id);
-        entry.reject(new EngineErrorException(isEngineError(response.error) ? response.error : { code: "INTERNAL", detail: "malformed error" }));
+        entry.reject(
+          new EngineErrorException(
+            isEngineError(response.error) ? response.error : { code: "INTERNAL", detail: "malformed error" },
+          ),
+        );
         break;
+      default: {
+        // Type-level the union is exhaustive; at runtime a malformed kind
+        // must fail loudly rather than hang the caller.
+        const id = (response as { id: number }).id;
+        this.pending.delete(id);
+        entry.reject(new EngineErrorException({ code: "INTERNAL", detail: "malformed response from worker" }));
+        break;
+      }
     }
   }
 
@@ -118,18 +133,31 @@ export class SheetEngineClient {
     }
     return new Promise<T>((resolve, reject) => {
       this.pending.set(request.id, { resolve: resolve as (v: unknown) => void, reject, onProgress });
-      this.send(request, transfer);
+      try {
+        this.send(request, transfer);
+      } catch (e) {
+        // postMessage can throw synchronously (DataCloneError, detached
+        // buffer); the pending entry must not leak.
+        this.pending.delete(request.id);
+        reject(new EngineErrorException({ code: "INTERNAL", detail: `postMessage failed: ${String(e)}` }));
+      }
     });
   }
 
-  /** Coalesced pull: returns the result of the LATEST request once the line is free. */
+  /** Coalesced pull: returns the result of the LATEST request once the line
+   * is free. NOTE: superseded callers resolve with the latest caller's range,
+   * not their own — by design (scroll always wants the newest window), but
+   * callers must not assume their exact range was fetched. */
   private coalescedCall<T>(key: string, makeRequest: () => EngineRequest): Promise<T> {
-    const queued = this.queuedLatest.get(key);
     if (this.inflight.has(key)) {
       // Replace any previously queued request; superseded callers ride along.
-      const entry = queued ?? { request: makeRequest(), resolvers: [] };
-      entry.request = makeRequest();
-      this.queuedLatest.set(key, entry);
+      let entry = this.queuedLatest.get(key);
+      if (entry) {
+        entry.request = makeRequest();
+      } else {
+        entry = { request: makeRequest(), resolvers: [] };
+        this.queuedLatest.set(key, entry);
+      }
       return new Promise<T>((resolve, reject) => {
         entry.resolvers.push({ resolve: resolve as (v: unknown) => void, reject });
       });
@@ -274,6 +302,9 @@ export class SheetEngineClient {
     return makeTask(promise, {
       onProgressCb: () => {},
       onCancel: () => {
+        // Client-local cancellation only: the wasm scan is synchronous, so
+        // the worker cannot be interrupted mid-search (unlike open(), whose
+        // download aborts). The reply for this id is simply dropped.
         cancelled = true;
         const entry = this.pending.get(id);
         if (entry) {

@@ -7,8 +7,5 @@
     ".": "./src/index.ts",
     "./protocol": "./src/protocol.ts",
     "./types": "./src/types.ts"
-  },
-  "scripts": {
-    "test": "vitest run"
   }
 }

@@ -376,8 +376,6 @@ pub(crate) struct PendingSheet {
     /// Zip part path, e.g. `xl/worksheets/sheet1.xml`. `None` for sheet kinds
     /// we can't load (e.g. chartsheets).
     pub part: Option<String>,
-    /// Row/col counts hinted by `<dimension>`; untrusted (evil corpus lies).
-    pub dim_hint: Option<(u32, u32)>,
 }
 
 /// The workbook. Lives only inside the engine; anything crossing the boundary
@@ -562,8 +560,10 @@ impl Workbook {
                     loaded: false,
                     truncated: false,
                     cell_count: 0,
-                    row_count: p.dim_hint.map(|(r, _)| r).unwrap_or(0),
-                    col_count: p.dim_hint.map(|(_, c)| c).unwrap_or(0),
+                    // Unknown until activation; `<dimension>` hints are
+                    // untrusted (evil corpus lies about extents).
+                    row_count: 0,
+                    col_count: 0,
                     frozen_rows: 0,
                     frozen_cols: 0,
                     default_row_height_px: pt_to_px(15.0),

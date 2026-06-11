@@ -88,6 +88,10 @@ fn values_match_calamine() {
                 let key = (range_row + row as u32, range_col + col as u32);
                 let a1 = engine_core::addr::to_a1(key.0, key.1);
                 if excepted.iter().any(|(ef, ec)| ef == f.name && *ec == a1) {
+                    // Excepted cells still count toward the cell-coverage
+                    // assertion below (the engine usually has the cell, just
+                    // with a documented value disagreement).
+                    calamine_count += 1;
                     continue;
                 }
                 let expected = match cell {

@@ -27,12 +27,25 @@ export class EngineErrorException extends Error {
   }
 }
 
+const ENGINE_ERROR_CODES: ReadonlySet<string> = new Set([
+  "UNSUPPORTED_FORMAT",
+  "ENCRYPTED",
+  "CORRUPT",
+  "BUDGET_EXCEEDED",
+  "CANCELLED",
+  "INTERNAL",
+]);
+
 export function isEngineError(value: unknown): value is EngineError {
   if (typeof value !== "object" || value === null) {
     return false;
   }
   const candidate = value as { code?: unknown; detail?: unknown };
-  return typeof candidate.code === "string" && typeof candidate.detail === "string";
+  return (
+    typeof candidate.code === "string" &&
+    ENGINE_ERROR_CODES.has(candidate.code) &&
+    typeof candidate.detail === "string"
+  );
 }
 
 export interface OpenOptions {

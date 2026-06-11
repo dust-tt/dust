@@ -10,6 +10,7 @@
 // take down the worker silently (spec §4, adapted to stable wasm).
 
 import type { EngineRequest, EngineResponse } from "@dust/sheet-engine-client/protocol";
+import { isEngineError } from "@dust/sheet-engine-client/types";
 import type { EngineError, Progress } from "@dust/sheet-engine-client/types";
 
 /** The wasm-bindgen module surface (web and nodejs builds are identical). */
@@ -49,9 +50,9 @@ export interface EngineServerOptions {
 function parseEngineError(raw: unknown): EngineError {
   if (typeof raw === "string") {
     try {
-      const parsed = JSON.parse(raw) as { code?: string; detail?: string };
-      if (typeof parsed.code === "string") {
-        return { code: parsed.code, detail: parsed.detail ?? "" } as EngineError;
+      const parsed: unknown = JSON.parse(raw);
+      if (isEngineError(parsed)) {
+        return parsed;
       }
     } catch {
       // fall through
@@ -99,7 +100,9 @@ export function createEngineServer(options: EngineServerOptions) {
       fn();
     } catch (raw) {
       // RuntimeError = wasm trap (Rust panic/abort): poison the instance.
-      if (raw instanceof Error && (raw.name === "RuntimeError" || /unreachable/i.test(raw.message))) {
+      // Matched on the error class name only; message contents are too easy
+      // to collide with ordinary JS errors.
+      if (raw instanceof Error && raw.name === "RuntimeError") {
         poisoned = { code: "INTERNAL", detail: `engine trapped: ${raw.message}; worker must be recreated` };
         replyError(id, poisoned);
         return;
@@ -187,7 +190,7 @@ export function createEngineServer(options: EngineServerOptions) {
           // Closing a half-open handle must never mask the original error.
         }
       }
-      if (raw instanceof Error && (raw.name === "RuntimeError" || /unreachable/i.test(raw.message))) {
+      if (raw instanceof Error && raw.name === "RuntimeError") {
         poisoned = { code: "INTERNAL", detail: `engine trapped: ${raw.message}; worker must be recreated` };
         replyError(id, poisoned);
         return;
@@ -256,9 +259,19 @@ export function createEngineServer(options: EngineServerOptions) {
           });
           break;
         case "cancel": {
+          // Entries are removed by handleOpen's finally; a cancel landing
+          // after completion leaves a (tiny) tombstone until then.
           cancelled.add(request.targetId);
           downloads.get(request.targetId)?.abort();
           reply(request.id, undefined);
+          break;
+        }
+        default: {
+          // Unknown op: answer instead of leaving the caller hanging.
+          const unknown = request as { id?: number };
+          if (typeof unknown.id === "number") {
+            replyError(unknown.id, { code: "INTERNAL", detail: "unknown request op" });
+          }
           break;
         }
       }

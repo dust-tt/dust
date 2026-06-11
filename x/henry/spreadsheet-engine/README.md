@@ -83,6 +83,10 @@ function Preview({ url, name }: { url: string; name: string }) {
 
 CSV/TSV goes through the same path (format sniffed from bytes + name).
 
+**Search scope (v1):** `search()` scans loaded sheets only; sheets never
+activated are not searched (activating everything would defeat lazy parsing
+and the cell budgets).
+
 ## Error surface
 
 Typed and stable (`EngineErrorException.code`): `UNSUPPORTED_FORMAT` (.xls/BIFF),
@@ -104,7 +108,7 @@ Principle: always show something — a truncated preview beats a dead spinner.
 
 | Gate | Where | Status |
 | --- | --- | --- |
-| Unit + parser tests | `cargo test -p engine-core` (lib) | 55 tests |
+| Unit + parser tests | `cargo test -p engine-core` (lib) | 61 tests |
 | numfmt golden table (the spec, ≥500 cases) | `tests/numfmt_golden.rs` + `corpus/numfmt_cases.tsv` (~1240 cases, SSF-pinned + Excel-verified curation) | 100% pass required |
 | Canonical-JSON goldens (review-blessed) | `tests/golden.rs`, `BLESS=1` to update | byte-exact |
 | Corpus freshness (generator ↔ committed) | `tests/golden.rs` | byte-exact |
@@ -115,7 +119,7 @@ Principle: always show something — a truncated preview beats a dead spinner.
 | Evil corpus (never panic/hang/OOM; typed outcomes) | `tests/evil.rs` + `corpus/evil/MANIFEST.tsv` | 44+ files |
 | Determinism: native ×2 + wasm byte-identical | `scripts/check-determinism.mjs` | hash-equal |
 | Wasm size | `scripts/check-wasm-size.mjs` | ~241 KiB gz (gate: warn 1.5 MB / fail 2 MB) |
-| RPC layer (cancel, coalescing storm, progress monotonicity, leaks, chunked≡one-shot, memory ceiling over 50 cycles) | `ts/client/test` | 19 tests |
+| RPC layer (cancel, coalescing storm, progress monotonicity, leaks, chunked≡one-shot, memory ceiling over 50 cycles) | `ts/client/test` + `ts/worker/test` (incl. trap-poisoning, destroy/close lifecycle) | 24 tests |
 | **Kit integration: real `<XlsxViewer/>` + real engine** (cell texts incl. formats, col widths, frozen panes, tabs, truncation banner, typed errors, unmount lifecycle) | `ts/react/test/kit-integration.test.tsx` | 8 tests |
 
 ## Deliberate v1 scope decisions

@@ -214,7 +214,7 @@ pub fn get_rows_batch(
     })
 }
 
-/// Style-table slice for a sheet (the adapter maps indices -> kit style objects).
+/// The workbook-level style table (the adapter maps indices -> kit style objects).
 #[wasm_bindgen]
 pub fn get_styles(handle: u32) -> Result<JsValue, JsValue> {
     with_workbook(handle, |wb| to_json_js(&wb.styles.styles))
@@ -234,6 +234,9 @@ pub fn get_sheet_geometry(handle: u32, sheet: u32) -> Result<JsValue, JsValue> {
     })
 }
 
+/// v1 scope: searches LOADED sheets only — sheets the user never activated
+/// are not scanned (activating everything would defeat lazy parsing and the
+/// cell budgets). The TS layer documents the same contract.
 #[wasm_bindgen]
 pub fn search(handle: u32, query: String, opts_json: Option<String>) -> Result<JsValue, JsValue> {
     let opts: search::SearchOpts = match opts_json {

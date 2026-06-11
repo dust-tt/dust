@@ -15,16 +15,30 @@ fn main() -> ExitCode {
         return ExitCode::from(2);
     }
     let path = &args[2];
+    // Strict flag parsing: this binary feeds a byte-hash determinism gate,
+    // so silently running with a different budget is the worst failure mode.
     let mut opts = OpenOptions::default();
     let mut i = 3;
-    while i + 1 < args.len() {
+    while i < args.len() {
+        let Some(value) = args.get(i + 1) else {
+            eprintln!("flag {} requires a value", args[i]);
+            return ExitCode::from(2);
+        };
         match args[i].as_str() {
-            "--max-cells-per-sheet" => {
-                opts.max_cells_per_sheet = args[i + 1].parse().unwrap_or(opts.max_cells_per_sheet)
-            }
-            "--max-total-cells" => {
-                opts.max_total_cells = args[i + 1].parse().unwrap_or(opts.max_total_cells)
-            }
+            "--max-cells-per-sheet" => match value.parse() {
+                Ok(v) => opts.max_cells_per_sheet = v,
+                Err(_) => {
+                    eprintln!("invalid value for --max-cells-per-sheet: {value}");
+                    return ExitCode::from(2);
+                }
+            },
+            "--max-total-cells" => match value.parse() {
+                Ok(v) => opts.max_total_cells = v,
+                Err(_) => {
+                    eprintln!("invalid value for --max-total-cells: {value}");
+                    return ExitCode::from(2);
+                }
+            },
             other => {
                 eprintln!("unknown flag: {other}");
                 return ExitCode::from(2);

@@ -13,7 +13,8 @@ step "cargo clippy (deny warnings)"
 cargo clippy --workspace --all-targets -- -D warnings
 
 step "forbidden-API grep (determinism, spec §7.1)"
-# engine-core must not use clocks, randomness, or float Display formatting.
+# engine-core must not use clocks or randomness (float formatting goes
+# through ryu/serde_json; pinned by the determinism gate below).
 ! grep -rnE 'std::time::|SystemTime|Instant::now|rand::|thread_rng' crates/engine-core/src \
   || { echo "forbidden API in engine-core"; exit 1; }
 

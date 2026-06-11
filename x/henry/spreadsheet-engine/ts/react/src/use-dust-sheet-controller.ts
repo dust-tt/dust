@@ -56,15 +56,23 @@ export function useDustSheetController(options: UseDustSheetControllerOptions): 
   const lastBatchRef = useRef<Map<number, BatchRow[]>>(new Map());
   /** Workbook sheet indices already activated engine-side. */
   const activatedRef = useRef<Set<number>>(new Set());
+  /** Mirrors activeSheetIndex for non-render lookups (formula bar). */
+  const activeSheetIndexRef = useRef(0);
+  /** Pending paint-tick timers, cleared on unmount. */
+  const paintTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
 
   useEffect(() => {
     if (!src) {
       return;
     }
     let disposed = false;
+    // Set inside the .then (not via render-time stateRef) so an unmount that
+    // lands between load-resolve and React's commit still closes the handle.
+    let loadedState: ControllerState | null = null;
     setState(null);
     setError(null);
     setActiveSheetIndex(0);
+    activeSheetIndexRef.current = 0;
     lastBatchRef.current = new Map();
     activatedRef.current = new Set();
 
@@ -78,6 +86,7 @@ export function useDustSheetController(options: UseDustSheetControllerOptions): 
           loaded.client.close(loaded.handle).catch(() => {});
           return;
         }
+        loadedState = loaded;
         activatedRef.current.add(loaded.sheetIndices[0]);
         setState(loaded);
         setRevision((r) => r + 1);
@@ -92,10 +101,13 @@ export function useDustSheetController(options: UseDustSheetControllerOptions): 
 
     return () => {
       disposed = true;
-      const current = stateRef.current;
-      if (current) {
+      for (const timer of paintTimersRef.current) {
+        clearTimeout(timer);
+      }
+      paintTimersRef.current = [];
+      if (loadedState) {
         // Benign race: the owner may destroy() the client before unmount.
-        current.client.close(current.handle).catch(() => {});
+        loadedState.client.close(loadedState.handle).catch(() => {});
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- src identity governs reload
@@ -117,13 +129,21 @@ export function useDustSheetController(options: UseDustSheetControllerOptions): 
         // Post-commit paint ticks (NOT a revision bump — that would clear the
         // batch we just delivered). Staggered because the grid commits the
         // batch inside startTransition, which may land after our first tick
-        // under load. See the paintTick comment above.
+        // under load; cleared on unmount. See the paintTick comment above.
         for (const delayMs of [0, 120, 400]) {
-          setTimeout(() => setPaintTick((t) => t + 1), delayMs);
+          paintTimersRef.current.push(setTimeout(() => setPaintTick((t) => t + 1), delayMs));
         }
         return toKitRows(rows, current.styleCache);
-      } catch {
-        // Budget-refused sheets and races on unmount degrade to empty cells.
+      } catch (e: unknown) {
+        // Budget-refused sheets degrade to empty cells; anything else (incl.
+        // a poisoned worker reporting INTERNAL) must surface, not render a
+        // silently blank grid.
+        if (e instanceof EngineErrorException && (e.code === "BUDGET_EXCEEDED" || e.code === "CANCELLED")) {
+          return null;
+        }
+        setError(
+          e instanceof EngineErrorException ? e : new EngineErrorException({ code: "INTERNAL", detail: String(e) }),
+        );
         return null;
       }
     },
@@ -132,6 +152,7 @@ export function useDustSheetController(options: UseDustSheetControllerOptions): 
 
   const activateAndRefresh = useCallback((tabIndex: number) => {
     const current = stateRef.current;
+    activeSheetIndexRef.current = tabIndex;
     setActiveSheetIndex(tabIndex);
     setSelection(null);
     setActiveCell(null);
@@ -165,7 +186,8 @@ export function useDustSheetController(options: UseDustSheetControllerOptions): 
     if (!current || !cell) {
       return "";
     }
-    const sheetIdx = current.sheetIndices[0]; // formula bar follows the active sheet's batches
+    // Formula bar reads the ACTIVE sheet's last delivered batch.
+    const sheetIdx = current.sheetIndices[activeSheetIndexRef.current] ?? current.sheetIndices[0];
     const batches = lastBatchRef.current.get(sheetIdx) ?? [];
     for (const row of batches) {
       if (row.index !== cell.row) {

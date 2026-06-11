@@ -25,6 +25,7 @@ import type {
   WorkbookHandle,
   WorkbookMeta,
 } from "@dust/sheet-engine-client";
+import { EngineErrorException } from "@dust/sheet-engine-client";
 
 /** Axis arrays only need to span the used range (the kit falls back to the
  * sheet defaults beyond); cap defensively for max-extent sheets. */
@@ -247,44 +248,46 @@ export async function loadControllerState(
     styleById[i] = toKitStyle(s);
   });
 
-  let shown = meta.sheets.filter((s) => options?.showHiddenSheets || s.visibility === "visible");
-  const sheetIndices = shown.map((s) => s.index);
-
-  let refreshedMeta = meta;
-  const sheets: XlsxSheetData[] = [];
-  for (const sheetMeta of shown) {
-    if (sheets.length === 0) {
-      // First shown sheet: activate eagerly so first paint has data, then
-      // refresh workbook metadata so truncation flags reflect the parse.
-      const activated = await client.activateSheet(handle, sheetMeta.index);
-      const geometry = await client.getSheetGeometry(handle, sheetMeta.index);
-      sheets.push(toKitSheetData(activated, geometry, styleById));
-      refreshedMeta = await client.getMetadata(handle);
-      shown = refreshedMeta.sheets.filter((s) => options?.showHiddenSheets || s.visibility === "visible");
-    } else {
-      // Placeholder until activation; geometry defaults, no cells yet.
-      sheets.push(
-        toKitSheetData(
-          sheetMeta,
-          {
-            minRow: 0,
-            minCol: 0,
-            maxRow: Math.max(sheetMeta.rowCount - 1, 0),
-            maxCol: Math.max(sheetMeta.colCount - 1, 0),
-            frozenRows: 0,
-            frozenCols: 0,
-            defaultRowHeightPx: sheetMeta.defaultRowHeightPx,
-            defaultColWidthPx: sheetMeta.defaultColWidthPx,
-            colWidthsPx: [],
-            rowHeightsPx: [],
-            hiddenRows: [],
-            hiddenCols: [],
-          },
-          styleById,
-        ),
-      );
-    }
+  const isShown = (s: SheetMeta) => options?.showHiddenSheets || s.visibility === "visible";
+  const firstShown = meta.sheets.find(isShown);
+  if (!firstShown) {
+    // No visible sheets: surface as CORRUPT rather than an empty controller.
+    await client.close(handle);
+    throw new EngineErrorException({ code: "CORRUPT", detail: "workbook has no visible sheets" });
   }
+
+  // Activate the first shown sheet eagerly so first paint has data, then
+  // refresh workbook metadata so truncation flags reflect the actual parse.
+  const activated = await client.activateSheet(handle, firstShown.index);
+  const geometry = await client.getSheetGeometry(handle, firstShown.index);
+  const refreshedMeta = await client.getMetadata(handle);
+
+  const shown = refreshedMeta.sheets.filter(isShown);
+  const sheetIndices = shown.map((s) => s.index);
+  const sheets: XlsxSheetData[] = shown.map((sheetMeta) => {
+    if (sheetMeta.index === firstShown.index) {
+      return toKitSheetData(activated, geometry, styleById);
+    }
+    // Placeholder until activation; geometry defaults, no cells yet.
+    return toKitSheetData(
+      sheetMeta,
+      {
+        minRow: 0,
+        minCol: 0,
+        maxRow: Math.max(sheetMeta.rowCount - 1, 0),
+        maxCol: Math.max(sheetMeta.colCount - 1, 0),
+        frozenRows: 0,
+        frozenCols: 0,
+        defaultRowHeightPx: sheetMeta.defaultRowHeightPx,
+        defaultColWidthPx: sheetMeta.defaultColWidthPx,
+        colWidthsPx: [],
+        rowHeightsPx: [],
+        hiddenRows: [],
+        hiddenCols: [],
+      },
+      styleById,
+    );
+  });
 
   return { client, handle, meta: refreshedMeta, sheets, sheetIndices, styleCache, displayFileName: fileName };
 }
@@ -331,7 +334,9 @@ export function buildController(
   const a1 = (cell: XlsxCellAddress | null) =>
     cell ? `${colLetters(cell.col)}${cell.row + 1}` : null;
 
-  const controller = {
+  // Typed against the kit interface so a kit upgrade that changes the
+  // controller surface becomes a compile error, not a silent runtime gap.
+  const controller: XlsxViewerController = {
     // --- workbook data (real) ---
     sheets: state.sheets,
     activeSheet,
@@ -362,7 +367,7 @@ export function buildController(
     zoomIn: () => actions.setZoomScale(Math.min(view.zoomScale + 10, 400)),
     zoomOut: () => actions.setZoomScale(Math.max(view.zoomScale - 10, 10)),
     resetZoom: () => actions.setZoomScale(100),
-    setZoomScale: actions.setZoomScale,
+    setZoomScale: (scale: number) => actions.setZoomScale(Math.min(400, Math.max(10, scale))),
     setActiveSheetIndex: actions.setActiveSheetIndex,
     setActiveTabIndex: actions.setActiveSheetIndex,
     // --- selection (display only) ---
@@ -442,7 +447,7 @@ export function buildController(
     sortTable: NOOP,
     updateChart: NOOP,
   };
-  return controller as unknown as XlsxViewerController;
+  return controller;
 }
 
 export function colLetters(col: number): string {
