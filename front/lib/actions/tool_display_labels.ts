@@ -996,6 +996,7 @@ function getDynamicToolDisplayLabels({
     case "agent_router":
     case "ashby":
     case "databricks":
+    case "exa":
     case "fathom":
     case "freshservice":
     case "gong":

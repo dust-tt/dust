@@ -61,6 +61,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "MCP tools currently in development",
     stage: "dust_only",
   },
+  exa_mcp: {
+    description: "Access to Exa MCP server (search_people, search_companies)",
+    stage: "dust_only",
+  },
   disable_run_logs: {
     description: "Disable logging of agent runs",
     stage: "dust_only",
