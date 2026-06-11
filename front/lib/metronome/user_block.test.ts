@@ -7,7 +7,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const workspace = { sId: "ws_test" } as LightWorkspaceType;
-const user = { sId: "u_test" } as unknown as UserResource;
+const user = { sId: "u_test" } as UserResource;
 
 const {
   redisValues,

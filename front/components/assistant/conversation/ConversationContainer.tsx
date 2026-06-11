@@ -1,5 +1,8 @@
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
-import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
+import {
+  getWorkspaceLimitForSubmitError,
+  ReachedLimitPopup,
+} from "@app/components/app/ReachedLimitPopup";
 import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -100,25 +103,15 @@ export function ConversationContainerVirtuoso({
   // is a transient error shown as a notification.
   const handleSubmitMessageError = useCallback(
     (error: SubmitMessageError) => {
-      switch (error.type) {
-        case "plan_limit_reached_error":
-          setLimitReachedCode("message_limit");
-          break;
-        case "credits_exhausted_error":
-          setLimitReachedCode("pool_credits_exhausted");
-          break;
-        case "user_cap_reached_error":
-          setLimitReachedCode("user_credits_exhausted");
-          break;
-        case "no_seat_error":
-          setLimitReachedCode("no_seat");
-          break;
-        default:
-          sendNotification({
-            title: error.title,
-            description: error.message,
-            type: "error",
-          });
+      const limitCode = getWorkspaceLimitForSubmitError(error.type);
+      if (limitCode) {
+        setLimitReachedCode(limitCode);
+      } else {
+        sendNotification({
+          title: error.title,
+          description: error.message,
+          type: "error",
+        });
       }
     },
     [sendNotification]
