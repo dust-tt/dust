@@ -648,6 +648,9 @@ const config = {
   getDustWebhooksPublicUrl: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DUST_WEBHOOKS_PUBLIC_URL");
   },
+  getConvertAPIKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("CONVERTAPI_API_KEY");
+  },
 };
 
 export default config;
