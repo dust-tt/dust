@@ -12,7 +12,7 @@ import type { SubscriptionType } from "@app/types/plan";
 import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { ReactNode } from "react";
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import type { SubscriptionStatus } from "./SubscriptionStatusChip";
 
 interface SubscriptionContextType {
@@ -131,31 +131,53 @@ export function SubscriptionProvider({
     ? formatTimestampToFriendlyDate(subscriptionEndsAtMs, "short")
     : null;
 
+  const value = useMemo(
+    () => ({
+      owner,
+      subscription,
+      invoice,
+      isMetronomeInvoiceLoading,
+      isCancellablePlan,
+      isCancellationScheduled,
+      subscriptionEndsAtMs,
+      subscriptionStatus,
+      canCancelSubscription,
+      canReactivateSubscription,
+      isCancellingSubscription,
+      isReactivatingSubscription,
+      periodEndLabel,
+      subscriptionEndLabel,
+      showCancelDialog,
+      setShowCancelDialog,
+      showReactivateDialog,
+      setShowReactivateDialog,
+      cancelSubscription,
+      reactivateSubscription,
+    }),
+    [
+      owner,
+      subscription,
+      invoice,
+      isMetronomeInvoiceLoading,
+      isCancellablePlan,
+      isCancellationScheduled,
+      subscriptionEndsAtMs,
+      subscriptionStatus,
+      canCancelSubscription,
+      canReactivateSubscription,
+      isCancellingSubscription,
+      isReactivatingSubscription,
+      periodEndLabel,
+      subscriptionEndLabel,
+      showCancelDialog,
+      showReactivateDialog,
+      cancelSubscription,
+      reactivateSubscription,
+    ]
+  );
+
   return (
-    <SubscriptionContext.Provider
-      value={{
-        owner,
-        subscription,
-        invoice,
-        isMetronomeInvoiceLoading,
-        isCancellablePlan,
-        isCancellationScheduled,
-        subscriptionEndsAtMs,
-        subscriptionStatus,
-        canCancelSubscription,
-        canReactivateSubscription,
-        isCancellingSubscription,
-        isReactivatingSubscription,
-        periodEndLabel,
-        subscriptionEndLabel,
-        showCancelDialog,
-        setShowCancelDialog,
-        showReactivateDialog,
-        setShowReactivateDialog,
-        cancelSubscription,
-        reactivateSubscription,
-      }}
-    >
+    <SubscriptionContext.Provider value={value}>
       {children}
     </SubscriptionContext.Provider>
   );
