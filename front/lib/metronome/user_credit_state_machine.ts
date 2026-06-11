@@ -9,6 +9,7 @@ import type {
 import {
   CAP_WARNING_FRACTION,
   expectedUserCreditState,
+  isSeatBased,
   SEAT_LOW_BALANCE_FRACTION,
 } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
@@ -50,6 +51,14 @@ export type UserCreditContext = {
    * whether to land on `on_pool`, `on_pool_low_balance`, or `capped`.
    */
   remainingCapCreditsPercentage?: number | null;
+  /**
+   * The user's effective pool budget in AWU credits: `0` = no pool access
+   * (e.g. free seats), `> 0` = capped pool, `null` = unlimited. A property of
+   * the user's situation (like `remainingCapCreditsPercentage`), so it lives in
+   * the context — it's what the `seat_balance_exhausted` guards use to route
+   * `capped` vs `on_pool`, with no seat-type special-casing.
+   */
+  poolLimitAwuCredits?: number | null;
 };
 
 export type UserCreditEvent =
@@ -67,13 +76,12 @@ export type UserCreditEvent =
    */
   | { type: "admin_raised_user_cap" }
   /**
-   * This user's personal seat balance is exhausted. The user's effective pool
-   * limit determines the next state:
-   *   - free seats → always `capped` (no pool access)
-   *   - paid seats with `poolLimitAwuCredits === 0` → `capped`
-   *   - paid seats with `poolLimitAwuCredits > 0` or `null` (unlimited) → `on_pool`
+   * This user's personal seat balance is exhausted. The next state is decided
+   * by `ctx.poolLimitAwuCredits`:
+   *   - `0` (no pool access, e.g. free seats) → `capped`
+   *   - `> 0` or `null` (unlimited) → `on_pool` (band depends on cap usage)
    */
-  | { type: "seat_balance_exhausted"; poolLimitAwuCredits: number | null }
+  | { type: "seat_balance_exhausted" }
   /**
    * This user's personal seat balance crossed a low-balance warning threshold
    * (balance > 0). Moves `user_seat` → `user_seat_low_balance`.
@@ -109,12 +117,14 @@ type UserCreditTransition = {
   to: UserCreditState;
 };
 
-// Seat↔pool band a user should land in when their per-user cap resolves,
-// derived from the live balance snapshot carried in the context. Used by the
-// guards on the `per_user_cap_resolved` transitions below (mirroring how the
-// `seat_balance_exhausted` guards branch on seat type / pool limit). Without a
-// snapshot we can't distinguish seat from pool, so default to the pool.
-function targetAfterCapResolved(ctx: UserCreditContext): UserCreditState {
+// Seat↔pool band a user should land in once a blocking dimension clears (a
+// per-user cap resolving, or a seat balance replenishing), derived from the
+// live balance snapshot carried in the context. Used by the guards on the
+// `per_user_cap_resolved` / `seat_balance_resolved` transitions below
+// (mirroring how the `seat_balance_exhausted` guards branch on seat type / pool
+// limit). Without a snapshot we can't distinguish seat from pool, so default to
+// the pool.
+function targetBandFromLiveBalance(ctx: UserCreditContext): UserCreditState {
   if (!ctx.liveBalance) {
     return "on_pool";
   }
@@ -157,7 +167,7 @@ const TRANSITIONS: UserCreditTransition[] = [
       "capped",
     ],
     event: "per_user_cap_resolved",
-    guard: (ctx) => targetAfterCapResolved(ctx) === "user_seat",
+    guard: (ctx) => targetBandFromLiveBalance(ctx) === "user_seat",
     to: "user_seat",
   },
   {
@@ -169,7 +179,7 @@ const TRANSITIONS: UserCreditTransition[] = [
       "capped",
     ],
     event: "per_user_cap_resolved",
-    guard: (ctx) => targetAfterCapResolved(ctx) === "user_seat_low_balance",
+    guard: (ctx) => targetBandFromLiveBalance(ctx) === "user_seat_low_balance",
     to: "user_seat_low_balance",
   },
   {
@@ -181,7 +191,7 @@ const TRANSITIONS: UserCreditTransition[] = [
       "capped",
     ],
     event: "per_user_cap_resolved",
-    guard: (ctx) => targetAfterCapResolved(ctx) === "on_pool_low_balance",
+    guard: (ctx) => targetBandFromLiveBalance(ctx) === "on_pool_low_balance",
     to: "on_pool_low_balance",
   },
   {
@@ -195,43 +205,32 @@ const TRANSITIONS: UserCreditTransition[] = [
     event: "per_user_cap_resolved",
     to: "on_pool",
   },
-  // Seat balance exhausted. Order matters: most specific guard first.
-  //  1. Free seats → always capped (no pool access).
+  // Seat balance exhausted. Routing is driven by `ctx.poolLimitAwuCredits`, not
+  // the seat type — a no-pool seat (free) simply has poolLimit 0. Order matters:
+  // most specific guard first.
+  //  1. No pool budget (poolLimit 0, incl. free) or per-user cap also exhausted
+  //     → capped.
   {
     from: ["user_seat", "user_seat_low_balance", "capped"],
     event: "seat_balance_exhausted",
-    guard: (ctx) => ctx.seatType === "free",
+    guard: (ctx) =>
+      ctx.poolLimitAwuCredits === 0 || ctx.remainingCapCreditsPercentage === 0,
     to: "capped",
   },
-  // 2. Paid seats whose per-user cap is also exhausted (0 % remaining) or with pool limit = 0 → capped (no pool budget).
-  {
-    from: ["user_seat", "user_seat_low_balance", "capped"],
-    event: "seat_balance_exhausted",
-    guard: (ctx, event) =>
-      ctx.seatType !== "free" &&
-      event.type === "seat_balance_exhausted" &&
-      (event.poolLimitAwuCredits === 0 ||
-        ctx.remainingCapCreditsPercentage === 0),
-    to: "capped",
-  },
-  // 3. Paid seats with < 20 % of cap remaining → on_pool_low_balance.
+  //  2. Pool budget left but < 20 % of cap remaining → on_pool_low_balance.
   {
     from: ["user_seat", "user_seat_low_balance"],
     event: "seat_balance_exhausted",
     guard: (ctx) =>
-      ctx.seatType !== "free" &&
       ctx.remainingCapCreditsPercentage != null &&
       ctx.remainingCapCreditsPercentage < 1 - CAP_WARNING_FRACTION,
     to: "on_pool_low_balance",
   },
-  // 4. Paid seats with ≥ 20 % of cap remaining, with pool limit > 0 or null (unlimited) → on_pool
+  //  3. Pool budget left (poolLimit > 0 or null/unlimited) → on_pool.
   {
     from: ["user_seat", "user_seat_low_balance", "on_pool"],
     event: "seat_balance_exhausted",
-    guard: (ctx, event) =>
-      ctx.seatType !== "free" &&
-      event.type === "seat_balance_exhausted" &&
-      event.poolLimitAwuCredits !== 0,
+    guard: (ctx) => ctx.poolLimitAwuCredits !== 0,
     to: "on_pool",
   },
 
@@ -256,6 +255,16 @@ const TRANSITIONS: UserCreditTransition[] = [
       (ctx.seatType === "pro" || ctx.seatType === "pro_yearly"),
     to: "user_seat_low_balance",
   },
+  // Free seats: the per-user credit-balance alert is scoped to this one user
+  // (not a workspace-wide fan-out), so it's always relevant — no threshold
+  // disambiguation needed. Match on seat type alone, with no hardcoded
+  // threshold value.
+  {
+    from: ["user_seat", "user_seat_low_balance"],
+    event: "seat_low_balance",
+    guard: (ctx) => ctx.seatType === "free",
+    to: "user_seat_low_balance",
+  },
 
   // Per-user cap 80% warning: move on_pool → on_pool_low_balance.
   {
@@ -271,22 +280,37 @@ const TRANSITIONS: UserCreditTransition[] = [
     to: "on_pool",
   },
 
-  // Billing-period renewal for pro/max seats: reset to user_seat regardless
-  // of current state. Workspace seats are reset by per_user_cap_resolved;
-  // free seats are not reset.
+  // Seat balance replenished — for pro/max a billing-period renewal, for free a
+  // fresh credit clearing its low/empty alert. Reset any seat-based user
+  // (pro/max/free) from any state, including `capped` (a free seat exhausted to
+  // 0 is `capped`, so it must be reachable here). The live balance decides the
+  // band: a partial refill that's still under the low-balance threshold lands
+  // in `user_seat_low_balance`, otherwise `user_seat`. Workspace (pool-based)
+  // seats have no seat balance and are reset by per_user_cap_resolved instead.
   {
     from: [
       "user_seat",
       "user_seat_low_balance",
       "on_pool",
       "on_pool_low_balance",
+      "capped",
     ],
     event: "seat_balance_resolved",
     guard: (ctx) =>
-      ctx.seatType === "pro" ||
-      ctx.seatType === "pro_yearly" ||
-      ctx.seatType === "max" ||
-      ctx.seatType === "max_yearly",
+      isSeatBased(ctx.seatType) &&
+      targetBandFromLiveBalance(ctx) === "user_seat_low_balance",
+    to: "user_seat_low_balance",
+  },
+  {
+    from: [
+      "user_seat",
+      "user_seat_low_balance",
+      "on_pool",
+      "on_pool_low_balance",
+      "capped",
+    ],
+    event: "seat_balance_resolved",
+    guard: (ctx) => isSeatBased(ctx.seatType),
     to: "user_seat",
   },
 ];
