@@ -1,7 +1,9 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
+  DEFAULT_CREDIT_GROUPS,
   DEFAULT_RESULTS,
+  MAX_CREDIT_GROUPS,
   MAX_RESULTS,
   timeWindowSchemaShape,
   usageFilterSchema,
@@ -67,6 +69,24 @@ const getCreditTimeseriesSchema = {
     .enum(["day", "week", "month"])
     .optional()
     .describe("Bucket granularity for the credit trend (default day)."),
+  breakdownBy: z
+    .enum(["agent", "user"])
+    .optional()
+    .describe(
+      "Split each bucket into the top agents or users by credits, plus an " +
+        "'other' series for the rest. Omit for a single total-credits trend."
+    ),
+  breakdownLimit: z
+    .number()
+    .int()
+    .positive()
+    .max(MAX_CREDIT_GROUPS)
+    .optional()
+    .describe(
+      `Number of top groups to break out when breakdownBy is set ` +
+        `(default ${DEFAULT_CREDIT_GROUPS}, max ${MAX_CREDIT_GROUPS}); the ` +
+        `remainder is folded into 'other'.`
+    ),
 };
 
 const getUsageTimeseriesSchema = {
@@ -181,12 +201,14 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     description:
       "Return estimated AWU credit consumption as a time series over a window " +
       "(defaults to the last 30 days), bucketed by day, week, or month. Each " +
-      "point splits model and tool credits. Use this for credit/spend TRENDS " +
-      "over time; use get_credit_usage for totals and top agent/user " +
-      "attribution. IMPORTANT: these figures are ESTIMATES — always tell the " +
-      "user they are approximate and point them to the workspace Usage page " +
-      "for exact, billed credit amounts. Chart the result. Optionally filter " +
-      "by source (context_origin), agent, or user. Admin-only.",
+      "point splits model and tool credits. Set breakdownBy to split each " +
+      "bucket into the top agents or users plus an 'other' series (a stacked " +
+      "trend). Use this for credit/spend TRENDS over time; use get_credit_usage " +
+      "for a single window's totals and top agent/user attribution. IMPORTANT: " +
+      "these figures are ESTIMATES — always tell the user they are approximate " +
+      "and point them to the workspace Usage page for exact, billed credit " +
+      "amounts. Chart the result. Optionally filter by source (context_origin), " +
+      "agent, or user. Admin-only.",
     schema: getCreditTimeseriesSchema,
     stake: "never_ask",
     displayLabels: {

@@ -71,6 +71,30 @@ type CreditTimeseriesAggs = {
   by_date?: estypes.AggregationsMultiBucketAggregateBase<DateCreditBucket>;
 };
 
+type BreakdownGroupBucket = CreditSlice & { key: string };
+
+type BreakdownDateBucket = CreditSlice & {
+  key: number;
+  by_group?: estypes.AggregationsMultiBucketAggregateBase<BreakdownGroupBucket>;
+};
+
+type CreditTimeseriesBreakdownAggs = {
+  by_date?: estypes.AggregationsMultiBucketAggregateBase<BreakdownDateBucket>;
+};
+
+export type CreditTimeseriesBreakdownPoint = {
+  timestamp: number;
+  date: string;
+  totalCredits: number;
+  otherCredits: number;
+  groupCredits: number[];
+};
+
+export type CreditTimeseriesBreakdown = {
+  groups: { groupKey: string; name: string }[];
+  points: CreditTimeseriesBreakdownPoint[];
+};
+
 // Total credits (LLM + tool) cannot be ordered on inside a single ES terms
 // aggregation, so we overfetch the most active groups, compute credits for each,
 // then rank in JS. This caps how many groups we pull before ranking; workspaces
@@ -342,4 +366,124 @@ export async function fetchCreditTimeseries(
       ...creditsFromSlice(bucket),
     }))
   );
+}
+
+// Estimated credits over time, split into the top-N agents/users plus an
+// "other" bucket holding everything else. Ranks groups once (by total credits),
+// then fetches the per-bucket series for just those groups; "other" is the
+// per-bucket total minus the shown groups so the series reconciles.
+export async function fetchCreditTimeseriesBreakdown(
+  auth: Authenticator,
+  {
+    startDate,
+    endDate,
+    granularity,
+    timezone,
+    breakdownBy,
+    limit,
+    contextOrigin,
+    agentIds,
+    userIds,
+  }: {
+    startDate: string;
+    endDate: string;
+    granularity: "day" | "week" | "month";
+    timezone: string;
+    breakdownBy: "agent" | "user";
+    limit: number;
+    contextOrigin?: string | string[];
+    agentIds?: string[];
+    userIds?: string[];
+  }
+): Promise<Result<CreditTimeseriesBreakdown, ElasticsearchError>> {
+  const ranking = await fetchCreditUsage(auth, {
+    startDate,
+    endDate,
+    limit,
+    groupBy: breakdownBy,
+    contextOrigin,
+    agentIds,
+    userIds,
+  });
+  if (ranking.isErr()) {
+    return ranking;
+  }
+
+  const groups = ranking.value.rows.map((row) => ({
+    groupKey: row.groupKey,
+    name: row.name,
+  }));
+  if (groups.length === 0) {
+    return new Ok({ groups: [], points: [] });
+  }
+
+  const groupKeys = groups.map((group) => group.groupKey);
+  const query = buildCreditQuery(auth, {
+    startDate,
+    endDate,
+    contextOrigin,
+    agentIds,
+    userIds,
+  });
+
+  const result = await searchAnalytics<never, CreditTimeseriesBreakdownAggs>(
+    query,
+    {
+      aggregations: {
+        by_date: {
+          date_histogram: {
+            field: "timestamp",
+            calendar_interval: granularity,
+            time_zone: timezone,
+          },
+          aggs: {
+            ...creditSubAggs,
+            by_group: {
+              terms: {
+                field: groupFieldFor(breakdownBy),
+                include: groupKeys,
+                size: groupKeys.length,
+              },
+              aggs: { ...creditSubAggs },
+            },
+          },
+        },
+      },
+      size: 0,
+    }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const buckets = bucketsToArray<BreakdownDateBucket>(
+    result.value.aggregations?.by_date?.buckets
+  );
+
+  const points = buckets.map((bucket) => {
+    const totalCredits = creditsFromSlice(bucket).totalCredits;
+    const creditsByKey = new Map(
+      bucketsToArray<BreakdownGroupBucket>(bucket.by_group?.buckets).map(
+        (groupBucket) => [
+          String(groupBucket.key),
+          creditsFromSlice(groupBucket).totalCredits,
+        ]
+      )
+    );
+    const groupCredits = groupKeys.map((key) => creditsByKey.get(key) ?? 0);
+    const otherCredits = Math.max(
+      0,
+      totalCredits - groupCredits.reduce((sum, credits) => sum + credits, 0)
+    );
+    return {
+      timestamp: bucket.key,
+      date: formatDateFromMillis(bucket.key, timezone),
+      totalCredits,
+      otherCredits,
+      groupCredits,
+    };
+  });
+
+  return new Ok({ groups, points });
 }

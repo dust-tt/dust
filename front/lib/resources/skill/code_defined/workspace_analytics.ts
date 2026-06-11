@@ -29,6 +29,10 @@ export const workspaceAnalyticsSkill = {
     "unnecessary, the timeseries tools already bucket over time.\n" +
     "- Use get_credit_usage for a single window's total credits or to " +
     "attribute spend to the top agents or users, not for per-day trends.\n" +
+    "- For a credit trend split by agent or user (e.g. 'how did each agent's " +
+    "spend evolve'), set breakdownBy on get_credit_timeseries — one call " +
+    "returns the top groups plus an 'other' series. Do not make one filtered " +
+    "call per agent or user.\n" +
     "- Chart timeseries results so the admin can see the trend.\n" +
     "- Credit figures are estimates; when reporting them, tell the admin they " +
     "are approximate and point to the workspace Usage page for exact billed " +
