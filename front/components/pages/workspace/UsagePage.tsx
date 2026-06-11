@@ -43,7 +43,6 @@ import type {
   MembershipSeatType,
   MembershipUpgradeRequestType,
 } from "@app/types/memberships";
-import { SEAT_TYPE_ORDER } from "@app/types/memberships";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { isAdmin } from "@app/types/user";
 import {
@@ -387,18 +386,6 @@ export function UsagePage() {
   const plan = subscription.plan;
   const isEnterprise = isEnterprisePlanPrefix(plan.code);
 
-  // Tier order of the most premium seat plan offered to the workspace. A
-  // requester whose current seat is already at (or above) this tier has no
-  // higher plan to upgrade to, so the "Upgrade plan" action is hidden for them.
-  const highestSeatTypeOrder = useMemo(() => {
-    let highest: number | null = null;
-    for (const [seatType, order] of Object.entries(SEAT_TYPE_ORDER)) {
-      if (seatType in seatPlans && (highest === null || order > highest)) {
-        highest = order;
-      }
-    }
-    return highest;
-  }, [seatPlans]);
   const isManualInvitationsEnabled =
     owner.metadata?.disableManualInvitations !== true;
 
@@ -651,8 +638,7 @@ export function UsagePage() {
                   <UpgradeRequestsTable
                     requests={filteredUpgradeRequests}
                     isLoading={isUpgradeRequestsLoading}
-                    isSeatBased={isSeatBased}
-                    highestSeatTypeOrder={highestSeatTypeOrder}
+                    seatPlans={seatPlans}
                     pendingRequestIds={resolvingRequestIds}
                     onUpgradePlan={handleUpgradePlanRequest}
                     onEditLimit={handleEditLimitRequest}
