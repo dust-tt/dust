@@ -27,9 +27,13 @@ import type {
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
+import { config as regionConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 import { ApiError, GoogleGenAI, JobState } from "@google/genai";
 import assert from "assert";
 import { z } from "zod";
@@ -40,6 +44,18 @@ interface GoogleGenerateContentRequestParams {
   prompt: LLMStreamParameters["prompt"];
   specifications: LLMStreamParameters["specifications"];
   forceToolCall: LLMStreamParameters["forceToolCall"];
+}
+
+function getVertexLocation(): string | undefined {
+  const region = regionConfig.getCurrentRegion();
+  switch (region) {
+    case "us-central1":
+      return "global";
+    case "europe-west1":
+      return "europe-west1";
+    default:
+      assertNeverAndIgnore(region);
+  }
 }
 
 export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
@@ -67,6 +83,7 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
       this.client = new GoogleGenAI({
         vertexai: true,
         project: config.getGoogleCloudProjectId(),
+        location: getVertexLocation(),
       });
     } else {
       const { GOOGLE_AI_STUDIO_API_KEY } = llmParameters.credentials;
