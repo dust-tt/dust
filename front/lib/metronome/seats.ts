@@ -25,6 +25,7 @@ import type { CachedContract } from "@app/lib/metronome/plan_type";
 import {
   getAwuAllocationForSeatType,
   getDefaultSeatTypeForContract,
+  getNextSeatCreditRenewalDate,
   getProductSeatTypes,
   getSeatSubscriptionsFromContract,
   getSeatTypeForSubscription,
@@ -151,21 +152,25 @@ export type SeatChangeOutcome =
  * Branches:
  * - Same seat as current: `cancelled` if a pending future change exists,
  *   else `noop`.
+ * - `free` → `none`: `noop`. A `free` seat is a one-shot tier that cannot be
+ *   downgraded to no seat.
  * - New allocation ≥ previous: `immediate` (the user gains/keeps access
  *   right away).
- * - New allocation < previous: `deferred` at the next billing-period start
- *   so the user keeps the richer access through the period they already
- *   paid for. Returns `undefined` when the contract has no next billing
- *   period to anchor the deferred transition to.
+ * - New allocation < previous: `deferred` to the next time the previous
+ *   seat's AWU allowance renews, so the user keeps the richer access through
+ *   the allowance they already paid for. Returns `undefined` when no renewal
+ *   (or billing-period) date can be resolved to anchor the deferral.
  */
 export function classifySeatChange({
   contract,
   productSeatTypes,
   change,
+  now,
 }: {
   contract: CachedContract;
   productSeatTypes: Map<string, MembershipSeatType>;
   change: SeatChangeRequest;
+  now: Date;
 }): SeatChangeOutcome | undefined {
   const { previousSeatType, newSeatType, pendingScheduledChange } = change;
 
@@ -173,6 +178,13 @@ export function classifySeatChange({
   // future change — a cancellation of that pending change.
   if (previousSeatType === newSeatType) {
     return pendingScheduledChange ? { kind: "cancelled" } : { kind: "noop" };
+  }
+
+  // `free` is a one-shot tier that can't be given back: downgrading a free
+  // seat to no seat is not allowed, so treat it as a no-op (the caller leaves
+  // the membership untouched).
+  if (previousSeatType === "free" && newSeatType === "none") {
+    return { kind: "noop" };
   }
 
   const previousAllocation = getAwuAllocationForSeatType(
@@ -185,33 +197,44 @@ export function classifySeatChange({
     newSeatType,
     productSeatTypes
   );
-  // Removing a seat (`none`) always defers, even when the previous tier had
-  // zero AWU allocation (e.g. workspace seats): 0 >= 0 would otherwise
-  // classify as immediate. Any genuine upgrade takes effect right away.
-  if (newSeatType !== "none" && newAllocation >= previousAllocation) {
+  // Keep or gain allowance — takes effect right away. This also covers
+  // removing a seat that carried no allowance (e.g. workspace seats:
+  // 0 >= 0): there's nothing already paid for to preserve, so the removal
+  // is immediate.
+  if (newAllocation >= previousAllocation) {
     return { kind: "immediate" };
   }
 
-  // Downgrade (or seat removal) — defer to the start of the next billing
-  // period so the user keeps the richer access they've already paid for.
-  // Billing-period
-  // boundaries aren't anchored to midnight on the contract, so ceil to
-  // midnight UTC to match how the invoice timestamp is displayed.
-  const nextStartingAt = (contract.subscriptions ?? [])
+  // Losing allowance (downgrade, or removal of a seat that had allowance) —
+  // defer until the previous seat's AWU allowance next renews, so the user
+  // keeps the richer allowance they've already paid for until it would have
+  // refreshed anyway. The renewal cadence is the credit's `recurrence_frequency`
+  // (MONTHLY in new pricing, even for annually-billed seats — see
+  // `getNextSeatCreditRenewalDate`), which is independent of the billing period.
+  //
+  // Defensive: a downgrade is always from a credit-bearing seat (`free` →
+  // `none` is handled above as a no-op), but if the credit's recurrence can't
+  // be resolved, fall back to the next billing-period start rather than
+  // failing the change.
+  const creditRenewalAt = getNextSeatCreditRenewalDate({
+    contract,
+    seatType: previousSeatType,
+    productSeatTypes,
+    now,
+  });
+  const fallbackNextStartingAt = (contract.subscriptions ?? [])
     .map((s) => s.billing_periods?.next?.starting_at)
     .find((d) => d !== undefined);
-  if (!nextStartingAt) {
+  const renewalAt =
+    creditRenewalAt ??
+    (fallbackNextStartingAt ? new Date(fallbackNextStartingAt) : undefined);
+  if (!renewalAt) {
     return undefined;
   }
-  const date = new Date(nextStartingAt);
-  const floored = new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
-  );
-  const at =
-    floored.getTime() < date.getTime()
-      ? new Date(floored.getTime() + 24 * 60 * 60 * 1000)
-      : floored;
-  return { kind: "deferred", at };
+
+  // `renewalAt` is already the exact instant the allowance refreshes — no
+  // rounding needed.
+  return { kind: "deferred", at: renewalAt };
 }
 
 /**

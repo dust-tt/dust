@@ -668,6 +668,7 @@ export async function updateMembershipSeatAndTrack({
   const outcome = classifySeatChange({
     contract,
     productSeatTypes,
+    now: new Date(),
     change: {
       userId: user.sId,
       previousSeatType,
