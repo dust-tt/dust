@@ -1,5 +1,6 @@
 import { MetronomeSubscriptionPanel } from "@app/components/pages/workspace/subscription/MetronomeSubscriptionPanel";
 import { SubscriptionPlanCards } from "@app/components/plans/SubscriptionPlanCards";
+import { SubscriptionProvider } from "@app/components/workspace/billing/SubscriptionContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { PatchSubscriptionRequestBody } from "@app/lib/api/subscription";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -445,10 +446,9 @@ export function SubscriptionPage() {
             </ContentMessage>
           )}
           {useMetronomePanel ? (
-            <MetronomeSubscriptionPanel
-              owner={owner}
-              subscription={subscription}
-            />
+            <SubscriptionProvider owner={owner} subscription={subscription}>
+              <MetronomeSubscriptionPanel />
+            </SubscriptionProvider>
           ) : (
             <>
               <div>

@@ -7,7 +7,6 @@ import type {
   BillingPaymentMethod,
 } from "@app/lib/api/billing/info";
 import { useBillingInfo } from "@app/lib/swr/workspaces";
-import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   Hash01,
@@ -17,10 +16,7 @@ import {
   Spinner,
   User01,
 } from "@dust-tt/sparkle";
-
-interface BillingInformationProps {
-  owner: LightWorkspaceType;
-}
+import { useSubscriptionContext } from "./SubscriptionContext";
 
 function formatAddress(address: BillingAddress | null): string | null {
   if (!address) {
@@ -65,7 +61,8 @@ function formatPaymentMethod(
     : "Payment method";
 }
 
-export function BillingInformation({ owner }: BillingInformationProps) {
+export function BillingInformation() {
+  const { owner } = useSubscriptionContext();
   const { billingInfo, isBillingInfoLoading } = useBillingInfo({
     workspaceId: owner.sId,
   });

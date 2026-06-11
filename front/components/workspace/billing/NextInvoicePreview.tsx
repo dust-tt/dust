@@ -12,8 +12,6 @@ import {
   WORKSPACE_SEAT_PRODUCT_NAME,
 } from "@app/lib/metronome/setup_common";
 import { useMetronomeInvoiceLines } from "@app/lib/swr/workspaces";
-import type { SubscriptionType } from "@app/types/plan";
-import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   ChevronDown,
@@ -25,11 +23,7 @@ import {
 import type { ColumnDef } from "@tanstack/react-table";
 import type { ComponentType } from "react";
 import { useState } from "react";
-
-interface InvoiceSeatsPreviewProps {
-  owner: LightWorkspaceType;
-  subscription: SubscriptionType;
-}
+import { useSubscriptionContext } from "./SubscriptionContext";
 
 interface InvoiceRow {
   name: string;
@@ -172,10 +166,8 @@ function buildColumns(currency: string): ColumnDef<InvoiceRow>[] {
   ];
 }
 
-export function NextInvoicePreview({
-  owner,
-  subscription,
-}: InvoiceSeatsPreviewProps) {
+export function NextInvoicePreview() {
+  const { owner, subscription } = useSubscriptionContext();
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const { invoiceLines, isMetronomeInvoiceLinesLoading } =
