@@ -79,6 +79,7 @@ function createMockPlan(code: string): PlanType {
     },
     isByok: false,
     isAuditLogsAllowed: false,
+    isBrandedFramesAllowed: false,
   };
 }
 

@@ -67,6 +67,7 @@ import {
   type SubscriptionStatusType,
   type SubscriptionType,
 } from "@app/types/plan";
+import { SUBSCRIPTION_CACHE_KEY_VERSION } from "@app/types/shared/cache_resource_registry";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -243,7 +244,8 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
 
   private static readonly subscriptionCacheKeyResolver = (
     workspaceModelId: ModelId
-  ) => `subscription:active:workspaceId:${workspaceModelId}`;
+  ) =>
+    `subscription:active:workspaceId:${workspaceModelId}:v${SUBSCRIPTION_CACHE_KEY_VERSION}`;
 
   private static async _fetchActiveByWorkspaceModelIdUncached(
     workspaceModelId: ModelId

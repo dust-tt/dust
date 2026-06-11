@@ -44,6 +44,7 @@ export function buildCacheKeyPattern(
 }
 
 export const WORKSPACE_CACHE_KEY_VERSION = 2;
+export const SUBSCRIPTION_CACHE_KEY_VERSION = 1;
 
 export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
   {
@@ -90,8 +91,8 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) =>
-      `subscription:active:workspaceId:${p.workspaceModelId}`,
-    resolverKeyPattern: "subscription:active:workspaceId:*",
+      `subscription:active:workspaceId:${p.workspaceModelId}:v${SUBSCRIPTION_CACHE_KEY_VERSION}`,
+    resolverKeyPattern: `subscription:active:workspaceId:*:v${SUBSCRIPTION_CACHE_KEY_VERSION}`,
   },
   {
     id: "membership_role",
