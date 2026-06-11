@@ -28,6 +28,7 @@ import { BUSINESS_USD_PACKAGE_ALIAS } from "@app/lib/metronome/types";
 
 const BASE_INPUT = {
   workspaceId: "ws_test",
+  metronomeCustomerId: "cst_abc",
   contractId: "contract_abc",
   userId: "user_1",
   targetUserId: "user_2",
