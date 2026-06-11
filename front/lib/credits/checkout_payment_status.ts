@@ -13,6 +13,7 @@ export type CheckoutPaymentStatus = "pending" | "succeeded" | "failed";
 export const CheckoutPaymentSchema = z.object({
   status: z.enum(["pending", "succeeded", "failed"]),
   workspaceId: z.string(),
+  metronomeCustomerId: z.string(),
   contractId: z.string(),
   userId: z.string(),
   targetUserId: z.string(),

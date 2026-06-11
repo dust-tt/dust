@@ -17,6 +17,7 @@ import {
   addPaymentGatedCommitToContract,
   floorToHourISO,
   getMetronomeClient,
+  scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
 import {
   CURRENCY_TO_CREDIT_TYPE_ID,
@@ -249,6 +250,7 @@ export async function createPaymentGatedBusinessActivation({
   // handler can update it even if it races ahead of this function returning.
   await setCheckoutPaymentPending({
     workspaceId: workspace.sId,
+    metronomeCustomerId,
     contractId: metronomeContractId,
     userId,
     targetUserId,
@@ -606,6 +608,24 @@ export async function handleSubscriptionActivationFailure({
     errorMessage,
     invoiceId,
   });
+
+  // Ending the contract created for business activation
+  const sunsetResult = await scheduleMetronomeContractEnd({
+    metronomeCustomerId: checkoutPayment.metronomeCustomerId,
+    contractId,
+    endingBefore: new Date(floorToHourISO(new Date())),
+  });
+  if (sunsetResult.isErr()) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        metronomeCustomerId: checkoutPayment.metronomeCustomerId,
+        contractId,
+        error: sunsetResult.error.message,
+      },
+      "[Business Activation] Failed to schedule temporary business plan on activation failure."
+    );
+  }
 
   logger.warn(
     {
