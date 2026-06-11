@@ -102,6 +102,18 @@ export async function validateAction(
     );
   }
 
+  // A blocked action is only actionable while its agent message can still resume: resolving one
+  // left behind by an interrupted, cancelled or failed message (e.g. through a stale approval
+  // link) would relaunch an agent loop that was already terminated.
+  if (await action.isAgentMessageUnresumable(auth)) {
+    return new Err(
+      new DustError(
+        "action_not_blocked",
+        "Action belongs to an agent message that can no longer resume"
+      )
+    );
+  }
+
   const [updatedCount] = await action.updateStatus(
     getMCPApprovalStateFromUserApprovalState(approvalState)
   );

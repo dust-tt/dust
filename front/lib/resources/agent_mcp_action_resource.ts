@@ -753,18 +753,18 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   /**
    * Denies the given actions, guarded on them still being in a blocked status so a concurrent
-   * approval (which flips the action to a ready status) is not clobbered. Returns the number of
-   * actions actually denied.
+   * approval (which flips the action to a ready status) is not clobbered. Returns the ids of
+   * the actions actually denied.
    */
   static async denyIfStillBlocked(
     auth: Authenticator,
     { actionModelIds }: { actionModelIds: ModelId[] }
-  ): Promise<number> {
+  ): Promise<ModelId[]> {
     if (actionModelIds.length === 0) {
-      return 0;
+      return [];
     }
 
-    const [affectedCount] = await AgentMCPActionModel.update(
+    const [, affectedRows] = await AgentMCPActionModel.update(
       { status: "denied" },
       {
         where: {
@@ -772,10 +772,31 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           workspaceId: auth.getNonNullableWorkspace().id,
           status: { [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES },
         },
+        returning: true,
       }
     );
 
-    return affectedCount;
+    return affectedRows.map((row) => row.id);
+  }
+
+  /**
+   * Whether the agent message owning this action reached a terminal status from which it can
+   * never resume. Resolving a blocked action of such a message (approving, denying, answering,
+   * retrying) would relaunch an agent loop that was already terminated.
+   */
+  async isAgentMessageUnresumable(auth: Authenticator): Promise<boolean> {
+    const agentMessage = await AgentMessageModel.findOne({
+      attributes: ["status"],
+      where: {
+        id: this.agentMessageId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+
+    return (
+      agentMessage !== null &&
+      UNRESUMABLE_AGENT_MESSAGE_STATUSES.includes(agentMessage.status)
+    );
   }
 
   /**

@@ -3215,16 +3215,6 @@ export async function updateAgentMessageWithFinalStatus(
     };
   });
 
-  // The agent message will never resume: tools still waiting on user input (e.g. a manual
-  // approval that the user skipped by interrupting the message) will never run. Resolve them so
-  // the conversation doesn't stay flagged as requiring an action in the inbox.
-  if (UNRESUMABLE_AGENT_MESSAGE_STATUSES.includes(status)) {
-    await resolveBlockedActionsForTerminatedMessage(auth, {
-      conversation,
-      agentMessage,
-    });
-  }
-
   // Publish events and launch agent loop outside of the advisory lock.
   if (promotedUserMessages.length > 0) {
     for (const userMsg of promotedUserMessages) {
@@ -3266,6 +3256,18 @@ export async function updateAgentMessageWithFinalStatus(
       agentMessages: [newAgentMessage],
       conversation,
       userMessage: promotedUserMessages[promotedUserMessages.length - 1],
+    });
+  }
+
+  // The agent message will never resume: tools still waiting on user input (e.g. a manual
+  // approval that the user skipped by interrupting the message) will never run. Resolve them so
+  // the conversation doesn't stay flagged as requiring an action in the inbox. Runs last so a
+  // cleanup failure cannot strand the promoted messages above (the cleanup itself is
+  // idempotent, so an activity retry converges).
+  if (UNRESUMABLE_AGENT_MESSAGE_STATUSES.includes(status)) {
+    await resolveBlockedActionsForTerminatedMessage(auth, {
+      conversation,
+      agentMessage,
     });
   }
 

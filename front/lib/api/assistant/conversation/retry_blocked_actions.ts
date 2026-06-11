@@ -73,6 +73,13 @@ async function findUserMessageForRetry(
     return new Err(new Error("No blocked actions found"));
   }
 
+  // Blocked actions of a message that can no longer resume (interrupted, cancelled, failed) are
+  // stale leftovers: retrying them would relaunch an agent loop that was already terminated. All
+  // blocked actions belong to the same agent message, so checking the first one is enough.
+  if (await blockedActions[0].isAgentMessageUnresumable(auth)) {
+    return new Err(new Error("Agent message can no longer resume"));
+  }
+
   // Purge blocked actions event message from the stream:
   // - remove tool_approve_execution events (watch out as those events are not republished).
   // - remove tool_personal_auth_required events.

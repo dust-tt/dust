@@ -15,7 +15,9 @@ import {
   clearActionRequiredIfNoBlockedActions,
   resolveBlockedActionsForTerminatedMessage,
 } from "@app/lib/api/assistant/conversation/blocked_actions";
+import { validateAction } from "@app/lib/api/assistant/conversation/validate_actions";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
@@ -152,9 +154,13 @@ describe("blocked actions resolution", () => {
       expect(await getActionRequired()).toBe(true);
     });
 
-    it("is a no-op when the message has no blocked action", async () => {
+    it("still clears a stale actionRequired flag when no blocked action remains", async () => {
       const { messageRow, agentMessageRowId } =
         await createAgentMessageAtRank(1);
+
+      // Simulate a partial previous run: blocked actions already denied, but the run failed
+      // before clearing the flag. A retry must converge.
+      await ConversationResource.markAsActionRequired(auth, { conversation });
 
       await resolveBlockedActionsForTerminatedMessage(auth, {
         conversation,
@@ -165,6 +171,100 @@ describe("blocked actions resolution", () => {
       });
 
       expect(removeEventMock).not.toHaveBeenCalled();
+      expect(await getActionRequired()).toBe(false);
+    });
+
+    it("denies non-approval blocked actions and purges all blocked-action events", async () => {
+      const { messageRow, agentMessageRowId } =
+        await createAgentMessageAtRank(1);
+      const { action } = await AgentMCPActionFactory.create({
+        workspace,
+        conversationId: conversation.id,
+        agentMessageId: agentMessageRowId,
+        status: "blocked_authentication_required",
+      });
+
+      await resolveBlockedActionsForTerminatedMessage(auth, {
+        conversation,
+        agentMessage: {
+          agentMessageId: agentMessageRowId,
+          sId: messageRow.sId,
+        },
+      });
+
+      await action.reload();
+      expect(action.status).toBe("denied");
+
+      // The removal predicate matches every blocked-action event type of the denied action,
+      // not only approval events.
+      const [predicate, channel] = removeEventMock.mock.calls[0];
+      expect(channel).toContain(messageRow.sId);
+
+      const actionId = AgentMCPActionResource.modelIdToSId({
+        id: action.id,
+        workspaceId: workspace.id,
+      });
+      const makeEvent = (type: string, eventActionId: string) => ({
+        message: {
+          payload: JSON.stringify({ type, actionId: eventActionId }),
+        },
+      });
+      expect(
+        predicate(makeEvent("tool_personal_auth_required", actionId))
+      ).toBe(true);
+      expect(predicate(makeEvent("tool_ask_user_question", actionId))).toBe(
+        true
+      );
+      expect(predicate(makeEvent("tool_approve_execution", actionId))).toBe(
+        true
+      );
+      expect(
+        predicate(makeEvent("tool_approve_execution", "other_action_id"))
+      ).toBe(false);
+    });
+  });
+
+  describe("validateAction", () => {
+    it("rejects resolving an action whose agent message can no longer resume", async () => {
+      const { messageRow, agentMessageRowId } =
+        await createAgentMessageAtRank(1);
+      const { action } = await AgentMCPActionFactory.create({
+        workspace,
+        conversationId: conversation.id,
+        agentMessageId: agentMessageRowId,
+      });
+
+      // Legacy stuck conversation: the message was interrupted while its blocked action was
+      // left pending. A stale approval (e.g. an old email link) must not resume the loop.
+      await ConversationFactory.setAgentMessageStatus({
+        workspace,
+        agentMessageModelId: agentMessageRowId,
+        status: "interrupted",
+      });
+
+      const conversationResource = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      expect(conversationResource).not.toBeNull();
+
+      const result = await validateAction(auth, conversationResource!, {
+        actionId: AgentMCPActionResource.modelIdToSId({
+          id: action.id,
+          workspaceId: workspace.id,
+        }),
+        approvalState: "approved",
+        messageId: messageRow.sId,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe("action_not_blocked");
+      }
+
+      // The action was not transitioned.
+      await action.reload();
+      expect(action.status).toBe("blocked_validation_required");
     });
   });
 
