@@ -247,7 +247,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable Metronome usage event emission (llm_usage, tool_use) for this workspace.",
     stage: "dust_only",
   },
-plan_mode: {
+  plan_mode: {
     description:
       "Enable the Plan Mode skill: agents maintain a live plan.md for non-trivial tasks, with an optional human-approval checkpoint.",
     stage: "dust_only",
