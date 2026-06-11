@@ -231,7 +231,7 @@ export async function handleBase64Upload(
 
     const resource: ToolGeneratedFileType = {
       mimeType: TOOL_GENERATED_FILE_MIME_TYPE,
-      uri: `file://${uploadResult.value.id}`,
+      uri: `file://${uploadResult.value.sId}`,
       fileId: uploadResult.value.sId,
       title: fileName,
       contentType: resourceInfo.contentType,
