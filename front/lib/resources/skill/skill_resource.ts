@@ -2467,8 +2467,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<void> {
     assert(this.canWrite(auth), "User is not authorized to update this skill");
 
-    // Snapshot the previous name before updating to detect a rename below.
+    // Snapshot the previous name and icon before updating to detect changes below.
     const previousName = this.name;
+    const previousIcon = this.icon;
     const previousStatus = this.status;
 
     await withTransaction(async (transaction) => {
@@ -2521,7 +2522,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         );
       }
 
-      if (name !== previousName || requestedSpaceIdsChanged || statusChanged) {
+      if (
+        name !== previousName ||
+        icon !== previousIcon ||
+        requestedSpaceIdsChanged ||
+        statusChanged
+      ) {
         await this.propagateReferenceUpdatesToParentSkills(
           auth,
           {
