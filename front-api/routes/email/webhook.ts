@@ -15,6 +15,7 @@ import {
   parseSendgridWebhookContent,
   relayEmailToOtherRegion,
   replyToError,
+  resolveRelayedErrorReply,
   shouldRelayToOtherRegion,
 } from "@app/lib/api/assistant/email/webhook_helpers";
 import {
@@ -182,7 +183,9 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
       });
       if (userRes.isErr()) {
         if (shouldRelayToOtherRegion({ headers, error: userRes.error })) {
-          const relayRes = await relayEmailToOtherRegion(email);
+          const relayRes = await relayEmailToOtherRegion(email, {
+            sourceError: userRes.error,
+          });
           if (relayRes.isOk()) {
             return;
           }
@@ -196,7 +199,14 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
             "[email] Failed to relay inbound email to other region"
           );
         }
-        await replyToError(email, userRes.error);
+        await replyToError(
+          email,
+          resolveRelayedErrorReply({
+            headers,
+            localError: userRes.error,
+            senderEmail: email.sender.email,
+          })
+        );
         return;
       }
 

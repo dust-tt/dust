@@ -250,6 +250,39 @@ export type EmailTriggerError = {
 export const EMAIL_BLACKLISTED_AGENT_IDS_METADATA_KEY =
   "emailBlacklistedAgentIds";
 
+// Error factories shared between the local lookup and the cross-region relay
+// reply resolution, so both paths reply with the same message for a given type.
+export function makeUserNotFoundEmailTriggerError(
+  email: string
+): EmailTriggerError {
+  return {
+    type: "user_not_found",
+    message:
+      `Failed to match a valid Dust user for email: ${email}. ` +
+      `Please sign up for Dust at https://dust.tt to interact with assistants over email.`,
+  };
+}
+
+export function makeWorkspaceNotFoundEmailTriggerError(
+  email: string
+): EmailTriggerError {
+  return {
+    type: "workspace_not_found",
+    message:
+      `Failed to match a valid Dust workspace associated with email: ${email}. ` +
+      `Please sign up for Dust at https://dust.tt to interact with agents over email.`,
+  };
+}
+
+export function makeEmailAgentsDisabledEmailTriggerError(): EmailTriggerError {
+  return {
+    type: "email_agents_disabled",
+    message:
+      "Email agents are disabled for all workspaces associated with your email. " +
+      "Ask a workspace admin to enable Email Agents in workspace settings before interacting with agents over email.",
+  };
+}
+
 function normalizeEmailAddress(email: string): string {
   return email.trim().toLowerCase();
 }
@@ -478,12 +511,7 @@ export async function userAndWorkspaceFromEmail({
   const user = await UserResource.fetchByEmail(email);
 
   if (!user) {
-    return new Err({
-      type: "user_not_found",
-      message:
-        `Failed to match a valid Dust user for email: ${email}. ` +
-        `Please sign up for Dust at https://dust.tt to interact with assistants over email.`,
-    });
+    return new Err(makeUserNotFoundEmailTriggerError(email));
   }
   const workspaceModels = await WorkspaceModel.findAll({
     include: [
@@ -501,12 +529,7 @@ export async function userAndWorkspaceFromEmail({
   });
 
   if (workspaceModels.length === 0) {
-    return new Err({
-      type: "workspace_not_found",
-      message:
-        `Failed to match a valid Dust workspace associated with email: ${email}. ` +
-        `Please sign up for Dust at https://dust.tt to interact with agents over email.`,
-    });
+    return new Err(makeWorkspaceNotFoundEmailTriggerError(email));
   }
 
   const eligibleWorkspaceModels = workspaceModels.filter(
@@ -516,13 +539,10 @@ export async function userAndWorkspaceFromEmail({
   );
 
   if (eligibleWorkspaceModels.length === 0) {
-    // The user exists locally, so this should not use a relay-eligible error type.
-    return new Err({
-      type: "email_agents_disabled",
-      message:
-        "Email agents are disabled for all workspaces associated with your email. " +
-        "Ask a workspace admin to enable Email Agents in workspace settings before interacting with agents over email.",
-    });
+    // The user exists locally without an enabled workspace, but they may have an
+    // enabled workspace in the other region: the error is relay-eligible and the
+    // relayed region resolves the final reply (see resolveRelayedErrorReply).
+    return new Err(makeEmailAgentsDisabledEmailTriggerError());
   }
 
   // Pick the best workspace: prefer priority workspaces, then paying plans,

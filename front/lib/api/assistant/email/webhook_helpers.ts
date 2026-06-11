@@ -3,7 +3,12 @@ import type {
   EmailTriggerError,
   InboundEmail,
 } from "@app/lib/api/assistant/email/email_trigger";
-import { replyToEmail } from "@app/lib/api/assistant/email/email_trigger";
+import {
+  makeEmailAgentsDisabledEmailTriggerError,
+  makeUserNotFoundEmailTriggerError,
+  makeWorkspaceNotFoundEmailTriggerError,
+  replyToEmail,
+} from "@app/lib/api/assistant/email/email_trigger";
 import {
   extractEmailAddressesFromHeader,
   extractSingleEmailAddressFromHeader,
@@ -20,6 +25,7 @@ import logger from "@app/logger/logger";
 import { isSupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { IncomingForm } from "formidable";
@@ -34,6 +40,8 @@ export type EmailWebhookHeaders = Record<string, string | string[] | undefined>;
 export const EMAIL_WEBHOOK_RELAY_HEADER = "x-dust-email-webhook-relayed";
 export const EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER =
   "x-dust-email-webhook-source-region";
+export const EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER =
+  "x-dust-email-webhook-source-error";
 export const EMAIL_WEBHOOK_RELAY_HEADER_VALUE = "1";
 
 export function isRelayedWebhookRequest(headers: EmailWebhookHeaders): boolean {
@@ -42,10 +50,22 @@ export function isRelayedWebhookRequest(headers: EmailWebhookHeaders): boolean {
   );
 }
 
+const RELAY_ELIGIBLE_ERROR_TYPES = [
+  "user_not_found",
+  "workspace_not_found",
+  "email_agents_disabled",
+] as const;
+
+type RelayEligibleErrorType = (typeof RELAY_ELIGIBLE_ERROR_TYPES)[number];
+
+function isRelayEligibleErrorType(
+  value: string
+): value is RelayEligibleErrorType {
+  return RELAY_ELIGIBLE_ERROR_TYPES.some((type) => type === value);
+}
+
 function isRelayEligibleError(error: EmailTriggerError): boolean {
-  return (
-    error.type === "user_not_found" || error.type === "workspace_not_found"
-  );
+  return isRelayEligibleErrorType(error.type);
 }
 
 export function shouldRelayToOtherRegion({
@@ -56,6 +76,60 @@ export function shouldRelayToOtherRegion({
   error: EmailTriggerError;
 }): boolean {
   return isRelayEligibleError(error) && !isRelayedWebhookRequest(headers);
+}
+
+// Ordered from least to most informative: a user unknown in one region may still
+// exist in the other, and a user without an enabled workspace in one region may
+// still have one in the other.
+const RELAY_ERROR_INFORMATIVENESS: Record<RelayEligibleErrorType, number> = {
+  user_not_found: 0,
+  workspace_not_found: 1,
+  email_agents_disabled: 2,
+};
+
+/**
+ * On a relayed request, both regions' lookups have failed and the relayed region
+ * sends the error reply. The source region's error type (forwarded via header) may
+ * be more informative than the local one — e.g. the sender has a real account with
+ * Email Agents disabled in the source region but no account locally; replying with
+ * the local `user_not_found` ("please sign up") would be wrong.
+ */
+export function resolveRelayedErrorReply({
+  headers,
+  localError,
+  senderEmail,
+}: {
+  headers: EmailWebhookHeaders;
+  localError: EmailTriggerError;
+  senderEmail: string;
+}): EmailTriggerError {
+  if (!isRelayedWebhookRequest(headers)) {
+    return localError;
+  }
+
+  const sourceErrorType = headers[EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER];
+  if (
+    !isString(sourceErrorType) ||
+    !isRelayEligibleErrorType(sourceErrorType) ||
+    !isRelayEligibleErrorType(localError.type) ||
+    RELAY_ERROR_INFORMATIVENESS[sourceErrorType] <=
+      RELAY_ERROR_INFORMATIVENESS[localError.type]
+  ) {
+    return localError;
+  }
+
+  switch (sourceErrorType) {
+    // Unreachable given the informativeness check above (rank 0 is never strictly
+    // greater), kept for exhaustiveness.
+    case "user_not_found":
+      return makeUserNotFoundEmailTriggerError(senderEmail);
+    case "workspace_not_found":
+      return makeWorkspaceNotFoundEmailTriggerError(senderEmail);
+    case "email_agents_disabled":
+      return makeEmailAgentsDisabledEmailTriggerError();
+    default:
+      return assertNever(sourceErrorType);
+  }
 }
 
 export function hasValidSendgridAuthorization(
@@ -91,7 +165,8 @@ export function hasValidRelayAuthorization(
 }
 
 export async function relayEmailToOtherRegion(
-  email: InboundEmail
+  email: InboundEmail,
+  { sourceError }: { sourceError: EmailTriggerError }
 ): Promise<Result<void, Error>> {
   try {
     const { url, name } = regionsConfig.getOtherRegionInfo();
@@ -124,6 +199,7 @@ export async function relayEmailToOtherRegion(
         [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
         [EMAIL_WEBHOOK_RELAY_SOURCE_REGION_HEADER]:
           regionsConfig.getCurrentRegion(),
+        [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: sourceError.type,
       },
       body: formData,
     });
