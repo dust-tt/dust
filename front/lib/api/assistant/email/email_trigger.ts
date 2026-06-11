@@ -763,15 +763,18 @@ export async function splitThreadContent(content: string) {
       firstSeparatorIndex = match.index;
     }
   }
-  const conversationIdMatch = content.match(DUST_CONVERSATION_URL_REGEX);
-  const conversationId = conversationIdMatch ? conversationIdMatch[1] : null;
-
   const newMessage =
     firstSeparatorIndex > -1
       ? content.slice(0, firstSeparatorIndex).trim()
       : content.trim();
   const thread =
     firstSeparatorIndex > -1 ? content.slice(firstSeparatorIndex).trim() : "";
+
+  // Only look for a conversation link in the quoted thread: a link in the fresh part of the
+  // message is a reference the user is making, not a sign this email continues a conversation.
+  const conversationIdMatch = thread.match(DUST_CONVERSATION_URL_REGEX);
+  const conversationId = conversationIdMatch ? conversationIdMatch[1] : null;
+
   return { userMessage: newMessage, restOfThread: thread, conversationId };
 }
 

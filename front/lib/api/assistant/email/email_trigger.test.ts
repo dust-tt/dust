@@ -226,18 +226,13 @@ describe("buildReplyThreadingHeaders", () => {
 });
 
 describe("splitThreadContent", () => {
-  it("extracts the conversation id from the current agent reply footer link", async () => {
+  it("extracts the conversation id from a forwarded agent reply", async () => {
     const { conversationId } = await splitThreadContent(
-      "Thanks!\n\nAnswered by agent · View full conversation " +
-        "<https://dust.tt/w/workspace1/conversation/abc123XYZ0>"
-    );
-
-    expect(conversationId).toBe("abc123XYZ0");
-  });
-
-  it("extracts the conversation id from a bare URL", async () => {
-    const { conversationId } = await splitThreadContent(
-      "See https://dust.tt/w/workspace1/conversation/abc123XYZ0 for details."
+      "Follow up on this please.\n" +
+        "\n" +
+        "---------- Forwarded message ----------\n" +
+        "Answered by agent · View full conversation\n" +
+        "https://dust.tt/w/workspace1/conversation/abc123XYZ0\n"
     );
 
     expect(conversationId).toBe("abc123XYZ0");
@@ -245,10 +240,21 @@ describe("splitThreadContent", () => {
 
   it("extracts the conversation id from legacy assistant links", async () => {
     const { conversationId } = await splitThreadContent(
-      "Open in Dust <https://dust.tt/w/workspace1/assistant/abc123XYZ0>"
+      "Thanks!\n" +
+        "\n" +
+        "---------- Forwarded message ----------\n" +
+        "Open in Dust <https://dust.tt/w/workspace1/assistant/abc123XYZ0>\n"
     );
 
     expect(conversationId).toBe("abc123XYZ0");
+  });
+
+  it("ignores conversation links outside the quoted thread", async () => {
+    const { conversationId } = await splitThreadContent(
+      "Can you summarize https://dust.tt/w/workspace1/conversation/abc123XYZ0?"
+    );
+
+    expect(conversationId).toBeNull();
   });
 
   it("returns null when no conversation link is present", async () => {
