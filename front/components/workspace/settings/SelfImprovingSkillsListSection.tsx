@@ -1,3 +1,7 @@
+import {
+  capUnitLabel,
+  normalizeCapInput,
+} from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
 import { formatCredits } from "@app/lib/client/credits";
 import type { ReinforcementBillingUnit } from "@app/lib/reinforcement/enforcement";
 import { getSkillAvatarIcon } from "@app/lib/skill";
@@ -17,7 +21,7 @@ import type {
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   DataTable,
-  Input,
+  InputWithSave,
   Page,
   SearchInput,
   SliderToggle,
@@ -51,13 +55,12 @@ type RowData = {
   isLockUpdating: boolean;
   currentSpent: number;
   currentSpentFormatted: string;
-  capInputValue: string;
+  // Saved cap in the display unit, "" when using the workspace default.
+  savedCapValue: string;
   capPlaceholder: string;
-  isCapUpdating: boolean;
   onToggleEnabled: () => void;
   onToggleLock: () => void;
-  onCapChange: (value: string) => void;
-  onCapCommit: () => void;
+  onCapSave: (value: string) => Promise<void>;
   onClick?: () => void;
 };
 
@@ -159,36 +162,25 @@ function getColumns(
     },
     {
       header: headerWithUnit("Cap"),
-      accessorKey: "capInputValue",
+      accessorKey: "savedCapValue",
       cell: (info: CellContext<RowData, unknown>) => {
-        const {
-          sId,
-          capInputValue,
-          capPlaceholder,
-          isCapUpdating,
-          onCapChange,
-          onCapCommit,
-        } = info.row.original;
+        const { sId, savedCapValue, capPlaceholder, onCapSave } =
+          info.row.original;
         return (
           <DataTable.CellContent>
-            <Input
+            <InputWithSave
               name={`cap-${sId}`}
-              value={capInputValue}
+              inputMode={unit === "awu_credits" ? "numeric" : "decimal"}
+              value={savedCapValue}
               placeholder={capPlaceholder}
-              disabled={isCapUpdating}
-              onChange={(e) => onCapChange(e.target.value)}
-              onBlur={onCapCommit}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  onCapCommit();
-                }
-              }}
+              unit={capUnitLabel(unit)}
+              normalizeValue={(value) => normalizeCapInput(value, unit)}
+              onSave={onCapSave}
             />
           </DataTable.CellContent>
         );
       },
-      meta: { className: "w-32" },
+      meta: { className: unit === "awu_credits" ? "w-48" : "w-40" },
     },
     {
       header: "Lock State",
@@ -292,12 +284,6 @@ export function SelfImprovingSkillsListSection({
   const [lockUpdatingBySkillId, setLockUpdatingBySkillId] = useState<
     Record<string, boolean>
   >({});
-  const [capInputBySkillId, setCapInputBySkillId] = useState<
-    Record<string, string>
-  >({});
-  const [capUpdatingBySkillId, setCapUpdatingBySkillId] = useState<
-    Record<string, boolean>
-  >({});
 
   const handleToggleEnabled = useCallback(
     async (skillId: string, currentEnabled: boolean) => {
@@ -343,14 +329,10 @@ export function SelfImprovingSkillsListSection({
   );
 
   // `savedCap` is the skill's saved cap in the display unit (null when using
-  // the workspace default).
-  const handleCapCommit = useCallback(
-    async (skillId: string, savedCap: number | null) => {
-      const inputValue = capInputBySkillId[skillId];
-      if (inputValue === undefined) {
-        return;
-      }
-
+  // the workspace default). Throws on failed updates so InputWithSave stays
+  // in editing mode (the SWR hook already sent the error notification).
+  const handleCapSave = useCallback(
+    async (skillId: string, savedCap: number | null, newValue: string) => {
       const capUpdate = (value: number | null) =>
         unit === "awu_credits"
           ? {
@@ -362,43 +344,36 @@ export function SelfImprovingSkillsListSection({
                 value === null ? null : dollarsToMicroUsd(value),
             };
 
-      const trimmed = inputValue.trim();
+      const trimmed = newValue.trim();
 
       // Empty input resets to default (null).
       if (trimmed === "") {
         if (savedCap === null) {
-          // Already using default — just drop the local override.
-          setCapInputBySkillId((prev) => withoutSkill(prev, skillId));
+          // Already using default.
           return;
         }
-        setCapUpdatingBySkillId((prev) => ({ ...prev, [skillId]: true }));
         const ok = await updateSkillReinforcement(skillId, capUpdate(null));
-        setCapUpdatingBySkillId((prev) => withoutSkill(prev, skillId));
-        if (ok) {
-          setCapInputBySkillId((prev) => withoutSkill(prev, skillId));
+        if (!ok) {
+          throw new Error("Failed to reset the per-skill cap");
         }
         return;
       }
 
       const parsed = Number(trimmed);
-      const isInvalid = !Number.isFinite(parsed) || parsed < 0;
-      const isUnchanged = savedCap !== null && parsed === savedCap;
-      if (isInvalid || isUnchanged) {
-        // Drop the local input override so the field falls back to the server value.
-        setCapInputBySkillId((prev) => withoutSkill(prev, skillId));
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        // Let the field revert to the server value.
+        return;
+      }
+      if (savedCap !== null && parsed === savedCap) {
         return;
       }
 
-      setCapUpdatingBySkillId((prev) => ({ ...prev, [skillId]: true }));
       const ok = await updateSkillReinforcement(skillId, capUpdate(parsed));
-      setCapUpdatingBySkillId((prev) => withoutSkill(prev, skillId));
-
-      if (ok) {
-        // Drop the local override so the row reflects the freshly-mutated server value.
-        setCapInputBySkillId((prev) => withoutSkill(prev, skillId));
+      if (!ok) {
+        throw new Error("Failed to update the per-skill cap");
       }
     },
-    [capInputBySkillId, updateSkillReinforcement, unit]
+    [updateSkillReinforcement, unit]
   );
 
   const [filter, setFilter] = useState("");
@@ -438,9 +413,6 @@ export function SelfImprovingSkillsListSection({
               : skill.selfImprovementCostsCapMicroUsd !== null
                 ? microUsdToDollars(skill.selfImprovementCostsCapMicroUsd)
                 : null;
-          const capInput =
-            capInputBySkillId[skill.sId] ??
-            (savedCap !== null ? capInputValueFromSaved(savedCap, unit) : "");
           const currentSpent = spentBySkillId[skill.sId] ?? 0;
 
           return {
@@ -457,21 +429,17 @@ export function SelfImprovingSkillsListSection({
             isLockUpdating: lockUpdatingBySkillId[skill.sId] ?? false,
             currentSpent,
             currentSpentFormatted: formatSpend(currentSpent, unit),
-            capInputValue: capInput,
+            savedCapValue:
+              savedCap !== null ? capInputValueFromSaved(savedCap, unit) : "",
             capPlaceholder: defaultCapPlaceholder,
-            isCapUpdating: capUpdatingBySkillId[skill.sId] ?? false,
             onToggleEnabled: () => {
               void handleToggleEnabled(skill.sId, enabled);
             },
             onToggleLock: () => {
               void handleToggleLock(skill.sId, lock);
             },
-            onCapChange: (value: string) => {
-              setCapInputBySkillId((prev) => ({ ...prev, [skill.sId]: value }));
-            },
-            onCapCommit: () => {
-              void handleCapCommit(skill.sId, savedCap);
-            },
+            onCapSave: (value: string) =>
+              handleCapSave(skill.sId, savedCap, value),
           };
         }
       ),
@@ -482,13 +450,11 @@ export function SelfImprovingSkillsListSection({
       enabledUpdatingBySkillId,
       pendingLockBySkillId,
       lockUpdatingBySkillId,
-      capInputBySkillId,
-      capUpdatingBySkillId,
       spentBySkillId,
       unit,
       handleToggleEnabled,
       handleToggleLock,
-      handleCapCommit,
+      handleCapSave,
     ]
   );
 
