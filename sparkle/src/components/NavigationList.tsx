@@ -136,7 +136,8 @@ const NavigationListItem = React.forwardRef<
               "s-items-center s-outline-none s-rounded-lg s-text-sm s-p-2 s-transition-colors",
               "data-[disabled]:s-pointer-events-none",
               "hover:s-bg-sidebar-foreground dark:hover:s-bg-sidebar-foreground-night",
-              selected && "s-bg-sidebar-foreground dark:s-bg-sidebar-foreground-night",
+              selected &&
+                "s-bg-sidebar-foreground dark:s-bg-sidebar-foreground-night",
               disabled && "s-pointer-events-none s-cursor-default s-opacity-50"
             )}
           >
