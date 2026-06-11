@@ -6,7 +6,10 @@ import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { ConsumptionProgressBarWithNumbers } from "@app/components/pages/workspace/developers/ConsumptionProgressBar";
+import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
+import type { ReinforcementBillingUnit } from "@app/lib/reinforcement/enforcement";
 import {
+  useReinforcementBillingUnit,
   useSelfImprovingDailySpend,
   useSkillsSelfImprovingSpend,
 } from "@app/lib/swr/useSelfImprovingSkillsSettings";
@@ -42,17 +45,26 @@ const DISPLAY_MODE_OPTIONS: { value: DisplayMode; label: string }[] = [
 
 const ANIMATION_DURATION_MS = 1500;
 
+// All amounts are in the display unit: AWU credits for workspaces billed by
+// Metronome, dollars otherwise.
 type ChartDataPoint = {
   date: string;
   timestamp: number;
-  spendMicroUsd?: number;
-  predictionMicroUsd?: number;
-  capMicroUsd?: number;
+  spend?: number;
+  prediction?: number;
+  cap?: number;
 };
+
+function formatAmount(value: number, unit: ReinforcementBillingUnit): string {
+  return unit === "awu_credits"
+    ? `${formatCredits(value)} credits`
+    : `$${value.toFixed(2)}`;
+}
 
 function SpendTooltip(
   props: TooltipContentProps<number, string>,
-  displayMode: DisplayMode
+  displayMode: DisplayMode,
+  unit: ReinforcementBillingUnit
 ): JSX.Element | null {
   const { active, payload } = props;
   if (!active || !payload || payload.length === 0) {
@@ -71,26 +83,26 @@ function SpendTooltip(
 
   const rows: { label: string; value: string; colorClassName: string }[] = [];
 
-  if (data.spendMicroUsd !== undefined) {
+  if (data.spend !== undefined) {
     rows.push({
       label: displayMode === "cumulative" ? "Total spent" : "Daily spend",
-      value: `$${(data.spendMicroUsd / 1_000_000).toFixed(2)}`,
+      value: formatAmount(data.spend, unit),
       colorClassName: COST_PALETTE.costMicroUsd,
     });
   }
 
-  if (data.predictionMicroUsd !== undefined) {
+  if (data.prediction !== undefined) {
     rows.push({
       label: "Projected",
-      value: `$${(data.predictionMicroUsd / 1_000_000).toFixed(2)}`,
+      value: formatAmount(data.prediction, unit),
       colorClassName: COST_PALETTE.costMicroUsd,
     });
   }
 
-  if (data.capMicroUsd !== undefined) {
+  if (data.cap !== undefined) {
     rows.push({
       label: "Monthly cap",
-      value: `$${(data.capMicroUsd / 1_000_000).toFixed(2)}`,
+      value: formatAmount(data.cap, unit),
       colorClassName: COST_PALETTE.totalCredits,
     });
   }
@@ -104,17 +116,21 @@ function SpendTooltip(
 
 interface SelfImprovingSpendChartProps {
   owner: LightWorkspaceType;
-  capMicroUsd: number;
+  // Cap is in the display unit.
+  cap: number;
+  unit: ReinforcementBillingUnit;
 }
 
 function SelfImprovingSpendChart({
   owner,
-  capMicroUsd,
+  cap,
+  unit,
 }: SelfImprovingSpendChartProps) {
   const [displayMode, setDisplayMode] = useState<DisplayMode>("cumulative");
 
   const {
     dailySpendMicroUsd,
+    dailySpendAwuCredits,
     periodStartDate,
     periodEndDate,
     isDailySpendLoading,
@@ -131,21 +147,23 @@ function SelfImprovingSpendChart({
     const today = new Date();
     const effectiveEnd = end < today ? end : today;
 
-    // Build actual data points up to today.
+    // Build actual data points up to today, in the display unit.
     const points: ChartDataPoint[] = [];
     let cumulativeSpend = 0;
     const current = new Date(start);
 
     while (current < effectiveEnd) {
       const dateStr = current.toISOString().slice(0, 10);
-      const daySpend = dailySpendMicroUsd[dateStr] ?? 0;
+      const daySpend =
+        unit === "awu_credits"
+          ? (dailySpendAwuCredits[dateStr] ?? 0)
+          : (dailySpendMicroUsd[dateStr] ?? 0) / 1_000_000;
       cumulativeSpend += daySpend;
 
       points.push({
         date: dateStr,
         timestamp: current.getTime(),
-        spendMicroUsd:
-          displayMode === "cumulative" ? cumulativeSpend : daySpend,
+        spend: displayMode === "cumulative" ? cumulativeSpend : daySpend,
       });
 
       current.setUTCDate(current.getUTCDate() + 1);
@@ -158,7 +176,7 @@ function SelfImprovingSpendChart({
 
       if (displayMode === "cumulative") {
         // Anchor the prediction at the last actual point.
-        points[points.length - 1].predictionMicroUsd = cumulativeSpend;
+        points[points.length - 1].prediction = cumulativeSpend;
       }
 
       let projectedSpend = cumulativeSpend;
@@ -173,10 +191,10 @@ function SelfImprovingSpendChart({
         };
 
         if (displayMode === "cumulative") {
-          point.predictionMicroUsd = projectedSpend;
+          point.prediction = projectedSpend;
         } else {
           // Show future days as zero bars.
-          point.spendMicroUsd = 0;
+          point.spend = 0;
         }
 
         points.push(point);
@@ -185,26 +203,28 @@ function SelfImprovingSpendChart({
     }
 
     // In cumulative mode, add the cap as a flat reference line.
-    if (displayMode === "cumulative" && capMicroUsd > 0) {
+    if (displayMode === "cumulative" && cap > 0) {
       for (const point of points) {
-        point.capMicroUsd = capMicroUsd;
+        point.cap = cap;
       }
     }
 
     return points;
   }, [
     dailySpendMicroUsd,
+    dailySpendAwuCredits,
+    unit,
     periodStartDate,
     periodEndDate,
     displayMode,
-    capMicroUsd,
+    cap,
   ]);
 
   const ChartComponent = displayMode === "daily" ? BarChart : LineChart;
 
   const hasPrediction =
     displayMode === "cumulative" &&
-    chartData.some((p) => p.predictionMicroUsd !== undefined);
+    chartData.some((p) => p.prediction !== undefined);
 
   const legendItems: LegendItem[] = useMemo(() => {
     const items: LegendItem[] = [
@@ -216,7 +236,7 @@ function SelfImprovingSpendChart({
         isActive: true,
       },
     ];
-    if (displayMode === "cumulative" && capMicroUsd > 0) {
+    if (displayMode === "cumulative" && cap > 0) {
       items.push({
         key: "cap",
         label: "Monthly cap",
@@ -225,7 +245,7 @@ function SelfImprovingSpendChart({
       });
     }
     return items;
-  }, [displayMode, capMicroUsd]);
+  }, [displayMode, cap]);
 
   return (
     <ChartContainer
@@ -292,11 +312,15 @@ function SelfImprovingSpendChart({
           tickLine={false}
           axisLine={false}
           tickMargin={8}
-          tickFormatter={(value) => `$${(value / 1_000_000).toFixed(0)}`}
+          tickFormatter={(value) =>
+            unit === "awu_credits"
+              ? formatCreditsCompact(value)
+              : `$${value.toFixed(0)}`
+          }
         />
         <Tooltip
           content={(props: TooltipContentProps<number, string>) =>
-            SpendTooltip(props, displayMode)
+            SpendTooltip(props, displayMode, unit)
           }
           cursor={false}
           wrapperStyle={{ outline: "none" }}
@@ -309,7 +333,7 @@ function SelfImprovingSpendChart({
         />
         {displayMode === "daily" ? (
           <Bar
-            dataKey="spendMicroUsd"
+            dataKey="spend"
             fill="currentColor"
             className={COST_PALETTE.costMicroUsd}
           />
@@ -317,7 +341,7 @@ function SelfImprovingSpendChart({
           <>
             <Line
               type="monotone"
-              dataKey="spendMicroUsd"
+              dataKey="spend"
               stroke="currentColor"
               strokeWidth={2}
               className={COST_PALETTE.costMicroUsd}
@@ -329,7 +353,7 @@ function SelfImprovingSpendChart({
             {hasPrediction && (
               <Line
                 type="monotone"
-                dataKey="predictionMicroUsd"
+                dataKey="prediction"
                 stroke="currentColor"
                 strokeWidth={2}
                 className={COST_PALETTE.costMicroUsd}
@@ -341,10 +365,10 @@ function SelfImprovingSpendChart({
                 animationDuration={ANIMATION_DURATION_MS / 2}
               />
             )}
-            {capMicroUsd > 0 && (
+            {cap > 0 && (
               <Line
                 type="monotone"
-                dataKey="capMicroUsd"
+                dataKey="cap"
                 stroke="currentColor"
                 strokeWidth={2}
                 className={COST_PALETTE.totalCredits}
@@ -363,20 +387,24 @@ function SelfImprovingSpendChart({
 
 interface SelfImprovingSkillsConsumptionSectionProps {
   owner: LightWorkspaceType;
-  capMicroUsd: number;
+  // In the display unit: AWU credits for workspaces billed by Metronome,
+  // dollars otherwise.
+  cap: number;
 }
 
 export function SelfImprovingSkillsConsumptionSection({
   owner,
-  capMicroUsd,
+  cap,
 }: SelfImprovingSkillsConsumptionSectionProps) {
-  const { spentMicroUsdBySkillId, isSpendLoading } =
+  const unit = useReinforcementBillingUnit({ owner });
+  const { spentMicroUsdBySkillId, spentAwuCreditsBySkillId, isSpendLoading } =
     useSkillsSelfImprovingSpend({ owner });
 
-  const totalSpentDollars =
-    Object.values(spentMicroUsdBySkillId).reduce((sum, v) => sum + v, 0) /
-    1_000_000;
-  const capDollars = capMicroUsd / 1_000_000;
+  const totalSpent =
+    unit === "awu_credits"
+      ? Object.values(spentAwuCreditsBySkillId).reduce((sum, v) => sum + v, 0)
+      : Object.values(spentMicroUsdBySkillId).reduce((sum, v) => sum + v, 0) /
+        1_000_000;
 
   return (
     <Page.Vertical align="stretch" gap="md">
@@ -387,13 +415,18 @@ export function SelfImprovingSkillsConsumptionSection({
         </div>
       ) : (
         <ConsumptionProgressBarWithNumbers
-          consumed={totalSpentDollars}
-          total={capDollars}
-          consumedFormatted={`$${totalSpentDollars.toFixed(2)}`}
-          totalFormatted={`$${capDollars.toFixed(2)}`}
+          consumed={totalSpent}
+          total={cap}
+          // For credits, only suffix the total: "0/10,000 credits".
+          consumedFormatted={
+            unit === "awu_credits"
+              ? formatCredits(totalSpent)
+              : formatAmount(totalSpent, unit)
+          }
+          totalFormatted={formatAmount(cap, unit)}
         />
       )}
-      <SelfImprovingSpendChart owner={owner} capMicroUsd={capMicroUsd} />
+      <SelfImprovingSpendChart owner={owner} cap={cap} unit={unit} />
     </Page.Vertical>
   );
 }

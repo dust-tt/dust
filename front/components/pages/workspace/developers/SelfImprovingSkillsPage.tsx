@@ -7,9 +7,12 @@ import {
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
 import {
+  getReinforcementMonthlyCapAwuCredits,
   getReinforcementMonthlyCapMicroUsd,
+  getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits,
   getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd,
 } from "@app/lib/reinforcement/consumption";
+import { useReinforcementBillingUnit } from "@app/lib/swr/useSelfImprovingSkillsSettings";
 import {
   ContentMessage,
   InfoCircle,
@@ -25,12 +28,20 @@ export function SelfImprovingSkillsPage() {
   const { featureFlags } = useFeatureFlags();
   const hasReinforcement = featureFlags.includes("reinforced_agents");
 
-  const [capMicroUsd, setCapMicroUsd] = useState(() =>
-    getReinforcementMonthlyCapMicroUsd(owner)
+  const unit = useReinforcementBillingUnit({ owner });
+
+  // Caps in the display unit: AWU credits for workspaces billed by Metronome,
+  // dollars otherwise.
+  const [cap, setCap] = useState(() =>
+    unit === "awu_credits"
+      ? getReinforcementMonthlyCapAwuCredits(owner)
+      : getReinforcementMonthlyCapMicroUsd(owner) / 1_000_000
   );
 
-  const [defaultCapPerSkillMicroUsd, setDefaultCapPerSkillMicroUsd] = useState(
-    () => getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(owner)
+  const [defaultCapPerSkill, setDefaultCapPerSkill] = useState(() =>
+    unit === "awu_credits"
+      ? getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits(owner)
+      : getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(owner) / 1_000_000
   );
 
   const renderBody = () => {
@@ -68,16 +79,13 @@ export function SelfImprovingSkillsPage() {
         </ContentMessage>
         <SelfImprovingSkillsSettingsSection
           owner={owner}
-          onCapSaved={setCapMicroUsd}
-          onDefaultCapPerSkillSaved={setDefaultCapPerSkillMicroUsd}
+          onCapSaved={setCap}
+          onDefaultCapPerSkillSaved={setDefaultCapPerSkill}
         />
-        <SelfImprovingSkillsConsumptionSection
-          owner={owner}
-          capMicroUsd={capMicroUsd}
-        />
+        <SelfImprovingSkillsConsumptionSection owner={owner} cap={cap} />
         <SelfImprovingSkillsListSection
           owner={owner}
-          defaultCapPerSkillMicroUsd={defaultCapPerSkillMicroUsd}
+          defaultCapPerSkill={defaultCapPerSkill}
         />
       </>
     );
