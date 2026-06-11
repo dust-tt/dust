@@ -728,6 +728,10 @@ module.exports = {
             DEFAULT: customColors.stone[150],
             night: colors.gray[800],
           },
+          hover: {
+            DEFAULT: customColors.stone[100],
+            night: colors.gray[850]
+          }
         },
         info: {
           DEFAULT: customColors.golden[500],

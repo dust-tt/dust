@@ -135,7 +135,8 @@ const NavigationListItem = React.forwardRef<
               "s-box-border s-flex s-items-center s-w-full s-gap-1.5 s-cursor-pointer s-select-none",
               "s-items-center s-outline-none s-rounded-lg s-text-sm s-p-2 s-transition-colors",
               "data-[disabled]:s-pointer-events-none",
-              "hover:s-bg-sidebar-foreground dark:hover:s-bg-sidebar-foreground-night",
+              !selected &&
+                "hover:s-bg-sidebar-hover dark:hover:s-bg-sidebar-hover-night",
               selected &&
                 "s-bg-sidebar-foreground dark:s-bg-sidebar-foreground-night",
               disabled && "s-pointer-events-none s-cursor-default s-opacity-50"
@@ -240,7 +241,7 @@ const NavigationListItemAction = React.forwardRef<
         size="xmini"
         icon={DotsHorizontal}
         variant="ghost"
-        className="hover:s-bg-sidebar-foreground dark:hover:s-bg-sidebar-foreground-night active:s-bg-sidebar-foreground dark:active:s-bg-sidebar-foreground-night"
+        className="group-data-[selected=false]/menu-item:hover:s-bg-sidebar-hover dark:group-data-[selected=false]/menu-item:hover:s-bg-sidebar-hover-night active:s-bg-sidebar-foreground dark:active:s-bg-sidebar-foreground-night"
       />
     </div>
   );
