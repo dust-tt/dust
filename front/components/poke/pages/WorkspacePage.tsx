@@ -34,7 +34,6 @@ import { usePokeRegion } from "@app/lib/swr/poke";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDataRetention } from "@app/poke/swr/data_retention";
 import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
-import { isCreditPricedPlan } from "@app/types/plan";
 import { isString } from "@app/types/shared/utils/general";
 import type { WorkspaceSegmentationType } from "@app/types/user";
 import {
@@ -154,9 +153,13 @@ export function WorkspacePage() {
     temporalFrontNamespace,
   } = workspaceInfo;
 
-  // The Usage tab (AWU usage chart + credit pool) only applies to credit-based
-  // (CP_) pricing workspaces.
-  const isCreditPriced = isCreditPricedPlan(activeSubscription.plan);
+  // The Usage tab (AWU usage chart + credit pool) is backed by Metronome usage
+  // data, so it applies to any workspace with a Metronome contract — both
+  // credit-priced and legacy shadow contracts. There's no need to gate it on a
+  // feature flag in poke: it's staff tooling, not customer-facing exposure.
+  const hasMetronomeUsage =
+    metronomeCustomerId !== null &&
+    activeSubscription.metronomeContractId !== null;
 
   return (
     <div className="ml-8 p-6">
@@ -285,7 +288,7 @@ export function WorkspacePage() {
               <TabsTrigger value="triggers" label="Triggers" />
               <TabsTrigger value="webhooksources" label="Webhook Sources" />
               <TabsTrigger value="credits" label="API Usage" />
-              {isCreditPriced && <TabsTrigger value="usage" label="Usage" />}
+              {hasMetronomeUsage && <TabsTrigger value="usage" label="Usage" />}
               <TabsTrigger value="analytics" label="Analytics" />
             </TabsList>
 
@@ -346,7 +349,7 @@ export function WorkspacePage() {
                 loadOnInit
               />
             </TabsContent>
-            {isCreditPriced && (
+            {hasMetronomeUsage && (
               <TabsContent value="usage">
                 <PokeUsageTab
                   owner={owner}
