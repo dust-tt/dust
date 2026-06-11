@@ -6,7 +6,9 @@ import {
   OVERAGE_BAR_CLASSES,
 } from "@app/components/workspace/seat_styles";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
+import { useDefaultUserSpendLimit } from "@app/lib/swr/usage_settings";
 import {
   isMembershipSeatType,
   type MembershipSeatType,
@@ -144,8 +146,19 @@ function AwuUsageBar({
   seatType,
   isTotalAllowedUsagePending: isPending,
 }: AwuUsageBarProps) {
+  const { sId: workspaceId } = useWorkspace();
+  const { defaultUserSpendLimit } = useDefaultUserSpendLimit({ workspaceId });
+
   const seatColors = getSeatBarClasses(seatType);
   const allowance = memberUsageLimit ?? 0;
+
+  // When no Metronome cap alert exists for this user (`limit` is null), fall
+  // back to displaying the workspace default: seat allowance + default pool.
+  const effectiveLimit =
+    limit ??
+    (defaultUserSpendLimit?.awuCredits != null
+      ? allowance + defaultUserSpendLimit.awuCredits
+      : null);
 
   // The bar splits consumption into seat → pool → overage:
   //   seat consumed · seat remaining · pool consumed · pool remaining · overage
@@ -155,7 +168,8 @@ function AwuUsageBar({
   // skipped. `pool remaining` is omitted when uncapped (no finite headroom).
   const seatConsumed = consumedFromAllowance;
   const seatRemaining = Math.max(0, allowance - seatConsumed);
-  const poolLimit = limit !== null ? Math.max(0, limit - allowance) : null;
+  const poolLimit =
+    effectiveLimit !== null ? Math.max(0, effectiveLimit - allowance) : null;
   // Of the pool consumption, the part within the pool limit vs. the overage
   // beyond it (only capped seats can have overage).
   const poolConsumed =
@@ -304,7 +318,9 @@ function AwuUsageBar({
         {isPending ? (
           <Spinner size="xs" />
         ) : (
-          <span>{limit === null ? "∞" : formatCredits(limit)}</span>
+          <span>
+            {effectiveLimit === null ? "∞" : formatCredits(effectiveLimit)}
+          </span>
         )}
       </div>
       {tooltipContent ? (
