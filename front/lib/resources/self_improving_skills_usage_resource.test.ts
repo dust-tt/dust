@@ -57,11 +57,10 @@ describe("SelfImprovingSkillsUsageResource", () => {
       },
     ]);
 
-    const sum =
-      await SelfImprovingSkillsUsageResource.getSumSpendAfterDate(
-        authenticator,
-        cutoff
-      );
+    const sum = await SelfImprovingSkillsUsageResource.getSumSpendAfterDate(
+      authenticator,
+      cutoff
+    );
 
     expect(usages).toHaveLength(3);
     expect(
