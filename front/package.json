@@ -90,6 +90,7 @@
     "@radix-ui/react-visually-hidden": "^1.1.2",
     "@react-email/html": "0.0.11",
     "@react-email/render": "1.4.0",
+    "@revolist/react-datagrid": "^4.23.7",
     "@sendgrid/mail": "^8.0.0",
     "@slack/web-api": "^7.10.0",
     "@stripe/react-stripe-js": "^3.10.0",

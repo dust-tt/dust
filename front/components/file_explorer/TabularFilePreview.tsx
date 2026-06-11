@@ -1,10 +1,18 @@
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { stripMimeParameters } from "@app/types/files";
 import { cn } from "@dust-tt/sparkle";
+import type { ColumnRegular, DataType } from "@revolist/react-datagrid";
+import { RevoGrid } from "@revolist/react-datagrid";
+import { useMemo } from "react";
 
-export const MAX_TABULAR_PREVIEW_ROWS = 200;
+// RevoGrid virtualizes rendering, so we can preview many more rows than the
+// previous hand-rolled table comfortably allowed.
+export const MAX_TABULAR_PREVIEW_ROWS = 10_000;
 
-const MAX_COLUMN_WIDTH_CHARS = 48;
-const MIN_COLUMN_WIDTH_CHARS = 12;
+const MAX_COLUMN_WIDTH_PX = 420;
+const MIN_COLUMN_WIDTH_PX = 120;
+const APPROX_PX_PER_CHAR = 9;
+const COLUMN_PADDING_PX = 24;
 
 type ParsedTable = {
   headers: string[];
@@ -135,9 +143,11 @@ function parseTable(content: string, mimeType: string): ParsedTable | null {
   }
 
   const headers = normalizeHeaders(rawHeaders ?? [], columnCount);
-  const rows = rawRows.slice(0, MAX_TABULAR_PREVIEW_ROWS).map((row) =>
-    Array.from({ length: columnCount }, (_, index) => row[index] ?? "")
-  );
+  const rows = rawRows
+    .slice(0, MAX_TABULAR_PREVIEW_ROWS)
+    .map((row) =>
+      Array.from({ length: columnCount }, (_, index) => row[index] ?? "")
+    );
 
   return {
     headers,
@@ -166,16 +176,57 @@ export function getTabularPreviewStats({
   };
 }
 
+function columnWidthForHeader(header: string): number {
+  const estimated = header.length * APPROX_PX_PER_CHAR + COLUMN_PADDING_PX;
+
+  return Math.max(
+    MIN_COLUMN_WIDTH_PX,
+    Math.min(MAX_COLUMN_WIDTH_PX, estimated)
+  );
+}
+
+interface TabularFilePreviewProps {
+  className?: string;
+  content: string;
+  mimeType: string;
+}
+
 export function TabularFilePreview({
   className,
   content,
   mimeType,
-}: {
-  className?: string;
-  content: string;
-  mimeType: string;
-}) {
-  const table = parseTable(content, mimeType);
+}: TabularFilePreviewProps) {
+  const { isDark } = useTheme();
+
+  const table = useMemo(
+    () => parseTable(content, mimeType),
+    [content, mimeType]
+  );
+
+  // Column keys are the (numeric) column indexes, matching how each row is
+  // serialized into the data source below.
+  const columns = useMemo<ColumnRegular[]>(
+    () =>
+      table?.headers.map((header, index) => ({
+        prop: index,
+        name: header,
+        size: columnWidthForHeader(header),
+      })) ?? [],
+    [table]
+  );
+
+  const source = useMemo<DataType[]>(
+    () =>
+      table?.rows.map((row) => {
+        const record: Record<number, string> = {};
+        row.forEach((cell, index) => {
+          record[index] = cell;
+        });
+
+        return record;
+      }) ?? [],
+    [table]
+  );
 
   if (!table || table.totalRows === 0) {
     return (
@@ -188,57 +239,19 @@ export function TabularFilePreview({
   return (
     <div
       className={cn(
-        "min-h-0 flex-1 overflow-auto rounded-xl border border-border bg-background shadow-sm dark:border-border-night dark:bg-background-night",
+        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm dark:border-border-night dark:bg-background-night",
         className
       )}
     >
-      <table className="border-separate border-spacing-0 text-left text-sm">
-        <thead>
-          <tr>
-            <th className="sticky left-0 top-0 z-30 w-12 border-b border-r border-border bg-muted-background px-3 py-2 text-right text-xs font-medium text-muted-foreground dark:border-border-night dark:bg-muted-background-night dark:text-muted-foreground-night">
-              #
-            </th>
-            {table.headers.map((header, index) => (
-              <th
-                key={`${header}-${index}`}
-                className="sticky top-0 z-20 border-b border-r border-border bg-muted-background px-3 py-2 text-xs font-semibold text-foreground dark:border-border-night dark:bg-muted-background-night dark:text-foreground-night"
-                style={{
-                  minWidth: `${Math.max(
-                    MIN_COLUMN_WIDTH_CHARS,
-                    Math.min(MAX_COLUMN_WIDTH_CHARS, header.length + 4)
-                  )}ch`,
-                }}
-                title={header}
-              >
-                <div className="max-w-80 truncate">{header}</div>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {table.rows.map((row, rowIndex) => (
-            <tr
-              key={rowIndex}
-              className="odd:bg-background even:bg-muted-background/40 dark:odd:bg-background-night dark:even:bg-muted-background-night/30"
-            >
-              <th className="sticky left-0 z-10 border-b border-r border-border bg-inherit px-3 py-2 text-right text-xs font-medium text-muted-foreground dark:border-border-night dark:text-muted-foreground-night">
-                {rowIndex + 1}
-              </th>
-              {row.map((cell, cellIndex) => (
-                <td
-                  key={cellIndex}
-                  className="max-w-80 border-b border-r border-border px-3 py-2 align-top text-foreground dark:border-border-night dark:text-foreground-night"
-                  title={cell}
-                >
-                  <div className="max-h-24 overflow-hidden whitespace-pre-wrap break-words leading-5">
-                    {cell}
-                  </div>
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <RevoGrid
+        columns={columns}
+        source={source}
+        theme={isDark ? "darkCompact" : "compact"}
+        readonly
+        resize
+        rowHeaders
+        style={{ flex: "1 1 auto", minHeight: 0, width: "100%" }}
+      />
     </div>
   );
 }

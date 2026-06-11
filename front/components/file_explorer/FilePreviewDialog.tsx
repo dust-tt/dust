@@ -1,8 +1,8 @@
-import type { FileEntry } from "@app/components/file_explorer/types";
 import {
   getTabularPreviewStats,
   TabularFilePreview,
 } from "@app/components/file_explorer/TabularFilePreview";
+import type { FileEntry } from "@app/components/file_explorer/types";
 import { getFilePreviewConfig } from "@app/components/spaces/FilePreviewSheet";
 import { useFileContent } from "@app/hooks/useFileContent";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
