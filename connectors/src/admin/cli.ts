@@ -1,33 +1,18 @@
 import { AdminCommandSchema } from "@connectors/types";
 import { Argument, Command } from "commander";
-import minimist from "minimist";
 import { fromError } from "zod-validation-error";
 
 process.env.INTERACTIVE_CLI = process.env.INTERACTIVE_CLI || "1";
 
-/**
- * Parses the key=value options that follow the subcommand.
- *
- * process.argv layout: [node, script, majorCommand, subcommand, ...options]
- *                       0      1        2             3           4+
- */
-function parseCommandArgs() {
-  const raw = minimist(process.argv.slice(4), {
-    // Force string for args that may exceed Number.MAX_SAFE_INTEGER (e.g. Gong call IDs).
-    string: ["wId", "callId"],
-  });
-  return { ...raw, _: undefined, "--": undefined };
-}
-
 async function dispatch(
   majorCommand: string,
-  subcommand: string
+  subcommand: string,
+  opts: Record<string, unknown>
 ): Promise<void> {
-  const args = parseCommandArgs();
   const validation = AdminCommandSchema.safeParse({
     majorCommand,
     command: subcommand,
-    args,
+    args: opts,
   });
   if (!validation.success) {
     console.error(
@@ -61,9 +46,10 @@ program
       "resume-all",
     ])
   )
-  .allowUnknownOption(true)
-  .action(async (subcommand: string) => {
-    await dispatch("batch", subcommand);
+  .option("--provider <provider>", "Connector provider type")
+  .option("--fromTs <timestamp>", "Sync from this Unix timestamp (ms)")
+  .action(async (subcommand: string, opts) => {
+    await dispatch("batch", subcommand, opts);
   });
 
 program
@@ -84,9 +70,16 @@ program
       "upsert-pages",
     ])
   )
-  .allowUnknownOption(true)
-  .action(async (subcommand: string) => {
-    await dispatch("confluence", subcommand);
+  .option("--connectorId <id>", "Connector ID", parseInt)
+  .option("--pageId <id>", "Page ID", parseInt)
+  .option("--spaceId <id>", "Space ID", parseInt)
+  .option("--file <path>", "File path")
+  .option("--keyInFile <key>", "Key in file")
+  .option("--url <url>", "URL")
+  .option("--forceUpsert <bool>", 'Force upsert ("true")')
+  .option("--skipReason <reason>", "Skip reason")
+  .action(async (subcommand: string, opts) => {
+    await dispatch("confluence", subcommand, opts);
   });
 
 program
@@ -108,9 +101,19 @@ program
       "unpause",
     ])
   )
-  .allowUnknownOption(true)
-  .action(async (subcommand: string) => {
-    await dispatch("connectors", subcommand);
+  .option("--wId <workspaceId>", "Workspace ID")
+  .option("--dsId <dataSourceId>", "Data source ID")
+  .option("--connectorId <id>", "Connector ID")
+  .option("--fromTs <timestamp>", "Sync from this Unix timestamp (ms)")
+  .option("--error <errorType>", "Error type to set")
+  .option("--permissionKey <key>", "Permission key (for set-permission)")
+  .option("--permissionValue <value>", "Permission value (for set-permission)")
+  .option(
+    "--permissionsFile <path>",
+    "Path to permissions JSON file (for set-permission)"
+  )
+  .action(async (subcommand: string, opts) => {
+    await dispatch("connectors", subcommand, opts);
   });
 
 program
@@ -132,9 +135,20 @@ program
       "unskip-repo",
     ])
   )
-  .allowUnknownOption(true)
-  .action(async (subcommand: string) => {
-    await dispatch("github", subcommand);
+  .option("--wId <workspaceId>", "Workspace ID")
+  .option("--dsId <dataSourceId>", "Data source ID")
+  .option("--connectorId <id>", "Connector ID")
+  .option("--owner <owner>", "Repository owner")
+  .option("--repo <repo>", "Repository name")
+  .option("--repoId <id>", "Repository ID")
+  .option("--repoLogin <login>", "Repository login (for sync-issue)")
+  .option("--repoName <name>", "Repository name (for sync-issue)")
+  .option("--issueNumber <number>", "Issue number")
+  .option("--enable <bool>", 'Enable code sync ("true" or "false")')
+  .option("--skipReason <reason>", "Skip reason")
+  .option("--documentId <id>", "Document ID (for skip-code-file)")
+  .action(async (subcommand: string, opts) => {
+    await dispatch("github", subcommand, opts);
   });
 
 program
@@ -143,9 +157,11 @@ program
   .addArgument(
     new Argument("<subcommand>").choices(["delete-transcript", "force-resync"])
   )
-  .allowUnknownOption(true)
-  .action(async (subcommand: string) => {
-    await dispatch("gong", subcommand);
+  .option("--connectorId <id>", "Connector ID", parseInt)
+  .option("--fromTs <timestamp>", "From timestamp", parseInt)
+  .option("--callId <id>", "Call ID")
+  .action(async (subcommand: string, opts) => {
+    await dispatch("gong", subcommand, opts);
   });
 
 program
@@ -171,9 +187,18 @@ program
       "upsert-file",
     ])
   )
-  .allowUnknownOption(true)
-  .action(async (subcommand: string) => {
-    await dispatch("google_drive", subcommand);
+  .option("--wId <workspaceId>", "Workspace ID")
+  .option("--dsId <dataSourceId>", "Data source ID")
+  .option("--connectorId <id>", "Connector ID")
+  .option("--fileId <id>", "File ID")
+  .option("--fileType <type>", "File type for export (document | presentation)")
+  .option("--folderId <id>", "Folder ID")
+  .option("--rootFolderId <id>", "Root folder ID")
+  .option("--reason <reason>", "Reason")
+  .option("--fix <bool>", "Fix (true/false)")
+  .option("--execute <bool>", "Execute (true/false)")
+  .action(async (subcommand: string, opts) => {
+    await dispatch("google_drive", subcommand, opts);
   });
 
 program
@@ -194,9 +219,23 @@ program
       "set-conversations-sliding-window",
     ])
   )
-  .allowUnknownOption(true)
-  .action(async (subcommand: string) => {
-    await dispatch("intercom", subcommand);
+  .option("--force <bool>", 'Force ("true")')
+  .option("--connectorId <id>", "Connector ID", parseInt)
+  .option("--conversationId <id>", "Conversation ID", parseInt)
+  .option("--day <day>", "Day")
+  .option("--helpCenterId <id>", "Help center ID", parseInt)
+  .option(
+    "--conversationsSlidingWindow <window>",
+    "Conversations sliding window",
+    parseInt
+  )
+  .option("--teamId <id>", "Team ID", parseInt)
+  .option("--closedAfter <timestamp>", "Closed after timestamp", parseInt)
+  .option("--state <state>", "Conversation state (open | closed)")
+  .option("--cursor <cursor>", "Pagination cursor")
+  .option("--forceDeleteExisting <bool>", 'Force delete existing ("true")')
+  .action(async (subcommand: string, opts) => {
+    await dispatch("intercom", subcommand, opts);
   });
 
 program
@@ -216,9 +255,15 @@ program
       "update-parent-in-node-table",
     ])
   )
-  .allowUnknownOption(true)
-  .action(async (subcommand: string) => {
-    await dispatch("microsoft", subcommand);
+  .option("--wId <workspaceId>", "Workspace ID")
+  .option("--dsId <dataSourceId>", "Data source ID")
+  .option("--connectorId <id>", "Connector ID")
+  .option("--folderId <id>", "Folder ID")
+  .option("--internalId <id>", "Internal node ID")
+  .option("--idsFile <path>", "Path to JSON file containing array of IDs")
+  .option("--reason <reason>", "Reason")
+  .action(async (subcommand: string, opts) => {
+    await dispatch("microsoft", subcommand, opts);
   });
 
 program
@@ -243,9 +288,22 @@ program
       "upsert-page",
     ])
   )
-  .allowUnknownOption(true)
-  .action(async (subcommand: string) => {
-    await dispatch("notion", subcommand);
+  .option("--wId <workspaceId>", "Workspace ID")
+  .option("--dsId <dataSourceId>", "Data source ID")
+  .option("--connectorId <id>", "Connector ID")
+  .option("--pageId <id>", "Page ID")
+  .option("--databaseId <id>", "Database ID")
+  .option("--query <query>", "Search query")
+  .option("--url <url>", "URL")
+  .option("--method <method>", "HTTP method (GET | POST)")
+  .option("--body <json>", "Request body (JSON string)")
+  .option("--remove <bool>", "Remove skip reason (true/false)")
+  .option("--reason <reason>", "Skip reason")
+  .option("--all <bool>", "Apply to all connectors/resources (true/false)")
+  .option("--resetToDate <date>", "Reset parentsLastUpdatedAt to this date")
+  .option("--forceResync <bool>", "Force resync (true/false)")
+  .action(async (subcommand: string, opts) => {
+    await dispatch("notion", subcommand, opts);
   });
 
 program
@@ -259,9 +317,24 @@ program
       "sync-query",
     ])
   )
-  .allowUnknownOption(true)
-  .action(async (subcommand: string) => {
-    await dispatch("salesforce", subcommand);
+  .option("--wId <workspaceId>", "Workspace ID")
+  .option("--dsId <dataSourceId>", "Data source ID")
+  .option("--soql <query>", "SOQL query")
+  .option("--limit <number>", "Result limit", parseInt)
+  .option(
+    "--lastModifiedDateOrder <order>",
+    "Last modified date order (ASC | DESC)"
+  )
+  .option("--offset <number>", "Result offset", parseInt)
+  .option("--rootNodeName <name>", "Root node name")
+  .option("--titleTemplate <template>", "Title template")
+  .option("--contentTemplate <template>", "Content template")
+  .option("--tagsTemplate <template>", "Tags template")
+  .option("--execute", "Execute the query")
+  .option("--queryId <id>", "Query ID", parseInt)
+  .option("--full", "Full sync")
+  .action(async (subcommand: string, opts) => {
+    await dispatch("salesforce", subcommand, opts);
   });
 
 program
@@ -287,9 +360,25 @@ program
       "whitelist-domains",
     ])
   )
-  .allowUnknownOption(true)
-  .action(async (subcommand: string) => {
-    await dispatch("slack", subcommand);
+  .option("--wId <workspaceId>", "Workspace ID")
+  .option("--channelId <id>", "Channel ID")
+  .option("--threadId <id>", "Thread ID")
+  .option("--threadTs <ts>", "Thread timestamp")
+  .option("--skipReason <reason>", "Skip reason")
+  .option(
+    "--whitelistedDomains <domains>",
+    "Comma-separated domains (e.g. example.com:group1,example2.com:group2)"
+  )
+  .option("--botName <name>", "Bot name (for whitelist-bot)")
+  .option("--groupId <id>", "Group ID (for whitelist-bot, comma-separated)")
+  .option(
+    "--whitelistType <type>",
+    "Whitelist type (summon_agent | index_messages)"
+  )
+  .option("--providerType <type>", "Provider type (slack | slack_bot)")
+  .option("--force <bool>", "Force (true/false)")
+  .action(async (subcommand: string, opts) => {
+    await dispatch("slack", subcommand, opts);
   });
 
 program
@@ -302,9 +391,11 @@ program
       "fetch-tables",
     ])
   )
-  .allowUnknownOption(true)
-  .action(async (subcommand: string) => {
-    await dispatch("snowflake", subcommand);
+  .option("--connectorId <id>", "Connector ID", parseInt)
+  .option("--database <name>", "Database name")
+  .option("--schema <name>", "Schema name")
+  .action(async (subcommand: string, opts) => {
+    await dispatch("snowflake", subcommand, opts);
   });
 
 program
@@ -316,9 +407,9 @@ program
       "find-unprocessed-workflows",
     ])
   )
-  .allowUnknownOption(true)
-  .action(async (subcommand: string) => {
-    await dispatch("temporal", subcommand);
+  .option("--queue <name>", "Task queue name")
+  .action(async (subcommand: string, opts) => {
+    await dispatch("temporal", subcommand, opts);
   });
 
 program
@@ -331,9 +422,11 @@ program
       "update-frequency",
     ])
   )
-  .allowUnknownOption(true)
-  .action(async (subcommand: string) => {
-    await dispatch("webcrawler", subcommand);
+  .option("--connectorId <id>", "Connector ID")
+  .option("--crawlFrequency <frequency>", "Crawl frequency")
+  .option("--actions <actions>", "Actions")
+  .action(async (subcommand: string, opts) => {
+    await dispatch("webcrawler", subcommand, opts);
   });
 
 program
@@ -358,9 +451,21 @@ program
       "sync-ticket",
     ])
   )
-  .allowUnknownOption(true)
-  .action(async (subcommand: string) => {
-    await dispatch("zendesk", subcommand);
+  .option("--wId <workspaceId>", "Workspace ID")
+  .option("--dsId <dataSourceId>", "Data source ID")
+  .option("--connectorId <id>", "Connector ID", parseInt)
+  .option("--brandId <id>", "Brand ID", parseInt)
+  .option("--query <query>", "Query")
+  .option("--forceResync <bool>", 'Force resync ("true")')
+  .option("--ticketId <id>", "Ticket ID", parseInt)
+  .option("--ticketUrl <url>", "Ticket URL")
+  .option("--retentionPeriodDays <days>", "Retention period in days", parseInt)
+  .option("--rateLimitTps <tps>", "Rate limit TPS", parseInt)
+  .option("--tag <tag>", "Tag")
+  .option("--include <bool>", 'Include ("true")')
+  .option("--exclude <bool>", 'Exclude ("true")')
+  .action(async (subcommand: string, opts) => {
+    await dispatch("zendesk", subcommand, opts);
   });
 
 program.parseAsync(process.argv).catch((err: Error) => {
