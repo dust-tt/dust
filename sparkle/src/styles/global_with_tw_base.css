@@ -1,8 +1,10 @@
 @import "./allotment.css";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss/preflight" layer(base);
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/utilities" layer(utilities);
+
+@config "../../tailwind.config.js";
 
 @keyframes collapse-down {
   from {

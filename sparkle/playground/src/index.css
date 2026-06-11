@@ -1,6 +1,6 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@config "../../../tailwind.config.js";
 
 @layer base {
   html {
@@ -21,7 +21,7 @@
     }
   }
   .sparkle-richtextarea p.is-editor-empty:first-child::before {
-    @apply s-italic s-text-muted-foreground;
+    @apply s:italic s:text-muted-foreground;
     content: attr(data-placeholder);
     float: left;
     height: 0;

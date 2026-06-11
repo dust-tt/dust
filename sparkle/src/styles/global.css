@@ -1,8 +1,10 @@
 @import "./allotment.css";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss/preflight" layer(base);
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/utilities" layer(utilities);
+
+@config "../../tailwind.config.js";
 
 @layer base {
   html {
@@ -45,13 +47,13 @@
     background-position:
       0 0,
       20px 20px;
-    background-color: theme("colors.white"); /* Base color */
-    --tw-checker-color: theme("colors.gray.50"); /* Pattern color */
+    background-color: var(--color-white); /* Base color */
+    --tw-checker-color: var(--color-gray-50); /* Pattern color */
   }
 
   .s-dark .s-checkerboard {
-    background-color: theme("colors.black"); /* Dark mode base color */
-    --tw-checker-color: theme("colors.slate.950"); /* Dark mode pattern color */
+    background-color: var(--color-black); /* Dark mode base color */
+    --tw-checker-color: var(--color-slate-950); /* Dark mode pattern color */
   }
 }
 
