@@ -2,11 +2,15 @@ import type { Authenticator } from "@app/lib/auth";
 import * as metronomeContracts from "@app/lib/metronome/contracts";
 import { getCurrentPeriod } from "@app/lib/reinforcement/billing";
 import {
+  DEFAULT_REINFORCEMENT_CAP_AWU_CREDITS,
   DEFAULT_REINFORCEMENT_CAP_MICRO_USD,
+  DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_AWU_CREDITS,
   DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD,
 } from "@app/lib/reinforcement/constants";
 import {
+  getReinforcementMonthlyCapAwuCredits,
   getReinforcementMonthlyCapMicroUsd,
+  getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits,
   getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd,
 } from "@app/lib/reinforcement/consumption";
 import { Err, Ok } from "@app/types/shared/result";
@@ -31,6 +35,8 @@ function makeAuth({
 function makeWorkspace(metadata?: {
   reinforcementCapMicroUsd?: number;
   selfImprovementCapPerSkillMicroUsd?: number;
+  reinforcementCapAwuCredits?: number;
+  selfImprovementCapPerSkillAwuCredits?: number;
 }): LightWorkspaceType {
   return { sId: "ws-1", metadata: metadata ?? null } as LightWorkspaceType;
 }
@@ -65,6 +71,44 @@ describe("getReinforcementMonthlyCapMicroUsd", () => {
   });
 });
 
+describe("getReinforcementMonthlyCapAwuCredits", () => {
+  it("returns default cap when workspace has no metadata", () => {
+    expect(getReinforcementMonthlyCapAwuCredits(makeWorkspace())).toBe(
+      DEFAULT_REINFORCEMENT_CAP_AWU_CREDITS
+    );
+  });
+
+  it("returns default cap when metadata has no reinforcementCapAwuCredits", () => {
+    expect(getReinforcementMonthlyCapAwuCredits(makeWorkspace({}))).toBe(
+      DEFAULT_REINFORCEMENT_CAP_AWU_CREDITS
+    );
+  });
+
+  it("ignores the microUSD override", () => {
+    expect(
+      getReinforcementMonthlyCapAwuCredits(
+        makeWorkspace({ reinforcementCapMicroUsd: 50_000_000 })
+      )
+    ).toBe(DEFAULT_REINFORCEMENT_CAP_AWU_CREDITS);
+  });
+
+  it("returns workspace override when set", () => {
+    expect(
+      getReinforcementMonthlyCapAwuCredits(
+        makeWorkspace({ reinforcementCapAwuCredits: 5_000 })
+      )
+    ).toBe(5_000);
+  });
+
+  it("allows cap of 0", () => {
+    expect(
+      getReinforcementMonthlyCapAwuCredits(
+        makeWorkspace({ reinforcementCapAwuCredits: 0 })
+      )
+    ).toBe(0);
+  });
+});
+
 describe("getSelfImprovementCapPerSkillMicroUsd", () => {
   it("returns default cap when workspace has no metadata", () => {
     expect(
@@ -90,6 +134,44 @@ describe("getSelfImprovementCapPerSkillMicroUsd", () => {
     expect(
       getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(
         makeWorkspace({ selfImprovementCapPerSkillMicroUsd: 0 })
+      )
+    ).toBe(0);
+  });
+});
+
+describe("getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits", () => {
+  it("returns default cap when workspace has no metadata", () => {
+    expect(
+      getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits(makeWorkspace())
+    ).toBe(DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_AWU_CREDITS);
+  });
+
+  it("returns default cap when metadata has no selfImprovementCapPerSkillAwuCredits", () => {
+    expect(
+      getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits(makeWorkspace({}))
+    ).toBe(DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_AWU_CREDITS);
+  });
+
+  it("ignores the microUSD override", () => {
+    expect(
+      getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits(
+        makeWorkspace({ selfImprovementCapPerSkillMicroUsd: 10_000_000 })
+      )
+    ).toBe(DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_AWU_CREDITS);
+  });
+
+  it("returns workspace override when set", () => {
+    expect(
+      getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits(
+        makeWorkspace({ selfImprovementCapPerSkillAwuCredits: 1_000 })
+      )
+    ).toBe(1_000);
+  });
+
+  it("allows cap of 0", () => {
+    expect(
+      getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits(
+        makeWorkspace({ selfImprovementCapPerSkillAwuCredits: 0 })
       )
     ).toBe(0);
   });

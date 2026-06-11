@@ -22,12 +22,19 @@ const PatchSkillReinforcementBodySchema = z
       .nonnegative()
       .nullable() // use default
       .optional(), // not updated
+    selfImprovementCostsCapAwuCredits: z
+      .number()
+      .int()
+      .nonnegative()
+      .nullable() // use default
+      .optional(), // not updated
   })
   .refine(
     (b) =>
       b.reinforcement !== undefined ||
       b.selfImprovementLock !== undefined ||
-      b.selfImprovementCostsCapMicroUsd !== undefined,
+      b.selfImprovementCostsCapMicroUsd !== undefined ||
+      b.selfImprovementCostsCapAwuCredits !== undefined,
     { message: "At least one field must be provided." }
   );
 
@@ -66,12 +73,14 @@ app.patch(
       reinforcement,
       selfImprovementLock,
       selfImprovementCostsCapMicroUsd,
+      selfImprovementCostsCapAwuCredits,
     } = ctx.req.valid("json");
 
-    // The lock and per-skill cap are admin-only controls.
+    // The lock and per-skill caps are admin-only controls.
     const requiresAdmin =
       selfImprovementLock !== undefined ||
-      selfImprovementCostsCapMicroUsd !== undefined;
+      selfImprovementCostsCapMicroUsd !== undefined ||
+      selfImprovementCostsCapAwuCredits !== undefined;
     if (requiresAdmin && !auth.isAdmin()) {
       return apiError(ctx, {
         status_code: 403,
@@ -129,6 +138,11 @@ app.patch(
     if (selfImprovementCostsCapMicroUsd !== undefined) {
       await skill.updateSelfImprovementCostsCap(
         selfImprovementCostsCapMicroUsd
+      );
+    }
+    if (selfImprovementCostsCapAwuCredits !== undefined) {
+      await skill.updateSelfImprovementCostsCapAwuCredits(
+        selfImprovementCostsCapAwuCredits
       );
     }
 

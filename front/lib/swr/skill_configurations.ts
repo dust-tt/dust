@@ -271,6 +271,7 @@ type SkillReinforcementUpdate = {
   reinforcement?: SkillReinforcementMode;
   selfImprovementLock?: boolean;
   selfImprovementCostsCapMicroUsd?: number | null;
+  selfImprovementCostsCapAwuCredits?: number | null;
 };
 
 export function useUpdateSkillReinforcement({

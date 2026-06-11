@@ -555,8 +555,13 @@ export interface WorkspaceMetadata {
   isBusiness?: boolean;
   phoneCountry?: string;
   sandboxAllowAgentEgressRequests?: boolean;
+  // Caps for self-improving skills.
+  // USD are the legacy ones, AWU are the new ones for workspaces
+  // billed by metronome.
   reinforcementCapMicroUsd?: number;
   selfImprovementCapPerSkillMicroUsd?: number;
+  reinforcementCapAwuCredits?: number;
+  selfImprovementCapPerSkillAwuCredits?: number;
   webSearchProvider?: WebSearchProvider;
   webBrowseProvider?: WebBrowseProvider;
 }

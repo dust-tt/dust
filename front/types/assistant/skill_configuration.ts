@@ -46,6 +46,7 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
   lastReinforcementAnalysisAt: z.string().nullable().optional(),
   selfImprovementLock: z.boolean(),
   selfImprovementCostsCapMicroUsd: z.number().nullable(),
+  selfImprovementCostsCapAwuCredits: z.number().nullable(),
   requestedSpaceIds: z.array(z.string()),
   fileAttachments: z.array(
     z.object({
