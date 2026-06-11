@@ -6,9 +6,7 @@
  *   npx ts-node scripts/microsoft_terminate_sensitivity_labels_workflows.ts [--execute]
  */
 
-import {
-  microsoftSensitivityLabelsReconciliationWorkflowId,
-} from "@connectors/connectors/microsoft/temporal/workflows";
+import { microsoftSensitivityLabelsReconciliationWorkflowId } from "@connectors/connectors/microsoft/temporal/workflows";
 import { terminateWorkflow } from "@connectors/lib/temporal";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftConfigurationResource } from "@connectors/resources/microsoft_resource";
@@ -43,7 +41,10 @@ makeScript({}, async ({ execute }, logger) => {
     );
     if (execute) {
       await terminateWorkflow(workflowId);
-      logger.info({ connectorId: connector.id, workflowId }, "Terminated workflow");
+      logger.info(
+        { connectorId: connector.id, workflowId },
+        "Terminated workflow"
+      );
     } else {
       logger.info(
         { connectorId: connector.id, workflowId },
