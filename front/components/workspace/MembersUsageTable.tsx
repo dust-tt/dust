@@ -1,3 +1,4 @@
+import { buildMemberNameColumn } from "@app/components/workspace/member_name_column";
 import {
   getSeatBarClasses,
   getSeatIconColorClass,
@@ -11,7 +12,6 @@ import {
   type MembershipSeatType,
   SEAT_TYPE_ORDER,
 } from "@app/types/memberships";
-import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
   AlertCircle,
   Clock,
@@ -316,28 +316,7 @@ function AwuUsageBar({
   );
 }
 
-const nameColumn: ColumnDef<RowData, string> = {
-  id: "name" as const,
-  header: "Name",
-  enableSorting: true,
-  accessorFn: (row) => row.name,
-  cell: (info: Info) => (
-    <DataTable.CellContent
-      avatarUrl={info.row.original.image ?? ANONYMOUS_USER_IMAGE_URL}
-      roundedAvatar
-    >
-      <div>
-        <div>{info.row.original.name}</div>
-        {info.row.original.email &&
-          info.row.original.email !== info.row.original.name && (
-            <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-              {info.row.original.email}
-            </div>
-          )}
-      </div>
-    </DataTable.CellContent>
-  ),
-};
+const nameColumn = buildMemberNameColumn<RowData>();
 
 const seatTypeColumn: ColumnDef<RowData, string> = {
   id: "seatType" as const,

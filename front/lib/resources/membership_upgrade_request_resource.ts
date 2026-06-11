@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { MembershipUpgradeRequestModel } from "@app/lib/resources/storage/models/membership_upgrade_requests";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -8,6 +9,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
+  MembershipSeatType,
   MembershipUpgradeRequestStatus,
   MembershipUpgradeRequestType,
 } from "@app/types/memberships";
@@ -26,14 +28,22 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     MembershipUpgradeRequestModel;
 
   readonly requester: UserResource;
+  readonly requesterSeatType: MembershipSeatType | null;
 
   constructor(
     _: ModelStatic<MembershipUpgradeRequestModel>,
     blob: Attributes<MembershipUpgradeRequestModel>,
-    { requester }: { requester: UserResource }
+    {
+      requester,
+      requesterSeatType,
+    }: {
+      requester: UserResource;
+      requesterSeatType: MembershipSeatType | null;
+    }
   ) {
     super(MembershipUpgradeRequestModel, blob);
     this.requester = requester;
+    this.requesterSeatType = requesterSeatType;
   }
 
   get sId(): string {
@@ -83,7 +93,17 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
         { transaction }
       );
     });
-    return new Ok(new this(this.model, row.get(), { requester: user }));
+    const membership =
+      await MembershipResource.getActiveMembershipOfUserInWorkspace({
+        user,
+        workspace,
+      });
+    return new Ok(
+      new this(this.model, row.get(), {
+        requester: user,
+        requesterSeatType: membership?.seatType ?? null,
+      })
+    );
   }
 
   private static async baseFetch(
@@ -108,12 +128,25 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
     );
     const requesterByModelId = new Map(requesters.map((u) => [u.id, u]));
 
+    const { memberships } = await MembershipResource.getActiveMemberships({
+      users: requesters,
+      workspace: auth.getNonNullableWorkspace(),
+    });
+    const seatTypeByUserModelId = new Map(
+      memberships.map((m) => [m.userId, m.seatType])
+    );
+
     return rows.flatMap((r) => {
       const requester = requesterByModelId.get(r.userId);
       if (!requester) {
         return [];
       }
-      return [new this(this.model, r.get(), { requester })];
+      return [
+        new this(this.model, r.get(), {
+          requester,
+          requesterSeatType: seatTypeByUserModelId.get(r.userId) ?? null,
+        }),
+      ];
     });
   }
 
@@ -221,6 +254,7 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
         name: this.requester.fullName() || this.requester.name,
         email: this.requester.email ?? null,
         image: this.requester.imageUrl ?? null,
+        seatType: this.requesterSeatType,
       },
     };
   }
