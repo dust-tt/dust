@@ -15,7 +15,8 @@ import {
   listMetronomeContracts,
   scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
-import { SubscriptionModel } from "@app/lib/models/plan";
+import { PlanModel } from "@app/lib/models/plan";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Logger } from "@app/logger/logger";
 import { readFileSync } from "fs";
@@ -25,13 +26,13 @@ import { makeScript } from "./helpers";
 const CHURN_FILE = path.resolve(__dirname, "churn.txt");
 
 async function fixContractEndDate(
-  workspaceSId: string,
+  workspaceId: string,
   execute: boolean,
   logger: Logger
 ): Promise<void> {
-  const workspaceLogger = logger.child({ workspaceSId });
+  const workspaceLogger = logger.child({ workspaceId });
 
-  const workspace = await WorkspaceResource.fetchById(workspaceSId);
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
   if (!workspace) {
     workspaceLogger.warn("Workspace not found, skipping.");
     return;
@@ -60,12 +61,21 @@ async function fixContractEndDate(
     return;
   }
 
+  // Fetch all subscriptions for this workspace once to avoid one DB query per contract.
+  const allSubscriptions = await SubscriptionResource.model.findAll({
+    where: { workspaceId: workspace.id },
+    include: [PlanModel],
+  });
+  const subscriptionByContractId = new Map(
+    allSubscriptions
+      .filter((s) => s.metronomeContractId)
+      .map((s) => [s.metronomeContractId as string, s])
+  );
+
   for (const contract of openContracts) {
     const contractLogger = workspaceLogger.child({ contractId: contract.id });
 
-    const subscription = await SubscriptionModel.findOne({
-      where: { workspaceId: workspace.id, metronomeContractId: contract.id },
-    });
+    const subscription = subscriptionByContractId.get(contract.id);
 
     if (!subscription) {
       contractLogger.warn(
@@ -141,8 +151,8 @@ makeScript(
       "Processing churned workspaces"
     );
 
-    for (const sId of workspaceSIds) {
-      await fixContractEndDate(sId, execute, logger);
+    for (const workspaceId of workspaceSIds) {
+      await fixContractEndDate(workspaceId, execute, logger);
     }
 
     logger.info("Done.");
