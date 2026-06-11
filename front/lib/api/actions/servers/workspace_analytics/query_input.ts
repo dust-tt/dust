@@ -15,6 +15,11 @@ export const MAX_QUERY_WINDOW_DAYS = 100;
 export const DEFAULT_RESULTS = 25;
 export const MAX_RESULTS = 100;
 
+// Credit timeseries breakdowns keep a small number of series and fold the
+// remainder into an "other" group, so a stacked chart stays readable.
+export const DEFAULT_CREDIT_GROUPS = 5;
+export const MAX_CREDIT_GROUPS = 10;
+
 export const ANALYTICS_PERIODS = [
   "this_month",
   "last_7_days",

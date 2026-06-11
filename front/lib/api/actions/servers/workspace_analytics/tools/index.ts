@@ -8,11 +8,16 @@ import { workspaceAdminGuard } from "@app/lib/actions/mcp_internal_actions/utils
 import { WORKSPACE_ANALYTICS_TOOLS_METADATA } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
 import type { ResolvedTimeWindow } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
 import {
+  DEFAULT_CREDIT_GROUPS,
   DEFAULT_RESULTS,
   resolveTimeWindow,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { fetchCreditUsage } from "@app/lib/api/assistant/observability/credit_usage";
+import {
+  fetchCreditTimeseries,
+  fetchCreditTimeseriesBreakdown,
+  fetchCreditUsage,
+} from "@app/lib/api/assistant/observability/credit_usage";
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
 import {
   fetchAvailableSkills,
@@ -435,6 +440,139 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
         type: "text" as const,
         text:
           `${header}\nTop ${selectedGroupBy}s by estimated credits:\n` +
+          lines.join("\n"),
+      },
+    ]);
+  },
+
+  get_credit_timeseries: async (
+    {
+      granularity,
+      breakdownBy,
+      breakdownLimit,
+      period,
+      startDate,
+      endDate,
+      timezone,
+      source,
+      agentIds,
+      userIds,
+    },
+    { auth }
+  ) => {
+    const denied = workspaceAdminGuard(auth);
+    if (denied) {
+      return new Err(denied);
+    }
+
+    const window = resolveTimeWindow(
+      { period, startDate, endDate, timezone },
+      "last_30_days"
+    );
+    if (window.isErr()) {
+      return new Err(new MCPError(window.error, { tracked: false }));
+    }
+
+    const { label, timezone: tz } = window.value;
+    const interval = granularity ?? "day";
+    const estimateNote =
+      "These are estimates — point the user to the workspace Usage page for " +
+      "exact billed credits";
+
+    if (breakdownBy) {
+      const result = await fetchCreditTimeseriesBreakdown(auth, {
+        startDate: window.value.startDate,
+        endDate: window.value.endDate,
+        granularity: interval,
+        timezone: window.value.timezone,
+        breakdownBy,
+        limit: breakdownLimit ?? DEFAULT_CREDIT_GROUPS,
+        contextOrigin: source,
+        agentIds,
+        userIds,
+      });
+
+      if (result.isErr()) {
+        return new Err(
+          new MCPError(
+            `Failed to estimate credit trend: ${result.error.message}`
+          )
+        );
+      }
+
+      const { groups, points } = result.value;
+      if (
+        groups.length === 0 ||
+        points.every((point) => point.totalCredits === 0)
+      ) {
+        return new Ok([
+          {
+            type: "text" as const,
+            text: `No credit usage recorded for ${label} (${tz}).`,
+          },
+        ]);
+      }
+
+      const series = [...groups.map((group) => group.name), "Other"].join(", ");
+      const lines = points.map((point) => {
+        const parts = groups.map(
+          (group, index) => `${group.name} ${point.groupCredits[index]}`
+        );
+        parts.push(`Other ${point.otherCredits}`);
+        return `${point.date}: ${parts.join(", ")} (total ${point.totalCredits})`;
+      });
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text:
+            `Estimated credit usage per ${interval} for ${label} (${tz}), top ` +
+            `${groups.length} ${breakdownBy}s plus 'other'. ${estimateNote}.\n` +
+            `Series: ${series}\n` +
+            lines.join("\n"),
+        },
+      ]);
+    }
+
+    const result = await fetchCreditTimeseries(auth, {
+      startDate: window.value.startDate,
+      endDate: window.value.endDate,
+      granularity: interval,
+      timezone: window.value.timezone,
+      contextOrigin: source,
+      agentIds,
+      userIds,
+    });
+
+    if (result.isErr()) {
+      return new Err(
+        new MCPError(`Failed to estimate credit trend: ${result.error.message}`)
+      );
+    }
+
+    const points = result.value;
+
+    if (points.every((point) => point.totalCredits === 0)) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `No credit usage recorded for ${label} (${tz}).`,
+        },
+      ]);
+    }
+
+    const lines = points.map(
+      (point) =>
+        `${point.date}: ${point.totalCredits} credits ` +
+        `(${point.llmCredits} model + ${point.toolCredits} tools)`
+    );
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text:
+          `Estimated credit usage per ${interval} for ${label} (${tz}). ` +
+          `${estimateNote}:\n` +
           lines.join("\n"),
       },
     ]);
