@@ -11,6 +11,7 @@ import {
   useSelfImprovingCapSetting,
   useSelfImprovingToggle,
 } from "@app/lib/swr/useSelfImprovingSkillsSettings";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
   ContextItem,
@@ -21,7 +22,15 @@ import {
 import { useState } from "react";
 
 export function capUnitLabel(unit: ReinforcementBillingUnit): string {
-  return unit === "awu_credits" ? "credits" : "$";
+  switch (unit) {
+    case "awu_credits":
+      return "credits";
+    case "micro_usd":
+      return "$";
+    default:
+      assertNeverAndIgnore(unit);
+      return "";
+  }
 }
 
 // Credits are integers; dollars allow decimals.
@@ -29,9 +38,15 @@ export function normalizeCapInput(
   value: string,
   unit: ReinforcementBillingUnit
 ): string {
-  return unit === "awu_credits"
-    ? value.replace(/[^\d]/g, "")
-    : value.replace(/[^\d.]/g, "");
+  switch (unit) {
+    case "awu_credits":
+      return value.replace(/[^\d]/g, "");
+    case "micro_usd":
+      return value.replace(/[^\d.]/g, "");
+    default:
+      assertNeverAndIgnore(unit);
+      return value.replace(/[^\d.]/g, "");
+  }
 }
 
 interface SelfImprovingSkillsSettingsSectionProps {
