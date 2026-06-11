@@ -175,12 +175,9 @@ export async function resolveCurrencyForExistingMetronomeCustomer({
 
   const stripeCustomerId = stripeCustomerIdResult.value;
   if (!stripeCustomerId) {
-    return new Err(
-      new Error(
-        "Failed to resolve billing currency for Metronome customer " +
-          `${metronomeCustomerId}: no Stripe billing config found.`
-      )
-    );
+    // So Metronome contract do not have stripeCustomerId (e.g. for Free Plans)
+    // use usd as default in this case.
+    return new Ok("usd");
   }
 
   const stripeCustomer = await getStripeCustomer(stripeCustomerId);
