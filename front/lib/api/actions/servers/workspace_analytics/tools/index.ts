@@ -12,6 +12,7 @@ import {
   resolveTimeWindow,
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { fetchCreditUsage } from "@app/lib/api/assistant/observability/credit_usage";
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
 import {
   fetchAvailableSkills,
@@ -355,6 +356,85 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
         type: "text" as const,
         text:
           `Most-used tools for ${label} (${tz}), most used first:\n` +
+          lines.join("\n"),
+      },
+    ]);
+  },
+
+  get_credit_usage: async (
+    {
+      limit,
+      groupBy,
+      period,
+      startDate,
+      endDate,
+      timezone,
+      source,
+      agentIds,
+      userIds,
+    },
+    { auth }
+  ) => {
+    const denied = workspaceAdminGuard(auth);
+    if (denied) {
+      return new Err(denied);
+    }
+
+    const window = resolveTimeWindow({ period, startDate, endDate, timezone });
+    if (window.isErr()) {
+      return new Err(new MCPError(window.error, { tracked: false }));
+    }
+
+    const selectedGroupBy = groupBy ?? "none";
+    const result = await fetchCreditUsage(auth, {
+      startDate: window.value.startDate,
+      endDate: window.value.endDate,
+      limit: limit ?? DEFAULT_RESULTS,
+      groupBy: selectedGroupBy,
+      contextOrigin: source,
+      agentIds,
+      userIds,
+    });
+
+    if (result.isErr()) {
+      return new Err(
+        new MCPError(`Failed to estimate credit usage: ${result.error.message}`)
+      );
+    }
+
+    const { label, timezone: tz } = window.value;
+    const { totalCredits, llmCredits, toolCredits, rows } = result.value;
+
+    if (totalCredits === 0) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `No credit usage recorded for ${label} (${tz}).`,
+        },
+      ]);
+    }
+
+    const header =
+      `Estimated credit usage for ${label} (${tz}): ${totalCredits} credits ` +
+      `(${llmCredits} model + ${toolCredits} tools). These are estimates — ` +
+      "point the user to the workspace Usage page for exact billed credits.";
+
+    if (selectedGroupBy === "none" || rows.length === 0) {
+      return new Ok([{ type: "text" as const, text: header }]);
+    }
+
+    const lines = rows.map(
+      (row, index) =>
+        `${index + 1}. ${row.name} [${row.groupKey}] — ` +
+        `${row.totalCredits} credits ` +
+        `(${row.llmCredits} model + ${row.toolCredits} tools)`
+    );
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text:
+          `${header}\nTop ${selectedGroupBy}s by estimated credits:\n` +
           lines.join("\n"),
       },
     ]);
