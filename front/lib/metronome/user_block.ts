@@ -14,7 +14,9 @@
 // `isUserBlocked` is the unified read: a user is blocked iff the pool is
 // depleted or the user's credit state is "capped". It returns the reason
 // ("credits_exhausted" / "user_cap_reached") so callers can surface a tailored
-// message. The DB columns remain the source of truth; cache writes are gated on
+// message. When both conditions hold, "user_cap_reached" wins: the per-user cap
+// is the user's actionable blocker, whereas refilling the pool would not unblock
+// them. The DB columns remain the source of truth; cache writes are gated on
 // DB transaction commit via `invalidateCacheAfterCommit`, and cache misses fall
 // back to DB and repopulate the relevant keys.
 //
@@ -199,11 +201,15 @@ function deriveBlockedReason({
   userCapBlocked: boolean;
   workspacePoolDepleted: boolean;
 }): UserBlockedReason | null {
-  if (workspacePoolDepleted) {
-    return "credits_exhausted";
-  }
+  // The per-user cap takes precedence over pool depletion: when a user has hit
+  // their own cap, that is their actionable blocker. Refilling the workspace
+  // pool would not unblock them, so surfacing "workspace out of credits" would
+  // be misleading. The pool reason is only relevant when the user is not capped.
   if (userCapBlocked) {
     return "user_cap_reached";
+  }
+  if (workspacePoolDepleted) {
+    return "credits_exhausted";
   }
   return null;
 }
