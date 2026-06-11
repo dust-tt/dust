@@ -4,8 +4,10 @@ import {
   ASSISTANT_EMAIL_SUBDOMAIN,
   buildEmailUserMessage,
   buildReplyThreadingHeaders,
+  getThreadingLookupMessageIds,
   parseEmailReplyContext,
   sendToolValidationEmail,
+  splitThreadContent,
 } from "@app/lib/api/assistant/email/email_trigger";
 import { sendEmail } from "@app/lib/api/email";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -220,6 +222,108 @@ describe("buildReplyThreadingHeaders", () => {
       inReplyTo: "<incoming-message-id@dust.tt>",
       references: "<older-message-id@dust.tt> <incoming-message-id@dust.tt>",
     });
+  });
+});
+
+describe("splitThreadContent", () => {
+  it("extracts the conversation id from the current agent reply footer link", async () => {
+    const { conversationId } = await splitThreadContent(
+      "Thanks!\n\nAnswered by agent · View full conversation " +
+        "<https://dust.tt/w/workspace1/conversation/abc123XYZ0>"
+    );
+
+    expect(conversationId).toBe("abc123XYZ0");
+  });
+
+  it("extracts the conversation id from a bare URL", async () => {
+    const { conversationId } = await splitThreadContent(
+      "See https://dust.tt/w/workspace1/conversation/abc123XYZ0 for details."
+    );
+
+    expect(conversationId).toBe("abc123XYZ0");
+  });
+
+  it("extracts the conversation id from legacy assistant links", async () => {
+    const { conversationId } = await splitThreadContent(
+      "Open in Dust <https://dust.tt/w/workspace1/assistant/abc123XYZ0>"
+    );
+
+    expect(conversationId).toBe("abc123XYZ0");
+  });
+
+  it("returns null when no conversation link is present", async () => {
+    const { conversationId } = await splitThreadContent(
+      "Hello, can you help with https://example.com/w/foo?"
+    );
+
+    expect(conversationId).toBeNull();
+  });
+
+  it("splits a reply from the quoted thread and finds the link in the quote", async () => {
+    const { userMessage, restOfThread, conversationId } =
+      await splitThreadContent(
+        "Can you go deeper on point 2?\n" +
+          "\n" +
+          "On Mon, Jun 8, 2026 at 10:12 AM agent (Dust agent)\n" +
+          "<agent@dust.team> wrote:\n" +
+          "> Here is my answer.\n" +
+          "> Answered by agent · View full conversation\n" +
+          "> <https://dust.tt/w/workspace1/conversation/abc123XYZ0>\n"
+      );
+
+    expect(userMessage).toBe("Can you go deeper on point 2?");
+    expect(restOfThread).toContain("Here is my answer.");
+    expect(conversationId).toBe("abc123XYZ0");
+  });
+});
+
+describe("getThreadingLookupMessageIds", () => {
+  it("orders message-ids most recent first: in-reply-to, then references reversed", () => {
+    const messageIds = getThreadingLookupMessageIds({
+      messageId: "<reply@mail.gmail.com>",
+      inReplyTo: "<agent-reply@sendgrid.net>",
+      references: "<original@mail.gmail.com> <agent-reply@sendgrid.net>",
+    });
+
+    expect(messageIds).toEqual([
+      "agent-reply@sendgrid.net",
+      "original@mail.gmail.com",
+    ]);
+  });
+
+  it("normalizes brackets and whitespace and deduplicates", () => {
+    const messageIds = getThreadingLookupMessageIds({
+      messageId: null,
+      inReplyTo: " <a@x.com> ",
+      references: "<a@x.com>   b@x.com\n <c@x.com>",
+    });
+
+    expect(messageIds).toEqual(["a@x.com", "c@x.com", "b@x.com"]);
+  });
+
+  it("caps the number of lookup candidates", () => {
+    const references = Array.from(
+      { length: 20 },
+      (_, i) => `<ref-${i}@x.com>`
+    ).join(" ");
+    const messageIds = getThreadingLookupMessageIds({
+      messageId: null,
+      inReplyTo: null,
+      references,
+    });
+
+    expect(messageIds).toHaveLength(10);
+    expect(messageIds[0]).toBe("ref-19@x.com");
+  });
+
+  it("returns an empty array when no threading headers are set", () => {
+    const messageIds = getThreadingLookupMessageIds({
+      messageId: null,
+      inReplyTo: null,
+      references: null,
+    });
+
+    expect(messageIds).toEqual([]);
   });
 });
 

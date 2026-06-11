@@ -45,6 +45,11 @@ import type { InboundEmailDkimResult } from "./inbound_auth";
 const REDIS_ORIGIN: RedisUsageTagsType = "email_context";
 const EMAIL_REPLY_CONTEXT_PREFIX = "email-reply-context";
 const EMAIL_REPLY_CONTEXT_TTL_SECONDS = 3 * 60 * 60; // 3 hours
+// Maps inbound email Message-IDs to conversation sIds so that replies in the same email thread
+// continue the existing conversation. Long TTL: users may reply to an agent email days later.
+const EMAIL_THREAD_CONVERSATION_PREFIX = "email-thread-conversation";
+const EMAIL_THREAD_CONVERSATION_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
+const EMAIL_THREAD_LOOKUP_MAX_MESSAGE_IDS = 10;
 // Same-email multi-workspace routing is rare and mostly specific to Dust, so a
 // single hardcoded priority workspace is enough for now.
 const EMAIL_PRIORITY_WORKSPACE_IDS = ["0ec9852c2f"] as const;
@@ -194,6 +199,113 @@ export async function deleteEmailReplyContext(
   const redis = await getRedisStreamClient({ origin: REDIS_ORIGIN });
   const key = makeEmailReplyContextKey(workspaceId, agentMessageId);
   await redis.del(key);
+}
+
+/**
+ * Normalize an RFC 5322 Message-ID to a canonical form (no angle brackets) used for both
+ * storing and looking up thread-to-conversation mappings.
+ */
+function normalizeMessageId(rawMessageId: string): string | null {
+  let messageId = rawMessageId.trim();
+  if (messageId.startsWith("<")) {
+    messageId = messageId.slice(1);
+  }
+  if (messageId.endsWith(">")) {
+    messageId = messageId.slice(0, -1);
+  }
+  return messageId.length > 0 ? messageId : null;
+}
+
+function makeEmailThreadConversationKey(
+  workspaceId: string,
+  messageId: string
+): string {
+  return `${EMAIL_THREAD_CONVERSATION_PREFIX}:${workspaceId}:${messageId}`;
+}
+
+/**
+ * Map an inbound email Message-ID to a conversation sId so later replies in the same email
+ * thread can continue the conversation.
+ */
+export async function storeEmailThreadConversation({
+  workspaceId,
+  messageId,
+  conversationId,
+}: {
+  workspaceId: string;
+  messageId: string;
+  conversationId: string;
+}): Promise<void> {
+  const normalizedMessageId = normalizeMessageId(messageId);
+  if (!normalizedMessageId) {
+    return;
+  }
+
+  const redis = await getRedisStreamClient({ origin: REDIS_ORIGIN });
+  const key = makeEmailThreadConversationKey(workspaceId, normalizedMessageId);
+
+  await redis.set(key, conversationId, {
+    EX: EMAIL_THREAD_CONVERSATION_TTL_SECONDS,
+  });
+
+  logger.info(
+    { conversationId, key },
+    "[email] Stored email thread conversation mapping in Redis"
+  );
+}
+
+/**
+ * Message-IDs to look up when matching an inbound email to an existing conversation, most
+ * recent first: In-Reply-To, then References reversed (References is oldest-first per RFC 5322).
+ */
+export function getThreadingLookupMessageIds(
+  threadingHeaders: EmailThreadingHeaders
+): string[] {
+  const referenceTokens = (threadingHeaders.references ?? "")
+    .split(/\s+/)
+    .reverse();
+  const candidates = [threadingHeaders.inReplyTo ?? "", ...referenceTokens];
+
+  const seen = new Set<string>();
+  const messageIds: string[] = [];
+  for (const candidate of candidates) {
+    const messageId = normalizeMessageId(candidate);
+    if (!messageId || seen.has(messageId)) {
+      continue;
+    }
+    seen.add(messageId);
+    messageIds.push(messageId);
+    if (messageIds.length >= EMAIL_THREAD_LOOKUP_MAX_MESSAGE_IDS) {
+      break;
+    }
+  }
+
+  return messageIds;
+}
+
+/**
+ * Find the conversation associated with the email thread an inbound email belongs to, if any.
+ */
+export async function findConversationIdFromThreadingHeaders(
+  workspaceId: string,
+  threadingHeaders: EmailThreadingHeaders
+): Promise<string | null> {
+  const messageIds = getThreadingLookupMessageIds(threadingHeaders);
+  if (messageIds.length === 0) {
+    return null;
+  }
+
+  const redis = await getRedisStreamClient({ origin: REDIS_ORIGIN });
+  for (const messageId of messageIds) {
+    const conversationId = await redis.get(
+      makeEmailThreadConversationKey(workspaceId, messageId)
+    );
+    if (conversationId) {
+      return conversationId;
+    }
+  }
+
+  return null;
 }
 
 export { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
@@ -627,6 +739,12 @@ export function emailAssistantMatcher({
   });
 }
 
+// Matches a Dust conversation URL anywhere in the email body, independent of the surrounding
+// anchor text (email clients render the agent reply footer link in varying plain-text forms).
+// Also matches the legacy `/assistant/` path present in older agent reply emails.
+const DUST_CONVERSATION_URL_REGEX =
+  /https?:\/\/[^\s<>"]+\/w\/[a-zA-Z0-9]+\/(?:conversation|assistant)\/([a-zA-Z0-9]+)/;
+
 export async function splitThreadContent(content: string) {
   const separators = [
     /\n\s*On\s+[A-Za-z]{3},\s+[A-Za-z]{3}\s+\d{1,2},\s+\d{4}\s+at\s+\d{1,2}:\d{2}\s+[AP]M/,
@@ -645,9 +763,7 @@ export async function splitThreadContent(content: string) {
       firstSeparatorIndex = match.index;
     }
   }
-  const conversationIdRegex =
-    /Open in Dust <https?:\/\/[^/]+\/w\/[^/]+\/assistant\/([^>]+)>/;
-  const conversationIdMatch = content.match(conversationIdRegex);
+  const conversationIdMatch = content.match(DUST_CONVERSATION_URL_REGEX);
   const conversationId = conversationIdMatch ? conversationIdMatch[1] : null;
 
   const newMessage =
@@ -692,24 +808,50 @@ export async function triggerFromEmail(
     });
   }
 
-  const { userMessage, restOfThread, conversationId } =
-    await splitThreadContent(email.text);
+  const {
+    userMessage,
+    restOfThread,
+    conversationId: bodyConversationId,
+  } = await splitThreadContent(email.text);
 
-  let conversation;
-  if (conversationId) {
-    const conversationRes = await getConversation(auth, conversationId);
-    if (conversationRes.isErr()) {
-      return new Err({
-        type: "unexpected_error",
-        message: "Failed to find conversation with given id.",
-      });
+  // Prefer the thread mapping over the body link: threading headers are set mechanically by
+  // the email client, while a quoted body can carry conversation links from forwarded content.
+  const threadConversationId = await findConversationIdFromThreadingHeaders(
+    workspace.sId,
+    email.threadingHeaders
+  );
+
+  const candidateConversationIds = [
+    ...new Set([threadConversationId, bodyConversationId].filter(isString)),
+  ];
+
+  let conversation: ConversationType | null = null;
+  for (const candidateId of candidateConversationIds) {
+    const conversationRes = await getConversation(auth, candidateId);
+    if (conversationRes.isOk()) {
+      conversation = conversationRes.value;
+      break;
     }
-    conversation = conversationRes.value;
-  } else {
+    localLogger.warn(
+      { conversationId: candidateId, errorType: conversationRes.error.type },
+      "[email] Cannot access conversation matching inbound email, ignoring candidate."
+    );
+  }
+  if (!conversation) {
     conversation = await createConversation(auth, {
       title: `Email: ${email.subject}`,
       visibility: "unlisted",
       spaceId: null,
+    });
+  }
+
+  // Map this email's Message-ID to the conversation (on create and on continue) so any later
+  // reply in the thread keeps routing to it.
+  if (email.threadingHeaders.messageId) {
+    await storeEmailThreadConversation({
+      workspaceId: workspace.sId,
+      messageId: email.threadingHeaders.messageId,
+      conversationId: conversation.sId,
     });
   }
 
