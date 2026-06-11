@@ -120,9 +120,22 @@ export async function resolveAuthentication(
     );
   }
 
-  const [updatedCount] = await action.updateStatus(
-    outcome === "completed" ? "ready_allowed_explicitly" : "denied"
-  );
+  // A blocked action is only actionable while its agent message can still resume: resolving one
+  // left behind by an interrupted, cancelled or failed message would relaunch an agent loop that
+  // was already terminated.
+  if (!(await action.canAgentMessageResume(auth))) {
+    return new Err(
+      new DustError(
+        "action_not_blocked",
+        "Action belongs to an agent message that can no longer resume"
+      )
+    );
+  }
+
+  const [updatedCount] = await action.updateStatusFromExpected(auth, {
+    status: outcome === "completed" ? "ready_allowed_explicitly" : "denied",
+    expectedStatus: blockedStatus,
+  });
 
   if (updatedCount === 0) {
     logger.info(

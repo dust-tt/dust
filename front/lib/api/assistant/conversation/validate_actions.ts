@@ -102,11 +102,22 @@ export async function validateAction(
     );
   }
 
-  const [updatedCount] = await action.updateStatus(
-    getMCPApprovalStateFromUserApprovalState(approvalState)
-  );
+  // Stale approval links must not relaunch an already terminated agent message.
+  if (!(await action.canAgentMessageResume(auth))) {
+    return new Err(
+      new DustError(
+        "action_not_blocked",
+        "Action belongs to an agent message that can no longer resume"
+      )
+    );
+  }
 
-  if (approvalState === "always_approved" && user) {
+  const [updatedCount] = await action.updateStatusFromExpected(auth, {
+    status: getMCPApprovalStateFromUserApprovalState(approvalState),
+    expectedStatus: "blocked_validation_required",
+  });
+
+  if (updatedCount > 0 && approvalState === "always_approved" && user) {
     switch (action.toolConfiguration.permission) {
       case "low":
         // Key the approval on the configuration name, not the step content's

@@ -66,6 +66,7 @@ import type {
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentFunctionCallContentType } from "@app/types/assistant/agent_message_content";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { UNRESUMABLE_AGENT_MESSAGE_STATUSES } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -745,6 +746,27 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   }
 
   /**
+   * Whether the agent message owning this action can still resume, i.e. has not reached a
+   * terminal status (interrupted, cancelled, failed). Resolving a blocked action (approving,
+   * denying, answering, retrying) is only allowed while the message can resume: otherwise it
+   * would relaunch an agent loop that was already terminated.
+   */
+  async canAgentMessageResume(auth: Authenticator): Promise<boolean> {
+    const agentMessage = await AgentMessageModel.findOne({
+      attributes: ["status"],
+      where: {
+        id: this.agentMessageId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+
+    return (
+      agentMessage !== null &&
+      !UNRESUMABLE_AGENT_MESSAGE_STATUSES.includes(agentMessage.status)
+    );
+  }
+
+  /**
    * Creates output items in DB and writes their content to GCS.
    * Content is also written to DB to ease rollback during the migration period.
    */
@@ -1211,6 +1233,33 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return this.update({
       status,
     });
+  }
+
+  /**
+   * Updates only if the action still has the expected status. Combined with the invariant that
+   * blocked actions are denied in the same transaction as their message's terminal status update
+   * (see updateAgentMessageWithFinalStatus), a blocked-status transition implies resumability.
+   */
+  async updateStatusFromExpected(
+    auth: Authenticator,
+    {
+      status,
+      expectedStatus,
+    }: {
+      status: ToolExecutionStatus;
+      expectedStatus: ToolExecutionStatus;
+    }
+  ): Promise<[affectedCount: number]> {
+    return AgentMCPActionModel.update(
+      { status },
+      {
+        where: {
+          id: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          status: expectedStatus,
+        },
+      }
+    );
   }
 
   /**
