@@ -118,6 +118,10 @@ export const PROGRAMMATIC_CAP_REACHED_TRIGGER_ID =
   "programmatic-cap-reached" as const;
 export const PROGRAMMATIC_CAP_REACHED_TAG = "programmatic-cap-reached" as const;
 
+export const UPGRADE_REQUEST_CREATED_TRIGGER_ID =
+  "upgrade-request-created" as const;
+export const UPGRADE_REQUEST_CREATED_TAG = "upgrade-request-created" as const;
+
 export type WorkflowTriggerId =
   | typeof CONVERSATION_UNREAD_TRIGGER_ID
   | typeof POD_ADDED_AS_MEMBER_TRIGGER_ID
@@ -126,4 +130,5 @@ export type WorkflowTriggerId =
   | typeof PROVIDER_CREDENTIALS_HEALTH_UPDATED_TRIGGER_ID
   | typeof USER_AWU_CAP_REACHED_TRIGGER_ID
   | typeof BALANCE_THRESHOLD_REACHED_TRIGGER_ID
-  | typeof PROGRAMMATIC_CAP_REACHED_TRIGGER_ID;
+  | typeof PROGRAMMATIC_CAP_REACHED_TRIGGER_ID
+  | typeof UPGRADE_REQUEST_CREATED_TRIGGER_ID;

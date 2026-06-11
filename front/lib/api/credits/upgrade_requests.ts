@@ -3,10 +3,13 @@ import {
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
+import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import { notifyAdminsUpgradeRequested } from "@app/lib/notifications/workflows/upgrade-request-created";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
+import logger from "@app/logger/logger";
 import type {
   MembershipUpgradeRequestStatus,
   MembershipUpgradeRequestType,
@@ -36,6 +39,52 @@ async function isMemberUpgradeRequestAllowed(
   const config =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
   return config?.allowMemberUpgradeRequests ?? true;
+}
+
+async function isUpgradeRequestEmailEnabled(
+  auth: Authenticator
+): Promise<boolean> {
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  return config?.upgradeRequestEmailEnabled ?? true;
+}
+
+async function notifyAdminsOfUpgradeRequest(
+  auth: Authenticator,
+  { request }: { request: MembershipUpgradeRequestResource }
+): Promise<void> {
+  //swallow errors
+  try {
+    if (!(await isUpgradeRequestEmailEnabled(auth))) {
+      return;
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const { members: admins } = await getMembers(auth, {
+      roles: ["admin"],
+      activeOnly: true,
+    });
+
+    const requester = request.requester;
+    notifyAdminsUpgradeRequested({
+      admins: admins.map((admin) => ({
+        sId: admin.sId,
+        email: admin.email,
+        firstName: admin.firstName,
+        lastName: admin.lastName,
+      })),
+      workspaceId: workspace.sId,
+      workspaceName: workspace.name,
+      requestId: request.sId,
+      requesterName: requester.fullName() ?? requester.name,
+      requesterEmail: requester.email ?? null,
+    });
+  } catch (err) {
+    logger.error(
+      { err, requestId: request.sId },
+      "Failed to notify admins of upgrade request"
+    );
+  }
 }
 
 export type GetUpgradeRequestsResponseBody = {
@@ -121,8 +170,7 @@ export async function createUpgradeRequest(
     metadata: { request_sid: request.sId },
   });
 
-  // TODO(upgrade-requests PR5): notify workspace admins by email (gated on the
-  // `upgradeRequestEmail` notification toggle).
+  void notifyAdminsOfUpgradeRequest(auth, { request });
 
   return new Ok(request.toJSON());
 }
