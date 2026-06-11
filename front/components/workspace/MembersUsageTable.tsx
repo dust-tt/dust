@@ -1,3 +1,4 @@
+import { SEAT_TYPE_ICONS } from "@app/components/workspace/billing/seatTypeUtils";
 import { buildMemberNameColumn } from "@app/components/workspace/member_name_column";
 import {
   getSeatBarClasses,
@@ -15,15 +16,11 @@ import {
   SEAT_TYPE_ORDER,
 } from "@app/types/memberships";
 import {
-  AlertCircle,
   Clock,
-  Cube01,
   DataTable,
-  Hexagon01,
   Icon,
   LoadingBlock,
   type MenuItem,
-  SeatMax,
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -33,7 +30,6 @@ import type {
   PaginationState,
   SortingState,
 } from "@tanstack/react-table";
-import type React from "react";
 import { useMemo } from "react";
 
 type RowData = {
@@ -55,15 +51,6 @@ type RowData = {
 };
 
 type Info = CellContext<RowData, string>;
-
-const SEAT_TYPE_ICONS: Partial<
-  Record<MembershipSeatType, React.ComponentType<{ className?: string }>>
-> = {
-  none: AlertCircle,
-  max: SeatMax,
-  pro: Cube01,
-  free: Hexagon01,
-};
 
 // Yearly seat types are billed yearly but render in the table identically to
 // their monthly counterpart. Strip the suffix for icon lookup and display.

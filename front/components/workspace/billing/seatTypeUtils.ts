@@ -1,4 +1,5 @@
 import {
+  AlertCircle,
   CoinsStacked01,
   Database01,
   LayerSingle,
@@ -8,6 +9,7 @@ import {
 import type { ComponentType } from "react";
 
 export const SEAT_TYPE_ICONS: Record<string, ComponentType> = {
+  none: AlertCircle,
   free: LayerSingle,
   pro: LayersTwo01,
   pro_yearly: LayersTwo01,
