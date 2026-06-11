@@ -40,7 +40,7 @@ export function MainNavigation() {
               type="button"
               aria-expanded={isOpen}
               aria-haspopup="true"
-              className="inline-flex h-9 items-center gap-1 px-4 text-sm font-medium text-foreground/70 transition-colors duration-150 hover:text-foreground focus:outline-none"
+              className="inline-flex h-9 items-center gap-1 px-4 text-sm font-medium text-foreground/70 transition-colors duration-150 hover:text-foreground focus:outline-hidden"
             >
               {item.title}
               <ChevronDown

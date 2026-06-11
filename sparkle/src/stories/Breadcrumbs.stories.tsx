@@ -91,7 +91,7 @@ export const BreadcrumbsExample = (args: BreadcrumbsExampleProps) => {
   ];
 
   return (
-    <div className="s-flex s-flex-col s-gap-4 s-pb-8">
+    <div className="s:flex s:flex-col s:gap-4 s:pb-8">
       <Breadcrumbs items={items0} {...args} />
       <Breadcrumbs items={items1} {...args} />
       <Breadcrumbs items={items2} {...args} />

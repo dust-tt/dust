@@ -142,7 +142,7 @@ function VoicePickerDemo({
   }
 
   return (
-    <div className="s-flex s-items-center s-gap-2">
+    <div className="s:flex s:items-center s:gap-2">
       <VoicePicker
         status={status}
         level={level}

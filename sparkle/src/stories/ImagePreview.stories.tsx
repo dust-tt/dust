@@ -60,13 +60,13 @@ const meta = {
   render: (args) => {
     if (args.variant === "embedded") {
       return (
-        <div className="s-relative s-h-48 s-w-48">
+        <div className="s:relative s:h-48 s:w-48">
           <ImagePreview {...args} />
         </div>
       );
     }
     return (
-      <div className="s-w-48">
+      <div className="s:w-48">
         <ImagePreview {...args} />
       </div>
     );
@@ -94,16 +94,16 @@ export const Variants: Story = {
     variant: "standalone",
   },
   render: (args) => (
-    <div className="s-flex s-flex-col s-gap-6">
-      <div className="s-flex s-flex-col s-gap-2">
-        <div className="s-text-sm s-font-medium s-text-primary dark:s-text-primary-night">
+    <div className="s:flex s:flex-col s:gap-6">
+      <div className="s:flex s:flex-col s:gap-2">
+        <div className="s:text-sm s:font-medium s:text-primary s:dark:text-primary-night">
           Title Position: Bottom
         </div>
-        <div className="s-flex s-items-center s-gap-4">
-          <div className="s-w-32">
+        <div className="s:flex s:items-center s:gap-4">
+          <div className="s:w-32">
             <ImagePreview {...args} title="Normal" titlePosition="bottom" />
           </div>
-          <div className="s-w-32">
+          <div className="s:w-32">
             <ImagePreview
               {...args}
               title="With Close"
@@ -111,7 +111,7 @@ export const Variants: Story = {
               onClose={() => alert("Close clicked")}
             />
           </div>
-          <div className="s-w-32">
+          <div className="s:w-32">
             <ImagePreview
               {...args}
               title="With Download"
@@ -121,15 +121,15 @@ export const Variants: Story = {
           </div>
         </div>
       </div>
-      <div className="s-flex s-flex-col s-gap-2">
-        <div className="s-text-sm s-font-medium s-text-primary dark:s-text-primary-night">
+      <div className="s:flex s:flex-col s:gap-2">
+        <div className="s:text-sm s:font-medium s:text-primary s:dark:text-primary-night">
           Title Position: Center
         </div>
-        <div className="s-flex s-items-center s-gap-4">
-          <div className="s-w-32">
+        <div className="s:flex s:items-center s:gap-4">
+          <div className="s:w-32">
             <ImagePreview {...args} title="Normal" titlePosition="center" />
           </div>
-          <div className="s-w-32">
+          <div className="s:w-32">
             <ImagePreview
               {...args}
               title="With Close"
@@ -137,7 +137,7 @@ export const Variants: Story = {
               onClose={() => alert("Close clicked")}
             />
           </div>
-          <div className="s-w-32">
+          <div className="s:w-32">
             <ImagePreview
               {...args}
               title="With Download"

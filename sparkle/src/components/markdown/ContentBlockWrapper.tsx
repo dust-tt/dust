@@ -16,11 +16,11 @@ const contentTypeExtensions: Record<SupportedContentType, string> = {
   "text/csv": ".csv",
 };
 
-const wrapperVariants = cva("s-group s-relative s-w-full !s-overflow-visible", {
+const wrapperVariants = cva("s:group s:relative s:w-full !s-overflow-visible", {
   variants: {
     buttonDisplay: {
-      inside: "s-mt-0",
-      outside: "s-mt-11",
+      inside: "s:mt-0",
+      outside: "s:mt-11",
     },
   },
   defaultVariants: {
@@ -28,11 +28,11 @@ const wrapperVariants = cva("s-group s-relative s-w-full !s-overflow-visible", {
   },
 });
 
-const stickyContainerVariants = cva("s-sticky s-z-[1] s-h-0", {
+const stickyContainerVariants = cva("s:sticky s:z-[1] s:h-0", {
   variants: {
     buttonDisplay: {
-      inside: "s-top-0",
-      outside: "s-top-11",
+      inside: "s:top-0",
+      outside: "s:top-11",
     },
   },
   defaultVariants: {
@@ -41,16 +41,16 @@ const stickyContainerVariants = cva("s-sticky s-z-[1] s-h-0", {
 });
 
 const actionsVariants = cva(
-  "s-absolute s-right-2 s-flex s-items-center s-gap-1 s-py-2",
+  "s:absolute s:right-2 s:flex s:items-center s:gap-1 s:py-2",
   {
     variants: {
       buttonDisplay: {
         inside: "",
-        outside: "s-bottom-0 s-h-11",
+        outside: "s:bottom-0 s:h-11",
       },
       displayActions: {
         hover:
-          "s-opacity-0 s-transition-opacity s-duration-200 group-hover:s-opacity-100",
+          "s:opacity-0 s:transition-opacity s:duration-200 s:group-hover:opacity-100",
         always: "",
       },
     },
@@ -179,7 +179,7 @@ export function ContentBlockWrapper({
           </div>
         </div>
       )}
-      <div className={cn("s-z-0 s-w-full", innerClassName)}>{children}</div>
+      <div className={cn("s:z-0 s:w-full", innerClassName)}>{children}</div>
     </div>
   );
 }

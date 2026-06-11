@@ -101,7 +101,7 @@ export const ThinkingChip: Story = {
 
 export const RemovableChip: Story = {
   render: () => (
-    <div className="s-space-x-2">
+    <div className="s:space-x-2">
       <Chip
         size="mini"
         color="golden"
@@ -127,13 +127,13 @@ export const RemovableChip: Story = {
 
 export const AllColors: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-4">
-      <div className="s-flex s-flex-wrap s-gap-2">
+    <div className="s:flex s:flex-col s:gap-4">
+      <div className="s:flex s:flex-wrap s:gap-2">
         <Chip size="xs" color="primary" label="Primary" />
         <Chip size="xs" color="primary" label="Primary" />
         <Chip size="sm" color="primary" label="Primary" />
       </div>
-      <div className="s-flex s-flex-wrap s-gap-2">
+      <div className="s:flex s:flex-wrap s:gap-2">
         <Chip size="sm" color="primary" label="Primary" />
         <Chip size="sm" color="highlight" label="Highlight" />
         <Chip size="sm" color="success" label="Success" />
@@ -144,7 +144,7 @@ export const AllColors: Story = {
         <Chip size="sm" color="rose" label="Rose" />
         <Chip size="sm" color="golden" label="Golden" />
       </div>
-      <div className="s-flex s-flex-wrap s-gap-2">
+      <div className="s:flex s:flex-wrap s:gap-2">
         <Chip
           size="sm"
           color="primary"

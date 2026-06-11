@@ -50,8 +50,8 @@ type Story = StoryObj<typeof meta>;
 
 export const Example: Story = {
   render: () => (
-    <div className="s-flex s-w-full s-justify-center s-gap-6">
-      <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-p-2 @sm/conversation:s-gap-8 @md/conversation:s-gap-10">
+    <div className="s:flex s:w-full s:justify-center s:gap-6">
+      <div className="s:flex s:w-full s:max-w-4xl s:flex-col s:gap-6 s:p-2 s:@sm/conversation:gap-8 s:@md/conversation:gap-10">
         <ConversationMessageContainer messageType="me" type="user">
           <ConversationMessageAvatar
             avatarUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
@@ -95,9 +95,9 @@ export const Example: Story = {
             renderName={(name) => <span>{name}</span>}
           />
           <ConversationMessageContent type="user">
-            <div className="s-flex s-flex-col s-gap-2">
+            <div className="s:flex s:flex-col s:gap-2">
               <span>Here are the related docs and a drive folder.</span>
-              <div className="s-flex s-flex-wrap s-gap-2">
+              <div className="s:flex s:flex-wrap s:gap-2">
                 <AttachmentChip
                   label="Q1_feedback_summary.pdf"
                   icon={{ visual: File02 }}
@@ -126,9 +126,9 @@ export const Example: Story = {
             renderName={(name) => <span>{name}</span>}
           />
           <ConversationMessageContent type="user">
-            <div className="s-flex s-flex-col s-gap-2">
+            <div className="s:flex s:flex-col s:gap-2">
               <span>Adding meeting notes from last week.</span>
-              <div className="s-flex s-flex-wrap s-gap-2">
+              <div className="s:flex s:flex-wrap s:gap-2">
                 <AttachmentChip
                   label="Notes — Interviews"
                   doubleIcon={{
@@ -155,7 +155,7 @@ export const Example: Story = {
             timestamp="14:31"
             renderName={(name) => <span>{name}</span>}
             completionStatus={
-              <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <span className="s:text-xs s:text-muted-foreground s:dark:text-muted-foreground-night">
                 Completed in 18 sec
               </span>
             }
@@ -192,7 +192,7 @@ export const Example: Story = {
             timestamp="14:33"
             renderName={(name) => <span>{name}</span>}
             completionStatus={
-              <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <span className="s:text-xs s:text-muted-foreground s:dark:text-muted-foreground-night">
                 Awaiting approval
               </span>
             }
@@ -206,7 +206,7 @@ export const Example: Story = {
               cardVariant="highlight"
               actionsPosition="header"
               visual={
-                <Avatar size="sm" emoji="🗞️" backgroundColor="s-bg-blue-100" />
+                <Avatar size="sm" emoji="🗞️" backgroundColor="s:bg-blue-100" />
               }
             />
           </ConversationMessageContent>
@@ -223,7 +223,7 @@ export const Example: Story = {
             timestamp="14:34"
             renderName={(name) => <span>{name}</span>}
             completionStatus={
-              <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <span className="s:text-xs s:text-muted-foreground s:dark:text-muted-foreground-night">
                 Completed in 46 sec
               </span>
             }
@@ -253,7 +253,7 @@ export const Example: Story = {
               rejectLabel="Skip"
               cardVariant="secondary"
               visual={
-                <Avatar size="sm" emoji="📁" backgroundColor="s-bg-green-100" />
+                <Avatar size="sm" emoji="📁" backgroundColor="s:bg-green-100" />
               }
             />
           </ConversationMessageContent>

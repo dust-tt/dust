@@ -131,7 +131,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   return (
     <AppLayoutTitle>
       <div
-        className="grid h-full min-w-0 max-w-full grid-cols-[1fr,auto] items-center gap-3"
+        className="grid h-full min-w-0 max-w-full grid-cols-[1fr_auto] items-center gap-3"
         onContextMenu={handleRightClick}
       >
         <div

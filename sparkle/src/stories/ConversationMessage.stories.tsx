@@ -40,7 +40,7 @@ export default meta;
 export const ConversationExample = () => {
   return (
     <>
-      <div className="s-flex s-w-full s-justify-center s-gap-6">
+      <div className="s:flex s:w-full s:justify-center s:gap-6">
         <ConversationContainer>
           <ConversationMessage
             type="user"
@@ -56,7 +56,7 @@ export const ConversationExample = () => {
               </Citation>,
             ]}
             infoChip={
-              <span className="s-translate-y-1 s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <span className="s:translate-y-1 s:text-muted-foreground s:dark:text-muted-foreground-night">
                 <Icon size="xs" visual={Zap} />
               </span>
             }
@@ -121,7 +121,7 @@ export const ConversationExample = () => {
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
             isDisabled={true}
             renderName={(name) => (
-              <span className="s-text-gray-600 s-text-opacity-25">{name}</span>
+              <span className="s:text-gray-600 s:text-opacity-25">{name}</span>
             )}
           >
             This is a message with a disabled agent
@@ -198,7 +198,7 @@ footnote [^1]
 export const ConversationHandoffExample = () => {
   return (
     <>
-      <div className="s-flex s-w-full s-justify-center s-gap-6">
+      <div className="s:flex s:w-full s:justify-center s:gap-6">
         <ConversationContainer>
           <ConversationMessage
             type="user"
@@ -240,7 +240,7 @@ export const ConversationHandoffExample = () => {
             name="@deep-dive"
             type="agent"
             completionStatus={
-              <span className="s-flex s-cursor-pointer s-items-center s-gap-1 s-text-xs">
+              <span className="s:flex s:cursor-pointer s:items-center s:gap-1 s:text-xs">
                 <span>Completed in 9 min 30 sec</span>
                 <Icon visual={ChevronRight} size="xs" />
               </span>
@@ -295,7 +295,7 @@ Occasional system crashes when presented with empty food bowl. Single whisker ma
 
 export const ConversationWithActions = () => {
   return (
-    <div className="s-flex s-w-full s-justify-center s-gap-6">
+    <div className="s:flex s:w-full s:justify-center s:gap-6">
       <ConversationContainer>
         <ConversationMessage
           type="user"

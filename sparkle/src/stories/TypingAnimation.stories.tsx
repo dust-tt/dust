@@ -26,7 +26,7 @@ export default meta;
 export const Demo = () => {
   return (
     <div>
-      <div className="s-flex s-items-center s-space-x-2 s-text-xl">
+      <div className="s:flex s:items-center s:space-x-2 s:text-xl">
         <TypingAnimation text="Hello world" />
       </div>
     </div>

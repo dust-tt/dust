@@ -32,9 +32,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const ParagraphWrapper = ({ children }: { children: React.ReactNode }) => (
-  <div className="s-rounded-lg s-bg-primary-50 s-p-8 s-text-base">
-    <p className="s-mb-4 s-inline-flex s-items-center s-gap-2">
-      <span className="s-font-semibold s-text-highlight">@soupi</span> here is
+  <div className="s:rounded-lg s:bg-primary-50 s:p-8 s:text-base">
+    <p className="s:mb-4 s:inline-flex s:items-center s:gap-2">
+      <span className="s:font-semibold s:text-highlight">@soupi</span> here is
       an attachment {children} for you.
     </p>
   </div>

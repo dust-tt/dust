@@ -29,12 +29,12 @@ const meta: Meta<typeof ActionCard> = {
 export default meta;
 
 export const Examples = () => (
-  <div className="s-flex s-gap-3">
+  <div className="s:flex s:gap-3">
     {/* Not added - default md size */}
-    <div className="s-w-80">
+    <div className="s:w-80">
       <ActionCard
         icon={BookOpen01}
-        cardContainerClassName="s-h-36"
+        cardContainerClassName="s:h-36"
         label="Image Generation"
         description="Agent can generate images (GPT Image 1)."
         isSelected
@@ -48,9 +48,9 @@ export const Examples = () => (
     </div>
 
     {/* Added - xl size */}
-    <div className="s-w-80">
+    <div className="s:w-80">
       <ActionCard
-        cardContainerClassName="s-h-36"
+        cardContainerClassName="s:h-36"
         icon={Terminal}
         label="Reasoning"
         description={
@@ -83,21 +83,21 @@ export const Examples = () => (
 );
 
 export const DiffStatus = () => (
-  <div className="s-flex s-gap-3">
-    <div className="s-w-80">
+  <div className="s:flex s:gap-3">
+    <div className="s:w-80">
       <ActionCard
         icon={SearchMd}
-        cardContainerClassName="s-h-36"
+        cardContainerClassName="s:h-36"
         label="Web Search"
         description="Search & browse the web for up-to-date information."
         canAdd={false}
         diffStatus="added"
       />
     </div>
-    <div className="s-w-80">
+    <div className="s:w-80">
       <ActionCard
         icon={Planet}
-        cardContainerClassName="s-h-36"
+        cardContainerClassName="s:h-36"
         label="Code Interpreter"
         description="Run code snippets in a sandboxed environment."
         canAdd={false}

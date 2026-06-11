@@ -32,12 +32,12 @@ export const InputBlock = memo(
     };
 
     return (
-      <div className="s-inline-flex s-items-center">
+      <div className="s:inline-flex s:items-center">
         <Checkbox
           ref={inputRef as unknown as React.Ref<HTMLButtonElement>}
           size="xs"
           checked={checked}
-          className="s-translate-y-[3px]"
+          className="s:translate-y-[3px]"
           onCheckedChange={handleCheckedChange}
         />
       </div>

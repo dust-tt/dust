@@ -21,12 +21,12 @@ export const ConversationContainer = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s-flex s-h-full s-w-full s-flex-col s-items-center s-@container/conversation",
+        "s:flex s:h-full s:w-full s:flex-col s:items-center s:@container/conversation",
         className
       )}
       {...props}
     >
-      <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-p-2 @sm/conversation:s-gap-8 @md/conversation:s-gap-10">
+      <div className="s:flex s:w-full s:max-w-4xl s:flex-col s:gap-6 s:p-2 s:@sm/conversation:gap-8 s:@md/conversation:gap-10">
         {children}
       </div>
     </div>
@@ -61,11 +61,11 @@ interface ConversationMessageAction {
   onClick: () => void;
 }
 
-const messageVariants = cva("s-flex s-w-full s-flex-col s-rounded-2xl", {
+const messageVariants = cva("s:flex s:w-full s:flex-col s:rounded-2xl", {
   variants: {
     type: {
-      user: "s-bg-muted-background dark:s-bg-muted-background-night s-px-5 s-py-4 s-gap-2",
-      agent: "s-w-full s-gap-3",
+      user: "s:bg-muted-background s:dark:bg-muted-background-night s:px-5 s:py-4 s:gap-2",
+      agent: "s:w-full s:gap-3",
     },
   },
   defaultVariants: {
@@ -73,11 +73,11 @@ const messageVariants = cva("s-flex s-w-full s-flex-col s-rounded-2xl", {
   },
 });
 
-const buttonsVariants = cva("s-flex s-justify-start s-gap-2 s-pt-2", {
+const buttonsVariants = cva("s:flex s:justify-start s:gap-2 s:pt-2", {
   variants: {
     type: {
-      user: "s-justify-end",
-      agent: "s-justify-start",
+      user: "s:justify-end",
+      agent: "s:justify-start",
     },
   },
   defaultVariants: {
@@ -113,7 +113,7 @@ export const ConversationMessage = React.forwardRef<
     ref
   ) => {
     return (
-      <div ref={ref} className="s-group/message">
+      <div ref={ref} className="s:group/message">
         <div className={cn(messageVariants({ type, className }))} {...props}>
           <ConversationMessageHeader
             avatarUrl={pictureUrl}
@@ -180,13 +180,13 @@ const ConversationMessageHeader = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          "s-flex s-items-center s-gap-2 s-p-1 @sm/conversation:s-p-0",
+          "s:flex s:items-center s:gap-2 s:p-1 s:@sm/conversation:p-0",
           className
         )}
         {...props}
       >
         <Avatar
-          className="@sm:s-hidden"
+          className="s:@sm:hidden"
           name={name}
           visual={avatarUrl}
           busy={isBusy}
@@ -194,22 +194,22 @@ const ConversationMessageHeader = React.forwardRef<
           size="xs"
         />
         <Avatar
-          className="s-hidden @sm:s-flex"
+          className="s:hidden s:@sm:flex"
           name={name}
           visual={avatarUrl}
           busy={isBusy}
           disabled={isDisabled}
           size="sm"
         />
-        <div className="s-inline-flex s-w-full s-justify-between s-gap-0.5">
-          <div className="s-inline-flex s-items-baseline s-gap-2 s-text-foreground dark:s-text-foreground-night">
-            <span className="s-heading-sm">{renderName(name)}</span>
-            <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <div className="s:inline-flex s:w-full s:justify-between s:gap-0.5">
+          <div className="s:inline-flex s:items-baseline s:gap-2 s:text-foreground s:dark:text-foreground-night">
+            <span className="s:heading-sm">{renderName(name)}</span>
+            <span className="s:text-xs s:text-muted-foreground s:dark:text-muted-foreground-night">
               {timestamp}
             </span>
             {infoChip && infoChip}
           </div>
-          <div className="s-flex s-items-center s-gap-2">
+          <div className="s:flex s:items-center s:gap-2">
             {completionStatus ?? null}
             {actions && actions.length > 0 && (
               <DropdownMenu>

@@ -117,7 +117,7 @@ export const KeyboardShortcut = ({
   return (
     <span
       className={cn(
-        "s-inline-flex s-items-center s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night",
+        "s:inline-flex s:items-center s:text-sm s:text-muted-foreground s:dark:text-muted-foreground-night",
         className
       )}
       aria-label={shortcut}
@@ -126,9 +126,9 @@ export const KeyboardShortcut = ({
     >
       {keys.map((key, index) => (
         <React.Fragment key={`${key}-${index}`}>
-          <span className="s-tracking-widest">{key}</span>
+          <span className="s:tracking-widest">{key}</span>
           {hasSeparator && index < keys.length - 1 && (
-            <span className="s-mx-0.5">+</span>
+            <span className="s:mx-0.5">+</span>
           )}
         </React.Fragment>
       ))}

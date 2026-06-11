@@ -133,7 +133,7 @@ export function CommandPaletteActionPhase({
       ref={containerRef}
       tabIndex={0}
       onKeyDown={handleKeyDown}
-      className="flex flex-col outline-none"
+      className="flex flex-col outline-hidden"
     >
       <button
         className={cn(

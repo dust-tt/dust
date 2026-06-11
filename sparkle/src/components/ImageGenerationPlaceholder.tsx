@@ -227,9 +227,9 @@ export function ImageGenerationPlaceholder({
   return (
     <div
       className={cn(
-        "s-overflow-hidden s-rounded-2xl",
-        "s-bg-muted-background dark:s-bg-muted-background-night",
-        fill ? "s-absolute s-inset-0" : "s-relative s-shrink-0",
+        "s:overflow-hidden s:rounded-2xl",
+        "s:bg-muted-background s:dark:bg-muted-background-night",
+        fill ? "s:absolute s:inset-0" : "s:relative s:shrink-0",
         className
       )}
       style={fill ? undefined : { width: size, height: size }}
@@ -247,10 +247,10 @@ export function ImageGenerationPlaceholder({
       >
         <span
           className={cn(
-            "s-absolute s-top-3 s-left-3.5 s-z-10",
-            "s-text-xs s-font-medium s-pointer-events-none",
-            "s-text-muted-foreground dark:s-text-muted-foreground-night",
-            "motion-safe:s-animate-opacity-pulse"
+            "s:absolute s:top-3 s:left-3.5 s:z-10",
+            "s:text-xs s:font-medium s:pointer-events-none",
+            "s:text-muted-foreground s:dark:text-muted-foreground-night",
+            "s:motion-safe:animate-opacity-pulse"
           )}
         >
           {label}

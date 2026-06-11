@@ -39,7 +39,7 @@ export function HomeNewsSection({ news }: HomeNewsSectionProps = {}) {
             <HomeReveal delay={160}>
               <Link
                 href={SEE_ALL_PRESS_HREF}
-                className="group inline-flex w-fit items-center gap-2 text-base font-medium text-foreground/80 underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-4 focus-visible:ring-offset-background"
+                className="group inline-flex w-fit items-center gap-2 text-base font-medium text-foreground/80 underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-4 focus-visible:ring-offset-background"
               >
                 More about us
                 <svg
@@ -68,7 +68,7 @@ export function HomeNewsSection({ news }: HomeNewsSectionProps = {}) {
                     href={item.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group flex items-center gap-6 border-b border-border py-5 transition-[border-color,transform] duration-300 ease-out hover:border-foreground/30 active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-4 focus-visible:ring-offset-background"
+                    className="group flex items-center gap-6 border-b border-border py-5 transition-[border-color,transform] duration-300 ease-out hover:border-foreground/30 active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:rounded-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-4 focus-visible:ring-offset-background"
                   >
                     <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                       <div className="flex items-center gap-2 font-mono text-[11px] font-medium uppercase leading-[16px] tracking-[0.04em]">

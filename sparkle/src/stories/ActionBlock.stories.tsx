@@ -72,7 +72,7 @@ const cardExamples: Omit<
     rejectLabel: "Reject",
     cardVariant: "highlight",
     actionsPosition: "header",
-    visual: <Avatar size="sm" emoji="👋" backgroundColor="s-bg-blue-100" />,
+    visual: <Avatar size="sm" emoji="👋" backgroundColor="s:bg-blue-100" />,
     description:
       "The current name is too generic. A descriptive name helps users pick the right agent faster.",
     collapsibleContent: (
@@ -90,7 +90,7 @@ const cardExamples: Omit<
     applyLabel: "Remove",
     rejectLabel: "Reject",
     cardVariant: "warning" as const,
-    visual: <Avatar size="sm" icon={SlackLogo} backgroundColor="s-bg-white" />,
+    visual: <Avatar size="sm" icon={SlackLogo} backgroundColor="s:bg-white" />,
     actionsPosition: "header" as const,
     description:
       "Disable the Slack tool to prevent the agent from posting or reading channel messages by default.",
@@ -103,7 +103,7 @@ const cardExamples: Omit<
     rejectLabel: "Reject",
     cardVariant: "highlight",
     initialState: "disabled" as ActionCardState,
-    visual: <Avatar size="sm" icon={GmailLogo} backgroundColor="s-bg-white" />,
+    visual: <Avatar size="sm" icon={GmailLogo} backgroundColor="s:bg-white" />,
     description:
       "Enable the Gmail tool so the agent can read and send emails when users ask to draft replies.",
   },
@@ -136,16 +136,16 @@ const cardExamples: Omit<
     cardVariant: "highlight",
     hasCheck: true,
     checkLabel: "Always allow",
-    visual: <Avatar size="sm" icon={GmailLogo} backgroundColor="s-bg-white" />,
+    visual: <Avatar size="sm" icon={GmailLogo} backgroundColor="s:bg-white" />,
     description: "Details about the action",
   },
 ];
 
 const ExamplesView = () => (
-  <div className="s-flex s-w-full s-gap-6 s-p-6">
+  <div className="s:flex s:w-full s:gap-6 s:p-6">
     {(["default", "compact"] as ActionCardBlockSize[]).map((size) => (
-      <div key={size} className="s-flex s-flex-1 s-flex-col s-gap-3">
-        <h2 className="s-heading-base s-capitalize">{size}</h2>
+      <div key={size} className="s:flex s:flex-1 s:flex-col s:gap-3">
+        <h2 className="s:heading-base s:capitalize">{size}</h2>
         {cardExamples.map((card, i) => (
           <StatefulActionCard key={i} {...card} size={size} />
         ))}

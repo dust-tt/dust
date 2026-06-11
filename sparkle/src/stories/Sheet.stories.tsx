@@ -56,7 +56,7 @@ export default meta;
 
 export function Demo() {
   return (
-    <div className="s-flex s-flex-col s-gap-6">
+    <div className="s:flex s:flex-col s:gap-6">
       <SheetDemo />
       <ContentDemo />
       <SheetCustom />
@@ -68,7 +68,7 @@ export function SheetDemo() {
   const [saveCount, setSaveCount] = React.useState(0);
 
   return (
-    <div className="s-flex s-items-center s-gap-3">
+    <div className="s:flex s:items-center s:gap-3">
       <Sheet>
         <SheetTrigger asChild>
           <Button variant="outline" label="Edit demo" />
@@ -78,16 +78,16 @@ export function SheetDemo() {
             <SheetTitle>About me</SheetTitle>
           </SheetHeader>
           <SheetContainer>
-            <div className="s-flex s-flex-col s-gap-6">
+            <div className="s:flex s:flex-col s:gap-6">
               <Input label="Firstname" placeholder="John" />
               <Input label="Lastname" placeholder="Doe" />
-              <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <div className="s:text-xs s:text-muted-foreground s:dark:text-muted-foreground-night">
                 Tip: Press Cmd/Ctrl + Enter to Save
               </div>
             </div>
           </SheetContainer>
           <SheetFooter
-            sheetCloseClassName="s-flex s-gap-2"
+            sheetCloseClassName="s:flex s:gap-2"
             leftButtonProps={{ label: "Cancel", variant: "warning" }}
             rightButtonProps={{
               label: "Save",
@@ -97,7 +97,7 @@ export function SheetDemo() {
           />
         </SheetContent>
       </Sheet>
-      <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+      <span className="s:text-xs s:text-muted-foreground s:dark:text-muted-foreground-night">
         Saved: {saveCount}
       </span>
     </div>
@@ -162,19 +162,19 @@ export function SheetCustom() {
         </SheetTrigger>
         <SheetContent>
           <SheetHeader>
-            <div className="s-flex s-flex-col s-gap-2">
+            <div className="s:flex s:flex-col s:gap-2">
               <Avatar
                 size="md"
                 name="Aria Doe"
                 visual="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
               />
-              <div className="s-flex s-flex-col s-gap-0">
+              <div className="s:flex s:flex-col s:gap-0">
                 <SheetTitle>@coucou</SheetTitle>
                 <SheetDescription>
                   The agent that allways says hello.
                 </SheetDescription>
               </div>
-              <div className="s-flex s-gap-2">
+              <div className="s:flex s:gap-2">
                 <Button icon={Star01} variant={"outline"} />
                 <Separator orientation="vertical" />
                 <Button icon={Edit04} variant={"outline"} />
@@ -193,7 +193,7 @@ export function SheetCustom() {
 }
 
 const QIG: React.FC = () => (
-  <div className="s-flex s-flex-col s-gap-5">
+  <div className="s:flex s:flex-col s:gap-5">
     <Page.Horizontal>
       <Page.Vertical>
         <Page.H>
@@ -441,12 +441,12 @@ export function SheetWithThreeButtons() {
             </SheetDescription>
           </SheetHeader>
           <SheetContainer>
-            <div className="s-flex s-flex-col s-gap-6">
+            <div className="s:flex s:flex-col s:gap-6">
               <Input label="Example Input" placeholder="Type something..." />
             </div>
           </SheetContainer>
           <SheetFooter
-            sheetCloseClassName="s-flex s-gap-2"
+            sheetCloseClassName="s:flex s:gap-2"
             leftButtonProps={{ label: "Cancel", variant: "warning" }}
             rightButtonProps={{ label: "Save", variant: "primary" }}
             rightEndButtonProps={{
@@ -473,13 +473,13 @@ export function SheetWithIconInTitle() {
             <SheetTitle icon={Rocket02}>About me</SheetTitle>
           </SheetHeader>
           <SheetContainer>
-            <div className="s-flex s-flex-col s-gap-6">
+            <div className="s:flex s:flex-col s:gap-6">
               <Input label="Firstname" placeholder="John" />
               <Input label="Lastname" placeholder="Doe" />
             </div>
           </SheetContainer>
           <SheetFooter
-            sheetCloseClassName="s-flex s-gap-2"
+            sheetCloseClassName="s:flex s:gap-2"
             leftButtonProps={{ label: "Cancel", variant: "warning" }}
             rightButtonProps={{ label: "Save", disabled: true }}
           />

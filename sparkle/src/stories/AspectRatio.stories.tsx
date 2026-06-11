@@ -16,7 +16,7 @@ const meta = {
 
 **Guidelines**
 - Pass **ratio** as a number division (\`16 / 9\`) rather than a decimal for readability.
-- Add \`s-overflow-hidden\` on the container and let the media fill it so it crops cleanly to the ratio.`,
+- Add \`s:overflow-hidden\` on the container and let the media fill it so it crops cleanly to the ratio.`,
       },
     },
   },
@@ -26,7 +26,7 @@ export default meta;
 
 export const Demo = () => {
   return (
-    <div className="s-flex s-flex-col s-gap-12">
+    <div className="s:flex s:flex-col s:gap-12">
       <Demo169 />
       <Demo43 />
     </div>
@@ -35,40 +35,40 @@ export const Demo = () => {
 
 export const Demo169 = () => {
   return (
-    <div className="s-grid s-grid-cols-3 s-gap-4">
+    <div className="s:grid s:grid-cols-3 s:gap-4">
       <AspectRatio
         ratio={16 / 9}
-        className="s-flex s-items-center s-justify-center s-overflow-hidden s-bg-muted"
+        className="s:flex s:items-center s:justify-center s:overflow-hidden s:bg-muted"
       >
         Hello
       </AspectRatio>
       <AspectRatio
         ratio={16 / 9}
-        className="s-flex s-items-center s-justify-center s-overflow-hidden s-bg-muted"
+        className="s:flex s:items-center s:justify-center s:overflow-hidden s:bg-muted"
       >
         Hello
       </AspectRatio>
       <AspectRatio
         ratio={16 / 9}
-        className="s-flex s-items-center s-justify-center s-overflow-hidden s-bg-muted"
+        className="s:flex s:items-center s:justify-center s:overflow-hidden s:bg-muted"
       >
         Hello
       </AspectRatio>
       <AspectRatio
         ratio={16 / 9}
-        className="s-flex s-items-center s-justify-center s-overflow-hidden s-bg-muted"
+        className="s:flex s:items-center s:justify-center s:overflow-hidden s:bg-muted"
       >
         Hello
       </AspectRatio>
       <AspectRatio
         ratio={16 / 9}
-        className="s-flex s-items-center s-justify-center s-overflow-hidden s-bg-muted"
+        className="s:flex s:items-center s:justify-center s:overflow-hidden s:bg-muted"
       >
         Hello
       </AspectRatio>
       <AspectRatio
         ratio={16 / 9}
-        className="s-flex s-items-center s-justify-center s-overflow-hidden s-bg-muted"
+        className="s:flex s:items-center s:justify-center s:overflow-hidden s:bg-muted"
       >
         Hello
       </AspectRatio>
@@ -77,40 +77,40 @@ export const Demo169 = () => {
 };
 export const Demo43 = () => {
   return (
-    <div className="s-grid s-grid-cols-3 s-gap-4">
+    <div className="s:grid s:grid-cols-3 s:gap-4">
       <AspectRatio
         ratio={4 / 3}
-        className="s-flex s-items-center s-justify-center s-overflow-hidden s-bg-muted"
+        className="s:flex s:items-center s:justify-center s:overflow-hidden s:bg-muted"
       >
         Hello
       </AspectRatio>
       <AspectRatio
         ratio={4 / 3}
-        className="s-flex s-items-center s-justify-center s-overflow-hidden s-bg-muted"
+        className="s:flex s:items-center s:justify-center s:overflow-hidden s:bg-muted"
       >
         Hello
       </AspectRatio>
       <AspectRatio
         ratio={4 / 3}
-        className="s-flex s-items-center s-justify-center s-overflow-hidden s-bg-muted"
+        className="s:flex s:items-center s:justify-center s:overflow-hidden s:bg-muted"
       >
         Hello
       </AspectRatio>
       <AspectRatio
         ratio={4 / 3}
-        className="s-flex s-items-center s-justify-center s-overflow-hidden s-bg-muted"
+        className="s:flex s:items-center s:justify-center s:overflow-hidden s:bg-muted"
       >
         Hello
       </AspectRatio>
       <AspectRatio
         ratio={4 / 3}
-        className="s-flex s-items-center s-justify-center s-overflow-hidden s-bg-muted"
+        className="s:flex s:items-center s:justify-center s:overflow-hidden s:bg-muted"
       >
         Hello
       </AspectRatio>
       <AspectRatio
         ratio={4 / 3}
-        className="s-flex s-items-center s-justify-center s-overflow-hidden s-bg-muted"
+        className="s:flex s:items-center s:justify-center s:overflow-hidden s:bg-muted"
       >
         Hello
       </AspectRatio>

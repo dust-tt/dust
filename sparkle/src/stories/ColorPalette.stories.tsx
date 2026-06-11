@@ -9,7 +9,7 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: `The Sparkle color system: UI primitives, semantic tokens (\`primary\`, \`highlight\`, \`success\`, \`warning\`, \`info\`), an extended product palette, brand/marketing colors, and structural backgrounds. Reference these via Tailwind classes (e.g. \`s-bg-primary-500\`) rather than hard-coded hex values, and prefer semantic tokens over raw families so components stay theme-aware. Toggle the theme in the toolbar to preview light and dark (\`-night\`) values.`,
+        component: `The Sparkle color system: UI primitives, semantic tokens (\`primary\`, \`highlight\`, \`success\`, \`warning\`, \`info\`), an extended product palette, brand/marketing colors, and structural backgrounds. Reference these via Tailwind classes (e.g. \`s:bg-primary-500\`) rather than hard-coded hex values, and prefer semantic tokens over raw families so components stay theme-aware. Toggle the theme in the toolbar to preview light and dark (\`-night\`) values.`,
       },
     },
   },
@@ -157,33 +157,33 @@ const ColorSwatch = ({ token, label }: { token: string; label: string }) => {
   const color = resolveColor(token, isDark);
 
   return (
-    <div className="s-flex s-flex-col s-gap-2">
+    <div className="s:flex s:flex-col s:gap-2">
       <div
-        className="s-relative s-h-16 s-w-24 s-rounded-lg s-border s-border-border dark:s-border-border-night"
+        className="s:relative s:h-16 s:w-24 s:rounded-lg s:border s:border-border s:dark:border-border-night"
         style={{ backgroundColor: color }}
       >
-        <div className="s-absolute s-bottom-1 s-left-1 s-font-mono s-text-[10px] s-text-foreground s-opacity-50 dark:s-text-foreground-night">
+        <div className="s:absolute s:bottom-1 s:left-1 s:font-mono s:text-[10px] s:text-foreground s:opacity-50 s:dark:text-foreground-night">
           {color ?? "—"}
         </div>
       </div>
-      <div className="s-font-mono s-text-xs">{label}</div>
+      <div className="s:font-mono s:text-xs">{label}</div>
     </div>
   );
 };
 
 export const UIColorPalette = () => {
   return (
-    <div className="s-flex s-flex-col s-gap-8">
-      <div className="s-flex s-flex-col s-gap-2">
-        <h2 className="s-text-xl s-font-semibold">UI Color Palette</h2>
-        <p className="s-text-sm s-text-primary-600 dark:s-text-primary-400">
+    <div className="s:flex s:flex-col s:gap-8">
+      <div className="s:flex s:flex-col s:gap-2">
+        <h2 className="s:text-xl s:font-semibold">UI Color Palette</h2>
+        <p className="s:text-sm s:text-primary-600 s:dark:text-primary-400">
           Colors to use in the UI for all direct color references.
         </p>
       </div>
       {colorFamilies.map((family) => (
-        <div key={family} className="s-flex s-flex-col s-gap-4">
-          <h3 className="s-text-lg s-font-semibold s-capitalize">{family}</h3>
-          <div className="s-flex s-flex-wrap s-gap-4">
+        <div key={family} className="s:flex s:flex-col s:gap-4">
+          <h3 className="s:text-lg s:font-semibold s:capitalize">{family}</h3>
+          <div className="s:flex s:flex-wrap s:gap-4">
             {shades.map((shade) => (
               <div key={shade}>
                 <ColorSwatch
@@ -201,17 +201,17 @@ export const UIColorPalette = () => {
 
 export const SemanticColorPalette = () => {
   return (
-    <div className="s-flex s-flex-col s-gap-8">
-      <div className="s-flex s-flex-col s-gap-2">
-        <h2 className="s-text-xl s-font-semibold">Semantic Color Palette</h2>
-        <p className="s-text-sm s-text-primary-600 dark:s-text-primary-400">
+    <div className="s:flex s:flex-col s:gap-8">
+      <div className="s:flex s:flex-col s:gap-2">
+        <h2 className="s:text-xl s:font-semibold">Semantic Color Palette</h2>
+        <p className="s:text-sm s:text-primary-600 s:dark:text-primary-400">
           Colors to use in the UI for all functional elements.
         </p>
       </div>
       {semanticColorFamilies.map((family) => (
-        <div key={family} className="s-flex s-flex-col s-gap-4">
-          <h3 className="s-text-lg s-font-semibold s-capitalize">{family}</h3>
-          <div className="s-flex s-flex-wrap s-gap-4">
+        <div key={family} className="s:flex s:flex-col s:gap-4">
+          <h3 className="s:text-lg s:font-semibold s:capitalize">{family}</h3>
+          <div className="s:flex s:flex-wrap s:gap-4">
             {semanticShades.map((shade) => (
               <div key={shade}>
                 <ColorSwatch
@@ -272,23 +272,23 @@ const brandColorFamilies = [
 
 export const BrandColorPalette = () => {
   return (
-    <div className="s-flex s-flex-col s-gap-8">
-      <div className="s-flex s-flex-col s-gap-2">
-        <h2 className="s-text-xl s-font-semibold">Brand Color Palette</h2>
-        <p className="s-text-sm s-text-primary-600 dark:s-text-primary-400">
+    <div className="s:flex s:flex-col s:gap-8">
+      <div className="s:flex s:flex-col s:gap-2">
+        <h2 className="s:text-xl s:font-semibold">Brand Color Palette</h2>
+        <p className="s:text-sm s:text-primary-600 s:dark:text-primary-400">
           Colors to use in Marketing / Brand situations:
         </p>
-        <ul className="s-ml-4 s-list-disc s-text-sm s-text-primary-600 dark:s-text-primary-400">
+        <ul className="s:ml-4 s:list-disc s:text-sm s:text-primary-600 s:dark:text-primary-400">
           <li>Block colors on the website</li>
           <li>Communication in the product</li>
         </ul>
       </div>
       {brandColorFamilies.map((family) => (
-        <div key={family.name} className="s-flex s-flex-col s-gap-4">
-          <h3 className="s-text-lg s-font-semibold s-capitalize">
+        <div key={family.name} className="s:flex s:flex-col s:gap-4">
+          <h3 className="s:text-lg s:font-semibold s:capitalize">
             {family.name}
           </h3>
-          <div className="s-flex s-flex-wrap s-gap-4">
+          <div className="s:flex s:flex-wrap s:gap-4">
             {family.shades.map((shade) => (
               <div key={shade.name}>
                 <ColorSwatch
@@ -306,23 +306,23 @@ export const BrandColorPalette = () => {
 
 export const ExtendedColorPalette = () => {
   return (
-    <div className="s-flex s-flex-col s-gap-8">
-      <div className="s-flex s-flex-col s-gap-2">
-        <h2 className="s-text-xl s-font-semibold">Extended Color Palette</h2>
-        <p className="s-text-sm s-text-primary-600 dark:s-text-primary-400">
+    <div className="s:flex s:flex-col s:gap-8">
+      <div className="s:flex s:flex-col s:gap-2">
+        <h2 className="s:text-xl s:font-semibold">Extended Color Palette</h2>
+        <p className="s:text-sm s:text-primary-600 s:dark:text-primary-400">
           These colors are available for product-specific use cases where
           semantic colors might not be appropriate. Use them when you need to
           create visual distinctions, such as:
         </p>
-        <ul className="s-ml-4 s-list-disc s-text-sm s-text-primary-600 dark:s-text-primary-400">
+        <ul className="s:ml-4 s:list-disc s:text-sm s:text-primary-600 s:dark:text-primary-400">
           <li>Avatar background colors</li>
           <li>Data visualization</li>
         </ul>
       </div>
       {extendedColorFamilies.map((family) => (
-        <div key={family} className="s-flex s-flex-col s-gap-4">
-          <h3 className="s-text-lg s-font-semibold s-capitalize">{family}</h3>
-          <div className="s-flex s-flex-wrap s-gap-4">
+        <div key={family} className="s:flex s:flex-col s:gap-4">
+          <h3 className="s:text-lg s:font-semibold s:capitalize">{family}</h3>
+          <div className="s:flex s:flex-wrap s:gap-4">
             {shades.map((shade) => (
               <div key={shade}>
                 <ColorSwatch
@@ -342,14 +342,14 @@ const backgroundColors = ["background", "muted-background"] as const;
 
 export const BackgroundColors = () => {
   return (
-    <div className="s-flex s-flex-col s-gap-8">
-      <div className="s-flex s-flex-col s-gap-2">
-        <h2 className="s-text-xl s-font-semibold">Background Colors</h2>
-        <p className="s-text-sm s-text-primary-600 dark:s-text-primary-400">
+    <div className="s:flex s:flex-col s:gap-8">
+      <div className="s:flex s:flex-col s:gap-2">
+        <h2 className="s:text-xl s:font-semibold">Background Colors</h2>
+        <p className="s:text-sm s:text-primary-600 s:dark:text-primary-400">
           Background colors used for structural elements in the UI.
         </p>
       </div>
-      <div className="s-flex s-flex-wrap s-gap-4">
+      <div className="s:flex s:flex-wrap s:gap-4">
         {backgroundColors.map((bg) => (
           <div key={bg}>
             <ColorSwatch token={bg} label={bg} />

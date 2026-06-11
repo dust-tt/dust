@@ -124,7 +124,7 @@ export const FullFormattingToolbar = () => (
 
 export const WithOverflow = () => (
   <div style={{ maxWidth: "200px" }}>
-    <HoveringBar className="s-w-full">
+    <HoveringBar className="s:w-full">
       <Button icon={Heading01} size="icon" variant="ghost-secondary" />
       <Button icon={Bold01} size="icon" variant="ghost-secondary" />
       <Button icon={Italic01} size="icon" variant="ghost-secondary" />

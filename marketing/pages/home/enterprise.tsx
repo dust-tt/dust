@@ -356,7 +356,7 @@ function WhatThisMeansSection() {
             {ACCORDION_ITEMS.map((item, index) => (
               <div key={index} className="border-b border-gray-200">
                 <button
-                  className="flex w-full items-center justify-between py-6 text-left focus:outline-none"
+                  className="flex w-full items-center justify-between py-6 text-left focus:outline-hidden"
                   onClick={() => setOpenIndex(openIndex === index ? -1 : index)}
                   aria-expanded={openIndex === index}
                 >

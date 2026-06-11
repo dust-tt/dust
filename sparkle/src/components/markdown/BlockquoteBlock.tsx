@@ -10,22 +10,22 @@ import React, { memo, useContext, useMemo } from "react";
 
 export const blockquoteVariants = cva(
   [
-    "s-w-full s-text-base s-italic s-p-3",
-    "s-relative",
-    "before:s-content-[''] before:s-absolute before:s-left-0 before:s-top-3 before:s-bottom-3",
-    "before:s-w-1 before:s-bg-faint dark:before:s-bg-faint-night",
-    "before:s-rounded-full",
+    "s:w-full s:text-base s:italic s:p-3",
+    "s:relative",
+    "s:before:content-[''] s:before:absolute s:before:left-0 s:before:top-3 s:before:bottom-3",
+    "s:before:w-1 s:before:bg-faint s:dark:before:bg-faint-night",
+    "s:before:rounded-full",
   ],
   {
     variants: {
       variant: {
         surface: [
-          "s-text-foreground dark:s-text-foreground-night",
-          "s-bg-transparent",
+          "s:text-foreground s:dark:text-foreground-night",
+          "s:bg-transparent",
         ],
       },
       buttonDisplay: {
-        inside: ["s-pr-12"],
+        inside: ["s:pr-12"],
         outside: [],
       },
     },
@@ -65,7 +65,7 @@ export const BlockquoteBlock = memo(
     return (
       <ContentBlockWrapper
         content={clipboardContent}
-        className="s-my-2"
+        className="s:my-2"
         buttonDisplay={buttonDisplay}
       >
         <blockquote className={blockquoteVariants({ variant, buttonDisplay })}>

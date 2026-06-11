@@ -33,15 +33,15 @@ export const SliderToggleBasic: Story = {
 };
 
 export const SliderExample = () => (
-  <div className="s-flex s-flex-col s-gap-6">
-    <div className="s-flex s-items-center s-gap-2">
+  <div className="s:flex s:flex-col s:gap-6">
+    <div className="s:flex s:items-center s:gap-2">
       <Button variant="outline" size="sm" label="Settings" />
       <SliderToggle size="sm" />
       <SliderToggle size="sm" selected />
       <SliderToggle size="sm" disabled />
     </div>
 
-    <div className="s-flex s-items-center s-gap-2">
+    <div className="s:flex s:items-center s:gap-2">
       <Button variant="outline" size="xs" label="Settings" />
       <SliderToggle size="xs" />
       <SliderToggle size="xs" selected />

@@ -106,12 +106,12 @@ export function SearchInputWithPopoverScrollableExample() {
       onOpenChange={setOpen}
       items={filteredItems}
       stickyTopContent={
-        <div className="s-text-xs s-text-muted-foreground">
+        <div className="s:text-xs s:text-muted-foreground">
           Tip: use Ctrl+K to focus search.
         </div>
       }
       stickyBottomContent={
-        <div className="s-text-xs s-text-muted-foreground">
+        <div className="s:text-xs s:text-muted-foreground">
           Press Enter to select the highlighted result.
         </div>
       }
@@ -121,7 +121,7 @@ export function SearchInputWithPopoverScrollableExample() {
         title: "You can add a custom message here",
         variant: "green",
         icon: InfoCircle,
-        className: "s-w-full",
+        className: "s:w-full",
         size: "lg",
       }}
       displayItemCount={true}
@@ -131,8 +131,8 @@ export function SearchInputWithPopoverScrollableExample() {
           key={item}
           role="option"
           className={cn(
-            "s-cursor-pointer s-truncate s-px-2 s-py-2 hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night",
-            selected && "s-bg-primary-100"
+            "s:cursor-pointer s:truncate s:px-2 s:py-2 s:hover:bg-primary-100 s:dark:hover:bg-primary-100-night",
+            selected && "s:bg-primary-100"
           )}
           onClick={() => {
             setValue(item);
@@ -159,7 +159,7 @@ export function SearchInputWithPopoverSelectAllExample() {
   );
 
   return (
-    <div className="s-flex s-max-w-md s-flex-col s-gap-2">
+    <div className="s:flex s:max-w-md s:flex-col s:gap-2">
       <SearchInputWithPopover
         name="search"
         placeholder="Search teams..."
@@ -185,8 +185,8 @@ export function SearchInputWithPopoverSelectAllExample() {
             key={item}
             role="option"
             className={cn(
-              "s-cursor-pointer s-truncate s-px-2 s-py-2 hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night",
-              selected && "s-bg-primary-100"
+              "s:cursor-pointer s:truncate s:px-2 s:py-2 s:hover:bg-primary-100 s:dark:hover:bg-primary-100-night",
+              selected && "s:bg-primary-100"
             )}
             onClick={() => {
               setValue(item);
@@ -198,7 +198,7 @@ export function SearchInputWithPopoverSelectAllExample() {
         )}
         noResults="No teams found"
       />
-      <div className="s-text-xs s-text-muted-foreground">
+      <div className="s:text-xs s:text-muted-foreground">
         Use Select all to capture the full list.
       </div>
     </div>

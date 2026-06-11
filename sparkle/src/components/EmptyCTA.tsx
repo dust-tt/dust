@@ -13,9 +13,9 @@ const EmptyCTA = React.forwardRef<HTMLDivElement, EmptyCTAProps>(
     <div
       ref={ref}
       className={cn(
-        "s-flex s-w-full s-flex-col s-items-center s-justify-center s-gap-2 s-rounded-xl s-p-12",
-        "s-border s-border-border s-bg-muted-background",
-        "dark:s-border-border-night dark:s-bg-muted-background-night",
+        "s:flex s:w-full s:flex-col s:items-center s:justify-center s:gap-2 s:rounded-xl s:p-12",
+        "s:border s:border-border s:bg-muted-background",
+        "s:dark:border-border-night s:dark:bg-muted-background-night",
         className
       )}
       style={styleProps}
@@ -24,8 +24,8 @@ const EmptyCTA = React.forwardRef<HTMLDivElement, EmptyCTAProps>(
       {message && (
         <div
           className={cn(
-            "s-text-center s-text-sm",
-            "s-text-muted-foreground dark:s-text-muted-foreground-night"
+            "s:text-center s:text-sm",
+            "s:text-muted-foreground s:dark:text-muted-foreground-night"
           )}
         >
           {message}

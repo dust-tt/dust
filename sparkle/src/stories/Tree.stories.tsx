@@ -55,10 +55,10 @@ export const TreeExample = () => {
   };
 
   return (
-    <div className="s-flex s-flex-col s-gap-10">
-      <div className="s-flex s-gap-10">
-        <div className="s-flex s-flex-col s-gap-3">
-          <div className="s-text-xl">Tree</div>
+    <div className="s:flex s:flex-col s:gap-10">
+      <div className="s:flex s:gap-10">
+        <div className="s:flex s:flex-col s:gap-3">
+          <div className="s:text-xl">Tree</div>
           <div>
             <Tree>
               <Tree.Item label="Item 1 (no children)" visual={Folder} />
@@ -128,7 +128,7 @@ export const TreeExample = () => {
                     type="leaf"
                     actions={
                       <>
-                        <div className="s-text-sm s-text-muted-foreground">
+                        <div className="s:text-sm s:text-muted-foreground">
                           hello
                         </div>
                         <IconButton size="xs" icon={Eye} variant="outline" />
@@ -141,9 +141,9 @@ export const TreeExample = () => {
                     visual={File02}
                     type="leaf"
                     actions={
-                      <div className="s-flex s-grow s-flex-row s-items-center s-justify-between">
+                      <div className="s:flex s:grow s:flex-row s:items-center s:justify-between">
                         <Button size="icon" variant="outline" icon={Eye} />
-                        <div className="s-flex s-flex-row s-items-center s-gap-1 s-text-sm s-text-muted-foreground">
+                        <div className="s:flex s:flex-row s:items-center s:gap-1 s:text-sm s:text-muted-foreground">
                           <Icon visual={ClockRewind} size="xs" />
                           1y
                         </div>
@@ -192,8 +192,8 @@ export const TreeExample = () => {
             </Tree>
           </div>
         </div>
-        <div className="s-flex s-flex-col s-gap-3">
-          <div className="s-text-xl">Flat</div>
+        <div className="s:flex s:flex-col s:gap-3">
+          <div className="s:text-xl">Flat</div>
           <div>
             <Tree>
               <Tree.Item
@@ -254,8 +254,8 @@ export const TreeExample = () => {
             </Tree>
           </div>
         </div>
-        <div className="s-flex s-flex-col s-gap-3">
-          <div className="s-text-xl">With custom visual</div>
+        <div className="s:flex s:flex-col s:gap-3">
+          <div className="s:text-xl">With custom visual</div>
           <div>
             <Tree>
               <Tree.Item
@@ -305,8 +305,8 @@ export const TreeExample = () => {
             </Tree>
           </div>
         </div>
-        <div className="s-flex s-max-w-xs s-flex-col s-gap-3">
-          <div className="s-text-xl">Nav bar</div>
+        <div className="s:flex s:max-w-xs s:flex-col s:gap-3">
+          <div className="s:text-xl">Nav bar</div>
           <div>
             <Tree variant="navigator">
               <Tree.Item
@@ -353,8 +353,8 @@ export const TreeExample = () => {
           </div>
         </div>
 
-        <div className="s-flex s-max-w-xs s-flex-col s-gap-3">
-          <div className="s-text-xl">Select DataSource</div>
+        <div className="s:flex s:max-w-xs s:flex-col s:gap-3">
+          <div className="s:text-xl">Select DataSource</div>
           <div>
             <Tree variant="navigator">
               <Tree.Item
@@ -426,9 +426,9 @@ export const TreeExample = () => {
         </div>
       </div>
 
-      <div className="s-flex s-gap-10">
-        <div className="s-flex s-flex-col s-gap-3">
-          <div className="s-text-xl">Tree</div>
+      <div className="s:flex s:gap-10">
+        <div className="s:flex s:flex-col s:gap-3">
+          <div className="s:text-xl">Tree</div>
           <div>
             <Tree isBoxed>
               <Tree.Item label="Item 1 (no children)" visual={Folder} />
@@ -610,8 +610,8 @@ export const TreeExample = () => {
             </Tree>
           </div>
         </div>
-        <div className="s-flex s-flex-col s-gap-3">
-          <div className="s-text-xl">Flat</div>
+        <div className="s:flex s:flex-col s:gap-3">
+          <div className="s:text-xl">Flat</div>
           <div>
             <Tree isBoxed>
               <Tree.Item
@@ -672,8 +672,8 @@ export const TreeExample = () => {
             </Tree>
           </div>
         </div>
-        <div className="s-flex s-flex-col s-gap-3">
-          <div className="s-text-xl">With custom visual</div>
+        <div className="s:flex s:flex-col s:gap-3">
+          <div className="s:text-xl">With custom visual</div>
           <div>
             <Tree isBoxed>
               <Tree.Item
@@ -723,8 +723,8 @@ export const TreeExample = () => {
             </Tree>
           </div>
         </div>
-        <div className="s-flex s-flex-col s-gap-3">
-          <div className="s-text-xl">Nav bar</div>
+        <div className="s:flex s:flex-col s:gap-3">
+          <div className="s:text-xl">Nav bar</div>
           <div>
             <Tree isBoxed variant="navigator">
               <Tree.Item
@@ -733,7 +733,7 @@ export const TreeExample = () => {
                 onItemClick={() => console.log("Clickable")}
                 isSelected={true}
               >
-                <Tree tailwindIconTextColor="s-text-foreground">
+                <Tree tailwindIconTextColor="s:text-foreground">
                   <Tree.Item label="Item 1" visual={Folder}>
                     <Tree>
                       <Tree.Item label="Item 1" visual={Folder} />
@@ -778,10 +778,10 @@ export const SelectDataSourceExample = () => {
   };
 
   return (
-    <div className="s-flex s-w-full s-flex-col s-gap-10">
-      <div className="s-flex s-grow s-gap-10">
-        <div className="w-full s-flex s-flex-col s-gap-3">
-          <div className="s-text-xl">Display Data source Tree example</div>
+    <div className="s:flex s:w-full s:flex-col s:gap-10">
+      <div className="s:flex s:grow s:gap-10">
+        <div className="w-full s:flex s:flex-col s:gap-3">
+          <div className="s:text-xl">Display Data source Tree example</div>
           <div className="w-full">
             <Tree>
               <Tree.Item
@@ -789,8 +789,8 @@ export const SelectDataSourceExample = () => {
                 visual={IntercomLogo}
                 areActionsFading={false}
                 actions={
-                  <div className="s-flex s-flex-row s-items-center s-justify-center s-gap-3">
-                    <span className="s-text-sm s-text-muted-foreground">
+                  <div className="s:flex s:flex-row s:items-center s:justify-center s:gap-3">
+                    <span className="s:text-sm s:text-muted-foreground">
                       Managed by: Stanislas Polu
                     </span>
                     <Chip size="sm" color="green" label="Syncing (235)" />
@@ -809,8 +809,8 @@ export const SelectDataSourceExample = () => {
                 visual={SlackLogo}
                 areActionsFading={false}
                 actions={
-                  <div className="s-flex s-flex-row s-items-center s-justify-center s-gap-3">
-                    <span className="s-text-sm s-text-muted-foreground">
+                  <div className="s:flex s:flex-row s:items-center s:justify-center s:gap-3">
+                    <span className="s:text-sm s:text-muted-foreground">
                       Managed by: Stanislas Polu
                     </span>
                     <Chip size="sm" color="green" label="Syncing (235)" />
@@ -828,8 +828,8 @@ export const SelectDataSourceExample = () => {
                 visual={NotionLogo}
                 areActionsFading={false}
                 actions={
-                  <div className="s-flex s-flex-row s-items-center s-justify-center s-gap-3">
-                    <span className="s-text-sm s-text-muted-foreground">
+                  <div className="s:flex s:flex-row s:items-center s:justify-center s:gap-3">
+                    <span className="s:text-sm s:text-muted-foreground">
                       Managed by: Stanislas Polu
                     </span>
                     <Chip size="sm" color="green" label="Syncing (235)" />
@@ -856,8 +856,8 @@ export const SelectDataSourceExample = () => {
                 areActionsFading={false}
                 defaultCollapsed={true}
                 actions={
-                  <div className="s-flex s-flex-row s-items-center s-justify-center s-gap-3">
-                    <span className="s-text-sm s-text-muted-foreground">
+                  <div className="s:flex s:flex-row s:items-center s:justify-center s:gap-3">
+                    <span className="s:text-sm s:text-muted-foreground">
                       Managed by: Stanislas Polu
                     </span>
                     <Chip size="sm" color="green" label="Syncing (235)" />
@@ -874,9 +874,9 @@ export const SelectDataSourceExample = () => {
           </div>
         </div>
       </div>
-      <div className="s-flex s-gap-10">
-        <div className="s-flex s-flex-col s-gap-3">
-          <div className="s-text-xl">Select Data source Tree example</div>
+      <div className="s:flex s:gap-10">
+        <div className="s:flex s:flex-col s:gap-3">
+          <div className="s:text-xl">Select Data source Tree example</div>
           <div>
             <Tree>
               <Tree.Item
@@ -982,8 +982,8 @@ const TreeItem = ({
       label={label}
       visual={Folder}
       actions={
-        <div className="s-flex s-flex-row s-justify-center s-gap-2">
-          <span className="s-text-xs s-text-muted-foreground">
+        <div className="s:flex s:flex-row s:justify-center s:gap-2">
+          <span className="s:text-xs s:text-muted-foreground">
             last updated Jan 6
           </span>
           <IconButton icon={DownloadCloud01} size="xs" variant="outline" />

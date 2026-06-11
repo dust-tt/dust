@@ -7,23 +7,23 @@ import React from "react";
 type ConversationMessageType = "user" | "agent";
 type MessageType = "me" | "user" | "agent";
 
-const wrapperVariants = cva("s-flex s-flex-col s-@container @xs:s-flex-row", {
+const wrapperVariants = cva("s:flex s:flex-col s:@container s:@xs:flex-row", {
   variants: {
     messageType: {
-      agent: "s-pr-0",
-      me: "s-pl-9",
-      user: "s-pr-9",
+      agent: "s:pr-0",
+      me: "s:pl-9",
+      user: "s:pr-9",
     },
   },
   defaultVariants: {
     messageType: "agent",
   },
 });
-const messageVariants = cva("s-flex s-rounded-2xl s-max-w-full", {
+const messageVariants = cva("s:flex s:rounded-2xl s:max-w-full", {
   variants: {
     type: {
-      user: "s-gap-2 s-w-fit",
-      agent: "s-w-full s-gap-3 s-flex-col",
+      user: "s:gap-2 s:w-fit",
+      agent: "s:w-full s:gap-3 s:flex-col",
     },
   },
   defaultVariants: {
@@ -75,14 +75,14 @@ export const ConversationMessageContent = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          "s-flex s-min-w-0 s-flex-col s-gap-1",
+          "s:flex s:min-w-0 s:flex-col s:gap-1",
           type === "user" &&
-            "s-rounded-2xl s-bg-muted-background dark:s-bg-muted-background-night s-px-4 s-py-3",
+            "s:rounded-2xl s:bg-muted-background s:dark:bg-muted-background-night s:px-4 s:py-3",
           className
         )}
         {...props}
       >
-        <div className="s-text-base s-text-foreground dark:s-text-foreground-night">
+        <div className="s:text-base s:text-foreground s:dark:text-foreground-night">
           {children}
         </div>
         {type === "agent" && citations && citations.length > 0 && (
@@ -115,7 +115,7 @@ export const ConversationMessageAvatar = React.forwardRef<
     return (
       <div
         ref={ref}
-        className={cn("conversation:s-p-0 s-flex s-gap-2", className)}
+        className={cn("s:conversation:p-0 s:flex s:gap-2", className)}
         {...props}
       >
         <Avatar
@@ -162,23 +162,23 @@ export const ConversationMessageTitle = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          "s-inline-flex s-flex-1 s-items-center s-justify-between s-gap-0.5",
+          "s:inline-flex s:flex-1 s:items-center s:justify-between s:gap-0.5",
           className
         )}
         {...props}
       >
-        <div className="s-inline-flex s-items-baseline s-gap-2 s-text-foreground dark:s-text-foreground-night">
-          <span className="s-text-sm s-font-medium">{renderName(name)}</span>
-          <span className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <div className="s:inline-flex s:items-baseline s:gap-2 s:text-foreground s:dark:text-foreground-night">
+          <span className="s:text-sm s:font-medium">{renderName(name)}</span>
+          <span className="s:text-xs s:text-muted-foreground s:dark:text-muted-foreground-night">
             {timestamp}
           </span>
           {infoChip && (
-            <div className="s-inline-flex s-self-[anchor-center]">
+            <div className="s:inline-flex s:self-[anchor-center]">
               {infoChip}
             </div>
           )}
         </div>
-        <div className="s-ml-1 s-inline-flex s-items-center">
+        <div className="s:ml-1 s:inline-flex s:items-center">
           {completionStatus ?? null}
         </div>
       </div>

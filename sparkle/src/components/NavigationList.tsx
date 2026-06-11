@@ -40,7 +40,7 @@ const NavigationList = React.forwardRef<
       className={className}
       {...props}
     >
-      <div className="s-flex s-flex-col s-gap-0.5">{children}</div>
+      <div className="s:flex s:flex-col s:gap-0.5">{children}</div>
       <ScrollBar />
     </ScrollArea>
   );
@@ -97,11 +97,11 @@ const NavigationListItem = React.forwardRef<
     const getStatusDotColor = () => {
       switch (status) {
         case "unread":
-          return "s-h-2 s-w-2 s-m-1 s-bg-highlight-500 dark:s-bg-highlight-500-night";
+          return "s:h-2 s:w-2 s:m-1 s:bg-highlight-500 s:dark:bg-highlight-500-night";
         case "blocked":
-          return "s-h-2 s-w-2 s-m-1 s-bg-golden-400 dark:s-bg-golden-400-night";
+          return "s:h-2 s:w-2 s:m-1 s:bg-golden-400 s:dark:bg-golden-400-night";
         case "error":
-          return "s-h-2 s-w-2 s-m-1 s-bg-warning-400 dark:s-bg-warning-400-night";
+          return "s:h-2 s:w-2 s:m-1 s:bg-warning-400 s:dark:bg-warning-400-night";
         default:
           return "";
       }
@@ -113,7 +113,7 @@ const NavigationListItem = React.forwardRef<
 
     return (
       <div
-        className={cn("s-group/menu-item s-relative", className)}
+        className={cn("s:group/menu-item s:relative", className)}
         ref={ref}
         data-nav="menu-button"
         data-selected={selected}
@@ -130,32 +130,32 @@ const NavigationListItem = React.forwardRef<
           <div
             aria-disabled={disabled}
             className={cn(
-              "s-peer/menu-button",
-              "s-text-primary dark:s-text-primary-night s-font-medium",
-              "s-box-border s-flex s-items-center s-w-full s-gap-1.5 s-cursor-pointer s-select-none",
-              "s-items-center s-outline-none s-rounded-lg s-text-sm s-p-2 s-transition-colors",
-              "data-[disabled]:s-pointer-events-none",
-              "hover:s-bg-sidebar-foreground dark:hover:s-bg-sidebar-foreground-night",
+              "s:peer/menu-button",
+              "s:text-primary s:dark:text-primary-night s:font-medium",
+              "s:box-border s:flex s:items-center s:w-full s:gap-1.5 s:cursor-pointer s:select-none",
+              "s:items-center s:outline-hidden s:rounded-lg s:text-sm s:p-2 s:transition-colors",
+              "s:data-[disabled]:pointer-events-none",
+              "s:hover:bg-sidebar-foreground s:dark:hover:bg-sidebar-foreground-night",
               selected &&
-                "s-bg-sidebar-foreground dark:s-bg-sidebar-foreground-night",
-              disabled && "s-pointer-events-none s-cursor-default s-opacity-50"
+                "s:bg-sidebar-foreground s:dark:bg-sidebar-foreground-night",
+              disabled && "s:pointer-events-none s:cursor-default s:opacity-50"
             )}
           >
             {(icon || disabled) && (
               <Icon
                 visual={disabled ? Lock01 : icon}
                 size="xs"
-                className="s-m-0.5 s-text-muted-foreground dark:s-text-muted-foreground-night"
+                className="s:m-0.5 s:text-muted-foreground s:dark:text-muted-foreground-night"
               />
             )}
             {avatar}
             {label && (
               <span
                 className={cn(
-                  "s-overflow-hidden s-text-ellipsis s-whitespace-nowrap",
+                  "s:overflow-hidden s:text-ellipsis s:whitespace-nowrap",
                   !suffix &&
-                    "s-grow group-focus-within/menu-item:s-pr-8 group-hover/menu-item:s-pr-8 group-data-[selected=true]/menu-item:s-pr-8",
-                  hasActivity && "s-font-semibold"
+                    "s:grow s:group-focus-within/menu-item:pr-8 s:group-hover/menu-item:pr-8 s:group-data-[selected=true]/menu-item:pr-8",
+                  hasActivity && "s:font-semibold"
                 )}
               >
                 {labelAnimation === "typing" ? (
@@ -174,9 +174,9 @@ const NavigationListItem = React.forwardRef<
             {suffix && (
               <div
                 className={cn(
-                  "s-flex s-grow s-flex-shrink-0 s-items-center",
+                  "s:flex s:grow s:flex-shrink-0 s:items-center",
                   moreMenu &&
-                    "group-focus-within/menu-item:s-hidden group-hover/menu-item:s-hidden"
+                    "s:group-focus-within/menu-item:hidden s:group-hover/menu-item:hidden"
                 )}
               >
                 {suffix}
@@ -188,18 +188,18 @@ const NavigationListItem = React.forwardRef<
                 size="xs"
                 variant="outline"
                 className={cn(
-                  "s-flex-shrink-0 s-translate-x-0.5",
+                  "s:flex-shrink-0 s:translate-x-0.5",
                   moreMenu &&
-                    "group-focus-within/menu-item:s-hidden group-hover/menu-item:s-hidden"
+                    "s:group-focus-within/menu-item:hidden s:group-hover/menu-item:hidden"
                 )}
               />
             )}
             {shouldShowStatusDot && !shouldHideStatusIndicators && (
               <div
                 className={cn(
-                  "s-heading-xs s-flex s-flex-shrink-0 s-items-center s-justify-center s-rounded-full",
+                  "s:heading-xs s:flex s:flex-shrink-0 s:items-center s:justify-center s:rounded-full",
                   moreMenu &&
-                    "group-focus-within/menu-item:s-hidden group-hover/menu-item:s-hidden",
+                    "s:group-focus-within/menu-item:hidden s:group-hover/menu-item:hidden",
                   getStatusDotColor()
                 )}
               />
@@ -228,10 +228,10 @@ const NavigationListItemAction = React.forwardRef<
       ref={ref}
       data-sidebar="menu-action"
       className={cn(
-        "s-absolute s-right-2 s-top-1.5 s-transition-opacity",
+        "s:absolute s:right-2 s:top-1.5 s:transition-opacity",
         forceVisible
-          ? "s-opacity-100"
-          : "s-opacity-0 group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100",
+          ? "s:opacity-100"
+          : "s:opacity-0 s:group-focus-within/menu-item:opacity-100 s:group-hover/menu-item:opacity-100",
         className
       )}
       {...props}
@@ -261,18 +261,18 @@ const NavigationListLabel = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "s-flex s-items-center s-justify-between s-gap-2 s-pt-4 s-pb-2 s-px-2 s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
-      "s-text-sm",
-      "s-bg-app-background dark:s-bg-app-background-night",
-      "s-text-muted-foreground dark:s-text-muted-foreground-night",
+      "s:flex s:items-center s:justify-between s:gap-2 s:pt-4 s:pb-2 s:px-2 s:whitespace-nowrap s:overflow-hidden s:text-ellipsis",
+      "s:text-sm",
+      "s:bg-app-background s:dark:bg-app-background-night",
+      "s:text-muted-foreground s:dark:text-muted-foreground-night",
       isSticky &&
-        "s-sticky s-top-0 s-z-10 s-border-border dark:s-border-border-night",
+        "s:sticky s:top-0 s:z-10 s:border-border s:dark:border-border-night",
       className
     )}
     {...props}
   >
-    <div className="s-flex s-items-center s-gap-1 s-overflow-hidden s-text-ellipsis">
-      <span className="s-overflow-hidden s-text-ellipsis">{label}</span>
+    <div className="s:flex s:items-center s:gap-1 s:overflow-hidden s:text-ellipsis">
+      <span className="s:overflow-hidden s:text-ellipsis">{label}</span>
     </div>
     {action}
   </div>
@@ -293,14 +293,14 @@ const NavigationListCompactLabel = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "s-flex s-px-2 s-py-1 s-pl-3 s-text-[10px] s-font-semibold s-text-faint dark:s-text-faint-night s-pt-3 s-uppercase s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
+      "s:flex s:px-2 s:py-1 s:pl-3 s:text-[10px] s:font-semibold s:text-faint s:dark:text-faint-night s:pt-3 s:uppercase s:whitespace-nowrap s:overflow-hidden s:text-ellipsis",
       isSticky &&
-        "s-sticky s-top-0 s-z-10 s-bg-muted-background dark:s-bg-muted-background-night s-border-border dark:s-border-border-night",
+        "s:sticky s:top-0 s:z-10 s:bg-muted-background s:dark:bg-muted-background-night s:border-border s:dark:border-border-night",
       className
     )}
     {...props}
   >
-    <div className="s-flex s-items-center s-gap-1 s-overflow-hidden s-text-ellipsis">
+    <div className="s:flex s:items-center s:gap-1 s:overflow-hidden s:text-ellipsis">
       {label}
     </div>
   </div>
@@ -331,19 +331,19 @@ interface NavigationListCollapsibleSectionProps
 
 const collapseableStyles = cva(
   cn(
-    "s-w-full s-flex-1 s-text-left s-w-full",
-    "s-text-muted-foreground dark:s-text-muted-foreground-night",
-    "s-text-sm s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
-    "s-select-none",
-    "s-outline-none s-rounded-xl",
-    "data-[disabled]:s-pointer-events-none"
+    "s:w-full s:flex-1 s:text-left s:w-full",
+    "s:text-muted-foreground s:dark:text-muted-foreground-night",
+    "s:text-sm s:whitespace-nowrap s:overflow-hidden s:text-ellipsis",
+    "s:select-none",
+    "s:outline-hidden s:rounded-xl",
+    "s:data-[disabled]:pointer-events-none"
   ),
   {
     variants: {
       isCollapsible: {
         true: cn(
-          "s-cursor-pointer s-mb-0.5"
-          // "hover:s-bg-primary-100 dark:hover:s-bg-primary-200-night"
+          "s:cursor-pointer s:mb-0.5"
+          // "s:hover:bg-primary-100 s:dark:hover:bg-primary-200-night"
         ),
         false: "",
       },
@@ -396,9 +396,9 @@ const NavigationListCollapsibleSection = React.forwardRef<
     const counterValue = count && count > 0 ? count : undefined;
     const labelElement = (
       <div className={cn("notranslate", collapseableStyles({ isCollapsible }))}>
-        <span className="s-flex s-items-center s-gap-1.5">
+        <span className="s:flex s:items-center s:gap-1.5">
           {icon && <Icon visual={icon} size="xs" />}
-          <span className="s-overflow-hidden s-text-ellipsis">{label}</span>
+          <span className="s:overflow-hidden s:text-ellipsis">{label}</span>
           {counterValue !== undefined && (
             <Counter value={counterValue} size="xs" variant="highlight" />
           )}
@@ -409,10 +409,10 @@ const NavigationListCollapsibleSection = React.forwardRef<
     const actionElement = action && (
       <div
         className={cn(
-          "s-flex s-gap-1 s-transition-opacity",
+          "s:flex s:gap-1 s:transition-opacity",
           actionOnHover
-            ? "[@media(hover:hover)_and_(pointer:fine)]:s-opacity-0 hover:s-opacity-100 group-has-[:focus-visible]/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100"
-            : "s-opacity-100"
+            ? "s:[@media(hover:hover)_and_(pointer:fine)]:opacity-0 s:hover:opacity-100 s:group-has-[:focus-visible]/menu-item:opacity-100 s:group-hover/menu-item:opacity-100"
+            : "s:opacity-100"
         )}
         onClick={(e) => {
           e.stopPropagation();
@@ -430,16 +430,16 @@ const NavigationListCollapsibleSection = React.forwardRef<
     };
 
     const renderedContent = (
-      <div className="s-flex s-flex-col s-gap-0.5">
+      <div className="s:flex s:flex-col s:gap-0.5">
         {visibleChildrenSlice}
         {hasPartialCollapse && (
           <Collapsible open={isShowingAll} onOpenChange={setIsShowingAll}>
             <CollapsibleContent>
-              <div className="s-flex s-flex-col s-gap-0.5">
+              <div className="s:flex s:flex-col s:gap-0.5">
                 {overflowChildren}
               </div>
             </CollapsibleContent>
-            <div className="s-px-1.5 s-py-1 s-gap-1 s-flex">
+            <div className="s:px-1.5 s:py-1 s:gap-1 s:flex">
               {isShowingAll ? (
                 <Button
                   size="xs"
@@ -457,7 +457,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
                   isCounter={overflowCount !== undefined && overflowCount > 0}
                   counterValue={String(overflowCount)}
                   className={
-                    overflowHasActivity ? "[&>div]:s-font-bold" : undefined
+                    overflowHasActivity ? "s:[&>div]:font-bold" : undefined
                   }
                   onClick={() => setIsShowingAll(true)}
                 />
@@ -471,7 +471,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
     if (type === "static") {
       return (
         <div ref={ref} className={className} {...props}>
-          <div className="s-group/menu-item s-relative s-flex s-flex-1 s-items-center s-justify-start s-gap-2 s-pl-2 s-py-1.5 s-font-medium">
+          <div className="s:group/menu-item s:relative s:flex s:flex-1 s:items-center s:justify-start s:gap-2 s:pl-2 s:py-1.5 s:font-medium">
             {labelElement}
             {actionElement}
           </div>
@@ -489,7 +489,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
 
     return (
       <Collapsible ref={ref} className={className} {...collapsibleProps}>
-        <div className="s-group/menu-item s-relative s-flex s-flex-1 s-items-center s-text-sm s-font-medium s-justify-start s-gap-2 s-pl-2 s-py-1.5 s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <div className="s:group/menu-item s:relative s:flex s:flex-1 s:items-center s:text-sm s:font-medium s:justify-start s:gap-2 s:pl-2 s:py-1.5 s:text-muted-foreground s:dark:text-muted-foreground-night">
           <CollapsibleTrigger hideChevron>{label}</CollapsibleTrigger>
           {actionElement}
         </div>

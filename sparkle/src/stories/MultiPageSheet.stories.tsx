@@ -43,29 +43,29 @@ const samplePages: MultiPageSheetPage[] = [
     description: "Manage your personal information",
     icon: User01,
     content: (
-      <div className="s-space-y-4">
+      <div className="s:space-y-4">
         <div>
-          <h3 className="s-mb-2 s-text-lg s-font-semibold">
+          <h3 className="s:mb-2 s:text-lg s:font-semibold">
             Personal Information
           </h3>
-          <p className="s-text-sm s-text-muted-foreground">
+          <p className="s:text-sm s:text-muted-foreground">
             Update your profile details and preferences.
           </p>
         </div>
-        <div className="s-space-y-3">
+        <div className="s:space-y-3">
           <div>
-            <label className="s-text-sm s-font-medium">Full Name</label>
+            <label className="s:text-sm s:font-medium">Full Name</label>
             <input
               type="text"
-              className="s-mt-1 s-w-full s-rounded-md s-border s-px-3 s-py-2"
+              className="s:mt-1 s:w-full s:rounded-md s:border s:px-3 s:py-2"
               placeholder="John Doe"
             />
           </div>
           <div>
-            <label className="s-text-sm s-font-medium">Email</label>
+            <label className="s:text-sm s:font-medium">Email</label>
             <input
               type="email"
-              className="s-mt-1 s-w-full s-rounded-md s-border s-px-3 s-py-2"
+              className="s:mt-1 s:w-full s:rounded-md s:border s:px-3 s:py-2"
               placeholder="john@example.com"
             />
           </div>
@@ -79,20 +79,20 @@ const samplePages: MultiPageSheetPage[] = [
     description: "Manage your uploaded files",
     icon: File04,
     content: (
-      <div className="s-space-y-4">
+      <div className="s:space-y-4">
         <div>
-          <h3 className="s-mb-2 s-text-lg s-font-semibold">File Management</h3>
-          <p className="s-text-sm s-text-muted-foreground">
+          <h3 className="s:mb-2 s:text-lg s:font-semibold">File Management</h3>
+          <p className="s:text-sm s:text-muted-foreground">
             Upload, organize, and manage your documents.
           </p>
         </div>
-        <div className="s-space-y-2">
-          <div className="s-flex s-items-center s-justify-between s-rounded-md s-border s-p-3">
-            <span className="s-text-sm">document1.pdf</span>
+        <div className="s:space-y-2">
+          <div className="s:flex s:items-center s:justify-between s:rounded-md s:border s:p-3">
+            <span className="s:text-sm">document1.pdf</span>
             <Button label="Download" size="sm" variant="outline" />
           </div>
-          <div className="s-flex s-items-center s-justify-between s-rounded-md s-border s-p-3">
-            <span className="s-text-sm">report.docx</span>
+          <div className="s:flex s:items-center s:justify-between s:rounded-md s:border s:p-3">
+            <span className="s:text-sm">report.docx</span>
             <Button label="Download" size="sm" variant="outline" />
           </div>
         </div>
@@ -105,27 +105,27 @@ const samplePages: MultiPageSheetPage[] = [
     description: "Configure your preferences",
     icon: Settings01,
     content: (
-      <div className="s-space-y-4">
+      <div className="s:space-y-4">
         <div>
-          <h3 className="s-mb-2 s-text-lg s-font-semibold">
+          <h3 className="s:mb-2 s:text-lg s:font-semibold">
             Application Settings
           </h3>
-          <p className="s-text-sm s-text-muted-foreground">
+          <p className="s:text-sm s:text-muted-foreground">
             Customize your experience and notification preferences.
           </p>
         </div>
-        <div className="s-space-y-3">
-          <div className="s-flex s-items-center s-justify-between">
-            <span className="s-text-sm">Email notifications</span>
-            <input type="checkbox" className="s-rounded" defaultChecked />
+        <div className="s:space-y-3">
+          <div className="s:flex s:items-center s:justify-between">
+            <span className="s:text-sm">Email notifications</span>
+            <input type="checkbox" className="s:rounded" defaultChecked />
           </div>
-          <div className="s-flex s-items-center s-justify-between">
-            <span className="s-text-sm">Dark mode</span>
-            <input type="checkbox" className="s-rounded" />
+          <div className="s:flex s:items-center s:justify-between">
+            <span className="s:text-sm">Dark mode</span>
+            <input type="checkbox" className="s:rounded" />
           </div>
-          <div className="s-flex s-items-center s-justify-between">
-            <span className="s-text-sm">Auto-save</span>
-            <input type="checkbox" className="s-rounded" defaultChecked />
+          <div className="s:flex s:items-center s:justify-between">
+            <span className="s:text-sm">Auto-save</span>
+            <input type="checkbox" className="s:rounded" defaultChecked />
           </div>
         </div>
       </div>
@@ -181,21 +181,21 @@ export const InteractiveContent: Story = {
         description: "Enter your basic information",
         icon: User01,
         content: (
-          <div className="s-space-y-4">
+          <div className="s:space-y-4">
             <div>
-              <h3 className="s-mb-2 s-text-lg s-font-semibold">
+              <h3 className="s:mb-2 s:text-lg s:font-semibold">
                 Let's get started
               </h3>
-              <p className="s-text-sm s-text-muted-foreground">
+              <p className="s:text-sm s:text-muted-foreground">
                 Fill in your details to continue to the next step.
               </p>
             </div>
-            <div className="s-space-y-3">
+            <div className="s:space-y-3">
               <div>
-                <label className="s-text-sm s-font-medium">Full Name *</label>
+                <label className="s:text-sm s:font-medium">Full Name *</label>
                 <input
                   type="text"
-                  className="s-mt-1 s-w-full s-rounded-md s-border s-px-3 s-py-2"
+                  className="s:mt-1 s:w-full s:rounded-md s:border s:px-3 s:py-2"
                   placeholder="Enter your name"
                   value={formData.name}
                   onChange={(e) =>
@@ -204,10 +204,10 @@ export const InteractiveContent: Story = {
                 />
               </div>
               <div>
-                <label className="s-text-sm s-font-medium">Email *</label>
+                <label className="s:text-sm s:font-medium">Email *</label>
                 <input
                   type="email"
-                  className="s-mt-1 s-w-full s-rounded-md s-border s-px-3 s-py-2"
+                  className="s:mt-1 s:w-full s:rounded-md s:border s:px-3 s:py-2"
                   placeholder="Enter your email"
                   value={formData.email}
                   onChange={(e) =>
@@ -215,7 +215,7 @@ export const InteractiveContent: Story = {
                   }
                 />
               </div>
-              <div className="s-pt-2">
+              <div className="s:pt-2">
                 <Button
                   label="Continue to File Selection"
                   variant="primary"
@@ -234,16 +234,16 @@ export const InteractiveContent: Story = {
         description: "Choose your files",
         icon: File04,
         content: (
-          <div className="s-space-y-4">
+          <div className="s:space-y-4">
             <div>
-              <h3 className="s-mb-2 s-text-lg s-font-semibold">
+              <h3 className="s:mb-2 s:text-lg s:font-semibold">
                 Select a file to work with
               </h3>
-              <p className="s-text-sm s-text-muted-foreground">
+              <p className="s:text-sm s:text-muted-foreground">
                 Choose from the available files below.
               </p>
             </div>
-            <div className="s-space-y-2">
+            <div className="s:space-y-2">
               {[
                 "project-proposal.pdf",
                 "budget-2024.xlsx",
@@ -251,29 +251,29 @@ export const InteractiveContent: Story = {
               ].map((file) => (
                 <div
                   key={file}
-                  className={`s-flex s-cursor-pointer s-items-center s-justify-between s-rounded-md s-border s-p-3 s-transition-colors hover:s-bg-gray-50 ${
+                  className={`s:flex s:cursor-pointer s:items-center s:justify-between s:rounded-md s:border s:p-3 s:transition-colors s:hover:bg-gray-50 ${
                     formData.selectedFile === file
-                      ? "s-border-blue-300 s-bg-blue-50"
+                      ? "s:border-blue-300 s:bg-blue-50"
                       : ""
                   }`}
                   onClick={() =>
                     setFormData({ ...formData, selectedFile: file })
                   }
                 >
-                  <span className="s-text-sm">{file}</span>
-                  <div className="s-flex s-items-center s-gap-2">
+                  <span className="s:text-sm">{file}</span>
+                  <div className="s:flex s:items-center s:gap-2">
                     <input
                       type="radio"
                       checked={formData.selectedFile === file}
                       readOnly
-                      className="s-pointer-events-none"
+                      className="s:pointer-events-none"
                     />
                   </div>
                 </div>
               ))}
             </div>
             {formData.selectedFile && (
-              <div className="s-pt-2">
+              <div className="s:pt-2">
                 <Button
                   label="Continue to Settings"
                   variant="primary"
@@ -291,19 +291,19 @@ export const InteractiveContent: Story = {
         description: "Configure your preferences",
         icon: Settings01,
         content: (
-          <div className="s-space-y-4">
+          <div className="s:space-y-4">
             <div>
-              <h3 className="s-mb-2 s-text-lg s-font-semibold">Almost done!</h3>
-              <p className="s-text-sm s-text-muted-foreground">
+              <h3 className="s:mb-2 s:text-lg s:font-semibold">Almost done!</h3>
+              <p className="s:text-sm s:text-muted-foreground">
                 Configure your final preferences and complete the setup.
               </p>
             </div>
-            <div className="s-space-y-3">
-              <div className="s-flex s-items-center s-justify-between">
-                <span className="s-text-sm">Enable email notifications</span>
+            <div className="s:space-y-3">
+              <div className="s:flex s:items-center s:justify-between">
+                <span className="s:text-sm">Enable email notifications</span>
                 <input
                   type="checkbox"
-                  className="s-rounded"
+                  className="s:rounded"
                   checked={formData.notifications}
                   onChange={(e) =>
                     setFormData({
@@ -313,9 +313,9 @@ export const InteractiveContent: Story = {
                   }
                 />
               </div>
-              <div className="s-rounded-md s-bg-gray-50 s-p-3">
-                <h4 className="s-mb-2 s-text-sm s-font-medium">Summary</h4>
-                <div className="s-space-y-1 s-text-xs s-text-gray-600">
+              <div className="s:rounded-md s:bg-gray-50 s:p-3">
+                <h4 className="s:mb-2 s:text-sm s:font-medium">Summary</h4>
+                <div className="s:space-y-1 s:text-xs s:text-gray-600">
                   <div>Name: {formData.name}</div>
                   <div>Email: {formData.email}</div>
                   <div>Selected File: {formData.selectedFile}</div>
@@ -367,16 +367,16 @@ export const WithConditionalNavigation: Story = {
         description: "Choose which data sources to include",
         icon: File04,
         content: (
-          <div className="s-space-y-4">
+          <div className="s:space-y-4">
             <div>
-              <h3 className="s-mb-2 s-text-lg s-font-semibold">
+              <h3 className="s:mb-2 s:text-lg s:font-semibold">
                 Available Data Sources
               </h3>
-              <p className="s-text-sm s-text-muted-foreground">
+              <p className="s:text-sm s:text-muted-foreground">
                 Select at least one data source to proceed to the next step.
               </p>
             </div>
-            <div className="s-space-y-2">
+            <div className="s:space-y-2">
               {[
                 "Company Database",
                 "Customer Files",
@@ -385,9 +385,9 @@ export const WithConditionalNavigation: Story = {
               ].map((item) => (
                 <div
                   key={item}
-                  className={`s-flex s-cursor-pointer s-items-center s-justify-between s-rounded-md s-border s-p-3 s-transition-colors hover:s-bg-gray-50 ${
+                  className={`s:flex s:cursor-pointer s:items-center s:justify-between s:rounded-md s:border s:p-3 s:transition-colors s:hover:bg-gray-50 ${
                     selectedItems.includes(item)
-                      ? "s-border-blue-300 s-bg-blue-50"
+                      ? "s:border-blue-300 s:bg-blue-50"
                       : ""
                   }`}
                   onClick={() => {
@@ -398,19 +398,19 @@ export const WithConditionalNavigation: Story = {
                     }
                   }}
                 >
-                  <span className="s-text-sm">{item}</span>
+                  <span className="s:text-sm">{item}</span>
                   <input
                     type="checkbox"
                     checked={selectedItems.includes(item)}
                     readOnly
-                    className="s-pointer-events-none"
+                    className="s:pointer-events-none"
                   />
                 </div>
               ))}
             </div>
             {selectedItems.length > 0 && (
-              <div className="s-rounded-md s-border s-bg-blue-50 s-p-3">
-                <p className="s-text-sm s-text-blue-700">
+              <div className="s:rounded-md s:border s:bg-blue-50 s:p-3">
+                <p className="s:text-sm s:text-blue-700">
                   {selectedItems.length} data source
                   {selectedItems.length !== 1 ? "s" : ""} selected
                 </p>
@@ -425,30 +425,30 @@ export const WithConditionalNavigation: Story = {
         description: "Describe your configuration",
         icon: Settings01,
         content: (
-          <div className="s-space-y-4">
+          <div className="s:space-y-4">
             <div>
-              <h3 className="s-mb-2 s-text-lg s-font-semibold">
+              <h3 className="s:mb-2 s:text-lg s:font-semibold">
                 Configuration Details
               </h3>
-              <p className="s-text-sm s-text-muted-foreground">
+              <p className="s:text-sm s:text-muted-foreground">
                 Add a description for your selected data sources.
               </p>
             </div>
-            <div className="s-rounded-md s-border s-bg-blue-50 s-p-3">
-              <p className="s-text-sm s-text-blue-700">
+            <div className="s:rounded-md s:border s:bg-blue-50 s:p-3">
+              <p className="s:text-sm s:text-blue-700">
                 Selected: {selectedItems.join(", ")}
               </p>
             </div>
-            <div className="s-space-y-2">
-              <label className="s-text-sm s-font-medium">Description</label>
+            <div className="s:space-y-2">
+              <label className="s:text-sm s:font-medium">Description</label>
               <textarea
-                className="s-mt-1 s-w-full s-rounded-md s-border s-px-3 s-py-2"
+                className="s:mt-1 s:w-full s:rounded-md s:border s:px-3 s:py-2"
                 placeholder="Describe how these data sources will be used..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
               />
-              <p className="s-text-xs s-text-muted-foreground">
+              <p className="s:text-xs s:text-muted-foreground">
                 This description helps explain the purpose of your
                 configuration.
               </p>
@@ -456,7 +456,7 @@ export const WithConditionalNavigation: Story = {
           </div>
         ),
         footerContent: (
-          <div className="s-w-full s-border s-border-border-dark">
+          <div className="s:w-full s:border s:border-border-dark">
             This is a footer content
           </div>
         ),
@@ -562,7 +562,7 @@ export const WithScrollableDataTable: Story = {
         accessorKey: "name",
         header: "Name",
         cell: ({ row }) => (
-          <div className="s-font-medium">{row.getValue("name")}</div>
+          <div className="s:font-medium">{row.getValue("name")}</div>
         ),
         meta: { sizeRatio: 25 },
       },
@@ -570,7 +570,7 @@ export const WithScrollableDataTable: Story = {
         accessorKey: "email",
         header: "Email",
         cell: ({ row }) => (
-          <div className="s-text-muted-foreground">{row.getValue("email")}</div>
+          <div className="s:text-muted-foreground">{row.getValue("email")}</div>
         ),
         meta: { sizeRatio: 30 },
       },
@@ -578,7 +578,7 @@ export const WithScrollableDataTable: Story = {
         accessorKey: "role",
         header: "Role",
         cell: ({ row }) => (
-          <div className="s-inline-flex s-rounded-full s-bg-blue-100 s-px-2 s-py-1 s-text-xs s-font-semibold s-text-blue-800">
+          <div className="s:inline-flex s:rounded-full s:bg-blue-100 s:px-2 s:py-1 s:text-xs s:font-semibold s:text-blue-800">
             {row.getValue("role")}
           </div>
         ),
@@ -591,14 +591,14 @@ export const WithScrollableDataTable: Story = {
           const status = row.getValue("status") as string;
           const colorClass =
             status === "Active"
-              ? "s-bg-green-100 s-text-green-800"
+              ? "s:bg-green-100 s:text-green-800"
               : status === "Inactive"
-                ? "s-bg-red-100 s-text-red-800"
-                : "s-bg-yellow-100 s-text-yellow-800";
+                ? "s:bg-red-100 s:text-red-800"
+                : "s:bg-yellow-100 s:text-yellow-800";
 
           return (
             <div
-              className={`s-inline-flex s-rounded-full s-px-2 s-py-1 s-text-xs s-font-semibold ${colorClass}`}
+              className={`s:inline-flex s:rounded-full s:px-2 s:py-1 s:text-xs s:font-semibold ${colorClass}`}
             >
               {status}
             </div>
@@ -610,7 +610,7 @@ export const WithScrollableDataTable: Story = {
         accessorKey: "lastActive",
         header: "Last Active",
         cell: ({ row }) => (
-          <div className="s-text-sm s-text-muted-foreground">
+          <div className="s:text-sm s:text-muted-foreground">
             {row.getValue("lastActive")}
           </div>
         ),
@@ -651,18 +651,18 @@ export const WithScrollableDataTable: Story = {
         icon: User01,
         noScroll: true,
         content: (
-          <div className="s-flex s-h-full s-flex-col s-space-y-4">
-            <div className="s-flex-shrink-0">
-              <h3 className="s-mb-2 s-text-lg s-font-semibold">
+          <div className="s:flex s:h-full s:flex-col s:space-y-4">
+            <div className="s:flex-shrink-0">
+              <h3 className="s:mb-2 s:text-lg s:font-semibold">
                 Users Database
               </h3>
-              <p className="s-text-sm s-text-muted-foreground">
+              <p className="s:text-sm s:text-muted-foreground">
                 Browse through all users with infinite scrolling. Click on any
                 row to view details.
               </p>
             </div>
             <ScrollableDataTable
-              className="s-min-h-0"
+              className="s:min-h-0"
               data={users}
               columns={columns}
               maxHeight={true}
@@ -670,7 +670,7 @@ export const WithScrollableDataTable: Story = {
               isLoading={isLoading}
               enableRowSelection={false}
             />
-            <div className="s-flex-shrink-0 s-text-xs s-text-muted-foreground">
+            <div className="s:flex-shrink-0 s:text-xs s:text-muted-foreground">
               Showing {users.length} users{" "}
               {hasMore ? "(loading more available)" : "(all users loaded)"}
             </div>

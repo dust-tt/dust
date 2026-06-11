@@ -190,7 +190,7 @@ function PokeSearchCommandUI({
         <PokeCommandInput
           placeholder="Type a command or search..."
           onValueChange={(value) => onSearchTermChange(value.trim())}
-          className="border-none focus:outline-none focus:ring-0"
+          className="border-none focus:outline-hidden focus:ring-0"
         />
         <PokeCommandList>
           {isLoading && <div className="p-4 text-sm">Searching...</div>}

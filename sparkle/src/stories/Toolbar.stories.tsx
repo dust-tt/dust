@@ -154,7 +154,7 @@ function ToolbarPreview({ variant, scroll, onClose }: ToolbarPreviewProps) {
 
   if (isOverlay) {
     return (
-      <div className="s-relative s-h-14 s-w-full s-max-w-[520px] s-rounded-xl s-border s-border-border/70 s-bg-background s-p-2 dark:s-border-border-night/50 dark:s-bg-background-night">
+      <div className="s:relative s:h-14 s:w-full s:max-w-[520px] s:rounded-xl s:border s:border-border/70 s:bg-background s:p-2 s:dark:border-border-night/50 s:dark:bg-background-night">
         {toolbar}
       </div>
     );

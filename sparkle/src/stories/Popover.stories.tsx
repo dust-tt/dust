@@ -40,7 +40,7 @@ export function SimplePopoverExample() {
     <Popover
       trigger={<Button label="Popover" variant="outline" />}
       content={
-        <div className="s-grid s-gap-2 s-p-2">
+        <div className="s:grid s:gap-2 s:p-2">
           <p>Lorem</p>
           <p>Ipsum</p>
           <p>Lorem</p>
@@ -59,38 +59,38 @@ export function PopoverExample() {
       <PopoverTrigger>
         <Button label="Popover" variant="primary" />
       </PopoverTrigger>
-      <PopoverContent className="s-p-4">
-        <div className="s-grid s-gap-4">
-          <div className="s-space-y-2">
-            <h4 className="s-pb-2 s-font-medium s-leading-none">Dimensions</h4>
-            <p className="s-text-sm s-text-muted-foreground">
+      <PopoverContent className="s:p-4">
+        <div className="s:grid s:gap-4">
+          <div className="s:space-y-2">
+            <h4 className="s:pb-2 s:font-medium s:leading-none">Dimensions</h4>
+            <p className="s:text-sm s:text-muted-foreground">
               Set the dimensions for the layer.
             </p>
           </div>
-          <div className="s-grid s-gap-4">
+          <div className="s:grid s:gap-4">
             <Input
               name="width"
               value="200px"
               placeholder="Width"
-              className="s-col-span-2 s-h-8"
+              className="s:col-span-2 s:h-8"
             />
             <Input
               name="max-width"
               value="300px"
               placeholder="Max. width"
-              className="s-col-span-2 s-h-8"
+              className="s:col-span-2 s:h-8"
             />
             <Input
               name="height"
               value="30px"
               placeholder="Height"
-              className="s-col-span-2 s-h-8"
+              className="s:col-span-2 s:h-8"
             />
             <Input
               name="max-height"
               value="100px"
               placeholder="Max. height"
-              className="s-col-span-2 s-h-8"
+              className="s:col-span-2 s:h-8"
             />
           </div>
         </div>
@@ -124,12 +124,12 @@ export function ScrollablePopoverExample() {
       <PopoverTrigger>
         <Button label="Popover" variant="primary" />
       </PopoverTrigger>
-      <PopoverContent className="s-p-4">
-        <ScrollArea className="s-h-[200px]">
+      <PopoverContent className="s:p-4">
+        <ScrollArea className="s:h-[200px]">
           {tags.map((tag) => (
             <div key={tag}>
-              <div className="s-text-sm">{tag}</div>
-              <Separator className="s-my-2" />
+              <div className="s:text-sm">{tag}</div>
+              <Separator className="s:my-2" />
             </div>
           ))}
         </ScrollArea>

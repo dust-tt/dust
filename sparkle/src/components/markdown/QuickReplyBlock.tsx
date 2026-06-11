@@ -40,13 +40,13 @@ export function QuickReplyContainer({
     >
       <div
         className={cn(
-          "s-overflow-hidden s-transition-all s-duration-200 s-ease-in-out",
-          isOpen ? "s-max-h-[500px] s-opacity-100" : "s-max-h-0 s-opacity-0",
+          "s:overflow-hidden s:transition-all s:duration-200 s:ease-in-out",
+          isOpen ? "s:max-h-[500px] s:opacity-100" : "s:max-h-0 s:opacity-0",
           className
         )}
         aria-hidden={!isOpen}
       >
-        <div className="s-flex s-flex-col s-gap-1">{children}</div>
+        <div className="s:flex s:flex-col s:gap-1">{children}</div>
       </div>
     </QuickReplyContainerContext.Provider>
   );
@@ -82,7 +82,7 @@ export function QuickReplyBlock({
   };
 
   return (
-    <span className={cn("s-float-left s-clear-left s-my-0.5", className)}>
+    <span className={cn("s:float-left s:clear-left s:my-0.5", className)}>
       <Button
         size="sm"
         variant="outline"
@@ -92,7 +92,7 @@ export function QuickReplyBlock({
         disabled={disabled || isSending || !onSend}
         isLoading={isSending}
         className={cn(
-          "s-h-auto s-whitespace-normal s-py-1.5 s-text-left",
+          "s:h-auto s:whitespace-normal s:py-1.5 s:text-left",
           buttonClassName
         )}
       />

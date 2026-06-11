@@ -39,7 +39,7 @@ export const Playground: Story = {};
 
 export const GenericQuestion: Story = {
   render: () => (
-    <div className="s-flex s-w-full s-max-w-sm s-flex-col s-gap-2">
+    <div className="s:flex s:w-full s:max-w-sm s:flex-col s:gap-2">
       <OptionCard
         label="Unread emails"
         description="Only conversations you have not opened yet."
@@ -63,7 +63,7 @@ export const GenericQuestion: Story = {
 
 export const DisabledOption: Story = {
   render: () => (
-    <div className="s-flex s-w-full s-max-w-sm s-flex-col s-gap-2">
+    <div className="s:flex s:w-full s:max-w-sm s:flex-col s:gap-2">
       <OptionCard
         label="Slack mentions"
         description="Messages where you were directly tagged."

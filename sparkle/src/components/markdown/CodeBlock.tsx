@@ -2,7 +2,9 @@ import { customColors } from "@sparkle/lib/colors";
 import { safeLazy } from "@sparkle/lib/safeLazy";
 import { cva } from "class-variance-authority";
 import React, { Suspense } from "react";
-import { violet } from "tailwindcss/colors";
+import colors from "tailwindcss/colors";
+
+const violet = colors.violet;
 
 const SyntaxHighlighter = safeLazy(
   () => import("react-syntax-highlighter/dist/esm/default-highlight")
@@ -10,15 +12,15 @@ const SyntaxHighlighter = safeLazy(
 
 export const codeInlineVariants = cva(
   [
-    "s-mx-0.5 s-my-0.5 s-cursor-text s-rounded-md s-border s-px-0.5 s-py-0",
-    "s-border-border dark:s-border-border-night",
-    "s-text-[0.90em]",
-    "s-text-golden-700 dark:s-text-golden-700-night",
+    "s:mx-0.5 s:my-0.5 s:cursor-text s:rounded-md s:border s:px-0.5 s:py-0",
+    "s:border-border s:dark:border-border-night",
+    "s:text-[0.90em]",
+    "s:text-golden-700 s:dark:text-golden-700-night",
   ],
   {
     variants: {
       variant: {
-        surface: ["s-bg-muted/70 dark:s-bg-muted-night/70"],
+        surface: ["s:bg-muted/70 s:dark:bg-muted-night/70"],
       },
     },
     defaultVariants: {
@@ -29,14 +31,14 @@ export const codeInlineVariants = cva(
 
 export const codeBlockVariants = cva(
   [
-    "s-mx-0.5 s-my-0.5 s-cursor-text s-rounded-md s-border s-p-2",
-    "s-border-border dark:s-border-border-night",
-    "s-text-[0.90em]",
+    "s:mx-0.5 s:my-0.5 s:cursor-text s:rounded-md s:border s:p-2",
+    "s:border-border s:dark:border-border-night",
+    "s:text-[0.90em]",
   ],
   {
     variants: {
       variant: {
-        surface: ["s-bg-muted/70 dark:s-bg-muted-night/70"],
+        surface: ["s:bg-muted/70 s:dark:bg-muted-night/70"],
       },
     },
     defaultVariants: {
@@ -170,14 +172,14 @@ export function CodeBlock({
 
   return !inline ? (
     <Suspense fallback={<div />}>
-      <div className="s-text-foreground dark:s-text-foreground-night">
+      <div className="s:text-foreground s:dark:text-foreground-night">
         <SyntaxHighlighter
           wrapLongLines={wrapLongLines}
           showLineNumbers={showLineNumber}
           style={codeStyle}
           language={languageToUse}
           PreTag="div"
-          className="s-cursor-text"
+          className="s:cursor-text"
         >
           {String(children).replace(/\n$/, "")}
         </SyntaxHighlighter>

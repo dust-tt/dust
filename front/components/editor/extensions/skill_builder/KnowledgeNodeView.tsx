@@ -376,7 +376,7 @@ function KnowledgeSearchComponent({
           "inline-block h-7 cursor-text px-3 py-1 text-sm font-normal",
           "rounded bg-gray-100 dark:bg-gray-800",
           "text-center text-gray-500 dark:text-gray-500-night",
-          "empty:before:content-[attr(data-placeholder)] focus:outline-none",
+          "empty:before:content-[attr(data-placeholder)] focus:outline-hidden",
           "min-w-36 text-left"
         )}
         contentEditable

@@ -35,7 +35,7 @@ export const TruncatedText: React.FC<TruncatedTextProps> = ({
     <div
       ref={textRef}
       className={cn(
-        `s-line-clamp-${lineClamp} s-cursor-pointer s-select-none`,
+        `s:line-clamp-${lineClamp} s:cursor-pointer s:select-none`,
         className
       )}
       {...props}

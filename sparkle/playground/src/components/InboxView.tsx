@@ -482,13 +482,13 @@ export function InboxView({
     ) : null;
     const title = item.creator ? (
       <>
-        <span className="s-shrink-0">{item.creator.fullName}</span>
-        <span className="s-min-w-0 s-truncate s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <span className="s:shrink-0">{item.creator.fullName}</span>
+        <span className="s:min-w-0 s:truncate s:text-muted-foreground dark:s:text-muted-foreground-night">
           {item.title}
         </span>
       </>
     ) : (
-      <span className="s-min-w-0 s-truncate">{item.title}</span>
+      <span className="s:min-w-0 s:truncate">{item.title}</span>
     );
 
     return (
@@ -517,7 +517,7 @@ export function InboxView({
       open={isConversationSearchOpen}
       onOpenChange={setIsConversationSearchOpen}
       placeholder="Search in Inbox"
-      className="s-w-full"
+      className="s:w-full"
       items={conversationSearchResults}
       availableHeight
       noResults={
@@ -538,7 +538,7 @@ export function InboxView({
       value={taskSearchText}
       onChange={setTaskSearchText}
       placeholder="Search tasks..."
-      className="s-w-full"
+      className="s:w-full"
     />
   );
 
@@ -549,7 +549,7 @@ export function InboxView({
     actionLabel: string
   ) => (
     <div
-      className="s-mt-2 s-flex s-cursor-pointer s-items-center s-justify-between s-rounded-2xl s-bg-muted-background s-p-1.5 s-pl-3.5 s-heading-sm dark:s-border-border-night dark:s-bg-muted-background-night"
+      className="s:mt-2 s:flex s:cursor-pointer s:items-center s:justify-between s:rounded-2xl s:bg-muted-background s:p-1.5 s:pl-3.5 s:heading-sm dark:s:border-border-night dark:s:bg-muted-background-night"
       onClick={onHeaderClick}
     >
       {label}
@@ -581,8 +581,8 @@ export function InboxView({
         conversation={conversation}
         creator={creator || undefined}
         className={cn(
-          "s-px-3 s-rounded-2xl !s-border-transparent",
-          isSelected && "s-bg-highlight-50 dark:s-bg-highlight-50-night"
+          "s:px-3 s:rounded-2xl !s-border-transparent",
+          isSelected && "s:bg-highlight-50 dark:s:bg-highlight-50-night"
         )}
         time={time}
         replySection={
@@ -604,12 +604,12 @@ export function InboxView({
   const renderConversationsTab = () => {
     if (!hasConversationContent) {
       return (
-        <div className="s-flex s-flex-1 s-flex-col s-items-center s-justify-center s-gap-2">
-          <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-1 s-text-foreground dark:s-text-foreground-night">
+        <div className="s:flex s:flex-1 s:flex-col s:items-center s:justify-center s:gap-2">
+          <div className="s:flex s:flex-col s:items-center s:justify-center s:gap-1 s:text-foreground dark:s:text-foreground-night">
             <Icon size="md" visual={Inbox01} />
-            <h2 className="s-heading-xl">Inbox</h2>
+            <h2 className="s:heading-xl">Inbox</h2>
           </div>
-          <p className="s-text-center s-text-lg s-text-muted-foreground dark:s-text-muted-foreground-night">
+          <p className="s:text-center s:text-lg s:text-muted-foreground dark:s:text-muted-foreground-night">
             You're all caught up!
             <br />
             Nothing new under the sun.
@@ -620,14 +620,14 @@ export function InboxView({
 
     if (allConversationSectionsCollapsed) {
       return (
-        <div className="s-flex s-flex-1 s-flex-col s-gap-3">
+        <div className="s:flex s:flex-1 s:flex-col s:gap-3">
           {renderConversationsToolbar()}
-          <div className="s-flex s-flex-1 s-flex-col s-items-center s-justify-center s-gap-2">
-            <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-1 s-text-foreground dark:s-text-foreground-night">
+          <div className="s:flex s:flex-1 s:flex-col s:items-center s:justify-center s:gap-2">
+            <div className="s:flex s:flex-col s:items-center s:justify-center s:gap-1 s:text-foreground dark:s:text-foreground-night">
               <Icon size="md" visual={Inbox01} />
-              <h2 className="s-heading-xl">Inbox</h2>
+              <h2 className="s:heading-xl">Inbox</h2>
             </div>
-            <p className="s-text-center s-text-lg s-text-muted-foreground dark:s-text-muted-foreground-night">
+            <p className="s:text-center s:text-lg s:text-muted-foreground dark:s:text-muted-foreground-night">
               You're all caught up!
               <br />
               Nothing new under the sun.
@@ -638,9 +638,9 @@ export function InboxView({
     }
 
     return (
-      <div className="s-flex s-flex-col s-gap-3">
+      <div className="s:flex s:flex-col s:gap-3">
         {renderConversationsToolbar()}
-        <div className="s-flex s-flex-col">
+        <div className="s:flex s:flex-col">
           {myConversations.length > 0 && (
             <Collapsible
               key="my-conversations"
@@ -658,17 +658,17 @@ export function InboxView({
                   });
                 }
               }}
-              className="s-flex s-flex-col"
+              className="s:flex s:flex-col"
             >
               <CollapsibleContent>
-                <div className="s-flex s-flex-col s-gap-1">
+                <div className="s:flex s:flex-col s:gap-1">
                   {renderInboxSectionHeader(
                     "My Pod",
                     onMyPodClick,
                     () => toggleSectionCollapse("my-conversations"),
                     "Mark as read"
                   )}
-                  <ListGroup className="!s-border-transparent s-gap-0.5">
+                  <ListGroup className="!s-border-transparent s:gap-0.5">
                     {myConversations.map(renderInboxConversationItem)}
                   </ListGroup>
                 </div>
@@ -694,17 +694,17 @@ export function InboxView({
                     });
                   }
                 }}
-                className="s-flex s-flex-col"
+                className="s:flex s:flex-col"
               >
                 <CollapsibleContent>
-                  <div className="s-flex s-flex-col s-gap-1">
+                  <div className="s:flex s:flex-col s:gap-1">
                     {renderInboxSectionHeader(
                       space.name,
                       () => onSpaceClick?.(space),
                       () => toggleSectionCollapse(space.id),
                       "Mark as read"
                     )}
-                    <ListGroup className="!s-border-transparent s-gap-0.5">
+                    <ListGroup className="!s-border-transparent s:gap-0.5">
                       {spaceConversations.map(renderInboxConversationItem)}
                     </ListGroup>
                   </div>
@@ -720,12 +720,12 @@ export function InboxView({
   const renderTasksTab = () => {
     if (!hasTaskContent) {
       return (
-        <div className="s-flex s-flex-1 s-flex-col s-items-center s-justify-center s-gap-2">
-          <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-1 s-text-foreground dark:s-text-foreground-night">
+        <div className="s:flex s:flex-1 s:flex-col s:items-center s:justify-center s:gap-2">
+          <div className="s:flex s:flex-col s:items-center s:justify-center s:gap-1 s:text-foreground dark:s:text-foreground-night">
             <Icon size="md" visual={Inbox01} />
-            <h2 className="s-heading-xl">All tasks done</h2>
+            <h2 className="s:heading-xl">All tasks done</h2>
           </div>
-          <p className="s-text-center s-text-lg s-text-muted-foreground dark:s-text-muted-foreground-night">
+          <p className="s:text-center s:text-lg s:text-muted-foreground dark:s:text-muted-foreground-night">
             No ongoing tasks across your pods.
           </p>
         </div>
@@ -734,10 +734,10 @@ export function InboxView({
 
     if (!hasFilteredTaskContent) {
       return (
-        <div className="s-flex s-flex-1 s-flex-col s-gap-4">
+        <div className="s:flex s:flex-1 s:flex-col s:gap-4">
           {renderTasksToolbar()}
-          <div className="s-flex s-flex-1 s-flex-col s-items-center s-justify-center s-gap-2">
-            <p className="s-text-center s-text-lg s-text-muted-foreground dark:s-text-muted-foreground-night">
+          <div className="s:flex s:flex-1 s:flex-col s:items-center s:justify-center s:gap-2">
+            <p className="s:text-center s:text-lg s:text-muted-foreground dark:s:text-muted-foreground-night">
               No tasks match your search.
             </p>
           </div>
@@ -747,14 +747,14 @@ export function InboxView({
 
     if (allTaskSectionsCollapsed) {
       return (
-        <div className="s-flex s-flex-1 s-flex-col s-gap-4">
+        <div className="s:flex s:flex-1 s:flex-col s:gap-4">
           {renderTasksToolbar()}
-          <div className="s-flex s-flex-1 s-flex-col s-items-center s-justify-center s-gap-2">
-            <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-1 s-text-foreground dark:s-text-foreground-night">
+          <div className="s:flex s:flex-1 s:flex-col s:items-center s:justify-center s:gap-2">
+            <div className="s:flex s:flex-col s:items-center s:justify-center s:gap-1 s:text-foreground dark:s:text-foreground-night">
               <Icon size="md" visual={Inbox01} />
-              <h2 className="s-heading-xl">All tasks done</h2>
+              <h2 className="s:heading-xl">All tasks done</h2>
             </div>
-            <p className="s-text-center s-text-lg s-text-muted-foreground dark:s-text-muted-foreground-night">
+            <p className="s:text-center s:text-lg s:text-muted-foreground dark:s:text-muted-foreground-night">
               No ongoing tasks across your pods.
             </p>
           </div>
@@ -763,7 +763,7 @@ export function InboxView({
     }
 
     return (
-      <div className="s-flex s-flex-col s-gap-4">
+      <div className="s:flex s:flex-col s:gap-4">
         {renderTasksToolbar()}
         {inboxTaskGroups.map((group) => (
           <Collapsible
@@ -782,10 +782,10 @@ export function InboxView({
                 });
               }
             }}
-            className="s-flex s-flex-col"
+            className="s:flex s:flex-col"
           >
             <CollapsibleContent>
-              <div className="s-flex s-flex-col s-gap-1">
+              <div className="s:flex s:flex-col s:gap-1">
                 {renderInboxSectionHeader(
                   group.label,
                   group.onHeaderClick,
@@ -793,8 +793,8 @@ export function InboxView({
                   "Mark as done"
                 )}
 
-                <ListGroup className="!s-border-transparent s-gap-0.5">
-                  <div className="s-flex s-flex-col s-gap-2 s-px-3 s-py-1">
+                <ListGroup className="!s-border-transparent s:gap-0.5">
+                  <div className="s:flex s:flex-col s:gap-2 s:px-3 s:py-1">
                     {group.tasks.map((task) => (
                       <TaskItem
                         key={task.id}
@@ -803,7 +803,7 @@ export function InboxView({
                         isEditable
                         isChecked={checkedTaskKeys.has(task.id)}
                         isMutedAfterCheck
-                        className="s-w-full s-py-1"
+                        className="s:w-full s:py-1"
                         onCheckedChange={(checked) => {
                           setCheckedTaskKeys((prev) => {
                             const next = new Set(prev);
@@ -828,11 +828,11 @@ export function InboxView({
   };
 
   return (
-    <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background dark:s-bg-background-night">
-      <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto s-px-4">
-        <div className="s-mx-auto s-flex s-h-full s-w-full s-max-w-4xl s-flex-col s-gap-3 s-py-6">
+    <div className="s:flex s:h-full s:w-full s:flex-col s:bg-background dark:s:bg-background-night">
+      <div className="s:flex s:h-full s:min-h-0 s:flex-1 s:flex-col s:overflow-y-auto s:px-4">
+        <div className="s:mx-auto s:flex s:h-full s:w-full s:max-w-4xl s:flex-col s:gap-3 s:py-6">
           {greeting && (
-            <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+            <h2 className="s:heading-2xl s:text-foreground dark:s:text-foreground-night">
               {greeting}
             </h2>
           )}

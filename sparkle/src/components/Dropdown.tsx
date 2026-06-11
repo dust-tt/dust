@@ -33,41 +33,41 @@ const ITEM_VARIANTS = ["default", "warning"] as const;
 type ItemVariantType = (typeof ITEM_VARIANTS)[number];
 
 export const menuStyleClasses = {
-  inset: "s-pl-8",
+  inset: "s:pl-8",
   container: cn(
-    "s-rounded-xl s-border-hovering s-p-1",
-    "s-border s-border-border dark:s-border-border-night",
-    "s-bg-background dark:s-bg-muted-background-night",
-    "s-text-foreground dark:s-text-foreground-night",
-    "s-z-50 s-min-w-[8rem]",
-    "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[side=bottom]:s-slide-in-from-top-2 data-[side=left]:s-slide-in-from-right-2 data-[side=right]:s-slide-in-from-left-2 data-[side=top]:s-slide-in-from-bottom-2"
+    "s:rounded-xl s:border-hovering s:p-1",
+    "s:border s:border-border s:dark:border-border-night",
+    "s:bg-background s:dark:bg-muted-background-night",
+    "s:text-foreground s:dark:text-foreground-night",
+    "s:z-50 s:min-w-[8rem]",
+    "s:data-[state=open]:animate-in s:data-[state=closed]:animate-out s:data-[state=closed]:fade-out-0 s:data-[state=open]:fade-in-0 s:data-[state=closed]:zoom-out-95 s:data-[state=open]:zoom-in-95 s:data-[side=bottom]:slide-in-from-top-2 s:data-[side=left]:slide-in-from-right-2 s:data-[side=right]:slide-in-from-left-2 s:data-[side=top]:slide-in-from-bottom-2"
   ),
   item: cva(
     cn(
-      "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-lg s-heading-sm s-transition-colors data-[disabled]:s-pointer-events-none",
-      "data-[disabled]:s-text-primary-400 dark:data-[disabled]:s-text-primary-400-night"
+      "s:relative s:flex s:gap-2 s:cursor-pointer s:select-none s:items-center s:outline-hidden s:rounded-lg s:heading-sm s:transition-colors s:data-[disabled]:pointer-events-none",
+      "s:data-[disabled]:text-primary-400 s:dark:data-[disabled]:text-primary-400-night"
     ),
     {
       variants: {
         variant: {
           default: cn(
-            "s-p-2",
-            "hover:s-bg-muted-background dark:hover:s-bg-muted-night",
-            "focus:s-text-foreground dark:focus:s-text-foreground-night",
-            "focus:s-bg-muted-background dark:focus:s-bg-muted-night"
+            "s:p-2",
+            "s:hover:bg-muted-background s:dark:hover:bg-muted-night",
+            "s:focus:text-foreground s:dark:focus:text-foreground-night",
+            "s:focus:bg-muted-background s:dark:focus:bg-muted-night"
           ),
           tags: cn(
-            "s-p-0.5",
-            "hover:s-bg-muted-background dark:hover:s-bg-muted-night",
-            "focus:s-text-foreground dark:focus:s-text-foreground-night",
-            "focus:s-bg-muted-background dark:focus:s-bg-muted-night"
+            "s:p-0.5",
+            "s:hover:bg-muted-background s:dark:hover:bg-muted-night",
+            "s:focus:text-foreground s:dark:focus:text-foreground-night",
+            "s:focus:bg-muted-background s:dark:focus:bg-muted-night"
           ),
           warning: cn(
-            "s-p-2",
-            "s-text-warning-500 dark:s-text-warning-500-night",
-            "hover:s-bg-warning-50 dark:hover:s-bg-warning-50-night",
-            "focus:s-bg-warning-50 dark:focus:s-bg-warning-50-night",
-            "active:s-bg-warning-100 dark:active:s-bg-warning-100-night"
+            "s:p-2",
+            "s:text-warning-500 s:dark:text-warning-500-night",
+            "s:hover:bg-warning-50 s:dark:hover:bg-warning-50-night",
+            "s:focus:bg-warning-50 s:dark:focus:bg-warning-50-night",
+            "s:active:bg-warning-100 s:dark:active:bg-warning-100-night"
           ),
         },
       },
@@ -78,24 +78,24 @@ export const menuStyleClasses = {
   ),
   subTrigger: {
     default: cn(
-      "s-mr-1 s-ml-auto s-tracking-widest",
-      "s-text-primary-400 dark:s-text-primary-400-night"
+      "s:mr-1 s:ml-auto s:tracking-widest",
+      "s:text-primary-400 s:dark:text-primary-400-night"
     ),
-    span: "s-absolute s-left-2 s-flex s-h-3.5 s-w-3.5 s-items-center s-justify-center",
+    span: "s:absolute s:left-2 s:flex s:h-3.5 s:w-3.5 s:items-center s:justify-center",
   },
   label: cn(
-    "s-px-2 s-py-2 s-heading-xs",
-    "s-text-muted-foreground dark:s-text-muted-foreground-night"
+    "s:px-2 s:py-2 s:heading-xs",
+    "s:text-muted-foreground s:dark:text-muted-foreground-night"
   ),
   description: cn(
-    "s-grow s-truncate s-text-xs s-font-normal",
-    "s-text-muted-foreground dark:s-text-muted-foreground-night"
+    "s:grow s:truncate s:text-xs s:font-normal",
+    "s:text-muted-foreground s:dark:text-muted-foreground-night"
   ),
   separator: cn(
-    "-s-mx-1 s-my-1 s-h-px",
-    "s-bg-separator dark:s-bg-separator-night"
+    "-s:mx-1 s:my-1 s:h-px",
+    "s:bg-separator s:dark:bg-separator-night"
   ),
-  shortcut: "s-ml-auto",
+  shortcut: "s:ml-auto",
 };
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
@@ -156,7 +156,7 @@ const renderIcon = (
         className={
           variant === "warning"
             ? undefined
-            : "s-text-muted-foreground dark:s-text-muted-foreground-night"
+            : "s:text-muted-foreground s:dark:text-muted-foreground-night"
         }
       />
     );
@@ -182,26 +182,26 @@ const ItemWithLabelIconAndDescription = <
       {label && (
         <div
           className={cn(
-            "s-grid s-flex-grow s-items-center s-gap-x-2.5",
+            "s:grid s:flex-grow s:items-center s:gap-x-2.5",
             icon && endComponent
-              ? "s-grid-cols-[auto,1fr,auto]"
+              ? "s:grid-cols-[auto_1fr_auto]"
               : icon
-                ? "s-grid-cols-[auto,1fr]"
+                ? "s:grid-cols-[auto_1fr]"
                 : endComponent
-                  ? "s-grid-cols-[1fr,auto]"
-                  : "s-grid-cols-[1fr]"
+                  ? "s:grid-cols-[1fr_auto]"
+                  : "s:grid-cols-[1fr]"
           )}
         >
           {renderIcon(icon, "sm", variant)}
-          <div className={cn("s-flex s-flex-col", truncate && "s-truncate")}>
-            <span className={cn(truncate ? "s-truncate" : "s-line-clamp-3")}>
+          <div className={cn("s:flex s:flex-col", truncate && "s:truncate")}>
+            <span className={cn(truncate ? "s:truncate" : "s:line-clamp-3")}>
               {label}
             </span>
             {description && (
               <span
                 className={cn(
-                  "s-text-xs s-font-normal s-text-muted-foreground dark:s-text-muted-foreground-night",
-                  truncate ? "s-truncate" : "s-line-clamp-3"
+                  "s:text-xs s:font-normal s:text-muted-foreground s:dark:text-muted-foreground-night",
+                  truncate ? "s:truncate" : "s:line-clamp-3"
                 )}
               >
                 {description}
@@ -241,7 +241,7 @@ const DropdownMenuSubTrigger = React.forwardRef<
         <Icon
           size="xs"
           visual={ChevronRight}
-          className="s-text-muted-foreground dark:s-text-muted-foreground-night"
+          className="s:text-muted-foreground s:dark:text-muted-foreground-night"
         />
       }
     >
@@ -267,24 +267,24 @@ const DropdownMenuSubContent = React.forwardRef<
     ref={ref}
     className={cn(
       menuStyleClasses.container,
-      "s-flex s-flex-col s-p-0 s-shadow-lg",
-      dropdownHeaders && "s-h-80 xs:s-h-96",
+      "s:flex s:flex-col s:shadow-lg",
+      dropdownHeaders && "s:h-80 s:xs:h-96",
       className
     )}
     {...props}
   >
     {dropdownHeaders && (
-      <div className="s-sticky s-top-0 s-bg-background dark:s-bg-muted-background-night">
+      <div className="s:sticky s:top-0 s:bg-background s:dark:bg-muted-background-night">
         {dropdownHeaders}
       </div>
     )}
     <ScrollArea
-      className="s-w-full s-flex-1"
+      className="s:w-full s:flex-1"
       hideScrollBar={false}
       orientation="vertical"
       viewportClassName={cn(
-        "s-flex-1",
-        "s-max-h-[calc(var(--radix-dropdown-menu-content-available-height)-var(--header-height,20px))]"
+        "s:flex-1",
+        "s:max-h-[calc(var(--radix-dropdown-menu-content-available-height)-var(--header-height,20px))]"
       )}
     >
       {children}
@@ -492,21 +492,21 @@ const DropdownMenuContent = React.forwardRef<
         onKeyDown={handleKeyDown}
         className={cn(
           menuStyleClasses.container,
-          "s-flex s-flex-col s-p-0 s-shadow-md",
-          dropdownHeaders && "s-h-80 xs:s-h-96", // We use dropdownHeaders for putting search bar, so we can set the height for the container
+          "s:flex s:flex-col s:shadow-md",
+          dropdownHeaders && "s:h-80 s:xs:h-96", // We use dropdownHeaders for putting search bar, so we can set the height for the container
           className
         )}
         onCloseAutoFocus={handleCloseAutoFocus}
         {...props}
       >
-        <div className="s-sticky s-top-0 s-bg-background dark:s-bg-muted-background-night">
+        <div className="s:sticky s:top-0 s:bg-background s:dark:bg-muted-background-night">
           {dropdownHeaders && dropdownHeaders}
         </div>
         <ScrollArea
-          className="s-w-full s-flex-1"
+          className="s:w-full s:flex-1"
           viewportClassName={cn(
-            "s-flex-1",
-            "s-max-h-[calc(var(--radix-dropdown-menu-content-available-height)-var(--header-height,20px))]"
+            "s:flex-1",
+            "s:max-h-[calc(var(--radix-dropdown-menu-content-available-height)-var(--header-height,20px))]"
           )}
           viewportRef={viewportRef}
         >
@@ -610,7 +610,7 @@ const DropdownMenuItem = React.forwardRef<
           {...props}
           asChild={asChild}
         >
-          <div className="s-h-full s-w-full">
+          <div className="s:h-full s:w-full">
             <ItemWithLabelIconAndDescription
               label={label}
               icon={icon}
@@ -630,7 +630,7 @@ const DropdownMenuItem = React.forwardRef<
       <Tooltip
         tooltipTriggerAsChild
         label={tooltip}
-        trigger={<span className="s-block s-w-full">{item}</span>}
+        trigger={<span className="s:block s:w-full">{item}</span>}
       />
     ) : (
       item
@@ -671,7 +671,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
           <Icon
             size="xs"
             visual={Check}
-            className="s-text-muted-foreground dark:s-text-muted-foreground-night"
+            className="s:text-muted-foreground s:dark:text-muted-foreground-night"
           />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
@@ -705,12 +705,12 @@ const DropdownMenuRadioItem = React.forwardRef<
       className={cn(
         menuStyleClasses.item({ variant: "default" }),
         menuStyleClasses.inset,
-        "s-group/dropdown-radio",
+        "s:group/dropdown-radio",
         className
       )}
       {...props}
     >
-      <span className={cn("s-absolute s-left-2", radioStyles({ size: "xs" }))}>
+      <span className={cn("s:absolute s:left-2", radioStyles({ size: "xs" }))}>
         <DropdownMenuPrimitive.ItemIndicator>
           <div className={radioIndicatorStyles({ size: "xs" })} />
         </DropdownMenuPrimitive.ItemIndicator>
@@ -786,7 +786,7 @@ const DropdownMenuTagList = React.forwardRef<
   DropdownMenuTagListProps
 >(({ children, className }, ref) => {
   return (
-    <div ref={ref} className={cn("s-flex s-flex-wrap", className)}>
+    <div ref={ref} className={cn("s:flex s:flex-wrap", className)}>
       {children}
     </div>
   );
@@ -921,11 +921,11 @@ const DropdownMenuSearchbar = React.forwardRef<
 
     return (
       <div
-        className={cn("s-flex s-gap-1.5 s-p-1.5", className)}
+        className={cn("s:flex s:gap-1.5 s:p-1.5", className)}
         data-dropdown-searchbar
       >
         <SearchInput
-          className="s-w-full"
+          className="s:w-full"
           ref={internalRef}
           placeholder={placeholder}
           name={name}
@@ -971,7 +971,7 @@ const DropdownMenuFiltersInner = <T extends string>(
   return (
     <div
       ref={ref}
-      className={cn("s-flex s-flex-wrap s-gap-0.5 s-p-2", className)}
+      className={cn("s:flex s:flex-wrap s:gap-0.5 s:p-2", className)}
     >
       {filters.map((filter) => {
         const isSelected = multiSelectionValues.includes(filter.value);
@@ -1006,12 +1006,12 @@ export interface DropdownTooltipProps {
 }
 
 const DropdownTooltip = ({ description, media }: DropdownTooltipProps) => (
-  <div className="s-space-y-4">
+  <div className="s:space-y-4">
     {/* Media at top */}
-    {media && <div className="s-rounded-sm">{media}</div>}
+    {media && <div className="s:rounded-sm">{media}</div>}
 
     {/* Description */}
-    <p className="text-foreground dark:text-foreground-night s-text-sm s-font-normal">
+    <p className="text-foreground dark:text-foreground-night s:text-sm s:font-normal">
       {description}
     </p>
   </div>
@@ -1083,7 +1083,7 @@ const DropdownTooltipTrigger = React.forwardRef<
         sideOffset={sideOffset}
         className={cn(
           menuStyleClasses.container,
-          "s-w-48 s-max-w-sm s-p-2 s-shadow-lg"
+          "s:w-48 s:max-w-sm s:p-2 s:shadow-lg"
         )}
       >
         <DropdownTooltip description={description} media={media} />
@@ -1097,7 +1097,7 @@ const DropdownTooltipTrigger = React.forwardRef<
         <TooltipPrimitive.Root open={isOpen} onOpenChange={handleOpenChange}>
           <TooltipPrimitive.Trigger asChild className={className} ref={ref}>
             {/* Wrapper allows pointer events even when child is disabled, while maintaining proper positioning */}
-            <span className="s-block s-w-full">{children}</span>
+            <span className="s:block s:w-full">{children}</span>
           </TooltipPrimitive.Trigger>
           {mountPortal ? (
             <TooltipPrimitive.Portal container={container}>
@@ -1128,23 +1128,23 @@ const DropdownMenuStaticItem = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "s-flex s-h-9 s-items-center s-gap-2 s-px-2 s-text-sm",
-      "s-text-foreground dark:s-text-foreground-night",
+      "s:flex s:h-9 s:items-center s:gap-2 s:px-2 s:text-sm",
+      "s:text-foreground s:dark:text-foreground-night",
       className
     )}
   >
-    <span className="s-grow s-font-medium">{label}</span>
+    <span className="s:grow s:font-medium">{label}</span>
     {value && (
       <span
         className={cn(
-          "s-shrink-0",
-          "s-text-muted-foreground dark:s-text-muted-foreground-night"
+          "s:shrink-0",
+          "s:text-muted-foreground s:dark:text-muted-foreground-night"
         )}
       >
         {value}
       </span>
     )}
-    {children && <div className="s-shrink-0">{children}</div>}
+    {children && <div className="s:shrink-0">{children}</div>}
   </div>
 ));
 DropdownMenuStaticItem.displayName = "DropdownMenuStaticItem";

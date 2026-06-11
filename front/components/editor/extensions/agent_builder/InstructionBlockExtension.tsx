@@ -158,7 +158,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
             }
           }}
           onBlur={handleTypeSubmit}
-          className="outline-none"
+          className="outline-hidden"
         >
           {(node.attrs.type ?? "instructions").toUpperCase()}
         </span>

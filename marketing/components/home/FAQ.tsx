@@ -29,7 +29,7 @@ function FAQItemComponent({
   return (
     <div className="w-full">
       <button
-        className="flex w-full items-center justify-between py-6 text-left focus:outline-none"
+        className="flex w-full items-center justify-between py-6 text-left focus:outline-hidden"
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
       >
