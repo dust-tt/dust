@@ -760,6 +760,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "skills_as_user_messages"
   | "run_tools_from_prompt"
   | "usage_data_api"
+  | "usage_page_read_only"
   | "workspace_analytics"
   | "xai_feature"
   | "conversations_slack_notifications"
