@@ -58,11 +58,10 @@ ENV NEXT_PUBLIC_DATADOG_SERVICE=$NEXT_PUBLIC_DATADOG_SERVICE
 ENV CONTENTFUL_SPACE_ID=$CONTENTFUL_SPACE_ID
 ENV CONTENTFUL_ACCESS_TOKEN=$CONTENTFUL_ACCESS_TOKEN
 
-RUN --mount=type=cache,id=marketing-next-cache-v2,target=/app/marketing/.next/cache \
-  NODE_OPTIONS="--max-old-space-size=8192" \
+RUN NODE_OPTIONS="--max-old-space-size=8192" \
   npm run build -- --no-lint && \
   if [ ! -d .next/standalone ]; then \
-  echo "ERROR: next build did not emit .next/standalone (output:standalone). Likely a corrupt next-cache mount; bump the --mount id to reset it."; \
+  echo "ERROR: next build did not emit .next/standalone (output:standalone)."; \
   exit 1; \
   fi
 
