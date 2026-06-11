@@ -189,6 +189,7 @@ export async function createPaymentGatedBusinessActivation({
       [PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY]:
         PAYMENT_GATE_TYPE_SUBSCRIPTION_ACTIVATION,
     },
+    enableSeatSync: false,
   });
   if (contractResult.isErr()) {
     return new Err({
