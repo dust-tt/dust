@@ -1705,6 +1705,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         reinforcement: "auto",
         lastReinforcementAnalysisAt: null,
         selfImprovementCostsCapMicroUsd: null,
+        selfImprovementCostsCapAwuCredits: null,
         selfImprovementLock: false,
       },
       {
@@ -1977,6 +1978,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           lastReinforcementAnalysisAt: null,
           selfImprovementCostsCapMicroUsd:
             versionModel.selfImprovementCostsCapMicroUsd,
+          selfImprovementCostsCapAwuCredits:
+            versionModel.selfImprovementCostsCapAwuCredits,
           selfImprovementLock: versionModel.selfImprovementLock,
         },
         {
@@ -2678,6 +2681,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     selfImprovementCostsCapMicroUsd: number | null
   ): Promise<void> {
     await this.update({ selfImprovementCostsCapMicroUsd });
+  }
+
+  async updateSelfImprovementCostsCapAwuCredits(
+    selfImprovementCostsCapAwuCredits: number | null
+  ): Promise<void> {
+    await this.update({ selfImprovementCostsCapAwuCredits });
   }
 
   async recordReinforcementAnalysisCompletion(): Promise<void> {
@@ -3600,6 +3609,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         this.lastReinforcementAnalysisAt?.toISOString() ?? null,
       selfImprovementLock: this.selfImprovementLock,
       selfImprovementCostsCapMicroUsd: this.selfImprovementCostsCapMicroUsd,
+      selfImprovementCostsCapAwuCredits: this.selfImprovementCostsCapAwuCredits,
       source: this.source,
       sourceMetadata: this.sourceMetadata,
       tools: this.mcpServerViews.map((view) => {

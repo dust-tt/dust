@@ -170,6 +170,15 @@ const WorkspaceSelfImprovementCapPerSkillUpdateBodySchema = z.object({
   selfImprovementCapPerSkillMicroUsd: z.number(),
 });
 
+// Same caps in AWU credits, used for workspaces billed by Metronome.
+const WorkspaceReinforcementCapAwuCreditsUpdateBodySchema = z.object({
+  reinforcementCapAwuCredits: z.number(),
+});
+
+const WorkspaceSelfImprovementCapPerSkillAwuCreditsUpdateBodySchema = z.object({
+  selfImprovementCapPerSkillAwuCredits: z.number(),
+});
+
 const WorkspaceAuditLogsUpdateBodySchema = z.object({
   disableAuditLogs: z.boolean(),
 });
@@ -195,6 +204,8 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceSandboxAgentEgressRequestsUpdateBodySchema,
   WorkspaceReinforcementCapUpdateBodySchema,
   WorkspaceSelfImprovementCapPerSkillUpdateBodySchema,
+  WorkspaceReinforcementCapAwuCreditsUpdateBodySchema,
+  WorkspaceSelfImprovementCapPerSkillAwuCreditsUpdateBodySchema,
   WorkspaceAuditLogsUpdateBodySchema,
 ]);
 
@@ -498,6 +509,23 @@ app.post(
         ...previousMetadata,
         selfImprovementCapPerSkillMicroUsd:
           body.selfImprovementCapPerSkillMicroUsd,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+    } else if ("reinforcementCapAwuCredits" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        reinforcementCapAwuCredits: body.reinforcementCapAwuCredits,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+    } else if ("selfImprovementCapPerSkillAwuCredits" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        selfImprovementCapPerSkillAwuCredits:
+          body.selfImprovementCapPerSkillAwuCredits,
       };
       await workspace.updateWorkspaceSettings({ metadata: newMetadata });
       owner.metadata = newMetadata;

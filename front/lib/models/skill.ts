@@ -122,6 +122,9 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare reinforcement: CreationOptional<SkillReinforcementMode>;
   declare lastReinforcementAnalysisAt: CreationOptional<Date | null>;
   declare selfImprovementCostsCapMicroUsd: CreationOptional<number | null>;
+  // Same cap expressed in AWU credits, used for workspaces billed by
+  // Metronome. Null means "use the workspace default".
+  declare selfImprovementCostsCapAwuCredits: CreationOptional<number | null>;
   // Lock toggling of self-improvement to admin only.
   declare selfImprovementLock: CreationOptional<boolean>;
 
@@ -142,6 +145,11 @@ SkillConfigurationModel.init(
       defaultValue: null,
     },
     selfImprovementCostsCapMicroUsd: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      defaultValue: null,
+    },
+    selfImprovementCostsCapAwuCredits: {
       type: DataTypes.BIGINT,
       allowNull: true,
       defaultValue: null,

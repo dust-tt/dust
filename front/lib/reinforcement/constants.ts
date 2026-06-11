@@ -32,9 +32,17 @@ export const PER_SKILL_CONVERSATION_CAP = 20;
 // $100 = 100_000_000 microUSD.
 export const DEFAULT_REINFORCEMENT_CAP_MICRO_USD = 100_000_000;
 
+// Default monthly cap for reinforcement cost for the whole workspace, in AWU
+// credits (workspaces billed by Metronome). ~$100.
+export const DEFAULT_REINFORCEMENT_CAP_AWU_CREDITS = 10_000;
+
 // Default per-skill cap for self-improvement cost (in microUSD).
 // $20 = 20_000_000 microUSD.
 export const DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD = 20_000_000;
+
+// Default per-skill cap for self-improvement cost, in AWU credits (workspaces
+// billed by Metronome). ~$20.
+export const DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_AWU_CREDITS = 2_000;
 
 // Estimated cost per conversation analysis (in microUSD).
 // $0.10 = 100_000 microUSD.
