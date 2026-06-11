@@ -9,11 +9,11 @@ function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = makeInternalMCPServer("exa");
+  const server = makeInternalMCPServer("exa_people_and_company");
 
   for (const tool of TOOLS) {
     registerTool(auth, agentLoopContext, server, tool, {
-      monitoringName: "exa",
+      monitoringName: "exa_people_and_company",
     });
   }
 

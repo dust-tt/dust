@@ -113,7 +113,7 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   interactive_content: "advanced",
   confluence: "advanced",
   databricks: "advanced",
-  exa: "advanced",
+  exa_people_and_company: "advanced",
   fathom: "advanced",
   freshservice: "advanced",
   github: "advanced",

@@ -77,7 +77,7 @@ export const EXA_TOOLS_METADATA = createToolsRecord({
   },
 });
 
-export const EXA_SERVER_NAME = "exa" as const;
+export const EXA_SERVER_NAME = "exa_people_and_company" as const;
 
 export const EXA_SERVER = {
   serverInfo: {

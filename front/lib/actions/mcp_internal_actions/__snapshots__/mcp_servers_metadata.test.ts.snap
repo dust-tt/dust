@@ -97,7 +97,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "databricks": {
     "list_warehouses": "never_ask",
   },
-  "exa": {
+  "exa_people_and_company": {
     "search_companies": "never_ask",
     "search_people": "never_ask",
   },

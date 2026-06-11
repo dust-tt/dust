@@ -226,7 +226,7 @@ export async function getInternalMCPServer(
       return agentSidekickAgentStateServer(auth, agentLoopContext);
     case "agent_sidekick_context":
       return agentSidekickContextServer(auth, agentLoopContext);
-    case "exa":
+    case "exa_people_and_company":
       return exaServer(auth, agentLoopContext);
     case "fathom":
       return fathomServer(auth, agentLoopContext);

@@ -157,7 +157,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "data_sources_file_system",
   DATA_WAREHOUSE_SERVER_NAME,
   "extract_data",
-  "exa",
+  "exa_people_and_company",
   "file_generation",
   "fathom",
   "freshservice",
@@ -1154,12 +1154,13 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: WORKSPACE_ANALYTICS_SERVER,
   },
-  exa: {
+  exa_people_and_company: {
     id: 1036,
     availability: "manual",
     allowMultipleInstances: false,
     isPreview: false,
-    isRestricted: ({ featureFlags }) => !featureFlags.includes("exa_mcp"),
+    isRestricted: ({ featureFlags }) =>
+      !featureFlags.includes("exa_people_and_company"),
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
