@@ -68,6 +68,11 @@ const ToolGeneratedFileSchema = z.object({
   hidden: z.boolean().optional(),
 });
 
+export const TOOL_GENERATED_FILE_MIME_TYPE =
+  INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE;
+export const TOOL_GENERATED_FILE_PATH_MIME_TYPE =
+  INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH;
+
 export type ToolGeneratedFileType = z.infer<typeof ToolGeneratedFileSchema>;
 
 export function isToolGeneratedFile(
