@@ -1,11 +1,65 @@
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
+import { isBlockedActionEvent } from "@app/lib/actions/mcp";
+import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
+import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import logger from "@app/logger/logger";
+import type {
+  AgentMessageType,
+  ConversationWithoutContentType,
+} from "@app/types/assistant/conversation";
 
 export type GetBlockedActionsResponseType = {
   blockedActions: BlockedToolExecution[];
 };
+
+/**
+ * Cleans up the blocked actions of an agent message that reached a terminal status
+ * (interrupted, cancelled, failed, ...). The actions were already denied in the same
+ * transaction as the message's terminal status update; post-commit side effects happen here.
+ */
+export async function cleanupDeniedBlockedActions(
+  auth: Authenticator,
+  {
+    conversation,
+    agentMessage,
+    deniedActions,
+  }: {
+    conversation: ConversationWithoutContentType;
+    agentMessage: Pick<AgentMessageType, "agentMessageId" | "sId">;
+    deniedActions: AgentMCPActionResource[];
+  }
+): Promise<void> {
+  if (deniedActions.length > 0) {
+    logger.info(
+      {
+        actionIds: deniedActions.map((a) => a.sId),
+        conversationId: conversation.sId,
+        messageId: agentMessage.sId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      },
+      "Denied blocked actions of terminated agent message"
+    );
+
+    // Remove the pending blocked-action events (approval requests, auth requests, user
+    // questions) from the message channel so live clients stop surfacing prompts for them.
+    const deniedActionIds = new Set(deniedActions.map((a) => a.sId));
+    await getRedisHybridManager().removeEvent((event) => {
+      const payload = JSON.parse(event.message["payload"]);
+      return (
+        isBlockedActionEvent(payload) && deniedActionIds.has(payload.actionId)
+      );
+    }, getMessageChannelId(agentMessage.sId));
+  }
+
+  // Always re-check the flag, even when no blocked action remains: a partial previous run may
+  // have denied the actions but failed before clearing it, and a retry must converge.
+  await clearActionRequiredIfNoBlockedActions(auth, {
+    conversationId: conversation.sId,
+  });
+}
 
 /**
  * Clears the participants' `actionRequired` flag of a conversation if no blocked action remains.

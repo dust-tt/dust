@@ -729,16 +729,23 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   static async listBlockedActionsForAgentMessage(
     auth: Authenticator,
-    { agentMessageId }: { agentMessageId: ModelId }
+    {
+      agentMessageId,
+      transaction,
+    }: { agentMessageId: ModelId; transaction?: Transaction }
   ): Promise<AgentMCPActionResource[]> {
-    const actions = await this.baseFetch(auth, {
-      where: {
-        agentMessageId,
-        status: {
-          [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES,
+    const actions = await this.baseFetch(
+      auth,
+      {
+        where: {
+          agentMessageId,
+          status: {
+            [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES,
+          },
         },
       },
-    });
+      transaction
+    );
 
     if (actions.length === 0) {
       return [];
@@ -753,6 +760,50 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     );
 
     return actions;
+  }
+
+  /**
+   * Denies all still-blocked actions of an agent message. Must run inside the same
+   * transaction as the message's terminal status update so that "message terminal" and
+   * "blocked actions denied" commit atomically. Guarded on blocked statuses so a concurrent
+   * approval that already transitioned the action is not clobbered. Returns the actions
+   * actually denied, with their pre-deny resources.
+   */
+  static async denyBlockedActionsForAgentMessage(
+    auth: Authenticator,
+    {
+      agentMessageId,
+      transaction,
+    }: { agentMessageId: ModelId; transaction: Transaction }
+  ): Promise<AgentMCPActionResource[]> {
+    const blockedActions = await this.listBlockedActionsForAgentMessage(auth, {
+      agentMessageId,
+      transaction,
+    });
+
+    if (blockedActions.length === 0) {
+      return [];
+    }
+
+    const [, affectedRows] = await AgentMCPActionModel.update(
+      { status: "denied" },
+      {
+        where: {
+          // Scoping by agentMessageId lets the (workspaceId, agentMessageId, status) index
+          // drive the update; the id list keeps it restricted to the rows fetched above.
+          agentMessageId,
+          id: { [Op.in]: blockedActions.map((a) => a.id) },
+          workspaceId: auth.getNonNullableWorkspace().id,
+          status: { [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES },
+        },
+        returning: true,
+        transaction,
+      }
+    );
+
+    const deniedActionIds = new Set(affectedRows.map((a) => a.id));
+
+    return blockedActions.filter((a) => deniedActionIds.has(a.id));
   }
 
   /**
