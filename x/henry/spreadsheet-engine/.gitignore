@@ -1,0 +1,4 @@
+node_modules/
+target/
+ts/worker/wasm/
+*.log

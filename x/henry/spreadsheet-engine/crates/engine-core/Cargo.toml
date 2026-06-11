@@ -1,0 +1,20 @@
+[package]
+name = "engine-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Pure-Rust spreadsheet engine core: XLSX/CSV parsing, workbook model, number formatting, viewport queries, search. No wasm-bindgen."
+
+[dependencies]
+zip = { workspace = true }
+quick-xml = { workspace = true }
+csv = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+ryu = { workspace = true }
+
+[dev-dependencies]
+calamine = "0.26"
+proptest = "1"
+corpus-gen = { path = "../corpus-gen" }

@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"],
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "jsx": "react-jsx",
+    "types": ["node"],
+    "paths": {
+      "@dust/sheet-engine-client": ["./ts/client/src/index.ts"],
+      "@dust/sheet-engine-client/protocol": ["./ts/client/src/protocol.ts"],
+      "@dust/sheet-engine-client/types": ["./ts/client/src/types.ts"],
+      "@dust/sheet-engine-worker/engine-server": ["./ts/worker/src/engine-server.ts"],
+      "@dust/sheet-engine-worker/node-host": ["./ts/worker/src/node-host.ts"]
+    }
+  },
+  "include": ["ts/**/*.ts", "ts/**/*.tsx", "scripts/**/*.mjs"],
+  "exclude": ["**/node_modules", "ts/worker/wasm"]
+}

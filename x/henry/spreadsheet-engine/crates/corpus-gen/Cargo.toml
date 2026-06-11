@@ -1,0 +1,9 @@
+[package]
+name = "corpus-gen"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+zip = { workspace = true }
+serde_json = { workspace = true }
