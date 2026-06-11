@@ -92,7 +92,7 @@ export const menuStyleClasses = {
     "s:text-muted-foreground s:dark:text-muted-foreground-night"
   ),
   separator: cn(
-    "-s:mx-1 s:my-1 s:h-px",
+    "s:-mx-1 s:my-1 s:h-px",
     "s:bg-separator s:dark:bg-separator-night"
   ),
   shortcut: "s:ml-auto",

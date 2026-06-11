@@ -1612,7 +1612,7 @@ export default function Pods_After() {
                   <span className="s:heading-sm s:truncate">
                     {user.fullName}
                   </span>
-                  <span className="-s:mt-0.5 s:truncate s:text-xs s:text-muted-foreground dark:s:text-muted-foreground-night">
+                  <span className="s:-mt-0.5 s:truncate s:text-xs s:text-muted-foreground dark:s:text-muted-foreground-night">
                     ACME
                   </span>
                 </div>

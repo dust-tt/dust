@@ -87,7 +87,7 @@ export function PriceTable({
         >
           {title}
         </div>
-        <div className="-s:mt-2 s:flex s:flex-row s:items-baseline s:gap-2">
+        <div className="s:-mt-2 s:flex s:flex-row s:items-baseline s:gap-2">
           <span
             className={cn(
               size === "xs" ? "s:heading-3xl" : "s:heading-4xl",

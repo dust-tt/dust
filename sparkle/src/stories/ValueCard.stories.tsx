@@ -82,7 +82,7 @@ export const Composable: Story = {
         </div>
       </ComposableCard.Content>
       <ComposableCard.Footer>
-        <div className="s:flex -s:space-x-2">
+        <div className="s:flex s:-space-x-2">
           <Avatar
             size="sm"
             name="John Doe"

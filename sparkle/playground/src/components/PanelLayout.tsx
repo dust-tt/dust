@@ -97,7 +97,7 @@ function ResizeHandle({
   return (
     <div
       className={[
-        "s:group s:relative s:z-[5] s:flex s:w-[6px] s:flex-none s:cursor-col-resize s:items-stretch -s:mx-[3px] s:transition-opacity s:duration-200",
+        "s:group s:relative s:z-[5] s:flex s:w-[6px] s:flex-none s:cursor-col-resize s:items-stretch s:-mx-[3px] s:transition-opacity s:duration-200",
         visible ? "s:opacity-100" : "s:pointer-events-none s:opacity-0",
       ].join(" ")}
       onPointerDown={visible ? onPointerDown : undefined}
@@ -551,7 +551,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
               "s:transition-[transform,opacity] s:duration-[220ms] s:ease-[cubic-bezier(.4,0,.2,1)]",
               showNavOverlay
                 ? "s:translate-x-0 s:opacity-100 s:pointer-events-auto"
-                : "-s:translate-x-full s:opacity-0 s:pointer-events-none",
+                : "s:-translate-x-full s:opacity-0 s:pointer-events-none",
               isPeek
                 ? "s:shadow-[4px_0_16px_rgba(0,0,0,0.08)]"
                 : "s:shadow-[8px_0_24px_rgba(0,0,0,0.10)]",

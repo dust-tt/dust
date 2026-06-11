@@ -321,7 +321,7 @@ const COUNTER_SIZE_MAP: Record<ButtonSize, CounterSizeType> = {
   md: "md",
 };
 
-const loadingContainerVariants = cva("-s:mx-0.5", {
+const loadingContainerVariants = cva("s:-mx-0.5", {
   variants: {
     size: {
       "icon-xs": "s:w-5 s:px-0.5",
@@ -468,7 +468,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             />
           </div>
         ) : (
-          icon && renderIcon(icon, "-s:mx-0.5")
+          icon && renderIcon(icon, "s:-mx-0.5")
         )}
 
         {showContainer && (
@@ -489,7 +489,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             )}
           </div>
         )}
-        {isSelect && renderChevron(ChevronDown, isLoading ? "" : "-s:mr-1")}
+        {isSelect && renderChevron(ChevronDown, isLoading ? "" : "s:-mr-1")}
       </>
     );
 

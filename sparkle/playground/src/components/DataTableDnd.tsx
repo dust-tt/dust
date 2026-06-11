@@ -717,7 +717,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
 
       <div
         className={cn(
-          "s:pointer-events-none s:sticky -s:bottom-px s:left-0 s:right-0 -s:mt-10 s:h-10 s:bg-gradient-to-t",
+          "s:pointer-events-none s:sticky s:-bottom-px s:left-0 s:right-0 s:-mt-10 s:h-10 s:bg-gradient-to-t",
           "s:from-white s:via-white/60 s:to-transparent s:transition-opacity s:duration-300 dark:s:from-background-night dark:s:via-background-night/60",
           canScrollDown ? "s:opacity-100" : "s:opacity-0"
         )}

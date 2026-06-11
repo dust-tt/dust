@@ -201,7 +201,7 @@ function BreadcrumbItemRenderer({
         <Icon
           visual={item.icon}
           size={ICON_SIZE_MAP[size]}
-          className={cn("-s:mx-0.5")}
+          className={cn("s:-mx-0.5")}
         />
         <div className={textClassName}>{item.label}</div>
       </div>

@@ -69,7 +69,7 @@ export const AssistantCard = React.forwardRef<
         <div className="s:flex s:gap-3">
           <Avatar visual={pictureUrl} size={iconSize} />
           <div
-            className={cn("-s:mt-0.5 s:flex s:flex-col", action && "s:pr-8")}
+            className={cn("s:-mt-0.5 s:flex s:flex-col", action && "s:pr-8")}
           >
             <h3>
               <TruncatedText
