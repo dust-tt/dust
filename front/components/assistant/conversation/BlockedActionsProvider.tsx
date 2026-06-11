@@ -73,7 +73,7 @@ export function BlockedActionsProvider({
   const conversationId = conversation?.sId || null;
 
   // Fetch blocked actions from the database.
-  const { blockedActions } = useBlockedActions({
+  const { blockedActions, mutate: mutateBlockedActions } = useBlockedActions({
     conversationId,
     workspaceId: owner.sId,
   });
@@ -192,8 +192,16 @@ export function BlockedActionsProvider({
       setBlockedActionsQueue((prevQueue) =>
         prevQueue.filter((item) => item.blockedAction.actionId !== actionId)
       );
+
+      // Revalidate the blocked actions cache. Resolving an action happens
+      // right after the OAuth popup closes, which refocuses the window and
+      // can trigger an SWR focus revalidation that still sees the action as
+      // blocked in the database. Mutating here discards that in-flight stale
+      // response and refetches, so the resolved action is not re-inserted in
+      // the queue.
+      void mutateBlockedActions();
     },
-    [stopPulsingAction]
+    [stopPulsingAction, mutateBlockedActions]
   );
 
   const hasPendingValidations = useCallback(
