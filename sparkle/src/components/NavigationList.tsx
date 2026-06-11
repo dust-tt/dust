@@ -138,7 +138,7 @@ const NavigationListItem = React.forwardRef<
               !selected &&
                 "hover:s-bg-sidebar-hover dark:hover:s-bg-sidebar-hover-night",
               selected &&
-                "s-bg-sidebar-foreground dark:s-bg-sidebar-foreground-night",
+                "s-bg-sidebar-selected dark:s-bg-sidebar-selected-night",
               disabled && "s-pointer-events-none s-cursor-default s-opacity-50"
             )}
           >
@@ -241,7 +241,7 @@ const NavigationListItemAction = React.forwardRef<
         size="xmini"
         icon={DotsHorizontal}
         variant="ghost"
-        className="group-data-[selected=false]/menu-item:hover:s-bg-sidebar-hover dark:group-data-[selected=false]/menu-item:hover:s-bg-sidebar-hover-night active:s-bg-sidebar-foreground dark:active:s-bg-sidebar-foreground-night"
+        className="group-data-[selected=false]/menu-item:hover:s-bg-sidebar-hover dark:group-data-[selected=false]/menu-item:hover:s-bg-sidebar-hover-night group-data-[selected=true]/menu-item:hover:s-bg-sidebar-selected dark:group-data-[selected=true]/menu-item:hover:s-bg-sidebar-selected-night"
       />
     </div>
   );

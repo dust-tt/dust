@@ -88,7 +88,7 @@ const treeItemStyleClasses = {
   ),
   isNavigatableSelected: cn(
     "s-font-medium",
-    "s-bg-sidebar-foreground dark:s-bg-sidebar-foreground-night"
+    "s-bg-sidebar-selected dark:s-bg-sidebar-selected-night"
   ),
 };
 
