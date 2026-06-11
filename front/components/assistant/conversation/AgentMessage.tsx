@@ -1249,6 +1249,11 @@ function AgentMessageContent({
 
   const blockedActionElement = blockedAction ? (
     <BlockedAction
+      // Key on the action id so that when the queue advances to the next
+      // blocked action of the same type, React mounts a fresh component
+      // instead of reusing the previous instance's local state (e.g. the
+      // "connected" state of a resolved personal authentication card).
+      key={blockedAction.actionId}
       blockedAction={blockedAction}
       triggeringUser={triggeringUser}
       owner={owner}
