@@ -7,7 +7,10 @@ import {
   MAX_PENDING_SUB_AGENT_SUGGESTIONS,
   MAX_PENDING_TOOLS_SUGGESTIONS,
 } from "@app/lib/api/actions/servers/agent_sidekick_context/constants";
-import { DESCRIBE_MCP_TOOL_NAME } from "@app/lib/reinforcement/types";
+import {
+  DESCRIBE_MCP_TOOL_NAME,
+  DESCRIBE_SKILL_TOOL_NAME,
+} from "@app/lib/reinforcement/types";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import {
@@ -149,6 +152,18 @@ export const AGENT_SIDEKICK_CONTEXT_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Describing MCP server",
       done: "Describe MCP server",
+    },
+  },
+  [DESCRIBE_SKILL_TOOL_NAME]: {
+    description:
+      "Get detailed information about a skill: its name, description, instructions, and configured tools.",
+    schema: {
+      skillId: z.string().describe("The sId of the skill to describe"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Describing skill",
+      done: "Describe skill",
     },
   },
   get_available_agents: {
