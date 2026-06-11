@@ -138,29 +138,50 @@ describe("resolveRemappedSeatType", () => {
   });
 
   it("keeps a seat type the contract still bills", () => {
-    expect(resolveRemappedSeatType("max", contract, productSeatTypes)).toBe(
-      "max"
-    );
     expect(
-      resolveRemappedSeatType("pro_yearly", contract, productSeatTypes)
+      resolveRemappedSeatType("max", contract, productSeatTypes, false)
+    ).toBe("max");
+    expect(
+      resolveRemappedSeatType("pro_yearly", contract, productSeatTypes, false)
     ).toBe("pro_yearly");
   });
 
   it("converts a monthly seat to its yearly equivalent when present", () => {
-    expect(resolveRemappedSeatType("pro", contract, productSeatTypes)).toBe(
-      "pro_yearly"
-    );
+    expect(
+      resolveRemappedSeatType("pro", contract, productSeatTypes, false)
+    ).toBe("pro_yearly");
   });
 
   it("falls back to the default tier (no free) otherwise", () => {
     // `free` has no yearly equivalent on the contract → default lowest tier.
-    expect(resolveRemappedSeatType("free", contract, productSeatTypes)).toBe(
-      "pro_yearly"
-    );
+    expect(
+      resolveRemappedSeatType("free", contract, productSeatTypes, false)
+    ).toBe("pro_yearly");
     // `max_yearly` (already yearly) isn't billed → default tier.
     expect(
-      resolveRemappedSeatType("max_yearly", contract, productSeatTypes)
+      resolveRemappedSeatType("max_yearly", contract, productSeatTypes, false)
     ).toBe("pro_yearly");
+  });
+});
+
+describe("resolveRemappedSeatType (useFreeSeat)", () => {
+  // Contract bills `free` (0 AWU) and `pro` (8000 AWU).
+  const { contract, productSeatTypes } = makeContract({
+    seats: [{ seatType: "free" }, { seatType: "pro", awu: 8000 }],
+  });
+
+  it("falls back to free when useFreeSeat is true", () => {
+    // `workspace` is not on the contract → falls back to the default tier.
+    // With useFreeSeat=true the lowest tier (`free`) is eligible.
+    expect(
+      resolveRemappedSeatType("workspace", contract, productSeatTypes, true)
+    ).toBe("free");
+  });
+
+  it("skips free and falls back to the next tier when useFreeSeat is false", () => {
+    expect(
+      resolveRemappedSeatType("workspace", contract, productSeatTypes, false)
+    ).toBe("pro");
   });
 });
 
@@ -179,21 +200,26 @@ describe("resolveRemappedSeatType (entitlement-aware)", () => {
     // `workspace` has a (dormant) subscription but isn't entitled → convert to
     // its entitled yearly equivalent.
     expect(
-      resolveRemappedSeatType("workspace", contract, productSeatTypes)
+      resolveRemappedSeatType("workspace", contract, productSeatTypes, false)
     ).toBe("workspace_yearly");
   });
 
   it("keeps an entitled seat type", () => {
     expect(
-      resolveRemappedSeatType("workspace_yearly", contract, productSeatTypes)
+      resolveRemappedSeatType(
+        "workspace_yearly",
+        contract,
+        productSeatTypes,
+        false
+      )
     ).toBe("workspace_yearly");
   });
 
   it("falls back to the only entitled tier for unrelated seats", () => {
     // `pro` is on the contract but not entitled, no `pro_yearly` entitled →
     // default tier among entitled seats = `workspace_yearly`.
-    expect(resolveRemappedSeatType("pro", contract, productSeatTypes)).toBe(
-      "workspace_yearly"
-    );
+    expect(
+      resolveRemappedSeatType("pro", contract, productSeatTypes, false)
+    ).toBe("workspace_yearly");
   });
 });
