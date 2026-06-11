@@ -9,7 +9,7 @@ import {
 } from "@app/lib/api/files/action_output_fs/registry";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { slugify } from "@app/types/shared/utils/string_utils";
@@ -27,7 +27,7 @@ export interface PersistedToolOutput {
  */
 export async function writeToToolOutputsFolder(
   auth: Authenticator,
-  conversation: ConversationType,
+  conversation: ConversationWithoutContentType,
   {
     fileName,
     content,
@@ -64,7 +64,7 @@ export async function writeToToolOutputsFolder(
  */
 export async function persistToolOutput(
   auth: Authenticator,
-  conversation: ConversationType,
+  conversation: ConversationWithoutContentType,
   block: CallToolResult["content"][number],
   { toolName, serverName }: { toolName: string; serverName: string }
 ): Promise<Result<PersistedToolOutput | null, Error>> {
