@@ -135,32 +135,69 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
     },
   },
   create_draft: {
-    description: `Create a new email draft in Outlook.
+    description: `Create a new email draft in Outlook, or a reply draft to an existing message.
 - The draft will be saved in the user's Outlook account and can be reviewed and sent later.
-- The draft will include proper email headers and formatting`,
+- The draft will include proper email headers and formatting.`,
     schema: {
-      to: z.array(z.string()).describe("The email addresses of the recipients"),
-      cc: z.array(z.string()).optional().describe("The email addresses to CC"),
+      to: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "The email addresses of the recipients (required if replyToMessageId is not set, acts as override if replyToMessageId is set)."
+        ),
+      cc: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "The CC email addresses (optional, acts as override if replyToMessageId is set)."
+        ),
       bcc: z
         .array(z.string())
         .optional()
-        .describe("The email addresses to BCC"),
+        .describe(
+          "The BCC email addresses (optional, acts as override if replyToMessageId is set)."
+        ),
       replyTo: z
         .array(z.string())
         .optional()
         .describe(
           "Reply-to email addresses. Replies will go to these addresses instead of the sender."
         ),
-      subject: z.string().describe("The subject line of the email"),
-      contentType: z
+      subject: z
         .string()
-        .default("text")
-        .describe("The content type of the email (text or html)."),
+        .optional()
+        .describe(
+          "The subject line of the email (required if replyToMessageId is not set, must be omitted if replyToMessageId is set)."
+        ),
+      contentType: z
+        .enum(["text", "html"])
+        .optional()
+        .describe(
+          "The content type of the email body (required if replyToMessageId is not set, must be omitted if replyToMessageId is set — forced to html for replies)."
+        ),
       body: z.string().describe("The body of the email"),
       importance: z
         .string()
         .optional()
         .describe("The importance level of the email"),
+      replyToMessageId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional. The ID of the message to reply to. If provided, the draft will be created as a reply in the existing thread, with the original message quoted."
+        ),
+      replyAll: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to reply to all recipients. Only used when replyToMessageId is set. Defaults to false."
+        ),
+      attachmentFilePath: z
+        .string()
+        .optional()
+        .describe(
+          "Optional. Scoped path of the file to attach to the email (e.g. `conversation-<id>/report.pdf` or `pod-<id>/data.csv`)."
+        ),
     },
     stake: "medium",
     displayLabels: {
@@ -179,43 +216,6 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Deleting draft",
       done: "Delete draft",
-    },
-  },
-  create_reply_draft: {
-    description: `Create a reply draft to an existing email in Outlook.
-- The draft will be saved in the user's Outlook account and can be reviewed and sent later.
-- The reply will be properly formatted with the original message quoted.
-- The draft will include proper email headers and threading information.`,
-    schema: {
-      messageId: z.string().describe("The ID of the message to reply to"),
-      body: z.string().describe("The body of the reply email"),
-      contentType: z
-        .string()
-        .optional()
-        .describe(
-          "The content type of the email (text or html). Defaults to html."
-        ),
-      replyAll: z
-        .boolean()
-        .optional()
-        .describe("Whether to reply to all recipients. Defaults to false."),
-      to: z
-        .array(z.string())
-        .optional()
-        .describe("Override the To recipients for the reply."),
-      cc: z
-        .array(z.string())
-        .optional()
-        .describe("Override the CC recipients for the reply."),
-      bcc: z
-        .array(z.string())
-        .optional()
-        .describe("Override the BCC recipients for the reply."),
-    },
-    stake: "medium",
-    displayLabels: {
-      running: "Creating reply draft",
-      done: "Create reply draft",
     },
   },
   send_mail: {
@@ -257,6 +257,12 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
           "The email address of the shared mailbox to send from (e.g. 'support@company.com'). " +
             "Leave empty to send from your own mailbox. " +
             "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
+        ),
+      attachmentFilePath: z
+        .string()
+        .optional()
+        .describe(
+          "Optional. Scoped path of the file to attach to the email (e.g. `conversation-<id>/report.pdf` or `pod-<id>/data.csv`)."
         ),
     },
     stake: "high",
