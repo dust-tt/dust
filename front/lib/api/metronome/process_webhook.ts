@@ -37,6 +37,7 @@ import {
   grantFreeCreditFromMetronomeSegment,
   YEARLY_MULTIPLIER,
 } from "@app/lib/credits/free";
+import { resolvePerUserCreditAlertUserId } from "@app/lib/metronome/alerts/per_user_credit_balance";
 import {
   CRITICAL_BALANCE_OFFSET,
   LOW_BALANCE_OFFSET,
@@ -228,6 +229,10 @@ async function stampContractCreditType({
     if (credit.subscription_config?.allocation === "INDIVIDUAL") {
       return new Ok(undefined);
     }
+
+    // Per-user free-seat credits are stamped "free_seat" at creation (see
+    // `addFreeSeatCreditToContract`), so they hit the already-stamped early
+    // return above and are never re-stamped "pool" here.
 
     if (credit.product.id === getProductExcessCreditsId()) {
       value = CONTRACT_CREDIT_TYPE_EXCESS;
@@ -1085,12 +1090,64 @@ export async function processMetronomeWebhook({
       break;
     }
 
+    // Per-user free-seat credit balance. These alerts are scoped (via the
+    // `DUST_PER_USER_CREDIT_USER` custom field) to a single free user's credit,
+    // so they drive that user's seat↔capped transitions — the seat-balance
+    // alert can't, because the free credit isn't a seat balance. The event
+    // carries no `credit_id` for a custom-field-filtered alert, so the user is
+    // resolved from the alert's enforced `custom_field_filters` via its
+    // `alert_id` (see `resolvePerUserCreditAlertUserId`); events for any other
+    // alert return null and are ignored. Two thresholds mirror the seat bands:
+    // `threshold === 0` → exhausted (→ capped), else → low balance.
+    case "alerts.low_remaining_contract_credit_balance_reached": {
+      const { alert_id: alertId, threshold } = event.properties;
+      const userId = await resolvePerUserCreditAlertUserId({
+        metronomeCustomerId: event.properties.customer_id,
+        alertId,
+      });
+      if (!userId || threshold === null || threshold === undefined) {
+        break;
+      }
+      if (threshold === 0) {
+        await dispatchSeatBalanceExhausted({ workspace, userId });
+        logger.info(
+          { eventId: event.id, workspaceId: workspace.sId, userId },
+          "[Metronome Webhook] low_remaining_contract_credit_balance_reached: per-user credit exhausted dispatched"
+        );
+      } else {
+        await dispatchSeatLowBalance({ workspace, userId, threshold });
+        logger.info(
+          {
+            eventId: event.id,
+            workspaceId: workspace.sId,
+            userId,
+            remaining: threshold,
+          },
+          "[Metronome Webhook] low_remaining_contract_credit_balance_reached: per-user credit low balance dispatched"
+        );
+      }
+      break;
+    }
+    case "alerts.low_remaining_contract_credit_balance_resolved": {
+      const userId = await resolvePerUserCreditAlertUserId({
+        metronomeCustomerId: event.properties.customer_id,
+        alertId: event.properties.alert_id,
+      });
+      if (!userId) {
+        break;
+      }
+      await dispatchSeatBalanceResolved({ workspace, userId });
+      logger.info(
+        { eventId: event.id, workspaceId: workspace.sId, userId },
+        "[Metronome Webhook] low_remaining_contract_credit_balance_resolved: per-user credit resolved dispatched"
+      );
+      break;
+    }
+
     case "alerts.invoice_total_reached":
     case "alerts.invoice_total_resolved":
     case "alerts.low_remaining_commit_balance_reached":
     case "alerts.low_remaining_commit_balance_resolved":
-    case "alerts.low_remaining_contract_credit_balance_reached":
-    case "alerts.low_remaining_contract_credit_balance_resolved":
     case "alerts.low_remaining_credit_balance_reached":
     case "alerts.low_remaining_credit_balance_resolved":
     case "alerts.usage_threshold_reached":
