@@ -1106,6 +1106,7 @@ export const INTERNAL_MCP_SERVERS = {
     id: 1030,
     availability: "manual",
     allowMultipleInstances: true,
+    isRestricted: undefined,
     isPreview: false,
     requiresBearerToken: true,
     tools_arguments_requiring_approval: undefined,
