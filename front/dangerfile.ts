@@ -9,6 +9,7 @@ const sparkleVersionAckLabel = "sparkle-version-ack";
 const sseAckLabel = "sse-ack";
 const sandboxImageAckLabel = "sandbox-image-ack";
 const auditLogAckLabel = "audit-log-ack";
+const marketingSnapshotAckLabel = "marketing-snapshot-ack";
 
 const REMOVE_INDEX_WARNING =
   "\n\nBefore deleting an index, make sure it is actually not used by running:" +
@@ -455,6 +456,87 @@ async function checkAuditSchemaVersions(changedActions: string[]) {
   }
 }
 
+// The `/home/api-pricing` page is served by the `marketing` workspace, which
+// cannot import front's model/pricing modules (they pull in a deep dependency
+// graph: io-ts, zod, GCS-generated custom models, ...). Instead, marketing keeps
+// hand-maintained snapshots of the data the page needs. When the front sources
+// of truth change, those snapshots must be re-synced or the page silently
+// renders stale/incomplete prices.
+const MARKETING_SNAPSHOT_FILES = [
+  "marketing/lib/api/assistant/token_pricing.ts",
+  "marketing/types/assistant/models/models.ts",
+  "marketing/types/assistant/models/providers.ts",
+  "marketing/types/assistant/models/types.ts",
+];
+
+// Front files mirrored into the marketing snapshots above. We watch the pricing
+// data and the model-config/provider source files, but skip front-only files
+// under `front/types/assistant/models/` that the snapshot doesn't reflect.
+function isWatchedMarketingSourceFile(path: string) {
+  if (path === "front/lib/api/assistant/token_pricing.ts") {
+    return true;
+  }
+  if (
+    !path.startsWith("front/types/assistant/models/") ||
+    !path.endsWith(".ts") ||
+    path.endsWith(".test.ts")
+  ) {
+    return false;
+  }
+  const frontOnlyFiles = [
+    "custom_models.generated.ts",
+    "embedding.ts",
+    "reasoning.ts",
+    "utils.ts",
+  ];
+  return !frontOnlyFiles.some((f) => path.endsWith(`/${f}`));
+}
+
+function failMarketingSnapshotAck(frontFiles: string[]) {
+  fail(
+    "Model/pricing source files in `front` changed but the hand-maintained " +
+      "`marketing` snapshots were not updated:\n" +
+      frontFiles.map((f) => `- ${f}`).join("\n") +
+      "\n\nThe `/home/api-pricing` page is served by `marketing`, which keeps " +
+      "its own copies of the model configs and token pricing. Re-sync:\n" +
+      MARKETING_SNAPSHOT_FILES.map((f) => `- \`${f}\``).join("\n") +
+      "\n\nso the pricing table stays correct, or add the " +
+      `\`${marketingSnapshotAckLabel}\` label if this change does not affect ` +
+      "the marketing snapshots (e.g. it only touches fields the snapshot " +
+      "ignores, such as `contextSize` or descriptions)."
+  );
+}
+
+function warnMarketingSnapshotAck() {
+  warn(
+    "Model/pricing source files in `front` changed and the " +
+      `\`${marketingSnapshotAckLabel}\` label is set. Confirm the marketing ` +
+      "snapshots under `marketing/lib/api/assistant/token_pricing.ts` and " +
+      "`marketing/types/assistant/models/` genuinely don't need updating."
+  );
+}
+
+function warnMarketingSnapshotUpdated() {
+  warn(
+    "Both `front` model/pricing sources and the `marketing` snapshots changed. " +
+      "Double-check the marketing copies match front (model ids, display names, " +
+      "providers, prices) — they are mirrored by hand."
+  );
+}
+
+function checkMarketingSnapshotSync(
+  changedFrontFiles: string[],
+  changedMarketingFiles: string[]
+) {
+  if (changedMarketingFiles.length > 0) {
+    warnMarketingSnapshotUpdated();
+  } else if (hasLabel(marketingSnapshotAckLabel)) {
+    warnMarketingSnapshotAck();
+  } else {
+    failMarketingSnapshotAck(changedFrontFiles);
+  }
+}
+
 async function checkDiffFiles() {
   const diffFiles = danger.git.modified_files
     .concat(danger.git.created_files)
@@ -508,6 +590,21 @@ async function checkDiffFiles() {
   });
   if (modifiedFrontFiles.length > 0) {
     await checkRawSqlRegistry(modifiedFrontFiles);
+  }
+
+  // Model/pricing sources mirrored into the marketing snapshots that back the
+  // `/home/api-pricing` page.
+  const modifiedMarketingSourceFiles = diffFiles.filter(
+    isWatchedMarketingSourceFile
+  );
+  if (modifiedMarketingSourceFiles.length > 0) {
+    const modifiedMarketingSnapshotFiles = diffFiles.filter((path) =>
+      MARKETING_SNAPSHOT_FILES.includes(path)
+    );
+    checkMarketingSnapshotSync(
+      modifiedMarketingSourceFiles,
+      modifiedMarketingSnapshotFiles
+    );
   }
 
   // Sparkle version consistency check

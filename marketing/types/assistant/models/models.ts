@@ -1,8 +1,12 @@
-// Marketing static copy of the model list. The real SUPPORTED_MODEL_CONFIGS is a
-// giant data table that lives in front (with imports from many provider sub-files).
-// This file mirrors only the fields the /home/api-pricing page needs (modelId,
-// displayName, providerId). Until a build-time snapshot exists, marketing ships
-// this static copy. A follow-up will bake in the snapshot.
+// Baked snapshot of the model configs the /home/api-pricing page needs.
+//
+// The full SUPPORTED_MODEL_CONFIGS in front is assembled from many provider
+// sub-files behind a deep dependency chain (io-ts, zod, GCS-generated custom
+// models, ...). Marketing only needs (modelId, displayName, providerId) to render
+// the pricing table, so we keep a flat snapshot here instead of importing front.
+//
+// Keep in sync with front/types/assistant/models (SUPPORTED_MODEL_CONFIGS) and
+// front/lib/api/assistant/token_pricing.ts when models are added or removed.
 import type { ModelConfig } from "@marketing/types/assistant/models/types";
 
 export type StaticModelIdType = string;
