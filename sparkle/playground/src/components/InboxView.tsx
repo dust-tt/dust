@@ -375,6 +375,44 @@ export function InboxView({
     return spaces.filter((space) => conversationsBySpace.has(space.id));
   }, [spaces, conversationsBySpace]);
 
+  // Stabilize the random per-conversation display data (participants, creator,
+  // reply/message/mention counts) so unrelated re-renders don't reshuffle the
+  // lists. Recomputed only when the displayed conversations change.
+  const conversationDisplayById = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        creator?: User;
+        avatarProps: ReturnType<typeof participantsToAvatarProps>;
+        time: string;
+        replyCount: number;
+        messageCount: number;
+        mentionCount: number;
+      }
+    >();
+
+    const displayed = [
+      ...myConversations,
+      ...Array.from(conversationsBySpace.values()).flat(),
+    ];
+
+    displayed.forEach((conversation) => {
+      if (map.has(conversation.id)) {
+        return;
+      }
+      const participants = getRandomParticipants(conversation, users, agents);
+      const creator = getRandomCreator(conversation, users);
+      const meta = getConversationListItemMeta(conversation);
+      map.set(conversation.id, {
+        creator: creator || undefined,
+        avatarProps: participantsToAvatarProps(participants),
+        ...meta,
+      });
+    });
+
+    return map;
+  }, [myConversations, conversationsBySpace, users, agents]);
+
   const hasConversationContent =
     myConversations.length > 0 || spacesWithUnread.length > 0;
 
@@ -504,32 +542,51 @@ export function InboxView({
     );
   };
 
+  const handleMarkAllConversationsAsRead = () => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      next.add("my-conversations");
+      spacesWithUnread.forEach((space) => next.add(space.id));
+      return next;
+    });
+  };
+
   const renderConversationsToolbar = () => (
-    <SearchInputWithPopover
-      name="inbox-conversation-search"
-      value={conversationSearchText}
-      onChange={(value) => {
-        setConversationSearchText(value);
-        if (!value.trim()) {
-          setIsConversationSearchOpen(false);
+    <div className="s-flex s-items-center s-gap-2">
+      <SearchInputWithPopover
+        name="inbox-conversation-search"
+        value={conversationSearchText}
+        onChange={(value) => {
+          setConversationSearchText(value);
+          if (!value.trim()) {
+            setIsConversationSearchOpen(false);
+          }
+        }}
+        open={isConversationSearchOpen}
+        onOpenChange={setIsConversationSearchOpen}
+        placeholder="Search in Inbox"
+        className="s-w-full"
+        items={conversationSearchResults}
+        availableHeight
+        noResults={
+          conversationSearchText.trim()
+            ? "No results found"
+            : "Start typing to search"
         }
-      }}
-      open={isConversationSearchOpen}
-      onOpenChange={setIsConversationSearchOpen}
-      placeholder="Search in Inbox"
-      className="s-w-full"
-      items={conversationSearchResults}
-      availableHeight
-      noResults={
-        conversationSearchText.trim()
-          ? "No results found"
-          : "Start typing to search"
-      }
-      onItemSelect={handleConversationSearchSelect}
-      renderItem={(item, selected) =>
-        renderConversationSearchItem(item, selected)
-      }
-    />
+        onItemSelect={handleConversationSearchSelect}
+        renderItem={(item, selected) =>
+          renderConversationSearchItem(item, selected)
+        }
+      />
+      <Button
+        label="Mark all as read"
+        icon={Check}
+        size="sm"
+        variant="outline"
+        tooltip="Mark all as read"
+        onClick={handleMarkAllConversationsAsRead}
+      />
+    </div>
   );
 
   const renderTasksToolbar = () => (
@@ -568,11 +625,13 @@ export function InboxView({
   );
 
   const renderInboxConversationItem = (conversation: Conversation) => {
-    const participants = getRandomParticipants(conversation, users, agents);
-    const creator = getRandomCreator(conversation, users);
-    const avatarProps = participantsToAvatarProps(participants);
-    const { time, replyCount, messageCount, mentionCount } =
-      getConversationListItemMeta(conversation);
+    const display = conversationDisplayById.get(conversation.id);
+    const creator = display?.creator;
+    const avatarProps = display?.avatarProps ?? [];
+    const time = display?.time ?? "";
+    const replyCount = display?.replyCount ?? 0;
+    const messageCount = display?.messageCount ?? 0;
+    const mentionCount = display?.mentionCount ?? 0;
     const isSelected = selectedConversationId === conversation.id;
 
     return (
@@ -734,7 +793,7 @@ export function InboxView({
 
     if (!hasFilteredTaskContent) {
       return (
-        <div className="s-flex s-flex-1 s-flex-col s-gap-4">
+        <div className="s-flex s-flex-1 s-flex-col s-gap-3">
           {renderTasksToolbar()}
           <div className="s-flex s-flex-1 s-flex-col s-items-center s-justify-center s-gap-2">
             <p className="s-text-center s-text-lg s-text-muted-foreground dark:s-text-muted-foreground-night">
@@ -747,7 +806,7 @@ export function InboxView({
 
     if (allTaskSectionsCollapsed) {
       return (
-        <div className="s-flex s-flex-1 s-flex-col s-gap-4">
+        <div className="s-flex s-flex-1 s-flex-col s-gap-3">
           {renderTasksToolbar()}
           <div className="s-flex s-flex-1 s-flex-col s-items-center s-justify-center s-gap-2">
             <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-1 s-text-foreground dark:s-text-foreground-night">
@@ -763,7 +822,7 @@ export function InboxView({
     }
 
     return (
-      <div className="s-flex s-flex-col s-gap-4">
+      <div className="s-flex s-flex-col s-gap-3">
         {renderTasksToolbar()}
         {inboxTaskGroups.map((group) => (
           <Collapsible

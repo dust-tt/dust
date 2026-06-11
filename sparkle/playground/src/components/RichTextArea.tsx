@@ -604,6 +604,7 @@ type RichTextAreaProps = {
   variant?: "default" | "compact" | "embedded";
   showFormattingMenu?: boolean;
   showAskSidekickMenu?: boolean;
+  autoFocus?: boolean;
 };
 
 export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
@@ -625,6 +626,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
       variant = "default",
       showFormattingMenu = false,
       showAskSidekickMenu: showAskSidekickMenu = true,
+      autoFocus = false,
     },
     ref
   ) => {
@@ -665,6 +667,16 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
             className
           ),
         },
+        // Allow leaving the input with the keyboard. Mention/suggestion popups
+        // handle Escape first (and return true), so this only blurs the editor
+        // when no popup is open.
+        handleKeyDown: (view, event) => {
+          if (event.key === "Escape") {
+            view.dom.blur();
+            return true;
+          }
+          return false;
+        },
         handleDOMEvents: {
           click: (view, event) => {
             const coords = { left: event.clientX, top: event.clientY };
@@ -700,6 +712,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
         },
       },
       editable: !readOnly,
+      autofocus: autoFocus ? "end" : false,
       content: defaultValue,
     });
 

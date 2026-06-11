@@ -1,13 +1,17 @@
 import {
   AnimatedText,
   Button,
-  File02,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuPortal,
-  Separator,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  File02,
   XClose,
   type ButtonProps,
 } from "@dust-tt/sparkle";
@@ -39,6 +43,24 @@ export interface FreeButtonSwitchContextMenuItem {
   variant?: "default" | "warning";
 }
 
+export interface FreeButtonSwitchDropdownSectionItem {
+  value: string;
+  label: string;
+  icon?: ComponentType;
+}
+
+// A section inside a dropdown option's menu.
+// - "tab": selecting an item sets the switch value (opens a tab).
+// - "radio": items drive a separate value via `onValueChange`, independent of
+//   the switch's active value.
+export interface FreeButtonSwitchDropdownSection {
+  label?: string;
+  kind: "tab" | "radio";
+  items: FreeButtonSwitchDropdownSectionItem[];
+  value?: string;
+  onValueChange?: (value: string) => void;
+}
+
 export interface FreeButtonSwitchOption<TValue extends string> {
   id?: Key;
   value: TValue;
@@ -50,6 +72,15 @@ export interface FreeButtonSwitchOption<TValue extends string> {
   draggable?: boolean;
   removable?: boolean;
   contextMenuItems?: FreeButtonSwitchContextMenuItem[];
+  // When set, the option renders as a dropdown button. Items in "tab" sections
+  // select the switch value; "radio" sections drive their own value.
+  dropdownSections?: FreeButtonSwitchDropdownSection[];
+  // Label shown on the dropdown button when no "tab" item is currently active.
+  defaultLabel?: string;
+  // Extra classes applied to the option's wrapper (e.g. entrance animations).
+  className?: string;
+  // Forces the button variant, overriding the active/inactive defaults.
+  variant?: ButtonProps["variant"];
 }
 
 type FreeButtonSwitchSize = "xmini" | "mini" | "xs" | "sm" | "md";
@@ -368,9 +399,91 @@ export function FreeButtonSwitch<TValue extends string>({
       option.pinned !== "end" &&
       option.draggable !== false;
 
+    // Dropdown option: a button (with chevron) that opens a grouped menu.
+    if (option.dropdownSections) {
+      const tabItems = option.dropdownSections
+        .filter((section) => section.kind === "tab")
+        .flatMap((section) => section.items);
+      const activeTabItem = tabItems.find((item) => item.value === value);
+      const isActive = Boolean(activeTabItem);
+      const dropdownLabel = activeTabItem?.label ?? option.defaultLabel;
+
+      const dropdownButton = (
+        <Button
+          variant={
+            option.variant ?? (isActive ? activeVariant : inactiveVariant)
+          }
+          size={size}
+          isSelect
+          label={hideLabels ? undefined : dropdownLabel}
+          icon={option.icon}
+          tooltip={hideLabels ? fallbackLabel : option.tooltip}
+          aria-label={option.ariaLabel ?? fallbackLabel}
+        />
+      );
+
+      // Measurement pass renders just the button (no menu) to avoid mounting
+      // duplicate portaled menus.
+      if (!interactive) {
+        return (
+          <div
+            key={option.id ?? option.value}
+            className={cn("s-shrink-0", option.className)}
+          >
+            {dropdownButton}
+          </div>
+        );
+      }
+
+      return (
+        <div
+          key={option.id ?? option.value}
+          className={cn("s-shrink-0", option.className)}
+        >
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>{dropdownButton}</DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {option.dropdownSections.map((section, sectionIndex) => (
+                <div key={section.label ?? sectionIndex}>
+                  {sectionIndex > 0 && <DropdownMenuSeparator />}
+                  {section.label && <DropdownMenuLabel label={section.label} />}
+                  <DropdownMenuRadioGroup
+                    value={
+                      section.kind === "tab"
+                        ? (value as string)
+                        : (section.value ?? "")
+                    }
+                    onValueChange={(next) => {
+                      if (section.kind === "tab") {
+                        onValueChange(next as TValue);
+                      } else {
+                        section.onValueChange?.(next);
+                      }
+                    }}
+                  >
+                    {section.items.map((item) => (
+                      <DropdownMenuRadioItem
+                        key={item.value}
+                        value={item.value}
+                        label={item.label}
+                        icon={item.icon}
+                      />
+                    ))}
+                  </DropdownMenuRadioGroup>
+                </div>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      );
+    }
+
     const button = (
       <Button
-        variant={option.value === value ? activeVariant : inactiveVariant}
+        variant={
+          option.variant ??
+          (option.value === value ? activeVariant : inactiveVariant)
+        }
         size={size}
         label={hideLabels ? undefined : option.label}
         icon={option.icon}
@@ -382,7 +495,10 @@ export function FreeButtonSwitch<TValue extends string>({
 
     if (!interactive) {
       return (
-        <div key={option.id ?? option.value} className="s-shrink-0">
+        <div
+          key={option.id ?? option.value}
+          className={cn("s-shrink-0", option.className)}
+        >
           {button}
         </div>
       );
@@ -393,6 +509,7 @@ export function FreeButtonSwitch<TValue extends string>({
         key={option.id ?? option.value}
         className={cn(
           "s-shrink-0 s-rounded-lg s-transition-colors",
+          option.className,
           isDraggable && "s-cursor-grab active:s-cursor-grabbing",
           draggingTabValue === option.value && "s-opacity-50",
           dropTargetValue === option.value &&
@@ -443,14 +560,11 @@ export function FreeButtonSwitch<TValue extends string>({
         )}
       </div>
       {pinnedEndOptions.length > 0 && (
-        <>
-          <Separator orientation="vertical" className="s-h-5" />
-          <div className="s-flex s-shrink-0 s-items-center s-gap-1">
-            {pinnedEndOptions.map((option) =>
-              renderOptionButton(option, hideLabels, interactive)
-            )}
-          </div>
-        </>
+        <div className="s-flex s-shrink-0 s-items-center s-gap-1">
+          {pinnedEndOptions.map((option) =>
+            renderOptionButton(option, hideLabels, interactive)
+          )}
+        </div>
       )}
     </>
   );

@@ -192,26 +192,27 @@ export function TodoInputBar({
             ))}
           </NewCitationGrid>
         )}
-        <div className="s-flex s-w-full s-items-end s-gap-2 s-pr-2 s-pb-2">
-          <div className="s-min-w-0 s-flex-1">
-            <RichTextArea
-              ref={richTextAreaRef}
-              placeholder={placeholder}
-              onFocus={handleFocus}
-              onTextChange={setInputText}
-              variant="compact"
-              showFormattingMenu
-              showAskSidekickMenu={false}
-              className="placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night"
-            />
-          </div>
-          <div className="s-flex s-items-center s-gap-2 md:s-gap-1">
+        <RichTextArea
+          ref={richTextAreaRef}
+          placeholder={placeholder}
+          onFocus={handleFocus}
+          onTextChange={setInputText}
+          variant="compact"
+          showFormattingMenu
+          showAskSidekickMenu={false}
+          className="placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night"
+        />
+        <div className="s-flex s-w-full s-gap-2 s-p-2 s-pl-4">
+          <div className="s-flex s-items-center s-gap-0 md:s-gap-1">
             <Button
               variant="ghost-secondary"
               icon={Attachment01}
               size="xs"
               tooltip="Attach a document"
             />
+          </div>
+          <div className="s-grow" />
+          <div className="s-flex s-items-center s-gap-2 md:s-gap-1">
             <Button
               variant="ghost-secondary"
               icon={Microphone01}
