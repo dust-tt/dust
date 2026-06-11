@@ -313,7 +313,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     // Scope by agentMessageId to fully use the (workspaceId, agentMessageId, status) index,
     // avoiding a broad scan + join through messages to filter by conversationId.
-    const blockedActions = await AgentMCPActionModel.findAll({
+    const blockedActionRows = await AgentMCPActionModel.findAll({
       include: [
         {
           model: AgentMessageModel,
@@ -323,6 +323,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
             "id",
             "agentConfigurationId",
             "agentConfigurationVersion",
+            "status",
           ],
           include: [
             {
@@ -343,6 +344,15 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       },
       order: [["createdAt", "ASC"]],
     });
+
+    // A blocked action is only actionable while its agent message can still resume: exclude
+    // actions left behind by messages that were interrupted, cancelled or failed before their
+    // blocked tools got resolved. Filtered application-side: agent_messages has no index on
+    // status, and the rows are already narrowed to the conversation's latest agent messages.
+    const blockedActions = blockedActionRows.filter(
+      (a) =>
+        !UNRESUMABLE_AGENT_MESSAGE_STATUSES.includes(a.agentMessage!.status)
+    );
 
     const parentUserMessageIds = removeNulls(
       blockedActions.map((a) => a.agentMessage!.message!.parentId)
