@@ -19,7 +19,7 @@ async function exaSearch({
 }: {
   query: string;
   num_results?: number;
-  type?: "fast" | "auto" | "instant";
+  type?: "auto" | "instant" | "fast" | "deep-lite" | "deep" | "deep-reasoning";
   category: "people" | "company";
 }) {
   if (!credentials.EXA_API_KEY) {
@@ -31,7 +31,7 @@ async function exaSearch({
   try {
     res = await exa.search(query, {
       numResults: num_results ?? 5,
-      type: type ?? "fast",
+      type: type ?? "auto",
       category,
       contents: { highlights: true },
     });

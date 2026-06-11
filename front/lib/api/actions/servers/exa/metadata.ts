@@ -20,11 +20,18 @@ export const EXA_TOOLS_METADATA = createToolsRecord({
         .optional()
         .describe("Number of results to return. Defaults to 5."),
       type: z
-        .enum(["fast", "auto", "instant"])
+        .enum([
+          "auto",
+          "instant",
+          "fast",
+          "deep-lite",
+          "deep",
+          "deep-reasoning",
+        ])
         .optional()
-        .default("fast")
+        .default("auto")
         .describe(
-          "Search type. Use 'fast' for low latency (recommended), 'auto' for best quality."
+          "Search type. 'auto' (~1s, default), 'instant' (~250ms, real-time), 'fast' (~450ms), 'deep-lite' (~4s), 'deep' (4-15s, complex queries), 'deep-reasoning' (12-40s, hard research)."
         ),
     },
     stake: "never_ask",
@@ -48,11 +55,18 @@ export const EXA_TOOLS_METADATA = createToolsRecord({
         .optional()
         .describe("Number of results to return. Defaults to 5."),
       type: z
-        .enum(["fast", "auto", "instant"])
+        .enum([
+          "auto",
+          "instant",
+          "fast",
+          "deep-lite",
+          "deep",
+          "deep-reasoning",
+        ])
         .optional()
-        .default("fast")
+        .default("auto")
         .describe(
-          "Search type. Use 'fast' for low latency (recommended), 'auto' for best quality."
+          "Search type. 'auto' (~1s, default), 'instant' (~250ms, real-time), 'fast' (~450ms), 'deep-lite' (~4s), 'deep' (4-15s, complex queries), 'deep-reasoning' (12-40s, hard research)."
         ),
     },
     stake: "never_ask",
