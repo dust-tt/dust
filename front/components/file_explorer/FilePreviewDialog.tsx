@@ -1,4 +1,8 @@
 import type { FileEntry } from "@app/components/file_explorer/types";
+import {
+  getTabularPreviewStats,
+  TabularFilePreview,
+} from "@app/components/file_explorer/TabularFilePreview";
 import { getFilePreviewConfig } from "@app/components/spaces/FilePreviewSheet";
 import { useFileContent } from "@app/hooks/useFileContent";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
@@ -12,7 +16,6 @@ import {
   ChevronRight,
   CodeBlock,
   cn,
-  DataTable,
   Dialog,
   DialogContent,
   DialogFooter,
@@ -21,13 +24,10 @@ import {
   Download01,
   Icon,
   Markdown,
-  ScrollableDataTable,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useEffect, useState } from "react";
 
-const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
 
 const EXTENSION_TO_LANGUAGE: Record<string, string> = {
@@ -66,79 +66,13 @@ function getCodeLanguage(fileName: string): string {
   return EXTENSION_TO_LANGUAGE[ext] ?? "text";
 }
 
-function getDelimitedRecordCount({
-  content,
-}: {
-  content: string;
-}): { displayed: number; total: number } | null {
-  const lines = content.split("\n").filter((l) => l.trim());
-  if (lines.length < 2) {
-    return null;
-  }
-
-  const [, ...dataLines] = lines;
-  const total = dataLines.length;
-
-  return { displayed: Math.min(total, MAX_CSV_ROWS), total };
-}
-
 interface DelimitedPreviewProps {
   content: string;
   mimeType: string;
 }
 
-type Row = Record<string, string>;
-
 function DelimitedPreview({ content, mimeType }: DelimitedPreviewProps) {
-  const isTsv =
-    mimeType === "text/tsv" || mimeType === "text/tab-separated-values";
-
-  const delimiter = isTsv ? "\t" : ",";
-  const lines = content.split("\n").filter((l) => l.trim());
-
-  if (lines.length < 2) {
-    return (
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        No data to preview.
-      </p>
-    );
-  }
-
-  const [headerLine, ...dataLines] = lines;
-  const headers = headerLine!
-    .split(delimiter)
-    .map((c) => c.trim().replace(/^"|"$/g, ""));
-  const allRows = dataLines.map((line) =>
-    line.split(delimiter).map((c) => c.trim().replace(/^"|"$/g, ""))
-  );
-  const displayed = allRows.slice(0, MAX_CSV_ROWS);
-
-  const baseRatio = Math.floor(100 / headers.length);
-  const columns: ColumnDef<Row>[] = headers.map((header, idx) => ({
-    id: header,
-    accessorFn: (row: Row) => row[header] ?? "",
-    header,
-    cell: (info: CellContext<Row, unknown>) => (
-      <DataTable.BasicCellContent label={String(info.getValue() ?? "")} />
-    ),
-    meta: {
-      // Last column absorbs rounding remainder so ratios always sum to 100.
-      sizeRatio:
-        idx < headers.length - 1
-          ? baseRatio
-          : 100 - baseRatio * (headers.length - 1),
-    },
-  }));
-
-  const data: Row[] = displayed.map((row) =>
-    Object.fromEntries(headers.map((h, i) => [h, row[i] ?? ""]))
-  );
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <ScrollableDataTable data={data} columns={columns} maxHeight={true} />
-    </div>
-  );
+  return <TabularFilePreview content={content} mimeType={mimeType} />;
 }
 
 interface FilePreviewDialogContentProps {
@@ -263,6 +197,7 @@ interface FilePreviewDialogProps {
   onNext?: () => void;
   onOpenChange: (open: boolean) => void;
   onPrev?: () => void;
+  processedFileUrl?: string | null;
 }
 
 export function FilePreviewDialog({
@@ -273,6 +208,7 @@ export function FilePreviewDialog({
   onDownload,
   onPrev,
   onNext,
+  processedFileUrl,
 }: FilePreviewDialogProps) {
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -314,7 +250,11 @@ export function FilePreviewDialog({
   }, [isOpen, onPrev, onNext]);
 
   const mimeType = stripMimeParameters(entry?.contentType ?? "");
-  const { category } = getFilePreviewConfig(mimeType);
+  const previewConfig = getFilePreviewConfig(mimeType);
+  const { category } = previewConfig;
+  const contentUrl = previewConfig.needsProcessedVersion
+    ? (processedFileUrl ?? null)
+    : fileUrl;
 
   const needsTextContent =
     category === "code" ||
@@ -324,11 +264,13 @@ export function FilePreviewDialog({
 
   const { fileContent, isFileContentLoading, fileContentError } =
     useFileContent({
-      url: fileUrl,
-      disabled: !isOpen || !entry || !needsTextContent,
+      url: contentUrl,
+      disabled: !isOpen || !entry || !needsTextContent || !contentUrl,
     });
 
-  const hasError = needsTextContent && !!fileContentError;
+  const hasError =
+    needsTextContent &&
+    (!!fileContentError || (!contentUrl && !isFileContentLoading));
   const isContentLoading =
     isOpen && !!entry && !hasError && needsTextContent && isFileContentLoading;
 
@@ -345,7 +287,7 @@ export function FilePreviewDialog({
 
   const recordCounts =
     category === "delimited" && truncatedContent
-      ? getDelimitedRecordCount({ content: truncatedContent })
+      ? getTabularPreviewStats({ content: truncatedContent, mimeType })
       : null;
 
   return (
@@ -379,7 +321,7 @@ export function FilePreviewDialog({
                 )}
               >
                 Showing {recordCounts.displayed} of {recordCounts.total} records
-                {recordCounts.total > MAX_CSV_ROWS && " (truncated)"}
+                {recordCounts.isTruncated && " (truncated)"}
               </span>
             )}
           </div>

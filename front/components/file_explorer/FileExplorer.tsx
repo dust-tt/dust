@@ -40,6 +40,7 @@ interface FileExplorerProps {
   hideBreadcrumbAtRoot?: boolean;
   files: FileSystemEntry[];
   getFileUrl: (path: string) => string;
+  getProcessedFileUrl?: (entry: FileEntry) => string | null;
   toolbarExtraActions?: React.ReactNode;
   isLoading: boolean;
   navigationResetKey?: number;
@@ -64,6 +65,7 @@ export function FileExplorer({
   emptyState,
   files,
   getFileUrl,
+  getProcessedFileUrl,
   toolbarExtraActions,
   hideBreadcrumbAtRoot = false,
   isLoading,
@@ -332,6 +334,9 @@ export function FileExplorer({
       <FilePreviewDialog
         entry={previewFile}
         fileUrl={previewFile ? getFileUrl(previewFile.path) : null}
+        processedFileUrl={
+          previewFile ? (getProcessedFileUrl?.(previewFile) ?? null) : null
+        }
         isOpen={showPreviewSheet}
         onOpenChange={setShowPreviewSheet}
         onDownload={onFileDownload}
