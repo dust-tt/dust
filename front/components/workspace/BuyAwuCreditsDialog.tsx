@@ -105,7 +105,7 @@ interface BuyAwuCreditsDialogProps {
   awuPurchaseInfo: AwuPurchaseInfo | null;
   isAwuPurchaseInfoLoading: boolean;
   isAwuPurchaseInfoError: boolean;
-  currentBalanceCredits?: number;
+  currentTotalPoolCredits?: number;
 }
 
 export function BuyAwuCreditsDialog({
@@ -116,7 +116,7 @@ export function BuyAwuCreditsDialog({
   awuPurchaseInfo,
   isAwuPurchaseInfoLoading,
   isAwuPurchaseInfoError,
-  currentBalanceCredits,
+  currentTotalPoolCredits,
 }: BuyAwuCreditsDialogProps) {
   const [amountInput, setAmountInput] = useState<string>("");
   const [selectedTab, setSelectedTab] = useState<TopUpTab>("one-time");
@@ -329,16 +329,11 @@ export function BuyAwuCreditsDialog({
                           placeholder="0"
                           value={amountInput}
                           onChange={(e) => {
-                            const val = parseFloat(e.target.value);
-                            if (!isNaN(val)) {
-                              setAmountWithClamp(val);
-                            } else {
-                              setAmountInput(e.target.value);
-                            }
+                            setAmountInput(e.target.value);
                           }}
                           min="0"
-                          max={effectiveMaxAmount}
                           step="1"
+                          isError={amountExceedsMax && !!maxAmountFormatted}
                           className="w-32 pl-7 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                         />
                       </div>
@@ -359,34 +354,46 @@ export function BuyAwuCreditsDialog({
                         ))}
                       </div>
                     </div>
+                    {amountExceedsMax && maxAmountFormatted && (
+                      <p className="text-xs text-warning-500 dark:text-warning-500-night">
+                        Amount exceeds the {maxAmountFormatted} limit. Please{" "}
+                        <a
+                          href={`mailto:${supportEmail}?subject=Higher%20credit%20limit%20request`}
+                          className="underline"
+                        >
+                          contact support
+                        </a>
+                        .
+                      </p>
+                    )}
                   </div>
 
-                  {isValidAmount && (
+                  {isValidAmount && !amountExceedsMax && (
                     <div className="flex flex-col gap-2 rounded-xl bg-muted-background p-4 dark:bg-muted-background-night">
                       <p className="font-semibold text-foreground dark:text-foreground-night">
                         Summary
                       </p>
-                      {currentBalanceCredits !== undefined && (
+                      {currentTotalPoolCredits !== undefined && (
                         <SummaryRow
-                          label="Current balance"
+                          label="Current Credits Pool"
                           value={
-                            <CreditValue credits={currentBalanceCredits} />
+                            <CreditValue credits={currentTotalPoolCredits} />
                           }
                           dimmed
                         />
                       )}
                       <SummaryRow
-                        label="Added balance"
+                        label="Added Credits"
                         value={<CreditValue credits={addedCredits} />}
                         dimmed
                       />
                       <div className="py-1" />
-                      {currentBalanceCredits !== undefined && (
+                      {currentTotalPoolCredits !== undefined && (
                         <SummaryRow
-                          label="New balance"
+                          label="New Credits Pool"
                           value={
                             <CreditValue
-                              credits={currentBalanceCredits + addedCredits}
+                              credits={currentTotalPoolCredits + addedCredits}
                             />
                           }
                         />
@@ -396,19 +403,6 @@ export function BuyAwuCreditsDialog({
                         value={`${currencySymbol}${formatCost(parsedAmount)}`}
                       />
                     </div>
-                  )}
-
-                  {maxAmountFormatted && (
-                    <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                      Purchase up to {maxAmountFormatted} worth of credits.{" "}
-                      <a
-                        href={`mailto:${supportEmail}?subject=Higher%20credit%20limit%20request`}
-                        className="text-action-500 hover:underline"
-                      >
-                        Contact support
-                      </a>{" "}
-                      if you need more.
-                    </p>
                   )}
 
                   {awuPurchaseInfo?.canPurchase &&
