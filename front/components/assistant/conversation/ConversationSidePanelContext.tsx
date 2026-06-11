@@ -1,9 +1,11 @@
 import type { AgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
+import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useHashParam } from "@app/hooks/useHashParams";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
   FILES_SIDE_PANEL_TYPE,
+  FULL_SCREEN_HASH_PARAM,
   INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
   PLAN_SIDE_PANEL_TYPE,
   SIDE_PANEL_HASH_PARAM,
@@ -91,6 +93,9 @@ export function ConversationSidePanelProvider({
   const [currentPanel, setCurrentPanel] = useHashParam(
     SIDE_PANEL_TYPE_HASH_PARAM
   );
+  const [, setFullScreenHash] = useHashParam(FULL_SCREEN_HASH_PARAM);
+  const activeConversationId = useActiveConversationId();
+  const previousConversationIdRef = React.useRef(activeConversationId);
 
   const panelRef = React.useRef<ImperativePanelHandle | null>(null);
   const [virtuosoMsg, setVirtuosoMsg] =
@@ -174,6 +179,24 @@ export function ConversationSidePanelProvider({
     },
     [setCurrentPanel, setData, data, closePanel, currentPanel]
   );
+
+  // Close the panel when switching conversations: the provider stays mounted
+  // across navigation and useHashParam does not re-sync on pushState, so the
+  // previous conversation's panel would otherwise stay open. Skips the initial
+  // mount (deep links) and the null -> id transition (new conversation flow).
+  useEffect(() => {
+    const previousConversationId = previousConversationIdRef.current;
+    previousConversationIdRef.current = activeConversationId;
+
+    if (
+      previousConversationId &&
+      previousConversationId !== activeConversationId
+    ) {
+      // Exit full screen too, mirroring FrameRenderer's close button.
+      setFullScreenHash(undefined);
+      closePanel();
+    }
+  }, [activeConversationId, closePanel, setFullScreenHash]);
 
   // Initialize panel state from URL hash parameters
   useEffect(() => {
