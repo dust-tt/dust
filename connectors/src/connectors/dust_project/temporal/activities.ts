@@ -1,3 +1,8 @@
+import type { DustProjectSyncActivityResult } from "@connectors/connectors/dust_project/lib/api_errors";
+import {
+  DUST_PROJECT_SYNC_COMPLETED,
+  parseDustApiResult,
+} from "@connectors/connectors/dust_project/lib/api_errors";
 import { sortEntriesByScopedPathDepth } from "@connectors/connectors/dust_project/lib/mount_path_utils";
 import {
   deleteConversation,
@@ -30,6 +35,8 @@ import type {
   ProjectMountListEntryType,
 } from "@dust-tt/client";
 
+export type { DustProjectSyncActivityResult } from "@connectors/connectors/dust_project/lib/api_errors";
+
 /**
  * Full sync activity: Syncs all conversations for a project.
  * This is used for initial syncs or when force resync is requested.
@@ -38,7 +45,7 @@ export async function dustProjectConversationsFullSyncActivity({
   connectorId,
 }: {
   connectorId: ModelId;
-}): Promise<void> {
+}): Promise<DustProjectSyncActivityResult> {
   const localLogger = logger.child({ connectorId });
 
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -69,13 +76,17 @@ export async function dustProjectConversationsFullSyncActivity({
         spaceId: configuration.projectId,
       });
 
-    if (conversationsResult.isErr()) {
-      throw new Error(
-        `Failed to fetch conversations: ${conversationsResult.error.message}`
-      );
+    const conversationsParsed = parseDustApiResult({
+      result: conversationsResult,
+      logger: localLogger,
+      projectId: configuration.projectId,
+      workspaceId: dataSourceConfig.workspaceId,
+      errorPrefix: "Failed to fetch conversations",
+    });
+    if (conversationsParsed.skipped) {
+      return conversationsParsed.skipResult;
     }
-
-    const conversations = conversationsResult.value.conversations;
+    const { conversations } = conversationsParsed.value;
     localLogger.info(
       { projectId: configuration.projectId, count: conversations.length },
       "Fetched conversations for full sync (including deleted)"
@@ -153,6 +164,8 @@ export async function dustProjectConversationsFullSyncActivity({
         "Launched incremental sync workflow after successful full sync"
       );
     }
+
+    return DUST_PROJECT_SYNC_COMPLETED;
   } catch (error) {
     localLogger.error(
       { error, projectId: configuration.projectId },
@@ -170,7 +183,7 @@ export async function dustProjectConversationsIncrementalSyncActivity({
   connectorId,
 }: {
   connectorId: ModelId;
-}): Promise<void> {
+}): Promise<DustProjectSyncActivityResult> {
   const localLogger = logger.child({ connectorId });
 
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -210,13 +223,17 @@ export async function dustProjectConversationsIncrementalSyncActivity({
             : undefined,
       });
 
-    if (conversationsResult.isErr()) {
-      throw new Error(
-        `Failed to fetch conversations: ${conversationsResult.error.message}`
-      );
+    const conversationsParsed = parseDustApiResult({
+      result: conversationsResult,
+      logger: localLogger,
+      projectId: configuration.projectId,
+      workspaceId: dataSourceConfig.workspaceId,
+      errorPrefix: "Failed to fetch conversations",
+    });
+    if (conversationsParsed.skipped) {
+      return conversationsParsed.skipResult;
     }
-
-    const conversations = conversationsResult.value.conversations;
+    const { conversations } = conversationsParsed.value;
     localLogger.info(
       {
         projectId: configuration.projectId,
@@ -245,6 +262,8 @@ export async function dustProjectConversationsIncrementalSyncActivity({
     // Run garbage collection to remove hard-deleted conversations
     // This checks for conversations that were completely removed from the database
     await dustProjectConversationsGarbageCollectActivity({ connectorId });
+
+    return DUST_PROJECT_SYNC_COMPLETED;
   } catch (error) {
     localLogger.error(
       { error, projectId: configuration.projectId },
@@ -293,15 +312,19 @@ async function dustProjectConversationsGarbageCollectActivity({
       spaceId: configuration.projectId,
     });
 
-    if (conversationIdsResult.isErr()) {
-      throw new Error(
-        `Failed to fetch conversation IDs: ${conversationIdsResult.error.message}`
-      );
+    const conversationIdsParsed = parseDustApiResult({
+      result: conversationIdsResult,
+      logger: localLogger,
+      projectId: configuration.projectId,
+      workspaceId: dataSourceConfig.workspaceId,
+      errorPrefix: "Failed to fetch conversation IDs",
+    });
+    if (conversationIdsParsed.skipped) {
+      return;
     }
+    const { conversationIds } = conversationIdsParsed.value;
 
-    const currentConversationIds = new Set(
-      conversationIdsResult.value.conversationIds
-    );
+    const currentConversationIds = new Set(conversationIds);
 
     // Fetch all conversation IDs from dust_project_conversations table
     const syncedConversations =
@@ -384,7 +407,7 @@ export async function dustProjectMountFilesFullSyncActivity({
   connectorId,
 }: {
   connectorId: ModelId;
-}): Promise<void> {
+}): Promise<DustProjectSyncActivityResult> {
   const localLogger = logger.child({ connectorId });
 
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -410,16 +433,22 @@ export async function dustProjectMountFilesFullSyncActivity({
     spaceId: configuration.projectId,
   });
 
-  if (listRes.isErr()) {
-    throw new Error(
-      `Failed to fetch project mount files: ${listRes.error.message}`
-    );
+  const listResParsed = parseDustApiResult({
+    result: listRes,
+    logger: localLogger,
+    projectId: configuration.projectId,
+    workspaceId: dataSourceConfig.workspaceId,
+    errorPrefix: "Failed to fetch project mount files",
+  });
+  if (listResParsed.skipped) {
+    return listResParsed.skipResult;
   }
+  const { files } = listResParsed.value;
 
   const directoryEntries = sortEntriesByScopedPathDepth(
-    listRes.value.files.filter(isMountDirectoryEntry)
+    files.filter(isMountDirectoryEntry)
   );
-  const fileEntries = listRes.value.files.filter(isMountFileEntry);
+  const fileEntries = files.filter(isMountFileEntry);
   const fetchedPaths = new Set(fileEntries.map((e) => e.path));
 
   const syncedRows =
@@ -472,6 +501,8 @@ export async function dustProjectMountFilesFullSyncActivity({
     { projectId: configuration.projectId, count: fileEntries.length },
     "Completed full sync for dust_project mount files"
   );
+
+  return DUST_PROJECT_SYNC_COMPLETED;
 }
 
 /**
@@ -481,7 +512,7 @@ export async function dustProjectMountFilesIncrementalSyncActivity({
   connectorId,
 }: {
   connectorId: ModelId;
-}): Promise<void> {
+}): Promise<DustProjectSyncActivityResult> {
   const localLogger = logger.child({ connectorId });
 
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -507,16 +538,22 @@ export async function dustProjectMountFilesIncrementalSyncActivity({
       maxSourceUpdatedAt != null ? maxSourceUpdatedAt.getTime() + 1 : undefined,
   });
 
-  if (listRes.isErr()) {
-    throw new Error(
-      `Failed to fetch project mount files: ${listRes.error.message}`
-    );
+  const listResParsed = parseDustApiResult({
+    result: listRes,
+    logger: localLogger,
+    projectId: configuration.projectId,
+    workspaceId: dataSourceConfig.workspaceId,
+    errorPrefix: "Failed to fetch project mount files",
+  });
+  if (listResParsed.skipped) {
+    return listResParsed.skipResult;
   }
+  const { files } = listResParsed.value;
 
   const directoryEntries = sortEntriesByScopedPathDepth(
-    listRes.value.files.filter(isMountDirectoryEntry)
+    files.filter(isMountDirectoryEntry)
   );
-  const fileEntries = listRes.value.files.filter(isMountFileEntry);
+  const fileEntries = files.filter(isMountFileEntry);
 
   localLogger.info(
     {
@@ -556,6 +593,8 @@ export async function dustProjectMountFilesIncrementalSyncActivity({
   );
 
   await dustProjectMountFilesGarbageCollectActivity({ connectorId });
+
+  return DUST_PROJECT_SYNC_COMPLETED;
 }
 
 /**
@@ -587,14 +626,20 @@ export async function dustProjectMountFilesGarbageCollectActivity({
       spaceId: configuration.projectId,
     });
 
-    if (listRes.isErr()) {
-      throw new Error(
-        `Failed to list project mount files for GC: ${listRes.error.message}`
-      );
+    const listResParsed = parseDustApiResult({
+      result: listRes,
+      logger: localLogger,
+      projectId: configuration.projectId,
+      workspaceId: dataSourceConfig.workspaceId,
+      errorPrefix: "Failed to list project mount files for GC",
+    });
+    if (listResParsed.skipped) {
+      return;
     }
+    const { files } = listResParsed.value;
 
     const existingPaths = new Set(
-      listRes.value.files.filter(isMountFileEntry).map((e) => e.path)
+      files.filter(isMountFileEntry).map((e) => e.path)
     );
 
     const syncedRows =
@@ -645,7 +690,7 @@ export async function dustProjectSyncMetadataActivity({
   connectorId,
 }: {
   connectorId: ModelId;
-}): Promise<void> {
+}): Promise<DustProjectSyncActivityResult> {
   const localLogger = logger.child({ connectorId });
 
   const connector = await ConnectorResource.fetchById(connectorId);
@@ -671,27 +716,24 @@ export async function dustProjectSyncMetadataActivity({
     spaceId: configuration.projectId,
   });
 
-  if (metadataResult.isErr()) {
-    localLogger.error(
-      {
-        error: metadataResult.error,
-        projectId: configuration.projectId,
-      },
-      "Failed to fetch project metadata"
-    );
-    throw new Error(
-      `Failed to fetch project metadata: ${metadataResult.error.message}`
-    );
+  const metadataParsed = parseDustApiResult({
+    result: metadataResult,
+    logger: localLogger,
+    projectId: configuration.projectId,
+    workspaceId: dataSourceConfig.workspaceId,
+    errorPrefix: "Failed to fetch project metadata",
+  });
+  if (metadataParsed.skipped) {
+    return metadataParsed.skipResult;
   }
-
-  const metadata = metadataResult.value.metadata;
+  const { metadata } = metadataParsed.value;
 
   if (!metadata) {
     localLogger.info(
       { projectId: configuration.projectId },
       "No project metadata from API; skipping metadata upsert"
     );
-    return;
+    return DUST_PROJECT_SYNC_COMPLETED;
   }
 
   const lastSyncedAtMs = configuration.lastSyncedAt?.getTime();
@@ -704,7 +746,7 @@ export async function dustProjectSyncMetadataActivity({
       },
       "Skipping project metadata upsert (API metadata older than last full sync)"
     );
-    return;
+    return DUST_PROJECT_SYNC_COMPLETED;
   }
 
   await syncProjectMetadata({
@@ -718,6 +760,8 @@ export async function dustProjectSyncMetadataActivity({
     { projectId: configuration.projectId },
     "Successfully synced project metadata"
   );
+
+  return DUST_PROJECT_SYNC_COMPLETED;
 }
 
 /**

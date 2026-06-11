@@ -26,6 +26,22 @@ export function dustProjectIncrementalSyncWorkflowId(
   return `dust-project-incremental-sync-${connectorId}`;
 }
 
+type DustProjectSyncActivity = (input: {
+  connectorId: ModelId;
+}) => Promise<{ skippedDueToWorkspaceApiAccess: boolean }>;
+
+async function dustProjectSyncActivitiesCompleted(
+  connectorId: ModelId,
+  activities: ReadonlyArray<DustProjectSyncActivity>
+): Promise<boolean> {
+  for (const activity of activities) {
+    if ((await activity({ connectorId })).skippedDueToWorkspaceApiAccess) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /**
  * Full sync workflow for dust_project connector.
  * Syncs all conversations for a project from scratch.
@@ -35,10 +51,15 @@ export async function dustProjectFullSyncWorkflow({
 }: {
   connectorId: ModelId;
 }): Promise<void> {
-  await dustProjectConversationsFullSyncActivity({ connectorId });
-  await dustProjectMountFilesFullSyncActivity({ connectorId });
-  await dustProjectSyncMetadataActivity({ connectorId });
-  await dustProjectMarkSyncedActivity({ connectorId });
+  if (
+    await dustProjectSyncActivitiesCompleted(connectorId, [
+      dustProjectConversationsFullSyncActivity,
+      dustProjectMountFilesFullSyncActivity,
+      dustProjectSyncMetadataActivity,
+    ])
+  ) {
+    await dustProjectMarkSyncedActivity({ connectorId });
+  }
 }
 
 /**
@@ -50,8 +71,13 @@ export async function dustProjectIncrementalSyncWorkflow({
 }: {
   connectorId: ModelId;
 }): Promise<void> {
-  await dustProjectConversationsIncrementalSyncActivity({ connectorId });
-  await dustProjectMountFilesIncrementalSyncActivity({ connectorId });
-  await dustProjectSyncMetadataActivity({ connectorId });
-  await dustProjectMarkSyncedActivity({ connectorId });
+  if (
+    await dustProjectSyncActivitiesCompleted(connectorId, [
+      dustProjectConversationsIncrementalSyncActivity,
+      dustProjectMountFilesIncrementalSyncActivity,
+      dustProjectSyncMetadataActivity,
+    ])
+  ) {
+    await dustProjectMarkSyncedActivity({ connectorId });
+  }
 }
