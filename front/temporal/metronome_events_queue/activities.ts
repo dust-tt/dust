@@ -1,5 +1,6 @@
 import { processMetronomeWebhook } from "@app/lib/api/metronome/process_webhook";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
+import { cleanAndFinalizeMetronomeDraftInvoice } from "@app/lib/plans/stripe";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 /**
@@ -28,5 +29,28 @@ export async function processMetronomeWebhookActivity({
   const result = await processMetronomeWebhook({ event, workspace });
   if (result.isErr()) {
     throw result.error;
+  }
+}
+
+/**
+ * Cleans and finalizes a Metronome-pushed Stripe draft invoice. Scheduled with a
+ * start delay (see the launcher) so Metronome has finished writing all line items
+ * before we touch the draft. The underlying lib call is idempotent and re-asserts
+ * draft + not-yet-cleaned, so Temporal retries are safe. Throws on Result.Err so
+ * transient Stripe failures retry with backoff.
+ */
+export async function cleanMetronomeInvoiceActivity({
+  invoiceId,
+  workspaceId,
+}: {
+  invoiceId: string;
+  workspaceId: string;
+}): Promise<void> {
+  const result = await cleanAndFinalizeMetronomeDraftInvoice({
+    invoiceId,
+    workspaceId,
+  });
+  if (result.isErr()) {
+    throw new Error(result.error.error_message);
   }
 }
