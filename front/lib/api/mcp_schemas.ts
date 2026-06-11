@@ -17,6 +17,11 @@ export const ToolDisplayLabelsSchema = z.object({
   done: z.string(),
 });
 
+export const EditableToolConfigSchema = z.object({
+  isEditable: z.boolean(),
+  editableArguments: z.array(z.string()),
+});
+
 // Types are kept in lib/api/mcp.ts to avoid breaking the Temporal bundle.
 // Only schemas are exported from this file.
 
@@ -25,6 +30,7 @@ export const MCPToolSchema = z.object({
   description: z.string(),
   inputSchema: z.custom<JSONSchema>().optional(),
   displayLabels: ToolDisplayLabelsSchema.optional(),
+  editable: EditableToolConfigSchema.optional(),
 });
 
 const AuthorizationInfoSchema = z.object({

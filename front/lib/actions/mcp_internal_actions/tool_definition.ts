@@ -41,6 +41,13 @@ export type ClientToolHandlers<
   ) => Promise<ToolHandlerResult>;
 };
 
+type EditableToolConfig<TSchema extends ZodRawShape> = {
+  isEditable: boolean;
+  editableArguments: ReadonlyArray<
+    Extract<keyof z.infer<z.ZodObject<TSchema>>, string>
+  >;
+};
+
 export interface ToolDefinition<
   TName extends string = string,
   TSchema extends ZodRawShape = ZodRawShape,
@@ -51,6 +58,7 @@ export interface ToolDefinition<
   schema: TSchema;
   stake: MCPToolStakeLevelType;
   displayLabels: ToolDisplayLabels;
+  editable?: EditableToolConfig<TSchema>;
   handler: (
     params: z.infer<z.ZodObject<TSchema>>,
     extra: ToolHandlerExtra
@@ -86,10 +94,17 @@ export type ClientToolMeta<
 > = Omit<ClientToolDefinition<TName, TSchema>, "handler">;
 
 export function createToolsRecord<
-  T extends Record<string, Omit<ToolMeta, "name">>,
+  T extends {
+    [K in keyof T]: T[K] extends { schema: infer S extends ZodRawShape }
+      ? Omit<ToolMeta<string, S>, "name">
+      : Omit<ToolMeta, "name">;
+  },
 >(tools: T): { [K in keyof T]: T[K] & { name: K } } {
   return Object.fromEntries(
-    Object.entries(tools).map(([key, value]) => [key, { ...value, name: key }])
+    Object.entries(tools).map(([key, value]) => [
+      key,
+      { ...(value as object), name: key },
+    ])
   ) as { [K in keyof T]: T[K] & { name: K } };
 }
 

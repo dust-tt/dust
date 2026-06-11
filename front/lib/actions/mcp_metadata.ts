@@ -34,6 +34,7 @@ import {
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
 import type {
+  EditableToolConfig,
   MCPServerType,
   MCPToolType,
   ToolDisplayLabels,
@@ -790,9 +791,15 @@ async function connectToRemoteMCPServer(
 export type DustToolMeta = {
   stake?: MCPToolStakeLevelType;
   displayLabels?: ToolDisplayLabels;
+  editable?: EditableToolConfig;
   argumentsRequiringApproval?: string[];
   timeoutMs?: number;
 };
+
+const EditableToolConfigSchema = z.object({
+  isEditable: z.boolean(),
+  editableArguments: z.array(z.string()),
+});
 
 function isValidStake(value: unknown): value is MCPToolStakeLevelType {
   return (
@@ -816,6 +823,12 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((v) => typeof v === "string");
 }
 
+function isValidEditableToolConfig(
+  value: unknown
+): value is EditableToolConfig {
+  return EditableToolConfigSchema.safeParse(value).success;
+}
+
 function isValidTimeout(value: unknown): value is number {
   return typeof value === "number" && value > 0;
 }
@@ -835,6 +848,9 @@ export function getDustToolMeta(
   }
   if (isValidDisplayLabels(dust.displayLabels)) {
     result.displayLabels = dust.displayLabels;
+  }
+  if (isValidEditableToolConfig(dust.editable)) {
+    result.editable = dust.editable;
   }
   if (isStringArray(dust.argumentsRequiringApproval)) {
     result.argumentsRequiringApproval = dust.argumentsRequiringApproval;
@@ -858,6 +874,7 @@ export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
       ...(dustMeta?.displayLabels
         ? { displayLabels: dustMeta.displayLabels }
         : {}),
+      ...(dustMeta?.editable ? { editable: dustMeta.editable } : {}),
     };
   });
 }
