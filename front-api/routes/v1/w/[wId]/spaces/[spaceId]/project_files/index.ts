@@ -73,10 +73,22 @@ app.get(
         ? updatedSinceMs
         : null;
 
-    let files = await listGCSMountFiles(auth, {
+    const filesResult = await listGCSMountFiles(auth, {
       useCase: "pod",
       podId: space.sId,
     });
+
+    if (filesResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to list project files.",
+        },
+      });
+    }
+
+    let files = filesResult.value;
 
     if (updatedSinceFilter !== null) {
       files = files.filter((e) => e.lastModifiedMs >= updatedSinceFilter);
