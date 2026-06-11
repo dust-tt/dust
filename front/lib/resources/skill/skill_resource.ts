@@ -2682,9 +2682,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
 
+    // Self-references are intentionally kept (#26680 allows them).
     const referencedSkillIds = extractUniqueSkillReferenceIds(
       this.instructions
-    ).filter((sId) => sId !== this.sId);
+    );
 
     // Retrieve what we want the end state to be.
     const referencedCustomSkillIds = uniq(

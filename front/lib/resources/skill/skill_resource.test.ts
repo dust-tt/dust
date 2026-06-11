@@ -820,6 +820,28 @@ describe("SkillResource", () => {
       ).resolves.toHaveLength(0);
     });
 
+    it("keeps nested skill self-references", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Self Referencing Skill",
+      });
+
+      await skill.updateSkill(testContext.authenticator, {
+        name: skill.name,
+        agentFacingDescription: skill.agentFacingDescription,
+        userFacingDescription: skill.userFacingDescription,
+        instructions: `Recurse with ${SkillFactory.serializeSkillReferenceTag(skill)}.`,
+        instructionsHtml: skill.instructionsHtml,
+        icon: skill.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: skill.requestedSpaceIds,
+      });
+
+      await expect(
+        skill.fetchChildSkills(testContext.authenticator)
+      ).resolves.toEqual([expect.objectContaining({ sId: skill.sId })]);
+    });
+
     it("updates parent skill references when child requested spaces change", async () => {
       const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
       const childSkill = await SkillFactory.create(testContext.authenticator, {
