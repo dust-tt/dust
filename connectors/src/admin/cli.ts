@@ -1,5 +1,5 @@
+import { Argument, Command } from "@commander-js/extra-typings";
 import { AdminCommandSchema } from "@connectors/types";
-import { Argument, Command } from "commander";
 import { fromError } from "zod-validation-error";
 
 process.env.INTERACTIVE_CLI = process.env.INTERACTIVE_CLI || "1";
