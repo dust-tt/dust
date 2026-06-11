@@ -5,6 +5,7 @@ import {
   updateSubscriptionQuantity,
   updateSubscriptionSeats,
 } from "@app/lib/metronome/client";
+import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import {
   getAwuAllocationForSeatType,
@@ -15,6 +16,7 @@ import {
   isMauContract,
 } from "@app/lib/metronome/seat_types";
 import type { BillingFrequency } from "@app/lib/metronome/types";
+import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { SeatLimit } from "@app/lib/resources/workspace_seat_limit_resource";
@@ -206,7 +208,8 @@ export function classifySeatChange({
 export function resolveRemappedSeatType(
   currentSeatType: MembershipSeatType,
   contract: CachedContract,
-  productSeatTypes: Map<string, MembershipSeatType>
+  productSeatTypes: Map<string, MembershipSeatType>,
+  useFreeSeat: boolean
 ): MembershipSeatType | undefined {
   const onContract = new Set(
     getSeatSubscriptionsFromContract(contract, productSeatTypes).keys()
@@ -221,7 +224,7 @@ export function resolveRemappedSeatType(
     }
   }
   return getDefaultSeatTypeForContract(contract, productSeatTypes, {
-    useFreeSeat: false,
+    useFreeSeat,
   });
 }
 
@@ -273,6 +276,11 @@ export async function remapMembershipSeatTypesForContract({
     }
     resolvedContract = fetched.value;
   }
+
+  const targetPlanCode =
+    resolvedContract.custom_fields?.[PLAN_CODE_CUSTOM_FIELD_KEY];
+  const isFreePlanContract =
+    targetPlanCode !== undefined ? isFreePlan(targetPlanCode) : false;
 
   const productSeatTypes = await getProductSeatTypes();
   const onContract = getSeatSubscriptionsFromContract(
@@ -350,7 +358,8 @@ export async function remapMembershipSeatTypesForContract({
     const target = resolveRemappedSeatType(
       membership.seatType,
       resolvedContract,
-      productSeatTypes
+      productSeatTypes,
+      isFreePlanContract
     );
     if (!target || target === membership.seatType) {
       logger.info(
