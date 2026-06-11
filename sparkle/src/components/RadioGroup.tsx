@@ -8,7 +8,7 @@ import * as React from "react";
 
 export const radioStyles = cva(
   cn(
-    "s-aspect-square s-rounded-full s-border s-transition s-duration-200 s-ease-in-out",
+    "s-aspect-square s-rounded-full s-border s-transition-colors s-duration-100 s-ease-out-quad motion-reduce:s-transition-none",
     "s-border-border-dark dark:s-border-primary-500",
     "s-bg-background dark:s-bg-background-night",
     "s-text-foreground dark:s-text-foreground-night",

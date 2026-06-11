@@ -19,8 +19,12 @@ const listItemVariants = cva(
         false: "last:s-border-none",
       },
       interactive: {
+        // No transition on hover: list rows are scanned frequently, so an
+        // instant highlight avoids the trailing/ghosting a color fade creates
+        // when the cursor moves quickly down the list (Emil: don't animate
+        // hover on frequently-used elements).
         true: cn(
-          "s-cursor-pointer s-transition s-duration-200",
+          "s-cursor-pointer",
           "hover:s-bg-muted-background dark:hover:s-bg-muted-background-night",
           "active:s-bg-primary-100 dark:active:s-bg-primary-100-night"
         ),
@@ -127,8 +131,9 @@ const listItemSectionVariants = cva("", {
       sm: "s-heading-sm s-bg-muted-background s-p-2 dark:s-bg-muted-background-night/50 s-text-foreground dark:s-text-foreground-night",
     },
     interactive: {
+      // Instant highlight on these frequently-scanned rows (see ListItem above).
       true: cn(
-        "s-cursor-pointer s-transition s-duration-200",
+        "s-cursor-pointer",
         "active:s-bg-primary-100 dark:active:s-bg-primary-100-night"
       ),
       false: "",

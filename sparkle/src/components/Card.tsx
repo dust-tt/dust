@@ -26,7 +26,7 @@ export type CardSizeType = (typeof CARD_SIZES)[number];
 
 const interactiveClasses = cn(
   "s-cursor-pointer",
-  "s-transition s-duration-200",
+  "s-transition-colors s-duration-100 s-ease-out-quad motion-reduce:s-transition-none",
   "hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night",
   "active:s-bg-primary-150 dark:active:s-bg-primary-150-night",
   "disabled:s-text-primary-muted dark:disabled:s-text-primary-muted-night",

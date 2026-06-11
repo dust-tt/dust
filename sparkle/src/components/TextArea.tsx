@@ -22,7 +22,7 @@ const textAreaVariants = cva(
     "s-bg-muted-background dark:s-bg-muted-background-night",
     "placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night",
     "s-ring-offset-background",
-    "s-border s-rounded-xl s-transition s-duration-100 focus-visible:s-outline-none",
+    "s-border s-rounded-xl s-transition-colors s-duration-100 s-ease-out-quad motion-reduce:s-transition-none focus-visible:s-outline-none",
     "focus-visible:s-border-border dark:focus-visible:s-border-border-night focus-visible:s-ring"
   ),
   {

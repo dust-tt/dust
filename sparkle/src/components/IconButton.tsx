@@ -8,7 +8,7 @@ export const ICON_BUTTON_VARIANTS = BUTTON_VARIANTS;
 export type IconButtonVariantType = (typeof ICON_BUTTON_VARIANTS)[number];
 
 const iconButtonVariants = cva(
-  "s-transition-all s-ease-out s-duration-300 s-cursor-pointer hover:s-scale-110",
+  "s-transition-transform s-ease-out-quad s-duration-100 s-cursor-pointer motion-reduce:s-transition-none [@media(hover:hover)_and_(pointer:fine)]:hover:s-scale-105",
   {
     variants: {
       variant: {
@@ -101,7 +101,7 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
         disabled &&
           cn(
             "s-text-primary-500 dark:s-text-primary-500-night",
-            "s-cursor-default hover:s-scale-100"
+            "s-cursor-default [@media(hover:hover)_and_(pointer:fine)]:hover:s-scale-100"
           ),
         className
       )}

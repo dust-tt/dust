@@ -75,7 +75,7 @@ export function NotificationContent({
         "s-pointer-events-auto s-flex s-max-w-[400px] s-flex-row s-items-start s-gap-2 s-rounded-2xl s-border",
         "s-border-border dark:s-border-border-night",
         "s-bg-background dark:s-bg-background-night s-shadow-md s-backdrop-blur-sm",
-        "s-cursor-pointer s-p-2 s-pb-3 s-pr-3 s-transition-colors hover:s-bg-muted/50 dark:hover:s-bg-muted-night/50 s-border-border/50 dark:s-border-border-night/50"
+        "s-cursor-pointer s-p-2 s-pb-3 s-pr-3 s-transition-colors s-duration-100 s-ease-out-quad motion-reduce:s-transition-none hover:s-bg-muted/50 dark:hover:s-bg-muted-night/50 s-border-border/50 dark:s-border-border-night/50"
       )}
       onClick={onDismiss}
     >

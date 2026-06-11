@@ -720,7 +720,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
       <div
         className={cn(
           "s-pointer-events-none s-sticky -s-bottom-px s-left-0 s-right-0 -s-mt-10 s-h-10 s-bg-gradient-to-t",
-          "s-from-white s-via-white/60 s-to-transparent s-transition-opacity s-duration-300 dark:s-from-background-night dark:s-via-background-night/60",
+          "s-from-white s-via-white/60 s-to-transparent s-transition-opacity s-duration-150 s-ease-out-quad motion-reduce:s-transition-none dark:s-from-background-night dark:s-via-background-night/60",
           canScrollDown ? "s-opacity-100" : "s-opacity-0"
         )}
       />
@@ -866,7 +866,7 @@ DataTable.Row = function Row({
     <>
       <tr
         className={cn(
-          "s-group/dt-row s-justify-center s-transition-colors s-duration-300 s-ease-out",
+          "s-group/dt-row s-justify-center s-transition-colors s-duration-100 s-ease-out-quad motion-reduce:s-transition-none",
           !hideBottomBorder && [
             "s-border-b",
             "s-border-separator dark:s-border-separator-night",

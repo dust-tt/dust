@@ -66,7 +66,7 @@ export function PriceTable({
         "s-flex s-cursor-default s-flex-col s-border s-border-white/30",
         sizeTable[size],
         magnified
-          ? "s-duration-400 s-scale-95 s-transition-all s-ease-out hover:s-scale-100"
+          ? "s-duration-200 s-scale-95 s-transition-transform s-ease-in-out motion-reduce:s-transition-none hover:s-scale-100"
           : "",
         colorTable[color],
         className

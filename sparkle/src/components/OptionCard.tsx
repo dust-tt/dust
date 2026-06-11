@@ -42,7 +42,7 @@ export function OptionCard({
     <Card
       variant={variant}
       className={cn(
-        "s-w-full s-items-center s-gap-2 s-rounded-2xl s-text-left s-transition-colors",
+        "s-w-full s-items-center s-gap-2 s-rounded-2xl s-text-left s-transition-colors s-duration-100 s-ease-out-quad motion-reduce:s-transition-none",
         !disabled && "s-cursor-pointer",
         disabled && "s-pointer-events-none s-opacity-60",
         !selected &&

@@ -164,7 +164,7 @@ const ChipButton = React.forwardRef<HTMLButtonElement, ChipInternalButtonProps>(
       aria-label={ariaLabel}
       className={cn(
         "s-rounded-md s-p-0.5",
-        "s-transition-colors s-duration-200",
+        "s-transition-colors s-duration-100 s-ease-out-quad motion-reduce:s-transition-none",
         "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring",
         className
       )}

@@ -16,7 +16,7 @@ const IconSwatch: React.FC<IconSwatchProps> = ({
   <button
     onClick={onClick}
     className={cn(
-      "s-flex s-h-8 s-w-8 s-items-center s-justify-center s-rounded-lg s-border s-border-border s-transition s-duration-300 dark:s-border-border-night",
+      "s-flex s-h-8 s-w-8 s-items-center s-justify-center s-rounded-lg s-border s-border-border s-transition-colors s-duration-100 s-ease-out-quad motion-reduce:s-transition-none dark:s-border-border-night",
       isSelected
         ? "s-bg-highlight-50 dark:s-bg-highlight-800"
         : "dark:hover:s-boder-highlight-800 s-bg-muted-background hover:s-border-highlight-100 hover:s-bg-highlight-50 dark:s-bg-muted-background-night dark:hover:s-bg-highlight-800"
@@ -36,7 +36,7 @@ const ColorSwatch = ({ color, onClick, isSelected }: ColorSwatchProps) => {
   return (
     <div
       className={cn(
-        `s-${color} s-h-5 s-w-5 s-cursor-pointer s-rounded s-transition s-duration-200 hover:s-scale-110`,
+        `s-${color} s-h-5 s-w-5 s-cursor-pointer s-rounded s-transition-transform s-duration-100 s-ease-out-quad motion-reduce:s-transition-none hover:s-scale-105`,
         isSelected && "s-scale-110"
       )}
       onClick={() => onClick(color)}

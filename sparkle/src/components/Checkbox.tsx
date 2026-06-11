@@ -12,7 +12,7 @@ export type CheckboxSizeType = (typeof CHECKBOX_SIZES)[number];
 
 const checkboxStyles = cva(
   cn(
-    "s-shrink-0 s-peer s-border s-transition s-duration-200 s-ease-in-out",
+    "s-shrink-0 s-peer s-border s-transition-colors s-duration-100 s-ease-out-quad motion-reduce:s-transition-none",
     "s-border-border-dark dark:s-border-border-dark-night s-bg-background dark:s-bg-background-night",
     "s-text-foreground dark:s-text-foreground-night",
     "focus-visible:s-ring-ring s-ring-offset-background focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2",

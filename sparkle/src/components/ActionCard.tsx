@@ -9,7 +9,7 @@ import { cva } from "class-variance-authority";
 import React from "react";
 
 const FADE_TRANSITION_CLASSES =
-  "s-transition-opacity s-duration-300 s-ease-in-out";
+  "s-transition-opacity s-duration-100 s-ease-out-quad motion-reduce:s-transition-none";
 
 export const ACTION_CARD_DIFF_STATUSES = ["added", "removed"] as const;
 export type ActionCardDiffStatus = (typeof ACTION_CARD_DIFF_STATUSES)[number];

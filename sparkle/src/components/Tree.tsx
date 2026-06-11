@@ -81,7 +81,8 @@ export function Tree({
 
 const treeItemStyleClasses = {
   base: "s-group/tree s-flex s-cursor-default s-flex-row s-items-center s-gap-2 s-h-9",
-  isNavigatableBase: "s-rounded-xl s-pl-1.5 s-pr-3 s-ease-out s-cursor-pointer",
+  isNavigatableBase:
+    "s-rounded-xl s-pl-1.5 s-pr-3 s-transition-colors s-duration-100 s-ease-out-quad motion-reduce:s-transition-none s-cursor-pointer",
   isNavigatableUnselected: cn(
     "s-bg-sidebar-foreground/0 dark:s-bg-sidebar-foreground-night/0",
     "hover:s-bg-sidebar-foreground dark:hover:s-bg-sidebar-foreground-night"
@@ -290,7 +291,7 @@ Tree.Item = React.forwardRef<
               className={cn(
                 "s-flex s-grow s-gap-2",
                 areActionsFading &&
-                  "s-transform s-opacity-0 s-duration-300 group-hover/tree:s-opacity-100"
+                  "s-opacity-0 s-transition-opacity s-duration-100 s-ease-out-quad motion-reduce:s-transition-none group-hover/tree:s-opacity-100"
               )}
             >
               {actions}

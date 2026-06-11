@@ -44,8 +44,8 @@ const TooltipContent = React.forwardRef<
           "s-text-foreground dark:s-text-foreground-night",
           "s-border-border dark:s-border-border-night",
           "s-px-3 s-py-1.5 s-text-sm s-shadow-md",
-          "s-animate-in s-fade-in-0 s-zoom-in-95",
-          "data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=closed]:s-zoom-out-95 data-[side=bottom]:s-slide-in-from-top-2 data-[side=left]:s-slide-in-from-right-2 data-[side=right]:s-slide-in-from-left-2 data-[side=top]:s-slide-in-from-bottom-2",
+          "s-animate-in s-fade-in-0 s-zoom-in-95 s-duration-100",
+          "data-[state=closed]:s-animate-out data-[state=closed]:s-duration-75 data-[state=closed]:s-fade-out-0 data-[state=closed]:s-zoom-out-95 data-[side=bottom]:s-slide-in-from-top-2 data-[side=left]:s-slide-in-from-right-2 data-[side=right]:s-slide-in-from-left-2 data-[side=top]:s-slide-in-from-bottom-2",
           className || ""
         )}
         {...props}

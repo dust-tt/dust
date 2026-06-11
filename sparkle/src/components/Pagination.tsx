@@ -130,7 +130,7 @@ function renderPageNumber(
     <button
       key={pageNumber}
       className={cn(
-        "s-font-medium s-transition-colors s-duration-200",
+        "s-font-medium s-transition-colors s-duration-100 s-ease-out-quad motion-reduce:s-transition-none",
         currentPage === pageNumber
           ? "s-text-foreground dark:s-text-foreground-night"
           : "s-text-primary-400 dark:s-text-primary-400-night",

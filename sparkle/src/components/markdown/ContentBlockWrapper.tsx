@@ -50,7 +50,7 @@ const actionsVariants = cva(
       },
       displayActions: {
         hover:
-          "s-opacity-0 s-transition-opacity s-duration-200 group-hover:s-opacity-100",
+          "s-opacity-0 s-transition-opacity s-duration-100 s-ease-out-quad motion-reduce:s-transition-none group-hover:s-opacity-100",
         always: "",
       },
     },

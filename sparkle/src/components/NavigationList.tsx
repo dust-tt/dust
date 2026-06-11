@@ -133,7 +133,7 @@ const NavigationListItem = React.forwardRef<
               "s-peer/menu-button",
               "s-text-primary dark:s-text-primary-night s-font-medium",
               "s-box-border s-flex s-items-center s-w-full s-gap-1.5 s-cursor-pointer s-select-none",
-              "s-items-center s-outline-none s-rounded-lg s-text-sm s-p-2 s-transition-colors",
+              "s-items-center s-outline-none s-rounded-lg s-text-sm s-p-2 s-transition-colors s-duration-100 s-ease-out-quad motion-reduce:s-transition-none",
               "data-[disabled]:s-pointer-events-none",
               "hover:s-bg-sidebar-foreground dark:hover:s-bg-sidebar-foreground-night",
               selected &&
@@ -228,7 +228,7 @@ const NavigationListItemAction = React.forwardRef<
       ref={ref}
       data-sidebar="menu-action"
       className={cn(
-        "s-absolute s-right-2 s-top-1.5 s-transition-opacity",
+        "s-absolute s-right-2 s-top-1.5 s-transition-opacity s-duration-100 s-ease-out-quad motion-reduce:s-transition-none",
         forceVisible
           ? "s-opacity-100"
           : "s-opacity-0 group-focus-within/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100",
@@ -409,7 +409,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
     const actionElement = action && (
       <div
         className={cn(
-          "s-flex s-gap-1 s-transition-opacity",
+          "s-flex s-gap-1 s-transition-opacity s-duration-100 s-ease-out-quad motion-reduce:s-transition-none",
           actionOnHover
             ? "[@media(hover:hover)_and_(pointer:fine)]:s-opacity-0 hover:s-opacity-100 group-has-[:focus-visible]/menu-item:s-opacity-100 group-hover/menu-item:s-opacity-100"
             : "s-opacity-100"

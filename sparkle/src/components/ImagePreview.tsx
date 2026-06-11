@@ -43,7 +43,7 @@ const overlayVariants = cva(
   cn(
     "s-absolute s-inset-0 s-z-10",
     "s-bg-primary-100/60 dark:s-bg-primary-100-night/60",
-    "s-opacity-0 s-transition s-duration-200"
+    "s-opacity-0 s-transition-opacity s-duration-100 s-ease-out-quad"
   ),
   {
     variants: {
@@ -181,7 +181,7 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
                 src={imgSrc}
                 alt={alt}
                 className={cn(
-                  "s-h-full s-w-full s-object-cover s-transition s-duration-200",
+                  "s-h-full s-w-full s-object-cover s-transition s-duration-100 s-ease-out-quad motion-reduce:s-transition-none",
                   variant === "embedded"
                     ? "group-hover:s-blur-sm"
                     : "group-hover/image-preview:s-blur-sm"
@@ -197,7 +197,7 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
               <div
                 className={cn(
                   "s-absolute s-right-2 s-top-2 s-z-20",
-                  "s-opacity-0 s-transition-opacity s-duration-200",
+                  "s-opacity-0 s-transition-opacity s-duration-100 s-ease-out-quad",
                   variant === "embedded"
                     ? "group-hover:s-opacity-100"
                     : "group-hover/image-preview:s-opacity-100"

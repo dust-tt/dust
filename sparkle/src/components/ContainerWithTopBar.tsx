@@ -32,7 +32,7 @@ export function ContainerWithTopBar({
     <div
       className={cn(
         "s-flex s-w-full s-flex-col",
-        "s-rounded-xl s-border s-bg-muted-background dark:s-bg-muted-background-night s-transition-all s-duration-200",
+        "s-rounded-xl s-border s-bg-muted-background dark:s-bg-muted-background-night s-transition-colors s-duration-150 s-ease-out-quad motion-reduce:s-transition-none",
         "s-border-border dark:s-border-border-night",
         "focus-within:s-border-border-focus dark:focus-within:s-border-border-focus-night",
         "focus-within:s-outline-none focus-within:s-ring-2",

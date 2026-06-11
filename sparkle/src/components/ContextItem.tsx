@@ -71,7 +71,7 @@ export function ContextItem({
       <div
         className={cn(
           hoverAction &&
-            "s-opacity-0 s-transition-opacity s-duration-200 group-hover/context-item:s-opacity-100"
+            "s-opacity-0 s-transition-opacity s-duration-100 s-ease-out-quad motion-reduce:s-transition-none group-hover/context-item:s-opacity-100"
         )}
       >
         {action}

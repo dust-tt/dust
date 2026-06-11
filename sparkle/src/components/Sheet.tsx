@@ -25,7 +25,7 @@ const SheetOverlay = React.forwardRef<
     className={cn(
       "s-fixed s-inset-0 s-z-50",
       "s-bg-muted-foreground/75 dark:s-bg-muted-background-night/75",
-      "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out",
+      "data-[state=open]:s-animate-in data-[state=open]:s-duration-300 data-[state=closed]:s-animate-out data-[state=closed]:s-duration-200",
       "data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0",
       className
     )}
@@ -55,7 +55,7 @@ const sheetVariants = cva(
   cn(
     "s-fixed s-z-50 s-overflow-hidden s-flex s-flex-col s-h-full s-w-full",
     "s-bg-background dark:s-bg-background-night",
-    "s-transition s-ease-in-out data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-duration-300 data-[state=open]:s-duration-500"
+    "s-transition s-ease-in-out data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-duration-200 data-[state=open]:s-duration-300"
   ),
   {
     variants: {
@@ -246,7 +246,7 @@ const SheetContainer = ({
       noScroll={noScroll}
       className={cn(
         "s-h-full s-w-full s-flex-grow",
-        "s-border-t s-border-border/60 s-transition-all s-duration-300 dark:s-border-border-night/60"
+        "s-border-t s-border-border/60 s-transition-colors s-duration-150 s-ease-out-quad motion-reduce:s-transition-none dark:s-border-border-night/60"
       )}
     >
       <div

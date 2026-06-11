@@ -238,7 +238,7 @@ export function VoicePicker({
     <div className="s-flex s-items-center">
       <div
         className={cn(
-          "s-duration-600 s-flex s-items-center s-justify-end s-gap-2 s-overflow-hidden s-transition-all s-ease-in-out",
+          "s-duration-200 s-flex s-items-center s-justify-end s-gap-2 s-overflow-hidden s-transition-all s-ease-in-out motion-reduce:s-transition-none",
           compact ? "s-px-1" : "s-px-2",
           isRecording ? "s-opacity-100" : "s-hidden"
         )}

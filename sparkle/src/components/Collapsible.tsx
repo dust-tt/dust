@@ -6,7 +6,7 @@ import * as React from "react";
 import { Icon } from "./Icon";
 
 const labelVariants = cva(
-  "s-inline-flex s-transition-colors s-ease-out s-duration-400 s-box-border s-gap-x-2 s-select-none s-text-sm",
+  "s-inline-flex s-transition-colors s-ease-out-quad s-duration-100 s-box-border s-gap-x-2 s-select-none s-text-sm",
   {
     variants: {
       variant: {
@@ -26,7 +26,7 @@ const labelVariants = cva(
   }
 );
 
-const chevronVariants = cva("s-transition-transform s-duration-150", {
+const chevronVariants = cva("s-transition-transform s-duration-100", {
   variants: {
     variant: {
       primary: "s-text-muted-foreground dark:s-text-muted-foreground-night",

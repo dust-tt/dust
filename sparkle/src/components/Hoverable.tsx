@@ -32,7 +32,7 @@ const hoverableVariants: Record<HoverableVariantType, string> = {
 };
 
 const variantStyle = cva(
-  "s-cursor-pointer s-duration-200 hover:s-underline hover:s-underline-offset-2",
+  "s-cursor-pointer s-transition-colors s-duration-100 s-ease-out-quad motion-reduce:s-transition-none hover:s-underline hover:s-underline-offset-2",
   {
     variants: {
       variant: hoverableVariants,
