@@ -252,6 +252,7 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
       skillId: this.skillId,
       conversationId: this.conversationId,
       priceMicroUsd: this.priceMicroUsd,
+      priceAwuCredits: this.priceAwuCredits,
     };
   }
 }

@@ -66,6 +66,64 @@ describe("SelfImprovingSkillsUsageResource", () => {
     expect(sum).toBe(300);
   });
 
+  it("persists priceAwuCredits when provided and defaults it to 0", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const skill = await SkillFactory.create(authenticator, {
+      name: "AWU Credits Test Skill",
+    });
+
+    const usages = await SelfImprovingSkillsUsageResource.bulkCreate(
+      authenticator,
+      [
+        {
+          createdAt: new Date("2026-01-03T00:00:00.000Z"),
+          skillId: skill.id,
+          conversationId: null,
+          priceMicroUsd: 17_000,
+          priceAwuCredits: 2,
+        },
+        {
+          createdAt: new Date("2026-01-04T00:00:00.000Z"),
+          skillId: skill.id,
+          conversationId: null,
+          priceMicroUsd: 100,
+        },
+      ]
+    );
+
+    expect(usages[0].priceAwuCredits).toBe(2);
+    expect(usages[1].priceAwuCredits).toBe(0);
+  });
+
+  it("includes priceAwuCredits in toLogJSON", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const skill = await SkillFactory.create(authenticator, {
+      name: "Log JSON Test Skill",
+    });
+
+    const usages = await SelfImprovingSkillsUsageResource.bulkCreate(
+      authenticator,
+      [
+        {
+          createdAt: new Date("2026-01-03T00:00:00.000Z"),
+          skillId: skill.id,
+          conversationId: null,
+          priceMicroUsd: 17_000,
+          priceAwuCredits: 2,
+        },
+      ]
+    );
+
+    expect(usages[0].toLogJSON()).toEqual({
+      id: usages[0].id,
+      workspaceId: skill.workspaceId,
+      skillId: skill.id,
+      conversationId: null,
+      priceMicroUsd: 17_000,
+      priceAwuCredits: 2,
+    });
+  });
+
   it("returns daily spend with markup aggregated by calendar day", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const { authenticator: otherAuthenticator } = await createResourceTest({
