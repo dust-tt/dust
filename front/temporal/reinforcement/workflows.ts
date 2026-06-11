@@ -323,7 +323,7 @@ export async function reinforcementWorkspaceWorkflow({
   if (!settings.reinforcementEnabled) {
     return;
   }
-  if (settings.globalConsumptionMicroUsd >= settings.globalCapMicroUsd) {
+  if (settings.globalCapReached) {
     // Cap reached: activity already logged the details. Stop immediately.
     return;
   }

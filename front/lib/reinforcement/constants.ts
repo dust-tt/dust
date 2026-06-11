@@ -48,6 +48,10 @@ export const DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_AWU_CREDITS = 2_000;
 // $0.10 = 100_000 microUSD.
 const ESTIMATED_COST_PER_CONVERSATION_MICRO_USD = 100_000;
 
+// Estimated cost per conversation analysis (in AWU credits).
+// ~$0.10.
+const ESTIMATED_COST_PER_CONVERSATION_AWU_CREDITS = 10;
+
 /**
  * Compute the maximum number of conversations to analyze based on the
  * remaining reinforcement budget and remaining programmatic credits.
@@ -74,6 +78,36 @@ export function getMaxConversationsForBudget({
 
   const fromBudget = Math.floor(
     remainingMicroUsd / ESTIMATED_COST_PER_CONVERSATION_MICRO_USD
+  );
+
+  return Math.min(fromBudget, DEFAULT_MAX_CONVERSATIONS_PER_RUN);
+}
+
+/**
+ * AWU credits variant of getMaxConversationsForBudget, for workspaces billed
+ * by Metronome. All amounts are in AWU credits (margin baked in).
+ */
+export function getMaxConversationsForBudgetAwuCredits({
+  globalConsumptionAwuCredits,
+  globalCapAwuCredits,
+  remainingProgrammaticCreditsAwuCredits,
+}: {
+  globalConsumptionAwuCredits: number;
+  globalCapAwuCredits: number;
+  remainingProgrammaticCreditsAwuCredits: number;
+}): number {
+  const remainingReinforcementAwuCredits =
+    globalCapAwuCredits - globalConsumptionAwuCredits;
+  const remainingAwuCredits = Math.min(
+    remainingReinforcementAwuCredits,
+    remainingProgrammaticCreditsAwuCredits
+  );
+  if (remainingAwuCredits <= 0) {
+    return 0;
+  }
+
+  const fromBudget = Math.floor(
+    remainingAwuCredits / ESTIMATED_COST_PER_CONVERSATION_AWU_CREDITS
   );
 
   return Math.min(fromBudget, DEFAULT_MAX_CONVERSATIONS_PER_RUN);
