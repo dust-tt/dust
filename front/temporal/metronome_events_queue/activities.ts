@@ -37,7 +37,7 @@ export async function processMetronomeWebhookActivity({
  * Run a seat count sync for a workspace. Extracted as a dedicated activity so
  * the seat sync can be launched as a separate, workspace-scoped workflow (see
  * `syncMetronomeSeatCountWorkflow`) — this lets Temporal deduplicate the N
- * concurrent `credit.segment.start` events that fire during a seat-type upgrade
+ * concurrent `credit.segment.start` events that fire during a seat-type downgrade
  * (one per seat) down to a single execution per workspace.
  */
 export async function syncMetronomeSeatCountActivity({

@@ -22,7 +22,7 @@ export async function metronomeEventsWorkflow({
  * separate workflow (rather than calling the sync inline in
  * `metronomeEventsWorkflow`) lets us assign a stable, workspace-scoped workflow
  * ID and set `WorkflowIdConflictPolicy.USE_EXISTING` — so the N concurrent
- * `credit.segment.start` events fired during a seat-type upgrade collapse to a
+ * `credit.segment.start` events fired during a seat-type downgrade collapse to a
  * single execution instead of hammering Metronome and the DB N times.
  */
 export async function syncMetronomeSeatCountWorkflow({
