@@ -1404,7 +1404,7 @@ export async function processMetronomeWebhook({
         });
 
         // A new seat segment starting means a seat type was activated (e.g.
-        // a planned Pro→Max upgrade takes effect). Re-sync the seat count so
+        // a planned Pro→Max downgrade takes effect). Re-sync the seat count so
         // the per-user allocation is reassigned and each user's credit state
         // reflects the new seat type.
         if (
