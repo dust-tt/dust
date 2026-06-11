@@ -16,7 +16,10 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
-import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
+import {
+  useHomeDefaultAgent,
+  useWorkspaceUsageStatus,
+} from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type {
@@ -84,6 +87,12 @@ export function ConversationContainerVirtuoso({
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
     options: { disabled: true },
+  });
+
+  // Personal default agent for the home new-conversation input. Resolved downstream in
+  // `useHandleMentions` against the accessible agent list, falling back to @dust.
+  const { defaultAgentSId, isHomeDefaultAgentLoading } = useHomeDefaultAgent({
+    workspaceId: owner.sId,
   });
 
   const createConversationWithMessage = useCreateConversationWithMessage({
@@ -273,6 +282,8 @@ export function ConversationContainerVirtuoso({
               onSubmit={handleConversationCreation}
               draftKey="home-new-conversation"
               disableAutoFocus={false}
+              homeDefaultAgentSId={defaultAgentSId}
+              isHomeDefaultAgentLoading={isHomeDefaultAgentLoading}
             />
           </div>
 

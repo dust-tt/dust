@@ -26,9 +26,9 @@ import {
 import { CONTEXT_USAGE_PERCENT_THRESHOLDS } from "@app/hooks/conversations/useConversationContextUsage";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import { useHomeDefaultAgent } from "@app/lib/swr/user";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
 import { classNames } from "@app/lib/utils";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   isRichAgentMention,
   isRichUserMention,
@@ -80,6 +80,14 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   const isMobile = useIsMobile();
   const { agentConfigurations } = useUnifiedAgentConfigurations({
     workspaceId: context.owner.sId,
+  });
+  // Personal default agent to pre-select for new conversations. The actual selection
+  // happens downstream in `useHandleMentions` (the single source of truth), which resolves
+  // this sId against the accessible agent list and falls back to @dust. Mirrors the
+  // server-side `resolveHomeDefaultAgentSId`.
+  const { defaultAgentSId, isHomeDefaultAgentLoading } = useHomeDefaultAgent({
+    workspaceId: context.owner.sId,
+    disabled: !!context.conversation,
   });
   const accessibleAgentIds = useMemo(
     () => new Set(agentConfigurations.map((a) => a.sId)),
@@ -196,25 +204,16 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       return [lastAgentMentionInConversation];
     }
 
-    // Fall back to @dust only for new conversations. In existing conversations
-    // where messages are still loading, don't default — wait for messages.
-    if (!context.conversation) {
-      const dustAgent = agentConfigurations.find(
-        (a) => a.sId === GLOBAL_AGENTS_SID.DUST
-      );
-      if (dustAgent) {
-        return [toRichAgentMentionType(dustAgent)];
-      }
-    }
-
+    // For new conversations, the sticky agent (personal default → @dust) is resolved
+    // downstream in `useHandleMentions` once the default has loaded, so we intentionally
+    // emit no agent mention here. In existing conversations where messages are still
+    // loading, don't default either — wait for messages.
     return [];
   }, [
-    context.conversation,
     draftAgent,
     lastUserMessage,
     lastAgentMentionInConversation,
     accessibleAgentIds,
-    agentConfigurations,
     agentBuilderContext,
   ]);
 
@@ -563,6 +562,8 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
           user={context.user}
           onSubmit={context.handleSubmit}
           stickyMentions={autoMentions}
+          homeDefaultAgentSId={defaultAgentSId}
+          isHomeDefaultAgentLoading={isHomeDefaultAgentLoading}
           conversation={context.conversation}
           draftKey={context.draftKey}
           disableAutoFocus={isMobile || hasUserAnswerRequired}
