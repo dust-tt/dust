@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "NODE_ENV=production next build",
     "start": "next start --keepAliveTimeout 5000",
     "sitemap": "next-sitemap",
     "tsgo": "tsgo"

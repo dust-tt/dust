@@ -3,12 +3,15 @@ import {
   H1,
   P,
 } from "@marketing/components/home/ContentComponents";
-import {
-  getIcon,
-  ResourceAvatar,
-} from "@marketing/components/resources/resources_icons";
+import { ResourceAvatar } from "@marketing/components/resources/resources_icons";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
-import { Button, LinkExternal01, Rocket02 } from "@dust-tt/sparkle";
+import {
+  Button,
+  getPlatformLogo,
+  LinkExternal01,
+  PuzzlePiece01,
+  Rocket02,
+} from "@dust-tt/sparkle";
 
 import type { IntegrationBase } from "../types";
 
@@ -23,7 +26,7 @@ export function IntegrationHeroSection({
   seoTitle,
   seoSubtitle,
 }: IntegrationHeroSectionProps) {
-  const IconComponent = getIcon(integration.icon);
+  const IconComponent = getPlatformLogo(integration.icon, PuzzlePiece01);
 
   return (
     <FullWidthSection className="bg-white">

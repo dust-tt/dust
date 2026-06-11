@@ -1,11 +1,8 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 
 import { H2 } from "@marketing/components/home/ContentComponents";
-import {
-  getIcon,
-  ResourceAvatar,
-} from "@marketing/components/resources/resources_icons";
-import { ArrowRight } from "@dust-tt/sparkle";
+import { ResourceAvatar } from "@marketing/components/resources/resources_icons";
+import { ArrowRight, getPlatformLogo, PuzzlePiece01 } from "@dust-tt/sparkle";
 import Link from "next/link";
 
 import type { IntegrationBase } from "../types";
@@ -29,7 +26,10 @@ export function RelatedIntegrationsSection({
 
       <div className="mx-auto grid max-w-4xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {integrations.map((integration) => {
-          const IconComponent = getIcon(integration.icon);
+          const IconComponent = getPlatformLogo(
+            integration.icon,
+            PuzzlePiece01
+          );
 
           return (
             <Link

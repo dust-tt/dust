@@ -10,19 +10,19 @@ import type {
   IntegrationBase,
   IntegrationCategory,
 } from "@marketing/components/home/content/Integration/types";
-import {
-  buildIntegrationRegistry,
-  getAllCategories,
-} from "@marketing/components/home/content/Integration/utils/integrationRegistry";
+import { getAllCategories } from "@marketing/components/home/content/Integration/utils/integrationRegistry";
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import LandingLayout from "@marketing/components/home/LandingLayout";
 import { PageMetadata } from "@marketing/components/home/PageMetadata";
+import { ResourceAvatar } from "@marketing/components/resources/resources_icons";
+import { fetchPublicIntegrations } from "@marketing/lib/api/integrations";
 import {
-  getIcon,
-  ResourceAvatar,
-} from "@marketing/components/resources/resources_icons";
-import { Button, SearchInput } from "@dust-tt/sparkle";
-import type { GetStaticProps } from "next";
+  Button,
+  getPlatformLogo,
+  PuzzlePiece01,
+  SearchInput,
+} from "@dust-tt/sparkle";
+import type { GetServerSideProps } from "next";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
@@ -69,11 +69,11 @@ const CATEGORY_LABELS: Record<IntegrationCategory, string> = {
   recruiting: "Recruiting & HR",
 };
 
-export const getStaticProps: GetStaticProps<
+export const getServerSideProps: GetServerSideProps<
   IntegrationsPageProps
 > = async () => {
-  const integrations = buildIntegrationRegistry();
-  const categories = getAllCategories();
+  const integrations = await fetchPublicIntegrations();
+  const categories = getAllCategories(integrations);
 
   return {
     props: {
@@ -271,7 +271,7 @@ interface IntegrationCardProps {
 }
 
 function IntegrationCard({ integration }: IntegrationCardProps) {
-  const IconComponent = getIcon(integration.icon);
+  const IconComponent = getPlatformLogo(integration.icon, PuzzlePiece01);
   return (
     <Link
       href={`/integrations/${integration.slug}`}
