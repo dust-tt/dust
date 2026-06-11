@@ -18,7 +18,19 @@ import { cn } from "@sparkle/lib/utils";
 import React, { memo, useContext, useEffect, useRef, useState } from "react";
 import colors from "tailwindcss/colors";
 
-const { amber, blue, gray, green, indigo, purple, red, rose, sky, violet, yellow } = colors;
+const {
+  amber,
+  blue,
+  gray,
+  green,
+  indigo,
+  purple,
+  red,
+  rose,
+  sky,
+  violet,
+  yellow,
+} = colors;
 
 const PRETTY_JSON_PREFERENCE_KEY = "pretty-json-preference";
 
