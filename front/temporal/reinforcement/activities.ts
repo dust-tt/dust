@@ -10,10 +10,12 @@ import {
 import type { BatchStatus } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
+import { getWorkspacePoolAwuBalance } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { getRemainingDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/daily_cap";
 import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { intelligenceAwuFromRunUsages } from "@app/lib/metronome/events";
+import { getRemainingProgrammaticUsageFromMetronome } from "@app/lib/metronome/programmatic_awu_usage";
 import {
   isApiBlocked,
   isProgrammaticApiBlocked,
@@ -39,8 +41,12 @@ import {
   DEFAULT_MAX_CONVERSATIONS_PER_RUN,
   DEFAULT_REINFORCEMENT_LOOKBACK_WINDOW_DAYS,
   getMaxConversationsForBudget,
+  getMaxConversationsForBudgetAwuCredits,
 } from "@app/lib/reinforcement/constants";
-import { getReinforcementMonthlyCapMicroUsd } from "@app/lib/reinforcement/consumption";
+import {
+  getReinforcementBillingUnit,
+  getReinforcementGlobalConsumptionStatus,
+} from "@app/lib/reinforcement/enforcement";
 import {
   buildReinforcedSkillsSpecifications,
   classifySkillToolCalls,
@@ -82,7 +88,7 @@ import {
 } from "@app/temporal/agent_loop/activities/usage_tracking";
 import { ensureReinforcementWorkspaceSchedules } from "@app/temporal/reinforcement/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
-import { isCreditPricedPlan } from "@app/types/plan";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { ApplicationFailure } from "@temporalio/common";
 import { Op } from "sequelize";
 
@@ -588,8 +594,7 @@ export async function getReinforcementSettingsActivity({
   | {
       reinforcementEnabled: true;
       batchModeAllowed: boolean;
-      globalConsumptionMicroUsd: number;
-      globalCapMicroUsd: number;
+      globalCapReached: boolean;
       programmaticUsageLimitReached: boolean;
       maxConversationsForBudget: number;
     }
@@ -602,47 +607,85 @@ export async function getReinforcementSettingsActivity({
 
   const workspace = auth.getNonNullableWorkspace();
   const { cycleStart: periodStart } = await getCurrentPeriod(auth);
-  const { priceMicroUsd: globalConsumptionMicroUsd } =
-    await SelfImprovingSkillsUsageResource.getSumSpendAfterDate(
-      auth,
-      periodStart
-    );
-  const globalCapMicroUsd = getReinforcementMonthlyCapMicroUsd(workspace);
-
-  // Credit-priced plans check pool + programmatic cap via Metronome state;
-  // legacy plans check programmatic credits via CreditResource.
-  const plan = auth.subscription()?.plan;
-  let programmaticUsageLimitReached: boolean;
-  if (plan && isCreditPricedPlan(plan) && workspace.metronomeCustomerId) {
-    programmaticUsageLimitReached =
-      (await isApiBlocked(workspace.sId)) ||
-      (await isProgrammaticApiBlocked(workspace.sId));
-  } else {
-    // Legacy check for not metronome workspaces
-    programmaticUsageLimitReached = (
-      await checkProgrammaticUsageLimits(auth)
-    ).isErr();
-  }
-
-  // Compute remaining programmatic budget: total remaining credits capped by
-  // the daily usage allowance.
-  // TODO(fabien): use credit pool remaining credit here too.
-  const remainingCreditsMicroUsd =
-    await CreditResource.getRemainingMicroUsd(auth);
-  const remainingDailyCapMicroUsd = await getRemainingDailyCapMicroUsd(auth);
-  const remainingProgrammaticCreditsMicroUsd = Math.min(
-    remainingCreditsMicroUsd,
-    remainingDailyCapMicroUsd
+  const globalConsumption = await getReinforcementGlobalConsumptionStatus(
+    auth,
+    { periodStart, unit: getReinforcementBillingUnit(auth) }
   );
+
+  let programmaticUsageLimitReached: boolean;
+  let maxConversationsForBudget: number;
+  switch (globalConsumption.unit) {
+    case "micro_usd": {
+      // Legacy programmatic usage check via CreditResource.
+      programmaticUsageLimitReached = (
+        await checkProgrammaticUsageLimits(auth)
+      ).isErr();
+
+      // Remaining programmatic budget: total remaining credits capped by the
+      // daily usage allowance.
+      const remainingCreditsMicroUsd =
+        await CreditResource.getRemainingMicroUsd(auth);
+      const remainingDailyCapMicroUsd =
+        await getRemainingDailyCapMicroUsd(auth);
+      maxConversationsForBudget = getMaxConversationsForBudget({
+        globalConsumptionMicroUsd: globalConsumption.consumedMicroUsd,
+        globalCapMicroUsd: globalConsumption.capMicroUsd,
+        remainingProgrammaticCreditsMicroUsd: Math.min(
+          remainingCreditsMicroUsd,
+          remainingDailyCapMicroUsd
+        ),
+      });
+      break;
+    }
+    case "awu_credits": {
+      // Pool + programmatic cap via Metronome state (alert/webhook driven).
+      programmaticUsageLimitReached =
+        (await isApiBlocked(workspace.sId)) ||
+        (await isProgrammaticApiBlocked(workspace.sId));
+
+      // Both clamps fail-open on errors: the reinforcement cap stays the only
+      // constraint.
+      let remainingPoolCreditsAwuCredits = Infinity;
+      let remainingProgrammaticCreditsAwuCredits = Infinity;
+      if (workspace.metronomeCustomerId) {
+        // Reinforcement spend draws from the workspace AWU credit pool: clamp
+        // by the live Metronome balance.
+        const balanceRes = await getWorkspacePoolAwuBalance(
+          workspace.metronomeCustomerId
+        );
+        if (balanceRes.isOk()) {
+          remainingPoolCreditsAwuCredits = balanceRes.value;
+        } else {
+          logger.warn(
+            { workspaceId, error: balanceRes.error },
+            "ReinforcedSkills: failed to fetch AWU pool balance — not constraining the budget"
+          );
+        }
+
+        // Remaining programmatic headroom (cap minus period spend, live from
+        // Metronome; fail-open). Actual cap depletion is enforced by the
+        // alert-driven gate above either way.
+        remainingProgrammaticCreditsAwuCredits =
+          await getRemainingProgrammaticUsageFromMetronome(auth);
+      }
+      maxConversationsForBudget = getMaxConversationsForBudgetAwuCredits({
+        globalConsumptionAwuCredits: globalConsumption.consumedAwuCredits,
+        globalCapAwuCredits: globalConsumption.capAwuCredits,
+        remainingProgrammaticCreditsAwuCredits,
+        remainingPoolCreditsAwuCredits,
+      });
+      break;
+    }
+    default:
+      return assertNever(globalConsumption);
+  }
 
   logger.info(
     {
       workspaceId,
-      globalConsumptionMicroUsd,
-      globalCapMicroUsd,
-      capReached: globalConsumptionMicroUsd >= globalCapMicroUsd,
+      globalConsumption,
       programmaticUsageLimitReached,
-      remainingProgrammaticCreditsMicroUsd,
+      maxConversationsForBudget,
     },
     "ReinforcedSkills: workspace consumption check"
   );
@@ -650,14 +693,9 @@ export async function getReinforcementSettingsActivity({
   return {
     reinforcementEnabled: true,
     batchModeAllowed: await isReinforcementBatchModeAllowed(auth),
-    globalConsumptionMicroUsd,
-    globalCapMicroUsd,
+    globalCapReached: globalConsumption.capReached,
     programmaticUsageLimitReached,
-    maxConversationsForBudget: getMaxConversationsForBudget({
-      globalConsumptionMicroUsd,
-      globalCapMicroUsd,
-      remainingProgrammaticCreditsMicroUsd,
-    }),
+    maxConversationsForBudget,
   };
 }
 

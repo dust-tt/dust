@@ -1,9 +1,11 @@
 import type { Authenticator } from "@app/lib/auth";
 import { getCurrentPeriod } from "@app/lib/reinforcement/billing";
-import { getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd } from "@app/lib/reinforcement/consumption";
+import {
+  filterSkillsUnderSelfImprovementCap,
+  getReinforcementBillingUnit,
+} from "@app/lib/reinforcement/enforcement";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { daysAgo } from "@app/lib/utils/timestamps";
@@ -106,23 +108,10 @@ async function fetchEligibleSkillIds(
 
   // Filter out skills that have reached their per-skill consumption cap.
   const { cycleStart } = await getCurrentPeriod(auth);
-  const skillConsumptionMap =
-    await SelfImprovingSkillsUsageResource.getSumSpendWithMarkupAfterDateForSkills(
-      auth,
-      {
-        createdAfter: cycleStart,
-        skillModelIds: eligibleSkills.map((s) => s.id),
-      }
-    );
-
-  const defaultCapMicroUsd =
-    getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(workspace);
-  const capEligibleSkills = eligibleSkills.filter((skill) => {
-    const consumedMicroUsd =
-      skillConsumptionMap.get(skill.id)?.priceMicroUsd ?? 0;
-    const capMicroUsd =
-      skill.selfImprovementCostsCapMicroUsd ?? defaultCapMicroUsd;
-    return consumedMicroUsd < capMicroUsd;
+  const capEligibleSkills = await filterSkillsUnderSelfImprovementCap(auth, {
+    skills: eligibleSkills,
+    createdAfter: cycleStart,
+    unit: getReinforcementBillingUnit(auth),
   });
 
   logger.info(
