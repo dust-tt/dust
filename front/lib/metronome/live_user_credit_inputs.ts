@@ -15,7 +15,10 @@ import {
   listContractPerUserCreditBalances,
   listMetronomeSeatBalances,
 } from "@app/lib/metronome/client";
-import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
+import {
+  CONTRACT_CREDIT_TYPE_FREE_SEAT,
+  getCreditTypeAwuId,
+} from "@app/lib/metronome/constants";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
 import type { MetronomeSeatBalance } from "@app/lib/metronome/types";
@@ -94,6 +97,7 @@ export async function fetchLiveUserCreditInputs({
       const creditBalancesResult = await listContractPerUserCreditBalances({
         metronomeCustomerId,
         metronomeContractId,
+        contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
       });
       if (creditBalancesResult.isErr()) {
         return new Err(

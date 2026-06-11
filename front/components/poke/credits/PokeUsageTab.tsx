@@ -1,3 +1,4 @@
+import { AlertChip } from "@app/components/poke/credits/AlertChip";
 import { CreditStateLogsLink } from "@app/components/poke/credits/CreditStateLogsLink";
 import { PokeAwuUsageChart } from "@app/components/poke/credits/PokeAwuUsageChart";
 import { PokeMembersUsageTable } from "@app/components/poke/credits/PokeMembersUsageTable";
@@ -9,11 +10,7 @@ import type {
 } from "@app/lib/api/poke/workspace_info";
 import { formatCredits } from "@app/lib/client/credits";
 import type { DefaultMetronomeAlerts } from "@app/lib/metronome/alerts/default_alerts";
-import type {
-  MetronomeAlertRef,
-  MetronomeAlertStatus,
-} from "@app/lib/metronome/alerts/types";
-import { getMetronomeAlertUrl } from "@app/lib/metronome/urls";
+import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import { usePokeAwuPoolSummary } from "@app/poke/swr/credits";
 import type {
   WorkspacePoolCreditState,
@@ -22,13 +19,7 @@ import type {
 import type { SubscriptionType } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
-import {
-  AlertCircle,
-  Chip,
-  ContentMessage,
-  LinkExternal01,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { AlertCircle, Chip, ContentMessage, Spinner } from "@dust-tt/sparkle";
 
 interface PokeUsageTabProps {
   owner: WorkspaceType;
@@ -41,53 +32,6 @@ interface PokeUsageTabProps {
   programmaticAlerts: PokeProgrammaticAlerts;
   usageCapAlert: MetronomeAlertRef | null;
   defaultAlerts: DefaultMetronomeAlerts;
-}
-
-// Maps a Metronome alert's evaluation status to a Chip color and readable
-// label. `in_alarm` (breached) reads red; `ok` (resolved) green; `evaluating`
-// (pending) amber; `null` (unknown) neutral.
-function alertStatusChip(status: MetronomeAlertStatus): {
-  color: "rose" | "success" | "warning" | "info";
-  label: string;
-} {
-  switch (status) {
-    case "in_alarm":
-      return { color: "rose", label: "in alarm" };
-    case "ok":
-      return { color: "success", label: "ok" };
-    case "evaluating":
-      return { color: "warning", label: "evaluating" };
-    case null:
-      return { color: "info", label: "unknown" };
-    default:
-      assertNeverAndIgnore(status);
-      return { color: "info", label: "unknown" };
-  }
-}
-
-interface AlertChipProps {
-  alert: MetronomeAlertRef | null;
-  label: string;
-}
-
-// A clickable badge deep-linking to a Metronome alert, labelled with the alert
-// name and its current evaluation status and colored by that status. Renders
-// nothing when the alert is unknown (not configured).
-function AlertChip({ alert, label }: AlertChipProps) {
-  if (!alert) {
-    return null;
-  }
-  const { color, label: statusLabel } = alertStatusChip(alert.status);
-  return (
-    <Chip
-      size="xs"
-      color={color}
-      label={`${label}: ${statusLabel}`}
-      icon={LinkExternal01}
-      href={getMetronomeAlertUrl(alert.id)}
-      target="_blank"
-    />
-  );
 }
 
 type CreditStateChipColor = "success" | "warning" | "rose" | "info";

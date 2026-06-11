@@ -1,8 +1,8 @@
 import config from "@app/lib/api/config";
 import {
   CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
-  CONTRACT_CREDIT_TYPE_FREE_SEAT,
   CONTRACT_CREDIT_TYPE_POOL,
+  type ContractCreditType,
   PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY,
   PLAN_CODE_CUSTOM_FIELD_KEY,
   SEAT_TYPE_CUSTOM_FIELD_KEY,
@@ -2313,11 +2313,12 @@ export async function updateMetronomeCreditSegmentAmount({
  * `scripts/metronome_setup.ts`) or the edit is rejected with "Invalid custom
  * field keys".
  */
-export async function addFreeSeatCreditToContract({
+export async function addPerUserCreditToContract({
   metronomeCustomerId,
   metronomeContractId,
   productId,
   creditTypeId,
+  contractCreditType,
   amount,
   userId,
   productTags,
@@ -2331,6 +2332,7 @@ export async function addFreeSeatCreditToContract({
   metronomeContractId: string;
   productId: string;
   creditTypeId: string;
+  contractCreditType: ContractCreditType;
   amount: number;
   userId: string;
   productTags: string[];
@@ -2356,8 +2358,7 @@ export async function addFreeSeatCreditToContract({
           priority,
           custom_fields: {
             [PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY]: userId,
-            [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]:
-              CONTRACT_CREDIT_TYPE_FREE_SEAT,
+            [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]: contractCreditType,
           },
           access_schedule: {
             credit_type_id: creditTypeId,
@@ -2497,14 +2498,16 @@ export async function listContractPerUserCreditUserIds({
 export async function listContractPerUserCreditBalances({
   metronomeCustomerId,
   metronomeContractId,
+  contractCreditType,
 }: {
   metronomeCustomerId: string;
   metronomeContractId: string;
+  contractCreditType: ContractCreditType;
 }): Promise<
   Result<
     Map<
       string,
-      { creditId: string; balanceAwu: number; startingBalanceAwu: number }
+      { creditIds: string[]; balanceAwu: number; startingBalanceAwu: number }
     >,
     Error
   >
@@ -2516,9 +2519,12 @@ export async function listContractPerUserCreditBalances({
   const client = getMetronomeClient();
 
   try {
+    // A user could in theory hold more than one per-user credit of the same type
+    // on a contract, so we accumulate a list of credit ids and sum their
+    // balances per user.
     const byUser = new Map<
       string,
-      { creditId: string; balanceAwu: number; startingBalanceAwu: number }
+      { creditIds: string[]; balanceAwu: number; startingBalanceAwu: number }
     >();
     for await (const entry of client.v1.customers.credits.list({
       customer_id: metronomeCustomerId,
@@ -2533,13 +2539,23 @@ export async function listContractPerUserCreditBalances({
       if (!userId) {
         continue;
       }
+      // Only the requested credit type — a per-user credit of another type must
+      // not be counted here (nor archived by the revoke path).
+      if (
+        entry.custom_fields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY] !==
+        contractCreditType
+      ) {
+        continue;
+      }
       const startingBalanceAwu = (
         entry.access_schedule?.schedule_items ?? []
       ).reduce((sum, item) => sum + item.amount, 0);
+      const existing = byUser.get(userId);
       byUser.set(userId, {
-        creditId: entry.id,
-        balanceAwu: entry.balance ?? 0,
-        startingBalanceAwu,
+        creditIds: [...(existing?.creditIds ?? []), entry.id],
+        balanceAwu: (existing?.balanceAwu ?? 0) + (entry.balance ?? 0),
+        startingBalanceAwu:
+          (existing?.startingBalanceAwu ?? 0) + startingBalanceAwu,
       });
     }
     return new Ok(byUser);

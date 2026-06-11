@@ -8,6 +8,7 @@ import {
   listContractPerUserCreditBalances,
   listMetronomeSeatBalances,
 } from "@app/lib/metronome/client";
+import { CONTRACT_CREDIT_TYPE_FREE_SEAT } from "@app/lib/metronome/constants";
 import {
   awuSeatBalanceForUser,
   fetchLiveUserCreditInputs,
@@ -400,6 +401,7 @@ export async function reconcileWorkspaceUserCreditStates({
   const perUserCreditBalancesResult = await listContractPerUserCreditBalances({
     metronomeCustomerId,
     metronomeContractId,
+    contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
   });
   if (perUserCreditBalancesResult.isErr()) {
     logger.warn(

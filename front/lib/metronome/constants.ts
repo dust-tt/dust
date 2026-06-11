@@ -127,6 +127,11 @@ export const CONTRACT_CREDIT_TYPE_POOL = "pool";
 // already-stamped early-return, with no per-credit special-casing.
 export const CONTRACT_CREDIT_TYPE_FREE_SEAT = "free_seat";
 
+export type ContractCreditType =
+  | typeof CONTRACT_CREDIT_TYPE_EXCESS
+  | typeof CONTRACT_CREDIT_TYPE_POOL
+  | typeof CONTRACT_CREDIT_TYPE_FREE_SEAT;
+
 // Custom field stamped on a per-user (free) seat credit, carrying the seat's
 // user sId. Metronome alerts can filter on custom fields but not on a credit's
 // presentation specifier, so this is what lets a per-user
