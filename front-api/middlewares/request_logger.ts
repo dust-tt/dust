@@ -28,6 +28,8 @@ const SKIP_LOGGER_PATHS = new Set([
 export const requestLogger = createMiddleware<RequestLoggerEnv>(
   async (c, next) => {
     if (SKIP_LOGGER_PATHS.has(c.req.path) || c.req.method === "OPTIONS") {
+      // Also drop the APM trace so these requests don't show up in Datadog.
+      tracer.scope().active()?.setTag("manual.drop", true);
       return next();
     }
 
