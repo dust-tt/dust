@@ -114,10 +114,6 @@ export type UpgradeRequestAvailability = {
   hasPendingUpgradeRequest: boolean;
 };
 
-// Whether the current member may request a spend-limit upgrade, and whether they
-// already have a pending one. Used by the usage-status endpoint to drive the
-// in-product CTA, so kept cheap: nothing is fetched for admins (who resolve
-// requests rather than make them) or for members who are not near their limit.
 export async function getUpgradeRequestAvailabilityForUser(
   auth: Authenticator,
   { isNearOrAtLimit }: { isNearOrAtLimit: boolean }
@@ -134,8 +130,6 @@ export async function getUpgradeRequestAvailabilityForUser(
 
   const config =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
-  // Enabled by default when no configuration row exists yet (mirrors the
-  // default in `getUsageConfiguration`).
   if (config && !config.allowMemberUpgradeRequests) {
     return unavailable;
   }

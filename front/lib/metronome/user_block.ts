@@ -74,10 +74,6 @@ export type GetWorkspaceUsageStatusResponseBody = {
   // True when the current user has no billable seat in the workspace and is
   // therefore blocked from sending messages.
   noSeat: boolean;
-  // Whether the current member may request a spend-limit upgrade from the
-  // product (non-admin, warned/capped, workspace allows it), and whether they
-  // already have a pending request. Drive the in-product "Request an upgrade"
-  // CTA on the AWU usage banner.
   canRequestUpgrade: boolean;
   hasPendingUpgradeRequest: boolean;
 };
