@@ -9,13 +9,12 @@ import {
   MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
 } from "@app/types/credits";
 import {
-  Input,
+  InputWithSave,
   Page,
   SettingsList,
   SliderToggle,
-  Spinner,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface UsageSettingsCardProps {
   workspaceId: string;
@@ -36,8 +35,6 @@ export function UsageSettingsCard({
   });
   const { doUpdateUsageSettings } = useUpdateUsageSettings({ workspaceId });
 
-  const [defaultLimitInput, setDefaultLimitInput] = useState<string>("");
-  const [isSavingLimit, setIsSavingLimit] = useState(false);
   const [isSavingAllowUpgradeRequest, setIsSavingAllowUpgradeRequest] =
     useState(false);
 
@@ -52,41 +49,21 @@ export function UsageSettingsCard({
     }
   };
 
-  useEffect(() => {
-    if (defaultUserSpendLimit?.awuCredits !== undefined) {
-      setDefaultLimitInput(
-        defaultUserSpendLimit.awuCredits !== null
-          ? String(defaultUserSpendLimit.awuCredits)
-          : ""
-      );
-    }
-  }, [defaultUserSpendLimit]);
+  const currentDefaultLimit = defaultUserSpendLimit?.awuCredits ?? null;
 
-  const handleCommitDefaultLimit = async () => {
-    const parsed = Number(defaultLimitInput);
-    const current = defaultUserSpendLimit?.awuCredits ?? null;
+  const handleSaveDefaultLimit = async (newValue: string) => {
+    const parsed = Number(newValue);
     if (
       !Number.isInteger(parsed) ||
       parsed < MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS ||
       parsed > MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS ||
-      parsed === current
+      parsed === currentDefaultLimit
     ) {
-      setDefaultLimitInput(current !== null ? String(current) : "");
+      // The component reverts to the current value when nothing is persisted.
       return;
     }
-    setIsSavingLimit(true);
-    try {
-      const result = await doUpdateDefaultUserSpendLimit(parsed);
-      if (!result) {
-        setDefaultLimitInput(current !== null ? String(current) : "");
-      }
-    } finally {
-      setIsSavingLimit(false);
-    }
+    await doUpdateDefaultUserSpendLimit(parsed);
   };
-
-  const isDefaultLimitInputDisabled =
-    readOnly || isSavingLimit || isDefaultUserSpendLimitLoading;
 
   return (
     <Page.Vertical gap="sm" align="stretch">
@@ -98,28 +75,20 @@ export function UsageSettingsCard({
           title="Default pool credit limit"
           description="Define the pool credit limit for users in your workspace. This limit is added on top of each seat's built-in allowance."
           action={
-            <div className="relative w-32">
-              <Input
-                type="text"
+            <div className="w-40">
+              <InputWithSave
                 inputMode="numeric"
                 pattern="[0-9]*"
-                value={defaultLimitInput}
-                onChange={(e) =>
-                  setDefaultLimitInput(e.target.value.replace(/[^\d]/g, ""))
+                value={
+                  currentDefaultLimit !== null
+                    ? String(currentDefaultLimit)
+                    : ""
                 }
-                onBlur={() => void handleCommitDefaultLimit()}
-                disabled={isDefaultLimitInputDisabled}
-                className="pr-16 text-right"
+                unit="credits"
+                normalizeValue={(value) => value.replace(/[^\d]/g, "")}
+                onSave={handleSaveDefaultLimit}
+                disabled={readOnly || isDefaultUserSpendLimitLoading}
               />
-              {isSavingLimit ? (
-                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-                  <Spinner size="xs" />
-                </div>
-              ) : (
-                <span className="copy-sm pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
-                  credits
-                </span>
-              )}
             </div>
           }
         />

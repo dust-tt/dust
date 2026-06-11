@@ -152,6 +152,8 @@ export {
 export type { ImageZoomDialogProps } from "./ImageZoomDialog";
 export { downloadFile, ImageZoomDialog } from "./ImageZoomDialog";
 export { Input } from "./Input";
+export type { InputWithSaveProps } from "./InputWithSave";
+export { InputWithSave } from "./InputWithSave";
 export { InteractiveImageGrid } from "./InteractiveImageGrid";
 export { KeyboardShortcut } from "./KeyboardShortcut";
 export { Label } from "./Label";
