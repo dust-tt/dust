@@ -42,6 +42,7 @@ export const GOOGLE_VERTEX_WHITELISTED_MODEL_IDS = [
   GEMINI_2_5_FLASH_LITE_MODEL_ID,
   GEMINI_2_5_PRO_MODEL_ID,
   // Only available on global endpoint
+  GEMINI_3_1_FLASH_LITE_MODEL_ID,
   GEMINI_3_1_PRO_MODEL_ID,
   GEMINI_3_5_FLASH_MODEL_ID,
 ] as const;
@@ -180,7 +181,7 @@ export const GOOGLE_AI_STUDIO_MODEL_CONFIGS: Record<
 export function overwriteLLMParameters(
   llmParameters: LLMParameters & {
     modelId: GoogleAIStudioWhitelistedModelId;
-  }
+  },
 ): LLMParameters & { modelId: GoogleAIStudioWhitelistedModelId } {
   return {
     ...llmParameters,
@@ -189,17 +190,17 @@ export function overwriteLLMParameters(
 }
 
 export function isGoogleAIStudioWhitelistedModelId(
-  modelId: ModelIdType
+  modelId: ModelIdType,
 ): modelId is GoogleAIStudioWhitelistedModelId {
   return (GOOGLE_AI_STUDIO_WHITELISTED_MODEL_IDS as readonly string[]).includes(
-    modelId
+    modelId,
   );
 }
 
 export function isGoogleVertexWhitelistedModelId(
-  modelId: ModelIdType
+  modelId: ModelIdType,
 ): modelId is GoogleVertexWhitelistedModelId {
   return (GOOGLE_VERTEX_WHITELISTED_MODEL_IDS as readonly string[]).includes(
-    modelId
+    modelId,
   );
 }
