@@ -178,15 +178,15 @@ function MetadataRow({
   descriptionClassName,
 }: MetadataRowProps) {
   const descriptionClasses = [
-    "s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night",
+    "s:text-sm s:text-muted-foreground dark:s:text-muted-foreground-night",
     descriptionClassName,
   ]
     .filter(Boolean)
     .join(" ");
 
   return (
-    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border dark:s-border-border-night s-py-2">
-      <div className="s-w-[80px] s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+    <div className="s:flex s:items-center s:gap-2 s:border-t s:border-border dark:s:border-border-night s:py-2">
+      <div className="s:w-[80px] s:text-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
         {label}
       </div>
       {action}
@@ -543,9 +543,9 @@ export function AgentBuilderView({
 
     // Diff styles: success for additions, warning for removals
     const additionStyle =
-      "s-rounded s-bg-success-100 dark:s-bg-success-100-night s-px-0.5 s-text-success-600 dark:s-text-success-600-night";
+      "s:rounded s:bg-success-100 dark:s:bg-success-100-night s:px-0.5 s:text-success-600 dark:s:text-success-600-night";
     const removalStyle =
-      "s-rounded s-bg-warning-100 dark:s-bg-warning-100-night s-px-0.5 s-text-warning-600 dark:s-text-warning-600-night s-line-through";
+      "s:rounded s:bg-warning-100 dark:s:bg-warning-100-night s:px-0.5 s:text-warning-600 dark:s:text-warning-600-night s:line-through";
 
     // Apply some fake diff changes
     const modifiedLines = lines.map((line, index) => {
@@ -665,12 +665,12 @@ export function AgentBuilderView({
     action?: React.ReactNode;
   }) => {
     return (
-      <div className="s-flex s-w-full s-items-end s-gap-2">
-        <div className="s-flex s-flex-1 s-flex-col">
-          <div className="s-heading-base s-text-foreground dark:s-text-foreground-night">
+      <div className="s:flex s:w-full s:items-end s:gap-2">
+        <div className="s:flex s:flex-1 s:flex-col">
+          <div className="s:heading-base s:text-foreground dark:s:text-foreground-night">
             {title}
           </div>
-          <div className="s-text-base s-text-muted-foreground dark:s-text-muted-foreground-night">
+          <div className="s:text-base s:text-muted-foreground dark:s:text-muted-foreground-night">
             {description}
           </div>
         </div>
@@ -685,7 +685,7 @@ export function AgentBuilderView({
   ];
 
   return (
-    <div className="s-h-screen s-w-full s-bg-background dark:s-bg-background-night">
+    <div className="s:h-screen s:w-full s:bg-background dark:s:bg-background-night">
       <style>{`
         :root {
           --focus-border: linear-gradient(to bottom, ${customColors.gray[100]}, ${customColors.blue[400]}, ${customColors.gray[100]});
@@ -704,7 +704,7 @@ export function AgentBuilderView({
           transition: width 200ms, background-color 200ms;
         }
       `}</style>
-      <div className="s-flex s-h-full s-w-full">
+      <div className="s:flex s:h-full s:w-full">
         <Allotment
           ref={allotmentRef}
           vertical={false}
@@ -724,14 +724,14 @@ export function AgentBuilderView({
             }
             setRightPanelRatio(rightSize / total);
           }}
-          className="s-h-full s-w-full s-flex-1"
+          className="s:h-full s:w-full s:flex-1"
         >
           <Allotment.Pane
             minSize={360}
             preferredSize={60}
-            className="s-flex s-h-full s-flex-col s-overflow-hidden s-border-r s-border-border dark:s-border-border-night"
+            className="s:flex s:h-full s:flex-col s:overflow-hidden s:border-r s:border-border dark:s:border-border-night"
           >
-            <div className="s-flex s-h-full s-flex-col">
+            <div className="s:flex s:h-full s:flex-col">
               <Bar
                 position="top"
                 variant="default"
@@ -747,7 +747,7 @@ export function AgentBuilderView({
                   />
                 }
                 rightActions={
-                  <div className="s-flex s-items-center s-gap-2">
+                  <div className="s:flex s:items-center s:gap-2">
                     {isInstructionDirty ? (
                       <>
                         <Button
@@ -771,10 +771,10 @@ export function AgentBuilderView({
               />
               <div
                 ref={setScrollContainer}
-                className="s-flex s-w-full s-flex-1 s-flex-col s-overflow-auto s-px-6"
+                className="s:flex s:w-full s:flex-1 s:flex-col s:overflow-auto s:px-6"
               >
-                <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-12 s-py-6">
-                  <div className="s-flex s-flex-1 s-flex-col s-gap-3">
+                <div className="s:mx-auto s:flex s:w-full s:max-w-4xl s:flex-col s:gap-12 s:py-6">
+                  <div className="s:flex s:flex-1 s:flex-col s:gap-3">
                     <SectionHeader
                       title="Instructions"
                       description="Command or guideline you provide to your agent to direct its responses."
@@ -802,7 +802,7 @@ export function AgentBuilderView({
                       onTextChange={handleInstructionTextChange}
                       scrollContainer={scrollContainer}
                       topBar={
-                        <div className="s-flex s-flex-1 s-flex-wrap s-items-center s-gap-2 s-px-3 s-py-2">
+                        <div className="s:flex s:flex-1 s:flex-wrap s:items-center s:gap-2 s:px-3 s:py-2">
                           <Button
                             icon={Heading01}
                             size="icon"
@@ -888,9 +888,9 @@ export function AgentBuilderView({
                               ))}
                             </DropdownMenuContent>
                           </DropdownMenu>
-                          <div className="s-flex-1" />
+                          <div className="s:flex-1" />
                           {hasSuggestionsState && (
-                            <div className="s-ml-auto s-flex s-gap-2">
+                            <div className="s:ml-auto s:flex s:gap-2">
                               <Button
                                 size="xs"
                                 variant="outline"
@@ -919,12 +919,12 @@ export function AgentBuilderView({
                       }
                     />
                   </div>
-                  <div className="s-flex s-flex-col s-gap-2">
+                  <div className="s:flex s:flex-col s:gap-2">
                     <SectionHeader
                       title="Spaces"
                       description="Set what knowledge and capabilities the agent can access."
                     />
-                    <div className="s-flex s-flex-wrap s-gap-2">
+                    <div className="s:flex s:flex-wrap s:gap-2">
                       <Button
                         size="sm"
                         variant="outline"
@@ -967,19 +967,19 @@ export function AgentBuilderView({
                     </div>
                     {selectedSpaces.length === 0 &&
                       selectedProjects.length === 0 && (
-                        <div className="s-copy-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                        <div className="s:copy-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
                           No spaces selected.
                         </div>
                       )}
                   </div>
-                  <div className="s-flex s-flex-col s-gap-2">
+                  <div className="s:flex s:flex-col s:gap-2">
                     <SectionHeader
                       title="Knowledge and capabilities"
                       description="Add knowledge, tools and skills to enhance your agent's
                     abilities."
                       action={<></>}
                     />
-                    <div className="s-flex s-flex-wrap s-gap-2">
+                    <div className="s:flex s:flex-wrap s:gap-2">
                       <Button
                         size="sm"
                         variant="outline"
@@ -994,14 +994,14 @@ export function AgentBuilderView({
                       />
                     </div>
                   </div>
-                  <div className="s-flex s-flex-col s-gap-2">
+                  <div className="s:flex s:flex-col s:gap-2">
                     <SectionHeader
                       title="Triggers"
                       description="Add knowledge, tools and skills to enhance your agent's
                     abilities."
                     />
 
-                    <div className="s-flex s-flex-wrap s-gap-2">
+                    <div className="s:flex s:flex-wrap s:gap-2">
                       <Button
                         size="sm"
                         variant="outline"
@@ -1010,14 +1010,14 @@ export function AgentBuilderView({
                       />
                     </div>
                   </div>
-                  <div className="s-flex s-flex-col">
-                    <div className="s-flex s-w-full s-min-w-0 s-flex-1 s-items-end s-gap-2">
-                      <div className="s-flex s-min-w-0 s-flex-1 s-flex-col s-gap-2">
-                        <div className="s-heading-base s-text-foreground dark:s-text-foreground-night">
+                  <div className="s:flex s:flex-col">
+                    <div className="s:flex s:w-full s:min-w-0 s:flex-1 s:items-end s:gap-2">
+                      <div className="s:flex s:min-w-0 s:flex-1 s:flex-col s:gap-2">
+                        <div className="s:heading-base s:text-foreground dark:s:text-foreground-night">
                           Settings
                         </div>
-                        <div className="s-flex s-flex-1 s-items-center s-gap-2 s-py-2">
-                          <div className="s-w-[80px] s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                        <div className="s:flex s:flex-1 s:items-center s:gap-2 s:py-2">
+                          <div className="s:w-[80px] s:text-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
                             Handle
                           </div>
                           <DropdownMenu>
@@ -1042,7 +1042,7 @@ export function AgentBuilderView({
                           </DropdownMenu>
                           <Input
                             placeholder="Agent name"
-                            containerClassName="s-flex-1"
+                            containerClassName="s:flex-1"
                             value={agentName}
                             onChange={(event) =>
                               setAgentName(event.target.value)
@@ -1056,11 +1056,11 @@ export function AgentBuilderView({
                         emoji={displayEmoji}
                         backgroundColor={displayBackgroundColor}
                         isRounded={false}
-                        className="s-mb-2"
+                        className="s:mb-2"
                       />
                     </div>
-                    <div className="s-flex s-items-center s-gap-2 s-border-t s-border-border dark:s-border-border-night s-py-2">
-                      <div className="s-w-[80px] s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    <div className="s:flex s:items-center s:gap-2 s:border-t s:border-border dark:s:border-border-night s:py-2">
+                      <div className="s:w-[80px] s:text-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
                         Description
                       </div>
                       <DropdownMenu>
@@ -1084,7 +1084,7 @@ export function AgentBuilderView({
                         </DropdownMenuContent>
                       </DropdownMenu>
                       <Input
-                        containerClassName="s-flex-1"
+                        containerClassName="s:flex-1"
                         placeholder="Short description"
                         value={agentDescription}
                         onChange={(event) =>
@@ -1145,7 +1145,7 @@ export function AgentBuilderView({
                         />
                       }
                       description={editorNames.join(", ")}
-                      descriptionClassName="s-flex-1 s-min-w-0 s-truncate"
+                      descriptionClassName="s:flex-1 s:min-w-0 s:truncate"
                     />
                     <MetadataRow
                       label="Tags"
@@ -1210,7 +1210,7 @@ export function AgentBuilderView({
                         </DropdownMenu>
                       }
                       description={selectedTagNames.join(", ")}
-                      descriptionClassName="s-flex-1 s-min-w-0 s-truncate"
+                      descriptionClassName="s:flex-1 s:min-w-0 s:truncate"
                     />
                   </div>
                 </div>
@@ -1222,14 +1222,14 @@ export function AgentBuilderView({
             <Allotment.Pane
               minSize={280}
               preferredSize={40}
-              className="s-flex s-h-full s-flex-col s-overflow-hidden"
+              className="s:flex s:h-full s:flex-col s:overflow-hidden"
             >
               <Tabs
                 value={activeRightPanelTab}
                 onValueChange={setActiveRightPanelTab}
-                className="s-flex s-min-h-0 s-flex-1 s-flex-col s-pt-3"
+                className="s:flex s:min-h-0 s:flex-1 s:flex-col s:pt-3"
               >
-                <TabsList className="s-pl-2 s-pr-6">
+                <TabsList className="s:pl-2 s:pr-6">
                   <Button
                     icon={LogIn01}
                     variant="ghost-secondary"
@@ -1248,9 +1248,9 @@ export function AgentBuilderView({
                 </TabsList>
                 <TabsContent
                   value="sidekick"
-                  className="s-flex s-min-h-0 s-flex-1 s-flex-col"
+                  className="s:flex s:min-h-0 s:flex-1 s:flex-col"
                 >
-                  <div className="s-flex s-min-h-0 s-flex-1 s-overflow-y-auto s-p-3">
+                  <div className="s:flex s:min-h-0 s:flex-1 s:overflow-y-auto s:p-3">
                     <NewConversationContainer>
                       {(() => {
                         const diffStart = "[[diff]]";
@@ -1286,7 +1286,7 @@ export function AgentBuilderView({
                           const trimmedAfter = after.trim();
 
                           return (
-                            <div className="s-flex s-flex-col s-gap-3">
+                            <div className="s:flex s:flex-col s:gap-3">
                               {trimmedBefore ? (
                                 <Markdown
                                   content={trimmedBefore}
@@ -1404,9 +1404,9 @@ export function AgentBuilderView({
                       })()}
                     </NewConversationContainer>
                   </div>
-                  <div className="s-p-4">
-                    <div className="s-flex s-flex-col s-items-center s-gap-3">
-                      <div className="s-flex s-flex-wrap s-items-center s-gap-2">
+                  <div className="s:p-4">
+                    <div className="s:flex s:flex-col s:items-center s:gap-3">
+                      <div className="s:flex s:flex-wrap s:items-center s:gap-2">
                         <Button
                           size="sm"
                           variant="outline"
@@ -1447,25 +1447,25 @@ export function AgentBuilderView({
                 </TabsContent>
                 <TabsContent
                   value="testing"
-                  className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
+                  className="s:flex s:flex-1 s:flex-col s:overflow-y-auto s:px-6 s:py-6"
                 >
-                  <div className="s-copy-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  <div className="s:copy-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
                     Testing panel content.
                   </div>
                 </TabsContent>
                 <TabsContent
                   value="insights"
-                  className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
+                  className="s:flex s:flex-1 s:flex-col s:overflow-y-auto s:px-6 s:py-6"
                 >
-                  <div className="s-copy-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  <div className="s:copy-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
                     Insights panel content.
                   </div>
                 </TabsContent>
                 <TabsContent
                   value="feedback"
-                  className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
+                  className="s:flex s:flex-1 s:flex-col s:overflow-y-auto s:px-6 s:py-6"
                 >
-                  <div className="s-copy-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  <div className="s:copy-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
                     Feedback panel content.
                   </div>
                 </TabsContent>
@@ -1474,7 +1474,7 @@ export function AgentBuilderView({
           )}
         </Allotment>
         {!isRightPanelOpen && (
-          <div className="s-flex s-h-full s-w-14 s-flex-col s-items-center s-gap-2 s-py-3">
+          <div className="s:flex s:h-full s:w-14 s:flex-col s:items-center s:gap-2 s:py-3">
             <Button
               icon={ArrowNarrowLeft}
               size="sm"
@@ -1507,12 +1507,12 @@ export function AgentBuilderView({
               placeholder="Search spaces and projects"
               value={spacesProjectsSearch}
               onChange={(event) => setSpacesProjectsSearch(event.target.value)}
-              className="s-mt-4"
+              className="s:mt-4"
             />
           </SheetHeader>
           <SheetContainer isListSelector>
-            <div className="s-flex s-flex-col s-gap-4">
-              <div className="s-flex s-flex-col">
+            <div className="s:flex s:flex-col s:gap-4">
+              <div className="s:flex s:flex-col">
                 <ListItemSection size="sm">Spaces</ListItemSection>
                 <ListGroup>
                   {[...filteredOpenSpaces, ...filteredRestrictedSpaces].map(
@@ -1525,7 +1525,7 @@ export function AgentBuilderView({
                           onClick={() => toggleDraftSpace(space.id)}
                           className={
                             isSelected
-                              ? "s-bg-primary-50 dark:s-bg-primary-50-night"
+                              ? "s:bg-primary-50 dark:s:bg-primary-50-night"
                               : ""
                           }
                         >
@@ -1535,11 +1535,11 @@ export function AgentBuilderView({
                             }
                             size="sm"
                           />
-                          <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
-                            <span className="s-heading-sm s-truncate s-text-foreground dark:s-text-foreground-night">
+                          <div className="s:flex s:min-w-0 s:flex-1 s:flex-col">
+                            <span className="s:heading-sm s:truncate s:text-foreground dark:s:text-foreground-night">
                               {space.name}
                             </span>
-                            <span className="s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                            <span className="s:truncate s:text-xs s:text-muted-foreground dark:s:text-muted-foreground-night">
                               {space.description}
                             </span>
                           </div>
@@ -1572,7 +1572,7 @@ export function AgentBuilderView({
                         onClick={() => toggleDraftProject(space.id)}
                         className={
                           isSelected
-                            ? "s-bg-primary-50 dark:s-bg-primary-50-night"
+                            ? "s:bg-primary-50 dark:s:bg-primary-50-night"
                             : ""
                         }
                       >
@@ -1584,11 +1584,11 @@ export function AgentBuilderView({
                           }
                           size="sm"
                         />
-                        <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
-                          <span className="s-truncate s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
+                        <div className="s:flex s:min-w-0 s:flex-1 s:flex-col">
+                          <span className="s:truncate s:text-sm s:font-medium s:text-foreground dark:s:text-foreground-night">
                             {space.name}
                           </span>
-                          <span className="s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                          <span className="s:truncate s:text-xs s:text-muted-foreground dark:s:text-muted-foreground-night">
                             {space.description}
                           </span>
                         </div>
@@ -1620,7 +1620,7 @@ export function AgentBuilderView({
                         onClick={() => toggleDraftProject(space.id)}
                         className={
                           isSelected
-                            ? "s-bg-primary-50 dark:s-bg-primary-50-night"
+                            ? "s:bg-primary-50 dark:s:bg-primary-50-night"
                             : ""
                         }
                       >
@@ -1632,11 +1632,11 @@ export function AgentBuilderView({
                           }
                           size="sm"
                         />
-                        <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
-                          <span className="s-truncate s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
+                        <div className="s:flex s:min-w-0 s:flex-1 s:flex-col">
+                          <span className="s:truncate s:text-sm s:font-medium s:text-foreground dark:s:text-foreground-night">
                             {space.name}
                           </span>
-                          <span className="s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                          <span className="s:truncate s:text-xs s:text-muted-foreground dark:s:text-muted-foreground-night">
                             {space.description}
                           </span>
                         </div>
@@ -1714,14 +1714,14 @@ export function AgentBuilderView({
             <SheetTitle>{selectedVersion?.date ?? "Version"}</SheetTitle>
             <SheetDescription>
               By:{" "}
-              <span className="s-heading-ws">
+              <span className="s:heading-ws">
                 {selectedVersion?.author ?? "Unknown"}
               </span>
             </SheetDescription>
           </SheetHeader>
           <SheetContainer>
-            <div className="s-tiems-end s-flex s-flex-1 s-flex-col s-gap-3 s-overflow-auto">
-              <div className="s-flex s-w-full s-justify-end">
+            <div className="s:tiems-end s:flex s:flex-1 s:flex-col s:gap-3 s:overflow-auto">
+              <div className="s:flex s:w-full s:justify-end">
                 <Button
                   label="Restore this version"
                   icon={ClockRewind}
@@ -1734,7 +1734,7 @@ export function AgentBuilderView({
               <RichTextArea
                 readOnly
                 defaultValue={versionDiffContent}
-                className="s-min-h-[400px]"
+                className="s:min-h-[400px]"
               />
             </div>
           </SheetContainer>

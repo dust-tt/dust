@@ -125,7 +125,7 @@ const editorVariants = cva(
       embedded: {
         true: [
           "rounded-b-xl border-0 bg-transparent",
-          "focus:ring-0 focus:outline-none focus:border-0",
+          "focus:ring-0 focus:outline-hidden focus:border-0",
         ],
         false: [
           "border rounded-xl",
@@ -230,7 +230,7 @@ export function AgentBuilderInstructionsEditor({
         owner,
         HTMLAttributes: {
           class:
-            "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
+            "min-w-0 px-0 py-0 border-none outline-hidden focus:outline-hidden focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
         },
         suggestion: createMentionSuggestion({
           owner,

@@ -18,7 +18,7 @@ import * as React from "react";
 import { useState } from "react";
 
 const multiPageDialogLayoutVariants = cva(
-  cn("s-flex s-flex-col s-h-full s-overflow-hidden")
+  cn("s:flex s:flex-col s:h-full s:overflow-hidden")
 );
 
 interface MultiPageDialogPage {
@@ -54,15 +54,15 @@ const MultiPageDialogFooter = ({
   const content = (
     <div
       className={cn(
-        "s-flex s-flex-none s-flex-col s-gap-3 s-px-4 s-py-2",
+        "s:flex s:flex-none s:flex-col s:gap-3 s:px-4 s:py-2",
         className
       )}
       {...props}
     >
       {children}
-      <div className="s-flex s-flex-row s-justify-between">
+      <div className="s:flex s:flex-row s:justify-between">
         <div>{leftButton && <Button {...leftButton} />}</div>
-        <div className="s-flex s-gap-2">
+        <div className="s:flex s:gap-2">
           {centerButton && <Button {...centerButton} />}
           {rightButton && <Button {...rightButton} />}
         </div>
@@ -195,12 +195,12 @@ const MultiPageDialogContent = React.forwardRef<
         <div className={cn(multiPageDialogLayoutVariants())}>
           <DialogHeader
             hideButton={hideCloseButton || showHeaderNavigation}
-            className="s-flex-none"
+            className="s:flex-none"
           >
-            <div className="s-flex s-items-center s-justify-between">
-              <div className="s-flex s-items-center s-gap-3">
+            <div className="s:flex s:items-center s:justify-between">
+              <div className="s:flex s:items-center s:gap-3">
                 {showNavigation && showHeaderNavigation && (
-                  <div className="s-flex s-items-center s-gap-1">
+                  <div className="s:flex s:items-center s:gap-1">
                     <Button
                       icon={ChevronLeft}
                       variant="ghost"
@@ -229,14 +229,14 @@ const MultiPageDialogContent = React.forwardRef<
                 )}
                 <div
                   className={cn(
-                    "s-flex s-items-center s-gap-3 s-transition-all s-duration-200 s-ease-out",
+                    "s:flex s:items-center s:gap-3 s:transition-all s:duration-200 s:ease-out",
                     {
-                      "s-transform s-opacity-0": isTransitioning,
-                      "s-translate-x-1":
+                      "s:transform s:opacity-0": isTransitioning,
+                      "s:translate-x-1":
                         isTransitioning && transitionDirection === "next",
-                      "s--translate-x-1":
+                      "s:-translate-x-1":
                         isTransitioning && transitionDirection === "prev",
-                      "s-translate-x-0 s-opacity-100": !isTransitioning,
+                      "s:translate-x-0 s:opacity-100": !isTransitioning,
                     }
                   )}
                 >
@@ -261,8 +261,8 @@ const MultiPageDialogContent = React.forwardRef<
               {showNavigation && pages.length > 1 && (
                 <div
                   className={cn(
-                    "s-heading-xs s-text-muted-foreground-night",
-                    !hideCloseButton && "s-pr-8"
+                    "s:heading-xs s:text-muted-foreground-night",
+                    !hideCloseButton && "s:pr-8"
                   )}
                 >
                   {currentPageIndex + 1}/{pages.length}
@@ -271,33 +271,33 @@ const MultiPageDialogContent = React.forwardRef<
             </div>
           </DialogHeader>
 
-          <div className="s-min-h-0 s-flex-1 s-overflow-y-auto">
+          <div className="s:min-h-0 s:flex-1 s:overflow-y-auto">
             <div
               className={cn(
-                "s-h-full s-transition-all s-duration-200 s-ease-out",
+                "s:h-full s:transition-all s:duration-200 s:ease-out",
                 {
-                  "s-transform s-opacity-0": isTransitioning,
-                  "s-translate-x-2":
+                  "s:transform s:opacity-0": isTransitioning,
+                  "s:translate-x-2":
                     isTransitioning && transitionDirection === "next",
-                  "s--translate-x-2":
+                  "s:-translate-x-2":
                     isTransitioning && transitionDirection === "prev",
-                  "s-translate-x-0 s-opacity-100": !isTransitioning,
+                  "s:translate-x-0 s:opacity-100": !isTransitioning,
                 },
-                currentPage.fixedContent ? "s-flex s-flex-col" : ""
+                currentPage.fixedContent ? "s:flex s:flex-col" : ""
               )}
             >
               {currentPage.fixedContent && (
                 <>
-                  <div className="s-flex-none s-px-5 s-py-4">
+                  <div className="s:flex-none s:px-5 s:py-4">
                     {currentPage.fixedContent}
                   </div>
                   <Separator />
                 </>
               )}
               <ScrollArea
-                className={currentPage.fixedContent ? "s-flex-1" : "s-h-full"}
+                className={currentPage.fixedContent ? "s:flex-1" : "s:h-full"}
               >
-                <div className="s-flex s-flex-col s-gap-2 s-px-5">
+                <div className="s:flex s:flex-col s:gap-2 s:px-5">
                   {currentPage.content}
                 </div>
               </ScrollArea>

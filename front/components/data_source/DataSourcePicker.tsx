@@ -145,7 +145,7 @@ export default function DataSourcePicker({
                     readOnly
                       ? "text-gray-400 dark:text-gray-400-night"
                       : "text-muted-foreground dark:text-muted-foreground-night",
-                    "focus:outline-none focus:ring-0"
+                    "focus:outline-hidden focus:ring-0"
                   )}
                 >
                   <MaybeLink href={getEditLink(selectedDataSourceView)}>

@@ -34,7 +34,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Self-service analytics agent for SQL queries, spreadsheets, data warehouses, and visualizations.",
     emoji: "📊",
-    backgroundColor: "s-bg-violet-100",
+    backgroundColor: "s:bg-violet-100",
     tags: ["DATA"],
   },
   {
@@ -43,7 +43,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Talk to the FAQ of any external tool as if it was a human.",
     emoji: "🛠️",
-    backgroundColor: "s-bg-blue-100",
+    backgroundColor: "s:bg-blue-100",
     tags: ["DATA", "KNOWLEDGE"],
   },
   {
@@ -52,7 +52,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Build data visualizations on demand from files or conversation follow-ups.",
     emoji: "🎨",
-    backgroundColor: "s-bg-violet-100",
+    backgroundColor: "s:bg-violet-100",
     tags: ["DATA"],
   },
   {
@@ -61,7 +61,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Navigate your data ecosystem with instant access to schemas and relationships across tables.",
     emoji: "🔎",
-    backgroundColor: "s-bg-violet-100",
+    backgroundColor: "s:bg-violet-100",
     tags: ["DATA"],
   },
   {
@@ -70,7 +70,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Assist managers with daily tasks, finding information, coaching, and write-ups.",
     emoji: "👩‍💼",
-    backgroundColor: "s-bg-orange-100",
+    backgroundColor: "s:bg-orange-100",
     tags: [
       "DATA",
       "ENGINEERING",
@@ -86,7 +86,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Generate SQL queries from your schemas and informal instructions. Navigate data models.",
     emoji: "🛢️",
-    backgroundColor: "s-bg-violet-100",
+    backgroundColor: "s:bg-violet-100",
     tags: ["DATA", "ENGINEERING"],
   },
   {
@@ -95,7 +95,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Evaluate UX writing of product copy and suggest improvements for user experience and accessibility.",
     emoji: "✏️",
-    backgroundColor: "s-bg-green-100",
+    backgroundColor: "s:bg-green-100",
     tags: ["DESIGN"],
   },
   {
@@ -104,7 +104,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Assistant for code beginners. Get help writing code and getting started.",
     emoji: "🐥",
-    backgroundColor: "s-bg-pink-100",
+    backgroundColor: "s:bg-pink-100",
     tags: ["ENGINEERING"],
   },
   {
@@ -113,7 +113,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Assistant for code experts with codebase context. Straight to the point.",
     emoji: "👩‍💻",
-    backgroundColor: "s-bg-pink-100",
+    backgroundColor: "s:bg-pink-100",
     tags: ["ENGINEERING"],
   },
   {
@@ -122,7 +122,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Assist engineers during incidents by retrieving info from runbooks, GitHub, and Slack.",
     emoji: "🦹",
-    backgroundColor: "s-bg-pink-100",
+    backgroundColor: "s:bg-pink-100",
     tags: ["ENGINEERING"],
   },
   {
@@ -131,7 +131,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Write incident communications from tickets or Slack threads.",
     emoji: "🗣️",
-    backgroundColor: "s-bg-pink-100",
+    backgroundColor: "s:bg-pink-100",
     tags: ["ENGINEERING"],
   },
   {
@@ -140,7 +140,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Summarize incidents into a table with status, summary, PM, impact, and remediation.",
     emoji: "⏮️",
-    backgroundColor: "s-bg-pink-100",
+    backgroundColor: "s:bg-pink-100",
     tags: ["ENGINEERING"],
   },
   {
@@ -149,7 +149,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Dissect codebase history, docs, and communication to answer questions about features and code.",
     emoji: "🔍",
-    backgroundColor: "s-bg-pink-100",
+    backgroundColor: "s:bg-pink-100",
     tags: ["ENGINEERING"],
   },
   {
@@ -158,7 +158,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Classify or triage support or IT tickets into categories or teams.",
     emoji: "🐈‍⬛",
-    backgroundColor: "s-bg-pink-300",
+    backgroundColor: "s:bg-pink-300",
     tags: ["ENGINEERING", "OPERATIONS"],
   },
   {
@@ -167,7 +167,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Expert help on spreadsheet formulas for calculations and data manipulations.",
     emoji: "➗",
-    backgroundColor: "s-bg-sky-200",
+    backgroundColor: "s:bg-sky-200",
     tags: ["FINANCE", "OPERATIONS"],
   },
   {
@@ -176,7 +176,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Organize, correct, and translate hiring interview notes in seconds.",
     emoji: "🗒️",
-    backgroundColor: "s-bg-orange-100",
+    backgroundColor: "s:bg-orange-100",
     tags: ["HIRING"],
   },
   {
@@ -185,7 +185,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Generate interview questions and exercises tailored to roles with grading rubrics.",
     emoji: "🎯",
-    backgroundColor: "s-bg-orange-100",
+    backgroundColor: "s:bg-orange-100",
     tags: ["HIRING"],
   },
   {
@@ -194,7 +194,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Extract, summarize, and organize key highlights from communication channels.",
     emoji: "🔆",
-    backgroundColor: "s-bg-blue-100",
+    backgroundColor: "s:bg-blue-100",
     tags: ["KNOWLEDGE"],
   },
   {
@@ -202,7 +202,7 @@ const FAKE_TEMPLATES: Template[] = [
     handle: "docBuilder",
     userFacingDescription: "Build documentation directly from support tickets.",
     emoji: "📝",
-    backgroundColor: "s-bg-sky-200",
+    backgroundColor: "s:bg-sky-200",
     tags: ["KNOWLEDGE", "SUPPORT"],
   },
   {
@@ -211,7 +211,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Generate quizzes for employee trainings on products and guidelines.",
     emoji: "💯",
-    backgroundColor: "s-bg-blue-100",
+    backgroundColor: "s:bg-blue-100",
     tags: ["KNOWLEDGE"],
   },
   {
@@ -220,7 +220,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Transform HR policy documents into interactive quizzes for employees.",
     emoji: "⁉️",
-    backgroundColor: "s-bg-cyan-100",
+    backgroundColor: "s:bg-cyan-100",
     tags: ["KNOWLEDGE"],
   },
   {
@@ -229,7 +229,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Help users catch up quickly on their favorite topics.",
     emoji: "🌴",
-    backgroundColor: "s-bg-blue-100",
+    backgroundColor: "s:bg-blue-100",
     tags: ["KNOWLEDGE"],
   },
   {
@@ -238,7 +238,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Perform deep research in your knowledge base or on the web.",
     emoji: "🔎",
-    backgroundColor: "s-bg-blue-100",
+    backgroundColor: "s:bg-blue-100",
     tags: ["KNOWLEDGE"],
   },
   {
@@ -247,7 +247,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Get a recap of key discussions in your favorite Slack channels.",
     emoji: "👀",
-    backgroundColor: "s-bg-blue-100",
+    backgroundColor: "s:bg-blue-100",
     tags: ["KNOWLEDGE"],
   },
   {
@@ -256,7 +256,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Fast internet search with accurate answers and sources in under 100 words.",
     emoji: "🌐",
-    backgroundColor: "s-bg-blue-100",
+    backgroundColor: "s:bg-blue-100",
     tags: ["KNOWLEDGE"],
   },
   {
@@ -265,7 +265,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Knowledgeable representative for your team with accurate responses from team info.",
     emoji: "👥",
-    backgroundColor: "s-bg-blue-100",
+    backgroundColor: "s:bg-blue-100",
     tags: ["KNOWLEDGE"],
   },
   {
@@ -274,7 +274,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Assist with standard legal questions from internal documentation and policies.",
     emoji: "⚖️",
-    backgroundColor: "s-bg-sky-400",
+    backgroundColor: "s:bg-sky-400",
     tags: ["LEGAL"],
   },
   {
@@ -283,7 +283,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "First pass review of MSAs, NDAs, and other legal documents.",
     emoji: "🚨",
-    backgroundColor: "s-bg-sky-500",
+    backgroundColor: "s:bg-sky-500",
     tags: ["LEGAL"],
   },
   {
@@ -292,7 +292,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Refine text for spelling, grammar, and style with analysis and recommendations.",
     emoji: "✨",
-    backgroundColor: "s-bg-green-100",
+    backgroundColor: "s:bg-green-100",
     tags: ["MARKETING"],
   },
   {
@@ -301,7 +301,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "SEO-optimized blog posts tailored to your company's needs and brand.",
     emoji: "✍️",
-    backgroundColor: "s-bg-green-100",
+    backgroundColor: "s:bg-green-100",
     tags: ["MARKETING"],
   },
   {
@@ -310,7 +310,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Professional HTML email creator with code snippets for components and layouts.",
     emoji: "💌",
-    backgroundColor: "s-bg-green-100",
+    backgroundColor: "s:bg-green-100",
     tags: ["MARKETING"],
   },
   {
@@ -319,7 +319,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Expert translations considering language, audience, and purpose. Industry-tailored.",
     emoji: "🌎",
-    backgroundColor: "s-bg-blue-400",
+    backgroundColor: "s:bg-blue-400",
     tags: ["MARKETING", "PRODUCTIVITY"],
   },
   {
@@ -328,7 +328,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Generate Twitter posts tailored to your company's tone.",
     emoji: "🪺",
-    backgroundColor: "s-bg-green-100",
+    backgroundColor: "s:bg-green-100",
     tags: ["MARKETING"],
   },
   {
@@ -337,7 +337,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Categorize and analyze user feedback with sentiment analysis per category.",
     emoji: "🗣️",
-    backgroundColor: "s-bg-pink-100",
+    backgroundColor: "s:bg-pink-100",
     tags: ["OPERATIONS", "PRODUCT"],
   },
   {
@@ -346,7 +346,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Convert support tickets into a FAQ to update your documentation.",
     emoji: "🐈‍⬛",
-    backgroundColor: "s-bg-sky-100",
+    backgroundColor: "s:bg-sky-100",
     tags: ["OPERATIONS"],
   },
   {
@@ -354,7 +354,7 @@ const FAKE_TEMPLATES: Template[] = [
     handle: "ITHelpDesk",
     userFacingDescription: "IT Helpdesk agent to deflect common questions.",
     emoji: "🐈‍⬛",
-    backgroundColor: "s-bg-pink-300",
+    backgroundColor: "s:bg-pink-300",
     tags: ["OPERATIONS"],
   },
   {
@@ -363,7 +363,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Define and explain technical terms relevant to product managers.",
     emoji: "💡",
-    backgroundColor: "s-bg-pink-100",
+    backgroundColor: "s:bg-pink-100",
     tags: ["PRODUCT"],
   },
   {
@@ -372,7 +372,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Draft internal feature announcements from basic documentation.",
     emoji: "📰",
-    backgroundColor: "s-bg-pink-100",
+    backgroundColor: "s:bg-pink-100",
     tags: ["PRODUCT"],
   },
   {
@@ -381,7 +381,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Strategic insights, optimization techniques, and framework explanations for PMs.",
     emoji: "🧠",
-    backgroundColor: "s-bg-pink-100",
+    backgroundColor: "s:bg-pink-100",
     tags: ["PRODUCT"],
   },
   {
@@ -390,7 +390,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Track competitors' blogs and news, compare with internal product data.",
     emoji: "👂",
-    backgroundColor: "s-bg-pink-100",
+    backgroundColor: "s:bg-pink-100",
     tags: ["PRODUCT"],
   },
   {
@@ -399,7 +399,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Ask a Subject Matter Expert. Supports knowledge base, content, and web.",
     emoji: "💬",
-    backgroundColor: "s-bg-blue-400",
+    backgroundColor: "s:bg-blue-400",
     tags: ["PRODUCTIVITY"],
   },
   {
@@ -408,7 +408,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Explain complex topics simply using Feynman's teaching style.",
     emoji: "💡",
-    backgroundColor: "s-bg-blue-400",
+    backgroundColor: "s:bg-blue-400",
     tags: ["PRODUCTIVITY"],
   },
   {
@@ -417,7 +417,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Generate concise summaries from meeting transcripts.",
     emoji: "📞",
-    backgroundColor: "s-bg-blue-400",
+    backgroundColor: "s:bg-blue-400",
     tags: ["PRODUCTIVITY"],
   },
   {
@@ -426,7 +426,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Supportive personal coach providing tailored advice.",
     emoji: "👩‍🏫",
-    backgroundColor: "s-bg-blue-400",
+    backgroundColor: "s:bg-blue-400",
     tags: ["PRODUCTIVITY"],
   },
   {
@@ -435,7 +435,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Write and refine instructions for Dust assistants. Iterate on use cases.",
     emoji: "✍️",
-    backgroundColor: "s-bg-blue-400",
+    backgroundColor: "s:bg-blue-400",
     tags: ["PRODUCTIVITY"],
   },
   {
@@ -444,7 +444,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Challenge opinions and deepen thinking with the Socratic method.",
     emoji: "👨‍🦳",
-    backgroundColor: "s-bg-blue-400",
+    backgroundColor: "s:bg-blue-400",
     tags: ["PRODUCTIVITY"],
   },
   {
@@ -453,7 +453,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Correct spelling, punctuation, and grammar. Provide original, get corrected.",
     emoji: "🔡",
-    backgroundColor: "s-bg-blue-400",
+    backgroundColor: "s:bg-blue-400",
     tags: ["PRODUCTIVITY"],
   },
   {
@@ -462,7 +462,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Concise summaries of any text. Length, focus, and data extraction options.",
     emoji: "🤏",
-    backgroundColor: "s-bg-blue-400",
+    backgroundColor: "s:bg-blue-400",
     tags: ["PRODUCTIVITY"],
   },
   {
@@ -470,7 +470,7 @@ const FAKE_TEMPLATES: Template[] = [
     handle: "writeWell",
     userFacingDescription: "Transform raw written notes into polished text.",
     emoji: "✍️",
-    backgroundColor: "s-bg-blue-400",
+    backgroundColor: "s:bg-blue-400",
     tags: ["PRODUCTIVITY"],
   },
   {
@@ -478,7 +478,7 @@ const FAKE_TEMPLATES: Template[] = [
     handle: "accountSnapshot",
     userFacingDescription: "Account briefings to prepare before meetings.",
     emoji: "🎯",
-    backgroundColor: "s-bg-yellow-100",
+    backgroundColor: "s:bg-yellow-100",
     tags: ["SALES"],
   },
   {
@@ -487,7 +487,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Personalized cold emails using latest news about the prospect's company.",
     emoji: "📩",
-    backgroundColor: "s-bg-yellow-100",
+    backgroundColor: "s:bg-yellow-100",
     tags: ["SALES"],
   },
   {
@@ -496,7 +496,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Prepare for discovery calls with prospect research and call prep notes.",
     emoji: "🔮",
-    backgroundColor: "s-bg-yellow-100",
+    backgroundColor: "s:bg-yellow-100",
     tags: ["SALES"],
   },
   {
@@ -505,7 +505,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Structured responses to prospect questions on security, pricing, features, and objections.",
     emoji: "🥊",
-    backgroundColor: "s-bg-yellow-100",
+    backgroundColor: "s:bg-yellow-100",
     tags: ["SALES"],
   },
   {
@@ -514,7 +514,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Analyze sales call transcripts and compare to best practices for feedback.",
     emoji: "🧑‍🏫",
-    backgroundColor: "s-bg-yellow-100",
+    backgroundColor: "s:bg-yellow-100",
     tags: ["SALES"],
   },
   {
@@ -523,7 +523,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Concise meeting summaries from sales transcripts with takeaways and actions.",
     emoji: "👥",
-    backgroundColor: "s-bg-yellow-100",
+    backgroundColor: "s:bg-yellow-100",
     tags: ["SALES"],
   },
   {
@@ -532,7 +532,7 @@ const FAKE_TEMPLATES: Template[] = [
     userFacingDescription:
       "Find solutions from best-in-class tickets and internal procedures.",
     emoji: "🧘",
-    backgroundColor: "s-bg-sky-200",
+    backgroundColor: "s:bg-sky-200",
     tags: ["SUPPORT"],
   },
 ];
@@ -582,21 +582,21 @@ export default function TemplateSelection({
   };
 
   return (
-    <div className="s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-py-8 s-@container">
-      <div className="s-flex s-flex-col s-gap-6 s-px-4">
+    <div className="s:mx-auto s:flex s:w-full s:max-w-4xl s:flex-col s:py-8 s-@container">
+      <div className="s:flex s:flex-col s:gap-6 s:px-4">
         <Page.Header
           title="Start with a template"
           description="Explore different ways to use Dust. Find a setup that works for you and make it your own."
         />
 
-        <div className="s-flex s-flex-col s-gap-6">
+        <div className="s:flex s:flex-col s:gap-6">
           <SearchInput
             placeholder="Search templates"
             name="search"
             value={searchTerm}
             onChange={setSearchTerm}
           />
-          <div className="s-flex s-flex-row s-flex-wrap s-gap-2">
+          <div className="s:flex s:flex-row s:flex-wrap s:gap-2">
             {Object.entries(TAG_CONFIG).map(([tagCode, config]) => (
               <Button
                 key={tagCode}
@@ -611,7 +611,7 @@ export default function TemplateSelection({
 
         {filteredTemplates.length > 0 && (
           <>
-            <div className="s-flex s-flex-col s-gap-4 s-pb-24">
+            <div className="s:flex s:flex-col s:gap-4 s:pb-24">
               {availableTags
                 .map((tagName) => {
                   const templatesForTag = filteredTemplates.filter((t) =>
@@ -620,9 +620,9 @@ export default function TemplateSelection({
                   if (!templatesForTag.length) return null;
                   const label = TAG_CONFIG[tagName]?.label ?? tagName;
                   return (
-                    <div key={tagName} className="s-flex s-flex-col s-gap-1.5">
-                      <div className="s-heading-base">{label}</div>
-                      <div className="s-grid s-grid-cols-1 s-gap-2 @xs:s-grid-cols-2 @md:s-grid-cols-3">
+                    <div key={tagName} className="s:flex s:flex-col s:gap-1.5">
+                      <div className="s:heading-base">{label}</div>
+                      <div className="s:grid s:grid-cols-1 s:gap-2 @xs:s:grid-cols-2 @md:s:grid-cols-3">
                         {templatesForTag.map((template) => (
                           <Card
                             key={template.sId}
@@ -631,18 +631,18 @@ export default function TemplateSelection({
                             onClick={() => {
                               onTemplateClick?.(template);
                             }}
-                            className="s-cursor-pointer s-flex s-flex-col s-items-start s-gap-1"
+                            className="s:cursor-pointer s:flex s:flex-col s:items-start s:gap-1"
                           >
                             <Avatar
                               emoji={template.emoji}
                               backgroundColor={template.backgroundColor}
                               size="sm"
                             />
-                            <div className="s-min-w-0">
-                              <div className="s-heading-base s-line-clamp-1 s-text-foreground dark:s-text-foreground-night">
+                            <div className="s:min-w-0">
+                              <div className="s:heading-base s:line-clamp-1 s:text-foreground dark:s:text-foreground-night">
                                 {template.handle}
                               </div>
-                              <p className="s-line-clamp-3 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                              <p className="s:line-clamp-3 s:text-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
                                 {template.userFacingDescription}
                               </p>
                             </div>

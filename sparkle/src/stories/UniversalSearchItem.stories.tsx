@@ -42,7 +42,7 @@ export const DocumentAndConversation: Story = {
     <ListGroup>
       <UniversalSearchItem
         visual={<Icon visual={Type01} size="md" />}
-        title={<span className="s-min-w-0 s-truncate">Q4 Report.pdf</span>}
+        title={<span className="s:min-w-0 s:truncate">Q4 Report.pdf</span>}
         description="Summary: Key findings are consolidated in the sections below."
       />
       <UniversalSearchItem
@@ -56,8 +56,8 @@ export const DocumentAndConversation: Story = {
         }
         title={
           <>
-            <span className="s-shrink-0">Alex Doe</span>
-            <span className="s-min-w-0 s-truncate s-text-muted-foreground dark:s-text-muted-foreground-night">
+            <span className="s:shrink-0">Alex Doe</span>
+            <span className="s:min-w-0 s:truncate s:text-muted-foreground s:dark:text-muted-foreground-night">
               Project kickoff notes
             </span>
           </>

@@ -318,7 +318,7 @@ export const buildEditorExtensions = ({
       onFirstAgentMentionPasteRef,
       HTMLAttributes: {
         class:
-          "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
+          "min-w-0 px-0 py-0 border-none outline-hidden focus:outline-hidden focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
       },
       suggestion: createMentionSuggestion({
         owner,
@@ -416,7 +416,7 @@ const useCustomEditor = ({
       editorProps: {
         attributes: {
           class:
-            "border-0 outline-none overflow-y-auto h-full scrollbar-hide [&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:my-2 [&_a]:cursor-text",
+            "border-0 outline-hidden overflow-y-auto h-full scrollbar-hide [&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:my-2 [&_a]:cursor-text",
         },
         // cleans up incoming HTML to remove all style that could mess up with our theme
         transformPastedHTML(html: string) {

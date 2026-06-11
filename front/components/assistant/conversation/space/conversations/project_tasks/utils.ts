@@ -86,11 +86,11 @@ export const TASK_DESKTOP_HOVER_REVEAL_CLASS =
 export const TASK_TEXTAREA_FIELD_CLASS = cn(
   "m-0 block min-h-[1.5rem] w-full min-w-0 resize-none overflow-hidden border-0 bg-transparent px-0 py-0 align-top text-base leading-6 text-foreground break-words",
   "shadow-none [box-shadow:none]",
-  "outline-none ring-0 ring-offset-0",
-  "focus:shadow-none focus:[box-shadow:none] focus:outline-none focus:ring-0 focus:ring-offset-0",
+  "outline-hidden ring-0 ring-offset-0",
+  "focus:shadow-none focus:[box-shadow:none] focus:outline-hidden focus:ring-0 focus:ring-offset-0",
   // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
   "focus:!ring-0 focus:!ring-offset-0",
-  "focus-visible:shadow-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
+  "focus-visible:shadow-none focus-visible:outline-hidden focus-visible:ring-0 focus-visible:ring-offset-0",
   // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
   "focus-visible:!ring-0",
   "placeholder:text-muted-foreground",

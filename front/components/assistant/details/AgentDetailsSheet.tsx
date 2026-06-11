@@ -303,7 +303,7 @@ export function AgentDetailsSheet({
 
   return (
     <Sheet open={!!agentId} onOpenChange={onClose}>
-      <SheetContent size="xl" className="outline-none">
+      <SheetContent size="xl" className="outline-hidden">
         <VisuallyHidden>
           <SheetTitle />
         </VisuallyHidden>

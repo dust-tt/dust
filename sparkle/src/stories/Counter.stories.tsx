@@ -78,7 +78,7 @@ export const Outline: Story = {
 export const Sizes: Story = {
   tags: ["ai-generated", "needs-work"],
   render: () => (
-    <div className="s-flex s-items-center s-gap-2">
+    <div className="s:flex s:items-center s:gap-2">
       <Counter value={3} size="xs" />
       <Counter value={42} size="sm" />
       <Counter value={128} size="md" />

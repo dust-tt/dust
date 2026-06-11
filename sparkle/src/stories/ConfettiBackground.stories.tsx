@@ -28,7 +28,7 @@ export default meta;
 export const ConfettiExample = () => {
   const referentRef = useRef<HTMLDivElement>(null);
   return (
-    <div className="s-h-[100vh] s-w-full" ref={referentRef}>
+    <div className="s:h-[100vh] s:w-full" ref={referentRef}>
       <ConfettiBackground variant="confetti" referentSize={referentRef} />
     </div>
   );
@@ -36,7 +36,7 @@ export const ConfettiExample = () => {
 export const SnowExample = () => {
   const referentRef = useRef<HTMLDivElement>(null);
   return (
-    <div className="s-h-[100vh] s-w-full" ref={referentRef}>
+    <div className="s:h-[100vh] s:w-full" ref={referentRef}>
       <ConfettiBackground variant="snow" referentSize={referentRef} />
     </div>
   );

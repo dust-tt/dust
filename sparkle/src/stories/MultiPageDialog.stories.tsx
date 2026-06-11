@@ -55,29 +55,29 @@ const samplePages: MultiPageDialogPage[] = [
     description: "Manage your personal information",
     icon: User01,
     content: (
-      <div className="s-space-y-4">
+      <div className="s:space-y-4">
         <div>
-          <h3 className="s-mb-2 s-text-lg s-font-semibold">
+          <h3 className="s:mb-2 s:text-lg s:font-semibold">
             Personal Information
           </h3>
-          <p className="s-text-sm s-text-muted-foreground">
+          <p className="s:text-sm s:text-muted-foreground">
             Update your profile details and preferences.
           </p>
         </div>
-        <div className="s-space-y-3">
+        <div className="s:space-y-3">
           <div>
-            <label className="s-text-sm s-font-medium">Full Name</label>
+            <label className="s:text-sm s:font-medium">Full Name</label>
             <input
               type="text"
-              className="s-mt-1 s-w-full s-rounded-md s-border s-px-3 s-py-2"
+              className="s:mt-1 s:w-full s:rounded-md s:border s:px-3 s:py-2"
               placeholder="John Doe"
             />
           </div>
           <div>
-            <label className="s-text-sm s-font-medium">Email</label>
+            <label className="s:text-sm s:font-medium">Email</label>
             <input
               type="email"
-              className="s-mt-1 s-w-full s-rounded-md s-border s-px-3 s-py-2"
+              className="s:mt-1 s:w-full s:rounded-md s:border s:px-3 s:py-2"
               placeholder="john@example.com"
             />
           </div>
@@ -91,20 +91,20 @@ const samplePages: MultiPageDialogPage[] = [
     description: "Manage your uploaded files",
     icon: File04,
     content: (
-      <div className="s-space-y-4">
+      <div className="s:space-y-4">
         <div>
-          <h3 className="s-mb-2 s-text-lg s-font-semibold">File Management</h3>
-          <p className="s-text-sm s-text-muted-foreground">
+          <h3 className="s:mb-2 s:text-lg s:font-semibold">File Management</h3>
+          <p className="s:text-sm s:text-muted-foreground">
             Upload, organize, and manage your documents.
           </p>
         </div>
-        <div className="s-space-y-2">
-          <div className="s-flex s-items-center s-justify-between s-rounded-md s-border s-p-3">
-            <span className="s-text-sm">document1.pdf</span>
+        <div className="s:space-y-2">
+          <div className="s:flex s:items-center s:justify-between s:rounded-md s:border s:p-3">
+            <span className="s:text-sm">document1.pdf</span>
             <Button label="Download" size="sm" variant="outline" />
           </div>
-          <div className="s-flex s-items-center s-justify-between s-rounded-md s-border s-p-3">
-            <span className="s-text-sm">report.docx</span>
+          <div className="s:flex s:items-center s:justify-between s:rounded-md s:border s:p-3">
+            <span className="s:text-sm">report.docx</span>
             <Button label="Download" size="sm" variant="outline" />
           </div>
         </div>
@@ -117,27 +117,27 @@ const samplePages: MultiPageDialogPage[] = [
     description: "Configure your preferences",
     icon: Settings01,
     content: (
-      <div className="s-space-y-4">
+      <div className="s:space-y-4">
         <div>
-          <h3 className="s-mb-2 s-text-lg s-font-semibold">
+          <h3 className="s:mb-2 s:text-lg s:font-semibold">
             Application Settings
           </h3>
-          <p className="s-text-sm s-text-muted-foreground">
+          <p className="s:text-sm s:text-muted-foreground">
             Customize your experience and notification preferences.
           </p>
         </div>
-        <div className="s-space-y-3">
-          <div className="s-flex s-items-center s-justify-between">
-            <span className="s-text-sm">Email notifications</span>
-            <input type="checkbox" className="s-rounded" defaultChecked />
+        <div className="s:space-y-3">
+          <div className="s:flex s:items-center s:justify-between">
+            <span className="s:text-sm">Email notifications</span>
+            <input type="checkbox" className="s:rounded" defaultChecked />
           </div>
-          <div className="s-flex s-items-center s-justify-between">
-            <span className="s-text-sm">Dark mode</span>
-            <input type="checkbox" className="s-rounded" />
+          <div className="s:flex s:items-center s:justify-between">
+            <span className="s:text-sm">Dark mode</span>
+            <input type="checkbox" className="s:rounded" />
           </div>
-          <div className="s-flex s-items-center s-justify-between">
-            <span className="s-text-sm">Auto-save</span>
-            <input type="checkbox" className="s-rounded" defaultChecked />
+          <div className="s:flex s:items-center s:justify-between">
+            <span className="s:text-sm">Auto-save</span>
+            <input type="checkbox" className="s:rounded" defaultChecked />
           </div>
         </div>
       </div>
@@ -216,10 +216,10 @@ export const SimpleToolDialog: Story = {
         id: "tool-selection",
         title: "Add tools",
         content: (
-          <div className="s-space-y-6">
-            <div className="s-space-y-4">
-              <h3 className="s-text-lg s-font-semibold">Capabilities</h3>
-              <div className="s-grid s-grid-cols-2 s-gap-3">
+          <div className="s:space-y-6">
+            <div className="s:space-y-4">
+              <h3 className="s:text-lg s:font-semibold">Capabilities</h3>
+              <div className="s:grid s:grid-cols-2 s:gap-3">
                 {[
                   {
                     name: "Image generation",
@@ -240,26 +240,26 @@ export const SimpleToolDialog: Story = {
                 ].map((tool) => (
                   <div
                     key={tool.name}
-                    className={`s-cursor-pointer s-rounded-lg s-border s-p-4 s-transition-colors hover:s-bg-gray-50 ${
+                    className={`s:cursor-pointer s:rounded-lg s:border s:p-4 s:transition-colors s:hover:bg-gray-50 ${
                       selectedTools.includes(tool.name)
-                        ? "s-border-blue-300 s-bg-blue-50"
-                        : "s-border-gray-200"
+                        ? "s:border-blue-300 s:bg-blue-50"
+                        : "s:border-gray-200"
                     }`}
                     onClick={() => toggleTool(tool.name)}
                   >
-                    <div className="s-flex s-items-start s-justify-between">
+                    <div className="s:flex s:items-start s:justify-between">
                       <div>
-                        <h4 className="s-font-medium">{tool.name}</h4>
-                        <p className="s-text-sm s-text-gray-600">{tool.desc}</p>
+                        <h4 className="s:font-medium">{tool.name}</h4>
+                        <p className="s:text-sm s:text-gray-600">{tool.desc}</p>
                       </div>
                       {selectedTools.includes(tool.name) && (
-                        <span className="s-rounded s-bg-green-100 s-px-2 s-py-1 s-text-xs s-text-green-700">
+                        <span className="s:rounded s:bg-green-100 s:px-2 s:py-1 s:text-xs s:text-green-700">
                           ADDED
                         </span>
                       )}
                     </div>
                     {!selectedTools.includes(tool.name) && (
-                      <button className="s-mt-2 s-text-sm s-text-blue-600 hover:s-text-blue-700">
+                      <button className="s:mt-2 s:text-sm s:text-blue-600 s:hover:text-blue-700">
                         + Add
                       </button>
                     )}
@@ -269,13 +269,13 @@ export const SimpleToolDialog: Story = {
             </div>
 
             {selectedTools.length > 0 && (
-              <div className="s-space-y-3">
-                <h4 className="s-font-medium">Added tools</h4>
-                <div className="s-flex s-flex-wrap s-gap-2">
+              <div className="s:space-y-3">
+                <h4 className="s:font-medium">Added tools</h4>
+                <div className="s:flex s:flex-wrap s:gap-2">
                   {selectedTools.map((tool) => (
                     <span
                       key={tool}
-                      className="s-flex s-items-center s-gap-1 s-rounded s-bg-gray-100 s-px-3 s-py-1 s-text-sm"
+                      className="s:flex s:items-center s:gap-1 s:rounded s:bg-gray-100 s:px-3 s:py-1 s:text-sm"
                     >
                       {tool}
                       <button
@@ -283,7 +283,7 @@ export const SimpleToolDialog: Story = {
                           e.stopPropagation();
                           toggleTool(tool);
                         }}
-                        className="s-ml-1 s-text-gray-500 hover:s-text-gray-700"
+                        className="s:ml-1 s:text-gray-500 s:hover:text-gray-700"
                       >
                         ×
                       </button>
@@ -385,21 +385,21 @@ export const InteractiveContent: Story = {
         description: "Enter your basic information",
         icon: User01,
         content: (
-          <div className="s-space-y-4">
+          <div className="s:space-y-4">
             <div>
-              <h3 className="s-mb-2 s-text-lg s-font-semibold">
+              <h3 className="s:mb-2 s:text-lg s:font-semibold">
                 Let's get started
               </h3>
-              <p className="s-text-sm s-text-muted-foreground">
+              <p className="s:text-sm s:text-muted-foreground">
                 Fill in your details to continue to the next step.
               </p>
             </div>
-            <div className="s-space-y-3">
+            <div className="s:space-y-3">
               <div>
-                <label className="s-text-sm s-font-medium">Full Name *</label>
+                <label className="s:text-sm s:font-medium">Full Name *</label>
                 <input
                   type="text"
-                  className="s-mt-1 s-w-full s-rounded-md s-border s-px-3 s-py-2"
+                  className="s:mt-1 s:w-full s:rounded-md s:border s:px-3 s:py-2"
                   placeholder="Enter your name"
                   value={formData.name}
                   onChange={(e) =>
@@ -408,10 +408,10 @@ export const InteractiveContent: Story = {
                 />
               </div>
               <div>
-                <label className="s-text-sm s-font-medium">Email *</label>
+                <label className="s:text-sm s:font-medium">Email *</label>
                 <input
                   type="email"
-                  className="s-mt-1 s-w-full s-rounded-md s-border s-px-3 s-py-2"
+                  className="s:mt-1 s:w-full s:rounded-md s:border s:px-3 s:py-2"
                   placeholder="Enter your email"
                   value={formData.email}
                   onChange={(e) =>
@@ -429,16 +429,16 @@ export const InteractiveContent: Story = {
         description: "Choose your files",
         icon: File04,
         content: (
-          <div className="s-space-y-4">
+          <div className="s:space-y-4">
             <div>
-              <h3 className="s-mb-2 s-text-lg s-font-semibold">
+              <h3 className="s:mb-2 s:text-lg s:font-semibold">
                 Select a file to work with
               </h3>
-              <p className="s-text-sm s-text-muted-foreground">
+              <p className="s:text-sm s:text-muted-foreground">
                 Choose from the available files below.
               </p>
             </div>
-            <div className="s-space-y-2">
+            <div className="s:space-y-2">
               {[
                 "project-proposal.pdf",
                 "budget-2024.xlsx",
@@ -446,22 +446,22 @@ export const InteractiveContent: Story = {
               ].map((file) => (
                 <div
                   key={file}
-                  className={`s-flex s-cursor-pointer s-items-center s-justify-between s-rounded-md s-border s-p-3 s-transition-colors hover:s-bg-gray-50 ${
+                  className={`s:flex s:cursor-pointer s:items-center s:justify-between s:rounded-md s:border s:p-3 s:transition-colors s:hover:bg-gray-50 ${
                     formData.selectedFile === file
-                      ? "s-border-blue-300 s-bg-blue-50"
+                      ? "s:border-blue-300 s:bg-blue-50"
                       : ""
                   }`}
                   onClick={() =>
                     setFormData({ ...formData, selectedFile: file })
                   }
                 >
-                  <span className="s-text-sm">{file}</span>
-                  <div className="s-flex s-items-center s-gap-2">
+                  <span className="s:text-sm">{file}</span>
+                  <div className="s:flex s:items-center s:gap-2">
                     <input
                       type="radio"
                       checked={formData.selectedFile === file}
                       readOnly
-                      className="s-pointer-events-none"
+                      className="s:pointer-events-none"
                     />
                   </div>
                 </div>
@@ -476,19 +476,19 @@ export const InteractiveContent: Story = {
         description: "Configure your preferences",
         icon: Settings01,
         content: (
-          <div className="s-space-y-4">
+          <div className="s:space-y-4">
             <div>
-              <h3 className="s-mb-2 s-text-lg s-font-semibold">Almost done!</h3>
-              <p className="s-text-sm s-text-muted-foreground">
+              <h3 className="s:mb-2 s:text-lg s:font-semibold">Almost done!</h3>
+              <p className="s:text-sm s:text-muted-foreground">
                 Configure your final preferences and complete the setup.
               </p>
             </div>
-            <div className="s-space-y-3">
-              <div className="s-flex s-items-center s-justify-between">
-                <span className="s-text-sm">Enable email notifications</span>
+            <div className="s:space-y-3">
+              <div className="s:flex s:items-center s:justify-between">
+                <span className="s:text-sm">Enable email notifications</span>
                 <input
                   type="checkbox"
-                  className="s-rounded"
+                  className="s:rounded"
                   checked={formData.notifications}
                   onChange={(e) =>
                     setFormData({
@@ -498,9 +498,9 @@ export const InteractiveContent: Story = {
                   }
                 />
               </div>
-              <div className="s-rounded-md s-bg-gray-50 s-p-3">
-                <h4 className="s-mb-2 s-text-sm s-font-medium">Summary</h4>
-                <div className="s-space-y-1 s-text-xs s-text-gray-600">
+              <div className="s:rounded-md s:bg-gray-50 s:p-3">
+                <h4 className="s:mb-2 s:text-sm s:font-medium">Summary</h4>
+                <div className="s:space-y-1 s:text-xs s:text-gray-600">
                   <div>Name: {formData.name}</div>
                   <div>Email: {formData.email}</div>
                   <div>Selected File: {formData.selectedFile}</div>
@@ -594,16 +594,16 @@ export const WithConditionalNavigation: Story = {
         description: "Choose which data sources to include",
         icon: File04,
         content: (
-          <div className="s-space-y-4">
+          <div className="s:space-y-4">
             <div>
-              <h3 className="s-mb-2 s-text-lg s-font-semibold">
+              <h3 className="s:mb-2 s:text-lg s:font-semibold">
                 Available Data Sources
               </h3>
-              <p className="s-text-sm s-text-muted-foreground">
+              <p className="s:text-sm s:text-muted-foreground">
                 Select at least one data source to proceed to the next step.
               </p>
             </div>
-            <div className="s-space-y-2">
+            <div className="s:space-y-2">
               {[
                 "Company Database",
                 "Customer Files",
@@ -612,9 +612,9 @@ export const WithConditionalNavigation: Story = {
               ].map((item) => (
                 <div
                   key={item}
-                  className={`s-flex s-cursor-pointer s-items-center s-justify-between s-rounded-md s-border s-p-3 s-transition-colors hover:s-bg-gray-50 ${
+                  className={`s:flex s:cursor-pointer s:items-center s:justify-between s:rounded-md s:border s:p-3 s:transition-colors s:hover:bg-gray-50 ${
                     selectedItems.includes(item)
-                      ? "s-border-blue-300 s-bg-blue-50"
+                      ? "s:border-blue-300 s:bg-blue-50"
                       : ""
                   }`}
                   onClick={() => {
@@ -625,19 +625,19 @@ export const WithConditionalNavigation: Story = {
                     }
                   }}
                 >
-                  <span className="s-text-sm">{item}</span>
+                  <span className="s:text-sm">{item}</span>
                   <input
                     type="checkbox"
                     checked={selectedItems.includes(item)}
                     readOnly
-                    className="s-pointer-events-none"
+                    className="s:pointer-events-none"
                   />
                 </div>
               ))}
             </div>
             {selectedItems.length > 0 && (
-              <div className="s-rounded-md s-border s-bg-blue-50 s-p-3">
-                <p className="s-text-sm s-text-blue-700">
+              <div className="s:rounded-md s:border s:bg-blue-50 s:p-3">
+                <p className="s:text-sm s:text-blue-700">
                   {selectedItems.length} data source
                   {selectedItems.length !== 1 ? "s" : ""} selected
                 </p>
@@ -652,30 +652,30 @@ export const WithConditionalNavigation: Story = {
         description: "Describe your configuration",
         icon: Settings01,
         content: (
-          <div className="s-space-y-4">
+          <div className="s:space-y-4">
             <div>
-              <h3 className="s-mb-2 s-text-lg s-font-semibold">
+              <h3 className="s:mb-2 s:text-lg s:font-semibold">
                 Configuration Details
               </h3>
-              <p className="s-text-sm s-text-muted-foreground">
+              <p className="s:text-sm s:text-muted-foreground">
                 Add a description for your selected data sources.
               </p>
             </div>
-            <div className="s-rounded-md s-border s-bg-blue-50 s-p-3">
-              <p className="s-text-sm s-text-blue-700">
+            <div className="s:rounded-md s:border s:bg-blue-50 s:p-3">
+              <p className="s:text-sm s:text-blue-700">
                 Selected: {selectedItems.join(", ")}
               </p>
             </div>
-            <div className="s-space-y-2">
-              <label className="s-text-sm s-font-medium">Description</label>
+            <div className="s:space-y-2">
+              <label className="s:text-sm s:font-medium">Description</label>
               <textarea
-                className="s-mt-1 s-w-full s-rounded-md s-border s-px-3 s-py-2"
+                className="s:mt-1 s:w-full s:rounded-md s:border s:px-3 s:py-2"
                 placeholder="Describe how these data sources will be used..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
               />
-              <p className="s-text-xs s-text-muted-foreground">
+              <p className="s:text-xs s:text-muted-foreground">
                 This description helps explain the purpose of your
                 configuration.
               </p>
@@ -718,8 +718,8 @@ export const WithConditionalNavigation: Story = {
           }}
           addFooterSeparator
           footerContent={
-            <div className="s-rounded s-bg-blue-50">
-              <p className="s-text-xs s-text-blue-700">
+            <div className="s:rounded s:bg-blue-50">
+              <p className="s:text-xs s:text-blue-700">
                 {selectedItems.length > 0 && (
                   <>
                     {selectedItems.length} data source
@@ -782,19 +782,19 @@ export const ScrollableContent: Story = {
           />
         ),
         content: (
-          <div className="s-space-y-6">
+          <div className="s:space-y-6">
             <div>
-              <h3 className="s-mb-2 s-text-lg s-font-semibold">
+              <h3 className="s:mb-2 s:text-lg s:font-semibold">
                 Terms and Conditions
               </h3>
-              <p className="s-text-sm s-text-muted-foreground">
+              <p className="s:text-sm s:text-muted-foreground">
                 This page contains a lot of content to demonstrate scrolling
                 functionality with a fixed search input. The search input stays
                 visible while scrolling through the content below.
               </p>
               {searchTerm && (
-                <div className="s-rounded-md s-border s-bg-yellow-50 s-p-3">
-                  <p className="s-text-sm s-text-yellow-800">
+                <div className="s:rounded-md s:border s:bg-yellow-50 s:p-3">
+                  <p className="s:text-sm s:text-yellow-800">
                     🔍 Searching for: <strong>{searchTerm}</strong>
                   </p>
                 </div>
@@ -802,9 +802,9 @@ export const ScrollableContent: Story = {
             </div>
 
             {Array.from({ length: 15 }, (_, i) => (
-              <div key={i} className="s-space-y-3">
-                <h4 className="s-text-md s-font-semibold">Section {i + 1}</h4>
-                <p className="s-text-sm s-text-muted-foreground">
+              <div key={i} className="s:space-y-3">
+                <h4 className="s:text-md s:font-semibold">Section {i + 1}</h4>
+                <p className="s:text-sm s:text-muted-foreground">
                   Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed
                   do eiusmod tempor incididunt ut labore et dolore magna aliqua.
                   Ut enim ad minim veniam, quis nostrud exercitation ullamco
@@ -812,24 +812,24 @@ export const ScrollableContent: Story = {
                   irure dolor in reprehenderit in voluptate velit esse cillum
                   dolore eu fugiat nulla pariatur.
                 </p>
-                <div className="s-space-y-2">
+                <div className="s:space-y-2">
                   <div>
-                    <label className="s-text-sm s-font-medium">
+                    <label className="s:text-sm s:font-medium">
                       Field {i + 1}
                     </label>
                     <input
                       type="text"
-                      className="s-mt-1 s-w-full s-rounded-md s-border s-px-3 s-py-2"
+                      className="s:mt-1 s:w-full s:rounded-md s:border s:px-3 s:py-2"
                       placeholder={`Enter value for field ${i + 1}`}
                     />
                   </div>
                   {i % 3 === 0 && (
                     <div>
-                      <label className="s-text-sm s-font-medium">
+                      <label className="s:text-sm s:font-medium">
                         Additional Notes
                       </label>
                       <textarea
-                        className="s-mt-1 s-w-full s-rounded-md s-border s-px-3 s-py-2"
+                        className="s:mt-1 s:w-full s:rounded-md s:border s:px-3 s:py-2"
                         placeholder="Add any additional notes here..."
                         rows={3}
                       />
@@ -839,11 +839,11 @@ export const ScrollableContent: Story = {
               </div>
             ))}
 
-            <div className="s-rounded-md s-border s-bg-blue-50 s-p-4">
-              <h4 className="s-mb-2 s-text-sm s-font-semibold s-text-blue-900">
+            <div className="s:rounded-md s:border s:bg-blue-50 s:p-4">
+              <h4 className="s:mb-2 s:text-sm s:font-semibold s:text-blue-900">
                 Fixed Content Test Complete
               </h4>
-              <p className="s-text-xs s-text-blue-700">
+              <p className="s:text-xs s:text-blue-700">
                 If you can see this message, the fixed content functionality is
                 working correctly! The search input remains fixed at the top
                 while this content scrolls. Try scrolling back up - the search
@@ -858,21 +858,21 @@ export const ScrollableContent: Story = {
         title: "Summary",
         icon: Settings01,
         content: (
-          <div className="s-space-y-4">
+          <div className="s:space-y-4">
             <div>
-              <h3 className="s-mb-2 s-text-lg s-font-semibold">Form Summary</h3>
-              <p className="s-text-sm s-text-muted-foreground">
+              <h3 className="s:mb-2 s:text-lg s:font-semibold">Form Summary</h3>
+              <p className="s:text-sm s:text-muted-foreground">
                 Thank you for testing the scrollable content functionality.
               </p>
             </div>
-            <div className="s-rounded-md s-border s-bg-green-50 s-p-3">
-              <p className="s-text-sm s-text-green-700">
+            <div className="s:rounded-md s:border s:bg-green-50 s:p-3">
+              <p className="s:text-sm s:text-green-700">
                 ✓ Scrolling functionality verified
               </p>
-              <p className="s-text-sm s-text-green-700">
+              <p className="s:text-sm s:text-green-700">
                 ✓ Fixed dialog height maintained
               </p>
-              <p className="s-text-sm s-text-green-700">
+              <p className="s:text-sm s:text-green-700">
                 ✓ Content overflow handled properly
               </p>
             </div>
@@ -931,38 +931,38 @@ export const ActionValidation: Story = {
         title: "Tool Validation Required",
         icon: GmailLogo,
         content: (
-          <div className="s-space-y-6 s-pt-4">
+          <div className="s:space-y-6 s:pt-4">
             <div>
-              <p className="s-mb-6 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <p className="s:mb-6 s:text-sm s:text-muted-foreground s:dark:text-muted-foreground-night">
                 Allow{" "}
-                <span className="s-font-semibold">@Marketing Assistant</span> to
-                use the tool <span className="s-font-semibold">Send Email</span>{" "}
-                from <span className="s-font-semibold">Gmail</span>?
+                <span className="s:font-semibold">@Marketing Assistant</span> to
+                use the tool <span className="s:font-semibold">Send Email</span>{" "}
+                from <span className="s:font-semibold">Gmail</span>?
               </p>
 
-              <div className="s-space-y-3">
+              <div className="s:space-y-3">
                 <Collapsible>
                   <CollapsibleTrigger>
-                    <span className="s-text-sm s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    <span className="s:text-sm s:font-medium s:text-muted-foreground s:dark:text-muted-foreground-night">
                       Details
                     </span>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <div className="s-mt-2 s-rounded-md s-border s-bg-muted s-p-3">
-                      <h4 className="s-mb-2 s-text-sm s-font-medium">
+                    <div className="s:mt-2 s:rounded-md s:border s:bg-muted s:p-3">
+                      <h4 className="s:mb-2 s:text-sm s:font-medium">
                         Email Details
                       </h4>
-                      <div className="s-space-y-2 s-text-sm">
+                      <div className="s:space-y-2 s:text-sm">
                         <div>
-                          <span className="s-font-medium">To:</span>{" "}
+                          <span className="s:font-medium">To:</span>{" "}
                           john.doe@example.com
                         </div>
                         <div>
-                          <span className="s-font-medium">Subject:</span>{" "}
+                          <span className="s:font-medium">Subject:</span>{" "}
                           Welcome to our platform!
                         </div>
                         <div>
-                          <span className="s-font-medium">Content:</span> Thank
+                          <span className="s:font-medium">Content:</span> Thank
                           you for signing up...
                         </div>
                       </div>
@@ -971,14 +971,14 @@ export const ActionValidation: Story = {
                 </Collapsible>
 
                 {errorMessage && (
-                  <div className="s-flex s-items-center s-gap-2 s-text-sm s-font-medium s-text-warning-800">
-                    <AlertCircle className="s-h-4 s-w-4" />
+                  <div className="s:flex s:items-center s:gap-2 s:text-sm s:font-medium s:text-warning-800">
+                    <AlertCircle className="s:h-4 s:w-4" />
                     {errorMessage}
                   </div>
                 )}
 
-                <div className="s-mt-4">
-                  <label className="s-copy-xs s-flex s-w-fit s-cursor-pointer s-flex-row s-items-center s-gap-2 s-py-2 s-pr-2 s-font-normal">
+                <div className="s:mt-4">
+                  <label className="s:copy-xs s:flex s:w-fit s:cursor-pointer s:flex-row s:items-center s:gap-2 s:py-2 s:pr-2 s:font-normal">
                     <Checkbox
                       size="xs"
                       checked={neverAskAgain}
@@ -999,39 +999,39 @@ export const ActionValidation: Story = {
         title: "Bulk Email Validation",
         icon: GmailLogo,
         content: (
-          <div className="s-space-y-6 s-pt-4">
+          <div className="s:space-y-6 s:pt-4">
             <div>
-              <p className="s-mb-6 s-text-sm s-text-muted-foreground">
+              <p className="s:mb-6 s:text-sm s:text-muted-foreground">
                 Allow{" "}
-                <span className="s-font-semibold">@Marketing Assistant</span> to
+                <span className="s:font-semibold">@Marketing Assistant</span> to
                 use the tool{" "}
-                <span className="s-font-semibold">Send Bulk Email</span> from{" "}
-                <span className="s-font-semibold">Gmail</span>?
+                <span className="s:font-semibold">Send Bulk Email</span> from{" "}
+                <span className="s:font-semibold">Gmail</span>?
               </p>
 
-              <div className="s-space-y-3">
+              <div className="s:space-y-3">
                 <Collapsible>
                   <CollapsibleTrigger>
-                    <span className="s-text-sm s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    <span className="s:text-sm s:font-medium s:text-muted-foreground s:dark:text-muted-foreground-night">
                       Details
                     </span>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <div className="s-mt-2 s-rounded-md s-border s-bg-muted s-p-3">
-                      <h4 className="s-mb-2 s-text-sm s-font-medium">
+                    <div className="s:mt-2 s:rounded-md s:border s:bg-muted s:p-3">
+                      <h4 className="s:mb-2 s:text-sm s:font-medium">
                         Campaign Details
                       </h4>
-                      <div className="s-space-y-2 s-text-sm">
+                      <div className="s:space-y-2 s:text-sm">
                         <div>
-                          <span className="s-font-medium">Recipients:</span>{" "}
+                          <span className="s:font-medium">Recipients:</span>{" "}
                           1,250 subscribers
                         </div>
                         <div>
-                          <span className="s-font-medium">Subject:</span>{" "}
+                          <span className="s:font-medium">Subject:</span>{" "}
                           Monthly Newsletter - March 2024
                         </div>
                         <div>
-                          <span className="s-font-medium">Template:</span>{" "}
+                          <span className="s:font-medium">Template:</span>{" "}
                           Newsletter Template v2
                         </div>
                       </div>
@@ -1039,11 +1039,11 @@ export const ActionValidation: Story = {
                   </CollapsibleContent>
                 </Collapsible>
 
-                <div className="s-rounded-md s-border s-bg-blue-50 s-p-3">
-                  <h4 className="s-mb-1 s-text-sm s-font-medium s-text-blue-900">
+                <div className="s:rounded-md s:border s:bg-blue-50 s:p-3">
+                  <h4 className="s:mb-1 s:text-sm s:font-medium s:text-blue-900">
                     Security Notice
                   </h4>
-                  <p className="s-text-xs s-text-blue-700">
+                  <p className="s:text-xs s:text-blue-700">
                     This action will send emails to a large number of
                     recipients. Please review the content carefully.
                   </p>
@@ -1058,39 +1058,39 @@ export const ActionValidation: Story = {
         title: "Email Template Validation",
         icon: GmailLogo,
         content: (
-          <div className="s-space-y-6 s-pt-4">
+          <div className="s:space-y-6 s:pt-4">
             <div>
-              <p className="s-mb-6 s-text-sm s-text-muted-foreground">
+              <p className="s:mb-6 s:text-sm s:text-muted-foreground">
                 Allow{" "}
-                <span className="s-font-semibold">@Marketing Assistant</span> to
+                <span className="s:font-semibold">@Marketing Assistant</span> to
                 use the tool{" "}
-                <span className="s-font-semibold">Create Email Template</span>{" "}
-                from <span className="s-font-semibold">Gmail</span>?
+                <span className="s:font-semibold">Create Email Template</span>{" "}
+                from <span className="s:font-semibold">Gmail</span>?
               </p>
 
-              <div className="s-space-y-3">
+              <div className="s:space-y-3">
                 <Collapsible>
                   <CollapsibleTrigger>
-                    <span className="s-text-sm s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
+                    <span className="s:text-sm s:font-medium s:text-muted-foreground s:dark:text-muted-foreground-night">
                       Details
                     </span>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <div className="s-mt-2 s-rounded-md s-border s-bg-muted s-p-3">
-                      <h4 className="s-mb-2 s-text-sm s-font-medium">
+                    <div className="s:mt-2 s:rounded-md s:border s:bg-muted s:p-3">
+                      <h4 className="s:mb-2 s:text-sm s:font-medium">
                         Template Details
                       </h4>
-                      <div className="s-space-y-2 s-text-sm">
+                      <div className="s:space-y-2 s:text-sm">
                         <div>
-                          <span className="s-font-medium">Name:</span> Welcome
+                          <span className="s:font-medium">Name:</span> Welcome
                           Series - Day 1
                         </div>
                         <div>
-                          <span className="s-font-medium">Category:</span>{" "}
+                          <span className="s:font-medium">Category:</span>{" "}
                           Onboarding
                         </div>
                         <div>
-                          <span className="s-font-medium">Variables:</span>{" "}
+                          <span className="s:font-medium">Variables:</span>{" "}
                           {"{{name}}"}, {"{{company}}"}, {"{{trial_end_date}}"}
                         </div>
                       </div>
@@ -1098,11 +1098,11 @@ export const ActionValidation: Story = {
                   </CollapsibleContent>
                 </Collapsible>
 
-                <div className="s-rounded-md s-border s-bg-green-50 s-p-3">
-                  <h4 className="s-mb-1 s-text-sm s-font-medium s-text-green-900">
+                <div className="s:rounded-md s:border s:bg-green-50 s:p-3">
+                  <h4 className="s:mb-1 s:text-sm s:font-medium s:text-green-900">
                     Low Risk Action
                   </h4>
-                  <p className="s-text-xs s-text-green-700">
+                  <p className="s:text-xs s:text-green-700">
                     This action only creates a template and does not send any
                     emails.
                   </p>
@@ -1157,7 +1157,7 @@ export const ActionValidation: Story = {
           showHeaderNavigation={false}
           hideCloseButton={true}
           footerContent={
-            <div className="s-flex s-flex-row s-justify-end s-gap-2">
+            <div className="s:flex s:flex-row s:justify-end s:gap-2">
               <Button
                 variant="outline"
                 label={"Decline"}

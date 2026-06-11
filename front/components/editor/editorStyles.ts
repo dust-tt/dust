@@ -13,7 +13,7 @@ export const editorVariants = cva(
           "border-border-warning/30 dark:border-border-warning-night/60",
           "ring-warning/0 dark:ring-warning-night/0",
           "focus-visible:border-border-warning dark:focus-visible:border-border-warning-night",
-          "focus-visible:outline-none focus-visible:ring-2",
+          "focus-visible:outline-hidden focus-visible:ring-2",
           "focus-visible:ring-warning/10 dark:focus-visible:ring-warning/30",
         ],
         false: [

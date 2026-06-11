@@ -60,29 +60,29 @@ export const AssistantCard = React.forwardRef<
       <Card
         ref={ref}
         size="sm"
-        className={cn("s-flex s-flex-col s-gap-3", className)}
+        className={cn("s:flex s:flex-col s:gap-3", className)}
         onClick={onClick}
         onContextMenu={onContextMenu}
         action={action}
         variant={variant}
       >
-        <div className="s-flex s-gap-3">
+        <div className="s:flex s:gap-3">
           <Avatar visual={pictureUrl} size={iconSize} />
           <div
-            className={cn("-s-mt-0.5 s-flex s-flex-col", action && "s-pr-8")}
+            className={cn("-s:mt-0.5 s:flex s:flex-col", action && "s:pr-8")}
           >
             <h3>
               <TruncatedText
                 lineClamp={1}
-                className="s-text-sm s-font-medium s-overflow-hidden s-text-ellipsis s-break-all notranslate"
+                className="s:text-sm s:font-medium s:overflow-hidden s:text-ellipsis s:break-all notranslate"
               >
                 {title}
               </TruncatedText>
             </h3>
             <p
               className={cn(
-                "s-line-clamp-1 s-overflow-hidden s-text-ellipsis s-text-xs",
-                "s-text-muted-foreground dark:s-text-muted-foreground-night"
+                "s:line-clamp-1 s:overflow-hidden s:text-ellipsis s:text-xs",
+                "s:text-muted-foreground s:dark:text-muted-foreground-night"
               )}
             >
               {subtitle}
@@ -93,8 +93,8 @@ export const AssistantCard = React.forwardRef<
           <TruncatedText
             lineClamp={descriptionLineClamp}
             className={cn(
-              "s-overflow-hidden s-text-ellipsis s-pb-1 s-text-sm",
-              "s-text-muted-foreground dark:s-text-muted-foreground-night"
+              "s:overflow-hidden s:text-ellipsis s:pb-1 s:text-sm",
+              "s:text-muted-foreground s:dark:text-muted-foreground-night"
             )}
           >
             {description}
@@ -120,19 +120,19 @@ export const LargeAssistantCard = React.forwardRef<
       onClick={onClick}
       variant="tertiary"
     >
-      <div className="s-flex s-gap-3">
+      <div className="s:flex s:gap-3">
         <Avatar visual={pictureUrl} size="lg" />
         <div
           className={cn(
-            "s-flex s-flex-col s-gap-2 s-text-base",
-            "s-text-foreground dark:s-text-foreground-night"
+            "s:flex s:flex-col s:gap-2 s:text-base",
+            "s:text-foreground s:dark:text-foreground-night"
           )}
         >
-          <h3 className="s-heading-base">{title}</h3>
+          <h3 className="s:heading-base">{title}</h3>
           <p
             className={cn(
-              "s-line-clamp-5 s-overflow-hidden s-text-ellipsis",
-              "s-text-muted-foreground dark:s-text-muted-foreground-night"
+              "s:line-clamp-5 s:overflow-hidden s:text-ellipsis",
+              "s:text-muted-foreground s:dark:text-muted-foreground-night"
             )}
           >
             {description}
@@ -166,21 +166,21 @@ export const CompactAssistantCard = React.forwardRef<
         ref={ref}
         size="md"
         className={cn(
-          "s-cursor-pointer s-flex s-flex-col s-items-start s-gap-1",
+          "s:cursor-pointer s:flex s:flex-col s:items-start s:gap-1",
           className
         )}
         onClick={onClick}
         variant={variant}
       >
         <Avatar visual={pictureUrl} size="sm" />
-        <div className="s-min-w-0">
-          <h3 className="s-heading-base s-line-clamp-1 s-text-foreground dark:s-text-foreground-night">
+        <div className="s:min-w-0">
+          <h3 className="s:heading-base s:line-clamp-1 s:text-foreground s:dark:text-foreground-night">
             {title}
           </h3>
           <p
             className={cn(
-              "s-line-clamp-3 s-text-sm",
-              "s-text-muted-foreground dark:s-text-muted-foreground-night"
+              "s:line-clamp-3 s:text-sm",
+              "s:text-muted-foreground s:dark:text-muted-foreground-night"
             )}
           >
             {description}

@@ -160,9 +160,9 @@ export function InviteUsersScreen({
             value={searchText}
             onChange={setSearchText}
             placeholder="Search users..."
-            className="s-mt-2"
+            className="s:mt-2"
           />
-          <div className="s-flex s-min-h-0 s-flex-1 s-flex-col">
+          <div className="s:flex s:min-h-0 s:flex-1 s:flex-col">
             <ListGroup>
               {filteredUsers.map((user) => {
                 const isSelected = selectedUserIds.has(user.id);
@@ -191,11 +191,11 @@ export function InviteUsersScreen({
                       size="sm"
                       isRounded={true}
                     />
-                    <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
-                      <span className="s-truncate s-text-sm s-font-medium s-text-foreground">
+                    <div className="s:flex s:min-w-0 s:flex-1 s:flex-col">
+                      <span className="s:truncate s:text-sm s:font-medium s:text-foreground">
                         {user.fullName}
                       </span>
-                      <span className="s-truncate s-text-xs s-text-muted-foreground">
+                      <span className="s:truncate s:text-xs s:text-muted-foreground">
                         {user.email}
                       </span>
                     </div>

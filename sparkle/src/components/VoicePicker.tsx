@@ -235,15 +235,15 @@ export function VoicePicker({
   const tooltip = computeTooltip(interactionMode, isRecording, isTranscribing);
 
   return (
-    <div className="s-flex s-items-center">
+    <div className="s:flex s:items-center">
       <div
         className={cn(
-          "s-duration-600 s-flex s-items-center s-justify-end s-gap-2 s-overflow-hidden s-transition-all s-ease-in-out",
-          compact ? "s-px-1" : "s-px-2",
-          isRecording ? "s-opacity-100" : "s-hidden"
+          "s:duration-600 s:flex s:items-center s:justify-end s:gap-2 s:overflow-hidden s:transition-all s:ease-in-out",
+          compact ? "s:px-1" : "s:px-2",
+          isRecording ? "s:opacity-100" : "s:hidden"
         )}
       >
-        <div className="s-heading-xs s-font-mono">
+        <div className="s:heading-xs s:font-mono">
           {formatTime(elapsedSeconds)}
         </div>
         <VoiceLevelDisplay level={level} />
@@ -293,11 +293,11 @@ function VoiceLevelDisplay({
   );
 
   return (
-    <div className="s-flex s-h-5 s-items-center s-gap-0.5">
+    <div className="s:flex s:h-5 s:items-center s:gap-0.5">
       {heights.map((height, index) => (
         <div
           key={index}
-          className="s-min-h-1 s-w-0.5 s-rounded-full s-bg-muted-foreground s-transition-all s-duration-150 s-ease-out"
+          className="s:min-h-1 s:w-0.5 s:rounded-full s:bg-muted-foreground s:transition-all s:duration-150 s:ease-out"
           style={{ height: `${height}%` }}
         />
       ))}

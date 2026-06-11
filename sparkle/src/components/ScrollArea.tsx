@@ -47,13 +47,13 @@ const ScrollArea = React.forwardRef<
     return (
       <ScrollAreaPrimitive.Root
         ref={ref}
-        className={cn("s-relative s-z-20 s-overflow-hidden", className)}
+        className={cn("s:relative s:z-20 s:overflow-hidden", className)}
         {...props}
       >
         <ScrollAreaPrimitive.Viewport
           ref={viewportRef || localViewportRef}
           className={cn(
-            "s-scrollarea-viewport s-h-full s-w-full s-rounded-[inherit]",
+            "s:scrollarea-viewport s:h-full s:w-full s:rounded-[inherit]",
             viewportClassName
           )}
         >
@@ -63,7 +63,7 @@ const ScrollArea = React.forwardRef<
           orientation={orientation}
           className={cn(
             scrollBarClassName,
-            shouldHideDefaultScrollBar && "s-hidden"
+            shouldHideDefaultScrollBar && "s:hidden"
           )}
         />
         <ScrollAreaPrimitive.Corner />
@@ -76,44 +76,44 @@ ScrollArea.displayName = ScrollAreaPrimitive.Root.displayName;
 const scrollBarSizes = {
   compact: {
     bar: {
-      vertical: "s-w-5",
-      horizontal: "s-h-5",
+      vertical: "s:w-5",
+      horizontal: "s:h-5",
     },
     padding: {
-      vertical: "s-pr-1 s-pl-2.5 s-py-2 hover:s-pl-2",
-      horizontal: "s-pb-1 s-pt-2.5 s-px-2",
+      vertical: "s:pr-1 s:pl-2.5 s:py-2 s:hover:pl-2",
+      horizontal: "s:pb-1 s:pt-2.5 s:px-2",
     },
     thumb: cn(
-      "s-bg-muted-foreground/40 dark:s-bg-muted-foreground-night/40",
-      "hover:s-bg-muted-foreground/70 dark:hover:s-bg-muted-foreground-night/70"
+      "s:bg-muted-foreground/40 s:dark:bg-muted-foreground-night/40",
+      "s:hover:bg-muted-foreground/70 s:dark:hover:bg-muted-foreground-night/70"
     ),
   },
   classic: {
     bar: {
-      vertical: "s-w-5",
-      horizontal: "s-h-5",
+      vertical: "s:w-5",
+      horizontal: "s:h-5",
     },
     padding: {
-      vertical: "s-pl-2 s-pr-1 s-py-1",
-      horizontal: "s-py-0.5 s-px-1",
+      vertical: "s:pl-2 s:pr-1 s:py-1",
+      horizontal: "s:py-0.5 s:px-1",
     },
     thumb: cn(
-      "s-bg-muted-foreground/70 dark:s-bg-muted-foreground-night/70",
-      "hover:s-bg-muted-foreground/80 dark:hover:s-bg-muted-foreground-night/80"
+      "s:bg-muted-foreground/70 s:dark:bg-muted-foreground-night/70",
+      "s:hover:bg-muted-foreground/80 s:dark:hover:bg-muted-foreground-night/80"
     ),
   },
   minimal: {
     bar: {
-      vertical: "s-w-3",
-      horizontal: "s-h-3",
+      vertical: "s:w-3",
+      horizontal: "s:h-3",
     },
     padding: {
-      vertical: "s-pr-px s-pl-1.5 s-py-px",
-      horizontal: "s-pb-px s-pt-1.5 s-px-px",
+      vertical: "s:pr-px s:pl-1.5 s:py-px",
+      horizontal: "s:pb-px s:pt-1.5 s:px-px",
     },
     thumb: cn(
-      "s-bg-muted-foreground/20 dark:s-bg-muted-foreground-night/20",
-      "hover:s-bg-muted-foreground/50 dark:hover:s-bg-muted-foreground-night/50"
+      "s:bg-muted-foreground/20 s:dark:bg-muted-foreground-night/20",
+      "s:hover:bg-muted-foreground/50 s:dark:hover:bg-muted-foreground-night/50"
     ),
   },
 } as const;
@@ -142,14 +142,14 @@ const ScrollBar = React.forwardRef<
         ref={ref}
         orientation={orientation}
         className={cn(
-          "s-flex s-touch-none s-select-none hover:s-cursor-pointer",
+          "s:flex s:touch-none s:select-none s:hover:cursor-pointer",
           orientation === "vertical" && [
-            "s-h-full s-border-l s-border-l-transparent",
+            "s:h-full s:border-l s:border-l-transparent",
             sizeConfig.bar.vertical,
             sizeConfig.padding.vertical,
           ],
           orientation === "horizontal" && [
-            "s-flex-col s-border-t s-border-t-transparent",
+            "s:flex-col s:border-t s:border-t-transparent",
             sizeConfig.bar.horizontal,
             sizeConfig.padding.horizontal,
           ],
@@ -159,7 +159,7 @@ const ScrollBar = React.forwardRef<
       >
         <ScrollAreaPrimitive.ScrollAreaThumb
           className={cn(
-            "s-relative s-flex-1 s-rounded-full s-transition-colors s-duration-200",
+            "s:relative s:flex-1 s:rounded-full s:transition-colors s:duration-200",
             sizeConfig.thumb
           )}
         />

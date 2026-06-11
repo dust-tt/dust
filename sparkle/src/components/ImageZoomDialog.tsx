@@ -63,8 +63,8 @@ function ImageZoomDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="fit" className="s-overflow-hidden s-p-3 !s-w-fit">
-        <div className="s-relative s-flex s-items-center s-justify-center s-gap-2">
+      <DialogContent size="fit" className="s:overflow-hidden s:p-3 !s-w-fit">
+        <div className="s:relative s:flex s:items-center s:justify-center s:gap-2">
           {/* Previous button */}
           {navigation?.hasPrevious && (
             <Button
@@ -79,13 +79,13 @@ function ImageZoomDialog({
           )}
 
           {/* Image container */}
-          <div className="s-relative s-rounded s-overflow-hidden">
+          <div className="s:relative s:rounded s:overflow-hidden">
             {image.isLoading ? (
               <div
                 className={cn(
-                  "s-mx-auto s-flex s-aspect-square s-w-full s-min-w-[50vh]",
-                  "s-max-w-[80vh] s-items-center s-justify-center",
-                  "s-bg-muted-background dark:s-bg-muted-background-night"
+                  "s:mx-auto s:flex s:aspect-square s:w-full s:min-w-[50vh]",
+                  "s:max-w-[80vh] s:items-center s:justify-center",
+                  "s:bg-muted-background s:dark:bg-muted-background-night"
                 )}
               >
                 <Spinner variant="dark" size="lg" />
@@ -95,7 +95,7 @@ function ImageZoomDialog({
                 <ImageWrapper
                   src={image.src}
                   alt={image.alt ?? ""}
-                  className="s-max-h-[calc(90vh-1.5rem)] s-max-w-[calc(90vw-1.5rem)]"
+                  className="s:max-h-[calc(90vh-1.5rem)] s:max-w-[calc(90vw-1.5rem)]"
                   onLoad={() => setImageLoaded(true)}
                 />
                 <DialogClose asChild>
@@ -103,7 +103,7 @@ function ImageZoomDialog({
                     variant="outline"
                     size="xs"
                     icon={XClose}
-                    className="s-absolute s-right-2 s-top-2"
+                    className="s:absolute s:right-2 s:top-2"
                   />
                 </DialogClose>
                 {imageLoaded && image.downloadUrl && (
@@ -112,7 +112,7 @@ function ImageZoomDialog({
                     size="xs"
                     icon={Download01}
                     tooltip="Download"
-                    className="s-absolute s-bottom-2 s-right-2"
+                    className="s:absolute s:bottom-2 s:right-2"
                     onClick={handleDownload}
                   />
                 )}

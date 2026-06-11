@@ -20,7 +20,7 @@ export function DropzoneOverlay({
     <Icon
       visual={Upload01}
       size="lg"
-      className="s-text-white dark:s-text-primary-950"
+      className="s:text-white s:dark:text-primary-950"
     />
   ),
 }: DropzoneOverlayProps) {
@@ -47,9 +47,9 @@ export function DropzoneOverlay({
   return (
     <div
       className={cn(
-        "s-absolute s-inset-0 s-z-50 s-flex s-h-full s-w-full s-flex-col s-items-center s-justify-center s-gap-0",
-        "s-bg-background/80 dark:s-bg-background-night/80",
-        "s-text-foreground dark:s-text-foreground-night"
+        "s:absolute s:inset-0 s:z-50 s:flex s:h-full s:w-full s:flex-col s:items-center s:justify-center s:gap-0",
+        "s:bg-background/80 s:dark:bg-background-night/80",
+        "s:text-foreground s:dark:text-foreground-night"
       )}
       onMouseLeave={() => {
         lottieRef.current?.setDirection(-1);
@@ -61,7 +61,7 @@ export function DropzoneOverlay({
         lottieRef.current?.play();
       }}
     >
-      <div className="s-relative">
+      <div className="s:relative">
         <Lottie
           lottieRef={lottieRef}
           animationData={anim}
@@ -69,12 +69,12 @@ export function DropzoneOverlay({
           loop={false}
           autoplay
         />
-        <div className="s-absolute" style={{ top: `84px`, left: `84px` }}>
+        <div className="s:absolute" style={{ top: `84px`, left: `84px` }}>
           {visual}
         </div>
       </div>
-      <div className="s-heading-xl">{title}</div>
-      <div className="s-text-base s-text-muted-foreground dark:s-text-muted-foreground-night">
+      <div className="s:heading-xl">{title}</div>
+      <div className="s:text-base s:text-muted-foreground s:dark:text-muted-foreground-night">
         {description}
       </div>
     </div>

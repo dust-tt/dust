@@ -6,14 +6,14 @@ import * as React from "react";
 
 const hoveringBarVariants = cva(
   cn(
-    "s-inline-flex s-items-center s-shadow-md s-backdrop-blur-sm s-p-1",
-    "s-bg-background/80 s-border s-border-border dark:s-border-border-night dark:s-bg-background-night/80"
+    "s:inline-flex s:items-center s:shadow-md s:backdrop-blur-sm s:p-1",
+    "s:bg-background/80 s:border s:border-border s:dark:border-border-night s:dark:bg-background-night/80"
   ),
   {
     variants: {
       size: {
-        xs: "s-rounded-xl",
-        sm: "s-rounded-2xl",
+        xs: "s:rounded-xl",
+        sm: "s:rounded-2xl",
       },
     },
     defaultVariants: {
@@ -31,15 +31,15 @@ export interface HoveringBarProps
 export function HoveringBar({ children, className, size }: HoveringBarProps) {
   return (
     <div className={cn(hoveringBarVariants({ size }), className)}>
-      <ScrollArea orientation="horizontal" hideScrollBar className="s-h-full">
-        <div className="s-flex s-items-center s-gap-1">{children}</div>
+      <ScrollArea orientation="horizontal" hideScrollBar className="s:h-full">
+        <div className="s:flex s:items-center s:gap-1">{children}</div>
       </ScrollArea>
     </div>
   );
 }
 
 function HoveringBarSeparator() {
-  return <Separator orientation="vertical" className="s-my-1" />;
+  return <Separator orientation="vertical" className="s:my-1" />;
 }
 
 HoveringBar.Separator = HoveringBarSeparator;

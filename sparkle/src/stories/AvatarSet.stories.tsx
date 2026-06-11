@@ -290,9 +290,9 @@ const itemStyle = {
 export const DroidAvatarSet: Story = {
   render: () => (
     <>
-      <div className="s-py-4 s-text-base s-text-foreground dark:s-text-foreground-night">
+      <div className="s:py-4 s:text-base s:text-foreground s:dark:text-foreground-night">
         url is{" "}
-        <span className="s-font-bold">
+        <span className="s:font-bold">
           "https://dust.tt/static/droidavatar/filename"
         </span>
       </div>
@@ -300,7 +300,7 @@ export const DroidAvatarSet: Story = {
         {Object.entries(avatarUrlList).map(([filename, url]) => (
           <div key={filename} style={itemStyle as React.CSSProperties}>
             <Avatar visual={url} size="md" />
-            <div className="s-overflow-hidden s-text-ellipsis s-text-xs s-text-foreground dark:s-text-foreground-night">
+            <div className="s:overflow-hidden s:text-ellipsis s:text-xs s:text-foreground s:dark:text-foreground-night">
               {filename}
             </div>
           </div>
@@ -313,9 +313,9 @@ export const DroidAvatarSet: Story = {
 export const SpiritAvatarSet: Story = {
   render: () => (
     <>
-      <div className="s-py-4 s-text-base s-text-foreground dark:s-text-foreground-night">
+      <div className="s:py-4 s:text-base s:text-foreground s:dark:text-foreground-night">
         url is{" "}
-        <span className="s-font-bold">
+        <span className="s:font-bold">
           "https://dust.tt/static/spiritavatar/filename"
         </span>
       </div>
@@ -323,7 +323,7 @@ export const SpiritAvatarSet: Story = {
         {Object.entries(spiritAvatarUrlList).map(([filename, url]) => (
           <div key={filename} style={itemStyle as React.CSSProperties}>
             <Avatar visual={url} size="md" />
-            <div className="s-overflow-hidden s-text-ellipsis s-text-xs s-text-foreground dark:s-text-foreground-night">
+            <div className="s:overflow-hidden s:text-ellipsis s:text-xs s:text-foreground s:dark:text-foreground-night">
               {filename}
             </div>
           </div>

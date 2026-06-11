@@ -88,11 +88,11 @@ export const ToolValidation: Story = {
         <DialogContainer>
           <div>
             Allow [Agent_name] to use the tool (
-            <span className="s-mono s-text-muted-foreground dark:s-text-muted-foreground-night">
+            <span className="s:mono s:text-muted-foreground s:dark:text-muted-foreground-night">
               [toolset_name]
             </span>
             ,
-            <span className="s-mono s-text-muted-foreground dark:s-text-muted-foreground-night">
+            <span className="s:mono s:text-muted-foreground s:dark:text-muted-foreground-night">
               [tool_name]
             </span>
             )?
@@ -124,7 +124,7 @@ export const WithForm: Story = {
           <DialogTitle>Edit User Settings</DialogTitle>
         </DialogHeader>
         <DialogContainer>
-          <div className="s-grid s-gap-4">
+          <div className="s:grid s:gap-4">
             <Input label="Email" placeholder="Email" />
             <Input label="Username" placeholder="Username" />
           </div>
@@ -193,42 +193,42 @@ export const LargeContent: Story = {
             />
           }
         >
-          <div className="s-space-y-4">
-            <h3 className="s-font-semibold">1. Introduction</h3>
-            <p className="s-text-sm s-text-muted-foreground">
+          <div className="s:space-y-4">
+            <h3 className="s:font-semibold">1. Introduction</h3>
+            <p className="s:text-sm s:text-muted-foreground">
               Lorem ipsum dolor sit amet consectetur adipisicing elit. Quod
               possimus sit modi reprehenderit sed dolorem nisi nostrum,
               dignissimos tempora eligendi! Sed enim sapiente molestias pariatur
               earum ipsum exercitationem corrupti voluptates?
             </p>
-            <h3 className="s-font-semibold">2. Terms of Use</h3>
-            <p className="s-text-sm s-text-muted-foreground">
+            <h3 className="s:font-semibold">2. Terms of Use</h3>
+            <p className="s:text-sm s:text-muted-foreground">
               Lorem ipsum dolor sit amet consectetur adipisicing elit. Quod
               possimus sit modi reprehenderit sed dolorem nisi nostrum,
               dignissimos tempora eligendi! Minus voluptatem iste accusantium
               delectus nesciunt adipisci vitae earum similique.
             </p>
-            <h3 className="s-font-semibold">3. Privacy Policy</h3>
-            <p className="s-text-sm s-text-muted-foreground">
+            <h3 className="s:font-semibold">3. Privacy Policy</h3>
+            <p className="s:text-sm s:text-muted-foreground">
               Lorem ipsum dolor sit amet consectetur adipisicing elit. Quod
               possimus sit modi reprehenderit sed dolorem nisi nostrum,
               dignissimos tempora eligendi! Facere explicabo aliquam corporis
               error consectetur veniam assumenda.
             </p>
-            <h3 className="s-font-semibold">4. Data Processing</h3>
-            <p className="s-text-sm s-text-muted-foreground">
+            <h3 className="s:font-semibold">4. Data Processing</h3>
+            <p className="s:text-sm s:text-muted-foreground">
               Lorem ipsum dolor sit amet consectetur adipisicing elit. Dolorem
               ipsum inventore vel, voluptatem fugiat necessitatibus reiciendis
               accusantium dignissimos optio error.
             </p>
-            <h3 className="s-font-semibold">5. User Rights</h3>
-            <p className="s-text-sm s-text-muted-foreground">
+            <h3 className="s:font-semibold">5. User Rights</h3>
+            <p className="s:text-sm s:text-muted-foreground">
               Lorem ipsum dolor sit amet consectetur adipisicing elit. Deserunt
               architecto dolorem corrupti accusamus optio neque officia
               perferendis molestiae.
             </p>
-            <h3 className="s-font-semibold">6. Additional Terms</h3>
-            <p className="s-text-sm s-text-muted-foreground">
+            <h3 className="s:font-semibold">6. Additional Terms</h3>
+            <p className="s:text-sm s:text-muted-foreground">
               More content to make the dialog scrollable and test the fixed
               search input functionality. Lorem ipsum dolor sit amet consectetur
               adipisicing elit. Quod possimus sit modi reprehenderit sed dolorem

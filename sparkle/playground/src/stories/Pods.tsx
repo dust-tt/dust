@@ -675,7 +675,7 @@ function Pods() {
                     />
                   ))
                 ) : (
-                  <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  <div className="s:flex s:h-24 s:items-center s:justify-center s:text-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
                     No participants
                   </div>
                 )}
@@ -698,8 +698,8 @@ function Pods() {
 
   if (!user) {
     return (
-      <div className="s-flex s-h-screen s-items-center s-justify-center s-bg-background dark:s-bg-background-night">
-        <p className="s-text-foreground dark:s-text-foreground-night">
+      <div className="s:flex s:h-screen s:items-center s:justify-center s:bg-background dark:s:bg-background-night">
+        <p className="s:text-foreground dark:s:text-foreground-night">
           Loading…
         </p>
       </div>
@@ -720,7 +720,7 @@ function Pods() {
     if (p2View.kind === "profile" && user) return <ProfilePanel user={user} />;
     if (p2View.kind === "templates")
       return (
-        <div className="s-h-full s-overflow-auto">
+        <div className="s:h-full s:overflow-auto">
           <TemplateSelection
             onTemplateClick={(t) => setSelectedTemplateForBuilder(t)}
           />
@@ -781,13 +781,13 @@ function Pods() {
       );
     // welcome
     return (
-      <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background dark:s-bg-background-night">
-        <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-px-4 s-py-8">
-          <div className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+      <div className="s:flex s:h-full s:w-full s:items-center s:justify-center s:bg-background dark:s:bg-background-night">
+        <div className="s:flex s:w-full s:max-w-4xl s:flex-col s:gap-6 s:px-4 s:py-8">
+          <div className="s:heading-2xl s:text-foreground dark:s:text-foreground-night">
             {greeting}
           </div>
           <InputBar placeholder="Ask a question" />
-          <div className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+          <div className="s:heading-lg s:text-foreground dark:s:text-foreground-night">
             Chat with…
           </div>
         </div>
@@ -818,11 +818,11 @@ function Pods() {
       );
     if (p3View.kind === "citation")
       return (
-        <div className="s-flex s-h-full s-flex-col s-gap-3 s-p-4">
-          <p className="s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
+        <div className="s:flex s:h-full s:flex-col s:gap-3 s:p-4">
+          <p className="s:text-sm s:font-medium s:text-foreground dark:s:text-foreground-night">
             {p3View.citation.title}
           </p>
-          <div className="s-flex-1 s-rounded-lg s-border s-border-separator s-bg-muted-background s-p-4 s-text-sm s-text-muted-foreground dark:s-border-separator-night dark:s-bg-muted-background-night dark:s-text-muted-foreground-night">
+          <div className="s:flex-1 s:rounded-lg s:border s:border-separator s:bg-muted-background s:p-4 s:text-sm s:text-muted-foreground dark:s:border-separator-night dark:s:bg-muted-background-night dark:s:text-muted-foreground-night">
             Document preview placeholder
           </div>
         </div>
@@ -833,11 +833,11 @@ function Pods() {
   // ── P4 content ────────────────────────────────────────────────────────────
   const p4Label = p4Citation?.title ?? "Attachment";
   const p4Content = p4Citation ? (
-    <div className="s-flex s-h-full s-flex-col s-gap-3 s-p-4">
-      <p className="s-text-sm s-font-medium s-text-foreground dark:s-text-foreground-night">
+    <div className="s:flex s:h-full s:flex-col s:gap-3 s:p-4">
+      <p className="s:text-sm s:font-medium s:text-foreground dark:s:text-foreground-night">
         {p4Citation.title}
       </p>
-      <div className="s-flex-1 s-rounded-lg s-border s-border-separator s-bg-muted-background s-p-4 s-text-sm s-text-muted-foreground dark:s-border-separator-night dark:s-bg-muted-background-night dark:s-text-muted-foreground-night">
+      <div className="s:flex-1 s:rounded-lg s:border s:border-separator s:bg-muted-background s:p-4 s:text-sm s:text-muted-foreground dark:s:border-separator-night dark:s:bg-muted-background-night dark:s:text-muted-foreground-night">
         Document preview placeholder
       </div>
     </div>
@@ -884,7 +884,7 @@ function Pods() {
         isRounded: true as const,
       }));
     return (
-      <div className="s-flex s-items-center s-gap-2">
+      <div className="s:flex s:items-center s:gap-2">
         {memberAvatars.length > 0 && (
           <Avatar.Stack
             avatars={memberAvatars}
@@ -982,19 +982,19 @@ function Pods() {
 
   // ── Sidebar (Nav) content ─────────────────────────────────────────────────
   const navContent = (
-    <div className="s-flex s-min-h-0 s-flex-1 s-flex-col s-bg-muted-background dark:s-bg-muted-background-night">
+    <div className="s:flex s:min-h-0 s:flex-1 s:flex-col s:bg-muted-background dark:s:bg-muted-background-night">
       {/* ── Chat tab ── */}
       {activeTab === "chat" && (
-        <div className="s-flex s-min-h-0 s-flex-1 s-flex-col">
-          <ScrollArea className="s-flex-1">
+        <div className="s:flex s:min-h-0 s:flex-1 s:flex-col">
+          <ScrollArea className="s:flex-1">
             <ScrollBar orientation="vertical" size="minimal" />
-            <div className="s-flex s-gap-2 s-p-2">
+            <div className="s:flex s:gap-2 s:p-2">
               <SearchInput
                 name="search"
                 value={searchText}
                 onChange={setSearchText}
                 placeholder="Search"
-                className="s-flex-1"
+                className="s:flex-1"
               />
               <Button
                 variant="primary"
@@ -1093,7 +1093,7 @@ function Pods() {
             {inboxConversations.length > 0 && (
               <NavigationListCollapsibleSection
                 label="Inbox"
-                className="s-border-b s-border-t s-border-border dark:s-border-border-night s-bg-background/50 s-px-2 s-pb-2 dark:s-bg-background-night/50"
+                className="s:border-b s:border-t s:border-border dark:s:border-border-night s:bg-background/50 s:px-2 s:pb-2 dark:s:bg-background-night/50"
                 actionOnHover={false}
                 action={
                   <>
@@ -1161,7 +1161,7 @@ function Pods() {
               </NavigationListCollapsibleSection>
             )}
 
-            <NavigationList className="s-px-2">
+            <NavigationList className="s:px-2">
               {/* Pods */}
               {(filteredSpaces.length > 0 || !searchText.trim()) && (
                 <NavigationListCollapsibleSection
@@ -1505,42 +1505,42 @@ function Pods() {
       )}
 
       {activeTab === "spaces" && (
-        <div className="s-flex s-min-h-0 s-flex-1 s-flex-col">
-          <div className="s-flex s-flex-1 s-items-center s-justify-center s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <div className="s:flex s:min-h-0 s:flex-1 s:flex-col">
+          <div className="s:flex s:flex-1 s:items-center s:justify-center s:text-muted-foreground dark:s:text-muted-foreground-night">
             Spaces — TBD
           </div>
         </div>
       )}
       {activeTab === "admin" && (
-        <div className="s-flex s-min-h-0 s-flex-1 s-flex-col">
-          <div className="s-flex s-flex-1 s-items-center s-justify-center s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <div className="s:flex s:min-h-0 s:flex-1 s:flex-col">
+          <div className="s:flex s:flex-1 s:items-center s:justify-center s:text-muted-foreground dark:s:text-muted-foreground-night">
             Admin — TBD
           </div>
         </div>
       )}
 
       {/* Bottom bar */}
-      <div className="s-flex s-h-14 s-items-center s-justify-between s-gap-2 s-border-t s-border-border s-pl-1 s-pr-2 dark:s-border-border-night">
+      <div className="s:flex s:h-14 s:items-center s:justify-between s:gap-2 s:border-t s:border-border s:pl-1 s:pr-2 dark:s:border-border-night">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Card
               size="xs"
               onClick={(e) => e.preventDefault()}
-              className="s-p-1"
-              containerClassName="s-flex-1 s-min-w-0"
+              className="s:p-1"
+              containerClassName="s:flex-1 s:min-w-0"
             >
-              <div className="s-flex s-min-w-0 s-items-center s-gap-2 s-pr-1">
+              <div className="s:flex s:min-w-0 s:items-center s:gap-2 s:pr-1">
                 <Avatar
                   name={user.fullName}
                   visual={user.portrait}
                   size="sm"
                   isRounded
                 />
-                <div className="s-flex s-min-w-0 s-grow s-flex-col s-text-sm s-text-foreground dark:s-text-foreground-night">
-                  <span className="s-heading-sm s-truncate">
+                <div className="s:flex s:min-w-0 s:grow s:flex-col s:text-sm s:text-foreground dark:s:text-foreground-night">
+                  <span className="s:heading-sm s:truncate">
                     {user.fullName}
                   </span>
-                  <span className="-s-mt-0.5 s-truncate s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  <span className="-s:mt-0.5 s:truncate s:text-xs s:text-muted-foreground dark:s:text-muted-foreground-night">
                     ACME
                   </span>
                 </div>
@@ -1611,7 +1611,7 @@ function Pods() {
         <PanelLayoutNav topBarLeft={navTopBar}>
           {(onNavClose) => (
             <div
-              className="s-flex s-min-h-0 s-flex-1 s-flex-col"
+              className="s:flex s:min-h-0 s:flex-1 s:flex-col"
               onClick={onNavClose}
             >
               {navContent}
@@ -1669,7 +1669,7 @@ function Pods() {
       >
         <DialogContent
           size="full"
-          className="s-flex s-h-full s-max-h-full s-overflow-hidden s-rounded-none s-p-0"
+          className="s:flex s:h-full s:max-h-full s:overflow-hidden s:rounded-none s:p-0"
         >
           {selectedTemplateForBuilder && (
             <AgentBuilderView

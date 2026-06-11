@@ -61,7 +61,7 @@ export const NavigatesPages: Story = {
   },
 };
 
-// Single project-wide CssCheck. Pagination's page-number buttons use `s-font-medium`, which
+// Single project-wide CssCheck. Pagination's page-number buttons use `s:font-medium`, which
 // Tailwind compiles to `font-weight: 500`. A concrete computed value is the only proof that the
 // shared preview actually loaded Sparkle's stylesheet — `toBeVisible` would pass even unstyled.
 export const CssCheck: Story = {

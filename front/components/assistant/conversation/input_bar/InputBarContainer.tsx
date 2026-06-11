@@ -1066,7 +1066,7 @@ const InputBarContainer = ({
 
   const contentEditableClasses = classNames(
     "inline-block w-full",
-    "border-0 outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0",
+    "border-0 outline-hidden ring-0 focus:border-0 focus:outline-hidden focus:ring-0",
     "whitespace-pre-wrap font-normal",
     "px-3 sm:pl-4 pt-3 sm:pt-3.5"
   );

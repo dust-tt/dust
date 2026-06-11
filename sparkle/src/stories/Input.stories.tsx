@@ -111,8 +111,8 @@ export const WithInfoMessage: Story = {
 
 export const AllVariants: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-20">
-      <div className="s-grid s-grid-cols-3 s-gap-4">
+    <div className="s:flex s:flex-col s:gap-20">
+      <div className="s:grid s:grid-cols-3 s:gap-4">
         <Input
           placeholder="placeholder"
           name="input"
@@ -147,7 +147,7 @@ export const AllVariants: Story = {
           messageStatus="error"
         />
       </div>
-      <div className="s-grid s-grid-cols-3 s-gap-4">
+      <div className="s:grid s:grid-cols-3 s:gap-4">
         <Input placeholder="placeholder" name="input" />
         <Input
           placeholder="placeholder"
@@ -176,7 +176,7 @@ export const AllVariants: Story = {
           messageStatus="error"
         />
       </div>
-      <div className="s-grid s-grid-cols-3 s-gap-4">
+      <div className="s:grid s:grid-cols-3 s:gap-4">
         <Input
           placeholder="placeholder"
           name="input"

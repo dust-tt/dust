@@ -34,7 +34,7 @@ export const CollapsibleExample = () => (
     <Collapsible>
       <CollapsibleTrigger label="Click me" />
       <CollapsibleContent>
-        <div className="s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-muted-background">
+        <div className="s:flex s:h-16 s:w-full s:items-center s:justify-center s:bg-muted-background">
           Hello
         </div>
       </CollapsibleContent>
@@ -43,7 +43,7 @@ export const CollapsibleExample = () => (
     <Collapsible>
       <CollapsibleTrigger label="Click me" />
       <CollapsibleContent>
-        <div className="s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-muted-background">
+        <div className="s:flex s:h-16 s:w-full s:items-center s:justify-center s:bg-muted-background">
           Hello
         </div>
       </CollapsibleContent>
@@ -51,7 +51,7 @@ export const CollapsibleExample = () => (
     <Collapsible>
       <CollapsibleTrigger label="Click me" />
       <CollapsibleContent>
-        <div className="s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-muted-background">
+        <div className="s:flex s:h-16 s:w-full s:items-center s:justify-center s:bg-muted-background">
           Hello
         </div>
       </CollapsibleContent>
@@ -61,7 +61,7 @@ export const CollapsibleExample = () => (
         <Chip>Click me custom (with chevron)</Chip>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="mt-1 s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-muted-background">
+        <div className="mt-1 s:flex s:h-16 s:w-full s:items-center s:justify-center s:bg-muted-background">
           Custom trigger content with chevron shown by default
         </div>
       </CollapsibleContent>
@@ -71,17 +71,17 @@ export const CollapsibleExample = () => (
         <Chip>Click me custom (no chevron)</Chip>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="mt-1 s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-muted-background">
+        <div className="mt-1 s:flex s:h-16 s:w-full s:items-center s:justify-center s:bg-muted-background">
           Custom trigger content with chevron hidden
         </div>
       </CollapsibleContent>
     </Collapsible>
-    <div className="s-rounded-md s-border s-border-gray-200 s-p-4">
-      <h3 className="s-mb-2 s-font-medium">Default Open</h3>
+    <div className="s:rounded-md s:border s:border-gray-200 s:p-4">
+      <h3 className="s:mb-2 s:font-medium">Default Open</h3>
       <Collapsible defaultOpen>
         <CollapsibleTrigger label="Open by default" />
         <CollapsibleContent>
-          <div className="s-flex s-h-16 s-w-full s-items-center s-justify-center s-bg-muted-background">
+          <div className="s:flex s:h-16 s:w-full s:items-center s:justify-center s:bg-muted-background">
             This collapsible is open by default
           </div>
         </CollapsibleContent>

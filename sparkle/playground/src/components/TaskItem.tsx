@@ -2,19 +2,19 @@ import { Checkbox, Tooltip, cn } from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
 import { useEffect, useRef, type ReactNode } from "react";
 
-const taskItemTextVariants = cva("s-min-h-6 s-text-base", {
+const taskItemTextVariants = cva("s:min-h-6 s:text-base", {
   variants: {
     editable: {
-      true: "s-cursor-text s-outline-none focus:s-outline-none",
-      false: "s-truncate",
+      true: "s:cursor-text s:outline-none focus:s:outline-none",
+      false: "s:truncate",
     },
     editing: {
-      true: "s-bg-highlight-50 dark:s-bg-highlight-100-night",
+      true: "s:bg-highlight-50 dark:s:bg-highlight-100-night",
       false: "",
     },
     checked: {
-      true: "s-text-faint s-line-through dark:s-text-faint-night",
-      false: "s-text-foreground dark:s-text-foreground-night",
+      true: "s:text-faint s:line-through dark:s:text-faint-night",
+      false: "s:text-foreground dark:s:text-foreground-night",
     },
   },
   compoundVariants: [
@@ -32,13 +32,13 @@ const taskItemTextVariants = cva("s-min-h-6 s-text-base", {
 });
 
 const taskItemActionsVariants = cva(
-  "s-flex s-items-center s-gap-1 s-transition-opacity",
+  "s:flex s:items-center s:gap-1 s:transition-opacity",
   {
     variants: {
       editing: {
-        true: "s-opacity-0",
+        true: "s:opacity-0",
         false:
-          "s-opacity-0 group-focus-within/task-item:s-opacity-100 group-hover/task-item:s-opacity-100",
+          "s:opacity-0 group-focus-within/task-item:s:opacity-100 group-hover/task-item:s:opacity-100",
       },
     },
     defaultVariants: {
@@ -48,12 +48,12 @@ const taskItemActionsVariants = cva(
 );
 
 const relatedConversationLinkVariants = cva(
-  "s-underline hover:s-no-underline",
+  "s:underline hover:s:no-underline",
   {
     variants: {
       checked: {
-        true: "s-text-faint dark:s-text-faint-night",
-        false: "s-text-muted-foreground dark:s-text-muted-foreground-night",
+        true: "s:text-faint dark:s:text-faint-night",
+        false: "s:text-muted-foreground dark:s:text-muted-foreground-night",
       },
     },
     defaultVariants: {
@@ -219,17 +219,17 @@ export function TaskItem({
   return (
     <div
       className={cn(
-        "s-group/task-item s-flex s-min-h-9 s-items-start s-gap-3",
+        "s:group/task-item s:flex s:min-h-9 s:items-start s:gap-3",
         className
       )}
     >
-      <div className="s-flex s-min-h-9 s-min-w-0 s-flex-1 s-items-start s-gap-3 s-pt-1">
+      <div className="s:flex s:min-h-9 s:min-w-0 s:flex-1 s:items-start s:gap-3 s:pt-1">
         {showCheckbox && (
           <Checkbox
             size="sm"
             className={cn(
-              "s-mt-0.5",
-              !isEditable && "s-pointer-events-none",
+              "s:mt-0.5",
+              !isEditable && "s:pointer-events-none",
               checkboxClassName
             )}
             isMutedAfterCheck={isMutedAfterCheck}
@@ -244,9 +244,9 @@ export function TaskItem({
           />
         )}
         {visual}
-        <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
+        <div className="s:flex s:min-w-0 s:flex-1 s:flex-col">
           {title && (
-            <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+            <div className="s:text-xs s:text-muted-foreground dark:s:text-muted-foreground-night">
               {title}
             </div>
           )}
@@ -256,12 +256,12 @@ export function TaskItem({
             <Tooltip trigger={textElement} label={text} />
           )}
           {isChecked && autoCheckRationale ? (
-            <div className="s-text-xs s-text-faint dark:s-text-faint-night">
+            <div className="s:text-xs s:text-faint dark:s:text-faint-night">
               {autoCheckRationale}
             </div>
           ) : null}
           {relatedConversations.length > 0 ? (
-            <div className="s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+            <div className="s:text-xs s:text-muted-foreground dark:s:text-muted-foreground-night">
               <span>In </span>
               {relatedConversations.map((conversation, index) => (
                 <span key={conversation.id}>

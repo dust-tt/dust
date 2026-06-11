@@ -35,7 +35,7 @@ function makeCitationItems(items: number) {
 export const PaginatedCitationsGridExample = () => {
   return (
     <>
-      <div className="s-flex s-gap-6">
+      <div className="s:flex s:gap-6">
         <PaginatedCitationsGrid items={makeCitationItems(20)} />
       </div>
     </>
@@ -45,7 +45,7 @@ export const PaginatedCitationsGridExample = () => {
 export const WithFewItems = () => {
   return (
     <>
-      <div className="s-flex s-gap-6">
+      <div className="s:flex s:gap-6">
         <PaginatedCitationsGrid items={makeCitationItems(2)} />
       </div>
     </>

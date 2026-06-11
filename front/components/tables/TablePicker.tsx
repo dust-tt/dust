@@ -153,7 +153,7 @@ export default function TablePicker({
                     readOnly
                       ? "text-gray-400 dark:text-gray-600"
                       : "text-muted-foreground dark:text-muted-foreground-night",
-                    "focus:outline-none focus:ring-0"
+                    "focus:outline-hidden focus:ring-0"
                   )}
                 >
                   <div className="copy-sm mr-1 max-w-xs truncate font-semibold text-highlight-500 dark:text-highlight-500-night">

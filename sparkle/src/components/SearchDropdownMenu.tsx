@@ -86,7 +86,7 @@ export function SearchDropdownMenu({
       <DropdownMenuContent
         side="bottom"
         align="start"
-        className="s-w-[--radix-popper-anchor-width]"
+        className="s:w-[--radix-popper-anchor-width]"
         searchInputRef={searchInputRef}
         onOpenAutoFocus={(e) => {
           e.preventDefault();

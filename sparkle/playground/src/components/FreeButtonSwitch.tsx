@@ -382,7 +382,7 @@ export function FreeButtonSwitch<TValue extends string>({
 
     if (!interactive) {
       return (
-        <div key={option.id ?? option.value} className="s-shrink-0">
+        <div key={option.id ?? option.value} className="s:shrink-0">
           {button}
         </div>
       );
@@ -392,11 +392,11 @@ export function FreeButtonSwitch<TValue extends string>({
       <div
         key={option.id ?? option.value}
         className={cn(
-          "s-shrink-0 s-rounded-lg s-transition-colors",
-          isDraggable && "s-cursor-grab active:s-cursor-grabbing",
-          draggingTabValue === option.value && "s-opacity-50",
+          "s:shrink-0 s:rounded-lg s:transition-colors",
+          isDraggable && "s:cursor-grab active:s:cursor-grabbing",
+          draggingTabValue === option.value && "s:opacity-50",
           dropTargetValue === option.value &&
-            "s-bg-muted-background dark:s-bg-muted-background-night"
+            "s:bg-muted-background dark:s:bg-muted-background-night"
         )}
         draggable={isDraggable}
         onDragStart={(event) => handleTabDragStart(option, event)}
@@ -418,7 +418,7 @@ export function FreeButtonSwitch<TValue extends string>({
   const renderOptionGroups = (hideLabels: boolean, interactive: boolean) => (
     <>
       <div
-        className="s-flex s-min-w-0 s-flex-1 s-items-center s-gap-1"
+        className="s:flex s:min-w-0 s:flex-1 s:items-center s:gap-1"
         onDragOver={interactive ? handleStripDragOver : undefined}
         onDragLeave={
           interactive ? () => setIsFileDropHighlight(false) : undefined
@@ -429,7 +429,7 @@ export function FreeButtonSwitch<TValue extends string>({
           renderOptionButton(option, hideLabels, interactive)
         )}
         {interactive && showFileDropPlaceholder && (
-          <div className="s-shrink-0">
+          <div className="s:shrink-0">
             <Button
               variant="outline"
               size={size}
@@ -437,15 +437,15 @@ export function FreeButtonSwitch<TValue extends string>({
               icon={File02}
               tooltip={hideLabels ? (activeFileLabel ?? undefined) : undefined}
               aria-label={activeFileLabel ?? "Add file to topbar"}
-              className="s-pointer-events-none s-opacity-50"
+              className="s:pointer-events-none s:opacity-50"
             />
           </div>
         )}
       </div>
       {pinnedEndOptions.length > 0 && (
         <>
-          <Separator orientation="vertical" className="s-h-5" />
-          <div className="s-flex s-shrink-0 s-items-center s-gap-1">
+          <Separator orientation="vertical" className="s:h-5" />
+          <div className="s:flex s:shrink-0 s:items-center s:gap-1">
             {pinnedEndOptions.map((option) =>
               renderOptionButton(option, hideLabels, interactive)
             )}
@@ -461,23 +461,23 @@ export function FreeButtonSwitch<TValue extends string>({
 
   return (
     <>
-      <div ref={containerRef} className="s-relative s-w-full">
-        <div className="s-flex s-items-center s-gap-2">
+      <div ref={containerRef} className="s:relative s:w-full">
+        <div className="s:flex s:items-center s:gap-2">
           {showAddToLabel && (
             <AnimatedText
               variant="muted"
-              className="s-shrink-0 s-text-sm s-italic"
+              className="s:shrink-0 s:text-sm s:italic"
             >
               Add to...
             </AnimatedText>
           )}
-          <div className="s-flex s-min-w-0 s-flex-1 s-items-center s-gap-1">
+          <div className="s:flex s:min-w-0 s:flex-1 s:items-center s:gap-1">
             {renderOptionGroups(shouldHideLabels, true)}
           </div>
         </div>
         <div
           ref={fullLabelsRef}
-          className="s-invisible s-pointer-events-none s-absolute s-left-0 s-top-0 s-flex s-items-center s-gap-1 s-whitespace-nowrap"
+          className="s:invisible s:pointer-events-none s:absolute s:left-0 s:top-0 s:flex s:items-center s:gap-1 s:whitespace-nowrap"
           aria-hidden
         >
           {renderOptionGroups(false, false)}
@@ -497,7 +497,7 @@ export function FreeButtonSwitch<TValue extends string>({
           <DropdownMenuPortal>
             <DropdownMenuContent
               align="start"
-              className="s-whitespace-nowrap"
+              className="s:whitespace-nowrap"
               style={{
                 position: "fixed",
                 left: contextMenuState.x,

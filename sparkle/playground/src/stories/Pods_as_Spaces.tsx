@@ -592,7 +592,7 @@ function DustMain() {
                     />
                   ))
                 ) : (
-                  <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
+                  <div className="s:flex s:h-24 s:items-center s:justify-center s:text-sm s:text-muted-foreground">
                     No participants
                   </div>
                 )}
@@ -615,9 +615,9 @@ function DustMain() {
 
   if (!user) {
     return (
-      <div className="s-flex s-min-h-screen s-items-center s-justify-center s-bg-background">
-        <div className="s-text-center">
-          <p className="s-text-foreground">Loading...</p>
+      <div className="s:flex s:min-h-screen s:items-center s:justify-center s:bg-background">
+        <div className="s:text-center">
+          <p className="s:text-foreground">Loading...</p>
         </div>
       </div>
     );
@@ -625,29 +625,29 @@ function DustMain() {
 
   // Sidebar content
   const sidebarContent = (
-    <div className="s-flex s-h-full s-flex-col s-border-r s-border-border s-bg-muted-background dark:s-border-border-night dark:s-bg-muted-background-night">
+    <div className="s:flex s:h-full s:flex-col s:border-r s:border-border s:bg-muted-background dark:s:border-border-night dark:s:bg-muted-background-night">
       {/* Top Bar */}
-      <div className="s-flex s-h-14 s-items-center s-justify-between s-gap-2 s-border-b s-border-border s-pl-1 s-pr-2 dark:s-border-border-night">
+      <div className="s:flex s:h-14 s:items-center s:justify-between s:gap-2 s:border-b s:border-border s:pl-1 s:pr-2 dark:s:border-border-night">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Card
               size="xs"
               onClick={(e: MouseEvent) => e.preventDefault()}
-              className="s-p-1"
-              containerClassName="s-flex-1 s-min-w-0"
+              className="s:p-1"
+              containerClassName="s:flex-1 s:min-w-0"
             >
-              <div className="s-flex s-min-w-0 s-items-center s-gap-2 s-pr-1">
+              <div className="s:flex s:min-w-0 s:items-center s:gap-2 s:pr-1">
                 <Avatar
                   name={user.fullName}
                   visual={user.portrait}
                   size="sm"
                   isRounded={true}
                 />
-                <div className="s-flex s-min-w-0 s-grow s-flex-col s-text-sm s-text-foreground dark:s-text-foreground-night">
-                  <span className="s-heading-sm s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap">
+                <div className="s:flex s:min-w-0 s:grow s:flex-col s:text-sm s:text-foreground dark:s:text-foreground-night">
+                  <span className="s:heading-sm s:min-w-0 s:overflow-hidden s:text-ellipsis s:whitespace-nowrap">
                     {user.fullName}
                   </span>
-                  <span className="-s-mt-0.5 s-min-w-0 s-overflow-hidden s-text-ellipsis s-whitespace-nowrap s-text-xs s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  <span className="-s:mt-0.5 s:min-w-0 s:overflow-hidden s:text-ellipsis s:whitespace-nowrap s:text-xs s:text-muted-foreground dark:s:text-muted-foreground-night">
                     ACME
                   </span>
                 </div>
@@ -760,16 +760,16 @@ function DustMain() {
           onClick={() => sidebarLayoutRef.current?.toggle()}
         />
       </div>
-      <ScrollArea className="s-flex-1">
+      <ScrollArea className="s:flex-1">
         <ScrollBar orientation="vertical" size="minimal" />
         {/* Search Bar */}
-        <div className="s-flex s-gap-1 s-p-2 s-px-2 s-items-center">
+        <div className="s:flex s:gap-1 s:p-2 s:px-2 s:items-center">
           <SearchInput
             name="conversation-search"
             value={searchText}
             onChange={setSearchText}
             placeholder="Search"
-            className="s-flex-1"
+            className="s:flex-1"
           />
           <Button
             variant="primary"
@@ -854,7 +854,7 @@ function DustMain() {
           </DropdownMenu>
         </div>
         {/* Collapsible Sections */}
-        <NavigationList className="s-px-2">
+        <NavigationList className="s:px-2">
           {!searchText.trim() ? (
             <>
               <NavigationListItem
@@ -890,7 +890,7 @@ function DustMain() {
             </>
           ) : (
             <>
-              <div className="s-flex s-w-full s-justify-end s-gap-1.5">
+              <div className="s:flex s:w-full s:justify-end s:gap-1.5">
                 <Button
                   size="xs"
                   icon={SearchMd}
@@ -1094,7 +1094,7 @@ function DustMain() {
                                   />
                                 ))
                             ) : (
-                              <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
+                              <div className="s:flex s:h-24 s:items-center s:justify-center s:text-sm s:text-muted-foreground">
                                 No agents found
                               </div>
                             )}
@@ -1138,7 +1138,7 @@ function DustMain() {
                                   />
                                 ))
                             ) : (
-                              <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
+                              <div className="s:flex s:h-24 s:items-center s:justify-center s:text-sm s:text-muted-foreground">
                                 No people found
                               </div>
                             )}
@@ -1504,7 +1504,7 @@ function DustMain() {
       />
     ) : // Priority 3: Show template selection when Browse templates is clicked
     selectedView === "templates" ? (
-      <div className="s-h-full s-overflow-auto">
+      <div className="s:h-full s:overflow-auto">
         <TemplateSelection
           onTemplateClick={(t) => setSelectedTemplateForBuilder(t)}
         />
@@ -1549,14 +1549,14 @@ function DustMain() {
       />
     ) : (
       // Priority 6: Show welcome/new conversation view
-      <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-bg-background">
-        <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-px-4 s-py-8">
-          <div className="s-heading-2xl s-text-foreground">
+      <div className="s:flex s:h-full s:w-full s:items-center s:justify-center s:bg-background">
+        <div className="s:flex s:w-full s:max-w-4xl s:flex-col s:gap-6 s:px-4 s:py-8">
+          <div className="s:heading-2xl s:text-foreground">
             Welcome, Edouard!{" "}
           </div>
           <InputBar />
-          <div className="s-flex s-w-full s-flex-col s-gap-2">
-            <div className="s-heading-lg s-text-foreground">
+          <div className="s:flex s:w-full s:flex-col s:gap-2">
+            <div className="s:heading-lg s:text-foreground">
               Universal search
             </div>
             <SearchInput
@@ -1564,16 +1564,16 @@ function DustMain() {
               value={documentSearchText}
               onChange={setDocumentSearchText}
               placeholder="Find company documents, Agents, People…"
-              className="s-w-full"
+              className="s:w-full"
             />
           </div>
-          <div className="s-heading-lg s-text-foreground">Chat with…</div>
+          <div className="s:heading-lg s:text-foreground">Chat with…</div>
         </div>
       </div>
     );
 
   return (
-    <div className="s-flex s-h-screen s-w-full s-bg-background">
+    <div className="s:flex s:h-screen s:w-full s:bg-background">
       <SidebarLayout
         ref={sidebarLayoutRef}
         sidebar={sidebarContent}
@@ -1594,7 +1594,7 @@ function DustMain() {
       >
         <DialogContent
           size="full"
-          className="s-flex s-h-full s-max-h-full s-rounded-none s-p-0 s-overflow-hidden"
+          className="s:flex s:h-full s:max-h-full s:rounded-none s:p-0 s:overflow-hidden"
         >
           {selectedTemplateForBuilder && (
             <AgentBuilderView

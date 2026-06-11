@@ -51,12 +51,12 @@ export const BarHeaderWithDescription = () => {
       position="top"
       title="My Custom Skill"
       description={
-        <div className="s-flex s-items-center s-gap-1 s-text-sm">
-          <p className="s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <div className="s:flex s:items-center s:gap-1 s:text-sm">
+          <p className="s:text-muted-foreground s:dark:text-muted-foreground-night">
             Based on
           </p>
           <Icon visual={Robot} size="xs" />
-          <p className="s-text-foreground dark:s-text-foreground-night">
+          <p className="s:text-foreground s:dark:text-foreground-night">
             Research Assistant
           </p>
         </div>
@@ -76,7 +76,7 @@ export const BasicBarHeaderValidate = () => {
   const [isSaving, setIsSaving] = React.useState(false);
 
   return (
-    <div className="s-h-full s-w-full">
+    <div className="s:h-full s:w-full">
       <Bar
         position="top"
         title="Knowledge Base"
@@ -99,9 +99,9 @@ export const BasicBarHeaderValidate = () => {
           />
         }
       />
-      <div className="s-mt-16 s-h-full s-w-full s-overflow-y-auto">
+      <div className="s:mt-16 s:h-full s:w-full s:overflow-y-auto">
         <Page.Header title="Page Title" icon={MessageCircle01} />
-        <div className="s-flex s-flex-col s-gap-y-96">
+        <div className="s:flex s:flex-col s:gap-y-96">
           <img
             src="/static/landing/mainVisual/MainVisual1.png"
             alt="Main Visual 1"
@@ -126,10 +126,10 @@ export const BasicBarHeaderValidate = () => {
 
 export const BasicBarFooterValidate = () => {
   return (
-    <div className="s-flex s-h-full s-w-full s-flex-col">
-      <div className="s-flex-1 s-overflow-y-auto s-p-4">
+    <div className="s:flex s:h-full s:w-full s:flex-col">
+      <div className="s:flex-1 s:overflow-y-auto s:p-4">
         <Page.Header title="Page Title" icon={MessageCircle01} />
-        <div className="s-flex s-flex-col s-gap-y-96">
+        <div className="s:flex s:flex-col s:gap-y-96">
           <img
             src="/static/landing/mainVisual/MainVisual1.png"
             alt="Main Visual 1"
@@ -150,7 +150,7 @@ export const BasicBarFooterValidate = () => {
       </div>
       <BarFooter
         variant="default"
-        className="mx-4 s-justify-between"
+        className="mx-4 s:justify-between"
         leftActions={
           <Button
             variant="outline"
@@ -178,7 +178,7 @@ export const HeaderAndFooterCombined = () => {
   const [isSaving, setIsSaving] = React.useState(false);
 
   return (
-    <div className="s-flex s-h-full s-w-full s-flex-col">
+    <div className="s:flex s:h-full s:w-full s:flex-col">
       <Bar
         position="top"
         title="Agent Builder"
@@ -186,9 +186,9 @@ export const HeaderAndFooterCombined = () => {
           <Bar.ButtonBar variant="close" onClose={() => alert("Closed!")} />
         }
       />
-      <div className="s-flex-1 s-overflow-y-auto s-p-4">
+      <div className="s:flex-1 s:overflow-y-auto s:p-4">
         <Page.Header title="Page Content" icon={MessageCircle01} />
-        <div className="s-flex s-flex-col s-gap-y-96">
+        <div className="s:flex s:flex-col s:gap-y-96">
           <img
             src="/static/landing/mainVisual/MainVisual1.png"
             alt="Main Visual 1"
@@ -242,10 +242,10 @@ export const DefaultVariantInPanel = () => {
   const [isSaving, setIsSaving] = React.useState(false);
 
   return (
-    <div className="s-h-full s-w-full">
-      <ResizablePanelGroup direction="horizontal" className="s-h-full s-w-full">
+    <div className="s:h-full s:w-full">
+      <ResizablePanelGroup direction="horizontal" className="s:h-full s:w-full">
         <ResizablePanel defaultSize={70} minSize={30}>
-          <div className="s-flex s-h-full s-flex-col s-bg-white s-shadow-sm">
+          <div className="s:flex s:h-full s:flex-col s:bg-white s:shadow-sm">
             <Bar
               position="top"
               variant="default"
@@ -257,9 +257,9 @@ export const DefaultVariantInPanel = () => {
                 />
               }
             />
-            <div className="s-flex-1 s-overflow-y-auto s-p-4">
+            <div className="s:flex-1 s:overflow-y-auto s:p-4">
               <Page.Header title="Left Panel Content" icon={MessageCircle01} />
-              <p className="s-text-sm s-text-gray-600">
+              <p className="s:text-sm s:text-gray-600">
                 This demonstrates the "default" variant of Bar that is contained
                 within its parent container, perfect for panels and sidebars.
                 This panel uses ResizablePanelGroup like AgentBuilderLayout.
@@ -299,7 +299,7 @@ export const DefaultVariantInPanel = () => {
         <ResizableHandle />
 
         <ResizablePanel defaultSize={30} minSize={20}>
-          <div className="s-flex s-h-full s-flex-col s-bg-white s-shadow-sm">
+          <div className="s:flex s:h-full s:flex-col s:bg-white s:shadow-sm">
             <Bar
               position="top"
               variant="default"
@@ -311,9 +311,9 @@ export const DefaultVariantInPanel = () => {
                 />
               }
             />
-            <div className="s-flex-1 s-overflow-y-auto s-p-4">
+            <div className="s:flex-1 s:overflow-y-auto s:p-4">
               <Page.Header title="Right Panel Content" icon={MessageCircle01} />
-              <p className="s-text-sm s-text-gray-600">
+              <p className="s:text-sm s:text-gray-600">
                 Notice how each Bar is scoped to its own panel width, unlike the
                 "full" variant which would span the entire viewport width. You
                 can resize this panel!

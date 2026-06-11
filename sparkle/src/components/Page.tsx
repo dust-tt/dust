@@ -12,16 +12,16 @@ interface PageProps {
 
 export function Page({ children, variant = "normal" }: PageProps) {
   const mainVariantClasses =
-    variant === "normal" ? "s-h-full s-py-16" : "s-h-full s-py-4 s-px-2";
+    variant === "normal" ? "s:h-full s:py-16" : "s:h-full s:py-4 s:px-2";
   const divVariantClassNames =
-    variant === "normal" ? "s-gap-6 s-px-6" : "s-gap-4";
+    variant === "normal" ? "s:gap-6 s:px-6" : "s:gap-4";
 
   return (
     <main className={mainVariantClasses}>
       <div
         className={cn(
-          "s-mx-auto s-flex s-h-full s-max-w-4xl s-flex-col s-text-sm s-font-normal",
-          "s-text-foreground dark:s-text-foreground-night",
+          "s:mx-auto s:flex s:h-full s:max-w-4xl s:flex-col s:text-sm s:font-normal",
+          "s:text-foreground s:dark:text-foreground-night",
           divVariantClassNames
         )}
       >
@@ -42,7 +42,7 @@ Page.Header = function ({ title, description, icon }: PageHeaderProps) {
     <Page.Vertical gap="xs">
       <Icon
         visual={icon}
-        className="s-text-primary-400 dark:s-text-primary-500"
+        className="s:text-primary-400 s:dark:text-primary-500"
         size="lg"
       />
       {typeof title === "string" ? (
@@ -92,10 +92,10 @@ interface PagePProps {
 }
 
 const PsizeClasses = {
-  xs: "s-copy-xs",
-  sm: "s-copy-sm",
-  md: "s-copy-base",
-  lg: "s-copy-lg",
+  xs: "s:copy-xs",
+  sm: "s:copy-sm",
+  md: "s:copy-base",
+  lg: "s:copy-lg",
 };
 
 Page.P = function ({ children, variant, size = "sm" }: PagePProps) {
@@ -104,8 +104,8 @@ Page.P = function ({ children, variant, size = "sm" }: PagePProps) {
       className={cn(
         PsizeClasses[size],
         variant === "secondary"
-          ? "s-text-muted-foreground dark:s-text-muted-foreground-night"
-          : "s-text-foreground dark:s-text-foreground-night"
+          ? "s:text-muted-foreground s:dark:text-muted-foreground-night"
+          : "s:text-foreground s:dark:text-foreground-night"
       )}
     >
       {children}
@@ -122,18 +122,18 @@ Page.H = function ({ children, variant = "h3" }: PageHProps) {
   const Component = variant;
 
   const hSizes = {
-    h1: "s-heading-4xl",
-    h2: "s-heading-3xl",
-    h3: "s-heading-2xl",
-    h4: "s-heading-xl",
-    h5: "s-heading-lg",
-    h6: "s-heading-base",
+    h1: "s:heading-4xl",
+    h2: "s:heading-3xl",
+    h3: "s:heading-2xl",
+    h4: "s:heading-xl",
+    h5: "s:heading-lg",
+    h6: "s:heading-base",
   };
 
   return (
     <Component
       className={cn(
-        "s-text-foreground dark:s-text-foreground-night",
+        "s:text-foreground s:dark:text-foreground-night",
         hSizes[variant]
       )}
     >
@@ -151,11 +151,11 @@ interface PageLayoutProps {
 }
 
 const gapSizes = {
-  xs: "s-gap-1",
-  sm: "s-gap-2",
-  md: "s-gap-3",
-  lg: "s-gap-5",
-  xl: "s-gap-8",
+  xs: "s:gap-1",
+  sm: "s:gap-2",
+  md: "s:gap-3",
+  lg: "s:gap-5",
+  xl: "s:gap-8",
   none: "",
 };
 
@@ -214,14 +214,14 @@ Page.Horizontal = function ({
   return (
     <div
       className={cn(
-        "s-flex s-flex-col sm:s-flex-row",
-        sizing === "grow" ? "s-grow s-basis-0" : "",
-        sizing === "shrink" ? "s-shrink" : "",
+        "s:flex s:flex-col s:sm:flex-row",
+        sizing === "grow" ? "s:grow s:basis-0" : "",
+        sizing === "shrink" ? "s:shrink" : "",
         gapSizes[gap],
-        align === "left" ? "s-justify-start" : "",
-        align === "center" ? "s-justify-center" : "",
-        align === "right" ? "s-justify-end" : "",
-        align === "stretch" ? "s-justify-stretch" : ""
+        align === "left" ? "s:justify-start" : "",
+        align === "center" ? "s:justify-center" : "",
+        align === "right" ? "s:justify-end" : "",
+        align === "stretch" ? "s:justify-stretch" : ""
       )}
     >
       {children}
@@ -238,13 +238,13 @@ Page.Vertical = function ({
   return (
     <div
       className={cn(
-        "s-flex s-flex-col",
-        sizing === "grow" ? "s-grow s-basis-0" : "",
-        sizing === "shrink" ? "s-shrink" : "",
+        "s:flex s:flex-col",
+        sizing === "grow" ? "s:grow s:basis-0" : "",
+        sizing === "shrink" ? "s:shrink" : "",
         gapSizes[gap],
-        align === "left" ? "s-items-start" : "",
-        align === "center" ? "s-items-center" : "",
-        align === "right" ? "s-items-end" : ""
+        align === "left" ? "s:items-start" : "",
+        align === "center" ? "s:items-center" : "",
+        align === "right" ? "s:items-end" : ""
       )}
     >
       {children}
@@ -261,13 +261,13 @@ Page.Fluid = function ({
   return (
     <div
       className={cn(
-        "s-flex s-flex-wrap",
-        sizing === "grow" ? "s-grow" : "",
-        sizing === "shrink" ? "s-shrink" : "",
+        "s:flex s:flex-wrap",
+        sizing === "grow" ? "s:grow" : "",
+        sizing === "shrink" ? "s:shrink" : "",
         gapSizes[gap],
-        align === "left" ? "s-items-start" : "",
-        align === "center" ? "s-items-center" : "",
-        align === "right" ? "s-items-end" : ""
+        align === "left" ? "s:items-start" : "",
+        align === "center" ? "s:items-center" : "",
+        align === "right" ? "s:items-end" : ""
       )}
     >
       {children}

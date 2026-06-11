@@ -8,7 +8,7 @@ interface CardRootProps {
   className?: string;
 }
 const Root = ({ className, children }: CardRootProps) => (
-  <Card size="md" className={cn("s-flex s-flex-col s-gap-2", className)}>
+  <Card size="md" className={cn("s:flex s:flex-col s:gap-2", className)}>
     {children}
   </Card>
 );
@@ -19,7 +19,7 @@ interface CardHeaderProps {
 }
 
 const Header = ({ className, children }: CardHeaderProps) => (
-  <div className={cn("s-space-y-0.5", className)}>{children}</div>
+  <div className={cn("s:space-y-0.5", className)}>{children}</div>
 );
 
 interface CardTitleProps {
@@ -30,8 +30,8 @@ interface CardTitleProps {
 const Title = ({ className, children }: CardTitleProps) => (
   <div
     className={cn(
-      "s-heading-sm",
-      "s-text-foreground dark:s-text-foreground-night",
+      "s:heading-sm",
+      "s:text-foreground s:dark:text-foreground-night",
       className
     )}
   >
@@ -47,8 +47,8 @@ interface CardSubtitleProps {
 const Subtitle = ({ className, children }: CardSubtitleProps) => (
   <div
     className={cn(
-      "s-text-sm",
-      "s-text-muted-foreground dark:s-text-muted-foreground-night",
+      "s:text-sm",
+      "s:text-muted-foreground s:dark:text-muted-foreground-night",
       className
     )}
   >
@@ -69,7 +69,7 @@ const Content = ({
 }: CardContentProps) => {
   if (isLoading) {
     return (
-      <div className="s-flex s-items-center s-justify-start">
+      <div className="s:flex s:items-center s:justify-start">
         <Spinner size="xs" variant="dark" />
       </div>
     );
@@ -77,8 +77,8 @@ const Content = ({
   return (
     <div
       className={cn(
-        "s-flex s-flex-col s-gap-3",
-        "s-text-foreground dark:s-text-foreground-night",
+        "s:flex s:flex-col s:gap-3",
+        "s:text-foreground s:dark:text-foreground-night",
         className
       )}
     >
@@ -93,7 +93,7 @@ interface CardFooterProps {
 }
 
 const Footer = ({ className, children }: CardFooterProps) => (
-  <div className={cn("s-flex s-items-center s-gap-2", className)}>
+  <div className={cn("s:flex s:items-center s:gap-2", className)}>
     {children}
   </div>
 );

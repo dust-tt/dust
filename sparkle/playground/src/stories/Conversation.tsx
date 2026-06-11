@@ -430,7 +430,7 @@ Estimated effort:
           applyLabel: "Create task",
           rejectLabel: "Skip",
           cardVariant: "secondary",
-          visual: { emoji: "⚙️", backgroundColor: "s-bg-green-100" },
+          visual: { emoji: "⚙️", backgroundColor: "s:bg-green-100" },
         },
         {
           id: "ac-3",
@@ -443,7 +443,7 @@ Estimated effort:
           rejectLabel: "Skip",
           cardVariant: "highlight",
           actionsPosition: "footer",
-          visual: { emoji: "🖥️", backgroundColor: "s-bg-violet-100" },
+          visual: { emoji: "🖥️", backgroundColor: "s:bg-violet-100" },
         },
       ],
     },
@@ -1039,7 +1039,7 @@ Recommendation: Ship the core experience (grouping + preferences + in-app panel)
           rejectLabel: "Not now",
           cardVariant: "highlight",
           actionsPosition: "header",
-          visual: { emoji: "🚦", backgroundColor: "s-bg-green-100" },
+          visual: { emoji: "🚦", backgroundColor: "s:bg-green-100" },
         },
         {
           id: "ac-rollout-2",
@@ -1051,7 +1051,7 @@ Recommendation: Ship the core experience (grouping + preferences + in-app panel)
           applyLabel: "Schedule",
           rejectLabel: "Skip",
           cardVariant: "secondary",
-          visual: { emoji: "🐤", backgroundColor: "s-bg-yellow-100" },
+          visual: { emoji: "🐤", backgroundColor: "s:bg-yellow-100" },
         },
       ],
     },
@@ -1208,7 +1208,7 @@ export default function ConversationStory() {
   const conversation = useMemo(() => buildConversation(), []);
 
   return (
-    <div className="s-flex s-h-screen s-w-full s-bg-background dark:s-bg-background-night">
+    <div className="s:flex s:h-screen s:w-full s:bg-background dark:s:bg-background-night">
       <ConversationView
         conversation={conversation}
         locutor={locutor}

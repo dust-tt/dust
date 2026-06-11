@@ -26,7 +26,7 @@ export default meta;
 
 export const PricingXS = () => {
   return (
-    <div className="s-h-full s-w-full">
+    <div className="s:h-full s:w-full">
       <PriceTable.Container>
         <PriceTable
           title="Business"
@@ -86,7 +86,7 @@ export const PricingXS = () => {
 
 export const PricingSM = () => {
   return (
-    <div className="s-h-full s-w-full">
+    <div className="s:h-full s:w-full">
       <PriceTable.Container>
         <PriceTable
           title="pro"

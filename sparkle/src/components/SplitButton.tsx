@@ -4,14 +4,14 @@ import { cn } from "@sparkle/lib";
 import React from "react";
 
 const flexSeparatorVariants: Record<ButtonVariantType, string> = {
-  primary: "s-bg-background/50 dark:s-text-background-night/50",
-  highlight: "s-bg-background/50 dark:s-text-background-night/50",
-  "highlight-secondary": "s-bg-separator dark:s-bg-separator-night",
-  warning: "s-bg-background/50 dark:s-text-background-night/50",
-  "warning-secondary": "s-bg-separator dark:s-bg-separator-night",
-  outline: "s-bg-separator dark:s-bg-separator-night",
-  ghost: "s-bg-separator dark:s-bg-separator-night",
-  "ghost-secondary": "s-bg-separator dark:s-bg-separator-night",
+  primary: "s:bg-background/50 s:dark:text-background-night/50",
+  highlight: "s:bg-background/50 s:dark:text-background-night/50",
+  "highlight-secondary": "s:bg-separator s:dark:bg-separator-night",
+  warning: "s:bg-background/50 s:dark:text-background-night/50",
+  "warning-secondary": "s:bg-separator s:dark:bg-separator-night",
+  outline: "s:bg-separator s:dark:bg-separator-night",
+  ghost: "s:bg-separator s:dark:bg-separator-night",
+  "ghost-secondary": "s:bg-separator s:dark:bg-separator-night",
 };
 
 export interface FlexSplitButtonProps extends Omit<ButtonProps, "size"> {
@@ -44,17 +44,17 @@ const FlexSplitButton = React.forwardRef<
     });
 
     return (
-      <div className={cn("s-relative s-inline-block", containerClassName)}>
+      <div className={cn("s:relative s:inline-block", containerClassName)}>
         <Button
           ref={ref}
           variant={variant}
           size="sm"
-          className={cn(className, "s-pr-12")}
+          className={cn(className, "s:pr-12")}
           isLoading={isLoading}
           {...buttonProps}
         />
-        <span className="s-absolute s-right-1 s-top-1 s-flex s-items-center s-gap-1">
-          <div className={cn("s-h-4 s-w-px", separatorStyle)} />
+        <span className="s:absolute s:right-1 s:top-1 s:flex s:items-center s:gap-1">
+          <div className={cn("s:h-4 s:w-px", separatorStyle)} />
           {clonedSplitAction}
         </span>
       </div>

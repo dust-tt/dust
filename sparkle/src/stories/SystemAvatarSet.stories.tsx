@@ -57,9 +57,9 @@ const itemStyle = {
 
 export const SystemAvatarSet = () => (
   <>
-    <div className="s-py-4 s-text-base">
+    <div className="s:py-4 s:text-base">
       url is{" "}
-      <span className="s-font-bold">
+      <span className="s:font-bold">
         "https://dust.tt/static/systemavatar/filename"
       </span>
     </div>
@@ -68,7 +68,7 @@ export const SystemAvatarSet = () => (
         return (
           <div key={filename} style={itemStyle as React.CSSProperties}>
             <Avatar visual={url} size="md" />
-            <div className="s-overflow-hidden s-text-ellipsis s-text-xs">
+            <div className="s:overflow-hidden s:text-ellipsis s:text-xs">
               {filename}
             </div>
           </div>

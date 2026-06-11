@@ -329,7 +329,7 @@ const columns: ColumnDef<Data>[] = [
     sortingFn: "text",
     id: "name",
     meta: {
-      className: "s-w-full",
+      className: "s:w-full",
       tooltip: "User's full name",
     },
     cell: (info) => (
@@ -348,7 +348,7 @@ const columns: ColumnDef<Data>[] = [
     accessorKey: "usedBy",
     id: "usedBy",
     meta: {
-      className: "s-w-[82px] s-hidden @xs/table:s-table-cell",
+      className: "s:w-[82px] s:hidden s:@xs/table:table-cell",
     },
     header: "Used by",
     cell: (info) => (
@@ -360,7 +360,7 @@ const columns: ColumnDef<Data>[] = [
     header: "Added by",
     id: "addedBy",
     meta: {
-      className: "s-w-[128px]",
+      className: "s:w-[128px]",
     },
     cell: (info) => (
       <DataTable.BasicCellContent
@@ -375,7 +375,7 @@ const columns: ColumnDef<Data>[] = [
     id: "lastUpdated",
     header: "Last updated",
     meta: {
-      className: "s-w-[128px] s-hidden @sm/table:s-table-cell",
+      className: "s:w-[128px] s:hidden s:@sm/table:table-cell",
     },
     cell: (info) => (
       <DataTable.BasicCellContent label={info.row.original.lastUpdated} />
@@ -387,7 +387,7 @@ const columns: ColumnDef<Data>[] = [
     id: "size",
     header: "Size",
     meta: {
-      className: "s-w-[48px] s-hidden @sm/table:s-table-cell",
+      className: "s:w-[48px] s:hidden s:@sm/table:table-cell",
     },
     cell: (info) => (
       <DataTable.BasicCellContent label={info.row.original.size} />
@@ -403,7 +403,7 @@ const columns: ColumnDef<Data>[] = [
       />
     ),
     meta: {
-      className: "s-w-12 s-cursor-pointer s-text-foreground",
+      className: "s:w-12 s:cursor-pointer s:text-foreground",
     },
   },
 ];
@@ -432,7 +432,7 @@ export const DataTableExample = () => {
   }));
 
   return (
-    <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6">
+    <div className="s:flex s:w-full s:max-w-4xl s:flex-col s:gap-6">
       <Input
         name="filter"
         placeholder="Filter"
@@ -483,7 +483,7 @@ export const DataTableClientSideSortingExample = () => {
   const [filter, setFilter] = React.useState<string>("");
 
   return (
-    <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
+    <div className="s:w-full s:max-w-4xl s:overflow-x-auto">
       <Input
         name="filter"
         placeholder="Filter"
@@ -491,7 +491,7 @@ export const DataTableClientSideSortingExample = () => {
         onChange={(e) => setFilter(e.target.value)}
       />
       <DataTable
-        className="s-w-full s-max-w-4xl s-overflow-x-auto"
+        className="s:w-full s:max-w-4xl s:overflow-x-auto"
         data={data}
         filter={filter}
         filterColumn="name"
@@ -512,7 +512,7 @@ export const DataTablePaginatedExample = () => {
   const [filter, setFilter] = React.useState<string>("");
 
   return (
-    <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
+    <div className="s:w-full s:max-w-4xl s:overflow-x-auto">
       <Input
         name="filter"
         placeholder="Filter"
@@ -520,7 +520,7 @@ export const DataTablePaginatedExample = () => {
         onChange={(e) => setFilter(e.target.value)}
       />
       <DataTable
-        className="s-w-full s-max-w-4xl s-overflow-x-auto"
+        className="s:w-full s:max-w-4xl s:overflow-x-auto"
         data={data}
         filter={filter}
         filterColumn="name"
@@ -541,7 +541,7 @@ export const DataTablePaginatedPageButtonsDisabledExample = () => {
   const [filter, setFilter] = React.useState<string>("");
 
   return (
-    <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
+    <div className="s:w-full s:max-w-4xl s:overflow-x-auto">
       <Input
         name="filter"
         placeholder="Filter"
@@ -549,7 +549,7 @@ export const DataTablePaginatedPageButtonsDisabledExample = () => {
         onChange={(e) => setFilter(e.target.value)}
       />
       <DataTable
-        className="s-w-full s-max-w-4xl s-overflow-x-auto"
+        className="s:w-full s:max-w-4xl s:overflow-x-auto"
         data={data}
         filter={filter}
         filterColumn="name"
@@ -592,7 +592,7 @@ export const DataTablePaginatedServerSideExample = () => {
     );
   }, [data, pagination, sorting]);
   return (
-    <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
+    <div className="s:w-full s:max-w-4xl s:overflow-x-auto">
       <Input
         name="filter"
         placeholder="Filter"
@@ -600,7 +600,7 @@ export const DataTablePaginatedServerSideExample = () => {
         onChange={(e) => setFilter(e.target.value)}
       />
       <DataTable
-        className="s-w-full s-max-w-4xl s-overflow-x-auto"
+        className="s:w-full s:max-w-4xl s:overflow-x-auto"
         data={rows}
         totalRowCount={data.length}
         filter={filter}
@@ -646,7 +646,7 @@ export const DataTablePaginatedServerSideRowCountCappedExample = () => {
     );
   }, [data, pagination, sorting]);
   return (
-    <div className="s-w-full s-max-w-4xl s-overflow-x-auto">
+    <div className="s:w-full s:max-w-4xl s:overflow-x-auto">
       <Input
         name="filter"
         placeholder="Filter"
@@ -654,7 +654,7 @@ export const DataTablePaginatedServerSideRowCountCappedExample = () => {
         onChange={(e) => setFilter(e.target.value)}
       />
       <DataTable
-        className="s-w-full s-max-w-4xl s-overflow-x-auto"
+        className="s:w-full s:max-w-4xl s:overflow-x-auto"
         data={rows}
         totalRowCount={data.length}
         rowCountIsCapped={true}
@@ -714,12 +714,12 @@ export const ScrollableDataTableExample = () => {
     []
   );
   return (
-    <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6">
-      <h3 className="s-text-lg s-font-medium">
+    <div className="s:flex s:w-full s:max-w-4xl s:flex-col s:gap-6">
+      <h3 className="s:text-lg s:font-medium">
         Virtualized ScrollableDataTable with Infinite Scrolling
       </h3>
 
-      <div className="s-flex s-flex-col s-gap-4">
+      <div className="s:flex s:flex-col s:gap-4">
         <Input
           name="filter"
           placeholder="Filter"
@@ -734,13 +734,13 @@ export const ScrollableDataTableExample = () => {
           columns={columnsWithSelection}
           onLoadMore={loadMore}
           isLoading={isLoading}
-          maxHeight="s-max-h-[500px]"
+          maxHeight="s:max-h-[500px]"
           rowSelection={rowSelection}
           setRowSelection={setRowSelection}
           enableRowSelection={true}
         />
 
-        <div className="s-text-sm s-text-muted-foreground">
+        <div className="s:text-sm s:text-muted-foreground">
           Loaded {data.length} rows. Scroll to the bottom to load more.
         </div>
       </div>
@@ -774,13 +774,13 @@ export const ScrollableDataTableFullHeightExample = () => {
     []
   );
   return (
-    <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6">
-      <h3 className="s-text-lg s-font-medium">
+    <div className="s:flex s:w-full s:max-w-4xl s:flex-col s:gap-6">
+      <h3 className="s:text-lg s:font-medium">
         Virtualized ScrollableDataTable with Infinite Scrolling based on parent
         height
       </h3>
 
-      <div className="s-flex s-h-[400px] s-flex-col s-gap-4">
+      <div className="s:flex s:h-[400px] s:flex-col s:gap-4">
         <Input
           name="filter"
           placeholder="Filter"
@@ -801,7 +801,7 @@ export const ScrollableDataTableFullHeightExample = () => {
           enableRowSelection={true}
         />
 
-        <div className="s-text-sm s-text-muted-foreground">
+        <div className="s:text-sm s:text-muted-foreground">
           Loaded {data.length} rows. Scroll to the bottom to load more.
         </div>
       </div>
@@ -820,10 +820,10 @@ export const DataTableWithRowSelectionExample = () => {
   );
 
   return (
-    <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6">
-      <h3 className="s-text-lg s-font-medium">DataTable with Row Selection</h3>
+    <div className="s:flex s:w-full s:max-w-4xl s:flex-col s:gap-6">
+      <h3 className="s:text-lg s:font-medium">DataTable with Row Selection</h3>
 
-      <div className="s-flex s-flex-col s-gap-4">
+      <div className="s:flex s:flex-col s:gap-4">
         <Input
           name="filter"
           placeholder="Filter"
@@ -842,12 +842,12 @@ export const DataTableWithRowSelectionExample = () => {
           getRowId={(row) => row.name}
         />
 
-        <div className="s-rounded-md s-border s-bg-muted/50 s-p-2">
-          <h4 className="s-mb-2 s-font-medium">Selection State:</h4>
-          <pre className="s-overflow-auto s-text-xs">
+        <div className="s:rounded-md s:border s:bg-muted/50 s:p-2">
+          <h4 className="s:mb-2 s:font-medium">Selection State:</h4>
+          <pre className="s:overflow-auto s:text-xs">
             {JSON.stringify(rowSelection, null, 2)}
           </pre>
-          <p className="s-mt-2 s-text-sm">
+          <p className="s:mt-2 s:text-sm">
             Selected {Object.keys(rowSelection).length} of {data.length} rows
           </p>
         </div>
@@ -872,12 +872,12 @@ export const DataTableWithRadioSelectionExample = () => {
   );
 
   return (
-    <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6">
-      <h3 className="s-text-lg s-font-medium">
+    <div className="s:flex s:w-full s:max-w-4xl s:flex-col s:gap-6">
+      <h3 className="s:text-lg s:font-medium">
         DataTable with Radio Selection (Single Row)
       </h3>
 
-      <div className="s-flex s-flex-col s-gap-4">
+      <div className="s:flex s:flex-col s:gap-4">
         <Input
           name="filter"
           placeholder="Filter"
@@ -897,12 +897,12 @@ export const DataTableWithRadioSelectionExample = () => {
           getRowId={(row) => row.name}
         />
 
-        <div className="s-rounded-md s-border s-bg-muted/50 s-p-2">
-          <h4 className="s-mb-2 s-font-medium">Radio Selection State:</h4>
-          <pre className="s-overflow-auto s-text-xs">
+        <div className="s:rounded-md s:border s:bg-muted/50 s:p-2">
+          <h4 className="s:mb-2 s:font-medium">Radio Selection State:</h4>
+          <pre className="s:overflow-auto s:text-xs">
             {JSON.stringify(rowSelection, null, 2)}
           </pre>
-          <p className="s-mt-2 s-text-sm">
+          <p className="s:mt-2 s:text-sm">
             {selectedRowId ? `Selected: ${selectedRowId}` : "No row selected"}{" "}
             (only one row can be selected at a time)
           </p>
@@ -920,7 +920,7 @@ const avatarStackColumns: ColumnDef<Data>[] = [
     sortingFn: "text",
     id: "name",
     meta: {
-      className: "s-w-full",
+      className: "s:w-full",
       tooltip: "Team name with member avatars",
     },
     cell: (info) => (
@@ -944,7 +944,7 @@ const avatarStackColumns: ColumnDef<Data>[] = [
     accessorKey: "usedBy",
     id: "usedBy",
     meta: {
-      className: "s-w-[82px] s-hidden @xs/table:s-table-cell",
+      className: "s:w-[82px] s:hidden s:@xs/table:table-cell",
     },
     header: "Members",
     cell: (info) => (
@@ -956,7 +956,7 @@ const avatarStackColumns: ColumnDef<Data>[] = [
     header: "Created by",
     id: "addedBy",
     meta: {
-      className: "s-w-[128px]",
+      className: "s:w-[128px]",
     },
     cell: (info) => (
       <DataTable.BasicCellContent
@@ -971,7 +971,7 @@ const avatarStackColumns: ColumnDef<Data>[] = [
     id: "lastUpdated",
     header: "Last updated",
     meta: {
-      className: "s-w-[128px] s-hidden @sm/table:s-table-cell",
+      className: "s:w-[128px] s:hidden s:@sm/table:table-cell",
     },
     cell: (info) => (
       <DataTable.BasicCellContent label={info.row.original.lastUpdated} />
@@ -983,7 +983,7 @@ const avatarStackColumns: ColumnDef<Data>[] = [
     id: "size",
     header: "Size",
     meta: {
-      className: "s-w-[48px] s-hidden @sm/table:s-table-cell",
+      className: "s:w-[48px] s:hidden s:@sm/table:table-cell",
     },
     cell: (info) => (
       <DataTable.BasicCellContent label={info.row.original.size} />
@@ -995,15 +995,15 @@ export const DataTableWithAvatarStackExample = () => {
   const [filter, setFilter] = React.useState<string>("");
 
   return (
-    <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6">
-      <h3 className="s-text-lg s-font-medium">DataTable with Avatar Stack</h3>
-      <p className="s-text-sm s-text-muted-foreground">
+    <div className="s:flex s:w-full s:max-w-4xl s:flex-col s:gap-6">
+      <h3 className="s:text-lg s:font-medium">DataTable with Avatar Stack</h3>
+      <p className="s:text-sm s:text-muted-foreground">
         This example demonstrates the DataTable with avatar stacks showing team
         members. The avatar stack displays up to 4 visible avatars with a count
         indicator for additional members.
       </p>
 
-      <div className="s-flex s-flex-col s-gap-4">
+      <div className="s:flex s:flex-col s:gap-4">
         <Input
           name="filter"
           placeholder="Filter teams..."

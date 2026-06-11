@@ -97,7 +97,7 @@ export function SecurityFeaturesSection() {
               return (
                 <div key={feature.id} className="w-full">
                   <button
-                    className="flex w-full items-center justify-between py-6 text-left focus:outline-none"
+                    className="flex w-full items-center justify-between py-6 text-left focus:outline-hidden"
                     onClick={() => setActiveFeature(feature.id)}
                     aria-expanded={isActive}
                   >

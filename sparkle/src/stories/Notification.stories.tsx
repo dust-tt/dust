@@ -32,7 +32,7 @@ export default meta;
 /** Notification shown inline (no toast) for design iteration. */
 export const Inline = () => {
   return (
-    <div className="s-flex s-flex-col s-gap-4">
+    <div className="s:flex s:flex-col s:gap-4">
       <NotificationContent
         type="success"
         title="Success"
@@ -60,7 +60,7 @@ export const Inline = () => {
 /** Same as Inline but with longer titles and descriptions (tests line-clamp). */
 export const InlineLongText = () => {
   return (
-    <div className="s-flex s-flex-col s-gap-4">
+    <div className="s:flex s:flex-col s:gap-4">
       <NotificationContent
         type="success"
         title="Your workspace has been successfully updated and all changes were saved"
@@ -97,7 +97,7 @@ const NotificationExample = () => {
   const sendNotification = useSendNotification();
 
   return (
-    <div className="s-flex s-flex-col s-gap-4">
+    <div className="s:flex s:flex-col s:gap-4">
       <Button
         onClick={() =>
           sendNotification({

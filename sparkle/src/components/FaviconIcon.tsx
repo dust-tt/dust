@@ -6,9 +6,9 @@ import React, { useCallback, useState } from "react";
 const faviconVariants = cva("", {
   variants: {
     size: {
-      sm: "s-w-3 s-h-3",
-      md: "s-w-5 s-h-5",
-      lg: "s-w-6 s-h-6",
+      sm: "s:w-3 s:h-3",
+      md: "s:w-5 s:h-5",
+      lg: "s:w-6 s:h-6",
     },
   },
   defaultVariants: {
@@ -65,7 +65,7 @@ export function FaviconIcon({
   return (
     <div
       className={cn(
-        "s-relative s-flex s-items-center s-justify-center",
+        "s:relative s:flex s:items-center s:justify-center",
         faviconVariants({ size }),
         className
       )}
@@ -73,7 +73,7 @@ export function FaviconIcon({
       <img
         src={finalFaviconUrl}
         alt="Website icon"
-        className={cn("s-object-contain", faviconVariants({ size }))}
+        className={cn("s:object-contain", faviconVariants({ size }))}
         onError={handleError}
         onLoad={handleLoad}
         style={{
@@ -85,7 +85,7 @@ export function FaviconIcon({
         <Globe01
           className={cn(
             faviconVariants({ size }),
-            isLoading ? "s-absolute s-inset-0" : "s-hidden"
+            isLoading ? "s:absolute s:inset-0" : "s:hidden"
           )}
         />
       )}

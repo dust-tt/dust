@@ -152,8 +152,8 @@ export const WithGaps: Story = {
 const ButtonGroupByVariant = ({ variant }: { variant: ButtonVariantType }) => (
   <>
     <Separator />
-    <h3 className="s-text-primary dark:s-text-primary-50">{variant}</h3>
-    <div className="s-flex s-items-center s-gap-4">
+    <h3 className="s:text-primary s:dark:text-primary-50">{variant}</h3>
+    <div className="s:flex s:items-center s:gap-4">
       <ButtonGroup>
         <DefaultButtons variant={variant} size="xs" />
       </ButtonGroup>
@@ -169,7 +169,7 @@ const ButtonGroupByVariant = ({ variant }: { variant: ButtonVariantType }) => (
 
 export const Gallery: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-4">
+    <div className="s:flex s:flex-col s:gap-4">
       {BUTTON_VARIANTS.map((variant) => (
         <ButtonGroupByVariant key={variant} variant={variant} />
       ))}
@@ -179,9 +179,9 @@ export const Gallery: Story = {
 
 export const WithDropdownMenu: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-4">
+    <div className="s:flex s:flex-col s:gap-4">
       <div>
-        <h3 className="s-mb-2 s-text-sm s-font-medium">
+        <h3 className="s:mb-2 s:text-sm s:font-medium">
           Split button with dropdown
         </h3>
         <ButtonGroup>
@@ -202,8 +202,8 @@ export const WithDropdownMenu: Story = {
       </div>
 
       <div>
-        <h3 className="s-mb-2 s-text-sm s-font-medium">Multiple variations</h3>
-        <div className="s-flex s-flex-wrap s-gap-4">
+        <h3 className="s:mb-2 s:text-sm s:font-medium">Multiple variations</h3>
+        <div className="s:flex s:flex-wrap s:gap-4">
           <ButtonGroup>
             <Button label="Copy" variant="outline" size="sm" />
             <ButtonGroupDropdown
