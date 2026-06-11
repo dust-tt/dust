@@ -1,7 +1,11 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
-import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
+import {
+  bucketsToArray,
+  formatDateFromMillis,
+  searchAnalytics,
+} from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import {
   awuFromMicroUsd,
@@ -33,22 +37,38 @@ export type CreditUsageResult = {
   rows: CreditUsageRow[];
 };
 
+export type CreditTimeseriesPoint = {
+  timestamp: number;
+  date: string;
+  llmCredits: number;
+  toolCredits: number;
+  totalCredits: number;
+};
+
 type ServerBucket = { key: string; doc_count: number };
 
 type ToolsNestedAgg = {
   by_server?: estypes.AggregationsMultiBucketAggregateBase<ServerBucket>;
 };
 
-type GroupBucket = {
-  key: string;
+// The LLM-cost + tool-usage aggregations from which one slice's credits are
+// computed. Shared by the workspace totals, the per-group buckets, and the
+// per-date histogram buckets so all of them convert credits identically.
+type CreditSlice = {
   llm_cost?: estypes.AggregationsSumAggregate;
   tools?: ToolsNestedAgg;
 };
 
-type CreditUsageAggs = {
-  total_llm_cost?: estypes.AggregationsSumAggregate;
-  total_tools?: ToolsNestedAgg;
+type GroupBucket = CreditSlice & { key: string };
+
+type DateCreditBucket = CreditSlice & { key: number };
+
+type CreditUsageAggs = CreditSlice & {
   by_group?: estypes.AggregationsMultiBucketAggregateBase<GroupBucket>;
+};
+
+type CreditTimeseriesAggs = {
+  by_date?: estypes.AggregationsMultiBucketAggregateBase<DateCreditBucket>;
 };
 
 // Total credits (LLM + tool) cannot be ordered on inside a single ES terms
@@ -76,6 +96,59 @@ function toolCreditsFromServerBuckets(buckets: ServerBucket[]): number {
       TOOL_CATEGORY_AWU_WEIGHTS[getToolCategory(bucket.key)] * bucket.doc_count
     );
   }, 0);
+}
+
+const creditSubAggs = {
+  llm_cost: { sum: { field: "tokens.cost_micro_usd" } },
+  tools: toolsNestedAgg,
+} satisfies Record<string, estypes.AggregationsAggregationContainer>;
+
+function creditsFromSlice(slice: CreditSlice): {
+  llmCredits: number;
+  toolCredits: number;
+  totalCredits: number;
+} {
+  const llmCredits = awuFromMicroUsd(slice.llm_cost?.value ?? 0);
+  const toolCredits = toolCreditsFromServerBuckets(
+    bucketsToArray<ServerBucket>(slice.tools?.by_server?.buckets)
+  );
+  return { llmCredits, toolCredits, totalCredits: llmCredits + toolCredits };
+}
+
+// Workspace query scoped to the window/filters, with free origins excluded to
+// mirror the non-free billed scope. Shared by both credit fetchers so the scope
+// stays identical.
+function buildCreditQuery(
+  auth: Authenticator,
+  {
+    startDate,
+    endDate,
+    contextOrigin,
+    agentIds,
+    userIds,
+  }: {
+    startDate: string;
+    endDate: string;
+    contextOrigin?: string | string[];
+    agentIds?: string[];
+    userIds?: string[];
+  },
+  extraFilters: estypes.QueryDslQueryContainer[] = []
+): estypes.QueryDslQueryContainer {
+  const baseQuery = buildAgentAnalyticsBaseQuery({
+    workspaceId: auth.getNonNullableWorkspace().sId,
+    startDate,
+    endDate,
+    contextOrigin,
+    agentIds,
+    userIds,
+  });
+  return {
+    bool: {
+      filter: [baseQuery, ...extraFilters],
+      must_not: [{ terms: { context_origin: [...FREE_ORIGINS] } }],
+    },
+  };
 }
 
 function groupFieldFor(groupBy: "agent" | "user"): "agent_id" | "user_id" {
@@ -145,22 +218,8 @@ export async function fetchCreditUsage(
     userIds?: string[];
   }
 ): Promise<Result<CreditUsageResult, ElasticsearchError>> {
-  const owner = auth.getNonNullableWorkspace();
-
-  const baseQuery = buildAgentAnalyticsBaseQuery({
-    workspaceId: owner.sId,
-    startDate,
-    endDate,
-    contextOrigin,
-    agentIds,
-    userIds,
-  });
-
   const aggregations: Record<string, estypes.AggregationsAggregationContainer> =
-    {
-      total_llm_cost: { sum: { field: "tokens.cost_micro_usd" } },
-      total_tools: toolsNestedAgg,
-    };
+    { ...creditSubAggs };
   if (groupBy !== "none") {
     aggregations.by_group = {
       terms: {
@@ -168,23 +227,15 @@ export async function fetchCreditUsage(
         size: Math.max(limit, CREDIT_RANKING_FETCH),
         order: { _count: "desc" },
       },
-      aggs: {
-        llm_cost: { sum: { field: "tokens.cost_micro_usd" } },
-        tools: toolsNestedAgg,
-      },
+      aggs: { ...creditSubAggs },
     };
   }
 
-  const filter: estypes.QueryDslQueryContainer[] = [baseQuery];
-  if (groupBy !== "none") {
-    filter.push({ exists: { field: groupFieldFor(groupBy) } });
-  }
-  const query: estypes.QueryDslQueryContainer = {
-    bool: {
-      filter,
-      must_not: [{ terms: { context_origin: [...FREE_ORIGINS] } }],
-    },
-  };
+  const query = buildCreditQuery(
+    auth,
+    { startDate, endDate, contextOrigin, agentIds, userIds },
+    groupBy === "none" ? [] : [{ exists: { field: groupFieldFor(groupBy) } }]
+  );
 
   const result = await searchAnalytics<never, CreditUsageAggs>(query, {
     aggregations,
@@ -197,11 +248,9 @@ export async function fetchCreditUsage(
 
   const aggs = result.value.aggregations;
 
-  const llmCredits = awuFromMicroUsd(aggs?.total_llm_cost?.value ?? 0);
-  const toolCredits = toolCreditsFromServerBuckets(
-    bucketsToArray<ServerBucket>(aggs?.total_tools?.by_server?.buckets)
+  const { llmCredits, toolCredits, totalCredits } = creditsFromSlice(
+    aggs ?? {}
   );
-  const totalCredits = llmCredits + toolCredits;
 
   if (groupBy === "none") {
     return new Ok({ llmCredits, toolCredits, totalCredits, rows: [] });
@@ -210,19 +259,10 @@ export async function fetchCreditUsage(
   const buckets = bucketsToArray<GroupBucket>(aggs?.by_group?.buckets);
 
   const ranked = buckets
-    .map((bucket) => {
-      const groupKey = String(bucket.key);
-      const rowLlmCredits = awuFromMicroUsd(bucket.llm_cost?.value ?? 0);
-      const rowToolCredits = toolCreditsFromServerBuckets(
-        bucketsToArray<ServerBucket>(bucket.tools?.by_server?.buckets)
-      );
-      return {
-        groupKey,
-        llmCredits: rowLlmCredits,
-        toolCredits: rowToolCredits,
-        totalCredits: rowLlmCredits + rowToolCredits,
-      };
-    })
+    .map((bucket) => ({
+      groupKey: String(bucket.key),
+      ...creditsFromSlice(bucket),
+    }))
     .sort((a, b) => b.totalCredits - a.totalCredits)
     .slice(0, limit);
 
@@ -240,4 +280,66 @@ export async function fetchCreditUsage(
   }));
 
   return new Ok({ llmCredits, toolCredits, totalCredits, rows });
+}
+
+// Estimated AWU credits bucketed over time (the trend behind get_credit_usage's
+// totals). Same conversion and non-free scope as fetchCreditUsage; per-bucket
+// values are rounded independently so they need not sum to a window total.
+export async function fetchCreditTimeseries(
+  auth: Authenticator,
+  {
+    startDate,
+    endDate,
+    granularity,
+    timezone,
+    contextOrigin,
+    agentIds,
+    userIds,
+  }: {
+    startDate: string;
+    endDate: string;
+    granularity: "day" | "week" | "month";
+    timezone: string;
+    contextOrigin?: string | string[];
+    agentIds?: string[];
+    userIds?: string[];
+  }
+): Promise<Result<CreditTimeseriesPoint[], ElasticsearchError>> {
+  const query = buildCreditQuery(auth, {
+    startDate,
+    endDate,
+    contextOrigin,
+    agentIds,
+    userIds,
+  });
+
+  const result = await searchAnalytics<never, CreditTimeseriesAggs>(query, {
+    aggregations: {
+      by_date: {
+        date_histogram: {
+          field: "timestamp",
+          calendar_interval: granularity,
+          time_zone: timezone,
+        },
+        aggs: { ...creditSubAggs },
+      },
+    },
+    size: 0,
+  });
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  const buckets = bucketsToArray<DateCreditBucket>(
+    result.value.aggregations?.by_date?.buckets
+  );
+
+  return new Ok(
+    buckets.map((bucket) => ({
+      timestamp: bucket.key,
+      date: formatDateFromMillis(bucket.key, timezone),
+      ...creditsFromSlice(bucket),
+    }))
+  );
 }

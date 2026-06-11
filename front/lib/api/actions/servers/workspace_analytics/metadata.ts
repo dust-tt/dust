@@ -60,6 +60,15 @@ const getCreditUsageSchema = {
     ),
 };
 
+const getCreditTimeseriesSchema = {
+  ...timeWindowSchemaShape,
+  ...usageFilterSchema,
+  granularity: z
+    .enum(["day", "week", "month"])
+    .optional()
+    .describe("Bucket granularity for the credit trend (default day)."),
+};
+
 const getUsageTimeseriesSchema = {
   ...timeWindowSchemaShape,
   ...usageFilterSchema,
@@ -166,6 +175,23 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Estimating credit usage",
       done: "Estimated credit usage",
+    },
+  },
+  get_credit_timeseries: {
+    description:
+      "Return estimated AWU credit consumption as a time series over a window " +
+      "(defaults to the last 30 days), bucketed by day, week, or month. Each " +
+      "point splits model and tool credits. Use this for credit/spend TRENDS " +
+      "over time; use get_credit_usage for totals and top agent/user " +
+      "attribution. IMPORTANT: these figures are ESTIMATES — always tell the " +
+      "user they are approximate and point them to the workspace Usage page " +
+      "for exact, billed credit amounts. Chart the result. Optionally filter " +
+      "by source (context_origin), agent, or user. Admin-only.",
+    schema: getCreditTimeseriesSchema,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Estimating credit trend",
+      done: "Estimated credit trend",
     },
   },
   get_usage_timeseries: {
