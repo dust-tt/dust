@@ -475,7 +475,6 @@ export async function reconcileWorkspaceUserCreditStates({
         : normalizedSeatType
           ? (defaultCaps[normalizedSeatType]?.threshold ?? null)
           : null;
-
     // Seat balance comes from `listMetronomeSeatBalances` for pro/max; free
     // seats read their per-user credit balance instead (not a seat balance).
     // Pro/max read their seat balance. `expectedUserCreditState` decides routing
