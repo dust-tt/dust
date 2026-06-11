@@ -18,7 +18,11 @@ import {
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
-import { isEnterprisePlanPrefix, isUpgraded } from "@app/lib/plans/plan_codes";
+import {
+  isEnterprisePlanPrefix,
+  isFreePlan,
+  isUpgraded,
+} from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
 import {
   useAwuPoolSummary,
@@ -385,6 +389,7 @@ export function UsagePage() {
 
   const plan = subscription.plan;
   const isEnterprise = isEnterprisePlanPrefix(plan.code);
+  const isFreePlanWorkspace = isFreePlan(plan.code);
 
   const isManualInvitationsEnabled =
     owner.metadata?.disableManualInvitations !== true;
@@ -523,66 +528,69 @@ export function UsagePage() {
           </Page.P>
         </Page.Vertical>
 
-        <Page.Vertical gap="xs" align="stretch">
-          {isAwuPoolSummaryError && (
-            <ContentMessage
-              title="Failed to load Workspace Credits Pool"
-              icon={AlertCircle}
-              variant="warning"
-            >
-              An error occurred while loading your Workspace Credits Pool data.
-              Please refresh the page or contact support if the issue persists.
-            </ContentMessage>
-          )}
+        {!isFreePlanWorkspace && (
+          <Page.Vertical gap="xs" align="stretch">
+            {isAwuPoolSummaryError && (
+              <ContentMessage
+                title="Failed to load Workspace Credits Pool"
+                icon={AlertCircle}
+                variant="warning"
+              >
+                An error occurred while loading your Workspace Credits Pool
+                data. Please refresh the page or contact support if the issue
+                persists.
+              </ContentMessage>
+            )}
 
-          {isAwuPoolSummaryLoading && (
-            <div className="flex justify-center py-8">
-              <Spinner />
-            </div>
-          )}
-
-          {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
-            <>
-              <div className="flex items-baseline gap-1">
-                <span className="heading-mono-4xl text-foreground dark:text-foreground-night">
-                  {formatCredits(totalConsumedCredits)}
-                </span>
-                <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
-                  /{formatCredits(initialTotalCredits)}
-                </span>
+            {isAwuPoolSummaryLoading && (
+              <div className="flex justify-center py-8">
+                <Spinner />
               </div>
-              <div className="flex items-center gap-2">
-                {isReadOnly ? (
-                  <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
-                    {formatCredits(periodSpendCredits)} credits spent this
-                    period
+            )}
+
+            {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
+              <>
+                <div className="flex items-baseline gap-1">
+                  <span className="heading-mono-4xl text-foreground dark:text-foreground-night">
+                    {formatCredits(totalConsumedCredits)}
                   </span>
-                ) : (
-                  <>
-                    {overageCredits !== null && overageCredits > 0 && (
-                      <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
-                        {formatCredits(overageCredits)} overage credits
-                      </span>
-                    )}
-                    {isEnterprise ? (
-                      <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
-                        Contact your Dust sales representative to buy credits
-                      </span>
-                    ) : (
-                      <Button
-                        label="Top up"
-                        icon={ArrowUp}
-                        size="xs"
-                        variant="ghost"
-                        onClick={() => setShowBuyCreditDialog(true)}
-                      />
-                    )}
-                  </>
-                )}
-              </div>
-            </>
-          )}
-        </Page.Vertical>
+                  <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                    /{formatCredits(initialTotalCredits)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {isReadOnly ? (
+                    <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                      {formatCredits(periodSpendCredits)} credits spent this
+                      period
+                    </span>
+                  ) : (
+                    <>
+                      {overageCredits !== null && overageCredits > 0 && (
+                        <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                          {formatCredits(overageCredits)} overage credits
+                        </span>
+                      )}
+                      {isEnterprise ? (
+                        <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                          Contact your Dust sales representative to buy credits
+                        </span>
+                      ) : (
+                        <Button
+                          label="Top up"
+                          icon={ArrowUp}
+                          size="xs"
+                          variant="ghost"
+                          onClick={() => setShowBuyCreditDialog(true)}
+                        />
+                      )}
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </Page.Vertical>
+        )}
 
         {isCreditPurchaseInfoLoading ? (
           <div className="h-64 animate-pulse rounded bg-muted-foreground/20" />
@@ -593,14 +601,21 @@ export function UsagePage() {
           />
         )}
 
-        <UsageSettingsCard workspaceId={owner.sId} readOnly={isReadOnly} />
+        {!isFreePlanWorkspace && (
+          <>
+            <UsageSettingsCard workspaceId={owner.sId} readOnly={isReadOnly} />
 
-        <UsageProgrammaticLimitCard
-          workspaceId={owner.sId}
-          readOnly={isReadOnly}
-        />
+            <UsageProgrammaticLimitCard
+              workspaceId={owner.sId}
+              readOnly={isReadOnly}
+            />
 
-        <UsageNotificationsCard workspaceId={owner.sId} readOnly={isReadOnly} />
+            <UsageNotificationsCard
+              workspaceId={owner.sId}
+              readOnly={isReadOnly}
+            />
+          </>
+        )}
 
         <Page.Vertical gap="sm" align="stretch">
           <span className="heading-2xl text-foreground dark:text-foreground-night">
