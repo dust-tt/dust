@@ -179,6 +179,13 @@ export function PluginForm({
               : [];
             const isDependentFieldHidden = conditions.some((c) => {
               const watched = watchedValues[c.field];
+              // Special sentinel: show when the dependency has any non-empty value.
+              if (c.value === "_any") {
+                if (Array.isArray(watched)) {
+                  return watched.length === 0;
+                }
+                return !watched;
+              }
               // Enum fields surface their selection as an array of values, so
               // match by membership; everything else compares by value.
               if (Array.isArray(watched)) {

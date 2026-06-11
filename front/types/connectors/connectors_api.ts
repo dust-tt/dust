@@ -559,6 +559,20 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
+  async adminManifest(): Promise<
+    ConnectorsAPIResponse<Record<string, unknown>>
+  > {
+    const res = await this._fetchWithError(
+      `${this._url}/connectors/admin/manifest`,
+      {
+        method: "GET",
+        headers: this.getDefaultHeaders(),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
   async addSlackWebhookRouterEntry({
     slackTeamId,
     signingSecret,

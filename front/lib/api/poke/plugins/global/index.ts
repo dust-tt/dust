@@ -1,4 +1,5 @@
 export * from "./batch_downgrade";
+export * from "./connector_admin";
 export * from "./create_workspace";
 export * from "./emit_metronome_gauges";
 export * from "./force_client_reload";

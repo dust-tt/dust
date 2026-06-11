@@ -1,3 +1,7 @@
+import {
+  buildManifest,
+  type CliMainCommandManifest,
+} from "@connectors/admin/program";
 import { runCommand } from "@connectors/lib/cli";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import type {
@@ -156,3 +160,14 @@ const _adminAPIHandler = async (
 };
 
 export const adminAPIHandler = withLogging(_adminAPIHandler);
+
+const _adminManifestAPIHandler = async (
+  _req: Request,
+  res: Response<
+    WithConnectorsAPIErrorReponse<Record<string, CliMainCommandManifest>>
+  >
+) => {
+  return res.status(200).json(buildManifest());
+};
+
+export const adminManifestAPIHandler = withLogging(_adminManifestAPIHandler);
