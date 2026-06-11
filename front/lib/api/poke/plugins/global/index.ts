@@ -1,6 +1,7 @@
 export * from "./batch_downgrade";
 export * from "./create_workspace";
 export * from "./emit_metronome_gauges";
+export * from "./ensure_mcp_server_views";
 export * from "./force_client_reload";
 export * from "./get_admins_for_workspaces";
 export * from "./relocate_user";
