@@ -405,6 +405,7 @@ program
     new Argument("<subcommand>").choices([
       "check-queue",
       "find-unprocessed-workflows",
+      "stop-workflow",
     ])
   )
   .option("--queue <name>", "Task queue name")
