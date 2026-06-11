@@ -22,6 +22,12 @@ interface UseHandleMentionsOptions {
     text: string;
     agentMention?: RichAgentMention | null;
   } | null;
+  // The user's personal default agent for new conversations (sId), or null when unset.
+  // Resolved against `allAgents`, falling back to @dust.
+  homeDefaultAgentSId?: string | null;
+  // While true, the personal default is still loading; we hold off on committing a
+  // new-conversation default so we don't pick @dust first and then visibly swap.
+  isHomeDefaultAgentLoading?: boolean;
   isAgentBuilder: boolean;
   pendingInputText?: string | null;
   selectedAgent: RichAgentMention | null;
@@ -33,6 +39,8 @@ const useHandleMentions = ({
   conversation,
   editorService,
   getDraft,
+  homeDefaultAgentSId,
+  isHomeDefaultAgentLoading,
   isAgentBuilder,
   pendingInputText,
   selectedAgent,
@@ -89,11 +97,22 @@ const useHandleMentions = ({
       }
     }
 
-    // 3. New conversation (not agent builder) → fall back to @dust.
+    // 3. New conversation (not agent builder) → use the user's default agent.
     if (!conversation && !isAgentBuilder) {
-      const dustAgent = allAgents.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST);
-      if (dustAgent) {
-        setSelectedSingleAgent(toRichAgentMentionType(dustAgent));
+      // Hold off until the personal default has loaded, otherwise we'd commit @dust
+      // first and then visibly swap once it arrives. This effect re-runs when loading
+      // completes (deps below).
+      if (isHomeDefaultAgentLoading) {
+        return;
+      }
+
+      // Prefer the user's personal default (if set and still accessible), else @dust.
+      const defaultAgent =
+        (homeDefaultAgentSId &&
+          allAgents.find((a) => a.sId === homeDefaultAgentSId)) ||
+        allAgents.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST);
+      if (defaultAgent) {
+        setSelectedSingleAgent(toRichAgentMentionType(defaultAgent));
       }
     }
   }, [
@@ -103,6 +122,8 @@ const useHandleMentions = ({
     allAgents,
     getDraft,
     setSelectedSingleAgent,
+    homeDefaultAgentSId,
+    isHomeDefaultAgentLoading,
   ]);
 
   useEffect(() => {

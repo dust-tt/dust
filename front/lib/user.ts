@@ -1,17 +1,25 @@
 import { clientFetch } from "@app/lib/egress/client";
 import type { UserMetadataType } from "@app/types/user";
 
-export async function setUserMetadataFromClient(metadata: UserMetadataType) {
-  const res = await clientFetch(
-    `/api/user/metadata/${encodeURIComponent(metadata.key)}`,
-    {
-      method: "POST",
-      body: JSON.stringify({ value: metadata.value }),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }
-  );
+export async function setUserMetadataFromClient(
+  metadata: UserMetadataType,
+  // When provided, the metadata is stored scoped to this workspace (the API route reads
+  // `workspaceId` from the query string). Omit for user-global metadata.
+  options?: { workspaceId?: string }
+) {
+  let url = `/api/user/metadata/${encodeURIComponent(metadata.key)}`;
+  if (options?.workspaceId) {
+    url += `?workspaceId=${encodeURIComponent(options.workspaceId)}`;
+  }
+  // user
+
+  const res = await clientFetch(url, {
+    method: "POST",
+    body: JSON.stringify({ value: metadata.value }),
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
 
   if (!res.ok) {
     const err = await res.json();

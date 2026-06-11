@@ -16,6 +16,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
+import { HOME_DEFAULT_AGENT_METADATA_KEY } from "@app/types/assistant/assistant";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -80,6 +81,30 @@ export function useUserMetadata(
     isMetadataLoading: !error && !data,
     isMetadataError: error,
     mutateMetadata: mutate,
+  };
+}
+
+// Reads the user's personal, workspace-scoped default agent for new conversations.
+// Returns the raw stored sId (or null); accessibility is resolved by the caller against
+// the workspace agent list, falling back to @dust. Mirrors the server-side
+// `resolveHomeDefaultAgentSId`. To later add a workspace-admin default, fold the
+// precedence into this hook so consumers stay unchanged.
+export function useHomeDefaultAgent({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { metadata, isMetadataLoading, mutateMetadata } = useUserMetadata(
+    HOME_DEFAULT_AGENT_METADATA_KEY,
+    { workspaceId, disabled }
+  );
+
+  return {
+    defaultAgentSId: metadata?.value ?? null,
+    isHomeDefaultAgentLoading: isMetadataLoading,
+    mutateHomeDefaultAgent: mutateMetadata,
   };
 }
 

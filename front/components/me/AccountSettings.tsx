@@ -1,3 +1,4 @@
+import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import type { NotificationPreferencesRefProps } from "@app/components/me/NotificationPreferences";
 import { NotificationPreferences } from "@app/components/me/NotificationPreferences";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
@@ -5,7 +6,13 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
-import { usePatchUser, useUser } from "@app/lib/swr/user";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import { useHomeDefaultAgent, usePatchUser, useUser } from "@app/lib/swr/user";
+import { setUserMetadataFromClient } from "@app/lib/user";
+import {
+  GLOBAL_AGENTS_SID,
+  HOME_DEFAULT_AGENT_METADATA_KEY,
+} from "@app/types/assistant/assistant";
 import type { WorkspaceType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
@@ -22,6 +29,7 @@ import {
   Label,
   Moon01,
   Page,
+  Robot,
   Spinner,
   Sun,
   Tooltip,
@@ -70,6 +78,38 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
   const notificationPreferencesRef =
     useRef<NotificationPreferencesRefProps>(null);
   const [hasNotificationChanges, setHasNotificationChanges] = useState(false);
+
+  // Personal default agent for new conversations (workspace-scoped). Tracked outside the
+  // react-hook-form schema since it persists to UserMetadata, not the user profile.
+  const { agentConfigurations } = useUnifiedAgentConfigurations({
+    workspaceId: owner.sId,
+  });
+  const { defaultAgentSId, mutateHomeDefaultAgent } = useHomeDefaultAgent({
+    workspaceId: owner.sId,
+  });
+  // null means "no personal default" (i.e. fall back to @dust).
+  const [selectedDefaultAgentSId, setSelectedDefaultAgentSId] = useState<
+    string | null
+  >(null);
+  const [initialDefaultAgentSId, setInitialDefaultAgentSId] = useState<
+    string | null
+  >(null);
+
+  useEffect(() => {
+    const value = defaultAgentSId || null;
+    setSelectedDefaultAgentSId(value);
+    setInitialDefaultAgentSId(value);
+  }, [defaultAgentSId]);
+
+  const hasDefaultAgentChange =
+    selectedDefaultAgentSId !== initialDefaultAgentSId;
+
+  // The agent shown in the picker trigger: the user's selection, or @dust as the implicit
+  // default when nothing is selected.
+  const displayedDefaultAgent =
+    agentConfigurations.find(
+      (a) => a.sId === (selectedDefaultAgentSId ?? GLOBAL_AGENTS_SID.DUST)
+    ) ?? null;
 
   const fileUploaderService = useFileUploaderService({
     hasSandboxTools: false,
@@ -162,6 +202,20 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
         await notificationPreferencesRef.current.savePreferences();
         setHasNotificationChanges(false);
       }
+
+      // Persist the default agent (workspace-scoped). An empty value clears the
+      // personal default, falling back to @dust.
+      if (hasDefaultAgentChange) {
+        await setUserMetadataFromClient(
+          {
+            key: HOME_DEFAULT_AGENT_METADATA_KEY,
+            value: selectedDefaultAgentSId ?? "",
+          },
+          { workspaceId: owner.sId }
+        );
+        await mutateHomeDefaultAgent();
+        setInitialDefaultAgentSId(selectedDefaultAgentSId);
+      }
     }
   };
 
@@ -185,6 +239,8 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
       notificationPreferencesRef.current.reset();
       setHasNotificationChanges(false);
     }
+
+    setSelectedDefaultAgentSId(initialDefaultAgentSId);
   };
 
   // Check if notification preferences have changed
@@ -236,7 +292,9 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
   };
 
   const buttonDisabled =
-    (!form.formState.isDirty && !hasNotificationChanges) ||
+    (!form.formState.isDirty &&
+      !hasNotificationChanges &&
+      !hasDefaultAgentChange) ||
     form.formState.isSubmitting;
 
   return (
@@ -369,6 +427,49 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
               </DropdownMenuPortal>
             </DropdownMenu>
           </div>
+        </div>
+
+        <div className="flex flex-col">
+          <div className="mb-2">
+            <Label>Default agent</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <AgentPicker
+              owner={owner}
+              agents={agentConfigurations}
+              showFooterButtons={false}
+              onItemClick={(agent) => setSelectedDefaultAgentSId(agent.sId)}
+              pickerButton={
+                <Button
+                  variant="outline"
+                  isSelect
+                  className="w-fit"
+                  icon={
+                    displayedDefaultAgent
+                      ? () => (
+                          <Avatar
+                            size="xs"
+                            visual={displayedDefaultAgent.pictureUrl}
+                          />
+                        )
+                      : Robot
+                  }
+                  label={displayedDefaultAgent?.name ?? "Dust"}
+                />
+              }
+            />
+            {selectedDefaultAgentSId !== null && (
+              <Button
+                variant="ghost"
+                size="sm"
+                label="Reset to default"
+                onClick={() => setSelectedDefaultAgentSId(null)}
+              />
+            )}
+          </div>
+          <p className="copy-sm mt-1 text-muted-foreground dark:text-muted-foreground-night">
+            Pre-selected when you start a new conversation. Defaults to Dust.
+          </p>
         </div>
 
         {user?.subscriberHash && (

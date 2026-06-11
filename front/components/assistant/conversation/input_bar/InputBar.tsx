@@ -60,6 +60,8 @@ interface InputBarProps {
   conversation?: ConversationWithoutContentType;
   space?: SpaceType;
   stickyMentions?: RichMention[];
+  homeDefaultAgentSId?: string | null;
+  isHomeDefaultAgentLoading?: boolean;
   actions?: InputBarContainerProps["actions"];
   disableAutoFocus: boolean;
   disableUserMentions?: boolean;
@@ -85,6 +87,8 @@ export const InputBar = React.memo(function InputBar({
   draftKey,
   space,
   stickyMentions,
+  homeDefaultAgentSId,
+  isHomeDefaultAgentLoading,
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
   disableUserMentions,
@@ -484,6 +488,8 @@ export const InputBar = React.memo(function InputBar({
             pendingInputText={pendingInputText}
             onEnterKeyDown={handleSubmit}
             stickyMentions={stickyMentions}
+            homeDefaultAgentSId={homeDefaultAgentSId}
+            isHomeDefaultAgentLoading={isHomeDefaultAgentLoading}
             fileUploaderService={fileUploaderService}
             isSubmitting={
               isLocalSubmitting || fileUploaderService.isProcessingFiles

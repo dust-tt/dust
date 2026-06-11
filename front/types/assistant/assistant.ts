@@ -152,6 +152,12 @@ export function isGlobalAgentId(sId: string): sId is GLOBAL_AGENTS_SID {
   return (Object.values(GLOBAL_AGENTS_SID) as string[]).includes(sId);
 }
 
+// UserMetadata key storing a user's chosen default agent (the agent pre-selected
+// when starting a new conversation). Stored workspace-scoped. Resolved against the
+// user's accessible agents at read time, falling back to @dust. Shared by the client
+// hook (`useHomeDefaultAgent`) and the server resolver (`resolveHomeDefaultAgentSId`).
+export const HOME_DEFAULT_AGENT_METADATA_KEY = "homeDefaultAgent";
+
 // Hidden helper sub-agents that are only ever invoked internally (e.g. via
 // run_agent by the Deep Dive agent). On their own they are not meaningful to
 // users, so usage they generate should be attributed to the parent agent that

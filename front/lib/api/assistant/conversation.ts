@@ -21,6 +21,7 @@ import {
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
+import { resolveHomeDefaultAgentSId } from "@app/lib/api/assistant/default_agent";
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import {
   batchRenderMessages,
@@ -119,7 +120,6 @@ import type {
   LightAgentConfigurationType,
   ToolErrorEvent,
 } from "@app/types/assistant/agent";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   AgenticMessageData,
   AgentMessageStatus,
@@ -614,8 +614,9 @@ export async function postUserMessage(
   // visibility decisions downstream depend on user intent, not on server-injected mentions.
   const explicitAgentMentions = mentions.filter(isAgentMention);
 
-  // Auto-inject @dust for mention-less web/extension messages in single-user conversations.
-  // Must run before the plan rate-limit check so the resulting agent message is counted.
+  // Auto-inject the user's default agent for mention-less web/extension messages in
+  // single-user conversations. Must run before the plan rate-limit check so the resulting
+  // agent message is counted.
   if (
     !skipDustAutoMention &&
     mentions.length === 0 &&
@@ -630,14 +631,15 @@ export async function postUserMessage(
       ).length >= 1;
 
     if (!hasOtherHumans) {
-      const dustAgent = await getAgentConfiguration(auth, {
-        agentId: GLOBAL_AGENTS_SID.DUST,
+      const defaultAgentSId = await resolveHomeDefaultAgentSId(auth);
+      const defaultAgent = await getAgentConfiguration(auth, {
+        agentId: defaultAgentSId,
         variant: "extra_light",
       });
 
-      if (dustAgent && dustAgent.status === "active") {
-        mentions.push({ configurationId: dustAgent.sId });
-        content = `${serializeMention({ id: dustAgent.sId, type: "agent", label: dustAgent.name })} ${content}`;
+      if (defaultAgent && defaultAgent.status === "active") {
+        mentions.push({ configurationId: defaultAgent.sId });
+        content = `${serializeMention({ id: defaultAgent.sId, type: "agent", label: defaultAgent.name })} ${content}`;
       }
     }
   }
