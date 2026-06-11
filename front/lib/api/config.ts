@@ -101,6 +101,15 @@ const config = {
       EnvironmentConfig.getOptionalEnvVariable("ANTHROPIC_EAP_API_KEY") ?? null
     );
   },
+  // Anthropic API key for Dust-managed features (e.g. the Academy quiz chat).
+  // Optional: only set in deployments that serve these features.
+  getDustManagedAnthropicApiKey: (): string | null => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable(
+        "DUST_MANAGED_ANTHROPIC_API_KEY"
+      ) ?? null
+    );
+  },
   getSupportEmailAddress: (): { name: string; email: string } => {
     return {
       name: "Dust team",
