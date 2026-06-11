@@ -85,22 +85,27 @@ export function getMaxConversationsForBudget({
 
 /**
  * AWU credits variant of getMaxConversationsForBudget, for workspaces billed
- * by Metronome. All amounts are in AWU credits (margin baked in).
+ * by Metronome. All amounts are in AWU credits (margin baked in). The budget
+ * is the most restrictive of the reinforcement cap headroom, the programmatic
+ * cap headroom, and the remaining workspace credit pool.
  */
 export function getMaxConversationsForBudgetAwuCredits({
   globalConsumptionAwuCredits,
   globalCapAwuCredits,
   remainingProgrammaticCreditsAwuCredits,
+  remainingPoolCreditsAwuCredits,
 }: {
   globalConsumptionAwuCredits: number;
   globalCapAwuCredits: number;
   remainingProgrammaticCreditsAwuCredits: number;
+  remainingPoolCreditsAwuCredits: number;
 }): number {
   const remainingReinforcementAwuCredits =
     globalCapAwuCredits - globalConsumptionAwuCredits;
   const remainingAwuCredits = Math.min(
     remainingReinforcementAwuCredits,
-    remainingProgrammaticCreditsAwuCredits
+    remainingProgrammaticCreditsAwuCredits,
+    remainingPoolCreditsAwuCredits
   );
   if (remainingAwuCredits <= 0) {
     return 0;

@@ -15,6 +15,7 @@ import { getRemainingDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/da
 import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { intelligenceAwuFromRunUsages } from "@app/lib/metronome/events";
+import { getRemainingProgrammaticUsageFromMetronome } from "@app/lib/metronome/programmatic_awu_usage";
 import {
   isApiBlocked,
   isProgrammaticApiBlocked,
@@ -642,27 +643,36 @@ export async function getReinforcementSettingsActivity({
         (await isApiBlocked(workspace.sId)) ||
         (await isProgrammaticApiBlocked(workspace.sId));
 
-      // Programmatic usage draws from the workspace AWU credit pool: use the
-      // live Metronome balance as the remaining programmatic budget.
-      // Fail-open on errors: the reinforcement cap stays the only constraint.
+      // Both clamps fail-open on errors: the reinforcement cap stays the only
+      // constraint.
+      let remainingPoolCreditsAwuCredits = Infinity;
       let remainingProgrammaticCreditsAwuCredits = Infinity;
       if (workspace.metronomeCustomerId) {
+        // Reinforcement spend draws from the workspace AWU credit pool: clamp
+        // by the live Metronome balance.
         const balanceRes = await getWorkspacePoolAwuBalance(
           workspace.metronomeCustomerId
         );
         if (balanceRes.isOk()) {
-          remainingProgrammaticCreditsAwuCredits = balanceRes.value;
+          remainingPoolCreditsAwuCredits = balanceRes.value;
         } else {
           logger.warn(
             { workspaceId, error: balanceRes.error },
             "ReinforcedSkills: failed to fetch AWU pool balance — not constraining the budget"
           );
         }
+
+        // Remaining programmatic headroom (cap minus period spend, live from
+        // Metronome; fail-open). Actual cap depletion is enforced by the
+        // alert-driven gate above either way.
+        remainingProgrammaticCreditsAwuCredits =
+          await getRemainingProgrammaticUsageFromMetronome(auth);
       }
       maxConversationsForBudget = getMaxConversationsForBudgetAwuCredits({
         globalConsumptionAwuCredits: globalConsumption.consumedAwuCredits,
         globalCapAwuCredits: globalConsumption.capAwuCredits,
         remainingProgrammaticCreditsAwuCredits,
+        remainingPoolCreditsAwuCredits,
       });
       break;
     }

@@ -277,6 +277,7 @@ describe("getMaxConversationsForBudgetAwuCredits", () => {
         globalConsumptionAwuCredits: 800,
         globalCapAwuCredits: 2_000,
         remainingProgrammaticCreditsAwuCredits: 10_000,
+        remainingPoolCreditsAwuCredits: 10_000,
       })
     ).toBe(120);
   });
@@ -287,6 +288,18 @@ describe("getMaxConversationsForBudgetAwuCredits", () => {
         globalConsumptionAwuCredits: 0,
         globalCapAwuCredits: 10_000,
         remainingProgrammaticCreditsAwuCredits: 120,
+        remainingPoolCreditsAwuCredits: 10_000,
+      })
+    ).toBe(12);
+  });
+
+  it("clamps to the remaining pool credits", () => {
+    expect(
+      getMaxConversationsForBudgetAwuCredits({
+        globalConsumptionAwuCredits: 0,
+        globalCapAwuCredits: 10_000,
+        remainingProgrammaticCreditsAwuCredits: 10_000,
+        remainingPoolCreditsAwuCredits: 120,
       })
     ).toBe(12);
   });
@@ -297,6 +310,18 @@ describe("getMaxConversationsForBudgetAwuCredits", () => {
         globalConsumptionAwuCredits: 2_000,
         globalCapAwuCredits: 2_000,
         remainingProgrammaticCreditsAwuCredits: 10_000,
+        remainingPoolCreditsAwuCredits: 10_000,
+      })
+    ).toBe(0);
+  });
+
+  it("returns 0 when the pool is empty", () => {
+    expect(
+      getMaxConversationsForBudgetAwuCredits({
+        globalConsumptionAwuCredits: 0,
+        globalCapAwuCredits: 10_000,
+        remainingProgrammaticCreditsAwuCredits: 10_000,
+        remainingPoolCreditsAwuCredits: 0,
       })
     ).toBe(0);
   });
@@ -307,6 +332,7 @@ describe("getMaxConversationsForBudgetAwuCredits", () => {
         globalConsumptionAwuCredits: 0,
         globalCapAwuCredits: 10_000_000,
         remainingProgrammaticCreditsAwuCredits: 10_000_000,
+        remainingPoolCreditsAwuCredits: 10_000_000,
       })
     ).toBe(DEFAULT_MAX_CONVERSATIONS_PER_RUN);
   });
