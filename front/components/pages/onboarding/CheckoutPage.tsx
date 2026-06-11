@@ -2,28 +2,22 @@ import { PaymentMethodRow } from "@app/components/checkout/PaymentMethodRow";
 import config from "@app/lib/api/config";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import {
-  BUSINESS_PLAN_COST_MONTHLY,
   CP_MAX_SEAT_COST_MONTHLY,
   CP_MAX_SEAT_COST_YEARLY,
   CP_PRO_SEAT_COST_MONTHLY,
   CP_PRO_SEAT_COST_YEARLY,
   getPriceAsString,
-  PRO_PLAN_COST_MONTHLY,
-  PRO_PLAN_COST_YEARLY,
   useIsMetronomeCheckout,
   useUserBillingCurrency,
 } from "@app/lib/client/subscription";
-import { isWhitelistedBusinessPlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import {
   useAuthContext,
   useCheckBusinessActivation,
-  useConfirmPayment,
   useCreateCheckoutSession,
   useInitiateBusinessActivation,
   usePreparePayment,
   useValidateCoupon,
-  useWorkspaceSeatsCount,
 } from "@app/lib/swr/workspaces";
 import type { CouponType } from "@app/types/coupon";
 import type { BillingPeriod } from "@app/types/plan";
@@ -108,7 +102,7 @@ export function CheckoutPage() {
   const { mutateAuthContext } = useAuthContext({ workspaceId: owner.sId });
 
   // Determine if CP checkout is enabled.
-  const isMetronomeCheckout = useIsMetronomeCheckout() && !!seatType;
+  const isMetronomeCheckout = useIsMetronomeCheckout();
 
   const [phase, setPhase] = useState<CheckoutPhase>("card_capture");
   const [phaseError, setPhaseError] = useState<PhaseError | null>(null);
@@ -146,13 +140,7 @@ export function CheckoutPage() {
   // spinner on restart so the two-pane layout stays visible.
   const hasHadSessionRef = useRef(false);
 
-  const { seatsCount } = useWorkspaceSeatsCount({
-    workspaceId: owner.sId,
-  });
   const { createSession, isCreating } = useCreateCheckoutSession({
-    workspaceId: owner.sId,
-  });
-  const { confirmPayment } = useConfirmPayment({
     workspaceId: owner.sId,
   });
   const { initiateBusinessActivation } = useInitiateBusinessActivation({
@@ -300,46 +288,9 @@ export function CheckoutPage() {
     confirmCalledRef.current = true;
     setPhase("confirming");
 
-    if (isMetronomeCheckout) {
-      // CP path: dedicated business activation endpoint — always returns
-      // activationPending or an error, never a direct success.
-      const result = await initiateBusinessActivation({ setupSessionId });
-      if (!result) {
-        setPhaseError({ kind: "generic" });
-        setPhase("error");
-        return;
-      }
-      if ("error" in result) {
-        switch (result.error) {
-          case "setup_failed":
-            setPhaseError({ kind: "setup_failed" });
-            break;
-          case "payment_failed":
-            setPhaseError({ kind: "payment_failed" });
-            break;
-          case "metronome_error":
-            setPhaseError({ kind: "metronome_error" });
-            break;
-          case "internal_error":
-            setPhaseError({ kind: "internal_error" });
-            break;
-          case "invalid_coupon":
-            setPhaseError({ kind: "invalid_coupon" });
-            break;
-          default:
-            assertNeverAndIgnore(result.error);
-            setPhaseError({ kind: "generic" });
-        }
-        setPhase("error");
-        return;
-      }
-      setPendingContractId(result.contractId);
-      setPhase("waiting_for_payment");
-      return;
-    }
-
-    // Legacy path.
-    const result = await confirmPayment({ setupSessionId });
+    // CP path: dedicated business activation endpoint — always returns
+    // activationPending or an error, never a direct success.
+    const result = await initiateBusinessActivation({ setupSessionId });
     if (!result) {
       setPhaseError({ kind: "generic" });
       setPhase("error");
@@ -369,16 +320,9 @@ export function CheckoutPage() {
       setPhase("error");
       return;
     }
-
-    setPhase("checkout_success");
-    void mutateAuthContext();
-  }, [
-    setupSessionId,
-    isMetronomeCheckout,
-    initiateBusinessActivation,
-    confirmPayment,
-    mutateAuthContext,
-  ]);
+    setPendingContractId(result.contractId);
+    setPhase("waiting_for_payment");
+  }, [setupSessionId, initiateBusinessActivation]);
 
   const handleCardCaptureComplete = useCallback(() => {
     setPhase("payment_review");
@@ -421,34 +365,19 @@ export function CheckoutPage() {
   const showActualTax = preparePayment !== null;
 
   const currency = showActualTax ? preparePayment.currency : fallbackCurrency;
-  const seats = seatsCount ?? 1;
-  const isBusiness = isWhitelistedBusinessPlan(owner);
 
   // Compute seat price for order summary.
   // CP checkout: USD prices only. Yearly = per-month price × 12.
-  // Legacy: use existing plan cost constants.
-  let seatPriceCents: number;
-  if (isMetronomeCheckout && seatType) {
-    const monthlyPrice =
-      seatType === "pro" ? CP_PRO_SEAT_COST_MONTHLY : CP_MAX_SEAT_COST_MONTHLY;
-    const yearlyMonthlyPrice =
-      seatType === "pro" ? CP_PRO_SEAT_COST_YEARLY : CP_MAX_SEAT_COST_YEARLY;
-    seatPriceCents =
-      billingPeriod === "monthly"
-        ? monthlyPrice * 100
-        : yearlyMonthlyPrice * 12 * 100;
-  } else {
-    const seatPricePerMonthCents =
-      (isBusiness
-        ? BUSINESS_PLAN_COST_MONTHLY
-        : billingPeriod === "monthly"
-          ? PRO_PLAN_COST_MONTHLY
-          : PRO_PLAN_COST_YEARLY) * 100;
-    const monthsInPeriod = billingPeriod === "yearly" ? 12 : 1;
-    seatPriceCents = seatPricePerMonthCents * monthsInPeriod;
-  }
+  const monthlyPrice =
+    seatType === "pro" ? CP_PRO_SEAT_COST_MONTHLY : CP_MAX_SEAT_COST_MONTHLY;
+  const yearlyMonthlyPrice =
+    seatType === "pro" ? CP_PRO_SEAT_COST_YEARLY : CP_MAX_SEAT_COST_YEARLY;
+  const seatPriceCents =
+    billingPeriod === "monthly"
+      ? monthlyPrice * 100
+      : yearlyMonthlyPrice * 12 * 100;
 
-  const seatCountForSummary = isMetronomeCheckout ? 1 : seats;
+  const seatCountForSummary = 1;
   const subtotalCents = seatPriceCents * seatCountForSummary;
   const couponDiscountCents =
     appliedCoupon !== null
@@ -457,13 +386,7 @@ export function CheckoutPage() {
   const totalDueTodayCents = subtotalCents - couponDiscountCents;
 
   // Plan display name.
-  const planDisplayName = isMetronomeCheckout
-    ? seatType === "pro"
-      ? "Pro seat"
-      : "Max seat"
-    : isBusiness
-      ? "Business plan"
-      : "Pro plan";
+  const planDisplayName = seatType === "pro" ? "Pro seat" : "Max seat";
 
   if (!isInitialized) {
     return null;

@@ -66,6 +66,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
+import { z } from "zod";
 import {
   type CheckoutBillingPeriod,
   CheckoutBillingPeriodSchema,
@@ -675,8 +676,12 @@ export async function fetchStripeHostedInvoiceUrl({
 // route handler.
 // ---------------------------------------------------------------------------
 
+export const PostBusinessActivationBodySchema = z.object({
+  setupSessionId: z.string(),
+});
+
 export type BusinessActivationRequestError =
-  | { type: "checkout_not_enabled" }
+  | { type: "metronome_not_enabled" }
   | { type: "setup_failed" }
   | { type: "workspace_mismatch" }
   | { type: "missing_metadata" }
@@ -753,7 +758,7 @@ export async function processBusinessActivation(
   >
 > {
   if (!(await isMetronomeBillingEnabled(auth))) {
-    return new Err({ type: "checkout_not_enabled" });
+    return new Err({ type: "metronome_not_enabled" });
   }
 
   const owner = auth.getNonNullableWorkspace();

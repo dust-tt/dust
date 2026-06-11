@@ -2,10 +2,10 @@ import {
   type BusinessActivationRequestError,
   type GetBusinessActivationResponseBody,
   getBusinessActivationStatus,
+  PostBusinessActivationBodySchema,
   type PostBusinessActivationResponseBody,
   processBusinessActivation,
 } from "@app/lib/api/checkout/business_activation";
-import { PostCheckoutPaymentBodySchema } from "@app/lib/api/checkout/payment";
 import { wakeLock } from "@app/lib/wake_lock";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -42,7 +42,7 @@ app.get(
 /** @ignoreswagger */
 app.post(
   "/",
-  validate("json", PostCheckoutPaymentBodySchema),
+  validate("json", PostBusinessActivationBodySchema),
   async (ctx): HandlerResult<PostBusinessActivationResponseBody> => {
     return wakeLock(
       async () => {
@@ -78,12 +78,12 @@ function mapBusinessActivationError(
   error: BusinessActivationRequestError
 ) {
   switch (error.type) {
-    case "checkout_not_enabled":
+    case "metronome_not_enabled":
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
-          message: "Metronome CP checkout is not enabled for this workspace.",
+          message: "Metronome billing is not enabled for this workspace.",
         },
       });
     case "workspace_mismatch":

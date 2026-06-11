@@ -34,7 +34,6 @@ import type {
   GetBusinessActivationResponseBody,
   PostBusinessActivationResponseBody,
 } from "@app/lib/api/checkout/business_activation";
-import type { PostCheckoutPaymentResponseBody } from "@app/lib/api/checkout/payment";
 import type { GetPreparePaymentResponseBody } from "@app/lib/api/checkout/prepare_payment";
 import type { GetMetronomeContractResponseBody } from "@app/lib/api/credits/metronome_contract";
 import type { GetPendingInvitationsLookupResponseBody } from "@app/lib/api/invitation";
@@ -1401,43 +1400,6 @@ export function usePreparePayment({
       (isPending && !pollTimedOut),
     isPreparePaymentError: !!error || pollTimedOut,
   };
-}
-
-export function useConfirmPayment({ workspaceId }: { workspaceId: string }) {
-  const [isConfirming, setIsConfirming] = useState(false);
-
-  const confirmPayment = useCallback(
-    async ({
-      setupSessionId,
-    }: {
-      setupSessionId: string;
-    }): Promise<PostCheckoutPaymentResponseBody | null> => {
-      setIsConfirming(true);
-      try {
-        const res = await clientFetch(
-          `/api/w/${workspaceId}/subscriptions/checkout/payment`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ setupSessionId }),
-          }
-        );
-        if (!res.ok) {
-          try {
-            return await res.json();
-          } catch {
-            return null;
-          }
-        }
-        return await res.json();
-      } finally {
-        setIsConfirming(false);
-      }
-    },
-    [workspaceId]
-  );
-
-  return { confirmPayment, isConfirming };
 }
 
 export function useValidateCoupon({ workspaceId }: { workspaceId: string }) {
