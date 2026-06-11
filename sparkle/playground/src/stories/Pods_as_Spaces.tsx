@@ -647,7 +647,7 @@ function DustMain() {
                   <span className="s:heading-sm s:min-w-0 s:overflow-hidden s:text-ellipsis s:whitespace-nowrap">
                     {user.fullName}
                   </span>
-                  <span className="-s:mt-0.5 s:min-w-0 s:overflow-hidden s:text-ellipsis s:whitespace-nowrap s:text-xs s:text-muted-foreground dark:s:text-muted-foreground-night">
+                  <span className="s:-mt-0.5 s:min-w-0 s:overflow-hidden s:text-ellipsis s:whitespace-nowrap s:text-xs s:text-muted-foreground dark:s:text-muted-foreground-night">
                     ACME
                   </span>
                 </div>

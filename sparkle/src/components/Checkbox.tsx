@@ -84,7 +84,7 @@ const Checkbox = React.forwardRef<
         {...props}
       >
         <CheckboxPrimitive.Indicator className="s:flex s:items-center s:justify-center s:text-current">
-          <span className={cn(size === "xs" ? "-s:mt-px" : "")}>
+          <span className={cn(size === "xs" ? "s:-mt-px" : "")}>
             <Icon
               size="xs"
               visual={checked === "partial" ? Minus : Check}
