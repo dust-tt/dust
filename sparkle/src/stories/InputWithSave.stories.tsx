@@ -10,7 +10,7 @@ const meta = {
     layout: "padded",
     docs: {
       description: {
-        component: `A text field with an optional right-aligned **unit** and an inline save action. At rest it shows the value and unit; while editing, a save icon button appears on the right. Clicking save (or pressing Enter) calls **onSave** and shows a spinner until the returned promise resolves; blurring without saving (or pressing Escape) reverts the edit.
+        component: `A text field with an optional right-aligned **unit** and an inline save action. At rest it shows the value and unit; while editing, a Save button appears on the right. Clicking save (or pressing Enter) calls **onSave** and shows a spinner until the returned promise resolves; blurring without saving (or pressing Escape) reverts the edit.
 
 **When to use**
 - For a single value that is persisted on its own (e.g. a quota, a price, a limit), without a surrounding form.

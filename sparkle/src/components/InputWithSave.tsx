@@ -1,5 +1,4 @@
 import { Button } from "@sparkle/components/Button";
-import { Save01 } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import React, {
   forwardRef,
@@ -112,7 +111,7 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
         <input
           ref={inputRef}
           className={cn(
-            "s-h-full s-w-full s-min-w-0 s-flex-1 s-border-0 s-bg-transparent s-p-0",
+            "s-h-full s-w-full s-min-w-0 s-flex-1 s-border-0 s-bg-transparent s-p-0 s-text-right",
             // The container carries the focus styles (via focus-within); the
             // inner input must not render its own outline or ring.
             "s-outline-none focus:s-outline-none focus-visible:s-outline-none",
@@ -143,11 +142,10 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
         )}
         {showSaveButton && (
           <Button
-            icon={Save01}
+            label="Save"
             variant="highlight"
-            size="icon-xs"
+            size="xs"
             isLoading={isSaving}
-            aria-label="Save"
             // Prevent the input from blurring (which would revert the edit)
             // before the click registers.
             onMouseDown={(e) => e.preventDefault()}

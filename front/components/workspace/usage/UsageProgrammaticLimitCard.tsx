@@ -53,7 +53,7 @@ export function UsageProgrammaticLimitCard({
           title="Programmatic monthly limit"
           description="Maximum credits allowed for programmatic usage per month"
           action={
-            <div className="w-40">
+            <div className="w-52">
               <InputWithSave
                 inputMode="numeric"
                 pattern="[0-9]*"

@@ -75,7 +75,7 @@ export function UsageSettingsCard({
           title="Default pool credit limit"
           description="Define the pool credit limit for users in your workspace. This limit is added on top of each seat's built-in allowance."
           action={
-            <div className="w-40">
+            <div className="w-52">
               <InputWithSave
                 inputMode="numeric"
                 pattern="[0-9]*"

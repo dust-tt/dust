@@ -74,7 +74,7 @@ export function UsageNotificationsCard({
           title="Credit balance threshold"
           description="Email all workspace admins when your remaining credit balance drops below this amount (in credits). Set to 0 to disable."
           action={
-            <div className="w-40">
+            <div className="w-52">
               <InputWithSave
                 inputMode="numeric"
                 pattern="[0-9]*"
