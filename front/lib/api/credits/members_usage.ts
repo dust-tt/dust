@@ -34,6 +34,7 @@ import {
   type SeatData,
 } from "@app/lib/metronome/seats";
 import type { BillingFrequency } from "@app/lib/metronome/types";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
@@ -403,23 +404,32 @@ async function fetchDefaultCapsBySeatTypeUncached({
 /**
  * Resolve the inputs needed to compute the effective per-user spend limit for
  * the members table:
- *   - the per-seat-type default cap thresholds (Metronome alerts)
+ *   - the per-seat-type default cap totals, derived from the pool-only
+ *     workspace default
+ *     (`credit_usage_configurations.defaultPoolCapAwuCredits`) plus each
+ *     seat type's allowance
  *   - the per-seat-type seat allowances, used to derive the total threshold
  *     from the pool-only override persisted on each membership
- *   - the per-user override alerts, fetched from Metronome only when alert
- *     deep links are requested (the override *threshold* comes from the DB)
+ *   - the per-user override and per-seat-type default alerts, fetched from
+ *     Metronome only when alert deep links are requested (the thresholds
+ *     come from the DB)
  */
 async function fetchEffectivePerUserSpendLimits({
   metronomeCustomerId,
   workspaceId,
+  defaultPoolCapAwuCredits,
   includeAlertLinks,
 }: {
   metronomeCustomerId: string | null;
   workspaceId: string;
+  defaultPoolCapAwuCredits: number | null;
   includeAlertLinks: boolean;
 }): Promise<{
   perUserOverrideAlerts: Map<string, MetronomeCapAlertIds>;
-  defaultAwuCreditsBySeatType: Partial<
+  defaultCapAwuCreditsBySeatType: Partial<
+    Record<NormalizedPoolLimitSeatType, number>
+  >;
+  defaultCapAlertsBySeatType: Partial<
     Record<NormalizedPoolLimitSeatType, MetronomeCapAlertInfo>
   >;
   seatAllowanceBySeatType: Partial<Record<NormalizedPoolLimitSeatType, number>>;
@@ -427,18 +437,22 @@ async function fetchEffectivePerUserSpendLimits({
   if (!metronomeCustomerId) {
     return {
       perUserOverrideAlerts: new Map(),
-      defaultAwuCreditsBySeatType: {},
+      defaultCapAwuCreditsBySeatType: {},
+      defaultCapAlertsBySeatType: {},
       seatAllowanceBySeatType: {},
     };
   }
 
-  const [perUserOverrideAlerts, defaultAwuCreditsBySeatType] =
-    await Promise.all([
+  const [perUserOverrideAlerts, defaultCapAlertsBySeatType] = await Promise.all(
+    [
       includeAlertLinks
         ? fetchPerUserCapAlertIds({ metronomeCustomerId, workspaceId })
         : Promise.resolve(new Map<string, MetronomeCapAlertIds>()),
-      fetchDefaultCapsBySeatType({ metronomeCustomerId, workspaceId }),
-    ]);
+      includeAlertLinks
+        ? fetchDefaultCapsBySeatType({ metronomeCustomerId, workspaceId })
+        : Promise.resolve({}),
+    ]
+  );
 
   let seatAllowanceBySeatType: Partial<
     Record<NormalizedPoolLimitSeatType, number>
@@ -449,13 +463,24 @@ async function fetchEffectivePerUserSpendLimits({
   } catch (err) {
     logger.warn(
       { err: normalizeError(err), workspaceId },
-      "[MembersUsage] Failed to resolve seat allowances, degrading to pool-only override thresholds"
+      "[MembersUsage] Failed to resolve seat allowances, degrading to pool-only thresholds"
     );
+  }
+
+  const defaultCapAwuCreditsBySeatType: Partial<
+    Record<NormalizedPoolLimitSeatType, number>
+  > = {};
+  if (defaultPoolCapAwuCredits !== null) {
+    for (const seatType of NORMALIZED_POOL_LIMIT_SEAT_TYPES) {
+      defaultCapAwuCreditsBySeatType[seatType] =
+        defaultPoolCapAwuCredits + (seatAllowanceBySeatType[seatType] ?? 0);
+    }
   }
 
   return {
     perUserOverrideAlerts,
-    defaultAwuCreditsBySeatType,
+    defaultCapAwuCreditsBySeatType,
+    defaultCapAlertsBySeatType,
     seatAllowanceBySeatType,
   };
 }
@@ -528,12 +553,14 @@ export async function fetchRemainingCapCreditsPercentageForUser({
   userId,
   seatType,
   poolCapOverrideAwuCredits,
+  defaultPoolCapAwuCredits,
 }: {
   metronomeCustomerId: string | null;
   workspaceId: string;
   userId: string;
   seatType: MembershipSeatType | null | undefined;
   poolCapOverrideAwuCredits: number | null;
+  defaultPoolCapAwuCredits: number | null;
 }): Promise<number | null> {
   const contract = metronomeCustomerId
     ? await getActiveContract(workspaceId)
@@ -542,7 +569,7 @@ export async function fetchRemainingCapCreditsPercentageForUser({
 
   const [
     perUserTotalConsumedCredits,
-    { defaultAwuCreditsBySeatType, seatAllowanceBySeatType },
+    { defaultCapAwuCreditsBySeatType, seatAllowanceBySeatType },
   ] = await Promise.all([
     fetchPerUserUsageCreditsForMembersTable({
       metronomeCustomerId,
@@ -552,13 +579,14 @@ export async function fetchRemainingCapCreditsPercentageForUser({
     fetchEffectivePerUserSpendLimits({
       metronomeCustomerId,
       workspaceId,
+      defaultPoolCapAwuCredits,
       includeAlertLinks: false,
     }),
   ]);
 
   const normalizedSeatType = normalizeToPoolLimitSeatType(seatType);
-  const defaultCap = normalizedSeatType
-    ? (defaultAwuCreditsBySeatType[normalizedSeatType] ?? null)
+  const defaultAwuCredits = normalizedSeatType
+    ? (defaultCapAwuCreditsBySeatType[normalizedSeatType] ?? null)
     : null;
 
   // Mirror `getMembersUsage`: the override threshold stored on the membership is
@@ -573,10 +601,10 @@ export async function fetchRemainingCapCreditsPercentageForUser({
 
   const spendLimitAwuCredits = resolveEffectiveSpendLimitAwuCredits({
     overrideAwuCredits,
-    defaultAwuCredits: defaultCap?.threshold ?? null,
+    defaultAwuCredits,
   });
 
-  if (!spendLimitAwuCredits) {
+  if (spendLimitAwuCredits === null) {
     return null;
   }
 
@@ -605,6 +633,11 @@ export async function getMemberUsage({
   const metronomeContractId = subscription?.metronomeContractId ?? null;
   const userId = userResource.sId;
 
+  // The workspace-wide default pool cap lives on the credit-usage
+  // configuration row (created lazily; absent → no default configured).
+  const creditUsageConfig =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+
   const [
     membershipsResult,
     perUserTotalConsumedCredits,
@@ -627,11 +660,13 @@ export async function getMemberUsage({
     fetchEffectivePerUserSpendLimits({
       metronomeCustomerId: metronomeCustomerId ?? null,
       workspaceId: workspace.sId,
+      defaultPoolCapAwuCredits:
+        creditUsageConfig?.defaultPoolCapAwuCredits ?? null,
       includeAlertLinks: false,
     }),
   ]);
 
-  const { defaultAwuCreditsBySeatType, seatAllowanceBySeatType } =
+  const { defaultCapAwuCreditsBySeatType, seatAllowanceBySeatType } =
     perUserSpendLimits;
   const { memberships } = membershipsResult;
   const membership = memberships.find((m) => m.userId === userResource.id);
@@ -652,8 +687,8 @@ export async function getMemberUsage({
     totalConsumedCredits - consumedFromAllowanceAwuCredits;
 
   const normalizedSeatType = normalizeToPoolLimitSeatType(membership.seatType);
-  const defaultCap = normalizedSeatType
-    ? (defaultAwuCreditsBySeatType[normalizedSeatType] ?? null)
+  const defaultAwuCredits = normalizedSeatType
+    ? (defaultCapAwuCreditsBySeatType[normalizedSeatType] ?? null)
     : null;
   const overrideAwuCredits =
     membership.poolCapOverrideAwuCredits !== null
@@ -669,7 +704,7 @@ export async function getMemberUsage({
   const effectiveDefaultAwuCredits =
     membership.seatType === "free"
       ? FREE_SEAT_LIFETIME_AWU_CREDITS
-      : (defaultCap?.threshold ?? null);
+      : defaultAwuCredits;
 
   const spendLimitSource = resolveEffectiveSpendLimitSource({
     overrideAwuCredits,
@@ -745,6 +780,11 @@ export async function getMembersUsage({
     return { members: [], total };
   }
 
+  // The workspace-wide default pool cap lives on the credit-usage
+  // configuration row (created lazily; absent → no default configured).
+  const creditUsageConfig =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+
   // Fetch membership details and Metronome data in parallel for the
   // current page of users.
   const [
@@ -774,6 +814,8 @@ export async function getMembersUsage({
     fetchEffectivePerUserSpendLimits({
       metronomeCustomerId: metronomeCustomerId ?? null,
       workspaceId: workspace.sId,
+      defaultPoolCapAwuCredits:
+        creditUsageConfig?.defaultPoolCapAwuCredits ?? null,
       includeAlertLinks,
     }),
     // Free-seat balance-alert ids (low + empty) for deep-linking — poke-only,
@@ -792,7 +834,8 @@ export async function getMembersUsage({
       : null;
   const {
     perUserOverrideAlerts,
-    defaultAwuCreditsBySeatType,
+    defaultCapAwuCreditsBySeatType,
+    defaultCapAlertsBySeatType,
     seatAllowanceBySeatType,
   } = perUserSpendLimits;
 
@@ -827,14 +870,14 @@ export async function getMembersUsage({
       totalConsumedCredits - consumedFromAllowanceAwuCredits;
 
     // Resolve the default cap for this member's seat type, and the user's
-    // override if any. The override threshold is derived from the pool-only
-    // value persisted on the membership plus the seat allowance; the
+    // override if any. Both thresholds are derived from pool-only DB values
+    // (membership override / workspace default) plus the seat allowance; the
     // Metronome alert ids are only resolved for deep links.
     const normalizedSeatType = normalizeToPoolLimitSeatType(
       membership.seatType
     );
-    const defaultCap = normalizedSeatType
-      ? (defaultAwuCreditsBySeatType[normalizedSeatType] ?? null)
+    const defaultAwuCredits = normalizedSeatType
+      ? (defaultCapAwuCreditsBySeatType[normalizedSeatType] ?? null)
       : null;
     const overrideAwuCredits =
       membership.poolCapOverrideAwuCredits !== null
@@ -849,7 +892,7 @@ export async function getMembersUsage({
     const effectiveDefaultAwuCredits =
       membership.seatType === "free"
         ? FREE_SEAT_LIFETIME_AWU_CREDITS
-        : (defaultCap?.threshold ?? null);
+        : defaultAwuCredits;
 
     const spendLimitSource = resolveEffectiveSpendLimitSource({
       overrideAwuCredits,
@@ -858,8 +901,8 @@ export async function getMembersUsage({
     const effectiveCapAlert =
       spendLimitSource === "override"
         ? (perUserOverrideAlerts.get(userId) ?? null)
-        : spendLimitSource === "default"
-          ? defaultCap
+        : spendLimitSource === "default" && normalizedSeatType
+          ? (defaultCapAlertsBySeatType[normalizedSeatType] ?? null)
           : null;
     const spendLimitAlertId = includeAlertLinks
       ? (effectiveCapAlert?.alertId ?? null)

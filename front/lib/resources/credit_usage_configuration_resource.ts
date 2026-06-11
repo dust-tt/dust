@@ -85,6 +85,21 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
     return rows[0] ?? null;
   }
 
+  /**
+   * Internal, auth-less fetch by workspace model id. For system flows (Temporal
+   * activities, Metronome webhook dispatchers, reconcile) that operate on a
+   * workspace they don't have an `Authenticator` for. Request-scoped code should
+   * prefer `fetchByWorkspaceId(auth)`.
+   */
+  static async fetchByWorkspaceModelId(
+    workspaceModelId: ModelId
+  ): Promise<CreditUsageConfigurationResource | null> {
+    const row = await this.model.findOne({
+      where: { workspaceId: workspaceModelId },
+    });
+    return row ? new this(this.model, row.get()) : null;
+  }
+
   static async fetchById(
     auth: Authenticator,
     sId: string
@@ -109,6 +124,7 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       usageCapCredits: number | null;
       allowMemberUpgradeRequests: boolean;
       upgradeRequestEmailEnabled: boolean;
+      defaultPoolCapAwuCredits: number | null;
     }>,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
@@ -170,6 +186,7 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       usageCapCredits: this.usageCapCredits,
       allowMemberUpgradeRequests: this.allowMemberUpgradeRequests,
       upgradeRequestEmailEnabled: this.upgradeRequestEmailEnabled,
+      defaultPoolCapAwuCredits: this.defaultPoolCapAwuCredits,
     };
   }
 
@@ -182,6 +199,7 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       usageCapCredits: this.usageCapCredits,
       allowMemberUpgradeRequests: String(this.allowMemberUpgradeRequests),
       upgradeRequestEmailEnabled: String(this.upgradeRequestEmailEnabled),
+      defaultPoolCapAwuCredits: this.defaultPoolCapAwuCredits,
     };
   }
 }

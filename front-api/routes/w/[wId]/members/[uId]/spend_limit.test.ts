@@ -21,7 +21,6 @@ vi.mock("@app/lib/metronome/alerts/spend_limits", async () => {
     ...actual,
     upsertMetronomePerUserCapAlert: vi.fn(),
     clearMetronomePerUserCapAlert: vi.fn(),
-    getMetronomeDefaultUserCapAlertForSeatType: vi.fn(),
   };
 });
 
@@ -84,9 +83,6 @@ beforeEach(() => {
   vi.mocked(spendLimits.clearMetronomePerUserCapAlert).mockResolvedValue(
     new Ok(undefined)
   );
-  vi.mocked(
-    spendLimits.getMetronomeDefaultUserCapAlertForSeatType
-  ).mockResolvedValue(new Ok(null));
   vi.mocked(perUserUsage.fetchPerUserAwuUsage).mockResolvedValue(
     new Ok(new Map())
   );

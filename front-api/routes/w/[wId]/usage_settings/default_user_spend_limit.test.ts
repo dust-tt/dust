@@ -119,9 +119,9 @@ describe("/api/w/[wId]/usage_settings/default_user_spend_limit", () => {
       expect(await response.json()).toEqual({ awuCredits: 25_000 });
     });
 
-    it("returns 200 with plan default when no default is configured (pro plan → 0)", async () => {
+    it("returns 200 with the resolved default (plan-tier fallback, pro plan → 0)", async () => {
       vi.mocked(businessLayer.getDefaultUserSpendLimit).mockResolvedValueOnce(
-        new Err(new DefaultUserSpendLimitError("not_found", "no default"))
+        new Ok({ awuCredits: 0 })
       );
 
       const workspace = await makeMetronomeWorkspace();

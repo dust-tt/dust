@@ -25,6 +25,10 @@ import type { CreationOptional } from "sequelize";
  *   Defaults to true.
  * - upgradeRequestEmailEnabled: Whether workspace admins are emailed when a
  *   member requests an upgrade. Defaults to true.
+ * - defaultPoolCapAwuCredits: Workspace-wide default per-user cap on
+ *   workspace-pool AWU consumption, in AWU credits, excluding the seat
+ *   allowance. NULL means no default is configured (the plan-tier default
+ *   applies).
  *
  * The credit-cap-warning notification settings (whether to warn, and at which
  * balance) are NOT stored here: they are derived from the workspace's Metronome
@@ -39,6 +43,7 @@ export class CreditUsageConfigurationModel extends WorkspaceAwareModel<CreditUsa
   declare usageCapCredits: number | null;
   declare allowMemberUpgradeRequests: CreationOptional<boolean>;
   declare upgradeRequestEmailEnabled: CreationOptional<boolean>;
+  declare defaultPoolCapAwuCredits: number | null;
 }
 
 CreditUsageConfigurationModel.init(
@@ -90,6 +95,11 @@ CreditUsageConfigurationModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true,
+    },
+    defaultPoolCapAwuCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {

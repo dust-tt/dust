@@ -13,12 +13,12 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   clearMetronomePerUserCapAlert,
   clearMetronomePerUserWarningAlert,
-  getMetronomeDefaultUserCapAlertForSeatType,
   upsertMetronomePerUserCapAlert,
   upsertMetronomePerUserWarningAlert,
 } from "@app/lib/metronome/alerts/spend_limits";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -341,45 +341,27 @@ export async function setUserSpendLimit(
         userId,
       });
 
-      // Look up the user's seat type to find the matching default cap.
+      // With the override cleared, the workspace default (pool-only value
+      // persisted on the credit-usage configuration) applies for the user's
+      // seat type.
       const normalizedSeatType = normalizeToPoolLimitSeatType(
         membership.seatType
       );
+      const creditUsageConfig =
+        await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+      const defaultPoolCapAwuCredits =
+        creditUsageConfig?.defaultPoolCapAwuCredits ?? null;
 
-      let defaultAlert = null;
-      if (normalizedSeatType) {
-        const defaultResult = await getMetronomeDefaultUserCapAlertForSeatType({
-          metronomeCustomerId: workspace.metronomeCustomerId,
-          workspaceId: workspace.sId,
-          seatType: normalizedSeatType,
-        });
-        if (defaultResult.isErr()) {
-          logger.error(
-            {
-              workspaceId: workspace.sId,
-              metronomeCustomerId: workspace.metronomeCustomerId,
-              userId: user.sId,
-              seatType: normalizedSeatType,
-              err: defaultResult.error,
-            },
-            "[Metronome PerUserCap] set(unlimited): failed to read default cap alert for seat type"
-          );
-          return new Err(
-            new UserSpendLimitError(
-              "metronome_error",
-              defaultResult.error.message
-            )
-          );
-        }
-        defaultAlert = defaultResult.value;
-      }
-
-      if (defaultAlert) {
+      if (normalizedSeatType && defaultPoolCapAwuCredits !== null) {
+        const seatAllowanceAwuCredits = await resolveUserSeatAllowance(
+          auth,
+          membership
+        );
         transitionedTo = await resolveLocalCapState({
           metronomeCustomerId: workspace.metronomeCustomerId,
           metronomeContractId: auth.subscription()?.metronomeContractId ?? null,
           userId: user.sId,
-          awuCapCredits: defaultAlert.alert.threshold,
+          awuCapCredits: defaultPoolCapAwuCredits + seatAllowanceAwuCredits,
         });
       } else {
         transitionedTo = "resolved";
@@ -398,8 +380,11 @@ export async function setUserSpendLimit(
     case "limited": {
       // The admin enters pool credits. Add the seat allowance to get the
       // total Metronome threshold.
-      const seatAllowance = await resolveUserSeatAllowance(auth, membership);
-      const totalAwuCredits = limit.awuCredits + seatAllowance;
+      const seatAllowanceAwuCredits = await resolveUserSeatAllowance(
+        auth,
+        membership
+      );
+      const totalAwuCredits = limit.awuCredits + seatAllowanceAwuCredits;
 
       const upsertResult = await upsertMetronomePerUserCapAlert({
         metronomeCustomerId: workspace.metronomeCustomerId,
@@ -413,7 +398,7 @@ export async function setUserSpendLimit(
             workspaceId: workspace.sId,
             userId: user.sId,
             awuCredits: totalAwuCredits,
-            seatAllowance,
+            seatAllowance: seatAllowanceAwuCredits,
             err: upsertResult.error,
           },
           "[Metronome PerUserCap] Failed to upsert per-user cap alert"
