@@ -270,7 +270,7 @@ export function UserAnswerRequired({
       onKeyDown={handleContainerKeyDown}
       onMouseMove={() => setIsKeyboardNavigating(false)}
       className={cn(
-        "flex flex-col gap-4 rounded-2xl border border-dark bg-background p-5 outline-none",
+        "flex flex-col gap-4 rounded-2xl border border-dark bg-background p-5 outline-hidden",
         "dark:border-dark-night dark:bg-background-night",
         isKeyboardNavigating && "cursor-none"
       )}

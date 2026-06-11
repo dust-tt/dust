@@ -39,10 +39,10 @@ export const Basic: Story = {
   args: {
     title: "Messages",
     subtitle: "Monthly activity",
-    className: "s-w-fit",
+    className: "s:w-fit",
     content: (
-      <div className="s-flex s-items-center s-gap-2">
-        <div className="s-text-lg s-font-semibold s-text-foreground">847</div>
+      <div className="s:flex s:items-center s:gap-2">
+        <div className="s:text-lg s:font-semibold s:text-foreground">847</div>
       </div>
     ),
   },
@@ -59,12 +59,12 @@ export const WithIcons: Story = {
   args: {
     title: "Reactions",
     content: (
-      <div className="s-flex s-items-center s-gap-2">
-        <ThumbsUp className="s-text-text-muted-foreground s-h-4 s-w-4" />
-        <div className="s-text-lg s-font-semibold s-text-foreground">12</div>
+      <div className="s:flex s:items-center s:gap-2">
+        <ThumbsUp className="s:text-text-muted-foreground s:h-4 s:w-4" />
+        <div className="s:text-lg s:font-semibold s:text-foreground">12</div>
       </div>
     ),
-    className: "s-w-fit",
+    className: "s:w-fit",
   },
 };
 
@@ -76,13 +76,13 @@ export const Composable: Story = {
         <ComposableCard.Subtitle>Monthly activity</ComposableCard.Subtitle>
       </ComposableCard.Header>
       <ComposableCard.Content>
-        <div className="s-flex s-items-center s-gap-2">
-          <ThumbsUp className="s-text-text-muted-foreground s-h-4 s-w-4" />
-          <div className="s-text-lg s-font-semibold">847</div>
+        <div className="s:flex s:items-center s:gap-2">
+          <ThumbsUp className="s:text-text-muted-foreground s:h-4 s:w-4" />
+          <div className="s:text-lg s:font-semibold">847</div>
         </div>
       </ComposableCard.Content>
       <ComposableCard.Footer>
-        <div className="s-flex -s-space-x-2">
+        <div className="s:flex s:-space-x-2">
           <Avatar
             size="sm"
             name="John Doe"

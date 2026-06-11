@@ -8,22 +8,22 @@ import * as React from "react";
 
 export const radioStyles = cva(
   cn(
-    "s-aspect-square s-rounded-full s-border s-transition s-duration-200 s-ease-in-out",
-    "s-border-border-dark dark:s-border-primary-500",
-    "s-bg-background dark:s-bg-background-night",
-    "s-text-foreground dark:s-text-foreground-night",
-    "s-flex s-items-center s-justify-center",
-    "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2 focus-visible:s-ring-ring",
-    "hover:s-border-highlight hover:s-bg-highlight-50 dark:hover:s-bg-highlight-100-night hover:dark:s-border-highlight",
-    "disabled:s-cursor-not-allowed disabled:s-opacity-50 disabled:s-border-border-dark disabled:dark:s-border-border-dark-night disabled:s-bg-background dark:disabled:s-bg-background-night",
-    "checked:s-ring-0",
-    "checked:s-bg-highlight-500 dark:checked:s-bg-highlight-500-night"
+    "s:aspect-square s:rounded-full s:border s:transition s:duration-200 s:ease-in-out",
+    "s:border-border-dark s:dark:border-primary-500",
+    "s:bg-background s:dark:bg-background-night",
+    "s:text-foreground s:dark:text-foreground-night",
+    "s:flex s:items-center s:justify-center",
+    "s:focus-visible:outline-hidden s:focus-visible:ring-2 s:focus-visible:ring-offset-2 s:focus-visible:ring-ring",
+    "s:hover:border-highlight s:hover:bg-highlight-50 s:dark:hover:bg-highlight-100-night s:hover:dark:border-highlight",
+    "s:disabled:cursor-not-allowed s:disabled:opacity-50 s:disabled:border-border-dark s:disabled:dark:border-border-dark-night s:disabled:bg-background s:dark:disabled:bg-background-night",
+    "s:checked:ring-0",
+    "s:checked:bg-highlight-500 s:dark:checked:bg-highlight-500-night"
   ),
   {
     variants: {
       size: {
-        xs: "s-h-4 s-w-4",
-        sm: "s-h-5 s-w-5",
+        xs: "s:h-4 s:w-4",
+        sm: "s:h-5 s:w-5",
       },
     },
     defaultVariants: {
@@ -33,12 +33,12 @@ export const radioStyles = cva(
 );
 
 export const radioIndicatorStyles = cva(
-  "s-bg-primary dark:s-bg-primary-night s-flex s-items-center s-justify-center s-rounded-full",
+  "s:bg-primary s:dark:bg-primary-night s:flex s:items-center s:justify-center s:rounded-full",
   {
     variants: {
       size: {
-        xs: "s-h-2 s-w-2",
-        sm: "s-h-2.5 s-w-2.5",
+        xs: "s:h-2 s:w-2",
+        sm: "s:h-2.5 s:w-2.5",
       },
     },
     defaultVariants: {
@@ -53,7 +53,7 @@ const RadioGroup = React.forwardRef<
 >(({ className, ...props }, ref) => {
   return (
     <RadioGroupPrimitive.Root
-      className={cn("s-grid s-gap-2", className)}
+      className={cn("s:grid s:gap-2", className)}
       {...props}
       ref={ref}
     />
@@ -86,7 +86,7 @@ const RadioGroupItem = React.forwardRef<
         visual={visual}
         size="sm"
         className={cn(
-          "s-text-foreground dark:s-text-foreground-night",
+          "s:text-foreground s:dark:text-foreground-night",
           extraClass
         )}
       />
@@ -106,7 +106,7 @@ const RadioGroupItem = React.forwardRef<
     );
 
     const wrappedItem = (
-      <div className="s-flex s-w-full s-items-center s-gap-2">
+      <div className="s:flex s:w-full s:items-center s:gap-2">
         {tooltipMessage ? (
           <Tooltip trigger={item} label={tooltipMessage} />
         ) : (
@@ -119,7 +119,7 @@ const RadioGroupItem = React.forwardRef<
       </div>
     );
 
-    return <div className="s-group s-w-full">{wrappedItem}</div>;
+    return <div className="s:group s:w-full">{wrappedItem}</div>;
   }
 );
 
@@ -165,12 +165,12 @@ const RadioGroupCustomItem = React.forwardRef<
     return (
       <div
         className={cn(
-          "s-flex s-w-full s-flex-col",
+          "s:flex s:w-full s:flex-col",
           className,
-          `s-items-${iconPosition}`
+          `s:items-${iconPosition}`
         )}
       >
-        <div className="s-flex s-w-full s-items-center s-gap-2">
+        <div className="s:flex s:w-full s:items-center s:gap-2">
           {item}
           {customItem}
         </div>

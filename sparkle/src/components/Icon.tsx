@@ -9,12 +9,12 @@ export interface IconProps {
 }
 
 const IconSizes = {
-  xs: "s-h-4 s-w-4",
-  sm: "s-h-5 s-w-5",
-  md: "s-h-6 s-w-6",
-  lg: "s-h-8 s-w-8",
-  xl: "s-h-12 s-w-12",
-  "2xl": "s-h-20 s-w-20",
+  xs: "s:h-4 s:w-4",
+  sm: "s:h-5 s:w-5",
+  md: "s:h-6 s:w-6",
+  lg: "s:h-8 s:w-8",
+  xl: "s:h-12 s:w-12",
+  "2xl": "s:h-20 s:w-20",
 };
 
 export function Icon({
@@ -23,17 +23,17 @@ export function Icon({
   className = "",
 }: IconProps) {
   return IconComponent ? (
-    <IconComponent className={cn(className, "s-shrink-0", IconSizes[size])} />
+    <IconComponent className={cn(className, "s:shrink-0", IconSizes[size])} />
   ) : null;
 }
 
-const sizeVariants = cva("s-relative", {
+const sizeVariants = cva("s:relative", {
   variants: {
     size: {
-      sm: "s-h-5 s-w-5",
-      md: "s-h-6 s-w-6",
-      lg: "s-h-8 s-w-8 s-p-0.5",
-      xl: "s-h-10 s-w-10",
+      sm: "s:h-5 s:w-5",
+      md: "s:h-6 s:w-6",
+      lg: "s:h-8 s:w-8 s:p-0.5",
+      xl: "s:h-10 s:w-10",
     },
   },
   defaultVariants: {
@@ -41,13 +41,13 @@ const sizeVariants = cva("s-relative", {
   },
 });
 
-const iconSizeVariants = cva("s-absolute", {
+const iconSizeVariants = cva("s:absolute", {
   variants: {
     size: {
-      sm: "s-bottom-0 s-right-0",
-      md: "s-bottom-0 s-right-0",
-      lg: "s-bottom-0 s-right-0",
-      xl: "s-bottom-0 s-right-0",
+      sm: "s:bottom-0 s:right-0",
+      md: "s:bottom-0 s:right-0",
+      lg: "s:bottom-0 s:right-0",
+      xl: "s:bottom-0 s:right-0",
     },
   },
   defaultVariants: {
@@ -71,7 +71,7 @@ export const DoubleIcon = ({
   return (
     <div className={cn(sizeVariants({ size }), className)}>
       <Icon
-        className="s-text-foreground dark:s-text-foreground-night"
+        className="s:text-foreground s:dark:text-foreground-night"
         size={
           size === "sm"
             ? "xs"
@@ -94,7 +94,7 @@ export const DoubleIcon = ({
                 : "md"
         }
         visual={secondaryIcon}
-        className={cn("s-absolute", iconSizeVariants({ size }))}
+        className={cn("s:absolute", iconSizeVariants({ size }))}
       />
     </div>
   );

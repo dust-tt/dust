@@ -1,3 +1,10 @@
 /* Tailwind components and utilities here, need to placed after sparkle.css to have more priority */
-@tailwind components;
-@tailwind utilities;
+/* Theme must be co-located with utilities so Tailwind v4 can resolve spacing/color tokens */
+@import "tailwindcss/theme" layer(theme);
+@import "tailwindcss/utilities" layer(utilities);
+
+@config "../../config/tailwind.config.js";
+
+@plugin "@tailwindcss/forms";
+@plugin "tailwind-scrollbar-hide";
+@plugin "tailwindcss-animate";

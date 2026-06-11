@@ -5,16 +5,16 @@ import * as React from "react";
 
 const labelVariants = cva(
   cn(
-    "s-heading-sm",
-    "peer-disabled:s-cursor-not-allowed peer-disabled:s-opacity-70"
+    "s:heading-sm",
+    "s:peer-disabled:cursor-not-allowed s:peer-disabled:opacity-70"
   ),
   {
     variants: {
       variant: {
-        default: cn("s-text-foreground", "dark:s-text-foreground-night"),
+        default: cn("s:text-foreground", "s:dark:text-foreground-night"),
         muted: cn(
-          "s-text-muted-foreground",
-          "dark:s-text-muted-foreground-night"
+          "s:text-muted-foreground",
+          "s:dark:text-muted-foreground-night"
         ),
       },
     },

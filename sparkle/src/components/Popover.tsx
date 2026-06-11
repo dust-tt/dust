@@ -50,17 +50,17 @@ const PopoverContent = React.forwardRef<
         align={align}
         sideOffset={sideOffset}
         className={cn(
-          "data-[state=open]:s-animate-in data-[state=open]:s-fade-in-0 data-[state=open]:s-zoom-in-95",
-          "data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=closed]:s-zoom-out-95",
-          "data-[side=bottom]:s-slide-in-from-top-2",
-          "data-[side=left]:s-slide-in-from-right-2",
-          "data-[side=right]:s-slide-in-from-left-2",
-          "data-[side=top]:s-slide-in-from-bottom-2",
-          "s-z-50 s-rounded-xl s-border s-shadow-md s-outline-none",
-          "s-border s-border-border dark:s-border-border-night",
-          "s-bg-background dark:s-bg-background-night",
-          "s-text-primary-950 dark:s-text-primary-950-night",
-          fullWidth ? "s-grow" : "s-w-72 s-p-4",
+          "s:data-[state=open]:animate-in s:data-[state=open]:fade-in-0 s:data-[state=open]:zoom-in-95",
+          "s:data-[state=closed]:animate-out s:data-[state=closed]:fade-out-0 s:data-[state=closed]:zoom-out-95",
+          "s:data-[side=bottom]:slide-in-from-top-2",
+          "s:data-[side=left]:slide-in-from-right-2",
+          "s:data-[side=right]:slide-in-from-left-2",
+          "s:data-[side=top]:slide-in-from-bottom-2",
+          "s:z-50 s:rounded-xl s:border s:shadow-md s:outline-hidden",
+          "s:border s:border-border s:dark:border-border-night",
+          "s:bg-background s:dark:bg-background-night",
+          "s:text-primary-950 s:dark:text-primary-950-night",
+          fullWidth ? "s:grow" : "s:w-72 s:p-4",
           className
         )}
         onCloseAutoFocus={handleCloseAutoFocus}
@@ -165,7 +165,7 @@ function AnchoredPopover({
   return (
     <PopoverRoot open={open} modal={false}>
       <PopoverAnchor
-        className="s-fixed s-transition-all s-duration-300 s-ease-in-out"
+        className="s:fixed s:transition-all s:duration-300 s:ease-in-out"
         style={{
           top: position.top,
           left: position.left,
@@ -177,7 +177,7 @@ function AnchoredPopover({
         {...props}
         onOpenAutoFocus={(e) => e.preventDefault()}
         mountPortal={false}
-        className={cn(className, !anchorRef && "s-translate-y-[-50%]")}
+        className={cn(className, !anchorRef && "s:translate-y-[-50%]")}
       >
         {children}
       </PopoverContent>

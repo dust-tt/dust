@@ -26,7 +26,7 @@ export default meta;
 
 export const Example = () => {
   return (
-    <div className="s-flex s-gap-4">
+    <div className="s:flex s:gap-4">
       <NotificationButton
         buttonProps={{
           variant: "outline",

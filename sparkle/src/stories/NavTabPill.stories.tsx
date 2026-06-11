@@ -36,7 +36,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   render: () => (
-    <div className="s-w-80">
+    <div className="s:w-80">
       <NavTabPill defaultValue="overview">
         <NavTabPillList>
           <NavTabPillTrigger value="overview" icon={IntersectDust}>

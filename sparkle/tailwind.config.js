@@ -4,7 +4,7 @@ const preset = require("./tailwind-preset");
 
 module.exports = {
   presets: [preset],
-  prefix: "s-",
+  prefix: "s",
   content: ["./src/**/*.{html,js,ts,jsx,tsx}"],
   theme: {
     extend: {
@@ -77,5 +77,4 @@ module.exports = {
       },
     },
   },
-  safelist: preset.buildSafelist({ prefix: "s-", avatarProps: "bg" }),
 };

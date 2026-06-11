@@ -25,15 +25,15 @@
     "react-router-dom": "^7.0.0"
   },
   "devDependencies": {
-    "@tailwindcss/container-queries": "^0.1.1",
-    "@tailwindcss/forms": "^0.5.3",
+    "@tailwindcss/forms": "^0.5.9",
+    "@tailwindcss/postcss": "^4.3.0",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
-    "autoprefixer": "^10.4.23",
+
     "postcss": "^8.5.6",
     "tailwind-scrollbar-hide": "^1.1.7",
-    "tailwindcss": "^3.4.19",
+    "tailwindcss": "^4.3.0",
     "tailwindcss-animate": "^1.0.7",
     "@typescript/native-preview": "^7.0.0-dev.20260224.1",
     "rollup-plugin-visualizer": "^5.14.0",

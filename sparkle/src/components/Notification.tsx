@@ -26,23 +26,23 @@ const NotificationsContext = React.createContext<(n: NotificationType) => void>(
 const notificationVariants = cva("", {
   variants: {
     type: {
-      success: "s-text-success-600 dark:s-text-success-600-night",
-      error: "s-text-warning-600 dark:s-text-warning-600-night",
-      info: "s-text-info-700 dark:s-text-info-700-night",
-      hello: "s-text-primary-700 dark:s-text-highlight-700-night",
+      success: "s:text-success-600 s:dark:text-success-600-night",
+      error: "s:text-warning-600 s:dark:text-warning-600-night",
+      info: "s:text-info-700 s:dark:text-info-700-night",
+      hello: "s:text-primary-700 s:dark:text-highlight-700-night",
     },
   },
 });
 
 const notificationIconBgVariants = cva(
-  "s-h-8 s-w-8 s-flex s-items-center s-justify-center s-rounded-lg s-shrink-0",
+  "s:h-8 s:w-8 s:flex s:items-center s:justify-center s:rounded-lg s:shrink-0",
   {
     variants: {
       type: {
-        success: "s-bg-success-100 dark:s-bg-success-100-night",
-        error: "s-bg-warning-100 dark:s-bg-warning-100-night",
-        info: "s-bg-info-100 dark:s-bg-info-100-night",
-        hello: "s-bg-primary-100 dark:s-bg-primary-100-night",
+        success: "s:bg-success-100 s:dark:bg-success-100-night",
+        error: "s:bg-warning-100 s:dark:bg-warning-100-night",
+        info: "s:bg-info-100 s:dark:bg-info-100-night",
+        hello: "s:bg-primary-100 s:dark:bg-primary-100-night",
       },
     },
   }
@@ -72,10 +72,10 @@ export function NotificationContent({
   return (
     <div
       className={cn(
-        "s-pointer-events-auto s-flex s-max-w-[400px] s-flex-row s-items-start s-gap-2 s-rounded-2xl s-border",
-        "s-border-border dark:s-border-border-night",
-        "s-bg-background dark:s-bg-background-night s-shadow-md s-backdrop-blur-sm",
-        "s-cursor-pointer s-p-2 s-pb-3 s-pr-3 s-transition-colors hover:s-bg-muted/50 dark:hover:s-bg-muted-night/50 s-border-border/50 dark:s-border-border-night/50"
+        "s:pointer-events-auto s:flex s:max-w-[400px] s:flex-row s:items-start s:gap-2 s:rounded-2xl s:border",
+        "s:border-border s:dark:border-border-night",
+        "s:bg-background s:dark:bg-background-night s:shadow-md s:backdrop-blur-sm",
+        "s:cursor-pointer s:p-2 s:pb-3 s:pr-3 s:transition-colors s:hover:bg-muted/50 s:dark:hover:bg-muted-night/50 s:border-border/50 s:dark:border-border-night/50"
       )}
       onClick={onDismiss}
     >
@@ -88,10 +88,10 @@ export function NotificationContent({
         />
       </div>
 
-      <div className="s-flex s-min-w-0 s-flex-grow s-flex-col">
+      <div className="s:flex s:min-w-0 s:flex-grow s:flex-col">
         <div
           className={cn(
-            "s-heading-base s-line-clamp-1 s-pt-1",
+            "s:heading-base s:line-clamp-1 s:pt-1",
             notificationVariants({ type })
           )}
         >
@@ -100,8 +100,8 @@ export function NotificationContent({
         {description && (
           <div
             className={cn(
-              "s-text-muted-foreground dark:s-text-muted-foreground-night",
-              "s-line-clamp-3 s-text-sm s-font-normal"
+              "s:text-muted-foreground s:dark:text-muted-foreground-night",
+              "s:line-clamp-3 s:text-sm s:font-normal"
             )}
           >
             {description}
@@ -139,15 +139,15 @@ export const Notification = {
         <Toaster
           toastOptions={{
             className: cn(
-              "s-transition-all s-duration-300 s-select-none",
-              "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out",
-              "data-[swipe=move]:s-translate-x-[var(--toast-swipe-move-x)]",
-              "data-[swipe=move]:s-translate-y-[var(--toast-swipe-move-y)]",
-              "data-[state=closed]:s-fade-out-80 data-[state=closed]:s-slide-out-to-right-full",
-              "data-[state=open]:s-slide-in-from-right-full"
+              "s:transition-all s:duration-300 s:select-none",
+              "s:data-[state=open]:animate-in s:data-[state=closed]:animate-out",
+              "s:data-[swipe=move]:translate-x-[var(--toast-swipe-move-x)]",
+              "s:data-[swipe=move]:translate-y-[var(--toast-swipe-move-y)]",
+              "s:data-[state=closed]:fade-out-80 s:data-[state=closed]:slide-out-to-right-full",
+              "s:data-[state=open]:slide-in-from-right-full"
             ),
           }}
-          className="s-flex s-flex-col s-items-end"
+          className="s:flex s:flex-col s:items-end"
           duration={NOTIFICATION_DELAY_MS}
           visibleToasts={9}
           closeButton={false}

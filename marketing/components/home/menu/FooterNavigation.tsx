@@ -28,7 +28,7 @@ export function FooterNavigation() {
                   {item.title}
                 </FooterLink>
               ) : (
-                <div className="copy-xs block select-none py-2 font-semibold uppercase leading-none text-primary-400 no-underline outline-none">
+                <div className="copy-xs block select-none py-2 font-semibold uppercase leading-none text-primary-400 no-underline outline-hidden">
                   {item.title}
                 </div>
               )}
@@ -46,7 +46,7 @@ export function FooterNavigation() {
                           {item.title}
                         </FooterLink>
                       ) : (
-                        <div className="copy-xs block select-none py-2 pt-4 uppercase text-primary-800 no-underline outline-none">
+                        <div className="copy-xs block select-none py-2 pt-4 uppercase text-primary-800 no-underline outline-hidden">
                           {item.title}
                         </div>
                       )}

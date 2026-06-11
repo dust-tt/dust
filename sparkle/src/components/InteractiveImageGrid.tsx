@@ -4,9 +4,9 @@ import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
 const SIZE_CLASSES = {
-  sm: "s-relative s-h-24 s-w-24",
-  md: "s-relative s-h-48 s-w-48",
-  lg: "s-relative s-h-80 s-w-80",
+  sm: "s:relative s:h-24 s:w-24",
+  md: "s:relative s:h-48 s:w-48",
+  lg: "s:relative s:h-80 s:w-80",
 } as const;
 
 type InteractiveImageGridSize = keyof typeof SIZE_CLASSES;
@@ -74,7 +74,7 @@ function InteractiveImageGrid({
 
   return (
     <>
-      <div className={cn("s-@container", className)}>
+      <div className={cn("s:@container", className)}>
         {images.length === 1 ? (
           <div className={SIZE_CLASSES[size]}>
             <ImagePreview
@@ -92,7 +92,7 @@ function InteractiveImageGrid({
             />
           </div>
         ) : (
-          <div className="s-grid s-grid-cols-2 s-gap-2 @xxs:s-grid-cols-3 @xs:s-grid-cols-4">
+          <div className="s:grid s:grid-cols-2 s:gap-2 s:@xxs:grid-cols-3 s:@xs:grid-cols-4">
             {images.map((image, idx) => (
               <ImagePreview
                 key={idx}

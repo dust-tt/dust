@@ -41,14 +41,14 @@ export const Examples: Story = {
     };
 
     return (
-      <div className="s-flex s-w-[280px] s-flex-col s-gap-3">
+      <div className="s:flex s:w-[280px] s:flex-col s:gap-3">
         <Button
           variant="outline"
           size="xs"
           label="Re initiate"
           onClick={() => setResetKey((value) => value + 1)}
         />
-        <QuickReplyContainer key={resetKey} className="s-w-full">
+        <QuickReplyContainer key={resetKey} className="s:w-full">
           <QuickReplyBlock label="Summarize this" onSend={handleSend} />
           <QuickReplyBlock
             label="Ask a longer question that should wrap onto multiple lines"

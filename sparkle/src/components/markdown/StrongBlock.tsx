@@ -14,7 +14,7 @@ export const StrongBlock = memo(
   function StrongBlock({ children }: StrongBlockProps) {
     const { textColor } = useMarkdownStyle();
     return (
-      <strong className={`s-font-semibold ${textColor}`}>{children}</strong>
+      <strong className={`s:font-semibold ${textColor}`}>{children}</strong>
     );
   },
   (prev, next) => sameNodePosition(prev.node, next.node)

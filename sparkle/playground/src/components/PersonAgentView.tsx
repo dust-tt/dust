@@ -219,21 +219,21 @@ export function PersonAgentView({
   const hasHistory = expandedConversations.length > 0;
 
   return (
-    <div className="s-flex s-h-full s-w-full s-flex-col s-bg-background s-px-6">
-      <div className="s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto">
+    <div className="s:flex s:h-full s:w-full s:flex-col s:bg-background s:px-6">
+      <div className="s:flex s:h-full s:min-h-0 s:flex-1 s:flex-col s:overflow-y-auto">
         <div
-          className={`s-mx-auto s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 ${
-            !hasHistory ? "s-h-full s-justify-center s-py-8" : "s-py-8"
+          className={`s:mx-auto s:flex s:w-full s:max-w-4xl s:flex-col s:gap-6 ${
+            !hasHistory ? "s:h-full s:justify-center s:py-8" : "s:py-8"
           }`}
         >
-          <div className="s-flex s-w-full s-items-center s-justify-between s-gap-3">
-            <div className="s-flex s-items-center s-gap-3">
+          <div className="s:flex s:w-full s:items-center s:justify-between s:gap-3">
+            <div className="s:flex s:items-center s:gap-3">
               <Avatar {...collaboratorAvatar} size="sm" />
-              <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+              <h2 className="s:heading-2xl s:text-foreground dark:s:text-foreground-night">
                 {collaboratorName}
               </h2>
             </div>
-            <div className="s-flex s-items-center s-gap-2">
+            <div className="s:flex s:items-center s:gap-2">
               <Button
                 label="About"
                 size="sm"
@@ -256,19 +256,19 @@ export function PersonAgentView({
           />
 
           {/* Conversations list */}
-          <div className="s-flex s-flex-col s-gap-3">
+          <div className="s:flex s:flex-col s:gap-3">
             {hasHistory && (
               <>
-                <div className="s-flex s-w-full s-px-3">
+                <div className="s:flex s:w-full s:px-3">
                   <SearchInput
                     name="conversation-search"
                     value={searchText}
                     onChange={setSearchText}
                     placeholder={`Search in conversations with ${collaboratorName}`}
-                    className="s-w-full"
+                    className="s:w-full"
                   />
                 </div>
-                <div className="s-flex s-flex-col">
+                <div className="s:flex s:flex-col">
                   {(
                     ["Today", "Yesterday", "Last Week", "Last Month"] as const
                   ).map((bucketKey) => {
@@ -379,7 +379,7 @@ export function PersonAgentView({
             <SheetTitle>About {collaboratorName}</SheetTitle>
           </SheetHeader>
           <SheetContainer>
-            <div className="s-text-foreground dark:s-text-foreground-night">
+            <div className="s:text-foreground dark:s:text-foreground-night">
               DetailView
             </div>
           </SheetContainer>

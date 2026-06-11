@@ -74,29 +74,29 @@ export function FrameView() {
   };
 
   return (
-    <div className="s-h-screen s-w-full s-bg-background">
+    <div className="s:h-screen s:w-full s:bg-background">
       <Allotment
         vertical={false}
         proportionalLayout={true}
         defaultSizes={[50, 50]}
-        className="s-h-full s-w-full s-flex-1"
+        className="s:h-full s:w-full s:flex-1"
       >
         <Allotment.Pane
           minSize={320}
           preferredSize={50}
-          className="s-h-full s-border-r s-border-border"
+          className="s:h-full s:border-r s:border-border"
         >
-          <div className="s-h-full s-w-full" />
+          <div className="s:h-full s:w-full" />
         </Allotment.Pane>
 
-        <Allotment.Pane minSize={320} preferredSize={50} className="s-h-full">
-          <div className="s-flex s-h-full s-flex-col">
-            <div className="s-flex s-h-14 s-w-full s-items-center s-gap-2 s-border-b s-border-border s-bg-background s-px-3">
+        <Allotment.Pane minSize={320} preferredSize={50} className="s:h-full">
+          <div className="s:flex s:h-full s:flex-col">
+            <div className="s:flex s:h-14 s:w-full s:items-center s:gap-2 s:border-b s:border-border s:bg-background s:px-3">
               <Button icon={RefreshCw01} variant="ghost" tooltip="Refresh" />
               <Button icon={Maximize01} variant="ghost" tooltip="Full screen" />
               <Button icon={Download01} variant="ghost" tooltip="Export" />
               <Button icon={Link01} variant="ghost" tooltip="Share" />
-              <div className="s-flex s-h-8 s-items-center s-gap-1">
+              <div className="s:flex s:h-8 s:items-center s:gap-1">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button icon={DotsHorizontal} variant="ghost" />
@@ -126,7 +126,7 @@ export function FrameView() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              <div className="s-flex-1" />
+              <div className="s:flex-1" />
               <Button icon={XClose} variant="ghost" />
             </div>
           </div>
@@ -137,8 +137,8 @@ export function FrameView() {
           <SheetHeader>
             <SheetTitle>Frame: Code view</SheetTitle>
           </SheetHeader>
-          <div className="s-flex s-h-full s-flex-col s-gap-3 s-px-4">
-            <div className="s-flex s-justify-end">
+          <div className="s:flex s:h-full s:flex-col s:gap-3 s:px-4">
+            <div className="s:flex s:justify-end">
               <Button
                 size="sm"
                 variant="outline"

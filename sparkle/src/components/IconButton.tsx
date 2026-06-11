@@ -8,57 +8,57 @@ export const ICON_BUTTON_VARIANTS = BUTTON_VARIANTS;
 export type IconButtonVariantType = (typeof ICON_BUTTON_VARIANTS)[number];
 
 const iconButtonVariants = cva(
-  "s-transition-all s-ease-out s-duration-300 s-cursor-pointer hover:s-scale-110",
+  "s:transition-all s:ease-out s:duration-300 s:cursor-pointer s:hover:scale-110",
   {
     variants: {
       variant: {
         primary: cn(
-          "s-text-highlight-500 dark:s-text-highlight-500-night",
-          "hover:s-text-highlight-400 dark:hover:s-text-highlight-500-night",
-          "active:s-text-highlight-600 dark:active:s-text-highlight-600-night",
-          "s-text-primary-500 dark:s-text-primary-500-night"
+          "s:text-highlight-500 s:dark:text-highlight-500-night",
+          "s:hover:text-highlight-400 s:dark:hover:text-highlight-500-night",
+          "s:active:text-highlight-600 s:dark:active:text-highlight-600-night",
+          "s:text-primary-500 s:dark:text-primary-500-night"
         ),
         warning: cn(
-          "s-text-warning-500 dark:s-text-warning-500-night",
-          "hover:s-text-warning-400 dark:hover:s-text-warning-500-night",
-          "active:s-text-warning-600 dark:active:s-text-warning-600-night",
-          "s-text-primary-500 dark:s-text-primary-500-night"
+          "s:text-warning-500 s:dark:text-warning-500-night",
+          "s:hover:text-warning-400 s:dark:hover:text-warning-500-night",
+          "s:active:text-warning-600 s:dark:active:text-warning-600-night",
+          "s:text-primary-500 s:dark:text-primary-500-night"
         ),
         "warning-secondary": cn(
-          "s-text-warning-500 dark:s-text-warning-500-night",
-          "hover:s-text-warning-400 dark:hover:s-text-warning-500-night",
-          "active:s-text-warning-600 dark:active:s-text-warning-600-night",
-          "s-text-primary-500 dark:s-text-primary-500-night"
+          "s:text-warning-500 s:dark:text-warning-500-night",
+          "s:hover:text-warning-400 s:dark:hover:text-warning-500-night",
+          "s:active:text-warning-600 s:dark:active:text-warning-600-night",
+          "s:text-primary-500 s:dark:text-primary-500-night"
         ),
         highlight: cn(
-          "s-text-foreground dark:s-text-foreground-night",
-          "hover:s-text-highlight-400 dark:hover:s-text-highlight-500-night",
-          "active:s-text-highlight-600 dark:active:s-text-highlight-600-night",
-          "s-text-primary-500 dark:s-text-primary-500-night"
+          "s:text-foreground s:dark:text-foreground-night",
+          "s:hover:text-highlight-400 s:dark:hover:text-highlight-500-night",
+          "s:active:text-highlight-600 s:dark:active:text-highlight-600-night",
+          "s:text-primary-500 s:dark:text-primary-500-night"
         ),
         "highlight-secondary": cn(
-          "s-text-foreground dark:s-text-foreground-night",
-          "hover:s-text-highlight-400 dark:hover:s-text-highlight-500-night",
-          "active:s-text-highlight-600 dark:active:s-text-highlight-600-night",
-          "s-text-primary-500 dark:s-text-primary-500-night"
+          "s:text-foreground s:dark:text-foreground-night",
+          "s:hover:text-highlight-400 s:dark:hover:text-highlight-500-night",
+          "s:active:text-highlight-600 s:dark:active:text-highlight-600-night",
+          "s:text-primary-500 s:dark:text-primary-500-night"
         ),
         outline: cn(
-          "s-text-primary-700 dark:s-text-primary-700-night",
-          "hover:s-text-primary-400 dark:hover:s-text-primary-400-night",
-          "active:s-text-highlight-600 dark:active:s-text-highlight-600-night",
-          "s-text-primary-500 dark:s-text-primary-500-night"
+          "s:text-primary-700 s:dark:text-primary-700-night",
+          "s:hover:text-primary-400 s:dark:hover:text-primary-400-night",
+          "s:active:text-highlight-600 s:dark:active:text-highlight-600-night",
+          "s:text-primary-500 s:dark:text-primary-500-night"
         ),
         ghost: cn(
-          "s-text-white dark:s-text-primary-950",
-          "hover:s-text-primary-100 dark:hover:s-text-primary-100-night",
-          "active:s-text-primary-200 dark:active:s-text-primary-200-night",
-          "s-text-white/50 dark:s-text-primary-950/50"
+          "s:text-white s:dark:text-primary-950",
+          "s:hover:text-primary-100 s:dark:hover:text-primary-100-night",
+          "s:active:text-primary-200 s:dark:active:text-primary-200-night",
+          "s:text-white/50 s:dark:text-primary-950/50"
         ),
         "ghost-secondary": cn(
-          "s-text-white",
-          "hover:s-text-primary-100 dark:hover:s-text-primary-100-night",
-          "active:s-text-primary-200 dark:active:s-text-primary-200-night",
-          "s-text-white/50 dark:s-text-primary-950/50"
+          "s:text-white",
+          "s:hover:text-primary-100 s:dark:hover:text-primary-100-night",
+          "s:active:text-primary-200 s:dark:active:text-primary-200-night",
+          "s:text-white/50 s:dark:text-primary-950/50"
         ),
       },
     },
@@ -100,8 +100,8 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
         iconButtonVariants({ variant }),
         disabled &&
           cn(
-            "s-text-primary-500 dark:s-text-primary-500-night",
-            "s-cursor-default hover:s-scale-100"
+            "s:text-primary-500 s:dark:text-primary-500-night",
+            "s:cursor-default s:hover:scale-100"
           ),
         className
       )}

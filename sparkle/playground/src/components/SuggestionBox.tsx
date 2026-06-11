@@ -77,29 +77,29 @@ export function SuggestionBox({
   return (
     <Card variant="primary" size="md">
       {status === "working" ? (
-        <div className="s-flex s-items-center s-gap-3 s-text-base s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <div className="s:flex s:items-center s:gap-3 s:text-base s:text-muted-foreground dark:s:text-muted-foreground-night">
           <Spinner size="xs" />
           <span>{workingLabel}</span>
         </div>
       ) : (
-        <div className="s-group/suggestion-card s-flex s-w-full s-flex-col s-gap-4">
+        <div className="s:group/suggestion-card s:flex s:w-full s:flex-col s:gap-4">
           {title && (
-            <div className="s-heading-sm s-text-muted-foreground s-flex s-justify-start s-gap-2">
+            <div className="s:heading-sm s:text-muted-foreground s:flex s:justify-start s:gap-2">
               <Icon visual={HeaderIcon} size="sm" />
               {title}
             </div>
           )}
-          <div className="s-flex s-w-full s-items-center s-flex-col s-gap-4">
+          <div className="s:flex s:w-full s:items-center s:flex-col s:gap-4">
             {suggestionGroups.map((group, groupIndex) => (
               <div
                 key={group.title ?? `suggestion-group-${groupIndex}`}
-                className="s-flex s-w-full s-flex-col s-gap-1"
+                className="s:flex s:w-full s:flex-col s:gap-1"
               >
                 {(group.title || group.visual) && (
-                  <div className="s-flex s-items-center s-gap-3">
+                  <div className="s:flex s:items-center s:gap-3">
                     {group.visual}
                     {group.title && (
-                      <div className="s-heading-base s-text-muted-foreground dark:s-text-foreground-night">
+                      <div className="s:heading-base s:text-muted-foreground dark:s:text-foreground-night">
                         {group.title}
                       </div>
                     )}
@@ -115,7 +115,7 @@ export function SuggestionBox({
                       text={text}
                       title={item.title}
                       visual={item.visual}
-                      className="s-pl-6"
+                      className="s:pl-6"
                       isEditable
                       isDisabled
                       showCheckbox={showDisabledCheckbox}
@@ -138,7 +138,7 @@ export function SuggestionBox({
               </div>
             ))}
           </div>
-          <div className="s-flex s-items-center s-justify-start s-gap-2">
+          <div className="s:flex s:items-center s:justify-start s:gap-2">
             {showRejectAllAction && (
               <Button
                 size="sm"

@@ -3,26 +3,26 @@ import { cva } from "class-variance-authority";
 import React, { type ReactNode } from "react";
 
 const listItemVariants = cva(
-  "s-group s-flex s-w-full s-flex-row s-gap-3 s-p-3",
+  "s:group s:flex s:w-full s:flex-row s:gap-3 s:p-3",
   {
     variants: {
       itemsAlignment: {
-        start: "s-items-start",
-        center: "s-items-center",
+        start: "s:items-start",
+        center: "s:items-center",
       },
       hasSeparator: {
-        true: "s-border-b s-border-border dark:s-border-border-night",
+        true: "s:border-b s:border-border s:dark:border-border-night",
         false: "",
       },
       hasSeparatorIfLast: {
         true: "",
-        false: "last:s-border-none",
+        false: "s:last:border-none",
       },
       interactive: {
         true: cn(
-          "s-cursor-pointer s-transition s-duration-200",
-          "hover:s-bg-muted-background dark:hover:s-bg-muted-background-night",
-          "active:s-bg-primary-100 dark:active:s-bg-primary-100-night"
+          "s:cursor-pointer s:transition s:duration-200",
+          "s:hover:bg-muted-background s:dark:hover:bg-muted-background-night",
+          "s:active:bg-primary-100 s:dark:active:bg-primary-100-night"
         ),
         false: "",
       },
@@ -75,8 +75,8 @@ export function ListItem({
           hasSeparatorIfLast,
           interactive: !!onClick,
         }),
-        `s-group/${groupName}`,
-        isPressed && "s-bg-primary-100 dark:s-bg-primary-100-night",
+        `s:group/${groupName}`,
+        isPressed && "s:bg-primary-100 s:dark:bg-primary-100-night",
         className
       )}
       onClick={onClick}
@@ -103,7 +103,7 @@ export function ListGroup({ children, className }: ListGroupProps) {
   return (
     <div
       className={cn(
-        "s-flex s-flex-col s-border-b s-border-t s-border-border dark:s-border-border-night",
+        "s:flex s:flex-col s:border-b s:border-t s:border-border s:dark:border-border-night",
         className
       )}
     >
@@ -123,18 +123,18 @@ type ListItemSectionProps = {
 const listItemSectionVariants = cva("", {
   variants: {
     size: {
-      xs: "s-heading-xs s-uppercase s-pb-2 s-pt-4 s-text-muted-foreground dark:s-text-muted-foreground-night",
-      sm: "s-heading-sm s-bg-muted-background s-p-2 dark:s-bg-muted-background-night/50 s-text-foreground dark:s-text-foreground-night",
+      xs: "s:heading-xs s:uppercase s:pb-2 s:pt-4 s:text-muted-foreground s:dark:text-muted-foreground-night",
+      sm: "s:heading-sm s:bg-muted-background s:p-2 s:dark:bg-muted-background-night/50 s:text-foreground s:dark:text-foreground-night",
     },
     interactive: {
       true: cn(
-        "s-cursor-pointer s-transition s-duration-200",
-        "active:s-bg-primary-100 dark:active:s-bg-primary-100-night"
+        "s:cursor-pointer s:transition s:duration-200",
+        "s:active:bg-primary-100 s:dark:active:bg-primary-100-night"
       ),
       false: "",
     },
     isHovered: {
-      true: "hover:s-bg-primary-100 hover:dark:s-bg-primary-100-night active:s-bg-primary-150 active:dark:s-bg-primary-150-night",
+      true: "s:hover:bg-primary-100 s:hover:dark:bg-primary-100-night s:active:bg-primary-150 s:active:dark:bg-primary-150-night",
       false: "",
     },
   },
@@ -163,7 +163,7 @@ export function ListItemSection({
           interactive: !!onClick,
           isHovered: !!onClick && isHoveringMain && !isHoveringAction,
         }),
-        "s-group/section-item s-flex s-items-center s-justify-between",
+        "s:group/section-item s:flex s:items-center s:justify-between",
         className
       )}
       onClick={onClick}
@@ -175,12 +175,12 @@ export function ListItemSection({
         setIsHoveringAction(false);
       }}
     >
-      <div className="s-flex s-items-center s-gap-1 s-overflow-hidden s-text-ellipsis">
+      <div className="s:flex s:items-center s:gap-1 s:overflow-hidden s:text-ellipsis">
         {children}
       </div>
       {action && (
         <div
-          className="s-flex s-gap-1"
+          className="s:flex s:gap-1"
           onClick={(e) => {
             e.stopPropagation();
           }}

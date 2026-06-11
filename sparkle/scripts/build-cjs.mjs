@@ -3,8 +3,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import postCssPlugin from "esbuild-plugin-postcss2";
-import tailwindcss from "tailwindcss";
-import autoprefixer from "autoprefixer";
+import tailwindcss from "@tailwindcss/postcss";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
@@ -65,13 +64,7 @@ try {
     plugins: [
       postCssPlugin.default({
         plugins: [
-          tailwindcss({
-            config: path.resolve(rootDir, "tailwind.config.js"),
-            corePlugins: {
-              preflight: includeTwBase,
-            },
-          }),
-          autoprefixer(),
+          tailwindcss(),
         ],
         inject: true, // Inject CSS into JS (same as Rollup)
         extract: false, // Don't extract to separate file

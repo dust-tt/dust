@@ -26,9 +26,9 @@ const meta = {
   argTypes: {
     textColor: {
       options: [
-        "s-text-foreground",
-        "s-text-muted-foreground",
-        "s-text-green-700",
+        "s:text-foreground",
+        "s:text-muted-foreground",
+        "s:text-green-700",
       ],
       control: { type: "radio" },
     },

@@ -120,15 +120,15 @@ export const WithList: Story = {
     variant: "primary",
     size: "md",
     children: (
-      <ul className="s-list-disc s-py-2 s-pl-8 first:s-pt-0 last:s-pb-0">
-        <li className="s-break-words s-py-1 first:s-pt-0 last:s-pb-0">
-          <div className="s-whitespace-pre-wrap s-break-words s-py-1 s-font-normal first:s-pt-0 last:s-pb-0">
+      <ul className="s:list-disc s:py-2 s:pl-8 s:first:pt-0 s:last:pb-0">
+        <li className="s:break-words s:py-1 s:first:pt-0 s:last:pb-0">
+          <div className="s:whitespace-pre-wrap s:break-words s:py-1 s:font-normal s:first:pt-0 s:last:pb-0">
             Should search internal data as this appears to be a code-related
             question specific to the company"s codebase
           </div>
         </li>
-        <li className="s-break-words s-py-1 first:s-pt-0 last:s-pb-0">
-          <div className="s-whitespace-pre-wrap s-break-words s-py-1 s-font-normal first:s-pt-0 last:s-pb-0">
+        <li className="s:break-words s:py-1 s:first:pt-0 s:last:pb-0">
+          <div className="s:whitespace-pre-wrap s:break-words s:py-1 s:font-normal s:first:pt-0 s:last:pb-0">
             Search results show that Page.SectionHeader expects a string title,
             but code is using JSX expression with concatenation
           </div>
@@ -142,7 +142,7 @@ export const MultiParagraph: Story = {
   args: {
     title: "This is a title",
     children: (
-      <div className="s-flex s-flex-col s-gap-y-3">
+      <div className="s:flex s:flex-col s:gap-y-3">
         <div>This is a message. It can be multiple lines long.</div>
         <div>
           Another paragraph in the content message with a long line and some{" "}
@@ -156,7 +156,7 @@ export const MultiParagraph: Story = {
 
 export const ColorVariants: Story = {
   render: () => (
-    <div className="s-grid s-grid-cols-1 s-gap-4 sm:s-grid-cols-2 lg:s-grid-cols-3">
+    <div className="s:grid s:grid-cols-1 s:gap-4 s:sm:grid-cols-2 s:lg:grid-cols-3">
       {[
         "primary",
         "warning",
@@ -222,7 +222,7 @@ export const InlineWithTwoActions: Story = {
 
 export const InlineWithTitle: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-4">
+    <div className="s:flex s:flex-col s:gap-4">
       <ContentMessageInline title="Status" icon={InfoCircle} variant="info">
         This is an inline message.
         <ContentMessageAction variant="primary" label="Button" />
@@ -234,7 +234,7 @@ export const InlineWithTitle: Story = {
 
 export const InlineVariants: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-4">
+    <div className="s:flex s:flex-col s:gap-4">
       {["primary", "warning", "success", "highlight", "info"].map((variant) => (
         <ContentMessageInline
           key={variant}

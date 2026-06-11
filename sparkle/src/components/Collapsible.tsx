@@ -6,17 +6,17 @@ import * as React from "react";
 import { Icon } from "./Icon";
 
 const labelVariants = cva(
-  "s-inline-flex s-transition-colors s-ease-out s-duration-400 s-box-border s-gap-x-2 s-select-none s-text-sm",
+  "s:inline-flex s:transition-colors s:ease-out s:duration-400 s:box-border s:gap-x-2 s:select-none s:text-sm",
   {
     variants: {
       variant: {
-        primary: "s-text-highlight-600 dark:s-text-highlight-600-night",
-        secondary: "s-text-foreground dark:s-text-foreground-night",
+        primary: "s:text-highlight-600 s:dark:text-highlight-600-night",
+        secondary: "s:text-foreground s:dark:text-foreground-night",
       },
       disabled: {
-        true: "s-text-muted dark:s-text-muted-night",
+        true: "s:text-muted s:dark:text-muted-night",
         false:
-          "group-hover/col:s-text-highlight-500 dark:group-hover/col:s-text-highlight-500-night active:s-text-highlight-700 dark:active:s-text-highlight-700-night",
+          "s:group-hover/col:text-highlight-500 s:dark:group-hover/col:text-highlight-500-night s:active:text-highlight-700 s:dark:active:text-highlight-700-night",
       },
     },
     defaultVariants: {
@@ -26,16 +26,16 @@ const labelVariants = cva(
   }
 );
 
-const chevronVariants = cva("s-transition-transform s-duration-150", {
+const chevronVariants = cva("s:transition-transform s:duration-150", {
   variants: {
     variant: {
-      primary: "s-text-muted-foreground dark:s-text-muted-foreground-night",
-      secondary: "s-text-muted-foreground dark:s-text-muted-foreground-night",
+      primary: "s:text-muted-foreground s:dark:text-muted-foreground-night",
+      secondary: "s:text-muted-foreground s:dark:text-muted-foreground-night",
     },
     disabled: {
-      true: "s-text-muted dark:s-text-muted-night",
+      true: "s:text-muted s:dark:text-muted-night",
       false:
-        "group-hover/col:s-text-highlight-500 dark:group-hover/col:s-text-highlight-500-night active:s-text-highlight-700 dark:active:s-text-highlight-700-night",
+        "s:group-hover/col:text-highlight-500 s:dark:group-hover/col:text-highlight-500-night s:active:text-highlight-700 s:dark:active:text-highlight-700-night",
     },
   },
   defaultVariants: {
@@ -88,8 +88,8 @@ const CollapsibleTrigger = React.forwardRef<
         ref={ref}
         disabled={disabled}
         className={cn(
-          "s-group/col s-flex s-w-full s-items-center s-gap-1 focus:s-outline-none focus:s-ring-0",
-          disabled ? "s-cursor-default" : "s-cursor-pointer",
+          "s:group/col s:flex s:w-full s:items-center s:gap-1 s:focus:outline-hidden s:focus:ring-0",
+          disabled ? "s:cursor-default" : "s:cursor-pointer",
           className
         )}
         {...props}
@@ -97,19 +97,19 @@ const CollapsibleTrigger = React.forwardRef<
         {!hideChevron && (
           <span
             className={cn(
-              "s-transition-transform s-duration-200",
+              "s:transition-transform s:duration-200",
               chevronVariants({ variant, disabled })
             )}
           >
             <Icon
               visual={ChevronRight}
               size="sm"
-              className="s-block group-data-[state=open]/col:s-hidden"
+              className="s:block s:group-data-[state=open]/col:hidden"
             />
             <Icon
               visual={ChevronDown}
               size="sm"
-              className="s-hidden group-data-[state=open]/col:s-block"
+              className="s:hidden s:group-data-[state=open]/col:block"
             />
           </span>
         )}
@@ -122,10 +122,10 @@ const CollapsibleTrigger = React.forwardRef<
 );
 CollapsibleTrigger.displayName = "CollapsibleTrigger";
 
-const contentVariants = cva("s-overflow-hidden s-transition-all", {
+const contentVariants = cva("s:overflow-hidden s:transition-all", {
   variants: {
     variant: {
-      default: "s-text-foreground dark:s-text-foreground-night",
+      default: "s:text-foreground s:dark:text-foreground-night",
     },
   },
   defaultVariants: {
@@ -145,7 +145,7 @@ const CollapsibleContent = React.forwardRef<
     ref={ref}
     className={cn(
       contentVariants({ variant }),
-      "data-[state=closed]:s-animate-collapse-up data-[state=open]:s-animate-collapse-down",
+      "s:data-[state=closed]:animate-collapse-up s:data-[state=open]:animate-collapse-down",
       className
     )}
     {...props}

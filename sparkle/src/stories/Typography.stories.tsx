@@ -6,64 +6,64 @@ import { cn } from "@sparkle/lib/utils";
 
 // Define the text sizes and weights
 const textSizes = {
-  xs: "s-text-xs",
-  sm: "s-text-sm",
-  md: "s-text-base",
-  lg: "s-text-lg",
-  xl: "s-text-xl",
+  xs: "s:text-xs",
+  sm: "s:text-sm",
+  md: "s:text-base",
+  lg: "s:text-lg",
+  xl: "s:text-xl",
 };
 
 const copySizes = {
-  xs: "s-copy-xs",
-  sm: "s-copy-sm",
-  base: "s-copy-base",
-  lg: "s-copy-lg",
-  xl: "s-copy-xl",
+  xs: "s:copy-xs",
+  sm: "s:copy-sm",
+  base: "s:copy-base",
+  lg: "s:copy-lg",
+  xl: "s:copy-xl",
 };
 
 const extraTextSizes = {
-  "2xl": "s-text-2xl",
-  "3xl": "s-text-3xl",
-  "4xl": "s-text-4xl",
-  "5xl": "s-text-5xl",
-  "6xl": "s-text-6xl",
-  "7xl": "s-text-7xl",
-  "8xl": "s-text-8xl",
-  "9xl": "s-text-9xl",
+  "2xl": "s:text-2xl",
+  "3xl": "s:text-3xl",
+  "4xl": "s:text-4xl",
+  "5xl": "s:text-5xl",
+  "6xl": "s:text-6xl",
+  "7xl": "s:text-7xl",
+  "8xl": "s:text-8xl",
+  "9xl": "s:text-9xl",
 };
 
 const headingSizes = {
-  base: "s-heading-base",
-  lg: "s-heading-lg",
-  xl: "s-heading-xl",
-  "2xl": "s-heading-2xl",
-  "3xl": "s-heading-3xl",
-  "4xl": "s-heading-4xl",
-  "5xl": "s-heading-5xl",
-  "6xl": "s-heading-6xl",
-  "7xl": "s-heading-7xl",
-  "8xl": "s-heading-8xl",
-  "9xl": "s-heading-9xl",
+  base: "s:heading-base",
+  lg: "s:heading-lg",
+  xl: "s:heading-xl",
+  "2xl": "s:heading-2xl",
+  "3xl": "s:heading-3xl",
+  "4xl": "s:heading-4xl",
+  "5xl": "s:heading-5xl",
+  "6xl": "s:heading-6xl",
+  "7xl": "s:heading-7xl",
+  "8xl": "s:heading-8xl",
+  "9xl": "s:heading-9xl",
 };
 
 const headingMonoSizes = {
-  lg: "s-heading-mono-lg",
-  xl: "s-heading-mono-xl",
-  "2xl": "s-heading-mono-2xl",
-  "3xl": "s-heading-mono-3xl",
-  "4xl": "s-heading-mono-4xl",
-  "5xl": "s-heading-mono-5xl",
-  "6xl": "s-heading-mono-6xl",
-  "7xl": "s-heading-mono-7xl",
-  "8xl": "s-heading-mono-8xl",
-  "9xl": "s-heading-mono-9xl",
+  lg: "s:heading-mono-lg",
+  xl: "s:heading-mono-xl",
+  "2xl": "s:heading-mono-2xl",
+  "3xl": "s:heading-mono-3xl",
+  "4xl": "s:heading-mono-4xl",
+  "5xl": "s:heading-mono-5xl",
+  "6xl": "s:heading-mono-6xl",
+  "7xl": "s:heading-mono-7xl",
+  "8xl": "s:heading-mono-8xl",
+  "9xl": "s:heading-mono-9xl",
 };
 
 const fontWeights = {
-  normal: "s-font-normal",
-  medium: "s-font-medium",
-  semibold: "s-font-semibold",
-  bold: "s-font-bold",
+  normal: "s:font-normal",
+  medium: "s:font-medium",
+  semibold: "s:font-semibold",
+  bold: "s:font-bold",
 };
 
 const loremIpsum =
@@ -80,7 +80,7 @@ const Typography: React.FC<TypographyProps> = ({ variant }) => {
     return (
       <div>
         <div
-          className="s-grid s-gap-4 s-bg-repeat s-py-8"
+          className="s:grid s:gap-4 s:bg-repeat s:py-8"
           style={{
             gridTemplateColumns: `repeat(${Object.keys(fontWeights).length}, minmax(0, 1fr))`,
           }}
@@ -97,9 +97,9 @@ const Typography: React.FC<TypographyProps> = ({ variant }) => {
             ))
           )}
         </div>
-        <div className="s-mt-6 s-grid s-gap-16 s-bg-repeat s-py-8">
+        <div className="s:mt-6 s:grid s:gap-16 s:bg-repeat s:py-8">
           {Object.entries(extraTextSizes).map(([sizeKey, sizeClass]) => (
-            <div key={sizeKey} className={cn(sizeClass, "s-font-medium")}>
+            <div key={sizeKey} className={cn(sizeClass, "s:font-medium")}>
               <div>{`${sizeKey} medium`}</div>
               <p>{loremIpsum}</p>
             </div>
@@ -111,13 +111,13 @@ const Typography: React.FC<TypographyProps> = ({ variant }) => {
 
   if (variant === "copy") {
     return (
-      <div className="s-space-y-12 s-bg-repeat s-py-8">
+      <div className="s:space-y-12 s:bg-repeat s:py-8">
         {Object.entries(copySizes).map(([sizeKey, copyClass]) => (
-          <div key={sizeKey} className="s-space-y-4">
+          <div key={sizeKey} className="s:space-y-4">
             <div className={copyClass}>
               <div>{`Copy ${sizeKey}`}</div>
               <div
-                className="s-mt-2"
+                className="s:mt-2"
                 style={{
                   maxWidth:
                     sizeKey === "xs"
@@ -134,10 +134,10 @@ const Typography: React.FC<TypographyProps> = ({ variant }) => {
                 <p>{copyLoremIpsum}</p>
               </div>
             </div>
-            <div className={cn(copyClass, "s-italic")}>
+            <div className={cn(copyClass, "s:italic")}>
               <div>{`Copy ${sizeKey} Italic`}</div>
               <div
-                className="s-mt-2"
+                className="s:mt-2"
                 style={{
                   maxWidth:
                     sizeKey === "xs"
@@ -154,10 +154,10 @@ const Typography: React.FC<TypographyProps> = ({ variant }) => {
                 <p>{copyLoremIpsum}</p>
               </div>
             </div>
-            <div className={cn(copyClass, "s-font-mono")}>
+            <div className={cn(copyClass, "s:font-mono")}>
               <div>{`Copy ${sizeKey} Mono`}</div>
               <div
-                className="s-mt-2"
+                className="s:mt-2"
                 style={{
                   maxWidth:
                     sizeKey === "xs"
@@ -182,7 +182,7 @@ const Typography: React.FC<TypographyProps> = ({ variant }) => {
 
   if (variant === "heading-mono") {
     return (
-      <div className="s-space-y-8 s-bg-repeat s-py-8">
+      <div className="s:space-y-8 s:bg-repeat s:py-8">
         {Object.entries(headingMonoSizes).map(([sizeKey, headingClass]) => (
           <div key={sizeKey} className={headingClass}>
             <div>{`Heading Mono ${sizeKey}`}</div>
@@ -194,7 +194,7 @@ const Typography: React.FC<TypographyProps> = ({ variant }) => {
   }
 
   return (
-    <div className="s-space-y-8 s-bg-repeat s-py-8">
+    <div className="s:space-y-8 s:bg-repeat s:py-8">
       {Object.entries(headingSizes).map(([sizeKey, headingClass]) => (
         <div key={sizeKey} className={headingClass}>
           <div>{`Heading ${sizeKey}`}</div>
@@ -213,7 +213,7 @@ const meta: Meta<typeof Typography> = {
     layout: "padded",
     docs: {
       description: {
-        component: `The Sparkle type scale, rendered in Geist. Covers font sizes (\`s-text-xs\` to \`s-text-9xl\`) with weights, heading styles (\`s-heading-*\` and monospace \`s-heading-mono-*\`), and copy/body styles (\`s-copy-*\`, including italic and mono). Use the **variant** control to switch between the font-size, heading, heading-mono, and copy specimens, and reach for these utilities instead of ad-hoc font sizing.`,
+        component: `The Sparkle type scale, rendered in Geist. Covers font sizes (\`s:text-xs\` to \`s:text-9xl\`) with weights, heading styles (\`s:heading-*\` and monospace \`s:heading-mono-*\`), and copy/body styles (\`s:copy-*\`, including italic and mono). Use the **variant** control to switch between the font-size, heading, heading-mono, and copy specimens, and reach for these utilities instead of ad-hoc font sizing.`,
       },
     },
   },

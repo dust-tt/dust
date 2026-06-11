@@ -65,15 +65,15 @@ export function Pagination({
   return (
     <div
       className={cn(
-        "s-flex s-w-full s-items-center",
-        controlsAreHidden ? "s-justify-end" : "s-justify-between"
+        "s:flex s:w-full s:items-center",
+        controlsAreHidden ? "s:justify-end" : "s:justify-between"
       )}
     >
       <div
         className={cn(
-          "s-flex",
-          controlsAreHidden ? "s-invisible" : "s-visible",
-          showPageButtons ? "s-gap-0" : "s-gap-2"
+          "s:flex",
+          controlsAreHidden ? "s:invisible" : "s:visible",
+          showPageButtons ? "s:gap-0" : "s:gap-2"
         )}
       >
         <Button
@@ -86,9 +86,9 @@ export function Pagination({
 
         <div
           className={cn(
-            "s-items-center",
-            size === "xs" ? "s-gap-3 s-px-3" : "s-gap-4 s-px-4",
-            showPageButtons ? "s-flex" : "s-hidden"
+            "s:items-center",
+            size === "xs" ? "s:gap-3 s:px-3" : "s:gap-4 s:px-4",
+            showPageButtons ? "s:flex" : "s:hidden"
           )}
         >
           {pageButtons}
@@ -105,9 +105,9 @@ export function Pagination({
 
       <span
         className={cn(
-          "s-text-xs",
-          "s-text-muted-foreground dark:s-text-muted-foreground-night",
-          showDetails ? "s-visible" : "s-collapse"
+          "s:text-xs",
+          "s:text-muted-foreground s:dark:text-muted-foreground-night",
+          showDetails ? "s:visible" : "s:collapse"
         )}
       >
         {controlsAreHidden
@@ -130,11 +130,11 @@ function renderPageNumber(
     <button
       key={pageNumber}
       className={cn(
-        "s-font-medium s-transition-colors s-duration-200",
+        "s:font-medium s:transition-colors s:duration-200",
         currentPage === pageNumber
-          ? "s-text-foreground dark:s-text-foreground-night"
-          : "s-text-primary-400 dark:s-text-primary-400-night",
-        size === "xs" ? "s-text-xs" : "s-text-sm"
+          ? "s:text-foreground s:dark:text-foreground-night"
+          : "s:text-primary-400 s:dark:text-primary-400-night",
+        size === "xs" ? "s:text-xs" : "s:text-sm"
       )}
       onClick={() => onPageClick && onPageClick(pageNumber)}
       disabled={!onPageClick}
@@ -148,9 +148,9 @@ function renderEllipses(size: "sm" | "xs") {
   return (
     <span
       className={cn(
-        "s-text-sm s-font-medium",
-        "s-text-muted-foreground dark:s-text-muted-foreground-night",
-        size === "xs" ? "s-text-xs" : "s-text-sm"
+        "s:text-sm s:font-medium",
+        "s:text-muted-foreground s:dark:text-muted-foreground-night",
+        size === "xs" ? "s:text-xs" : "s:text-sm"
       )}
     >
       ...

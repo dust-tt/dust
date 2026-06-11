@@ -19,17 +19,17 @@ export type ImagePreviewTitlePositionType =
   (typeof IMAGE_PREVIEW_TITLE_POSITIONS)[number];
 
 const containerVariants = cva(
-  cn("s-cursor-pointer s-overflow-hidden s-rounded-2xl"),
+  cn("s:cursor-pointer s:overflow-hidden s:rounded-2xl"),
   {
     variants: {
       variant: {
         // Embedded inside a parent component (like Citation) that provides the group
-        embedded: "s-absolute s-inset-0",
+        embedded: "s:absolute s:inset-0",
         // Standalone, self-contained component managing its own hover
         standalone: cn(
-          "s-group/image-preview",
-          "s-relative s-aspect-square",
-          "s-bg-muted-background dark:s-bg-muted-background-night"
+          "s:group/image-preview",
+          "s:relative s:aspect-square",
+          "s:bg-muted-background s:dark:bg-muted-background-night"
         ),
       },
     },
@@ -41,24 +41,24 @@ const containerVariants = cva(
 
 const overlayVariants = cva(
   cn(
-    "s-absolute s-inset-0 s-z-10",
-    "s-bg-primary-100/60 dark:s-bg-primary-100-night/60",
-    "s-opacity-0 s-transition s-duration-200"
+    "s:absolute s:inset-0 s:z-10",
+    "s:bg-primary-100/60 s:dark:bg-primary-100-night/60",
+    "s:opacity-0 s:transition s:duration-200"
   ),
   {
     variants: {
       titlePosition: {
         bottom: cn(
-          "s-flex s-flex-col s-items-start s-justify-end",
-          "s-px-3 s-pb-7"
+          "s:flex s:flex-col s:items-start s:justify-end",
+          "s:px-3 s:pb-7"
         ),
-        center: "s-flex s-items-center s-justify-center",
+        center: "s:flex s:items-center s:justify-center",
       },
       variant: {
-        // Embedded: uses parent's s-group for hover
-        embedded: "group-hover:s-opacity-100",
-        // Standalone: uses its own s-group/image-preview
-        standalone: "group-hover/image-preview:s-opacity-100",
+        // Embedded: uses parent's s:group for hover
+        embedded: "s:group-hover:opacity-100",
+        // Standalone: uses its own s:group/image-preview
+        standalone: "s:group-hover/image-preview:opacity-100",
       },
     },
     defaultVariants: {
@@ -70,15 +70,15 @@ const overlayVariants = cva(
 
 const titleVariants = cva(
   cn(
-    "s-max-w-full s-truncate",
-    "s-heading-sm",
-    "s-text-foreground dark:s-text-foreground-night"
+    "s:max-w-full s:truncate",
+    "s:heading-sm",
+    "s:text-foreground s:dark:text-foreground-night"
   ),
   {
     variants: {
       titlePosition: {
         bottom: "",
-        center: "s-max-w-[90%] s-px-2 s-text-center",
+        center: "s:max-w-[90%] s:px-2 s:text-center",
       },
     },
     defaultVariants: {
@@ -169,8 +169,8 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
           ) : isLoading ? (
             <div
               className={cn(
-                "s-flex s-h-full s-w-full s-items-center s-justify-center",
-                "s-bg-muted-background dark:s-bg-muted-background-night"
+                "s:flex s:h-full s:w-full s:items-center s:justify-center",
+                "s:bg-muted-background s:dark:bg-muted-background-night"
               )}
             >
               <Spinner variant="dark" size="md" />
@@ -181,10 +181,10 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
                 src={imgSrc}
                 alt={alt}
                 className={cn(
-                  "s-h-full s-w-full s-object-cover s-transition s-duration-200",
+                  "s:h-full s:w-full s:object-cover s:transition s:duration-200",
                   variant === "embedded"
-                    ? "group-hover:s-blur-sm"
-                    : "group-hover/image-preview:s-blur-sm"
+                    ? "s:group-hover:blur-sm"
+                    : "s:group-hover/image-preview:blur-sm"
                 )}
               />
               {/* Overlay with title - shown on hover */}
@@ -196,11 +196,11 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
               {/* Action button - top right on hover */}
               <div
                 className={cn(
-                  "s-absolute s-right-2 s-top-2 s-z-20",
-                  "s-opacity-0 s-transition-opacity s-duration-200",
+                  "s:absolute s:right-2 s:top-2 s:z-20",
+                  "s:opacity-0 s:transition-opacity s:duration-200",
                   variant === "embedded"
-                    ? "group-hover:s-opacity-100"
-                    : "group-hover/image-preview:s-opacity-100"
+                    ? "s:group-hover:opacity-100"
+                    : "s:group-hover/image-preview:opacity-100"
                 )}
               >
                 {onClose && (

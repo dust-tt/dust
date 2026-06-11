@@ -39,13 +39,13 @@ function StoryList({
   setTheme: (theme: Theme) => void;
 }) {
   return (
-    <div className="s-flex s-min-h-screen s-items-start s-justify-center s-bg-background s-pt-6 dark:s-bg-background-night">
-      <div className="s-w-full s-max-w-2xl s-px-4 s-text-left">
-        <h1 className="s-heading-4xl s-mb-2 s-text-foreground dark:s-text-foreground-night">
+    <div className="s:flex s:min-h-screen s:items-start s:justify-center s:bg-background s:pt-6 dark:s:bg-background-night">
+      <div className="s:w-full s:max-w-2xl s:px-4 s:text-left">
+        <h1 className="s:heading-4xl s:mb-2 s:text-foreground dark:s:text-foreground-night">
           Playgrounds
         </h1>
-        <div className="s-mb-4 s-flex s-items-center s-justify-between s-gap-2">
-          <p className="s-text-base s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <div className="s:mb-4 s:flex s:items-center s:justify-between s:gap-2">
+          <p className="s:text-base s:text-muted-foreground dark:s:text-muted-foreground-night">
             Select a playground to explore
           </p>
           <DropdownMenu>
@@ -79,7 +79,7 @@ function StoryList({
               onClick={() => onSelectStory(story.name)}
               hasSeparator={index < stories.length - 1}
             >
-              <div className="s-text-foreground dark:s-text-foreground-night">
+              <div className="s:text-foreground dark:s:text-foreground-night">
                 {story.name}
               </div>
             </ListItem>
@@ -104,7 +104,7 @@ function App() {
   useEffect(() => {
     const isDark = theme === "dark";
     document.documentElement.classList.toggle("dark", isDark);
-    document.documentElement.classList.toggle("s-dark", isDark);
+    document.documentElement.classList.toggle("s:dark", isDark);
     localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
 

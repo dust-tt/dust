@@ -15,10 +15,10 @@ const NotificationButton = ({
   counterProps,
 }: NotificationButtonProps) => {
   return (
-    <div className={cn("s-relative", className)}>
+    <div className={cn("s:relative", className)}>
       <Button {...buttonProps} />
       {counterProps.value > 0 && (
-        <Counter {...counterProps} className="s-absolute -s-right-2 -s-top-2" />
+        <Counter {...counterProps} className="s:absolute s:-right-2 s:-top-2" />
       )}
     </div>
   );

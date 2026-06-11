@@ -29,7 +29,7 @@ type Story = StoryObj<typeof meta>;
 
 export const FlexSplitButtonVariants: Story = {
   render: () => (
-    <div className="s-flex s-gap-3">
+    <div className="s:flex s:gap-3">
       <FlexSplitButton
         label="Send"
         variant="highlight"
@@ -102,7 +102,7 @@ export const FlexSplitButtonVariants: Story = {
 
 export const FlexSplitButtonLoading: Story = {
   render: () => (
-    <div className="s-flex s-gap-3">
+    <div className="s:flex s:gap-3">
       <FlexSplitButton
         label="Sending"
         variant="highlight"

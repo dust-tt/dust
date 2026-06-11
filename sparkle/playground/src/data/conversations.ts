@@ -910,7 +910,7 @@ Risks:
         name: "GoTWriter",
         timestamp: "09:20",
         completionStatus: "Completed in 22 sec",
-        avatar: { emoji: "🐉", backgroundColor: "s-bg-red-200" },
+        avatar: { emoji: "🐉", backgroundColor: "s:bg-red-200" },
       },
       markdown: exampleShort,
       citations: [
@@ -949,7 +949,7 @@ Risks:
         name: "GoTWriter",
         timestamp: "09:22",
         completionStatus: "Awaiting approval",
-        avatar: { emoji: "🐉", backgroundColor: "s-bg-red-200" },
+        avatar: { emoji: "🐉", backgroundColor: "s:bg-red-200" },
       },
       actionCards: [
         {
@@ -963,7 +963,7 @@ Risks:
           rejectLabel: "Skip",
           cardVariant: "highlight",
           actionsPosition: "header",
-          visual: { emoji: "🌲", backgroundColor: "s-bg-blue-100" },
+          visual: { emoji: "🌲", backgroundColor: "s:bg-blue-100" },
         },
         {
           id: "action-2",
@@ -975,7 +975,7 @@ Risks:
           applyLabel: "Rework",
           rejectLabel: "Leave as is",
           cardVariant: "secondary",
-          visual: { emoji: "⚔️", backgroundColor: "s-bg-green-100" },
+          visual: { emoji: "⚔️", backgroundColor: "s:bg-green-100" },
         },
       ],
     },
@@ -1011,7 +1011,7 @@ Risks:
         name: "GoTWriter",
         timestamp: "09:24",
         completionStatus: "Completed in 41 sec",
-        avatar: { emoji: "🐉", backgroundColor: "s-bg-red-200" },
+        avatar: { emoji: "🐉", backgroundColor: "s:bg-red-200" },
       },
       markdown: exampleLong,
       citations: [
@@ -1025,7 +1025,7 @@ Risks:
       type: "agent",
       name: "GoTWriter",
       action: "thinking",
-      avatar: { emoji: "🐉", backgroundColor: "s-bg-red-200" },
+      avatar: { emoji: "🐉", backgroundColor: "s:bg-red-200" },
     },
     {
       kind: "activeIndicator",

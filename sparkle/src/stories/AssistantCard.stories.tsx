@@ -49,7 +49,7 @@ const ddMenu = (
 );
 
 export const AssistantCardExample = () => (
-  <div className="s-flex s-flex-col s-gap-4">
+  <div className="s:flex s:flex-col s:gap-4">
     <h2>Compact</h2>
     <CardGrid>
       <CompactAssistantCard
@@ -78,7 +78,7 @@ export const AssistantCardExample = () => (
       />
     </CardGrid>
     <h2>List</h2>
-    <div className="s-grid s-grid-cols-2 s-gap-4">
+    <div className="s:grid s:grid-cols-2 s:gap-4">
       <LargeAssistantCard
         title={"@gpt4"}
         description={"OpenAI's most powerful and recent model (128k context)."}

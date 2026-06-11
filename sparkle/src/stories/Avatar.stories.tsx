@@ -71,12 +71,12 @@ const meta = {
     },
     backgroundColor: {
       control: "text",
-      description: "Tailwind background color class (e.g., 's-bg-blue-200')",
+      description: "Tailwind background color class (e.g., 's:bg-blue-200')",
     },
     iconColor: {
       control: "text",
       description:
-        "Tailwind text color class for icon (e.g., 's-text-gray-50')",
+        "Tailwind text color class for icon (e.g., 's:text-gray-50')",
     },
     clickable: {
       control: "boolean",
@@ -119,9 +119,9 @@ const gridStyle = {
 
 export const AvatarExample: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-4 s-text-foreground dark:s-text-foreground-night">
+    <div className="s:flex s:flex-col s:gap-4 s:text-foreground s:dark:text-foreground-night">
       <div>With nothing</div>
-      <div className="s-flex s-gap-4">
+      <div className="s:flex s:gap-4">
         <Avatar size="xs" />
         <Avatar size="sm" />
         <Avatar size="md" />
@@ -130,7 +130,7 @@ export const AvatarExample: Story = {
         <Avatar size="2xl" />
       </div>
       <div>With name</div>
-      <div className="s-flex s-gap-4">
+      <div className="s:flex s:gap-4">
         <Avatar size="xs" name="Isabelle Doe" />
         <Avatar size="sm" name="Rafael Doe" />
         <Avatar size="md" name="Aria Doe" />
@@ -139,22 +139,22 @@ export const AvatarExample: Story = {
         <Avatar size="2xl" name="Omar Doe" />
       </div>
       <div>With emoji url</div>
-      <div className="s-flex s-gap-4">
+      <div className="s:flex s:gap-4">
         <Avatar
           size="xs"
           visual="https://dust.tt/static/emojis/bg-cyan-100/lotus/1fab7"
         />
       </div>
       <div>With emoji</div>
-      <div className="s-flex s-gap-4">
-        <Avatar size="xs" emoji="❤️" backgroundColor="s-bg-red-100" />
-        <Avatar size="sm" emoji="💀" backgroundColor="s-bg-gray-800" />
-        <Avatar size="md" emoji="😂" backgroundColor="s-bg-info-200" />
-        <Avatar size="lg" emoji="🧑‍🚀" backgroundColor="s-bg-gray-200" />
-        <Avatar size="xl" emoji="👕" backgroundColor="s-bg-blue-200" />
-        <Avatar size="2xl" emoji="👕" backgroundColor="s-bg-blue-200" />
+      <div className="s:flex s:gap-4">
+        <Avatar size="xs" emoji="❤️" backgroundColor="s:bg-red-100" />
+        <Avatar size="sm" emoji="💀" backgroundColor="s:bg-gray-800" />
+        <Avatar size="md" emoji="😂" backgroundColor="s:bg-info-200" />
+        <Avatar size="lg" emoji="🧑‍🚀" backgroundColor="s:bg-gray-200" />
+        <Avatar size="xl" emoji="👕" backgroundColor="s:bg-blue-200" />
+        <Avatar size="2xl" emoji="👕" backgroundColor="s:bg-blue-200" />
       </div>
-      <div className="s-flex s-gap-4">
+      <div className="s:flex s:gap-4">
         <Avatar size="sm" name="Eleanor Wright" />
         <Avatar size="sm" name="Mason Johnson" />
         <Avatar size="sm" name="Oliver Bennett" />
@@ -177,7 +177,7 @@ export const AvatarExample: Story = {
         <Avatar size="sm" name="Aria Mitchell" />
       </div>
       <div>With image</div>
-      <div className="s-flex s-gap-4">
+      <div className="s:flex s:gap-4">
         <Avatar
           size="xs"
           name="Isabelle Doe"
@@ -200,15 +200,15 @@ export const AvatarExample: Story = {
         />
       </div>
       <div>Visual as empty string should be treated as null</div>
-      <div className="s-flex s-gap-4">
+      <div className="s:flex s:gap-4">
         <Avatar size="xs" name="Soupinou Meow" visual={""} />
       </div>
       <div>With icon</div>
-      <div className="s-flex s-gap-4">
+      <div className="s:flex s:gap-4">
         <Avatar size="xs" icon={SvgHome} />
         <Avatar size="xs" icon={DriveLogo} />
         <Avatar size="sm" icon={ActionBeerIcon} />
-        <Avatar size="sm" icon={NotionLogo} backgroundColor="s-bg-blue-50" />
+        <Avatar size="sm" icon={NotionLogo} backgroundColor="s:bg-blue-50" />
         <Avatar size="md" icon={ActionUmbrellaIcon} />
         <Avatar size="lg" icon={ActionFlagIcon} />
         <Avatar size="lg" icon={SlackLogo} hexBgColor="#421D51" />
@@ -217,7 +217,7 @@ export const AvatarExample: Story = {
       </div>
       <div className="heading-2xl">Tools example</div>
       <div>Remote MCP Servers</div>
-      <div className="s-flex s-gap-4">
+      <div className="s:flex s:gap-4">
         <Avatar size="md" icon={SvgHome} />
         <Avatar size="md" icon={ActionBeerIcon} />
         <Avatar size="md" icon={ActionUmbrellaIcon} />
@@ -226,42 +226,42 @@ export const AvatarExample: Story = {
         <Avatar size="md" icon={Star01} />
       </div>
       <div>Internal Tools Servers</div>
-      <div className="s-flex s-gap-4">
+      <div className="s:flex s:gap-4">
         <Avatar
           size="md"
           icon={Table}
-          backgroundColor="s-bg-gray-700"
-          iconColor="s-text-gray-50"
+          backgroundColor="s:bg-gray-700"
+          iconColor="s:text-gray-50"
         />
         <Avatar
           size="md"
           icon={SearchMd}
-          backgroundColor="s-bg-gray-700"
-          iconColor="s-text-gray-50"
+          backgroundColor="s:bg-gray-700"
+          iconColor="s:text-gray-50"
         />
         <Avatar
           size="md"
           icon={Image01}
-          backgroundColor="s-bg-gray-700"
-          iconColor="s-text-gray-50"
+          backgroundColor="s:bg-gray-700"
+          iconColor="s:text-gray-50"
         />
         <Avatar
           size="md"
           icon={Scan}
-          backgroundColor="s-bg-gray-700"
-          iconColor="s-text-gray-50"
+          backgroundColor="s:bg-gray-700"
+          iconColor="s:text-gray-50"
         />
       </div>
       <div>Platforms integrations</div>
-      <div className="s-flex s-gap-4">
+      <div className="s:flex s:gap-4">
         <Avatar
           size="md"
           icon={Sidekick}
-          backgroundColor="s-bg-warning-200"
-          iconColor="s-text-warning-800"
+          backgroundColor="s:bg-warning-200"
+          iconColor="s:text-warning-800"
         />
-        <Avatar size="md" icon={DriveLogo} backgroundColor="s-bg-gray-900" />
-        <Avatar size="md" icon={NotionLogo} backgroundColor="s-bg-white" />
+        <Avatar size="md" icon={DriveLogo} backgroundColor="s:bg-gray-900" />
+        <Avatar size="md" icon={NotionLogo} backgroundColor="s:bg-white" />
         <Avatar size="md" icon={SlackLogo} hexBgColor="#421D51" />
       </div>
     </div>
@@ -270,8 +270,8 @@ export const AvatarExample: Story = {
 
 export const AvatarStackExample: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-6">
-      <div className="s-flex s-flex-row s-gap-2">
+    <div className="s:flex s:flex-col s:gap-6">
+      <div className="s:flex s:flex-row s:gap-2">
         <Avatar.Stack
           size="xs"
           nbVisibleItems={3}
@@ -363,7 +363,7 @@ export const AvatarStackExample: Story = {
         />
       </div>
 
-      <div className="s-flex s-flex-row s-gap-2">
+      <div className="s:flex s:flex-row s:gap-2">
         <Avatar.Stack
           size="sm"
           nbVisibleItems={4}
@@ -444,7 +444,7 @@ export const AvatarStackExample: Story = {
         />
       </div>
 
-      <div className="s-flex s-flex-row s-gap-4">
+      <div className="s:flex s:flex-row s:gap-4">
         <Avatar.Stack
           nbVisibleItems={4}
           size="md"
@@ -528,10 +528,10 @@ export const AvatarStackExample: Story = {
         />
       </div>
 
-      <div className="s-mt-8 s-text-lg s-font-semibold">
+      <div className="s:mt-8 s:text-lg s:font-semibold">
         Vertical Orientation
       </div>
-      <div className="s-flex s-flex-row s-items-start s-gap-4">
+      <div className="s:flex s:flex-row s:items-start s:gap-4">
         <Avatar.Stack
           size="xs"
           nbVisibleItems={3}
@@ -611,17 +611,17 @@ export const AvatarStackExample: Story = {
         />
       </div>
 
-      <div className="s-mt-8 s-text-lg s-font-semibold">
+      <div className="s:mt-8 s:text-lg s:font-semibold">
         onTop Prop Examples
       </div>
-      <div className="s-flex s-flex-col s-gap-4">
+      <div className="s:flex s:flex-col s:gap-4">
         <div>
-          <div className="s-mb-2 s-text-sm s-font-medium">
+          <div className="s:mb-2 s:text-sm s:font-medium">
             Horizontal: onTop="last" (default) vs onTop="first"
           </div>
-          <div className="s-flex s-flex-row s-items-center s-gap-4">
-            <div className="s-flex s-flex-col s-gap-2">
-              <div className="s-text-xs s-text-muted-foreground">
+          <div className="s:flex s:flex-row s:items-center s:gap-4">
+            <div className="s:flex s:flex-col s:gap-2">
+              <div className="s:text-xs s:text-muted-foreground">
                 onTop="last" (default)
               </div>
               <Avatar.Stack
@@ -652,8 +652,8 @@ export const AvatarStackExample: Story = {
                 ]}
               />
             </div>
-            <div className="s-flex s-flex-col s-gap-2">
-              <div className="s-text-xs s-text-muted-foreground">
+            <div className="s:flex s:flex-col s:gap-2">
+              <div className="s:text-xs s:text-muted-foreground">
                 onTop="first"
               </div>
               <div>
@@ -690,12 +690,12 @@ export const AvatarStackExample: Story = {
         </div>
 
         <div>
-          <div className="s-mb-2 s-text-sm s-font-medium">
+          <div className="s:mb-2 s:text-sm s:font-medium">
             Vertical: onTop="last" (default) vs onTop="first"
           </div>
-          <div className="s-flex s-flex-row s-items-start s-gap-4">
-            <div className="s-flex s-flex-col s-gap-2">
-              <div className="s-text-xs s-text-muted-foreground">
+          <div className="s:flex s:flex-row s:items-start s:gap-4">
+            <div className="s:flex s:flex-col s:gap-2">
+              <div className="s:text-xs s:text-muted-foreground">
                 onTop="last" (default)
               </div>
               <div>
@@ -733,8 +733,8 @@ export const AvatarStackExample: Story = {
                 />
               </div>
             </div>
-            <div className="s-flex s-flex-col s-gap-2">
-              <div className="s-text-xs s-text-muted-foreground">
+            <div className="s:flex s:flex-col s:gap-2">
+              <div className="s:text-xs s:text-muted-foreground">
                 onTop="first"
               </div>
               <div>
@@ -838,9 +838,9 @@ export const AvatarGridExample: Story = {
 
 export const AvatarBusyExample: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-4">
+    <div className="s:flex s:flex-col s:gap-4">
       <div>With nothing</div>
-      <div className="s-flex s-gap-4">
+      <div className="s:flex s:gap-4">
         <Avatar busy size="xs" />
         <Avatar busy size="sm" />
         <Avatar busy size="md" />
@@ -848,14 +848,14 @@ export const AvatarBusyExample: Story = {
         <Avatar busy size="xl" />
       </div>
       <div>With name</div>
-      <div className="s-flex s-gap-4">
+      <div className="s:flex s:gap-4">
         <Avatar busy size="xs" name="Isabelle Doe" />
         <Avatar busy size="sm" name="Rafael Doe" />
         <Avatar busy size="md" name="Aria Doe" />
         <Avatar busy size="lg" name="Omar Doe" />
         <Avatar busy size="xl" name="Eleanor Doe" />
       </div>
-      <div className="s-flex s-gap-4">
+      <div className="s:flex s:gap-4">
         <Avatar busy size="sm" name="Eleanor Wright" />
         <Avatar busy size="sm" name="Mason Johnson" />
         <Avatar busy size="sm" name="Oliver Bennett" />
@@ -878,7 +878,7 @@ export const AvatarBusyExample: Story = {
         <Avatar busy size="sm" name="Aria Mitchell" />
       </div>
       <div>With image</div>
-      <div className="s-flex s-gap-4">
+      <div className="s:flex s:gap-4">
         <Avatar
           busy
           size="xs"
@@ -910,22 +910,22 @@ export const AvatarBusyExample: Story = {
 
 export const AvatarClickableExample: Story = {
   render: () => (
-    <div className="s-flex s-flex-col s-gap-4">
+    <div className="s:flex s:flex-col s:gap-4">
       <div>With nothing</div>
-      <div className="s-flex s-gap-4">
+      <div className="s:flex s:gap-4">
         <Avatar size="xs" clickable />
         <Avatar size="sm" clickable />
         <Avatar size="md" clickable />
         <Avatar size="lg" clickable />
       </div>
       <div>With name</div>
-      <div className="s-flex s-gap-4">
+      <div className="s:flex s:gap-4">
         <Avatar size="xs" name="Isabelle Doe" clickable />
         <Avatar size="sm" name="Rafael Doe" clickable />
         <Avatar size="md" name="Aria Doe" clickable />
         <Avatar size="lg" name="Omar Doe" clickable />
       </div>
-      <div className="s-flex s-gap-4">
+      <div className="s:flex s:gap-4">
         <Avatar size="sm" name="Eleanor Wright" clickable />
         <Avatar size="sm" name="Mason Johnson" clickable />
         <Avatar size="sm" name="Oliver Bennett" clickable />
@@ -948,7 +948,7 @@ export const AvatarClickableExample: Story = {
         <Avatar size="sm" name="Aria Mitchell" clickable />
       </div>
       <div>With image</div>
-      <div className="s-flex s-gap-4">
+      <div className="s:flex s:gap-4">
         <Avatar
           size="xs"
           name="Isabelle Doe"

@@ -56,7 +56,7 @@ const meta: Meta<typeof CodeBlock> = {
   },
   decorators: [
     (Story) => (
-      <div className="s-bg-background s-p-4 dark:s-bg-background-night">
+      <div className="s:bg-background s:p-4 s:dark:bg-background-night">
         <Story />
       </div>
     ),

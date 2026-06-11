@@ -12,19 +12,19 @@ export type CheckboxSizeType = (typeof CHECKBOX_SIZES)[number];
 
 const checkboxStyles = cva(
   cn(
-    "s-shrink-0 s-peer s-border s-transition s-duration-200 s-ease-in-out",
-    "s-border-border-dark dark:s-border-border-dark-night s-bg-background dark:s-bg-background-night",
-    "s-text-foreground dark:s-text-foreground-night",
-    "focus-visible:s-ring-ring s-ring-offset-background focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-offset-2",
-    "hover:s-border-highlight hover:s-bg-highlight-50 dark:hover:s-bg-highlight-100-night hover:dark:s-border-highlight",
-    "disabled:s-cursor-not-allowed disabled:s-opacity-50 disabled:s-border-border-dark disabled:dark:s-border-border-dark-night disabled:s-bg-background dark:disabled:s-bg-background-night"
+    "s:shrink-0 s:peer s:border s:transition s:duration-200 s:ease-in-out",
+    "s:border-border-dark s:dark:border-border-dark-night s:bg-background s:dark:bg-background-night",
+    "s:text-foreground s:dark:text-foreground-night",
+    "s:focus-visible:ring-ring s:ring-offset-background s:focus-visible:outline-hidden s:focus-visible:ring-2 s:focus-visible:ring-offset-2",
+    "s:hover:border-highlight s:hover:bg-highlight-50 s:dark:hover:bg-highlight-100-night s:hover:dark:border-highlight",
+    "s:disabled:cursor-not-allowed s:disabled:opacity-50 s:disabled:border-border-dark s:disabled:dark:border-border-dark-night s:disabled:bg-background s:dark:disabled:bg-background-night"
   ),
   {
     variants: {
       checked: {
-        true: "data-[state=checked]:s-bg-primary dark:data-[state=checked]:s-bg-primary-night data-[state=checked]:s-text-white data-[state=checked]:s-border-primary",
+        true: "s:data-[state=checked]:bg-primary s:dark:data-[state=checked]:bg-primary-night s:data-[state=checked]:text-white s:data-[state=checked]:border-primary",
         partial:
-          "data-[state=indeterminate]:s-bg-primary dark:data-[state=indeterminate]:s-bg-primary-night data-[state=indeterminate]:s-text-white data-[state=indeterminate]:s-border-primary",
+          "s:data-[state=indeterminate]:bg-primary s:dark:data-[state=indeterminate]:bg-primary-night s:data-[state=indeterminate]:text-white s:data-[state=indeterminate]:border-primary",
         false: "",
       },
       isMutedAfterCheck: {
@@ -32,8 +32,8 @@ const checkboxStyles = cva(
         false: "",
       },
       size: {
-        xs: "s-h-4 s-w-4 s-rounded",
-        sm: "s-h-5 s-w-5 s-rounded-md",
+        xs: "s:h-4 s:w-4 s:rounded",
+        sm: "s:h-5 s:w-5 s:rounded-md",
       },
     },
     compoundVariants: [
@@ -41,7 +41,7 @@ const checkboxStyles = cva(
         checked: true,
         isMutedAfterCheck: true,
         className:
-          "data-[state=checked]:s-bg-faint/50 data-[state=checked]:dark:s-bg-faint-night data-[state=checked]:s-border-transparent",
+          "s:data-[state=checked]:bg-faint/50 s:data-[state=checked]:dark:bg-faint-night s:data-[state=checked]:border-transparent",
       },
     ],
     defaultVariants: {
@@ -83,12 +83,12 @@ const Checkbox = React.forwardRef<
         checked={checked === "partial" ? "indeterminate" : checked}
         {...props}
       >
-        <CheckboxPrimitive.Indicator className="s-flex s-items-center s-justify-center s-text-current">
-          <span className={cn(size === "xs" ? "-s-mt-px" : "")}>
+        <CheckboxPrimitive.Indicator className="s:flex s:items-center s:justify-center s:text-current">
+          <span className={cn(size === "xs" ? "s:-mt-px" : "")}>
             <Icon
               size="xs"
               visual={checked === "partial" ? Minus : Check}
-              className="s-text-background dark:s-text-background-night"
+              className="s:text-background s:dark:text-background-night"
             />
           </span>
         </CheckboxPrimitive.Indicator>
@@ -121,13 +121,13 @@ function CheckboxWithText({
   const id = idProp ?? generatedId;
 
   const content = (
-    <div className="s-items-top s-flex s-items-center s-space-x-2">
+    <div className="s:items-top s:flex s:items-center s:space-x-2">
       <Checkbox id={id} size={size} {...props} />
       <Label
         htmlFor={id}
         className={cn(
-          "s-cursor-pointer s-leading-none peer-disabled:s-cursor-not-allowed peer-disabled:s-opacity-70",
-          size === "xs" ? "s-text-xs" : "s-text-sm"
+          "s:cursor-pointer s:leading-none s:peer-disabled:cursor-not-allowed s:peer-disabled:opacity-70",
+          size === "xs" ? "s:text-xs" : "s:text-sm"
         )}
       >
         {text}
@@ -155,22 +155,22 @@ function CheckBoxWithTextAndDescription({
   const id = idProp ?? generatedId;
 
   const content = (
-    <div className="s-items-top s-flex s-space-x-2">
+    <div className="s:items-top s:flex s:space-x-2">
       <Checkbox id={id} size={size} {...props} />
-      <div className="s-grid s-gap-1.5 s-leading-none">
+      <div className="s:grid s:gap-1.5 s:leading-none">
         <Label
           htmlFor={id}
           className={cn(
-            "s-cursor-pointer s-leading-none peer-disabled:s-cursor-not-allowed peer-disabled:s-opacity-70",
-            size === "xs" ? "s-text-xs" : "s-text-sm"
+            "s:cursor-pointer s:leading-none s:peer-disabled:cursor-not-allowed s:peer-disabled:opacity-70",
+            size === "xs" ? "s:text-xs" : "s:text-sm"
           )}
         >
           {text}
         </Label>
         <p
           className={cn(
-            "s-text-xs",
-            "s-text-muted-foreground dark:s-text-muted-foreground-night"
+            "s:text-xs",
+            "s:text-muted-foreground s:dark:text-muted-foreground-night"
           )}
         >
           {description}

@@ -20,13 +20,13 @@ export type ToolbarVariant = "inline" | "overlay";
 
 type ToolbarButtonSize = NonNullable<ButtonProps["size"]>;
 
-const toolbarRootVariants = cva("s-inline-flex s-items-center", {
+const toolbarRootVariants = cva("s:inline-flex s:items-center", {
   variants: {
     variant: {
       overlay:
-        "s-absolute s-left-0 s-top-0 s-z-10 s-justify-start s-gap-3 s-overflow-hidden s-rounded-xl s-bg-primary-50 s-py-1 s-pl-3 s-duration-700 s-ease-in-out dark:s-bg-muted-background-night",
+        "s:absolute s:left-0 s:top-0 s:z-10 s:justify-start s:gap-3 s:overflow-hidden s:rounded-xl s:bg-primary-50 s:py-1 s:pl-3 s:duration-700 s:ease-in-out s:dark:bg-muted-background-night",
       inline:
-        "s-gap-1 s-border-b s-border-t s-border-border s-bg-background s-p-1 dark:s-border-border-night/50 dark:s-bg-background-night sm:s-rounded-2xl sm:s-border sm:s-border-border/50 sm:s-shadow-md",
+        "s:gap-1 s:border-b s:border-t s:border-border s:bg-background s:p-1 s:dark:border-border-night/50 s:dark:bg-background-night s:sm:rounded-2xl s:sm:border s:sm:border-border/50 s:sm:shadow-md",
     },
   },
   defaultVariants: {
@@ -38,11 +38,11 @@ const toolbarContentVariants = cva("", {
   variants: {
     variant: {
       overlay:
-        "s-flex s-h-full s-w-max s-flex-row s-items-center s-gap-3 s-px-3",
-      inline: "s-inline-flex s-items-center s-gap-1",
+        "s:flex s:h-full s:w-max s:flex-row s:items-center s:gap-3 s:px-3",
+      inline: "s:inline-flex s:items-center s:gap-1",
     },
     scrollable: {
-      true: "s-overflow-x-scroll",
+      true: "s:overflow-x-scroll",
       false: "",
     },
   },
@@ -52,10 +52,10 @@ const toolbarContentVariants = cva("", {
   },
 });
 
-const toolbarScrollAreaVariants = cva("s-h-full s-w-full", {
+const toolbarScrollAreaVariants = cva("s:h-full s:w-full", {
   variants: {
     variant: {
-      overlay: "s-border-l s-border-border dark:s-border-border-night/50",
+      overlay: "s:border-l s:border-border s:dark:border-border-night/50",
       inline: "",
     },
   },
@@ -168,7 +168,7 @@ function ToolbarContent({ groups, separatorClassName }: ToolbarContentProps) {
           {groupIndex < groups.length - 1 && (
             <Separator
               orientation="vertical"
-              className={cn("s-my-1", separatorClassName)}
+              className={cn("s:my-1", separatorClassName)}
             />
           )}
         </React.Fragment>

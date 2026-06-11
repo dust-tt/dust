@@ -25,30 +25,30 @@ const INPUT_STATES = ["error", "disabled", "default"];
 type InputStateType = (typeof INPUT_STATES)[number];
 
 const messageVariantStyles: Record<MessageStatus, string> = {
-  info: "s-text-muted-foreground dark:s-text-muted-foreground-night",
-  default: "s-text-muted-foreground dark:s-text-muted-foreground-night",
-  error: "s-text-foreground-warning dark:s-text-foreground-warning-night",
+  info: "s:text-muted-foreground s:dark:text-muted-foreground-night",
+  default: "s:text-muted-foreground s:dark:text-muted-foreground-night",
+  error: "s:text-foreground-warning s:dark:text-foreground-warning-night",
 };
 
 const stateVariantStyles: Record<InputStateType, string> = {
   default: cn(
-    "s-border-border dark:s-border-border-night",
-    "s-ring-highlight/0 dark:s-ring-highlight-night/0",
-    "focus-visible:s-border-border-focus dark:focus-visible:s-border-border-focus-night",
-    "focus-visible:s-outline-none focus-visible:s-ring-2",
-    "focus-visible:s-ring-highlight/20 dark:focus-visible:s-ring-highlight/50"
+    "s:border-border s:dark:border-border-night",
+    "s:ring-highlight/0 s:dark:ring-highlight-night/0",
+    "s:focus-visible:border-border-focus s:dark:focus-visible:border-border-focus-night",
+    "s:focus-visible:outline-hidden s:focus-visible:ring-2",
+    "s:focus-visible:ring-highlight/20 s:dark:focus-visible:ring-highlight/50"
   ),
   disabled: cn(
-    "disabled:s-cursor-not-allowed",
-    "disabled:s-text-muted-foreground dark:disabled:s-text-muted-foreground-night",
-    "disabled:s-border-border dark:disabled:s-border-border-night"
+    "s:disabled:cursor-not-allowed",
+    "s:disabled:text-muted-foreground s:dark:disabled:text-muted-foreground-night",
+    "s:disabled:border-border s:dark:disabled:border-border-night"
   ),
   error: cn(
-    "s-border-border-warning/40 dark:s-border-border-warning-night/60",
-    "s-ring-warning/0 dark:s-ring-warning-night/0",
-    "focus-visible:s-border-border-warning dark:focus-visible:s-border-border-warning-night",
-    "focus-visible:s-outline-none focus-visible:s-ring-2",
-    "focus-visible:s-ring-warning/10 dark:focus-visible:s-ring-warning/30"
+    "s:border-border-warning/40 s:dark:border-border-warning-night/60",
+    "s:ring-warning/0 s:dark:ring-warning-night/0",
+    "s:focus-visible:border-border-warning s:dark:focus-visible:border-border-warning-night",
+    "s:focus-visible:outline-hidden s:focus-visible:ring-2",
+    "s:focus-visible:ring-warning/10 s:dark:focus-visible:ring-warning/30"
   ),
 };
 
@@ -63,12 +63,12 @@ const messageVariant = cva("", {
 
 const inputStyleClasses = cva(
   cn(
-    "dark:s-text-primary-50",
-    "s-text-sm s-rounded-xl s-flex s-h-9 s-w-full s-px-3 s-py-1.5 ",
-    "s-bg-background dark:s-bg-background-night",
-    "s-border focus-visible:s-ring",
-    "file:s-border-0 file:s-bg-transparent file:s-text-sm file:s-font-medium file:s-text-foreground",
-    "placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night"
+    "s:dark:text-primary-50",
+    "s:text-sm s:rounded-xl s:flex s:h-9 s:w-full s:px-3 s:py-1.5 ",
+    "s:bg-background s:dark:bg-background-night",
+    "s:border s:focus-visible:ring",
+    "s:file:border-0 s:file:bg-transparent s:file:text-sm s:file:font-medium s:file:text-foreground",
+    "s:placeholder:text-muted-foreground s:dark:placeholder:text-muted-foreground-night"
   ),
   {
     variants: {
@@ -102,16 +102,16 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ? "disabled"
           : "default";
     return (
-      <div className={cn("s-flex s-flex-col s-gap-1", containerClassName)}>
+      <div className={cn("s:flex s:flex-col s:gap-1", containerClassName)}>
         {label && (
-          <Label htmlFor={props.name} className="s-mb-1">
+          <Label htmlFor={props.name} className="s:mb-1">
             {label}
           </Label>
         )}
         <input
           ref={ref}
           className={cn(
-            "s-ring-inset",
+            "s:ring-inset",
             inputStyleClasses({ state }),
             className
           )}
@@ -123,7 +123,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
         {message && (
           <div
             className={cn(
-              "s-flex s-items-center s-gap-1 s-text-xs",
+              "s:flex s:items-center s:gap-1 s:text-xs",
               messageVariant({ status: messageStatus })
             )}
           >

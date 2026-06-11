@@ -6,12 +6,12 @@ import { cn } from "../lib/utils";
 import { Button } from "./Button";
 import { ContentBlockWrapper } from "./markdown/ContentBlockWrapper";
 
-const diffLineVariants = cva("s-rounded s-px-1", {
+const diffLineVariants = cva("s:rounded s:px-1", {
   variants: {
     type: {
-      add: "s-bg-highlight-50 dark:s-bg-highlight-50-night s-text-highlight-900 dark:s-text-highlight-900-night",
+      add: "s:bg-highlight-50 s:dark:bg-highlight-50-night s:text-highlight-900 s:dark:text-highlight-900-night",
       remove:
-        "s-bg-primary-100 dark:s-bg-primary-100-night s-text-muted-foreground dark:s-text-muted-foreground-night s-line-through",
+        "s:bg-primary-100 s:dark:bg-primary-100-night s:text-muted-foreground s:dark:text-muted-foreground-night s:line-through",
     },
   },
 });
@@ -108,16 +108,16 @@ export function DiffBlock({
 
   return (
     <ContentBlockWrapper
-      className={cn("s-w-full", className)}
+      className={cn("s:w-full", className)}
       buttonDisplay="inside"
       actions={actions}
     >
-      <div className="s-flex s-flex-col s-gap-2">
+      <div className="s:flex s:flex-col s:gap-2">
         <div
           ref={containerRef}
           className={cn(
-            "s-rounded-2xl s-border s-border-border dark:s-border-border-night",
-            "s-bg-muted-background s-p-2 dark:s-bg-muted-background-night"
+            "s:rounded-2xl s:border s:border-border s:dark:border-border-night",
+            "s:bg-muted-background s:p-2 s:dark:bg-muted-background-night"
           )}
           style={
             !isMeasured
@@ -140,22 +140,22 @@ export function DiffBlock({
             ref={contentRef}
             className={
               children
-                ? "s-space-y-4 s-font-mono s-text-sm [&_.ProseMirror]:s-min-h-0 [&_.ProseMirror]:s-p-0"
-                : "s-space-y-4 s-font-mono s-text-sm"
+                ? "s:space-y-4 s:font-mono s:text-sm s:[&_.ProseMirror]:min-h-0 s:[&_.ProseMirror]:p-0"
+                : "s:space-y-4 s:font-mono s:text-sm"
             }
           >
             {children ??
               changes?.map((change, index) => (
-                <div key={index} className="s-space-y-0.5">
+                <div key={index} className="s:space-y-0.5">
                   {change.old && (
-                    <div className="s-whitespace-pre-wrap">
+                    <div className="s:whitespace-pre-wrap">
                       <span className={diffLineVariants({ type: "remove" })}>
                         {change.old}
                       </span>
                     </div>
                   )}
                   {change.new && (
-                    <div className="s-whitespace-pre-wrap">
+                    <div className="s:whitespace-pre-wrap">
                       <span className={diffLineVariants({ type: "add" })}>
                         {change.new}
                       </span>
@@ -166,7 +166,7 @@ export function DiffBlock({
           </div>
         </div>
         {isCollapsible && (
-          <div className="s-flex s-justify-start s-px-3">
+          <div className="s:flex s:justify-start s:px-3">
             <Button
               size="xs"
               variant="outline"

@@ -9,7 +9,7 @@ import { cva } from "class-variance-authority";
 import React, { memo } from "react";
 
 export const ulBlockVariants = cva([
-  "s-list-disc s-pb-2 s-pl-6 s-flex s-flex-col s-gap-1",
+  "s:list-disc s:pb-2 s:pl-6 s:flex s:flex-col s:gap-1",
 ]);
 
 interface UlBlockProps {
@@ -30,7 +30,7 @@ export const UlBlock = memo(
 UlBlock.displayName = "UlBlock";
 
 export const olBlockVariants = cva([
-  "s-list-decimal s-pb-2 s-pl-6 s-flex s-flex-col s-gap-1",
+  "s:list-decimal s:pb-2 s:pl-6 s:flex s:flex-col s:gap-1",
 ]);
 
 interface OlBlockProps {
@@ -54,7 +54,7 @@ export const OlBlock = memo(
 );
 OlBlock.displayName = "OlBlock";
 
-export const liBlockVariants = cva(["s-break-words"]);
+export const liBlockVariants = cva(["s:break-words"]);
 
 interface LiBlockProps {
   children: React.ReactNode;

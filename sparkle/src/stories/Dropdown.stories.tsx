@@ -101,7 +101,7 @@ export const SimpleDropdown: Story = {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger>Open Simple Dropdown</DropdownMenuTrigger>
-        <DropdownMenuContent className="s-max-w-[300px]">
+        <DropdownMenuContent className="s:max-w-[300px]">
           <DropdownMenuLabel label="My Account" />
           <DropdownMenuItem
             icon={() => (
@@ -145,7 +145,7 @@ export const ComplexDropdown: Story = {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger>Open Complex</DropdownMenuTrigger>
-        <DropdownMenuContent className="s-w-56">
+        <DropdownMenuContent className="s:w-56">
           <DropdownMenuLabel label="My Account" />
           <DropdownMenuGroup>
             <DropdownMenuItem
@@ -208,7 +208,7 @@ export const WithShortcuts: Story = {
         <DropdownMenuTrigger asChild>
           <Button label="Quick Actions" variant="outline" size="sm" isSelect />
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="s-w-64">
+        <DropdownMenuContent className="s:w-64">
           <DropdownMenuLabel label="Create" />
           <DropdownMenuItem
             icon={File02}
@@ -250,7 +250,7 @@ export const WithCheckboxes: Story = {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger>Open Checkbox</DropdownMenuTrigger>
-        <DropdownMenuContent className="s-w-72">
+        <DropdownMenuContent className="s:w-72">
           <DropdownMenuLabel label="Interface Settings" />
           <DropdownMenuSeparator />
           <DropdownMenuCheckboxItem
@@ -288,7 +288,7 @@ export const WithRadioGroup: Story = {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger>Open Radio Group</DropdownMenuTrigger>
-        <DropdownMenuContent className="s-w-56">
+        <DropdownMenuContent className="s:w-56">
           <DropdownMenuLabel label="Panel Position" />
           <DropdownMenuSeparator />
           <DropdownMenuRadioGroup value={position} onValueChange={setPosition}>
@@ -477,49 +477,49 @@ export const WithSearchAndPicker: Story = {
         name: "Research Assistant",
         description: "Academic research and paper analysis",
         emoji: "🔬",
-        backgroundColor: "s-bg-blue-200",
+        backgroundColor: "s:bg-blue-200",
       },
       {
         name: "Code Companion",
         description: "Pair programming and code review",
         emoji: "💻",
-        backgroundColor: "s-bg-purple-200",
+        backgroundColor: "s:bg-purple-200",
       },
       {
         name: "Data Analyst",
         description: "Data visualization and insights",
         emoji: "��",
-        backgroundColor: "s-bg-green-200",
+        backgroundColor: "s:bg-green-200",
       },
       {
         name: "Content Writer",
         description: "Blog posts and marketing copy",
         emoji: "✍️",
-        backgroundColor: "s-bg-yellow-200",
+        backgroundColor: "s:bg-yellow-200",
       },
       {
         name: "Customer Support",
         description: "24/7 customer service automation",
         emoji: "🤝",
-        backgroundColor: "s-bg-pink-200",
+        backgroundColor: "s:bg-pink-200",
       },
       {
         name: "Legal Assistant",
         description: "Contract review and legal research",
         emoji: "⚖️",
-        backgroundColor: "s-bg-red-200",
+        backgroundColor: "s:bg-red-200",
       },
       {
         name: "Design Assistant",
         description: "UI/UX design and prototyping",
         emoji: "🎨",
-        backgroundColor: "s-bg-indigo-200",
+        backgroundColor: "s:bg-indigo-200",
       },
       {
         name: "Financial Advisor",
         description: "Investment analysis and planning",
         emoji: "💰",
-        backgroundColor: "s-bg-emerald-200",
+        backgroundColor: "s:bg-emerald-200",
       },
     ] as const;
 
@@ -577,7 +577,7 @@ export const WithSearchAndPicker: Story = {
     ] as const;
 
     return (
-      <div className="s-flex s-gap-2">
+      <div className="s:flex s:gap-2">
         <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
           <DropdownMenuTrigger asChild>
             <Button
@@ -588,7 +588,7 @@ export const WithSearchAndPicker: Story = {
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="s-w-[380px]"
+            className="s:w-[380px]"
             dropdownHeaders={
               <DropdownMenuSearchbar
                 value={searchText}
@@ -627,8 +627,8 @@ export const WithSearchAndPicker: Story = {
                 );
               })
             ) : (
-              <div className="s-flex s-h-full s-w-full s-items-center s-justify-center s-py-8">
-                <div className="s-flex s-flex-col s-items-center s-justify-center s-gap-0 s-text-center s-text-base s-font-semibold s-text-primary-400">
+              <div className="s:flex s:h-full s:w-full s:items-center s:justify-center s:py-8">
+                <div className="s:flex s:flex-col s:items-center s:justify-center s:gap-0 s:text-center s:text-base s:font-semibold s:text-primary-400">
                   <Icon visual={SearchMd} size="sm" />
                   Search in Dust
                 </div>
@@ -641,7 +641,7 @@ export const WithSearchAndPicker: Story = {
             <Button icon={Robot} variant="outline" size="sm" isSelect />
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="s-h-96 s-w-[380px]"
+            className="s:h-96 s:w-[380px]"
             dropdownHeaders={
               <DropdownMenuSearchbar
                 ref={agentsSearchInputRef}
@@ -688,7 +688,7 @@ export const WithSearchAndPicker: Story = {
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="s-h-96 s-w-[380px]"
+            className="s:h-96 s:w-[380px]"
             dropdownHeaders={
               <DropdownMenuSearchbar
                 ref={toolsetsSearchInputRef}
@@ -731,22 +731,22 @@ export const WithStaticItems: Story = {
         <DropdownMenuTrigger asChild>
           <Button label="System Status" variant="outline" size="sm" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="s-w-[250px]">
+        <DropdownMenuContent className="s:w-[250px]">
           <DropdownMenuLabel label="System Metrics" />
           <DropdownMenuStaticItem label="CPU Usage" value="45%" />
           <DropdownMenuStaticItem label="Memory" value="2.3GB/8GB" />
           <DropdownMenuStaticItem label="Disk Space">
-            <span className="s-flex s-items-center s-gap-2 s-text-muted-foreground">
+            <span className="s:flex s:items-center s:gap-2 s:text-muted-foreground">
               3
               <Icon
                 size="xs"
-                className="s-text-muted-foreground"
+                className="s:text-muted-foreground"
                 visual={ThumbsUp}
               />
               1
               <Icon
                 size="xs"
-                className="s-text-muted-foreground"
+                className="s:text-muted-foreground"
                 visual={ThumbsDown}
               />
             </span>
@@ -824,8 +824,8 @@ export const WithTags: Story = {
     };
 
     return (
-      <div className="s-flex s-flex-col s-gap-4 s-p-4">
-        <div className="s-flex s-items-center s-gap-2">
+      <div className="s:flex s:flex-col s:gap-4 s:p-4">
+        <div className="s:flex s:items-center s:gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -836,7 +836,7 @@ export const WithTags: Story = {
                 isSelect
               />
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="s-w-80">
+            <DropdownMenuContent className="s:w-80">
               <DropdownMenuLabel label="Available Tags" />
               <DropdownMenuSeparator />
               <DropdownMenuTagList>
@@ -852,11 +852,11 @@ export const WithTags: Story = {
               </DropdownMenuTagList>
 
               <DropdownMenuSeparator />
-              <div className="s-p-2">
+              <div className="s:p-2">
                 <Button
                   label={isLoading ? "Adding..." : "Add Random Tag"}
                   onClick={handleAddTag}
-                  className="s-w-full"
+                  className="s:w-full"
                   size="sm"
                   disabled={isLoading}
                   icon={
@@ -869,17 +869,17 @@ export const WithTags: Story = {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <div className="s-text-sm s-text-muted-foreground">
+          <div className="s:text-sm s:text-muted-foreground">
             Click to view available tags
           </div>
         </div>
 
-        <div className="s-flex s-flex-wrap s-gap-2 s-rounded-lg s-border s-border-border s-p-4">
-          <span className="s-mr-2 s-text-sm s-text-muted-foreground">
+        <div className="s:flex s:flex-wrap s:gap-2 s:rounded-lg s:border s:border-border s:p-4">
+          <span className="s:mr-2 s:text-sm s:text-muted-foreground">
             Current tags:
           </span>
           {tags.map((tag) => (
-            <div key={tag} className="s-inline-flex">
+            <div key={tag} className="s:inline-flex">
               <Chip
                 label={tag}
                 color="highlight"
@@ -938,7 +938,7 @@ export const WithFilters: Story = {
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="s-w-[320px]"
+          className="s:w-[320px]"
           dropdownHeaders={
             <>
               <DropdownMenuSearchbar
@@ -965,7 +965,7 @@ export const WithFilters: Story = {
               />
             ))
           ) : (
-            <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
+            <div className="s:flex s:h-24 s:items-center s:justify-center s:text-sm s:text-muted-foreground">
               No items found
             </div>
           )}
@@ -978,18 +978,18 @@ export const WithFilters: Story = {
 export const WithTooltips: Story = {
   render: () => {
     return (
-      <div className="s-flex s-flex-col s-gap-8 s-p-8">
-        <h3 className="s-text-lg s-font-semibold">
+      <div className="s:flex s:flex-col s:gap-8 s:p-8">
+        <h3 className="s:text-lg s:font-semibold">
           Dropdown with Rich Tooltips
         </h3>
 
-        <div className="s-flex s-gap-4">
+        <div className="s:flex s:gap-4">
           {/* Knowledge Attachment Example */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button label="Skill Builder Actions" variant="outline" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="s-w-64">
+            <DropdownMenuContent className="s:w-64">
               <DropdownMenuItem label="Configure Settings" />
               <DropdownTooltipTrigger
                 description="Use company knowledge for context."
@@ -997,7 +997,7 @@ export const WithTooltips: Story = {
                   <img
                     src="/static/landing/product/Knowledge_Tooltips.jpg"
                     alt="Knowledge Search Interface"
-                    className="s-aspect-[4/3] s-w-full s-rounded s-object-cover"
+                    className="s:aspect-[4/3] s:w-full s:rounded s:object-cover"
                   />
                 }
                 side="right"
@@ -1024,20 +1024,20 @@ export const WithTooltips: Story = {
             <DropdownMenuTrigger asChild>
               <Button label="Data Actions" variant="outline" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="s-w-64">
+            <DropdownMenuContent className="s:w-64">
               <DropdownMenuItem label="View Report" />
               <DropdownTooltipTrigger
                 description="Export your data in various formats. Choose from CSV, JSON, or PDF depending on your needs."
                 media={
-                  <div className="s-flex s-items-center s-gap-3">
-                    <div className="s-flex s-h-10 s-w-10 s-items-center s-justify-center s-rounded-full s-bg-green-100">
-                      <DownloadCloud01 className="s-h-5 s-w-5 s-text-green-600" />
+                  <div className="s:flex s:items-center s:gap-3">
+                    <div className="s:flex s:h-10 s:w-10 s:items-center s:justify-center s:rounded-full s:bg-green-100">
+                      <DownloadCloud01 className="s:h-5 s:w-5 s:text-green-600" />
                     </div>
                     <div>
-                      <h4 className="s-text-sm s-font-medium s-text-green-800">
+                      <h4 className="s:text-sm s:font-medium s:text-green-800">
                         Export Status
                       </h4>
-                      <p className="s-text-xs s-text-green-600">
+                      <p className="s:text-xs s:text-green-600">
                         Ready to export
                       </p>
                     </div>
@@ -1053,22 +1053,22 @@ export const WithTooltips: Story = {
           </DropdownMenu>
 
           {/* Left-side tooltip example */}
-          <div className="s-ml-auto">
+          <div className="s:ml-auto">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button label="Right Side Menu" variant="outline" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="s-w-56">
+              <DropdownMenuContent className="s:w-56">
                 <DropdownMenuItem label="Regular Item" />
                 <DropdownTooltipTrigger
                   description="This tooltip appears on the left side when the dropdown is positioned on the right side of the screen."
                   media={
-                    <div className="s-text-center">
-                      <div className="s-mb-2 s-text-2xl">⬅️</div>
-                      <p className="s-text-sm s-font-medium s-text-orange-800">
+                    <div className="s:text-center">
+                      <div className="s:mb-2 s:text-2xl">⬅️</div>
+                      <p className="s:text-sm s:font-medium s:text-orange-800">
                         Positioned Left
                       </p>
-                      <p className="s-mt-1 s-text-xs s-text-orange-600">
+                      <p className="s:mt-1 s:text-xs s:text-orange-600">
                         Perfect for right-side menus
                       </p>
                     </div>
@@ -1083,7 +1083,7 @@ export const WithTooltips: Story = {
           </div>
         </div>
 
-        <p className="s-max-w-lg s-text-sm s-text-gray-600">
+        <p className="s:max-w-lg s:text-sm s:text-gray-600">
           Hover over menu items with icons to see rich tooltips that provide
           contextual information and step-by-step instructions. The tooltip
           positioning automatically adapts based on available space.

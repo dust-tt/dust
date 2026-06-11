@@ -19,8 +19,8 @@ const DialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     className={cn(
-      "s-fixed s-inset-0 s-z-50 data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0",
-      "s-bg-muted-foreground/75 dark:s-bg-muted-background-night/75",
+      "s:fixed s:inset-0 s:z-50 s:data-[state=open]:animate-in s:data-[state=closed]:animate-out s:data-[state=closed]:fade-out-0 s:data-[state=open]:fade-in-0",
+      "s:bg-muted-foreground/75 s:dark:bg-muted-background-night/75",
       className
     )}
     {...props}
@@ -36,19 +36,19 @@ const DIALOG_HEIGHTS = ["md", "lg", "xl", "2xl"] as const;
 type DialogHeightType = (typeof DIALOG_HEIGHTS)[number];
 
 const sizeClasses: Record<DialogSizeType, string> = {
-  md: "sm:s-max-w-md",
-  lg: "sm:s-max-w-xl",
-  xl: "sm:s-max-w-3xl",
-  "2xl": "sm:s-max-w-5xl",
-  full: "sm:s-max-w-full sm:s-h-full",
-  fit: "sm:s-max-w-[90vw] s-w-fit",
+  md: "s:sm:max-w-md",
+  lg: "s:sm:max-w-xl",
+  xl: "s:sm:max-w-3xl",
+  "2xl": "s:sm:max-w-5xl",
+  full: "s:sm:max-w-full s:sm:h-full",
+  fit: "s:sm:max-w-[90vw] s:w-fit",
 };
 
 const heightClasses: Record<DialogHeightType, string> = {
-  md: "sm:s-h-md",
-  lg: "sm:s-h-lg",
-  xl: "sm:s-h-xl",
-  "2xl": "sm:s-h-2xl",
+  md: "s:sm:h-md",
+  lg: "s:sm:h-lg",
+  xl: "s:sm:h-xl",
+  "2xl": "s:sm:h-2xl",
 };
 
 const DIALOG_VARIANTS = ["default", "command"] as const;
@@ -56,23 +56,21 @@ type DialogVariantType = (typeof DIALOG_VARIANTS)[number];
 
 const variantClasses: Record<DialogVariantType, string> = {
   default: cn(
-    "s-top-[50%] s-translate-y-[-50%] s-duration-200",
-    "data-[state=open]:s-animate-in data-[state=closed]:s-animate-out",
-    "data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0",
-    "data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95",
-    "data-[state=closed]:s-slide-out-to-left-1/2 data-[state=closed]:s-slide-out-to-top-[48%]",
-    "data-[state=open]:s-slide-in-from-left-1/2 data-[state=open]:s-slide-in-from-top-[48%]"
+    "s:top-[50%] s:translate-y-[-50%] s:duration-200",
+    "s:data-[state=open]:animate-in s:data-[state=closed]:animate-out",
+    "s:data-[state=closed]:fade-out-0 s:data-[state=open]:fade-in-0",
+    "s:data-[state=closed]:zoom-out-95 s:data-[state=open]:zoom-in-95"
   ),
-  command: "s-top-[20%]",
+  command: "s:top-[20%]",
 };
 
 const dialogVariants = cva(
   cn(
-    "s-fixed s-left-[50%] s-z-50 s-overflow-hidden s-translate-x-[-50%]",
-    "s-rounded-2xl s-flex s-flex-col s-w-full s-max-w-[calc(100vw-2rem)] s-border s-border s-shadow-lg s-sm:rounded-lg",
-    "s-bg-background dark:s-bg-background-night",
-    "s-border-border dark:s-border-border-night",
-    "s-max-h-[90vh]"
+    "s:fixed s:left-[50%] s:z-50 s:overflow-hidden s:translate-x-[-50%]",
+    "s:rounded-2xl s:flex s:flex-col s:w-full s:max-w-[calc(100vw-2rem)] s:border s:border s:shadow-lg s:sm:rounded-lg",
+    "s:bg-background s:dark:bg-background-night",
+    "s:border-border s:dark:border-border-night",
+    "s:max-h-[90vh]"
   ),
   {
     variants: {
@@ -168,14 +166,14 @@ const DialogHeader = ({
 }: NewDialogHeaderProps) => (
   <div
     className={cn(
-      "s-sticky s-top-0 s-z-50 s-flex s-flex-none s-flex-col s-gap-0 s-bg-background s-px-5 s-pt-4 s-text-left dark:s-bg-background-night",
+      "s:sticky s:top-0 s:z-50 s:flex s:flex-none s:flex-col s:gap-0 s:bg-background s:px-5 s:pt-4 s:text-left s:dark:bg-background-night",
       className
     )}
     {...props}
   >
     {children}
     {!hideButton && (
-      <DialogClose asChild className="s-absolute s-right-3 s-top-3">
+      <DialogClose asChild className="s:absolute s:right-3 s:top-3">
         <Button icon={XClose} variant={buttonVariant} size={buttonSize} />
       </DialogClose>
     )}
@@ -193,15 +191,15 @@ const DialogContainer = ({
   className,
 }: DialogContainerProps) => {
   const contentStyles = cn(
-    "s-copy-base s-break-words s-px-5 s-py-4 s-text-foreground dark:s-text-foreground-night"
+    "s:copy-base s:break-words s:px-5 s:py-4 s:text-foreground s:dark:text-foreground-night"
   );
 
   const scrollableContent = (
-    <ScrollArea className="s-w-full s-flex-grow">
+    <ScrollArea className="s:w-full s:flex-grow">
       <div
         className={cn(
           contentStyles,
-          "s-relative s-flex s-flex-col s-gap-2 s-text-left",
+          "s:relative s:flex s:flex-col s:gap-2 s:text-left",
           className
         )}
       >
@@ -212,8 +210,8 @@ const DialogContainer = ({
 
   if (fixedContent) {
     return (
-      <div className="s-flex s-flex-grow s-flex-col s-overflow-hidden">
-        <div className={cn(contentStyles, "s-flex-none")}>{fixedContent}</div>
+      <div className="s:flex s:flex-grow s:flex-col s:overflow-hidden">
+        <div className={cn(contentStyles, "s:flex-none")}>{fixedContent}</div>
         <Separator />
         {scrollableContent}
       </div>
@@ -238,10 +236,10 @@ const DialogFooter = ({
   dialogCloseClassName,
   ...props
 }: DialogFooterProps) => (
-  <div className="s-flex s-flex-none s-flex-col s-gap-0">
+  <div className="s:flex s:flex-none s:flex-col s:gap-0">
     <div
       className={cn(
-        "s-flex s-flex-none s-flex-row s-justify-end s-gap-2 s-px-3 s-pb-3 s-pt-2",
+        "s:flex s:flex-none s:flex-row s:justify-end s:gap-2 s:px-3 s:pb-3 s:pt-2",
         className
       )}
       {...props}
@@ -274,14 +272,14 @@ const DialogTitle = React.forwardRef<
     visual?: React.ReactNode;
   }
 >(({ className, visual, children, ...props }, ref) => (
-  <div className="s-flex s-flex-row s-items-center s-gap-2 s-pt-1">
+  <div className="s:flex s:flex-row s:items-center s:gap-2 s:pt-1">
     {visual}
     <DialogPrimitive.Title
       ref={ref}
       className={cn(
-        "s-heading-lg",
-        "s-min-w-0 s-break-words",
-        "s-text-foreground dark:s-text-foreground-night",
+        "s:heading-lg",
+        "s:min-w-0 s:break-words",
+        "s:text-foreground s:dark:text-foreground-night",
         className
       )}
       {...props}
@@ -299,8 +297,8 @@ const DialogDescription = React.forwardRef<
   <DialogPrimitive.Description
     ref={ref}
     className={cn(
-      "s-copy-sm",
-      "s-text-muted-foreground dark:s-text-muted-foreground-night",
+      "s:copy-sm",
+      "s:text-muted-foreground s:dark:text-muted-foreground-night",
       className
     )}
     {...props}

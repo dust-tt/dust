@@ -805,7 +805,7 @@ function renderSummaryItemWithEmphasizedNames(item: string): ReactNode {
     }
 
     nodes.push(
-      <span key={`${matchedName}-${matchIndex}`} className="s-font-semibold">
+      <span key={`${matchedName}-${matchIndex}`} className="s:font-semibold">
         {matchedName}
       </span>
     );
@@ -1279,14 +1279,14 @@ function GroupConversationTabContent({
     <TabsContent value={value}>
       <div
         className={cn(
-          "s-flex s-h-full s-min-h-0 s-flex-1 s-flex-col s-overflow-y-auto",
-          !fullBleed && "s-px-4"
+          "s:flex s:h-full s:min-h-0 s:flex-1 s:flex-col s:overflow-y-auto",
+          !fullBleed && "s:px-4"
         )}
       >
         <div
           className={cn(
-            "s-mx-auto s-flex s-h-full s-w-full s-flex-col",
-            fullBleed ? "s-min-h-0" : "s-max-w-4xl s-gap-3 s-py-6",
+            "s:mx-auto s:flex s:h-full s:w-full s:flex-col",
+            fullBleed ? "s:min-h-0" : "s:max-w-4xl s:gap-3 s:py-6",
             contentClassName
           )}
         >
@@ -1303,11 +1303,11 @@ function ProjectSetupEmptyState({
   onSetupProject: () => void;
 }) {
   return (
-    <div className="s-flex s-h-full s-w-full s-flex-col s-items-center s-justify-center s-gap-0 s-text-center">
-      <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+    <div className="s:flex s:h-full s:w-full s:flex-col s:items-center s:justify-center s:gap-0 s:text-center">
+      <h3 className="s:heading-lg s:text-foreground dark:s:text-foreground-night">
         It's quiet in here.
       </h3>
-      <p className="s-text-muted-foreground s-textbase s-mb-3">
+      <p className="s:text-muted-foreground s:textbase s:mb-3">
         Your Pod is ready but empty! Let us help you invite people, add key
         data, and more.
       </p>
@@ -1680,13 +1680,13 @@ export function GroupConversationView({
 
     const title = titlePrefix ? (
       <>
-        <span className="s-shrink-0">{titlePrefix}</span>
-        <span className="s-min-w-0 s-truncate s-text-muted-foreground dark:s-text-muted-foreground-night">
+        <span className="s:shrink-0">{titlePrefix}</span>
+        <span className="s:min-w-0 s:truncate s:text-muted-foreground dark:s:text-muted-foreground-night">
           {item.title}
         </span>
       </>
     ) : (
-      <span className="s-min-w-0 s-truncate">{item.title}</span>
+      <span className="s:min-w-0 s:truncate">{item.title}</span>
     );
 
     return (
@@ -1956,7 +1956,7 @@ export function GroupConversationView({
 
       if (!conversationId || isChecked) {
         return (
-          <span key={`${item.id}-link-${index}`} className="s-underline">
+          <span key={`${item.id}-link-${index}`} className="s:underline">
             {segment.text}
           </span>
         );
@@ -1966,7 +1966,7 @@ export function GroupConversationView({
         <button
           key={`${item.id}-link-${index}`}
           type="button"
-          className="s-underline hover:s-no-underline"
+          className="s:underline hover:s:no-underline"
           onClick={(event) => {
             event.stopPropagation();
             scrollToConversationRow(conversationId);
@@ -3287,13 +3287,13 @@ export function GroupConversationView({
           return a.fileName.localeCompare(b.fileName);
         },
         meta: {
-          className: "s-w-full",
+          className: "s:w-full",
         },
         cell: (info) => {
           const icon = getDataSourceIcon(info.row.original);
           return (
             <DataTable.CellContent>
-              <div className="s-flex s-items-center s-gap-2">
+              <div className="s:flex s:items-center s:gap-2">
                 {icon && <Icon visual={icon} size="sm" />}
                 <span>{info.getValue() as string}</span>
               </div>
@@ -3306,7 +3306,7 @@ export function GroupConversationView({
         header: "Source",
         id: "source",
         meta: {
-          className: "s-w-[84px]",
+          className: "s:w-[84px]",
         },
         cell: (info) => {
           const source = info.getValue() as DataSource["source"];
@@ -3319,7 +3319,7 @@ export function GroupConversationView({
               <Icon
                 visual={CloudArrowLeftRight}
                 size="sm"
-                className="s-text-muted-foreground dark:s-text-muted-foreground-night"
+                className="s:text-muted-foreground dark:s:text-muted-foreground-night"
               />
             </DataTable.CellContent>
           );
@@ -3334,7 +3334,7 @@ export function GroupConversationView({
             getItemTypeLabel(rowB.original)
           ),
         meta: {
-          className: "s-w-[84px]",
+          className: "s:w-[84px]",
         },
         cell: (info) => (
           <DataTable.BasicCellContent
@@ -3347,7 +3347,7 @@ export function GroupConversationView({
         header: "Created by",
         id: "createdBy",
         meta: {
-          className: "s-w-[140px]",
+          className: "s:w-[140px]",
         },
         cell: (info) => {
           const userId = info.getValue() as string;
@@ -3355,14 +3355,14 @@ export function GroupConversationView({
           if (!user) return <DataTable.BasicCellContent label="Unknown" />;
           return (
             <DataTable.CellContent>
-              <div className="s-flex s-items-center s-gap-2">
+              <div className="s:flex s:items-center s:gap-2">
                 <Avatar
                   name={user.fullName}
                   visual={user.portrait}
                   size="xs"
                   isRounded={true}
                 />
-                <span className="s-text-sm">{user.fullName}</span>
+                <span className="s:text-sm">{user.fullName}</span>
               </div>
             </DataTable.CellContent>
           );
@@ -3373,7 +3373,7 @@ export function GroupConversationView({
         header: "Last Updated",
         id: "lastUpdated",
         meta: {
-          className: "s-w-[100px]",
+          className: "s:w-[100px]",
         },
         cell: (info) => {
           const date = info.getValue() as Date;
@@ -3384,7 +3384,7 @@ export function GroupConversationView({
         id: "actions",
         header: "",
         meta: {
-          className: "s-w-12",
+          className: "s:w-12",
         },
         cell: (info) => {
           const dataSource = info.row.original;
@@ -3427,7 +3427,7 @@ export function GroupConversationView({
         id: "name",
         sortingFn: "text",
         meta: {
-          className: "s-w-full",
+          className: "s:w-full",
         },
         cell: (info) => {
           const userId = info.getValue() as string;
@@ -3435,14 +3435,14 @@ export function GroupConversationView({
           if (!user) return <DataTable.BasicCellContent label="Unknown" />;
           return (
             <DataTable.CellContent>
-              <div className="s-flex s-items-center s-gap-2">
+              <div className="s:flex s:items-center s:gap-2">
                 <Avatar
                   name={user.fullName}
                   visual={user.portrait}
                   size="xs"
                   isRounded={true}
                 />
-                <span className="s-text-sm">{user.fullName}</span>
+                <span className="s:text-sm">{user.fullName}</span>
               </div>
             </DataTable.CellContent>
           );
@@ -3453,7 +3453,7 @@ export function GroupConversationView({
         header: "Email",
         id: "email",
         meta: {
-          className: "s-w-[200px]",
+          className: "s:w-[200px]",
         },
         cell: (info) => {
           const userId = info.getValue() as string;
@@ -3467,7 +3467,7 @@ export function GroupConversationView({
         header: "Role",
         id: "role",
         meta: {
-          className: "s-w-[120px]",
+          className: "s:w-[120px]",
         },
         cell: (info) => {
           const userId = info.getValue() as string;
@@ -3485,7 +3485,7 @@ export function GroupConversationView({
         header: "Joined at",
         id: "joinedAt",
         meta: {
-          className: "s-w-[140px]",
+          className: "s:w-[140px]",
         },
         cell: (info) => {
           const date = info.getValue() as Date;
@@ -3496,7 +3496,7 @@ export function GroupConversationView({
         id: "actions",
         header: "",
         meta: {
-          className: "s-w-12",
+          className: "s:w-12",
         },
         cell: (info) => (
           <DataTable.MoreButton
@@ -3549,18 +3549,18 @@ export function GroupConversationView({
   const isShowingTodoSuggestions = todoSuggestionStatus !== "idle";
 
   return (
-    <div className="s-flex s-h-full s-w-full s-h-full s-flex-col s-bg-background dark:s-bg-background-night">
+    <div className="s:flex s:h-full s:w-full s:h-full s:flex-col s:bg-background dark:s:bg-background-night">
       {/* Tabs */}
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
-        className="s-flex s-min-h-0 s-flex-1 s-flex-col"
+        className="s:flex s:min-h-0 s:flex-1 s:flex-col"
       >
         {/* Conversations Tab */}
         <GroupConversationTabContent value="conversations">
           {/* New conversation section */}
           {greeting && (
-            <h2 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+            <h2 className="s:heading-2xl s:text-foreground dark:s:text-foreground-night">
               {greeting}
             </h2>
           )}
@@ -3575,11 +3575,11 @@ export function GroupConversationView({
             ongoingSummary &&
             ongoingSummary.projectPulse.length > 0 && (
               <>
-                <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+                <h3 className="s:heading-lg s:text-foreground dark:s:text-foreground-night">
                   {isSummaryUpdating ? (
                     <AnimatedText
                       variant="primary"
-                      className="s-text-muted-foreground"
+                      className="s:text-muted-foreground"
                     >
                       Catching-up
                     </AnimatedText>
@@ -3587,7 +3587,7 @@ export function GroupConversationView({
                     "Catching-up"
                   )}
                 </h3>
-                <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                <div className="s:text-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
                   {ongoingSummary.projectPulse.map((item, index) => {
                     const itemKey = getSummaryItemKey("projectPulse", item);
                     const relatedConversationIds =
@@ -3621,8 +3621,8 @@ export function GroupConversationView({
                     );
                   })}
                 </div>
-                <div className="s-@container s-w-full">
-                  <div className="s-flex s-w-full s-flex-row s-items-center s-gap-2">
+                <div className="s-@container s:w-full">
+                  <div className="s:flex s:w-full s:flex-row s:items-center s:gap-2">
                     <ButtonsSwitchList
                       defaultValue={goodToKnowFilter}
                       onValueChange={(value) => {
@@ -3652,7 +3652,7 @@ export function GroupConversationView({
                       />
                     </ButtonsSwitchList>
                     {hasHistory && (
-                      <div className="s-min-w-0 s-flex-1">
+                      <div className="s:min-w-0 s:flex-1">
                         <SearchInputWithPopover
                           name="conversation-search"
                           value={searchText}
@@ -3665,7 +3665,7 @@ export function GroupConversationView({
                           open={isSearchOpen}
                           onOpenChange={setIsSearchOpen}
                           placeholder={`Search in ${space.name}`}
-                          className="s-w-full"
+                          className="s:w-full"
                           items={searchResults}
                           availableHeight
                           noResults={
@@ -3684,7 +3684,7 @@ export function GroupConversationView({
                       size="sm"
                       variant="outline"
                       icon={CheckDouble}
-                      className="@sm:s-hidden"
+                      className="@sm:s:hidden"
                       tooltip="Mark all as read"
                       onClick={() => {
                         setCheckedSummaryItems((previous) => ({
@@ -3700,7 +3700,7 @@ export function GroupConversationView({
                     />
                     <Button
                       size="sm"
-                      className="s-hidden @sm:s-inline-flex"
+                      className="s:hidden @sm:s:inline-flex"
                       variant="outline"
                       icon={CheckDouble}
                       label="Mark all as read"
@@ -3721,8 +3721,8 @@ export function GroupConversationView({
               </>
             )}
           {hasHistory && podVariant === "personal" && (
-            <div className="s-@container s-w-full">
-              <div className="s-flex s-w-full s-flex-row s-items-center s-gap-2">
+            <div className="s-@container s:w-full">
+              <div className="s:flex s:w-full s:flex-row s:items-center s:gap-2">
                 <ButtonsSwitchList
                   defaultValue={personalConversationFilter}
                   onValueChange={(value) => {
@@ -3758,7 +3758,7 @@ export function GroupConversationView({
                     tooltip="Agent-owned conversations"
                   />
                 </ButtonsSwitchList>
-                <div className="s-min-w-0 s-flex-1">
+                <div className="s:min-w-0 s:flex-1">
                   <SearchInputWithPopover
                     name="conversation-search"
                     value={searchText}
@@ -3771,7 +3771,7 @@ export function GroupConversationView({
                     open={isSearchOpen}
                     onOpenChange={setIsSearchOpen}
                     placeholder={`Search in ${space.name}`}
-                    className="s-w-full"
+                    className="s:w-full"
                     items={searchResults}
                     availableHeight
                     noResults={
@@ -3790,7 +3790,7 @@ export function GroupConversationView({
           )}
           {visibleConversations.length > 0 && (
             <>
-              <div className="s-flex s-flex-col">
+              <div className="s:flex s:flex-col">
                 {(
                   ["Today", "Yesterday", "Last Week", "Last Month"] as const
                 ).map((bucketKey) => {
@@ -3799,10 +3799,10 @@ export function GroupConversationView({
 
                   return (
                     <Fragment key={bucketKey}>
-                      <ListItemSection className="s-pl-4">
+                      <ListItemSection className="s:pl-4">
                         {bucketKey}
                       </ListItemSection>
-                      <ListGroup className="!s-border-transparent s-gap-0.5">
+                      <ListGroup className="!s-border-transparent s:gap-0.5">
                         {bucketConversations.map((conversation) => {
                           const listItem = conversationListItemsById.get(
                             conversation.id
@@ -3850,9 +3850,9 @@ export function GroupConversationView({
                                     : listItem.creator || undefined
                                 }
                                 className={cn(
-                                  "s-px-3 s-rounded-2xl",
+                                  "s:px-3 s:rounded-2xl",
                                   isSelectedConversation &&
-                                    "s-bg-highlight-50 dark:s-bg-highlight-50-night"
+                                    "s:bg-highlight-50 dark:s:bg-highlight-50-night"
                                 )}
                                 time={listItem.time}
                                 showFocus={
@@ -3898,8 +3898,8 @@ export function GroupConversationView({
         </GroupConversationTabContent>
 
         {/* Tasks Tab */}
-        <GroupConversationTabContent value="todos" contentClassName="s-gap-4">
-          <div className="s-flex s-flex-col s-gap-3">
+        <GroupConversationTabContent value="todos" contentClassName="s:gap-4">
+          <div className="s:flex s:flex-col s:gap-3">
             <TodoInputBar
               placeholder="Describe the tasks to create"
               onCreateTasks={handleCreateTodoSuggestions}
@@ -3953,9 +3953,9 @@ export function GroupConversationView({
           )}
 
           {shouldShowTodoLists ? (
-            <div className="s-flex s-flex-col s-gap-6">
-              <div className="s-flex s-w-full s-items-center s-justify-between s-gap-2">
-                <div className="s-flex s-items-center s-gap-2">
+            <div className="s:flex s:flex-col s:gap-6">
+              <div className="s:flex s:w-full s:items-center s:justify-between s:gap-2">
+                <div className="s:flex s:items-center s:gap-2">
                   {podVariant !== "personal" && (
                     <ButtonsSwitchList
                       defaultValue={todoScopeFilter}
@@ -3980,7 +3980,7 @@ export function GroupConversationView({
                       />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start">
-                      <div className="s-px-2 s-py-1.5 s-text-xs s-font-medium s-text-muted-foreground dark:s-text-muted-foreground-night">
+                      <div className="s:px-2 s:py-1.5 s:text-xs s:font-medium s:text-muted-foreground dark:s:text-muted-foreground-night">
                         Status
                       </div>
                       <DropdownMenuRadioGroup
@@ -4012,7 +4012,7 @@ export function GroupConversationView({
                   value={todoSearchText}
                   onChange={setTodoSearchText}
                   placeholder="Search tasks..."
-                  className="s-w-full"
+                  className="s:w-full"
                 />
               </div>
               {hasDisplayedTodoItems ? (
@@ -4034,18 +4034,18 @@ export function GroupConversationView({
                     return (
                       <div
                         key={list.user.id}
-                        className="s-flex s-flex-col s-gap-3"
+                        className="s:flex s:flex-col s:gap-3"
                       >
                         {podVariant !== "personal" && (
-                          <div className="s-flex s-items-center s-gap-3">
+                          <div className="s:flex s:items-center s:gap-3">
                             <Avatar
                               name={list.user.fullName}
                               visual={list.user.portrait}
                               size="xs"
                               isRounded={true}
                             />
-                            <div className="s-flex s-flex-col">
-                              <h4 className="s-heading-base s-text-muted-foreground dark:s-text-foreground-night">
+                            <div className="s:flex s:flex-col">
+                              <h4 className="s:heading-base s:text-muted-foreground dark:s:text-foreground-night">
                                 {list.user.fullName}
                               </h4>
                             </div>
@@ -4095,8 +4095,8 @@ export function GroupConversationView({
                         )}
                         <div
                           className={cn(
-                            "s-flex s-flex-col s-gap-2",
-                            podVariant !== "personal" && "s-pl-4"
+                            "s:flex s:flex-col s:gap-2",
+                            podVariant !== "personal" && "s:pl-4"
                           )}
                         >
                           {visibleItemsToRender.map((item) => {
@@ -4136,13 +4136,13 @@ export function GroupConversationView({
                                 isEditing={isEditingTodoItem}
                                 isMutedAfterCheck
                                 className={cn(
-                                  "s-w-full s-overflow-hidden s-pl-6 s-py-1",
-                                  "s-transition-all s-duration-200",
+                                  "s:w-full s:overflow-hidden s:pl-6 s:py-1",
+                                  "s:transition-all s:duration-200",
                                   isExiting
-                                    ? "s-max-h-0 s-opacity-0"
+                                    ? "s:max-h-0 s:opacity-0"
                                     : isAdded && !hasEntered
-                                      ? "s-max-h-0 s-opacity-0"
-                                      : "s-max-h-32 s-opacity-100"
+                                      ? "s:max-h-0 s:opacity-0"
+                                      : "s:max-h-32 s:opacity-100"
                                 )}
                                 renderText={
                                   shouldTypeChecklistItem ? (
@@ -4233,7 +4233,7 @@ export function GroupConversationView({
                                         <DropdownMenuSub>
                                           <DropdownMenuSubTrigger label="Re-assign to" />
                                           <DropdownMenuSubContent
-                                            className="s-w-64"
+                                            className="s:w-64"
                                             dropdownHeaders={
                                               <DropdownMenuSearchbar
                                                 placeholder="Search participants"
@@ -4313,16 +4313,16 @@ export function GroupConversationView({
                     );
                   })
                 ) : (
-                  <div className="s-text-base s-text-faint s-italic dark:s-text-faint-night">
+                  <div className="s:text-base s:text-faint s:italic dark:s:text-faint-night">
                     No tasks match your filters.
                   </div>
                 )
               ) : isShowingTodoSuggestions ? null : (
-                <div className="s-flex s-flex-col s-items-center s-gap-0 s-text-center">
-                  <h3 className="s-heading-lg s-text-foreground dark:s-text-foreground-night">
+                <div className="s:flex s:flex-col s:items-center s:gap-0 s:text-center">
+                  <h3 className="s:heading-lg s:text-foreground dark:s:text-foreground-night">
                     No pending Tasks
                   </h3>
-                  <p className="s-text-muted-foreground s-textbase">
+                  <p className="s:text-muted-foreground s:textbase">
                     You're all good.
                   </p>
                 </div>
@@ -4336,7 +4336,7 @@ export function GroupConversationView({
         {/* Files Tab */}
         <GroupConversationTabContent
           value="knowledge"
-          contentClassName="s-gap-3"
+          contentClassName="s:gap-3"
         >
           {dataSources.length === 0 ? (
             <EmptyCTA
@@ -4345,13 +4345,13 @@ export function GroupConversationView({
             />
           ) : (
             <>
-              <div className="s-flex s-gap-2">
+              <div className="s:flex s:gap-2">
                 <SearchInput
                   name="knowledge-search"
                   value={knowledgeSearchText}
                   onChange={setKnowledgeSearchText}
                   placeholder="Search files..."
-                  className="s-flex-1"
+                  className="s:flex-1"
                 />
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
@@ -4412,11 +4412,11 @@ export function GroupConversationView({
                 </DropdownMenu>
               </div>
               {!isKnowledgeSearchActive && currentFolderId !== null && (
-                <div className="s-flex s-items-center s-gap-2">
+                <div className="s:flex s:items-center s:gap-2">
                   {draggingFileId !== null && (
                     <AnimatedText
                       variant="muted"
-                      className="s-text-sm s-italic"
+                      className="s:text-sm s:italic"
                     >
                       Move to
                     </AnimatedText>
@@ -4433,7 +4433,7 @@ export function GroupConversationView({
                   key={currentFolderId}
                   defaultValue={filesSearchScope}
                   size="xs"
-                  className="s-w-fit s-self-start"
+                  className="s:w-fit s:self-start"
                   onValueChange={(value) => {
                     if (value === "folder" || value === "all") {
                       setFilesSearchScope(value);
@@ -4448,8 +4448,8 @@ export function GroupConversationView({
                 </ButtonsSwitchList>
               )}
               {tableItems.length === 0 && !isKnowledgeSearchActive ? (
-                <div className="s-flex s-w-full s-flex-col s-items-center s-justify-center s-gap-2 s-rounded-xl s-border s-border-border s-bg-muted-background s-p-12 dark:s-border-border-night dark:s-bg-muted-background-night">
-                  <p className="s-text-center s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                <div className="s:flex s:w-full s:flex-col s:items-center s:justify-center s:gap-2 s:rounded-xl s:border s:border-border s:bg-muted-background s:p-12 dark:s:border-border-night dark:s:bg-muted-background-night">
+                  <p className="s:text-center s:text-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
                     This folder is empty.
                   </p>
                 </div>
@@ -4485,8 +4485,8 @@ export function GroupConversationView({
 
         {/* About Tab */}
         {showToolsAndAboutTabs && (
-          <GroupConversationTabContent value="about" contentClassName="s-gap-4">
-            <p className="s-text-foreground dark:s-text-foreground-night">
+          <GroupConversationTabContent value="about" contentClassName="s:gap-4">
+            <p className="s:text-foreground dark:s:text-foreground-night">
               {space.description}
             </p>
           </GroupConversationTabContent>
@@ -4495,11 +4495,11 @@ export function GroupConversationView({
         {/* Settings Tab */}
         <GroupConversationTabContent
           value="settings"
-          contentClassName="s-gap-8"
+          contentClassName="s:gap-8"
         >
           {/* pod Name Section */}
-          <div className="s-flex s-gap-2">
-            <h3 className="s-heading-lg s-flex-1">
+          <div className="s:flex s:gap-2">
+            <h3 className="s:heading-lg s:flex-1">
               {getProjectPageTitle("settings")}
             </h3>
             <DropdownMenu>
@@ -4529,9 +4529,9 @@ export function GroupConversationView({
               This project has been archived.
             </ContentMessage>
           )}
-          <div className="s-flex s-w-full s-flex-col s-gap-2">
-            <h3 className="s-heading-lg">Name</h3>
-            <div className="s-flex s-w-full s-min-w-0 s-gap-2">
+          <div className="s:flex s:w-full s:flex-col s:gap-2">
+            <h3 className="s:heading-lg">Name</h3>
+            <div className="s:flex s:w-full s:min-w-0 s:gap-2">
               <Input
                 value={roomName}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
@@ -4539,7 +4539,7 @@ export function GroupConversationView({
                   setIsEditingName(e.target.value !== space.name);
                 }}
                 placeholder="Enter room name"
-                containerClassName="s-flex-1"
+                containerClassName="s:flex-1"
               />
               {isEditingName && (
                 <>
@@ -4560,9 +4560,9 @@ export function GroupConversationView({
               )}
             </div>
           </div>
-          <div className="s-flex s-w-full s-flex-col s-gap-2">
-            <h3 className="s-heading-lg">Description</h3>
-            <div className="s-flex s-w-full s-min-w-0 s-gap-2">
+          <div className="s:flex s:w-full s:flex-col s:gap-2">
+            <h3 className="s:heading-lg">Description</h3>
+            <div className="s:flex s:w-full s:min-w-0 s:gap-2">
               <Input
                 value={roomDescription}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
@@ -4572,7 +4572,7 @@ export function GroupConversationView({
                   );
                 }}
                 placeholder="Enter room description"
-                containerClassName="s-flex-1"
+                containerClassName="s:flex-1"
               />
               {isEditingDescription && (
                 <>
@@ -4597,14 +4597,14 @@ export function GroupConversationView({
           </div>
           {/* Open to Everyone Section */}
 
-          <div className="s-flex s-w-full s-flex-col s-gap-2">
-            <h3 className="s-heading-lg">Visibility</h3>
-            <div className="s-flex s-items-start s-items-center s-justify-between s-gap-4 s-border-y s-border-border dark:s-border-border-night s-py-4">
-              <div className="s-flex s-flex-col">
-                <div className="s-heading-sm s-text-foreground dark:s-text-foreground-night">
+          <div className="s:flex s:w-full s:flex-col s:gap-2">
+            <h3 className="s:heading-lg">Visibility</h3>
+            <div className="s:flex s:items-start s:items-center s:justify-between s:gap-4 s:border-y s:border-border dark:s:border-border-night s:py-4">
+              <div className="s:flex s:flex-col">
+                <div className="s:heading-sm s:text-foreground dark:s:text-foreground-night">
                   Opened to everyone
                 </div>
-                <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                <div className="s:text-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
                   Anyone in the workspace can find and join the room.
                 </div>
               </div>
@@ -4621,9 +4621,9 @@ export function GroupConversationView({
             </div>
           </div>
           {/* Members Section */}
-          <div className="s-flex s-flex-col s-gap-3">
-            <div className="s-flex s-items-center s-gap-2">
-              <h3 className="s-heading-lg s-flex-1">Members & Editors</h3>
+          <div className="s:flex s:flex-col s:gap-3">
+            <div className="s:flex s:items-center s:gap-2">
+              <h3 className="s:heading-lg s:flex-1">Members & Editors</h3>
               <Button
                 label="Manage"
                 variant="outline"
@@ -4649,7 +4649,7 @@ export function GroupConversationView({
                   value={membersSearchText}
                   onChange={setMembersSearchText}
                   placeholder="Search members..."
-                  className="s-w-full"
+                  className="s:w-full"
                 />
                 <DataTable
                   columns={memberColumns}
@@ -4660,33 +4660,33 @@ export function GroupConversationView({
             )}
           </div>
 
-          <div className="s-flex s-w-full s-flex-col s-gap-8 s-border-t s-border-border dark:s-border-border-night s-pt-8">
-            <div className="s-flex s-w-full s-flex-col s-gap-3">
-              <h3 className="s-heading-lg">Danger Zone</h3>
-              <h4 className="s-heading-base">Archive</h4>
+          <div className="s:flex s:w-full s:flex-col s:gap-8 s:border-t s:border-border dark:s:border-border-night s:pt-8">
+            <div className="s:flex s:w-full s:flex-col s:gap-3">
+              <h3 className="s:heading-lg">Danger Zone</h3>
+              <h4 className="s:heading-base">Archive</h4>
               {!isProjectArchived && (
-                <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+                <p className="s:text-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
                   This project will be removed from the sidebar. Its data stays
                   intact and can still be used as a data source.
                 </p>
               )}
               {isProjectArchived ? (
-                <div className="s-flex s-flex-col s-gap-3">
+                <div className="s:flex s:flex-col s:gap-3">
                   {archivedAt && archivedByName && (
-                    <p className="s-text-sm s-text-foreground dark:s-text-foreground-night">
+                    <p className="s:text-sm s:text-foreground dark:s:text-foreground-night">
                       Archived on{" "}
-                      <span className="s-font-medium">
+                      <span className="s:font-medium">
                         {formatDate(archivedAt)} ·{" "}
                         {archivedAt.toLocaleTimeString("en-US", {
                           hour: "numeric",
                           minute: "2-digit",
                         })}
                       </span>{" "}
-                      by <span className="s-font-medium">{archivedByName}</span>
+                      by <span className="s:font-medium">{archivedByName}</span>
                       .
                     </p>
                   )}
-                  <div className="s-flex s-w-full s-flex-col s-items-start">
+                  <div className="s:flex s:w-full s:flex-col s:items-start">
                     <Button
                       icon={Upload01}
                       variant="outline"
@@ -4696,7 +4696,7 @@ export function GroupConversationView({
                   </div>
                 </div>
               ) : (
-                <div className="s-flex s-w-full s-flex-col s-items-start">
+                <div className="s:flex s:w-full s:flex-col s:items-start">
                   <Button
                     icon={Archive}
                     variant="warning-secondary"
@@ -4705,11 +4705,11 @@ export function GroupConversationView({
                   />
                 </div>
               )}
-              <h4 className="s-heading-base">Delete</h4>
-              <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              <h4 className="s:heading-base">Delete</h4>
+              <p className="s:text-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
                 {`This permanently removes all content—conversations, folders, websites, and data sources. Assistants using this project's tools will be impacted. This cannot be undone.`}
               </p>
-              <div className="s-flex s-w-full s-flex-col s-items-start">
+              <div className="s:flex s:w-full s:flex-col s:items-start">
                 <Button
                   icon={Trash01}
                   variant="warning"
@@ -4724,18 +4724,18 @@ export function GroupConversationView({
 
       {activeTaskCommand && (
         <div
-          className="s-fixed s-inset-0 s-z-50 s-flex s-items-center s-justify-center s-bg-black/40 s-p-4"
+          className="s:fixed s:inset-0 s:z-50 s:flex s:items-center s:justify-center s:bg-black/40 s:p-4"
           onClick={() => setActiveTaskCommand(null)}
         >
           <div
-            className="s-w-full s-max-w-xl"
+            className="s:w-full s:max-w-xl"
             onClick={(event) => event.stopPropagation()}
           >
             <InputBar
               placeholder="Ask Dust to work on this task"
               variant="embedded"
               taskCommand={activeTaskCommand}
-              className="s-rounded-2xl s-shadow-lg"
+              className="s:rounded-2xl s:shadow-lg"
               onClose={() => setActiveTaskCommand(null)}
               onSend={() => setActiveTaskCommand(null)}
             />
@@ -4790,10 +4790,10 @@ export function GroupConversationView({
           <DialogHeader>
             <DialogTitle>Delete {space.name}?</DialogTitle>
           </DialogHeader>
-          <DialogContainer className="s-flex s-flex-col s-gap-4">
-            <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+          <DialogContainer className="s:flex s:flex-col s:gap-4">
+            <p className="s:text-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
               Type{" "}
-              <span className="s-font-semibold s-text-foreground dark:s-text-foreground-night">
+              <span className="s:font-semibold s:text-foreground dark:s:text-foreground-night">
                 delete
               </span>{" "}
               below to confirm. This permanently removes all project content and
@@ -4806,7 +4806,7 @@ export function GroupConversationView({
                 setDeleteConfirmDraft(e.target.value)
               }
               placeholder="Type delete to confirm"
-              containerClassName="s-w-full"
+              containerClassName="s:w-full"
             />
           </DialogContainer>
           <DialogFooter
@@ -4992,8 +4992,8 @@ export function GroupConversationView({
             </SheetTitle>
           </SheetHeader>
           <SheetContainer>
-            <div className="s-flex s-flex-col s-items-center s-justify-center s-py-16">
-              <p className="s-text-foreground dark:s-text-foreground-night">
+            <div className="s:flex s:flex-col s:items-center s:justify-center s:py-16">
+              <p className="s:text-foreground dark:s:text-foreground-night">
                 Member detailview
               </p>
             </div>

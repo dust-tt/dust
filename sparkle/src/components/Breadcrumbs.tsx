@@ -25,8 +25,8 @@ const ELLIPSIS_STRING = "...";
 const breadcrumbTextVariants = cva("", {
   variants: {
     isLast: {
-      true: "s-text-foreground dark:s-text-foreground-night",
-      false: "s-text-muted-foreground dark:s-text-muted-foreground-night",
+      true: "s:text-foreground s:dark:text-foreground-night",
+      false: "s:text-muted-foreground s:dark:text-muted-foreground-night",
     },
     size: {
       xs: "",
@@ -38,10 +38,10 @@ const breadcrumbTextVariants = cva("", {
     },
   },
   compoundVariants: [
-    { size: "xs", hasLighterFont: true, className: "s-text-xs" },
-    { size: "sm", hasLighterFont: true, className: "s-text-sm" },
-    { size: "xs", hasLighterFont: false, className: "s-label-xs" },
-    { size: "sm", hasLighterFont: false, className: "s-label-sm" },
+    { size: "xs", hasLighterFont: true, className: "s:text-xs" },
+    { size: "sm", hasLighterFont: true, className: "s:text-sm" },
+    { size: "xs", hasLighterFont: false, className: "s:label-xs" },
+    { size: "sm", hasLighterFont: false, className: "s:label-sm" },
   ],
   defaultVariants: {
     size: "sm",
@@ -178,11 +178,11 @@ function BreadcrumbItemRenderer({
 
   if (item.icon) {
     return (
-      <div className="s-shrink0 s-label-sm s-inline-flex s-h-9 s-items-center s-gap-2 s-border s-border-border/0 s-px-3">
+      <div className="s:shrink0 s:label-sm s:inline-flex s:h-9 s:items-center s:gap-2 s:border s:border-border/0 s:px-3">
         <Icon
           visual={item.icon}
           size={ICON_SIZE_MAP[size]}
-          className={cn("-s-mx-0.5")}
+          className={cn("s:-mx-0.5")}
         />
         <div className={textClassName}>{item.label}</div>
       </div>
@@ -190,7 +190,7 @@ function BreadcrumbItemRenderer({
   }
 
   return (
-    <div className={cn("s-px-2 s-py-1.5", textClassName)}>{item.label}</div>
+    <div className={cn("s:px-2 s:py-1.5", textClassName)}>{item.label}</div>
   );
 }
 
@@ -234,12 +234,12 @@ export function Breadcrumbs({
   );
 
   return (
-    <div className={cn("s-flex s-flex-row s-items-center s-gap-0", className)}>
+    <div className={cn("s:flex s:flex-row s:items-center s:gap-0", className)}>
       {itemsShown.map((item, index) => {
         return (
           <div
             key={`breadcrumbs-${index}`}
-            className="s-flex s-flex-row s-items-center s-gap-0"
+            className="s:flex s:flex-row s:items-center s:gap-0"
           >
             <BreadcrumbItemRenderer
               item={item}
@@ -254,7 +254,7 @@ export function Breadcrumbs({
             {index === itemsShown.length - 1 ? null : (
               <Icon
                 visual={ChevronRight}
-                className="s-text-faint"
+                className="s:text-faint"
                 size={size === "xs" ? "xs" : "sm"}
               />
             )}
@@ -282,7 +282,7 @@ export function Breadcrumb({ children, className }: BreadcrumbRootProps) {
   return (
     <nav
       aria-label="Breadcrumb"
-      className={cn("s-flex s-flex-row s-items-center s-gap-0", className)}
+      className={cn("s:flex s:flex-row s:items-center s:gap-0", className)}
     >
       {children}
     </nav>
@@ -296,7 +296,7 @@ interface BreadcrumbItemProps {
 
 export function BreadcrumbItem({ children, className }: BreadcrumbItemProps) {
   return (
-    <div className={cn("s-flex s-flex-row s-items-center", className)}>
+    <div className={cn("s:flex s:flex-row s:items-center", className)}>
       {children}
     </div>
   );
@@ -339,7 +339,7 @@ export function BreadcrumbPage({ children, className }: BreadcrumbPageProps) {
     <span
       aria-current="page"
       className={cn(
-        "s-inline-flex s-h-9 s-items-center s-px-3",
+        "s:inline-flex s:h-9 s:items-center s:px-3",
         breadcrumbTextVariants({
           isLast: true,
           size: "sm",
@@ -358,7 +358,7 @@ export function BreadcrumbSeparator({ className }: { className?: string }) {
     <Icon
       aria-hidden="true"
       visual={ChevronRight}
-      className={cn("s-text-faint dark:s-text-faint-night", className)}
+      className={cn("s:text-faint s:dark:text-faint-night", className)}
       size="sm"
     />
   );

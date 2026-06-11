@@ -136,10 +136,4 @@ module.exports = {
     },
   },
   content: ["./ui/**/*.tsx", "./shared/**/*.tsx", "../front/**/*.tsx"],
-  safelist: [
-    ...preset.buildSafelist({ avatarProps: "(bg|text)" }),
-    "grid-rows-6",
-    "grid-rows-7",
-    "grid-rows-8",
-  ],
 };

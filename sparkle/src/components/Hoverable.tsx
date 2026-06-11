@@ -16,23 +16,23 @@ export const HOVERABLE_VARIANTS = [
 export type HoverableVariantType = (typeof HOVERABLE_VARIANTS)[number];
 
 const hoverableVariants: Record<HoverableVariantType, string> = {
-  invisible: cn("hover:s-text-highlight-light", "active:s-text-highlight-dark"),
+  invisible: cn("s:hover:text-highlight-light", "s:active:text-highlight-dark"),
   primary: cn(
-    "s-font-semibold",
-    "s-text-foreground dark:s-text-foreground-night",
-    "hover:s-text-highlight-light dark:hover:s-text-highlight-light-night",
-    "active:s-text-highlight-dark dark:active:s-text-highlight-dark-night"
+    "s:font-semibold",
+    "s:text-foreground s:dark:text-foreground-night",
+    "s:hover:text-highlight-light s:dark:hover:text-highlight-light-night",
+    "s:active:text-highlight-dark s:dark:active:text-highlight-dark-night"
   ),
   highlight: cn(
-    "s-font-semibold",
-    "s-text-highlight dark:s-text-highlight-night",
-    "hover:s-text-highlight-light dark:hover:s-text-highlight-light-night",
-    "active:s-text-highlight-dark dark:active:s-text-highlight-dark-night"
+    "s:font-semibold",
+    "s:text-highlight s:dark:text-highlight-night",
+    "s:hover:text-highlight-light s:dark:hover:text-highlight-light-night",
+    "s:active:text-highlight-dark s:dark:active:text-highlight-dark-night"
   ),
 };
 
 const variantStyle = cva(
-  "s-cursor-pointer s-duration-200 hover:s-underline hover:s-underline-offset-2",
+  "s:cursor-pointer s:duration-200 s:hover:underline s:hover:underline-offset-2",
   {
     variants: {
       variant: hoverableVariants,

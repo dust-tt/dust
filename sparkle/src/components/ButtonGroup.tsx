@@ -10,15 +10,15 @@ import {
   DropdownMenuTrigger,
 } from "./Dropdown";
 
-const buttonGroupVariants = cva("s-inline-flex s-w-fit s-items-stretch", {
+const buttonGroupVariants = cva("s:inline-flex s:w-fit s:items-stretch", {
   variants: {
     orientation: {
-      horizontal: "s-flex-row",
-      vertical: "s-flex-col",
+      horizontal: "s:flex-row",
+      vertical: "s:flex-col",
     },
     removeGaps: {
       true: "",
-      false: "s-gap-2",
+      false: "s:gap-2",
     },
   },
   compoundVariants: [
@@ -26,10 +26,10 @@ const buttonGroupVariants = cva("s-inline-flex s-w-fit s-items-stretch", {
       orientation: "horizontal",
       removeGaps: true,
       className: cn(
-        "s-gap-0",
+        "s:gap-0",
         // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
         "[&>*:not(:first-child)]:!s-rounded-l-none",
-        "[&>*:not(:first-child)]:s-border-l-0",
+        "s:[&>*:not(:first-child)]:border-l-0",
         // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
         "[&>*:not(:last-child)]:!s-rounded-r-none"
       ),
@@ -38,10 +38,10 @@ const buttonGroupVariants = cva("s-inline-flex s-w-fit s-items-stretch", {
       orientation: "vertical",
       removeGaps: true,
       className: cn(
-        "s-gap-0",
+        "s:gap-0",
         // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
         "[&>*:not(:first-child)]:!s-rounded-t-none",
-        "[&>*:not(:first-child)]:s-border-t-0",
+        "s:[&>*:not(:first-child)]:border-t-0",
         // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
         "[&>*:not(:last-child)]:!s-rounded-b-none"
       ),

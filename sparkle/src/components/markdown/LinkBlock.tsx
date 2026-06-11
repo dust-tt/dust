@@ -19,10 +19,10 @@ export const LinkBlock = memo(
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
-        "s-break-all s-font-semibold s-transition-all s-duration-200 s-ease-in-out hover:s-underline",
-        "s-text-highlight dark:s-text-highlight-night",
-        "hover:s-text-highlight-400 dark:hover:s-text-highlight-400-night",
-        "active:s-text-highlight-dark dark:active:s-text-highlight-dark-night"
+        "s:break-all s:font-semibold s:transition-all s:duration-200 s:ease-in-out s:hover:underline",
+        "s:text-highlight s:dark:text-highlight-night",
+        "s:hover:text-highlight-400 s:dark:hover:text-highlight-400-night",
+        "s:active:text-highlight-dark s:dark:active:text-highlight-dark-night"
       )}
     >
       {children}

@@ -29,8 +29,8 @@ const meta = {
 export default meta;
 
 export const IconPositions = () => (
-  <div className="s-flex s-flex-col s-gap-8">
-    <div className="s-flex s-items-center s-gap-8">
+  <div className="s:flex s:flex-col s:gap-8">
+    <div className="s:flex s:items-center s:gap-8">
       <DoubleIcon size="xl" mainIcon={Folder} secondaryIcon={DriveLogo} />{" "}
       <DoubleIcon size="xl" mainIcon={File02} secondaryIcon={NotionLogo} />{" "}
       <DoubleIcon
@@ -39,7 +39,7 @@ export const IconPositions = () => (
         secondaryIcon={SlackLogo}
       />
     </div>
-    <div className="s-flex s-items-center s-gap-8">
+    <div className="s:flex s:items-center s:gap-8">
       <DoubleIcon size="lg" mainIcon={Folder} secondaryIcon={DriveLogo} />{" "}
       <DoubleIcon size="lg" mainIcon={File02} secondaryIcon={NotionLogo} />{" "}
       <DoubleIcon
@@ -48,7 +48,7 @@ export const IconPositions = () => (
         secondaryIcon={SlackLogo}
       />
     </div>
-    <div className="s-flex s-items-center s-gap-8">
+    <div className="s:flex s:items-center s:gap-8">
       <DoubleIcon size="md" mainIcon={Folder} secondaryIcon={DriveLogo} />{" "}
       <DoubleIcon size="md" mainIcon={File02} secondaryIcon={NotionLogo} />{" "}
       <DoubleIcon
@@ -57,7 +57,7 @@ export const IconPositions = () => (
         secondaryIcon={SlackLogo}
       />
     </div>
-    <div className="s-flex s-items-center s-gap-8">
+    <div className="s:flex s:items-center s:gap-8">
       <DoubleIcon size="sm" mainIcon={Folder} secondaryIcon={DriveLogo} />{" "}
       <DoubleIcon size="sm" mainIcon={File02} secondaryIcon={NotionLogo} />{" "}
       <DoubleIcon

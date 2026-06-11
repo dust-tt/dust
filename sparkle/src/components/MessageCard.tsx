@@ -42,29 +42,29 @@ export const MessageCard = React.forwardRef<HTMLDivElement, MessageCardProps>(
       <div
         ref={ref}
         className={cn(
-          "s-flex s-flex-col s-overflow-hidden",
-          "s-bg-background dark:s-bg-background-night",
-          "s-rounded-2xl s-shadow-md",
-          "s-border s-border-border/0 dark:s-border-border-night/0",
+          "s:flex s:flex-col s:overflow-hidden",
+          "s:bg-background s:dark:bg-background-night",
+          "s:rounded-2xl s:shadow-md",
+          "s:border s:border-border/0 s:dark:border-border-night/0",
           className
         )}
         {...props}
       >
         {haveImage && imageSrc && (
           <div
-            className="s-relative s-h-48 s-overflow-hidden s-rounded-t-2xl s-bg-cover s-bg-center s-bg-no-repeat"
+            className="s:relative s:h-48 s:overflow-hidden s:rounded-t-2xl s:bg-cover s:bg-center s:bg-no-repeat"
             style={{ backgroundImage: `url(${imageSrc})` }}
           />
         )}
 
-        <div className="s-p-4">
-          <div className="s-mb-2 s-text-sm s-font-medium s-text-primary dark:s-text-primary-night">
+        <div className="s:p-4">
+          <div className="s:mb-2 s:text-sm s:font-medium s:text-primary s:dark:text-primary-night">
             {announcementTitle}
           </div>
-          <h4 className="s-mb-4 s-text-lg s-font-medium s-leading-tight s-text-foreground dark:s-text-foreground-night">
+          <h4 className="s:mb-4 s:text-lg s:font-medium s:leading-tight s:text-foreground s:dark:text-foreground-night">
             {announcementMessage}
           </h4>
-          <div className="s-flex s-items-center s-justify-between">
+          <div className="s:flex s:items-center s:justify-between">
             <Button
               variant="highlight"
               size="sm"
