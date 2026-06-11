@@ -33,6 +33,7 @@ app.get(
         poolCreditState: "active",
         programmaticCreditStatus: "active",
         balanceThresholdReached: false,
+        noSeat: false,
       });
     }
 
@@ -43,7 +44,7 @@ app.get(
       balanceThresholdReached,
     ] = await Promise.all([
       getWorkspaceCreditPoolStatus(workspace.sId),
-      isUserBlocked(workspace.sId, user.sId),
+      isUserBlocked(workspace, user),
       getWorkspaceProgrammaticCreditStatus(workspace.sId),
       isWorkspaceBalanceThresholdReached(workspace.sId),
     ]);
@@ -54,6 +55,8 @@ app.get(
     } else if (await isUserAwuWarned(workspace.sId, user.sId)) {
       awuStatus = "warned";
     }
+
+    const noSeat = blockedReason === "no_seat";
 
     let programmaticCreditStatus: ProgrammaticCreditStatus = "active";
     if (programmaticState === "depleted") {
@@ -70,6 +73,7 @@ app.get(
       poolCreditState,
       programmaticCreditStatus,
       balanceThresholdReached,
+      noSeat,
     });
   }
 );

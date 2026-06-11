@@ -1,4 +1,5 @@
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
+import { getWorkspaceLimitForSubmitError } from "@app/components/app/ReachedLimitPopup";
 import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import { ConversationBranchApprovalModal } from "@app/components/assistant/conversation/ConversationBranchApprovalModal";
@@ -1221,12 +1222,9 @@ export const ConversationViewer = ({
         const result = await submitMessage(messageData);
 
         if (result.isErr()) {
-          if (result.error.type === "plan_limit_reached_error") {
-            setLimitReachedCode?.("message_limit");
-          } else if (result.error.type === "credits_exhausted_error") {
-            setLimitReachedCode?.("pool_credits_exhausted");
-          } else if (result.error.type === "user_cap_reached_error") {
-            setLimitReachedCode?.("user_credits_exhausted");
+          const limitCode = getWorkspaceLimitForSubmitError(result.error.type);
+          if (limitCode) {
+            setLimitReachedCode?.(limitCode);
           } else {
             sendNotification({
               title: result.error.title,

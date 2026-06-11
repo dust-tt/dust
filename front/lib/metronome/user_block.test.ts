@@ -2,7 +2,12 @@ import {
   getWorkspaceCreditPoolStatus,
   isUserBlocked,
 } from "@app/lib/metronome/user_block";
+import type { UserResource } from "@app/lib/resources/user_resource";
+import type { LightWorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const workspace = { sId: "ws_test" } as LightWorkspaceType;
+const user = { sId: "u_test" } as UserResource;
 
 const {
   redisValues,
@@ -72,6 +77,9 @@ vi.mock("@app/logger/logger", () => ({
 describe("isUserBlocked", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // `clearAllMocks` resets call history but not implementations, so reset the
+    // membership mock to its default (no membership) between tests.
+    mockGetActiveMembershipOfUserInWorkspace.mockReset();
     redisValues.clear();
   });
 
@@ -79,19 +87,29 @@ describe("isUserBlocked", () => {
     redisValues.set("metronome:user_credit_state:ws_test:u_test", "capped");
     redisValues.set("metronome:pool_credit_status:ws_test", "active");
 
-    const blocked = await isUserBlocked("ws_test", "u_test");
+    const blocked = await isUserBlocked(workspace, user);
 
     expect(blocked).toBe("user_cap_reached");
     expect(mockFetchWorkspaceById).not.toHaveBeenCalled();
     expect(mockFetchUserById).not.toHaveBeenCalled();
-    expect(mockGetActiveMembershipOfUserInWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("returns 'no_seat' when the user has no seat in the workspace", async () => {
+    mockGetActiveMembershipOfUserInWorkspace.mockResolvedValue({
+      seatType: "none",
+    });
+
+    const blocked = await isUserBlocked(workspace, user);
+
+    expect(blocked).toBe("no_seat");
+    expect(mockRunOnRedis).not.toHaveBeenCalled();
   });
 
   it("returns 'user_cap_reached' when the user is capped, even if the pool is also depleted", async () => {
     redisValues.set("metronome:user_credit_state:ws_test:u_test", "capped");
     redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
 
-    const blocked = await isUserBlocked("ws_test", "u_test");
+    const blocked = await isUserBlocked(workspace, user);
 
     expect(blocked).toBe("user_cap_reached");
   });
@@ -100,7 +118,7 @@ describe("isUserBlocked", () => {
     redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
     redisValues.set("metronome:pool_credit_status:ws_test", "active");
 
-    const blocked = await isUserBlocked("ws_test", "u_test");
+    const blocked = await isUserBlocked(workspace, user);
 
     expect(blocked).toBeNull();
   });
@@ -109,7 +127,7 @@ describe("isUserBlocked", () => {
     redisValues.set("metronome:user_credit_state:ws_test:u_test", "user_seat");
     redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
 
-    const blocked = await isUserBlocked("ws_test", "u_test");
+    const blocked = await isUserBlocked(workspace, user);
 
     expect(blocked).toBeNull();
   });
@@ -121,7 +139,7 @@ describe("isUserBlocked", () => {
     );
     redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
 
-    const blocked = await isUserBlocked("ws_test", "u_test");
+    const blocked = await isUserBlocked(workspace, user);
 
     expect(blocked).toBeNull();
   });
@@ -130,7 +148,7 @@ describe("isUserBlocked", () => {
     redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
     redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
 
-    const blocked = await isUserBlocked("ws_test", "u_test");
+    const blocked = await isUserBlocked(workspace, user);
 
     expect(blocked).toBe("credits_exhausted");
   });
@@ -142,7 +160,7 @@ describe("isUserBlocked", () => {
     );
     redisValues.set("metronome:pool_credit_status:ws_test", "active");
 
-    const blocked = await isUserBlocked("ws_test", "u_test");
+    const blocked = await isUserBlocked(workspace, user);
 
     expect(blocked).toBeNull();
   });
@@ -154,7 +172,7 @@ describe("isUserBlocked", () => {
     );
     redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
 
-    const blocked = await isUserBlocked("ws_test", "u_test");
+    const blocked = await isUserBlocked(workspace, user);
 
     expect(blocked).toBe("credits_exhausted");
   });
@@ -167,7 +185,7 @@ describe("isUserBlocked", () => {
     redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
     redisValues.set("metronome:pool_credit_status:ws_test", poolState);
 
-    const blocked = await isUserBlocked("ws_test", "u_test");
+    const blocked = await isUserBlocked(workspace, user);
 
     expect(blocked).toBeNull();
   });
@@ -189,7 +207,7 @@ describe("isUserBlocked", () => {
       creditState: "capped",
     });
 
-    const blocked = await isUserBlocked("ws_test", "u_test");
+    const blocked = await isUserBlocked(workspace, user);
 
     expect(blocked).toBe("user_cap_reached");
     expect(mockFetchUserById).toHaveBeenCalled();
@@ -203,7 +221,7 @@ describe("isUserBlocked", () => {
       poolCreditState: "active",
     });
 
-    const blocked = await isUserBlocked("ws_test", "u_test");
+    const blocked = await isUserBlocked(workspace, user);
 
     expect(blocked).toBeNull();
     expect(redisValues.get("metronome:pool_credit_status:ws_test")).toBe(
@@ -220,7 +238,7 @@ describe("isUserBlocked", () => {
     });
     mockGetActiveMembershipOfUserInWorkspace.mockResolvedValue(null);
 
-    const blocked = await isUserBlocked("ws_test", "u_test");
+    const blocked = await isUserBlocked(workspace, user);
 
     expect(blocked).toBeNull();
   });
@@ -236,7 +254,7 @@ describe("isUserBlocked", () => {
       creditState: "capped",
     });
 
-    const blocked = await isUserBlocked("ws_test", "u_test");
+    const blocked = await isUserBlocked(workspace, user);
 
     expect(blocked).toBe("user_cap_reached");
     expect(redisValues.get("metronome:user_credit_state:ws_test:u_test")).toBe(
@@ -256,7 +274,7 @@ describe("isUserBlocked", () => {
       poolCreditState: "depleted",
     });
 
-    const blocked = await isUserBlocked("ws_test", "u_test");
+    const blocked = await isUserBlocked(workspace, user);
 
     expect(blocked).toBe("credits_exhausted");
     expect(redisValues.get("metronome:user_credit_state:ws_test:u_test")).toBe(

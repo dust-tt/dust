@@ -2,6 +2,7 @@ import { FairUsageModal } from "@app/components/FairUsageModal";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import type { AppRouter } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
+import type { SubmitMessageError } from "@app/types/assistant/conversation";
 import type { SubscriptionType } from "@app/types/plan";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -27,6 +28,31 @@ export type WorkspaceLimit =
   | "pool_credits_exhausted"
   | "user_credits_exhausted"
   | "no_seat";
+
+// Maps a message-send failure to the blocking popup it should open, or null when
+// the failure is transient and should be surfaced as a notification instead.
+export function getWorkspaceLimitForSubmitError(
+  type: SubmitMessageError["type"]
+): WorkspaceLimit | null {
+  switch (type) {
+    case "plan_limit_reached_error":
+      return "message_limit";
+    case "credits_exhausted_error":
+      return "pool_credits_exhausted";
+    case "user_cap_reached_error":
+      return "user_credits_exhausted";
+    case "no_seat_error":
+      return "no_seat";
+    case "user_not_found":
+    case "attachment_upload_error":
+    case "message_send_error":
+    case "content_too_large":
+      return null;
+    default:
+      assertNeverAndIgnore(type);
+      return null;
+  }
+}
 
 function formatLimitTimeframe(timeframe: string): string {
   switch (timeframe) {
