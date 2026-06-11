@@ -13,6 +13,7 @@ import {
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
 
 export type CreditGroupBy = "agent" | "user" | "none";
@@ -77,6 +78,17 @@ function toolCreditsFromServerBuckets(buckets: ServerBucket[]): number {
   }, 0);
 }
 
+function groupFieldFor(groupBy: "agent" | "user"): "agent_id" | "user_id" {
+  switch (groupBy) {
+    case "agent":
+      return "agent_id";
+    case "user":
+      return "user_id";
+    default:
+      return assertNever(groupBy);
+  }
+}
+
 async function resolveGroupNames(
   auth: Authenticator,
   groupBy: "agent" | "user",
@@ -85,20 +97,26 @@ async function resolveGroupNames(
   if (ids.length === 0) {
     return new Map();
   }
-  if (groupBy === "agent") {
-    const agents = await getAgentConfigurations(auth, {
-      agentIds: ids,
-      variant: "extra_light",
-    });
-    return new Map(agents.map((agent) => [agent.sId, agent.name]));
+  switch (groupBy) {
+    case "agent": {
+      const agents = await getAgentConfigurations(auth, {
+        agentIds: ids,
+        variant: "extra_light",
+      });
+      return new Map(agents.map((agent) => [agent.sId, agent.name]));
+    }
+    case "user": {
+      const users = await UserResource.fetchByIds(ids);
+      return new Map(
+        users.map((user) => [
+          user.sId,
+          user.fullName() || user.username || "Unknown user",
+        ])
+      );
+    }
+    default:
+      return assertNever(groupBy);
   }
-  const users = await UserResource.fetchByIds(ids);
-  return new Map(
-    users.map((user) => [
-      user.sId,
-      user.fullName() || user.username || "Unknown user",
-    ])
-  );
 }
 
 // Estimates AWU credit consumption from the analytics index, reusing the same
@@ -138,8 +156,6 @@ export async function fetchCreditUsage(
     userIds,
   });
 
-  const groupField = groupBy === "agent" ? "agent_id" : "user_id";
-
   const aggregations: Record<string, estypes.AggregationsAggregationContainer> =
     {
       total_llm_cost: { sum: { field: "tokens.cost_micro_usd" } },
@@ -148,7 +164,7 @@ export async function fetchCreditUsage(
   if (groupBy !== "none") {
     aggregations.by_group = {
       terms: {
-        field: groupField,
+        field: groupFieldFor(groupBy),
         size: Math.max(limit, CREDIT_RANKING_FETCH),
         order: { _count: "desc" },
       },
@@ -161,7 +177,7 @@ export async function fetchCreditUsage(
 
   const filter: estypes.QueryDslQueryContainer[] = [baseQuery];
   if (groupBy !== "none") {
-    filter.push({ exists: { field: groupField } });
+    filter.push({ exists: { field: groupFieldFor(groupBy) } });
   }
   const query: estypes.QueryDslQueryContainer = {
     bool: {
@@ -196,15 +212,15 @@ export async function fetchCreditUsage(
   const ranked = buckets
     .map((bucket) => {
       const groupKey = String(bucket.key);
-      const rowLlm = awuFromMicroUsd(bucket.llm_cost?.value ?? 0);
-      const rowTool = toolCreditsFromServerBuckets(
+      const rowLlmCredits = awuFromMicroUsd(bucket.llm_cost?.value ?? 0);
+      const rowToolCredits = toolCreditsFromServerBuckets(
         bucketsToArray<ServerBucket>(bucket.tools?.by_server?.buckets)
       );
       return {
         groupKey,
-        llmCredits: rowLlm,
-        toolCredits: rowTool,
-        totalCredits: rowLlm + rowTool,
+        llmCredits: rowLlmCredits,
+        toolCredits: rowToolCredits,
+        totalCredits: rowLlmCredits + rowToolCredits,
       };
     })
     .sort((a, b) => b.totalCredits - a.totalCredits)
