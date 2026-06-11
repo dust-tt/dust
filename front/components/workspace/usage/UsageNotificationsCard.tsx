@@ -2,8 +2,13 @@ import {
   useUpdateUsageNotifications,
   useUsageNotifications,
 } from "@app/lib/swr/usage_settings";
-import { Input, Page, SettingsList, SliderToggle } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import {
+  InputWithSave,
+  Page,
+  SettingsList,
+  SliderToggle,
+} from "@dust-tt/sparkle";
+import { useState } from "react";
 
 interface UsageNotificationsCardProps {
   workspaceId: string;
@@ -20,10 +25,6 @@ export function UsageNotificationsCard({
     workspaceId,
   });
 
-  const [balanceThresholdInput, setBalanceThresholdInput] =
-    useState<string>("");
-  const [isSavingBalanceThreshold, setIsSavingBalanceThreshold] =
-    useState(false);
   const [isSavingUpgradeRequestEmail, setIsSavingUpgradeRequestEmail] =
     useState(false);
 
@@ -38,37 +39,24 @@ export function UsageNotificationsCard({
     }
   };
 
-  useEffect(() => {
-    // Defaults to 0 when no threshold is configured (warning off).
-    setBalanceThresholdInput(
-      String(usageNotifications.balanceThresholdCredits ?? 0)
-    );
-  }, [usageNotifications.balanceThresholdCredits]);
+  // Defaults to 0 when no threshold is configured (warning off).
+  const currentThreshold = usageNotifications.balanceThresholdCredits ?? 0;
 
-  const handleCommitBalanceThreshold = async () => {
-    const currentThreshold = usageNotifications.balanceThresholdCredits ?? 0;
-    const trimmed = balanceThresholdInput.trim();
+  const handleSaveBalanceThreshold = async (newValue: string) => {
+    const trimmed = newValue.trim();
 
     // An empty value falls back to 0 (warning off). The input only ever holds
-    // digits (see onChange), so `next` is always a non-negative integer.
+    // digits (see normalizeValue), so `nextThreshold` is always a non-negative
+    // integer.
     const nextThreshold = trimmed === "" ? 0 : Number(trimmed);
 
     if (nextThreshold === currentThreshold) {
       return;
     }
 
-    setIsSavingBalanceThreshold(true);
-    try {
-      const ok = await doUpdateUsageNotifications({
-        balanceThresholdCredits: nextThreshold,
-      });
-      if (!ok) {
-        // reset to the current value
-        setBalanceThresholdInput(String(currentThreshold));
-      }
-    } finally {
-      setIsSavingBalanceThreshold(false);
-    }
+    await doUpdateUsageNotifications({
+      balanceThresholdCredits: nextThreshold,
+    });
   };
 
   return (
@@ -86,26 +74,16 @@ export function UsageNotificationsCard({
           title="Credit balance threshold"
           description="Email all workspace admins when your remaining credit balance drops below this amount (in credits). Set to 0 to disable."
           action={
-            <div className="relative w-32">
-              <Input
-                type="text"
+            <div className="w-52">
+              <InputWithSave
                 inputMode="numeric"
                 pattern="[0-9]*"
-                value={balanceThresholdInput}
-                onChange={(e) =>
-                  setBalanceThresholdInput(e.target.value.replace(/[^\d]/g, ""))
-                }
-                onBlur={() => void handleCommitBalanceThreshold()}
-                disabled={
-                  readOnly ||
-                  isSavingBalanceThreshold ||
-                  isUsageNotificationsLoading
-                }
-                className="pr-16 text-right"
+                value={String(currentThreshold)}
+                unit="credits"
+                normalizeValue={(value) => value.replace(/[^\d]/g, "")}
+                onSave={handleSaveBalanceThreshold}
+                disabled={readOnly || isUsageNotificationsLoading}
               />
-              <span className="copy-sm pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
-                credits
-              </span>
             </div>
           }
         />
