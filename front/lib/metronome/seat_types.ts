@@ -1,5 +1,8 @@
 import { listMetronomeProducts } from "@app/lib/metronome/client";
-import { SEAT_TYPE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
+import {
+  FREE_SEAT_LIFETIME_AWU_CREDITS,
+  SEAT_TYPE_CUSTOM_FIELD_KEY,
+} from "@app/lib/metronome/constants";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import type { SeatLimit } from "@app/lib/resources/workspace_seat_limit_resource";
@@ -409,6 +412,15 @@ export function getAwuAllocationInfoForSeatType(
   if (!subscription?.id) {
     return { credits: 0, period: "monthly" };
   }
+
+  // Free seats no longer carry a recurring credit — their AWU grant is created
+  // as a per-user contract credit at seat-assignment time (see
+  // `grantFreeSeatCredits`). The allowance is therefore a code constant rather
+  // than something discoverable on the contract's `recurring_credits`.
+  if (seatType === "free") {
+    return { credits: FREE_SEAT_LIFETIME_AWU_CREDITS, period: "lifetime" };
+  }
+
   const credit = (contract.recurring_credits ?? []).find(
     (c) => c.subscription_config?.subscription_id === subscription.id
   );
