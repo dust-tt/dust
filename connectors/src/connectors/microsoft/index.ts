@@ -45,6 +45,7 @@ import {
   microsoftIncrementalSyncWorkflowId,
   microsoftSensitivityLabelsReconciliationWorkflowId,
 } from "@connectors/connectors/microsoft/temporal/workflows";
+import { getDustAPI } from "@connectors/lib/api/dust_api";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type { SelectedSiteMetadata } from "@connectors/lib/models/microsoft";
 import { getOAuthConnectionAccessTokenWithThrow } from "@connectors/lib/oauth";
@@ -67,6 +68,7 @@ import type {
   DataSourceConfig,
 } from "@connectors/types";
 import { concurrentExecutor } from "@connectors/types/shared/utils/async_utils";
+import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { isString } from "@connectors/types/shared/utils/general";
 import type { ConnectorProvider, Result } from "@dust-tt/client";
 import {
@@ -79,6 +81,30 @@ import {
 import { Client } from "@microsoft/microsoft-graph-client";
 import type { Site } from "@microsoft/microsoft-graph-types";
 import { decodeJwt } from "jose";
+
+async function shouldStartSensitivityLabelsWorkflow(
+  connector: ConnectorResource,
+  config: MicrosoftConfigurationResource
+): Promise<boolean> {
+  if (
+    !config.allowedSensitivityLabels ||
+    config.allowedSensitivityLabels.length === 0
+  ) {
+    return false;
+  }
+  const dustAPI = getDustAPI(dataSourceConfigFromConnector(connector), {
+    useInternalAPI: true,
+  });
+  const featureFlagsRes = await dustAPI.getWorkspaceFeatureFlags();
+  if (featureFlagsRes.isErr()) {
+    logger.warn(
+      { connectorId: connector.id, error: featureFlagsRes.error },
+      "Failed to fetch feature flags for sensitivity labels workflow gate, skipping launch."
+    );
+    return false;
+  }
+  return featureFlagsRes.value.includes("sensitivity_labels");
+}
 
 export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   readonly provider: ConnectorProvider = "microsoft";
@@ -151,12 +177,17 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       throw gcRes.error;
     }
 
-    const sensitivityLabelsReconciliationRes =
-      await launchMicrosoftSensitivityLabelsReconciliationWorkflow(
-        connector.id
-      );
-    if (sensitivityLabelsReconciliationRes.isErr()) {
-      throw sensitivityLabelsReconciliationRes.error;
+    const config = await MicrosoftConfigurationResource.fetchByConnectorId(
+      connector.id
+    );
+    if (config && (await shouldStartSensitivityLabelsWorkflow(connector, config))) {
+      const sensitivityLabelsReconciliationRes =
+        await launchMicrosoftSensitivityLabelsReconciliationWorkflow(
+          connector.id
+        );
+      if (sensitivityLabelsReconciliationRes.isErr()) {
+        throw sensitivityLabelsReconciliationRes.error;
+      }
     }
 
     return new Ok(connector.id.toString());
@@ -619,12 +650,24 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       return gcRes;
     }
 
-    const sensitivityLabelsReconciliationRes =
-      await launchMicrosoftSensitivityLabelsReconciliationWorkflow(
-        this.connectorId
-      );
-    if (sensitivityLabelsReconciliationRes.isErr()) {
-      return sensitivityLabelsReconciliationRes;
+    const connector = await ConnectorResource.fetchById(this.connectorId);
+    if (!connector) {
+      return new Err(new Error(`Connector ${this.connectorId} not found`));
+    }
+    const config = await MicrosoftConfigurationResource.fetchByConnectorId(
+      this.connectorId
+    );
+    if (
+      config &&
+      (await shouldStartSensitivityLabelsWorkflow(connector, config))
+    ) {
+      const sensitivityLabelsReconciliationRes =
+        await launchMicrosoftSensitivityLabelsReconciliationWorkflow(
+          this.connectorId
+        );
+      if (sensitivityLabelsReconciliationRes.isErr()) {
+        return sensitivityLabelsReconciliationRes;
+      }
     }
 
     return new Ok(undefined);
@@ -688,12 +731,29 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           );
         }
         await config.update({ allowedSensitivityLabels: labels });
-        const workflowRes =
-          await launchMicrosoftSensitivityLabelsReconciliationWorkflow(
-            this.connectorId
+        if (!labels || labels.length === 0) {
+          await terminateWorkflow(
+            microsoftSensitivityLabelsReconciliationWorkflowId(this.connectorId)
           );
-        if (workflowRes.isErr()) {
-          return workflowRes;
+          return new Ok(undefined);
+        }
+        // labels is non-empty — check FF before launching the workflow.
+        const dustAPI = getDustAPI(
+          dataSourceConfigFromConnector(connector),
+          { useInternalAPI: true }
+        );
+        const featureFlagsRes = await dustAPI.getWorkspaceFeatureFlags();
+        if (
+          featureFlagsRes.isOk() &&
+          featureFlagsRes.value.includes("sensitivity_labels")
+        ) {
+          const workflowRes =
+            await launchMicrosoftSensitivityLabelsReconciliationWorkflow(
+              this.connectorId
+            );
+          if (workflowRes.isErr()) {
+            return workflowRes;
+          }
         }
         return new Ok(undefined);
       }
