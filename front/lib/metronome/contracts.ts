@@ -224,6 +224,7 @@ export async function provisionMetronomeContract({
   enableStripeBilling = true,
   planCode,
   additionalCustomFields,
+  enableSeatSync = true,
 }: {
   metronomeCustomerId: string;
   workspace: LightWorkspaceType;
@@ -234,6 +235,7 @@ export async function provisionMetronomeContract({
   enableStripeBilling?: boolean;
   planCode: string;
   additionalCustomFields?: Record<string, string>;
+  enableSeatSync?: boolean;
 }): Promise<Result<{ metronomeContractId: string }, Error>> {
   const alignedStart = new Date(
     swapAt === "current-hour"
@@ -311,30 +313,45 @@ export async function provisionMetronomeContract({
     }
   }
 
-  // Remap existing memberships to seat types billed by the new contract BEFORE
-  // syncing, so no member lands on a seat type the new contract doesn't bill
-  // (which would leave them unbilled). For future-dated switches this schedules
-  // the change at the contract start; the sync below then reconciles the new
-  // contract against the (current or scheduled) membership seat types.
-  const remapResult = await remapMembershipSeatTypesForContract({
-    metronomeCustomerId,
-    contractId: metronomeContractId,
-    workspace,
-    swapAt,
-    startingAt: alignedStart,
-  });
-  if (remapResult.isErr()) {
-    return new Err(remapResult.error);
-  }
+  if (enableSeatSync) {
+    // Remap existing memberships to seat types billed by the new contract BEFORE
+    // syncing, so no member lands on a seat type the new contract doesn't bill
+    // (which would leave them unbilled). For future-dated switches this schedules
+    // the change at the contract start; the sync below then reconciles the new
+    // contract against the (current or scheduled) membership seat types.
+    const remapStartMs = Date.now();
+    const remapResult = await remapMembershipSeatTypesForContract({
+      metronomeCustomerId,
+      contractId: metronomeContractId,
+      workspace,
+      swapAt,
+      startingAt: alignedStart,
+    });
+    logger.error(
+      { workspaceId: workspace.sId, durationMs: Date.now() - remapStartMs },
+      "[Metronome] remapMembershipSeatTypesForContract"
+    );
+    if (remapResult.isErr()) {
+      return new Err(remapResult.error);
+    }
 
-  const syncResult = await syncContractQuantities(
-    metronomeCustomerId,
-    metronomeContractId,
-    workspace,
-    alignedStart.toISOString()
-  );
-  if (syncResult.isErr()) {
-    return new Err(syncResult.error);
+    const syncQuantitiesStartMs = Date.now();
+    const syncResult = await syncContractQuantities(
+      metronomeCustomerId,
+      metronomeContractId,
+      workspace,
+      alignedStart.toISOString()
+    );
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        durationMs: Date.now() - syncQuantitiesStartMs,
+      },
+      "[Metronome] syncContractQuantities"
+    );
+    if (syncResult.isErr()) {
+      return new Err(syncResult.error);
+    }
   }
 
   // Pool credit state reconciliation: handled by the credit.segment.start /
