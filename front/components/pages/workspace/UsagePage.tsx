@@ -507,7 +507,7 @@ export function UsagePage() {
         awuPurchaseInfo={awuPurchaseInfo}
         isAwuPurchaseInfoLoading={isAwuPurchaseInfoLoading}
         isAwuPurchaseInfoError={!!isAwuPurchaseInfoError}
-        currentBalanceCredits={totalRemainingCredits}
+        currentTotalPoolCredits={totalActiveCredits}
       />
 
       <div className="flex flex-col items-stretch gap-10 pb-20">
