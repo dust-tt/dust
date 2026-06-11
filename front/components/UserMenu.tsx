@@ -234,7 +234,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
         owner={owner}
       />
       <DropdownMenu>
-        <DropdownMenuTrigger className="hover:bg-sidebar-hover data-[state=open]:bg-sidebar-foreground dark:hover:bg-sidebar-hover-night dark:data-[state=open]:bg-sidebar-foreground-night rounded-xl p-2 m-2">
+        <DropdownMenuTrigger className="hover:bg-sidebar-foreground data-[state=open]:bg-sidebar-foreground dark:hover:bg-sidebar-foreground-night dark:data-[state=open]:bg-sidebar-foreground-night rounded-xl p-2 m-2">
           <div className="group flex cursor-pointer items-center justify-between gap-2">
             <span className="sr-only">Open user menu</span>
             <div className="flex gap-2 items-center">
