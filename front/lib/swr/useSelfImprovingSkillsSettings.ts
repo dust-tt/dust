@@ -3,16 +3,38 @@ import type {
   GetReinforcementDailySpendResponseBody,
   GetSkillsSpendResponseBody,
 } from "@app/lib/api/skills";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
+  getReinforcementMonthlyCapAwuCredits,
   getReinforcementMonthlyCapMicroUsd,
+  getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits,
   getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd,
 } from "@app/lib/reinforcement/consumption";
+import type { ReinforcementBillingUnit } from "@app/lib/reinforcement/enforcement";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { isCreditPricedPlan } from "@app/types/plan";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useState } from "react";
 import type { Fetcher } from "swr";
+
+/**
+ * Client-side mirror of getReinforcementBillingUnit
+ * (lib/reinforcement/enforcement.ts): self-improving skills spend and caps
+ * are displayed and edited in AWU credits for workspaces billed by Metronome
+ * on a credit-priced plan, and in dollars otherwise.
+ */
+export function useReinforcementBillingUnit({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}): ReinforcementBillingUnit {
+  const { subscription } = useAuth();
+  return owner.metronomeCustomerId && isCreditPricedPlan(subscription.plan)
+    ? "awu_credits"
+    : "micro_usd";
+}
 
 interface UseSelfImprovingToggleProps {
   owner: LightWorkspaceType;
@@ -119,12 +141,17 @@ interface UseSelfImprovingCapSettingProps {
 export function useSelfImprovingCapSetting({
   owner,
 }: UseSelfImprovingCapSettingProps) {
+  const unit = useReinforcementBillingUnit({ owner });
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
 
-  const capDollars = getReinforcementMonthlyCapMicroUsd(owner) / 1_000_000;
+  // Cap in the display unit: AWU credits, or dollars for micro-USD.
+  const cap =
+    unit === "awu_credits"
+      ? getReinforcementMonthlyCapAwuCredits(owner)
+      : getReinforcementMonthlyCapMicroUsd(owner) / 1_000_000;
 
-  const saveCapDollars = async (dollars: number): Promise<boolean> => {
+  const saveCap = async (value: number): Promise<boolean> => {
     setIsSaving(true);
     try {
       const res = await clientFetch(`/api/w/${owner.sId}`, {
@@ -132,9 +159,11 @@ export function useSelfImprovingCapSetting({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          reinforcementCapMicroUsd: Math.round(dollars * 1_000_000),
-        }),
+        body: JSON.stringify(
+          unit === "awu_credits"
+            ? { reinforcementCapAwuCredits: Math.round(value) }
+            : { reinforcementCapMicroUsd: Math.round(value * 1_000_000) }
+        ),
       });
 
       if (!res.ok) {
@@ -154,9 +183,10 @@ export function useSelfImprovingCapSetting({
   };
 
   return {
-    capDollars,
+    unit,
+    cap,
     isSaving,
-    saveCapDollars,
+    saveCap,
   };
 }
 
@@ -178,6 +208,7 @@ export function useSkillsSelfImprovingSpend({
 
   return {
     spentMicroUsdBySkillId: data?.spentMicroUsdBySkillId ?? {},
+    spentAwuCreditsBySkillId: data?.spentAwuCreditsBySkillId ?? {},
     isSpendLoading: isLoading,
     isSpendError: !!error,
     mutateSpend: mutate,
@@ -202,6 +233,7 @@ export function useSelfImprovingDailySpend({
 
   return {
     dailySpendMicroUsd: data?.dailySpendMicroUsd ?? {},
+    dailySpendAwuCredits: data?.dailySpendAwuCredits ?? {},
     periodStartDate: data?.periodStartDate ?? null,
     periodEndDate: data?.periodEndDate ?? null,
     isDailySpendLoading: isLoading,
@@ -216,13 +248,18 @@ interface UseSelfImprovementCapPerSkillSettingProps {
 export function useSelfImprovementCapPerSkillSetting({
   owner,
 }: UseSelfImprovementCapPerSkillSettingProps) {
+  const unit = useReinforcementBillingUnit({ owner });
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
 
-  const capDollars =
-    getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(owner) / 1_000_000;
+  // Cap in the display unit: AWU credits, or dollars for micro-USD.
+  const cap =
+    unit === "awu_credits"
+      ? getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits(owner)
+      : getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(owner) /
+        1_000_000;
 
-  const saveCapDollars = async (dollars: number): Promise<boolean> => {
+  const saveCap = async (value: number): Promise<boolean> => {
     setIsSaving(true);
     try {
       const res = await clientFetch(`/api/w/${owner.sId}`, {
@@ -230,9 +267,15 @@ export function useSelfImprovementCapPerSkillSetting({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          selfImprovementCapPerSkillMicroUsd: Math.round(dollars * 1_000_000),
-        }),
+        body: JSON.stringify(
+          unit === "awu_credits"
+            ? { selfImprovementCapPerSkillAwuCredits: Math.round(value) }
+            : {
+                selfImprovementCapPerSkillMicroUsd: Math.round(
+                  value * 1_000_000
+                ),
+              }
+        ),
       });
 
       if (!res.ok) {
@@ -252,8 +295,9 @@ export function useSelfImprovementCapPerSkillSetting({
   };
 
   return {
-    capDollars,
+    unit,
+    cap,
     isSaving,
-    saveCapDollars,
+    saveCap,
   };
 }
