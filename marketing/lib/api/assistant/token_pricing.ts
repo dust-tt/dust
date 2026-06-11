@@ -38,6 +38,18 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 15.0,
     cache_read_input_tokens: 0.25,
   },
+  // https://openai.com/api/pricing/
+  "gpt-5.4-mini": {
+    input: 0.75,
+    output: 4.5,
+    cache_read_input_tokens: 0.075,
+  },
+  // https://openai.com/api/pricing/
+  "gpt-5.4-nano": {
+    input: 0.2,
+    output: 1.25,
+    cache_read_input_tokens: 0.02,
+  },
   "gpt-5.2": {
     input: 1.75,
     output: 14.0,
@@ -154,6 +166,13 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 25.0,
     cache_creation_input_tokens: 6.25,
     cache_read_input_tokens: 0.5,
+  },
+  // https://platform.claude.com/docs/en/about-claude/models/overview
+  "claude-fable-5": {
+    input: 10.0,
+    output: 50.0,
+    cache_creation_input_tokens: 12.5,
+    cache_read_input_tokens: 1.0,
   },
   "claude-sonnet-4-6": {
     input: 3.0,
@@ -290,23 +309,9 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 0.27,
     output: 1.1,
   },
-  "deepseek-ai/DeepSeek-R1": {
-    input: 0.55,
-    output: 2.19,
-  },
   "deepseek-chat": {
     input: 0.14,
     output: 0.28,
-  },
-  "deepseek-reasoner": {
-    input: 0.55,
-    output: 2.19,
-  },
-  // https://app.fireworks.ai/models/fireworks/deepseek-r1-0528
-  "accounts/fireworks/models/deepseek-r1-0528": {
-    input: 1.35,
-    output: 5.4,
-    cache_read_input_tokens: 0.68,
   },
   // https://fireworks.ai/models/fireworks/deepseek-v3p2
   "accounts/fireworks/models/deepseek-v3p2": {
