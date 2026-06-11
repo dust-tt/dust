@@ -117,14 +117,14 @@ const AVATAR_BADGE_CLASSES: Record<
   ResourceAvatarSize,
   { badge: string; icon: string }
 > = {
-  xxs: { badge: "h-2.5 w-2.5 rounded-[2px]", icon: "h-2 w-2" },
-  xs: { badge: "h-3 w-3 rounded-[3px]", icon: "h-2.5 w-2.5" },
-  sm: { badge: "h-3.5 w-3.5 rounded-[3px]", icon: "h-3 w-3" },
-  md: { badge: "h-4 w-4 rounded", icon: "h-3.5 w-3.5" },
-  lg: { badge: "h-5 w-5 rounded-md", icon: "h-4 w-4" },
-  xl: { badge: "h-6 w-6 rounded-md", icon: "h-5 w-5" },
-  "2xl": { badge: "h-8 w-8 rounded-lg", icon: "h-7 w-7" },
-  auto: { badge: "h-6 w-6 rounded-md", icon: "h-5 w-5" },
+  xxs: { badge: "h-2.5 w-2.5 rounded-[2px]", icon: "h-1.5 w-1.5" },
+  xs: { badge: "h-3 w-3 rounded-[3px]", icon: "h-2 w-2" },
+  sm: { badge: "h-3.5 w-3.5 rounded-[3px]", icon: "h-2.5 w-2.5" },
+  md: { badge: "h-4 w-4 rounded", icon: "h-3 w-3" },
+  lg: { badge: "h-5 w-5 rounded-md", icon: "h-3.5 w-3.5" },
+  xl: { badge: "h-6 w-6 rounded-md", icon: "h-4 w-4" },
+  "2xl": { badge: "h-8 w-8 rounded-lg", icon: "h-6 w-6" },
+  auto: { badge: "h-6 w-6 rounded-md", icon: "h-4 w-4" },
 };
 
 interface ResourceAvatarWithBadgeProps extends ResourceAvatarProps {
