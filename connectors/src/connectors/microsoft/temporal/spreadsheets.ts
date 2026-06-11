@@ -56,6 +56,9 @@ async function upsertSpreadsheetInDb(
     lastUpsertedTs: new Date(),
     parentInternalId,
     webUrl: file.webUrl ?? null,
+    // A successful sync clears any previous hidden-by-sensitivity-label state;
+    // otherwise reconciliation keeps re-syncing the file on every run.
+    skipReason: null,
   });
 }
 

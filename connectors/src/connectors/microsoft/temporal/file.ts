@@ -374,6 +374,9 @@ export async function syncOneFile({
     parentInternalId,
     mimeType: file.file.mimeType ?? "",
     webUrl: file.webUrl ?? null,
+    // A successful sync clears any previous hidden-by-sensitivity-label state;
+    // otherwise reconciliation keeps re-syncing the file on every run.
+    skipReason: null,
   };
 
   if (mimeType === "application/vnd.ms-excel" || mimeType === "text/csv") {

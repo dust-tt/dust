@@ -195,6 +195,10 @@ async function readDeltaFromGCSStream(
 const FILES_SYNC_CONCURRENCY = 10;
 const DELETE_CONCURRENCY = 5;
 
+// Caps the Graph page size for sensitivity-label reconciliation so each
+// activity call processes a bounded number of files (downloads happen inline).
+const RECONCILIATION_CHILDREN_PAGE_SIZE = 100;
+
 export async function getRootNodesToSync(
   connectorId: ModelId
 ): Promise<string[]> {
@@ -923,7 +927,8 @@ export async function reconcileSensitivityLabelsForParent({
       client,
       parentInternalId,
       nextPageLink,
-      allowedLabels.length > 0
+      allowedLabels.length > 0,
+      RECONCILIATION_CHILDREN_PAGE_SIZE
     );
   } catch (error) {
     if (isItemNotFoundError(error) || isMalformedDriveError(error)) {
@@ -983,15 +988,18 @@ export async function reconcileSensitivityLabelsForParent({
       MICROSOFT_SKIP_REASON_SENSITIVITY_LABEL_NOT_ALLOWED;
 
     if (!shouldSync) {
-      await removeFileBasedOnSensitivityLabel({
-        connectorId,
-        dataSourceConfig,
-        file: child,
-        fileResource,
-        parentInternalId,
-        logger,
-      });
-      removedCount++;
+      // Idempotency: already deleted and marked as hidden on a previous run.
+      if (!isHiddenBySensitivityLabel) {
+        await removeFileBasedOnSensitivityLabel({
+          connectorId,
+          dataSourceConfig,
+          file: child,
+          fileResource,
+          parentInternalId,
+          logger,
+        });
+        removedCount++;
+      }
     } else if (!fileResource || isHiddenBySensitivityLabel) {
       const didSync = await syncOneFile({
         connectorId,
@@ -1020,12 +1028,33 @@ export async function reconcileSensitivityLabelsForParent({
 
   const childNodes = childrenResult.results
     .filter((item) => item.folder)
-    .map((item) => getDriveInternalIdFromItem(item));
+    .map((item) => getDriveItemInternalId(item));
 
   return {
     childNodes,
     nextLink: childrenResult.nextLink,
   };
+}
+
+export async function logSensitivityLabelsMaxIterationsReached({
+  connectorId,
+  iterations,
+  maxIterations,
+}: {
+  connectorId: ModelId;
+  iterations: number;
+  maxIterations: number;
+}): Promise<void> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+
+  const logger = getActivityLogger(connector);
+  logger.error(
+    { connectorId, iterations, maxIterations },
+    "[ReconcileSensitivityLabels] Max iterations reached, likely a traversal loop; stopping early."
+  );
 }
 
 // Legacy activity, only for compatibilty.

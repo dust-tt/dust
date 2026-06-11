@@ -19,8 +19,8 @@ const {
   populateDeltas,
   groupRootItemsByDriveId,
   isMicrosoftFullSyncRunning,
-  reconcileSensitivityLabelsForParent,
   launchMicrosoftFullSyncForDrive,
+  logSensitivityLabelsMaxIterationsReached,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minutes",
 });
@@ -35,6 +35,7 @@ const {
   fetchDeltaForRootNodesInDrive,
   processDeltaChangesFromGCS,
   cleanupDeltaGCSFile,
+  reconcileSensitivityLabelsForParent,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "120 minutes",
   heartbeatTimeout: "5 minutes",
@@ -316,14 +317,23 @@ export async function microsoftGarbageCollectionWorkflow({
   }
 }
 
+// Guard against traversal bugs (e.g. a folder re-enqueueing itself): the
+// visited set should make re-visits impossible, so this only trips when
+// something is broken. One iteration = one folder/drive fully reconciled.
+const MAX_RECONCILIATION_ITERATIONS = 50_000;
+
 export async function microsoftSensitivityLabelsReconciliationWorkflow({
   connectorId,
   startSyncTs,
   nodeIdsToReconcile = [],
+  processedNodeIds = [],
+  iterations = 0,
 }: {
   connectorId: ModelId;
   startSyncTs?: number;
   nodeIdsToReconcile?: string[];
+  processedNodeIds?: string[];
+  iterations?: number;
 }) {
   await syncStarted(connectorId);
 
@@ -331,16 +341,33 @@ export async function microsoftSensitivityLabelsReconciliationWorkflow({
     startSyncTs = new Date().getTime();
   }
 
+  const processedSet = new Set(processedNodeIds);
+
   let pendingNodeIds =
     nodeIdsToReconcile.length === 0
       ? await getRootNodesToSync(connectorId)
       : nodeIdsToReconcile;
-  pendingNodeIds = uniq(pendingNodeIds);
+  pendingNodeIds = uniq(pendingNodeIds).filter((id) => !processedSet.has(id));
 
   while (pendingNodeIds.length > 0) {
     const nodeId = pendingNodeIds.pop();
 
     if (!nodeId) {
+      break;
+    }
+
+    if (processedSet.has(nodeId)) {
+      continue;
+    }
+    processedSet.add(nodeId);
+
+    iterations += 1;
+    if (iterations > MAX_RECONCILIATION_ITERATIONS) {
+      await logSensitivityLabelsMaxIterationsReached({
+        connectorId,
+        iterations,
+        maxIterations: MAX_RECONCILIATION_ITERATIONS,
+      });
       break;
     }
 
@@ -356,7 +383,11 @@ export async function microsoftSensitivityLabelsReconciliationWorkflow({
         nextPageLink,
       });
 
-      pendingNodeIds = uniq(pendingNodeIds.concat(res.childNodes));
+      pendingNodeIds = uniq(
+        pendingNodeIds.concat(
+          res.childNodes.filter((id) => !processedSet.has(id))
+        )
+      );
       nextPageLink = res.nextLink;
     } while (nextPageLink);
 
@@ -367,6 +398,8 @@ export async function microsoftSensitivityLabelsReconciliationWorkflow({
         connectorId,
         startSyncTs,
         nodeIdsToReconcile: pendingNodeIds,
+        processedNodeIds: [...processedSet],
+        iterations,
       });
     }
   }

@@ -166,7 +166,8 @@ export async function getFilesAndFolders(
   client: Client,
   parentInternalId: string,
   nextLink?: string,
-  withLabels = false
+  withLabels = false,
+  pageSize?: number
 ): Promise<{ results: DriveItem[]; nextLink?: string }> {
   const { nodeType, itemAPIPath: parentResourcePath } =
     typeAndPathFromInternalId(parentInternalId);
@@ -180,10 +181,12 @@ export async function getFilesAndFolders(
   const expandsAndSelects = withLabels
     ? DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS
     : DRIVE_ITEM_EXPANDS_AND_SELECTS;
+  // $top only applies to the first call; subsequent pages carry it in nextLink.
+  const topParam = pageSize !== undefined ? `&$top=${pageSize}` : "";
   const endpoint =
     nodeType === "drive"
-      ? `${parentResourcePath}/root/children?${expandsAndSelects}`
-      : `${parentResourcePath}/children?${expandsAndSelects}`;
+      ? `${parentResourcePath}/root/children?${expandsAndSelects}${topParam}`
+      : `${parentResourcePath}/children?${expandsAndSelects}${topParam}`;
 
   const res = nextLink
     ? await clientApiGet(logger, client, nextLink)
