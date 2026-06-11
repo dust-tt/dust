@@ -4,23 +4,11 @@ import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
 import { getMetronomeProgrammaticCap } from "@app/lib/metronome/alerts/programmatic_cap";
-import {
-  getMetronomeDefaultUserCapAlertForSeatType,
-  getMetronomePerUserCap,
-} from "@app/lib/metronome/alerts/spend_limits";
 import { getNetBalance } from "@app/lib/metronome/client";
-import {
-  FREE_SEAT_LIFETIME_AWU_CREDITS,
-  getCreditTypeAwuId,
-} from "@app/lib/metronome/constants";
+import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import { invalidateWorkspacePoolCredits } from "@app/lib/metronome/credit_balance";
 import { fetchLiveUserCreditInputs } from "@app/lib/metronome/live_user_credit_inputs";
-import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { transitionProgrammaticCreditState } from "@app/lib/metronome/programmatic_credit_state_machine";
-import {
-  getAwuAllocationForSeatType,
-  getProductSeatTypes,
-} from "@app/lib/metronome/seat_types";
 import {
   setUserCreditState,
   setWorkspaceProgrammaticCreditStatus,
@@ -31,6 +19,7 @@ import type { WorkspaceCreditEvent } from "@app/lib/metronome/workspace_credit_s
 import { transitionWorkspaceCreditState } from "@app/lib/metronome/workspace_credit_state_machine";
 import { notifyAdminsProgrammaticCapReached } from "@app/lib/notifications/workflows/programmatic-cap-reached";
 import { getPlanDefaultPoolLimitAwuCredits } from "@app/lib/plans/plan_codes";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -53,12 +42,12 @@ import { Ok } from "@app/types/shared/result";
  */
 async function resolvePoolLimitForUser({
   workspace,
-  userId,
-  seatType,
+  membership,
+  defaultPoolCapAwuCredits,
 }: {
   workspace: WorkspaceResource;
-  userId: string;
-  seatType: MembershipSeatType | null | undefined;
+  membership: MembershipResource;
+  defaultPoolCapAwuCredits: number | null;
 }): Promise<number | null> {
   const { metronomeCustomerId } = workspace;
   if (!metronomeCustomerId) {
@@ -70,39 +59,20 @@ async function resolvePoolLimitForUser({
   // budget). This is the single source of "free has no pool": downstream
   // routing (capped vs on_pool) then falls out of `poolLimit === 0` with no
   // seat-type special-casing.
-  if (seatType === "free") {
+  if (membership.seatType === "free") {
     return 0;
   }
 
-  // 1. Per-user override.
-  const userCapResult = await getMetronomePerUserCap({
-    metronomeCustomerId,
-    workspaceId: workspace.sId,
-    userId,
-  });
-  if (userCapResult.isOk() && userCapResult.value) {
-    // The threshold includes the seat allowance; subtract it to get the pool limit.
-    const totalThresholdAwuCredits = userCapResult.value.alert.threshold;
-    const seatAllowanceAwuCredits = await getSeatAllowance(workspace, seatType);
-    return Math.max(0, totalThresholdAwuCredits - seatAllowanceAwuCredits);
+  // 1. Per-user override (pool-only, persisted on the membership).
+  if (membership.poolCapOverrideAwuCredits !== null) {
+    return membership.poolCapOverrideAwuCredits;
   }
 
-  // 2. Per-seat-type workspace default.
-  const normalizedSeatType = normalizeToPoolLimitSeatType(seatType);
-  if (normalizedSeatType) {
-    const defaultCapResult = await getMetronomeDefaultUserCapAlertForSeatType({
-      metronomeCustomerId,
-      workspaceId: workspace.sId,
-      seatType: normalizedSeatType,
-    });
-    if (defaultCapResult.isOk() && defaultCapResult.value) {
-      const totalThresholdAwuCredits = defaultCapResult.value.alert.threshold;
-      const seatAllowanceAwuCredits = await getSeatAllowance(
-        workspace,
-        seatType
-      );
-      return Math.max(0, totalThresholdAwuCredits - seatAllowanceAwuCredits);
-    }
+  // 2. Workspace default (pool-only, persisted on the credit-usage
+  // configuration), for pool-limit seat types.
+  const normalizedSeatType = normalizeToPoolLimitSeatType(membership.seatType);
+  if (normalizedSeatType && defaultPoolCapAwuCredits !== null) {
+    return defaultPoolCapAwuCredits;
   }
 
   // 3. Plan-tier fallback: enterprise → unlimited, everything else → 0.
@@ -114,31 +84,6 @@ async function resolvePoolLimitForUser({
     return 0;
   }
   return getPlanDefaultPoolLimitAwuCredits(planCode);
-}
-
-async function getSeatAllowance(
-  workspace: WorkspaceResource,
-  seatType: MembershipSeatType | null | undefined
-): Promise<number> {
-  // Free seats carry a fixed personal allocation that isn't a contract
-  // recurring credit, so it's a code constant rather than a contract lookup.
-  if (seatType === "free") {
-    return FREE_SEAT_LIFETIME_AWU_CREDITS;
-  }
-  const normalizedSeatType = normalizeToPoolLimitSeatType(seatType);
-  if (!normalizedSeatType) {
-    return 0;
-  }
-  const contract = await getActiveContract(workspace.sId);
-  if (!contract) {
-    return 0;
-  }
-  const productSeatTypes = await getProductSeatTypes();
-  return getAwuAllocationForSeatType(
-    contract,
-    normalizedSeatType,
-    productSeatTypes
-  );
 }
 
 /**
@@ -180,10 +125,17 @@ export async function dispatchSeatBalanceExhausted({
     return;
   }
 
+  const creditUsageConfig =
+    await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
+      workspace.id
+    );
+  const defaultPoolCapAwuCredits =
+    creditUsageConfig?.defaultPoolCapAwuCredits ?? null;
+
   const poolLimitAwuCredits = await resolvePoolLimitForUser({
     workspace,
-    userId,
-    seatType: membership.seatType,
+    membership,
+    defaultPoolCapAwuCredits,
   });
   const remainingCapCreditsPercentage =
     await fetchRemainingCapCreditsPercentageForUser({
@@ -192,6 +144,7 @@ export async function dispatchSeatBalanceExhausted({
       userId,
       seatType: membership.seatType,
       poolCapOverrideAwuCredits: membership.poolCapOverrideAwuCredits,
+      defaultPoolCapAwuCredits,
     });
 
   const result = await transitionUserCreditState(
@@ -565,11 +518,18 @@ async function resolveLiveUserBalance({
   );
   const metronomeContractId = subscription?.metronomeContractId ?? null;
 
+  const creditUsageConfig =
+    await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
+      workspace.id
+    );
+
   const liveResult = await fetchLiveUserCreditInputs({
     workspaceId: workspace.sId,
     userId,
     seatType,
     poolCapOverrideAwuCredits,
+    defaultPoolCapAwuCredits:
+      creditUsageConfig?.defaultPoolCapAwuCredits ?? null,
     metronomeCustomerId,
     metronomeContractId,
   });

@@ -2,8 +2,6 @@ import { getWorkspacePoolAwuBalance } from "@app/lib/api/metronome/credit_state_
 import type { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
 import { getMetronomeProgrammaticCapAlertStates } from "@app/lib/metronome/alerts/programmatic_cap";
-import type { MetronomeCapAlertInfo } from "@app/lib/metronome/alerts/spend_limits";
-import { getCachedDefaultCapThresholdsBySeatType } from "@app/lib/metronome/alerts/spend_limits";
 import {
   listContractPerUserCreditBalances,
   listMetronomeSeatBalances,
@@ -24,6 +22,7 @@ import {
   expectedPoolCreditStateFromBalance,
   setWorkspacePoolCreditStateReconciled,
 } from "@app/lib/metronome/workspace_credit_state_machine";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -298,13 +297,18 @@ async function reconcileUser({
   const seatType = membership.seatType;
   const metronomeContractId = auth.subscription()?.metronomeContractId ?? null;
 
+  const creditUsageConfig =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+
   const liveResult = await fetchLiveUserCreditInputs({
     workspaceId: workspace.sId,
     userId,
     seatType,
-    // Pool-only override persisted on the membership; the live-inputs helper
-    // adds the seat allowance back to get the total threshold.
+    // Pool-only values persisted in the DB; the live-inputs helper adds the
+    // seat allowance back to get the total threshold.
     poolCapOverrideAwuCredits: membership.poolCapOverrideAwuCredits,
+    defaultPoolCapAwuCredits:
+      creditUsageConfig?.defaultPoolCapAwuCredits ?? null,
     metronomeCustomerId,
     metronomeContractId,
   });
@@ -413,20 +417,22 @@ export async function reconcileWorkspaceUserCreditStates({
     ? perUserCreditBalancesResult.value
     : new Map<string, { balanceAwu: number; startingBalanceAwu: number }>();
 
-  // The cap-threshold caches (Metronome alert list / contract) and the
-  // membership query (DB) can genuinely throw, so they stay wrapped — the
-  // ERR1-authorised case. The per-user overrides themselves come from the
-  // memberships (pool-only values); the seat allowances are needed to derive
-  // the total thresholds.
+  // The seat-allowance cache (contract) and the DB queries can genuinely
+  // throw, so they stay wrapped — the ERR1-authorised case. The per-user
+  // overrides come from the memberships and the workspace default from the
+  // credit-usage configuration (both pool-only values); the seat allowances
+  // are needed to derive the total thresholds.
   let seatAllowances: Partial<Record<NormalizedPoolLimitSeatType, number>>;
-  let defaultCaps: Record<NormalizedPoolLimitSeatType, MetronomeCapAlertInfo>;
+  let defaultPoolCapAwuCredits: number | null;
   let memberships: MembershipResource[];
   try {
     seatAllowances = await getSeatAllowancesByNormalizedSeatType(workspaceId);
-    defaultCaps = await getCachedDefaultCapThresholdsBySeatType({
-      metronomeCustomerId,
-      workspaceId,
-    });
+    const creditUsageConfig =
+      await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
+        workspace.id
+      );
+    defaultPoolCapAwuCredits =
+      creditUsageConfig?.defaultPoolCapAwuCredits ?? null;
     ({ memberships } = await MembershipResource.getActiveMemberships({
       workspace,
     }));
@@ -470,13 +476,14 @@ export async function reconcileWorkspaceUserCreditStates({
     const seatType = membership.seatType;
 
     const normalizedSeatType = normalizeToPoolLimitSeatType(seatType);
+    const poolCapAwuCredits =
+      membership.poolCapOverrideAwuCredits ??
+      (normalizedSeatType ? defaultPoolCapAwuCredits : null);
     const effectiveCapAwuCredits =
-      membership.poolCapOverrideAwuCredits !== null
-        ? membership.poolCapOverrideAwuCredits +
+      poolCapAwuCredits !== null
+        ? poolCapAwuCredits +
           (normalizedSeatType ? (seatAllowances[normalizedSeatType] ?? 0) : 0)
-        : normalizedSeatType
-          ? (defaultCaps[normalizedSeatType]?.threshold ?? null)
-          : null;
+        : null;
     // Seat balance comes from `listMetronomeSeatBalances` for pro/max; free
     // seats read their per-user credit balance instead (not a seat balance).
     // Pro/max read their seat balance. `expectedUserCreditState` decides routing

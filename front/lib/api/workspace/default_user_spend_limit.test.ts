@@ -7,7 +7,7 @@ import { Authenticator } from "@app/lib/auth";
 import * as defaultUserCapAlert from "@app/lib/metronome/alerts/spend_limits";
 import * as planType from "@app/lib/metronome/plan_type";
 import * as seatTypes from "@app/lib/metronome/seat_types";
-import { buildCustomerAlertMock } from "@app/tests/utils/metronome_alerts";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
@@ -103,33 +103,27 @@ beforeEach(() => {
 });
 
 describe("getDefaultUserSpendLimit", () => {
-  it("returns the configured threshold minus seat allowance", async () => {
+  it("returns the configured workspace default pool cap", async () => {
     const workspace = await WorkspaceFactory.metronome({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    vi.mocked(
-      defaultUserCapAlert.getMetronomeDefaultUserCapAlertForSeatType
-    ).mockResolvedValue(
-      new Ok(
-        buildCustomerAlertMock({
-          id: "alert_default_xxx",
-          threshold: 50_000,
-          customerStatus: "ok",
-        })
-      )
-    );
+
+    await CreditUsageConfigurationResource.makeNew(auth, {
+      defaultDiscountPercent: 0,
+      usageCapCredits: null,
+      defaultPoolCapAwuCredits: 25_000,
+    });
 
     const result = await getDefaultUserSpendLimit(auth);
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      // 50_000 (Metronome threshold) - 8_000 (seat allowance) = 42_000
-      expect(result.value).toEqual({ awuCredits: 42_000 });
+      expect(result.value).toEqual({ awuCredits: 25_000 });
     }
   });
 
-  it("returns not_found when no default is configured", async () => {
+  it("falls back to the plan-tier default when no workspace default is configured (pro plan → 0)", async () => {
     const workspace = await WorkspaceFactory.metronome({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
@@ -137,9 +131,9 @@ describe("getDefaultUserSpendLimit", () => {
 
     const result = await getDefaultUserSpendLimit(auth);
 
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.type).toBe("not_found");
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value).toEqual({ awuCredits: 0 });
     }
   });
 
@@ -152,26 +146,6 @@ describe("getDefaultUserSpendLimit", () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.type).toBe("workspace_not_metronome_billed");
-    }
-    expect(
-      defaultUserCapAlert.getMetronomeDefaultUserCapAlertForSeatType
-    ).not.toHaveBeenCalled();
-  });
-
-  it("surfaces Metronome errors as metronome_error", async () => {
-    const workspace = await WorkspaceFactory.metronome({
-      metronomeCustomerId: METRONOME_CUSTOMER_ID,
-    });
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    vi.mocked(
-      defaultUserCapAlert.getMetronomeDefaultUserCapAlertForSeatType
-    ).mockResolvedValue(new Err(new Error("metronome down")));
-
-    const result = await getDefaultUserSpendLimit(auth);
-
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.type).toBe("metronome_error");
     }
   });
 });
@@ -208,17 +182,11 @@ describe("setDefaultUserSpendLimit", () => {
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    vi.mocked(
-      defaultUserCapAlert.getMetronomeDefaultUserCapAlertForSeatType
-    ).mockResolvedValue(
-      new Ok(
-        buildCustomerAlertMock({
-          id: "alert_default_xxx",
-          threshold: 18_000, // 8_000 seat + 10_000 pool
-          customerStatus: "ok",
-        })
-      )
-    );
+    await CreditUsageConfigurationResource.makeNew(auth, {
+      defaultDiscountPercent: 0,
+      usageCapCredits: null,
+      defaultPoolCapAwuCredits: 10_000,
+    });
 
     await setDefaultUserSpendLimit(auth, {
       awuCredits: 25_000,
