@@ -16,15 +16,30 @@ import { useEffect, useState } from "react";
 const storyModules = import.meta.glob("./stories/*.tsx", { eager: true });
 
 // Extract story names and components (exclude TemplateSelection - only reachable via dropdown in Pods)
+const DISABLED_STORIES = new Set(["AdminGovernance"]);
+const HIDDEN_STORIES = new Set([
+  "AgentBuilder",
+  "Conversation",
+  "Frame",
+  "Panels",
+  "Pods",
+  "Pods_After",
+  "Pods_as_Spaces",
+]);
+
 const stories = Object.entries(storyModules)
   .map(([path, module]: [string, any]) => {
-    const name = path.split("/").pop()?.replace(".tsx", "") || "";
+    const fileName = path.split("/").pop()?.replace(".tsx", "") || "";
+    const displayName =
+      (module as { storyName?: string }).storyName ?? fileName;
     return {
-      name,
+      name: fileName,
+      displayName,
       component: (module as { default: React.ComponentType }).default,
+      disabled: DISABLED_STORIES.has(fileName),
     };
   })
-  .filter((s) => s.name !== "TemplateSelection");
+  .filter((s) => s.name !== "TemplateSelection" && !HIDDEN_STORIES.has(s.name));
 
 type Theme = "light" | "dark";
 const THEME_STORAGE_KEY = "sparkle-playground-theme";
@@ -76,11 +91,19 @@ function StoryList({
           {stories.map((story, index) => (
             <ListItem
               key={story.name}
-              onClick={() => onSelectStory(story.name)}
+              onClick={
+                story.disabled ? undefined : () => onSelectStory(story.name)
+              }
               hasSeparator={index < stories.length - 1}
             >
-              <div className="s-text-foreground dark:s-text-foreground-night">
-                {story.name}
+              <div
+                className={
+                  story.disabled
+                    ? "s-text-muted-foreground dark:s-text-muted-foreground-night s-opacity-40 s-cursor-not-allowed s-select-none"
+                    : "s-text-foreground dark:s-text-foreground-night"
+                }
+              >
+                {story.displayName}
               </div>
             </ListItem>
           ))}
