@@ -790,9 +790,7 @@ module.exports = {
       backgroundColor: ["dark"],
     },
   },
-  plugins: [
-    typographyPlugin,
-  ],
+  plugins: [typographyPlugin],
 };
 
 module.exports.buildSafelist = buildSafelist;
