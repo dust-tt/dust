@@ -1,7 +1,10 @@
 import { buildMemberNameColumn } from "@app/components/workspace/member_name_column";
+import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { timeAgoFrom } from "@app/lib/utils";
-import type { MembershipUpgradeRequestType } from "@app/types/memberships";
-import { SEAT_TYPE_ORDER } from "@app/types/memberships";
+import type {
+  MembershipSeatType,
+  MembershipUpgradeRequestType,
+} from "@app/types/memberships";
 import {
   Button,
   Check,
@@ -31,6 +34,26 @@ type Info = CellContext<RowData, string>;
 const nameColumn = buildMemberNameColumn<RowData>();
 
 const REASON_LABEL = "Reached credit limit";
+
+function seatAwuCredits(
+  seatType: MembershipSeatType | null,
+  seatPlans: SeatPlanResponseBody
+): number {
+  if (!seatType || seatType === "none") {
+    return -1;
+  }
+  return seatPlans[seatType]?.awuCredits ?? 0;
+}
+
+function canUpgrade(
+  currentSeatType: MembershipSeatType | null,
+  seatPlans: SeatPlanResponseBody
+): boolean {
+  const currentCredits = seatAwuCredits(currentSeatType, seatPlans);
+  return Object.values(seatPlans).some(
+    (info) => (info?.awuCredits ?? 0) > currentCredits
+  );
+}
 
 const reasonColumn: ColumnDef<RowData, string> = {
   id: "reason" as const,
@@ -62,14 +85,12 @@ const requestedColumn: ColumnDef<RowData, string> = {
 };
 
 function buildActionsColumn({
-  isSeatBased,
-  highestSeatTypeOrder,
+  seatPlans,
   onUpgradePlan,
   onEditLimit,
   onDeny,
 }: {
-  isSeatBased: boolean;
-  highestSeatTypeOrder: number | null;
+  seatPlans: SeatPlanResponseBody;
   onUpgradePlan: (request: MembershipUpgradeRequestType) => void;
   onEditLimit: (request: MembershipUpgradeRequestType) => void;
   onDeny: (request: MembershipUpgradeRequestType) => void;
@@ -89,14 +110,9 @@ function buildActionsColumn({
         );
       }
       // Hide "Upgrade plan" when there is no higher seat tier to move the
-      // requester to: their current seat is already at/above the highest seat
-      // tier offered to the workspace.
-      const requesterSeatOrder =
-        SEAT_TYPE_ORDER[request.requester.seatType ?? "none"];
-      const canUpgradePlan =
-        isSeatBased &&
-        highestSeatTypeOrder !== null &&
-        requesterSeatOrder < highestSeatTypeOrder;
+      // requester to: their current seat already grants as many AWU credits as
+      // the richest seat the plan offers.
+      const canUpgradePlan = canUpgrade(request.requester.seatType, seatPlans);
       return (
         <div className="flex w-full items-center justify-end gap-2">
           <Button
@@ -133,8 +149,7 @@ function buildActionsColumn({
 interface UpgradeRequestsTableProps {
   requests: MembershipUpgradeRequestType[];
   isLoading: boolean;
-  isSeatBased: boolean;
-  highestSeatTypeOrder: number | null;
+  seatPlans: SeatPlanResponseBody;
   pendingRequestIds: ReadonlySet<string>;
   onUpgradePlan: (request: MembershipUpgradeRequestType) => void;
   onEditLimit: (request: MembershipUpgradeRequestType) => void;
@@ -144,8 +159,7 @@ interface UpgradeRequestsTableProps {
 export function UpgradeRequestsTable({
   requests,
   isLoading,
-  isSeatBased,
-  highestSeatTypeOrder,
+  seatPlans,
   pendingRequestIds,
   onUpgradePlan,
   onEditLimit,
@@ -171,14 +185,13 @@ export function UpgradeRequestsTable({
       reasonColumn,
       requestedColumn,
       buildActionsColumn({
-        isSeatBased,
-        highestSeatTypeOrder,
+        seatPlans,
         onUpgradePlan,
         onEditLimit,
         onDeny,
       }),
     ],
-    [isSeatBased, highestSeatTypeOrder, onUpgradePlan, onEditLimit, onDeny]
+    [seatPlans, onUpgradePlan, onEditLimit, onDeny]
   );
 
   if (isLoading) {
