@@ -39,6 +39,7 @@ export function useLandingAuthContext({
 
   return {
     user: data?.user ?? null,
+    defaultWorkspaceId: data?.defaultWorkspaceId ?? null,
     isLoading: hasSessionCookie && !error && !data,
     isAuthenticated: !!data?.user,
   };
