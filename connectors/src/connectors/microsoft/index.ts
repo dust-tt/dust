@@ -80,6 +80,15 @@ import { Client } from "@microsoft/microsoft-graph-client";
 import type { Site } from "@microsoft/microsoft-graph-types";
 import { decodeJwt } from "jose";
 
+function shouldStartSensitivityLabelsWorkflow(
+  config: MicrosoftConfigurationResource
+): boolean {
+  return (
+    !!config.allowedSensitivityLabels &&
+    config.allowedSensitivityLabels.length > 0
+  );
+}
+
 export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
   readonly provider: ConnectorProvider = "microsoft";
 
@@ -151,12 +160,17 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       throw gcRes.error;
     }
 
-    const sensitivityLabelsReconciliationRes =
-      await launchMicrosoftSensitivityLabelsReconciliationWorkflow(
-        connector.id
-      );
-    if (sensitivityLabelsReconciliationRes.isErr()) {
-      throw sensitivityLabelsReconciliationRes.error;
+    const config = await MicrosoftConfigurationResource.fetchByConnectorId(
+      connector.id
+    );
+    if (config && shouldStartSensitivityLabelsWorkflow(config)) {
+      const sensitivityLabelsReconciliationRes =
+        await launchMicrosoftSensitivityLabelsReconciliationWorkflow(
+          connector.id
+        );
+      if (sensitivityLabelsReconciliationRes.isErr()) {
+        throw sensitivityLabelsReconciliationRes.error;
+      }
     }
 
     return new Ok(connector.id.toString());
@@ -619,12 +633,17 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       return gcRes;
     }
 
-    const sensitivityLabelsReconciliationRes =
-      await launchMicrosoftSensitivityLabelsReconciliationWorkflow(
-        this.connectorId
-      );
-    if (sensitivityLabelsReconciliationRes.isErr()) {
-      return sensitivityLabelsReconciliationRes;
+    const config = await MicrosoftConfigurationResource.fetchByConnectorId(
+      this.connectorId
+    );
+    if (config && shouldStartSensitivityLabelsWorkflow(config)) {
+      const sensitivityLabelsReconciliationRes =
+        await launchMicrosoftSensitivityLabelsReconciliationWorkflow(
+          this.connectorId
+        );
+      if (sensitivityLabelsReconciliationRes.isErr()) {
+        return sensitivityLabelsReconciliationRes;
+      }
     }
 
     return new Ok(undefined);
@@ -688,6 +707,12 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           );
         }
         await config.update({ allowedSensitivityLabels: labels });
+        if (!labels || labels.length === 0) {
+          await terminateWorkflow(
+            microsoftSensitivityLabelsReconciliationWorkflowId(this.connectorId)
+          );
+          return new Ok(undefined);
+        }
         const workflowRes =
           await launchMicrosoftSensitivityLabelsReconciliationWorkflow(
             this.connectorId
