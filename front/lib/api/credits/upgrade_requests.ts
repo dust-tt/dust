@@ -16,6 +16,7 @@ import { Err, Ok } from "@app/types/shared/result";
 
 export type UpgradeRequestErrorType =
   | "workspace_not_metronome_billed"
+  | "upgrade_requests_disabled"
   | "user_not_found"
   | "request_not_found"
   | "request_not_pending";
@@ -27,6 +28,14 @@ export class UpgradeRequestError extends Error {
   ) {
     super(message);
   }
+}
+
+async function isMemberUpgradeRequestAllowed(
+  auth: Authenticator
+): Promise<boolean> {
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  return config?.allowMemberUpgradeRequests ?? true;
 }
 
 export type GetUpgradeRequestsResponseBody = {
@@ -53,6 +62,15 @@ export async function createUpgradeRequest(
       new UpgradeRequestError(
         "workspace_not_metronome_billed",
         "Upgrade requests are only available on credit-priced workspaces."
+      )
+    );
+  }
+
+  if (!(await isMemberUpgradeRequestAllowed(auth))) {
+    return new Err(
+      new UpgradeRequestError(
+        "upgrade_requests_disabled",
+        "Member-initiated upgrade requests are disabled for this workspace."
       )
     );
   }
@@ -128,9 +146,7 @@ export async function getUpgradeRequestAvailabilityForUser(
     return unavailable;
   }
 
-  const config =
-    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
-  if (config && !config.allowMemberUpgradeRequests) {
+  if (!(await isMemberUpgradeRequestAllowed(auth))) {
     return unavailable;
   }
 

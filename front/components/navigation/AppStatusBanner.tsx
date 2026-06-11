@@ -334,6 +334,7 @@ function UsageStatusBanner({ owner }: UsageStatusBannerProps) {
     !isMetronomeContractLoading &&
     !contract?.hasPersonalCreditSeats;
   const showAwuBanner = awuStatus !== "normal";
+  const showUpgradeCta = canRequestUpgrade;
   const showProgrammaticBanner =
     isAdmin(owner) && programmaticCreditStatus !== "active";
   // The admin-configured balance-threshold warning is only relevant before the
@@ -390,7 +391,7 @@ function UsageStatusBanner({ owner }: UsageStatusBannerProps) {
           awuStatus === "blocked"
             ? "You can no longer run agents. Contact your admin to increase your limit."
             : "Contact your admin to increase your limit before you are blocked.",
-        footer: canRequestUpgrade ? (
+        footer: showUpgradeCta ? (
           <RequestUpgradeButton
             owner={owner}
             hasPendingUpgradeRequest={hasPendingUpgradeRequest}
