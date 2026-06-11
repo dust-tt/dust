@@ -1,32 +1,36 @@
-import * as t from "io-ts";
+import { z } from "zod";
 
-import { NumberAsStringCodec } from "../shared/utils/iots_utils";
+// Converts number-typed values to strings (handles minimist auto-parsing of numeric CLI args).
+const cliArg = z.preprocess(
+  (val) => (typeof val === "number" ? String(val) : val),
+  z.union([z.string(), z.undefined()])
+);
+
+// Generic CLI args record: accepts strings, numbers (converted to strings), and undefined.
+const cliArgs = z.record(z.string(), cliArg);
 
 /**
  * <Connectors>
  */
-export const ConnectorsCommandSchema = t.type({
-  majorCommand: t.literal("connectors"),
-  command: t.union([
-    t.literal("stop"),
-    t.literal("delete"),
-    t.literal("pause"),
-    t.literal("unpause"),
-    t.literal("resume"),
-    t.literal("full-resync"),
-    t.literal("set-error"),
-    t.literal("clear-error"),
-    t.literal("restart"),
-    t.literal("get-parents"),
-    t.literal("set-permission"),
-    t.literal("garbage-collect"),
+export const ConnectorsCommandSchema = z.object({
+  majorCommand: z.literal("connectors"),
+  command: z.union([
+    z.literal("stop"),
+    z.literal("delete"),
+    z.literal("pause"),
+    z.literal("unpause"),
+    z.literal("resume"),
+    z.literal("full-resync"),
+    z.literal("set-error"),
+    z.literal("clear-error"),
+    z.literal("restart"),
+    z.literal("get-parents"),
+    z.literal("set-permission"),
+    z.literal("garbage-collect"),
   ]),
-  args: t.record(
-    t.string,
-    t.union([t.string, NumberAsStringCodec, t.undefined])
-  ),
+  args: cliArgs,
 });
-export type ConnectorsCommandType = t.TypeOf<typeof ConnectorsCommandSchema>;
+export type ConnectorsCommandType = z.infer<typeof ConnectorsCommandSchema>;
 /**
  * </Connectors>
  */
@@ -34,104 +38,101 @@ export type ConnectorsCommandType = t.TypeOf<typeof ConnectorsCommandSchema>;
 /**
  * <Confluence>
  */
-export const ConfluenceCommandSchema = t.type({
-  majorCommand: t.literal("confluence"),
-  command: t.union([
-    t.literal("check-page-exists"),
-    t.literal("check-space-access"),
-    t.literal("ignore-near-rate-limit"),
-    t.literal("me"),
-    t.literal("resolve-space-from-url"),
-    t.literal("skip-page"),
-    t.literal("sync-space"),
-    t.literal("unignore-near-rate-limit"),
-    t.literal("update-parents"),
-    t.literal("upsert-page"),
-    t.literal("upsert-pages"),
+export const ConfluenceCommandSchema = z.object({
+  majorCommand: z.literal("confluence"),
+  command: z.union([
+    z.literal("check-page-exists"),
+    z.literal("check-space-access"),
+    z.literal("ignore-near-rate-limit"),
+    z.literal("me"),
+    z.literal("resolve-space-from-url"),
+    z.literal("skip-page"),
+    z.literal("sync-space"),
+    z.literal("unignore-near-rate-limit"),
+    z.literal("update-parents"),
+    z.literal("upsert-page"),
+    z.literal("upsert-pages"),
   ]),
-  args: t.type({
-    connectorId: t.union([t.number, t.undefined]),
-    pageId: t.union([t.number, t.undefined]),
-    spaceId: t.union([t.number, t.undefined]),
-    file: t.union([t.string, t.undefined]),
-    keyInFile: t.union([t.string, t.undefined]),
-    url: t.union([t.string, t.undefined]),
-    forceUpsert: t.union([t.literal("true"), t.undefined]),
-    skipReason: t.union([t.string, t.undefined]),
+  args: z.object({
+    connectorId: z.number().optional(),
+    pageId: z.number().optional(),
+    spaceId: z.number().optional(),
+    file: z.string().optional(),
+    keyInFile: z.string().optional(),
+    url: z.string().optional(),
+    forceUpsert: z.literal("true").optional(),
+    skipReason: z.string().optional(),
   }),
 });
-export type ConfluenceCommandType = t.TypeOf<typeof ConfluenceCommandSchema>;
+export type ConfluenceCommandType = z.infer<typeof ConfluenceCommandSchema>;
 
-export const ConfluenceMeResponseSchema = t.type({
-  me: t.UnknownRecord,
+export const ConfluenceMeResponseSchema = z.object({
+  me: z.record(z.string(), z.unknown()),
 });
-export type ConfluenceMeResponseType = t.TypeOf<
+export type ConfluenceMeResponseType = z.infer<
   typeof ConfluenceMeResponseSchema
 >;
 
-export const ConfluenceUpsertPageResponseSchema = t.type({
-  workflowId: t.string,
-  workflowUrl: t.union([t.string, t.undefined]),
+export const ConfluenceUpsertPageResponseSchema = z.object({
+  workflowId: z.string(),
+  workflowUrl: z.string().optional(),
 });
-export type ConfluenceUpsertPageResponseType = t.TypeOf<
+export type ConfluenceUpsertPageResponseType = z.infer<
   typeof ConfluenceUpsertPageResponseSchema
 >;
 
-export const ConfluenceSkipPageResponseSchema = t.type({
-  skipped: t.boolean,
-  reason: t.union([t.string, t.undefined]),
+export const ConfluenceSkipPageResponseSchema = z.object({
+  skipped: z.boolean(),
+  reason: z.string().optional(),
 });
-export type ConfluenceSkipPageResponseType = t.TypeOf<
+export type ConfluenceSkipPageResponseType = z.infer<
   typeof ConfluenceSkipPageResponseSchema
 >;
 
-export const ConfluenceCheckSpaceAccessResponseSchema = t.type({
-  hasAccess: t.boolean,
-  space: t.UnknownRecord,
+export const ConfluenceCheckSpaceAccessResponseSchema = z.object({
+  hasAccess: z.boolean(),
+  space: z.record(z.string(), z.unknown()),
 });
-export type ConfluenceCheckSpaceAccessResponseType = t.TypeOf<
+export type ConfluenceCheckSpaceAccessResponseType = z.infer<
   typeof ConfluenceCheckSpaceAccessResponseSchema
 >;
 
-export const ConfluenceResolveSpaceFromUrlResponseSchema = t.intersection([
-  t.type({
-    found: t.boolean,
-  }),
-  t.partial({
-    spaceId: t.string,
-    spaceKey: t.string,
-    spaceName: t.string,
-    hasAccess: t.boolean,
-    lastSyncedAt: t.string,
-    pageCount: t.number,
-  }),
-]);
-export type ConfluenceResolveSpaceFromUrlResponseType = t.TypeOf<
+export const ConfluenceResolveSpaceFromUrlResponseSchema = z.object({
+  found: z.boolean(),
+  spaceId: z.string().optional(),
+  spaceKey: z.string().optional(),
+  spaceName: z.string().optional(),
+  hasAccess: z.boolean().optional(),
+  lastSyncedAt: z.string().optional(),
+  pageCount: z.number().optional(),
+});
+export type ConfluenceResolveSpaceFromUrlResponseType = z.infer<
   typeof ConfluenceResolveSpaceFromUrlResponseSchema
 >;
 
-const ConfluenceAncestorSchema = t.type({
-  id: t.string,
-  type: t.string,
-  title: t.union([t.undefined, t.string]),
+const ConfluenceAncestorSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  title: z.string().optional(),
 });
-export type ConfluenceAncestorType = t.TypeOf<typeof ConfluenceAncestorSchema>;
+export type ConfluenceAncestorType = z.infer<typeof ConfluenceAncestorSchema>;
 
-export const ConfluenceCheckPageExistsResponseSchema = t.union([
-  t.type({
-    exists: t.literal(false),
-  }),
-  t.type({
-    exists: t.literal(true),
-    ancestors: t.array(ConfluenceAncestorSchema),
-    existsInDust: t.boolean,
-    hasChildren: t.boolean,
-    hasReadRestrictions: t.boolean,
-    status: t.string,
-    title: t.string,
-  }),
-]);
-export type ConfluenceCheckPageExistsResponseType = t.TypeOf<
+export const ConfluenceCheckPageExistsResponseSchema = z.discriminatedUnion(
+  "exists",
+  [
+    z.object({ exists: z.literal(false) }),
+    z.object({
+      exists: z.literal(true),
+      ancestors: z.array(ConfluenceAncestorSchema),
+      existsInDust: z.boolean(),
+      hasChildren: z.boolean(),
+      hasReadRestrictions: z.boolean(),
+      status: z.string(),
+      title: z.string(),
+    }),
+  ]
+);
+export type ConfluenceCheckPageExistsResponseType = z.infer<
   typeof ConfluenceCheckPageExistsResponseSchema
 >;
 /**
@@ -141,26 +142,23 @@ export type ConfluenceCheckPageExistsResponseType = t.TypeOf<
 /**
  * <Batch>
  */
-export const BatchCommandSchema = t.type({
-  majorCommand: t.literal("batch"),
-  command: t.union([
-    t.literal("full-resync"),
-    t.literal("restart-all"),
-    t.literal("stop-all"),
-    t.literal("resume-all"),
+export const BatchCommandSchema = z.object({
+  majorCommand: z.literal("batch"),
+  command: z.union([
+    z.literal("full-resync"),
+    z.literal("restart-all"),
+    z.literal("stop-all"),
+    z.literal("resume-all"),
   ]),
-  args: t.record(
-    t.string,
-    t.union([t.string, NumberAsStringCodec, t.undefined])
-  ),
+  args: cliArgs,
 });
-export type BatchCommandType = t.TypeOf<typeof BatchCommandSchema>;
+export type BatchCommandType = z.infer<typeof BatchCommandSchema>;
 
-export const BatchAllResponseSchema = t.type({
-  succeeded: t.number,
-  failed: t.number,
+export const BatchAllResponseSchema = z.object({
+  succeeded: z.number(),
+  failed: z.number(),
 });
-export type BatchAllResponseType = t.TypeOf<typeof BatchAllResponseSchema>;
+export type BatchAllResponseType = z.infer<typeof BatchAllResponseSchema>;
 /**
  * </Batch>
  */
@@ -168,28 +166,25 @@ export type BatchAllResponseType = t.TypeOf<typeof BatchAllResponseSchema>;
 /**
  * <GitHub>
  */
-export const GithubCommandSchema = t.type({
-  majorCommand: t.literal("github"),
-  command: t.union([
-    t.literal("resync-repo"),
-    t.literal("resync-repo-code"),
-    t.literal("code-sync"),
-    t.literal("sync-issue"),
-    t.literal("force-daily-code-sync"),
-    t.literal("skip-issue"),
-    t.literal("skip-repo"),
-    t.literal("unskip-repo"),
-    t.literal("list-skipped-repos"),
-    t.literal("skip-code-file"),
-    t.literal("unskip-code-file"),
-    t.literal("clear-installation-id"),
+export const GithubCommandSchema = z.object({
+  majorCommand: z.literal("github"),
+  command: z.union([
+    z.literal("resync-repo"),
+    z.literal("resync-repo-code"),
+    z.literal("code-sync"),
+    z.literal("sync-issue"),
+    z.literal("force-daily-code-sync"),
+    z.literal("skip-issue"),
+    z.literal("skip-repo"),
+    z.literal("unskip-repo"),
+    z.literal("list-skipped-repos"),
+    z.literal("skip-code-file"),
+    z.literal("unskip-code-file"),
+    z.literal("clear-installation-id"),
   ]),
-  args: t.record(
-    t.string,
-    t.union([t.string, NumberAsStringCodec, t.undefined])
-  ),
+  args: cliArgs,
 });
-export type GithubCommandType = t.TypeOf<typeof GithubCommandSchema>;
+export type GithubCommandType = z.infer<typeof GithubCommandSchema>;
 /**
  * </GitHub>
  */
@@ -197,29 +192,29 @@ export type GithubCommandType = t.TypeOf<typeof GithubCommandSchema>;
 /**
  * <Gong>
  */
-export const GongCommandSchema = t.type({
-  majorCommand: t.literal("gong"),
-  command: t.union([t.literal("force-resync"), t.literal("delete-transcript")]),
-  args: t.partial({
-    connectorId: t.number,
-    fromTs: t.number,
-    callId: t.string,
+export const GongCommandSchema = z.object({
+  majorCommand: z.literal("gong"),
+  command: z.union([z.literal("force-resync"), z.literal("delete-transcript")]),
+  args: z.object({
+    connectorId: z.number().optional(),
+    fromTs: z.number().optional(),
+    callId: z.string().optional(),
   }),
 });
-export type GongCommandType = t.TypeOf<typeof GongCommandSchema>;
+export type GongCommandType = z.infer<typeof GongCommandSchema>;
 
-export const GongForceResyncResponseSchema = t.type({
-  workflowId: t.string,
-  workflowUrl: t.union([t.string, t.undefined]),
+export const GongForceResyncResponseSchema = z.object({
+  workflowId: z.string(),
+  workflowUrl: z.string().optional(),
 });
-export type GongForceResyncResponseType = t.TypeOf<
+export type GongForceResyncResponseType = z.infer<
   typeof GongForceResyncResponseSchema
 >;
 
-export const GongDeleteTranscriptResponseSchema = t.type({
-  callId: t.string,
+export const GongDeleteTranscriptResponseSchema = z.object({
+  callId: z.string(),
 });
-export type GongDeleteTranscriptResponseType = t.TypeOf<
+export type GongDeleteTranscriptResponseType = z.infer<
   typeof GongDeleteTranscriptResponseSchema
 >;
 /**
@@ -229,49 +224,45 @@ export type GongDeleteTranscriptResponseType = t.TypeOf<
 /**
  * <GoogleDrive>
  */
-export const GoogleDriveCommandSchema = t.type({
-  majorCommand: t.literal("google_drive"),
-  command: t.union([
-    t.literal("garbage-collect-all"),
-    t.literal("get-file-metadata"),
-    t.literal("check-file"),
-    t.literal("get-google-parents"),
-    t.literal("clean-invalid-parents"),
-    t.literal("upsert-file"),
-    t.literal("update-core-parents"),
-    t.literal("restart-google-webhooks"),
-    t.literal("start-full-sync"),
-    t.literal("start-incremental-sync"),
-    t.literal("restart-all-incremental-sync-workflows"),
-    t.literal("skip-file"),
-    t.literal("register-webhook"),
-    t.literal("register-all-webhooks"),
-    t.literal("list-labels"),
-    t.literal("export-folder-structure"),
+export const GoogleDriveCommandSchema = z.object({
+  majorCommand: z.literal("google_drive"),
+  command: z.union([
+    z.literal("garbage-collect-all"),
+    z.literal("get-file-metadata"),
+    z.literal("check-file"),
+    z.literal("get-google-parents"),
+    z.literal("clean-invalid-parents"),
+    z.literal("upsert-file"),
+    z.literal("update-core-parents"),
+    z.literal("restart-google-webhooks"),
+    z.literal("start-full-sync"),
+    z.literal("start-incremental-sync"),
+    z.literal("restart-all-incremental-sync-workflows"),
+    z.literal("skip-file"),
+    z.literal("register-webhook"),
+    z.literal("register-all-webhooks"),
+    z.literal("list-labels"),
+    z.literal("export-folder-structure"),
   ]),
-  args: t.record(
-    t.string,
-    t.union([t.string, NumberAsStringCodec, t.undefined])
-  ),
+  args: cliArgs,
 });
-export type GoogleDriveCommandType = t.TypeOf<typeof GoogleDriveCommandSchema>;
+export type GoogleDriveCommandType = z.infer<typeof GoogleDriveCommandSchema>;
 
-export const CheckFileGenericResponseSchema = t.type({
-  status: t.number,
-  // all literals from js `typeof`
-  type: t.union([
-    t.literal("undefined"),
-    t.literal("object"),
-    t.literal("boolean"),
-    t.literal("number"),
-    t.literal("string"),
-    t.literal("function"),
-    t.literal("symbol"),
-    t.literal("bigint"),
+export const CheckFileGenericResponseSchema = z.object({
+  status: z.number(),
+  type: z.union([
+    z.literal("undefined"),
+    z.literal("object"),
+    z.literal("boolean"),
+    z.literal("number"),
+    z.literal("string"),
+    z.literal("function"),
+    z.literal("symbol"),
+    z.literal("bigint"),
   ]),
-  content: t.unknown, // Google Drive type, can't be iots'd
+  content: z.unknown(),
 });
-export type CheckFileGenericResponseType = t.TypeOf<
+export type CheckFileGenericResponseType = z.infer<
   typeof CheckFileGenericResponseSchema
 >;
 /**
@@ -281,165 +272,157 @@ export type CheckFileGenericResponseType = t.TypeOf<
 /**
  * <Intercom>
  */
-export const IntercomCommandSchema = t.type({
-  majorCommand: t.literal("intercom"),
-  command: t.union([
-    t.literal("force-resync-articles"),
-    t.literal("force-resync-all-conversations"),
-    t.literal("check-conversation"),
-    t.literal("fetch-conversation"),
-    t.literal("fetch-articles"),
-    t.literal("check-missing-conversations"),
-    t.literal("check-teams"),
-    t.literal("set-conversations-sliding-window"),
-    t.literal("get-conversations-sliding-window"),
-    t.literal("search-conversations"),
-    t.literal("restart-schedules"),
+export const IntercomCommandSchema = z.object({
+  majorCommand: z.literal("intercom"),
+  command: z.union([
+    z.literal("force-resync-articles"),
+    z.literal("force-resync-all-conversations"),
+    z.literal("check-conversation"),
+    z.literal("fetch-conversation"),
+    z.literal("fetch-articles"),
+    z.literal("check-missing-conversations"),
+    z.literal("check-teams"),
+    z.literal("set-conversations-sliding-window"),
+    z.literal("get-conversations-sliding-window"),
+    z.literal("search-conversations"),
+    z.literal("restart-schedules"),
   ]),
-  args: t.type({
-    force: t.union([t.literal("true"), t.undefined]),
-    connectorId: t.union([t.number, t.undefined]),
-    conversationId: t.union([t.number, t.undefined]),
-    day: t.union([t.string, t.undefined]),
-    helpCenterId: t.union([t.number, t.undefined]),
-    conversationsSlidingWindow: t.union([t.number, t.undefined]),
-    teamId: t.union([t.number, t.undefined]),
-    closedAfter: t.union([t.number, t.undefined]),
-    state: t.union([
-      t.union([t.literal("open"), t.literal("closed")]),
-      t.undefined,
-    ]),
-    cursor: t.union([t.string, t.undefined]),
-    forceDeleteExisting: t.union([t.literal("true"), t.undefined]),
+  args: z.object({
+    force: z.literal("true").optional(),
+    connectorId: z.number().optional(),
+    conversationId: z.number().optional(),
+    day: z.string().optional(),
+    helpCenterId: z.number().optional(),
+    conversationsSlidingWindow: z.number().optional(),
+    teamId: z.number().optional(),
+    closedAfter: z.number().optional(),
+    state: z.union([z.literal("open"), z.literal("closed")]).optional(),
+    cursor: z.string().optional(),
+    forceDeleteExisting: z.literal("true").optional(),
   }),
 });
+export type IntercomCommandType = z.infer<typeof IntercomCommandSchema>;
 
-export type IntercomCommandType = t.TypeOf<typeof IntercomCommandSchema>;
-
-export const IntercomCheckConversationResponseSchema = t.type({
-  isConversationOnIntercom: t.boolean,
-  isConversationOnDB: t.boolean,
-  conversationTeamIdOnIntercom: t.union([t.string, t.undefined]),
-  conversationTeamIdOnDB: t.union([t.string, t.undefined, t.null]),
+export const IntercomCheckConversationResponseSchema = z.object({
+  isConversationOnIntercom: z.boolean(),
+  isConversationOnDB: z.boolean(),
+  conversationTeamIdOnIntercom: z.string().optional(),
+  conversationTeamIdOnDB: z.string().nullable().optional(),
 });
-export type IntercomCheckConversationResponseType = t.TypeOf<
+export type IntercomCheckConversationResponseType = z.infer<
   typeof IntercomCheckConversationResponseSchema
 >;
 
-export const IntercomFetchConversationResponseSchema = t.type({
-  conversation: t.union([t.UnknownRecord, t.null]), // intercom type, can't be iots'd
+export const IntercomFetchConversationResponseSchema = z.object({
+  conversation: z.record(z.string(), z.unknown()).nullable(),
 });
-export type IntercomFetchConversationResponseType = t.TypeOf<
+export type IntercomFetchConversationResponseType = z.infer<
   typeof IntercomFetchConversationResponseSchema
 >;
 
-export const IntercomFetchArticlesResponseSchema = t.type({
-  articles: t.array(t.union([t.UnknownRecord, t.null])), // intercom type, can't be iots'd
+export const IntercomFetchArticlesResponseSchema = z.object({
+  articles: z.array(z.record(z.string(), z.unknown()).nullable()),
 });
-export type IntercomFetchArticlesResponseType = t.TypeOf<
+export type IntercomFetchArticlesResponseType = z.infer<
   typeof IntercomFetchArticlesResponseSchema
 >;
 
-export const IntercomCheckTeamsResponseSchema = t.type({
-  teams: t.array(
-    t.type({
-      teamId: t.string,
-      name: t.string,
-      isTeamOnDB: t.boolean,
+export const IntercomCheckTeamsResponseSchema = z.object({
+  teams: z.array(
+    z.object({
+      teamId: z.string(),
+      name: z.string(),
+      isTeamOnDB: z.boolean(),
     })
   ),
 });
-export type IntercomCheckTeamsResponseType = t.TypeOf<
+export type IntercomCheckTeamsResponseType = z.infer<
   typeof IntercomCheckTeamsResponseSchema
 >;
 
-export const IntercomCheckMissingConversationsResponseSchema = t.type({
-  missingConversations: t.array(
-    t.type({
-      conversationId: t.string,
-      teamId: t.union([t.number, t.null]),
-      open: t.boolean,
-      createdAt: t.number,
+export const IntercomCheckMissingConversationsResponseSchema = z.object({
+  missingConversations: z.array(
+    z.object({
+      conversationId: z.string(),
+      teamId: z.number().nullable(),
+      open: z.boolean(),
+      createdAt: z.number(),
     })
   ),
 });
-export type IntercomCheckMissingConversationsResponseType = t.TypeOf<
+export type IntercomCheckMissingConversationsResponseType = z.infer<
   typeof IntercomCheckMissingConversationsResponseSchema
 >;
 
-export const IntercomForceResyncArticlesResponseSchema = t.type({
-  affectedCount: t.number,
+export const IntercomForceResyncArticlesResponseSchema = z.object({
+  affectedCount: z.number(),
 });
-export type IntercomForceResyncArticlesResponseType = t.TypeOf<
+export type IntercomForceResyncArticlesResponseType = z.infer<
   typeof IntercomForceResyncArticlesResponseSchema
 >;
 
-export const IntercomGetConversationsSlidingWindowResponseSchema = t.type({
-  conversationsSlidingWindow: t.number,
+export const IntercomGetConversationsSlidingWindowResponseSchema = z.object({
+  conversationsSlidingWindow: z.number(),
 });
-export type IntercomGetConversationsSlidingWindowResponseType = t.TypeOf<
+export type IntercomGetConversationsSlidingWindowResponseType = z.infer<
   typeof IntercomGetConversationsSlidingWindowResponseSchema
 >;
 
-export const IntercomSearchConversationsResponseSchema = t.type({
-  conversations: t.array(
-    t.type({
-      id: t.string,
-      open: t.boolean,
-      state: t.string,
-      created_at: t.number,
-      last_closed_at: t.union([t.number, t.null]),
+export const IntercomSearchConversationsResponseSchema = z.object({
+  conversations: z.array(
+    z.object({
+      id: z.string(),
+      open: z.boolean(),
+      state: z.string(),
+      created_at: z.number(),
+      last_closed_at: z.number().nullable(),
     })
   ),
-  totalCount: t.number,
+  totalCount: z.number(),
 });
-
-export type IntercomSearchConversationsResponseType = t.TypeOf<
+export type IntercomSearchConversationsResponseType = z.infer<
   typeof IntercomSearchConversationsResponseSchema
 >;
 
-export const IntercomForceResyncAllConversationsResponseSchema = t.type({
-  workflowId: t.string,
+export const IntercomForceResyncAllConversationsResponseSchema = z.object({
+  workflowId: z.string(),
 });
-export type IntercomForceResyncAllConversationsResponseType = t.TypeOf<
+export type IntercomForceResyncAllConversationsResponseType = z.infer<
   typeof IntercomForceResyncAllConversationsResponseSchema
 >;
 
-export const IntercomRestartSchedulesResponseSchema = t.type({
-  helpCenterScheduleId: t.string,
-  conversationScheduleId: t.string,
+export const IntercomRestartSchedulesResponseSchema = z.object({
+  helpCenterScheduleId: z.string(),
+  conversationScheduleId: z.string(),
 });
-export type IntercomRestartSchedulesResponseType = t.TypeOf<
+export type IntercomRestartSchedulesResponseType = z.infer<
   typeof IntercomRestartSchedulesResponseSchema
 >;
 
 /**
- * </ Intercom>
+ * </Intercom>
  */
 
 /**
  * <Microsoft>
  */
-export const MicrosoftCommandSchema = t.type({
-  majorCommand: t.literal("microsoft"),
-  command: t.union([
-    t.literal("garbage-collect-all"),
-    t.literal("check-file"),
-    t.literal("start-full-sync"),
-    t.literal("start-incremental-sync"),
-    t.literal("restart-all-incremental-sync-workflows"),
-    t.literal("skip-file"),
-    t.literal("sync-node"),
-    t.literal("get-parents"),
-    t.literal("update-parent-in-node-table"),
-    t.literal("update-core-parents"),
+export const MicrosoftCommandSchema = z.object({
+  majorCommand: z.literal("microsoft"),
+  command: z.union([
+    z.literal("garbage-collect-all"),
+    z.literal("check-file"),
+    z.literal("start-full-sync"),
+    z.literal("start-incremental-sync"),
+    z.literal("restart-all-incremental-sync-workflows"),
+    z.literal("skip-file"),
+    z.literal("sync-node"),
+    z.literal("get-parents"),
+    z.literal("update-parent-in-node-table"),
+    z.literal("update-core-parents"),
   ]),
-  args: t.record(
-    t.string,
-    t.union([t.string, NumberAsStringCodec, t.undefined])
-  ),
+  args: cliArgs,
 });
-export type MicrosoftCommandType = t.TypeOf<typeof MicrosoftCommandSchema>;
+export type MicrosoftCommandType = z.infer<typeof MicrosoftCommandSchema>;
 /**
  * </Microsoft>
  */
@@ -447,90 +430,87 @@ export type MicrosoftCommandType = t.TypeOf<typeof MicrosoftCommandSchema>;
 /**
  * <Notion>
  */
-export const NotionCommandSchema = t.type({
-  majorCommand: t.literal("notion"),
-  command: t.union([
-    t.literal("skip-page"),
-    t.literal("skip-database"),
-    t.literal("upsert-page"),
-    t.literal("upsert-database"),
-    t.literal("search-pages"),
-    t.literal("update-core-parents"),
-    t.literal("check-url"),
-    t.literal("find-url"),
-    t.literal("delete-url"),
-    t.literal("me"),
-    t.literal("stop-all-garbage-collectors"),
-    t.literal("update-parents-fields"),
-    t.literal("clear-parents-last-updated-at"),
-    t.literal("update-orphaned-resources-parents"),
-    t.literal("api-request"),
+export const NotionCommandSchema = z.object({
+  majorCommand: z.literal("notion"),
+  command: z.union([
+    z.literal("skip-page"),
+    z.literal("skip-database"),
+    z.literal("upsert-page"),
+    z.literal("upsert-database"),
+    z.literal("search-pages"),
+    z.literal("update-core-parents"),
+    z.literal("check-url"),
+    z.literal("find-url"),
+    z.literal("delete-url"),
+    z.literal("me"),
+    z.literal("stop-all-garbage-collectors"),
+    z.literal("update-parents-fields"),
+    z.literal("clear-parents-last-updated-at"),
+    z.literal("update-orphaned-resources-parents"),
+    z.literal("api-request"),
   ]),
-  args: t.record(
-    t.string,
-    t.union([t.string, NumberAsStringCodec, t.undefined])
-  ),
+  args: cliArgs,
 });
-export type NotionCommandType = t.TypeOf<typeof NotionCommandSchema>;
+export type NotionCommandType = z.infer<typeof NotionCommandSchema>;
 
-export const NotionUpsertResponseSchema = t.type({
-  workflowId: t.string,
-  workflowUrl: t.union([t.string, t.undefined]),
+export const NotionUpsertResponseSchema = z.object({
+  workflowId: z.string(),
+  workflowUrl: z.string().optional(),
 });
-export type NotionUpsertResponseType = t.TypeOf<
+export type NotionUpsertResponseType = z.infer<
   typeof NotionUpsertResponseSchema
 >;
 
-export const NotionSearchPagesResponseSchema = t.type({
-  pages: t.array(
-    t.type({
-      id: t.string,
-      title: t.union([t.string, t.undefined]),
-      type: t.union([t.literal("page"), t.literal("database")]),
-      isSkipped: t.boolean,
-      isFull: t.boolean,
+export const NotionSearchPagesResponseSchema = z.object({
+  pages: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string().optional(),
+      type: z.union([z.literal("page"), z.literal("database")]),
+      isSkipped: z.boolean(),
+      isFull: z.boolean(),
     })
   ),
 });
-export type NotionSearchPagesResponseType = t.TypeOf<
+export type NotionSearchPagesResponseType = z.infer<
   typeof NotionSearchPagesResponseSchema
 >;
 
-export const NotionCheckUrlResponseSchema = t.type({
-  page: t.union([t.UnknownRecord, t.null]), // notion type, can't be iots'd
-  db: t.union([t.UnknownRecord, t.null]), // notion type, can't be iots'd
+export const NotionCheckUrlResponseSchema = z.object({
+  page: z.record(z.string(), z.unknown()).nullable(),
+  db: z.record(z.string(), z.unknown()).nullable(),
 });
-export type NotionCheckUrlResponseType = t.TypeOf<
+export type NotionCheckUrlResponseType = z.infer<
   typeof NotionCheckUrlResponseSchema
 >;
 
-export const NotionDeleteUrlResponseSchema = t.type({
-  deletedPage: t.boolean,
-  deletedDb: t.boolean,
+export const NotionDeleteUrlResponseSchema = z.object({
+  deletedPage: z.boolean(),
+  deletedDb: z.boolean(),
 });
-export type NotionDeleteUrlResponseType = t.TypeOf<
+export type NotionDeleteUrlResponseType = z.infer<
   typeof NotionDeleteUrlResponseSchema
 >;
 
-export const NotionFindUrlResponseSchema = t.type({
-  page: t.union([t.UnknownRecord, t.null]), // notion type, can't be iots'd
-  db: t.union([t.UnknownRecord, t.null]), // notion type, can't be iots'd
+export const NotionFindUrlResponseSchema = z.object({
+  page: z.record(z.string(), z.unknown()).nullable(),
+  db: z.record(z.string(), z.unknown()).nullable(),
 });
-export type NotionFindUrlResponseType = t.TypeOf<
+export type NotionFindUrlResponseType = z.infer<
   typeof NotionFindUrlResponseSchema
 >;
 
-export const NotionMeResponseSchema = t.type({
-  me: t.UnknownRecord, // notion type, can't be iots'd
-  botOwner: t.UnknownRecord, // notion type, can't be iots'd
+export const NotionMeResponseSchema = z.object({
+  me: z.record(z.string(), z.unknown()),
+  botOwner: z.record(z.string(), z.unknown()),
 });
-export type NotionMeResponseType = t.TypeOf<typeof NotionMeResponseSchema>;
+export type NotionMeResponseType = z.infer<typeof NotionMeResponseSchema>;
 
-export const NotionApiRequestResponseSchema = t.type({
-  status: t.number,
-  data: t.unknown, // notion API response type, can't be iots'd
+export const NotionApiRequestResponseSchema = z.object({
+  status: z.number(),
+  data: z.unknown(),
 });
-export type NotionApiRequestResponseType = t.TypeOf<
+export type NotionApiRequestResponseType = z.infer<
   typeof NotionApiRequestResponseSchema
 >;
 /**
@@ -540,73 +520,71 @@ export type NotionApiRequestResponseType = t.TypeOf<
 /**
  * <Salesforce>
  */
-export const SalesforceCommandSchema = t.type({
-  majorCommand: t.literal("salesforce"),
-  command: t.union([
-    t.literal("check-connection"),
-    t.literal("run-soql"),
-    t.literal("setup-synced-query"),
-    t.literal("sync-query"),
+export const SalesforceCommandSchema = z.object({
+  majorCommand: z.literal("salesforce"),
+  command: z.union([
+    z.literal("check-connection"),
+    z.literal("run-soql"),
+    z.literal("setup-synced-query"),
+    z.literal("sync-query"),
   ]),
-  args: t.type({
-    wId: t.union([t.string, t.undefined]),
-    dsId: t.union([t.string, t.undefined]),
-    soql: t.union([t.string, t.undefined]),
-    limit: t.union([t.number, t.undefined]),
-    lastModifiedDateOrder: t.union([
-      t.literal("ASC"),
-      t.literal("DESC"),
-      t.undefined,
-    ]),
-    offset: t.union([t.number, t.undefined]),
-    rootNodeName: t.union([t.string, t.undefined]),
-    titleTemplate: t.union([t.string, t.undefined]),
-    contentTemplate: t.union([t.string, t.undefined]),
-    tagsTemplate: t.union([t.string, t.undefined]),
-    execute: t.union([t.boolean, t.undefined]),
-    queryId: t.union([t.number, t.undefined]),
-    full: t.union([t.boolean, t.undefined]),
+  args: z.object({
+    wId: z.string().optional(),
+    dsId: z.string().optional(),
+    soql: z.string().optional(),
+    limit: z.number().optional(),
+    lastModifiedDateOrder: z
+      .union([z.literal("ASC"), z.literal("DESC")])
+      .optional(),
+    offset: z.number().optional(),
+    rootNodeName: z.string().optional(),
+    titleTemplate: z.string().optional(),
+    contentTemplate: z.string().optional(),
+    tagsTemplate: z.string().optional(),
+    execute: z.boolean().optional(),
+    queryId: z.number().optional(),
+    full: z.boolean().optional(),
   }),
 });
-export type SalesforceCommandType = t.TypeOf<typeof SalesforceCommandSchema>;
+export type SalesforceCommandType = z.infer<typeof SalesforceCommandSchema>;
 
-export const SalesforceCheckConnectionResponseSchema = t.type({
-  ok: t.boolean,
+export const SalesforceCheckConnectionResponseSchema = z.object({
+  ok: z.boolean(),
 });
-export type SalesforceCheckConnectionResponseType = t.TypeOf<
+export type SalesforceCheckConnectionResponseType = z.infer<
   typeof SalesforceCheckConnectionResponseSchema
 >;
 
-export const SalesforceRunSoqlResponseSchema = t.type({
-  records: t.array(t.UnknownRecord), // Salesforce type, can't be iots'd
-  totalSize: t.number,
-  done: t.boolean,
+export const SalesforceRunSoqlResponseSchema = z.object({
+  records: z.array(z.record(z.string(), z.unknown())),
+  totalSize: z.number(),
+  done: z.boolean(),
 });
-export type SalesforceRunSoqlResponseType = t.TypeOf<
+export type SalesforceRunSoqlResponseType = z.infer<
   typeof SalesforceRunSoqlResponseSchema
 >;
 
-export const SalesforceSetupSyncedQueryResponseSchema = t.type({
-  documents: t.array(
-    t.type({
-      id: t.string,
-      lastModifiedDate: t.string,
-      title: t.string,
-      content: t.string,
-      tags: t.array(t.string),
+export const SalesforceSetupSyncedQueryResponseSchema = z.object({
+  documents: z.array(
+    z.object({
+      id: z.string(),
+      lastModifiedDate: z.string(),
+      title: z.string(),
+      content: z.string(),
+      tags: z.array(z.string()),
     })
   ),
-  queryId: t.union([t.number, t.null]),
-  created: t.boolean,
+  queryId: z.number().nullable(),
+  created: z.boolean(),
 });
-export type SalesforceSetupSyncedQueryResponseType = t.TypeOf<
+export type SalesforceSetupSyncedQueryResponseType = z.infer<
   typeof SalesforceSetupSyncedQueryResponseSchema
 >;
 
-export const SalesforceSyncQueryResponseSchema = t.type({
-  workflowId: t.string,
+export const SalesforceSyncQueryResponseSchema = z.object({
+  workflowId: z.string(),
 });
-export type SalesforceSyncQueryResponseType = t.TypeOf<
+export type SalesforceSyncQueryResponseType = z.infer<
   typeof SalesforceSyncQueryResponseSchema
 >;
 /**
@@ -616,47 +594,44 @@ export type SalesforceSyncQueryResponseType = t.TypeOf<
 /**
  * <Slack>
  */
-export const SlackCommandSchema = t.type({
-  majorCommand: t.literal("slack"),
-  command: t.union([
-    t.literal("add-channel-to-sync"),
-    t.literal("cutover-legacy-bot"),
-    t.literal("enable-bot"),
-    t.literal("remove-channel-from-sync"),
-    t.literal("skip-channel"),
-    t.literal("skip-thread"),
-    t.literal("sync-channel"),
-    t.literal("sync-channel-metadata"),
-    t.literal("sync-thread"),
-    t.literal("uninstall-for-unknown-team-ids"),
-    t.literal("unskip-channel"),
-    t.literal("run-auto-join"),
-    t.literal("whitelist-bot"),
-    t.literal("whitelist-domains"),
-    t.literal("check-channel"),
-    t.literal("delete-conversation"),
+export const SlackCommandSchema = z.object({
+  majorCommand: z.literal("slack"),
+  command: z.union([
+    z.literal("add-channel-to-sync"),
+    z.literal("cutover-legacy-bot"),
+    z.literal("enable-bot"),
+    z.literal("remove-channel-from-sync"),
+    z.literal("skip-channel"),
+    z.literal("skip-thread"),
+    z.literal("sync-channel"),
+    z.literal("sync-channel-metadata"),
+    z.literal("sync-thread"),
+    z.literal("uninstall-for-unknown-team-ids"),
+    z.literal("unskip-channel"),
+    z.literal("run-auto-join"),
+    z.literal("whitelist-bot"),
+    z.literal("whitelist-domains"),
+    z.literal("check-channel"),
+    z.literal("delete-conversation"),
   ]),
-  args: t.record(
-    t.string,
-    t.union([t.string, NumberAsStringCodec, t.undefined])
-  ),
+  args: cliArgs,
 });
-export type SlackCommandType = t.TypeOf<typeof SlackCommandSchema>;
+export type SlackCommandType = z.infer<typeof SlackCommandSchema>;
 
-export const SlackJoinResponseSchema = t.type({
-  total: t.number,
-  processed: t.number,
+export const SlackJoinResponseSchema = z.object({
+  total: z.number(),
+  processed: z.number(),
 });
-export type SlackJoinResponseType = t.TypeOf<typeof SlackJoinResponseSchema>;
+export type SlackJoinResponseType = z.infer<typeof SlackJoinResponseSchema>;
 
-export const SlackCheckChannelResponseSchema = t.type({
-  success: t.literal(true),
-  channel: t.type({
-    name: t.union([t.string, t.undefined]),
-    isPrivate: t.union([t.boolean, t.undefined]),
+export const SlackCheckChannelResponseSchema = z.object({
+  success: z.literal(true),
+  channel: z.object({
+    name: z.string().optional(),
+    isPrivate: z.boolean().optional(),
   }),
 });
-export type SlackCheckChannelResponseType = t.TypeOf<
+export type SlackCheckChannelResponseType = z.infer<
   typeof SlackCheckChannelResponseSchema
 >;
 
@@ -667,48 +642,46 @@ export type SlackCheckChannelResponseType = t.TypeOf<
 /**
  * <Snowflake>
  */
-export const SnowflakeCommandSchema = t.type({
-  majorCommand: t.literal("snowflake"),
-  command: t.union([
-    t.literal("fetch-databases"),
-    t.literal("fetch-schemas"),
-    t.literal("fetch-tables"),
+export const SnowflakeCommandSchema = z.object({
+  majorCommand: z.literal("snowflake"),
+  command: z.union([
+    z.literal("fetch-databases"),
+    z.literal("fetch-schemas"),
+    z.literal("fetch-tables"),
   ]),
-  args: t.type({
-    connectorId: t.number,
-    database: t.union([t.string, t.undefined]),
-    schema: t.union([t.string, t.undefined]),
+  args: z.object({
+    connectorId: z.number(),
+    database: z.string().optional(),
+    schema: z.string().optional(),
   }),
 });
-export type SnowflakeCommandType = t.TypeOf<typeof SnowflakeCommandSchema>;
+export type SnowflakeCommandType = z.infer<typeof SnowflakeCommandSchema>;
 
-export const SnowflakeFetchDatabaseResponseSchema = t.array(
-  t.type({
-    name: t.string,
-  })
+export const SnowflakeFetchDatabaseResponseSchema = z.array(
+  z.object({ name: z.string() })
 );
-export type SnowflakeFetchDatabaseResponseType = t.TypeOf<
+export type SnowflakeFetchDatabaseResponseType = z.infer<
   typeof SnowflakeFetchDatabaseResponseSchema
 >;
 
-export const SnowflakeFetchSchemaResponseSchema = t.array(
-  t.type({
-    name: t.string,
-    database_name: t.string,
+export const SnowflakeFetchSchemaResponseSchema = z.array(
+  z.object({
+    name: z.string(),
+    database_name: z.string(),
   })
 );
-export type SnowflakeFetchSchemaResponseType = t.TypeOf<
+export type SnowflakeFetchSchemaResponseType = z.infer<
   typeof SnowflakeFetchSchemaResponseSchema
 >;
 
-export const SnowflakeFetchTableResponseSchema = t.array(
-  t.type({
-    name: t.string,
-    database_name: t.string,
-    schema_name: t.string,
+export const SnowflakeFetchTableResponseSchema = z.array(
+  z.object({
+    name: z.string(),
+    database_name: z.string(),
+    schema_name: z.string(),
   })
 );
-export type SnowflakeFetchTableResponseType = t.TypeOf<
+export type SnowflakeFetchTableResponseType = z.infer<
   typeof SnowflakeFetchTableResponseSchema
 >;
 /**
@@ -718,31 +691,30 @@ export type SnowflakeFetchTableResponseType = t.TypeOf<
 /**
  * <Temporal>
  */
-export const TemporalCommandSchema = t.type({
-  majorCommand: t.literal("temporal"),
-  command: t.union([
-    t.literal("find-unprocessed-workflows"),
-    t.literal("check-queue"),
+export const TemporalCommandSchema = z.object({
+  majorCommand: z.literal("temporal"),
+  command: z.union([
+    z.literal("find-unprocessed-workflows"),
+    z.literal("check-queue"),
   ]),
-  args: t.record(
-    t.string,
-    t.union([t.string, NumberAsStringCodec, t.undefined])
-  ),
+  args: cliArgs,
 });
-export type TemporalCommandType = t.TypeOf<typeof TemporalCommandSchema>;
+export type TemporalCommandType = z.infer<typeof TemporalCommandSchema>;
 
-export const TemporalCheckQueueResponseSchema = t.type({
-  taskQueue: t.UnknownRecord, // temporal type, can't be iots'd
+export const TemporalCheckQueueResponseSchema = z.object({
+  taskQueue: z.record(z.string(), z.unknown()),
 });
-export type TemporalCheckQueueResponseType = t.TypeOf<
+export type TemporalCheckQueueResponseType = z.infer<
   typeof TemporalCheckQueueResponseSchema
 >;
 
-export const TemporalUnprocessedWorkflowsResponseSchema = t.type({
-  queuesAndPollers: t.array(t.type({ queue: t.string, pollers: t.number })),
-  unprocessedQueues: t.array(t.string),
+export const TemporalUnprocessedWorkflowsResponseSchema = z.object({
+  queuesAndPollers: z.array(
+    z.object({ queue: z.string(), pollers: z.number() })
+  ),
+  unprocessedQueues: z.array(z.string()),
 });
-export type TemporalUnprocessedWorkflowsResponseType = t.TypeOf<
+export type TemporalUnprocessedWorkflowsResponseType = z.infer<
   typeof TemporalUnprocessedWorkflowsResponseSchema
 >;
 /**
@@ -752,16 +724,16 @@ export type TemporalUnprocessedWorkflowsResponseType = t.TypeOf<
 /**
  * <Webcrawler>
  */
-export const WebcrawlerCommandSchema = t.type({
-  majorCommand: t.literal("webcrawler"),
-  command: t.union([
-    t.literal("start-scheduler"),
-    t.literal("update-frequency"),
-    t.literal("set-actions"),
+export const WebcrawlerCommandSchema = z.object({
+  majorCommand: z.literal("webcrawler"),
+  command: z.union([
+    z.literal("start-scheduler"),
+    z.literal("update-frequency"),
+    z.literal("set-actions"),
   ]),
-  args: t.record(t.string, t.string),
+  args: z.record(z.string(), z.string()),
 });
-export type WebcrawlerCommandType = t.TypeOf<typeof WebcrawlerCommandSchema>;
+export type WebcrawlerCommandType = z.infer<typeof WebcrawlerCommandSchema>;
 /**
  * </Webcrawler>
  */
@@ -769,91 +741,91 @@ export type WebcrawlerCommandType = t.TypeOf<typeof WebcrawlerCommandSchema>;
 /**
  * <Zendesk>
  */
-export const ZendeskCommandSchema = t.type({
-  majorCommand: t.literal("zendesk"),
-  command: t.union([
-    t.literal("check-is-admin"),
-    t.literal("count-tickets"),
-    t.literal("resync-tickets"),
-    t.literal("fetch-ticket"),
-    t.literal("fetch-brand"),
-    t.literal("resync-help-centers"),
-    t.literal("resync-brand-metadata"),
-    t.literal("sync-ticket"),
-    t.literal("get-retention-period"),
-    t.literal("set-retention-period"),
-    t.literal("add-organization-tag"),
-    t.literal("remove-organization-tag"),
-    t.literal("add-ticket-tag"),
-    t.literal("remove-ticket-tag"),
-    t.literal("set-rate-limit"),
+export const ZendeskCommandSchema = z.object({
+  majorCommand: z.literal("zendesk"),
+  command: z.union([
+    z.literal("check-is-admin"),
+    z.literal("count-tickets"),
+    z.literal("resync-tickets"),
+    z.literal("fetch-ticket"),
+    z.literal("fetch-brand"),
+    z.literal("resync-help-centers"),
+    z.literal("resync-brand-metadata"),
+    z.literal("sync-ticket"),
+    z.literal("get-retention-period"),
+    z.literal("set-retention-period"),
+    z.literal("add-organization-tag"),
+    z.literal("remove-organization-tag"),
+    z.literal("add-ticket-tag"),
+    z.literal("remove-ticket-tag"),
+    z.literal("set-rate-limit"),
   ]),
-  args: t.type({
-    wId: t.union([t.string, t.undefined]),
-    dsId: t.union([t.string, t.undefined]),
-    connectorId: t.union([t.number, t.undefined]),
-    brandId: t.union([t.number, t.null, t.undefined]),
-    query: t.union([t.string, t.undefined]),
-    forceResync: t.union([t.literal("true"), t.undefined]),
-    ticketId: t.union([t.number, t.undefined]),
-    ticketUrl: t.union([t.string, t.undefined]),
-    retentionPeriodDays: t.union([t.number, t.undefined]),
-    rateLimitTps: t.union([t.number, t.undefined]),
-    tag: t.union([t.string, t.undefined]),
-    include: t.union([t.literal("true"), t.undefined]),
-    exclude: t.union([t.literal("true"), t.undefined]),
+  args: z.object({
+    wId: z.string().optional(),
+    dsId: z.string().optional(),
+    connectorId: z.number().optional(),
+    brandId: z.number().nullable().optional(),
+    query: z.string().optional(),
+    forceResync: z.literal("true").optional(),
+    ticketId: z.number().optional(),
+    ticketUrl: z.string().optional(),
+    retentionPeriodDays: z.number().optional(),
+    rateLimitTps: z.number().optional(),
+    tag: z.string().optional(),
+    include: z.literal("true").optional(),
+    exclude: z.literal("true").optional(),
   }),
 });
-export type ZendeskCommandType = t.TypeOf<typeof ZendeskCommandSchema>;
+export type ZendeskCommandType = z.infer<typeof ZendeskCommandSchema>;
 
-export const ZendeskCheckIsAdminResponseSchema = t.type({
-  userRole: t.string,
-  userActive: t.boolean,
-  userIsAdmin: t.boolean,
+export const ZendeskCheckIsAdminResponseSchema = z.object({
+  userRole: z.string(),
+  userActive: z.boolean(),
+  userIsAdmin: z.boolean(),
 });
-export type ZendeskCheckIsAdminResponseType = t.TypeOf<
+export type ZendeskCheckIsAdminResponseType = z.infer<
   typeof ZendeskCheckIsAdminResponseSchema
 >;
 
-export const ZendeskCountTicketsResponseSchema = t.type({
-  ticketCount: t.number,
+export const ZendeskCountTicketsResponseSchema = z.object({
+  ticketCount: z.number(),
 });
-export type ZendeskCountTicketsResponseType = t.TypeOf<
+export type ZendeskCountTicketsResponseType = z.infer<
   typeof ZendeskCountTicketsResponseSchema
 >;
 
-export const ZendeskFetchTicketResponseSchema = t.type({
-  ticket: t.union([t.UnknownRecord, t.null]), // Zendesk type, can't be iots'd,
-  shouldSyncTicket: t.type({
-    shouldSync: t.boolean,
-    reason: t.union([t.string, t.null]),
+export const ZendeskFetchTicketResponseSchema = z.object({
+  ticket: z.record(z.string(), z.unknown()).nullable(),
+  shouldSyncTicket: z.object({
+    shouldSync: z.boolean(),
+    reason: z.string().nullable(),
   }),
-  isTicketOnDb: t.boolean,
+  isTicketOnDb: z.boolean(),
 });
-export type ZendeskFetchTicketResponseType = t.TypeOf<
+export type ZendeskFetchTicketResponseType = z.infer<
   typeof ZendeskFetchTicketResponseSchema
 >;
 
-export const ZendeskFetchBrandResponseSchema = t.type({
-  brand: t.union([t.UnknownRecord, t.null]), // Zendesk type, can't be iots'd,
-  brandOnDb: t.union([t.UnknownRecord, t.null]),
+export const ZendeskFetchBrandResponseSchema = z.object({
+  brand: z.record(z.string(), z.unknown()).nullable(),
+  brandOnDb: z.record(z.string(), z.unknown()).nullable(),
 });
-export type ZendeskFetchBrandResponseType = t.TypeOf<
+export type ZendeskFetchBrandResponseType = z.infer<
   typeof ZendeskFetchBrandResponseSchema
 >;
 
-export const ZendeskGetRetentionPeriodResponseSchema = t.type({
-  retentionPeriodDays: t.number,
+export const ZendeskGetRetentionPeriodResponseSchema = z.object({
+  retentionPeriodDays: z.number(),
 });
-export type ZendeskGetRetentionPeriodResponseType = t.TypeOf<
+export type ZendeskGetRetentionPeriodResponseType = z.infer<
   typeof ZendeskGetRetentionPeriodResponseSchema
 >;
 
-export const ZendeskOrganizationTagResponseSchema = t.type({
-  success: t.literal(true),
-  message: t.union([t.string, t.undefined]),
+export const ZendeskOrganizationTagResponseSchema = z.object({
+  success: z.literal(true),
+  message: z.string().optional(),
 });
-export type ZendeskOrganizationTagResponseType = t.TypeOf<
+export type ZendeskOrganizationTagResponseType = z.infer<
   typeof ZendeskOrganizationTagResponseSchema
 >;
 /**
@@ -863,7 +835,7 @@ export type ZendeskOrganizationTagResponseType = t.TypeOf<
 /**
  * <Admin>
  */
-export const AdminCommandSchema = t.union([
+export const AdminCommandSchema = z.discriminatedUnion("majorCommand", [
   BatchCommandSchema,
   ConfluenceCommandSchema,
   ConnectorsCommandSchema,
@@ -880,16 +852,16 @@ export const AdminCommandSchema = t.union([
   WebcrawlerCommandSchema,
   ZendeskCommandSchema,
 ]);
-export type AdminCommandType = t.TypeOf<typeof AdminCommandSchema>;
+export type AdminCommandType = z.infer<typeof AdminCommandSchema>;
 
-export const AdminSuccessResponseSchema = t.type({
-  success: t.literal(true),
+export const AdminSuccessResponseSchema = z.object({
+  success: z.literal(true),
 });
-export type AdminSuccessResponseType = t.TypeOf<
+export type AdminSuccessResponseType = z.infer<
   typeof AdminSuccessResponseSchema
 >;
 
-export const AdminResponseSchema = t.union([
+export const AdminResponseSchema = z.union([
   AdminSuccessResponseSchema,
   BatchAllResponseSchema,
   CheckFileGenericResponseSchema,
@@ -934,7 +906,7 @@ export const AdminResponseSchema = t.union([
   ZendeskGetRetentionPeriodResponseSchema,
   ZendeskOrganizationTagResponseSchema,
 ]);
-export type AdminResponseType = t.TypeOf<typeof AdminResponseSchema>;
+export type AdminResponseType = z.infer<typeof AdminResponseSchema>;
 /**
  * </Admin>
  */

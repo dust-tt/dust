@@ -1,9 +1,9 @@
 import { runCommand } from "@connectors/lib/cli";
 import type { AdminCommandType } from "@connectors/types";
 import { AdminCommandSchema } from "@connectors/types";
-import { isLeft } from "fp-ts/lib/Either";
-import * as reporter from "io-ts-reporters";
 import parseArgs from "minimist";
+import type { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const main = async () => {
   // set env var INTERACTIVE=1 to enable interactive mode
@@ -20,11 +20,13 @@ const main = async () => {
     console.error("");
     console.error("Available commands:");
     console.error("");
-    for (const schema of AdminCommandSchema.types) {
-      const majorCommand = String(schema.props.majorCommand.value);
-      const subCommands = schema.props.command.types.map((c) =>
-        String(c.value)
-      );
+    for (const schema of AdminCommandSchema.options) {
+      const majorCommand = schema.shape.majorCommand.value;
+      // schema.shape.command is always a ZodUnion of literal strings in these schemas.
+      const commandUnion = schema.shape.command as z.ZodUnion<
+        [z.ZodLiteral<string>, ...z.ZodLiteral<string>[]]
+      >;
+      const subCommands = commandUnion.options.map((c) => c.value);
       console.error(`  ${majorCommand}:`);
       console.error(`    ${subCommands.join(", ")}`);
     }
@@ -34,19 +36,18 @@ const main = async () => {
   const [objectType, command] = argv._;
   const args = { ...argv, _: undefined, "--": undefined };
 
-  const adminCommandValidation = AdminCommandSchema.decode({
+  const adminCommandValidation = AdminCommandSchema.safeParse({
     majorCommand: objectType,
     command,
     args,
   });
 
-  if (isLeft(adminCommandValidation)) {
-    const pathError = reporter.formatValidationErrors(
-      adminCommandValidation.left
+  if (!adminCommandValidation.success) {
+    throw new Error(
+      `Invalid command: ${fromError(adminCommandValidation.error).toString()}`
     );
-    throw new Error(`Invalid command: ${pathError}`);
   }
-  const adminCommand: AdminCommandType = adminCommandValidation.right;
+  const adminCommand: AdminCommandType = adminCommandValidation.data;
   return runCommand(adminCommand);
 };
 
