@@ -107,7 +107,7 @@ async function fetchEligibleSkillIds(
   // Filter out skills that have reached their per-skill consumption cap.
   const { cycleStart } = await getCurrentPeriod(auth);
   const skillConsumptionMap =
-    await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdWithMarkupAfterDateForSkills(
+    await SelfImprovingSkillsUsageResource.getSumSpendWithMarkupAfterDateForSkills(
       auth,
       {
         createdAfter: cycleStart,
@@ -118,7 +118,8 @@ async function fetchEligibleSkillIds(
   const defaultCapMicroUsd =
     getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(workspace);
   const capEligibleSkills = eligibleSkills.filter((skill) => {
-    const consumedMicroUsd = skillConsumptionMap.get(skill.id) ?? 0;
+    const consumedMicroUsd =
+      skillConsumptionMap.get(skill.id)?.priceMicroUsd ?? 0;
     const capMicroUsd =
       skill.selfImprovementCostsCapMicroUsd ?? defaultCapMicroUsd;
     return consumedMicroUsd < capMicroUsd;

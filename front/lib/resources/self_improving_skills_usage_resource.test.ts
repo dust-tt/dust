@@ -28,18 +28,21 @@ describe("SelfImprovingSkillsUsageResource", () => {
           skillId: skill.id,
           conversationId: null,
           priceMicroUsd: 50,
+          priceAwuCredits: 1,
         },
         {
           createdAt: new Date("2026-01-03T00:00:00.000Z"),
           skillId: skill.id,
           conversationId: null,
           priceMicroUsd: 100,
+          priceAwuCredits: 2,
         },
         {
           createdAt: new Date("2026-01-04T00:00:00.000Z"),
           skillId: null,
           conversationId: null,
           priceMicroUsd: 200,
+          priceAwuCredits: 3,
         },
       ]
     );
@@ -50,20 +53,20 @@ describe("SelfImprovingSkillsUsageResource", () => {
         skillId: otherWorkspaceSkill.id,
         conversationId: null,
         priceMicroUsd: 500,
+        priceAwuCredits: 50,
       },
     ]);
 
-    const sum =
-      await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDate(
-        authenticator,
-        cutoff
-      );
+    const sum = await SelfImprovingSkillsUsageResource.getSumSpendAfterDate(
+      authenticator,
+      cutoff
+    );
 
     expect(usages).toHaveLength(3);
     expect(
       usages.every((usage) => usage.workspaceId === skill.workspaceId)
     ).toBe(true);
-    expect(sum).toBe(300);
+    expect(sum).toEqual({ priceMicroUsd: 300, priceAwuCredits: 5 });
   });
 
   it("persists priceAwuCredits when provided and defaults it to 0", async () => {
@@ -140,18 +143,21 @@ describe("SelfImprovingSkillsUsageResource", () => {
         skillId: skill.id,
         conversationId: null,
         priceMicroUsd: 100,
+        priceAwuCredits: 1,
       },
       {
         createdAt: new Date("2026-03-10T20:00:00.000Z"),
         skillId: skill.id,
         conversationId: null,
         priceMicroUsd: 200,
+        priceAwuCredits: 2,
       },
       {
         createdAt: new Date("2026-03-12T10:00:00.000Z"),
         skillId: skill.id,
         conversationId: null,
         priceMicroUsd: 500,
+        priceAwuCredits: 5,
       },
       // Outside the queried range.
       {
@@ -159,6 +165,7 @@ describe("SelfImprovingSkillsUsageResource", () => {
         skillId: skill.id,
         conversationId: null,
         priceMicroUsd: 999,
+        priceAwuCredits: 99,
       },
     ]);
 
@@ -176,7 +183,7 @@ describe("SelfImprovingSkillsUsageResource", () => {
     ]);
 
     const result =
-      await SelfImprovingSkillsUsageResource.getDailySpendMicroUsdWithMarkup(
+      await SelfImprovingSkillsUsageResource.getDailySpendWithMarkup(
         authenticator,
         {
           startDate: new Date("2026-03-10T00:00:00.000Z"),
@@ -184,9 +191,17 @@ describe("SelfImprovingSkillsUsageResource", () => {
         }
       );
 
-    expect(result.get("2026-03-10")).toBe(300 * MARKUP_MULTIPLIER);
+    // The markup applies to micro-USD only; AWU credits already include the
+    // margin.
+    expect(result.get("2026-03-10")).toEqual({
+      priceMicroUsd: 300 * MARKUP_MULTIPLIER,
+      priceAwuCredits: 3,
+    });
     expect(result.has("2026-03-11")).toBe(false);
-    expect(result.get("2026-03-12")).toBe(500 * MARKUP_MULTIPLIER);
+    expect(result.get("2026-03-12")).toEqual({
+      priceMicroUsd: 500 * MARKUP_MULTIPLIER,
+      priceAwuCredits: 5,
+    });
     expect(result.has("2026-03-09")).toBe(false);
     expect(result.size).toBe(2);
   });
@@ -208,29 +223,38 @@ describe("SelfImprovingSkillsUsageResource", () => {
         skillId: skill.id,
         conversationId: null,
         priceMicroUsd: 50,
+        priceAwuCredits: 1,
       },
       {
         createdAt: new Date("2026-01-03T00:00:00.000Z"),
         skillId: skill.id,
         conversationId: null,
         priceMicroUsd: 100,
+        priceAwuCredits: 2,
       },
       {
         createdAt: new Date("2026-01-04T00:00:00.000Z"),
         skillId: otherSkill.id,
         conversationId: null,
         priceMicroUsd: 200,
+        priceAwuCredits: 3,
       },
     ]);
 
     const sums =
-      await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDateForSkills(
+      await SelfImprovingSkillsUsageResource.getSumSpendAfterDateForSkills(
         authenticator,
         { createdAfter: cutoff, skillModelIds: [skill.id, otherSkill.id] }
       );
 
-    expect(sums.get(skill.id)).toBe(100);
-    expect(sums.get(otherSkill.id)).toBe(200);
+    expect(sums.get(skill.id)).toEqual({
+      priceMicroUsd: 100,
+      priceAwuCredits: 2,
+    });
+    expect(sums.get(otherSkill.id)).toEqual({
+      priceMicroUsd: 200,
+      priceAwuCredits: 3,
+    });
   });
 
   it("applies markup multiplier in WithMarkup variants", async () => {
@@ -247,41 +271,51 @@ describe("SelfImprovingSkillsUsageResource", () => {
         skillId: skill.id,
         conversationId: null,
         priceMicroUsd: 100,
+        priceAwuCredits: 2,
       },
       {
         createdAt: new Date("2026-01-04T00:00:00.000Z"),
         skillId: null,
         conversationId: null,
         priceMicroUsd: 200,
+        priceAwuCredits: 3,
       },
     ]);
 
     const sumWithMarkup =
-      await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdWithMarkupAfterDate(
+      await SelfImprovingSkillsUsageResource.getSumSpendWithMarkupAfterDate(
         authenticator,
         cutoff
       );
     const sumWithoutMarkup =
-      await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDate(
+      await SelfImprovingSkillsUsageResource.getSumSpendAfterDate(
         authenticator,
         cutoff
       );
 
-    expect(sumWithMarkup).toBe(sumWithoutMarkup * MARKUP_MULTIPLIER);
+    // The markup applies to micro-USD only; AWU credits already include the
+    // margin.
+    expect(sumWithMarkup).toEqual({
+      priceMicroUsd: sumWithoutMarkup.priceMicroUsd * MARKUP_MULTIPLIER,
+      priceAwuCredits: sumWithoutMarkup.priceAwuCredits,
+    });
 
     const sumsWithMarkup =
-      await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdWithMarkupAfterDateForSkills(
+      await SelfImprovingSkillsUsageResource.getSumSpendWithMarkupAfterDateForSkills(
         authenticator,
         { createdAfter: cutoff, skillModelIds: [skill.id] }
       );
     const sumsWithoutMarkup =
-      await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdAfterDateForSkills(
+      await SelfImprovingSkillsUsageResource.getSumSpendAfterDateForSkills(
         authenticator,
         { createdAfter: cutoff, skillModelIds: [skill.id] }
       );
 
-    expect(sumsWithMarkup.get(skill.id)).toBe(
-      (sumsWithoutMarkup.get(skill.id) ?? 0) * MARKUP_MULTIPLIER
-    );
+    expect(sumsWithMarkup.get(skill.id)).toEqual({
+      priceMicroUsd:
+        (sumsWithoutMarkup.get(skill.id)?.priceMicroUsd ?? 0) *
+        MARKUP_MULTIPLIER,
+      priceAwuCredits: sumsWithoutMarkup.get(skill.id)?.priceAwuCredits,
+    });
   });
 });

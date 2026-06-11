@@ -18,21 +18,21 @@ app.get(
     const period = await getCurrentPeriod(auth);
 
     const dailyMap =
-      await SelfImprovingSkillsUsageResource.getDailySpendMicroUsdWithMarkup(
-        auth,
-        {
-          startDate: period.cycleStart,
-          endDate: period.cycleEnd,
-        }
-      );
+      await SelfImprovingSkillsUsageResource.getDailySpendWithMarkup(auth, {
+        startDate: period.cycleStart,
+        endDate: period.cycleEnd,
+      });
 
     const dailySpendMicroUsd: Record<string, number> = {};
+    const dailySpendAwuCredits: Record<string, number> = {};
     for (const [day, spend] of dailyMap) {
-      dailySpendMicroUsd[day] = spend;
+      dailySpendMicroUsd[day] = spend.priceMicroUsd;
+      dailySpendAwuCredits[day] = spend.priceAwuCredits;
     }
 
     return ctx.json({
       dailySpendMicroUsd,
+      dailySpendAwuCredits,
       periodStartDate: period.cycleStart.toISOString(),
       periodEndDate: period.cycleEnd.toISOString(),
     });

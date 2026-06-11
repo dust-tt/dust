@@ -16,6 +16,26 @@ export type SelfImprovingSkillsUsageCreateBlob = Omit<
   "workspaceId"
 >;
 
+export type SelfImprovingSkillsSpend = {
+  // Raw provider cost. Includes the markup only when returned by a
+  // `WithMarkup` method.
+  priceMicroUsd: number;
+  // ALWAYS includes the margin (it is baked into the AWU credit conversion,
+  // see awuFromMicroUsd), whether or not the method is a `WithMarkup` one.
+  priceAwuCredits: number;
+};
+
+// The markup only applies to the raw micro-USD cost; AWU credits already
+// include the margin (see awuFromMicroUsd).
+function applyMarkup(
+  spend: SelfImprovingSkillsSpend
+): SelfImprovingSkillsSpend {
+  return {
+    priceMicroUsd: spend.priceMicroUsd * MARKUP_MULTIPLIER,
+    priceAwuCredits: spend.priceAwuCredits,
+  };
+}
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SelfImprovingSkillsUsageResource
   extends ReadonlyAttributesType<SelfImprovingSkillsUsageModel> {}
@@ -90,31 +110,61 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
     });
   }
 
-  static async getSumPriceMicroUsdAfterDate(
+  /**
+   * Total workspace spend after the given date.
+   *
+   * `priceMicroUsd` is the raw provider cost, WITHOUT markup.
+   * `priceAwuCredits` includes the margin (always baked into AWU credits).
+   */
+  static async getSumSpendAfterDate(
     auth: Authenticator,
     createdAfter: Date
-  ): Promise<number> {
-    const sum = await this.model.sum("priceMicroUsd", {
+  ): Promise<SelfImprovingSkillsSpend> {
+    const rows = (await this.model.findAll({
+      attributes: [
+        [Sequelize.fn("SUM", Sequelize.col("priceMicroUsd")), "priceMicroUsd"],
+        [
+          Sequelize.fn("SUM", Sequelize.col("priceAwuCredits")),
+          "priceAwuCredits",
+        ],
+      ],
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         createdAt: { [Op.gt]: createdAfter },
       },
-    });
+      raw: true,
+    })) as unknown as {
+      priceMicroUsd: string | null;
+      priceAwuCredits: string | null;
+    }[];
 
-    return sum ?? 0;
+    return {
+      priceMicroUsd: Number(rows[0]?.priceMicroUsd ?? 0),
+      priceAwuCredits: Number(rows[0]?.priceAwuCredits ?? 0),
+    };
   }
 
-  static async getSumPriceMicroUsdWithMarkupAfterDate(
+  /**
+   * Total workspace spend after the given date, billable amounts.
+   *
+   * `priceMicroUsd` is the raw provider cost WITH the markup applied.
+   * `priceAwuCredits` is identical to the non-markup variant: the margin is
+   * always baked into AWU credits, so no markup is applied to it.
+   */
+  static async getSumSpendWithMarkupAfterDate(
     auth: Authenticator,
     createdAfter: Date
-  ): Promise<number> {
-    return (
-      (await this.getSumPriceMicroUsdAfterDate(auth, createdAfter)) *
-      MARKUP_MULTIPLIER
-    );
+  ): Promise<SelfImprovingSkillsSpend> {
+    return applyMarkup(await this.getSumSpendAfterDate(auth, createdAfter));
   }
 
-  static async getSumPriceMicroUsdAfterDateForSkills(
+  /**
+   * Per-skill spend after the given date.
+   *
+   * `priceMicroUsd` is the raw provider cost, WITHOUT markup.
+   * `priceAwuCredits` includes the margin (always baked into AWU credits).
+   */
+  static async getSumSpendAfterDateForSkills(
     auth: Authenticator,
     {
       createdAfter,
@@ -123,7 +173,7 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
       createdAfter: Date;
       skillModelIds: ModelId[];
     }
-  ): Promise<Map<ModelId, number>> {
+  ): Promise<Map<ModelId, SelfImprovingSkillsSpend>> {
     const uniqueSkillIds = [...new Set(skillModelIds)];
     if (uniqueSkillIds.length === 0) {
       return new Map();
@@ -133,6 +183,10 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
       attributes: [
         "skillId",
         [Sequelize.fn("SUM", Sequelize.col("priceMicroUsd")), "priceMicroUsd"],
+        [
+          Sequelize.fn("SUM", Sequelize.col("priceAwuCredits")),
+          "priceAwuCredits",
+        ],
       ],
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -143,11 +197,24 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
     });
 
     return new Map(
-      rows.map((row) => [row.skillId as ModelId, Number(row.priceMicroUsd)])
+      rows.map((row) => [
+        row.skillId as ModelId,
+        {
+          priceMicroUsd: Number(row.priceMicroUsd),
+          priceAwuCredits: Number(row.priceAwuCredits),
+        },
+      ])
     );
   }
 
-  static async getSumPriceMicroUsdWithMarkupAfterDateForSkills(
+  /**
+   * Per-skill spend after the given date, billable amounts.
+   *
+   * `priceMicroUsd` is the raw provider cost WITH the markup applied.
+   * `priceAwuCredits` is identical to the non-markup variant: the margin is
+   * always baked into AWU credits, so no markup is applied to it.
+   */
+  static async getSumSpendWithMarkupAfterDateForSkills(
     auth: Authenticator,
     {
       createdAfter,
@@ -156,24 +223,27 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
       createdAfter: Date;
       skillModelIds: ModelId[];
     }
-  ): Promise<Map<ModelId, number>> {
-    const raw = await this.getSumPriceMicroUsdAfterDateForSkills(auth, {
+  ): Promise<Map<ModelId, SelfImprovingSkillsSpend>> {
+    const raw = await this.getSumSpendAfterDateForSkills(auth, {
       createdAfter,
       skillModelIds,
     });
 
     return new Map(
-      [...raw.entries()].map(([id, value]) => [id, value * MARKUP_MULTIPLIER])
+      [...raw.entries()].map(([id, spend]) => [id, applyMarkup(spend)])
     );
   }
 
   /**
    * Return total spend per calendar day (UTC) within a date range.
    *
-   * Each entry maps an ISO date string ("YYYY-MM-DD") to the summed spend in
-   * micro-USD for that day. Days with no spend are omitted.
+   * Each entry maps an ISO date string ("YYYY-MM-DD") to the summed spend for
+   * that day. Days with no spend are omitted.
+   *
+   * `priceMicroUsd` is the raw provider cost, WITHOUT markup.
+   * `priceAwuCredits` includes the margin (always baked into AWU credits).
    */
-  private static async getDailySpendMicroUsd(
+  private static async getDailySpend(
     auth: Authenticator,
     {
       startDate,
@@ -182,7 +252,7 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
       startDate: Date;
       endDate: Date;
     }
-  ): Promise<Map<string, number>> {
+  ): Promise<Map<string, SelfImprovingSkillsSpend>> {
     const dayExpr = Sequelize.fn(
       "DATE",
       Sequelize.cast(Sequelize.col("createdAt"), "TIMESTAMPTZ")
@@ -192,6 +262,10 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
       attributes: [
         [dayExpr, "day"],
         [Sequelize.fn("SUM", Sequelize.col("priceMicroUsd")), "priceMicroUsd"],
+        [
+          Sequelize.fn("SUM", Sequelize.col("priceAwuCredits")),
+          "priceAwuCredits",
+        ],
       ],
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -203,22 +277,41 @@ export class SelfImprovingSkillsUsageResource extends BaseResource<SelfImproving
       group: [dayExpr],
       order: [[dayExpr, "ASC"]],
       raw: true,
-    })) as unknown as { day: string; priceMicroUsd: string }[];
+    })) as unknown as {
+      day: string;
+      priceMicroUsd: string;
+      priceAwuCredits: string;
+    }[];
 
-    return new Map(rows.map((row) => [row.day, Number(row.priceMicroUsd)]));
+    return new Map(
+      rows.map((row) => [
+        row.day,
+        {
+          priceMicroUsd: Number(row.priceMicroUsd),
+          priceAwuCredits: Number(row.priceAwuCredits),
+        },
+      ])
+    );
   }
 
-  static async getDailySpendMicroUsdWithMarkup(
+  /**
+   * Total spend per calendar day (UTC) within a date range, billable amounts.
+   *
+   * `priceMicroUsd` is the raw provider cost WITH the markup applied.
+   * `priceAwuCredits` is identical to the non-markup variant: the margin is
+   * always baked into AWU credits, so no markup is applied to it.
+   */
+  static async getDailySpendWithMarkup(
     auth: Authenticator,
     params: {
       startDate: Date;
       endDate: Date;
     }
-  ): Promise<Map<string, number>> {
-    const raw = await this.getDailySpendMicroUsd(auth, params);
+  ): Promise<Map<string, SelfImprovingSkillsSpend>> {
+    const raw = await this.getDailySpend(auth, params);
 
     return new Map(
-      [...raw.entries()].map(([day, value]) => [day, value * MARKUP_MULTIPLIER])
+      [...raw.entries()].map(([day, spend]) => [day, applyMarkup(spend)])
     );
   }
 
