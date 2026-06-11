@@ -939,6 +939,47 @@ describe("SkillResource", () => {
       expect(availableParentSkill?.instructions).toContain(skillReferenceTag);
     });
 
+    it("updates parent skill references when child icon changes", async () => {
+      const { parentSkill, childSkill, skillReferenceTag } =
+        await SkillFactory.createWithNestedSkill(testContext.authenticator, {
+          childOverrides: {
+            name: "Child Icon Skill",
+          },
+          parentOverrides: {
+            name: "Parent Icon Skill",
+          },
+        });
+
+      const newIcon = "ActionRocketIcon";
+      expect(childSkill.icon).not.toBe(newIcon);
+
+      await childSkill.updateSkill(testContext.authenticator, {
+        name: childSkill.name,
+        agentFacingDescription: childSkill.agentFacingDescription,
+        userFacingDescription: childSkill.userFacingDescription,
+        instructions: childSkill.instructions,
+        instructionsHtml: childSkill.instructionsHtml,
+        icon: newIcon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: childSkill.requestedSpaceIds,
+        referencedSkillIds: [],
+      });
+
+      const updatedParentSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        parentSkill.sId
+      );
+      expect(updatedParentSkill?.instructions).not.toContain(skillReferenceTag);
+      expect(updatedParentSkill?.instructions).toContain(
+        SkillFactory.serializeSkillReferenceTag({
+          sId: childSkill.sId,
+          icon: newIcon,
+          name: childSkill.name,
+        })
+      );
+    });
+
     it("normalizes missing nested skill references as unavailable", async () => {
       const MISSING_SKILL_MODEL_ID = 999_999;
       const missingSkillId = SkillResource.modelIdToSId({
