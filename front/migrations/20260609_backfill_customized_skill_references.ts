@@ -42,6 +42,21 @@ type CustomizedSkillReferencesBackfillStats = {
   processed: number;
 };
 
+type VersionUpdate = {
+  id: number;
+  instructions: string;
+  instructionsHtml: string | null;
+};
+
+type SkillBackfillPlan = {
+  skill: SkillConfigurationModel;
+  extendedSkillId: string;
+  instructions: string;
+  instructionsHtml: string | null;
+  shouldCreateReference: boolean;
+  versionUpdates: VersionUpdate[];
+};
+
 function hasSkillReference(content: string, skillId: string): boolean {
   return extractUniqueSkillReferenceIds(content).includes(skillId);
 }
@@ -116,20 +131,12 @@ function getGlobalReferenceKey({
   return `${parentSkillId}:${childGlobalSkillId}`;
 }
 
-async function backfillCustomizedSkillReferencesForWorkspace(
-  workspace: LightWorkspaceType,
-  {
-    execute,
-  }: {
-    execute: boolean;
-  },
-  logger: Logger
-): Promise<CustomizedSkillReferencesBackfillStats> {
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
+async function fetchCustomizedSkills(
+  workspace: LightWorkspaceType
+): Promise<SkillConfigurationModel[]> {
   // This one-off backfill scopes by workspace and status to use
   // idx_skill_configuration_workspace_status; extendedSkillId is the residual filter.
-  const skills = await SkillConfigurationModel.findAll({
+  return SkillConfigurationModel.findAll({
     attributes: [
       "id",
       "workspaceId",
@@ -144,24 +151,23 @@ async function backfillCustomizedSkillReferencesForWorkspace(
       extendedSkillId: { [Op.ne]: null },
     },
   });
+}
 
-  const stats: CustomizedSkillReferencesBackfillStats = {
-    changed: 0,
-    errors: 0,
-    processed: skills.length,
-  };
-
-  if (skills.length === 0) {
-    return stats;
-  }
-
+async function fetchVersionRowsForSkills({
+  skillIds,
+  workspace,
+}: {
+  skillIds: number[];
+  workspace: LightWorkspaceType;
+}): Promise<SkillVersionModel[]> {
   // Bound by the current legacy skills found above; uses the skill_versions
   // (workspaceId, skillConfigurationId) index.
   const versionRowsWhere: WhereOptions<SkillVersionModel> = {
     workspaceId: workspace.id,
-    skillConfigurationId: { [Op.in]: skills.map((skill) => skill.id) },
+    skillConfigurationId: { [Op.in]: skillIds },
   };
-  const versionRows = await SkillVersionModel.findAll({
+
+  return SkillVersionModel.findAll({
     attributes: [
       "id",
       "skillConfigurationId",
@@ -171,23 +177,60 @@ async function backfillCustomizedSkillReferencesForWorkspace(
     ],
     where: versionRowsWhere,
   });
+}
+
+function indexVersionRowsBySkillId(
+  versionRows: SkillVersionModel[]
+): Map<number, SkillVersionModel[]> {
   const versionRowsBySkillId = new Map<number, SkillVersionModel[]>();
+
   for (const versionRow of versionRows) {
-    const rows =
-      versionRowsBySkillId.get(versionRow.skillConfigurationId) ?? [];
-    rows.push(versionRow);
-    versionRowsBySkillId.set(versionRow.skillConfigurationId, rows);
+    const rows = versionRowsBySkillId.get(versionRow.skillConfigurationId);
+    versionRowsBySkillId.set(versionRow.skillConfigurationId, [
+      ...(rows ?? []),
+      versionRow,
+    ]);
   }
 
-  const extendedSkillIds = uniq(
+  return versionRowsBySkillId;
+}
+
+function getExtendedSkillIds({
+  skills,
+  versionRows,
+}: {
+  skills: SkillConfigurationModel[];
+  versionRows: SkillVersionModel[];
+}): string[] {
+  return uniq(
     removeNulls([
       ...skills.map((s) => s.extendedSkillId),
       ...versionRows.map((v) => v.extendedSkillId),
     ])
   );
-  const baseSkills = await SkillResource.fetchByIds(auth, extendedSkillIds);
-  const baseSkillById = new Map(baseSkills.map((skill) => [skill.sId, skill]));
+}
 
+async function fetchBaseSkillById({
+  auth,
+  extendedSkillIds,
+}: {
+  auth: Authenticator;
+  extendedSkillIds: string[];
+}): Promise<Map<string, SkillResource>> {
+  const baseSkills = await SkillResource.fetchByIds(auth, extendedSkillIds);
+
+  return new Map(baseSkills.map((skill) => [skill.sId, skill]));
+}
+
+async function fetchExistingReferenceKeys({
+  extendedSkillIds,
+  skills,
+  workspace,
+}: {
+  extendedSkillIds: string[];
+  skills: SkillConfigurationModel[];
+  workspace: LightWorkspaceType;
+}): Promise<Set<string>> {
   const existingReferences = await SkillReferenceModel.findAll({
     attributes: ["parentSkillId", "childGlobalSkillId"],
     where: {
@@ -197,7 +240,8 @@ async function backfillCustomizedSkillReferencesForWorkspace(
       childGlobalSkillId: { [Op.in]: extendedSkillIds },
     },
   });
-  const existingReferenceKeys = new Set(
+
+  return new Set(
     removeNulls(
       existingReferences.map((ref) =>
         ref.childGlobalSkillId
@@ -209,96 +253,301 @@ async function backfillCustomizedSkillReferencesForWorkspace(
       )
     )
   );
+}
+
+function getExtendableBaseSkill({
+  baseSkillById,
+  extendedSkillId,
+}: {
+  baseSkillById: Map<string, SkillResource>;
+  extendedSkillId: string;
+}): SkillResource | null {
+  const baseSkill = baseSkillById.get(extendedSkillId);
+
+  if (!baseSkill || !baseSkill.isExtendable) {
+    return null;
+  }
+
+  return baseSkill;
+}
+
+function logMissingBaseSkill({
+  baseSkillId,
+  logger,
+  message,
+  skill,
+  workspace,
+}: {
+  baseSkillId: string;
+  logger: Logger;
+  message: string;
+  skill: SkillConfigurationModel;
+  workspace: LightWorkspaceType;
+}): void {
+  logger.error(
+    {
+      skillId: SkillResource.modelIdToSId({
+        id: skill.id,
+        workspaceId: workspace.id,
+      }),
+      baseSkillId,
+      workspaceId: workspace.sId,
+    },
+    message
+  );
+}
+
+function getVersionUpdates({
+  baseSkillById,
+  extendedSkillId,
+  versionRows,
+}: {
+  baseSkillById: Map<string, SkillResource>;
+  extendedSkillId: string;
+  versionRows: SkillVersionModel[];
+}):
+  | {
+      missingBaseSkillId: string;
+      versionUpdates: null;
+    }
+  | {
+      missingBaseSkillId: null;
+      versionUpdates: VersionUpdate[];
+    } {
+  const versionUpdates: VersionUpdate[] = [];
+
+  for (const versionRow of versionRows) {
+    const versionExtendedSkillId =
+      versionRow.extendedSkillId ?? extendedSkillId;
+    const versionBaseSkill = getExtendableBaseSkill({
+      baseSkillById,
+      extendedSkillId: versionExtendedSkillId,
+    });
+
+    if (!versionBaseSkill) {
+      return {
+        missingBaseSkillId: versionExtendedSkillId,
+        versionUpdates: null,
+      };
+    }
+
+    versionUpdates.push({
+      id: versionRow.id,
+      ...prependBaseSkillReference({
+        baseSkill: versionBaseSkill,
+        instructions: versionRow.instructions,
+        instructionsHtml: versionRow.instructionsHtml,
+      }),
+    });
+  }
+
+  return {
+    missingBaseSkillId: null,
+    versionUpdates,
+  };
+}
+
+function getSkillBackfillPlan({
+  baseSkillById,
+  existingReferenceKeys,
+  logger,
+  skill,
+  versionRows,
+  workspace,
+}: {
+  baseSkillById: Map<string, SkillResource>;
+  existingReferenceKeys: Set<string>;
+  logger: Logger;
+  skill: SkillConfigurationModel;
+  versionRows: SkillVersionModel[];
+  workspace: LightWorkspaceType;
+}): SkillBackfillPlan | null {
+  const extendedSkillId = skill.extendedSkillId;
+
+  if (extendedSkillId === null) {
+    throw new Error("Expected customized skill to have an extendedSkillId.");
+  }
+
+  const baseSkill = getExtendableBaseSkill({
+    baseSkillById,
+    extendedSkillId,
+  });
+
+  if (!baseSkill) {
+    logMissingBaseSkill({
+      baseSkillId: extendedSkillId,
+      logger,
+      message: "Could not resolve extendable base skill for customized skill",
+      skill,
+      workspace,
+    });
+
+    return null;
+  }
+
+  const { instructions, instructionsHtml } = prependBaseSkillReference({
+    baseSkill,
+    instructions: skill.instructions,
+    instructionsHtml: skill.instructionsHtml,
+  });
+  const { missingBaseSkillId, versionUpdates } = getVersionUpdates({
+    baseSkillById,
+    extendedSkillId,
+    versionRows,
+  });
+
+  if (missingBaseSkillId !== null) {
+    logMissingBaseSkill({
+      baseSkillId: missingBaseSkillId,
+      logger,
+      message:
+        "Could not resolve extendable base skill for customized skill version",
+      skill,
+      workspace,
+    });
+
+    return null;
+  }
+
+  const referenceKey = getGlobalReferenceKey({
+    parentSkillId: skill.id,
+    childGlobalSkillId: extendedSkillId,
+  });
+
+  return {
+    skill,
+    extendedSkillId,
+    instructions,
+    instructionsHtml,
+    shouldCreateReference: !existingReferenceKeys.has(referenceKey),
+    versionUpdates,
+  };
+}
+
+async function executeSkillBackfillPlan({
+  plan,
+  workspace,
+}: {
+  plan: SkillBackfillPlan;
+  workspace: LightWorkspaceType;
+}): Promise<void> {
+  await withTransaction(async (transaction) => {
+    await SkillConfigurationModel.update(
+      {
+        instructions: plan.instructions,
+        instructionsHtml: plan.instructionsHtml,
+        extendedSkillId: null,
+      },
+      {
+        hooks: false,
+        silent: true,
+        transaction,
+        where: {
+          id: plan.skill.id,
+          workspaceId: workspace.id,
+        },
+      }
+    );
+
+    if (plan.shouldCreateReference) {
+      await SkillReferenceModel.create(
+        {
+          workspaceId: workspace.id,
+          parentSkillId: plan.skill.id,
+          childCustomSkillId: null,
+          childGlobalSkillId: plan.extendedSkillId,
+        },
+        { transaction }
+      );
+    }
+
+    for (const versionUpdate of plan.versionUpdates) {
+      const versionWhere: WhereOptions<SkillVersionModel> = {
+        id: versionUpdate.id,
+        skillConfigurationId: plan.skill.id,
+        workspaceId: workspace.id,
+      };
+      await SkillVersionModel.update(
+        {
+          instructions: versionUpdate.instructions,
+          instructionsHtml: versionUpdate.instructionsHtml,
+          extendedSkillId: null,
+        },
+        {
+          hooks: false,
+          silent: true,
+          transaction,
+          where: versionWhere,
+        }
+      );
+    }
+  });
+}
+
+async function backfillCustomizedSkillReferencesForWorkspace(
+  workspace: LightWorkspaceType,
+  {
+    execute,
+  }: {
+    execute: boolean;
+  },
+  logger: Logger
+): Promise<CustomizedSkillReferencesBackfillStats> {
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  const skills = await fetchCustomizedSkills(workspace);
+
+  const stats: CustomizedSkillReferencesBackfillStats = {
+    changed: 0,
+    errors: 0,
+    processed: skills.length,
+  };
+
+  if (skills.length === 0) {
+    return stats;
+  }
+
+  const versionRows = await fetchVersionRowsForSkills({
+    skillIds: skills.map((skill) => skill.id),
+    workspace,
+  });
+  const versionRowsBySkillId = indexVersionRowsBySkillId(versionRows);
+  const extendedSkillIds = getExtendedSkillIds({ skills, versionRows });
+  const baseSkillById = await fetchBaseSkillById({
+    auth,
+    extendedSkillIds,
+  });
+  const existingReferenceKeys = await fetchExistingReferenceKeys({
+    extendedSkillIds,
+    skills,
+    workspace,
+  });
 
   for (const skill of skills) {
-    const extendedSkillId = skill.extendedSkillId;
-    if (extendedSkillId === null) {
-      throw new Error("Expected customized skill to have an extendedSkillId.");
-    }
+    const plan = getSkillBackfillPlan({
+      baseSkillById,
+      existingReferenceKeys,
+      logger,
+      skill,
+      versionRows: versionRowsBySkillId.get(skill.id) ?? [],
+      workspace,
+    });
 
-    const baseSkill = baseSkillById.get(extendedSkillId);
-    if (!baseSkill || !baseSkill.isExtendable) {
+    if (plan === null) {
       stats.errors++;
-      logger.error(
-        {
-          skillId: SkillResource.modelIdToSId({
-            id: skill.id,
-            workspaceId: workspace.id,
-          }),
-          baseSkillId: extendedSkillId,
-          workspaceId: workspace.sId,
-        },
-        "Could not resolve extendable base skill for customized skill"
-      );
       continue;
     }
-
-    const { instructions, instructionsHtml } = prependBaseSkillReference({
-      baseSkill,
-      instructions: skill.instructions,
-      instructionsHtml: skill.instructionsHtml,
-    });
-    const versionRowsForSkill = versionRowsBySkillId.get(skill.id) ?? [];
-    const versionUpdates: {
-      id: number;
-      instructions: string;
-      instructionsHtml: string | null;
-    }[] = [];
-    let missingVersionBaseSkillId: string | null = null;
-
-    for (const versionRow of versionRowsForSkill) {
-      const versionExtendedSkillId =
-        versionRow.extendedSkillId ?? extendedSkillId;
-
-      const versionBaseSkill = baseSkillById.get(versionExtendedSkillId);
-      if (!versionBaseSkill || !versionBaseSkill.isExtendable) {
-        missingVersionBaseSkillId = versionExtendedSkillId;
-        break;
-      }
-
-      versionUpdates.push({
-        id: versionRow.id,
-        ...prependBaseSkillReference({
-          baseSkill: versionBaseSkill,
-          instructions: versionRow.instructions,
-          instructionsHtml: versionRow.instructionsHtml,
-        }),
-      });
-    }
-
-    if (missingVersionBaseSkillId !== null) {
-      stats.errors++;
-      logger.error(
-        {
-          skillId: SkillResource.modelIdToSId({
-            id: skill.id,
-            workspaceId: workspace.id,
-          }),
-          baseSkillId: missingVersionBaseSkillId,
-          workspaceId: workspace.sId,
-        },
-        "Could not resolve extendable base skill for customized skill version"
-      );
-      continue;
-    }
-
-    const referenceKey = getGlobalReferenceKey({
-      parentSkillId: skill.id,
-      childGlobalSkillId: extendedSkillId,
-    });
-    const shouldCreateReference = !existingReferenceKeys.has(referenceKey);
 
     stats.changed++;
     logger.info(
       {
         execute,
         skillId: SkillResource.modelIdToSId({
-          id: skill.id,
+          id: plan.skill.id,
           workspaceId: workspace.id,
         }),
-        skillName: skill.name,
-        baseSkillId: extendedSkillId,
-        versionRows: versionUpdates.length,
+        skillName: plan.skill.name,
+        baseSkillId: plan.extendedSkillId,
+        versionRows: plan.versionUpdates.length,
         workspaceId: workspace.sId,
       },
       execute
@@ -311,56 +560,9 @@ async function backfillCustomizedSkillReferencesForWorkspace(
     }
 
     try {
-      await withTransaction(async (transaction) => {
-        await SkillConfigurationModel.update(
-          {
-            instructions,
-            instructionsHtml,
-            extendedSkillId: null,
-          },
-          {
-            hooks: false,
-            silent: true,
-            transaction,
-            where: {
-              id: skill.id,
-              workspaceId: workspace.id,
-            },
-          }
-        );
-
-        if (shouldCreateReference) {
-          await SkillReferenceModel.create(
-            {
-              workspaceId: workspace.id,
-              parentSkillId: skill.id,
-              childCustomSkillId: null,
-              childGlobalSkillId: extendedSkillId,
-            },
-            { transaction }
-          );
-        }
-
-        for (const versionUpdate of versionUpdates) {
-          const versionWhere: WhereOptions<SkillVersionModel> = {
-            id: versionUpdate.id,
-            skillConfigurationId: skill.id,
-            workspaceId: workspace.id,
-          };
-          await SkillVersionModel.update(
-            {
-              instructions: versionUpdate.instructions,
-              instructionsHtml: versionUpdate.instructionsHtml,
-              extendedSkillId: null,
-            },
-            {
-              hooks: false,
-              silent: true,
-              transaction,
-              where: versionWhere,
-            }
-          );
-        }
+      await executeSkillBackfillPlan({
+        plan,
+        workspace,
       });
     } catch (error) {
       stats.errors++;
@@ -368,7 +570,7 @@ async function backfillCustomizedSkillReferencesForWorkspace(
         {
           error,
           skillId: SkillResource.modelIdToSId({
-            id: skill.id,
+            id: plan.skill.id,
             workspaceId: workspace.id,
           }),
           workspaceId: workspace.sId,
