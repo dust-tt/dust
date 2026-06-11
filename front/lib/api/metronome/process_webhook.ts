@@ -1169,6 +1169,7 @@ export async function processMetronomeWebhook({
     case "contract.archive":
     case "contract.create":
     case "credit.archive":
+    case "credit.segment.end":
     case "invoice.billing_provider_error":
     case "invoice.finalized":
       break;
@@ -1438,34 +1439,6 @@ export async function processMetronomeWebhook({
         if (grantResult.isErr()) {
           return grantResult;
         }
-      }
-      break;
-    }
-
-    case "credit.segment.end": {
-      const { customer_id: metronomeCustomerId, credit_id: creditId } = event;
-
-      const creditResult = await getMetronomeCredit({
-        metronomeCustomerId,
-        creditId,
-      });
-      if (creditResult.isErr()) {
-        return new Err(
-          new ProcessMetronomeWebhookError(
-            "processing_failed",
-            `Error fetching credit: ${creditResult.error.message}`
-          )
-        );
-      }
-
-      if (creditResult.value && isSeatAwuCredit(creditResult.value)) {
-        await launchSyncMetronomeSeatCountWorkflow({
-          workspaceId: workspace.sId,
-        });
-        logger.info(
-          { metronomeCustomerId, creditId, workspaceId: workspace.sId },
-          "[Metronome Webhook] credit.segment.end: seat credit deactivated, seat sync triggered"
-        );
       }
       break;
     }
