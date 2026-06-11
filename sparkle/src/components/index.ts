@@ -85,6 +85,22 @@ export {
   ScrollableDataTable,
 } from "./DataTable";
 export {
+  FileSystem,
+  type FileSystemFileItem,
+  type FileSystemFolderItem,
+  type FileSystemItem,
+  type FileSystemLoadChildrenArgs,
+  type FileSystemLoadChildrenResult,
+  type FileSystemProps,
+  type FileSystemView,
+} from "./FileSystem";
+export {
+  FileThumbnail,
+  FileThumbnailLoadingOverlay,
+  type FileThumbnailProps,
+  type ThumbnailFile,
+} from "./FileThumbnail";
+export {
   Dialog,
   DialogClose,
   DialogContainer,
