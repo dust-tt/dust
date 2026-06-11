@@ -3094,6 +3094,7 @@ const FileTypeUseCaseSchema = FlexibleEnumSchema<
   | "folders_document"
   | "project_context"
   | "skill_attachment"
+  | "workspace_branding"
 >();
 
 export const FileTypeSchema = z.object({
