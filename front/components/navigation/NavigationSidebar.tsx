@@ -152,7 +152,15 @@ export const NavigationSidebar = React.forwardRef<
           </NavTabPill>
         )}
       </div>
-      <div className="flex grow flex-col">{children}</div>
+      <div
+        className="flex grow flex-col overflow-hidden"
+        style={{
+          maskImage:
+            "linear-gradient(to bottom, black calc(100% - 20px), transparent)",
+        }}
+      >
+        {children}
+      </div>
       {subscription.plan.code === FREE_TRIAL_PHONE_PLAN_CODE ? (
         <div className="mx-3 mb-3">
           <TrialMessageUsage isAdmin={isAdmin(owner)} workspaceId={owner.sId} />
