@@ -1,17 +1,9 @@
-import type {
-  LightMCPToolConfigurationType,
-  LightServerSideMCPToolConfigurationType,
-} from "@app/lib/actions/mcp";
+import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolGeneratedFilePathType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
-import {
-  AgentMCPActionModel,
-  AgentMCPActionOutputItemModel,
-} from "@app/lib/models/agent/actions/mcp";
-import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
+import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import {
   GCS_CONTENT_CACHE_TTL_MS,
   gcsContentCacheKey,
@@ -19,8 +11,8 @@ import {
 } from "@app/lib/resources/agent_mcp_action/output_storage";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -79,11 +71,7 @@ describe("listBlockedActionsForConversation", () => {
   let auth: Authenticator;
   let conversation: ConversationType;
 
-  let stepContentIndex = 0;
-
   beforeEach(async () => {
-    stepContentIndex = 0;
-
     const setup = await createResourceTest({});
     workspace = setup.workspace;
     auth = setup.authenticator;
@@ -96,82 +84,18 @@ describe("listBlockedActionsForConversation", () => {
   });
 
   async function createBlockedAction({
-    agentMessageId,
+    agentMessageModelId,
     status = "blocked_validation_required",
   }: {
-    agentMessageId: number;
+    agentMessageModelId: number;
     status?: ToolExecutionStatus;
   }) {
-    const functionCallId = generateRandomModelSId();
-    const currentIndex = stepContentIndex++;
-
-    const stepContent = await AgentStepContentModel.create({
-      workspaceId: workspace.id,
-      agentMessageId,
-      step: 1,
-      index: currentIndex,
-      version: 0,
-      type: "function_call",
-      value: {
-        type: "function_call",
-        value: {
-          id: functionCallId,
-          name: "test_tool",
-          arguments: "{}",
-        },
-      },
-    });
-
-    const toolConfiguration: LightMCPToolConfigurationType = {
-      id: 1,
-      sId: generateRandomModelSId(),
-      type: "mcp_configuration",
-      name: "test_tool",
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      timeFrame: null,
-      jsonSchema: null,
-      additionalConfiguration: {},
-      mcpServerViewId: "test-server-view",
-      dustAppConfiguration: null,
-      secretName: null,
-      dustProject: null,
-      internalMCPServerId: null,
-      availability: "auto",
-      permission: "low",
-      toolServerId: "test-server",
-      retryPolicy: "no_retry",
-      originalName: "test_tool",
-      mcpServerName: "test_server",
-    };
-
-    const action = await AgentMCPActionModel.create({
-      workspaceId: workspace.id,
-      agentMessageId,
-      mcpServerConfigurationId: generateRandomModelSId(),
+    return AgentMCPActionFactory.create({
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId,
       status,
-      citationsAllocated: 0,
-      augmentedInputs: {},
-      toolConfiguration,
-      stepContext: {
-        citationsCount: 0,
-        citationsOffset: 0,
-        resumeState: null,
-        retrievalTopK: 10,
-        websearchResultCount: 5,
-      },
     });
-
-    await AgentStepContentToolExecutionModel.create({
-      workspaceId: workspace.id,
-      conversationId: conversation.id,
-      agentMessageId,
-      agentMCPActionId: action.id,
-      stepContentId: stepContent.id,
-    });
-
-    return { action, stepContent };
   }
 
   it("should return empty array for conversation with no agent messages", async () => {
@@ -216,7 +140,7 @@ describe("listBlockedActionsForConversation", () => {
       });
 
     await createBlockedAction({
-      agentMessageId: agentMessageRow.agentMessageId!,
+      agentMessageModelId: agentMessageRow.agentMessageId!,
     });
 
     const conversationResource = await ConversationResource.fetchById(
@@ -263,10 +187,10 @@ describe("listBlockedActionsForConversation", () => {
 
     // Create one blocked action and one succeeded action on the same agent message.
     await createBlockedAction({
-      agentMessageId: agentMessageRow.agentMessageId!,
+      agentMessageModelId: agentMessageRow.agentMessageId!,
     });
     await createBlockedAction({
-      agentMessageId: agentMessageRow.agentMessageId!,
+      agentMessageModelId: agentMessageRow.agentMessageId!,
       status: "succeeded",
     });
 
@@ -314,7 +238,7 @@ describe("listBlockedActionsForConversation", () => {
       });
 
     await createBlockedAction({
-      agentMessageId: agentMessageV0Row.agentMessageId!,
+      agentMessageModelId: agentMessageV0Row.agentMessageId!,
     });
 
     // Create agent message v1 at the same rank (simulating a retry) with its own blocked action.
@@ -330,7 +254,7 @@ describe("listBlockedActionsForConversation", () => {
       });
 
     const { action: v1Action } = await createBlockedAction({
-      agentMessageId: agentMessageV1Row.agentMessageId!,
+      agentMessageModelId: agentMessageV1Row.agentMessageId!,
     });
 
     const conversationResource = await ConversationResource.fetchById(
