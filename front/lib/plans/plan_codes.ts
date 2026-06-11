@@ -64,6 +64,7 @@ export const isBusinessPlanPrefix = (planCode: string) =>
 // Everything else is free
 export const isFreePlan = (planCode: string) =>
   !isEnterprisePlanPrefix(planCode) &&
+  !isDustCompanyPlan(planCode) &&
   !isProPlanPrefix(planCode) &&
   !isCreditPricedBusinessPlan(planCode);
 
