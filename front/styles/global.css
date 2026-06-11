@@ -1,6 +1,8 @@
 @import "./fonts.css";
+@import "tailwindcss/preflight" layer(base);
+@import "tailwindcss/theme" layer(theme);
 
-@tailwind base;
+@config "../tailwind.config.js";
 
 @layer base {
   html {
@@ -190,22 +192,11 @@ body {
   }
 
   .dark * {
-    scrollbar-color: theme("colors.gray.700") theme("colors.gray.900");
+    scrollbar-color: var(--color-gray-700) var(--color-gray-900);
   }
 }
 
-/* Remove this once we have migrated to tailwindcss v4 */
-.h-dvh {
-  height: 100dvh;
-}
-
-.min-h-dvh {
-  min-height: 100dvh;
-}
-
-.max-h-dvh {
-  max-height: 100dvh;
-}
+/* dvh utilities are now built-in to Tailwind v4 */
 
 /* Avoid the native focus outline border on Recharts surfaces when clicking charts. */
 .observability-chart-container svg:focus,
@@ -234,6 +225,6 @@ body {
 
 /* Style first row as header (Contentful doesn't always use th elements) */
 .rich-text-table table tr:first-child td {
-  background-color: theme("colors.gray.50");
+  background-color: var(--color-gray-50);
   font-weight: 600;
 }

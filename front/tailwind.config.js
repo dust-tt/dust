@@ -18,9 +18,7 @@ module.exports = {
         medium: "450",
         semibold: "550",
       },
-      containers: {
-        xxxs: "16rem",
-      },
+      // Container query breakpoints defined via @custom-variant in CSS (see components.css).
       minWidth: (theme) => ({
         ...theme("spacing"),
         ...preset.sizeScale,
@@ -143,10 +141,4 @@ module.exports = {
       },
     },
   },
-  safelist: [
-    ...preset.buildSafelist({ avatarProps: "(bg|text)" }),
-    "grid-rows-6",
-    "grid-rows-7",
-    "grid-rows-8",
-  ],
 };

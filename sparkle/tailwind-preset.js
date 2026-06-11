@@ -344,9 +344,6 @@ function buildSafelist({ prefix = "", avatarProps = "(bg|text)" } = {}) {
 }
 
 module.exports = {
-  future: {
-    hoverOnlyWhenSupported: true,
-  },
   darkMode: "class",
   theme: {
     screens: {
@@ -395,14 +392,9 @@ module.exports = {
       borderRadius: {
         "4xl": "2rem",
       },
-      containers: {
-        xxs: "24rem",
-        xs: "32rem",
-        sm: "40rem",
-        md: "48rem",
-        lg: "64rem",
-        xl: "80rem",
-      },
+      // Container query breakpoints are now defined via @custom-variant in CSS.
+      // Removed from here because v4 unifies --container-* with max-w-*, and
+      // these values (e.g. xl: 80rem) were overriding the standard max-w scale.
       scale: {
         99: ".99",
       },
@@ -505,16 +497,21 @@ module.exports = {
         "breathing-scale": "breathing-scale 3s infinite ease-in-out",
       },
       colors: {
-        // Auto-generated night shades for every color in the palette
+        // Auto-generated base shades + night shades for every color in the palette.
+        // In v4, tailwindcss/colors is no longer the default palette (v4 uses built-in oklch),
+        // so we must explicitly include the base hex shades to override the oklch defaults.
         ...Object.fromEntries(
           colorNames.map((colorName) => [
             colorName,
-            Object.fromEntries(
-              Object.entries(colors[colorName]).map(([shade]) => [
-                `${shade}-night`,
-                colors[colorName][Math.min(950, 1000 - parseInt(shade))],
-              ])
-            ),
+            {
+              ...colors[colorName],
+              ...Object.fromEntries(
+                Object.entries(colors[colorName]).map(([shade]) => [
+                  `${shade}-night`,
+                  colors[colorName][Math.min(950, 1000 - parseInt(shade))],
+                ])
+              ),
+            },
           ])
         ),
         golden: {
@@ -794,10 +791,6 @@ module.exports = {
     },
   },
   plugins: [
-    require("@tailwindcss/forms"),
-    require("@tailwindcss/container-queries"),
-    require("tailwind-scrollbar-hide"),
-    require("tailwindcss-animate"),
     typographyPlugin,
   ],
 };

@@ -1,7 +1,14 @@
 /* App-specific CSS overrides go here */
-/* Tailwind directives are already included in @dust-tt/front/styles/global.css */
+/* Tailwind sources for SPA files not covered by front's CSS */
+@import "tailwindcss/utilities" layer(utilities);
+
+@config "../tailwind.config.cjs";
+
+@source "../src/**/*.{ts,tsx}";
+@source "../../front/components/**/*.{ts,tsx}";
+@source "../../front/lib/**/*.{ts,tsx}";
 
 /* SPA uses #root instead of Next.js #__next - ensure full height */
 #root {
-  @apply h-full;
+  height: 100%;
 }
