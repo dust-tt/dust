@@ -47,7 +47,10 @@ import {
 import type { MaxAwuCreditsTimeframeType, PlanType } from "@app/types/plan";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 
-export type UserBlockedReason = "credits_exhausted" | "user_cap_reached";
+export type UserBlockedReason =
+  | "credits_exhausted"
+  | "user_cap_reached"
+  | "no_seat";
 
 export type ProgrammaticCreditStatus = "active" | "warned" | "depleted";
 
@@ -68,6 +71,9 @@ export type GetWorkspaceUsageStatusResponseBody = {
   poolCreditState: WorkspacePoolCreditState;
   programmaticCreditStatus: ProgrammaticCreditStatus;
   balanceThresholdReached: boolean;
+  // True when the current user has no billable seat in the workspace and is
+  // therefore blocked from sending messages.
+  noSeat: boolean;
 };
 
 export type GetFairUseCreditsResponseBody = {
@@ -215,9 +221,21 @@ function deriveBlockedReason({
 }
 
 export async function isUserBlocked(
-  workspaceId: string,
-  userId: string
+  workspace: LightWorkspaceType,
+  user: UserResource
 ): Promise<UserBlockedReason | null> {
+  const workspaceId = workspace.sId;
+  const userId = user.sId;
+
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
+  if (membership?.seatType === "none") {
+    return "no_seat";
+  }
+
   const [creditStateRaw, poolStatusRaw] = await runOnRedis(
     { origin: REDIS_ORIGIN },
     async (client) =>

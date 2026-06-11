@@ -52,6 +52,7 @@ export function useCreateConversationWithMessage({
       title,
       visibility = "unlisted",
       deferMessage = false,
+      onError,
     }: {
       messageData: {
         input: string;
@@ -74,6 +75,10 @@ export function useCreateConversationWithMessage({
       // posted in the background so the caller can navigate as soon as the `sId`
       // is known.
       deferMessage?: boolean;
+      // Called when the deferred background message-post fails. The caller decides
+      // how to surface it (e.g. a blocking popup for limit errors). When omitted,
+      // background failures fall back to an error notification.
+      onError?: (err: SubmitMessageError) => void;
     }): Promise<Result<ConversationType, SubmitMessageError>> => {
       if (!user) {
         return new Err({
@@ -140,13 +145,15 @@ export function useCreateConversationWithMessage({
             origin,
             skipToolsValidation,
             profilePictureUrl: user.image,
-            onError: (err) => {
-              sendNotification({
-                title: err.title,
-                description: err.message,
-                type: "error",
-              });
-            },
+            onError:
+              onError ??
+              ((err) => {
+                sendNotification({
+                  title: err.title,
+                  description: err.message,
+                  type: "error",
+                });
+              }),
           }).finally(() => {
             clearPendingFirstMessage(conversationId);
           });

@@ -211,6 +211,7 @@ function UsageStatusBanner({ owner }: UsageStatusBannerProps) {
     poolCreditState,
     programmaticCreditStatus,
     balanceThresholdReached,
+    noSeat,
   } = useWorkspaceUsageStatus({ owner });
 
   // Pool balance and programmatic cap banners are only shown to admins who
@@ -262,6 +263,17 @@ function UsageStatusBanner({ owner }: UsageStatusBannerProps) {
   );
 
   const banner = ((): StatusBannerProps | null => {
+    // A seatless member cannot run agents at all, so this takes precedence over
+    // every credit-related banner.
+    if (noSeat) {
+      return {
+        variant: "danger",
+        title: "You don't have a seat in this workspace",
+        description:
+          "You can no longer run agents. Contact your admin to be assigned a seat.",
+      };
+    }
+
     if (showPoolBanner) {
       return {
         variant: isPoolDepleted ? "danger" : "warning",

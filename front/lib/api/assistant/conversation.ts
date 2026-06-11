@@ -2472,31 +2472,22 @@ async function checkMessagesLimit(
   const plan = auth.subscription()?.plan;
   const user = auth.user();
 
-  if (user) {
-    const membership =
-      await MembershipResource.getActiveMembershipOfUserInWorkspace({
-        user,
-        workspace: owner,
-      });
-    if (membership?.seatType === "none") {
+  if (owner.metronomeCustomerId && plan && isCreditPricedPlan(plan)) {
+    const blockedReason = user
+      ? await isUserBlocked(owner, user)
+      : (await isApiBlocked(owner.sId))
+        ? ("credits_exhausted" as const)
+        : null;
+    if (blockedReason === "no_seat") {
       return new Err({
         status_code: 403,
         api_error: {
           type: "no_seat",
           message:
-            "You don't have a seat in this workspace. Ask a workspace admin " +
-            "to assign you one to start sending messages.",
+            "You don't have a seat in this workspace. Contact your admin to be assigned one.",
         },
       });
     }
-  }
-
-  if (owner.metronomeCustomerId && plan && isCreditPricedPlan(plan)) {
-    const blockedReason = user
-      ? await isUserBlocked(owner.sId, user.sId)
-      : (await isApiBlocked(owner.sId))
-        ? ("credits_exhausted" as const)
-        : null;
     if (blockedReason === "user_cap_reached") {
       return new Err({
         status_code: 403,
