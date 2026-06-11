@@ -449,7 +449,7 @@ export function UsagePage() {
     </div>
   );
 
-  const seatFilterDropdown = isSeatBased ? (
+  const seatFilterDropdown = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
@@ -489,7 +489,7 @@ export function UsagePage() {
         />
       </DropdownMenuContent>
     </DropdownMenu>
-  ) : null;
+  );
 
   const membersTable = (
     <MembersUsageTable
