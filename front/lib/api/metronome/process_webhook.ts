@@ -24,7 +24,6 @@ import {
   syncPoolCreditStateFromBalance,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { reconcileWorkspaceUserCreditStates } from "@app/lib/api/metronome/reconcile_credit_state";
-import { syncMetronomeSeatCountForWorkspace } from "@app/lib/api/metronome/seat_sync";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
@@ -89,6 +88,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { launchSyncMetronomeSeatCountWorkflow } from "@app/temporal/metronome_events_queue/client";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
@@ -1410,8 +1410,8 @@ export async function processMetronomeWebhook({
           event.type === "credit.segment.start" &&
           isSeatAwuCredit(creditResult.value)
         ) {
-          await syncMetronomeSeatCountForWorkspace({
-            workspace: renderLightWorkspaceType({ workspace }),
+          await launchSyncMetronomeSeatCountWorkflow({
+            workspaceId: workspace.sId,
           });
           logger.info(
             { metronomeCustomerId, creditId, workspaceId: workspace.sId },
@@ -1459,8 +1459,8 @@ export async function processMetronomeWebhook({
       }
 
       if (creditResult.value && isSeatAwuCredit(creditResult.value)) {
-        await syncMetronomeSeatCountForWorkspace({
-          workspace: renderLightWorkspaceType({ workspace }),
+        await launchSyncMetronomeSeatCountWorkflow({
+          workspaceId: workspace.sId,
         });
         logger.info(
           { metronomeCustomerId, creditId, workspaceId: workspace.sId },
