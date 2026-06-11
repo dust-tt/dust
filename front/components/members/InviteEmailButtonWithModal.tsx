@@ -54,17 +54,21 @@ const useGetEmailsListAndError = (
   }, [inviteEmails]);
 };
 
+interface InviteEmailButtonWithModalProps {
+  owner: WorkspaceType;
+  prefillText: string;
+  perSeatPricing: SubscriptionPerSeatPricing | null;
+  onInviteClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  disabled?: boolean;
+}
+
 export function InviteEmailButtonWithModal({
   owner,
   prefillText,
   perSeatPricing,
   onInviteClick,
-}: {
-  owner: WorkspaceType;
-  prefillText: string;
-  perSeatPricing: SubscriptionPerSeatPricing | null;
-  onInviteClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
-}) {
+  disabled = false,
+}: InviteEmailButtonWithModalProps) {
   const [inviteEmails, setInviteEmails] = useState<string>("");
   const { inviteEmailsList, emailError } =
     useGetEmailsListAndError(inviteEmails);
@@ -202,6 +206,7 @@ export function InviteEmailButtonWithModal({
           label="Invite members"
           variant="primary"
           onClick={onInviteClick}
+          disabled={disabled}
         />
       </SheetTrigger>
       <SheetContent size="lg">

@@ -7,10 +7,12 @@ import { useEffect, useState } from "react";
 
 interface UsageProgrammaticLimitCardProps {
   workspaceId: string;
+  readOnly: boolean;
 }
 
 export function UsageProgrammaticLimitCard({
   workspaceId,
+  readOnly,
 }: UsageProgrammaticLimitCardProps) {
   const { programmaticUsageLimit, isProgrammaticUsageLimitLoading } =
     useProgrammaticUsageLimit({ workspaceId });
@@ -67,7 +69,8 @@ export function UsageProgrammaticLimitCard({
     }
   };
 
-  const isInputDisabled = isSaving || isProgrammaticUsageLimitLoading;
+  const isInputDisabled =
+    readOnly || isSaving || isProgrammaticUsageLimitLoading;
 
   return (
     <Page.Vertical gap="sm" align="stretch">

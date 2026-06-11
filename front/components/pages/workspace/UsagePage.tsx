@@ -11,7 +11,11 @@ import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNot
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
 import { isEnterprisePlanPrefix, isUpgraded } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
@@ -26,6 +30,7 @@ import {
   useUpdateMemberSeatType,
 } from "@app/lib/swr/memberships";
 import {
+  useAwuUsage,
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
 } from "@app/lib/swr/workspaces";
@@ -48,7 +53,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
-import { useCallback, useContext, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -56,7 +61,13 @@ export function UsagePage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
   const router = useAppRouter();
+  const { hasFeature } = useFeatureFlags();
   const isCreditPriced = isCreditPricedPlan(subscription.plan);
+  // Legacy-contract workspaces can view this page in read-only mode behind a
+  // flag: analytics and member spend render as usual, but every action (top up,
+  // invite, seat changes, spend limits, settings) is disabled.
+  const isReadOnly = !isCreditPriced && hasFeature("usage_page_read_only");
+  const canViewUsage = isCreditPriced || isReadOnly;
   const [searchTerm, setSearchTerm] = useState("");
   const [seatTypeFilter, setSeatTypeFilter] = useState<
     MembershipSeatType | "none" | null
@@ -144,10 +155,10 @@ export function UsagePage() {
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
   useEffect(() => {
-    if (!isCreditPriced) {
+    if (!canViewUsage) {
       void router.push(`/w/${owner.sId}/members`);
     }
-  }, [isCreditPriced, router, owner.sId]);
+  }, [canViewUsage, router, owner.sId]);
 
   const {
     totalRemainingCredits,
@@ -169,6 +180,27 @@ export function UsagePage() {
     useCreditPurchaseInfo({
       workspaceId: owner.sId,
     });
+
+  // Legacy contracts have no pool credits or commits, so the pool summary's
+  // overage figure is meaningless. In read-only mode we instead show the
+  // period's raw consumption from the AWU usage analytics endpoint (the same
+  // data the chart below renders), summing its ungrouped "total" series for the
+  // current billing cycle.
+  const { awuUsageData } = useAwuUsage({
+    workspaceId: owner.sId,
+    billingCycleStartDay: billingCycleStartDay ?? 1,
+    windowSize: "DAY",
+    disabled: !isReadOnly,
+  });
+  const periodSpendCredits = useMemo(
+    () =>
+      (awuUsageData?.points ?? []).reduce(
+        (sum, point) =>
+          sum + point.groups.reduce((s, group) => s + group.valueCredits, 0),
+        0
+      ),
+    [awuUsageData]
+  );
 
   const { membersUsage, isMembersUsageLoading, totalMembersUsage } =
     useMembersUsage({
@@ -221,7 +253,7 @@ export function UsagePage() {
   );
   const initialTotalCredits = totalActiveCredits;
 
-  if (!isCreditPriced) {
+  if (!canViewUsage) {
     return null;
   }
 
@@ -279,23 +311,32 @@ export function UsagePage() {
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                {overageCredits !== null && overageCredits > 0 && (
+                {isReadOnly ? (
                   <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
-                    {formatCredits(overageCredits)} overage credits
-                  </span>
-                )}
-                {isEnterprise ? (
-                  <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
-                    Contact your Dust sales representative to buy credits
+                    {formatCredits(periodSpendCredits)} credits spent this
+                    period
                   </span>
                 ) : (
-                  <Button
-                    label="Top up"
-                    icon={ArrowUp}
-                    size="xs"
-                    variant="ghost"
-                    onClick={() => setShowBuyCreditDialog(true)}
-                  />
+                  <>
+                    {overageCredits !== null && overageCredits > 0 && (
+                      <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                        {formatCredits(overageCredits)} overage credits
+                      </span>
+                    )}
+                    {isEnterprise ? (
+                      <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                        Contact your Dust sales representative to buy credits
+                      </span>
+                    ) : (
+                      <Button
+                        label="Top up"
+                        icon={ArrowUp}
+                        size="xs"
+                        variant="ghost"
+                        onClick={() => setShowBuyCreditDialog(true)}
+                      />
+                    )}
+                  </>
                 )}
               </div>
             </>
@@ -311,11 +352,14 @@ export function UsagePage() {
           />
         )}
 
-        <UsageSettingsCard workspaceId={owner.sId} />
+        <UsageSettingsCard workspaceId={owner.sId} readOnly={isReadOnly} />
 
-        <UsageProgrammaticLimitCard workspaceId={owner.sId} />
+        <UsageProgrammaticLimitCard
+          workspaceId={owner.sId}
+          readOnly={isReadOnly}
+        />
 
-        <UsageNotificationsCard workspaceId={owner.sId} />
+        <UsageNotificationsCard workspaceId={owner.sId} readOnly={isReadOnly} />
 
         <Page.Vertical gap="sm" align="stretch">
           <span className="heading-2xl text-foreground dark:text-foreground-night">
@@ -335,6 +379,7 @@ export function UsagePage() {
                 prefillText=""
                 perSeatPricing={perSeatPricing}
                 onInviteClick={onInviteClick}
+                disabled={isReadOnly}
               />
             )}
           </div>
@@ -384,6 +429,7 @@ export function UsagePage() {
           <MembersUsageTable
             members={membersUsage}
             isLoading={isMembersUsageLoading}
+            readOnly={isReadOnly}
             totalAllowedUsagePendingMemberIds={
               totalAllowedUsagePendingMemberIds
             }
