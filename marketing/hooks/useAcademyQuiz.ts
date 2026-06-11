@@ -2,9 +2,9 @@ import config from "@marketing/lib/api/config";
 import { clientFetch } from "@marketing/lib/egress/client";
 import { useCallback, useRef, useState } from "react";
 
-// Academy chat endpoint lives behind the API host (front-api, with front
-// behind it via the L7 proxy).
-const ACADEMY_CHAT_URL = `${config.getApiBaseUrl()}/api/academy/chat`;
+// Academy chat endpoint lives on the API host (front-api) under
+// /api/marketing/academy, alongside the other marketing endpoints.
+const ACADEMY_CHAT_URL = `${config.getApiBaseUrl()}/api/marketing/academy/chat`;
 
 interface QuizMessage {
   role: "user" | "assistant";

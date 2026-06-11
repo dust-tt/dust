@@ -9,10 +9,11 @@ import { useSWRConfig } from "swr";
 
 const BROWSER_ID_KEY = "dust_academy_browser_id";
 
-// Academy progress/chat endpoints live behind the API host (front-api, with
-// front behind it via the L7 proxy). Marketing hits them cross-origin.
+// Academy progress/chat endpoints live on the API host (front-api) under
+// /api/marketing/academy, alongside the other marketing endpoints. Marketing
+// hits them cross-origin.
 const academyApiUrl = (path: string): string =>
-  `${config.getApiBaseUrl()}/api/academy${path}`;
+  `${config.getApiBaseUrl()}/api/marketing/academy${path}`;
 
 function generateUUID(): string {
   return crypto.randomUUID();
@@ -61,7 +62,7 @@ interface GetCourseProgressResponse {
 
 interface PostProgressResponse {
   attempt: {
-    id: number;
+    sId: string;
     contentType: string;
     contentSlug: string;
     correctAnswers: number;

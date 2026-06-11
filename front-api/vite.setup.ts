@@ -9,6 +9,7 @@ vi.mock("@app/lib/api/config", async (importOriginal) => {
     "@app/tests/utils/mocks/app_config"
   );
   return createAppConfigMock(importOriginal, {
+    getAcademyJwtSecret: () => "test-academy-jwt-secret",
     getApiBaseUrl: () => "http://localhost:3000",
     getAppUrl: () => "http://localhost:3000",
     getCoreAPIConfig: () => ({

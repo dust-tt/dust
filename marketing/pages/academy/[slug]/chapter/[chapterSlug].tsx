@@ -166,7 +166,7 @@ export default function ChapterPage({
     } else if (browserId) {
       void (async () => {
         await clientFetch(
-          `${config.getApiBaseUrl()}/api/academy/progress/visit`,
+          `${config.getApiBaseUrl()}/api/marketing/academy/progress/visit`,
           {
             method: "POST",
             headers: {
