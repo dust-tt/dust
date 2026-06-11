@@ -52,7 +52,7 @@ function getVertexLocation(): string | undefined {
     case "us-central1":
       return "global";
     case "europe-west1":
-      return "europe-west1";
+      return "eu";
     default:
       assertNeverAndIgnore(region);
   }
