@@ -7,10 +7,7 @@ import {
 import { FireworksLLM } from "@app/lib/api/llm/clients/fireworks";
 import { isFireworksWhitelistedModelId } from "@app/lib/api/llm/clients/fireworks/types";
 import { GoogleLLM } from "@app/lib/api/llm/clients/google";
-import {
-  isGoogleAIStudioWhitelistedModelId,
-  isGoogleVertexWhitelistedModelId,
-} from "@app/lib/api/llm/clients/google/types";
+import { isGoogleVertexWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import { MistralLLM } from "@app/lib/api/llm/clients/mistral";
 import { isMistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
 import { NoopLLM } from "@app/lib/api/llm/clients/noop";
@@ -135,21 +132,11 @@ export async function getLLM(
     });
   }
 
-  const featureFlags = await getFeatureFlags(auth);
-
   const plan = auth.getNonNullablePlan();
-  const useVertexPrerequisite =
-    !plan.isByok &&
-    regionConfig.getCurrentRegion() === "europe-west1" &&
-    (isCreditPricedPlanPrefix(plan.code) ||
-      featureFlags.includes("use_vertex_for_supported_models"));
 
-  if (isGoogleAIStudioWhitelistedModelId(modelId)) {
-    const useVertex =
-      useVertexPrerequisite && isGoogleVertexWhitelistedModelId(modelId);
-
+  if (isGoogleVertexWhitelistedModelId(modelId)) {
     return new GoogleLLM(auth, {
-      useVertex,
+      useVertex: !plan.isByok,
       credentials,
       getTraceInput,
       getTraceOutput,
@@ -161,6 +148,14 @@ export async function getLLM(
       context,
     });
   }
+
+  const featureFlags = await getFeatureFlags(auth);
+
+  const useVertexPrerequisite =
+    !plan.isByok &&
+    regionConfig.getCurrentRegion() === "europe-west1" &&
+    (isCreditPricedPlanPrefix(plan.code) ||
+      featureFlags.includes("use_vertex_for_supported_models"));
 
   if (isAnthropicWhitelistedModelId(modelId)) {
     const useEapKey = modelConfig.useEapKey ?? false;
