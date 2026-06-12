@@ -6,6 +6,7 @@ import type {
 import type { Client } from "@app/lib/model_constructors/client";
 import {
   assistantReasoningMessageToThinkingBlocks,
+  assistantTextMessageToTextBlock,
   conversationToMessages,
   type MessageBlockConverters,
   reasoningToThinkingConfig,
@@ -38,6 +39,7 @@ export function WithAnthropicInputConverter<
     userImageMessageToImageBlock = userImageMessageToImageBlock;
     toolCallResultMessageToToolResultBlock =
       toolCallResultMessageToToolResultBlock;
+    assistantTextMessageToTextBlock = assistantTextMessageToTextBlock;
     assistantReasoningMessageToThinkingBlocks =
       assistantReasoningMessageToThinkingBlocks;
 
