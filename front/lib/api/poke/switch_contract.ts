@@ -15,6 +15,7 @@ import {
 } from "@app/lib/metronome/client";
 import {
   AWU_PRIORITY_PURCHASED_COMMIT,
+  CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
   CURRENCY_TO_CREDIT_TYPE_ID,
   getCreditTypeAwuId,
   getProductPrepaidCommitId,
@@ -558,6 +559,9 @@ export async function switchContract({
       // start can otherwise collide with a prior switch that shared the same
       // workspace, start moment, and amount.
       uniquenessKey: `initial-credits-${metronomeContractId}-${body.initialCredits.amountCredits}`,
+      customFields: {
+        [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: oneYearAfterStart.toISOString(),
+      },
     });
     if (commitResult.isErr()) {
       return new Err(

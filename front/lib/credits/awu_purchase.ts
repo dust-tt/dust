@@ -15,6 +15,7 @@ import {
 } from "@app/lib/metronome/client";
 import {
   AWU_PRIORITY_PURCHASED_COMMIT,
+  CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
   CURRENCY_TO_CREDIT_TYPE_ID,
   getCreditTypeAwuId,
   getProductPrepaidCommitId,
@@ -348,6 +349,9 @@ export async function purchaseAwuCredits(
         ? `Credit top-up: ${amountCredits.toLocaleString()} credits (${discountPercent}% discount)`
         : `Credit top-up: ${amountCredits.toLocaleString()} credits`,
     uniquenessKey,
+    customFields: {
+      [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: oneYearFromNow.toISOString(),
+    },
     // Stamped on the Stripe invoice Metronome pushes downstream so the
     // existing eligibility check (`isAwuPurchaseInvoice`) still recognises
     // pending AWU purchases.

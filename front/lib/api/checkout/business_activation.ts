@@ -20,6 +20,7 @@ import {
   scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
 import {
+  CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
   CURRENCY_TO_CREDIT_TYPE_ID,
   getProductSeatSubscriptionCommitId,
   PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY,
@@ -311,6 +312,9 @@ export async function createPaymentGatedBusinessActivation({
     applicableProducTags: [SEAT_TAG],
     name: `Business subscription activation (${seatType} ${billingPeriod})`,
     uniquenessKey,
+    customFields: {
+      [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: accessEndingBefore.toISOString(),
+    },
     stripeInvoiceMetadata: {
       subscription_activation: "true",
       workspace_id: workspace.sId,
