@@ -9,11 +9,7 @@ import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal
 import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
-import {
-  DUST_PROVIDED_SKILL_LABEL,
-  getSkillAvatarIcon,
-  isDustProvidedSkill,
-} from "@app/lib/skill";
+import { getSkillAvatarIcon } from "@app/lib/skill";
 import {
   useAvailableMCPServers,
   useMCPServerViewsFromSpaces,
@@ -42,7 +38,6 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownTooltipTrigger,
   LoadingBlock,
   ScrollArea,
   ShapesPlus,
@@ -59,7 +54,6 @@ interface CapabilityPickerItemBase {
   id: string;
   label: string;
   sortName: string;
-  tooltip?: string;
 }
 
 type CapabilityPickerItem = CapabilityPickerItemBase &
@@ -237,28 +231,6 @@ function CapabilitiesPickerItemsList({
                   }}
                 />
               );
-
-            if (item.kind !== "uninstalled_tool" && item.tooltip) {
-              return (
-                <DropdownTooltipTrigger
-                  key={item.id}
-                  description={item.tooltip}
-                  side="right"
-                  sideOffset={8}
-                >
-                  <DropdownMenuItem
-                    icon={item.icon}
-                    itemId={item.id}
-                    label={item.label}
-                    description={item.description}
-                    truncateText
-                    endComponent={endComponent}
-                    className="group"
-                    onClick={() => onItemSelect(item)}
-                  />
-                </DropdownTooltipTrigger>
-              );
-            }
 
             return (
               <DropdownMenuItem
@@ -482,12 +454,6 @@ export function CapabilitiesPicker({
     if (isSkillsDataReady && isToolsDataReady) {
       for (const skill of skills) {
         const description = skill.userFacingDescription;
-        const isDustProvided = isDustProvidedSkill(skill);
-        const tooltip = isDustProvided
-          ? description
-            ? `${description}\n\n${DUST_PROVIDED_SKILL_LABEL}`
-            : DUST_PROVIDED_SKILL_LABEL
-          : description || undefined;
 
         if (
           !matchesCapabilityPickerSearchQuery({
@@ -507,7 +473,6 @@ export function CapabilitiesPicker({
           label: skill.name,
           sortName: skill.name.toLowerCase(),
           description,
-          tooltip,
         });
       }
 
@@ -535,7 +500,6 @@ export function CapabilitiesPicker({
           label,
           sortName: label.toLowerCase(),
           description,
-          tooltip: description || undefined,
         });
       }
     }
