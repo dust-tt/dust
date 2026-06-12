@@ -1283,7 +1283,7 @@ describe("validateAction", () => {
         parentId: userMessageRow.id,
       });
 
-      const { action } = await AgentMCPActionFactory.create({
+      const { action } = await AgentMCPActionFactory.create(auth, {
         workspace,
         conversationModelId: conversation.id,
         agentMessageModelId: messageRow.agentMessageId!,
@@ -1304,10 +1304,7 @@ describe("validateAction", () => {
       expect(conversationResource).not.toBeNull();
 
       const result = await validateAction(auth, conversationResource!, {
-        actionId: AgentMCPActionResource.modelIdToSId({
-          id: action.id,
-          workspaceId: workspace.id,
-        }),
+        actionId: action.sId,
         approvalState: "approved",
         messageId: messageRow.sId,
       });
@@ -1318,8 +1315,11 @@ describe("validateAction", () => {
       }
 
       // The action was not transitioned.
-      await action.reload();
-      expect(action.status).toBe("blocked_validation_required");
+      const reloadedAction = await AgentMCPActionResource.fetchById(
+        auth,
+        action.sId
+      );
+      expect(reloadedAction?.status).toBe("blocked_validation_required");
     });
 
     it("rejects resolving authentication or file authorization whose agent message can no longer resume", async () => {

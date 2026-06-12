@@ -5,6 +5,7 @@ import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/action
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import type { MessageModel } from "@app/lib/models/agent/conversation";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -24,19 +25,21 @@ export class AgentMCPActionFactory {
    * Creates an MCP action (with its function_call step content and tool execution row),
    * blocked on tool validation by default.
    */
-  static async create({
-    workspace,
-    conversationModelId,
-    agentMessageModelId,
-    status = "blocked_validation_required",
-  }: {
-    workspace: WorkspaceType;
-    conversationModelId: ModelId;
-    agentMessageModelId: ModelId;
-    status?: ToolExecutionStatus;
-  }): Promise<{
-    action: AgentMCPActionModel;
-    stepContent: AgentStepContentModel;
+  static async create(
+    auth: Authenticator,
+    {
+      workspace,
+      conversationModelId,
+      agentMessageModelId,
+      status = "blocked_validation_required",
+    }: {
+      workspace: WorkspaceType;
+      conversationModelId: ModelId;
+      agentMessageModelId: ModelId;
+      status?: ToolExecutionStatus;
+    }
+  ): Promise<{
+    action: AgentMCPActionResource;
   }> {
     const functionCallId = generateRandomModelSId();
     const currentIndex = this.stepContentIndex++;
@@ -108,7 +111,18 @@ export class AgentMCPActionFactory {
       stepContentId: stepContent.id,
     });
 
-    return { action, stepContent };
+    const actionResource = await AgentMCPActionResource.fetchById(
+      auth,
+      AgentMCPActionResource.modelIdToSId({
+        id: action.id,
+        workspaceId: workspace.id,
+      })
+    );
+    if (!actionResource) {
+      throw new Error("Just-created MCP action not found.");
+    }
+
+    return { action: actionResource };
   }
 
   /**
@@ -129,7 +143,7 @@ export class AgentMCPActionFactory {
   ): Promise<{
     messageRow: MessageModel;
     agentMessage: AgentMessageType;
-    action: AgentMCPActionModel;
+    action: AgentMCPActionResource;
   }> {
     const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent",
@@ -142,7 +156,7 @@ export class AgentMCPActionFactory {
         agentConfig,
       });
 
-    const { action } = await this.create({
+    const { action } = await this.create(auth, {
       workspace,
       conversationModelId: conversation.id,
       agentMessageModelId: agentMessage.agentMessageId,

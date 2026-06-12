@@ -111,13 +111,12 @@ describe("blocked actions resolution", () => {
         status: "interrupted",
       });
 
-      await action.reload();
-      expect(action.status).toBe("denied");
+      const reloadedAction = await AgentMCPActionResource.fetchById(
+        auth,
+        action.sId
+      );
+      expect(reloadedAction?.status).toBe("denied");
 
-      const actionId = AgentMCPActionResource.modelIdToSId({
-        id: action.id,
-        workspaceId: workspace.id,
-      });
       await vi.waitFor(() =>
         expect(emitAuditLogEventDirectMock).toHaveBeenCalledWith(
           expect.objectContaining({
@@ -129,7 +128,7 @@ describe("blocked actions resolution", () => {
             },
             context: { location: "internal" },
             metadata: expect.objectContaining({
-              action_id: actionId,
+              action_id: action.sId,
               decision: "auto_rejected",
               deciding_user_email: "system",
               deciding_user_id: "system",
@@ -156,7 +155,7 @@ describe("blocked actions resolution", () => {
 
       const { agentMessageRowId: otherAgentMessageRowId } =
         await createAgentMessageAtRank(3);
-      const { action: otherAction } = await AgentMCPActionFactory.create({
+      const { action: otherAction } = await AgentMCPActionFactory.create(auth, {
         workspace,
         conversationModelId: conversation.id,
         agentMessageModelId: otherAgentMessageRowId,
@@ -170,12 +169,18 @@ describe("blocked actions resolution", () => {
         status: "interrupted",
       });
 
-      await action.reload();
-      expect(action.status).toBe("denied");
+      const reloadedAction = await AgentMCPActionResource.fetchById(
+        auth,
+        action.sId
+      );
+      expect(reloadedAction?.status).toBe("denied");
 
       // The other message's blocked action is untouched and keeps the flag up.
-      await otherAction.reload();
-      expect(otherAction.status).toBe("blocked_validation_required");
+      const reloadedOtherAction = await AgentMCPActionResource.fetchById(
+        auth,
+        otherAction.sId
+      );
+      expect(reloadedOtherAction?.status).toBe("blocked_validation_required");
       expect(await getActionRequired()).toBe(true);
     });
 
@@ -217,18 +222,18 @@ describe("blocked actions resolution", () => {
         status: "interrupted",
       });
 
-      await action.reload();
-      expect(action.status).toBe("denied");
+      const reloadedAction = await AgentMCPActionResource.fetchById(
+        auth,
+        action.sId
+      );
+      expect(reloadedAction?.status).toBe("denied");
 
       // The removal predicate matches every blocked-action event type of the denied action,
       // not only approval events.
       const [predicate, channel] = removeEventMock.mock.calls[0];
       expect(channel).toContain(messageRow.sId);
 
-      const actionId = AgentMCPActionResource.modelIdToSId({
-        id: action.id,
-        workspaceId: workspace.id,
-      });
+      const actionId = action.sId;
       const makeEvent = (type: string, eventActionId: string) => ({
         message: {
           payload: JSON.stringify({ type, actionId: eventActionId }),
@@ -256,14 +261,12 @@ describe("blocked actions resolution", () => {
           conversation,
         });
       const { action: alreadyResolvedAction } =
-        await AgentMCPActionFactory.create({
+        await AgentMCPActionFactory.create(auth, {
           workspace,
           conversationModelId: conversation.id,
           agentMessageModelId: agentMessage.agentMessageId,
         });
-      await alreadyResolvedAction.update({
-        status: "ready_allowed_explicitly",
-      });
+      await alreadyResolvedAction.updateStatus("ready_allowed_explicitly");
 
       await updateAgentMessageWithFinalStatus(auth, {
         conversation,
@@ -275,25 +278,17 @@ describe("blocked actions resolution", () => {
         expect(emitAuditLogEventDirectMock).toHaveBeenCalledTimes(1)
       );
 
-      const deniedActionId = AgentMCPActionResource.modelIdToSId({
-        id: deniedAction.id,
-        workspaceId: workspace.id,
-      });
-      const alreadyResolvedActionId = AgentMCPActionResource.modelIdToSId({
-        id: alreadyResolvedAction.id,
-        workspaceId: workspace.id,
-      });
       expect(emitAuditLogEventDirectMock).toHaveBeenCalledWith(
         expect.objectContaining({
           metadata: expect.objectContaining({
-            action_id: deniedActionId,
+            action_id: deniedAction.sId,
           }),
         })
       );
       expect(emitAuditLogEventDirectMock).not.toHaveBeenCalledWith(
         expect.objectContaining({
           metadata: expect.objectContaining({
-            action_id: alreadyResolvedActionId,
+            action_id: alreadyResolvedAction.sId,
           }),
         })
       );
@@ -323,7 +318,7 @@ describe("blocked actions resolution", () => {
   describe("clearActionRequiredIfNoBlockedActions", () => {
     it("clears the flag when the only blocked action belongs to an unresumable message", async () => {
       const { agentMessageRowId } = await createAgentMessageAtRank(1);
-      await AgentMCPActionFactory.create({
+      await AgentMCPActionFactory.create(auth, {
         workspace,
         conversationModelId: conversation.id,
         agentMessageModelId: agentMessageRowId,
@@ -349,7 +344,7 @@ describe("blocked actions resolution", () => {
 
     it("does not clear the flag when an actionable blocked action remains", async () => {
       const { agentMessageRowId } = await createAgentMessageAtRank(1);
-      await AgentMCPActionFactory.create({
+      await AgentMCPActionFactory.create(auth, {
         workspace,
         conversationModelId: conversation.id,
         agentMessageModelId: agentMessageRowId,
@@ -381,8 +376,11 @@ describe("blocked actions resolution", () => {
         status: "interrupted",
       });
 
-      await action.reload();
-      expect(action.status).toBe("denied");
+      const reloadedAction = await AgentMCPActionResource.fetchById(
+        auth,
+        action.sId
+      );
+      expect(reloadedAction?.status).toBe("denied");
       expect(await getActionRequired()).toBe(false);
     });
 
@@ -402,8 +400,11 @@ describe("blocked actions resolution", () => {
       });
 
       // A graceful stop keeps pending approvals actionable.
-      await action.reload();
-      expect(action.status).toBe("blocked_validation_required");
+      const reloadedAction = await AgentMCPActionResource.fetchById(
+        auth,
+        action.sId
+      );
+      expect(reloadedAction?.status).toBe("blocked_validation_required");
       expect(await getActionRequired()).toBe(true);
     });
   });

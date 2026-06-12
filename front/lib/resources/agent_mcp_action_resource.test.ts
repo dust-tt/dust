@@ -91,7 +91,7 @@ describe("listBlockedActionsForConversation", () => {
     agentMessageModelId: number;
     status?: ToolExecutionStatus;
   }) {
-    return AgentMCPActionFactory.create({
+    return AgentMCPActionFactory.create(auth, {
       workspace,
       conversationModelId: conversation.id,
       agentMessageModelId,
@@ -326,11 +326,7 @@ describe("listBlockedActionsForConversation", () => {
     expect(result).toHaveLength(1);
 
     // Verify the returned action belongs to the v1 agent message (not v0).
-    const expectedActionId = AgentMCPActionResource.modelIdToSId({
-      id: v1Action.id,
-      workspaceId: workspace.id,
-    });
-    expect(result[0].actionId).toBe(expectedActionId);
+    expect(result[0].actionId).toBe(v1Action.sId);
   });
 
   it("returns zero and leaves the action unchanged when the expected status does not match", async () => {
@@ -344,19 +340,16 @@ describe("listBlockedActionsForConversation", () => {
     const { action } = await createBlockedAction({
       agentMessageModelId: agentMessage.id,
     });
-    const actionResource = await AgentMCPActionResource.fetchByModelIdWithAuth(
-      auth,
-      action.id
-    );
-    const [affectedCount] = await actionResource!.updateStatusFromExpected(
-      auth,
-      {
-        status: "denied",
-        expectedStatus: "blocked_authentication_required",
-      }
-    );
+    const [affectedCount] = await action.updateStatusFromExpected(auth, {
+      status: "denied",
+      expectedStatus: "blocked_authentication_required",
+    });
     expect(affectedCount).toBe(0);
-    expect((await action.reload()).status).toBe("blocked_validation_required");
+    const reloadedAction = await AgentMCPActionResource.fetchById(
+      auth,
+      action.sId
+    );
+    expect(reloadedAction?.status).toBe("blocked_validation_required");
   });
 });
 

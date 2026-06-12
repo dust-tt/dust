@@ -59,7 +59,7 @@ describe("validateActionFromEmail", () => {
       agentConfigurationVersion: agentConfig.version,
       parentId: userMessageRow.id,
     });
-    const { action } = await AgentMCPActionFactory.create({
+    const { action } = await AgentMCPActionFactory.create(auth, {
       workspace,
       conversationModelId: conversation.id,
       agentMessageModelId: messageRow.agentMessageId!,
@@ -72,10 +72,7 @@ describe("validateActionFromEmail", () => {
     });
 
     const result = await validateActionFromEmail(auth, {
-      actionId: AgentMCPActionResource.modelIdToSId({
-        id: action.id,
-        workspaceId: workspace.id,
-      }),
+      actionId: action.sId,
       approvalState: "approved",
     });
 
@@ -84,8 +81,11 @@ describe("validateActionFromEmail", () => {
       expect(result.error.code).toBe("action_not_blocked");
     }
 
-    await action.reload();
-    expect(action.status).toBe("blocked_validation_required");
+    const reloadedAction = await AgentMCPActionResource.fetchById(
+      auth,
+      action.sId
+    );
+    expect(reloadedAction?.status).toBe("blocked_validation_required");
     expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
   });
 });
