@@ -175,7 +175,6 @@ export const SlashCommandDropdown = forwardRef<
         </DropdownMenuTrigger>
         <DropdownMenuContent
           className={cn(
-            listMaxHeightClassName,
             size === "wide" ? "w-80" : "w-64"
           )}
           align="start"
