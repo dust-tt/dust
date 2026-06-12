@@ -8,6 +8,7 @@ import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
 import { withVirtualExplorerPath } from "@app/components/file_explorer/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
+import { useFolderPathUrlState } from "@app/hooks/useFolderPathUrlState";
 import { downloadFile, getFilePathViewUrl } from "@app/lib/swr/files";
 import { usePodFiles } from "@app/lib/swr/pods";
 import {
@@ -32,6 +33,9 @@ export function ConversationFileExplorer({
 }: ConversationFileExplorerProps) {
   const { closePanel, openPanel } = useConversationSidePanelContext();
   const isPod = isPodConversation(conversation);
+
+  const [currentFolderPath, setCurrentFolderPath] =
+    useFolderPathUrlState("folderPath");
 
   const { sandboxFiles, isSandboxFilesLoading } = useConversationSandboxFiles({
     conversationId: conversation.sId,
@@ -102,6 +106,7 @@ export function ConversationFileExplorer({
 
       <div className="flex min-h-0 flex-1 flex-col">
         <FileExplorer
+          currentFolderPath={currentFolderPath}
           defaultViewMode={isPod ? "list" : "grid"}
           files={files}
           hideBreadcrumbAtRoot={!isPod}
@@ -111,6 +116,7 @@ export function ConversationFileExplorer({
               : isSandboxFilesLoading
           }
           getFileUrl={getFileUrl}
+          onCurrentFolderChange={setCurrentFolderPath}
           onFileDownload={onFileDownload}
           onOpenInteractive={onOpenInteractive}
           onOpenInPanel={onOpenInPanel}
