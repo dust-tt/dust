@@ -1,4 +1,5 @@
 import { AuditLogsToggle } from "@app/components/workspace/settings/AuditLogsToggle";
+import { DustMcpServerSettingsItem } from "@app/components/workspace/settings/DustMcpServerSettingsItem";
 import { EmailAgentsToggle } from "@app/components/workspace/settings/EmailAgentsToggle";
 import { InteractiveContentSharingToggle } from "@app/components/workspace/settings/InteractiveContentSharingToggle";
 import { OpenProjectsPolicy } from "@app/components/workspace/settings/OpenProjectsPolicy";
@@ -37,6 +38,7 @@ export function CapabilitiesSection({
         <ProjectKnowledgePolicy owner={owner} />
         <EmailAgentsToggle owner={owner} />
         <PrivateConversationUrlsToggle owner={owner} />
+        <DustMcpServerSettingsItem owner={owner} />
         {hasAuditLogsAccess && <AuditLogsToggle owner={owner} />}
         {publishingRestrictionMessage && (
           <RestrictAgentsPublishingCapability

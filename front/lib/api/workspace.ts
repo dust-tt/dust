@@ -551,6 +551,9 @@ export interface WorkspaceMetadata {
   autoCreateSpaceForProvisionedGroups?: boolean;
   disableManualInvitations?: boolean;
   disableExtensionMcpTools?: boolean;
+  dustMcpServerDisabled?: boolean;
+  dustMcpServerAcceptAllRedirectUris?: boolean;
+  dustMcpServerAllowedRedirectUris?: string[];
   disableAuditLogs?: boolean;
   isBusiness?: boolean;
   phoneCountry?: string;

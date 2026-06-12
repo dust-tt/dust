@@ -113,7 +113,15 @@ const RadioGroupItem = React.forwardRef<
           item
         )}
         {icon && renderIcon(icon)}
-        <Label htmlFor={id} {...labelProps}>
+        <Label
+          htmlFor={id}
+          {...labelProps}
+          className={cn(
+            "s-cursor-pointer",
+            props.disabled && "s-cursor-not-allowed s-opacity-70",
+            labelProps?.className
+          )}
+        >
           {label}
         </Label>
       </div>
