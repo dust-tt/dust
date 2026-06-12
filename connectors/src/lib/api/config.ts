@@ -7,9 +7,6 @@ export const apiConfig = {
       apiKey: EnvironmentConfig.getOptionalEnvVariable("OAUTH_API_KEY") ?? null,
     };
   },
-  getDustFrontInternalAPIUrl: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_FRONT_INTERNAL_API");
-  },
   getDustFrontAPIUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_FRONT_API");
   },
