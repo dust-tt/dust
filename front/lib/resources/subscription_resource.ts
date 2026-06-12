@@ -291,6 +291,22 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     return SubscriptionResource._invalidateSubscriptionCache(workspaceModelId);
   };
 
+  // The Metronome contract cache (`getActiveContract`) is keyed by workspace
+  // `sId` with no TTL, so it must be flushed whenever the active subscription's
+  // contract changes. We only hold the workspace model id here, so resolve the
+  // `sId` first.
+  private static async invalidateContractCacheByWorkspaceModelId(
+    workspaceModelId: ModelId
+  ): Promise<void> {
+    const workspace = await WorkspaceModel.findOne({
+      attributes: ["sId"],
+      where: { id: workspaceModelId },
+    });
+    if (workspace) {
+      await invalidateContractCache(workspace.sId);
+    }
+  }
+
   /**
    * Invalidate subscription caches for all workspaces on a given plan.
    * Should be called when plan attributes are updated (e.g., via Poke).
@@ -1292,6 +1308,13 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         renderPlanFromModel({ plan: newPlan }),
         t
       );
+      // The active contract changed → flush the Metronome contract cache too
+      // (no TTL), otherwise `getActiveContract` keeps serving the old contract.
+      invalidateCacheAfterCommit(t, () =>
+        SubscriptionResource.invalidateContractCacheByWorkspaceModelId(
+          this.workspaceId
+        )
+      );
     });
   }
 
@@ -1323,6 +1346,13 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       const workspaceId = this.workspaceId;
       invalidateCacheAfterCommit(t, () =>
         SubscriptionResource.invalidateSubscriptionCache(workspaceId)
+      );
+      // The active contract changed → flush the Metronome contract cache too
+      // (no TTL), otherwise `getActiveContract` keeps serving the old contract.
+      invalidateCacheAfterCommit(t, () =>
+        SubscriptionResource.invalidateContractCacheByWorkspaceModelId(
+          workspaceId
+        )
       );
     });
   }

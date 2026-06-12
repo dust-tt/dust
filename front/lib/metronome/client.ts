@@ -1360,6 +1360,82 @@ export async function getMetronomeSubscriptionSeatState({
 }
 
 /**
+ * The hour-aligned `starting_at` of the seat-history segment in which `seatId`
+ * is assigned — i.e. when the seat's current (or next upcoming) active window
+ * begins. This is the timestamp a per-seat manual ledger entry must fall in:
+ * Metronome rejects adjustments on a seat not active at the entry time, and
+ * seat changes are applied on hour boundaries (a seat requested "now" only
+ * becomes active at the next boundary).
+ *
+ * Prefers the segment covering `coveringDate`; if the seat is only assigned in
+ * a future segment (e.g. just assigned, effective next hour), returns that
+ * segment's start. Returns `null` when the seat is not assigned in any segment
+ * at/after `coveringDate` (no valid window to adjust in).
+ */
+export async function getMetronomeSeatActiveSince({
+  metronomeCustomerId,
+  contractId,
+  subscriptionId,
+  seatId,
+  coveringDate = new Date(),
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  subscriptionId: string;
+  seatId: string;
+  coveringDate?: Date;
+}): Promise<Result<Date | null, Error>> {
+  if (!config.getMetronomeApiKey()) {
+    return new Ok(null);
+  }
+  try {
+    const response =
+      await getMetronomeClient().post<SubscriptionSeatsHistoryResponse>(
+        "/v1/contracts/getSubscriptionSeatsHistory",
+        {
+          body: {
+            customer_id: metronomeCustomerId,
+            contract_id: contractId,
+            subscription_id: subscriptionId,
+            covering_date: coveringDate.toISOString(),
+          },
+        }
+      );
+    const coveringMs = coveringDate.getTime();
+    // Segments are ascending by `starting_at`. Among those that assign the
+    // seat, prefer the one covering `coveringDate`; otherwise the earliest one
+    // starting at/after it (a future activation).
+    let covering: string | null = null;
+    let earliestUpcoming: string | null = null;
+    for (const seg of response.data) {
+      if (!seg.assigned_seat_ids.includes(seatId)) {
+        continue;
+      }
+      const startMs = new Date(seg.starting_at).getTime();
+      const endMs = seg.ending_before
+        ? new Date(seg.ending_before).getTime()
+        : Number.POSITIVE_INFINITY;
+      if (startMs <= coveringMs && coveringMs < endMs) {
+        covering = seg.starting_at;
+        break;
+      }
+      if (startMs >= coveringMs && earliestUpcoming === null) {
+        earliestUpcoming = seg.starting_at;
+      }
+    }
+    const activeSince = covering ?? earliestUpcoming;
+    return new Ok(activeSince ? new Date(activeSince) : null);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, contractId, subscriptionId, seatId },
+      "[Metronome] Failed to read seat active-since"
+    );
+    return new Err(error);
+  }
+}
+
+/**
  * Fetch the assigned seat IDs on a SEAT_BASED subscription at `coveringDate`
  * (defaults to now), via the (untyped) getSubscriptionSeatsHistory endpoint.
  */
@@ -3090,6 +3166,170 @@ export async function deductMetronomeCreditBalance({
 }
 
 /**
+ * Resolve a seat-based recurring credit pool (e.g. "Max Seat Credits") on a
+ * contract and the access-schedule segment active at `coveringDate`. This is
+ * the `{ creditId, segmentId }` pair required to make per-seat ledger
+ * adjustments via `adjustSeatCreditBalances`.
+ *
+ * Matches on the credit `name`: Metronome materializes the recurring credit
+ * template into a concrete credit that carries a `recurring_credit_id`, so we
+ * also require that field to avoid matching a one-off credit of the same name.
+ * `covering_date` scopes the listing to the credit active now, and we then pick
+ * the schedule item covering `coveringDate`. Returns `null` when none matches.
+ */
+export async function findSeatCreditSegmentForPeriod({
+  metronomeCustomerId,
+  metronomeContractId,
+  recurringCreditId,
+  coveringDate = new Date(),
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  recurringCreditId: string;
+  coveringDate?: Date;
+}): Promise<
+  Result<
+    { creditId: string; segmentId: string; segmentStartingAt: string } | null,
+    Error
+  >
+> {
+  if (!config.getMetronomeApiKey()) {
+    return new Ok(null);
+  }
+
+  const client = getMetronomeClient();
+  const coveringMs = coveringDate.getTime();
+
+  try {
+    for await (const entry of client.v1.customers.credits.list({
+      customer_id: metronomeCustomerId,
+      include_contract_credits: true,
+      covering_date: coveringDate.toISOString(),
+    })) {
+      if (entry.recurring_credit_id !== recurringCreditId) {
+        continue;
+      }
+      const segment = (entry.access_schedule?.schedule_items ?? []).find(
+        (item) => {
+          const startMs = new Date(item.starting_at).getTime();
+          const endMs = new Date(item.ending_before).getTime();
+          return startMs <= coveringMs && coveringMs < endMs;
+        }
+      );
+      if (segment) {
+        return new Ok({
+          creditId: entry.id,
+          segmentId: segment.id,
+          segmentStartingAt: segment.starting_at,
+        });
+      }
+    }
+    logger.warn(
+      { metronomeCustomerId, metronomeContractId, recurringCreditId },
+      "[Metronome] No active seat credit segment found for period"
+    );
+    return new Ok(null);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, metronomeContractId, recurringCreditId },
+      "[Metronome] Failed to find seat credit segment"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Apply per-seat manual ledger entries to a seat-based recurring credit pool
+ * (e.g. "Max Seat Credits"). Each entry adjusts a single seat's slice of the
+ * shared pool: a negative amount draws that seat's balance down, a positive one
+ * tops it up. This is the API equivalent of the per-seat "Add a manual ledger
+ * entry" action in the Metronome "Seat balances" UI.
+ *
+ * `perSeatAmounts` maps a seat id (the `user_id` presentation value) to its
+ * signed delta. Metronome requires the top-level `amount` to equal the sum of
+ * the per-seat deltas, which we compute here. `timestamp` must fall within the
+ * segment window AND after the seat was assigned — Metronome rejects
+ * adjustments on seats not active at that time — so it defaults to now (floored
+ * to the hour as Metronome requires) rather than the segment start.
+ */
+export async function adjustSeatCreditBalances({
+  metronomeCustomerId,
+  metronomeContractId,
+  creditId,
+  segmentId,
+  perSeatAmounts,
+  reason,
+  timestamp = new Date(),
+  alignToHour = true,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  creditId: string;
+  segmentId: string;
+  perSeatAmounts: Record<string, number>;
+  reason: string;
+  timestamp?: Date;
+  // When false, the timestamp is used as-is. A seat is NOT considered active at
+  // the exact hour boundary it was assigned on, so an adjustment for a
+  // just-changed seat must use a time strictly inside its active window (not
+  // floored back onto the boundary).
+  alignToHour?: boolean;
+}): Promise<Result<void, Error>> {
+  const seatIds = Object.keys(perSeatAmounts);
+  if (seatIds.length === 0) {
+    return new Ok(undefined);
+  }
+
+  const totalAmount = seatIds.reduce(
+    (sum, seatId) => sum + perSeatAmounts[seatId],
+    0
+  );
+
+  try {
+    await getMetronomeClient().v1.contracts.addManualBalanceEntry({
+      id: creditId,
+      customer_id: metronomeCustomerId,
+      contract_id: metronomeContractId,
+      segment_id: segmentId,
+      amount: totalAmount,
+      per_group_amounts: perSeatAmounts,
+      reason,
+      timestamp: alignToHour
+        ? floorToHourISO(timestamp)
+        : timestamp.toISOString(),
+    });
+    logger.info(
+      {
+        metronomeCustomerId,
+        metronomeContractId,
+        creditId,
+        segmentId,
+        seatIds,
+        totalAmount,
+      },
+      "[Metronome] Per-seat manual ledger entries applied"
+    );
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      {
+        error,
+        metronomeCustomerId,
+        metronomeContractId,
+        creditId,
+        segmentId,
+        seatIds,
+        totalAmount,
+      },
+      "[Metronome] Failed to apply per-seat manual ledger entries"
+    );
+    return new Err(error);
+  }
+}
+
+/**
  * List per-seat balances for a SEAT_BASED contract.
  * Uses a raw fetch because the Metronome SDK does not yet expose this endpoint.
  * Returns one entry per seat_id (user sId), with balance (remaining) and
@@ -3098,9 +3338,11 @@ export async function deductMetronomeCreditBalance({
 export async function listMetronomeSeatBalances({
   metronomeCustomerId,
   metronomeContractId,
+  coveringDate = new Date(),
 }: {
   metronomeCustomerId: string;
   metronomeContractId: string;
+  coveringDate?: Date;
 }): Promise<Result<MetronomeSeatBalance[], Error>> {
   if (!config.getMetronomeApiKey()) {
     return new Ok([]);
@@ -3114,7 +3356,7 @@ export async function listMetronomeSeatBalances({
           customer_id: metronomeCustomerId,
           contract_id: metronomeContractId,
           include_credits_and_commits: true,
-          covering_date: new Date().toISOString(),
+          covering_date: coveringDate.toISOString(),
         },
       }
     );

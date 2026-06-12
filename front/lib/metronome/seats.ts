@@ -4,12 +4,16 @@ import {
 } from "@app/lib/metronome/alerts/per_user_credit_balance";
 import {
   addPerUserCreditToContract,
+  adjustSeatCreditBalances,
   archiveContractCredit,
+  findSeatCreditSegmentForPeriod,
   getMetronomeContractById,
+  getMetronomeSeatActiveSince,
   getMetronomeSubscriptionAssignedSeatIds,
   getMetronomeSubscriptionSeatState,
   listContractPerUserCreditBalances,
   listContractPerUserCreditUserIds,
+  listMetronomeSeatBalances,
   updateSubscriptionQuantity,
   updateSubscriptionSeats,
 } from "@app/lib/metronome/client";
@@ -33,6 +37,8 @@ import {
 } from "@app/lib/metronome/seat_types";
 import {
   FREE_SEAT_CREDIT_NAME,
+  MAX_SEAT_CREDIT_NAME,
+  PRO_SEAT_CREDIT_NAME,
   USAGE_TAG,
 } from "@app/lib/metronome/setup_common";
 import type { BillingFrequency } from "@app/lib/metronome/types";
@@ -51,6 +57,7 @@ import type { MembershipSeatType } from "@app/types/memberships";
 import { isMembershipSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import { addYears } from "date-fns";
 
@@ -660,6 +667,485 @@ async function revokeFreeSeatCreditsForExFreeUsers({
   );
 }
 
+/**
+ * The recurring per-seat AWU credit name for a seat type, or `null` when the
+ * seat type has no recurring seat credit to transfer between:
+ *  - `workspace`/`workspace_yearly`/`none`: no per-seat allowance;
+ *  - `free`: its allowance is a one-shot per-user credit (archived on upgrade,
+ *    see `revokeFreeSeatCreditsForExFreeUsers`), not a recurring seat credit.
+ *
+ * Monthly and yearly variants of a tier share the same credit name (they share
+ * the recurring-credit definition — see `buildPerSeatCredits`).
+ */
+export function getSeatCreditNameForSeatType(
+  seatType: MembershipSeatType
+): string | null {
+  switch (seatType) {
+    case "pro":
+    case "pro_yearly":
+      return PRO_SEAT_CREDIT_NAME;
+    case "max":
+    case "max_yearly":
+      return MAX_SEAT_CREDIT_NAME;
+    case "free":
+    case "workspace":
+    case "workspace_yearly":
+    case "none":
+      return null;
+    default:
+      assertNever(seatType);
+  }
+}
+
+export type SeatCreditTransfer = {
+  userSId: string;
+  oldSeatType: MembershipSeatType;
+  newSeatType: MembershipSeatType;
+  oldCreditName: string;
+  newCreditName: string;
+  // Remaining (unconsumed) balance on the old seat credit — emptied from it.
+  remaining: number;
+  // Amount already consumed on the old seat credit — carried onto the new one.
+  consumed: number;
+};
+
+/**
+ * Pure detection of seat-credit transfers needed to align ledgers after
+ * immediate moves between two recurring-credit seats (e.g. `pro` → `max`).
+ *
+ * A transfer is needed when a user is still assigned to one allowance seat in
+ * Metronome but the DB has already moved them to a different allowance seat,
+ * and the old seat credit still has a positive balance. The caller then empties
+ * the old credit (by `remaining`) and debits the new one (by `consumed`), so
+ * the move carries usage over instead of resetting it — e.g. 2000/8000 used on
+ * `pro` becomes 2000/40000 used on `max` (remaining 6000 → 38000).
+ *
+ * Keying the trigger on "old credit still has a balance" makes the whole thing
+ * idempotent: once the old credit is emptied, a re-run finds nothing to do.
+ *
+ * Also covers same-allowance moves between billing frequencies (e.g. `max` →
+ * `max_yearly`): they share a credit name but are distinct recurring credits,
+ * so the consumed amount still carries from one pool to the other.
+ */
+export function computeSeatCreditTransfers({
+  metronomeSeatByUser,
+  desiredSeatByUser,
+  balanceByUser,
+  allocationBySeatType,
+}: {
+  metronomeSeatByUser: Map<string, MembershipSeatType>;
+  desiredSeatByUser: Map<string, MembershipSeatType>;
+  // The seat's remaining AWU balance (aggregate across its credit pools; after
+  // prior origins are emptied this equals the current tier's balance).
+  balanceByUser: Map<string, number>;
+  // The origin tier's per-seat AWU allocation. Consumption is derived from this
+  // (allocation − remaining), NOT from the seat's aggregate starting balance —
+  // that aggregate includes prior tiers we emptied to zero, which would be
+  // mis-counted as consumption (e.g. emptied pro's 8000 inflating a max→yearly
+  // transfer).
+  allocationBySeatType: Map<MembershipSeatType, number>;
+}): SeatCreditTransfer[] {
+  const transfers: SeatCreditTransfer[] = [];
+  for (const [userSId, oldSeatType] of metronomeSeatByUser) {
+    const newSeatType = desiredSeatByUser.get(userSId);
+    if (!newSeatType || newSeatType === oldSeatType) {
+      continue;
+    }
+    const oldCreditName = getSeatCreditNameForSeatType(oldSeatType);
+    const newCreditName = getSeatCreditNameForSeatType(newSeatType);
+    // Both ends must be recurring-credit seats. (Distinct seat types always map
+    // to distinct recurring credits, even when they share a credit name — the
+    // transfer targets credits by id, not name.)
+    if (!oldCreditName || !newCreditName) {
+      continue;
+    }
+    const remaining = balanceByUser.get(userSId);
+    // No balance left → nothing to carry over (fresh seat, or already
+    // transferred on a prior run).
+    if (remaining === undefined || remaining <= 0) {
+      continue;
+    }
+    const allocation = allocationBySeatType.get(oldSeatType);
+    if (allocation === undefined) {
+      continue;
+    }
+    transfers.push({
+      userSId,
+      oldSeatType,
+      newSeatType,
+      oldCreditName,
+      newCreditName,
+      remaining,
+      consumed: Math.max(0, allocation - remaining),
+    });
+  }
+  return transfers;
+}
+
+async function findSeatCreditSegmentCached(
+  cache: Map<
+    string,
+    { creditId: string; segmentId: string; segmentStartingAt: string } | null
+  >,
+  args: {
+    metronomeCustomerId: string;
+    metronomeContractId: string;
+    recurringCreditId: string;
+  }
+): Promise<{
+  creditId: string;
+  segmentId: string;
+  segmentStartingAt: string;
+} | null> {
+  const cached = cache.get(args.recurringCreditId);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const res = await findSeatCreditSegmentForPeriod(args);
+  const seg = res.isOk() ? res.value : null;
+  cache.set(args.recurringCreditId, seg);
+  return seg;
+}
+
+/**
+ * The timestamp at which a per-seat manual ledger entry must be made: a time
+ * the seat is provably active AND within the credit segment. Reads the seat's
+ * active-segment start from Metronome (seats become active on hour boundaries,
+ * a "now" change only from the next boundary) and clamps it up to the credit
+ * segment start (the entry must also fall inside the segment). Returns `null`
+ * when the seat has no active window to adjust in (caller skips).
+ */
+async function resolveSeatAdjustmentTimestamp({
+  metronomeCustomerId,
+  contractId,
+  subscriptionId,
+  seatId,
+  creditSegmentStartingAt,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  subscriptionId: string;
+  seatId: string;
+  creditSegmentStartingAt: string;
+}): Promise<Date | null> {
+  const activeSinceRes = await getMetronomeSeatActiveSince({
+    metronomeCustomerId,
+    contractId,
+    subscriptionId,
+    seatId,
+  });
+  if (activeSinceRes.isErr() || !activeSinceRes.value) {
+    return null;
+  }
+  // Metronome requires the entry timestamp to be on an hour boundary. Use the
+  // later of the seat's active-since and the credit segment start (both already
+  // hour-aligned) — the seat is active from there, so it's a valid entry time
+  // (matches what the Metronome UI accepts: e.g. 08:00 for a seat whose segment
+  // started at 08:00).
+  const startMs = Math.max(
+    activeSinceRes.value.getTime(),
+    new Date(creditSegmentStartingAt).getTime()
+  );
+  return new Date(startMs);
+}
+
+/**
+ * Detect users who moved between two recurring-credit seats (Metronome still
+ * has them on the old seat, the DB on the new one) and empty their old seat
+ * credit. Returns the transfers whose old credit was successfully emptied, so
+ * the caller can credit the new seat once it's been assigned.
+ *
+ * Runs BEFORE seat reconciliation while the old seat is still assigned: a
+ * manual ledger entry requires the seat to be active at the adjustment
+ * timestamp. Best-effort: a failure to read or empty one user's credit is
+ * logged and that user is left out of the returned list (their new credit is
+ * then not debited — the move stays usage-fresh rather than double-charged).
+ */
+async function emptyOriginSeatCreditsForTransfers({
+  metronomeCustomerId,
+  contractId,
+  workspaceId,
+  subscriptionIdBySeatType,
+  recurringCreditIdBySeatType,
+  allocationBySeatType,
+  desiredSeatByUser,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  workspaceId: string;
+  subscriptionIdBySeatType: Map<MembershipSeatType, string>;
+  recurringCreditIdBySeatType: Map<MembershipSeatType, string>;
+  allocationBySeatType: Map<MembershipSeatType, number>;
+  desiredSeatByUser: Map<string, MembershipSeatType>;
+}): Promise<SeatCreditTransfer[]> {
+  const balancesRes = await listMetronomeSeatBalances({
+    metronomeCustomerId,
+    metronomeContractId: contractId,
+  });
+  if (balancesRes.isErr()) {
+    logger.error(
+      { workspaceId, contractId, error: balancesRes.error },
+      "[Metronome] Failed to read seat balances for credit transfer — skipping"
+    );
+    return [];
+  }
+  const awuCreditTypeId = getCreditTypeAwuId();
+  const balanceByUser = new Map<string, number>();
+  for (const seat of balancesRes.value) {
+    const awu = seat.balances.find((b) => b.credit_type_id === awuCreditTypeId);
+    if (awu) {
+      balanceByUser.set(seat.seat_id, awu.balance);
+    }
+  }
+
+  // Metronome's current seat assignment per user (old state, before sync).
+  const metronomeSeatByUser = new Map<string, MembershipSeatType>();
+  for (const [seatType, subscriptionId] of subscriptionIdBySeatType) {
+    const assignedRes = await getMetronomeSubscriptionAssignedSeatIds({
+      metronomeCustomerId,
+      contractId,
+      subscriptionId,
+    });
+    if (assignedRes.isErr()) {
+      logger.error(
+        { workspaceId, contractId, seatType, error: assignedRes.error },
+        "[Metronome] Failed to read assigned seats for credit transfer — skipping tier"
+      );
+      continue;
+    }
+    for (const userSId of assignedRes.value) {
+      metronomeSeatByUser.set(userSId, seatType);
+    }
+  }
+
+  const transfers = computeSeatCreditTransfers({
+    metronomeSeatByUser,
+    desiredSeatByUser,
+    balanceByUser,
+    allocationBySeatType,
+  });
+
+  const segmentCache = new Map<
+    string,
+    { creditId: string; segmentId: string; segmentStartingAt: string } | null
+  >();
+  const emptied: SeatCreditTransfer[] = [];
+  for (const t of transfers) {
+    const recurringCreditId = recurringCreditIdBySeatType.get(t.oldSeatType);
+    if (!recurringCreditId) {
+      logger.warn(
+        { workspaceId, contractId, userId: t.userSId, credit: t.oldCreditName },
+        "[Metronome] No recurring credit id for origin seat — skipping transfer"
+      );
+      continue;
+    }
+    const seg = await findSeatCreditSegmentCached(segmentCache, {
+      metronomeCustomerId,
+      metronomeContractId: contractId,
+      recurringCreditId,
+    });
+    if (!seg) {
+      logger.error(
+        { workspaceId, contractId, userId: t.userSId, credit: t.oldCreditName },
+        "[Metronome] No origin seat credit segment for transfer — skipping"
+      );
+      continue;
+    }
+    const subscriptionId = subscriptionIdBySeatType.get(t.oldSeatType);
+    const timestamp = subscriptionId
+      ? await resolveSeatAdjustmentTimestamp({
+          metronomeCustomerId,
+          contractId,
+          subscriptionId,
+          seatId: t.userSId,
+          creditSegmentStartingAt: seg.segmentStartingAt,
+        })
+      : null;
+    if (!timestamp) {
+      logger.warn(
+        { workspaceId, contractId, userId: t.userSId, credit: t.oldCreditName },
+        "[Metronome] No active window for origin seat — skipping transfer"
+      );
+      continue;
+    }
+    logger.info(
+      {
+        workspaceId,
+        contractId,
+        userId: t.userSId,
+        credit: t.oldCreditName,
+        segmentStartingAt: seg.segmentStartingAt,
+        adjustmentTimestamp: timestamp.toISOString(),
+        amount: -t.remaining,
+      },
+      "[Metronome] Emptying origin seat credit for transfer"
+    );
+    const adjustRes = await adjustSeatCreditBalances({
+      metronomeCustomerId,
+      metronomeContractId: contractId,
+      creditId: seg.creditId,
+      segmentId: seg.segmentId,
+      perSeatAmounts: { [t.userSId]: -t.remaining },
+      reason: `Seat change ${t.oldSeatType}→${t.newSeatType}: empty origin credit`,
+      timestamp,
+      alignToHour: false,
+    });
+    if (adjustRes.isErr()) {
+      logger.error(
+        { workspaceId, contractId, userId: t.userSId, error: adjustRes.error },
+        "[Metronome] Failed to empty origin seat credit — skipping transfer"
+      );
+      continue;
+    }
+    emptied.push(t);
+  }
+  return emptied;
+}
+
+/**
+ * Set the new seat credit to its carried balance for each transfer whose origin
+ * credit was emptied. Runs AFTER seat reconciliation, once the new seat is
+ * assigned (the adjustment requires the seat to be active).
+ *
+ * The target balance is reconciled to an absolute value — `allocation −
+ * consumed` — rather than blindly debited by `consumed`. A manual ledger entry
+ * is a delta, so we read the seat's current balance on the new credit (at the
+ * adjustment time) and apply the difference. This makes the move idempotent and
+ * correctly restores the balance when returning to a credit that was emptied on
+ * a previous move (e.g. `max → max_yearly → max`): the destination always ends
+ * at `allocation − consumed`, whatever state it was left in. Best-effort.
+ */
+async function carryConsumptionToNewSeatCredits({
+  metronomeCustomerId,
+  contractId,
+  workspaceId,
+  transfers,
+  subscriptionIdBySeatType,
+  recurringCreditIdBySeatType,
+  allocationBySeatType,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  workspaceId: string;
+  transfers: SeatCreditTransfer[];
+  subscriptionIdBySeatType: Map<MembershipSeatType, string>;
+  recurringCreditIdBySeatType: Map<MembershipSeatType, string>;
+  allocationBySeatType: Map<MembershipSeatType, number>;
+}): Promise<void> {
+  const awuCreditTypeId = getCreditTypeAwuId();
+  const segmentCache = new Map<
+    string,
+    { creditId: string; segmentId: string; segmentStartingAt: string } | null
+  >();
+  for (const t of transfers) {
+    const recurringCreditId = recurringCreditIdBySeatType.get(t.newSeatType);
+    const targetAllocation = allocationBySeatType.get(t.newSeatType);
+    if (!recurringCreditId || targetAllocation === undefined) {
+      logger.warn(
+        { workspaceId, contractId, userId: t.userSId, credit: t.newCreditName },
+        "[Metronome] No recurring credit / allocation for new seat — origin already emptied"
+      );
+      continue;
+    }
+    const seg = await findSeatCreditSegmentCached(segmentCache, {
+      metronomeCustomerId,
+      metronomeContractId: contractId,
+      recurringCreditId,
+    });
+    if (!seg) {
+      logger.error(
+        { workspaceId, contractId, userId: t.userSId, credit: t.newCreditName },
+        "[Metronome] No destination seat credit segment for transfer — origin already emptied"
+      );
+      continue;
+    }
+    // The new seat was just assigned (active from the next hour boundary), so
+    // adjust at its actual active-window start rather than the current hour.
+    const subscriptionId = subscriptionIdBySeatType.get(t.newSeatType);
+    const timestamp = subscriptionId
+      ? await resolveSeatAdjustmentTimestamp({
+          metronomeCustomerId,
+          contractId,
+          subscriptionId,
+          seatId: t.userSId,
+          creditSegmentStartingAt: seg.segmentStartingAt,
+        })
+      : null;
+    if (!timestamp) {
+      logger.warn(
+        { workspaceId, contractId, userId: t.userSId, credit: t.newCreditName },
+        "[Metronome] No active window for new seat — origin already emptied"
+      );
+      continue;
+    }
+
+    // Read the seat's current balance on the new credit at the adjustment time,
+    // then compute the delta to reach `allocation − consumed`.
+    const balancesRes = await listMetronomeSeatBalances({
+      metronomeCustomerId,
+      metronomeContractId: contractId,
+      coveringDate: timestamp,
+    });
+    if (balancesRes.isErr()) {
+      logger.error(
+        {
+          workspaceId,
+          contractId,
+          userId: t.userSId,
+          error: balancesRes.error,
+        },
+        "[Metronome] Failed to read new seat balance for transfer — origin already emptied"
+      );
+      continue;
+    }
+    const currentBalance = balancesRes.value
+      .find((s) => s.seat_id === t.userSId)
+      ?.balances.find((b) => b.credit_type_id === awuCreditTypeId)?.balance;
+    if (currentBalance === undefined) {
+      logger.warn(
+        { workspaceId, contractId, userId: t.userSId, credit: t.newCreditName },
+        "[Metronome] New seat balance not found at adjustment time — origin already emptied"
+      );
+      continue;
+    }
+
+    const desiredBalance = Math.max(0, targetAllocation - t.consumed);
+    const delta = desiredBalance - currentBalance;
+    if (delta === 0) {
+      continue;
+    }
+    logger.info(
+      {
+        workspaceId,
+        contractId,
+        userId: t.userSId,
+        credit: t.newCreditName,
+        adjustmentTimestamp: timestamp.toISOString(),
+        currentBalance,
+        desiredBalance,
+        delta,
+      },
+      "[Metronome] Setting new seat credit to carried balance"
+    );
+    const adjustRes = await adjustSeatCreditBalances({
+      metronomeCustomerId,
+      metronomeContractId: contractId,
+      creditId: seg.creditId,
+      segmentId: seg.segmentId,
+      perSeatAmounts: { [t.userSId]: delta },
+      reason: `Seat change ${t.oldSeatType}→${t.newSeatType}: carry over consumed AWU`,
+      timestamp,
+      alignToHour: false,
+    });
+    if (adjustRes.isErr()) {
+      logger.error(
+        { workspaceId, contractId, userId: t.userSId, error: adjustRes.error },
+        "[Metronome] Failed to set new seat credit to carried balance"
+      );
+    }
+  }
+}
+
 export async function syncSeatCount({
   metronomeCustomerId,
   contractId,
@@ -831,6 +1317,65 @@ export async function syncSeatCount({
       return sIds;
     };
 
+    // Align seat-credit ledgers for immediate moves between two recurring-credit
+    // seats (e.g. `pro` → `max`): carry the consumed AWU onto the new seat's
+    // credit instead of resetting it. Only for the immediate "now" sync — a
+    // forced `startingAt` is a contract switch / future remap, where seat
+    // credits are reconciled by the new contract rather than transferred.
+    //
+    // Split around the seat loop because a manual ledger entry requires the
+    // seat to be active at the adjustment timestamp: the old seat is emptied
+    // here (still assigned), the new one credited after it's been assigned.
+    // subscriptionId per recurring-credit seat type (pro/max families), used by
+    // the credit-transfer steps below to resolve each seat's active window.
+    const subscriptionIdBySeatType = new Map<MembershipSeatType, string>(
+      seatSubscriptions.flatMap(({ sub, seatType }) =>
+        sub.id && getSeatCreditNameForSeatType(seatType)
+          ? [[seatType, sub.id] as const]
+          : []
+      )
+    );
+    // The recurring credit backing each seat type, resolved via the credit's
+    // `subscription_config.subscription_id`. Two seat tiers can share a credit
+    // NAME across the monthly and yearly products (e.g. two "Pro Seat
+    // Credits"), so the ledger adjustment must target the credit by id, not by
+    // name, or it can hit the wrong pool (where the seat isn't active).
+    const recurringCreditIdBySeatType = new Map<MembershipSeatType, string>();
+    const allocationBySeatType = new Map<MembershipSeatType, number>();
+    for (const { sub, seatType } of seatSubscriptions) {
+      if (!sub.id || !getSeatCreditNameForSeatType(seatType)) {
+        continue;
+      }
+      const recurringCredit = (resolvedContract.recurring_credits ?? []).find(
+        (c) => c.subscription_config?.subscription_id === sub.id
+      );
+      if (recurringCredit?.id) {
+        recurringCreditIdBySeatType.set(seatType, recurringCredit.id);
+      }
+      allocationBySeatType.set(
+        seatType,
+        getAwuAllocationForSeatType(
+          resolvedContract,
+          seatType,
+          productSeatTypes
+        )
+      );
+    }
+    let pendingCreditTransfers: SeatCreditTransfer[] = [];
+    if (!startingAt) {
+      pendingCreditTransfers = await emptyOriginSeatCreditsForTransfers({
+        metronomeCustomerId,
+        contractId,
+        workspaceId: workspace.sId,
+        subscriptionIdBySeatType,
+        recurringCreditIdBySeatType,
+        allocationBySeatType,
+        desiredSeatByUser: currentSeatByUserSId,
+      });
+      didMutateSeatData =
+        didMutateSeatData || pendingCreditTransfers.length > 0;
+    }
+
     for (const { sub, seatType } of seatSubscriptions) {
       const subscriptionId = sub.id!;
       const quantityMode = sub.quantity_management_mode ?? "QUANTITY_ONLY";
@@ -902,6 +1447,20 @@ export async function syncSeatCount({
         }
         didMutateSeatData = true;
       }
+    }
+
+    // New seats are now assigned, so their credits exist: carry the consumed
+    // AWU emptied from the origin seats onto them (see above).
+    if (pendingCreditTransfers.length > 0) {
+      await carryConsumptionToNewSeatCredits({
+        metronomeCustomerId,
+        contractId,
+        workspaceId: workspace.sId,
+        transfers: pendingCreditTransfers,
+        subscriptionIdBySeatType,
+        recurringCreditIdBySeatType,
+        allocationBySeatType,
+      });
     }
 
     // Per-user AWU grant/revoke for free members. Driven off DB membership
