@@ -116,25 +116,43 @@ export const confluence = async ({
       const pageId = args.pageId;
       const skipReason = args.skipReason || "Blacklisted.";
 
-      const page = await ConfluencePageModel.findOne({
+      const existingPage = await ConfluencePageModel.findOne({
         where: {
           connectorId,
           pageId: pageId.toString(),
         },
       });
 
-      if (!page) {
-        return { skipped: false, reason: "Page not found in database." };
+      if (existingPage) {
+        if (existingPage.skipReason) {
+          return {
+            skipped: false,
+            reason: `Page already skipped with reason: ${existingPage.skipReason}`,
+          };
+        }
+        await existingPage.update({ skipReason });
+      } else {
+        const confluencePage =
+          args.skipFetch !== "true"
+            ? await confluenceClient.getPageById(pageId.toString())
+            : null;
+        if (!args.skipFetch && !confluencePage) {
+          return {
+            skipped: false,
+            reason: `Confluence Page id ${pageId} doesn't exist in confluence API`,
+          };
+        }
+        await ConfluencePageModel.create({
+          connectorId,
+          pageId: pageId.toString(),
+          skipReason,
+          spaceId: confluencePage?.spaceId ?? args.spaceId?.toString() ?? "",
+          title: confluencePage?.title ?? "",
+          version: confluencePage?.version.number ?? 0,
+          externalUrl: confluencePage?._links.tinyui ?? "",
+        });
       }
 
-      if (page.skipReason) {
-        return {
-          skipped: false,
-          reason: `Page already skipped with reason: ${page.skipReason}`,
-        };
-      }
-
-      await page.update({ skipReason });
       return { skipped: true, reason: skipReason };
     }
 
