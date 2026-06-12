@@ -206,6 +206,30 @@ export function getBranchedInsertIndex(
   return rankOffset === -1 ? data.length : rankOffset;
 }
 
+function upsertVirtuosoMessageByRankAndBranch(
+  data: VirtuosoMessageListMethods<
+    VirtuosoMessage,
+    VirtuosoMessageListContext
+  >["data"],
+  message: VirtuosoMessage
+) {
+  const sameRankMessage = data.find(getPredicateForRankAndBranch(message));
+
+  if (sameRankMessage) {
+    data.map((m) => (areSameRankAndBranch(m, message) ? message : m));
+    return;
+  }
+
+  const currentData = data.get();
+  const offset = getBranchedInsertIndex(currentData, message);
+
+  if (offset < currentData.length) {
+    data.insert([message], offset);
+  } else {
+    data.append([message]);
+  }
+}
+
 function makeConversationForkNoticeMessage(
   sourceMessage: VirtuosoMessage,
   forkedChild: ConversationForkedChildType
@@ -1253,7 +1277,18 @@ export const ConversationViewer = ({
         const {
           message: messageFromBackend,
           contentFragments: contentFragmentsFromBackend,
+          agentMessages: agentMessagesFromBackend,
         } = result.value;
+        const agentMessagesFromBackendWithStreaming =
+          agentMessagesFromBackend.map((agentMessage) =>
+            makeInitialMessageStreamState(
+              getLightAgentMessageFromAgentMessage(agentMessage)
+            )
+          );
+        const messageFromBackendWithContentFragments = {
+          ...messageFromBackend,
+          contentFragments: contentFragmentsFromBackend,
+        };
 
         // If the message was created in a branch, we remove the placeholder user message and the placeholder agent messages from the list.
         if (messageFromBackend.branchId) {
@@ -1266,14 +1301,114 @@ export const ConversationViewer = ({
           );
         }
 
+        const realUserMessageAlreadyExists =
+          virtuosoMessageListRef.current.data.find(
+            (m) => isUserMessage(m) && m.sId === messageFromBackend.sId
+          );
+
+        if (realUserMessageAlreadyExists) {
+          virtuosoMessageListRef.current.data.findAndDelete(
+            (m) => m.sId === placeholderUserMsg.sId
+          );
+        }
+
+        for (const placeholderAgentMessage of placeholderAgentMessages) {
+          const agentMessageFromBackend =
+            agentMessagesFromBackendWithStreaming.find((agentMessage) =>
+              areSameRankAndBranch(agentMessage, placeholderAgentMessage)
+            );
+
+          if (!agentMessageFromBackend) {
+            continue;
+          }
+
+          const realMessageAlreadyExists =
+            virtuosoMessageListRef.current.data.find(
+              (m) =>
+                isAgentMessageWithStreaming(m) &&
+                m.sId === agentMessageFromBackend.sId
+            );
+
+          if (realMessageAlreadyExists) {
+            virtuosoMessageListRef.current.data.findAndDelete(
+              (m) => m.sId === placeholderAgentMessage.sId
+            );
+          }
+        }
+
         // map() is how we update the state of virtuoso messages.
-        virtuosoMessageListRef.current.data.map((m) =>
-          areSameRankAndBranch(m, placeholderUserMsg)
-            ? {
-                ...messageFromBackend,
-                contentFragments: contentFragmentsFromBackend,
-              }
-            : m
+        virtuosoMessageListRef.current.data.map((m) => {
+          if (areSameRankAndBranch(m, placeholderUserMsg)) {
+            return messageFromBackendWithContentFragments;
+          }
+
+          if (isAgentMessageWithStreaming(m)) {
+            const agentMessageFromBackend =
+              agentMessagesFromBackendWithStreaming.find((agentMessage) =>
+                areSameRankAndBranch(agentMessage, m)
+              );
+
+            if (!agentMessageFromBackend) {
+              return m;
+            }
+
+            const isOptimisticPlaceholder = placeholderAgentMessages.some(
+              (placeholderAgentMessage) => placeholderAgentMessage.sId === m.sId
+            );
+
+            if (isOptimisticPlaceholder) {
+              return agentMessageFromBackend;
+            }
+
+            if (
+              m.sId === agentMessageFromBackend.sId &&
+              isAtInitialStreamState(m)
+            ) {
+              return agentMessageFromBackend;
+            }
+          }
+
+          return m;
+        });
+
+        const realUserMessageAfterReplace =
+          virtuosoMessageListRef.current.data.find(
+            (m) => isUserMessage(m) && m.sId === messageFromBackend.sId
+          );
+
+        if (!realUserMessageAfterReplace) {
+          upsertVirtuosoMessageByRankAndBranch(
+            virtuosoMessageListRef.current.data,
+            messageFromBackendWithContentFragments
+          );
+        }
+
+        // The conversation SSE also sends `user_message_new` and
+        // `agent_message_new`, but the POST response already contains the same
+        // created messages. Reconcile from the POST response to recover when the
+        // conversation SSE is missed, replayed out of order, or races with the
+        // optimistic Virtuoso append.
+        for (const agentMessage of agentMessagesFromBackendWithStreaming) {
+          const existingMessage = virtuosoMessageListRef.current.data.find(
+            (m) => isAgentMessageWithStreaming(m) && m.sId === agentMessage.sId
+          );
+
+          if (existingMessage) {
+            continue;
+          }
+
+          upsertVirtuosoMessageByRankAndBranch(
+            virtuosoMessageListRef.current.data,
+            agentMessage
+          );
+        }
+
+        const remainingPlaceholderSids = [
+          placeholderUserMsg.sId,
+          ...placeholderAgentMessages.map((m) => m.sId),
+        ];
+        virtuosoMessageListRef.current.data.findAndDelete((m) =>
+          remainingPlaceholderSids.includes(m.sId)
         );
 
         // When there are pending user mentions, MentionValidationRequired
