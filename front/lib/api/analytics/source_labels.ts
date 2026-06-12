@@ -33,8 +33,14 @@ export const SOURCE_ORIGIN_LABELS: Record<AnalyticsVisibleOrigin, string> = {
   project_kickoff: "Pod Kickoff",
 };
 
+export function isAnalyticsVisibleOrigin(
+  origin: string
+): origin is AnalyticsVisibleOrigin {
+  return origin in SOURCE_ORIGIN_LABELS;
+}
+
 export function sourceLabelForOrigin(origin: string): string | undefined {
-  return origin in SOURCE_ORIGIN_LABELS
-    ? SOURCE_ORIGIN_LABELS[origin as AnalyticsVisibleOrigin]
+  return isAnalyticsVisibleOrigin(origin)
+    ? SOURCE_ORIGIN_LABELS[origin]
     : undefined;
 }
