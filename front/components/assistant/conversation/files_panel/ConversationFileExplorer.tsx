@@ -3,8 +3,7 @@ import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
-import { useFolderPathUrlState } from "@app/hooks/useFolderPathUrlState";
-import { useQueryParams } from "@app/hooks/useQueryParams";
+import { useConversationFileExplorerState } from "@app/hooks/useConversationFileExplorerState";
 import { downloadFile, getFilePathViewUrl } from "@app/lib/swr/files";
 import { usePodFiles } from "@app/lib/swr/pods";
 import {
@@ -14,8 +13,6 @@ import {
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, ButtonGroup, cn, XClose } from "@dust-tt/sparkle";
 import { useCallback } from "react";
-
-type FilesTab = "conversation" | "pod";
 
 interface ConversationFileExplorerProps {
   conversation: ConversationWithoutContentType;
@@ -29,16 +26,14 @@ export function ConversationFileExplorer({
   const { closePanel, openPanel } = useConversationSidePanelContext();
   const isPod = isPodConversation(conversation);
 
-  const { filesTab } = useQueryParams(["filesTab"]);
-  const activeTab: FilesTab =
-    isPod && filesTab.value === "pod" ? "pod" : "conversation";
-  const setActiveTab = (tab: FilesTab) => filesTab.setParam(tab);
-
-  // Each tab keeps its own folder navigation in the URL under a distinct key.
-  const [convFolderPath, setConvFolderPath] =
-    useFolderPathUrlState("convFolderPath");
-  const [podFolderPath, setPodFolderPath] =
-    useFolderPathUrlState("podFolderPath");
+  const {
+    activeTab,
+    setActiveTab,
+    convFolderPath,
+    setConvFolderPath,
+    podFolderPath,
+    setPodFolderPath,
+  } = useConversationFileExplorerState({ isPod });
 
   const { sandboxFiles, isSandboxFilesLoading } = useConversationSandboxFiles({
     conversationId: conversation.sId,
