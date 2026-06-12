@@ -290,7 +290,10 @@ export const SlashCommandDropdown = forwardRef<
                           icon={DotsHorizontal}
                           variant="outline"
                           size="mini"
-                          className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                          className={cn(
+                            "opacity-0 group-focus-within:opacity-100",
+                            index === selectedIndex && "opacity-100"
+                          )}
                           onClick={(e) => {
                             e.stopPropagation();
                             e.preventDefault();

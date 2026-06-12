@@ -139,7 +139,7 @@ function CapabilitiesPickerItemsList({
               icon={DotsHorizontal}
               variant="outline"
               size="mini"
-              className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+              className="opacity-0 group-data-[highlighted]:opacity-100 group-focus-within:opacity-100"
               onClick={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
