@@ -16,6 +16,7 @@ import {
   NORMALIZED_POOL_LIMIT_SEAT_TYPES,
   normalizeToPoolLimitSeatType,
 } from "@app/types/memberships";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Subscription } from "@metronome/sdk/resources";
 
 /**
@@ -441,6 +442,112 @@ export function getAwuAllocationForSeatType(
 ): number {
   return getAwuAllocationInfoForSeatType(contract, seatType, productSeatTypes)
     .credits;
+}
+
+/**
+ * The next time the per-seat AWU credit for `seatType` recurs (renews),
+ * strictly after `now`.
+ *
+ * This is the credit *recurrence*, which is deliberately independent of the
+ * subscription's billing period: in new pricing every per-seat AWU credit
+ * recurs MONTHLY (see `getPerSeatIndividualAwuCredits` /
+ * `buildPerSeatCredits` in `setup_new_pricing.ts`, which set
+ * `recurrence_frequency: "MONTHLY"` for both the monthly and the annual
+ * subscription of each seat pair). So a `pro_yearly` seat is billed once a
+ * year but its allowance refreshes every month. We therefore step the
+ * credit's recurrence anchor (the subscription's current billing-period
+ * start) forward by its `recurrence_frequency` rather than reading
+ * `billing_periods.next.starting_at`, which on an annual seat would point up
+ * to a year out.
+ *
+ * Returns `undefined` when the seat carries no recurring credit (e.g. `free`,
+ * whose AWU grant is a one-shot lifetime contract credit created at
+ * assignment time — see `grantFreeSeatCredits` — or `none`), when the credit
+ * never recurs (`lifetime`), or when the subscription exposes no
+ * billing-period anchor. Callers decide the fallback.
+ */
+export function getNextSeatCreditRenewalDate({
+  contract,
+  seatType,
+  productSeatTypes,
+  now,
+}: {
+  contract: CachedContract;
+  seatType: MembershipSeatType;
+  productSeatTypes: Map<string, MembershipSeatType>;
+  now: Date;
+}): Date | undefined {
+  const subscription = getSeatSubscriptionsFromContract(
+    contract,
+    productSeatTypes
+  ).get(seatType);
+  if (!subscription?.id) {
+    return undefined;
+  }
+
+  const credit = (contract.recurring_credits ?? []).find(
+    (c) => c.subscription_config?.subscription_id === subscription.id
+  );
+  if (!credit) {
+    return undefined;
+  }
+
+  const period = getSeatAwuCreditsPeriod(credit);
+  if (period === "lifetime") {
+    return undefined;
+  }
+
+  // Recurrences are anchored at the subscription start and refresh every
+  // `period`; the current billing-period start sits on that grid (one period
+  // back for monthly seats, up to a year back for annual seats whose credit
+  // still recurs monthly).
+  const anchorIso =
+    subscription.billing_periods?.current?.starting_at ??
+    subscription.billing_periods?.next?.starting_at;
+  if (!anchorIso) {
+    return undefined;
+  }
+
+  // Step in UTC: `date-fns` add* operate in local time and would shift the
+  // recurrence date across timezones. Month overflow is handled by `Date.UTC`
+  // (e.g. month 13 → next January).
+  const anchor = new Date(anchorIso);
+  const addMonthsUtc = (months: number): Date =>
+    new Date(
+      Date.UTC(
+        anchor.getUTCFullYear(),
+        anchor.getUTCMonth() + months,
+        anchor.getUTCDate(),
+        anchor.getUTCHours(),
+        anchor.getUTCMinutes(),
+        anchor.getUTCSeconds(),
+        anchor.getUTCMilliseconds()
+      )
+    );
+  const step = (n: number): Date => {
+    switch (period) {
+      case "weekly":
+        return new Date(anchor.getTime() + n * 7 * 24 * 60 * 60 * 1000);
+      case "monthly":
+        return addMonthsUtc(n);
+      case "quarterly":
+        return addMonthsUtc(3 * n);
+      case "annual":
+        return addMonthsUtc(12 * n);
+      default:
+        // `lifetime` already returned above; this guards new period values.
+        return assertNever(period);
+    }
+  };
+
+  // Step forward until the first occurrence strictly after `now`. Bounded:
+  // the anchor is at most one period before `now`, except an annual seat with
+  // a monthly credit, where it's at most ~12 months back.
+  let next = anchor;
+  for (let n = 1; next.getTime() <= now.getTime(); n++) {
+    next = step(n);
+  }
+  return next;
 }
 
 /**

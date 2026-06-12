@@ -1,5 +1,6 @@
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import {
+  classifySeatChange,
   hasContractSeatSubscription,
   resolveRemappedSeatType,
 } from "@app/lib/metronome/seats";
@@ -45,9 +46,17 @@ type SeatFixture = {
 function makeContract({
   seats = [],
   isMau = false,
+  currentBillingPeriodStartingAt,
+  nextBillingPeriodStartingAt,
 }: {
   seats?: SeatFixture[];
   isMau?: boolean;
+  // ISO timestamp for `subscriptions[].billing_periods.current.starting_at`,
+  // the recurrence anchor `getNextSeatCreditRenewalDate` steps from.
+  currentBillingPeriodStartingAt?: string;
+  // ISO timestamp for `subscriptions[].billing_periods.next.starting_at`, the
+  // fallback anchor used when a seat has no recurring credit.
+  nextBillingPeriodStartingAt?: string;
 } = {}): {
   contract: CachedContract;
   productSeatTypes: Map<string, MembershipSeatType>;
@@ -57,6 +66,18 @@ function makeContract({
   const recurringCredits = [];
   const overrides = [];
 
+  const billingPeriods =
+    currentBillingPeriodStartingAt || nextBillingPeriodStartingAt
+      ? {
+          ...(currentBillingPeriodStartingAt
+            ? { current: { starting_at: currentBillingPeriodStartingAt } }
+            : {}),
+          ...(nextBillingPeriodStartingAt
+            ? { next: { starting_at: nextBillingPeriodStartingAt } }
+            : {}),
+        }
+      : undefined;
+
   for (const seat of seats) {
     const productId = `${seat.seatType}-product`;
     const subscriptionId = `sub_${seat.seatType}`;
@@ -64,6 +85,7 @@ function makeContract({
     subscriptions.push({
       id: subscriptionId,
       subscription_rate: { product: { id: productId, name: seat.seatType } },
+      ...(billingPeriods ? { billing_periods: billingPeriods } : {}),
     });
     if (seat.awu != null) {
       recurringCredits.push({
@@ -221,5 +243,162 @@ describe("resolveRemappedSeatType (entitlement-aware)", () => {
     expect(
       resolveRemappedSeatType("pro", contract, productSeatTypes, false)
     ).toBe("workspace_yearly");
+  });
+});
+
+describe("classifySeatChange", () => {
+  const NOW = new Date("2026-06-11T12:00:00Z");
+  // Current monthly credit period started mid-month; recurrences land on the
+  // 15th. The next one after NOW (Jun 11) is Jun 15.
+  const CURRENT_PERIOD = "2026-01-15T00:00:00Z";
+  const NEXT_RENEWAL = new Date("2026-06-15T00:00:00Z");
+
+  // `workspace` carries no AWU allocation, `pro`/`max` recur MONTHLY. The
+  // current period started months ago to show the renewal is the next monthly
+  // recurrence — not the billing-period boundary a year out.
+  const { contract, productSeatTypes } = makeContract({
+    seats: [
+      { seatType: "workspace" },
+      { seatType: "pro", awu: 100 },
+      { seatType: "max", awu: 500 },
+    ],
+    currentBillingPeriodStartingAt: CURRENT_PERIOD,
+    nextBillingPeriodStartingAt: "2027-01-15T00:00:00Z",
+  });
+
+  const classify = (
+    previousSeatType: MembershipSeatType,
+    newSeatType: MembershipSeatType,
+    pendingScheduledChange?: { seatType: MembershipSeatType; at: Date }
+  ) =>
+    classifySeatChange({
+      contract,
+      productSeatTypes,
+      now: NOW,
+      change: {
+        userId: "u1",
+        previousSeatType,
+        newSeatType,
+        pendingScheduledChange,
+      },
+    });
+
+  it("removes a zero-allowance seat (workspace → none) immediately", () => {
+    expect(classify("workspace", "none")).toEqual({ kind: "immediate" });
+  });
+
+  it("defers removal of a seat that carried allowance (pro → none) to the next credit renewal", () => {
+    // Anchored on the monthly credit recurrence, NOT the (year-out) billing
+    // period.
+    expect(classify("pro", "none")).toEqual({
+      kind: "deferred",
+      at: NEXT_RENEWAL,
+    });
+  });
+
+  it("defers a downgrade between allowance tiers (max → pro) to the next credit renewal", () => {
+    expect(classify("max", "pro")).toEqual({
+      kind: "deferred",
+      at: NEXT_RENEWAL,
+    });
+  });
+
+  it("defers an annually-billed downgrade (max_yearly → pro_yearly) to the next MONTHLY renewal, not next year", () => {
+    // The seats are billed annually (current → next billing period a year
+    // apart) but their AWU credit recurs monthly, so the downgrade lands on
+    // the next monthly recurrence (Jun 15), not the year-out billing boundary
+    // (Jan 15 2027).
+    const { contract: yearly, productSeatTypes: types } = makeContract({
+      seats: [
+        { seatType: "pro_yearly", awu: 100, frequency: "MONTHLY" },
+        { seatType: "max_yearly", awu: 500, frequency: "MONTHLY" },
+      ],
+      currentBillingPeriodStartingAt: CURRENT_PERIOD,
+      nextBillingPeriodStartingAt: "2027-01-15T00:00:00Z",
+    });
+    expect(
+      classifySeatChange({
+        contract: yearly,
+        productSeatTypes: types,
+        now: NOW,
+        change: {
+          userId: "u1",
+          previousSeatType: "max_yearly",
+          newSeatType: "pro_yearly",
+        },
+      })
+    ).toEqual({ kind: "deferred", at: NEXT_RENEWAL });
+  });
+
+  it("applies an upgrade immediately (pro → max)", () => {
+    expect(classify("pro", "max")).toEqual({ kind: "immediate" });
+  });
+
+  it("is a noop when selecting the current seat with no pending change", () => {
+    expect(classify("pro", "pro")).toEqual({ kind: "noop" });
+  });
+
+  it("cancels a pending change when re-selecting the current seat", () => {
+    expect(
+      classify("pro", "pro", { seatType: "none", at: NEXT_RENEWAL })
+    ).toEqual({ kind: "cancelled" });
+  });
+
+  it("anchors an annually-recurring credit on its yearly recurrence", () => {
+    // A seat whose credit recurs ANNUALLY renews on the yearly anniversary of
+    // the period start, not monthly.
+    const { contract: annual, productSeatTypes: types } = makeContract({
+      seats: [
+        { seatType: "pro", awu: 100, frequency: "ANNUAL" },
+        { seatType: "max", awu: 500, frequency: "ANNUAL" },
+      ],
+      currentBillingPeriodStartingAt: CURRENT_PERIOD,
+    });
+    expect(
+      classifySeatChange({
+        contract: annual,
+        productSeatTypes: types,
+        now: NOW,
+        change: { userId: "u1", previousSeatType: "max", newSeatType: "pro" },
+      })
+    ).toEqual({ kind: "deferred", at: new Date("2027-01-15T00:00:00Z") });
+  });
+
+  it("uses the next billing period as the anchor when there is no current one", () => {
+    // With no `current` period to step from, the recurrence anchor falls back
+    // to `next.starting_at` (which is already in the future).
+    const { contract: c, productSeatTypes: types } = makeContract({
+      seats: [{ seatType: "pro", awu: 100 }],
+      nextBillingPeriodStartingAt: "2026-07-01T00:00:00Z",
+    });
+    expect(
+      classifySeatChange({
+        contract: c,
+        productSeatTypes: types,
+        now: NOW,
+        change: { userId: "u1", previousSeatType: "pro", newSeatType: "none" },
+      })
+    ).toEqual({ kind: "deferred", at: new Date("2026-07-01T00:00:00Z") });
+  });
+
+  it("treats free → none as a no-op (free is a one-shot tier)", () => {
+    expect(classify("free", "none")).toEqual({ kind: "noop" });
+  });
+
+  it("returns undefined for a deferral when no anchor date exists", () => {
+    const { contract: noPeriod, productSeatTypes: types } = makeContract({
+      seats: [
+        { seatType: "pro", awu: 100 },
+        { seatType: "max", awu: 500 },
+      ],
+    });
+    expect(
+      classifySeatChange({
+        contract: noPeriod,
+        productSeatTypes: types,
+        now: NOW,
+        change: { userId: "u1", previousSeatType: "max", newSeatType: "pro" },
+      })
+    ).toBeUndefined();
   });
 });
