@@ -11,6 +11,7 @@ import {
   reasoningToThinkingConfig,
   systemMessagesToSystemParam,
   systemMessageToTextBlock,
+  toolCallResultMessageToToolResultBlock,
   userImageMessageToImageBlock,
   userTextMessageToTextBlock,
 } from "@app/lib/model_constructors/providers/anthropic/converters/input/utils";
@@ -35,6 +36,8 @@ export function WithAnthropicInputConverter<
     systemMessageToTextBlock = systemMessageToTextBlock;
     userTextMessageToTextBlock = userTextMessageToTextBlock;
     userImageMessageToImageBlock = userImageMessageToImageBlock;
+    toolCallResultMessageToToolResultBlock =
+      toolCallResultMessageToToolResultBlock;
     assistantReasoningMessageToThinkingBlocks =
       assistantReasoningMessageToThinkingBlocks;
 
