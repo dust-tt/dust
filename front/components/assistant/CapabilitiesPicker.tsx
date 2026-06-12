@@ -130,43 +130,43 @@ function CapabilitiesPickerItemsList({
 
   return (
     <div className="relative" ref={listRef}>
-        {items.map((item) => {
-          const endComponent =
-            item.kind === "uninstalled_tool" ? (
-              <Chip size="xs" color="golden" label="Configure" />
-            ) : (
-              <Button
-                icon={DotsHorizontal}
-                variant="outline"
-                size="mini"
-                className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
+      {items.map((item) => {
+        const endComponent =
+          item.kind === "uninstalled_tool" ? (
+            <Chip size="xs" color="golden" label="Configure" />
+          ) : (
+            <Button
+              icon={DotsHorizontal}
+              variant="outline"
+              size="mini"
+              className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
 
-                  if (item.kind === "skill") {
-                    onSkillDetails(item.skill.sId);
-                  } else {
-                    onToolDetails(item.serverView);
-                  }
-                }}
-              />
-            );
-
-          return (
-            <DropdownMenuItem
-              key={item.id}
-              icon={item.icon}
-              itemId={item.id}
-              label={item.label}
-              description={item.description}
-              truncateText
-              endComponent={endComponent}
-              className="group"
-              onClick={() => onItemSelect(item)}
+                if (item.kind === "skill") {
+                  onSkillDetails(item.skill.sId);
+                } else {
+                  onToolDetails(item.serverView);
+                }
+              }}
             />
           );
-        })}
+
+        return (
+          <DropdownMenuItem
+            key={item.id}
+            icon={item.icon}
+            itemId={item.id}
+            label={item.label}
+            description={item.description}
+            truncateText
+            endComponent={endComponent}
+            className="group"
+            onClick={() => onItemSelect(item)}
+          />
+        );
+      })}
     </div>
   );
 }
