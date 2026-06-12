@@ -975,7 +975,6 @@ describe("SkillResource", () => {
         mcpServerViews: [],
         attachedKnowledge: [],
         requestedSpaceIds: childSkill.requestedSpaceIds,
-        referencedSkillIds: [],
       });
 
       const updatedParentSkill = await SkillResource.fetchById(
