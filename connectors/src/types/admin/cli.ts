@@ -61,6 +61,7 @@ export const ConfluenceCommandSchema = z.object({
     keyInFile: z.string().optional(),
     url: z.string().optional(),
     forceUpsert: z.literal("true").optional(),
+    skipFetch: z.literal("true").optional(),
     skipReason: z.string().optional(),
   }),
 });
