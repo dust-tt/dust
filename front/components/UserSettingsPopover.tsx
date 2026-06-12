@@ -1,3 +1,4 @@
+import { RequestUpgradeButton } from "@app/components/credits/RequestUpgradeButton";
 import type { NotificationPreferencesRefProps } from "@app/components/me/NotificationPreferences";
 import { NotificationPreferences } from "@app/components/me/NotificationPreferences";
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
@@ -14,7 +15,11 @@ import {
   useMyUsage,
   useSeatPlan,
 } from "@app/lib/swr/credits";
-import { usePatchUser, useUser } from "@app/lib/swr/user";
+import {
+  usePatchUser,
+  useUser,
+  useWorkspaceUsageStatus,
+} from "@app/lib/swr/user";
 import type { WorkspaceType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
@@ -127,7 +132,12 @@ function ordinalDay(day: number): string {
   return `${day}${suffix}`;
 }
 
-function UsageSection({ owner }: { owner: WorkspaceType }) {
+interface UsageSectionProps {
+  owner: WorkspaceType;
+  onClose: () => void;
+}
+
+function UsageSection({ owner, onClose }: UsageSectionProps) {
   const { isAdmin, subscription } = useAuth();
   const { isCreditPurchaseInfoLoading, billingCycleStartDay } =
     useCreditPurchaseInfo({
@@ -142,6 +152,11 @@ function UsageSection({ owner }: { owner: WorkspaceType }) {
   } = useAwuPoolSummary({ workspaceId: owner.sId });
   const { myUsage, isMyUsageLoading } = useMyUsage({ workspaceId: owner.sId });
   const { seatPlans } = useSeatPlan({ workspaceId: owner.sId });
+
+  const { hasPendingUpgradeRequest } = useWorkspaceUsageStatus({
+    owner,
+    disabled: isAdmin,
+  });
 
   const seatName =
     (myUsage?.seatType ? seatPlans[myUsage.seatType]?.name : null) ??
@@ -173,12 +188,19 @@ function UsageSection({ owner }: { owner: WorkspaceType }) {
               {seatName}
             </span>
           </span>
-          {isAdmin && (
+          {isAdmin ? (
             <Button
               variant="primary"
               size="xs"
-              label="Request for upgrade"
+              label="Go to workspace usage"
               href={`/w/${owner.sId}/usage`}
+              onClick={onClose}
+            />
+          ) : (
+            <RequestUpgradeButton
+              owner={owner}
+              hasPendingUpgradeRequest={hasPendingUpgradeRequest}
+              variant="button"
             />
           )}
         </div>
@@ -729,7 +751,9 @@ export function UserSettingsPopover({
             {activeSection === "personal" && (
               <PersonalInfoSection owner={owner} />
             )}
-            {activeSection === "usage" && <UsageSection owner={owner} />}
+            {activeSection === "usage" && (
+              <UsageSection owner={owner} onClose={() => onOpenChange(false)} />
+            )}
             {activeSection === "customization" && <CustomizationSection />}
             {activeSection === "notifications" && (
               <NotificationsSection owner={owner} />
