@@ -143,6 +143,11 @@ export function createEngineServer(options: EngineServerOptions) {
           if (cancelled.has(id)) {
             throw JSON.stringify({ code: "CANCELLED", detail: "" });
           }
+          if (poisoned) {
+            // An interleaved op trapped while this open was in flight:
+            // linear memory may be corrupt, stop feeding it.
+            throw JSON.stringify(poisoned);
+          }
           wasm.append_chunk(handle, bytes.subarray(offset, offset + PROGRESS_EVERY_BYTES));
           replyProgress(id, { phase: "download", loaded: Math.min(offset + PROGRESS_EVERY_BYTES, bytes.length), total: bytes.length });
         }
@@ -185,6 +190,11 @@ export function createEngineServer(options: EngineServerOptions) {
               controller.abort();
               throw JSON.stringify({ code: "CANCELLED", detail: "" });
             }
+            if (poisoned) {
+              // See the bytes loop above: never touch trapped linear memory.
+              controller.abort();
+              throw JSON.stringify(poisoned);
+            }
             wasm.append_chunk(handle, value);
             loaded += value.length;
             if (loaded - lastReport >= PROGRESS_EVERY_BYTES || loaded === total) {
@@ -200,6 +210,9 @@ export function createEngineServer(options: EngineServerOptions) {
 
       if (cancelled.has(id)) {
         throw JSON.stringify({ code: "CANCELLED", detail: "" });
+      }
+      if (poisoned) {
+        throw JSON.stringify(poisoned);
       }
       replyProgress(id, { phase: "parse", loaded: 0 });
       const meta = JSON.parse(wasm.open_finish(handle));

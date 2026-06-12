@@ -16,7 +16,7 @@ running in a dedicated Web Worker, driving the Extend UI kit's
 └────────┼──────────────────────────────────────────────────────────────┘
          │ postMessage (transferred ArrayBuffers, small JSON slices)
 ┌────────┼──────────────────────────────────────────── Worker ──────────┐
-│  ts/worker: engine-server shim (trap→INTERNAL, streaming fetch)        │
+│  ts/worker: engine-server shim (trap→POISONED, streaming fetch)        │
 │  crates/engine-wasm: bindings only (handle-based API)                  │
 │  crates/engine-core: zip+XML parse · flat sparse model · numfmt ·      │
 │                      viewport · search · budgets   (pure Rust, no JS)  │
@@ -36,7 +36,7 @@ and capped search results — never anything O(workbook).
 | `crates/engine-cli` | `engine-cli parse <file>` → canonical JSON (determinism gate, debugging). |
 | `crates/corpus-gen` | Deterministic corpus generator (own XML writer, independent of the parser) + adversarial corpus. |
 | `ts/client` | `@dust/sheet-engine-client`: promise-map RPC over postMessage, `Task<T>` (progress + cancel), latest-wins viewport coalescing, `onFatal` poison notification, FinalizationRegistry close backstop. `src/generated/` is emitted by ts-rs from the Rust structs (freshness-gated); hand-written types cover only protocol plumbing. |
-| `ts/worker` | Worker entry (web) + transport-agnostic `engine-server` + node test host. Streaming `fetch` for URL sources (the payload never touches the main thread). Wasm traps map to typed `INTERNAL` and poison the instance. |
+| `ts/worker` | Worker entry (web) + transport-agnostic `engine-server` + node test host. Streaming `fetch` for URL sources (the payload never touches the main thread). Wasm traps map to the terminal `POISONED` code and poison the instance. |
 | `ts/react` | `useDustSheetController` → kit-compatible `XlsxViewerController` (Strategy A, zero fork). See `ts/react/INTEGRATION.md` for the Phase 0 seam analysis and the non-obvious kit requirements (axis arrays, zoom percentage, revision-vs-paint-tick). |
 | `corpus/` | Committed corpora + goldens + the ≥500-case numfmt golden table. See `corpus/README.md`. |
 | `scripts/` | Gates: determinism, wasm size, SheetJS differential, numfmt table generator, `check-all.sh`. |
@@ -311,7 +311,7 @@ are internal plumbing (see the `engine-wasm` crate docs).
 - Charts/images/sparklines/conditional-format visuals are out of viewer scope
   (kit degradations documented in `ts/react/INTEGRATION.md`).
 - Panic policy: stable `wasm32-unknown-unknown` cannot `catch_unwind` (no
-  unwinding), so trap→`INTERNAL` mapping lives in the worker shim, and
+  unwinding), so trap→`POISONED` mapping lives in the worker shim, and
   "engine never panics" is enforced natively by the evil corpus + mutation
   tests.
 

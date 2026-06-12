@@ -45,10 +45,16 @@ step "SheetJS differential"
 node scripts/diff-sheetjs.mjs
 
 step "generated TS boundary types freshness (ts-rs)"
+# Wipe before regenerating so removed Rust types show up as deletions, and
+# use --porcelain (not diff) so NEW untracked files also fail the gate.
+rm -rf ts/client/src/generated
 TS_RS_EXPORT_DIR="$PWD/ts/client/src/generated" \
   cargo test -p engine-core --features ts-rs --lib export_bindings --quiet
-git diff --exit-code -- ts/client/src/generated \
-  || { echo "ts/client/src/generated drifted from the Rust types — review and commit"; exit 1; }
+generated_count=$(ls ts/client/src/generated | wc -l)
+[ "$generated_count" -ge 20 ] \
+  || { echo "ts-rs export produced only $generated_count files — the export tests stopped running"; exit 1; }
+[ -z "$(git status --porcelain -- ts/client/src/generated)" ] \
+  || { git status --porcelain -- ts/client/src/generated; echo "ts/client/src/generated drifted from the Rust types — review and commit"; exit 1; }
 
 step "numfmt golden table freshness"
 node scripts/gen-numfmt-table.mjs

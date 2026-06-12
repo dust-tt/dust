@@ -67,7 +67,8 @@ export class SheetEngineClient {
   private listener: (event: { data: unknown }) => void;
   /** Fired once when a POISONED response is first observed. */
   private fatalCbs: Array<(error: EngineError) => void> = [];
-  private fatalFired = false;
+  /** The first POISONED error observed; late subscribers fire immediately. */
+  private fatalError: EngineError | null = null;
 
   constructor(worker: WorkerLike) {
     this.worker = worker;
@@ -113,18 +114,20 @@ export class SheetEngineClient {
         break;
       case "error": {
         this.pending.delete(response.id);
-        const error = isEngineError(response.error)
+        const error: EngineError = isEngineError(response.error)
           ? response.error
-          : ({ code: "INTERNAL", detail: "malformed error" } as EngineError);
-        if (error.code === "POISONED" && !this.fatalFired) {
+          : { code: "INTERNAL", detail: "malformed error" };
+        // Reject FIRST: a throwing embedder callback must never leave the
+        // trapped call's promise unsettled.
+        entry.reject(new EngineErrorException(error));
+        if (error.code === "POISONED" && this.fatalError === null) {
           // Terminal: the worker's wasm instance trapped. Notify exactly once
           // so the embedder can destroy() this client and spawn a fresh one.
-          this.fatalFired = true;
+          this.fatalError = error;
           for (const cb of this.fatalCbs) {
-            cb(error);
+            this.fireFatal(cb, error);
           }
         }
-        entry.reject(new EngineErrorException(error));
         break;
       }
       default: {
@@ -221,9 +224,11 @@ export class SheetEngineClient {
    * in hand.
    *
    * `headers` ride along on the worker fetch (e.g. `Authorization` for
-   * bearer-protected file endpoints). CORS caveat: custom headers make the
+   * bearer-protected file endpoints). CORS caveats: custom headers make the
    * request non-simple, so the server must answer the preflight with
-   * `Access-Control-Allow-Headers` covering them.
+   * `Access-Control-Allow-Headers` covering them — and fetch strips
+   * `Authorization` on cross-origin redirects, so an endpoint that 302s to
+   * signed storage will arrive there without the header.
    */
   open(
     src: { url: string; headers?: Record<string, string> } | { bytes: ArrayBuffer },
@@ -345,15 +350,30 @@ export class SheetEngineClient {
 
   /**
    * Register a callback fired ONCE if the worker's wasm instance ever traps
-   * (first POISONED response). The client is unrecoverable at that point:
-   * destroy() it, create a fresh worker + client, reopen the workbook.
-   * Returns an unsubscribe function.
+   * (first POISONED response). Promise-like: subscribing after the poison was
+   * observed fires the callback immediately. The client is unrecoverable at
+   * that point: destroy() it, create a fresh worker + client, reopen the
+   * workbook. Returns an unsubscribe function.
    */
   onFatal(cb: (error: EngineError) => void): () => void {
+    if (this.fatalError !== null) {
+      this.fireFatal(cb, this.fatalError);
+      return () => {};
+    }
     this.fatalCbs.push(cb);
     return () => {
       this.fatalCbs = this.fatalCbs.filter((existing) => existing !== cb);
     };
+  }
+
+  /** Invoke an embedder fatal callback; its errors must not break the client. */
+  private fireFatal(cb: (error: EngineError) => void, error: EngineError): void {
+    try {
+      cb(error);
+    } catch (e) {
+      // External code; mirrors the FinalizationRegistry backstop's console use.
+      console.warn(`[sheet-engine] onFatal callback threw: ${String(e)}`);
+    }
   }
 
   async close(handle: WorkbookHandle): Promise<void> {
@@ -379,6 +399,7 @@ export class SheetEngineClient {
       }
     }
     this.inflight.clear();
+    this.fatalCbs = [];
     this.worker.removeEventListener("message", this.listener);
     this.worker.terminate();
   }

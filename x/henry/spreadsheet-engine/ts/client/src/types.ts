@@ -6,7 +6,8 @@
 // --features ts-rs --lib export_bindings`, gated for freshness in
 // check-all.sh) — so the two sides cannot drift. Only types with no Rust
 // counterpart (protocol/task plumbing, client-side options) are hand-written
-// here.
+// here. The re-export list below is the one manual step: a newly
+// generated type must be added here to become part of the public surface.
 
 export type { Align } from "./generated/Align";
 export type { Alignment } from "./generated/Alignment";

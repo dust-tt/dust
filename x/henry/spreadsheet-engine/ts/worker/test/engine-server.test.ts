@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import { SheetEngineClient } from "@dust/sheet-engine-client";
-import type { EngineResponse } from "@dust/sheet-engine-client/protocol";
+import type { EngineRequest, EngineResponse } from "@dust/sheet-engine-client/protocol";
 import { createEngineServer, type EngineWasm } from "@dust/sheet-engine-worker/engine-server";
 import { createNodeEngineHost, loadNodeWasm } from "@dust/sheet-engine-worker/node-host";
 
@@ -67,8 +67,10 @@ describe("trap poisoning", () => {
     });
     let listener: ((event: { data: unknown }) => void) | null = null;
     const client = new SheetEngineClient({
-      postMessage: (message) => {
-        queueMicrotask(() => server.handle(message as never));
+      // Method syntax keeps the narrower EngineRequest param assignable to
+      // WorkerLike's `unknown` (TS method bivariance) — no cast needed.
+      postMessage(message: EngineRequest) {
+        queueMicrotask(() => server.handle(message));
       },
       addEventListener: (_type, l) => {
         listener = l;

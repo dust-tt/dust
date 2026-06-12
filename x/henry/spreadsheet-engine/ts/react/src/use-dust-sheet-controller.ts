@@ -177,9 +177,9 @@ export function useDustSheetController(options: UseDustSheetControllerOptions): 
         }
         return toKitRows(rows, current.styleCache);
       } catch (e: unknown) {
-        // Budget-refused sheets degrade to empty cells; anything else (incl.
-        // a poisoned worker reporting INTERNAL) must surface, not render a
-        // silently blank grid.
+        // Budget-refused sheets degrade to empty cells; anything else (a
+        // POISONED worker included) must surface, not render a silently
+        // blank grid.
         if (e instanceof EngineErrorException && (e.code === "BUDGET_EXCEEDED" || e.code === "CANCELLED")) {
           return null;
         }
