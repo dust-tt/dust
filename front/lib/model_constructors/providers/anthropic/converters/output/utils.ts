@@ -455,39 +455,37 @@ export function streamErrorToErrorEvent(
 
 // -- Composite state machine: depends on the leaf converters --
 
+// Returns the events to emit alongside the next block state, so the caller owns
+// the cursor instead of us mutating it in place.
 export function contentBlockStartToEvents(
   event: RawContentBlockStartEvent,
-  state: { current: BlockState | null },
+  state: BlockState | null,
   metadata: EndpointMetadata,
   converters: OutputEventConverters
-): ModelResponseEvent[] {
+): [ModelResponseEvent[], BlockState | null] {
   const block = event.content_block;
   switch (block.type) {
     case "text":
-      state.current = { index: event.index, accumulator: "", type: "text" };
-      return [];
+      return [[], { index: event.index, accumulator: "", type: "text" }];
     case "thinking":
-      state.current = {
-        index: event.index,
-        accumulator: "",
-        type: "reasoning",
-      };
-      return [];
+      return [[], { index: event.index, accumulator: "", type: "reasoning" }];
     case "tool_use":
-      state.current = {
-        index: event.index,
-        accumulator: "",
-        type: "tool_use",
-        toolId: block.id,
-        toolName: block.name,
-      };
       return [
-        converters.toolUseBlockStartToToolCallStartedEvent(
-          metadata,
-          block.id,
-          event.index,
-          block.name
-        ),
+        [
+          converters.toolUseBlockStartToToolCallStartedEvent(
+            metadata,
+            block.id,
+            event.index,
+            block.name
+          ),
+        ],
+        {
+          index: event.index,
+          accumulator: "",
+          type: "tool_use",
+          toolId: block.id,
+          toolName: block.name,
+        },
       ];
     // Block types we don't surface: redacted thinking, server tools, and their
     // result / container blocks. Listed explicitly so the default stays
@@ -501,80 +499,93 @@ export function contentBlockStartToEvents(
     case "text_editor_code_execution_tool_result":
     case "tool_search_tool_result":
     case "container_upload":
-      return [];
+      return [[], state];
     default:
       // Anthropic may add new block types before we redeploy; ignore them
       // rather than crashing the stream.
       assertNeverAndIgnore(block);
-      return [];
+      return [[], state];
   }
 }
 
 export function contentBlockDeltaToEvents(
   event: RawContentBlockDeltaEvent,
-  state: { current: BlockState | null },
+  state: BlockState | null,
   metadata: EndpointMetadata,
   converters: OutputEventConverters
-): ModelResponseEvent[] {
-  if (state.current === null) {
-    return [];
+): [ModelResponseEvent[], BlockState | null] {
+  if (state === null) {
+    return [[], null];
   }
   const delta = event.delta;
   switch (delta.type) {
     case "text_delta":
-      state.current.accumulator += delta.text;
-      return [converters.textDeltaToTextDeltaEvent(metadata, delta.text)];
-    case "thinking_delta":
-      state.current.accumulator += delta.thinking;
       return [
-        converters.reasoningDeltaToReasoningDeltaEvent(
-          metadata,
-          delta.thinking
-        ),
+        [converters.textDeltaToTextDeltaEvent(metadata, delta.text)],
+        { ...state, accumulator: state.accumulator + delta.text },
+      ];
+    case "thinking_delta":
+      return [
+        [
+          converters.reasoningDeltaToReasoningDeltaEvent(
+            metadata,
+            delta.thinking
+          ),
+        ],
+        { ...state, accumulator: state.accumulator + delta.thinking },
       ];
     case "input_json_delta":
-      state.current.accumulator += delta.partial_json;
-      return [converters.inputJsonDeltaToToolCallDeltaEvent(metadata)];
+      return [
+        [converters.inputJsonDeltaToToolCallDeltaEvent(metadata)],
+        { ...state, accumulator: state.accumulator + delta.partial_json },
+      ];
     case "signature_delta":
-      if (state.current.type === "reasoning") {
+      if (state.type === "reasoning") {
         // Accumulate across deltas: Anthropic may chunk the signature.
-        state.current.signature =
-          (state.current.signature ?? "") + delta.signature;
+        return [
+          [],
+          { ...state, signature: (state.signature ?? "") + delta.signature },
+        ];
       }
-      return [];
+      return [[], state];
     case "citations_delta":
-      return [];
+      return [[], state];
     default:
       // Anthropic may add new delta types before we redeploy; ignore them
       // rather than crashing the stream.
       assertNeverAndIgnore(delta);
-      return [];
+      return [[], state];
   }
 }
 
+// Flushes the in-progress block as an event and clears the cursor (returns the
+// next state as `null`), so the caller resets its own variable.
 export function contentBlockStopToEvents(
   _event: RawContentBlockStopEvent,
-  state: { current: BlockState | null },
+  state: BlockState | null,
   metadata: EndpointMetadata,
   converters: OutputEventConverters
-): ModelResponseEvent[] {
-  if (state.current === null) {
-    return [];
+): [ModelResponseEvent[], BlockState | null] {
+  if (state === null) {
+    return [[], null];
   }
-  const block = state.current;
-  state.current = null;
+  const block = state;
   switch (block.type) {
     case "text":
       return [
-        converters.accumulatedTextToTextEvent(metadata, block.accumulator),
+        [converters.accumulatedTextToTextEvent(metadata, block.accumulator)],
+        null,
       ];
     case "reasoning":
       return [
-        converters.accumulatedReasoningToReasoningEvent(
-          metadata,
-          block.accumulator,
-          block.signature || undefined
-        ),
+        [
+          converters.accumulatedReasoningToReasoningEvent(
+            metadata,
+            block.accumulator,
+            block.signature || undefined
+          ),
+        ],
+        null,
       ];
     case "tool_use": {
       const input = block.accumulator;
@@ -588,22 +599,28 @@ export function contentBlockStopToEvents(
         const parsed = safeParseJSON(input);
         if (parsed.isErr()) {
           return [
-            converters.invalidJsonToolCallToToolCallEvent(
-              metadata,
-              block.toolId,
-              block.toolName,
-              input
-            ),
+            [
+              converters.invalidJsonToolCallToToolCallEvent(
+                metadata,
+                block.toolId,
+                block.toolName,
+                input
+              ),
+            ],
+            null,
           ];
         }
       }
       return [
-        converters.accumulatedToolCallToToolCallEvent(
-          metadata,
-          block.toolId,
-          block.toolName,
-          input
-        ),
+        [
+          converters.accumulatedToolCallToToolCallEvent(
+            metadata,
+            block.toolId,
+            block.toolName,
+            input
+          ),
+        ],
+        null,
       ];
     }
     default:
@@ -611,21 +628,21 @@ export function contentBlockStopToEvents(
   }
 }
 
+// Returns the events to emit alongside the latest usage snapshot, so the caller
+// tracks token usage in its own variable instead of us writing into a wrapper.
 export function messageDeltaToEvents(
   event: RawMessageDeltaEvent,
-  tokenUsage: { usage: MessageDeltaUsage | null },
   metadata: EndpointMetadata,
   converters: OutputEventConverters
-): ModelResponseEvent[] {
-  tokenUsage.usage = event.usage;
+): [ModelResponseEvent[], MessageDeltaUsage] {
   const stopReason = event.delta.stop_reason;
   if (stopReason) {
     const errorEvent = converters.stopReasonToErrorEvent(metadata, stopReason);
     if (errorEvent) {
-      return [errorEvent];
+      return [[errorEvent], event.usage];
     }
   }
-  return [];
+  return [[], event.usage];
 }
 
 // -- Entry point: drive the raw stream into unified events --
@@ -636,8 +653,8 @@ export async function* rawOutputToEvents(
   converters: OutputEventConverters
 ): AsyncGenerator<ModelResponseEvent> {
   const aggregated: (TextEvent | ReasoningEvent | ToolCallEvent)[] = [];
-  const blockState: { current: BlockState | null } = { current: null };
-  const tokenUsageState: { usage: MessageDeltaUsage | null } = { usage: null };
+  let blockState: BlockState | null = null;
+  let tokenUsage: MessageDeltaUsage | null = null;
 
   while (true) {
     let result: IteratorResult<RawMessageStreamEvent>;
@@ -650,8 +667,8 @@ export async function* rawOutputToEvents(
       const invalidJsonMessage = getInvalidToolJsonMessage(err);
       if (
         invalidJsonMessage !== null &&
-        blockState.current !== null &&
-        blockState.current.type === "tool_use"
+        blockState !== null &&
+        blockState.type === "tool_use"
       ) {
         const invalidJson = invalidJsonMessage.slice(
           invalidJsonMessage.lastIndexOf(INVALID_JSON_MARKER) +
@@ -659,13 +676,13 @@ export async function* rawOutputToEvents(
         );
         const ev = converters.invalidJsonToolCallToToolCallEvent(
           metadata,
-          blockState.current.toolId,
-          blockState.current.toolName,
+          blockState.toolId,
+          blockState.toolName,
           invalidJson
         );
         aggregated.push(ev);
         yield ev;
-        blockState.current = null;
+        blockState = null;
         break;
       }
       // Everything leaving the endpoint is an event: map any other SDK error to
@@ -689,38 +706,49 @@ export async function* rawOutputToEvents(
       case "message_stop":
         outputEvents = [];
         break;
-      case "content_block_start":
-        outputEvents = contentBlockStartToEvents(
+      case "content_block_start": {
+        const [events, nextState] = contentBlockStartToEvents(
           event,
           blockState,
           metadata,
           converters
         );
+        outputEvents = events;
+        blockState = nextState;
         break;
-      case "content_block_delta":
-        outputEvents = contentBlockDeltaToEvents(
+      }
+      case "content_block_delta": {
+        const [events, nextState] = contentBlockDeltaToEvents(
           event,
           blockState,
           metadata,
           converters
         );
+        outputEvents = events;
+        blockState = nextState;
         break;
-      case "content_block_stop":
-        outputEvents = contentBlockStopToEvents(
+      }
+      case "content_block_stop": {
+        const [events, nextState] = contentBlockStopToEvents(
           event,
           blockState,
           metadata,
           converters
         );
+        outputEvents = events;
+        blockState = nextState;
         break;
-      case "message_delta":
-        outputEvents = messageDeltaToEvents(
+      }
+      case "message_delta": {
+        const [events, usage] = messageDeltaToEvents(
           event,
-          tokenUsageState,
           metadata,
           converters
         );
+        outputEvents = events;
+        tokenUsage = usage;
         break;
+      }
       default:
         // Anthropic may add new stream event types before we redeploy; ignore
         // them rather than crashing the stream.
@@ -740,11 +768,8 @@ export async function* rawOutputToEvents(
     }
   }
 
-  if (tokenUsageState.usage !== null) {
-    yield converters.messageDeltaUsageToTokenUsageEvent(
-      metadata,
-      tokenUsageState.usage
-    );
+  if (tokenUsage !== null) {
+    yield converters.messageDeltaUsageToTokenUsageEvent(metadata, tokenUsage);
   }
 
   yield {
