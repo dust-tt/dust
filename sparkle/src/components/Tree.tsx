@@ -84,11 +84,11 @@ const treeItemStyleClasses = {
   isNavigatableBase: "s-rounded-xl s-pl-1.5 s-pr-3 s-ease-out s-cursor-pointer",
   isNavigatableUnselected: cn(
     "s-bg-sidebar-foreground/0 dark:s-bg-sidebar-foreground-night/0",
-    "hover:s-bg-sidebar-foreground dark:hover:s-bg-sidebar-foreground-night"
+    "hover:s-bg-sidebar-hover dark:hover:s-bg-sidebar-hover-night"
   ),
   isNavigatableSelected: cn(
     "s-font-medium",
-    "s-bg-sidebar-foreground dark:s-bg-sidebar-foreground-night"
+    "s-bg-sidebar-selected dark:s-bg-sidebar-selected-night"
   ),
 };
 
