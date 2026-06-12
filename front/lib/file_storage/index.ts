@@ -206,6 +206,11 @@ export class FileStorage {
     return content.toString();
   }
 
+  async fetchFileBuffer(filePath: string): Promise<Uint8Array<ArrayBuffer>> {
+    const [buffer] = await this.file(filePath).download();
+    return Uint8Array.from(buffer);
+  }
+
   private isTextBasedContentType(contentType?: string): boolean {
     if (!contentType) {
       return true;

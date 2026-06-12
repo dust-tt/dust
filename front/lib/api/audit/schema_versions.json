@@ -91,5 +91,7 @@
   "workspace.audit_logs_updated": 1,
   "workspace.default_user_spend_limit_updated": 1,
   "workspace.deleted": 2,
-  "workspace.programmatic_usage_limit_updated": 1
+  "workspace.programmatic_usage_limit_updated": 1,
+  "workspace_branding.asset_deleted": 1,
+  "workspace_branding.asset_promoted": 1
 }

@@ -17,6 +17,7 @@ import {
   Globe01,
   IntersectDust,
   Lock01,
+  Palette,
   PieChart01,
   Planet,
   Settings01,
@@ -82,6 +83,7 @@ export type SubNavigationAdminId =
   | "subscription"
   | "billing"
   | "workspace"
+  | "workspace_branding"
   | "model_providers"
   | "members"
   | "identity_and_provisioning"
@@ -98,6 +100,7 @@ export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   members: ["/w/[wId]/members"],
   identity_and_provisioning: ["/w/[wId]/identity-and-provisioning"],
   workspace: ["/w/[wId]/workspace"],
+  workspace_branding: ["/w/[wId]/brand"],
   model_providers: ["/w/[wId]/model-providers"],
   analytics: ["/w/[wId]/analytics"],
   subscription: ["/w/[wId]/subscription"],
@@ -210,6 +213,7 @@ export const getTopNavigationTabs = (
           "/w/[wId]/members",
           "/w/[wId]/identity-and-provisioning",
           "/w/[wId]/workspace",
+          "/w/[wId]/branding",
           "/w/[wId]/model-providers",
           "/w/[wId]/subscription",
           "/w/[wId]/billing",
@@ -285,6 +289,18 @@ export const subNavigationAdmin = ({
         current: isCurrent("workspace"),
         disabled: !hasWorkspaceAdminPermission,
       },
+      ...(subscription.plan.isBrandedFramesAllowed
+        ? [
+            {
+              id: "workspace_branding" as const,
+              label: "Branding",
+              icon: Palette,
+              href: `/w/${owner.sId}/branding`,
+              current: isCurrent("workspace_branding"),
+              disabled: !hasWorkspaceAdminPermission,
+            },
+          ]
+        : []),
       ...(isCreditPricedPlan(subscription.plan) ||
       featureFlags.includes("usage_page_read_only")
         ? [
