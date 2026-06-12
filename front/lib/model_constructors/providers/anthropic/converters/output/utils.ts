@@ -1,8 +1,10 @@
 import { AnthropicError, APIError } from "@anthropic-ai/sdk";
 import type {
+  MessageDeltaUsage,
   RawContentBlockDeltaEvent,
   RawContentBlockStartEvent,
   RawContentBlockStopEvent,
+  RawMessageDeltaEvent,
   RawMessageStartEvent,
   RawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/messages/messages";
@@ -15,6 +17,7 @@ import type {
   ResponseIdEvent,
   TextDeltaEvent,
   TextEvent,
+  TokenUsageEvent,
   ToolCallDeltaEvent,
   ToolCallEvent,
   ToolCallStartedEvent,
@@ -144,6 +147,10 @@ export interface OutputEventConverters {
     name: string,
     invalidJson: string
   ): ToolCallEvent;
+  messageDeltaUsageToTokenUsageEvent(
+    metadata: EndpointMetadata,
+    usage: MessageDeltaUsage
+  ): TokenUsageEvent;
 }
 
 // -- Leaf converters: one unified event per Anthropic stream signal --
@@ -239,6 +246,31 @@ export function invalidJsonToolCallToToolCallEvent(
   return {
     type: "tool_call",
     content: { id, name, arguments: { INVALID_JSON: invalidJson } },
+    metadata,
+  };
+}
+
+export function messageDeltaUsageToTokenUsageEvent(
+  metadata: EndpointMetadata,
+  usage: MessageDeltaUsage
+): TokenUsageEvent {
+  const cacheCreated = usage.cache_creation_input_tokens ?? 0;
+  const cacheHit = usage.cache_read_input_tokens ?? 0;
+  const uncachedInput = usage.input_tokens ?? 0;
+  // thinking_tokens is the reasoning portion of output_tokens; subtracting
+  // yields non-reasoning generation. Null (no breakdown) rolls reasoning into
+  // standardOutput.
+  const thinkingTokens = usage.output_tokens_details?.thinking_tokens ?? 0;
+
+  return {
+    type: "token_usage",
+    content: {
+      cacheCreated,
+      cacheHit,
+      standardInput: uncachedInput,
+      standardOutput: usage.output_tokens - thinkingTokens,
+      reasoning: thinkingTokens,
+    },
     metadata,
   };
 }
@@ -401,6 +433,16 @@ export function contentBlockStopToEvents(
   }
 }
 
+export function messageDeltaToEvents(
+  event: RawMessageDeltaEvent,
+  tokenUsage: { usage: MessageDeltaUsage | null },
+  _metadata: EndpointMetadata,
+  _converters: OutputEventConverters
+): ModelResponseEvent[] {
+  tokenUsage.usage = event.usage;
+  return [];
+}
+
 // -- Entry point: drive the raw stream into unified events --
 
 export async function* rawOutputToEvents(
@@ -410,6 +452,7 @@ export async function* rawOutputToEvents(
 ): AsyncGenerator<ModelResponseEvent> {
   const aggregated: (TextEvent | ReasoningEvent | ToolCallEvent)[] = [];
   const blockState: { current: BlockState | null } = { current: null };
+  const tokenUsageState: { usage: MessageDeltaUsage | null } = { usage: null };
 
   while (true) {
     let result: IteratorResult<RawMessageStreamEvent>;
@@ -483,8 +526,18 @@ export async function* rawOutputToEvents(
           converters
         );
         break;
+      case "message_delta":
+        outputEvents = messageDeltaToEvents(
+          event,
+          tokenUsageState,
+          metadata,
+          converters
+        );
+        break;
       default:
-        // Other stream event types are wired in in subsequent commits.
+        // Anthropic may add new stream event types before we redeploy; ignore
+        // them rather than crashing the stream.
+        assertNeverAndIgnore(event);
         outputEvents = [];
     }
 
@@ -498,6 +551,13 @@ export async function* rawOutputToEvents(
       }
       yield outputEvent;
     }
+  }
+
+  if (tokenUsageState.usage !== null) {
+    yield converters.messageDeltaUsageToTokenUsageEvent(
+      metadata,
+      tokenUsageState.usage
+    );
   }
 
   yield {
