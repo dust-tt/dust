@@ -171,6 +171,37 @@ export function findAttachmentData(
 }
 
 /**
+ * Search payload for a part's attachment ID by partId. Gmail attachment IDs
+ * are short-lived tokens, so this is used to get a fresh ID from a re-fetched
+ * message when a previously obtained ID has expired.
+ */
+export function findAttachmentIdByPartId(
+  payload: GmailMessagePayload | undefined,
+  partId: string
+): string | null {
+  if (!payload) {
+    return null;
+  }
+
+  const traverse = (part: GmailMessagePart): string | null => {
+    if (part.partId === partId && part.body?.attachmentId) {
+      return part.body.attachmentId;
+    }
+    if (part.parts) {
+      for (const nested of part.parts) {
+        const found = traverse(nested);
+        if (found) {
+          return found;
+        }
+      }
+    }
+    return null;
+  };
+
+  return traverse(payload);
+}
+
+/**
  * Create HTML quote section for replies with original message
  */
 export function createQuoteSection(
