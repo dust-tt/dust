@@ -50,21 +50,22 @@ import type {
 import type { Transaction } from "sequelize";
 
 /**
- * Resolve the seat type for a brand-new membership. For seat-billed
- * contracts, picks the lowest-allowance seat tier billed on the contract,
- * gated by the active plan's free-seat caps:
+ * Resolve the seat type for a brand-new membership on a Metronome-billed
+ * workspace. The assignment follows three phases:
  *
- *  - Returning member (already had a row in this workspace) → `free` is
- *    skipped (one-shot starter tier).
- *  - `useFreeSeat` is false → caller opted out of `free` directly.
- *  - `plan.limits.users.maxFreeUsers` reached → `free` is skipped.
- *  - `plan.limits.users.maxLifetimeFreeUsers` reached → `free` is skipped.
+ *  1. **Committed seats** — the cheapest seat tier whose committed allocation
+ *     (`workspace_seat_limits.minSeats`) still has unassigned slots is picked.
+ *  2. **Free seat** — if no committed slot is available and `free` is on the
+ *     contract, it is assigned unless any of the following are true:
+ *       - `isReturningMember` (one-shot: `free` cannot be re-granted).
+ *       - `useFreeSeat` is false (caller opted out).
+ *       - `plan.limits.users.maxFreeUsers` reached.
+ *       - `plan.limits.users.maxLifetimeFreeUsers` reached.
+ *  3. **None** — if both phases are exhausted the member is assigned `"none"`
+ *     (no-seat tier; cannot send messages).
  *
- * In all three skip cases the resolver advances to the next billed tier
- * and only fails when no tier is assignable.
- *
- * The workspace-wide active-member cap (`plan.limits.users.maxUsers`) is
- * NOT checked here — it's enforced upstream by
+ * The workspace-wide active-member cap (`plan.limits.users.maxUsers`) is NOT
+ * checked here — it is enforced upstream by
  * `evaluateWorkspaceSeatAvailability` (signup) and `invitation.ts` (invite
  * creation).
  *
@@ -108,38 +109,28 @@ async function resolveSeatTypeForNewMembership(
       WorkspaceSeatLimitResource.fetchByWorkspace({ workspace }),
     ]);
 
-  // Only fetch per-seat-type counts when at least one tier has a maxSeats cap
-  // configured
-  const hasAnyCap = [...seatLimits.values()].some(
-    (l) => l.maxSeats !== null && l.maxSeats !== undefined
+  // Seat counts are needed to check whether committed slots (minSeats) are
+  // still available.
+  const hasCommittedSeats = [...seatLimits.values()].some(
+    (l) => l.minSeats > 0
   );
-  const seatCounts = hasAnyCap
+  const seatCounts = hasCommittedSeats
     ? await MembershipResource.getActiveSeatTypeCountsForWorkspace({
         workspace,
       })
     : undefined;
 
-  const defaultSeatType = getDefaultSeatTypeForContract(
-    contract,
-    productSeatTypes,
-    {
-      isReturningMember,
-      useFreeSeat,
-      freeSeatCounts,
-      freeSeatLimits: {
-        maxActiveFreeUsers: planLimits.maxFreeUsers,
-        maxLifetimeFreeUsers: planLimits.maxLifetimeFreeUsers,
-      },
-      seatLimits,
-      seatCounts,
-    }
-  );
-  if (!defaultSeatType) {
-    throw new Error(
-      `Cannot resolve a seat type for user ${user.sId} in workspace ${workspace.sId}: contract has seat subscriptions but no tier is assignable${isReturningMember ? " (returning user; `free` is one-shot)" : ""}.`
-    );
-  }
-  return defaultSeatType;
+  return getDefaultSeatTypeForContract(contract, productSeatTypes, {
+    isReturningMember,
+    useFreeSeat,
+    freeSeatCounts,
+    freeSeatLimits: {
+      maxActiveFreeUsers: planLimits.maxFreeUsers,
+      maxLifetimeFreeUsers: planLimits.maxLifetimeFreeUsers,
+    },
+    seatLimits,
+    seatCounts,
+  });
 }
 
 /**
