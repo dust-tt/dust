@@ -67,4 +67,7 @@ npx tsc --noEmit
 step "vitest (RPC client + worker + kit integration)"
 npx vitest run
 
+step "demo app production build (vite)"
+npm run app:build --silent
+
 printf '\n\033[1;32mALL CHECKS GREEN\033[0m\n'

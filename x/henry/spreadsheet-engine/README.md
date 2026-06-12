@@ -38,6 +38,7 @@ and capped search results — never anything O(workbook).
 | `ts/client` | `@dust/sheet-engine-client`: promise-map RPC over postMessage, `Task<T>` (progress + cancel), latest-wins viewport coalescing, `onFatal` poison notification, FinalizationRegistry close backstop. `src/generated/` is emitted by ts-rs from the Rust structs (freshness-gated); hand-written types cover only protocol plumbing. |
 | `ts/worker` | Worker entry (web) + transport-agnostic `engine-server` + node test host. Streaming `fetch` for URL sources (the payload never touches the main thread). Wasm traps map to the terminal `POISONED` code and poison the instance. |
 | `ts/react` | `useDustSheetController` → kit-compatible `XlsxViewerController` (Strategy A, zero fork). See `ts/react/INTEGRATION.md` for the Phase 0 seam analysis and the non-obvious kit requirements (axis arrays, zoom percentage, revision-vs-paint-tick). |
+| `ts/app` | Demo webapp (Vite + React + Sparkle, styled like the Dust front app): real worker + wasm asset pipeline, sample + hostile corpus files, local file / URL open, find UI, typed error states, POISONED recovery. `npm run app:dev`. |
 | `corpus/` | Committed corpora + goldens + the ≥500-case numfmt golden table. See `corpus/README.md`. |
 | `scripts/` | Gates: determinism, wasm size, SheetJS differential, numfmt table generator, `check-all.sh`. |
 
@@ -52,6 +53,8 @@ cargo test                  # engine: unit + golden + property + differential + 
 npm run build:wasm          # web + nodejs wasm builds (wasm-pack via npm)
 npx vitest run              # RPC client + worker + kit integration (real XlsxViewer)
 ./scripts/check-all.sh      # everything, in CI order
+
+npm run app:dev             # demo webapp (needs build:wasm once first)
 ```
 
 Using it in an app:
@@ -100,20 +103,29 @@ must allow them via `Access-Control-Allow-Headers`.
 ### Wiring a find UI
 
 The engine and RPC sides of search are done; the kit ships no find box, so
-the embedder owns the input + result list. Jumping to a hit:
+the embedder owns the input + result list. The hook exposes the open
+workbook's `handle` for exactly this (do not `close()` it; the hook owns its
+lifecycle). Jumping to a hit:
 
 ```tsx
+const { controller, handle } = useDustSheetController({ client, src, fileName });
+
 const results = await client.search(handle, query, { maxResults: 200 });
 // results.hits: [{ sheet, row, col, a1, snippet }], results.capped
 
 function jumpTo(hit: SearchHit) {
   // 1. Switch tabs if needed. Tab index != workbook sheet index when hidden
-  //    sheets are filtered; map through the indices you built the tabs from.
-  controller.setActiveSheetIndex(sheetIndices.indexOf(hit.sheet));
+  //    sheets are filtered; the controller's tabs carry the mapping.
+  const tab = controller.tabs.find((t) => t.workbookSheetIndex === hit.sheet);
+  if (!tab) return; // hit on a sheet not shown as a tab
+  controller.setActiveTabIndex(tab.index);
   // 2. Select the cell; the kit scrolls the selection into view.
   controller.selectCell({ row: hit.row, col: hit.col });
 }
 ```
+
+`ts/app/src/components/SearchBox.tsx` is a working implementation (debounce,
+stale-result guard, result list, jump).
 
 To search not-yet-loaded sheets, `activateSheet` them first (mind the cell
 budgets) or scope with `{ sheet }` and re-run the search on tab switch.

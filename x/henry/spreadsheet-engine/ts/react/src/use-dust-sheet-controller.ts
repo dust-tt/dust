@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { XlsxCellAddress, XlsxCellRange, XlsxViewerController } from "@extend-ai/react-xlsx";
 
-import type { BatchRow, SheetEngineClient } from "@dust/sheet-engine-client";
+import type { BatchRow, SheetEngineClient, WorkbookHandle } from "@dust/sheet-engine-client";
 import { EngineErrorException } from "@dust/sheet-engine-client";
 
 import { buildController, loadControllerState, toKitRows, toKitSheetData, type ControllerState } from "./controller";
@@ -37,6 +37,12 @@ export interface UseDustSheetControllerOptions {
 export interface DustSheetControllerResult {
   /** Plug into `<XlsxViewer controller={...} />`. Null while loading. */
   controller: XlsxViewerController | null;
+  /**
+   * Open workbook handle, for engine calls the controller does not cover
+   * (e.g. `client.search(handle, ...)` — see README, "Wiring a find UI").
+   * Null until loaded; do not `close()` it, the hook owns its lifecycle.
+   */
+  handle: WorkbookHandle | null;
   loading: boolean;
   /**
    * Typed engine error. `code === "POISONED"` means the worker's wasm
@@ -305,6 +311,7 @@ export function useDustSheetController(options: UseDustSheetControllerOptions): 
 
   return {
     controller,
+    handle: state?.handle ?? null,
     loading: !state && !error && src !== null,
     error,
     truncated: state?.meta.sheets.some((s) => s.truncated) ?? false,

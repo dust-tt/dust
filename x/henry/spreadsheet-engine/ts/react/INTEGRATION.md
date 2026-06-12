@@ -92,6 +92,13 @@ Sparklines, checkbox cell-controls, conditional-format visuals
 methods directly and are inert with `workbook: null`. Charts/images/shapes are
 out of viewer scope. Editing surfaces are stubbed (read-only viewer).
 
+The kit's canvas renderer (`experimentalCanvas`, its default) is also out:
+in 0.10.2 the grid's batch-request window (`viewportRequest`) is derived
+solely from the DOM virtualizer's virtual items, which are empty in canvas
+mode, so `getRowsBatchAsync` is never called and worker-backed cells never
+paint (verified in a real browser). Embedders must pass
+`experimentalCanvas={false}`; revisit on kit upgrades.
+
 ## 5. What the suite asserts (the upgrade safety net)
 
 - Engine-formatted display strings (incl. the 1900-02-29 fake leap day) appear

@@ -7,9 +7,12 @@
   "workspaces": [
     "ts/client",
     "ts/worker",
-    "ts/react"
+    "ts/react",
+    "ts/app"
   ],
   "scripts": {
+    "app:dev": "npm run dev --workspace @dust/sheet-engine-app",
+    "app:build": "npm run build --workspace @dust/sheet-engine-app",
     "build:wasm": "wasm-pack build crates/engine-wasm --target web --out-dir ../../ts/worker/wasm/web --out-name engine && wasm-pack build crates/engine-wasm --target nodejs --out-dir ../../ts/worker/wasm/node --out-name engine",
     "gen:numfmt-table": "node scripts/gen-numfmt-table.mjs",
     "diff:sheetjs": "node scripts/diff-sheetjs.mjs",

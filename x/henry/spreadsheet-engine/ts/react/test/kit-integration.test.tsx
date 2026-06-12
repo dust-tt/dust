@@ -401,6 +401,31 @@ describe("XlsxViewer driven by the Dust engine (zero-fork, out of the box)", () 
     await finish(client);
   });
 
+  it("exposes the workbook handle for embedder search (find-UI recipe)", async () => {
+    const client = newClient();
+    const captured: { handle: import("@dust/sheet-engine-client").WorkbookHandle | null } = { handle: null };
+    function SearchHarness({ bytes }: { bytes: ArrayBuffer }) {
+      const src = React.useMemo(() => ({ bytes }), [bytes]);
+      const { controller, handle } = useDustSheetController({ client, src, fileName: "simple.csv" });
+      captured.handle = handle;
+      if (!controller) {
+        return <div data-testid="loading">loading</div>;
+      }
+      return <XlsxViewer controller={controller} experimentalCanvas={false} readOnly showImages={false} height={800} />;
+    }
+    render(<SearchHarness bytes={corpus("gen/csv/simple.csv")} />);
+
+    await waitFor(() => expect(captured.handle).not.toBeNull(), { timeout: 10_000 });
+    if (!captured.handle) {
+      throw new Error("unreachable");
+    }
+    const results = await client.search(captured.handle, "widget", { maxResults: 10 });
+    expect(results.hits.length).toBeGreaterThan(0);
+    expect(results.hits[0].a1).toMatch(/^[A-Z]+\d+$/);
+
+    await finish(client);
+  });
+
   it("unmount closes the workbook handle", async () => {
     const host = createNodeEngineHost();
     const client = new SheetEngineClient(host);

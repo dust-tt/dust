@@ -14,6 +14,8 @@
       "@dust/sheet-engine-client": ["./ts/client/src/index.ts"],
       "@dust/sheet-engine-client/protocol": ["./ts/client/src/protocol.ts"],
       "@dust/sheet-engine-client/types": ["./ts/client/src/types.ts"],
+      "@dust/sheet-engine-react": ["./ts/react/src/index.ts"],
+      "@dust/sheet-engine-worker": ["./ts/worker/src/worker-entry.ts"],
       "@dust/sheet-engine-worker/engine-server": ["./ts/worker/src/engine-server.ts"],
       "@dust/sheet-engine-worker/node-host": ["./ts/worker/src/node-host.ts"]
     }
