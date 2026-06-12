@@ -26,7 +26,6 @@ import {
 import { CONTEXT_USAGE_PERCENT_THRESHOLDS } from "@app/hooks/conversations/useConversationContextUsage";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import { useHomeDefaultAgent } from "@app/lib/swr/user";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
 import { classNames } from "@app/lib/utils";
 import {
@@ -80,14 +79,6 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   const isMobile = useIsMobile();
   const { agentConfigurations } = useUnifiedAgentConfigurations({
     workspaceId: context.owner.sId,
-  });
-  // Personal default agent to pre-select for new conversations. The actual selection
-  // happens downstream in `useHandleMentions` (the single source of truth), which resolves
-  // this sId against the accessible agent list and falls back to @dust. Mirrors the
-  // server-side `resolveHomeDefaultAgentSId`.
-  const { defaultAgentSId, isHomeDefaultAgentLoading } = useHomeDefaultAgent({
-    workspaceId: context.owner.sId,
-    disabled: !!context.conversation,
   });
   const accessibleAgentIds = useMemo(
     () => new Set(agentConfigurations.map((a) => a.sId)),
@@ -562,8 +553,6 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
           user={context.user}
           onSubmit={context.handleSubmit}
           stickyMentions={autoMentions}
-          homeDefaultAgentSId={defaultAgentSId}
-          isHomeDefaultAgentLoading={isHomeDefaultAgentLoading}
           conversation={context.conversation}
           draftKey={context.draftKey}
           disableAutoFocus={isMobile || hasUserAnswerRequired}

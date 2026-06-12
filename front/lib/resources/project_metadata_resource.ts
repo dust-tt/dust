@@ -172,6 +172,26 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     await this.update({ pinnedFramePath }, transaction);
   }
 
+  async updateDefaultAgentSId(
+    defaultAgentSId: string | null,
+    transaction?: Transaction
+  ) {
+    // check the agent id exists in the system before updating the project metadata
+    if (defaultAgentSId) {
+      const agentExists =
+        await ProjectMetadataModel.sequelize?.models.AgentModel.findOne({
+          where: { sId: defaultAgentSId, workspaceId: this.workspaceId },
+        });
+
+      if (!agentExists) {
+        throw new Error(
+          `Agent with sId ${defaultAgentSId} does not exist in the workspace.`
+        );
+      }
+    }
+    await this.update({ defaultAgentSId }, transaction);
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }
@@ -200,6 +220,7 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       todoGenerationEnabled: this.todoGenerationEnabled,
       lastTodoAnalysisAt: this.lastTodoAnalysisAt?.getTime() ?? null,
       pinnedFramePath: this.pinnedFramePath ?? null,
+      defaultAgentSId: this.defaultAgentSId ?? null,
     };
   }
 }

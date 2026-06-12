@@ -14,7 +14,7 @@ import { useSearchPodConversations } from "@app/hooks/useSearchPodConversations"
 import type { GetSpaceResponseBody } from "@app/lib/api/spaces";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useAppRouter } from "@app/lib/platform";
-import { useHomeDefaultAgent } from "@app/lib/swr/user";
+import { usePodMetadata } from "@app/lib/swr/pods";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   ConversationWithoutContentType,
@@ -98,10 +98,11 @@ export function PodConversationsTab({
     workspaceId: owner.sId,
     podId: podInfo.sId,
   });
-  // Personal default agent (workspace-scoped), applied to new conversations started in
-  // this project too. Resolved downstream in `useHandleMentions`, falling back to @dust.
-  const { defaultAgentSId, isHomeDefaultAgentLoading } = useHomeDefaultAgent({
+  // This pod's default agent, applied to new conversations started here. Resolved
+  // downstream in `useHandleMentions`, falling back to @dust.
+  const { podMetadata, isPodMetadataLoading } = usePodMetadata({
     workspaceId: owner.sId,
+    podId: podInfo.sId,
   });
 
   const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);
@@ -204,8 +205,8 @@ export function PodConversationsTab({
                 space={podInfo}
                 disableAutoFocus={false}
                 placeholder={`Get work done in ${podInfo.name}`}
-                homeDefaultAgentSId={defaultAgentSId}
-                isHomeDefaultAgentLoading={isHomeDefaultAgentLoading}
+                defaultAgentSId={podMetadata?.defaultAgentSId ?? null}
+                isDefaultAgentLoading={isPodMetadataLoading}
               />
             ) : (
               <PodJoinCTA

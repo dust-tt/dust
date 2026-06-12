@@ -109,6 +109,7 @@ app.patch(
         todoGenerationEnabled: body.todoGenerationEnabled ?? false,
         initialTodoAnalysisLookback: body.initialTodoAnalysisLookback ?? null,
         pinnedFramePath: body.pinnedFramePath ?? null,
+        defaultAgentSId: body.defaultAgentSId ?? null,
       });
       if (!body.archive) {
         void launchOrSignalProjectTodoWorkflow({
@@ -154,6 +155,9 @@ app.patch(
       }
       if (body.pinnedFramePath !== undefined) {
         await metadata.updatePinnedFramePath(body.pinnedFramePath);
+      }
+      if (body.defaultAgentSId !== undefined) {
+        await metadata.updateDefaultAgentSId(body.defaultAgentSId);
       }
       if (body.todoGenerationEnabled === true && !priorTodoGenerationEnabled) {
         void launchOrSignalProjectTodoWorkflow({

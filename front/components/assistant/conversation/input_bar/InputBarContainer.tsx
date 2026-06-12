@@ -132,8 +132,8 @@ export interface InputBarContainerProps {
     text: string;
     agentMention?: RichAgentMention | null;
   } | null;
-  homeDefaultAgentSId?: string | null;
-  isHomeDefaultAgentLoading?: boolean;
+  defaultAgentSId?: string | null;
+  isDefaultAgentLoading?: boolean;
   isAgentBuilder?: boolean;
   isCompact?: boolean;
   onExpandInputBar?: () => void;
@@ -171,8 +171,8 @@ const InputBarContainer = ({
   isSubmitting,
   fileUploaderService,
   getDraft,
-  homeDefaultAgentSId,
-  isHomeDefaultAgentLoading,
+  defaultAgentSId,
+  isDefaultAgentLoading,
   isAgentBuilder = false,
   onNodeSelect,
   onNodeUnselect,
@@ -1153,8 +1153,8 @@ const InputBarContainer = ({
     disableAutoFocus,
     editorService,
     getDraft,
-    homeDefaultAgentSId,
-    isHomeDefaultAgentLoading,
+    defaultAgentSId,
+    isDefaultAgentLoading,
     isAgentBuilder,
     pendingInputText,
     selectedAgent,

@@ -1,3 +1,4 @@
+import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { ConfirmContext } from "@app/components/Confirm";
 import { DeletePodDialog } from "@app/components/pod/settings/DeletePodDialog";
 import { PodMembersTable } from "@app/components/pod/settings/PodMembersTable";
@@ -6,6 +7,7 @@ import { SuggestedTasksGenerationTile } from "@app/components/pod/settings/Sugge
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useArchivePod } from "@app/hooks/useArchivePod";
 import type { RichSpaceType } from "@app/lib/api/spaces";
+import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useCheckPodName,
   usePodMetadata,
@@ -16,13 +18,16 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import type { PatchPodMetadataBodyType } from "@app/types/api/internal/spaces";
 import { PatchPodMetadataBodySchema } from "@app/types/api/internal/spaces";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Archive,
+  Avatar,
   Button,
   ContentMessage,
   Globe01,
   Input,
+  Robot,
   ScrollArea,
   SearchInput,
   SliderToggle,
@@ -68,6 +73,38 @@ export function PodSettingsTab({
     owner,
     podId: pod.sId,
   });
+
+  // Default agent for new conversations started in this pod. Stored on pod metadata
+  // (shared across pod members). Resolved downstream in `useHandleMentions`, falling
+  // back to @dust.
+  const { agentConfigurations } = useUnifiedAgentConfigurations({
+    workspaceId: owner.sId,
+  });
+  const displayedDefaultAgent =
+    agentConfigurations.find(
+      (a) => a.sId === (podMetadata?.defaultAgentSId || GLOBAL_AGENTS_SID.DUST)
+    ) ?? null;
+  const saveDefaultAgent = useCallback(
+    async (sId: string | null) => {
+      // Warn about the implications of using another default agentbefore switching.
+      // Resetting back to @dust needs no confirmation.
+      if (sId && sId !== GLOBAL_AGENTS_SID.DUST) {
+        const confirmed = await confirm({
+          title: "Warning",
+          message:
+            "@dust ensures the best experience for users. Changing the default agent may reduce your experience. Are you sure you want to switch to another default agent?",
+          validateVariant: "warning",
+          validateLabel: "Yes",
+          cancelLabel: "No",
+        });
+        if (!confirmed) {
+          return;
+        }
+      }
+      await doUpdateMetadata({ defaultAgentSId: sId });
+    },
+    [confirm, doUpdateMetadata]
+  );
 
   const [podName, setPodName] = useState(pod.name);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -287,6 +324,67 @@ export function PodSettingsTab({
                   }}
                 />
               </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex w-full flex-col gap-2">
+          <div className="heading-lg">Default agent</div>
+          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            The agent pre-selected when anyone starts a new conversation in this
+            Pod. Defaults to @dust.
+          </p>
+          <div className="flex items-center gap-2">
+            {isPodEditor ? (
+              <AgentPicker
+                owner={owner}
+                agents={agentConfigurations}
+                showFooterButtons={false}
+                onItemClick={(agent) => saveDefaultAgent(agent.sId)}
+                pickerButton={
+                  <Button
+                    variant="outline"
+                    isSelect
+                    className="w-fit"
+                    icon={
+                      displayedDefaultAgent
+                        ? () => (
+                            <Avatar
+                              size="xs"
+                              visual={displayedDefaultAgent.pictureUrl}
+                            />
+                          )
+                        : Robot
+                    }
+                    label={displayedDefaultAgent?.name ?? "Dust"}
+                  />
+                }
+              />
+            ) : (
+              <Button
+                variant="outline"
+                disabled
+                className="w-fit"
+                icon={
+                  displayedDefaultAgent
+                    ? () => (
+                        <Avatar
+                          size="xs"
+                          visual={displayedDefaultAgent.pictureUrl}
+                        />
+                      )
+                    : Robot
+                }
+                label={displayedDefaultAgent?.name ?? "Dust"}
+              />
+            )}
+            {isPodEditor && podMetadata?.defaultAgentSId && (
+              <Button
+                variant="ghost"
+                size="sm"
+                label="Reset to default"
+                onClick={() => saveDefaultAgent(null)}
+              />
             )}
           </div>
         </div>
