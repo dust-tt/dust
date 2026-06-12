@@ -1,8 +1,10 @@
 import type { Client } from "@app/lib/model_constructors/client";
 import {
+  accumulatedReasoningToReasoningEvent,
   accumulatedTextToTextEvent,
   messageStartToResponseIdEvent,
   type OutputEventConverters,
+  reasoningDeltaToReasoningDeltaEvent,
   textDeltaToTextDeltaEvent,
 } from "@app/lib/model_constructors/providers/anthropic/converters/output/utils";
 
@@ -20,7 +22,9 @@ export function WithAnthropicOutputConverter<
   {
     messageStartToResponseIdEvent = messageStartToResponseIdEvent;
     textDeltaToTextDeltaEvent = textDeltaToTextDeltaEvent;
+    reasoningDeltaToReasoningDeltaEvent = reasoningDeltaToReasoningDeltaEvent;
     accumulatedTextToTextEvent = accumulatedTextToTextEvent;
+    accumulatedReasoningToReasoningEvent = accumulatedReasoningToReasoningEvent;
   }
 
   return WithAnthropicOutputConverter;
