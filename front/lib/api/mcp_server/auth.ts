@@ -142,7 +142,7 @@ export const mcpServerAuthMiddleware = createMiddleware<{
       });
     }
 
-    c.set("mcpAuth", authResult.value);
+    c.set("mcpAuth", authResult.value.authenticator);
     await next();
   } catch (err) {
     let decoded: JWTPayload | undefined;

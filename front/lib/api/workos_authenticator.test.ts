@@ -96,9 +96,9 @@ describe("getAuthenticatorFromWorkOSClaims", () => {
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      expect(result.value.user().sId).toBe(user.sId);
-      expect(result.value.workspace().sId).toBe(workspace.sId);
-      expect(result.value.role()).toBe("user");
+      expect(result.value.authenticator.user().sId).toBe(user.sId);
+      expect(result.value.authenticator.workspace().sId).toBe(workspace.sId);
+      expect(result.value.authenticator.role()).toBe("user");
     }
   });
 });
