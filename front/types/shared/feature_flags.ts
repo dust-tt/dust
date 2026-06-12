@@ -233,11 +233,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable self-improvement (background analysis of conversations to suggest improvements to skills).",
     stage: "dust_only",
   },
-  self_improvement_beta_tester: {
-    description:
-      "Self-improvement runs for free: consumption is not reported to billing (Metronome or programmatic usage).",
-    stage: "dust_only",
-  },
   collapsible_messages: {
     description: "Enable collapsible messages in conversations",
     stage: "dust_only",
