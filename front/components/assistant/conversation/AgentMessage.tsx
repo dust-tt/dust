@@ -26,7 +26,7 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
-import { useCreditCostMenuItem } from "@app/components/assistant/conversation/useCreditCostMenuItem";
+import { useCreditCostMenuItems } from "@app/components/assistant/conversation/useCreditCostMenuItem";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   CitationsContext,
@@ -233,21 +233,26 @@ export function AgentMessage({
   const [isCopied, copy] = useCopyToClipboard();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   // The streamed message carries a null cost: it is computed and persisted only
-  // after the agentic loop finishes, in the finalize activities. Re-fetch the
-  // message when the menu opens so a freshly-arrived message shows its cost
-  // without a reload. Falls back to the value already on the message otherwise.
+  // after the agentic loop finishes, in the finalize activities. The sub-agent
+  // cost is only aggregated on the single-message fetch (never on the streamed /
+  // listed message). Re-fetch the message when the menu opens so a freshly-
+  // arrived message shows both figures without a reload, and fall back to the
+  // values already on the message otherwise.
   const { message: refreshedMessage } = useConversationMessage({
     conversationId,
     workspaceId: owner.sId,
     messageId: agentMessage.sId,
-    options: { disabled: !isMenuOpen || agentMessage.costCredits != null },
+    options: {
+      disabled: !isMenuOpen || agentMessage.subAgentCostCredits != null,
+    },
   });
-  const refreshedCostCredits =
-    refreshedMessage?.type === "agent_message"
-      ? refreshedMessage.costCredits
-      : null;
-  const creditCostItem = useCreditCostMenuItem({
-    credits: refreshedCostCredits ?? agentMessage.costCredits,
+  const refreshedAgentMessage =
+    refreshedMessage?.type === "agent_message" ? refreshedMessage : null;
+  const creditCostItems = useCreditCostMenuItems({
+    credits: refreshedAgentMessage?.costCredits ?? agentMessage.costCredits,
+    subAgentCredits:
+      refreshedAgentMessage?.subAgentCostCredits ??
+      agentMessage.subAgentCostCredits,
   });
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
@@ -886,9 +891,11 @@ export function AgentMessage({
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            {creditCostItem && (
+            {creditCostItems.length > 0 && (
               <>
-                <DropdownMenuItem {...creditCostItem} />
+                {creditCostItems.map((item, index) => (
+                  <DropdownMenuItem key={`credit-cost-${index}`} {...item} />
+                ))}
                 <DropdownMenuSeparator />
               </>
             )}
