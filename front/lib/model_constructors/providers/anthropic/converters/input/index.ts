@@ -7,6 +7,7 @@ import type { Client } from "@app/lib/model_constructors/client";
 import {
   assistantReasoningMessageToThinkingBlocks,
   assistantTextMessageToTextBlock,
+  assistantToolCallRequestToToolUseBlock,
   conversationToMessages,
   type MessageBlockConverters,
   reasoningToThinkingConfig,
@@ -42,6 +43,8 @@ export function WithAnthropicInputConverter<
     assistantTextMessageToTextBlock = assistantTextMessageToTextBlock;
     assistantReasoningMessageToThinkingBlocks =
       assistantReasoningMessageToThinkingBlocks;
+    assistantToolCallRequestToToolUseBlock =
+      assistantToolCallRequestToToolUseBlock;
 
     conversationToMessages(
       conversation: Payload["conversation"]
