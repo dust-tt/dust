@@ -266,18 +266,7 @@ export const SlashCommandDropdown = forwardRef<
               {emptyMessage}
             </div>
           ) : (
-            <div className={cn("relative", listMaxHeightClassName)}  ref={listRef}>
-                <div className="relative">
-                  <div
-                    ref={topScrollSentinelRef}
-                    className="pointer-events-none absolute left-0 top-0 h-px w-px"
-                    aria-hidden
-                  />
-                  <div
-                    ref={bottomScrollSentinelRef}
-                    className="pointer-events-none absolute bottom-0 left-0 h-px w-px"
-                    aria-hidden
-                  />
+            <div ref={listRef} className={cn("relative", listMaxHeightClassName)}>
                   {items.map((item, index) => {
                     const sectionLabel =
                       item.sectionLabel &&
@@ -308,9 +297,15 @@ export const SlashCommandDropdown = forwardRef<
                           ) : undefined
                         }
                         onClick={() => selectItem(index)}
-                        onPointerMove={(e) => e.preventDefault()}
+                        // onPointerMove only fires on actual pointer movement
+                        // (not when items scroll under a stationary cursor).
+                        // preventDefault stops Radix from setting
+                        // data-highlighted, avoiding a double highlight.
+                        onPointerMove={(e) => {
+                          e.preventDefault();
+                          setSelectedIndex(index);
+                        }}
                         onPointerLeave={(e) => e.preventDefault()}
-                        onMouseEnter={() => setSelectedIndex(index)}
                         className={cn(
                           "group",
                           index === selectedIndex &&
@@ -344,7 +339,6 @@ export const SlashCommandDropdown = forwardRef<
                       </Fragment>
                     );
                   })}
-              </div>
               <div
                 className={cn(
                   "pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-t",
