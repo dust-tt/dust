@@ -48,7 +48,7 @@ import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/l
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
-import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/project-added-as-member";
+import { notifyPodMembersAdded } from "@app/lib/notifications/workflows/pod-added-as-member";
 import { seedInitialPodTasks } from "@app/lib/project_task/seed_initial_pod_tasks";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -365,8 +365,8 @@ export function createProjectManagerTools(
             );
           }
           added.push(...addMembersRes.value.map((user) => user.sId));
-          notifyProjectMembersAdded(auth, {
-            project: pod.toJSON(),
+          notifyPodMembersAdded(auth, {
+            pod: pod.toJSON(),
             addedUserIds: uniqueAddIds,
           });
         }

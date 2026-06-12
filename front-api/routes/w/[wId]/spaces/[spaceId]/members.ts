@@ -4,7 +4,7 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { PatchSpaceMembersRequestBodySchema } from "@app/lib/api/spaces/members";
-import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/project-added-as-member";
+import { notifyPodMembersAdded } from "@app/lib/notifications/workflows/pod-added-as-member";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import { auditLog } from "@app/logger/logger";
@@ -204,8 +204,8 @@ app.patch(
         (id) => !currentMemberIds.has(id)
       );
       if (newlyAddedUserIds.length > 0) {
-        notifyProjectMembersAdded(auth, {
-          project: space.toJSON(),
+        notifyPodMembersAdded(auth, {
+          pod: space.toJSON(),
           addedUserIds: newlyAddedUserIds,
         });
       }
