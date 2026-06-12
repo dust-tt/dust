@@ -232,7 +232,7 @@ export default function SkillBuilder({
           <SkillBuilderRequestedSpacesSection
             initialRequestedSpaceIds={skill?.requestedSpaceIds}
           />
-          {hasFeature("sandbox_tools") && <SkillBuilderFilesSection />}
+          <SkillBuilderFilesSection />
           <SkillBuilderSettingsOrComparisonFooter
             skill={skill}
             hasSelfImprovingSkills={hasSelfImprovingSkills}
