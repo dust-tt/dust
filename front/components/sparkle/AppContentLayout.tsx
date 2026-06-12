@@ -97,6 +97,11 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
 
   return (
     <div className="flex h-dvh flex-col">
+      <SubscriptionEndBanner
+              isAdmin={isAdmin(owner)}
+              owner={owner}
+              subscription={subscription}
+            />
       <div className="flex min-h-0 flex-1 flex-row">
         <Navigation
           hideSidebar={hideSidebar}
@@ -109,7 +114,6 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
           isFullScreen={isFullScreen}
           isMobile={isMobile}
         />
-
         <div
           className={cn(
             "relative flex h-full w-full flex-1 flex-col overflow-x-hidden",
@@ -122,11 +126,6 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
             isMobile={isMobile}
             isFullScreen={isFullScreen}
           >
-            <SubscriptionEndBanner
-              isAdmin={isAdmin(owner)}
-              owner={owner}
-              subscription={subscription}
-            />
             {/* Temporary measure to preserve title existence on smaller screens.
              * Page has no title, prepend empty AppLayoutTitle. */}
             {!hasTitleBar && (
