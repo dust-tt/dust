@@ -741,7 +741,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_usage_mcp"
   | "power_bi_mcp"
   | "reinforced_agents"
-  | "self_improvement_beta_tester"
   | "metronome_billing"
   | "plan_mode"
   | "poke_mcp"
