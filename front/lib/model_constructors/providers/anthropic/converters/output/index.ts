@@ -10,6 +10,7 @@ import {
   type OutputEventConverters,
   reasoningDeltaToReasoningDeltaEvent,
   stopReasonToErrorEvent,
+  streamErrorToErrorEvent,
   textDeltaToTextDeltaEvent,
   toolUseBlockStartToToolCallStartedEvent,
 } from "@app/lib/model_constructors/providers/anthropic/converters/output/utils";
@@ -38,6 +39,7 @@ export function WithAnthropicOutputConverter<
     invalidJsonToolCallToToolCallEvent = invalidJsonToolCallToToolCallEvent;
     messageDeltaUsageToTokenUsageEvent = messageDeltaUsageToTokenUsageEvent;
     stopReasonToErrorEvent = stopReasonToErrorEvent;
+    streamErrorToErrorEvent = streamErrorToErrorEvent;
   }
 
   return WithAnthropicOutputConverter;
