@@ -1,7 +1,6 @@
-import type { McpServerAuthUser } from "@app/lib/api/mcp_server/auth";
 import {
+  parseWorkOSJwtPayload,
   type WorkOSJwtPayload,
-  WorkOSJwtPayloadSchema,
 } from "@app/lib/api/workos";
 import { Authenticator } from "@app/lib/auth";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -9,29 +8,18 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
-import { isLeft } from "fp-ts/lib/Either";
 
-export interface McpAuthenticator extends Authenticator {
+export interface WorkOSWorkspaceAuthenticator extends Authenticator {
   workspace(): WorkspaceType;
   user(): UserResource;
 }
 
-export type McpAuthenticatorError =
+export type WorkOSWorkspaceAuthenticatorError =
   | "organization_missing"
   | "workspace_not_found"
   | "user_not_found"
   | "not_a_member"
   | "invalid_token_payload";
-
-function parseWorkOSJwtPayload(
-  payload: McpServerAuthUser
-): WorkOSJwtPayload | null {
-  const validation = WorkOSJwtPayloadSchema.decode(payload);
-  if (isLeft(validation)) {
-    return null;
-  }
-  return validation.right;
-}
 
 function getOrganizationId(payload: WorkOSJwtPayload): string | null {
   const orgId = payload.org_id;
@@ -39,12 +27,15 @@ function getOrganizationId(payload: WorkOSJwtPayload): string | null {
 }
 
 export async function getAuthenticatorFromWorkOSClaims(
-  payload: McpServerAuthUser
-): Promise<Result<McpAuthenticator, McpAuthenticatorError>> {
-  const workOSToken = parseWorkOSJwtPayload(payload);
-  if (!workOSToken) {
+  payload: unknown
+): Promise<
+  Result<WorkOSWorkspaceAuthenticator, WorkOSWorkspaceAuthenticatorError>
+> {
+  const workOSTokenResult = parseWorkOSJwtPayload(payload);
+  if (workOSTokenResult.isErr()) {
     return new Err("invalid_token_payload");
   }
+  const workOSToken = workOSTokenResult.value;
 
   const organizationId = getOrganizationId(workOSToken);
   if (!organizationId) {
@@ -78,5 +69,5 @@ export async function getAuthenticatorFromWorkOSClaims(
     return new Err("not_a_member");
   }
 
-  return new Ok(auth as McpAuthenticator);
+  return new Ok(auth as WorkOSWorkspaceAuthenticator);
 }

@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { isDevelopment } from "@app/types/shared/env";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
 /**
@@ -27,6 +28,12 @@ export function normalizeOAuthUrl(url: string): string {
 }
 
 export function getMcpResourceServerUrl(): string {
+  // In dev, we do not have the magical ingress redirect so we need to use the API url.
+  if (isDevelopment()) {
+    return normalizeOAuthUrl(
+      EnvironmentConfig.getEnvVariable("DUST_FRONT_API").trim() + "/mcp"
+    );
+  }
   return normalizeOAuthUrl(
     EnvironmentConfig.getEnvVariable("DUST_CLIENT_FACING_URL").trim() + "/mcp"
   );
