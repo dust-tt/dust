@@ -225,6 +225,7 @@ export const supportedImageFileFormats = {
   "image/webp": [".webp"],
   "image/svg+xml": [".svg"],
   "image/bmp": [".bmp"],
+  "image/x-icon": [".ico"],
 } as const;
 
 export const supportedAudioFileFormats = {

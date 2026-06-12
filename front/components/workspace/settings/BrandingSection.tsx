@@ -107,7 +107,7 @@ function BrandingAssetUploader({
 
       <input
         ref={fileInputRef}
-        accept=".jpg,.jpeg,.png,.svg,.webp"
+        accept=".jpg,.jpeg,.png,.svg,.webp,.ico"
         className="hidden"
         onChange={handleFileChange}
         type="file"
@@ -141,7 +141,11 @@ function BrandingAssetUploader({
         </div>
       ) : (
         <EmptyCTA
-          message="SVG, PNG or WebP - Transparent background"
+          message={
+            asset === "favicon"
+              ? "SVG, PNG, WebP or ICO — Square format"
+              : "SVG, PNG or WebP — Transparent background"
+          }
           action={
             busy ? (
               <Spinner size="md" />

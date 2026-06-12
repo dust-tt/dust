@@ -9,10 +9,13 @@
  * Keys are extensionless; content type lives in GCS object metadata.
  */
 
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import type { FileResource } from "@app/lib/resources/file_resource";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -77,6 +80,45 @@ export async function getBrandingAssetState(
 
     return new Err(normalizeError(err));
   }
+}
+
+function buildBrandingAssetPublicUrl(
+  workspace: WorkspaceResource,
+  asset: UserUploadableBrandingAssetName,
+  { version }: { version: string }
+): string {
+  return `${config.getApiBaseUrl()}/api/v1/public/branding/${workspace.sId}/${asset}?v=${version}`;
+}
+
+export async function getWorkspaceBrandingPublicUrls(
+  workspace: WorkspaceResource
+): Promise<{ faviconUrl: string | null; logoUrl: string | null }> {
+  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    workspace.id
+  );
+  if (!subscription?.getPlan().isBrandedFramesAllowed) {
+    return { faviconUrl: null, logoUrl: null };
+  }
+
+  const [logoState, faviconState] = await Promise.all([
+    getBrandingAssetState({ wId: workspace.sId }, "logo"),
+    getBrandingAssetState({ wId: workspace.sId }, "favicon"),
+  ]);
+
+  return {
+    faviconUrl:
+      faviconState.isOk() && faviconState.value
+        ? buildBrandingAssetPublicUrl(workspace, "favicon", {
+            version: faviconState.value.version,
+          })
+        : null,
+    logoUrl:
+      logoState.isOk() && logoState.value
+        ? buildBrandingAssetPublicUrl(workspace, "logo", {
+            version: logoState.value.version,
+          })
+        : null,
+  };
 }
 
 export async function promoteBrandingAsset(

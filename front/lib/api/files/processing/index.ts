@@ -222,9 +222,13 @@ const PROCESSING_BY_CONTENT_TYPE = new Map<
   ["image/gif", { process: processImage, processedContentType: "image/gif" }],
   ["image/webp", { process: processImage, processedContentType: "image/webp" }],
   ["image/bmp", { process: processImage, processedContentType: "image/bmp" }],
-  // SVG: rasterized to PNG to ensure consistent rendering across clients.
+  // SVG/ICO: rasterized to PNG to ensure consistent rendering across clients.
   [
     "image/svg+xml",
+    { process: processImage, processedContentType: "image/png" },
+  ],
+  [
+    "image/x-icon",
     { process: processImage, processedContentType: "image/png" },
   ],
 

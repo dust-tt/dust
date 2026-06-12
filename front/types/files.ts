@@ -419,6 +419,12 @@ export const FILE_FORMATS = {
   "image/webp": { cat: "image", exts: [".webp"], isSafeToDisplay: true },
   "image/svg+xml": { cat: "image", exts: [".svg"], isSafeToDisplay: false },
   "image/bmp": { cat: "image", exts: [".bmp"], isSafeToDisplay: true },
+  "image/x-icon": {
+    cat: "image",
+    exts: [".ico"],
+    isSafeToDisplay: true,
+    allowedFileUploadUseCases: ["workspace_branding"],
+  },
 
   // Structured.
   "text/csv": { cat: "delimited", exts: [".csv"], isSafeToDisplay: true },
