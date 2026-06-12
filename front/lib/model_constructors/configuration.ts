@@ -1,4 +1,4 @@
-import type { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
+import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
 import type { ModelId } from "@app/lib/model_constructors/types/model_ids";
 import type { ProviderApi } from "@app/lib/model_constructors/types/provider_apis";
 import type { ProviderId } from "@app/lib/model_constructors/types/provider_ids";
@@ -17,7 +17,7 @@ export type BaseModelConfiguration = {
   // Capabilities
   contextSize: number;
   maxOutputTokens: number;
-  configSchema: z.ZodType<z.infer<typeof inputConfigSchema>>;
+  configSchema: z.ZodType<InputConfig>;
 
   // Pricing
   tokenPricing: TokenPricing;
