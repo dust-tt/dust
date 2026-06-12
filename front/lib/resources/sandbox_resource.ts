@@ -20,7 +20,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -38,7 +37,6 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { Op } from "sequelize";
-import streamConsumers from "stream/consumers";
 
 interface EnsureSandboxResult {
   freshlyCreated: boolean;
@@ -1040,38 +1038,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     }
 
     return result;
-  }
-
-  /**
-   * Load a skill's file attachments onto this sandbox.
-   * Files are written under /skills/{skillName}/{fileName}.
-   */
-  async loadSkillFiles(
-    auth: Authenticator,
-    skill: SkillResource
-  ): Promise<Result<{ loadedPaths: string[] }, Error>> {
-    const fileAttachments = skill.getFileAttachments();
-    if (fileAttachments.length === 0) {
-      return new Ok({ loadedPaths: [] });
-    }
-
-    const loadedPaths: string[] = [];
-
-    for (const file of fileAttachments) {
-      const targetPath = `/skills/${skill.name}/${file.fileName}`;
-
-      const readStream = file.getReadStream({ auth, version: "original" });
-      const data = await streamConsumers.arrayBuffer(readStream);
-
-      const writeResult = await this.writeFile(auth, targetPath, data);
-      if (writeResult.isErr()) {
-        return writeResult;
-      }
-
-      loadedPaths.push(targetPath);
-    }
-
-    return new Ok({ loadedPaths });
   }
 
   toLogJSON() {

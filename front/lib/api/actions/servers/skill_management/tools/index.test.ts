@@ -1,27 +1,22 @@
 import { ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
+import { isEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockEnableForAgent,
-  mockEnsureSandboxReady,
   mockFetchActiveByName,
-  mockGetFeatureFlags,
-  mockLoadSkillFiles,
+  mockGetFileAttachments,
+  mockLoadSkillFilesToConversation,
 } = vi.hoisted(() => ({
   mockEnableForAgent: vi.fn(),
-  mockEnsureSandboxReady: vi.fn(),
   mockFetchActiveByName: vi.fn(),
-  mockGetFeatureFlags: vi.fn(),
-  mockLoadSkillFiles: vi.fn(),
+  mockGetFileAttachments: vi.fn(),
+  mockLoadSkillFilesToConversation: vi.fn(),
 }));
 
-vi.mock("@app/lib/auth", () => ({
-  getFeatureFlags: mockGetFeatureFlags,
-}));
-
-vi.mock("@app/lib/api/sandbox/lifecycle", () => ({
-  ensureSandboxReady: mockEnsureSandboxReady,
+vi.mock("@app/lib/api/skills/conversation_files", () => ({
+  loadSkillFilesToConversation: mockLoadSkillFilesToConversation,
 }));
 
 vi.mock("@app/lib/resources/skill/skill_resource", () => ({
@@ -38,7 +33,7 @@ describe("skill_management enable_skill tool", () => {
   const conversation = { sId: "conversation-id" };
   const skill = {
     enableForAgent: mockEnableForAgent,
-    getFileAttachments: () => [{ fileId: "file-id" }],
+    getFileAttachments: mockGetFileAttachments,
     name: "commit",
     sId: "skill-id",
   };
@@ -47,18 +42,12 @@ describe("skill_management enable_skill tool", () => {
     vi.clearAllMocks();
 
     mockFetchActiveByName.mockResolvedValue(skill);
-    mockEnableForAgent.mockResolvedValue(new Ok({ alreadyEnabled: false }));
-    mockGetFeatureFlags.mockResolvedValue(["sandbox_tools"]);
-    mockEnsureSandboxReady.mockResolvedValue(
+    mockEnableForAgent.mockResolvedValue({ wasAlreadyEnabled: false });
+    mockGetFileAttachments.mockReturnValue([{ fileName: "SKILL.md" }]);
+    mockLoadSkillFilesToConversation.mockResolvedValue(
       new Ok({
-        sandbox: {
-          loadSkillFiles: mockLoadSkillFiles,
-        },
-        freshlyCreated: false,
+        loadedPaths: ["conversation-conversation-id/skills/commit/SKILL.md"],
       })
-    );
-    mockLoadSkillFiles.mockResolvedValue(
-      new Ok({ loadedPaths: ["/home/agent/.skills/commit/SKILL.md"] })
     );
   });
 
@@ -75,35 +64,65 @@ describe("skill_management enable_skill tool", () => {
     } as never;
   }
 
-  it("ensures the sandbox lifecycle has run before loading skill files", async () => {
+  function getTool() {
     const tool = TOOLS.find((tool) => tool.name === ENABLE_SKILL_TOOL_NAME);
     if (!tool) {
       throw new Error("enable_skill tool not found");
     }
+    return tool;
+  }
 
-    const result = await tool.handler({ skillName: "commit" }, makeExtra());
+  it("loads skill files into the conversation and surfaces their paths", async () => {
+    const result = await getTool().handler({ skillName: "commit" }, makeExtra());
 
     expect(result.isOk()).toBe(true);
-    expect(mockEnsureSandboxReady).toHaveBeenCalledWith(auth, conversation);
-    expect(mockLoadSkillFiles).toHaveBeenCalledWith(auth, skill);
-    expect(mockEnsureSandboxReady.mock.invocationCallOrder[0]).toBeLessThan(
-      mockLoadSkillFiles.mock.invocationCallOrder[0]
-    );
+    expect(mockLoadSkillFilesToConversation).toHaveBeenCalledWith(auth, {
+      skill,
+      conversation,
+    });
+    if (result.isOk()) {
+      const [output] = result.value;
+      if (!isEnableSkillResultOutput(output)) {
+        throw new Error("Expected an enable_skill resource output");
+      }
+      expect(output.resource.text).toContain(
+        "conversation-conversation-id/skills/commit/SKILL.md"
+      );
+    }
   });
 
-  it("surfaces sandbox lifecycle errors", async () => {
-    mockEnsureSandboxReady.mockResolvedValue(
-      new Err(new Error("sandbox setup failed"))
+  it("skips file loading when the skill has no attachments", async () => {
+    mockGetFileAttachments.mockReturnValue([]);
+
+    const result = await getTool().handler({ skillName: "commit" }, makeExtra());
+
+    expect(result.isOk()).toBe(true);
+    expect(mockLoadSkillFilesToConversation).not.toHaveBeenCalled();
+  });
+
+  it("reports file load failures without failing the tool", async () => {
+    mockLoadSkillFilesToConversation.mockResolvedValue(
+      new Err(new Error("GCS copy failed"))
     );
 
-    const tool = TOOLS.find((tool) => tool.name === ENABLE_SKILL_TOOL_NAME);
-    if (!tool) {
-      throw new Error("enable_skill tool not found");
+    const result = await getTool().handler({ skillName: "commit" }, makeExtra());
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      const [output] = result.value;
+      if (!isEnableSkillResultOutput(output)) {
+        throw new Error("Expected an enable_skill resource output");
+      }
+      expect(output.resource.text).toContain("Failed to load skill files");
     }
+  });
 
-    const result = await tool.handler({ skillName: "commit" }, makeExtra());
+  it("does not load files when the skill was already enabled", async () => {
+    mockEnableForAgent.mockResolvedValue({ wasAlreadyEnabled: true });
 
-    expect(result.isErr()).toBe(true);
-    expect(mockLoadSkillFiles).not.toHaveBeenCalled();
+    const result = await getTool().handler({ skillName: "commit" }, makeExtra());
+
+    expect(result.isOk()).toBe(true);
+    expect(mockLoadSkillFilesToConversation).not.toHaveBeenCalled();
   });
 });
