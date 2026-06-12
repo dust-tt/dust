@@ -4,6 +4,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
 import type {
@@ -15,6 +16,7 @@ import { Err, Ok } from "@app/types/shared/result";
 
 export type UpgradeRequestErrorType =
   | "workspace_not_metronome_billed"
+  | "upgrade_requests_disabled"
   | "user_not_found"
   | "request_not_found"
   | "request_not_pending";
@@ -26,6 +28,14 @@ export class UpgradeRequestError extends Error {
   ) {
     super(message);
   }
+}
+
+async function isMemberUpgradeRequestAllowed(
+  auth: Authenticator
+): Promise<boolean> {
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  return config?.allowMemberUpgradeRequests ?? true;
 }
 
 export type GetUpgradeRequestsResponseBody = {
@@ -52,6 +62,15 @@ export async function createUpgradeRequest(
       new UpgradeRequestError(
         "workspace_not_metronome_billed",
         "Upgrade requests are only available on credit-priced workspaces."
+      )
+    );
+  }
+
+  if (!(await isMemberUpgradeRequestAllowed(auth))) {
+    return new Err(
+      new UpgradeRequestError(
+        "upgrade_requests_disabled",
+        "Member-initiated upgrade requests are disabled for this workspace."
       )
     );
   }
@@ -106,6 +125,39 @@ export async function createUpgradeRequest(
   // `upgradeRequestEmail` notification toggle).
 
   return new Ok(request.toJSON());
+}
+
+export type UpgradeRequestAvailability = {
+  canRequestUpgrade: boolean;
+  hasPendingUpgradeRequest: boolean;
+};
+
+export async function getUpgradeRequestAvailabilityForUser(
+  auth: Authenticator,
+  { isNearOrAtLimit }: { isNearOrAtLimit: boolean }
+): Promise<UpgradeRequestAvailability> {
+  const unavailable: UpgradeRequestAvailability = {
+    canRequestUpgrade: false,
+    hasPendingUpgradeRequest: false,
+  };
+
+  const user = auth.user();
+  if (auth.isAdmin() || !isNearOrAtLimit || !user) {
+    return unavailable;
+  }
+
+  if (!(await isMemberUpgradeRequestAllowed(auth))) {
+    return unavailable;
+  }
+
+  const pending = await MembershipUpgradeRequestResource.getPendingForUser(
+    auth,
+    { user }
+  );
+  return {
+    canRequestUpgrade: true,
+    hasPendingUpgradeRequest: pending !== null,
+  };
 }
 
 // Admin-only: list pending upgrade requests for the workspace.

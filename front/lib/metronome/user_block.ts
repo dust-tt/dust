@@ -74,6 +74,8 @@ export type GetWorkspaceUsageStatusResponseBody = {
   // True when the current user has no billable seat in the workspace and is
   // therefore blocked from sending messages.
   noSeat: boolean;
+  canRequestUpgrade: boolean;
+  hasPendingUpgradeRequest: boolean;
 };
 
 export type GetFairUseCreditsResponseBody = {

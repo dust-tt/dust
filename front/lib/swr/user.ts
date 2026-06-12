@@ -287,6 +287,8 @@ export function useWorkspaceUsageStatus({
     programmaticCreditStatus: data?.programmaticCreditStatus ?? "active",
     balanceThresholdReached: data?.balanceThresholdReached ?? false,
     noSeat: data?.noSeat ?? false,
+    canRequestUpgrade: data?.canRequestUpgrade ?? false,
+    hasPendingUpgradeRequest: data?.hasPendingUpgradeRequest ?? false,
     isUsageStatusLoading: !error && !data && !disabled,
   };
 }

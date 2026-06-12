@@ -5,6 +5,7 @@ import {
   isDustCompanyPlan,
   isEnterprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
+import { useRequestUpgrade } from "@app/lib/swr/upgrade_requests";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
 import { useMetronomeContract } from "@app/lib/swr/workspaces";
@@ -14,8 +15,19 @@ import type { SubscriptionType } from "@app/types/plan";
 import { PRETTIFIED_PROVIDER_NAMES } from "@app/types/provider_selection";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
-import { cn, LinkWrapper } from "@dust-tt/sparkle";
+import {
+  Button,
+  cn,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  LinkWrapper,
+} from "@dust-tt/sparkle";
 import { cva, type VariantProps } from "class-variance-authority";
+import { useState } from "react";
 
 const statusBannerVariants = cva("space-y-2 border-y px-3 py-3 text-xs", {
   variants: {
@@ -201,6 +213,84 @@ function SubscriptionPastDueBanner() {
   );
 }
 
+interface RequestUpgradeButtonProps {
+  owner: LightWorkspaceType;
+  hasPendingUpgradeRequest: boolean;
+}
+
+// Footer CTA on the per-user AWU usage banner: lets a warned/capped non-admin
+// member ask their admins to raise their spend limit, behind a single
+// confirmation. Once a request is pending the action is disabled.
+function RequestUpgradeButton({
+  owner,
+  hasPendingUpgradeRequest,
+}: RequestUpgradeButtonProps) {
+  const { doRequestUpgrade } = useRequestUpgrade({ workspaceId: owner.sId });
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [requested, setRequested] = useState(false);
+
+  const alreadyRequested = hasPendingUpgradeRequest || requested;
+
+  async function handleConfirm() {
+    setIsSubmitting(true);
+    try {
+      const ok = await doRequestUpgrade();
+      if (ok) {
+        setRequested(true);
+        setIsDialogOpen(false);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (alreadyRequested) {
+    return <Button size="xs" variant="outline" label="Request sent" disabled />;
+  }
+
+  return (
+    <>
+      <Button
+        size="xs"
+        variant="outline"
+        label="Request an upgrade"
+        onClick={() => setIsDialogOpen(true)}
+      />
+      <Dialog
+        open={isDialogOpen}
+        onOpenChange={(open) => !open && setIsDialogOpen(false)}
+      >
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Request a usage limit upgrade</DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              Your workspace admins will be notified that you'd like your usage
+              limit increased. They'll review your request and get back to you.
+            </p>
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: () => setIsDialogOpen(false),
+            }}
+            rightButtonProps={{
+              label: "Send request",
+              variant: "primary",
+              isLoading: isSubmitting,
+              disabled: isSubmitting,
+              onClick: () => void handleConfirm(),
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 interface UsageStatusBannerProps {
   owner: LightWorkspaceType;
 }
@@ -212,6 +302,8 @@ function UsageStatusBanner({ owner }: UsageStatusBannerProps) {
     programmaticCreditStatus,
     balanceThresholdReached,
     noSeat,
+    canRequestUpgrade,
+    hasPendingUpgradeRequest,
   } = useWorkspaceUsageStatus({ owner });
 
   // Pool balance and programmatic cap banners are only shown to admins who
@@ -242,6 +334,7 @@ function UsageStatusBanner({ owner }: UsageStatusBannerProps) {
     !isMetronomeContractLoading &&
     !contract?.hasPersonalCreditSeats;
   const showAwuBanner = awuStatus !== "normal";
+  const showUpgradeCta = canRequestUpgrade;
   const showProgrammaticBanner =
     isAdmin(owner) && programmaticCreditStatus !== "active";
   // The admin-configured balance-threshold warning is only relevant before the
@@ -298,6 +391,12 @@ function UsageStatusBanner({ owner }: UsageStatusBannerProps) {
           awuStatus === "blocked"
             ? "You can no longer run agents. Contact your admin to increase your limit."
             : "Contact your admin to increase your limit before you are blocked.",
+        footer: showUpgradeCta ? (
+          <RequestUpgradeButton
+            owner={owner}
+            hasPendingUpgradeRequest={hasPendingUpgradeRequest}
+          />
+        ) : undefined,
       };
     }
 
