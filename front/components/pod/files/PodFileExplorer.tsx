@@ -19,6 +19,7 @@ import { PodFrameSheet } from "@app/components/pod/files/PodFrameSheet";
 import { RenameFileDialog } from "@app/components/pod/files/RenameFileDialog";
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import { useFolderPathUrlState } from "@app/hooks/useFolderPathUrlState";
 import { usePinPodBanner } from "@app/hooks/usePinPodBanner";
 import type { ContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
@@ -240,8 +241,8 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
     fileName: string;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [currentFolderPath, setCurrentFolderPath] = useState("");
-  const [navigationResetKey, setNavigationResetKey] = useState(0);
+  const [currentFolderPath, setCurrentFolderPath] =
+    useFolderPathUrlState("folderPath");
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [showCreateFolderDialog, setShowCreateFolderDialog] = useState(false);
   const [itemToRename, setItemToRename] = useState<
@@ -253,7 +254,6 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
     "companyData" | "noCompanyData" | null
   >(null);
 
-  const podMountParentRelativePath = currentFolderPath;
   const isArchived = !!pod.archivedAt;
   const isEditor = pod.isEditor;
   const { togglePin, isPinned } = usePinPodBanner({
@@ -395,7 +395,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         return;
       }
 
-      if (podMountParentRelativePath) {
+      if (currentFolderPath) {
         for (const blob of uploadedBlobs) {
           if (!blob.path) {
             console.error(
@@ -405,7 +405,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
             continue;
           }
           const fileName = blob.path.split("/").pop() ?? blob.filename;
-          const destCanonicalPath = `pod-${pod.sId}/${joinMountRelativePath(podMountParentRelativePath, fileName)}`;
+          const destCanonicalPath = `pod-${pod.sId}/${joinMountRelativePath(currentFolderPath, fileName)}`;
           const moveResult = await movePodFile({
             srcCanonicalPath: blob.path,
             destCanonicalPath,
@@ -423,13 +423,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
 
       await refreshPodFiles();
     },
-    [
-      movePodFile,
-      pod.sId,
-      podMountParentRelativePath,
-      podFileUpload,
-      refreshPodFiles,
-    ]
+    [movePodFile, pod.sId, currentFolderPath, podFileUpload, refreshPodFiles]
   );
 
   const handleFileChange = useCallback(
@@ -667,7 +661,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
       }
 
       await refreshPodKnowledge();
-      setNavigationResetKey((key) => key + 1);
+      setCurrentFolderPath("");
       return true;
     },
     [
@@ -675,6 +669,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
       contentNodeAttachments,
       refreshPodKnowledge,
       removePodContextContentNodes,
+      setCurrentFolderPath,
     ]
   );
 
@@ -729,7 +724,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         onClose={() => setShowCreateFolderDialog(false)}
         onCreated={() => void refreshPodFiles()}
         owner={owner}
-        parentRelativePath={podMountParentRelativePath}
+        parentRelativePath={currentFolderPath}
         podId={pod.sId}
       />
 
@@ -772,7 +767,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         emptyState={hasFiles ? undefined : emptyState}
         files={podGCSFiles}
         getFileUrl={getFileUrl}
-        navigationResetKey={navigationResetKey}
+        currentFolderPath={currentFolderPath}
         onCurrentFolderChange={setCurrentFolderPath}
         onFileDownload={onFileDownload}
         onDelete={!isArchived ? onDelete : undefined}
