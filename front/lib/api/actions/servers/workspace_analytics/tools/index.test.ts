@@ -29,6 +29,7 @@ describe("workspace_analytics tools", () => {
     "get_agent_details",
     "get_top_skills",
     "get_top_tools",
+    "get_source_breakdown",
     "get_credit_usage",
     "get_credit_timeseries",
     "get_usage_timeseries",

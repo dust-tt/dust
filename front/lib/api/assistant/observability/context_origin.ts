@@ -1,3 +1,4 @@
+import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
 import {
   bucketsToArray,
   formatDateFromMillis,
@@ -54,6 +55,31 @@ export type ContextOriginBucket = {
   origin: string;
   count: number;
 };
+
+export type LabeledSource = {
+  label: string;
+  count: number;
+};
+
+// Maps raw context_origin buckets to the dashboard's display labels, merging
+// origins that share a label (e.g. triggered + triggered_programmatic ->
+// "Trigger"). Origins outside the visible set — including the "unknown"
+// sentinel — are dropped, mirroring the usage page's source chart.
+export function toLabeledSources(
+  buckets: ContextOriginBucket[]
+): LabeledSource[] {
+  const countByLabel = new Map<string, number>();
+  for (const bucket of buckets) {
+    const label = sourceLabelForOrigin(bucket.origin);
+    if (!label) {
+      continue;
+    }
+    countByLabel.set(label, (countByLabel.get(label) ?? 0) + bucket.count);
+  }
+  return Array.from(countByLabel.entries())
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count);
+}
 
 type ContextOriginAggs = {
   by_origin?: estypes.AggregationsMultiBucketAggregateBase<{
