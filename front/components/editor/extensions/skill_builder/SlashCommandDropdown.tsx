@@ -268,7 +268,7 @@ export const SlashCommandDropdown = forwardRef<
           ) : (
             <div
               ref={listRef}
-              className={cn("relative", listMaxHeightClassName)}
+              className={listMaxHeightClassName}
             >
               {items.map((item, index) => {
                 const sectionLabel =
@@ -345,28 +345,6 @@ export const SlashCommandDropdown = forwardRef<
                   </Fragment>
                 );
               })}
-              <div
-                className={cn(
-                  "pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-t",
-                  "from-transparent via-background/65 to-background opacity-0 transition-opacity duration-200",
-                  "dark:via-muted-background-night/65 dark:to-muted-background-night",
-                  showScrollFade &&
-                    scrollFadeState.hasContentAbove &&
-                    "opacity-100"
-                )}
-                aria-hidden
-              />
-              <div
-                className={cn(
-                  "pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-b",
-                  "from-transparent via-background/65 to-background opacity-0 transition-opacity duration-200",
-                  "dark:via-muted-background-night/65 dark:to-muted-background-night",
-                  showScrollFade &&
-                    scrollFadeState.hasContentBelow &&
-                    "opacity-100"
-                )}
-                aria-hidden
-              />
             </div>
           )}
         </DropdownMenuContent>
