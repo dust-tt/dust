@@ -72,9 +72,10 @@ export async function runAgentLoopWorker() {
     connection,
     namespace,
     shutdownGraceTime: SHUTDOWN_GRACE_TIME_MS,
-    // This also bounds the time until an activity may receive a cancellation signal.
+    // This also bounds the time until an activity may receive a cancellation signal. Kept low so
+    // skip/stop aborts the in-flight LLM call quickly.
     // See https://docs.temporal.io/encyclopedia/detecting-activity-failures#throttling
-    maxHeartbeatThrottleInterval: "20 seconds",
+    maxHeartbeatThrottleInterval: "5 seconds",
     maxConcurrentActivityTaskExecutions: 75,
     interceptors: {
       workflowModules: removeNulls([

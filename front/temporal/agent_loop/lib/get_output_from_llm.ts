@@ -11,7 +11,7 @@ import type {
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { Err, Ok } from "@app/types/shared/result";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
-import { CancelledFailure, heartbeat, sleep } from "@temporalio/activity";
+import { CancelledFailure, Context, heartbeat } from "@temporalio/activity";
 
 const LLM_HEARTBEAT_INTERVAL_MS = 10_000;
 // Log heartbeat status periodically to track long-waiting LLM calls.
@@ -87,7 +87,8 @@ function makeLLMTimeoutResponse(kind: LLMStreamTimeoutKind): GetOutputResponse {
 
 // Wraps an async iterator and ensures heartbeat() is called at regular intervals
 // even when the source is slow to yield values.
-async function* withPeriodicHeartbeat<T>(
+// Exported for tests.
+export async function* withPeriodicHeartbeat<T>(
   stream: AsyncIterator<T>,
   activityTimeoutDeadlineMs: number,
   logContext?: {
@@ -138,6 +139,11 @@ async function* withPeriodicHeartbeat<T>(
             Math.min(LLM_HEARTBEAT_INTERVAL_MS, remainingActivityTimeMs)
           );
         }),
+        // Rejects with CancelledFailure as soon as Temporal delivers the activity cancellation
+        // (skip/stop), even while the model is thinking and not emitting any event. The rejection
+        // propagates to the caller and the finally block below closes the LLM stream, aborting
+        // the HTTP connection to the provider.
+        Context.current().cancelled,
       ]);
 
       // Clear the heartbeat timer if the stream event won the race.
@@ -298,17 +304,6 @@ export async function getOutputFromLLMStream(
           type: "shouldRetryMessage",
           content: event.content,
         });
-      }
-
-      // Sleep allows the activity to be cancelled, e.g. on a "Stop agent" request.
-      try {
-        await sleep(1);
-      } catch (err) {
-        if (err instanceof CancelledFailure) {
-          logger.info("Activity cancelled, stopping");
-          return new Err({ type: "shouldReturnNull" });
-        }
-        throw err;
       }
 
       switch (event.type) {
@@ -491,6 +486,12 @@ export async function getOutputFromLLMStream(
     if (err instanceof LLMStreamTimeoutError) {
       await flushParserTokens();
       return makeLLMTimeoutResponse(err.kind);
+    }
+    if (err instanceof CancelledFailure) {
+      // Activity cancelled (skip/stop). The LLM stream has been closed by
+      // withPeriodicHeartbeat's cleanup; exit without publishing anything.
+      logger.info(logContext, "[LLM stream] activity cancelled, stopping");
+      return new Err({ type: "shouldReturnNull" });
     }
     throw err;
   }

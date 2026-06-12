@@ -727,7 +727,8 @@ export async function runModel(
 
   // It is possible that temporal requested activity cancellation but the
   // activity has not yet received the signal. In that case, the agent message
-  // row would have status to cancelled (done via finalizeCancellationActivity).
+  // row already carries a terminal status (cancelled, interrupted, ...) set by
+  // the corresponding finalize activity.
   const messageRes = await ConversationResource.getMessageByIdInConversation(
     auth,
     conversation,
@@ -747,8 +748,11 @@ export async function runModel(
     return null;
   }
 
-  if (messageRow.agentMessage.status === "cancelled") {
-    logger.info("Agent message cancelled, stopping");
+  if (messageRow.agentMessage.status !== "created") {
+    logger.info(
+      { status: messageRow.agentMessage.status },
+      "Agent message already finalized, stopping"
+    );
     return null;
   }
 
