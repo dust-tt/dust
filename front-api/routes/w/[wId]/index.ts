@@ -4,6 +4,7 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { validateDustMcpServerAllowedRedirectUris } from "@app/lib/api/mcp_server/dust_mcp_server_settings";
 import type { GetWorkspaceResponseBody } from "@app/lib/api/workspace";
 import { renameWorkspace } from "@app/lib/api/workspace";
 import { hasFeatureFlag } from "@app/lib/auth";
@@ -151,6 +152,14 @@ const WorkspaceExtensionMcpToolsUpdateBodySchema = z.object({
   disableExtensionMcpTools: z.boolean(),
 });
 
+const WorkspaceDustMcpServerSettingsUpdateBodySchema = z.object({
+  dustMcpServerSettings: z.object({
+    disabled: z.boolean(),
+    acceptAllRedirectUris: z.boolean(),
+    allowedRedirectUris: z.array(z.string()),
+  }),
+});
+
 const WorkspaceOpenProjectsUpdateBodySchema = z.object({
   allowOpenProjects: z.boolean(),
 });
@@ -200,6 +209,7 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceAgentReinforcementUpdateBodySchema,
   WorkspaceReinforcementBatchModeUpdateBodySchema,
   WorkspaceExtensionMcpToolsUpdateBodySchema,
+  WorkspaceDustMcpServerSettingsUpdateBodySchema,
   WorkspaceOpenProjectsUpdateBodySchema,
   WorkspaceManualProjectKnowledgeManagementUpdateBodySchema,
   WorkspaceSandboxAgentEgressRequestsUpdateBodySchema,
@@ -479,6 +489,54 @@ app.post(
       };
       await workspace.updateWorkspaceSettings({ metadata: newMetadata });
       owner.metadata = newMetadata;
+    } else if ("dustMcpServerSettings" in body) {
+      const { dustMcpServerSettings } = body;
+
+      if (
+        !dustMcpServerSettings.disabled &&
+        !dustMcpServerSettings.acceptAllRedirectUris
+      ) {
+        const validation = validateDustMcpServerAllowedRedirectUris(
+          dustMcpServerSettings.allowedRedirectUris
+        );
+        if (validation.isErr()) {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: validation.error.message,
+            },
+          });
+        }
+        dustMcpServerSettings.allowedRedirectUris = validation.value;
+      }
+
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        dustMcpServerDisabled: dustMcpServerSettings.disabled,
+        dustMcpServerAcceptAllRedirectUris:
+          dustMcpServerSettings.acceptAllRedirectUris,
+        dustMcpServerAllowedRedirectUris:
+          dustMcpServerSettings.allowedRedirectUris,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "dust_mcp_server.settings_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          disabled: String(dustMcpServerSettings.disabled),
+          accept_all_redirect_uris: String(
+            dustMcpServerSettings.acceptAllRedirectUris
+          ),
+          allowed_redirect_uris:
+            dustMcpServerSettings.allowedRedirectUris.join(","),
+        },
+      });
     } else if ("allowOpenProjects" in body) {
       const previousMetadata = owner.metadata ?? {};
       const newMetadata = {

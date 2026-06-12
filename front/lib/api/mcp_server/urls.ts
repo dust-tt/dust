@@ -39,6 +39,11 @@ export function getMcpResourceServerUrl(): string {
   );
 }
 
+/** MCP server URL safe to display in client UI (uses public API base URL). */
+export function getMcpResourceServerUrlForClient(): string {
+  return normalizeOAuthUrl(`${config.getApiBaseUrl().trim()}/mcp`);
+}
+
 export function getMcpResourceMetadataUrl(resourceServerUrl: string): URL {
   const url = new URL(resourceServerUrl);
   return new URL(

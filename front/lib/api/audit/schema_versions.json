@@ -26,6 +26,7 @@
   "domain.verification_failed": 2,
   "domain.verified": 2,
   "dsync.connection_deleted": 3,
+  "dust_mcp_server.settings_updated": 1,
   "file.moved": 1,
   "invitation.revoked": 3,
   "invitation.role_updated": 3,
