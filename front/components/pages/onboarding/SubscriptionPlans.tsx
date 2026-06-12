@@ -119,15 +119,17 @@ export function PlanCard({
 }
 
 interface BillingPeriodSwitchProps {
+  defaultValue?: BillingPeriod;
   onValueChange: (period: BillingPeriod) => void;
 }
 
 export function BillingPeriodSwitch({
+  defaultValue = "monthly",
   onValueChange,
 }: BillingPeriodSwitchProps) {
   return (
     <ButtonsSwitchList
-      defaultValue="monthly"
+      defaultValue={defaultValue}
       onValueChange={(value) =>
         onValueChange(value === "yearly" ? "yearly" : "monthly")
       }

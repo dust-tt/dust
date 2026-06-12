@@ -1,3 +1,8 @@
+import { BillingPeriodSwitch } from "@app/components/pages/onboarding/SubscriptionPlans";
+import {
+  getSeatBarClasses,
+  getSeatIconColorClass,
+} from "@app/components/workspace/seat_styles";
 import type {
   CheckoutBillingPeriod,
   CheckoutSeatType,
@@ -24,19 +29,18 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   AlertCircle,
   Avatar,
-  Button,
-  ButtonGroup,
   Card,
-  Chip,
-  Cube01,
+  cn,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Hexagon01,
-  SeatMax,
+  Icon,
+  LayerSingle,
+  LayersThree01,
+  LayersTwo01,
 } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 
@@ -63,18 +67,22 @@ function toCheckoutParams(
   }
 }
 
-// Per-seat-type display icon. The label / name comes from the API
+// Per-seat-type display icon, matching the plan-selection pages
+// (SubscriptionPlans.tsx). The label / name comes from the API
 // (`SeatTypeInfo.name`) so adding a new seat tier only requires tagging the
 // product in Metronome — no code change here.
-const SEAT_TYPE_ICONS: Record<MembershipSeatType, React.ComponentType> = {
+const SEAT_TYPE_ICONS: Record<
+  MembershipSeatType,
+  React.ComponentType<{ className?: string }>
+> = {
   none: AlertCircle,
-  free: Hexagon01,
-  pro: Cube01,
-  pro_yearly: Cube01,
-  max: SeatMax,
-  max_yearly: SeatMax,
-  workspace: Cube01,
-  workspace_yearly: Cube01,
+  free: LayerSingle,
+  pro: LayersTwo01,
+  pro_yearly: LayersTwo01,
+  max: LayersThree01,
+  max_yearly: LayersThree01,
+  workspace: LayersTwo01,
+  workspace_yearly: LayersTwo01,
 };
 
 // Display order when multiple seat tiers are returned by the endpoint. Seat
@@ -133,13 +141,6 @@ function formatAwuCredits(info: SeatTypeInfo): string {
   }`;
 }
 
-function formatFrequencyLabel(frequency: SeatBillingFrequency): string {
-  if (frequency === "annual") {
-    return "Yearly";
-  }
-  return frequency.charAt(0).toUpperCase() + frequency.slice(1);
-}
-
 // The Metronome product names append SEAT_PRODUCT_YEARLY_SUFFIX to the
 // annual variant (e.g. "Pro Seat (Yearly)"). The billing cadence is conveyed
 // by the tab selector, so the suffix is redundant in the seat card label.
@@ -166,7 +167,14 @@ function SeatCard({
   badge,
   onClick,
 }: SeatCardProps) {
-  const Icon = SEAT_TYPE_ICONS[seatType];
+  const seatIcon = SEAT_TYPE_ICONS[seatType];
+  // Same treatment as PlanCard (SubscriptionPlans.tsx): seat tiers without a
+  // colored bar track map to the muted track, which matches the card
+  // background, so use a contrasting neutral instead.
+  const iconBackgroundClass =
+    seatType.startsWith("pro") || seatType.startsWith("max")
+      ? getSeatBarClasses(seatType).track
+      : "bg-muted dark:bg-muted-night";
 
   return (
     <Card
@@ -178,7 +186,18 @@ function SeatCard({
     >
       <div className="flex w-full items-center justify-between">
         <div className="flex items-center gap-2">
-          {Icon && <Icon />}
+          <div
+            className={cn(
+              "flex h-7 w-7 items-center justify-center rounded-lg",
+              iconBackgroundClass
+            )}
+          >
+            <Icon
+              visual={seatIcon}
+              size="sm"
+              className={getSeatIconColorClass(seatType)}
+            />
+          </div>
           <span className="text-base font-semibold text-foreground dark:text-foreground-night">
             {stripYearlySuffix(info.name)}
           </span>
@@ -336,36 +355,6 @@ export function ChangeSeatModal({
     );
   }
 
-  // Compute the yearly discount as a percentage by comparing the yearly price
-  // to monthly × 12 for the cheapest tier present in both frequencies. Falls
-  // back to no chip when the data doesn't allow a meaningful comparison.
-  function computeYearlyDiscountPercent(): number | null {
-    const yearlyDiscounts: number[] = [];
-    for (const yearlyKey of Object.keys(seatPlans)) {
-      if (!yearlyKey.endsWith("_yearly")) {
-        continue;
-      }
-      const monthlyKey = yearlyKey.slice(0, -"_yearly".length);
-      const yearly = seatPlans[yearlyKey as MembershipSeatType];
-      const monthly = seatPlans[monthlyKey as MembershipSeatType];
-      if (!yearly || !monthly || monthly.priceCents <= 0) {
-        continue;
-      }
-      const expectedYearly = monthly.priceCents * 12;
-      if (yearly.priceCents >= expectedYearly) {
-        continue;
-      }
-      yearlyDiscounts.push(1 - yearly.priceCents / expectedYearly);
-    }
-    if (yearlyDiscounts.length === 0) {
-      return null;
-    }
-    // Use the max discount surfaced — matches "best savings" framing.
-    const max = Math.max(...yearlyDiscounts);
-    return Math.round(max * 100);
-  }
-  const yearlyDiscountPercent = computeYearlyDiscountPercent();
-
   // Member has a scheduled seat change and is re-selecting their current seat to cancel it.
   const isCancellingScheduledChange =
     !!displayedMember?.scheduledSeatType && selectedSeat === currentSeatType;
@@ -461,25 +450,20 @@ export function ChangeSeatModal({
         <DialogContainer>
           <div className="flex flex-col gap-3">
             {availableFrequencies.length > 1 && (
-              <div className="mb-1 flex items-center gap-2 self-start">
-                <ButtonGroup>
-                  {availableFrequencies.map((f) => (
-                    <Button
-                      key={f}
-                      size="sm"
-                      variant={activeFrequency === f ? "primary" : "outline"}
-                      label={formatFrequencyLabel(f)}
-                      onClick={() => setActiveFrequency(f)}
-                    />
-                  ))}
-                </ButtonGroup>
-                {yearlyDiscountPercent !== null && (
-                  <Chip
-                    size="xs"
-                    color="green"
-                    label={`-${yearlyDiscountPercent}%`}
-                  />
-                )}
+              <div className="mb-1 self-start">
+                {/* Remount per member so the uncontrolled switch picks up the
+                    member's current billing frequency as its default. */}
+                <BillingPeriodSwitch
+                  key={displayedMemberId ?? "none"}
+                  defaultValue={
+                    currentFrequency === "annual" ? "yearly" : "monthly"
+                  }
+                  onValueChange={(period) =>
+                    setActiveFrequency(
+                      period === "yearly" ? "annual" : "monthly"
+                    )
+                  }
+                />
               </div>
             )}
 
