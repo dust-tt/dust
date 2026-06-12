@@ -1,7 +1,8 @@
 //! Criterion benchmark floor: parse, viewport, batch, search and numfmt
-//! costs over the committed corpus. Non-gating — `check-all.sh` builds and
-//! runs one fast iteration so regressions in compilation or panics surface;
-//! record numbers locally with `cargo bench -p engine-core`.
+//! costs over the committed corpus. Numbers are non-gating (no committed
+//! baseline yet); `check-all.sh` runs each bench body once (`-- --test`) so
+//! compile breaks and corpus panics surface. Record numbers locally with
+//! `cargo bench -p engine-core --bench engine`.
 
 use criterion::{criterion_group, criterion_main, Criterion};
 

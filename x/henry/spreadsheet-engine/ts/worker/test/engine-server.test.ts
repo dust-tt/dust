@@ -142,6 +142,35 @@ describe("url open guards", () => {
     client.destroy();
   });
 
+  it("default budget boundary pins the engine-core default (400 MB)", async () => {
+    // Just above the mirrored default rejects pre-download; exactly at it
+    // passes the check and proceeds to download/parse (CORRUPT here because
+    // the stub serves no bytes). Catches silent drift between
+    // DEFAULT_MAX_BYTES and OpenOptions::default().max_bytes.
+    const stub = (contentLength: number): typeof fetch => async () => {
+      const response = new Response(null, {
+        status: 200,
+        headers: { "content-length": String(contentLength) },
+      });
+      Object.defineProperty(response, "body", { value: null });
+      response.arrayBuffer = async () => new ArrayBuffer(0);
+      return response;
+    };
+    const defaultMaxBytes = 400 * 1024 * 1024;
+
+    const over = new SheetEngineClient(createNodeEngineHost({ fetchImpl: stub(defaultMaxBytes + 1) }));
+    await expect(over.open({ url: "https://example.invalid/f.xlsx" }, "f.xlsx")).rejects.toMatchObject({
+      code: "BUDGET_EXCEEDED",
+    });
+    over.destroy();
+
+    const at = new SheetEngineClient(createNodeEngineHost({ fetchImpl: stub(defaultMaxBytes) }));
+    await expect(at.open({ url: "https://example.invalid/f.xlsx" }, "f.xlsx")).rejects.toMatchObject({
+      code: "CORRUPT",
+    });
+    at.destroy();
+  });
+
   it("content-length checks against an explicit maxBytes override", async () => {
     const fetchImpl: typeof fetch = async () =>
       new Response(new ReadableStream({ pull() {} }), {

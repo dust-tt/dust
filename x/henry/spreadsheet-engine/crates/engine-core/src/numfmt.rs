@@ -195,6 +195,12 @@ struct Section {
     has_digits: bool,
     has_text: bool,
     is_general: bool,
+    /// Any hour/minute/second/subsecond/AM-PM/elapsed token: decides whether
+    /// display rounding may carry into the date. Precomputed at parse so
+    /// `render_date` does no per-cell token scans.
+    has_time: bool,
+    /// Width of the `.0+` sub-second placeholder, 0 when absent.
+    subsecond_digits: u8,
 }
 
 fn named_color(name: &str) -> Option<&'static str> {
@@ -478,6 +484,28 @@ fn parse_section(src: &str) -> Section {
         .any(|t| matches!(t, Tok::Digit(_) | Tok::Exp { .. }));
     let has_text = toks.iter().any(|t| matches!(t, Tok::Text));
     let is_general = toks.iter().any(|t| matches!(t, Tok::General)) && !has_digits && !has_date;
+    let has_time = toks.iter().any(|t| {
+        matches!(
+            t,
+            Tok::Date(
+                DateTok::Hour { .. }
+                    | DateTok::Minute { .. }
+                    | DateTok::Second { .. }
+                    | DateTok::SubSecond(_)
+                    | DateTok::AmPm { .. }
+                    | DateTok::ElapsedHour(_)
+                    | DateTok::ElapsedMinute(_)
+                    | DateTok::ElapsedSecond(_)
+            )
+        )
+    });
+    let subsecond_digits = toks
+        .iter()
+        .find_map(|t| match t {
+            Tok::Date(DateTok::SubSecond(n)) => Some(*n),
+            _ => None,
+        })
+        .unwrap_or(0);
 
     Section {
         toks,
@@ -487,6 +515,8 @@ fn parse_section(src: &str) -> Section {
         has_digits,
         has_text,
         is_general,
+        has_time,
+        subsecond_digits,
     }
 }
 
@@ -1613,30 +1643,8 @@ fn weekday_from_days(days: i64) -> u32 {
 }
 
 fn render_date(serial: f64, section: &Section, date1904: bool, locale: &Locale) -> String {
-    let subsecond_digits = section
-        .toks
-        .iter()
-        .find_map(|t| match t {
-            Tok::Date(DateTok::SubSecond(n)) => Some(*n),
-            _ => None,
-        })
-        .unwrap_or(0);
-    let has_time_tokens = section.toks.iter().any(|t| {
-        matches!(
-            t,
-            Tok::Date(
-                DateTok::Hour { .. }
-                    | DateTok::Minute { .. }
-                    | DateTok::Second { .. }
-                    | DateTok::SubSecond(_)
-                    | DateTok::AmPm { .. }
-                    | DateTok::ElapsedHour(_)
-                    | DateTok::ElapsedMinute(_)
-                    | DateTok::ElapsedSecond(_)
-            )
-        )
-    });
-    let Some(parts) = serial_to_parts(serial, date1904, subsecond_digits, has_time_tokens) else {
+    let Some(parts) = serial_to_parts(serial, date1904, section.subsecond_digits, section.has_time)
+    else {
         // Negative serial in the 1900 system: Excel shows #########; we emit
         // the error-style marker deterministically.
         return "#####".to_string();

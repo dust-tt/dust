@@ -47,9 +47,13 @@ impl Container {
     }
 
     /// Read and decompress one part. Part names are normalized (leading `/`
-    /// stripped). Returns `Corrupt` if missing or oversized.
+    /// stripped). Returns `Corrupt` if missing or oversized, and
+    /// `BudgetExceeded(Memory)` when the aggregate decompression budget runs
+    /// out — the read itself is bounded by the *remaining* budget, so a
+    /// single high-ratio part can never materialize beyond it.
     pub fn read_part(&mut self, name: &str) -> Result<Vec<u8>> {
         let normalized = name.trim_start_matches('/');
+        let remaining = self.max_total_bytes.saturating_sub(self.total_decompressed);
         let mut file = self
             .archive
             .by_name(normalized)
@@ -60,9 +64,13 @@ impl Container {
                 file.size()
             )));
         }
+        if file.size() > remaining {
+            return Err(EngineError::BudgetExceeded(BudgetKind::Memory));
+        }
+        let cap = self.max_part_bytes.min(remaining);
         let mut buf = Vec::with_capacity(file.size().min(64 * 1024 * 1024) as usize);
         // take() enforces the cap even when the local header lies about size.
-        let mut limited = (&mut file).take(self.max_part_bytes + 1);
+        let mut limited = (&mut file).take(cap + 1);
         limited.read_to_end(&mut buf).map_err(|e| {
             EngineError::Corrupt(format!("failed to decompress '{normalized}': {e}"))
         })?;
@@ -71,10 +79,10 @@ impl Container {
                 "zip part '{normalized}' exceeds size cap"
             )));
         }
-        self.total_decompressed = self.total_decompressed.saturating_add(buf.len() as u64);
-        if self.total_decompressed > self.max_total_bytes {
+        if buf.len() as u64 > remaining {
             return Err(EngineError::BudgetExceeded(BudgetKind::Memory));
         }
+        self.total_decompressed = self.total_decompressed.saturating_add(buf.len() as u64);
         Ok(buf)
     }
 
@@ -242,6 +250,28 @@ mod tests {
                 .as_deref(),
             Some("xl/styles.xml")
         );
+    }
+
+    #[test]
+    fn single_part_larger_than_remaining_budget_fails_typed() {
+        // One 64 KiB part with the aggregate budget pinned below it: the
+        // typed error must fire from the size header / bounded read, never
+        // after materializing the whole part.
+        let mut cursor = Cursor::new(Vec::new());
+        {
+            let mut writer = zip::ZipWriter::new(&mut cursor);
+            writer
+                .start_file::<_, ()>("big.xml", zip::write::FileOptions::default())
+                .unwrap();
+            std::io::Write::write_all(&mut writer, &vec![b'a'; 64 * 1024]).unwrap();
+            writer.finish().unwrap();
+        }
+        let mut c = Container::open(cursor.into_inner()).unwrap();
+        c.max_total_bytes = 32 * 1024;
+        assert!(matches!(
+            c.read_part("big.xml"),
+            Err(EngineError::BudgetExceeded(BudgetKind::Memory))
+        ));
     }
 
     #[test]

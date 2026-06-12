@@ -266,7 +266,7 @@ are internal plumbing (see the `engine-wasm` crate docs).
 | Evil corpus (never panic/hang/OOM; typed outcomes; XSS hyperlinks, zip bombs, rel escapes, hostile names) | `tests/evil.rs` + `corpus/evil/MANIFEST.tsv` | 50+ files |
 | Determinism: native ×2 + wasm byte-identical | `scripts/check-determinism.mjs` | hash-equal |
 | Wasm size | `scripts/check-wasm-size.mjs` | ~245 KiB gz (gate: warn 1.5 MB / fail 2 MB) |
-| Benchmarks (parse, viewport, batch, search, numfmt) | `crates/engine-core/benches` (criterion; compile-gated in check-all, numbers non-gating) | recorded locally |
+| Benchmarks (parse, viewport, batch, search, numfmt) | `crates/engine-core/benches` (criterion; check-all runs one validation pass, numbers non-gating) | recorded locally |
 | RPC layer (cancel, coalescing interleavings, progress monotonicity, leaks, chunked≡one-shot, memory ceiling over 50 cycles, content-length fail-fast, FinalizationRegistry backstop) | `ts/client/test` + `ts/worker/test` (incl. trap-poisoning, destroy/close lifecycle) | 37 tests |
 | **Kit integration: real `<XlsxViewer/>` + real engine** (cell texts incl. formats, styles/merges/hidden geometry in the DOM, hyperlink sanitization, col widths, frozen panes, tabs, truncation banner, typed errors, hook error paths, unmount lifecycle) | `ts/react/test/` | 16 tests |
 

@@ -27,10 +27,10 @@ cargo test -p engine-core --test golden committed_corpus_matches_generator
 step "engine-cli release build"
 cargo build -p engine-cli --release
 
-step "criterion benches compile (record numbers with: cargo bench -p engine-core --bench engine)"
-# Non-gating on numbers (no baseline yet); a bench that stops compiling or
-# panics on the corpus still fails here.
-cargo bench -p engine-core --bench engine --no-run
+step "criterion benches (one validation pass; record numbers with: cargo bench -p engine-core --bench engine)"
+# Non-gating on numbers (no baseline yet); --test runs each bench body once,
+# so a bench that stops compiling or panics on the corpus fails here.
+cargo bench -p engine-core --bench engine -- --test
 
 step "wasm builds (web + nodejs)"
 PATH="$PWD/node_modules/.bin:$PATH" npm run build:wasm --silent

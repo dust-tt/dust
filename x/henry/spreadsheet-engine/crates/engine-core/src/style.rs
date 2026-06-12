@@ -3,8 +3,8 @@
 //! resolved to ARGB at parse time (theme + tint + indexed palette), so the UI
 //! never needs `theme1.xml`.
 
-use std::cell::OnceCell;
 use std::collections::BTreeMap;
+use std::sync::OnceLock;
 
 use serde::Serialize;
 
@@ -166,7 +166,7 @@ pub struct StyleTable {
     /// Per-style pre-parsed number formats, parallel to `styles`. Built
     /// lazily on first formatted render — deterministic (a pure function of
     /// `styles`), and viewport formatting stops re-parsing per cell.
-    parsed_fmts: OnceCell<Vec<ParsedFormat>>,
+    parsed_fmts: OnceLock<Vec<ParsedFormat>>,
 }
 
 impl Default for StyleTable {
@@ -180,7 +180,7 @@ impl StyleTable {
         StyleTable {
             styles,
             theme,
-            parsed_fmts: OnceCell::new(),
+            parsed_fmts: OnceLock::new(),
         }
     }
 

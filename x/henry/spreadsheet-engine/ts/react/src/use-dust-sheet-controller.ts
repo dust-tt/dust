@@ -158,13 +158,15 @@ export function useDustSheetController(options: UseDustSheetControllerOptions): 
         // batch resolving after cleanup cannot setState on a dead component.
         if (!unmountedRef.current) {
           for (const delayMs of [0, 120, 400]) {
-            paintTimersRef.current.push(
-              setTimeout(() => {
-                if (!unmountedRef.current) {
-                  setPaintTick((t) => t + 1);
-                }
-              }, delayMs),
-            );
+            const timer = setTimeout(() => {
+              // Prune the fired timer so the ref doesn't accumulate stale ids
+              // over a long scroll session.
+              paintTimersRef.current = paintTimersRef.current.filter((t) => t !== timer);
+              if (!unmountedRef.current) {
+                setPaintTick((t) => t + 1);
+              }
+            }, delayMs);
+            paintTimersRef.current.push(timer);
           }
         }
         return toKitRows(rows, current.styleCache);

@@ -230,7 +230,7 @@ pub fn build_evil() -> Vec<EvilFile> {
         expectation: "ENCRYPTED",
     });
 
-    // 14. Hyperlink XSS: executable/local URL schemes in every disguise the
+    // 13. Hyperlink XSS: executable/local URL schemes in every disguise the
     // engine must drop (the cells themselves stay). Two safe links act as the
     // positive control.
     {
@@ -277,7 +277,7 @@ pub fn build_evil() -> Vec<EvilFile> {
         });
     }
 
-    // 15. Hostile rel targets that `..`-escape the part namespace. The
+    // 14. Hostile rel targets that `..`-escape the part namespace. The
     // worksheet rel must be treated as missing, never resolved outside the
     // logical part tree.
     {
@@ -303,7 +303,7 @@ pub fn build_evil() -> Vec<EvilFile> {
         });
     }
 
-    // 16. A 1 MB sheet name with embedded control characters: tab rendering
+    // 15. A 1 MB sheet name with embedded control characters: tab rendering
     // must see a short sanitized name, not unbounded DoS bytes.
     {
         let mut wb = GenWorkbook::new();
@@ -320,7 +320,7 @@ pub fn build_evil() -> Vec<EvilFile> {
         });
     }
 
-    // 17. Aggregate zip bomb: each part passes the per-part cap, but the sum
+    // 16. Aggregate zip bomb: each part passes the per-part cap, but the sum
     // (4 x 24 MB from a few-hundred-KB input) exceeds the total-decompression
     // budget. Open succeeds (sheets are lazy); activation must fail typed,
     // never OOM.
@@ -349,7 +349,7 @@ pub fn build_evil() -> Vec<EvilFile> {
         });
     }
 
-    // 18. Misnamed sibling formats: name the real format in the error instead
+    // 17. Misnamed sibling formats: name the real format in the error instead
     // of a generic CORRUPT.
     out.push(EvilFile {
         name: "fake_xlsb.xlsx".to_string(),
@@ -374,7 +374,7 @@ pub fn build_evil() -> Vec<EvilFile> {
         expectation: "UNSUPPORTED_FORMAT",
     });
 
-    // 13. Workbook with zero sheets.
+    // 18. Workbook with zero sheets.
     {
         let parts = vec![
             ("_rels/.rels".to_string(), ROOT_RELS.to_string()),
