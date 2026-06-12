@@ -54,7 +54,6 @@ export interface SlashCommandDropdownProps
   listMaxHeightClassName?: `max-h-${string}`;
   onClose?: () => void;
   onItemDetails?: (item: SlashCommand) => void;
-  showScrollFade?: boolean;
   size?: "default" | "wide";
 }
 
@@ -76,7 +75,6 @@ export const SlashCommandDropdown = forwardRef<
       listMaxHeightClassName = DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME,
       onClose,
       onItemDetails,
-      showScrollFade = false,
       size = "default",
     },
     ref

@@ -228,7 +228,6 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
               }
             : undefined
         }
-        showScrollFade
         size="wide"
       />
     );
