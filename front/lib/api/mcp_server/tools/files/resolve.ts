@@ -2,7 +2,7 @@ import {
   SCOPED_PREFIX_CONVERSATION,
   SCOPED_PREFIX_POD,
 } from "@app/lib/api/file_system";
-import { getAuthenticatorFromMcpContext } from "@app/lib/api/mcp_server/context";
+import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -62,7 +62,8 @@ const inputSchema = {
 };
 
 export function registerFilesResolveTool(server: McpServer) {
-  server.registerTool(
+  registerDustMcpTool(
+    server,
     "files_resolve",
     {
       description:
@@ -71,9 +72,7 @@ export function registerFilesResolveTool(server: McpServer) {
         "Requires an explicit scope with conversation_id or pod_id.",
       inputSchema,
     },
-    async ({ scope, file_id }) => {
-      const auth = getAuthenticatorFromMcpContext();
-
+    async (auth, { scope, file_id }) => {
       const file = await FileResource.fetchById(auth, file_id);
       if (!file) {
         return mcpError(`File not found: \`${file_id}\`.`);

@@ -1,7 +1,7 @@
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import config from "@app/lib/api/config";
 import { DustFileSystem, SCOPED_PREFIX_POD } from "@app/lib/api/file_system";
-import { getAuthenticatorFromMcpContext } from "@app/lib/api/mcp_server/context";
+import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
 import { listProjectContextAttachments } from "@app/lib/api/projects/context";
 import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
@@ -15,15 +15,15 @@ const inputSchema = {
 };
 
 export function registerPodsGetTool(server: McpServer) {
-  server.registerTool(
+  registerDustMcpTool(
+    server,
     "get_pod",
     {
       description:
         "Get information about a Pod: title, description, URL, pinned frame, linked content nodes, and file count.",
       inputSchema,
     },
-    async ({ podId }) => {
-      const auth = getAuthenticatorFromMcpContext();
+    async (auth, { podId }) => {
       const owner = auth.workspace();
       const { nonArchivedSpaces } =
         await listNonArchivedMemberSpacesWithMetadata(auth);

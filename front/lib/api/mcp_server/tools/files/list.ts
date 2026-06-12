@@ -1,4 +1,4 @@
-import { getAuthenticatorFromMcpContext } from "@app/lib/api/mcp_server/context";
+import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { mcpError, mcpJsonResponse } from "../response";
 import { getDustFileSystemForScope, scopedPrefixForScope } from "./context";
@@ -12,7 +12,8 @@ const inputSchema = {
 };
 
 export function registerFilesListTool(server: McpServer) {
-  server.registerTool(
+  registerDustMcpTool(
+    server,
     "files_list",
     {
       description:
@@ -21,9 +22,7 @@ export function registerFilesListTool(server: McpServer) {
         "Requires an explicit conversation_id or pod_id.",
       inputSchema,
     },
-    async ({ scope }) => {
-      const auth = getAuthenticatorFromMcpContext();
-
+    async (auth, { scope }) => {
       const fsResult = await getDustFileSystemForScope(auth, scope);
       if (fsResult.isErr()) {
         return mcpError(fsResult.error);

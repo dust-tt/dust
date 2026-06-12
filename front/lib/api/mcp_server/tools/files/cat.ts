@@ -4,7 +4,7 @@ import {
   CAT_LINES_MAX,
 } from "@app/lib/api/actions/servers/files/metadata";
 import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils";
-import { getAuthenticatorFromMcpContext } from "@app/lib/api/mcp_server/context";
+import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
 import { isLLMVisionSupportedImageContentType } from "@app/types/files";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -119,7 +119,8 @@ async function readTextFilePage(
 }
 
 export function registerFilesCatTool(server: McpServer) {
-  server.registerTool(
+  registerDustMcpTool(
+    server,
     "files_cat",
     {
       description:
@@ -128,9 +129,7 @@ export function registerFilesCatTool(server: McpServer) {
         "Requires an explicit scope with conversation_id or pod_id.",
       inputSchema,
     },
-    async ({ scope, path, offset, limit }) => {
-      const auth = getAuthenticatorFromMcpContext();
-
+    async (auth, { scope, path, offset, limit }) => {
       const pathError = validatePathMatchesScope(path, scope);
       if (pathError) {
         return mcpError(pathError);

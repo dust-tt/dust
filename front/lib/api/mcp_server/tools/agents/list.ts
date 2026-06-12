@@ -1,5 +1,5 @@
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
-import { getAuthenticatorFromMcpContext } from "@app/lib/api/mcp_server/context";
+import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -22,16 +22,15 @@ const inputSchema = {
 };
 
 export function registerAgentsListTool(server: McpServer) {
-  server.registerTool(
+  registerDustMcpTool(
+    server,
     "list_agents",
     {
       description:
         "List agents accessible to the authenticated user in the current workspace (25 per page). Supports cursor pagination via lastValue. Optionally filter by agent name.",
       inputSchema,
     },
-    async ({ name, lastValue }) => {
-      const auth = getAuthenticatorFromMcpContext();
-
+    async (auth, { name, lastValue }) => {
       const agents = await getAgentConfigurationsForView({
         auth,
         agentsGetView: "list",

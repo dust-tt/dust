@@ -3,7 +3,7 @@ import {
   frameFileCreateRejectedError,
   frameFileEditRejectedError,
 } from "@app/lib/api/actions/servers/files/tools/utils";
-import { getAuthenticatorFromMcpContext } from "@app/lib/api/mcp_server/context";
+import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
 import {
   isInteractiveContentType,
   stripMimeParameters,
@@ -32,7 +32,8 @@ const inputSchema = {
 };
 
 export function registerFilesCreateTool(server: McpServer) {
-  server.registerTool(
+  registerDustMcpTool(
+    server,
     "files_create",
     {
       description:
@@ -41,9 +42,7 @@ export function registerFilesCreateTool(server: McpServer) {
         "Requires an explicit scope with conversation_id or pod_id.",
       inputSchema,
     },
-    async ({ scope, path, content, content_type }) => {
-      const auth = getAuthenticatorFromMcpContext();
-
+    async (auth, { scope, path, content, content_type }) => {
       const pathError = validatePathMatchesScope(path, scope);
       if (pathError) {
         return mcpError(pathError);

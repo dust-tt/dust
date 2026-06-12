@@ -4,7 +4,7 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import config from "@app/lib/api/config";
-import { getAuthenticatorFromMcpContext } from "@app/lib/api/mcp_server/context";
+import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -38,15 +38,14 @@ const inputSchema = {
 };
 
 export function registerConversationsCreateTool(server: McpServer) {
-  server.registerTool(
+  registerDustMcpTool(
+    server,
     "create_conversation",
     {
       description: `Create a new conversation in the current workspace. Optionally pass podId to create it in a Pod, and message to post the first user message in the same call (triggers the "${DEFAULT_AGENT_NAME}" agent by default; pass agentName: null to post without triggering any agent).`,
       inputSchema,
     },
-    async ({ title, podId, message, agentName }) => {
-      const auth = getAuthenticatorFromMcpContext();
-
+    async (auth, { title, podId, message, agentName }) => {
       let resolvedSpaceModelId: number | null = null;
       let podName: string | null = null;
 

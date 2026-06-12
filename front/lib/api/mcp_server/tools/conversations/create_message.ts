@@ -3,7 +3,7 @@ import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getConversationApiError } from "@app/lib/api/assistant/conversation/helper";
 import config from "@app/lib/api/config";
-import { getAuthenticatorFromMcpContext } from "@app/lib/api/mcp_server/context";
+import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -26,14 +26,14 @@ const inputSchema = {
 };
 
 export function registerConversationsCreateMessageTool(server: McpServer) {
-  server.registerTool(
+  registerDustMcpTool(
+    server,
     "create_conversation_message",
     {
       description: `Post a user message to an existing conversation. By default triggers the "${DEFAULT_AGENT_NAME}" agent. Pass agentName: null to post without triggering any agent.`,
       inputSchema,
     },
-    async ({ conversationId, message, agentName }) => {
-      const auth = getAuthenticatorFromMcpContext();
+    async (auth, { conversationId, message, agentName }) => {
       const user = auth.user();
 
       const conversationRes = await getConversation(auth, conversationId);

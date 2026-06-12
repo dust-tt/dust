@@ -1,7 +1,7 @@
 import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getConversationApiError } from "@app/lib/api/assistant/conversation/helper";
 import { renderConversationAsText } from "@app/lib/api/assistant/conversation/render_as_text";
-import { getAuthenticatorFromMcpContext } from "@app/lib/api/mcp_server/context";
+import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { mcpJsonResponse } from "../response";
@@ -22,16 +22,15 @@ const inputSchema = {
 };
 
 export function registerConversationsGetMessagesTool(server: McpServer) {
-  server.registerTool(
+  registerDustMcpTool(
+    server,
     "get_conversation_messages",
     {
       description:
         "Fetch a paginated page of messages from a conversation (25 per page, most recent first). Returns human-readable message text. Use lastValue to load older messages.",
       inputSchema,
     },
-    async ({ conversationId, lastValue }) => {
-      const auth = getAuthenticatorFromMcpContext();
-
+    async (auth, { conversationId, lastValue }) => {
       const conversationRes = await getLightConversation(
         auth,
         conversationId,

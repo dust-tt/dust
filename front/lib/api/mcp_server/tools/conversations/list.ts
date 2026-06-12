@@ -1,4 +1,4 @@
-import { getAuthenticatorFromMcpContext } from "@app/lib/api/mcp_server/context";
+import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -30,16 +30,15 @@ const inputSchema = {
 };
 
 export function registerConversationsListTool(server: McpServer) {
-  server.registerTool(
+  registerDustMcpTool(
+    server,
     "list_conversations",
     {
       description:
         "List conversations for the authenticated user in the current workspace (25 per page), sorted by most recently updated. Supports cursor pagination via lastValue. When podId is provided, lists conversations in that Pod instead.",
       inputSchema,
     },
-    async ({ podId, lastValue, orderDirection }) => {
-      const auth = getAuthenticatorFromMcpContext();
-
+    async (auth, { podId, lastValue, orderDirection }) => {
       const resolvedOrderDirection =
         orderDirection ?? LIST_CONVERSATIONS_ORDER_DIRECTION;
 
