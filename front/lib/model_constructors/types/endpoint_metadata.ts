@@ -3,7 +3,7 @@ import type { ProviderApi } from "@app/lib/model_constructors/types/provider_api
 import type { ProviderId } from "@app/lib/model_constructors/types/provider_ids";
 import type { Region } from "@app/lib/model_constructors/types/regions";
 
-export type AgentMetadata = {
+export type EndpointMetadata = {
   providerId: ProviderId;
   api: ProviderApi;
   region: Region;
