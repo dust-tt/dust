@@ -8,6 +8,7 @@ import type {
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type {
   ModelResponseEvent,
+  ReasoningDeltaEvent,
   ReasoningEvent,
   ResponseIdEvent,
   TextDeltaEvent,
@@ -20,7 +21,8 @@ import type {
 export type BlockState = {
   index: number;
   accumulator: string;
-  type: "text";
+  type: "text" | "reasoning";
+  signature?: string;
 };
 
 // The per-signal leaf converters. Composites below take an object satisfying
@@ -35,10 +37,19 @@ export interface OutputEventConverters {
     metadata: EndpointMetadata,
     delta: string
   ): TextDeltaEvent;
+  reasoningDeltaToReasoningDeltaEvent(
+    metadata: EndpointMetadata,
+    delta: string
+  ): ReasoningDeltaEvent;
   accumulatedTextToTextEvent(
     metadata: EndpointMetadata,
     text: string
   ): TextEvent;
+  accumulatedReasoningToReasoningEvent(
+    metadata: EndpointMetadata,
+    text: string,
+    signature?: string
+  ): ReasoningEvent;
 }
 
 // -- Leaf converters: one unified event per Anthropic stream signal --
@@ -61,11 +72,33 @@ export function textDeltaToTextDeltaEvent(
   return { type: "text_delta", content: { value: delta }, metadata };
 }
 
+export function reasoningDeltaToReasoningDeltaEvent(
+  metadata: EndpointMetadata,
+  delta: string
+): ReasoningDeltaEvent {
+  return { type: "reasoning_delta", content: { value: delta }, metadata };
+}
+
 export function accumulatedTextToTextEvent(
   metadata: EndpointMetadata,
   text: string
 ): TextEvent {
   return { type: "text", content: { value: text }, metadata };
+}
+
+export function accumulatedReasoningToReasoningEvent(
+  metadata: EndpointMetadata,
+  text: string,
+  signature?: string
+): ReasoningEvent {
+  return {
+    type: "reasoning",
+    content: { value: text },
+    metadata: {
+      ...metadata,
+      ...(signature ? { content: { signature } } : {}),
+    },
+  };
 }
 
 // -- Composite state machine: depends on the leaf converters --
@@ -80,6 +113,13 @@ export function contentBlockStartToEvents(
   switch (block.type) {
     case "text":
       state.current = { index: event.index, accumulator: "", type: "text" };
+      return [];
+    case "thinking":
+      state.current = {
+        index: event.index,
+        accumulator: "",
+        type: "reasoning",
+      };
       return [];
     default:
       // Other block types are wired in in subsequent commits.
@@ -101,6 +141,21 @@ export function contentBlockDeltaToEvents(
     case "text_delta":
       state.current.accumulator += delta.text;
       return [converters.textDeltaToTextDeltaEvent(metadata, delta.text)];
+    case "thinking_delta":
+      state.current.accumulator += delta.thinking;
+      return [
+        converters.reasoningDeltaToReasoningDeltaEvent(
+          metadata,
+          delta.thinking
+        ),
+      ];
+    case "signature_delta":
+      if (state.current.type === "reasoning") {
+        // Accumulate across deltas: Anthropic may chunk the signature.
+        state.current.signature =
+          (state.current.signature ?? "") + delta.signature;
+      }
+      return [];
     default:
       // Other delta types are wired in in subsequent commits.
       return [];
@@ -122,6 +177,14 @@ export function contentBlockStopToEvents(
     case "text":
       return [
         converters.accumulatedTextToTextEvent(metadata, block.accumulator),
+      ];
+    case "reasoning":
+      return [
+        converters.accumulatedReasoningToReasoningEvent(
+          metadata,
+          block.accumulator,
+          block.signature || undefined
+        ),
       ];
     default:
       // Other block types are wired in in subsequent commits.
