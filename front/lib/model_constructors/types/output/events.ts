@@ -1,25 +1,25 @@
-import type { AgentMetadata } from "@app/lib/model_constructors/types/agent_metadata";
+import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 
 export type ResponseIdContent = { responseId: string };
 
 export interface ResponseIdEvent {
   type: "response_id";
   content: ResponseIdContent;
-  metadata: AgentMetadata;
+  metadata: EndpointMetadata;
 }
 
 export type TextDeltaContent = { value: string };
 export interface TextDeltaEvent {
   type: "text_delta";
   content: TextDeltaContent;
-  metadata: AgentMetadata;
+  metadata: EndpointMetadata;
 }
 
 export type TextContent = { value: string };
 export interface TextEvent {
   type: "text";
   content: TextContent;
-  metadata: AgentMetadata;
+  metadata: EndpointMetadata;
 }
 
 export type ToolCallStartedContent = {
@@ -30,12 +30,12 @@ export type ToolCallStartedContent = {
 export interface ToolCallStartedEvent {
   type: "tool_call_started";
   content: ToolCallStartedContent;
-  metadata: AgentMetadata;
+  metadata: EndpointMetadata;
 }
 
 export interface ToolCallDeltaEvent {
   type: "tool_call_delta";
-  metadata: AgentMetadata;
+  metadata: EndpointMetadata;
 }
 
 export type ToolCallContent = {
@@ -46,21 +46,21 @@ export type ToolCallContent = {
 export interface ToolCallEvent {
   type: "tool_call";
   content: ToolCallContent;
-  metadata: AgentMetadata;
+  metadata: EndpointMetadata;
 }
 
 export type ReasoningDeltaContent = { value: string };
 export interface ReasoningDeltaEvent {
   type: "reasoning_delta";
   content: ReasoningDeltaContent;
-  metadata: AgentMetadata;
+  metadata: EndpointMetadata;
 }
 
 export type ReasoningContent = { value: string };
 export interface ReasoningEvent {
   type: "reasoning";
   content: ReasoningContent;
-  metadata: AgentMetadata;
+  metadata: EndpointMetadata;
 }
 
 export type TokenUsageContent = {
@@ -73,7 +73,7 @@ export type TokenUsageContent = {
 export interface TokenUsageEvent {
   type: "token_usage";
   content: TokenUsageContent;
-  metadata: AgentMetadata;
+  metadata: EndpointMetadata;
 }
 
 export type SuccessContent = {
@@ -82,7 +82,7 @@ export type SuccessContent = {
 export interface SuccessEvent {
   type: "success";
   content: SuccessContent;
-  metadata: AgentMetadata;
+  metadata: EndpointMetadata;
 }
 
 export const ERROR_TYPES = [
@@ -112,7 +112,7 @@ export type ErrorContent = {
 export interface ErrorEvent {
   type: "error";
   content: ErrorContent;
-  metadata: AgentMetadata;
+  metadata: EndpointMetadata;
 }
 
 export type ModelResponseEvent =
