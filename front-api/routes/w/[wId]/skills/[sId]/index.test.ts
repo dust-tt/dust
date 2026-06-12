@@ -739,14 +739,12 @@ describe("PATCH /api/w/:wId/skills/:sId - Suggested skill activation", () => {
 });
 
 describe("PATCH /api/w/:wId/skills/:sId - file attachments", () => {
-  it("should update file attachments when sandbox_tools is enabled", async () => {
+  it("should update file attachments", async () => {
     const { auth, workspace, skill, requestUser, requestUserAuth } =
       await setupTest({
         skillOwnerRole: "builder",
         requestUserRole: "builder",
       });
-
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     const file = await FileFactory.create(auth, requestUser, {
       contentType: "text/plain",
@@ -784,26 +782,6 @@ describe("PATCH /api/w/:wId/skills/:sId - file attachments", () => {
     );
   });
 
-  it("should succeed without file attachments when sandbox_tools is not enabled", async () => {
-    const { workspace, skill } = await setupTest({
-      skillOwnerRole: "builder",
-      requestUserRole: "builder",
-    });
-
-    const response = await patchSkill(workspace, skill.sId, {
-      name: skill.name,
-      agentFacingDescription: "Updated description",
-      userFacingDescription: skill.userFacingDescription,
-      instructions: skill.instructions,
-      icon: null,
-      tools: [],
-      attachedKnowledge: [],
-      instructionsHtml: null,
-    });
-
-    expect(response.status).toBe(200);
-  });
-
   it("should succeed without file attachments", async () => {
     const { workspace, skill } = await setupTest({
       skillOwnerRole: "builder",
@@ -830,8 +808,6 @@ describe("PATCH /api/w/:wId/skills/:sId - file attachments", () => {
         skillOwnerRole: "builder",
         requestUserRole: "builder",
       });
-
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     const file = await FileFactory.create(auth, requestUser, {
       contentType: "text/plain",
