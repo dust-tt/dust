@@ -23,7 +23,7 @@ import {
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import {
   postProcessMarkdown,
   preprocessMarkdownForEditor,
@@ -271,9 +271,7 @@ export function SkillBuilderInstructionsEditor({
   >(null);
   const [selectedServerViewForDetails, setSelectedServerViewForDetails] =
     useState<MCPServerViewType | null>(null);
-  const { hasFeature } = useFeatureFlags();
-  const hasReinforcementFeature =
-    hasFeature("reinforced_agents") && hasFeature("reinforcement_ui");
+  const hasSelfImprovement = useIsSelfImprovementAvailable();
 
   const { field: instructionsField, fieldState: instructionsFieldState } =
     useController<SkillBuilderFormData, typeof INSTRUCTIONS_FIELD_NAME>({
@@ -507,7 +505,7 @@ export function SkillBuilderInstructionsEditor({
     skillId,
     states: ["pending"],
     workspaceId: owner.sId,
-    disabled: !skillId || !hasReinforcementFeature,
+    disabled: !skillId || !hasSelfImprovement,
   });
 
   const hasSuggestions = suggestions.length > 0;

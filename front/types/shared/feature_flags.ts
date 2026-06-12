@@ -230,17 +230,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   reinforced_agents: {
     description:
-      "Enable reinforcement: background analysis of conversations to suggest improvements to skills.",
+      "Enable self-improvement (background analysis of conversations to suggest improvements to skills).",
     stage: "dust_only",
   },
-  reinforcement_ui: {
+  self_improvement_beta_tester: {
     description:
-      "Enable the reinforcement suggestions UI panel in the Skills Builder.",
-    stage: "dust_only",
-  },
-  self_improving_skills_report_usage: {
-    description:
-      "Report reinforcement LLM costs to Metronome, ES analytics, and programmatic usage tracking.",
+      "Self-improvement runs for free: consumption is not reported to billing (Metronome or programmatic usage).",
     stage: "dust_only",
   },
   collapsible_messages: {

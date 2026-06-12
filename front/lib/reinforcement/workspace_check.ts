@@ -1,21 +1,27 @@
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
+import { getReinforcementBillingUnit } from "@app/lib/reinforcement/enforcement";
 import { getLargeWhitelistedModelWithBatchMode } from "@app/lib/reinforcement/models";
 
 /**
  * Check whether reinforcement is enabled for the workspace:
- * - the `reinforced_agents` feature flag must be active, AND
+ * - the `reinforced_agents` feature flag must be active, or the workspace must
+ *   be billed by Metronome on a credit-priced plan, AND
  * - the workspace must have opted in via `allowReinforcement` metadata.
  */
 export async function hasReinforcementEnabled(
   auth: Authenticator
 ): Promise<boolean> {
-  if (!(await hasFeatureFlag(auth, "reinforced_agents"))) {
+  const workspace = auth.getNonNullableWorkspace();
+  if (workspace.metadata?.allowReinforcement !== true) {
     return false;
   }
 
-  const workspace = auth.getNonNullableWorkspace();
-  return workspace.metadata?.allowReinforcement === true;
+  if (getReinforcementBillingUnit(auth) === "awu_credits") {
+    return true;
+  }
+
+  return hasFeatureFlag(auth, "reinforced_agents");
 }
 
 /**

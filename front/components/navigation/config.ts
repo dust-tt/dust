@@ -1,3 +1,4 @@
+import { computeIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { AppType } from "@app/types/app";
 import { hasPermission } from "@app/types/permissions";
@@ -391,15 +392,22 @@ export const subNavigationAdmin = ({
         featureFlag: "sandbox_workspace_admin",
         disabled: !hasWorkspaceAdminPermission,
       },
-      {
-        id: "self_improving_skills",
-        label: "Self-Improving Skills",
-        icon: Stars02,
-        href: `/w/${owner.sId}/developers/self-improving-skills`,
-        current: isCurrent("self_improving_skills"),
-        featureFlag: "reinforcement_ui",
-        disabled: !hasWorkspaceAdminPermission,
-      },
+      ...(computeIsSelfImprovementAvailable({
+        owner,
+        plan: subscription.plan,
+        featureFlags,
+      })
+        ? [
+            {
+              id: "self_improving_skills" as const,
+              label: "Self-Improving Skills",
+              icon: Stars02,
+              href: `/w/${owner.sId}/developers/self-improving-skills`,
+              current: isCurrent("self_improving_skills"),
+              disabled: !hasWorkspaceAdminPermission,
+            },
+          ]
+        : []),
     ],
   });
 
