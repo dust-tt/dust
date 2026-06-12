@@ -17,6 +17,7 @@ import type { Reasoning } from "@app/lib/model_constructors/types/input/configur
 import type {
   BaseAssistantMessage,
   BaseAssistantReasoningMessage,
+  BaseAssistantTextMessage,
   BaseConversation,
   BaseToolCallResultMessage,
   BaseUserImageMessage,
@@ -37,6 +38,9 @@ export interface MessageBlockConverters {
   toolCallResultMessageToToolResultBlock(
     message: BaseToolCallResultMessage
   ): ToolResultBlockParam;
+  assistantTextMessageToTextBlock(
+    message: BaseAssistantTextMessage
+  ): TextBlockParam;
   assistantReasoningMessageToThinkingBlocks(
     message: BaseAssistantReasoningMessage
   ): ThinkingBlockParam[];
@@ -110,6 +114,12 @@ export function toolCallResultMessageToToolResultBlock(
   };
 }
 
+export function assistantTextMessageToTextBlock(
+  message: BaseAssistantTextMessage
+): TextBlockParam {
+  return { type: "text", text: message.content.value };
+}
+
 export function assistantReasoningMessageToThinkingBlocks(
   message: BaseAssistantReasoningMessage
 ): ThinkingBlockParam[] {
@@ -149,6 +159,8 @@ export function assistantMessageToContentBlocks(
   converters: MessageBlockConverters
 ): MessageParam["content"] {
   switch (message.type) {
+    case "text":
+      return [converters.assistantTextMessageToTextBlock(message)];
     case "reasoning":
       return converters.assistantReasoningMessageToThinkingBlocks(message);
     default:
