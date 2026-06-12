@@ -7,6 +7,9 @@ import type {
   ThinkingBlockParam,
   ThinkingConfigAdaptive,
   ThinkingConfigDisabled,
+  Tool,
+  ToolChoiceAuto,
+  ToolChoiceTool,
   ToolResultBlockParam,
   ToolUseBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages";
@@ -14,7 +17,11 @@ import {
   type ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS,
   isAnthropicSupportedNonNullReasoningEffort,
 } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
-import type { Reasoning } from "@app/lib/model_constructors/types/input/configuration";
+import type {
+  OutputFormat,
+  Reasoning,
+  ToolSpecification,
+} from "@app/lib/model_constructors/types/input/configuration";
 import type {
   BaseAssistantMessage,
   BaseAssistantReasoningMessage,
@@ -230,6 +237,38 @@ export function systemMessagesToSystemParam(
 }
 
 // -- Config converters (pure) --
+
+export function outputFormatToOutputConfig(outputFormat: OutputFormat): {
+  format: NonNullable<OutputConfig["format"]>;
+} {
+  return {
+    format: {
+      type: "json_schema",
+      schema: outputFormat.json_schema.schema,
+    },
+  };
+}
+
+export function toolSpecToAnthropicTool(tool: ToolSpecification): Tool {
+  return {
+    name: tool.name,
+    description: tool.description,
+    // Stream tool-call arguments eagerly to avoid hangs on long arguments.
+    // Anthropic no longer validates the JSON, so callers validate at content_block_stop.
+    // https://platform.claude.com/docs/en/agents-and-tools/tool-use/fine-grained-tool-streaming
+    eager_input_streaming: true,
+    input_schema: { type: "object", ...tool.inputSchema },
+  };
+}
+
+export function forceToolNameToToolChoice(
+  tools: ToolSpecification[],
+  forceTool: string | undefined
+): ToolChoiceAuto | ToolChoiceTool {
+  return forceTool && tools.some((tool) => tool.name === forceTool)
+    ? { type: "tool", name: forceTool }
+    : { type: "auto" };
+}
 
 function effortToAnthropicEffort(
   effort: (typeof ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS)[number]

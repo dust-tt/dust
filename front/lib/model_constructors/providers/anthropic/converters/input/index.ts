@@ -9,11 +9,14 @@ import {
   assistantTextMessageToTextBlock,
   assistantToolCallRequestToToolUseBlock,
   conversationToMessages,
+  forceToolNameToToolChoice,
   type MessageBlockConverters,
+  outputFormatToOutputConfig,
   reasoningToThinkingConfig,
   systemMessagesToSystemParam,
   systemMessageToTextBlock,
   toolCallResultMessageToToolResultBlock,
+  toolSpecToAnthropicTool,
   userImageMessageToImageBlock,
   userTextMessageToTextBlock,
 } from "@app/lib/model_constructors/providers/anthropic/converters/input/utils";
@@ -61,10 +64,17 @@ export function WithAnthropicInputConverter<
       config: InputConfig
     ): MessageCreateParamsNonStreaming {
       const { conversation } = payload;
-      const { temperature, reasoning } = config;
+      const {
+        tools = [],
+        temperature,
+        reasoning,
+        forceTool,
+        outputFormat,
+      } = config;
 
       const thinkingConfig = reasoningToThinkingConfig(reasoning);
       const outputConfig = {
+        ...(outputFormat ? outputFormatToOutputConfig(outputFormat) : {}),
         ...("output_config" in thinkingConfig
           ? thinkingConfig.output_config
           : {}),
@@ -76,6 +86,8 @@ export function WithAnthropicInputConverter<
         messages: this.conversationToMessages(conversation),
         system: this.systemMessagesToSystemParam(conversation.system),
         thinking: thinkingConfig.thinking,
+        tools: tools.map((tool) => toolSpecToAnthropicTool(tool)),
+        tool_choice: forceToolNameToToolChoice(tools, forceTool),
         ...(temperature !== undefined ? { temperature } : {}),
         ...(Object.keys(outputConfig).length > 0
           ? { output_config: outputConfig }
