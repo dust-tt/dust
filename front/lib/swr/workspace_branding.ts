@@ -1,14 +1,13 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type {
+  BrandingAssetState,
+  UserUploadableBrandingAssetName,
+} from "@app/lib/api/workspace_branding";
 import { clientFetch } from "@app/lib/egress/client";
-import type { UserUploadableBrandingAssetName } from "@app/lib/api/workspace_branding";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
-
-interface BrandingAssetState {
-  version: string;
-}
 
 interface WorkspaceBrandingData {
   assets: {

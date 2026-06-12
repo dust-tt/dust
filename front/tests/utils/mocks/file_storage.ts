@@ -123,6 +123,7 @@ class FileStorageMock {
         .fn()
         .mockResolvedValue(undefined),
       fetchFileContent: vi.fn().mockResolvedValue("mock content"),
+      fetchFileBuffer: vi.fn().mockResolvedValue(new Uint8Array()),
       copyFile: vi.fn().mockResolvedValue(undefined),
       delete: vi.fn().mockResolvedValue(undefined),
       deleteFiles: vi.fn().mockResolvedValue(undefined),
