@@ -1,0 +1,66 @@
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import type { Authenticator } from "@app/lib/auth";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { Ok, type Result } from "@app/types/shared/result";
+
+/**
+ * Copy a skill's file attachments into the conversation's file system under
+ * `skills/{skillName}/{fileName}` (skill names are unique per workspace).
+ *
+ * Writing through DustFileSystem (rather than the sandbox filesystem) makes the files visible
+ * everywhere the conversation files are: the `files__*` tools, the sandbox gcsfuse mount
+ * (`/files/conversation-{cId}/skills/...`), the conversation files panel, and conversation
+ * branching copies. The write is idempotent: re-enabling a skill overwrites the same paths.
+ *
+ * Returns the canonical scoped paths (`conversation-{cId}/skills/...`) of the loaded files, as
+ * surfaced by the `files__list` tool.
+ */
+export async function loadSkillFilesToConversation(
+  auth: Authenticator,
+  {
+    skill,
+    conversation,
+  }: {
+    skill: SkillResource;
+    conversation: ConversationWithoutContentType;
+  }
+): Promise<Result<{ loadedPaths: string[] }, Error>> {
+  const fileAttachments = skill.getFileAttachments();
+  if (fileAttachments.length === 0) {
+    return new Ok({ loadedPaths: [] });
+  }
+
+  const fsResult = await DustFileSystem.forConversation(auth, conversation);
+  if (fsResult.isErr()) {
+    return fsResult;
+  }
+  const fileSystem = fsResult.value;
+
+  const conversationMount = fileSystem
+    .getMounts()
+    .find((m) => m.kind === "conversation" && m.id === conversation.sId);
+  // `forConversation` always creates the conversation mount.
+  if (!conversationMount) {
+    throw new Error("Conversation mount not found.");
+  }
+
+  const loadedPaths: string[] = [];
+
+  for (const file of fileAttachments) {
+    const scopedPath = `${conversationMount.scopedPrefix}/skills/${skill.name}/${file.fileName}`;
+
+    const writeResult = await fileSystem.write(
+      scopedPath,
+      file.getReadStream({ auth, version: "original" }),
+      file.contentType
+    );
+    if (writeResult.isErr()) {
+      return writeResult;
+    }
+
+    loadedPaths.push(scopedPath);
+  }
+
+  return new Ok({ loadedPaths });
+}

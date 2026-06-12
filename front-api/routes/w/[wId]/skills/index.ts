@@ -6,7 +6,6 @@ import type {
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
 import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
-import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -342,24 +341,9 @@ app.post(
       });
     }
 
-    const featureFlags = await getFeatureFlags(auth);
-
-    // Validate file attachments if provided (gated behind sandbox_tools).
+    // Validate file attachments if provided.
     let files: FileResource[] | undefined;
     if (fileAttachments) {
-      if (
-        !featureFlags.includes("sandbox_tools") &&
-        fileAttachments.length > 0
-      ) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "invalid_request_error",
-            message: "File attachments are not supported.",
-          },
-        });
-      }
-
       const fileAttachmentIds = uniq(fileAttachments.map((f) => f.fileId));
       files = await FileResource.fetchByIds(auth, fileAttachmentIds);
       if (files.length !== fileAttachmentIds.length) {

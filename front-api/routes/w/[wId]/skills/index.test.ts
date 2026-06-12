@@ -5,7 +5,6 @@ import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/discov
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
@@ -971,10 +970,8 @@ describe("POST /api/w/:wId/skills", () => {
 });
 
 describe("POST /api/w/:wId/skills - file attachments", () => {
-  it("creates a skill with file attachments when sandbox_tools is enabled", async () => {
+  it("creates a skill with file attachments", async () => {
     const { auth, workspace, user } = await setupTest("builder");
-
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     const file1 = await FileFactory.create(auth, user, {
       contentType: "text/plain",
@@ -1020,37 +1017,7 @@ describe("POST /api/w/:wId/skills - file attachments", () => {
     expect(createdSkill!.toJSON(auth).fileAttachments).toHaveLength(2);
   });
 
-  it("rejects file attachments when sandbox_tools is not enabled", async () => {
-    const { auth, workspace, user } = await setupTest("admin");
-
-    const file = await FileFactory.create(auth, user, {
-      contentType: "text/plain",
-      fileName: "template.txt",
-      fileSize: 100,
-      status: "ready",
-      useCase: "skill_attachment",
-    });
-
-    const response = await postSkill(workspace, {
-      name: "Skill With Files",
-      agentFacingDescription: "A skill with file attachments",
-      userFacingDescription: "User description",
-      instructions: "Instructions",
-      icon: "PuzzleIcon",
-      tools: [],
-      extendedSkillId: null,
-      attachedKnowledge: [],
-      instructionsHtml: null,
-      fileAttachments: [{ fileId: file.sId }],
-    });
-
-    expect(response.status).toBe(403);
-    expect((await response.json()).error.message).toContain(
-      "File attachments are not supported"
-    );
-  });
-
-  it("succeeds without file attachments when sandbox_tools is not enabled", async () => {
+  it("succeeds without file attachments", async () => {
     const { workspace } = await setupTest("admin");
 
     const response = await postSkill(workspace, {
@@ -1071,8 +1038,6 @@ describe("POST /api/w/:wId/skills - file attachments", () => {
 
   it("rejects file attachments with wrong use case", async () => {
     const { auth, workspace, user } = await setupTest("admin");
-
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     const file = await FileFactory.create(auth, user, {
       contentType: "text/plain",

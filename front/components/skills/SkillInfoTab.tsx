@@ -8,7 +8,6 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSkills } from "@app/lib/swr/skill_configurations";
@@ -44,7 +43,6 @@ export function SkillInfoTab({
   showDescription = true,
 }: SkillInfoTabProps) {
   const [knowledgeItems, setKnowledgeItems] = useState<KnowledgeItem[]>([]);
-  const { hasFeature } = useFeatureFlags();
 
   const showDiscoverableSkills = skill.sId === "discover_skills";
 
@@ -101,7 +99,7 @@ export function SkillInfoTab({
   const showSeparator =
     !!skill.instructions ||
     knowledgeItems.length > 0 ||
-    (hasFeature("sandbox_tools") && skill.fileAttachments.length > 0) ||
+    skill.fileAttachments.length > 0 ||
     sortedMCPServerViews.length > 0 ||
     showChildSkills ||
     showDiscoverableSkills ||
@@ -148,7 +146,7 @@ export function SkillInfoTab({
           </div>
         </div>
       )}
-      {hasFeature("sandbox_tools") && skill.fileAttachments.length > 0 && (
+      {skill.fileAttachments.length > 0 && (
         <div className="flex flex-col gap-4">
           <div className="heading-lg text-foreground dark:text-foreground-night">
             Files

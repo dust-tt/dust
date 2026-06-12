@@ -4,8 +4,7 @@ import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_de
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { SKILL_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/skill_management/metadata";
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
-import { ensureSandboxReady } from "@app/lib/api/sandbox/lifecycle";
-import { getFeatureFlags } from "@app/lib/auth";
+import { loadSkillFilesToConversation } from "@app/lib/api/skills/conversation_files";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -43,36 +42,22 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       ]);
     }
 
-    const featureFlags = await getFeatureFlags(auth);
-    // Load skill file attachments to the sandbox (behind feature flag).
-    if (
-      !featureFlags.includes("sandbox_tools") ||
-      skill.getFileAttachments().length === 0
-    ) {
-      const text = `Skill "${skill.name}" has been enabled.`;
-
-      return new Ok([
-        makeEnableSkillResultOutput({ skillId: skill.sId, text }),
-      ]);
-    }
-
-    const ensureResult = await ensureSandboxReady(auth, conversation);
-    if (ensureResult.isErr()) {
-      return new Err(new MCPError(ensureResult.error.message));
-    }
-
-    const { sandbox } = ensureResult.value;
-
+    // Copy the skill's file attachments into the conversation file system so they are visible to
+    // both the files tools and the sandbox (when one exists).
     let fileMessage: string | null = null;
-    const fileLoadResult = await sandbox.loadSkillFiles(auth, skill);
+    if (skill.getFileAttachments().length > 0) {
+      const fileLoadResult = await loadSkillFilesToConversation(auth, {
+        skill,
+        conversation,
+      });
 
-    // We don't say anything if there are no files to load.
-    if (fileLoadResult.isOk() && fileLoadResult.value.loadedPaths.length > 0) {
-      fileMessage =
-        "Skill files successfully loaded:\n" +
-        fileLoadResult.value.loadedPaths.map((p) => `  - ${p}`).join("\n");
-    } else if (fileLoadResult.isErr()) {
-      fileMessage = `Failed to load skill files: ${fileLoadResult.error.message}`;
+      if (fileLoadResult.isOk()) {
+        fileMessage =
+          "Skill files successfully loaded:\n" +
+          fileLoadResult.value.loadedPaths.map((p) => `  - ${p}`).join("\n");
+      } else {
+        fileMessage = `Failed to load skill files: ${fileLoadResult.error.message}`;
+      }
     }
 
     const text =
