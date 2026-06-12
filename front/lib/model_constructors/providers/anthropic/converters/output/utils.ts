@@ -11,6 +11,7 @@ import type {
 import { parseToolArguments } from "@app/lib/model_constructors/providers/anthropic/converters/input/utils";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type {
+  ErrorEvent,
   ModelResponseEvent,
   ReasoningDeltaEvent,
   ReasoningEvent,
@@ -22,6 +23,7 @@ import type {
   ToolCallEvent,
   ToolCallStartedEvent,
 } from "@app/lib/model_constructors/types/output/events";
+import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
 import {
   assertNever,
   assertNeverAndIgnore,
@@ -151,6 +153,10 @@ export interface OutputEventConverters {
     metadata: EndpointMetadata,
     usage: MessageDeltaUsage
   ): TokenUsageEvent;
+  stopReasonToErrorEvent(
+    metadata: EndpointMetadata,
+    stopReason: string
+  ): ErrorEvent | null;
 }
 
 // -- Leaf converters: one unified event per Anthropic stream signal --
@@ -273,6 +279,29 @@ export function messageDeltaUsageToTokenUsageEvent(
     },
     metadata,
   };
+}
+
+export function stopReasonToErrorEvent(
+  metadata: EndpointMetadata,
+  stopReason: string
+): ErrorEvent | null {
+  switch (stopReason) {
+    case "max_tokens":
+      return buildErrorEvent({
+        metadata,
+        type: "stop_error",
+        message: "The maximum response length was reached.",
+      });
+    case "refusal":
+      return buildErrorEvent({
+        metadata,
+        type: "refusal_error",
+        message:
+          "Claude safety filters prevented this response. Try starting a new conversation or rephrasing your request.",
+      });
+    default:
+      return null;
+  }
 }
 
 // -- Composite state machine: depends on the leaf converters --
@@ -436,10 +465,17 @@ export function contentBlockStopToEvents(
 export function messageDeltaToEvents(
   event: RawMessageDeltaEvent,
   tokenUsage: { usage: MessageDeltaUsage | null },
-  _metadata: EndpointMetadata,
-  _converters: OutputEventConverters
+  metadata: EndpointMetadata,
+  converters: OutputEventConverters
 ): ModelResponseEvent[] {
   tokenUsage.usage = event.usage;
+  const stopReason = event.delta.stop_reason;
+  if (stopReason) {
+    const errorEvent = converters.stopReasonToErrorEvent(metadata, stopReason);
+    if (errorEvent) {
+      return [errorEvent];
+    }
+  }
   return [];
 }
 
