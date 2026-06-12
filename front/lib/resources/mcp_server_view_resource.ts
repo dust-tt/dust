@@ -1191,21 +1191,56 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         ignoreDuplicates: true,
       });
 
-      // ON CONFLICT DO NOTHING has no conflict target, so it also swallows conflicts on the
-      // other unique constraints (e.g. name uniqueness per space). Rows that were not
-      // inserted come back without an id; surface them instead of failing the caller.
+      // Rows that were not inserted come back without an id.
       const createdViewsCount = createdViews.filter((v) =>
         Number.isInteger(v.id)
       ).length;
+
       if (createdViewsCount < missingRows.length) {
-        logger.warn(
-          {
-            workspaceId: workspace.sId,
-            attempted: missingRows.length,
-            created: createdViewsCount,
+        // ON CONFLICT DO NOTHING has no conflict target, so a shortfall is either a benign
+        // race (a concurrent call inserted the same rows; they exist now) or a conflict on
+        // another unique constraint (e.g. name uniqueness per space) that leaves a view
+        // genuinely missing. Re-read to tell them apart; only the latter is an anomaly.
+        const viewsAfterInsert = await MCPServerViewModel.findAll({
+          where: {
+            workspaceId: workspace.id,
+            serverType: "internal",
+            internalMCPServerId: {
+              [Op.in]: autoInternalMCPServerIds,
+            },
+            vaultId: { [Op.in]: [systemSpace.id, globalSpace.id] },
           },
-          "ensureAllAutoToolsAreCreated: some auto MCP server views were not inserted (conflict)."
+        });
+        const presentAfterInsert = new Set(
+          viewsAfterInsert.map((v) => `${v.internalMCPServerId}/${v.vaultId}`)
         );
+        const stillMissingRows = missingRows.filter(
+          (row) =>
+            !presentAfterInsert.has(`${row.internalMCPServerId}/${row.vaultId}`)
+        );
+
+        if (stillMissingRows.length > 0) {
+          logger.warn(
+            {
+              workspaceId: workspace.sId,
+              attempted: missingRows.length,
+              created: createdViewsCount,
+              missingInternalMCPServerIds: removeNulls(
+                stillMissingRows.map((row) => row.internalMCPServerId ?? null)
+              ),
+            },
+            "ensureAllAutoToolsAreCreated: some auto MCP server views could not be inserted (conflict on another unique constraint)."
+          );
+        } else {
+          logger.info(
+            {
+              workspaceId: workspace.sId,
+              attempted: missingRows.length,
+              created: createdViewsCount,
+            },
+            "ensureAllAutoToolsAreCreated: lost insert race, views were created concurrently."
+          );
+        }
       }
 
       return { createdViewsCount };
