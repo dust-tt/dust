@@ -1,5 +1,22 @@
-import { clearActionRequiredIfNoBlockedActions } from "@app/lib/api/assistant/conversation/blocked_actions";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// Mock Redis hybrid manager to prevent it from removing events
+const { removeEventMock } = vi.hoisted(() => ({
+  removeEventMock: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock("@app/lib/api/redis-hybrid-manager", () => ({
+  getRedisHybridManager: vi.fn().mockReturnValue({
+    removeEvent: removeEventMock,
+  }),
+}));
+
+import { updateAgentMessageWithFinalStatus } from "@app/lib/api/assistant/conversation";
+import {
+  cleanupDeniedBlockedActions,
+  clearActionRequiredIfNoBlockedActions,
+} from "@app/lib/api/assistant/conversation/blocked_actions";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
@@ -7,7 +24,6 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
-import { beforeEach, describe, expect, it } from "vitest";
 
 describe("blocked actions resolution", () => {
   let workspace: WorkspaceType;
@@ -15,6 +31,8 @@ describe("blocked actions resolution", () => {
   let conversation: ConversationType;
 
   beforeEach(async () => {
+    vi.clearAllMocks();
+
     const setup = await createResourceTest({});
     workspace = setup.workspace;
     auth = setup.authenticator;
@@ -66,6 +84,157 @@ describe("blocked actions resolution", () => {
     return actionRequired;
   }
 
+  describe("cleanupDeniedBlockedActions", () => {
+    it("denies blocked actions and clears actionRequired when none remain", async () => {
+      const { messageRow, agentMessage, action } =
+        await AgentMCPActionFactory.createWithAgentMessage(auth, {
+          workspace,
+          conversation,
+        });
+
+      await ConversationResource.markAsActionRequired(auth, { conversation });
+      expect(await getActionRequired()).toBe(true);
+
+      await updateAgentMessageWithFinalStatus(auth, {
+        conversation,
+        agentMessage,
+        status: "interrupted",
+      });
+
+      await action.reload();
+      expect(action.status).toBe("denied");
+
+      // The pending approval event was removed from the message channel.
+      expect(removeEventMock).toHaveBeenCalledWith(
+        expect.any(Function),
+        expect.stringContaining(messageRow.sId)
+      );
+
+      expect(await getActionRequired()).toBe(false);
+    });
+
+    it("keeps actionRequired when another message still has a blocked action", async () => {
+      const { agentMessage, action } =
+        await AgentMCPActionFactory.createWithAgentMessage(auth, {
+          workspace,
+          conversation,
+        });
+
+      const { agentMessageRowId: otherAgentMessageRowId } =
+        await createAgentMessageAtRank(3);
+      const { action: otherAction } = await AgentMCPActionFactory.create({
+        workspace,
+        conversationModelId: conversation.id,
+        agentMessageModelId: otherAgentMessageRowId,
+      });
+
+      await ConversationResource.markAsActionRequired(auth, { conversation });
+
+      await updateAgentMessageWithFinalStatus(auth, {
+        conversation,
+        agentMessage,
+        status: "interrupted",
+      });
+
+      await action.reload();
+      expect(action.status).toBe("denied");
+
+      // The other message's blocked action is untouched and keeps the flag up.
+      await otherAction.reload();
+      expect(otherAction.status).toBe("blocked_validation_required");
+      expect(await getActionRequired()).toBe(true);
+    });
+
+    it("still clears a stale actionRequired flag when no blocked action remains", async () => {
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        { name: "Test Agent" }
+      );
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        { workspace, conversation, agentConfig }
+      );
+
+      // Simulate a partial previous run: blocked actions already denied, but the run failed
+      // before clearing the flag. A retry must converge.
+      await ConversationResource.markAsActionRequired(auth, { conversation });
+
+      await cleanupDeniedBlockedActions(auth, {
+        conversation,
+        agentMessage,
+        deniedActions: [],
+      });
+
+      expect(removeEventMock).not.toHaveBeenCalled();
+      expect(await getActionRequired()).toBe(false);
+    });
+
+    it("denies non-approval blocked actions and purges all blocked-action events", async () => {
+      const { messageRow, agentMessage, action } =
+        await AgentMCPActionFactory.createWithAgentMessage(auth, {
+          workspace,
+          conversation,
+          status: "blocked_authentication_required",
+        });
+
+      await updateAgentMessageWithFinalStatus(auth, {
+        conversation,
+        agentMessage,
+        status: "interrupted",
+      });
+
+      await action.reload();
+      expect(action.status).toBe("denied");
+
+      // The removal predicate matches every blocked-action event type of the denied action,
+      // not only approval events.
+      const [predicate, channel] = removeEventMock.mock.calls[0];
+      expect(channel).toContain(messageRow.sId);
+
+      const actionId = AgentMCPActionResource.modelIdToSId({
+        id: action.id,
+        workspaceId: workspace.id,
+      });
+      const makeEvent = (type: string, eventActionId: string) => ({
+        message: {
+          payload: JSON.stringify({ type, actionId: eventActionId }),
+        },
+      });
+      expect(
+        predicate(makeEvent("tool_personal_auth_required", actionId))
+      ).toBe(true);
+      expect(predicate(makeEvent("tool_ask_user_question", actionId))).toBe(
+        true
+      );
+      expect(predicate(makeEvent("tool_approve_execution", actionId))).toBe(
+        true
+      );
+      expect(
+        predicate(makeEvent("tool_approve_execution", "other_action_id"))
+      ).toBe(false);
+    });
+
+    it("commits the deny with the terminal status update", async () => {
+      const { agentMessage } =
+        await AgentMCPActionFactory.createWithAgentMessage(auth, {
+          workspace,
+          conversation,
+        });
+
+      await updateAgentMessageWithFinalStatus(auth, {
+        conversation,
+        agentMessage,
+        status: "interrupted",
+      });
+
+      await expect(
+        AgentMCPActionResource.listBlockedActionsForAgentMessage(auth, {
+          agentMessageId: agentMessage.agentMessageId,
+        })
+      ).resolves.toEqual([]);
+    });
+  });
+
   describe("clearActionRequiredIfNoBlockedActions", () => {
     it("clears the flag when the only blocked action belongs to an unresumable message", async () => {
       const { agentMessageRowId } = await createAgentMessageAtRank(1);
@@ -74,6 +243,9 @@ describe("blocked actions resolution", () => {
         conversationModelId: conversation.id,
         agentMessageModelId: agentMessageRowId,
       });
+
+      // Simulate a legacy stuck conversation: the message was interrupted while its blocked
+      // action was left pending.
       await ConversationFactory.setAgentMessageStatus({
         workspace,
         agentMessageModelId: agentMessageRowId,
@@ -99,12 +271,54 @@ describe("blocked actions resolution", () => {
       });
 
       await ConversationResource.markAsActionRequired(auth, { conversation });
-      expect(await getActionRequired()).toBe(true);
 
       await clearActionRequiredIfNoBlockedActions(auth, {
         conversationId: conversation.sId,
       });
 
+      expect(await getActionRequired()).toBe(true);
+    });
+  });
+
+  describe("updateAgentMessageWithFinalStatus", () => {
+    it("denies blocked actions when the message is interrupted", async () => {
+      const { agentMessage, action } =
+        await AgentMCPActionFactory.createWithAgentMessage(auth, {
+          workspace,
+          conversation,
+        });
+
+      await ConversationResource.markAsActionRequired(auth, { conversation });
+
+      await updateAgentMessageWithFinalStatus(auth, {
+        conversation,
+        agentMessage,
+        status: "interrupted",
+      });
+
+      await action.reload();
+      expect(action.status).toBe("denied");
+      expect(await getActionRequired()).toBe(false);
+    });
+
+    it("leaves blocked actions untouched when the message is gracefully stopped", async () => {
+      const { agentMessage, action } =
+        await AgentMCPActionFactory.createWithAgentMessage(auth, {
+          workspace,
+          conversation,
+        });
+
+      await ConversationResource.markAsActionRequired(auth, { conversation });
+
+      await updateAgentMessageWithFinalStatus(auth, {
+        conversation,
+        agentMessage,
+        status: "gracefully_stopped",
+      });
+
+      // A graceful stop keeps pending approvals actionable.
+      await action.reload();
+      expect(action.status).toBe("blocked_validation_required");
       expect(await getActionRequired()).toBe(true);
     });
   });

@@ -6,6 +6,7 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
+import { cleanupDeniedBlockedActions } from "@app/lib/api/assistant/conversation/blocked_actions";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import {
   getConversationRankVersionLock,
@@ -87,6 +88,7 @@ import {
 import { notifyNewProjectConversation } from "@app/lib/notifications/triggers/project-new-conversation";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -143,6 +145,7 @@ import {
   isCompactionMessageType,
   isPodConversation,
   isUserMessageType,
+  UNRESUMABLE_AGENT_MESSAGE_STATUSES,
 } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
 import {
@@ -3065,6 +3068,7 @@ export async function updateAgentMessageWithFinalStatus(
     promotedUserMessages,
     promotedAuth,
     agentMessage: newAgentMessage,
+    deniedActions,
   } = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
@@ -3089,6 +3093,13 @@ export async function updateAgentMessageWithFinalStatus(
       }
     );
 
+    const deniedActions = UNRESUMABLE_AGENT_MESSAGE_STATUSES.includes(status)
+      ? await AgentMCPActionResource.denyBlockedActionsForAgentMessage(auth, {
+          agentMessageId: agentMessage.agentMessageId,
+          transaction: t,
+        })
+      : [];
+
     // Promote *all* pending messages when the agent loop ends. If a pending message exists it
     // will be promoted and will trigger the ending agentMessage. The `enableSteering` invariants
     // of postUserMessage ensure that we have only one running agentic loop so we can just
@@ -3109,6 +3120,7 @@ export async function updateAgentMessageWithFinalStatus(
         promotedUserMessages: [] as UserMessageTypeWithoutMentions[],
         promotedAuth: auth,
         agentMessage: null as AgentMessageType | null,
+        deniedActions,
       };
     }
 
@@ -3164,6 +3176,7 @@ export async function updateAgentMessageWithFinalStatus(
         promotedUserMessages,
         promotedAuth,
         agentMessage: null,
+        deniedActions,
       };
     }
 
@@ -3175,6 +3188,7 @@ export async function updateAgentMessageWithFinalStatus(
         promotedUserMessages,
         promotedAuth,
         agentMessage: null,
+        deniedActions,
       };
     }
 
@@ -3201,6 +3215,7 @@ export async function updateAgentMessageWithFinalStatus(
       promotedUserMessages,
       promotedAuth,
       agentMessage: agentMessages[0] ?? null,
+      deniedActions,
     };
   });
 
@@ -3245,6 +3260,20 @@ export async function updateAgentMessageWithFinalStatus(
       agentMessages: [newAgentMessage],
       conversation,
       userMessage: promotedUserMessages[promotedUserMessages.length - 1],
+    });
+  }
+
+  // The agent message will never resume: tools still waiting on user input (e.g. a manual
+  // approval that the user skipped by interrupting the message) will never run. They were
+  // denied with the terminal status update; clean up side effects so the conversation doesn't
+  // stay flagged as requiring an action in the inbox. Runs last so a cleanup failure cannot
+  // strand the promoted messages above (the cleanup itself is
+  // idempotent, so an activity retry converges).
+  if (UNRESUMABLE_AGENT_MESSAGE_STATUSES.includes(status)) {
+    await cleanupDeniedBlockedActions(auth, {
+      conversation,
+      agentMessage,
+      deniedActions,
     });
   }
 
