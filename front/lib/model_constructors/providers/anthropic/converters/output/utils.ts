@@ -31,7 +31,10 @@ import type {
   ToolCallStartedEvent,
 } from "@app/lib/model_constructors/types/output/events";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 import { isRecord } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
@@ -480,10 +483,9 @@ export function contentBlockStartToEvents(
           block.name
         ),
       ];
-    case "redacted_thinking":
-    case "server_tool_use":
-    case "web_search_tool_result":
-      return [];
+    // We only surface text, thinking, and tool_use blocks. The content_block
+    // union also includes server-tool result / container blocks (and Anthropic
+    // may add more), all intentionally ignored — so no exhaustiveness check.
     default:
       return [];
   }
@@ -524,7 +526,10 @@ export function contentBlockDeltaToEvents(
     case "citations_delta":
       return [];
     default:
-      assertNever(delta);
+      // Anthropic may add new delta types before we redeploy; ignore them
+      // rather than crashing the stream.
+      assertNeverAndIgnore(delta);
+      return [];
   }
 }
 
@@ -698,7 +703,10 @@ export async function* rawOutputToEvents(
         );
         break;
       default:
-        assertNever(event);
+        // Anthropic may add new stream event types before we redeploy; ignore
+        // them rather than crashing the stream.
+        assertNeverAndIgnore(event);
+        outputEvents = [];
     }
 
     for (const outputEvent of outputEvents) {
@@ -847,6 +855,9 @@ export function batchResultToEvents(
         }),
       ];
     default:
-      assertNever(result);
+      // Anthropic may add new batch result types before we redeploy; ignore
+      // them rather than crashing.
+      assertNeverAndIgnore(result);
+      return [];
   }
 }
