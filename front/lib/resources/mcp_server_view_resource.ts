@@ -33,8 +33,11 @@ import type {
   ResourceFindOptions,
 } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import logger from "@app/logger/logger";
 import { tracer } from "@app/logger/tracer";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import type { PlanType } from "@app/types/plan";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -1039,37 +1042,66 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     }
   }
 
+  /**
+   * Computes the sIds of the auto internal MCP servers enabled for the workspace. This is
+   * the exact set of servers whose views must exist in the system and global spaces.
+   */
+  private static computeEnabledAutoInternalMCPServerIds(
+    workspaceId: ModelId,
+    {
+      featureFlags,
+      isDeepDiveDisabled,
+      plan,
+    }: {
+      featureFlags: WhitelistableFeature[];
+      isDeepDiveDisabled: boolean;
+      plan: PlanType;
+    }
+  ): string[] {
+    const autoInternalMCPServerIds: string[] = [];
+    for (const name of AVAILABLE_INTERNAL_MCP_SERVER_NAMES) {
+      if (!isAutoInternalMCPServerName(name)) {
+        continue;
+      }
+
+      const isEnabled = !INTERNAL_MCP_SERVERS[name].isRestricted?.({
+        featureFlags,
+        isDeepDiveDisabled,
+        plan,
+      });
+      const availability = getAvailabilityOfInternalMCPServerByName(name);
+
+      if (isEnabled && availability !== "manual") {
+        autoInternalMCPServerIds.push(
+          autoInternalMCPServerNameToSId({
+            name,
+            workspaceId,
+          })
+        );
+      }
+    }
+    return autoInternalMCPServerIds;
+  }
+
   static async ensureAllAutoToolsAreCreated(auth: Authenticator): Promise<{
     createdViewsCount: number;
   }> {
     return tracer.trace("ensureAllAutoToolsAreCreated", async () => {
-      const names = AVAILABLE_INTERNAL_MCP_SERVER_NAMES;
-      const featureFlags = await getFeatureFlags(auth);
-      const isDeepDiveDisabled = await isDeepDiveDisabledByAdmin(auth);
+      const workspace = auth.getNonNullableWorkspace();
       const plan = auth.getNonNullablePlan();
 
-      const autoInternalMCPServerIds: string[] = [];
-      for (const name of names) {
-        if (!isAutoInternalMCPServerName(name)) {
-          continue;
-        }
+      const [featureFlags, isDeepDiveDisabled, spaces] = await Promise.all([
+        getFeatureFlags(auth),
+        isDeepDiveDisabledByAdmin(auth),
+        SpaceResource.listWorkspaceDefaultSpaces(auth),
+      ]);
 
-        const isEnabled = !INTERNAL_MCP_SERVERS[name].isRestricted?.({
+      const autoInternalMCPServerIds =
+        this.computeEnabledAutoInternalMCPServerIds(workspace.id, {
           featureFlags,
           isDeepDiveDisabled,
           plan,
         });
-        const availability = getAvailabilityOfInternalMCPServerByName(name);
-
-        if (isEnabled && availability !== "manual") {
-          autoInternalMCPServerIds.push(
-            autoInternalMCPServerNameToSId({
-              name,
-              workspaceId: auth.getNonNullableWorkspace().id,
-            })
-          );
-        }
-      }
 
       if (autoInternalMCPServerIds.length === 0) {
         return { createdViewsCount: 0 };
@@ -1078,27 +1110,6 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       // TODO(mcp): Think this through and determine how / when we create the default internal mcp server views
       // For now, only admins can create the default internal mcp server views otherwise, we would have an assert error
       if (!auth.isAdmin()) {
-        return { createdViewsCount: 0 };
-      }
-
-      // Get system and global spaces
-      const spaces = await SpaceResource.listWorkspaceDefaultSpaces(auth);
-
-      // There should be MCPServerView for theses ids both in system and global spaces
-      const views = await MCPServerViewModel.findAll({
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          serverType: "internal",
-          internalMCPServerId: {
-            [Op.in]: autoInternalMCPServerIds,
-          },
-          vaultId: { [Op.in]: spaces.map((s) => s.id) },
-        },
-      });
-
-      // Quick check: there should be 2 views for each default internal MCP server
-      // (enforced by a unique constraint), if already the case, no need to check further
-      if (views.length === autoInternalMCPServerIds.length * 2) {
         return { createdViewsCount: 0 };
       }
 
@@ -1111,42 +1122,124 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         );
       }
 
-      let createdViewsCount = 0;
+      // There should be a MCPServerView for these ids both in system and global spaces.
+      const views = await MCPServerViewModel.findAll({
+        where: {
+          workspaceId: workspace.id,
+          serverType: "internal",
+          internalMCPServerId: {
+            [Op.in]: autoInternalMCPServerIds,
+          },
+          vaultId: { [Op.in]: spaces.map((s) => s.id) },
+        },
+      });
 
-      // Create the missing views
+      // Quick check: there should be 2 views for each auto internal MCP server
+      // (enforced by a unique constraint), if already the case, no need to check further.
+      if (views.length === autoInternalMCPServerIds.length * 2) {
+        return { createdViewsCount: 0 };
+      }
+
+      const viewsByServerAndSpace = new Set(
+        views.map((v) => `${v.internalMCPServerId}/${v.vaultId}`)
+      );
+      const systemViewByServerId = new Map(
+        views
+          .filter((v) => v.vaultId === systemSpace.id)
+          .map((v) => [v.internalMCPServerId, v])
+      );
+
+      const editedByUserId = auth.user()?.id ?? null;
+
+      // Unlike MCPServerViewResource.create, this does not clean up regular-space views of
+      // the same server when creating the global view. That case is only reachable on a
+      // manual -> auto availability transition, which the snapshot guard routes to the
+      // dedicated migration script.
+      const missingRows: CreationAttributes<MCPServerViewModel>[] = [];
       for (const id of autoInternalMCPServerIds) {
-        // Check if exists in system space.
-        let systemViewModel = views.find(
-          (v) => v.internalMCPServerId === id && v.vaultId === systemSpace.id
-        );
-        if (!systemViewModel) {
-          systemViewModel = await MCPServerViewModel.create({
-            workspaceId: auth.getNonNullableWorkspace().id,
+        // The global view inherits the customizable fields from the system view when one
+        // already exists (same behavior as MCPServerViewResource.create).
+        const systemView = systemViewByServerId.get(id);
+        for (const space of [systemSpace, globalSpace]) {
+          if (viewsByServerAndSpace.has(`${id}/${space.id}`)) {
+            continue;
+          }
+          missingRows.push({
+            workspaceId: workspace.id,
             serverType: "internal",
             internalMCPServerId: id,
-            vaultId: systemSpace.id,
+            remoteMCPServerId: null,
+            vaultId: space.id,
             editedAt: new Date(),
-            editedByUserId: auth.user()?.id,
-            oAuthUseCase: null,
+            editedByUserId,
+            name: systemView?.name ?? null,
+            description: systemView?.description ?? null,
+            oAuthUseCase: systemView?.oAuthUseCase ?? null,
+            oauthScope: systemView?.oauthScope ?? null,
           });
-          createdViewsCount++;
         }
-        const systemView = new this(
-          MCPServerViewModel,
-          systemViewModel.get(),
-          systemSpace
+      }
+
+      if (missingRows.length === 0) {
+        return { createdViewsCount: 0 };
+      }
+
+      // Single INSERT for all missing views. Concurrent calls can race on the inserts;
+      // ignoreDuplicates (ON CONFLICT DO NOTHING on the unique constraint on
+      // workspaceId/internalMCPServerId/vaultId) makes the loser a no-op.
+      const createdViews = await MCPServerViewModel.bulkCreate(missingRows, {
+        ignoreDuplicates: true,
+      });
+
+      // Rows that were not inserted come back without an id.
+      const createdViewsCount = createdViews.filter((v) =>
+        Number.isInteger(v.id)
+      ).length;
+
+      if (createdViewsCount < missingRows.length) {
+        // ON CONFLICT DO NOTHING has no conflict target, so a shortfall is either a benign
+        // race (a concurrent call inserted the same rows; they exist now) or a conflict on
+        // another unique constraint (e.g. name uniqueness per space) that leaves a view
+        // genuinely missing. Re-read to tell them apart; only the latter is an anomaly.
+        const viewsAfterInsert = await MCPServerViewModel.findAll({
+          where: {
+            workspaceId: workspace.id,
+            serverType: "internal",
+            internalMCPServerId: {
+              [Op.in]: autoInternalMCPServerIds,
+            },
+            vaultId: { [Op.in]: [systemSpace.id, globalSpace.id] },
+          },
+        });
+        const presentAfterInsert = new Set(
+          viewsAfterInsert.map((v) => `${v.internalMCPServerId}/${v.vaultId}`)
+        );
+        const stillMissingRows = missingRows.filter(
+          (row) =>
+            !presentAfterInsert.has(`${row.internalMCPServerId}/${row.vaultId}`)
         );
 
-        // Check if exists in global space.
-        const isInGlobalSpace = views.some(
-          (v) => v.internalMCPServerId === id && v.vaultId === globalSpace.id
-        );
-        if (!isInGlobalSpace) {
-          await MCPServerViewResource.create(auth, {
-            systemView,
-            space: globalSpace,
-          });
-          createdViewsCount++;
+        if (stillMissingRows.length > 0) {
+          logger.warn(
+            {
+              workspaceId: workspace.sId,
+              attempted: missingRows.length,
+              created: createdViewsCount,
+              missingInternalMCPServerIds: removeNulls(
+                stillMissingRows.map((row) => row.internalMCPServerId ?? null)
+              ),
+            },
+            "ensureAllAutoToolsAreCreated: some auto MCP server views could not be inserted (conflict on another unique constraint)."
+          );
+        } else {
+          logger.info(
+            {
+              workspaceId: workspace.sId,
+              attempted: missingRows.length,
+              created: createdViewsCount,
+            },
+            "ensureAllAutoToolsAreCreated: lost insert race, views were created concurrently."
+          );
         }
       }
 
