@@ -19,6 +19,9 @@
     "size:wasm": "node scripts/check-wasm-size.mjs",
     "test": "vitest run"
   },
+  "overrides": {
+    "prismjs": "^1.30.0"
+  },
   "devDependencies": {
     "@extend-ai/react-xlsx": "0.10.2",
     "@testing-library/dom": "^10.4.1",
