@@ -2,10 +2,14 @@ import type { Client } from "@app/lib/model_constructors/client";
 import {
   accumulatedReasoningToReasoningEvent,
   accumulatedTextToTextEvent,
+  accumulatedToolCallToToolCallEvent,
+  inputJsonDeltaToToolCallDeltaEvent,
+  invalidJsonToolCallToToolCallEvent,
   messageStartToResponseIdEvent,
   type OutputEventConverters,
   reasoningDeltaToReasoningDeltaEvent,
   textDeltaToTextDeltaEvent,
+  toolUseBlockStartToToolCallStartedEvent,
 } from "@app/lib/model_constructors/providers/anthropic/converters/output/utils";
 
 type AbstractConstructor<T> = abstract new (...args: any[]) => T;
@@ -25,6 +29,11 @@ export function WithAnthropicOutputConverter<
     reasoningDeltaToReasoningDeltaEvent = reasoningDeltaToReasoningDeltaEvent;
     accumulatedTextToTextEvent = accumulatedTextToTextEvent;
     accumulatedReasoningToReasoningEvent = accumulatedReasoningToReasoningEvent;
+    toolUseBlockStartToToolCallStartedEvent =
+      toolUseBlockStartToToolCallStartedEvent;
+    inputJsonDeltaToToolCallDeltaEvent = inputJsonDeltaToToolCallDeltaEvent;
+    accumulatedToolCallToToolCallEvent = accumulatedToolCallToToolCallEvent;
+    invalidJsonToolCallToToolCallEvent = invalidJsonToolCallToToolCallEvent;
   }
 
   return WithAnthropicOutputConverter;
