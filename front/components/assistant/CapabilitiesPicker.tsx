@@ -40,9 +40,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSearchbar,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownTooltipTrigger,
   LoadingBlock,
+  ScrollArea,
   ShapesPlus,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -198,12 +200,9 @@ function CapabilitiesPickerItemsList({
 
   return (
     <div className="relative">
-      <div
-        ref={listRef}
-        className={cn(
-          "overflow-y-auto",
-          CAPABILITIES_PICKER_LIST_MAX_HEIGHT_CLASS_NAME
-        )}
+      <ScrollArea
+        viewportRef={listRef}
+        viewportClassName={CAPABILITIES_PICKER_LIST_MAX_HEIGHT_CLASS_NAME}
       >
         <div className="relative">
           <div
@@ -276,7 +275,7 @@ function CapabilitiesPickerItemsList({
             );
           })}
         </div>
-      </div>
+      </ScrollArea>
       <div
         className={cn(
           "pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-t",
@@ -638,6 +637,7 @@ export function CapabilitiesPicker({
             value={searchText}
             onChange={setSearchText}
           />
+          <DropdownMenuSeparator />
           {(!isSkillsDataReady || !isToolsDataReady) && (
             <CapabilitiesPickerLoading />
           )}

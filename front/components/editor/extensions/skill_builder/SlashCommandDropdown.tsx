@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownTooltipTrigger,
+  ScrollArea,
 } from "@dust-tt/sparkle";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import type React from "react";
@@ -264,9 +265,9 @@ export const SlashCommandDropdown = forwardRef<
             </div>
           ) : (
             <div className="relative">
-              <div
-                ref={listRef}
-                className={cn("overflow-y-auto", listMaxHeightClassName)}
+              <ScrollArea
+                viewportRef={listRef}
+                viewportClassName={listMaxHeightClassName}
               >
                 <div className="relative">
                   <div
@@ -344,7 +345,7 @@ export const SlashCommandDropdown = forwardRef<
                     );
                   })}
                 </div>
-              </div>
+              </ScrollArea>
               <div
                 className={cn(
                   "pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-t",
