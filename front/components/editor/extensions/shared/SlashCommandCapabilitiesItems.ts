@@ -30,6 +30,39 @@ export type SlashCommandToolSuggestion = MCPServerViewType & {
   label?: string;
 };
 
+// Typed variants of the generic SlashCommand carrying their selection payload in `data`. The
+// dropdown treats `data` as opaque; consumers narrow items back with the guards below.
+export interface SkillSlashCommand extends SlashCommand {
+  action: typeof SELECT_SKILL_SLASH_COMMAND_ACTION;
+  data: {
+    skill: SlashCommandSkillSuggestion;
+  };
+}
+
+export interface ToolSlashCommand extends SlashCommand {
+  action: typeof SELECT_TOOL_SLASH_COMMAND_ACTION;
+  data: {
+    tool: {
+      icon: string | null;
+      id: string;
+      name: string;
+      view: MCPServerViewType;
+    };
+  };
+}
+
+export function isSkillSlashCommand(
+  item: SlashCommand
+): item is SkillSlashCommand {
+  return item.action === SELECT_SKILL_SLASH_COMMAND_ACTION;
+}
+
+export function isToolSlashCommand(
+  item: SlashCommand
+): item is ToolSlashCommand {
+  return item.action === SELECT_TOOL_SLASH_COMMAND_ACTION;
+}
+
 export function matchesSlashCommandCapabilityQuery({
   label,
   query,
@@ -66,7 +99,7 @@ export function getToolSlashCommandLabel(tool: SlashCommandToolSuggestion) {
 export function getSkillSlashCommandItem(
   skill: SlashCommandSkillSuggestion,
   { sectionLabel }: { sectionLabel?: string } = {}
-): SlashCommand {
+): SkillSlashCommand {
   const isDustProvided = isDustProvidedSkill(skill);
   const tooltipDescription = isDustProvided
     ? skill.userFacingDescription
@@ -80,6 +113,7 @@ export function getSkillSlashCommandItem(
       skill,
     },
     description: skill.userFacingDescription,
+    hasDetails: true,
     icon: getSkillAvatarIcon(skill),
     id: skill.sId,
     label: skill.name,
@@ -93,7 +127,7 @@ export function getSkillSlashCommandItem(
 export function getToolSlashCommandItem(
   tool: SlashCommandToolSuggestion,
   { sectionLabel }: { sectionLabel?: string } = {}
-): SlashCommand {
+): ToolSlashCommand {
   const name = getToolSlashCommandLabel(tool);
   const description = getMcpServerViewDescription(tool);
 
@@ -108,6 +142,7 @@ export function getToolSlashCommandItem(
       },
     },
     description,
+    hasDetails: true,
     icon: () => getAvatar(tool.server),
     id: tool.sId,
     label: name,

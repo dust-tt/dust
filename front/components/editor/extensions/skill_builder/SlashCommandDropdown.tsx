@@ -1,5 +1,3 @@
-import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   Button,
   cn,
@@ -43,16 +41,12 @@ const EMPTY_SCROLL_FADE_STATE: ScrollFadeState = {
 
 export interface SlashCommand {
   action: string;
-  data?: {
-    skill?: SlashCommandSkillSuggestion;
-    tool?: {
-      icon: string | null;
-      id: string;
-      name: string;
-      view: MCPServerViewType;
-    };
-  };
+  // Command-specific payload, opaque to the dropdown. Consumers narrow it back with type guards
+  // (e.g. isSkillSlashCommand) when handling selection or details.
+  data?: unknown;
   description?: string;
+  // Whether the item exposes a details affordance (the "…" button) when onItemDetails is provided.
+  hasDetails?: boolean;
   icon: React.ComponentType<any>;
   id: string;
   label: string;
@@ -291,9 +285,7 @@ export const SlashCommandDropdown = forwardRef<
                       items[index - 1]?.sectionLabel !== item.sectionLabel
                         ? item.sectionLabel
                         : undefined;
-                    const canShowDetails =
-                      !!onItemDetails &&
-                      !!(item.data?.skill || item.data?.tool);
+                    const canShowDetails = !!onItemDetails && !!item.hasDetails;
                     const menuItem = (
                       <DropdownMenuItem
                         icon={item.icon}

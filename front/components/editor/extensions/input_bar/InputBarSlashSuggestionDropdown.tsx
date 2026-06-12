@@ -26,7 +26,10 @@ import {
   useMemo,
   useRef,
 } from "react";
-import type { InputBarSlashSuggestionCapability } from "./InputBarSlashSuggestionTypes";
+import {
+  type InputBarSlashSuggestionCapability,
+  isInputBarSlashSuggestionCapability,
+} from "./InputBarSlashSuggestionTypes";
 
 // Rare case where we need a Tailwind arbitrary value: after the fixed search bar, the scrollable list should fit
 // exactly seven 3.25rem rows without showing a partial row or leaving extra bottom space.
@@ -138,14 +141,28 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       [query, selectedMCPServerViewIdsRef, serverViews, skills]
     );
 
+    // Items carry their capability in `data` so selection and details handlers can recover it
+    // without a reverse lookup. Ids are prefixed by kind to stay unique across capability kinds.
     const capabilityItems = useMemo<SlashCommand[]>(
       () =>
-        filteredCapabilities.flatMap((capability) => {
+        filteredCapabilities.flatMap((capability): SlashCommand[] => {
           switch (capability.kind) {
             case "skill":
-              return [getSkillSlashCommandItem(capability.skill)];
+              return [
+                {
+                  ...getSkillSlashCommandItem(capability.skill),
+                  data: capability,
+                  id: `skill-${capability.skill.sId}`,
+                },
+              ];
             case "tool":
-              return [getToolSlashCommandItem(capability.serverView)];
+              return [
+                {
+                  ...getToolSlashCommandItem(capability.serverView),
+                  data: capability,
+                  id: `tool-${capability.serverView.sId}`,
+                },
+              ];
             default:
               assertNeverAndIgnore(capability);
               return [];
@@ -185,14 +202,8 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
         ref={dropdownRef}
         items={capabilityItems}
         command={(item) => {
-          const capability = filteredCapabilities.find((capability) =>
-            capability.kind === "skill"
-              ? capability.skill.sId === item.id
-              : capability.serverView.sId === item.id
-          );
-
-          if (capability) {
-            command(capability);
+          if (isInputBarSlashSuggestionCapability(item.data)) {
+            command(item.data);
           }
         }}
         clientRect={clientRect}
@@ -207,18 +218,12 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
         onItemDetails={
           onDetailsRef
             ? (item) => {
-                const capability = filteredCapabilities.find((capability) =>
-                  capability.kind === "skill"
-                    ? capability.skill.sId === item.id
-                    : capability.serverView.sId === item.id
-                );
-
-                if (!capability) {
+                if (!isInputBarSlashSuggestionCapability(item.data)) {
                   return;
                 }
 
                 editor.chain().focus().deleteRange(range).run();
-                onDetailsRef.current?.(capability);
+                onDetailsRef.current?.(item.data);
                 onClose();
               }
             : undefined

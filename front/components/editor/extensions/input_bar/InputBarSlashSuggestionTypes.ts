@@ -10,3 +10,16 @@ export type InputBarSlashSuggestionCapability =
       kind: "tool";
       serverView: MCPServerViewType;
     };
+
+// Narrows the opaque `data` payload of a SlashCommand item back to a capability. Only used on
+// items the input bar dropdown built itself, so checking the discriminant is sufficient.
+export function isInputBarSlashSuggestionCapability(
+  data: unknown
+): data is InputBarSlashSuggestionCapability {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "kind" in data &&
+    (data.kind === "skill" || data.kind === "tool")
+  );
+}
