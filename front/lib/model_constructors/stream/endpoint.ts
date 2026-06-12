@@ -3,9 +3,7 @@ import type { StreamModelConfiguration } from "@app/lib/model_constructors/strea
 import type { AgentMetadata } from "@app/lib/model_constructors/types/agent_metadata";
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
 import type { Payload } from "@app/lib/model_constructors/types/input/messages";
-import type {
-  ModelResponseEvent,
-} from "@app/lib/model_constructors/types/output/events";
+import type { ModelResponseEvent } from "@app/lib/model_constructors/types/output/events";
 import {
   ORDERED_REASONING_EFFORTS,
   type ReasoningEffort,
