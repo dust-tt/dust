@@ -19,7 +19,7 @@ HTTP entrypoints live in `front-api/routes/mcp/`. This folder holds the auth and
 | Tool definitions | `tools/` (registered from `server.ts`; grouped under `tools/agents/`, `tools/conversations/`, `tools/pods/`, `tools/search/`, `tools/files/`) |
 | Token verification | `auth.ts` |
 | User + workspace resolution from the token | `authenticator.ts` |
-| How tools access per-request auth | `context.ts` |
+| How tools access per-request auth | `context.ts`, `tools/register.ts` |
 | URLs, env vars, AuthKit domain | `urls.ts` |
 
 ## Key concepts (stable)
@@ -28,11 +28,13 @@ HTTP entrypoints live in `front-api/routes/mcp/`. This folder holds the auth and
 
 **Tools use a standard `Authenticator`.** Once auth is resolved, tool code should look like any other Dust backend code that receives an `Authenticator` — same permissions, same APIs.
 
-**The MCP server is a singleton.** Per-request state (the `Authenticator`) is threaded separately from tool registration. See `context.ts` and the route handler in `front-api/routes/mcp/index.ts`.
+**Each MCP client session gets its own transport.** On each HTTP request, auth middleware builds a fresh `authInfo` (with the Dust `Authenticator` in `extra`) that `@hono/mcp` passes to tool handlers.
+
+**Tools use `registerDustMcpTool`.** Handlers receive `(auth, args)`; the wrapper reads auth from `extra.authInfo`.
 
 ## Adding a tool
 
-Add a file under `tools/` and register it in `tools/index.ts`. Use `getAuthenticatorFromMcpContext()` to access the scoped auth inside handlers. MCP clients cache tool lists — reconnect after adding or renaming tools.
+Add a file under `tools/` and register it with `registerDustMcpTool` in `tools/index.ts`. Handlers receive `(auth, args)`. MCP clients cache tool lists — reconnect after adding or renaming tools.
 
 ## Local dev & config
 

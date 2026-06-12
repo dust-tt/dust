@@ -14,6 +14,23 @@ export interface WorkOSWorkspaceAuthenticator extends Authenticator {
   user(): UserResource;
 }
 
+export function isWorkOSWorkspaceAuthenticator(
+  value: unknown
+): value is WorkOSWorkspaceAuthenticator {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  return (
+    "user" in value &&
+    typeof value.user === "function" &&
+    "workspace" in value &&
+    typeof value.workspace === "function" &&
+    "authMethod" in value &&
+    typeof value.authMethod === "function"
+  );
+}
+
 export type WorkOSWorkspaceAuthenticatorError =
   | "organization_missing"
   | "workspace_not_found"

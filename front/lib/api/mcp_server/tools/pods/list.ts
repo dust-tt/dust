@@ -1,19 +1,19 @@
 import config from "@app/lib/api/config";
-import { getAuthenticatorFromMcpContext } from "@app/lib/api/mcp_server/context";
+import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
 import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
 import { getPodRoute } from "@app/lib/utils/router";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { mcpJsonResponse } from "../response";
 
 export function registerPodsListTool(server: McpServer) {
-  server.registerTool(
+  registerDustMcpTool(
+    server,
     "list_pods",
     {
       description:
         "List non-archived Pods that you are a member of in the current workspace.",
     },
-    async () => {
-      const auth = getAuthenticatorFromMcpContext();
+    async (auth) => {
       const owner = auth.workspace();
       const { nonArchivedSpaces } =
         await listNonArchivedMemberSpacesWithMetadata(auth);

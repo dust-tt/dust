@@ -99,7 +99,8 @@ export const requestLogger = createMiddleware<RequestLoggerEnv>(
     const auth = c.get("auth");
     const session = c.get("session");
     const streaming = c.get("streaming") ?? false;
-    const user = auth?.user();
+    const user =
+      auth && typeof auth.user === "function" ? auth.user() : undefined;
 
     const tags = [
       `method:${c.req.method}`,
@@ -125,7 +126,10 @@ export const requestLogger = createMiddleware<RequestLoggerEnv>(
         streaming,
         url: c.req.path,
         ...(user ? { user: { sId: user.sId } } : {}),
-        workspaceId: auth?.workspace()?.sId,
+        workspaceId:
+          auth && typeof auth.workspace === "function"
+            ? auth.workspace()?.sId
+            : undefined,
       },
       "Processed request"
     );

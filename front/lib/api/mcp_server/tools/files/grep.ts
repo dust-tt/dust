@@ -1,6 +1,6 @@
 import { GREP_MATCHES_MAX } from "@app/lib/api/actions/servers/files/metadata";
 import { isReadableAsText } from "@app/lib/api/actions/servers/files/tools/utils";
-import { getAuthenticatorFromMcpContext } from "@app/lib/api/mcp_server/context";
+import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as readline from "readline";
@@ -26,7 +26,8 @@ const inputSchema = {
 };
 
 export function registerFilesGrepTool(server: McpServer) {
-  server.registerTool(
+  registerDustMcpTool(
+    server,
     "files_grep",
     {
       description:
@@ -35,9 +36,7 @@ export function registerFilesGrepTool(server: McpServer) {
         "Requires an explicit scope with conversation_id or pod_id.",
       inputSchema,
     },
-    async ({ scope, path, pattern }) => {
-      const auth = getAuthenticatorFromMcpContext();
-
+    async (auth, { scope, path, pattern }) => {
       const pathError = validatePathMatchesScope(path, scope);
       if (pathError) {
         return mcpError(pathError);

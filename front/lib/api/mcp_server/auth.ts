@@ -1,16 +1,21 @@
 import {
+  areRedirectUrisAllowed,
+  getDustMcpServerAllowedRedirectUris,
+  getDustMcpServerRedirectUriPolicy,
+  isDustMcpServerEnabled,
+} from "@app/lib/api/mcp_server/dust_mcp_server_settings";
+import {
   getMcpResourceMetadataUrl,
   getMcpResourceServerUrl,
   getWorkOSAuthKitDomain,
   normalizeOAuthUrl,
 } from "@app/lib/api/mcp_server/urls";
-import type { WorkOSJwtPayload } from "@app/lib/api/workos";
+import { getWorkOSConnectApplication } from "@app/lib/api/workos";
 import {
   getAuthenticatorFromWorkOSClaims,
   type WorkOSWorkspaceAuthenticator,
 } from "@app/lib/api/workos_authenticator";
 import logger from "@app/logger/logger";
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { Context } from "hono";
 import { createMiddleware } from "hono/factory";
 import {
@@ -21,8 +26,6 @@ import {
 } from "jose";
 
 export type McpServerAuthVariables = {
-  mcpUser: WorkOSJwtPayload;
-  mcpAuthInfo: AuthInfo;
   mcpAuth: WorkOSWorkspaceAuthenticator;
 };
 
@@ -54,6 +57,16 @@ function tokenAudienceMatchesResource(
   return audiences.some(
     (value) => normalizeOAuthUrl(String(value)) === expectedResource
   );
+}
+
+function forbiddenResponse(
+  c: Context,
+  {
+    error = "forbidden",
+    description = "Access denied",
+  }: { error?: string; description?: string } = {}
+) {
+  return c.json({ error, error_description: description }, 403);
 }
 
 /** RFC 9728 challenge — must be present on every 401 so MCP clients start OAuth. */
@@ -142,7 +155,76 @@ export const mcpServerAuthMiddleware = createMiddleware<{
       });
     }
 
-    c.set("mcpAuth", authResult.value.authenticator);
+    const authenticator = authResult.value.authenticator;
+    const workspace = authenticator.workspace();
+    const workspaceMetadata = workspace.metadata;
+
+    if (!isDustMcpServerEnabled(workspaceMetadata)) {
+      logger.warn(
+        { workspaceId: workspace.sId },
+        "[dust-mcp-server] MCP server is disabled for workspace"
+      );
+      return forbiddenResponse(c, {
+        description: "MCP server is disabled for this workspace",
+      });
+    }
+
+    if (getDustMcpServerRedirectUriPolicy(workspaceMetadata) === "allowlist") {
+      const clientId = payload["application:client_id"];
+      if (typeof clientId !== "string" || !clientId.trim()) {
+        logger.warn(
+          { workspaceId: workspace.sId },
+          "[dust-mcp-server] Access token missing application:client_id claim"
+        );
+        return forbiddenResponse(c, {
+          description:
+            "Access token is missing Connect application information",
+        });
+      }
+
+      const applicationResult = await getWorkOSConnectApplication(
+        clientId.trim()
+      );
+      if (applicationResult.isErr()) {
+        logger.warn(
+          {
+            workspaceId: workspace.sId,
+            clientId: clientId.trim(),
+            err: applicationResult.error,
+          },
+          "[dust-mcp-server] Failed to fetch WorkOS Connect application"
+        );
+        return forbiddenResponse(c, {
+          description: "Failed to validate Connect application redirect URIs",
+        });
+      }
+
+      const application = applicationResult.value;
+      const redirectUris =
+        application.application_type === "oauth"
+          ? application.redirect_uris.map(({ uri }) => uri)
+          : [];
+
+      const allowedPatterns =
+        getDustMcpServerAllowedRedirectUris(workspaceMetadata);
+      if (!areRedirectUrisAllowed(redirectUris, allowedPatterns)) {
+        logger.warn(
+          {
+            workspaceId: workspace.sId,
+            clientId: clientId.trim(),
+            redirectUris,
+            allowedPatterns,
+          },
+          "[dust-mcp-server] Connect application redirect URIs are not allowed"
+        );
+        return forbiddenResponse(c, {
+          description:
+            "Connect application redirect URIs are not allowed for this workspace",
+        });
+      }
+    }
+
+    c.set("mcpAuth", authenticator);
     await next();
   } catch (err) {
     let decoded: JWTPayload | undefined;

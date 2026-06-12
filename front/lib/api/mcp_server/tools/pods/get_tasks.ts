@@ -1,4 +1,4 @@
-import { getAuthenticatorFromMcpContext } from "@app/lib/api/mcp_server/context";
+import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
 import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -32,21 +32,18 @@ const inputSchema = {
 };
 
 export function registerPodsGetTasksTool(server: McpServer) {
-  server.registerTool(
+  registerDustMcpTool(
+    server,
     "get_pod_tasks",
     {
       description:
         "List tasks in a Pod. Defaults to all assignees and open tasks. Use statusFilter='done' or 'all' with daysAgo to include recently completed tasks.",
       inputSchema,
     },
-    async ({
-      podId,
-      assigneeFilter = "all",
-      statusFilter = "open",
-      daysAgo = 7,
-    }) => {
-      const auth = getAuthenticatorFromMcpContext();
-
+    async (
+      auth,
+      { podId, assigneeFilter = "all", statusFilter = "open", daysAgo = 7 }
+    ) => {
       const { nonArchivedSpaces } =
         await listNonArchivedMemberSpacesWithMetadata(auth);
       const pod = nonArchivedSpaces.find(

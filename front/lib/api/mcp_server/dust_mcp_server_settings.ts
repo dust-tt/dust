@@ -98,3 +98,106 @@ export function validateDustMcpServerAllowedRedirectUris(
 
   return new Ok(normalizedUris);
 }
+
+type ParsedRedirectUri = {
+  scheme: string;
+  host: string;
+  port: number | null;
+  path: string;
+};
+
+function parseRedirectUri(uri: string): ParsedRedirectUri {
+  const parsed = new URL(uri);
+  return {
+    scheme: parsed.protocol.replace(/:$/, "").toLowerCase(),
+    host: parsed.hostname.toLowerCase(),
+    port: parsed.port === "" ? null : Number(parsed.port),
+    path: `${parsed.pathname}${parsed.search}${parsed.hash}`,
+  };
+}
+
+const PORT_WILDCARD_PATTERN =
+  /^([a-z][a-z0-9+.-]*):\/\/([^:/]+):\*(?:\/(.*))?$/i;
+
+function redirectUrisMatchExactly(uri: string, pattern: string): boolean {
+  if (uri === pattern) {
+    return true;
+  }
+
+  try {
+    const parsedUri = parseRedirectUri(uri);
+    const parsedPattern = parseRedirectUri(pattern);
+    return (
+      parsedUri.scheme === parsedPattern.scheme &&
+      parsedUri.host === parsedPattern.host &&
+      parsedUri.port === parsedPattern.port &&
+      parsedUri.path === parsedPattern.path
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Returns whether a redirect URI matches an allowed pattern.
+ * Supports the `*` wildcard, exact patterns, and port wildcards such as
+ * `http://localhost:*`. URIs without an explicit port match port-wildcard
+ * patterns for the same host.
+ */
+export function redirectUriMatchesAllowedPattern(
+  redirectUri: string,
+  allowedPattern: string
+): boolean {
+  const normalizedUri = normalizeDustMcpServerRedirectUri(redirectUri);
+  const normalizedPattern = normalizeDustMcpServerRedirectUri(allowedPattern);
+
+  if (normalizedPattern === "*") {
+    return true;
+  }
+
+  const portWildcardMatch = normalizedPattern.match(PORT_WILDCARD_PATTERN);
+  if (portWildcardMatch) {
+    const [, scheme, host, pathSuffix] = portWildcardMatch;
+
+    try {
+      const parsed = parseRedirectUri(normalizedUri);
+
+      if (parsed.scheme !== scheme.toLowerCase()) {
+        return false;
+      }
+      if (parsed.host !== host.toLowerCase()) {
+        return false;
+      }
+      if (pathSuffix !== undefined && pathSuffix !== "") {
+        const expectedPath = `/${pathSuffix}`;
+        if (parsed.path !== expectedPath) {
+          return false;
+        }
+      }
+
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  return redirectUrisMatchExactly(normalizedUri, normalizedPattern);
+}
+
+export function isRedirectUriAllowed(
+  redirectUri: string,
+  allowedPatterns: string[]
+): boolean {
+  return allowedPatterns.some((pattern) =>
+    redirectUriMatchesAllowedPattern(redirectUri, pattern)
+  );
+}
+
+export function areRedirectUrisAllowed(
+  redirectUris: string[],
+  allowedPatterns: string[]
+): boolean {
+  return redirectUris.every((redirectUri) =>
+    isRedirectUriAllowed(redirectUri, allowedPatterns)
+  );
+}

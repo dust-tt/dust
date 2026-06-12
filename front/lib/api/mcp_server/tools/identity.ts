@@ -1,16 +1,16 @@
-import { getAuthenticatorFromMcpContext } from "@app/lib/api/mcp_server/context";
+import { registerDustMcpTool } from "@app/lib/api/mcp_server/tools/register";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { mcpJsonResponse } from "./response";
 
 export function registerIdentityTool(server: McpServer) {
-  server.registerTool(
+  registerDustMcpTool(
+    server,
     "identity",
     {
       description:
         "Returns information about the authenticated user and workspace.",
     },
-    async () => {
-      const auth = getAuthenticatorFromMcpContext();
+    async (auth) => {
       const user = auth.user();
       const workspace = auth.workspace();
 
