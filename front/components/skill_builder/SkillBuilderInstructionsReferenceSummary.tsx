@@ -1,12 +1,10 @@
 import { ToolChip } from "@app/components/editor/extensions/skill_builder/ToolChip";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
-import type {
-  AttachedKnowledgeFormData,
-  ReferencedSkillFormData,
-} from "@app/components/skill_builder/SkillBuilderFormContext";
+import type { AttachedKnowledgeFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getSkillIcon } from "@app/lib/skill";
+import { extractSkillReferenceTags } from "@app/lib/skills/format";
 import { extractToolTags } from "@app/lib/tools/format";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { AttachmentChip, Chip, cn, File02 } from "@dust-tt/sparkle";
@@ -19,7 +17,6 @@ interface SkillBuilderInstructionsReferenceSummaryProps {
   hasError: boolean;
   instructions: string;
   onReferenceClick: (target: ReferenceSummaryItem) => void;
-  referencedSkills: ReferencedSkillFormData[];
   tools: BuilderAction[];
 }
 
@@ -118,7 +115,6 @@ export function SkillBuilderInstructionsReferenceSummary({
   hasError,
   instructions,
   onReferenceClick,
-  referencedSkills,
   tools,
 }: SkillBuilderInstructionsReferenceSummaryProps) {
   const { mcpServerViews, isMCPServerViewsLoading } =
@@ -135,16 +131,19 @@ export function SkillBuilderInstructionsReferenceSummary({
     [attachedKnowledge]
   );
 
+  // Derived from the instructions (like inline tool references below) so the
+  // chips stay in sync when the content is replaced without editor updates,
+  // e.g. when restoring a previous version.
   const skillReferences = useMemo(
     () =>
       dedupeById(
-        referencedSkills.map((skill) => ({
+        extractSkillReferenceTags(instructions).map((skill) => ({
           icon: skill.icon,
           id: skill.id,
           title: skill.name,
         }))
       ),
-    [referencedSkills]
+    [instructions]
   );
 
   const inlineToolReferences = useMemo(
