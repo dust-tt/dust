@@ -1,4 +1,4 @@
-// RPC client suite (spec §7.6): real client + real engine-server + real
+// RPC client suite: real client + real engine-server + real
 // wasm (node build), over an in-process WorkerLike transport. Cancellation,
 // latest-wins coalescing under scroll storms, progress monotonicity, typed
 // error propagation, lifecycle/leaks, chunked-vs-oneshot equivalence.
@@ -65,7 +65,7 @@ describe("open / metadata / lifecycle", () => {
   });
 });
 
-describe("typed errors (§5.3)", () => {
+describe("typed errors", () => {
   it.each([
     ["evil/garbage.xlsx", "CORRUPT"],
     ["evil/fake_xls.xlsx", "UNSUPPORTED_FORMAT"],
@@ -204,7 +204,7 @@ describe("url open path", () => {
   });
 });
 
-describe("latest-wins coalescing (§5.2)", () => {
+describe("latest-wins coalescing", () => {
   it("collapses a 200-request scroll storm into few round trips with a correct final state", async () => {
     const handle = await client.open({ bytes: corpus("gen/tall_narrow.xlsx") }, "tall_narrow.xlsx");
     await client.activateSheet(handle, 0);
@@ -241,6 +241,167 @@ describe("latest-wins coalescing (§5.2)", () => {
     for (const cell of slice.cells) {
       expect(slice.styles[cell.style]).toBeDefined();
     }
+    await client.close(handle);
+  });
+});
+
+describe("coalescing interleavings", () => {
+  it("destroy() rejects queued coalesced callers with CANCELLED", async () => {
+    const handle = await client.open({ bytes: corpus("gen/tall_narrow.xlsx") }, "tall_narrow.xlsx");
+    await client.activateSheet(handle, 0);
+    // Close worker-side first so this test leaks no handle into the shared
+    // wasm instance; destroy() races ahead of any worker response anyway.
+    await client.close(handle);
+    // First call goes in-flight; the next two share the queued-latest slot.
+    const inflight = client.getViewport(handle, 0, [0, 60], [0, 5]);
+    const queuedA = client.getViewport(handle, 0, [100, 160], [0, 5]);
+    const queuedB = client.getViewport(handle, 0, [200, 260], [0, 5]);
+    client.destroy();
+    await expect(inflight).rejects.toMatchObject({ code: "CANCELLED" });
+    await expect(queuedA).rejects.toMatchObject({ code: "CANCELLED" });
+    await expect(queuedB).rejects.toMatchObject({ code: "CANCELLED" });
+  });
+
+  it("superseded callers share the latest request's rejection", async () => {
+    const handle = await client.open({ bytes: corpus("gen/tall_narrow.xlsx") }, "tall_narrow.xlsx");
+    await client.activateSheet(handle, 0);
+    // In-flight goes out now; the next two share the queued-latest slot.
+    const inflight = client.getViewport(handle, 0, [0, 60], [0, 5]);
+    const superseded = client.getViewport(handle, 0, [100, 160], [0, 5]);
+    const latest = client.getViewport(handle, 0, [200, 260], [0, 5]);
+    // The close is posted BEFORE the queued request runs (it only goes out
+    // once the in-flight call settles), so the queued request hits a closed
+    // handle and rejects — and the superseded caller must see that same
+    // rejection, not hang or resolve with stale data.
+    const closing = client.close(handle);
+    await expect(inflight).resolves.toBeDefined();
+    await closing;
+    await expect(latest).rejects.toMatchObject({ code: "INTERNAL" });
+    await expect(superseded).rejects.toMatchObject({ code: "INTERNAL" });
+  });
+
+  it("coalescing is independent per (handle, sheet) key", async () => {
+    const handle = await client.open({ bytes: corpus("gen/multi_sheet_50.xlsx") }, "multi.xlsx");
+    await client.activateSheet(handle, 0);
+    await client.activateSheet(handle, 1);
+    const before = host.requestCount();
+    // Bursts on two different sheets: each sheet coalesces separately and
+    // both final states are correct.
+    const sheet0: Array<Promise<unknown>> = [];
+    const sheet1: Array<Promise<unknown>> = [];
+    for (let i = 0; i < 50; i++) {
+      sheet0.push(client.getViewport(handle, 0, [i, i + 20], [0, 5]));
+      sheet1.push(client.getViewport(handle, 1, [i * 2, i * 2 + 20], [0, 5]));
+    }
+    const [r0, r1] = await Promise.all([Promise.all(sheet0), Promise.all(sheet1)]);
+    const roundTrips = host.requestCount() - before;
+    expect(roundTrips).toBeLessThanOrEqual(20);
+    const last0 = r0[r0.length - 1] as { sheet: number; rowStart: number };
+    const last1 = r1[r1.length - 1] as { sheet: number; rowStart: number };
+    expect(last0.sheet).toBe(0);
+    expect(last0.rowStart).toBe(49);
+    expect(last1.sheet).toBe(1);
+    expect(last1.rowStart).toBe(98);
+    await client.close(handle);
+  });
+});
+
+describe("formula display mode", () => {
+  it("renders =formula text for formula cells, values for the rest", async () => {
+    const handle = await client.open({ bytes: corpus("gen/formulas_errors.xlsx") }, "formulas.xlsx");
+    await client.activateSheet(handle, 0);
+    const valueMode = await client.getViewport(handle, 0, [0, 30], [0, 10], "value");
+    const formulaMode = await client.getViewport(handle, 0, [0, 30], [0, 10], "formula");
+    expect(formulaMode.cells.length).toBe(valueMode.cells.length);
+    const formulaCells = formulaMode.cells.filter((c) => c.formula);
+    expect(formulaCells.length).toBeGreaterThan(0);
+    for (const cell of formulaCells) {
+      expect(cell.text).toBe(`=${cell.formula}`);
+    }
+    // Non-formula cells fall back to their formatted value.
+    const plain = formulaMode.cells.filter((c) => !c.formula);
+    const plainValue = new Map(valueMode.cells.filter((c) => !c.formula).map((c) => [`${c.row}:${c.col}`, c.text]));
+    expect(plain.length).toBeGreaterThan(0);
+    for (const cell of plain) {
+      expect(cell.text).toBe(plainValue.get(`${cell.row}:${cell.col}`));
+    }
+    await client.close(handle);
+  });
+});
+
+describe("hyperlinks", () => {
+  it("viewport and rows-batch carry sanitized targets", async () => {
+    const handle = await client.open({ bytes: corpus("gen/hyperlinks.xlsx") }, "hyperlinks.xlsx");
+    await client.activateSheet(handle, 0);
+    const slice = await client.getViewport(handle, 0, [0, 10], [0, 5]);
+    const byA1 = new Map(slice.cells.map((c) => [`${c.row}:${c.col}`, c.hyperlink]));
+    expect(byA1.get("0:0")).toBe("https://example.com/page?x=1");
+    expect(byA1.get("1:0")).toBe("mailto:team@example.com");
+    expect(byA1.get("2:0")).toBe("#two!B2");
+    expect(byA1.get("3:0")).toBe("ftp://files.example.com/data.bin");
+    // Range-anchored link covers both cells.
+    expect(byA1.get("4:0")).toBe("http://plain.example.com");
+    expect(byA1.get("4:1")).toBe("http://plain.example.com");
+
+    const rows = await client.getRowsBatch(handle, 0, 0, 10);
+    expect(rows[0].cells[0].hyperlink).toBe("https://example.com/page?x=1");
+    await client.close(handle);
+  });
+
+  it("hostile schemes never cross the boundary", async () => {
+    const handle = await client.open({ bytes: corpus("evil/xss_hyperlinks.xlsx") }, "xss.xlsx");
+    await client.activateSheet(handle, 0);
+    const slice = await client.getViewport(handle, 0, [0, 20], [0, 5]);
+    const links = slice.cells.map((c) => c.hyperlink).filter((h): h is string => Boolean(h));
+    expect(links).toEqual(["https://example.com/safe", "#xss!A1"]);
+    await client.close(handle);
+  });
+});
+
+describe("open options", () => {
+  it("csvDelimiter overrides the sniffer", async () => {
+    const bytes = new TextEncoder().encode("a,b,c\n1,2,3\n");
+    const buf = bytes.buffer.slice(0, bytes.byteLength);
+    const sniffed = await client.open({ bytes: buf }, "data.csv");
+    await client.activateSheet(sniffed, 0);
+    expect((await client.getRowsBatch(sniffed, 0, 0, 5))[0].cells.length).toBe(3);
+    await client.close(sniffed);
+
+    const bytes2 = new TextEncoder().encode("a,b,c\n1,2,3\n");
+    const forced = await client.open({ bytes: bytes2.buffer.slice(0, bytes2.byteLength) }, "data.csv", {
+      csvDelimiter: ";",
+    });
+    await client.activateSheet(forced, 0);
+    const rows = await client.getRowsBatch(forced, 0, 0, 5);
+    expect(rows[0].cells.length).toBe(1);
+    expect(rows[0].cells[0].value).toBe("a,b,c");
+    await client.close(forced);
+  });
+
+  it("truncated sheets report truncatedAtRow", async () => {
+    const handle = await client.open({ bytes: corpus("gen/mixed_large.xlsx") }, "mixed_large.xlsx", {
+      maxCellsPerSheet: 100,
+    });
+    const sheet = await client.activateSheet(handle, 0);
+    expect(sheet.truncated).toBe(true);
+    expect(sheet.truncatedAtRow).toBeTypeOf("number");
+    expect(sheet.truncatedAtRow).toBeLessThanOrEqual(sheet.rowCount - 1);
+    await client.close(handle);
+  });
+});
+
+describe("search scope", () => {
+  it("searches loaded sheets only", async () => {
+    const handle = await client.open({ bytes: corpus("gen/multi_sheet_50.xlsx") }, "multi.xlsx");
+    await client.activateSheet(handle, 0);
+    // Every sheet i carries a "diag{i}" cell, so hits on unloaded sheets
+    // would show up here. Only the activated sheet may be scanned.
+    const results = await client.search(handle, "diag");
+    const sheetsHit = new Set(results.hits.map((h) => h.sheet));
+    expect(sheetsHit).toEqual(new Set([0]));
+    await client.activateSheet(handle, 1);
+    const after = await client.search(handle, "diag");
+    expect(new Set(after.hits.map((h) => h.sheet))).toEqual(new Set([0, 1]));
     await client.close(handle);
   });
 });

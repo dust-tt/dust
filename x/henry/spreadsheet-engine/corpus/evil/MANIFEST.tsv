@@ -28,6 +28,8 @@ truncated_50_mixed_large.xlsx	CORRUPT
 truncated_90_mixed_large.xlsx	CORRUPT
 truncated_50_duplicate_cells.xlsx	CORRUPT
 truncated_90_duplicate_cells.xlsx	CORRUPT
+truncated_50_hyperlinks.xlsx	CORRUPT
+truncated_90_hyperlinks.xlsx	CORRUPT
 garbage.xlsx	CORRUPT
 empty_file.xlsx	CORRUPT
 zip_not_xlsx.xlsx	CORRUPT
@@ -44,4 +46,10 @@ overflow_refs.xlsx	ok
 high_ratio.xlsx	ok
 fake_xls.xlsx	UNSUPPORTED_FORMAT
 encrypted.xlsx	ENCRYPTED
+xss_hyperlinks.xlsx	ok
+rel_target_escape.xlsx	partial
+huge_sheet_name.xlsx	ok
+zip_bomb_total.xlsx	ok
+fake_xlsb.xlsx	UNSUPPORTED_FORMAT
+fake_ods.xlsx	UNSUPPORTED_FORMAT
 zero_sheets.xlsx	CORRUPT

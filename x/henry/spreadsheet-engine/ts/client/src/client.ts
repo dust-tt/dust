@@ -1,5 +1,5 @@
-// @dust/sheet-engine-client: async RPC over postMessage to the engine worker
-// (spec §5.2). Core invariant: nothing O(workbook) ever crosses this
+// @dust/sheet-engine-client: async RPC over postMessage to the engine
+// worker. Core invariant: nothing O(workbook) ever crosses this
 // boundary — metadata, viewport slices and capped search results only.
 
 import type { EngineRequest, EngineResponse, WorkerLike } from "./protocol";
@@ -51,7 +51,7 @@ export class SheetEngineClient {
   private pending = new Map<number, Pending>();
   private closed = false;
   /**
-   * Latest-wins coalescing (spec §5.2): at most one in-flight viewport /
+   * Latest-wins coalescing: at most one in-flight viewport /
    * rows-batch request per (handle, sheet). A burst of scroll requests
    * collapses to the in-flight one plus the single latest queued one; all
    * superseded callers share the latest result, so fast scrolling can never
@@ -62,7 +62,7 @@ export class SheetEngineClient {
     string,
     { request: EngineRequest; resolvers: Array<{ resolve: (v: unknown) => void; reject: (e: unknown) => void }> }
   >();
-  /** Backstop for forgotten close() — fires a console warning (spec §4). */
+  /** Backstop for forgotten close() — fires a console warning. */
   private registry: FinalizationRegistry<number> | null;
   private listener: (event: { data: unknown }) => void;
 
@@ -200,7 +200,15 @@ export class SheetEngineClient {
     return run(makeRequest()) as Promise<T>;
   }
 
-  /** Open from a URL (worker fetches + streams) or transferred bytes. */
+  /**
+   * Open from a URL (worker fetches + streams) or transferred bytes.
+   *
+   * SSRF boundary: with `{ url }` the worker fetches whatever URL the main
+   * thread provides — the engine cannot meaningfully allowlist, and CORS is
+   * the only browser-level control. Validating/allowlisting URLs is the
+   * embedder's responsibility; prefer `{ bytes }` when the file is already
+   * in hand.
+   */
   open(src: { url: string } | { bytes: ArrayBuffer }, fileName: string, options?: OpenOptions): Task<WorkbookHandle> {
     const id = this.allocId();
     const progressCbs: Array<(p: Progress) => void> = [];
@@ -320,13 +328,24 @@ export class SheetEngineClient {
     await this.call<void>({ id: this.allocId(), op: "close", handle: handle.id });
   }
 
-  /** Terminate the worker. Outstanding calls reject with CANCELLED. */
+  /** Terminate the worker. Outstanding calls — in-flight AND queued-but-not-
+   * sent coalesced callers — reject with CANCELLED. */
   destroy(): void {
     this.closed = true;
     for (const [id, entry] of this.pending) {
       this.pending.delete(id);
       entry.reject(new EngineErrorException(CANCELLED));
     }
+    // Queued coalesced callers never reached `pending`; without this drain
+    // they would settle through the in-flight rejection's re-run path with a
+    // misleading INTERNAL "client destroyed" instead of CANCELLED.
+    for (const [key, entry] of this.queuedLatest) {
+      this.queuedLatest.delete(key);
+      for (const r of entry.resolvers) {
+        r.reject(new EngineErrorException(CANCELLED));
+      }
+    }
+    this.inflight.clear();
     this.worker.removeEventListener("message", this.listener);
     this.worker.terminate();
   }

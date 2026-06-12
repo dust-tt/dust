@@ -18,3 +18,8 @@ ryu = { workspace = true }
 calamine = "0.26"
 proptest = "1"
 corpus-gen = { path = "../corpus-gen" }
+criterion = { workspace = true }
+
+[[bench]]
+name = "engine"
+harness = false

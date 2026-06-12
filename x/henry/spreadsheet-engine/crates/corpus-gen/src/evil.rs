@@ -1,10 +1,12 @@
-//! Adversarial corpus (spec §7.2 item 3). Each file carries a committed
+//! Adversarial corpus. Each file carries a committed
 //! expectation: a typed error code, or `"partial"` (open succeeds, possibly
 //! truncated/partial preview). The engine must never panic, hang, or blow the
 //! memory budget on any of these.
 
 use crate::corpus::build_all;
-use crate::{write_xlsx, zip_binary_parts, zip_parts, GenSheet, GenValue, GenWorkbook};
+use crate::{
+    write_xlsx, zip_binary_parts, zip_parts, GenHyperlink, GenSheet, GenValue, GenWorkbook,
+};
 
 pub struct EvilFile {
     pub name: String,
@@ -226,6 +228,150 @@ pub fn build_evil() -> Vec<EvilFile> {
         name: "encrypted.xlsx".to_string(),
         bytes: fake_cfb(true),
         expectation: "ENCRYPTED",
+    });
+
+    // 14. Hyperlink XSS: executable/local URL schemes in every disguise the
+    // engine must drop (the cells themselves stay). Two safe links act as the
+    // positive control.
+    {
+        let mut wb = GenWorkbook::new();
+        let mut sheet = GenSheet::new("xss");
+        let bad_targets = [
+            "javascript:alert(1)",
+            "JaVaScRiPt:alert(document.domain)",
+            "data:text/html,<script>alert(1)</script>",
+            "vbscript:msgbox(1)",
+            "file:///etc/passwd",
+            " \tjavascript:alert(1)",
+            "java\nscript:alert(1)",
+        ];
+        for (row, target) in bad_targets.iter().enumerate() {
+            sheet.cell(row as u32, 0, GenValue::SharedStr(format!("bad{row}")));
+            sheet.hyperlinks.push(GenHyperlink {
+                ref_range: crate::a1(row as u32, 0),
+                target: Some(target.to_string()),
+                location: None,
+                tooltip: None,
+            });
+        }
+        let safe_row = bad_targets.len() as u32;
+        sheet.cell(safe_row, 0, GenValue::SharedStr("good".to_string()));
+        sheet.hyperlinks.push(GenHyperlink {
+            ref_range: crate::a1(safe_row, 0),
+            target: Some("https://example.com/safe".to_string()),
+            location: None,
+            tooltip: None,
+        });
+        sheet.cell(safe_row + 1, 0, GenValue::SharedStr("anchor".to_string()));
+        sheet.hyperlinks.push(GenHyperlink {
+            ref_range: crate::a1(safe_row + 1, 0),
+            target: None,
+            location: Some("xss!A1".to_string()),
+            tooltip: None,
+        });
+        wb.sheets.push(sheet);
+        out.push(EvilFile {
+            name: "xss_hyperlinks.xlsx".to_string(),
+            bytes: write_xlsx(&wb),
+            expectation: "ok",
+        });
+    }
+
+    // 15. Hostile rel targets that `..`-escape the part namespace. The
+    // worksheet rel must be treated as missing, never resolved outside the
+    // logical part tree.
+    {
+        let parts = vec![
+            ("_rels/.rels".to_string(), ROOT_RELS.to_string()),
+            (
+                "xl/workbook.xml".to_string(),
+                r#"<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="escape" sheetId="1" r:id="rId1"/></sheets></workbook>"#.to_string(),
+            ),
+            (
+                "xl/_rels/workbook.xml.rels".to_string(),
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="../../../../worksheets/sheet1.xml"/></Relationships>"#.to_string(),
+            ),
+            (
+                "xl/worksheets/sheet1.xml".to_string(),
+                r#"<worksheet><sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData></worksheet>"#.to_string(),
+            ),
+        ];
+        out.push(EvilFile {
+            name: "rel_target_escape.xlsx".to_string(),
+            bytes: zip_parts(&parts),
+            expectation: "partial",
+        });
+    }
+
+    // 16. A 1 MB sheet name with embedded control characters: tab rendering
+    // must see a short sanitized name, not unbounded DoS bytes.
+    {
+        let mut wb = GenWorkbook::new();
+        let mut name = "x".repeat(1_000_000);
+        name.push('\u{1}');
+        name.push_str("\nevil");
+        let mut sheet = GenSheet::new(&name);
+        sheet.cell(0, 0, GenValue::Number(1.0));
+        wb.sheets.push(sheet);
+        out.push(EvilFile {
+            name: "huge_sheet_name.xlsx".to_string(),
+            bytes: write_xlsx(&wb),
+            expectation: "ok",
+        });
+    }
+
+    // 17. Aggregate zip bomb: each part passes the per-part cap, but the sum
+    // (4 x 24 MB from a few-hundred-KB input) exceeds the total-decompression
+    // budget. Open succeeds (sheets are lazy); activation must fail typed,
+    // never OOM.
+    {
+        let mut part = String::from("<worksheet><sheetData>");
+        part.push_str(&"<row></row>".repeat(2_181_818)); // ~24 MB
+        part.push_str("</sheetData></worksheet>");
+        let mut parts = vec![
+            ("_rels/.rels".to_string(), ROOT_RELS.to_string()),
+            (
+                "xl/workbook.xml".to_string(),
+                r#"<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="b1" sheetId="1" r:id="rId1"/><sheet name="b2" sheetId="2" r:id="rId2"/><sheet name="b3" sheetId="3" r:id="rId3"/><sheet name="b4" sheetId="4" r:id="rId4"/></sheets></workbook>"#.to_string(),
+            ),
+            (
+                "xl/_rels/workbook.xml.rels".to_string(),
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet3.xml"/><Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet4.xml"/></Relationships>"#.to_string(),
+            ),
+        ];
+        for i in 1..=4 {
+            parts.push((format!("xl/worksheets/sheet{i}.xml"), part.clone()));
+        }
+        out.push(EvilFile {
+            name: "zip_bomb_total.xlsx".to_string(),
+            bytes: zip_parts(&parts),
+            expectation: "ok",
+        });
+    }
+
+    // 18. Misnamed sibling formats: name the real format in the error instead
+    // of a generic CORRUPT.
+    out.push(EvilFile {
+        name: "fake_xlsb.xlsx".to_string(),
+        bytes: zip_parts(&[
+            (
+                "_rels/.rels".to_string(),
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.bin"/></Relationships>"#.to_string(),
+            ),
+            ("xl/workbook.bin".to_string(), "BIFF12".to_string()),
+        ]),
+        expectation: "UNSUPPORTED_FORMAT",
+    });
+    out.push(EvilFile {
+        name: "fake_ods.xlsx".to_string(),
+        bytes: zip_parts(&[
+            (
+                "mimetype".to_string(),
+                "application/vnd.oasis.opendocument.spreadsheet".to_string(),
+            ),
+            ("content.xml".to_string(), "<office:document/>".to_string()),
+        ]),
+        expectation: "UNSUPPORTED_FORMAT",
     });
 
     // 13. Workbook with zero sheets.

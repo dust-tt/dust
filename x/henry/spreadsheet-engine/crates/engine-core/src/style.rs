@@ -3,9 +3,12 @@
 //! resolved to ARGB at parse time (theme + tint + indexed palette), so the UI
 //! never needs `theme1.xml`.
 
+use std::cell::OnceCell;
 use std::collections::BTreeMap;
 
 use serde::Serialize;
+
+use crate::numfmt::ParsedFormat;
 
 /// ARGB color, e.g. 0xFF1F4E79. Serialized as `"FF1F4E79"`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -160,18 +163,27 @@ pub struct ResolvedStyle {
 pub struct StyleTable {
     pub styles: Vec<ResolvedStyle>,
     pub theme: ThemePalette,
+    /// Per-style pre-parsed number formats, parallel to `styles`. Built
+    /// lazily on first formatted render — deterministic (a pure function of
+    /// `styles`), and viewport formatting stops re-parsing per cell.
+    parsed_fmts: OnceCell<Vec<ParsedFormat>>,
 }
 
 impl Default for StyleTable {
     fn default() -> Self {
-        StyleTable {
-            styles: vec![ResolvedStyle::default()],
-            theme: ThemePalette::default(),
-        }
+        StyleTable::new(vec![ResolvedStyle::default()], ThemePalette::default())
     }
 }
 
 impl StyleTable {
+    pub fn new(styles: Vec<ResolvedStyle>, theme: ThemePalette) -> StyleTable {
+        StyleTable {
+            styles,
+            theme,
+            parsed_fmts: OnceCell::new(),
+        }
+    }
+
     pub fn get(&self, idx: u32) -> &ResolvedStyle {
         self.styles.get(idx as usize).unwrap_or(&self.styles[0])
     }
@@ -183,6 +195,17 @@ impl StyleTable {
         } else {
             fmt
         }
+    }
+
+    /// Cached parsed format for style `idx` (out-of-range falls back to the
+    /// default style, mirroring `get`).
+    pub fn parsed_num_fmt(&self, idx: u32) -> &ParsedFormat {
+        let parsed = self.parsed_fmts.get_or_init(|| {
+            (0..self.styles.len() as u32)
+                .map(|i| ParsedFormat::parse(self.num_fmt(i)))
+                .collect()
+        });
+        parsed.get(idx as usize).unwrap_or(&parsed[0])
     }
 }
 

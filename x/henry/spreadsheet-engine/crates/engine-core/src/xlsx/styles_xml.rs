@@ -454,7 +454,7 @@ pub fn parse_styles(xml: &[u8], theme: ThemePalette) -> Result<StyleTable> {
         styles.push(ResolvedStyle::default());
     }
 
-    Ok(StyleTable { styles, theme })
+    Ok(StyleTable::new(styles, theme))
 }
 
 fn set_font_flag(

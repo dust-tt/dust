@@ -1,17 +1,24 @@
 //! ZIP container access. Parts decompress individually on demand; nothing is
-//! extracted eagerly (spec §3.1).
+//! extracted eagerly.
 
 use std::io::{Cursor, Read};
 
 use zip::ZipArchive;
 
-use crate::error::{EngineError, Result};
+use crate::error::{BudgetKind, EngineError, Result};
 
 pub struct Container {
     archive: ZipArchive<Cursor<Vec<u8>>>,
     /// Decompressed-size ceiling per part, to defuse zip bombs: a worksheet
     /// part may be large, but a 4 GB part is never legitimate for us.
     max_part_bytes: u64,
+    /// Running total of decompressed bytes across all parts read so far.
+    /// Many parts that individually pass the per-part cap can still sum to a
+    /// memory exhaustion; this caps the aggregate.
+    total_decompressed: u64,
+    /// Ceiling for `total_decompressed`, derived from the compressed input
+    /// size at open (legitimate xlsx rarely exceeds ~10x expansion).
+    max_total_bytes: u64,
 }
 
 /// One entry of a `.rels` part.
@@ -24,11 +31,18 @@ pub struct Relationship {
 
 impl Container {
     pub fn open(bytes: Vec<u8>) -> Result<Container> {
+        // Aggregate decompression budget: generous for real workbooks (xlsx
+        // XML compresses ~5-10x), fatal for stacked high-ratio bomb parts.
+        let max_total_bytes = (bytes.len() as u64)
+            .saturating_mul(20)
+            .max(64 * 1024 * 1024);
         let archive = ZipArchive::new(Cursor::new(bytes))
             .map_err(|e| EngineError::Corrupt(format!("not a valid zip archive: {e}")))?;
         Ok(Container {
             archive,
             max_part_bytes: 2 * 1024 * 1024 * 1024,
+            total_decompressed: 0,
+            max_total_bytes,
         })
     }
 
@@ -56,6 +70,10 @@ impl Container {
             return Err(EngineError::Corrupt(format!(
                 "zip part '{normalized}' exceeds size cap"
             )));
+        }
+        self.total_decompressed = self.total_decompressed.saturating_add(buf.len() as u64);
+        if self.total_decompressed > self.max_total_bytes {
+            return Err(EngineError::BudgetExceeded(BudgetKind::Memory));
         }
         Ok(buf)
     }
@@ -103,13 +121,16 @@ impl Container {
     ) -> Option<String> {
         rels.iter()
             .find(|r| r.kind.contains(kind_fragment))
-            .map(|r| self.resolve_relative(base_part, &r.target))
+            .and_then(|r| self.resolve_relative(base_part, &r.target))
     }
 
     /// Resolve a relationship target against the directory of `base_part`.
-    pub fn resolve_relative(&self, base_part: &str, target: &str) -> String {
+    /// Returns `None` when `..` segments escape the part namespace root
+    /// (hostile rel targets like `../../../../x.xml`); callers treat that as
+    /// a missing relationship.
+    pub fn resolve_relative(&self, base_part: &str, target: &str) -> Option<String> {
         if let Some(absolute) = target.strip_prefix('/') {
-            return absolute.to_string();
+            return Some(absolute.to_string());
         }
         let (dir, _) = split_part(base_part);
         let mut segments: Vec<&str> = if dir.is_empty() {
@@ -121,12 +142,13 @@ impl Container {
             match seg {
                 "." | "" => {}
                 ".." => {
-                    segments.pop();
+                    // Underflow = the target escapes the part namespace root.
+                    segments.pop()?;
                 }
                 s => segments.push(s),
             }
         }
-        segments.join("/")
+        Some(segments.join("/"))
     }
 }
 
@@ -179,21 +201,82 @@ mod tests {
     fn relative_resolution() {
         let c = Container::open(empty_zip()).unwrap();
         assert_eq!(
-            c.resolve_relative("xl/workbook.xml", "worksheets/sheet1.xml"),
-            "xl/worksheets/sheet1.xml"
+            c.resolve_relative("xl/workbook.xml", "worksheets/sheet1.xml")
+                .as_deref(),
+            Some("xl/worksheets/sheet1.xml")
         );
         assert_eq!(
-            c.resolve_relative("xl/workbook.xml", "/xl/styles.xml"),
-            "xl/styles.xml"
+            c.resolve_relative("xl/workbook.xml", "/xl/styles.xml")
+                .as_deref(),
+            Some("xl/styles.xml")
         );
         assert_eq!(
-            c.resolve_relative("xl/workbook.xml", "../docProps/core.xml"),
-            "docProps/core.xml"
+            c.resolve_relative("xl/workbook.xml", "../docProps/core.xml")
+                .as_deref(),
+            Some("docProps/core.xml")
         );
         assert_eq!(
-            c.resolve_relative("workbook.xml", "sheet1.xml"),
-            "sheet1.xml"
+            c.resolve_relative("workbook.xml", "sheet1.xml").as_deref(),
+            Some("sheet1.xml")
         );
+    }
+
+    #[test]
+    fn relative_resolution_rejects_underflow() {
+        let c = Container::open(empty_zip()).unwrap();
+        // One `..` past the root: the base dir is `xl`, two pops underflow.
+        assert_eq!(c.resolve_relative("xl/workbook.xml", "../../x.xml"), None);
+        assert_eq!(
+            c.resolve_relative("xl/workbook.xml", "../../../../x.xml"),
+            None
+        );
+        assert_eq!(c.resolve_relative("workbook.xml", "../x.xml"), None);
+        // Escape-then-return is still an underflow at the moment of escape.
+        assert_eq!(
+            c.resolve_relative("xl/workbook.xml", "../../xl/a.xml"),
+            None
+        );
+        // A `..` that stays inside the tree is fine.
+        assert_eq!(
+            c.resolve_relative("xl/worksheets/sheet1.xml", "../styles.xml")
+                .as_deref(),
+            Some("xl/styles.xml")
+        );
+    }
+
+    #[test]
+    fn total_decompression_cap_trips() {
+        // 40 parts of 64 KiB zeros compress to a tiny zip; with the floor at
+        // max(64 MB, 20x input) the committed cap would never trip on this
+        // input, so pin a small cap directly to exercise the accounting.
+        let parts: Vec<(String, Vec<u8>)> = (0..40)
+            .map(|i| (format!("p{i}.xml"), vec![b'a'; 64 * 1024]))
+            .collect();
+        let mut cursor = Cursor::new(Vec::new());
+        {
+            let mut writer = zip::ZipWriter::new(&mut cursor);
+            for (name, content) in &parts {
+                writer
+                    .start_file::<_, ()>(name.as_str(), zip::write::FileOptions::default())
+                    .unwrap();
+                std::io::Write::write_all(&mut writer, content).unwrap();
+            }
+            writer.finish().unwrap();
+        }
+        let mut c = Container::open(cursor.into_inner()).unwrap();
+        c.max_total_bytes = 256 * 1024;
+        let mut tripped = false;
+        for i in 0..40 {
+            match c.read_part(&format!("p{i}.xml")) {
+                Ok(_) => {}
+                Err(EngineError::BudgetExceeded(BudgetKind::Memory)) => {
+                    tripped = true;
+                    break;
+                }
+                Err(e) => panic!("unexpected error: {e}"),
+            }
+        }
+        assert!(tripped, "aggregate cap never tripped");
     }
 
     #[test]

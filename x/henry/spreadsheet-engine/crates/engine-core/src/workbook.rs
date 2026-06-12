@@ -11,13 +11,15 @@ use crate::style::StyleTable;
 use crate::value::{CellValue, StrRef};
 
 /// Budgets and knobs, all overridable from `OpenOptions` at the TS boundary
-/// (spec §6). Time budgets are enforced via deterministic cell-count
+/// (see README · Budgets). Time budgets are enforced via deterministic cell-count
 /// checkpoints, not wall clock.
 #[derive(Debug, Clone)]
 pub struct OpenOptions {
     pub max_bytes: u64,
     pub max_cells_per_sheet: u32,
     pub max_total_cells: u64,
+    /// CSV delimiter override; `None` = sniff. Ignored for xlsx.
+    pub csv_delimiter: Option<u8>,
 }
 
 impl Default for OpenOptions {
@@ -26,6 +28,7 @@ impl Default for OpenOptions {
             max_bytes: 400 * 1024 * 1024,
             max_cells_per_sheet: 2_000_000,
             max_total_cells: 8_000_000,
+            csv_delimiter: None,
         }
     }
 }
@@ -90,6 +93,27 @@ pub fn chars_to_px(width_chars: f64) -> f64 {
 /// Row height points to CSS pixels (96 dpi / 72 pt-per-inch).
 pub fn pt_to_px(height_pt: f64) -> f64 {
     (height_pt * 96.0 / 72.0).round()
+}
+
+/// Excel caps sheet names at 31 chars; we allow a little slack for files from
+/// other producers but refuse unbounded names (a 1 MB tab label is pure DoS).
+const MAX_SHEET_NAME_CHARS: usize = 64;
+
+/// Sanitize a sheet name for display: strip control characters (including
+/// NUL), trim, cap the length, and fall back to `Sheet{n}` (1-based) when
+/// nothing legible remains.
+pub fn sanitize_sheet_name(raw: &str, index: usize) -> String {
+    let cleaned: String = raw
+        .chars()
+        .filter(|c| !c.is_control())
+        .take(MAX_SHEET_NAME_CHARS)
+        .collect();
+    let trimmed = cleaned.trim();
+    if trimmed.is_empty() {
+        format!("Sheet{}", index + 1)
+    } else {
+        trimmed.to_string()
+    }
 }
 
 /// A hyperlink anchored on a cell range.
@@ -364,7 +388,7 @@ impl SharedStrings {
     }
 }
 
-/// A sheet slot: parsed lazily on first activation (spec §3.3 step 4).
+/// A sheet slot: parsed lazily on first activation.
 pub(crate) enum SheetSlot {
     Loaded(Box<Sheet>),
     Pending(PendingSheet),
@@ -399,6 +423,11 @@ pub struct SheetMeta {
     pub visibility: SheetVisibility,
     pub loaded: bool,
     pub truncated: bool,
+    /// Last row index that still has (possibly partial) data when the sheet
+    /// was truncated by a cell budget. Rows from this row on may be missing
+    /// cells; render an in-grid "data truncated" affordance there.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub truncated_at_row: Option<u32>,
     pub cell_count: u32,
     /// Used-range row/col counts (0 when empty or not loaded yet).
     pub row_count: u32,
@@ -536,6 +565,11 @@ impl Workbook {
                     visibility: s.visibility,
                     loaded: true,
                     truncated: s.truncated,
+                    truncated_at_row: if s.truncated && s.cell_count() > 0 {
+                        Some(s.dims.max_row)
+                    } else {
+                        None
+                    },
                     cell_count: s.cell_count(),
                     row_count: if s.cell_count() == 0 {
                         0
@@ -559,6 +593,7 @@ impl Workbook {
                     visibility: p.visibility,
                     loaded: false,
                     truncated: false,
+                    truncated_at_row: None,
                     cell_count: 0,
                     // Unknown until activation; `<dimension>` hints are
                     // untrusted (evil corpus lies about extents).
@@ -645,5 +680,45 @@ mod tests {
     fn unit_conversions() {
         assert_eq!(chars_to_px(8.43), 64.0);
         assert_eq!(pt_to_px(15.0), 20.0);
+    }
+
+    #[test]
+    fn sheet_name_sanitization() {
+        assert_eq!(sanitize_sheet_name("Sales Q1", 0), "Sales Q1");
+        assert_eq!(sanitize_sheet_name("", 2), "Sheet3");
+        assert_eq!(sanitize_sheet_name("a\u{0}b\nc", 0), "abc");
+        assert_eq!(sanitize_sheet_name("   ", 0), "Sheet1");
+        let long = "é".repeat(500);
+        let s = sanitize_sheet_name(&long, 0);
+        assert_eq!(s.chars().count(), 64, "caps by chars, not bytes");
+    }
+
+    #[test]
+    fn truncated_meta_reports_last_row() {
+        let mut b = SheetBuilder::new("s".to_string(), SheetVisibility::Visible, 3);
+        b.push_cell(0, 0, CellValue::Number(1.0), 0, None);
+        b.push_cell(1, 0, CellValue::Number(2.0), 0, None);
+        b.push_cell(2, 0, CellValue::Number(3.0), 0, None);
+        b.push_cell(3, 0, CellValue::Number(4.0), 0, None);
+        let wb = Workbook::from_sheets(
+            vec![b.finish()],
+            Default::default(),
+            StyleTable::default(),
+            false,
+        );
+        let meta = wb.metadata();
+        assert!(meta.sheets[0].truncated);
+        assert_eq!(meta.sheets[0].truncated_at_row, Some(2));
+
+        // Untruncated sheets carry no marker.
+        let mut b = SheetBuilder::new("s".to_string(), SheetVisibility::Visible, u32::MAX);
+        b.push_cell(0, 0, CellValue::Number(1.0), 0, None);
+        let wb = Workbook::from_sheets(
+            vec![b.finish()],
+            Default::default(),
+            StyleTable::default(),
+            false,
+        );
+        assert_eq!(wb.metadata().sheets[0].truncated_at_row, None);
     }
 }

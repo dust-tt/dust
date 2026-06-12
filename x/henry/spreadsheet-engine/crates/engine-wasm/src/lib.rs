@@ -1,5 +1,10 @@
 //! Thin wasm-bindgen wrapper around `engine-core`. Zero logic lives here —
-//! conversions at the edge only (spec §2.1).
+//! conversions at the edge only.
+//!
+//! **Internal plumbing.** The supported consumer surface is
+//! `@dust/sheet-engine-client` (TS); the wasm exports below are an
+//! implementation detail of the worker shim and may change shape without
+//! notice. Do not call them directly from application code.
 //!
 //! Handle-based API: `open_start()` allocates a handle, bytes stream in via
 //! `append_chunk`, `open_finish` parses. Every open without a `close` leaks —
@@ -71,6 +76,19 @@ pub fn open_start(file_name: String, opts_json: Option<String>) -> Result<u32, J
         }
         if let Some(v) = parsed.get("maxTotalCells").and_then(|v| v.as_u64()) {
             opts.max_total_cells = v;
+        }
+        if let Some(v) = parsed.get("csvDelimiter").and_then(|v| v.as_str()) {
+            opts.csv_delimiter = match v {
+                "," => Some(b','),
+                ";" => Some(b';'),
+                "\t" => Some(b'\t'),
+                "|" => Some(b'|'),
+                other => {
+                    return Err(internal_err(&format!(
+                        "bad options: unsupported csvDelimiter {other:?}"
+                    )))
+                }
+            };
         }
     }
     let handle = NEXT_HANDLE.with(|h| {

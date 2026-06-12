@@ -1,4 +1,4 @@
-// Determinism gate (spec §7.1): for every corpus file, canonical JSON from
+// Determinism gate (see README · Determinism): for every corpus file, canonical JSON from
 // (a) native engine-cli run twice and (b) the wasm build in Node must be
 // byte-identical (hash compare). Cross-platform identity is covered by
 // running this same script on CI Linux and dev macOS.

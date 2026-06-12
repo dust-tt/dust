@@ -52,6 +52,8 @@ export interface OpenOptions {
   maxBytes?: number;
   maxCellsPerSheet?: number;
   maxTotalCells?: number;
+  /** CSV delimiter override; omitted = sniffed from content. Ignored for xlsx. */
+  csvDelimiter?: "," | ";" | "\t" | "|";
 }
 
 export type SheetVisibility = "visible" | "hidden" | "veryHidden";
@@ -62,6 +64,9 @@ export interface SheetMeta {
   visibility: SheetVisibility;
   loaded: boolean;
   truncated: boolean;
+  /** Last row with (possibly partial) data when `truncated`; rows from here
+   * on may be missing cells. Absent when the sheet is complete. */
+  truncatedAtRow?: number;
   cellCount: number;
   rowCount: number;
   colCount: number;
@@ -196,7 +201,7 @@ export interface Progress {
   total?: number;
 }
 
-/** A cancellable promise with progress reporting (spec §5.2). */
+/** A cancellable promise with progress reporting. */
 export type Task<T> = Promise<T> & {
   progress: (cb: (p: Progress) => void) => Task<T>;
   cancel: () => void;

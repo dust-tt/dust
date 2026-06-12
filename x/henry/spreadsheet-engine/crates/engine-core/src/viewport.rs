@@ -1,4 +1,4 @@
-//! Viewport queries: O(cells in rectangle), never O(workbook) (spec §3.5).
+//! Viewport queries: O(cells in rectangle), never O(workbook).
 //! Also the kit-shaped row-batch projection used by the React adapter.
 
 use std::collections::BTreeMap;
@@ -44,7 +44,7 @@ pub struct ViewportCell {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ViewportSlice {
+pub struct ViewportSlice<'a> {
     pub sheet: u32,
     pub row_start: u32,
     pub row_end: u32,
@@ -53,27 +53,29 @@ pub struct ViewportSlice {
     pub cells: Vec<ViewportCell>,
     /// Merges intersecting the rectangle.
     pub merges: Vec<CellRange>,
-    /// The slice of the style table actually referenced by `cells`.
-    pub styles: BTreeMap<u32, ResolvedStyle>,
+    /// The slice of the style table actually referenced by `cells`,
+    /// serialized straight from the table (no per-call clones).
+    pub styles: BTreeMap<u32, &'a ResolvedStyle>,
     /// Row heights / col widths for the range: overrides only, px.
     pub row_heights_px: Vec<(u32, f64)>,
     pub col_widths_px: Vec<(u32, f64)>,
 }
 
 /// Format one cell of `sheet` (by parallel-array index) to display text.
+/// Formats are parsed once per style via the `StyleTable` cache, not per cell.
 pub fn format_cell(workbook: &Workbook, sheet: &Sheet, idx: usize) -> numfmt::FormattedCell {
     let value = sheet.values[idx];
     let style_idx = sheet.style_idx[idx];
-    let fmt = workbook.styles.num_fmt(style_idx);
+    let fmt = workbook.styles.parsed_num_fmt(style_idx);
     match value {
-        CellValue::Number(n) => numfmt::format_number(n, fmt, workbook.date1904, &EN_US),
+        CellValue::Number(n) => numfmt::format_number_parsed(n, fmt, workbook.date1904, &EN_US),
         CellValue::SharedString(i) => {
             let s = workbook.shared.get(i).unwrap_or("");
-            numfmt::format_text(s, fmt, &EN_US)
+            numfmt::format_text_parsed(s, fmt, &EN_US)
         }
         CellValue::InlineString(r) => {
             let s = sheet.inline_str(r);
-            let mut formatted = numfmt::format_text(s, fmt, &EN_US);
+            let mut formatted = numfmt::format_text_parsed(s, fmt, &EN_US);
             // CSV alignment hint: numeric-looking strings align right.
             if infer_number(s).is_some() {
                 formatted.align = Align::Right;
@@ -91,7 +93,7 @@ pub fn get_viewport(
     rows: (u32, u32),
     cols: (u32, u32),
     mode: DisplayMode,
-) -> ViewportSlice {
+) -> ViewportSlice<'_> {
     let (r0, r1) = (rows.0.min(rows.1), rows.0.max(rows.1));
     let (c0, c1) = (cols.0.min(cols.1), cols.0.max(cols.1));
 
@@ -181,11 +183,7 @@ pub fn get_viewport(
         }
     }
 
-    let styles = workbook
-        .style_subset(style_indices)
-        .into_iter()
-        .map(|(k, v)| (k, v.clone()))
-        .collect();
+    let styles = workbook.style_subset(style_indices);
 
     ViewportSlice {
         sheet: sheet_index,
@@ -213,7 +211,7 @@ pub fn get_viewport(
     }
 }
 
-fn empty_slice(sheet: u32, r0: u32, r1: u32, c0: u32, c1: u32) -> ViewportSlice {
+fn empty_slice<'a>(sheet: u32, r0: u32, r1: u32, c0: u32, c1: u32) -> ViewportSlice<'a> {
     ViewportSlice {
         sheet,
         row_start: r0,
@@ -410,6 +408,34 @@ mod tests {
         assert_eq!(rows[0].cells.len(), 2);
         assert_eq!(rows[1].index, 2);
         assert_eq!(rows[0].cells[0].value, "1");
+    }
+
+    #[test]
+    fn formula_mode_renders_formula_text() {
+        let mut b = SheetBuilder::new("s".to_string(), SheetVisibility::Visible, u32::MAX);
+        let fref = b.intern("SUM(A1:A2)");
+        b.push_cell(0, 0, CellValue::Number(42.0), 0, Some(fref));
+        b.push_cell(1, 0, CellValue::Number(7.0), 0, None);
+        let wb = Workbook {
+            date1904: false,
+            shared: Default::default(),
+            styles: Default::default(),
+            defined_names: Vec::new(),
+            sheets: vec![SheetSlot::Loaded(Box::new(b.finish()))],
+            container: None,
+            opts: OpenOptions::default(),
+            total_cells_loaded: 0,
+        };
+        let slice = get_viewport(&wb, 0, (0, 5), (0, 5), DisplayMode::Formula);
+        // Formula cells render `=<formula>` left-aligned; non-formula cells
+        // fall back to their formatted value.
+        assert_eq!(slice.cells[0].text, "=SUM(A1:A2)");
+        assert_eq!(slice.cells[0].align, Align::Left);
+        assert_eq!(slice.cells[1].text, "7");
+
+        let value_mode = get_viewport(&wb, 0, (0, 5), (0, 5), DisplayMode::Value);
+        assert_eq!(value_mode.cells[0].text, "42");
+        assert_eq!(value_mode.cells[0].formula.as_deref(), Some("SUM(A1:A2)"));
     }
 
     #[test]

@@ -2,9 +2,9 @@
 //! number formatting, viewport queries and search.
 //!
 //! 100% of engine logic lives here; `engine-wasm` is bindings only. This crate
-//! compiles and tests natively (`cargo test`, no wasm) — see the spec §2.1.
+//! compiles and tests natively (`cargo test`, no wasm) — engine-wasm is bindings only.
 //!
-//! Determinism contract (§7.1): output is a pure function of input bytes.
+//! Determinism contract: output is a pure function of input bytes.
 //! Forbidden here: `std::time`, randomness, `HashMap` iteration order reaching
 //! output, float printing via `format!` (`ryu` only, via `numfmt`/serde_json).
 

@@ -1,7 +1,9 @@
-//! The synthetic corpus (spec §7.2 item 1): fixed, seeded, exhaustive over
+//! The synthetic corpus: fixed, seeded, exhaustive over
 //! the v1 feature list. Each entry returns (xlsx bytes, expected-values JSON).
 
-use crate::{expected_values_json, write_xlsx, GenSheet, GenStyle, GenValue, GenWorkbook, Lcg};
+use crate::{
+    expected_values_json, write_xlsx, GenHyperlink, GenSheet, GenStyle, GenValue, GenWorkbook, Lcg,
+};
 
 pub struct CorpusFile {
     pub name: &'static str,
@@ -34,7 +36,56 @@ pub fn build_all() -> Vec<CorpusFile> {
         tall_narrow(),
         mixed_large(),
         duplicate_cells(),
+        hyperlinks(),
     ]
+}
+
+/// External (https/mailto/ftp), internal (#location) and tooltip-carrying
+/// hyperlinks, anchored on single cells and a range.
+fn hyperlinks() -> CorpusFile {
+    let mut wb = GenWorkbook::new();
+    let mut sheet = GenSheet::new("links");
+    sheet.cell(0, 0, GenValue::SharedStr("website".to_string()));
+    sheet.cell(1, 0, GenValue::SharedStr("email".to_string()));
+    sheet.cell(2, 0, GenValue::SharedStr("internal".to_string()));
+    sheet.cell(3, 0, GenValue::SharedStr("ftp".to_string()));
+    sheet.cell(4, 0, GenValue::SharedStr("ranged".to_string()));
+    sheet.cell(4, 1, GenValue::SharedStr("also ranged".to_string()));
+    sheet.hyperlinks.push(GenHyperlink {
+        ref_range: "A1".to_string(),
+        target: Some("https://example.com/page?x=1".to_string()),
+        location: None,
+        tooltip: Some("Example site".to_string()),
+    });
+    sheet.hyperlinks.push(GenHyperlink {
+        ref_range: "A2".to_string(),
+        target: Some("mailto:team@example.com".to_string()),
+        location: None,
+        tooltip: None,
+    });
+    sheet.hyperlinks.push(GenHyperlink {
+        ref_range: "A3".to_string(),
+        target: None,
+        location: Some("two!B2".to_string()),
+        tooltip: None,
+    });
+    sheet.hyperlinks.push(GenHyperlink {
+        ref_range: "A4".to_string(),
+        target: Some("ftp://files.example.com/data.bin".to_string()),
+        location: None,
+        tooltip: None,
+    });
+    sheet.hyperlinks.push(GenHyperlink {
+        ref_range: "A5:B5".to_string(),
+        target: Some("http://plain.example.com".to_string()),
+        location: None,
+        tooltip: None,
+    });
+    wb.sheets.push(sheet);
+    let mut two = GenSheet::new("two");
+    two.cell(1, 1, GenValue::SharedStr("link target".to_string()));
+    wb.sheets.push(two);
+    entry("hyperlinks.xlsx", wb)
 }
 
 /// Every built-in numFmt id 0..=49 applied to a spread of values.
@@ -69,7 +120,7 @@ fn builtin_numfmts() -> CorpusFile {
     entry("builtin_numfmts.xlsx", wb)
 }
 
-/// Custom format strings covering the §3.4 feature list.
+/// Custom format strings covering the supported numfmt feature list.
 fn custom_numfmts() -> CorpusFile {
     const FORMATS: &[&str] = &[
         "0",

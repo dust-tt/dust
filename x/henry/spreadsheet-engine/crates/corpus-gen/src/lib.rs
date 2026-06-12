@@ -1,4 +1,4 @@
-//! Deterministic corpus generator (spec §7.2).
+//! Deterministic corpus generator.
 //!
 //! Writes `.xlsx` files through its own raw-XML templates + zip writer — a
 //! code path entirely independent of `engine-core`'s parser, so generator and
@@ -55,12 +55,26 @@ pub struct GenStyle {
     pub wrap: bool,
 }
 
+/// One `<hyperlink>` element: external targets go through the sheet's rels
+/// part (`r:id`), internal ones use the `location` attribute.
+#[derive(Debug, Clone)]
+pub struct GenHyperlink {
+    /// Anchor range, e.g. `"A1"` or `"A1:B2"`.
+    pub ref_range: String,
+    /// External URL; `None` means internal (use `location`).
+    pub target: Option<String>,
+    /// Internal location, e.g. `"Sheet2!A1"`.
+    pub location: Option<String>,
+    pub tooltip: Option<String>,
+}
+
 #[derive(Debug, Clone)]
 pub struct GenSheet {
     pub name: String,
     pub cells: Vec<GenCell>,
     /// A1 ranges, e.g. `"A1:B2"`.
     pub merges: Vec<String>,
+    pub hyperlinks: Vec<GenHyperlink>,
     pub frozen: (u32, u32), // (rows, cols)
     pub col_widths: Vec<(u32, f64)>,
     pub row_heights: Vec<(u32, f64)>,
@@ -77,6 +91,7 @@ impl GenSheet {
             name: name.to_string(),
             cells: Vec::new(),
             merges: Vec::new(),
+            hyperlinks: Vec::new(),
             frozen: (0, 0),
             col_widths: Vec::new(),
             row_heights: Vec::new(),
@@ -214,8 +229,9 @@ pub fn write_xlsx(wb: &GenWorkbook) -> Vec<u8> {
         }
     };
 
-    // Worksheets XML.
+    // Worksheets XML (+ per-sheet rels for external hyperlink targets).
     let mut sheet_xmls: Vec<String> = Vec::new();
+    let mut sheet_rels: Vec<Option<String>> = Vec::new();
     for sheet in &wb.sheets {
         let mut cells_by_row: Vec<(u32, Vec<&GenCell>)> = Vec::new();
         let mut sorted: Vec<&GenCell> = sheet.cells.iter().collect();
@@ -358,6 +374,46 @@ pub fn write_xlsx(wb: &GenWorkbook) -> Vec<u8> {
             }
             xml.push_str("</mergeCells>");
         }
+        if !sheet.hyperlinks.is_empty() {
+            xml.push_str("<hyperlinks>");
+            let mut rels = String::new();
+            rels.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n");
+            rels.push_str("<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">");
+            let mut external_count = 0u32;
+            for h in &sheet.hyperlinks {
+                let tooltip = h
+                    .tooltip
+                    .as_ref()
+                    .map(|t| format!(" tooltip=\"{}\"", xml_escape(t)))
+                    .unwrap_or_default();
+                if let Some(target) = &h.target {
+                    external_count += 1;
+                    let rid = format!("rIdHl{external_count}");
+                    let _ = write!(
+                        xml,
+                        "<hyperlink ref=\"{}\" r:id=\"{rid}\"{tooltip}/>",
+                        xml_escape(&h.ref_range)
+                    );
+                    let _ = write!(
+                        rels,
+                        "<Relationship Id=\"{rid}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink\" Target=\"{}\" TargetMode=\"External\"/>",
+                        xml_escape(target)
+                    );
+                } else if let Some(location) = &h.location {
+                    let _ = write!(
+                        xml,
+                        "<hyperlink ref=\"{}\" location=\"{}\"{tooltip}/>",
+                        xml_escape(&h.ref_range),
+                        xml_escape(location)
+                    );
+                }
+            }
+            rels.push_str("</Relationships>");
+            xml.push_str("</hyperlinks>");
+            sheet_rels.push(if external_count > 0 { Some(rels) } else { None });
+        } else {
+            sheet_rels.push(None);
+        }
         xml.push_str("</worksheet>");
         sheet_xmls.push(xml);
     }
@@ -466,6 +522,9 @@ pub fn write_xlsx(wb: &GenWorkbook) -> Vec<u8> {
     ];
     for (i, xml) in sheet_xmls.into_iter().enumerate() {
         parts.push((format!("xl/worksheets/sheet{}.xml", i + 1), xml));
+        if let Some(rels) = sheet_rels.get(i).and_then(|r| r.clone()) {
+            parts.push((format!("xl/worksheets/_rels/sheet{}.xml.rels", i + 1), rels));
+        }
     }
     zip_parts(&parts)
 }

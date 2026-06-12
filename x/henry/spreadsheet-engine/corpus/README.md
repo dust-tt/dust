@@ -9,7 +9,7 @@ Committed, fully regenerable test inputs with per-file expectations. Layout:
 | `gen/golden/*.json` | Canonical-JSON goldens (full engine output incl. formatted text, styles, geometry) | blessed engine output: `BLESS=1 cargo test -p engine-core --test golden`; diffs must be reviewed, never auto-blessed in CI |
 | `gen/csv/*` | CSV/TSV edge cases: quoting, embedded newlines, escaped quotes, BOM, CRLF/CR/LF, delimiter sniffing (`, ; \t \|`), ragged rows, trailing empty columns, unicode, generated medium file | same generator run |
 | `evil/*` + `evil/MANIFEST.tsv` | Adversarial files with committed expectations (typed error / partial / ok): truncations of every gen file at 50%/90%, garbage, zip-not-xlsx, missing sheet part, lying `<dimension>`, out-of-range sharedStrings indices, malformed XML, 50k-deep nesting, 100k merges, 1M-char cell, ~1000x compression ratio, CFB fakes (renamed `.xls`, encrypted marker), zero sheets | same generator run (`corpus-gen/src/evil.rs`) |
-| `numfmt_cases.tsv` | The number-format golden table (≥ 500 cases; currently ~1240). **This table is the spec**: `numfmt.rs` must pass 100% (`cargo test --test numfmt_golden`). Columns: value, format, date1904, expected, provenance | `node scripts/gen-numfmt-table.mjs`: grid cases from SheetJS SSF (pinned in `package-lock.json`) + curated rows. Curated provenances: `excel-verified` (Excel ground truth where SSF diverges — JS `Math.round(-0.5)` artifacts, negative fixed-point drift, SSF's `$`-less builtin ids 5-8, negative-serial dates), `pinned` (deliberate engine conventions, documented in the row), `spec §3.4` (the spec's headline cases) |
+| `numfmt_cases.tsv` | The number-format golden table (≥ 500 cases; currently ~1660). **This table is the spec**: `numfmt.rs` must pass 100% (`cargo test --test numfmt_golden`). Columns: value, format, date1904, expected, provenance | `node scripts/gen-numfmt-table.mjs`: grid cases from SheetJS SSF (pinned in `package-lock.json`) + curated rows. Curated provenances: `excel-verified` (Excel ground truth where SSF diverges — JS `Math.round(-0.5)` artifacts, negative fixed-point drift, SSF's `$`-less builtin ids 5-8, negative-serial dates), `pinned` (deliberate engine conventions, documented in the row), `headline case` (the two canonical acceptance examples: `1234.5` through `#,##0.00` and serial `45000` through `yyyy-mm-dd`) |
 | `diff-exceptions.toml` | Documented per-(file, cell) differential exceptions. Growing over time is a review smell | hand-maintained (currently empty) |
 
 Comparison conventions:
@@ -20,7 +20,7 @@ Comparison conventions:
   SheetJS (`node scripts/diff-sheetjs.mjs`). `extremes.xlsx` is skipped by both
   oracles — they materialize dense ranges and OOM on a 1,048,576 × 16,384 used
   range, which is precisely the failure mode the engine's sparse model avoids.
-- LibreOffice headless (spec §7.4 oracle 3) is not wired up here: it needs a
+- LibreOffice headless is not wired up here: it needs a
   pinned container image and belongs to nightly CI, not the local loop.
 
 Real-world corpus (`real/`) is intentionally empty in this experiment: user

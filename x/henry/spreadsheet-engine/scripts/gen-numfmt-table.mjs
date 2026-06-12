@@ -1,4 +1,4 @@
-// Generate corpus/numfmt_cases.tsv: the numfmt golden table (spec §7.3).
+// Generate corpus/numfmt_cases.tsv: the numfmt golden table.
 //
 // Expected outputs come from SheetJS's SSF (pinned in package-lock.json), an
 // independent, widely-deployed ECMA-376 formatter — not from our engine, so
@@ -49,6 +49,15 @@ const NUMBER_FORMATS = [
   "[>=1000]#,##0;[<1000]0.00",
   "[Red]0.00",
   "[Blue]0;[Red]-0",
+  // Double-percent (x100 per `%`, both rendered) and explicit skip-width
+  // (`_x` renders a space) tokens. `*x` fill tokens are pinned via CURATED:
+  // the engine intentionally renders nothing for them (column fill is
+  // meaningless in a DOM grid) while SSF emits the fill char once.
+  "0%%",
+  "0.0%%",
+  "0_)",
+  "0.00_);(0.00)",
+  "_-0_-",
 ];
 
 const NUMBER_VALUES = [
@@ -79,12 +88,23 @@ const DATE_FORMATS = [
   "[h]:mm",
   "[h]:mm:ss",
   "[mm]:ss",
+  // Sub-second placeholders, incl. combined with rounding near rollover.
+  "ss.000",
+  "h:mm:ss.000",
+  "mm:ss.0",
+  "[mm]:ss.0",
 ];
 
 const DATE_VALUES = [
   1, 2, 59, 60, 61, 100, 1000, 36526, 44197, 45000, 45000.25, 45000.5, 45000.75,
   45000.999988425926, 0.5, 0.25, 0.75, 1.5, 2.0625,
+  // 59.9996s and 23:59:59.999: display rounding must roll minutes/days over.
+  0.0006944398148148148, 0.9999999884259259,
 ];
+
+// 1904 date system grid (SSF formats with the date1904 option).
+const DATE_FORMATS_1904 = ["yyyy-mm-dd", "m/d/yy h:mm", "[h]:mm", "dddd"];
+const DATE_VALUES_1904 = [0, 1, 366, 1462, 43538, 45000.5209];
 
 // Built-in ids resolved to their ECMA-376 / Excel en-US format strings (our
 // engine's table). SSF's numeric-id table deviates on ids 5-8 (it drops the
@@ -118,20 +138,31 @@ const BUILTIN_STRINGS = {
   38: "#,##0 ;[Red](#,##0)",
   39: "#,##0.00;(#,##0.00)",
   40: "#,##0.00;[Red](#,##0.00)",
+  41: '_(* #,##0_);_(* \\(#,##0\\);_(* "-"_);_(@_)',
+  42: '_($* #,##0_);_($* \\(#,##0\\);_($* "-"_);_(@_)',
+  43: '_(* #,##0.00_);_(* \\(#,##0.00\\);_(* "-"??_);_(@_)',
+  44: '_($* #,##0.00_);_($* \\(#,##0.00\\);_($* "-"??_);_(@_)',
   45: "mm:ss",
   46: "[h]:mm:ss",
   47: "mmss.0",
   48: "##0.0E+0",
   49: "@",
 };
+
+// Locale-reserved builtin ids (27-36 CJK dates, 50-58 CJK era dates): en-US
+// v1 intentionally resolves them to General. Pinned through the engine's own
+// builtin table (the grid below formats the VALUE through "General").
+const LOCALE_RESERVED_BUILTIN_IDS = [
+  27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 50, 51, 52, 53, 54, 55, 56, 57, 58,
+];
 const BUILTIN_VALUES = [0, 1, -1, 0.5, 1234.5678, -1234.5678, 45000, 45000.5209];
 
 // Excel-verified / intentional-deviation cases. These OVERRIDE any SSF grid
 // entry with the same (value, format). Provenance explains each source.
 const CURATED = [
-  // The spec's two headline cases.
-  [1234.5, "#,##0.00", 0, "1,234.50", "spec §3.4"],
-  [45000, "yyyy-mm-dd", 0, "2023-03-15", "spec §3.4"],
+  // The two canonical acceptance examples.
+  [1234.5, "#,##0.00", 0, "1,234.50", "headline case (excel-verified)"],
+  [45000, "yyyy-mm-dd", 0, "2023-03-15", "headline case (excel-verified)"],
   // Lotus 1900 leap-year bug (ECMA-376 + Excel verified).
   [59, "yyyy-mm-dd", 0, "1900-02-28", "excel-verified"],
   [60, "yyyy-mm-dd", 0, "1900-02-29", "excel-verified: the fake leap day"],
@@ -153,6 +184,34 @@ const CURATED = [
   [0.5, "#.00", 0, ".50", "excel-verified"],
   // Time rollover at display precision.
   [0.9999999, "h:mm:ss", 0, "0:00:00", "excel-verified: rounds into next day"],
+  // Rounding at display precision must CARRY into the next field (minute,
+  // hour, day, elapsed total) — consistent with the excel-verified row above.
+  // SSF 0.18.5 rounds the seconds field but drops the carry (e.g. renders
+  // "23:59:00" for 23:59:59.999), so these pin the engine's behavior.
+  // 0.0006944398148148148 = 59.9996s; 0.9999999884259259 = 23:59:59.999.
+  [0.0006944398148148148, "h:mm:ss", 0, "0:01:00", "pinned: carry (SSF: 0:00:00)"],
+  [0.9999999884259259, "h:mm:ss", 0, "0:00:00", "pinned: carry into next day (SSF: 23:59:00)"],
+  [0.0006944398148148148, "hh:mm:ss", 0, "00:01:00", "pinned: carry (SSF drops it)"],
+  [0.9999999884259259, "hh:mm:ss", 0, "00:00:00", "pinned: carry into next day (SSF drops it)"],
+  [0.9999999884259259, "h:mm", 0, "0:00", "pinned: carry into next day (SSF: 24:00)"],
+  [0.9999999884259259, "hh:mm", 0, "00:00", "pinned: carry into next day (SSF: 24:00)"],
+  [0.9999999884259259, "h:mm AM/PM", 0, "12:00 AM", "pinned: carry into next day (SSF: 12:00 PM)"],
+  [0.0006944398148148148, "h:mm:ss AM/PM", 0, "12:01:00 AM", "pinned: carry (SSF drops it)"],
+  [0.9999999884259259, "h:mm:ss AM/PM", 0, "12:00:00 AM", "pinned: carry into next day (SSF drops it)"],
+  [0.9999999884259259, "m/d/yy h:mm", 0, "1/1/00 0:00", "pinned: carry into the date (SSF: 1/0/00 24:00)"],
+  [0.0006944398148148148, "yyyy-mm-dd hh:mm:ss", 0, "1900-01-00 00:01:00", "pinned: carry (SSF drops it)"],
+  [0.9999999884259259, "yyyy-mm-dd hh:mm:ss", 0, "1900-01-01 00:00:00", "pinned: carry into the date (SSF drops it)"],
+  [0.0006944398148148148, "mm:ss", 0, "01:00", "pinned: carry (SSF: 00:00)"],
+  [0.9999999884259259, "mm:ss", 0, "00:00", "pinned: carry into next day (SSF: 59:00)"],
+  [0.0006944398148148148, "[h]:mm:ss", 0, "0:01:00", "pinned: carry (SSF drops it)"],
+  [0.9999999884259259, "[h]:mm:ss", 0, "24:00:00", "pinned: elapsed carry (SSF: 23:59:00)"],
+  [0.0006944398148148148, "[mm]:ss", 0, "01:00", "pinned: carry (SSF: 00:00)"],
+  [0.9999999884259259, "[mm]:ss", 0, "1440:00", "pinned: elapsed carry (SSF: 1439:00)"],
+  [0.0006944398148148148, "h:mm:ss.000", 0, "0:01:00.000", "pinned: subsecond carry (SSF drops it)"],
+  [0.0006944398148148148, "mm:ss.0", 0, "01:00.0", "pinned: subsecond carry (SSF drops it)"],
+  [0.9999999884259259, "mm:ss.0", 0, "00:00.0", "pinned: carry into next day (SSF: 59:00.0)"],
+  [0.0006944398148148148, "[mm]:ss.0", 0, "01:00.0", "pinned: subsecond carry (SSF drops it)"],
+  [0.9999999884259259, "[mm]:ss.0", 0, "1440:00.0", "pinned: elapsed carry (SSF: 1439:00.0)"],
   // Elapsed.
   [1.5, "[h]:mm", 0, "36:00", "excel-verified"],
   [0.0625, "[mm]:ss", 0, "90:00", "excel-verified"],
@@ -188,6 +247,19 @@ const CURATED = [
   [-5.5, '0" units"', 0, "-6 units", "excel-verified (SSF: -5 units)"],
   [-0.5, "0\\h", 0, "-1h", "excel-verified (SSF: 0h)"],
   [-5.5, "0\\h", 0, "-6h", "excel-verified (SSF: -5h)"],
+  // Same SSF negative-rounding artifact through skip-width tokens (the
+  // trailing `_)`/`_-` pad is trimmed by the comparison convention).
+  [-0.5, "0_)", 0, "-1", "excel-verified: half away from zero (SSF: 0)"],
+  [-5.5, "0_)", 0, "-6", "excel-verified (SSF: -5)"],
+  [-0.5, "_-0_-", 0, "- 1", "excel-verified: half away from zero (SSF: -)"],
+  [-5.5, "_-0_-", 0, "- 6", "excel-verified (SSF: - 5)"],
+  // `*x` fill tokens render nothing in the engine (deviation: SSF emits the
+  // fill char once; Excel repeats it to the column width, which has no
+  // equivalent in a DOM grid).
+  [1, "0*x", 0, "1", "deviation: fill token dropped (SSF: 1x)"],
+  [0.5, "0*x", 0, "1", "deviation: fill token dropped (SSF: 1x)"],
+  [-5.5, "0*x", 0, "-6", "deviation: fill dropped + half away from zero (SSF: -5x)"],
+  [1234.5678, "0*x", 0, "1235", "deviation: fill token dropped (SSF: 1235x)"],
   [-99.995, "0.00", 0, "-100.00", "excel-verified: decimal-repr rounding (SSF: -99.99)"],
   [-99.995, "0%", 0, "-10000%", "excel-verified (SSF: -9999%)"],
   [-99.995, "0.0#", 0, "-100.0", "excel-verified (SSF: -99.99)"],
@@ -208,9 +280,9 @@ const CURATED = [
   [-1, "h:mm", 0, "#####", "pinned"],
 ];
 
-function ssfFormat(fmt, value) {
+function ssfFormat(fmt, value, opts) {
   try {
-    const out = SSF.format(fmt, value);
+    const out = SSF.format(fmt, value, opts);
     // SSF returns "" when it cannot format (e.g. negative serial through a
     // date format); skip those grid cells — curated cases pin our behavior.
     return out === "" ? null : out;
@@ -252,6 +324,24 @@ for (const [id, fmtString] of Object.entries(BUILTIN_STRINGS)) {
   for (const v of BUILTIN_VALUES) {
     const out = ssfFormat(fmtString, v);
     addCase(v, `builtin:${id}`, 0, out === null ? null : out.trimEnd(), "ssf@0.18.5 (ECMA en-US builtin string)");
+  }
+}
+for (const fmt of DATE_FORMATS_1904) {
+  for (const v of DATE_VALUES_1904) {
+    const out = ssfFormat(fmt, v, { date1904: true });
+    addCase(v, fmt, 1, out === null ? null : out.trimEnd(), "ssf@0.18.5 (date1904)");
+  }
+}
+for (const id of LOCALE_RESERVED_BUILTIN_IDS) {
+  for (const v of BUILTIN_VALUES) {
+    const out = ssfFormat("General", v);
+    addCase(
+      v,
+      `builtin:${id}`,
+      0,
+      out === null ? null : out.trimEnd(),
+      "pinned: en-US v1 resolves locale-reserved builtins to General",
+    );
   }
 }
 

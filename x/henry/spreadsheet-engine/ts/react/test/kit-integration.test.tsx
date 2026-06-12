@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 //
-// Kit-integration acceptance gate (spec §7.6): render the REAL
+// Kit-integration acceptance gate: render the REAL
 // @extend-ai/react-xlsx <XlsxViewer/> (pinned version) driven by our
 // controller + the real engine (node wasm build) and assert on DOM text
 // content. If a kit update breaks the seam, this suite fails.
@@ -254,6 +254,142 @@ describe("XlsxViewer driven by the Dust engine (zero-fork, out of the box)", () 
     const client = newClient();
     render(<Harness bytes={corpus("evil/encrypted.xlsx")} fileName="encrypted.xlsx" client={client} />);
     await waitFor(() => expect(screen.getByTestId("error").textContent).toBe("ENCRYPTED"), { timeout: 10_000 });
+    await finish(client);
+  });
+
+  it("renders cell styles into the DOM (bold font, solid fill)", async () => {
+    const client = newClient();
+    const { container } = render(
+      <Harness bytes={corpus("gen/merges_frozen.xlsx")} fileName="merges_frozen.xlsx" client={client} />,
+    );
+    await waitFor(() => expect(screen.getAllByText("11").length).toBeGreaterThan(0), { timeout: 10_000 });
+
+    await waitFor(() => {
+      // (row+col) % 3 == 0 cells are bold (e.g. "0" at A1); % 3 == 1 cells
+      // carry the solid FF00B050 fill (e.g. "1" at B1). Inline styles are how
+      // the kit paints both, so they must be findable on the cell elements.
+      const styled = Array.from(container.querySelectorAll("[style]"));
+      const hasBold = styled.some((el) => {
+        const style = (el as HTMLElement).style;
+        return (style.fontWeight === "bold" || Number(style.fontWeight) >= 600) && el.textContent === "0";
+      });
+      const hasFill = styled.some((el) => {
+        const bg = (el as HTMLElement).style.backgroundColor.replace(/\s/g, "").toLowerCase();
+        return bg === "rgb(0,176,80)" || bg === "#00b050";
+      });
+      expect(hasBold).toBe(true);
+      expect(hasFill).toBe(true);
+    }, { timeout: 10_000 });
+
+    await finish(client);
+  });
+
+  it("renders merge spans, not just merge data", async () => {
+    const client = newClient();
+    const { container } = render(
+      <Harness bytes={corpus("gen/merges_frozen.xlsx")} fileName="merges_frozen.xlsx" client={client} />,
+    );
+    await waitFor(() => expect(screen.getAllByText("11").length).toBeGreaterThan(0), { timeout: 10_000 });
+
+    // A1:C1 is a 1x3 merge: the anchor cell must span 3 columns in the DOM.
+    await waitFor(() => {
+      const spanned = Array.from(container.querySelectorAll("[colspan]")).filter(
+        (el) => el.getAttribute("colspan") === "3",
+      );
+      expect(spanned.length).toBeGreaterThan(0);
+    }, { timeout: 10_000 });
+
+    await finish(client);
+  });
+
+  it("hidden rows do not render; hidden columns are excluded from the axis", async () => {
+    const client = newClient();
+    let controller: { activeSheet: { visibleRows: number[]; visibleCols: number[]; hiddenCols: number[] } } | null =
+      null;
+    render(
+      <Harness
+        bytes={corpus("gen/merges_frozen.xlsx")}
+        fileName="merges_frozen.xlsx"
+        client={client}
+        onController={(c) => {
+          controller = c as typeof controller;
+        }}
+      />,
+    );
+    // Visible neighbors paint first…
+    await waitFor(() => expect(screen.getAllByText("70").length).toBeGreaterThan(0), { timeout: 10_000 });
+    await waitFor(() => expect(screen.getAllByText("100").length).toBeGreaterThan(0), { timeout: 10_000 });
+    // …then assert hidden rows 8-9 (values 85, 95) never reach the DOM.
+    expect(screen.queryByText("85")).toBeNull();
+    expect(screen.queryByText("95")).toBeNull();
+    // Hidden column H: the kit hides columns by collapsing their track via
+    // the axis arrays (a layout effect jsdom cannot observe), so the
+    // assertion lives at the axis boundary: column 7 must be excluded from
+    // visibleCols and reported hidden.
+    expect(controller).not.toBeNull();
+    expect(controller!.activeSheet.visibleCols).not.toContain(7);
+    expect(controller!.activeSheet.hiddenCols).toContain(7);
+    expect(controller!.activeSheet.visibleRows).not.toContain(8);
+    expect(controller!.activeSheet.visibleRows).not.toContain(9);
+
+    await finish(client);
+  });
+
+  it("delivers sanitized hyperlinks to the kit and never an executable href", async () => {
+    // The pinned kit renders cell hyperlinks from the row-batch `hyperlink`
+    // field; capture exactly what it receives through the controller.
+    const client = newClient();
+    const seenTargets: string[] = [];
+
+    function Spy({ bytes, fileName }: { bytes: ArrayBuffer; fileName: string }) {
+      const src = React.useMemo(() => ({ bytes }), [bytes]);
+      const { controller } = useDustSheetController({ client, src, fileName });
+      if (!controller) {
+        return null;
+      }
+      const inner = controller as unknown as {
+        getRowsBatchAsync: (a: number, b: number, c: number) => Promise<unknown[] | null>;
+      };
+      const original = inner.getRowsBatchAsync;
+      const wrapped = Object.assign({}, controller, {
+        getRowsBatchAsync: async (a: number, b: number, c: number) => {
+          const rows = await original(a, b, c);
+          for (const row of (rows ?? []) as Array<{ cells: Array<{ hyperlink?: { target: string } }> }>) {
+            for (const cell of row.cells) {
+              if (cell.hyperlink) {
+                seenTargets.push(cell.hyperlink.target);
+              }
+            }
+          }
+          return rows;
+        },
+      });
+      return <XlsxViewer controller={wrapped as never} experimentalCanvas={false} readOnly showImages={false} />;
+    }
+
+    const { container, unmount } = render(<Spy bytes={corpus("gen/hyperlinks.xlsx")} fileName="hyperlinks.xlsx" />);
+    await waitFor(() => expect(screen.getAllByText("website").length).toBeGreaterThan(0), { timeout: 10_000 });
+    await waitFor(() => expect(seenTargets).toContain("https://example.com/page?x=1"), { timeout: 10_000 });
+    expect(seenTargets).toContain("mailto:team@example.com");
+    expect(seenTargets).toContain("#two!B2");
+    void container;
+    unmount();
+
+    // Hostile file: only the safe targets reach the kit, and the rendered
+    // DOM carries no executable href anywhere.
+    seenTargets.length = 0;
+    const { container: xss } = render(<Spy bytes={corpus("evil/xss_hyperlinks.xlsx")} fileName="xss.xlsx" />);
+    await waitFor(() => expect(screen.getAllByText("good").length).toBeGreaterThan(0), { timeout: 10_000 });
+    await waitFor(() => expect(seenTargets.length).toBeGreaterThan(0), { timeout: 10_000 });
+    expect([...new Set(seenTargets)].sort()).toEqual(["#xss!A1", "https://example.com/safe"]);
+    const banned = Array.from(xss.querySelectorAll("a[href]")).filter((a) => {
+      const href = (a.getAttribute("href") ?? "").toLowerCase().replace(/[\s\x00-\x1f]/g, "");
+      return (
+        href.startsWith("javascript:") || href.startsWith("data:") || href.startsWith("vbscript:") || href.startsWith("file:")
+      );
+    });
+    expect(banned).toEqual([]);
+
     await finish(client);
   });
 

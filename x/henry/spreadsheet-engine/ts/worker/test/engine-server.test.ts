@@ -4,7 +4,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { SheetEngineClient } from "@dust/sheet-engine-client";
 import type { EngineResponse } from "@dust/sheet-engine-client/protocol";
@@ -108,5 +108,100 @@ describe("protocol edges", () => {
     const pending = client.open({ bytes: corpus("gen/mixed_large.xlsx") }, "big.xlsx");
     client.destroy();
     await expect(pending).rejects.toMatchObject({ code: "CANCELLED" });
+  });
+});
+
+describe("url open guards", () => {
+  it("rejects before downloading when content-length exceeds the budget", async () => {
+    let bodyTouched = false;
+    const fetchImpl: typeof fetch = async () => {
+      const response = new Response(null, {
+        status: 200,
+        headers: { "content-length": String(500 * 1024 * 1024 * 1024) },
+      });
+      // Any attempt to read the payload (body stream OR buffered fallback)
+      // trips the flag; the budget check must fire before either.
+      Object.defineProperty(response, "body", {
+        get() {
+          bodyTouched = true;
+          return null;
+        },
+      });
+      response.arrayBuffer = async () => {
+        bodyTouched = true;
+        return new ArrayBuffer(0);
+      };
+      return response;
+    };
+    const host = createNodeEngineHost({ fetchImpl });
+    const client = new SheetEngineClient(host);
+    await expect(client.open({ url: "https://example.invalid/huge.xlsx" }, "huge.xlsx")).rejects.toMatchObject({
+      code: "BUDGET_EXCEEDED",
+    });
+    expect(bodyTouched).toBe(false);
+    client.destroy();
+  });
+
+  it("content-length checks against an explicit maxBytes override", async () => {
+    const fetchImpl: typeof fetch = async () =>
+      new Response(new ReadableStream({ pull() {} }), {
+        status: 200,
+        headers: { "content-length": String(2048) },
+      });
+    const host = createNodeEngineHost({ fetchImpl });
+    const client = new SheetEngineClient(host);
+    await expect(
+      client.open({ url: "https://example.invalid/f.xlsx" }, "f.xlsx", { maxBytes: 1024 }),
+    ).rejects.toMatchObject({ code: "BUDGET_EXCEEDED" });
+    client.destroy();
+  });
+
+  it("falls back to arrayBuffer() when the response has no body stream", async () => {
+    const bytes = new Uint8Array(corpus("gen/single_cell.xlsx"));
+    const fetchImpl: typeof fetch = async () => {
+      const response = new Response(null, { status: 200 });
+      Object.defineProperty(response, "body", { value: null });
+      response.arrayBuffer = async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+      return response;
+    };
+    const host = createNodeEngineHost({ fetchImpl });
+    const client = new SheetEngineClient(host);
+    const handle = await client.open({ url: "https://example.invalid/s.xlsx" }, "s.xlsx");
+    const meta = await client.getMetadata(handle);
+    expect(meta.sheets[0].name).toBe("single");
+    await client.close(handle);
+    client.destroy();
+  });
+});
+
+describe("FinalizationRegistry backstop", () => {
+  it("closes leaked handles and warns (requires --expose-gc)", async () => {
+    const gc = (globalThis as { gc?: () => void }).gc;
+    if (typeof gc !== "function") {
+      // Without --expose-gc the registry cannot be forced deterministically.
+      console.warn("[test] skipping FinalizationRegistry backstop: run node with --expose-gc");
+      return;
+    }
+    const host = createNodeEngineHost();
+    const client = new SheetEngineClient(host);
+    const baseline = host.openHandleCount();
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    // Leak a handle inside a scope that drops every reference to it.
+    await (async () => {
+      await client.open({ bytes: corpus("gen/single_cell.xlsx") }, "leak.xlsx");
+    })();
+    expect(host.openHandleCount()).toBe(baseline + 1);
+
+    for (let i = 0; i < 20 && host.openHandleCount() > baseline; i++) {
+      gc();
+      await new Promise((r) => setTimeout(r, 25));
+    }
+    expect(host.openHandleCount()).toBe(baseline);
+    expect(
+      warnSpy.mock.calls.some((args) => String(args[0]).includes("leaked")),
+    ).toBe(true);
+    warnSpy.mockRestore();
+    client.destroy();
   });
 });

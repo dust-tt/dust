@@ -58,7 +58,7 @@ impl ErrorCode {
 }
 
 /// A cell value. Date-ness is not a value property: serials are plain `Number`s
-/// and become dates only through their number format at render time (spec §3.4).
+/// and become dates only through their number format at render time.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum CellValue {
     Number(f64),

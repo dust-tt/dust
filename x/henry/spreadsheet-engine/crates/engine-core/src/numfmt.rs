@@ -1,4 +1,4 @@
-//! ECMA-376 / Excel number-format engine (spec §3.4).
+//! ECMA-376 / Excel number-format engine.
 //!
 //! Pure function `(value, format, locale) -> FormattedCell`. Deterministic by
 //! construction: no clocks, no float `format!("{}")` (digits come from `ryu`
@@ -27,7 +27,7 @@ pub struct FormattedCell {
 }
 
 /// Locale table. v1 ships en-US only; making this a parameter keeps the door
-/// open without building locale infrastructure (spec §3.4).
+/// open without building locale infrastructure.
 pub struct Locale {
     pub decimal: char,
     pub group: char,
@@ -498,8 +498,49 @@ fn run_len(chars: &[char], start: usize, pred: impl Fn(&char) -> bool) -> usize 
 // Public entry points
 // ---------------------------------------------------------------------------
 
+/// A format string parsed once, for reuse across many cells. Parsing
+/// (`split_sections` + `parse_section`) allocates token vectors and walks a
+/// state machine; per-cell re-parsing dominates viewport serialization on
+/// formatted sheets, so `StyleTable` caches one `ParsedFormat` per style.
+#[derive(Debug, Clone)]
+pub struct ParsedFormat {
+    sections: Vec<Section>,
+    /// Empty / `General`: skip section logic entirely.
+    general: bool,
+    /// Text fast path (`General`/`@`): text values display as-is.
+    text_as_is: bool,
+}
+
+impl ParsedFormat {
+    pub fn parse(fmt: &str) -> ParsedFormat {
+        let general = fmt.is_empty() || fmt == "General";
+        let text_as_is = general || fmt == "@";
+        let sections = if general {
+            Vec::new()
+        } else {
+            split_sections(fmt).into_iter().map(parse_section).collect()
+        };
+        ParsedFormat {
+            sections,
+            general,
+            text_as_is,
+        }
+    }
+}
+
 /// Format a number (or date serial — date-ness is decided by the format).
+/// One-shot convenience over [`format_number_parsed`]; parses `fmt` each call.
 pub fn format_number(value: f64, fmt: &str, date1904: bool, locale: &Locale) -> FormattedCell {
+    format_number_parsed(value, &ParsedFormat::parse(fmt), date1904, locale)
+}
+
+/// Format a number through a pre-parsed format.
+pub fn format_number_parsed(
+    value: f64,
+    parsed: &ParsedFormat,
+    date1904: bool,
+    locale: &Locale,
+) -> FormattedCell {
     if !value.is_finite() {
         return FormattedCell {
             text: ErrorCode::Num.as_str().to_string(),
@@ -508,7 +549,7 @@ pub fn format_number(value: f64, fmt: &str, date1904: bool, locale: &Locale) -> 
             color: None,
         };
     }
-    if fmt.is_empty() || fmt == "General" {
+    if parsed.general {
         return FormattedCell {
             text: format_general(value, locale),
             align: Align::Right,
@@ -516,8 +557,8 @@ pub fn format_number(value: f64, fmt: &str, date1904: bool, locale: &Locale) -> 
             color: None,
         };
     }
-    let sections: Vec<Section> = split_sections(fmt).into_iter().map(parse_section).collect();
-    let (section, negate) = pick_number_section(&sections, value);
+    let sections = &parsed.sections;
+    let (section, negate) = pick_number_section(sections, value);
     // An explicitly empty role section hides the value ("0;;" hides
     // negatives) — but only when the format has other, non-empty sections;
     // a fully empty format string means General.
@@ -573,17 +614,23 @@ pub fn format_number(value: f64, fmt: &str, date1904: bool, locale: &Locale) -> 
 }
 
 /// Format a text cell value through `fmt` (uses the 4th/text section if present).
-pub fn format_text(value: &str, fmt: &str, _locale: &Locale) -> FormattedCell {
+/// One-shot convenience over [`format_text_parsed`]; parses `fmt` each call.
+pub fn format_text(value: &str, fmt: &str, locale: &Locale) -> FormattedCell {
+    format_text_parsed(value, &ParsedFormat::parse(fmt), locale)
+}
+
+/// Format a text cell value through a pre-parsed format.
+pub fn format_text_parsed(value: &str, parsed: &ParsedFormat, _locale: &Locale) -> FormattedCell {
     let make = |text: String, color| FormattedCell {
         text,
         align: Align::Left,
         is_date: false,
         color,
     };
-    if fmt.is_empty() || fmt == "General" || fmt == "@" {
+    if parsed.text_as_is {
         return make(value.to_string(), None);
     }
-    let sections: Vec<Section> = split_sections(fmt).into_iter().map(parse_section).collect();
+    let sections = &parsed.sections;
     let text_section = if sections.len() >= 4 {
         Some(&sections[3])
     } else {
@@ -1475,7 +1522,16 @@ const MAX_DATE_SERIAL: f64 = 2_958_465.0;
 
 /// Convert an Excel serial to date parts. Handles the 1900 Lotus leap-year bug
 /// (serial 60 renders as the nonexistent 1900-02-29) and the 1904 system.
-fn serial_to_parts(serial: f64, date1904: bool, subsecond_digits: u8) -> Option<DateParts> {
+/// `has_time_tokens` controls display rounding: time formats round at their
+/// finest displayed unit (so 23:59:59.9999 through `h:mm:ss` carries into the
+/// next day), while date-only formats truncate the time of day — in Excel a
+/// timestamp just before midnight never displays as the next day.
+fn serial_to_parts(
+    serial: f64,
+    date1904: bool,
+    subsecond_digits: u8,
+    has_time_tokens: bool,
+) -> Option<DateParts> {
     if serial < 0.0 && !date1904 {
         return None;
     }
@@ -1492,7 +1548,11 @@ fn serial_to_parts(serial: f64, date1904: bool, subsecond_digits: u8) -> Option<
     } else {
         86_400.0
     };
-    let mut time_units = (time * units_per_day).round();
+    let mut time_units = if has_time_tokens {
+        (time * units_per_day).round()
+    } else {
+        0.0
+    };
     if time_units >= units_per_day {
         time_units = 0.0;
         day_serial += 1.0;
@@ -1561,7 +1621,22 @@ fn render_date(serial: f64, section: &Section, date1904: bool, locale: &Locale) 
             _ => None,
         })
         .unwrap_or(0);
-    let Some(parts) = serial_to_parts(serial, date1904, subsecond_digits) else {
+    let has_time_tokens = section.toks.iter().any(|t| {
+        matches!(
+            t,
+            Tok::Date(
+                DateTok::Hour { .. }
+                    | DateTok::Minute { .. }
+                    | DateTok::Second { .. }
+                    | DateTok::SubSecond(_)
+                    | DateTok::AmPm { .. }
+                    | DateTok::ElapsedHour(_)
+                    | DateTok::ElapsedMinute(_)
+                    | DateTok::ElapsedSecond(_)
+            )
+        )
+    });
+    let Some(parts) = serial_to_parts(serial, date1904, subsecond_digits, has_time_tokens) else {
         // Negative serial in the 1900 system: Excel shows #########; we emit
         // the error-style marker deterministically.
         return "#####".to_string();

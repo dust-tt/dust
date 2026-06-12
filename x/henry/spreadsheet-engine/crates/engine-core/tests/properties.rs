@@ -1,4 +1,4 @@
-//! Property tests (spec §7.3): viewport consistency, truncation
+//! Property tests: viewport consistency, truncation
 //! monotonicity, search soundness, and fuzz-lite byte mutation. Proptest with
 //! a fixed RNG config — failures persist regression files under
 //! `proptest-regressions/` (committed).
@@ -109,7 +109,7 @@ proptest! {
     }
 }
 
-/// Truncation monotonicity (spec §7.3): budgets B1 < B2 ⇒ cells(B1) is a
+/// Truncation monotonicity: budgets B1 < B2 ⇒ cells(B1) is a
 /// row-major prefix of cells(B2). Checked on a real corpus file end to end.
 #[test]
 fn truncation_monotonicity() {
@@ -141,7 +141,7 @@ fn truncation_monotonicity() {
     }
 }
 
-/// Fuzz-lite (spec §7.3 last bullet): random byte mutations of valid files
+/// Fuzz-lite: random byte mutations of valid files
 /// never panic. Deterministic mutations via the corpus LCG; full fuzzing is a
 /// separate nightly concern.
 #[test]

@@ -16,7 +16,7 @@ const CFB_MAGIC: [u8; 8] = [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1];
 
 /// Open a workbook from raw bytes. Parses workbook structure, shared strings,
 /// styles and theme eagerly (all small); worksheet cells parse lazily on first
-/// activation (spec §3.3).
+/// activation.
 pub fn open_xlsx(bytes: Vec<u8>, opts: OpenOptions) -> Result<Workbook> {
     if bytes.len() as u64 > opts.max_bytes {
         return Err(EngineError::BudgetExceeded(BudgetKind::Bytes));
@@ -39,9 +39,17 @@ pub fn open_xlsx(bytes: Vec<u8>, opts: OpenOptions) -> Result<Workbook> {
 
     let mut container = Container::open(bytes)?;
 
-    let workbook_part = container
-        .resolve_workbook_part()?
-        .ok_or_else(|| EngineError::Corrupt("missing workbook part".to_string()))?;
+    let workbook_part = match container.resolve_workbook_part()? {
+        Some(part) => part,
+        None => return Err(detect_non_xlsx_zip(&mut container)),
+    };
+    // .xlsb routes its officeDocument rel at xl/workbook.bin: name the format
+    // instead of failing the XML parse with an opaque CORRUPT.
+    if workbook_part.ends_with(".bin") {
+        return Err(EngineError::UnsupportedFormat(
+            ".xlsb (binary workbook) files are not supported — save as .xlsx".to_string(),
+        ));
+    }
     let workbook_xml = container.read_part(&workbook_part)?;
     let structure = workbook_xml::parse_workbook_xml(&workbook_xml)?;
 
@@ -68,10 +76,7 @@ pub fn open_xlsx(bytes: Vec<u8>, opts: OpenOptions) -> Result<Workbook> {
             let xml = container.read_part(&part)?;
             styles_xml::parse_styles(&xml, theme)?
         }
-        None => crate::style::StyleTable {
-            styles: vec![Default::default()],
-            theme,
-        },
+        None => crate::style::StyleTable::new(vec![Default::default()], theme),
     };
 
     let mut sheets = Vec::with_capacity(structure.sheets.len());
@@ -81,7 +86,7 @@ pub fn open_xlsx(bytes: Vec<u8>, opts: OpenOptions) -> Result<Workbook> {
             .as_deref()
             .and_then(|rid| rels.iter().find(|r| r.id == rid))
             .filter(|r| r.kind.ends_with("worksheet"))
-            .map(|r| container.resolve_relative(&workbook_part, &r.target));
+            .and_then(|r| container.resolve_relative(&workbook_part, &r.target));
         sheets.push(SheetSlot::Pending(PendingSheet {
             name: s.name,
             visibility: s.visibility,
@@ -103,4 +108,30 @@ pub fn open_xlsx(bytes: Vec<u8>, opts: OpenOptions) -> Result<Workbook> {
         opts,
         total_cells_loaded: 0,
     })
+}
+
+/// A zip without an OOXML workbook part: name the actual format when we can
+/// recognize it (`.xlsb`, `.ods`) so the error tells the user what to do.
+fn detect_non_xlsx_zip(container: &mut Container) -> EngineError {
+    if container.has_part("xl/workbook.bin") {
+        return EngineError::UnsupportedFormat(
+            ".xlsb (binary workbook) files are not supported — save as .xlsx".to_string(),
+        );
+    }
+    let mimetype = container
+        .read_part("mimetype")
+        .ok()
+        .map(|m| String::from_utf8_lossy(&m).into_owned())
+        .unwrap_or_default();
+    if mimetype.contains("opendocument.spreadsheet") {
+        return EngineError::UnsupportedFormat(
+            ".ods (OpenDocument) files are not supported — save as .xlsx".to_string(),
+        );
+    }
+    if mimetype.contains("opendocument") || container.has_part("content.xml") {
+        return EngineError::UnsupportedFormat(
+            "OpenDocument files are not supported — save as .xlsx".to_string(),
+        );
+    }
+    EngineError::Corrupt("missing workbook part".to_string())
 }

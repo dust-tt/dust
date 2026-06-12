@@ -15,6 +15,35 @@ use crate::xlsx::container::Relationship;
 /// `<col min="1" max="16384">` x 1000 cannot balloon memory.
 const MAX_GEOMETRY_OVERRIDES: usize = 200_000;
 
+/// URL schemes a hyperlink target may carry into the viewer. Anything else
+/// (`javascript:`, `data:`, `vbscript:`, `file:`, ...) is dropped at parse so
+/// no consumer can ever render an executable href.
+const ALLOWED_HYPERLINK_SCHEMES: [&str; 4] = ["http://", "https://", "mailto:", "ftp://"];
+
+/// Sanitize a hyperlink target: strip ASCII control characters (browsers
+/// ignore embedded tab/newline when parsing URLs, so `java\nscript:` would
+/// bypass a naive prefix check), trim whitespace, then allow only internal
+/// `#location` targets and the scheme allowlist (case-insensitive). Returns
+/// `None` to drop the hyperlink (the cell itself is kept).
+fn sanitize_hyperlink_target(raw: &str) -> Option<String> {
+    let cleaned: String = raw.chars().filter(|c| !c.is_ascii_control()).collect();
+    let trimmed = cleaned.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    if trimmed.starts_with('#') {
+        return Some(trimmed.to_string());
+    }
+    let lower = trimmed.to_ascii_lowercase();
+    if ALLOWED_HYPERLINK_SCHEMES
+        .iter()
+        .any(|scheme| lower.starts_with(scheme))
+    {
+        return Some(trimmed.to_string());
+    }
+    None
+}
+
 pub fn parse_sheet(
     xml: &[u8],
     name: String,
@@ -248,7 +277,8 @@ pub fn parse_sheet(
                             .and_then(|rid| {
                                 rels.iter().find(|r| r.id == rid).map(|r| r.target.clone())
                             })
-                            .or_else(|| location.map(|l| format!("#{l}")));
+                            .or_else(|| location.map(|l| format!("#{l}")))
+                            .and_then(|t| sanitize_hyperlink_target(&t));
                         if let Some(target) = target {
                             if builder.hyperlinks.len() < MAX_GEOMETRY_OVERRIDES {
                                 builder.hyperlinks.push(Hyperlink {
@@ -446,6 +476,95 @@ mod tests {
         assert_eq!(sheet.cell_count(), 3);
         assert_eq!(sheet.row_slice(0, 0, 10).len(), 2);
         assert_eq!(sheet.row_slice(1, 0, 10).len(), 1);
+    }
+
+    #[test]
+    fn hyperlink_scheme_allowlist() {
+        // Allowed: http(s), mailto, ftp, internal anchors; case-insensitive.
+        for ok in [
+            "http://example.com",
+            "https://example.com/a?b=1",
+            "HTTPS://EXAMPLE.COM",
+            "mailto:a@b.c",
+            "ftp://host/file",
+            "#Sheet2!A1",
+        ] {
+            assert_eq!(
+                sanitize_hyperlink_target(ok).as_deref(),
+                Some(ok),
+                "{ok} should survive"
+            );
+        }
+        // Whitespace trims; embedded control chars are stripped before the
+        // scheme check so they can't smuggle a forbidden scheme through.
+        assert_eq!(
+            sanitize_hyperlink_target("  https://example.com  ").as_deref(),
+            Some("https://example.com")
+        );
+        assert_eq!(
+            sanitize_hyperlink_target("java\nscript:alert(1)"),
+            None,
+            "control chars must not split a forbidden scheme"
+        );
+        // Dropped: executable/local schemes in any case, relative targets.
+        for bad in [
+            "javascript:alert(1)",
+            "JaVaScRiPt:alert(1)",
+            "\tjavascript:alert(1)",
+            "data:text/html,<script>x</script>",
+            "vbscript:msgbox(1)",
+            "file:///etc/passwd",
+            "relative/path.xml",
+            "//protocol-relative.example",
+            "",
+        ] {
+            assert_eq!(sanitize_hyperlink_target(bad), None, "{bad:?} should drop");
+        }
+    }
+
+    #[test]
+    fn hyperlinks_resolve_rels_and_drop_unsafe_targets() {
+        use crate::xlsx::container::Relationship;
+        let xml = br#"<worksheet><sheetData>
+<row r="1"><c r="A1"><v>1</v></c><c r="B1"><v>2</v></c><c r="C1"><v>3</v></c></row>
+</sheetData>
+<hyperlinks>
+  <hyperlink ref="A1" r:id="rId1" tooltip="safe"/>
+  <hyperlink ref="B1" r:id="rId2"/>
+  <hyperlink ref="C1" location="Sheet2!B2"/>
+</hyperlinks>
+</worksheet>"#;
+        let rels = vec![
+            Relationship {
+                id: "rId1".to_string(),
+                kind:
+                    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
+                        .to_string(),
+                target: "https://example.com".to_string(),
+            },
+            Relationship {
+                id: "rId2".to_string(),
+                kind:
+                    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
+                        .to_string(),
+                target: "javascript:alert(1)".to_string(),
+            },
+        ];
+        let sheet = parse_sheet(
+            xml,
+            "t".to_string(),
+            SheetVisibility::Visible,
+            u32::MAX,
+            &StyleTable::default(),
+            &rels,
+        )
+        .unwrap();
+        // B1's javascript: target is dropped; the cell itself survives.
+        assert_eq!(sheet.cell_count(), 3);
+        assert_eq!(sheet.hyperlinks.len(), 2);
+        assert_eq!(sheet.hyperlinks[0].target, "https://example.com");
+        assert_eq!(sheet.hyperlinks[0].tooltip.as_deref(), Some("safe"));
+        assert_eq!(sheet.hyperlinks[1].target, "#Sheet2!B2");
     }
 
     #[test]

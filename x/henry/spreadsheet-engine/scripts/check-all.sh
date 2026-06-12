@@ -12,7 +12,7 @@ cargo fmt --check
 step "cargo clippy (deny warnings)"
 cargo clippy --workspace --all-targets -- -D warnings
 
-step "forbidden-API grep (determinism, spec §7.1)"
+step "forbidden-API grep (determinism)"
 # engine-core must not use clocks or randomness (float formatting goes
 # through ryu/serde_json; pinned by the determinism gate below).
 ! grep -rnE 'std::time::|SystemTime|Instant::now|rand::|thread_rng' crates/engine-core/src \
@@ -26,6 +26,11 @@ cargo test -p engine-core --test golden committed_corpus_matches_generator
 
 step "engine-cli release build"
 cargo build -p engine-cli --release
+
+step "criterion benches compile (record numbers with: cargo bench -p engine-core --bench engine)"
+# Non-gating on numbers (no baseline yet); a bench that stops compiling or
+# panics on the corpus still fails here.
+cargo bench -p engine-core --bench engine --no-run
 
 step "wasm builds (web + nodejs)"
 PATH="$PWD/node_modules/.bin:$PATH" npm run build:wasm --silent

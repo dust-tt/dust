@@ -4,7 +4,7 @@
 use quick_xml::events::Event;
 
 use crate::error::{EngineError, Result};
-use crate::workbook::SheetVisibility;
+use crate::workbook::{sanitize_sheet_name, SheetVisibility};
 
 #[derive(Debug)]
 pub struct WorkbookSheetEntry {
@@ -49,6 +49,7 @@ pub fn parse_workbook_xml(xml: &[u8]) -> Result<WorkbookStructure> {
                             _ => {}
                         }
                     }
+                    let name = sanitize_sheet_name(&name, out.sheets.len());
                     out.sheets.push(WorkbookSheetEntry {
                         name,
                         visibility,
@@ -119,6 +120,25 @@ mod tests {
         assert_eq!(
             s.defined_names,
             vec![("MyRange".to_string(), "First!$A$1:$B$2".to_string())]
+        );
+    }
+
+    #[test]
+    fn sheet_names_are_sanitized() {
+        let huge = "x".repeat(100_000);
+        let xml = format!(
+            r#"<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheets>
+<sheet name="{huge}" sheetId="1"/>
+<sheet name="evil&#10;name&#9;" sheetId="2"/>
+<sheet name="&#1;&#2;" sheetId="3"/>
+</sheets></workbook>"#
+        );
+        let s = parse_workbook_xml(xml.as_bytes()).unwrap();
+        assert_eq!(s.sheets[0].name.chars().count(), 64, "capped, not 100k");
+        assert_eq!(s.sheets[1].name, "evilname", "control chars stripped");
+        assert_eq!(
+            s.sheets[2].name, "Sheet3",
+            "empty after sanitize -> fallback"
         );
     }
 }

@@ -7,7 +7,7 @@
 // catch_unwind). We catch it here, answer INTERNAL, and mark the instance
 // poisoned: every later call also answers INTERNAL and the client is expected
 // to destroy() this worker and spawn a fresh one. A corrupt file can never
-// take down the worker silently (spec §4, adapted to stable wasm).
+// take down the worker silently (see README · Errors and recovery).
 
 import type { EngineRequest, EngineResponse } from "@dust/sheet-engine-client/protocol";
 import { isEngineError } from "@dust/sheet-engine-client/types";
@@ -66,6 +66,11 @@ function parseEngineError(raw: unknown): EngineError {
 }
 
 const PROGRESS_EVERY_BYTES = 4 * 1024 * 1024;
+
+/** Mirrors engine-core's `OpenOptions::default().max_bytes`. Used only for
+ * the pre-download content-length fail-fast; the wasm-side byte budget is
+ * the authoritative enforcement during streaming. */
+const DEFAULT_MAX_BYTES = 400 * 1024 * 1024;
 
 export function createEngineServer(options: EngineServerOptions) {
   const { wasm, post } = options;
@@ -145,6 +150,14 @@ export function createEngineServer(options: EngineServerOptions) {
           throw JSON.stringify({ code: "CORRUPT", detail: `fetch failed: HTTP ${response.status}` });
         }
         const total = Number(response.headers.get("content-length")) || undefined;
+        // Fail fast before downloading anything the byte budget would reject
+        // anyway. The streaming wasm budget stays authoritative for servers
+        // that omit or lie about content-length.
+        const maxBytes = request.options?.maxBytes ?? DEFAULT_MAX_BYTES;
+        if (total !== undefined && total > maxBytes) {
+          controller.abort();
+          throw JSON.stringify({ code: "BUDGET_EXCEEDED", detail: "bytes" });
+        }
         const reader = response.body?.getReader();
         if (!reader) {
           const buf = new Uint8Array(await response.arrayBuffer());

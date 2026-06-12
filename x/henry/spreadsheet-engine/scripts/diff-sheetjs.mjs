@@ -1,4 +1,4 @@
-// Differential test vs SheetJS (spec §7.4 oracle 2): typed cell values
+// Differential test vs SheetJS: typed cell values
 // must agree between the engine (via engine-cli canonical JSON) and SheetJS
 // (pinned in package-lock.json) over the synthetic corpus.
 //

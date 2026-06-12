@@ -1,11 +1,11 @@
-//! CSV/TSV engine (spec §3.6): same `Sheet` model, single sheet.
+//! CSV/TSV engine: same `Sheet` model, single sheet.
 //! Delimiter sniffing on the first 64 KB; per-column type inference for
 //! alignment hints only — displayed text is always the original string.
 
 use crate::error::{BudgetKind, EngineError, Result};
 use crate::style::StyleTable;
 use crate::value::CellValue;
-use crate::workbook::{OpenOptions, SheetBuilder, SheetVisibility, Workbook};
+use crate::workbook::{sanitize_sheet_name, OpenOptions, SheetBuilder, SheetVisibility, Workbook};
 
 const SNIFF_BYTES: usize = 64 * 1024;
 const CANDIDATE_DELIMITERS: [u8; 4] = [b',', b';', b'\t', b'|'];
@@ -54,13 +54,20 @@ pub fn open_csv(bytes: Vec<u8>, opts: OpenOptions, sheet_name: &str) -> Result<W
         Some(rest) => rest,
         None => &bytes[..],
     };
-    let delimiter = sniff_delimiter(content);
+    // Explicit override beats the sniffer: ambiguous files (e.g. semicolon
+    // data whose first rows happen to parse as comma) get a recourse.
+    let delimiter = opts
+        .csv_delimiter
+        .unwrap_or_else(|| sniff_delimiter(content));
 
     let max_cells = opts
         .max_cells_per_sheet
         .min(opts.max_total_cells.min(u32::MAX as u64) as u32);
-    let mut builder =
-        SheetBuilder::new(sheet_name.to_string(), SheetVisibility::Visible, max_cells);
+    let mut builder = SheetBuilder::new(
+        sanitize_sheet_name(sheet_name, 0),
+        SheetVisibility::Visible,
+        max_cells,
+    );
 
     let mut reader = csv::ReaderBuilder::new()
         .delimiter(delimiter)
@@ -219,6 +226,26 @@ mod tests {
         assert!(infer_number("12abc").is_none());
         assert!(infer_number("").is_none());
         assert!(infer_number("2023-01-01").is_none());
+    }
+
+    #[test]
+    fn delimiter_override_beats_sniffer() {
+        // Comma-looking content read as semicolon-delimited: one column.
+        let opts = OpenOptions {
+            csv_delimiter: Some(b';'),
+            ..OpenOptions::default()
+        };
+        let wb = open_csv(b"a,b,c\n1,2,3\n".to_vec(), opts, "o.csv").unwrap();
+        let cells = cells_of(&wb);
+        assert_eq!(cells.len(), 2);
+        assert_eq!(cells[0], (0, 0, "a,b,c".to_string()));
+        // And the inverse: force semicolons on semicolon data.
+        let opts = OpenOptions {
+            csv_delimiter: Some(b';'),
+            ..OpenOptions::default()
+        };
+        let wb = open_csv(b"a;b\n1;2\n".to_vec(), opts, "o.csv").unwrap();
+        assert_eq!(cells_of(&wb).len(), 4);
     }
 
     #[test]

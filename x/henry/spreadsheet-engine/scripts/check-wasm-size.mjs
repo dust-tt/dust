@@ -1,4 +1,4 @@
-// Wasm size gate (spec §4): warn above 1.5 MB gzipped, hard-fail above 2 MB.
+// Wasm size gate: warn above 1.5 MB gzipped, hard-fail above 2 MB.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";

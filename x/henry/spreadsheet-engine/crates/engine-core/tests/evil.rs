@@ -1,4 +1,4 @@
-//! Adversarial-corpus tests (spec §7.2 item 3): the engine must never
+//! Adversarial-corpus tests: the engine must never
 //! panic, hang, or blow budgets on hostile input. Panics are caught via
 //! `catch_unwind` and turned into test failures; expected outcomes (typed
 //! error or partial result) come from the committed manifest.
@@ -117,6 +117,95 @@ fn hundred_k_merges_viewport_completes() {
         engine_core::viewport::DisplayMode::Value,
     );
     assert!(!slice.merges.is_empty());
+}
+
+/// No unsafe hyperlink scheme may survive into any engine output. The cells
+/// under the dropped links must still be present.
+#[test]
+fn xss_hyperlinks_are_dropped() {
+    let bytes = read_corpus_file("evil/xss_hyperlinks.xlsx");
+    let mut wb =
+        engine_core::open_auto(bytes, OpenOptions::default(), "xss_hyperlinks.xlsx").expect("open");
+    wb.activate_all().expect("activate");
+    let sheet = wb.sheet(0).expect("loaded");
+    // 7 hostile links dropped, 2 safe ones kept; all 9 cells survive.
+    assert_eq!(sheet.cell_count(), 9);
+    let targets: Vec<&str> = sheet.hyperlinks.iter().map(|h| h.target.as_str()).collect();
+    assert_eq!(targets, vec!["https://example.com/safe", "#xss!A1"]);
+
+    let slice = engine_core::viewport::get_viewport(
+        &wb,
+        0,
+        (0, 50),
+        (0, 10),
+        engine_core::viewport::DisplayMode::Value,
+    );
+    for cell in &slice.cells {
+        if let Some(link) = &cell.hyperlink {
+            let lower = link.to_ascii_lowercase();
+            assert!(
+                lower.starts_with("http://")
+                    || lower.starts_with("https://")
+                    || lower.starts_with("mailto:")
+                    || lower.starts_with("ftp://")
+                    || lower.starts_with('#'),
+                "unsafe hyperlink leaked into viewport: {link}"
+            );
+        }
+    }
+}
+
+/// Many parts that individually pass the per-part cap must still trip the
+/// aggregate decompression budget with a typed error, never an OOM.
+#[test]
+fn zip_bomb_total_cap_fails_typed() {
+    let bytes = read_corpus_file("evil/zip_bomb_total.xlsx");
+    let mut wb = engine_core::open_auto(bytes, OpenOptions::default(), "zip_bomb_total.xlsx")
+        .expect("open succeeds: sheets are lazy");
+    let mut budget_hits = 0;
+    for i in 0..wb.sheet_count() {
+        match wb.activate(i) {
+            Ok(_) => {}
+            Err(EngineError::BudgetExceeded(_)) => budget_hits += 1,
+            Err(e) => panic!("unexpected error: {e}"),
+        }
+    }
+    assert!(budget_hits > 0, "aggregate decompression cap never tripped");
+}
+
+/// A 1 MB sheet name must reach metadata sanitized and capped.
+#[test]
+fn huge_sheet_name_is_sanitized() {
+    let bytes = read_corpus_file("evil/huge_sheet_name.xlsx");
+    let wb = engine_core::open_auto(bytes, OpenOptions::default(), "huge_sheet_name.xlsx")
+        .expect("open");
+    let meta = wb.metadata();
+    let name = &meta.sheets[0].name;
+    assert!(
+        name.chars().count() <= 64,
+        "name not capped: {} chars",
+        name.chars().count()
+    );
+    assert!(
+        !name.chars().any(|c| c.is_control()),
+        "control chars survived"
+    );
+}
+
+/// Misnamed sibling formats produce a named UNSUPPORTED_FORMAT, not CORRUPT.
+#[test]
+fn sibling_formats_are_named() {
+    for (file, marker) in [("fake_xlsb.xlsx", ".xlsb"), ("fake_ods.xlsx", ".ods")] {
+        let bytes = read_corpus_file(&format!("evil/{file}"));
+        match engine_core::open_auto(bytes, OpenOptions::default(), file) {
+            Err(EngineError::UnsupportedFormat(detail)) => assert!(
+                detail.contains(marker),
+                "{file}: detail does not name {marker}: {detail}"
+            ),
+            Err(e) => panic!("{file}: expected UNSUPPORTED_FORMAT, got {e}"),
+            Ok(_) => panic!("{file}: expected UNSUPPORTED_FORMAT, got a workbook"),
+        }
+    }
 }
 
 /// Hostile per-part decompression beyond the cap must fail typed, not OOM.

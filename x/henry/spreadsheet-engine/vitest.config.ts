@@ -19,6 +19,12 @@ export default defineConfig({
     environment: "node",
     testTimeout: 30_000,
     hookTimeout: 30_000,
+    // The FinalizationRegistry backstop test forces GC; without this flag it
+    // self-skips with a warning.
+    poolOptions: {
+      forks: { execArgv: ["--expose-gc"] },
+      threads: { execArgv: ["--expose-gc"] },
+    },
     server: {
       deps: {
         // Vite must transform the kit (and its JSON atlas imports); node's

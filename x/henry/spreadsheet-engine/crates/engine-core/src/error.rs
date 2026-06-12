@@ -9,7 +9,7 @@ pub enum BudgetKind {
     Memory,
 }
 
-/// Typed, stable error surface. Mirrors the TS `EngineError` union (spec §5.3):
+/// Typed, stable error surface. Mirrors the TS `EngineError` union (see README · Errors and recovery):
 /// the UI switches on `code()`, so codes must stay stable.
 #[derive(Debug, Error)]
 pub enum EngineError {

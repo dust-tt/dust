@@ -1,4 +1,4 @@
-//! Differential test vs calamine (spec §7.4 oracle 1): typed cell values
+//! Differential test vs calamine (independent oracle): typed cell values
 //! and sheet structure must agree on the whole synthetic corpus. Documented
 //! exceptions live in `corpus/diff-exceptions.toml` (currently empty — the
 //! file shrinking over time is the goal, growing is a review smell).

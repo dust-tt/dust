@@ -1,4 +1,4 @@
-//! Golden tests (spec §7.3): every corpus file's canonical JSON is
+//! Golden tests: every corpus file's canonical JSON is
 //! byte-compared against a committed golden. Goldens are blessed explicitly
 //! (`BLESS=1 cargo test`), never auto-blessed in CI.
 //!

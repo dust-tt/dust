@@ -15,11 +15,22 @@ import { buildController, loadControllerState, toKitRows, toKitSheetData, type C
 export interface UseDustSheetControllerOptions {
   /** Engine client. The caller owns its lifecycle (one worker per document). */
   client: SheetEngineClient;
-  /** Workbook source: remote URL (worker-side streaming fetch) or bytes. */
+  /**
+   * Workbook source: remote URL (worker-side streaming fetch) or bytes.
+   * URL validation is the embedder's responsibility (see
+   * `SheetEngineClient.open`); `null` renders nothing and keeps the hook idle.
+   */
   src: { url: string } | { bytes: ArrayBuffer } | null;
+  /** Display name; also drives format sniffing for CSV/TSV sources. */
   fileName: string;
+  /** Include hidden/veryHidden sheets as tabs (default: visible only). */
   showHiddenSheets?: boolean;
+  /** Per-sheet cell budget override (default 2,000,000). Exceeding sheets
+   * load a row-major prefix and set `truncated`. */
   maxCellsPerSheet?: number;
+  /** Whole-workbook cell budget override (default 8,000,000). Sheets beyond
+   * it stay unloaded; activating them fails with BUDGET_EXCEEDED and the tab
+   * stays a placeholder. */
   maxTotalCells?: number;
 }
 
@@ -60,6 +71,20 @@ export function useDustSheetController(options: UseDustSheetControllerOptions): 
   const activeSheetIndexRef = useRef(0);
   /** Pending paint-tick timers, cleared on unmount. */
   const paintTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+  /** True once the component unmounted: batches resolving after cleanup must
+   * not schedule timers, and already-fired timers must not setState. */
+  const unmountedRef = useRef(false);
+
+  useEffect(() => {
+    unmountedRef.current = false;
+    return () => {
+      unmountedRef.current = true;
+      for (const timer of paintTimersRef.current) {
+        clearTimeout(timer);
+      }
+      paintTimersRef.current = [];
+    };
+  }, []);
 
   useEffect(() => {
     if (!src) {
@@ -129,9 +154,18 @@ export function useDustSheetController(options: UseDustSheetControllerOptions): 
         // Post-commit paint ticks (NOT a revision bump — that would clear the
         // batch we just delivered). Staggered because the grid commits the
         // batch inside startTransition, which may land after our first tick
-        // under load; cleared on unmount. See the paintTick comment above.
-        for (const delayMs of [0, 120, 400]) {
-          paintTimersRef.current.push(setTimeout(() => setPaintTick((t) => t + 1), delayMs));
+        // under load; cleared on unmount, and gated on the unmount flag so a
+        // batch resolving after cleanup cannot setState on a dead component.
+        if (!unmountedRef.current) {
+          for (const delayMs of [0, 120, 400]) {
+            paintTimersRef.current.push(
+              setTimeout(() => {
+                if (!unmountedRef.current) {
+                  setPaintTick((t) => t + 1);
+                }
+              }, delayMs),
+            );
+          }
         }
         return toKitRows(rows, current.styleCache);
       } catch (e: unknown) {

@@ -1,4 +1,4 @@
-//! Canonical JSON projection of a workbook (spec §7.1): byte-identical
+//! Canonical JSON projection of a workbook (see README · Determinism): byte-identical
 //! across runs, platforms and native-vs-WASM. Keys sorted (serde_json's map is
 //! a BTreeMap), floats via serde_json's ryu, LF-only (no pretty printer), UTF-8.
 
