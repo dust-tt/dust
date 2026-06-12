@@ -1481,6 +1481,19 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       "Membership seat type updated"
     );
 
+    // Seat type is denormalized into the user search index, so re-index to keep
+    // the seat-type filter in sync. Scheduled (future-dated) seat changes go
+    // through `scheduleSeatChange` and don't touch the active row, so they don't
+    // re-index here; their new seat is picked up on the next re-index after the
+    // change takes effect.
+    const workflowResult = await launchIndexUserSearchWorkflow({
+      userId: user.sId,
+    });
+    if (workflowResult.isErr()) {
+      // Throw if it fails to launch (unexpected).
+      throw workflowResult.error;
+    }
+
     return { previousSeatType, newSeatType };
   }
 

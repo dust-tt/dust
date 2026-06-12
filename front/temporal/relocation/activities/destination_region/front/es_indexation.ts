@@ -32,6 +32,18 @@ export async function recreateUserSearchIndex({
   // Filter out revoked memberships - only index active members.
   const activeMemberships = memberships.filter((m) => !m.isRevoked());
 
+  // Seat type indexed alongside each user mirrors the currently-active
+  // membership (what the members table shows), so a member with a scheduled
+  // future seat change is indexed under their current seat, not the upcoming
+  // one.
+  const { memberships: currentMemberships } =
+    await MembershipResource.getActiveMemberships({
+      workspace: lightWorkspace,
+    });
+  const activeSeatTypeByUserModelId = new Map(
+    currentMemberships.map((m) => [m.userId, m.seatType])
+  );
+
   localLogger.info(
     {
       totalMemberships: memberships.length,
@@ -63,7 +75,10 @@ export async function recreateUserSearchIndex({
         return;
       }
 
-      const document = user.toUserSearchDocument(lightWorkspace);
+      const seatType =
+        activeSeatTypeByUserModelId.get(membership.userId) ??
+        membership.seatType;
+      const document = user.toUserSearchDocument(lightWorkspace, seatType);
       const result = await indexUserDocument(document);
 
       if (result.isErr()) {

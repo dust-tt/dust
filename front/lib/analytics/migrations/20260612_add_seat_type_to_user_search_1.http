@@ -1,0 +1,8 @@
+PUT /front.user_search_1/_mapping
+{
+  "properties": {
+    "seat_type": {
+      "type": "keyword"
+    }
+  }
+}
