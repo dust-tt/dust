@@ -1113,6 +1113,8 @@ export const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
       preferredReasoningEffort: "high",
     },
   ],
+  // Index 2 is the eval model with displayName "Soupinou" in the infra
+  // custom-models config.
   [
     GLOBAL_AGENTS_SID.DUST_SOUPINOU,
     {
