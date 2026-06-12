@@ -5,8 +5,7 @@ import {
 import { useAppRouter } from "@app/lib/platform";
 import type { SubscriptionType } from "@app/types/plan";
 import { isCreditPricedPlan } from "@app/types/plan";
-import { Button, cn, LinkWrapper } from "@dust-tt/sparkle";
-import { Link } from "lucide-react";
+import { Button, cn } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 
 const SUBSCRIPTION_BANNER_DISPLAY_THRESHOLD_DAYS = 30;
@@ -117,7 +116,7 @@ export function SubscriptionEndBanner({
       ref={bannerRef}
       className={cn(
         "flex items-center justify-between gap-4 px-4 py-1",
-        "bg-sky-50 dark:bg-sky-50-night",
+        "bg-sky-50 dark:bg-sky-50-night"
       )}
     >
       <div className="text-sm flex gap-2">
@@ -134,13 +133,13 @@ export function SubscriptionEndBanner({
         </p>
       </div>
       {isAdmin && !isEnterprise && (
-          <Button
-            href={ctaHref}
-            label={isTrial ? "Subscribe to Dust" : "Resume subscription"}
-            className="hover:opacity-90 hover:bg-transparent"
-            variant="ghost-secondary"
-            size="sm"
-          />
+        <Button
+          href={ctaHref}
+          label={isTrial ? "Subscribe to Dust" : "Resume subscription"}
+          className="hover:opacity-90 hover:bg-transparent"
+          variant="ghost-secondary"
+          size="sm"
+        />
       )}
     </div>
   );

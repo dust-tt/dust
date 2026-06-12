@@ -98,10 +98,10 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
   return (
     <div className="flex h-dvh flex-col">
       <SubscriptionEndBanner
-              isAdmin={isAdmin(owner)}
-              owner={owner}
-              subscription={subscription}
-            />
+        isAdmin={isAdmin(owner)}
+        owner={owner}
+        subscription={subscription}
+      />
       <div className="flex min-h-0 flex-1 flex-row">
         <Navigation
           hideSidebar={hideSidebar}
