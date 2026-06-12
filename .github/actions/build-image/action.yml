@@ -183,30 +183,9 @@ runs:
           LATEST_TAGS+=("-t" "${REGISTRY}/${COMPONENT}:latest")
         fi
 
-        # Special handling for front component, build front, workers and front-api targets
+        # Special handling for front component, build workers and front-api targets
         if [[ "$BASE_COMPONENT" == "front" ]]; then
-          echo "🏗️ Building front component with three targets (front + workers + front-api)"
-
-          # Build front target
-          depot build \
-            --project $DEPOT_PROJECT_ID \
-            --platform linux/amd64 \
-            --provenance=false \
-            --target front \
-            --cache-from type=gha,scope=${{ inputs.component }}-deps \
-            --cache-from type=gha,scope=${{ inputs.component }}-front \
-            --cache-to type=gha,mode=max,scope=${{ inputs.component }}-deps \
-            --cache-to type=gha,mode=max,scope=${{ inputs.component }}-front \
-            -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
-            -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${COMPONENT}:${{ inputs.commit_sha }} \
-            "${LATEST_TAGS[@]}" \
-            --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
-            --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
-            --build-arg DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust \
-            --build-arg DD_GIT_COMMIT_SHA=${{ inputs.commit_sha_long }} \
-            ${build_args[@]} \
-            --push \
-            .
+          echo "🏗️ Building front component with two targets (workers + front-api)"
 
           # Build workers target
           LATEST_TAGS_WORKERS=()
