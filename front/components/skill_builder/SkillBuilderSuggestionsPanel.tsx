@@ -7,6 +7,7 @@ import {
   usePatchSkillSuggestions,
   useSkillSuggestions,
 } from "@app/hooks/useSkillSuggestions";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import {
   Chip,
@@ -26,6 +27,8 @@ export function SkillBuilderSuggestionsPanel() {
     setSelectedSuggestionId,
     acceptInstructionEdits,
   } = useSkillBuilderContext();
+  const { hasFeature } = useFeatureFlags();
+  const isBetaTester = hasFeature("self_improvement_beta_tester");
   const { getValues, setValue } = useFormContext<SkillBuilderFormData>();
 
   const getSkillInstructionsHtml = useCallback(
@@ -145,12 +148,14 @@ export function SkillBuilderSuggestionsPanel() {
           <h2 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
             Suggestions
           </h2>
-          <Chip size="xs" color="golden" label="Beta" />
+          {isBetaTester && <Chip size="xs" color="golden" label="Beta" />}
         </div>
-        <ContentMessage variant="info" size="lg">
-          Skill suggestions are currently in beta testing. We are very
-          interested in your feedback to improve the feature.
-        </ContentMessage>
+        {isBetaTester && (
+          <ContentMessage variant="info" size="lg">
+            Skill suggestions are currently in beta testing. We are very
+            interested in your feedback to improve the feature.
+          </ContentMessage>
+        )}
         <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
           Dust continuously analyses conversations using this skill to suggest
           improvements.
