@@ -29,16 +29,6 @@ const DEFAULT_EMPTY_MESSAGE = "No commands found";
 
 const DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME = "max-h-96";
 
-interface ScrollFadeState {
-  hasContentAbove: boolean;
-  hasContentBelow: boolean;
-}
-
-const EMPTY_SCROLL_FADE_STATE: ScrollFadeState = {
-  hasContentAbove: false,
-  hasContentBelow: false,
-};
-
 export interface SlashCommand {
   action: string;
   // Command-specific payload, opaque to the dropdown. Consumers narrow it back with type guards
@@ -92,13 +82,7 @@ export const SlashCommandDropdown = forwardRef<
     ref
   ) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
-    const [scrollFadeState, setScrollFadeState] = useState<ScrollFadeState>(
-      EMPTY_SCROLL_FADE_STATE
-    );
-    const itemCount = items.length;
     const listRef = useRef<HTMLDivElement>(null);
-    const topScrollSentinelRef = useRef<HTMLDivElement>(null);
-    const bottomScrollSentinelRef = useRef<HTMLDivElement>(null);
     const [virtualTriggerStyle, setVirtualTriggerStyle] =
       useState<React.CSSProperties>({});
 
@@ -148,56 +132,6 @@ export const SlashCommandDropdown = forwardRef<
       }),
       [selectItem, selectedIndex, items.length]
     );
-
-    useEffect(() => {
-      const list = listRef.current;
-      const topScrollSentinel = topScrollSentinelRef.current;
-      const bottomScrollSentinel = bottomScrollSentinelRef.current;
-
-      if (
-        !showScrollFade ||
-        itemCount === 0 ||
-        !list ||
-        !topScrollSentinel ||
-        !bottomScrollSentinel ||
-        typeof IntersectionObserver === "undefined"
-      ) {
-        setScrollFadeState((previousState) =>
-          previousState.hasContentAbove || previousState.hasContentBelow
-            ? EMPTY_SCROLL_FADE_STATE
-            : previousState
-        );
-        return;
-      }
-
-      const observer = new IntersectionObserver(
-        (entries) => {
-          setScrollFadeState((previousState) => {
-            const nextState = { ...previousState };
-
-            for (const entry of entries) {
-              if (entry.target === topScrollSentinel) {
-                nextState.hasContentAbove = !entry.isIntersecting;
-              } else if (entry.target === bottomScrollSentinel) {
-                nextState.hasContentBelow = !entry.isIntersecting;
-              }
-            }
-
-            return previousState.hasContentAbove ===
-              nextState.hasContentAbove &&
-              previousState.hasContentBelow === nextState.hasContentBelow
-              ? previousState
-              : nextState;
-          });
-        },
-        { root: list }
-      );
-
-      observer.observe(topScrollSentinel);
-      observer.observe(bottomScrollSentinel);
-
-      return () => observer.disconnect();
-    }, [itemCount, showScrollFade]);
 
     // Reset selected index when items change.
     // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -266,10 +200,7 @@ export const SlashCommandDropdown = forwardRef<
               {emptyMessage}
             </div>
           ) : (
-            <div
-              ref={listRef}
-              className={listMaxHeightClassName}
-            >
+            <div ref={listRef} className={listMaxHeightClassName}>
               {items.map((item, index) => {
                 const sectionLabel =
                   item.sectionLabel &&
