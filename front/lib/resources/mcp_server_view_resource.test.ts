@@ -414,6 +414,35 @@ describe("MCPServerViewResource", () => {
       expect(systemView).not.toBeNull();
       expect(globalView).not.toBeNull();
     });
+
+    it("tolerates concurrent creation races", async () => {
+      const freshWorkspace = await WorkspaceFactory.basic();
+      const freshAdminAuth = await Authenticator.internalAdminForWorkspace(
+        freshWorkspace.sId
+      );
+      await SpaceFactory.defaults(freshAdminAuth);
+
+      // Two concurrent calls race on the same inserts; the unique constraint
+      // makes the loser a no-op instead of an error.
+      await Promise.all([
+        MCPServerViewResource.ensureAllAutoToolsAreCreated(freshAdminAuth),
+        MCPServerViewResource.ensureAllAutoToolsAreCreated(freshAdminAuth),
+      ]);
+
+      const freshMCPServerId = autoInternalMCPServerNameToSId({
+        name: "common_utilities",
+        workspaceId: freshWorkspace.id,
+      });
+      const views = await MCPServerViewResource.listByMCPServer(
+        freshAdminAuth,
+        freshMCPServerId
+      );
+      expect(views).toHaveLength(2);
+      expect(views.map((v) => v.space.kind).sort()).toEqual([
+        "global",
+        "system",
+      ]);
+    });
   });
 
   describe("toolsMetadata", () => {
