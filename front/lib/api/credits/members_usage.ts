@@ -717,7 +717,8 @@ export async function getMemberUsage({
 // memberships table directly (a base tier matches its monthly + yearly
 // variants). Seat type isn't held in the user search index, so we hand these
 // ids to Elasticsearch as an allowlist and let it own search/sort/pagination
-// over the filtered set.
+// over the filtered set. We don't do it in ES because seats can be effective
+// at the end of the billing period so it would require bigger plumbing.
 async function resolveSeatTypeFilterUserIds({
   workspace,
   seatType,
