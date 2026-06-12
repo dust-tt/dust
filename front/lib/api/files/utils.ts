@@ -20,6 +20,8 @@ import { Writable } from "stream";
 // hanging forever with no error ever surfaced to the user.
 export const FILE_UPLOAD_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes.
 
+const FILE_UPLOAD_TIMED_OUT_MESSAGE = "File upload timed out.";
+
 export const parseUploadRequest = async (
   auth: Authenticator,
   file: FileResource,
@@ -101,22 +103,31 @@ export const parseUploadRequest = async (
       );
     });
 
-    const raced = await Promise.race([uploadPromise, timeoutPromise]);
-    clearTimeout(timeoutHandle);
+    let raced;
+    try {
+      raced = await Promise.race([uploadPromise, timeoutPromise]);
+    } finally {
+      clearTimeout(timeoutHandle);
+    }
 
     if (raced === "timeout") {
-      // Tear down both ends: the GCS write stream (stalled upstream
-      // connection) and the request (stalled client).
-      writeStream?.destroy(new Error("File upload timed out."));
-      req.destroy();
-      // The abandoned promise rejects after the destroy; swallow it to avoid
+      // Tear down the GCS write stream (stalled upstream connection), and the
+      // request when the client is the stalled side. If the body was fully
+      // received, keep the socket alive so the error response can reach the
+      // client.
+      writeStream?.destroy(new Error(FILE_UPLOAD_TIMED_OUT_MESSAGE));
+      if (!req.readableEnded) {
+        req.destroy();
+      }
+      // The abandoned promise settles later (a pending buffered GCS write is
+      // not cancelled and may still land); swallow a late rejection to avoid
       // an unhandled rejection.
       uploadPromise.catch(() => {});
 
       return new Err({
         name: "dust_error",
         code: "internal_server_error",
-        message: "File upload timed out.",
+        message: FILE_UPLOAD_TIMED_OUT_MESSAGE,
       });
     }
 

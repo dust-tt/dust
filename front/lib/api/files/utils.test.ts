@@ -2,6 +2,7 @@ import {
   FILE_UPLOAD_TIMEOUT_MS,
   parseUploadRequest,
 } from "@app/lib/api/files/utils";
+import { GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES } from "@app/lib/file_storage";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
@@ -82,7 +83,7 @@ describe("parseUploadRequest", () => {
     const file = await FileFactory.create(auth, null, {
       contentType: "application/pdf",
       fileName: "large.pdf",
-      fileSize: 9 * 1024 * 1024,
+      fileSize: GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES,
       status: "created",
       useCase: "conversation",
     });
