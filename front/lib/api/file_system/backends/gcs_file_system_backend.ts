@@ -20,6 +20,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type { Readable } from "stream";
+import { pipeline } from "stream/promises";
 
 import type { FileSystemBackend } from "./file_system_backend";
 
@@ -343,7 +344,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
 
   async write(
     scopedPath: string,
-    content: Buffer | string,
+    content: Buffer | string | Readable,
     contentType: string
   ): Promise<Result<void, DustFileSystemError>> {
     const gcsPath = this.toGCSPath(scopedPath);
@@ -357,8 +358,17 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     }
 
     try {
-      const buf = isString(content) ? Buffer.from(content) : content;
-      await getPrivateUploadBucket().file(gcsPath).save(buf, { contentType });
+      const file = getPrivateUploadBucket().file(gcsPath);
+
+      if (isString(content) || Buffer.isBuffer(content)) {
+        const buf = isString(content) ? Buffer.from(content) : content;
+        await file.save(buf, { contentType });
+      } else {
+        await pipeline(
+          content,
+          file.createWriteStream({ contentType, resumable: false })
+        );
+      }
 
       return new Ok(undefined);
     } catch (err) {
