@@ -342,12 +342,21 @@ export async function batchRenderUserMessagesWithoutMentions(
   );
 }
 
+interface BatchRenderOptions {
+  // When true, aggregate each agent message's sub-agent (run_agent /
+  // agent_handover) credit cost and expose it as `subAgentCostCredits`. Off by
+  // default: it adds one recursive query, so only single-message fetches (where
+  // we surface the breakdown in the UI) opt in. Left `null` otherwise.
+  includeSubAgentCostCredits?: boolean;
+}
+
 export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
   auth: Authenticator,
   messages: MessageModel[],
   viewType: V,
   messagesWithToolOutputContent: Set<ModelId> | null = null,
-  mentionsByMessageId: Map<ModelId, MentionModel[]>
+  mentionsByMessageId: Map<ModelId, MentionModel[]>,
+  { includeSubAgentCostCredits = false }: BatchRenderOptions = {}
 ): Promise<
   Result<
     V extends "full" ? AgentMessageType[] : LightAgentMessageType[],
@@ -600,6 +609,12 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       );
     }
   }
+  const subAgentCostCreditsBySId = includeSubAgentCostCredits
+    ? await ConversationResource.sumSubAgentCostCreditsByMessageId(auth, {
+        agentMessageIds: agentMessages.map((m) => m.sId),
+      })
+    : null;
+
   const renderedMessages: Array<
     Result<RenderedAgentMessage, ConversationError>
   > = [];
@@ -616,6 +631,7 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         mentionsByMessageId,
         reactionsByMessageId,
         stepContentsByMessageId,
+        subAgentCostCreditsBySId,
         usersById,
         viewType,
       })
@@ -646,6 +662,8 @@ type RenderSingleAgentMessageContext = {
   mentionsByMessageId: Map<ModelId, MentionModel[]>;
   reactionsByMessageId: Record<ModelId, MessageReactionType[]>;
   stepContentsByMessageId: Record<string, AgentStepContentResource[]>;
+  // Null when sub-agent cost aggregation was not requested for this render.
+  subAgentCostCreditsBySId: Map<string, number> | null;
   usersById: Map<ModelId, UserType>;
   viewType: RenderMessageVariant;
 };
@@ -662,6 +680,7 @@ async function renderSingleAgentMessage(
     mentionsByMessageId,
     reactionsByMessageId,
     stepContentsByMessageId,
+    subAgentCostCreditsBySId,
     usersById,
     viewType,
   }: RenderSingleAgentMessageContext
@@ -796,6 +815,9 @@ async function renderSingleAgentMessage(
     reactions: reactionsByMessageId[message.id] ?? [],
     prunedContext: agentMessage.prunedContext ?? false,
     costCredits: agentMessage.costCredits ?? null,
+    subAgentCostCredits: subAgentCostCreditsBySId
+      ? (subAgentCostCreditsBySId.get(message.sId) ?? 0)
+      : null,
   } satisfies AgentMessageType;
 
   if (viewType === "full") {
@@ -858,7 +880,8 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
   conversation: ConversationResource,
   messages: MessageModel[],
   viewType: V,
-  messagesWithToolOutputContent: Set<ModelId> | null = null
+  messagesWithToolOutputContent: Set<ModelId> | null = null,
+  options: BatchRenderOptions = {}
 ): Promise<
   Result<
     V extends "full"
@@ -902,7 +925,8 @@ export async function batchRenderMessages<V extends RenderMessageVariant>(
     messages,
     viewType,
     messagesWithToolOutputContent,
-    mentionsByMessageId
+    mentionsByMessageId,
+    options
   );
 
   if (agentMessagesRes.isErr()) {

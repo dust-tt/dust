@@ -195,6 +195,8 @@ export class ConversationFactory {
       userContextProfilePictureUrl: null,
       userContextOrigin: origin,
       clientSideMCPServerIds: [],
+      agenticMessageType: agenticMessageType ?? null,
+      agenticOriginMessageId: agenticOriginMessageId ?? null,
     });
 
     const messageRow = await MessageModel.create({

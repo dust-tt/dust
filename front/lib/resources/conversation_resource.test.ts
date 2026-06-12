@@ -90,6 +90,152 @@ const dateFromDaysAgo = (days: number) => {
 };
 
 describe("ConversationResource", () => {
+  describe("sumSubAgentCostCreditsByMessageId", () => {
+    // Creates a sub-agent: a user message in `conversation` whose
+    // agenticOriginMessageId points at `originSid`, plus its agent reply with
+    // the given costCredits. Returns the reply's sId (the origin for any deeper
+    // sub-agents).
+    async function createSubAgent({
+      auth,
+      conversation,
+      agentConfigurationId,
+      originSid,
+      costCredits,
+    }: {
+      auth: Authenticator;
+      conversation: ConversationWithoutContentType;
+      agentConfigurationId: string;
+      originSid: string;
+      costCredits: number;
+    }): Promise<string> {
+      const workspace = auth.getNonNullableWorkspace();
+      const { messageRow: userMessageRow } =
+        await ConversationFactory.createUserMessage({
+          auth,
+          workspace,
+          conversation,
+          content: "sub-agent trigger",
+          agenticMessageType: "run_agent",
+          agenticOriginMessageId: originSid,
+        });
+
+      const replyRow = await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversation.id,
+        rank: 1,
+        agentConfigurationId,
+        parentId: userMessageRow.id,
+      });
+
+      assert(replyRow.agentMessageId, "Reply must have an agent message");
+      await ConversationResource.updateAgentMessageCostCredits(auth, {
+        agentMessageModelId: replyRow.agentMessageId,
+        costCredits,
+      });
+
+      return replyRow.sId;
+    }
+
+    it("sums sub-agent costs recursively and ignores unrelated messages", async () => {
+      const { workspace, authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Sub Agent Cost",
+        description: "agent",
+      });
+
+      // Origin agent message lives in a parent conversation.
+      const parentConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [new Date("2026-01-01T00:00:00.000Z")],
+      });
+      const originMessage = await MessageModel.findOne({
+        where: {
+          conversationId: parentConversation.id,
+          workspaceId: workspace.id,
+          rank: 1,
+        },
+      });
+      assert(originMessage, "Origin agent message not found");
+
+      // Direct sub-agent (cost 100) in a child conversation, then a nested
+      // sub-agent (cost 50) spawned by that sub-agent in a grandchild.
+      const childConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+      const childReplySid = await createSubAgent({
+        auth,
+        conversation: childConversation,
+        agentConfigurationId: agent.sId,
+        originSid: originMessage.sId,
+        costCredits: 100,
+      });
+
+      const grandChildConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+      await createSubAgent({
+        auth,
+        conversation: grandChildConversation,
+        agentConfigurationId: agent.sId,
+        originSid: childReplySid,
+        costCredits: 50,
+      });
+
+      // An unrelated sub-agent of a different origin must not be counted.
+      const unrelatedConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+      await createSubAgent({
+        auth,
+        conversation: unrelatedConversation,
+        agentConfigurationId: agent.sId,
+        originSid: "msg_unrelated_origin",
+        costCredits: 999,
+      });
+
+      const result =
+        await ConversationResource.sumSubAgentCostCreditsByMessageId(auth, {
+          agentMessageIds: [originMessage.sId],
+        });
+
+      expect(result.get(originMessage.sId)).toBe(150);
+    });
+
+    it("returns an empty map when the message has no sub-agents", async () => {
+      const { workspace, authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "No Sub Agent",
+        description: "agent",
+      });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [new Date("2026-01-01T00:00:00.000Z")],
+      });
+      const originMessage = await MessageModel.findOne({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: workspace.id,
+          rank: 1,
+        },
+      });
+      assert(originMessage, "Origin agent message not found");
+
+      const result =
+        await ConversationResource.sumSubAgentCostCreditsByMessageId(auth, {
+          agentMessageIds: [originMessage.sId],
+        });
+
+      expect(result.size).toBe(0);
+    });
+  });
+
   describe("fetchByModelIds", () => {
     it("should fetch by model ids within workspace", async () => {
       const workspace = await WorkspaceFactory.basic();

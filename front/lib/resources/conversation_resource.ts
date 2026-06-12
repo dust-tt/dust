@@ -735,6 +735,121 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
+  /**
+   * For each given (origin) agent message, sum the `costCredits` of every
+   * sub-agent message it spawned, recursively. A sub-agent is linked to its
+   * origin through the triggering user message's `agenticOriginMessageId`
+   * (set for both `run_agent` and `agent_handover`), which holds the origin
+   * agent message's `sId`. The sub-agent's own reply is the agent message that
+   * replies to that user message; its `sId` is in turn the origin for any
+   * deeper sub-agents.
+   *
+   * Walks the tree top-down in a single recursive query (no per-level N+1). The
+   * `maxDepth` guard both bounds runtime and protects against unexpected cycles
+   * (the graph is acyclic by construction, since an origin always predates its
+   * children). We `logger.warn` if the cap is hit so a truncated total does not
+   * silently under-report cost.
+   *
+   * Returns a map keyed by origin agent message `sId`. Origins with no
+   * sub-agents are absent from the map.
+   */
+  static async sumSubAgentCostCreditsByMessageId(
+    auth: Authenticator,
+    {
+      agentMessageIds,
+      maxDepth = 10,
+    }: { agentMessageIds: string[]; maxDepth?: number }
+  ): Promise<Map<string, number>> {
+    const result = new Map<string, number>();
+    if (agentMessageIds.length === 0) {
+      return result;
+    }
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const query = `
+      WITH RECURSIVE sub_agents AS (
+        -- Direct sub-agent replies of each requested origin agent message.
+        SELECT
+          um."agenticOriginMessageId" AS root_sid,
+          reply."sId"                 AS agent_message_sid,
+          am."costCredits"            AS cost_credits,
+          1                           AS depth
+        FROM user_messages um
+        JOIN messages user_msg
+          ON user_msg."userMessageId" = um.id
+         AND user_msg."workspaceId" = um."workspaceId"
+        JOIN messages reply
+          ON reply."parentId" = user_msg.id
+         AND reply."workspaceId" = um."workspaceId"
+         AND reply."agentMessageId" IS NOT NULL
+         AND reply.visibility != 'deleted'
+        JOIN agent_messages am
+          ON am.id = reply."agentMessageId"
+         AND am."workspaceId" = um."workspaceId"
+        WHERE um."workspaceId" = :workspaceId
+          AND um."agenticOriginMessageId" IN (:agentMessageIds)
+
+        UNION ALL
+
+        -- Sub-agents spawned (recursively) by previously found sub-agent replies.
+        SELECT
+          s.root_sid,
+          reply."sId",
+          am."costCredits",
+          s.depth + 1
+        FROM sub_agents s
+        JOIN user_messages um
+          ON um."agenticOriginMessageId" = s.agent_message_sid
+         AND um."workspaceId" = :workspaceId
+        JOIN messages user_msg
+          ON user_msg."userMessageId" = um.id
+         AND user_msg."workspaceId" = :workspaceId
+        JOIN messages reply
+          ON reply."parentId" = user_msg.id
+         AND reply."workspaceId" = :workspaceId
+         AND reply."agentMessageId" IS NOT NULL
+         AND reply.visibility != 'deleted'
+        JOIN agent_messages am
+          ON am.id = reply."agentMessageId"
+         AND am."workspaceId" = :workspaceId
+        WHERE s.depth < :maxDepth
+      )
+      SELECT
+        root_sid,
+        SUM(COALESCE(cost_credits, 0))::float AS total_credits,
+        MAX(depth)::int                       AS max_depth
+      FROM sub_agents
+      GROUP BY root_sid
+    `;
+
+    // biome-ignore lint/plugin/noRawSql: recursive CTE has no Sequelize equivalent.
+    const rows = await frontSequelize.query<{
+      root_sid: string;
+      total_credits: number;
+      max_depth: number;
+    }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: { workspaceId, agentMessageIds, maxDepth },
+    });
+
+    for (const row of rows) {
+      result.set(row.root_sid, row.total_credits);
+      if (row.max_depth >= maxDepth) {
+        logger.warn(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            agentMessageId: row.root_sid,
+            maxDepth,
+          },
+          "[Credits] Sub-agent cost aggregation hit the depth cap; total may be truncated."
+        );
+      }
+    }
+
+    return result;
+  }
+
   private static getOptions(
     options?: FetchConversationOptions
   ): ResourceFindOptions<ConversationModel> {

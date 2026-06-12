@@ -317,6 +317,12 @@ export type BaseAgentMessageType = {
   // during the credit-cost stack rollout. Tighten to `number | null` once the API
   // change is fully deployed. See [BACK12].
   costCredits?: number | null;
+  // Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned
+  // (recursively) by this message, separate from `costCredits` (this message's own
+  // intelligence + tools). Computed lazily on single-message fetches only, so it is
+  // `null` everywhere else (e.g. conversation list rendering). Optional during
+  // rollout, same rationale as `costCredits`. See [BACK12].
+  subAgentCostCredits?: number | null;
 };
 
 export type InlineActivityStep =
