@@ -1,0 +1,8 @@
+node_modules/
+target/
+ts/worker/wasm/
+ts/app/dist/
+*.log
+# ts-rs default output when TS_RS_EXPORT_DIR is unset (the real, committed
+# output lives in ts/client/src/generated)
+crates/engine-core/bindings/

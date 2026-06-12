@@ -1,0 +1,3 @@
+# Documented differential-test exceptions, one per line:
+#   file.xlsx:A1 = "reason"
+# This file growing over time is a review smell (handoff §7.4).

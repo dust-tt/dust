@@ -1,0 +1,19 @@
+{
+  "name": "@dust/sheet-engine-react",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@dust/sheet-engine-client": "*"
+  },
+  "peerDependencies": {
+    "@extend-ai/react-xlsx": ">=0.10",
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@dust/sheet-engine-worker": "*"
+  }
+}

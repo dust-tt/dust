@@ -1,0 +1,14 @@
+{
+  "name": "@dust/sheet-engine-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/worker-entry.ts",
+    "./engine-server": "./src/engine-server.ts",
+    "./node-host": "./src/node-host.ts"
+  },
+  "dependencies": {
+    "@dust/sheet-engine-client": "*"
+  }
+}

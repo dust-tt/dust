@@ -1,0 +1,40 @@
+{
+  "name": "@dust/sheet-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Rust/WASM spreadsheet engine behind the Extend UI kit",
+  "type": "module",
+  "workspaces": [
+    "ts/client",
+    "ts/worker",
+    "ts/react",
+    "ts/app"
+  ],
+  "scripts": {
+    "app:dev": "npm run dev --workspace @dust/sheet-engine-app",
+    "app:build": "npm run build --workspace @dust/sheet-engine-app",
+    "build:wasm": "wasm-pack build crates/engine-wasm --target web --out-dir ../../ts/worker/wasm/web --out-name engine && wasm-pack build crates/engine-wasm --target nodejs --out-dir ../../ts/worker/wasm/node --out-name engine",
+    "gen:numfmt-table": "node scripts/gen-numfmt-table.mjs",
+    "diff:sheetjs": "node scripts/diff-sheetjs.mjs",
+    "size:wasm": "node scripts/check-wasm-size.mjs",
+    "test": "vitest run"
+  },
+  "overrides": {
+    "prismjs": "^1.30.0"
+  },
+  "devDependencies": {
+    "@extend-ai/react-xlsx": "0.10.2",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "24.10.1",
+    "@types/react": "18.3.27",
+    "@types/react-dom": "18.3.7",
+    "jsdom": "26.1.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "typescript": "5.9.3",
+    "vitest": "3.2.4",
+    "wasm-pack": "0.13.1",
+    "xlsx": "0.18.5"
+  }
+}
