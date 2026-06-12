@@ -47,45 +47,43 @@ function BrandingAssetUploader({
 
   const { promoteAsset } = usePromoteWorkspaceBrandingAsset({ owner });
 
-  const handleFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) {
-        return;
-      }
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      return;
+    }
 
-      setIsBusy(true);
+    setIsBusy(true);
 
-      const uploaded = await fileUploaderService.handleFilesUpload([file]);
+    const uploaded = await fileUploaderService.handleFilesUpload([file]);
 
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
 
-      const fileId = uploaded?.[0]?.fileId ?? null;
-      if (!fileId) {
-        setIsBusy(false);
-        return;
-      }
-
-      const ok = await promoteAsset(asset, fileId);
-      if (ok) {
-        await onSaved();
-      }
-
+    const fileId = uploaded?.[0]?.fileId ?? null;
+    if (!fileId) {
       setIsBusy(false);
-    },
-    [fileUploaderService, promoteAsset, asset, onSaved]
-  );
+      return;
+    }
 
-  const handleRemove = useCallback(async () => {
+    const ok = await promoteAsset(asset, fileId);
+    if (ok) {
+      await onSaved();
+    }
+
+    setIsBusy(false);
+  };
+
+  const handleRemove = async () => {
     setIsBusy(true);
     const ok = await promoteAsset(asset, null);
     if (ok) {
       await onSaved();
     }
+
     setIsBusy(false);
-  }, [promoteAsset, asset, onSaved]);
+  };
 
   const busy = isBusy || fileUploaderService.isProcessingFiles;
 
@@ -131,8 +129,6 @@ function BrandingAssetUploader({
             }
             size="lg"
             className={asset === "logo" ? "w-24" : undefined}
-            onClick={!busy ? () => fileInputRef.current?.click() : undefined}
-            clickable={!busy}
           />
           <Button
             disabled={busy}
@@ -182,7 +178,7 @@ export function BrandingSection({ owner }: BrandingSectionProps) {
         description="Shown in the header of every shared Frame in place of the Dust logo. Horizontal format works best."
         onSaved={handleSaved}
         owner={owner}
-        title="Company logo"
+        title="Logo"
       />
       <BrandingAssetUploader
         asset="favicon"
@@ -190,7 +186,7 @@ export function BrandingSection({ owner }: BrandingSectionProps) {
         description="A compact version of your logo. Used as the favicon when someone opens a branded Frame. Must be square (1:1 ratio)."
         onSaved={handleSaved}
         owner={owner}
-        title="Logo icon"
+        title="Icon"
       />
     </div>
   );
