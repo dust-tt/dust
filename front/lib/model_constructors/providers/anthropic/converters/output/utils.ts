@@ -3,6 +3,7 @@ import {
   APIConnectionError,
   APIError,
 } from "@anthropic-ai/sdk";
+import type { MessageBatchResult } from "@anthropic-ai/sdk/resources/messages/batches";
 import type {
   Message,
   MessageDeltaUsage,
@@ -851,4 +852,46 @@ export function messageToEvents(
   events.push({ type: "success", content: { aggregated }, metadata });
 
   return events;
+}
+
+// Converts a single Anthropic batch result into unified events.
+export function batchResultToEvents(
+  result: MessageBatchResult,
+  metadata: EndpointMetadata,
+  converters: OutputEventConverters
+): NonDeltaResponseEvent[] {
+  switch (result.type) {
+    case "succeeded":
+      return messageToEvents(result.message, metadata, converters);
+    case "errored":
+      return [
+        buildErrorEvent({
+          metadata,
+          type: "server_error",
+          message: result.error.error.message,
+          originalError: result.error,
+        }),
+      ];
+    case "canceled":
+      return [
+        buildErrorEvent({
+          metadata,
+          type: "stream_error",
+          message: "Batch request was canceled.",
+        }),
+      ];
+    case "expired":
+      return [
+        buildErrorEvent({
+          metadata,
+          type: "stream_error",
+          message: "Batch request expired before processing completed.",
+        }),
+      ];
+    default:
+      // Anthropic may add new batch result types before we redeploy; ignore
+      // them rather than crashing.
+      assertNeverAndIgnore(result);
+      return [];
+  }
 }
