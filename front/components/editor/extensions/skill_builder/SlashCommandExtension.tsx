@@ -2,9 +2,9 @@ import {
   getSkillSlashCommandItem,
   getToolSlashCommandItem,
   getToolSlashCommandLabel,
+  isSkillSlashCommand,
+  isToolSlashCommand,
   matchesSlashCommandCapabilityQuery,
-  SELECT_SKILL_SLASH_COMMAND_ACTION,
-  SELECT_TOOL_SLASH_COMMAND_ACTION,
   type SlashCommandSkillSuggestion,
   type SlashCommandToolSuggestion,
   sortSlashCommandCapabilityMatches,
@@ -289,14 +289,14 @@ const SkillBuilderSlashCommandDropdownWithSkills = forwardRef<
         onItemDetails={
           onSkillDetails || onToolDetails
             ? (item) => {
-                if (item.data?.skill) {
+                if (isSkillSlashCommand(item)) {
                   editor.chain().focus().deleteRange(range).run();
                   onSkillDetails?.(item.data.skill);
                   onClose();
                   return;
                 }
 
-                if (item.data?.tool) {
+                if (isToolSlashCommand(item)) {
                   editor.chain().focus().deleteRange(range).run();
                   onToolDetails?.(item.data.tool.view);
                   onClose();
@@ -455,36 +455,32 @@ export const SlashCommandExtension =
                 .deleteRange(range)
                 .insertKnowledgeNode()
                 .run();
-            } else if (props.action === SELECT_SKILL_SLASH_COMMAND_ACTION) {
-              const skill = props.data?.skill;
-              if (skill) {
-                editor
-                  .chain()
-                  .focus()
-                  .deleteRange(range)
-                  .insertSkillNode({
-                    skillId: skill.sId,
-                    skillIcon: skill.icon,
-                    skillName: skill.name,
-                  })
-                  .run();
-                extensionOptions.onSelectSkill?.(skill);
-              }
-            } else if (props.action === SELECT_TOOL_SLASH_COMMAND_ACTION) {
-              const tool = props.data?.tool;
-              if (tool) {
-                editor
-                  .chain()
-                  .focus()
-                  .deleteRange(range)
-                  .insertToolNode({
-                    mcpServerViewId: tool.id,
-                    toolIcon: tool.icon,
-                    toolName: tool.name,
-                  })
-                  .run();
-                extensionOptions.onSelectTool?.(tool.view);
-              }
+            } else if (isSkillSlashCommand(props)) {
+              const { skill } = props.data;
+              editor
+                .chain()
+                .focus()
+                .deleteRange(range)
+                .insertSkillNode({
+                  skillId: skill.sId,
+                  skillIcon: skill.icon,
+                  skillName: skill.name,
+                })
+                .run();
+              extensionOptions.onSelectSkill?.(skill);
+            } else if (isToolSlashCommand(props)) {
+              const { tool } = props.data;
+              editor
+                .chain()
+                .focus()
+                .deleteRange(range)
+                .insertToolNode({
+                  mcpServerViewId: tool.id,
+                  toolIcon: tool.icon,
+                  toolName: tool.name,
+                })
+                .run();
+              extensionOptions.onSelectTool?.(tool.view);
             }
           },
           render: () => {
