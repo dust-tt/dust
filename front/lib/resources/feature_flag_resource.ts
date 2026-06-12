@@ -7,6 +7,7 @@ import {
   isWhitelistableFeature,
   type WhitelistableFeature,
 } from "@app/types/shared/feature_flags";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
@@ -56,11 +57,13 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
 
   static async enable(
     workspace: WorkspaceResource | WorkspaceType | LightWorkspaceType,
-    name: WhitelistableFeature
+    name: WhitelistableFeature,
+    { groupIds }: { groupIds?: ModelId[] } = {}
   ): Promise<void> {
     await FeatureFlagModel.create({
       workspaceId: workspace.id,
       name,
+      groupIds: groupIds ?? null,
     });
   }
 
