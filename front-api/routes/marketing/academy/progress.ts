@@ -1,9 +1,9 @@
 /** @ignoreswagger */
-import type { CourseProgressData } from "@app/lib/api/academy_api";
-import { getAcademyIdentifier } from "@app/lib/api/academy_api";
+import type { SessionWithUser } from "@app/lib/iam/provider";
 import { fetchUserFromSession } from "@app/lib/iam/users";
 import { AcademyChapterVisitResource } from "@app/lib/resources/academy_chapter_visit_resource";
 import { AcademyQuizAttemptResource } from "@app/lib/resources/academy_quiz_attempt_resource";
+import type { AcademyIdentifier, CourseProgressData } from "@app/types/academy";
 import { unauthedApp } from "@front-api/middlewares/ctx";
 import {
   resolveOptionalSession,
@@ -38,10 +38,26 @@ const BackfillBodySchema = z.object({
   browserId: z.string().regex(UUID_RE),
 });
 
-// `getAcademyIdentifier` only reads `x-academy-browser-id`; forward just that
-// header in the shape it expects.
-function browserIdHeaders(ctx: Context): Record<string, string | undefined> {
-  return { "x-academy-browser-id": ctx.req.header("x-academy-browser-id") };
+// Resolve the academy identifier from the request: the logged-in user when
+// there is a session, otherwise the anonymous `x-academy-browser-id` header
+// (validated as a UUID). Returns null when neither is available.
+async function resolveAcademyIdentifier(
+  ctx: Context,
+  session: SessionWithUser | null
+): Promise<AcademyIdentifier | null> {
+  if (session) {
+    const user = await fetchUserFromSession(session);
+    if (user) {
+      return { userId: user.id };
+    }
+  }
+
+  const browserId = ctx.req.header("x-academy-browser-id");
+  if (browserId && UUID_RE.test(browserId)) {
+    return { browserId };
+  }
+
+  return null;
 }
 
 // Mounted at /api/marketing/academy/progress. Most routes accept an optional
@@ -52,7 +68,7 @@ const app = unauthedApp();
 // GET /: progress for a single piece of content.
 app.get("/", async (ctx) => {
   const session = await resolveOptionalSession(ctx);
-  const identifier = await getAcademyIdentifier(browserIdHeaders(ctx), session);
+  const identifier = await resolveAcademyIdentifier(ctx, session);
   if (!identifier) {
     return apiError(ctx, {
       status_code: 401,
@@ -101,7 +117,7 @@ app.get("/", async (ctx) => {
 // POST /: record a quiz attempt.
 app.post("/", async (ctx) => {
   const session = await resolveOptionalSession(ctx);
-  const identifier = await getAcademyIdentifier(browserIdHeaders(ctx), session);
+  const identifier = await resolveAcademyIdentifier(ctx, session);
   if (!identifier) {
     return apiError(ctx, {
       status_code: 401,
@@ -169,7 +185,7 @@ app.post("/", async (ctx) => {
 // GET /courses: progress across all courses.
 app.get("/courses", async (ctx) => {
   const session = await resolveOptionalSession(ctx);
-  const identifier = await getAcademyIdentifier(browserIdHeaders(ctx), session);
+  const identifier = await resolveAcademyIdentifier(ctx, session);
   if (!identifier) {
     return apiError(ctx, {
       status_code: 401,
@@ -242,7 +258,7 @@ app.post("/backfill", async (ctx) => {
 // POST /visit: record that a chapter was visited.
 app.post("/visit", async (ctx) => {
   const session = await resolveOptionalSession(ctx);
-  const identifier = await getAcademyIdentifier(browserIdHeaders(ctx), session);
+  const identifier = await resolveAcademyIdentifier(ctx, session);
   if (!identifier) {
     return apiError(ctx, {
       status_code: 401,

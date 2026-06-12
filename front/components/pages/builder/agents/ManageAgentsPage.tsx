@@ -5,6 +5,7 @@ import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetail
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
+import Custom404 from "@app/components/pages/Custom404";
 import {
   useSetContentWidth,
   useSetNavChildren,
@@ -22,7 +23,6 @@ import {
   getAgentSearchString,
   subFilter,
 } from "@app/lib/utils";
-import Custom404 from "@app/pages/404";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { TagType } from "@app/types/tag";
 import { isAdmin } from "@app/types/user";

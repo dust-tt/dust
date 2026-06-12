@@ -1,4 +1,5 @@
 import { PublicInteractiveContentContainer } from "@app/components/assistant/conversation/interactive_content/PublicInteractiveContentContainer";
+import Custom404 from "@app/components/pages/Custom404";
 import { EmailVerificationFlow } from "@app/components/pages/share/EmailVerificationFlow";
 import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { formatFilenameForDisplay } from "@app/lib/files";
@@ -6,7 +7,6 @@ import { usePathParam } from "@app/lib/platform";
 import { usePublicFrame } from "@app/lib/swr/frames";
 import { useShareFrameMetadata } from "@app/lib/swr/share";
 import { getFaviconPath } from "@app/lib/utils";
-import Custom404 from "@app/pages/404";
 import { Spinner } from "@dust-tt/sparkle";
 import { usePostHog } from "posthog-js/react";
 import { useEffect, useMemo, useState } from "react";

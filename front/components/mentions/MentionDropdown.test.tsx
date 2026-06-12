@@ -46,10 +46,11 @@ vi.mock("@dust-tt/sparkle", () => {
 
 // Mock router utilities and hooks.
 const pushMock = vi.fn();
-vi.mock("next/router", () => ({
-  useRouter: () => ({
+vi.mock("@app/lib/platform", () => ({
+  useAppRouter: () => ({
     push: pushMock,
   }),
+  LinkWrapper: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 const openChangeMock = vi.fn();

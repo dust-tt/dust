@@ -1,9 +1,9 @@
+import Custom404 from "@app/components/pages/Custom404";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useSearchParam } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceLookup } from "@app/lib/swr/workspaces";
-import Custom404 from "@app/pages/404";
 import { isDevelopment } from "@app/types/shared/env";
 import {
   BarHeader,

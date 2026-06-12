@@ -1,4 +1,5 @@
 import { ConfirmContext } from "@app/components/Confirm";
+import Custom404 from "@app/components/pages/Custom404";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
@@ -6,7 +7,6 @@ import { dustAppsListUrl } from "@app/lib/spaces";
 import { useApp } from "@app/lib/swr/apps";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
-import Custom404 from "@app/pages/404";
 import { APP_NAME_REGEXP } from "@app/types/app";
 import type { APIError } from "@app/types/error";
 import { Button, Input, Label, Spinner } from "@dust-tt/sparkle";

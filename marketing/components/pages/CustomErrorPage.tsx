@@ -10,7 +10,6 @@ interface CustomErrorPageProps {
   icon: ComponentType;
 }
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function CustomErrorPage({
   title,
   description,

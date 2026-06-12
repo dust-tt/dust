@@ -1,7 +1,6 @@
 import CustomErrorPage from "@app/components/pages/CustomErrorPage";
 import { LogIn01 } from "@dust-tt/sparkle";
 
-// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
 export default function Custom404() {
   return (
     <CustomErrorPage

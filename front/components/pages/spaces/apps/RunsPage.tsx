@@ -1,3 +1,4 @@
+import Custom404 from "@app/components/pages/Custom404";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   LinkWrapper,
@@ -6,7 +7,6 @@ import {
 } from "@app/lib/platform";
 import { useApp, useRuns } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
-import Custom404 from "@app/pages/404";
 import type { RunRunType, RunStatus } from "@app/types/run";
 import { Button, cn, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";

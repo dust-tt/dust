@@ -1,13 +1,13 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
 import DatasetView from "@app/components/app/DatasetView";
+import Custom404 from "@app/components/pages/Custom404";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { useApp } from "@app/lib/swr/apps";
 import { useDataset } from "@app/lib/swr/datasets";
-import Custom404 from "@app/pages/404";
 import type { DatasetSchema, DatasetType } from "@app/types/dataset";
 import { Button, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";

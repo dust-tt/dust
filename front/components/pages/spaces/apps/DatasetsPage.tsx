@@ -1,4 +1,5 @@
 import { ConfirmContext } from "@app/components/Confirm";
+import Custom404 from "@app/components/pages/Custom404";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -9,7 +10,6 @@ import {
 import { useApp } from "@app/lib/swr/apps";
 import { useDatasets } from "@app/lib/swr/datasets";
 import { classNames } from "@app/lib/utils";
-import Custom404 from "@app/pages/404";
 import { Button, Chip, Plus, Spinner, Trash01 } from "@dust-tt/sparkle";
 import { useContext } from "react";
 

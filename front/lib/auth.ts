@@ -4,7 +4,6 @@ import type { SandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens
 import { SANDBOX_TOKEN_PREFIX } from "@app/lib/api/sandbox/access_tokens";
 import type { WorkOSJwtPayload } from "@app/lib/api/workos";
 import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
-import { getWorkOSSession } from "@app/lib/api/workos/user";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
@@ -53,11 +52,6 @@ import { isAdmin, isBuilder, isUser } from "@app/types/user";
 import assert from "assert";
 import { TokenExpiredError } from "jsonwebtoken";
 import memoizer from "lru-memoizer";
-import type {
-  GetServerSidePropsContext,
-  NextApiRequest,
-  NextApiResponse,
-} from "next";
 import type { Transaction } from "sequelize";
 
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
@@ -1312,21 +1306,6 @@ export class Authenticator {
       clientIp: authType.clientIp,
     });
   }
-}
-
-/**
- * Retrieves the workos session from the request/response.
- * @param req NextApiRequest request object
- * @param res NextApiResponse response object
- * @returns Promise<any>
- */
-export async function getSession(
-  req: NextApiRequest | GetServerSidePropsContext["req"],
-  res: NextApiResponse | GetServerSidePropsContext["res"]
-): Promise<SessionWithUser | null> {
-  const workOsSession = await getWorkOSSession(req, res);
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  return workOsSession || null;
 }
 
 /**

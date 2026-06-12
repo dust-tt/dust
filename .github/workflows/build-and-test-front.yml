@@ -93,7 +93,5 @@ jobs:
         uses: ./.github/actions/setup-node-deps
         with:
           node-version: "24.14.0"
-      - name: Lint test filenames
-        run: npm -w front run lint:test-filenames
       - name: Lint audit log schemas
         run: npm -w front run lint:audit-log-schemas

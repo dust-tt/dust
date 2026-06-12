@@ -1,11 +1,12 @@
-import { PublicWebsiteLogo } from "@app/components/home/PublicWebsiteLogo";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import config from "@app/lib/api/config";
+import { LinkWrapper } from "@app/lib/platform";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
 import {
   Button,
   cn,
+  DustLogo,
   MessageCircle01,
   Rocket02,
   SpaceClosed,
@@ -35,11 +36,11 @@ export function PublicInteractiveContentHeader({
     <AppLayoutTitle className="h-12 bg-gray-50 px-4 @container dark:bg-gray-900">
       <div className="flex h-full min-w-0 max-w-full items-center">
         <div className="grow-1 flex shrink-0 basis-12 items-center md:basis-60">
-          <PublicWebsiteLogo
-            size="small"
-            utmParam={user ? undefined : UTM_PARAM}
-            baseUrl={staticWebsiteUrl}
-          />
+          <LinkWrapper
+            href={`${staticWebsiteUrl}/home${user ? "" : `?${UTM_PARAM}`}`}
+          >
+            <DustLogo className="h-[20px] w-[80px]" />
+          </LinkWrapper>
         </div>
 
         <div className="flex flex-1 justify-center">

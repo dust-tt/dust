@@ -13,7 +13,7 @@
 #   LEFTHOOK_EXCLUDE=ggshield-scan,package-lock-check git commit -m "message"
 #
 # Skip only linting/type-checking (front and connectors):
-#   LEFTHOOK_EXCLUDE=front-lint-test-filenames,front-typecheck,front-circular,front-api-docs-check,biome,connectors-typecheck git commit -m "message"
+#   LEFTHOOK_EXCLUDE=front-typecheck,front-circular,front-api-docs-check,biome,connectors-typecheck git commit -m "message"
 #
 # Skip only a project:
 #   LEFTHOOK_EXCLUDE=front git commit -m "message"
@@ -66,12 +66,6 @@ pre-commit:
       priority: 1
 
     # Front directory checks
-    front-lint-test-filenames:
-      tags: front
-      glob: "*.{js,jsx,ts,tsx}"
-      root: front/
-      run: npm run lint:test-filenames
-
     front-lint-audit-log-schemas:
       tags: front
       glob: "front/admin/audit_log_schemas/**/*.json"

@@ -1,6 +1,7 @@
 import NewBlock from "@app/components/app/NewBlock";
 import SpecRunView from "@app/components/app/SpecRunView";
 import { ViewAppAPIModal } from "@app/components/app/ViewAppAPIModal";
+import Custom404 from "@app/components/pages/Custom404";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { extractConfig } from "@app/lib/config";
 import { clientFetch } from "@app/lib/egress/client";
@@ -12,7 +13,6 @@ import {
   moveBlockUp,
 } from "@app/lib/specification";
 import { useApp, useCancelRun, useSavedRunStatus } from "@app/lib/swr/apps";
-import Custom404 from "@app/pages/404";
 import type {
   BlockRunConfig,
   SpecificationBlockType,

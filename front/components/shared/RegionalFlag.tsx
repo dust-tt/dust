@@ -1,7 +1,5 @@
-// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import type { RegionType } from "@app/types/region";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import Image from "next/image";
 
 const DEFAULT_FLAG_SIZE = 16;
 
@@ -17,7 +15,7 @@ export function RegionalFlag({
   switch (region) {
     case "europe-west1":
       return (
-        <Image
+        <img
           src="/static/EuropeanFlag.svg"
           alt="EU"
           width={size}
