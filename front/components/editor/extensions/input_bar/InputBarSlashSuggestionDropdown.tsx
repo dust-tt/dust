@@ -1,6 +1,5 @@
+import { getInputBarSlashCommandItem } from "@app/components/editor/extensions/input_bar/commands";
 import {
-  getSkillSlashCommandItem,
-  getToolSlashCommandItem,
   getToolSlashCommandLabel,
   matchesSlashCommandCapabilityQuery,
   sortSlashCommandCapabilityMatches,
@@ -16,7 +15,6 @@ import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import {
@@ -142,32 +140,12 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     );
 
     // Items carry their capability in `data` so selection and details handlers can recover it
-    // without a reverse lookup. Ids are prefixed by kind to stay unique across capability kinds.
+    // without a reverse lookup.
     const capabilityItems = useMemo<SlashCommand[]>(
       () =>
-        filteredCapabilities.flatMap((capability): SlashCommand[] => {
-          switch (capability.kind) {
-            case "skill":
-              return [
-                {
-                  ...getSkillSlashCommandItem(capability.skill),
-                  data: capability,
-                  id: `skill-${capability.skill.sId}`,
-                },
-              ];
-            case "tool":
-              return [
-                {
-                  ...getToolSlashCommandItem(capability.serverView),
-                  data: capability,
-                  id: `tool-${capability.serverView.sId}`,
-                },
-              ];
-            default:
-              assertNeverAndIgnore(capability);
-              return [];
-          }
-        }),
+        filteredCapabilities.flatMap(
+          (capability) => getInputBarSlashCommandItem(capability) ?? []
+        ),
       [filteredCapabilities]
     );
 
