@@ -581,7 +581,7 @@ export function UsagePage() {
                           label="Top up"
                           icon={ArrowUp}
                           size="xs"
-                          variant="ghost"
+                          variant="outline"
                           onClick={() => setShowBuyCreditDialog(true)}
                         />
                       )}
