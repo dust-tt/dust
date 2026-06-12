@@ -89,11 +89,15 @@ export type PostMCPServersQueryParams = z.infer<
 >;
 
 // Per-process cache of workspaces whose auto internal MCP server views are known to be in
-// sync, keyed by workspace ModelId, valued with the fingerprint of the expected auto server
-// set at hydration time. See `unsafeEnsureAutoViewsForWorkspace` for why a local cache is
-// sufficient.
-const hydratedWorkspaceFingerprints = new Map<ModelId, string>();
+// sync, keyed by workspace ModelId. See `unsafeEnsureAutoViewsForWorkspace` for the
+// invalidation story.
+type HydratedWorkspaceEntry = {
+  planCode: string;
+  ensuredAtMs: number;
+};
+const hydratedWorkspaces = new Map<ModelId, HydratedWorkspaceEntry>();
 const HYDRATED_WORKSPACES_CACHE_MAX_SIZE = 100_000;
+const HYDRATION_TTL_MS = 5 * 60 * 1000;
 
 // In-flight hydrations, so concurrent reads on the same pod share a single run instead of
 // racing on the same checks and inserts.
@@ -1005,8 +1009,6 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       hardDelete: false,
     });
 
-    this.invalidateAutoViewsHydration();
-
     return new Ok(deletedCount);
   }
 
@@ -1030,22 +1032,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       hardDelete: true,
     });
 
-    this.invalidateAutoViewsHydration();
-
     return new Ok(deletedCount);
-  }
-
-  // Deleting an internal auto view invalidates the hydration cache so the view is recreated
-  // on the next read on this pod (auto views are expected to always exist).
-  private invalidateAutoViewsHydration(): void {
-    if (
-      this.serverType === "internal" &&
-      this.internalMCPServerId &&
-      getAvailabilityOfInternalMCPServerById(this.internalMCPServerId) !==
-        "manual"
-    ) {
-      hydratedWorkspaceFingerprints.delete(this.workspaceId);
-    }
   }
 
   private getRemoteMCPServerResource(): RemoteMCPServerResource {
@@ -1161,16 +1148,17 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
    * members must hydrate too, so missing views are created on their behalf (views which only
    * admins can otherwise create).
    *
-   * Guarded by a per-process cache keyed on the workspace's expected auto server set (which
-   * captures every availability input: registry, feature flags incl. global rollouts, plan,
-   * deep-dive admin setting). Any change to those inputs changes the fingerprint and
-   * re-hydrates on the next read, within the TTL of the feature-flag/deep-dive memoizers.
-   * No cross-pod invalidation is needed: a stale "hydrated" entry can only under-create, and
-   * the fingerprint self-corrects. Deleting an internal auto view drops the workspace entry
-   * (see delete/hardDelete) so the view is recreated on the next read.
-   *
-   * Steady-state cost: two short-TTL memoized lookups (feature flags, deep-dive) and a Map
-   * lookup; no extra queries.
+   * Guarded by a per-process cache so the steady-state cost is a Map lookup, zero reads. A
+   * stale "hydrated" entry is harmless as long as the rows exist in the database (listings
+   * read the rows directly), so each way the expected view set can change is covered without
+   * cross-pod invalidation:
+   * - registry change (new auto server): ships with a deploy, which restarts every pod and
+   *   empties the cache;
+   * - workspace feature-flag toggle: the mutation site creates the views synchronously (poke
+   *   plugin and toggle_feature_flags script), so entries on other pods remain correct;
+   * - plan change: the entry is keyed on the plan code, available in memory on the auth;
+   * - global rollout percentage change: no per-workspace mutation site exists, so the entry
+   *   TTL bounds the staleness (a pod re-checks a workspace at most every HYDRATION_TTL_MS).
    */
   static async unsafeEnsureAutoViewsForWorkspace(
     auth: Authenticator
@@ -1181,16 +1169,12 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       return;
     }
 
-    const [featureFlags, isDeepDiveDisabled] = await Promise.all([
-      getFeatureFlags(auth),
-      isDeepDiveDisabledByAdmin(auth),
-    ]);
-    const fingerprint = this.computeEnabledAutoInternalMCPServerIds(
-      workspace.id,
-      { featureFlags, isDeepDiveDisabled, plan }
-    ).join(",");
-
-    if (hydratedWorkspaceFingerprints.get(workspace.id) === fingerprint) {
+    const entry = hydratedWorkspaces.get(workspace.id);
+    if (
+      entry &&
+      entry.planCode === plan.code &&
+      Date.now() - entry.ensuredAtMs < HYDRATION_TTL_MS
+    ) {
       return;
     }
 
@@ -1219,19 +1203,19 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       }
 
       if (
-        hydratedWorkspaceFingerprints.size >=
-          HYDRATED_WORKSPACES_CACHE_MAX_SIZE &&
-        !hydratedWorkspaceFingerprints.has(workspace.id)
+        hydratedWorkspaces.size >= HYDRATED_WORKSPACES_CACHE_MAX_SIZE &&
+        !hydratedWorkspaces.has(workspace.id)
       ) {
         // Evict the oldest inserted entry (Map preserves insertion order).
-        const oldestWorkspaceModelId = hydratedWorkspaceFingerprints
-          .keys()
-          .next().value;
+        const oldestWorkspaceModelId = hydratedWorkspaces.keys().next().value;
         if (oldestWorkspaceModelId !== undefined) {
-          hydratedWorkspaceFingerprints.delete(oldestWorkspaceModelId);
+          hydratedWorkspaces.delete(oldestWorkspaceModelId);
         }
       }
-      hydratedWorkspaceFingerprints.set(workspace.id, fingerprint);
+      hydratedWorkspaces.set(workspace.id, {
+        planCode: plan.code,
+        ensuredAtMs: Date.now(),
+      });
     })().finally(() => {
       inflightHydrations.delete(workspace.id);
     });
