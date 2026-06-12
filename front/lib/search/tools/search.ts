@@ -175,7 +175,10 @@ export async function* streamToolFiles({
   pageSize: number;
 }): AsyncGenerator<ToolSearchResult[], void, undefined> {
   const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
-  const serverViews = await MCPServerViewResource.listBySpaces(auth, spaces);
+  const serverViews = await MCPServerViewResource.listBySpacesEnsuringAutoViews(
+    auth,
+    spaces
+  );
 
   // Build the set of connectors that the user has access to
   const dataSourceViews = await DataSourceViewResource.listBySpaces(

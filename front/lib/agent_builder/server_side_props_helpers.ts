@@ -49,7 +49,10 @@ export const getAccessibleSourcesAndAppsForActions = async (
       DataSourceViewResource.listBySpaces(auth, accessibleSpaces, {
         includeEditedBy: true,
       }),
-      MCPServerViewResource.listBySpaces(auth, accessibleSpaces),
+      MCPServerViewResource.listBySpacesEnsuringAutoViews(
+        auth,
+        accessibleSpaces
+      ),
     ]);
 
     return {

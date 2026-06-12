@@ -33,7 +33,13 @@ describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
 
     const response = await getSandboxActions(workspace, token);
 
-    expect(await response.json()).toEqual({ serverViews: [] });
     expect(response.status).toBe(200);
+    const body = await response.json();
+    // The conversation's JIT servers resolve to auto MCP server views, which
+    // are hydrated just in time on first read.
+    expect(body.serverViews.length).toBeGreaterThan(0);
+    for (const serverView of body.serverViews) {
+      expect(serverView.server.availability).not.toBe("manual");
+    }
   });
 });

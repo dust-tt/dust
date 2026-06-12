@@ -23,9 +23,6 @@ export type InternalToolSnapshot = {
 export const MIGRATE_LEGACY_MANUAL_TO_AUTO_SCRIPT =
   "scripts/migrate_legacy_manual_internal_mcp_server_ids_to_auto.ts";
 
-export const ENSURE_AUTO_MCP_SERVER_VIEWS_SCRIPT =
-  "scripts/ensure_all_mcp_server_views_created.ts";
-
 type InternalToolAvailabilitySnapshot = {
   auto: InternalToolSnapshot[];
   manual: InternalToolSnapshot[];
@@ -167,8 +164,10 @@ export function validateInternalToolAvailabilitySnapshots({
       ok: false,
       message:
         `New auto internal tool(s) added: ${toolNames}.\n` +
-        "Ensure MCP server views exist across workspaces:\n" +
-        `  npx tsx ${ENSURE_AUTO_MCP_SERVER_VIEWS_SCRIPT} --execute`,
+        "MCP server views are created just-in-time per workspace " +
+        "(see MCPServerViewResource.unsafeEnsureAutoViewsForWorkspace), no backfill needed.\n" +
+        "Update the availability snapshot:\n" +
+        `  ${UPDATE_INTERNAL_MCP_AVAILABILITY_SNAPSHOT_COMMAND}`,
     };
   }
 

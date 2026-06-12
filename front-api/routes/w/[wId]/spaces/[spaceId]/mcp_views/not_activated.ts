@@ -17,10 +17,8 @@ app.get(
     const auth = ctx.get("auth");
     const space = ctx.get("space");
 
-    const spaceMcpServerViews = await MCPServerViewResource.listBySpace(
-      auth,
-      space
-    );
+    const spaceMcpServerViews =
+      await MCPServerViewResource.listBySpaceEnsuringAutoViews(auth, space);
     const workspaceServerViews =
       await MCPServerViewResource.listByWorkspace(auth);
 
