@@ -78,7 +78,7 @@ export function SharedFramePage() {
     }
 
     const description = `Discover what ${shareMetadata.workspaceName} built with AI. Explore now.`;
-    const faviconPath = getFaviconPath();
+    const faviconPath = shareMetadata.faviconUrl ?? getFaviconPath();
     const elements: HTMLElement[] = [];
 
     const addMeta = (attrs: Record<string, string>) => {
@@ -168,6 +168,7 @@ export function SharedFramePage() {
         shareToken={token}
         workspaceId={shareMetadata.workspaceId}
         vizUrl={shareMetadata.vizUrl}
+        logoUrl={shareMetadata.logoUrl}
         hideHeader={hideHeader}
       />
     </div>

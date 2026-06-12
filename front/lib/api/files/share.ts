@@ -1,4 +1,6 @@
 export interface GetShareFrameMetadataResponseBody {
+  faviconUrl: string | null;
+  logoUrl: string | null;
   requiresEmailVerification: boolean;
   shareUrl: string;
   title: string;

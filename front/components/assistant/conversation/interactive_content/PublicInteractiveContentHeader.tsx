@@ -17,6 +17,7 @@ interface PublicInteractiveContentHeaderProps {
   user: UserTypeWithWorkspaces | null;
   conversationUrl: string | null;
   projectUrl: string | null;
+  logoUrl?: string | null;
 }
 
 const UTM_PARAM = `utm_source=public-frames`;
@@ -30,17 +31,26 @@ export function PublicInteractiveContentHeader({
   user,
   conversationUrl,
   projectUrl,
+  logoUrl,
 }: PublicInteractiveContentHeaderProps) {
   const staticWebsiteUrl = config.getStaticWebsiteUrl();
   return (
     <AppLayoutTitle className="h-12 bg-gray-50 px-4 @container dark:bg-gray-900">
       <div className="flex h-full min-w-0 max-w-full items-center">
         <div className="grow-1 flex shrink-0 basis-12 items-center md:basis-60">
-          <LinkWrapper
-            href={`${staticWebsiteUrl}/home${user ? "" : `?${UTM_PARAM}`}`}
-          >
-            <DustLogo className="h-[20px] w-[80px]" />
-          </LinkWrapper>
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt="Workspace logo"
+              className="h-[32px] max-w-[120px] object-contain"
+            />
+          ) : (
+            <LinkWrapper
+              href={`${staticWebsiteUrl}/home${user ? "" : `?${UTM_PARAM}`}`}
+            >
+              <DustLogo className="h-[20px] w-[80px]" />
+            </LinkWrapper>
+          )}
         </div>
 
         <div className="flex flex-1 justify-center">

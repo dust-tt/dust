@@ -10,6 +10,7 @@ interface PublicInteractiveContentContainerProps {
   shareToken: string;
   workspaceId: string;
   vizUrl: string;
+  logoUrl?: string | null;
   hideHeader?: boolean;
 }
 
@@ -21,6 +22,7 @@ export function PublicInteractiveContentContainer({
   shareToken,
   workspaceId,
   vizUrl,
+  logoUrl,
   hideHeader = false,
 }: PublicInteractiveContentContainerProps) {
   const { frameMetadata, isFrameLoading, error } = usePublicFrame({
@@ -51,6 +53,7 @@ export function PublicInteractiveContentContainer({
             shareToken={shareToken}
             workspaceId={workspaceId}
             vizUrl={vizUrl}
+            logoUrl={logoUrl}
             hideHeader={hideHeader}
           />
         );
