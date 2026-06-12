@@ -1,4 +1,7 @@
-import type { ImageModelIdType } from "@app/types/assistant/models/models";
+import type {
+  ImageModelIdType,
+  StaticModelIdType,
+} from "@app/types/assistant/models/models";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 
 import { EU_MODEL_PRICING } from "@app/lib/api/assistant/token_pricing/eu";
@@ -29,7 +32,7 @@ export const MAX_DISCOUNT_PERCENT = Math.ceil(
 );
 
 // If model is not found in MODEL_PRICING, use the default pricing.
-const DEFAULT_PRICING_MODEL_ID = "gpt-4o";
+const DEFAULT_PRICING_MODEL_ID: StaticModelIdType = "gpt-5.5";
 const DEFAULT_PRICING = MODEL_PRICING[DEFAULT_PRICING_MODEL_ID];
 
 // This discount factor applies to OpenAi, Anthropic, Google and Mistral
@@ -69,12 +72,20 @@ export function computeTokensCostForUsageInMicroUsd({
   const cachedReadRate = pricing.cache_read_input_tokens ?? pricing.input;
   const cacheWriteRate = pricing.cache_creation_input_tokens ?? pricing.input;
 
-  const basePromptCost = promptTokens * pricing.input;
-  const cachedReadDelta = cachedReadTokens * (cachedReadRate - pricing.input);
-  const cacheWriteDelta = cacheWriteTokens * (cacheWriteRate - pricing.input);
-  const outputCost = completionTokens * pricing.output;
+  const basePromptCostMicroUsd = promptTokens * pricing.input;
+  const cachedReadDeltaMicroUsd =
+    cachedReadTokens * (cachedReadRate - pricing.input);
+  const cacheWriteDeltaMicroUsd =
+    cacheWriteTokens * (cacheWriteRate - pricing.input);
+  const outputCostMicroUsd = completionTokens * pricing.output;
 
-  const cost = basePromptCost + cachedReadDelta + cacheWriteDelta + outputCost;
+  const costMicroUsd =
+    basePromptCostMicroUsd +
+    cachedReadDeltaMicroUsd +
+    cacheWriteDeltaMicroUsd +
+    outputCostMicroUsd;
 
-  return isBatch ? Math.round(cost * BATCH_DISCOUNT_FACTOR) : cost;
+  return isBatch
+    ? Math.round(costMicroUsd * BATCH_DISCOUNT_FACTOR)
+    : costMicroUsd;
 }
