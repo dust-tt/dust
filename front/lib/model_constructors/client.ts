@@ -1,5 +1,4 @@
 import type { BaseModelConfiguration } from "@app/lib/model_constructors/configuration";
-import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import type { ModelId } from "@app/lib/model_constructors/types/model_ids";
 import type { ProviderApi } from "@app/lib/model_constructors/types/provider_apis";
 import type { ProviderId } from "@app/lib/model_constructors/types/provider_ids";
@@ -9,8 +8,6 @@ export abstract class Client {
   // Re-type `this.constructor` (typed as `Function` by default) so the concrete
   // subclass's static config is visible at the type level.
   declare ["constructor"]: BaseModelConfiguration;
-
-  constructor(protected readonly credentials: Credentials) {}
 
   // Generic `this` params P/A/R/M capture each concrete class's literal
   // identity fields, so the returned `id` is an exact literal (not the wide
