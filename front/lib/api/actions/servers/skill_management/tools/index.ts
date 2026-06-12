@@ -42,7 +42,7 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       ]);
     }
 
-    // Copy the skill's file attachments into the conversation GCS mount so they are visible to
+    // Copy the skill's file attachments into the conversation file system so they are visible to
     // both the files tools and the sandbox (when one exists).
     let fileMessage: string | null = null;
     if (skill.getFileAttachments().length > 0) {
