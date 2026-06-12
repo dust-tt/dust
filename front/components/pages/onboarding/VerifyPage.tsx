@@ -307,8 +307,11 @@ export function VerifyPage() {
     );
   }
 
-  // Redirect to subscribe if not eligible for trial.
-  if (!isEligibleForTrial) {
+  // Redirect to subscribe if not eligible for trial. Skipped once the trial
+  // has been activated in this session ("done" step): activation makes the
+  // workspace ineligible by definition, and a focus-triggered revalidation of
+  // useVerifyData would otherwise yank the success screen to /subscribe.
+  if (!isEligibleForTrial && step !== "done") {
     void router.replace(`/w/${workspace.sId}/subscribe`);
     return (
       <div className="flex h-screen items-center justify-center">
