@@ -7,7 +7,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownTooltipTrigger,
-  ScrollArea,
 } from "@dust-tt/sparkle";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import type React from "react";
@@ -241,7 +240,10 @@ export const SlashCommandDropdown = forwardRef<
           <div style={virtualTriggerStyle} />
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className={size === "wide" ? "w-80" : "w-64"}
+          className={cn(
+            listMaxHeightClassName,
+            size === "wide" ? "w-80" : "w-64"
+          )}
           align="start"
           avoidCollisions
           collisionPadding={12}
@@ -264,11 +266,7 @@ export const SlashCommandDropdown = forwardRef<
               {emptyMessage}
             </div>
           ) : (
-            <div className="relative">
-              <ScrollArea
-                viewportRef={listRef}
-                viewportClassName={listMaxHeightClassName}
-              >
+            <div className={cn("relative", listMaxHeightClassName)}  ref={listRef}>
                 <div className="relative">
                   <div
                     ref={topScrollSentinelRef}
@@ -310,6 +308,8 @@ export const SlashCommandDropdown = forwardRef<
                           ) : undefined
                         }
                         onClick={() => selectItem(index)}
+                        onPointerMove={(e) => e.preventDefault()}
+                        onPointerLeave={(e) => e.preventDefault()}
                         onMouseEnter={() => setSelectedIndex(index)}
                         className={cn(
                           "group",
@@ -344,8 +344,7 @@ export const SlashCommandDropdown = forwardRef<
                       </Fragment>
                     );
                   })}
-                </div>
-              </ScrollArea>
+              </div>
               <div
                 className={cn(
                   "pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-t",

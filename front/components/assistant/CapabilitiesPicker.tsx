@@ -44,10 +44,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-// Rare case where we need a Tailwind arbitrary value: after the fixed search bar, the scrollable list should fit
-// exactly seven 3.25rem rows without showing a partial row or leaving extra bottom space.
-const CAPABILITIES_PICKER_LIST_MAX_HEIGHT_CLASS_NAME = "max-h-[22.75rem]";
-
 interface CapabilityPickerItemBase {
   description?: string;
   icon: DropdownMenuItemProps["icon"];
@@ -193,11 +189,7 @@ function CapabilitiesPickerItemsList({
   }
 
   return (
-    <div className="relative">
-      <ScrollArea
-        viewportRef={listRef}
-        viewportClassName={CAPABILITIES_PICKER_LIST_MAX_HEIGHT_CLASS_NAME}
-      >
+    <div className="relative" ref={listRef}>
         <div className="relative">
           <div
             ref={topScrollSentinelRef}
@@ -247,7 +239,6 @@ function CapabilitiesPickerItemsList({
             );
           })}
         </div>
-      </ScrollArea>
       <div
         className={cn(
           "pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-t",
@@ -593,15 +584,19 @@ export function CapabilitiesPicker({
               setIsClosing(false);
             }
           }}
+          dropdownHeaders={
+            <>
+              <DropdownMenuSearchbar
+                autoFocus={!isMobile}
+                name="search-capabilities"
+                placeholder="Search capabilities"
+                value={searchText}
+                onChange={setSearchText}
+              />
+              <DropdownMenuSeparator />
+            </>
+          }
         >
-          <DropdownMenuSearchbar
-            autoFocus={!isMobile}
-            name="search-capabilities"
-            placeholder="Search capabilities"
-            value={searchText}
-            onChange={setSearchText}
-          />
-          <DropdownMenuSeparator />
           {(!isSkillsDataReady || !isToolsDataReady) && (
             <CapabilitiesPickerLoading />
           )}

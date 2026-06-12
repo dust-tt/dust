@@ -52,21 +52,18 @@ export const menuStyleClasses = {
         variant: {
           default: cn(
             "s-p-2",
-            "hover:s-bg-muted-background dark:hover:s-bg-muted-night",
-            "focus:s-text-foreground dark:focus:s-text-foreground-night",
-            "focus:s-bg-muted-background dark:focus:s-bg-muted-night"
+            "data-[highlighted]:s-text-foreground dark:data-[highlighted]:s-text-foreground-night",
+            "data-[highlighted]:s-bg-muted-background dark:data-[highlighted]:s-bg-muted-night"
           ),
           tags: cn(
             "s-p-0.5",
-            "hover:s-bg-muted-background dark:hover:s-bg-muted-night",
-            "focus:s-text-foreground dark:focus:s-text-foreground-night",
-            "focus:s-bg-muted-background dark:focus:s-bg-muted-night"
+            "data-[highlighted]:s-text-foreground dark:data-[highlighted]:s-text-foreground-night",
+            "data-[highlighted]:s-bg-muted-background dark:data-[highlighted]:s-bg-muted-night"
           ),
           warning: cn(
             "s-p-2",
             "s-text-warning-500 dark:s-text-warning-500-night",
-            "hover:s-bg-warning-50 dark:hover:s-bg-warning-50-night",
-            "focus:s-bg-warning-50 dark:focus:s-bg-warning-50-night",
+            "data-[highlighted]:s-bg-warning-50 dark:data-[highlighted]:s-bg-warning-50-night",
             "active:s-bg-warning-100 dark:active:s-bg-warning-100-night"
           ),
         },
