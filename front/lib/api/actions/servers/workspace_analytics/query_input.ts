@@ -66,8 +66,10 @@ export const usageFilterSchema = {
     .string()
     .optional()
     .describe(
-      "Filter to a single message origin (context_origin), e.g. web, slack, " +
-        "api, extension, cli, or 'unknown' for messages with no recorded origin."
+      "Filter to a single message origin (context_origin) — the source a " +
+        "message came from. Many origins exist (channels, integrations, " +
+        "triggers, and more); do not assume a fixed short list. Use 'unknown' " +
+        "to match messages with no recorded origin."
     ),
   agentIds: z
     .array(z.string())
