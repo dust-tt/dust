@@ -39,8 +39,8 @@ describe("hasProcessedVersion", () => {
     expect(hasProcessedVersion("text/csv")).toBe(false);
   });
 
-  it("should return false for SVG files", () => {
-    expect(hasProcessedVersion("image/svg+xml")).toBe(false);
+  it("should return true for SVG files (rasterized to PNG)", () => {
+    expect(hasProcessedVersion("image/svg+xml")).toBe(true);
   });
 
   it("should return false for PDF files (lazy extraction via extract_text tool)", () => {
@@ -94,9 +94,13 @@ describe("getProcessedContentType", () => {
     expect(getProcessedContentType("audio/mpeg")).toBe("text/plain");
   });
 
-  it("should return the same content type for images", () => {
+  it("should return the same content type for raster images", () => {
     expect(getProcessedContentType("image/png")).toBe("image/png");
     expect(getProcessedContentType("image/jpeg")).toBe("image/jpeg");
+  });
+
+  it("should return image/png for SVG files (rasterized)", () => {
+    expect(getProcessedContentType("image/svg+xml")).toBe("image/png");
   });
 });
 
@@ -178,6 +182,31 @@ describe("isUploadSupportedForContentType", () => {
       isUploadSupportedForContentType({
         contentType: "image/png",
         useCase: "upsert_table",
+      })
+    ).toBe(false);
+  });
+
+  it("should return true for supported image types with workspace_branding", () => {
+    for (const contentType of [
+      "image/jpeg",
+      "image/png",
+      "image/svg+xml",
+      "image/webp",
+    ] as const) {
+      expect(
+        isUploadSupportedForContentType({
+          contentType,
+          useCase: "workspace_branding",
+        })
+      ).toBe(true);
+    }
+  });
+
+  it("should return false for non-image types with workspace_branding", () => {
+    expect(
+      isUploadSupportedForContentType({
+        contentType: "text/plain",
+        useCase: "workspace_branding",
       })
     ).toBe(false);
   });

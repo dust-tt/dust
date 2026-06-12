@@ -75,6 +75,15 @@ const FileUploadUrlRequestSchema = z.discriminatedUnion("useCase", [
     useCase: z.literal("skill_attachment"),
     useCaseMetadata: z.object({ skillId: z.string() }).optional(),
   }),
+  z.object({
+    contentType: z.string(),
+    fileName: z.string(),
+    fileSize: z.number(),
+    useCase: z.literal("workspace_branding"),
+    useCaseMetadata: z.object({
+      asset: z.enum(["logo", "favicon"]),
+    }),
+  }),
 ]);
 
 // Mounted at /api/w/:wId/files.
@@ -117,7 +126,7 @@ const app = workspaceApp();
  *                 type: number
  *               useCase:
  *                 type: string
- *                 enum: [conversation, folders_document, avatar, upsert_document, upsert_table, project_context, skill_attachment]
+ *                 enum: [conversation, folders_document, avatar, upsert_document, upsert_table, project_context, skill_attachment, workspace_branding]
  *               useCaseMetadata:
  *                 type: object
  *     responses:

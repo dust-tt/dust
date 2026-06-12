@@ -31,7 +31,9 @@ export type FileUseCase =
   | "project_context"
   // Skill attachment: file attached to a skill configuration, synced to the
   // sandbox at /dust/skills/<skill-name>/<filename>.
-  | "skill_attachment";
+  | "skill_attachment"
+  // Workspace branding: logo/favicon uploaded by workspace admins.
+  | "workspace_branding";
 
 // Audit trail for a plan-mode approval. Recorded on `plan.md.useCaseMetadata` when the user
 // approves a `request_plan_approval` call.
@@ -64,6 +66,8 @@ export type FileUseCaseMetadata = {
   isPlanFile?: boolean;
   planModeLastApproval?: PlanModeApproval | null;
   isPlanClosed?: boolean;
+  // Which branding asset this file was uploaded for (workspace_branding use case only).
+  asset?: string;
 };
 
 export function isConversationFileUseCase(

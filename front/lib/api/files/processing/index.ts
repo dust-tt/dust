@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { processImage } from "@app/lib/api/files/processing/images";
 import { isSandboxRawDelimitedConversationFile } from "@app/lib/api/files/sandbox_raw";
 import { isSupportedForAvatar } from "@app/lib/api/files/use_cases/avatar";
 import { isSupportedForConversation } from "@app/lib/api/files/use_cases/conversation";
@@ -8,9 +9,9 @@ import { isSupportedForSkillAttachment } from "@app/lib/api/files/use_cases/skil
 import { isSupportedForToolOutput } from "@app/lib/api/files/use_cases/tool_output";
 import { isSupportedForUpsertDocument } from "@app/lib/api/files/use_cases/upsert_document";
 import { isSupportedForUpsertTable } from "@app/lib/api/files/use_cases/upsert_table";
+import { isSupportedForWorkspaceBranding } from "@app/lib/api/files/use_cases/workspace_branding";
 import { parseUploadRequest } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
-import { untrustedFetch } from "@app/lib/egress/server";
 import type { DustError } from "@app/lib/error";
 import { withRetryOnTransientGCSError } from "@app/lib/file_storage";
 import type { FileResource } from "@app/lib/resources/file_resource";
@@ -29,203 +30,19 @@ import {
 } from "@app/types/shared/text_extraction";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import ConvertAPI from "convertapi";
 import fs from "fs";
 import type { IncomingMessage } from "http";
-import imageSize from "image-size";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
 import { fileSync } from "tmp";
 
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 2; // 2 minute.
 const PROCESSING_TIMEOUT_MS = 1000 * 60 * 5; // 5 minutes.
-const CONVERSATION_IMG_MAX_SIZE_PIXELS = "1538";
-const AVATAR_IMG_MAX_SIZE_PIXELS = "256";
 
 type ProcessingFunction = (
   auth: Authenticator,
   file: FileResource
 ) => Promise<Result<undefined, Error>>;
-
-// Images processing functions.
-
-const createReadableFromUrl = async (url: string): Promise<Readable> => {
-  const response = await untrustedFetch(url);
-  if (!response.ok || !response.body) {
-    throw new Error(`Failed to fetch from URL: ${response.statusText}`);
-  }
-  return Readable.fromWeb(response.body);
-};
-
-const resizeImage: ProcessingFunction = async (
-  auth: Authenticator,
-  file: FileResource
-) => {
-  const maxSize =
-    file.useCase === "avatar"
-      ? AVATAR_IMG_MAX_SIZE_PIXELS
-      : CONVERSATION_IMG_MAX_SIZE_PIXELS;
-
-  const resizeResult = await resizeAndWriteToProcessed(auth, file, maxSize);
-  if (resizeResult.isErr()) {
-    return resizeResult;
-  }
-
-  // Avatar images are also copied to the public bucket.
-  if (file.useCase === "avatar") {
-    const readStream = file.getReadStream({ auth, version: "processed" });
-    const writeStream = file.getWriteStream({ auth, version: "public" });
-    try {
-      await pipeline(readStream, writeStream);
-    } catch (err) {
-      return new Err(
-        new Error(
-          `Failed uploading to public bucket. ${normalizeError(err).message}`
-        )
-      );
-    }
-  }
-
-  return new Ok(undefined);
-};
-
-/**
- * Resize an image and write the result to the "processed" version. If the image is already within
- * size limits, copies the original to processed without calling ConvertAPI.
- */
-const resizeAndWriteToProcessed = async (
-  auth: Authenticator,
-  file: FileResource,
-  maxSize: string
-): Promise<Result<undefined, Error>> => {
-  const maxSizePixels = parseInt(maxSize);
-
-  // Check image dimensions before calling ConvertAPI.
-  try {
-    const readStreamForProbe = file.getReadStream({
-      auth,
-      version: "original",
-    });
-
-    // Read first 32KB (sufficient for all image format headers).
-    const chunks: Buffer[] = [];
-    let totalSize = 0;
-    const maxBufferSize = 32 * 1024;
-
-    for await (const chunk of readStreamForProbe) {
-      chunks.push(chunk);
-      totalSize += chunk.length;
-      if (totalSize >= maxBufferSize) {
-        break;
-      }
-    }
-
-    readStreamForProbe.destroy();
-
-    const buffer = Buffer.concat(chunks);
-    const dimensions = imageSize(buffer);
-
-    if (!dimensions.width || !dimensions.height) {
-      throw new Error("Could not determine image dimensions");
-    }
-
-    if (
-      dimensions.width <= maxSizePixels &&
-      dimensions.height <= maxSizePixels
-    ) {
-      const readStream = file.getReadStream({ auth, version: "original" });
-      const writeStream = file.getWriteStream({
-        auth,
-        version: "processed",
-      });
-
-      logger.info(
-        {
-          dimensions: { width: dimensions.width, height: dimensions.height },
-          maxSize: maxSizePixels,
-        },
-        "Image already within size limits, skipping ConvertAPI"
-      );
-
-      await pipeline(readStream, writeStream);
-
-      return new Ok(undefined);
-    }
-  } catch (err) {
-    // If dimension check fails, fall back to ConvertAPI for safety.
-    logger.warn(
-      {
-        fileModelId: file.id,
-        workspaceId: auth.workspace()?.sId,
-        err: normalizeError(err),
-      },
-      "Failed to check image dimensions, falling back to ConvertAPI"
-    );
-  }
-
-  // ConvertAPI flow.
-  if (!process.env.CONVERTAPI_API_KEY) {
-    throw new Error("CONVERTAPI_API_KEY is not set");
-  }
-
-  const originalFormat = extensionsForContentType(file.contentType)[0].replace(
-    ".",
-    ""
-  );
-  const convertapi = new ConvertAPI(process.env.CONVERTAPI_API_KEY);
-
-  let result;
-  try {
-    const uploadResult = await convertapi.upload(
-      file.getReadStream({ auth, version: "original" }),
-      `${file.fileName}.${originalFormat}`
-    );
-
-    result = await convertapi.convert(
-      originalFormat,
-      {
-        File: uploadResult,
-        ScaleProportions: true,
-        ImageResolution: "72",
-        ScaleImage: "true",
-        ScaleIfLarger: "true",
-        ImageHeight: maxSize,
-        ImageWidth: maxSize,
-      },
-      originalFormat,
-      30
-    );
-  } catch (e) {
-    return new Err(
-      new Error(`Failed resizing image: ${normalizeError(e).message}`)
-    );
-  }
-
-  try {
-    const stream = await createReadableFromUrl(result.file.url);
-
-    const writeStream = file.getWriteStream({
-      auth,
-      version: "processed",
-    });
-
-    await pipeline(stream, writeStream);
-    return new Ok(undefined);
-  } catch (err) {
-    logger.error(
-      {
-        fileModelId: file.id,
-        workspaceId: auth.workspace()?.sId,
-        error: err,
-      },
-      "Failed to resize image."
-    );
-
-    return new Err(
-      new Error(`Failed resizing image. ${normalizeError(err).message}`)
-    );
-  }
-};
 
 const extractTextFromFileAndUpload: ProcessingFunction = async (
   auth: Authenticator,
@@ -400,11 +217,16 @@ const PROCESSING_BY_CONTENT_TYPE = new Map<
   ProcessingEntry
 >([
   // Images (resized -> output keeps the original content type).
-  ["image/jpeg", { process: resizeImage, processedContentType: "image/jpeg" }],
-  ["image/png", { process: resizeImage, processedContentType: "image/png" }],
-  ["image/gif", { process: resizeImage, processedContentType: "image/gif" }],
-  ["image/webp", { process: resizeImage, processedContentType: "image/webp" }],
-  ["image/bmp", { process: resizeImage, processedContentType: "image/bmp" }],
+  ["image/jpeg", { process: processImage, processedContentType: "image/jpeg" }],
+  ["image/png", { process: processImage, processedContentType: "image/png" }],
+  ["image/gif", { process: processImage, processedContentType: "image/gif" }],
+  ["image/webp", { process: processImage, processedContentType: "image/webp" }],
+  ["image/bmp", { process: processImage, processedContentType: "image/bmp" }],
+  // SVG: rasterized to PNG to ensure consistent rendering across clients.
+  [
+    "image/svg+xml",
+    { process: processImage, processedContentType: "image/png" },
+  ],
 
   // Audio (transcribed -> plain text).
   [
@@ -498,20 +320,31 @@ export function isUploadSupportedForContentType({
   switch (useCase) {
     case "conversation":
       return isSupportedForConversation(contentType);
+
     case "avatar":
       return isSupportedForAvatar(contentType);
+
     case "tool_output":
       return isSupportedForToolOutput(contentType);
+
     case "project_context":
       return isSupportedForProjectContext(contentType);
+
     case "skill_attachment":
       return isSupportedForSkillAttachment(contentType);
+
     case "upsert_document":
       return isSupportedForUpsertDocument(contentType);
+
     case "folders_document":
       return isSupportedForFoldersDocument(contentType);
+
     case "upsert_table":
       return isSupportedForUpsertTable(contentType);
+
+    case "workspace_branding":
+      return isSupportedForWorkspaceBranding(contentType);
+
     default:
       assertNever(useCase);
   }
