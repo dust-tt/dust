@@ -7,15 +7,8 @@ import {
   usePatchSkillSuggestions,
   useSkillSuggestions,
 } from "@app/hooks/useSkillSuggestions";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
-import {
-  Chip,
-  ContentMessage,
-  Lightbulb04,
-  ScrollArea,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { Lightbulb04, ScrollArea, Spinner } from "@dust-tt/sparkle";
 import { useCallback } from "react";
 import { useFormContext } from "react-hook-form";
 
@@ -33,8 +26,6 @@ export function SkillBuilderSuggestionsPanel({
     setSelectedSuggestionId,
     acceptInstructionEdits,
   } = useSkillBuilderContext();
-  const { hasFeature } = useFeatureFlags();
-  const isBetaTester = hasFeature("self_improvement_beta_tester");
   const { getValues, setValue } = useFormContext<SkillBuilderFormData>();
 
   const getSkillInstructionsHtml = useCallback(
@@ -159,18 +150,9 @@ export function SkillBuilderSuggestionsPanel({
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-col gap-1 px-4 pb-3 pt-4">
-        <div className="flex items-center gap-2">
-          <h2 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
-            Suggestions
-          </h2>
-          {isBetaTester && <Chip size="xs" color="golden" label="Beta" />}
-        </div>
-        {isBetaTester && (
-          <ContentMessage variant="info" size="lg">
-            Skill suggestions are currently in beta testing. We are very
-            interested in your feedback to improve the feature.
-          </ContentMessage>
-        )}
+        <h2 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
+          Suggestions
+        </h2>
         <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
           Dust continuously analyses conversations using this skill to suggest
           improvements.
