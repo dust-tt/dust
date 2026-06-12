@@ -7,12 +7,12 @@ import {
   PRO_PLAN_SEAT_29_CODE,
 } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
-import { PlanFactory } from "@app/tests/utils/PlanFactory";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import { PlanFactory } from "@app/tests/utils/PlanFactory";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import type { WorkspaceType } from "@app/types/user";
 import { faker } from "@faker-js/faker";

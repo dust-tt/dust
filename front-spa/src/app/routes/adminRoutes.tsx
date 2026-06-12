@@ -78,9 +78,7 @@ const WorkspaceSettingsPage = withSuspense(
 );
 const WorkspaceBrandingPage = withSuspense(
   () =>
-    import(
-      "@dust-tt/front/components/pages/workspace/WorkspaceBrandingPage"
-    ),
+    import("@dust-tt/front/components/pages/workspace/WorkspaceBrandingPage"),
   "WorkspaceBrandingPage"
 );
 const ModelProvidersPage = withSuspense(

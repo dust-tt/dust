@@ -1,0 +1,11 @@
+{
+  "action": "workspace_branding.asset_deleted",
+  "targets": [
+    {
+      "type": "workspace"
+    }
+  ],
+  "metadata": {
+    "asset": "string"
+  }
+}

@@ -2,9 +2,9 @@
 import config from "@app/lib/api/config";
 import {
   BRANDING_DEFAULT_ASSET_PATHS,
+  type BrandingAssetName,
   buildBrandingAssetStoragePath,
   isBrandingAssetName,
-  type BrandingAssetName,
 } from "@app/lib/api/workspace_branding";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";

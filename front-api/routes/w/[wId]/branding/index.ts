@@ -1,3 +1,8 @@
+import {
+  buildAuditLogTarget,
+  emitAuditLogEvent,
+  getAuditLogContext,
+} from "@app/lib/api/audit/workos_audit";
 import type { BrandingAssetState } from "@app/lib/api/workspace_branding";
 import {
   deleteBrandingAsset,
@@ -97,6 +102,16 @@ app.patch(
         });
       }
 
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace_branding.asset_deleted",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        ],
+        context: getAuditLogContext(auth),
+        metadata: { asset },
+      });
+
       return ctx.body(null, 204);
     }
 
@@ -131,6 +146,16 @@ app.patch(
         },
       });
     }
+
+    void emitAuditLogEvent({
+      auth,
+      action: "workspace_branding.asset_promoted",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: { asset },
+    });
 
     return ctx.body(null, 204);
   }
