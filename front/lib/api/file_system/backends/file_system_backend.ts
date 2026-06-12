@@ -59,9 +59,13 @@ export interface FileSystemBackend {
    */
   exists(scopedPath: string): Promise<Result<boolean, DustFileSystemError>>;
 
+  /**
+   * When `content` is a `Readable`, the data is streamed to storage without buffering it in
+   * memory; the stream is consumed (or destroyed on error) by the backend.
+   */
   write(
     scopedPath: string,
-    content: Buffer | string,
+    content: Buffer | string | Readable,
     contentType: string
   ): Promise<Result<void, DustFileSystemError>>;
 

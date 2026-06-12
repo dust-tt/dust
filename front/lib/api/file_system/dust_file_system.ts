@@ -689,9 +689,13 @@ export class DustFileSystem {
     return this.backend.exists(resolved.value.path);
   }
 
+  /**
+   * When `content` is a `Readable`, the data is streamed to storage without buffering it in
+   * memory; the stream is consumed (or destroyed on error) by the backend.
+   */
   async write(
     scopedPath: string,
-    content: Buffer | string,
+    content: Buffer | string | Readable,
     contentType: string
   ): Promise<Result<void, DustFileSystemError>> {
     const resolved = this.requireWriteMount(scopedPath);
