@@ -13,6 +13,7 @@ use crate::value::CellValue;
 use crate::workbook::{Sheet, Workbook};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[cfg_attr(feature = "ts-rs", derive(ts_rs::TS), ts(export))]
 #[serde(rename_all = "lowercase")]
 pub enum DisplayMode {
     Value,
@@ -20,6 +21,7 @@ pub enum DisplayMode {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "ts-rs", derive(ts_rs::TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct ViewportCell {
     pub row: u32,
@@ -29,20 +31,26 @@ pub struct ViewportCell {
     pub style: u32,
     pub is_date: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
     pub formula: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
     pub color: Option<&'static str>,
     /// Set on the top-left cell of a merge intersecting the viewport.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
     pub merge_span: Option<(u32, u32)>,
     /// True for non-top-left cells covered by a merge.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
+    #[cfg_attr(feature = "ts-rs", ts(as = "Option<bool>", optional))]
     pub is_merged_secondary: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
     pub hyperlink: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "ts-rs", derive(ts_rs::TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct ViewportSlice<'a> {
     pub sheet: u32,
@@ -231,26 +239,33 @@ fn empty_slice<'a>(sheet: u32, r0: u32, r1: u32, c0: u32, c1: u32) -> ViewportSl
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "ts-rs", derive(ts_rs::TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct BatchCell {
     pub col: u32,
     /// Final display string — number formats already applied.
     pub value: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
     pub formula: Option<String>,
     /// Style table index; the adapter materializes the kit's style objects.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
     pub style: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
     pub merge_span: Option<MergeSpan>,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
+    #[cfg_attr(feature = "ts-rs", ts(as = "Option<bool>", optional))]
     pub is_merged_secondary: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
     pub hyperlink: Option<String>,
     pub align: Align,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
+#[cfg_attr(feature = "ts-rs", derive(ts_rs::TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct MergeSpan {
     pub row_span: u32,
@@ -258,6 +273,7 @@ pub struct MergeSpan {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "ts-rs", derive(ts_rs::TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct BatchRow {
     pub index: u32,

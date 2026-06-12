@@ -20,7 +20,7 @@ export interface UseDustSheetControllerOptions {
    * URL validation is the embedder's responsibility (see
    * `SheetEngineClient.open`); `null` renders nothing and keeps the hook idle.
    */
-  src: { url: string } | { bytes: ArrayBuffer } | null;
+  src: { url: string; headers?: Record<string, string> } | { bytes: ArrayBuffer } | null;
   /** Display name; also drives format sniffing for CSV/TSV sources. */
   fileName: string;
   /** Include hidden/veryHidden sheets as tabs (default: visible only). */
@@ -38,6 +38,12 @@ export interface DustSheetControllerResult {
   /** Plug into `<XlsxViewer controller={...} />`. Null while loading. */
   controller: XlsxViewerController | null;
   loading: boolean;
+  /**
+   * Typed engine error. `code === "POISONED"` means the worker's wasm
+   * instance trapped and the CLIENT is dead, not just this workbook: offer a
+   * "reload viewer" action that destroys the client, creates a fresh worker
+   * + client, and remounts with the new client instance.
+   */
   error: EngineErrorException | null;
   /** True when any loaded sheet was truncated by a budget (show a banner). */
   truncated: boolean;
@@ -211,8 +217,15 @@ export function useDustSheetController(options: UseDustSheetControllerOptions): 
         stateRef.current = next;
         setState(next);
         setRevision((r) => r + 1);
-      } catch {
-        // Activation can fail with BUDGET_EXCEEDED: tab stays a placeholder.
+      } catch (e: unknown) {
+        // Budget-refused activation leaves the tab a placeholder; anything
+        // else (a poisoned worker included) must surface like the batch path.
+        if (e instanceof EngineErrorException && (e.code === "BUDGET_EXCEEDED" || e.code === "CANCELLED")) {
+          return;
+        }
+        setError(
+          e instanceof EngineErrorException ? e : new EngineErrorException({ code: "INTERNAL", detail: String(e) }),
+        );
       }
     })();
   }, []);

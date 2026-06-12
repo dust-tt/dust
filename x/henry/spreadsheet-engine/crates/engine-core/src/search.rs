@@ -12,10 +12,14 @@ use crate::viewport::{cell_a1, format_cell};
 use crate::workbook::Workbook;
 
 #[derive(Debug, Clone, serde::Deserialize)]
+#[cfg_attr(feature = "ts-rs", derive(ts_rs::TS), ts(export))]
 #[serde(rename_all = "camelCase", default)]
 pub struct SearchOpts {
+    /// Defaults apply when omitted, so both fields are optional on the wire.
+    #[cfg_attr(feature = "ts-rs", ts(as = "Option<u32>", optional))]
     pub max_results: u32,
     /// Limit to one sheet (index); None = all loaded sheets.
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
     pub sheet: Option<u32>,
 }
 
@@ -29,6 +33,7 @@ impl Default for SearchOpts {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "ts-rs", derive(ts_rs::TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct SearchHit {
     pub sheet: u32,
@@ -40,6 +45,7 @@ pub struct SearchHit {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "ts-rs", derive(ts_rs::TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct SearchResults {
     pub hits: Vec<SearchHit>,

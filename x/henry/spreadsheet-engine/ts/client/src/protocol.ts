@@ -11,6 +11,8 @@ export type EngineRequest = { id: number } & (
       // Either a URL (worker fetches + streams: the 400 MB payload never
       // touches the main thread) or transferred bytes.
       url?: string;
+      // Extra request headers for the URL fetch (e.g. Authorization).
+      headers?: Record<string, string>;
       bytes?: ArrayBuffer;
     }
   | { op: "metadata"; handle: number }

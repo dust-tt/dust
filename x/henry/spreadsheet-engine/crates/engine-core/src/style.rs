@@ -77,47 +77,65 @@ pub const INDEXED_PALETTE: [u32; 66] = [
 ];
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts-rs", derive(ts_rs::TS), ts(export))]
+#[serde(rename_all = "camelCase")]
 pub struct Font {
     pub bold: bool,
     pub italic: bool,
     pub underline: bool,
     pub strikethrough: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(type = "string", optional))]
     pub color: Option<Argb>,
     /// Point size, e.g. 11.0.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
     pub size_pt: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
     pub name: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts-rs", derive(ts_rs::TS), ts(export))]
+#[serde(rename_all = "camelCase")]
 pub struct Fill {
     /// `"solid"`, `"gray125"`, ... `"none"` fills are represented as `None` on the style.
     pub pattern: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(type = "string", optional))]
     pub foreground: Option<Argb>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(type = "string", optional))]
     pub background: Option<Argb>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts-rs", derive(ts_rs::TS), ts(export))]
+#[serde(rename_all = "camelCase")]
 pub struct BorderSide {
     /// `"thin"`, `"medium"`, `"dashed"`, ...
     pub style: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(type = "string", optional))]
     pub color: Option<Argb>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts-rs", derive(ts_rs::TS), ts(export))]
+#[serde(rename_all = "camelCase")]
 pub struct Border {
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
     pub top: Option<BorderSide>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
     pub right: Option<BorderSide>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
     pub bottom: Option<BorderSide>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
     pub left: Option<BorderSide>,
 }
 
@@ -128,12 +146,16 @@ impl Border {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts-rs", derive(ts_rs::TS), ts(export))]
+#[serde(rename_all = "camelCase")]
 pub struct Alignment {
     /// `"left" | "center" | "right" | "justify" | "fill" | "general"` (absent = general).
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
     pub horizontal: Option<String>,
     /// `"top" | "center" | "bottom"` (absent = bottom).
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
     pub vertical: Option<String>,
     pub wrap_text: bool,
 }
@@ -146,15 +168,20 @@ impl Alignment {
 
 /// One resolved entry of the workbook style table (one per `cellXf`).
 #[derive(Debug, Clone, Default, PartialEq, Serialize)]
+#[cfg_attr(feature = "ts-rs", derive(ts_rs::TS), ts(export))]
+#[serde(rename_all = "camelCase")]
 pub struct ResolvedStyle {
     /// ECMA-376 number format code, `"General"` when unset.
     pub num_fmt: String,
     pub font: Font,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts-rs", ts(optional))]
     pub fill: Option<Fill>,
     #[serde(skip_serializing_if = "Border::is_empty")]
+    #[cfg_attr(feature = "ts-rs", ts(as = "Option<Border>", optional))]
     pub border: Border,
     #[serde(skip_serializing_if = "Alignment::is_default")]
+    #[cfg_attr(feature = "ts-rs", ts(as = "Option<Alignment>", optional))]
     pub alignment: Alignment,
 }
 

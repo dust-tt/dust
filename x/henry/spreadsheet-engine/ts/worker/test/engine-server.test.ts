@@ -32,7 +32,7 @@ function trappingWasm(): EngineWasm {
 }
 
 describe("trap poisoning", () => {
-  it("maps a wasm trap to INTERNAL and poisons every later call", async () => {
+  it("maps a wasm trap to POISONED and poisons every later call", async () => {
     const responses: EngineResponse[] = [];
     const server = createEngineServer({ wasm: trappingWasm(), post: (r) => responses.push(r) });
 
@@ -43,17 +43,53 @@ describe("trap poisoning", () => {
     expect(opened).toBeDefined();
     const handle = (opened as { result: { handle: number } }).result.handle;
 
-    // The trap itself: INTERNAL with a recreate hint.
+    // The trap itself: terminal POISONED with a recreate hint.
     server.handle({ id: 2, op: "rowsBatch", handle, sheet: 0, startRow: 0, rowCount: 10 });
     await new Promise((r) => setTimeout(r, 5));
     const trapped = responses.find((r) => r.id === 2);
-    expect(trapped).toMatchObject({ kind: "error", error: { code: "INTERNAL" } });
+    expect(trapped).toMatchObject({ kind: "error", error: { code: "POISONED" } });
     expect((trapped as { error: { detail: string } }).error.detail).toContain("recreated");
 
-    // Linear memory may be corrupt: even untouched endpoints answer INTERNAL.
+    // Linear memory may be corrupt: even untouched endpoints answer POISONED.
     server.handle({ id: 3, op: "metadata", handle });
     await new Promise((r) => setTimeout(r, 5));
-    expect(responses.find((r) => r.id === 3)).toMatchObject({ kind: "error", error: { code: "INTERNAL" } });
+    expect(responses.find((r) => r.id === 3)).toMatchObject({ kind: "error", error: { code: "POISONED" } });
+  });
+
+  it("client.onFatal fires once on the first POISONED response", async () => {
+    // WorkerLike host backed by a trapping server: the real client observes
+    // the POISONED responses end to end.
+    const server = createEngineServer({
+      wasm: trappingWasm(),
+      post: (response) => {
+        queueMicrotask(() => listener?.({ data: response }));
+      },
+    });
+    let listener: ((event: { data: unknown }) => void) | null = null;
+    const client = new SheetEngineClient({
+      postMessage: (message) => {
+        queueMicrotask(() => server.handle(message as never));
+      },
+      addEventListener: (_type, l) => {
+        listener = l;
+      },
+      removeEventListener: () => {
+        listener = null;
+      },
+      terminate: () => {},
+    });
+
+    const fatals: string[] = [];
+    const unsubscribe = client.onFatal((error) => fatals.push(error.code));
+    const handle = await client.open({ bytes: corpus("gen/single_cell.xlsx") }, "a.xlsx");
+
+    await expect(client.getRowsBatch(handle, 0, 0, 10)).rejects.toMatchObject({ code: "POISONED" });
+    // A second poisoned call must not re-fire the callback.
+    await expect(client.getMetadata(handle)).rejects.toMatchObject({ code: "POISONED" });
+    expect(fatals).toEqual(["POISONED"]);
+
+    unsubscribe();
+    client.destroy();
   });
 
   it("an ordinary JS error mentioning 'unreachable' does not poison", async () => {
@@ -182,6 +218,27 @@ describe("url open guards", () => {
     await expect(
       client.open({ url: "https://example.invalid/f.xlsx" }, "f.xlsx", { maxBytes: 1024 }),
     ).rejects.toMatchObject({ code: "BUDGET_EXCEEDED" });
+    client.destroy();
+  });
+
+  it("threads custom headers to the worker fetch", async () => {
+    const bytes = new Uint8Array(corpus("gen/single_cell.xlsx"));
+    let seenAuth: string | null = null;
+    const fetchImpl: typeof fetch = async (_input, init) => {
+      seenAuth = new Headers(init?.headers).get("authorization");
+      const response = new Response(null, { status: 200 });
+      Object.defineProperty(response, "body", { value: null });
+      response.arrayBuffer = async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+      return response;
+    };
+    const host = createNodeEngineHost({ fetchImpl });
+    const client = new SheetEngineClient(host);
+    const handle = await client.open(
+      { url: "https://example.invalid/s.xlsx", headers: { Authorization: "Bearer token-123" } },
+      "s.xlsx",
+    );
+    expect(seenAuth).toBe("Bearer token-123");
+    await client.close(handle);
     client.destroy();
   });
 

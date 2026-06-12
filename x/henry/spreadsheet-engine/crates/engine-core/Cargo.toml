@@ -13,6 +13,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 ryu = { workspace = true }
+ts-rs = { version = "10", optional = true }
 
 [dev-dependencies]
 calamine = "0.26"
@@ -23,3 +24,6 @@ criterion = { workspace = true }
 [[bench]]
 name = "engine"
 harness = false
+
+[features]
+ts-rs = ["dep:ts-rs"]

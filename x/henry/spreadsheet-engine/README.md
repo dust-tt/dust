@@ -31,11 +31,11 @@ and capped search results — never anything O(workbook).
 
 | Path | What |
 | --- | --- |
-| `crates/engine-core` | 100% of engine logic. Compiles and tests natively (`cargo test`, no wasm). Flat sparse struct-of-arrays sheets, string arenas, interned styles (colors resolved to ARGB at parse), lazy per-sheet parsing, cell budgets with row-major truncation, ECMA-376 numfmt (`numfmt.rs`), viewport + kit-shaped row batches, search. |
+| `crates/engine-core` | 100% of engine logic. Compiles and tests natively (`cargo test`, no wasm). Flat sparse struct-of-arrays sheets, string arenas, interned styles (colors resolved to ARGB at parse), lazy per-sheet parsing, cell budgets with row-major truncation, ECMA-376 numfmt (`numfmt/`), viewport + kit-shaped row batches, search. Boundary-crossing types carry `ts-rs` derives behind the `ts-rs` feature. |
 | `crates/engine-wasm` | wasm-bindgen wrapper, zero logic. Handle-based: `open_start`/`append_chunk`/`open_finish`/…/`close`. |
 | `crates/engine-cli` | `engine-cli parse <file>` → canonical JSON (determinism gate, debugging). |
 | `crates/corpus-gen` | Deterministic corpus generator (own XML writer, independent of the parser) + adversarial corpus. |
-| `ts/client` | `@dust/sheet-engine-client`: promise-map RPC over postMessage, `Task<T>` (progress + cancel), latest-wins viewport coalescing, FinalizationRegistry close backstop. |
+| `ts/client` | `@dust/sheet-engine-client`: promise-map RPC over postMessage, `Task<T>` (progress + cancel), latest-wins viewport coalescing, `onFatal` poison notification, FinalizationRegistry close backstop. `src/generated/` is emitted by ts-rs from the Rust structs (freshness-gated); hand-written types cover only protocol plumbing. |
 | `ts/worker` | Worker entry (web) + transport-agnostic `engine-server` + node test host. Streaming `fetch` for URL sources (the payload never touches the main thread). Wasm traps map to typed `INTERNAL` and poison the instance. |
 | `ts/react` | `useDustSheetController` → kit-compatible `XlsxViewerController` (Strategy A, zero fork). See `ts/react/INTEGRATION.md` for the Phase 0 seam analysis and the non-obvious kit requirements (axis arrays, zoom percentage, revision-vs-paint-tick). |
 | `corpus/` | Committed corpora + goldens + the ≥500-case numfmt golden table. See `corpus/README.md`. |
@@ -93,6 +93,30 @@ and the cell budgets).
 provides; the engine cannot meaningfully allowlist, and CORS is the only
 browser-level control. URL validation/allowlisting is the embedder's
 responsibility — prefer `open({ bytes })` when the file is already in hand.
+For bearer-protected endpoints pass `{ url, headers: { Authorization: ... } }`
+— custom headers make the fetch non-simple, so the server's CORS preflight
+must allow them via `Access-Control-Allow-Headers`.
+
+### Wiring a find UI
+
+The engine and RPC sides of search are done; the kit ships no find box, so
+the embedder owns the input + result list. Jumping to a hit:
+
+```tsx
+const results = await client.search(handle, query, { maxResults: 200 });
+// results.hits: [{ sheet, row, col, a1, snippet }], results.capped
+
+function jumpTo(hit: SearchHit) {
+  // 1. Switch tabs if needed. Tab index != workbook sheet index when hidden
+  //    sheets are filtered; map through the indices you built the tabs from.
+  controller.setActiveSheetIndex(sheetIndices.indexOf(hit.sheet));
+  // 2. Select the cell; the kit scrolls the selection into view.
+  controller.selectCell({ row: hit.row, col: hit.col });
+}
+```
+
+To search not-yet-loaded sheets, `activateSheet` them first (mind the cell
+budgets) or scope with `{ sheet }` and re-run the search on tab switch.
 
 ## Worker + wasm asset setup
 
@@ -171,15 +195,18 @@ Typed and stable (`EngineErrorException.code`); `truncated: true` metadata
 | `CORRUPT` | bad zip/XML, lying structure, failed fetch (HTTP ≠ 200) | show generic "file can't be previewed" |
 | `BUDGET_EXCEEDED` | byte/cell/decompression budget hit (`detail`: `bytes`/`cells`/`memory`) | file too large to preview; suggest splitting |
 | `CANCELLED` | caller cancelled, or client destroyed with calls in flight | usually ignore (the caller initiated it) |
-| `INTERNAL` | engine bug, protocol misuse, **or a poisoned worker** | see below |
+| `INTERNAL` | engine bug or protocol misuse | report; usually retryable with a fresh open |
+| `POISONED` | the worker's wasm instance trapped; **terminal for the client** | see below |
 
 **Trap → poison → recreate:** a Rust panic inside wasm surfaces as a trap;
-the worker shim answers `INTERNAL` with detail `"engine trapped: …; worker
-must be recreated"` and poisons the instance — every later call on that
-worker also answers `INTERNAL`. Recovery recipe: `client.destroy()`, spawn a
-fresh `Worker`, create a new `SheetEngineClient`, re-open the workbook. The
-native evil-corpus suite asserts the engine never panics on hostile input, so
-this is defense-in-depth, not an expected path.
+the worker shim answers `POISONED` and poisons the instance — every later
+call on that worker also answers `POISONED`. `client.onFatal(cb)` fires once
+when this is first observed. Recovery recipe: `client.destroy()`, spawn a
+fresh `Worker`, create a new `SheetEngineClient`, re-open the workbook (the
+react hook surfaces `error.code === "POISONED"` so the app can offer a
+"reload viewer" action that swaps in the new client). The native evil-corpus
+suite asserts the engine never panics on hostile input, so this is
+defense-in-depth, not an expected path.
 
 ## Task semantics & coalescing
 
@@ -266,6 +293,7 @@ are internal plumbing (see the `engine-wasm` crate docs).
 | Evil corpus (never panic/hang/OOM; typed outcomes; XSS hyperlinks, zip bombs, rel escapes, hostile names) | `tests/evil.rs` + `corpus/evil/MANIFEST.tsv` | 50+ files |
 | Determinism: native ×2 + wasm byte-identical | `scripts/check-determinism.mjs` | hash-equal |
 | Wasm size | `scripts/check-wasm-size.mjs` | ~245 KiB gz (gate: warn 1.5 MB / fail 2 MB) |
+| Generated TS boundary types (Rust ↔ TS drift is a gate failure) | `ts/client/src/generated` vs `cargo test --features ts-rs --lib export_bindings` | byte-exact |
 | Benchmarks (parse, viewport, batch, search, numfmt) | `crates/engine-core/benches` (criterion; check-all runs one validation pass, numbers non-gating) | recorded locally |
 | RPC layer (cancel, coalescing interleavings, progress monotonicity, leaks, chunked≡one-shot, memory ceiling over 50 cycles, content-length fail-fast, FinalizationRegistry backstop) | `ts/client/test` + `ts/worker/test` (incl. trap-poisoning, destroy/close lifecycle) | 37 tests |
 | **Kit integration: real `<XlsxViewer/>` + real engine** (cell texts incl. formats, styles/merges/hidden geometry in the DOM, hyperlink sanitization, col widths, frozen panes, tabs, truncation banner, typed errors, hook error paths, unmount lifecycle) | `ts/react/test/` | 16 tests |
@@ -338,9 +366,8 @@ viewer use case.
 LibreOffice differential (needs a pinned container; nightly CI), cargo-fuzz
 soak, fuel-metered perf gates with committed criterion baselines, a
 browser-real Playwright smoke test (jsdom cannot validate virtualization or
-the paint-tick heuristic; needs a headless-browser CI job), worker crash
-recovery UX (a distinct `POISONED` signal + automatic client recreation),
-auth headers for `open({ url })`, search UI wiring in the kit, comments
+the paint-tick heuristic; needs a headless-browser CI job), an optional find
+component in `ts/react` (the recipe above covers the wiring), comments
 parsing, conditional-formatting visuals, the 400 MB browser-path
 measurement, and the real-world third-party corpus (`corpus/real/`, pending
 anonymized Excel/LibreOffice/Google-Sheets-saved samples).

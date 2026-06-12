@@ -231,7 +231,7 @@ export interface ControllerState {
  * than the first stay lazy: their XlsxSheetData is built on activation. */
 export async function loadControllerState(
   client: SheetEngineClient,
-  src: { url: string } | { bytes: ArrayBuffer },
+  src: { url: string; headers?: Record<string, string> } | { bytes: ArrayBuffer },
   fileName: string,
   options?: { showHiddenSheets?: boolean; maxCellsPerSheet?: number; maxTotalCells?: number },
 ): Promise<ControllerState> {

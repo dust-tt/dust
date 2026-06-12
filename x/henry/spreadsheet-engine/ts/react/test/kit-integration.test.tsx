@@ -277,8 +277,16 @@ describe("XlsxViewer driven by the Dust engine (zero-fork, out of the box)", () 
         const bg = (el as HTMLElement).style.backgroundColor.replace(/\s/g, "").toLowerCase();
         return bg === "rgb(0,176,80)" || bg === "#00b050";
       });
+      // Font size regression guard: the wire used to send `size_pt` while
+      // the adapter read `sizePt`, silently dropping every font size. The
+      // generator emits 11pt Calibri, so a sized cell must exist in the DOM.
+      const hasFontSize = styled.some((el) => {
+        const style = (el as HTMLElement).style;
+        return style.fontSize !== "" && el.textContent === "0";
+      });
       expect(hasBold).toBe(true);
       expect(hasFill).toBe(true);
+      expect(hasFontSize).toBe(true);
     }, { timeout: 10_000 });
 
     await finish(client);

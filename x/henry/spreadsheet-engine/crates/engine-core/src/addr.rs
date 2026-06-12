@@ -6,6 +6,12 @@ pub const MAX_ROWS: u32 = 1_048_576;
 pub const MAX_COLS: u32 = 16_384;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, serde::Serialize)]
+#[cfg_attr(
+    feature = "ts-rs",
+    derive(ts_rs::TS),
+    ts(export, rename = "CellRangeWire")
+)]
+#[serde(rename_all = "camelCase")]
 pub struct CellRange {
     pub start_row: u32,
     pub start_col: u32,

@@ -44,6 +44,12 @@ node scripts/check-determinism.mjs
 step "SheetJS differential"
 node scripts/diff-sheetjs.mjs
 
+step "generated TS boundary types freshness (ts-rs)"
+TS_RS_EXPORT_DIR="$PWD/ts/client/src/generated" \
+  cargo test -p engine-core --features ts-rs --lib export_bindings --quiet
+git diff --exit-code -- ts/client/src/generated \
+  || { echo "ts/client/src/generated drifted from the Rust types — review and commit"; exit 1; }
+
 step "numfmt golden table freshness"
 node scripts/gen-numfmt-table.mjs
 git diff --exit-code -- corpus/numfmt_cases.tsv \

@@ -1,6 +1,34 @@
-// Shared engine types crossing the worker boundary. All payloads are
-// structured-clone-safe plain objects mirroring engine-core's serde output
-// (camelCase via #[serde(rename_all = "camelCase")]).
+// Shared engine types crossing the worker boundary.
+//
+// Everything that mirrors engine-core serde output lives in ./generated —
+// emitted by ts-rs from the Rust structs themselves (run
+// `TS_RS_EXPORT_DIR=$PWD/ts/client/src/generated cargo test -p engine-core
+// --features ts-rs --lib export_bindings`, gated for freshness in
+// check-all.sh) — so the two sides cannot drift. Only types with no Rust
+// counterpart (protocol/task plumbing, client-side options) are hand-written
+// here.
+
+export type { Align } from "./generated/Align";
+export type { Alignment } from "./generated/Alignment";
+export type { BatchCell } from "./generated/BatchCell";
+export type { BatchRow } from "./generated/BatchRow";
+export type { Border } from "./generated/Border";
+export type { BorderSide } from "./generated/BorderSide";
+export type { CellRangeWire } from "./generated/CellRangeWire";
+export type { DisplayMode } from "./generated/DisplayMode";
+export type { Fill } from "./generated/Fill";
+export type { Font } from "./generated/Font";
+export type { MergeSpan } from "./generated/MergeSpan";
+export type { ResolvedStyle } from "./generated/ResolvedStyle";
+export type { SearchHit } from "./generated/SearchHit";
+export type { SearchOpts } from "./generated/SearchOpts";
+export type { SearchResults } from "./generated/SearchResults";
+export type { SheetGeometry } from "./generated/SheetGeometry";
+export type { SheetMeta } from "./generated/SheetMeta";
+export type { SheetVisibility } from "./generated/SheetVisibility";
+export type { ViewportCell } from "./generated/ViewportCell";
+export type { ViewportSlice } from "./generated/ViewportSlice";
+export type { WorkbookMeta } from "./generated/WorkbookMeta";
 
 export type EngineErrorCode =
   | "UNSUPPORTED_FORMAT"
@@ -8,7 +36,12 @@ export type EngineErrorCode =
   | "CORRUPT"
   | "BUDGET_EXCEEDED"
   | "CANCELLED"
-  | "INTERNAL";
+  | "INTERNAL"
+  // The worker's wasm instance trapped: linear memory may be corrupt, and
+  // every later call on this client answers POISONED too. Terminal for the
+  // client — destroy() it, spawn a fresh worker, reopen the workbook.
+  // `SheetEngineClient.onFatal` fires once when this is first observed.
+  | "POISONED";
 
 export interface EngineError {
   code: EngineErrorCode;
@@ -34,6 +67,7 @@ const ENGINE_ERROR_CODES: ReadonlySet<string> = new Set([
   "BUDGET_EXCEEDED",
   "CANCELLED",
   "INTERNAL",
+  "POISONED",
 ]);
 
 export function isEngineError(value: unknown): value is EngineError {
@@ -48,151 +82,13 @@ export function isEngineError(value: unknown): value is EngineError {
   );
 }
 
+/** Open knobs; parsed engine-side (wasm `open_start`), not serde-mirrored. */
 export interface OpenOptions {
   maxBytes?: number;
   maxCellsPerSheet?: number;
   maxTotalCells?: number;
   /** CSV delimiter override; omitted = sniffed from content. Ignored for xlsx. */
   csvDelimiter?: "," | ";" | "\t" | "|";
-}
-
-export type SheetVisibility = "visible" | "hidden" | "veryHidden";
-
-export interface SheetMeta {
-  index: number;
-  name: string;
-  visibility: SheetVisibility;
-  loaded: boolean;
-  truncated: boolean;
-  /** Last row with (possibly partial) data when `truncated`; rows from here
-   * on may be missing cells. Absent when the sheet is complete. */
-  truncatedAtRow?: number;
-  cellCount: number;
-  rowCount: number;
-  colCount: number;
-  frozenRows: number;
-  frozenCols: number;
-  defaultRowHeightPx: number;
-  defaultColWidthPx: number;
-  showGridLines: boolean;
-}
-
-export interface WorkbookMeta {
-  sheets: SheetMeta[];
-  date1904: boolean;
-  definedNames: Array<[string, string]>;
-  sharedStringCount: number;
-  styleCount: number;
-}
-
-export type Align = "left" | "right" | "center";
-
-export interface ResolvedStyle {
-  numFmt: string;
-  font: {
-    bold: boolean;
-    italic: boolean;
-    underline: boolean;
-    strikethrough: boolean;
-    color?: string; // 8-hex ARGB
-    sizePt?: number;
-    name?: string;
-  };
-  fill?: {
-    pattern: string;
-    foreground?: string;
-    background?: string;
-  };
-  border?: Partial<Record<"top" | "right" | "bottom" | "left", { style: string; color?: string }>>;
-  alignment?: {
-    horizontal?: string;
-    vertical?: string;
-    wrapText: boolean;
-  };
-}
-
-export interface ViewportCell {
-  row: number;
-  col: number;
-  text: string;
-  align: Align;
-  style: number;
-  isDate: boolean;
-  formula?: string;
-  color?: string;
-  mergeSpan?: [number, number];
-  isMergedSecondary?: boolean;
-  hyperlink?: string;
-}
-
-export interface CellRangeWire {
-  startRow: number;
-  startCol: number;
-  endRow: number;
-  endCol: number;
-}
-
-export interface ViewportSlice {
-  sheet: number;
-  rowStart: number;
-  rowEnd: number;
-  colStart: number;
-  colEnd: number;
-  cells: ViewportCell[];
-  merges: CellRangeWire[];
-  styles: Record<number, ResolvedStyle>;
-  rowHeightsPx: Array<[number, number]>;
-  colWidthsPx: Array<[number, number]>;
-}
-
-export interface BatchCell {
-  col: number;
-  value: string;
-  formula?: string;
-  style?: number;
-  mergeSpan?: { rowSpan: number; colSpan: number };
-  isMergedSecondary?: boolean;
-  hyperlink?: string;
-  align: Align;
-}
-
-export interface BatchRow {
-  index: number;
-  cells: BatchCell[];
-}
-
-/** Sheet geometry mirror of engine-core `SheetDims`. */
-export interface SheetGeometry {
-  minRow: number;
-  minCol: number;
-  maxRow: number;
-  maxCol: number;
-  frozenRows: number;
-  frozenCols: number;
-  defaultRowHeightPx: number;
-  defaultColWidthPx: number;
-  colWidthsPx: Array<[number, number]>;
-  rowHeightsPx: Array<[number, number]>;
-  hiddenRows: number[];
-  hiddenCols: number[];
-}
-
-export interface SearchOpts {
-  maxResults?: number;
-  sheet?: number;
-}
-
-export interface SearchHit {
-  sheet: number;
-  row: number;
-  col: number;
-  a1: string;
-  snippet: string;
-}
-
-export interface SearchResults {
-  hits: SearchHit[];
-  capped: boolean;
 }
 
 export interface Progress {
@@ -206,8 +102,6 @@ export type Task<T> = Promise<T> & {
   progress: (cb: (p: Progress) => void) => Task<T>;
   cancel: () => void;
 };
-
-export type DisplayMode = "value" | "formula";
 
 /** Opaque workbook handle. Kept as an object so FinalizationRegistry can track it. */
 export interface WorkbookHandle {

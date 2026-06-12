@@ -4,10 +4,12 @@
 //
 // Trap policy: a Rust panic on wasm32 is a trap that surfaces as a JS
 // RuntimeError (stable wasm has no unwinding, so the Rust side cannot
-// catch_unwind). We catch it here, answer INTERNAL, and mark the instance
-// poisoned: every later call also answers INTERNAL and the client is expected
-// to destroy() this worker and spawn a fresh one. A corrupt file can never
-// take down the worker silently (see README · Errors and recovery).
+// catch_unwind). We catch it here and mark the instance poisoned: that call
+// and every later one answer the terminal POISONED code, and the client is
+// expected to destroy() this worker and spawn a fresh one
+// (SheetEngineClient.onFatal fires once for exactly this). A corrupt file
+// can never take down the worker silently (see README · Errors and
+// recovery).
 
 import type { EngineRequest, EngineResponse } from "@dust/sheet-engine-client/protocol";
 import { isEngineError } from "@dust/sheet-engine-client/types";
@@ -108,12 +110,17 @@ export function createEngineServer(options: EngineServerOptions) {
       // Matched on the error class name only; message contents are too easy
       // to collide with ordinary JS errors.
       if (raw instanceof Error && raw.name === "RuntimeError") {
-        poisoned = { code: "INTERNAL", detail: `engine trapped: ${raw.message}; worker must be recreated` };
+        poisoned = { code: "POISONED", detail: `engine trapped: ${raw.message}; worker must be recreated` };
         replyError(id, poisoned);
         return;
       }
       replyError(id, parseEngineError(raw));
     }
+  }
+
+  /** Guarded wasm call that returns a JSON string: parse it and reply. */
+  function jsonOp(id: number, fn: () => string): void {
+    guarded(id, () => reply(id, JSON.parse(fn())));
   }
 
   async function handleOpen(
@@ -145,7 +152,10 @@ export function createEngineServer(options: EngineServerOptions) {
       } else if (request.url) {
         const controller = new AbortController();
         downloads.set(id, controller);
-        const response = await fetchImpl(request.url, { signal: controller.signal });
+        const response = await fetchImpl(request.url, {
+          signal: controller.signal,
+          headers: request.headers,
+        });
         if (!response.ok) {
           throw JSON.stringify({ code: "CORRUPT", detail: `fetch failed: HTTP ${response.status}` });
         }
@@ -204,7 +214,7 @@ export function createEngineServer(options: EngineServerOptions) {
         }
       }
       if (raw instanceof Error && raw.name === "RuntimeError") {
-        poisoned = { code: "INTERNAL", detail: `engine trapped: ${raw.message}; worker must be recreated` };
+        poisoned = { code: "POISONED", detail: `engine trapped: ${raw.message}; worker must be recreated` };
         replyError(id, poisoned);
         return;
       }
@@ -221,48 +231,44 @@ export function createEngineServer(options: EngineServerOptions) {
 
   return {
     handle(request: EngineRequest): void {
+      // Every JSON-returning op shares the guarded/parse/reply shape via
+      // jsonOp; adding an op is one case with one wasm call. The switch (vs
+      // a handler table) keeps exhaustiveness and narrowing type-checked.
       switch (request.op) {
         case "open":
           void handleOpen(request);
           break;
         case "metadata":
-          guarded(request.id, () => reply(request.id, JSON.parse(wasm.get_metadata(request.handle))));
+          jsonOp(request.id, () => wasm.get_metadata(request.handle));
           break;
         case "activateSheet":
-          guarded(request.id, () => reply(request.id, JSON.parse(wasm.activate_sheet(request.handle, request.sheet))));
+          jsonOp(request.id, () => wasm.activate_sheet(request.handle, request.sheet));
           break;
         case "viewport":
-          guarded(request.id, () =>
-            reply(
-              request.id,
-              JSON.parse(
-                wasm.get_viewport(
-                  request.handle,
-                  request.sheet,
-                  request.rows[0],
-                  request.rows[1],
-                  request.cols[0],
-                  request.cols[1],
-                  request.mode,
-                ),
-              ),
+          jsonOp(request.id, () =>
+            wasm.get_viewport(
+              request.handle,
+              request.sheet,
+              request.rows[0],
+              request.rows[1],
+              request.cols[0],
+              request.cols[1],
+              request.mode,
             ),
           );
           break;
         case "rowsBatch":
-          guarded(request.id, () =>
-            reply(request.id, JSON.parse(wasm.get_rows_batch(request.handle, request.sheet, request.startRow, request.rowCount))),
-          );
+          jsonOp(request.id, () => wasm.get_rows_batch(request.handle, request.sheet, request.startRow, request.rowCount));
           break;
         case "styles":
-          guarded(request.id, () => reply(request.id, JSON.parse(wasm.get_styles(request.handle))));
+          jsonOp(request.id, () => wasm.get_styles(request.handle));
           break;
         case "geometry":
-          guarded(request.id, () => reply(request.id, JSON.parse(wasm.get_sheet_geometry(request.handle, request.sheet))));
+          jsonOp(request.id, () => wasm.get_sheet_geometry(request.handle, request.sheet));
           break;
         case "search":
-          guarded(request.id, () =>
-            reply(request.id, JSON.parse(wasm.search(request.handle, request.query, request.options ? JSON.stringify(request.options) : null))),
+          jsonOp(request.id, () =>
+            wasm.search(request.handle, request.query, request.options ? JSON.stringify(request.options) : null),
           );
           break;
         case "close":
