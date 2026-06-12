@@ -2,7 +2,10 @@ import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/metronome_events_queue/config";
-import { metronomeEventsWorkflow } from "@app/temporal/metronome_events_queue/workflows";
+import {
+  metronomeEventsWorkflow,
+  syncMetronomeSeatCountWorkflow,
+} from "@app/temporal/metronome_events_queue/workflows";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -10,6 +13,7 @@ import {
   WorkflowExecutionAlreadyStartedError,
   WorkflowIdReusePolicy,
 } from "@temporalio/client";
+import { WorkflowIdConflictPolicy } from "@temporalio/common";
 
 /**
  * Outcome of attempting to enqueue a Metronome webhook event for processing.
@@ -66,5 +70,42 @@ export async function launchMetronomeEventsWorkflow({
       return new Ok("already_started");
     }
     return new Err(normalizeError(err));
+  }
+}
+
+/**
+ * Launch a deduplicated seat-count sync for a workspace. Uses a stable
+ * workspace-scoped workflow ID with `WorkflowIdConflictPolicy.USE_EXISTING` so
+ * that the N concurrent `credit.segment.start` events fired during a seat-type
+ * upgrade collapse to a single workflow execution. After a sync completes,
+ * `WorkflowIdReusePolicy.ALLOW_DUPLICATE` allows a fresh run for the next
+ * upgrade event. Errors are logged but not propagated — a sync launch failure
+ * must not cause the parent webhook workflow to retry.
+ */
+export async function launchSyncMetronomeSeatCountWorkflow({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<void> {
+  const client = await getTemporalClientForFrontNamespace();
+  const workflowId = `metronome-seat-sync-${workspaceId}`;
+
+  try {
+    await client.workflow.start(syncMetronomeSeatCountWorkflow, {
+      args: [{ workspaceId }],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      workflowIdReusePolicy: WorkflowIdReusePolicy.ALLOW_DUPLICATE,
+      workflowIdConflictPolicy: WorkflowIdConflictPolicy.USE_EXISTING,
+    });
+    logger.info(
+      { workflowId, workspaceId },
+      "[Metronome Seat Sync] Launched seat sync workflow"
+    );
+  } catch (err) {
+    logger.error(
+      { workflowId, workspaceId, err },
+      "[Metronome Seat Sync] Failed to launch seat sync workflow"
+    );
   }
 }

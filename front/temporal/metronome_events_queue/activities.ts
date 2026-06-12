@@ -1,6 +1,8 @@
 import { processMetronomeWebhook } from "@app/lib/api/metronome/process_webhook";
+import { syncMetronomeSeatCountForWorkspace } from "@app/lib/api/metronome/seat_sync";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 /**
  * Temporal wrapper around `processMetronomeWebhook`. The handler has already
@@ -26,6 +28,32 @@ export async function processMetronomeWebhookActivity({
     );
   }
   const result = await processMetronomeWebhook({ event, workspace });
+  if (result.isErr()) {
+    throw result.error;
+  }
+}
+
+/**
+ * Run a seat count sync for a workspace. Extracted as a dedicated activity so
+ * the seat sync can be launched as a separate, workspace-scoped workflow (see
+ * `syncMetronomeSeatCountWorkflow`) — this lets Temporal deduplicate the N
+ * concurrent `credit.segment.start` events that fire during a seat-type downgrade
+ * (one per seat) down to a single execution per workspace.
+ */
+export async function syncMetronomeSeatCountActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<void> {
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    throw new Error(
+      `[Metronome Seat Sync] Workspace ${workspaceId} not found at activity start`
+    );
+  }
+  const result = await syncMetronomeSeatCountForWorkspace({
+    workspace: renderLightWorkspaceType({ workspace }),
+  });
   if (result.isErr()) {
     throw result.error;
   }
