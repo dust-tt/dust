@@ -30,7 +30,6 @@ import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
   Button,
   Chip,
-  cn,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
@@ -119,65 +118,7 @@ function CapabilitiesPickerItemsList({
   onSkillDetails,
   onToolDetails,
 }: CapabilitiesPickerItemsListProps) {
-  const [scrollFadeState, setScrollFadeState] = useState({
-    hasContentAbove: false,
-    hasContentBelow: false,
-  });
   const listRef = useRef<HTMLDivElement>(null);
-  const topScrollSentinelRef = useRef<HTMLDivElement>(null);
-  const bottomScrollSentinelRef = useRef<HTMLDivElement>(null);
-  const itemCount = items.length;
-
-  useEffect(() => {
-    const list = listRef.current;
-    const topScrollSentinel = topScrollSentinelRef.current;
-    const bottomScrollSentinel = bottomScrollSentinelRef.current;
-
-    if (
-      itemCount === 0 ||
-      !list ||
-      !topScrollSentinel ||
-      !bottomScrollSentinel ||
-      typeof IntersectionObserver === "undefined"
-    ) {
-      setScrollFadeState((previousState) =>
-        previousState.hasContentAbove || previousState.hasContentBelow
-          ? {
-              hasContentAbove: false,
-              hasContentBelow: false,
-            }
-          : previousState
-      );
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        setScrollFadeState((previousState) => {
-          const nextState = { ...previousState };
-
-          for (const entry of entries) {
-            if (entry.target === topScrollSentinel) {
-              nextState.hasContentAbove = !entry.isIntersecting;
-            } else if (entry.target === bottomScrollSentinel) {
-              nextState.hasContentBelow = !entry.isIntersecting;
-            }
-          }
-
-          return previousState.hasContentAbove === nextState.hasContentAbove &&
-            previousState.hasContentBelow === nextState.hasContentBelow
-            ? previousState
-            : nextState;
-        });
-      },
-      { root: list }
-    );
-
-    observer.observe(topScrollSentinel);
-    observer.observe(bottomScrollSentinel);
-
-    return () => observer.disconnect();
-  }, [itemCount]);
 
   if (items.length === 0) {
     return (
@@ -189,17 +130,6 @@ function CapabilitiesPickerItemsList({
 
   return (
     <div className="relative" ref={listRef}>
-      <div className="relative">
-        <div
-          ref={topScrollSentinelRef}
-          className="pointer-events-none absolute left-0 top-0 h-px w-px"
-          aria-hidden
-        />
-        <div
-          ref={bottomScrollSentinelRef}
-          className="pointer-events-none absolute bottom-0 left-0 h-px w-px"
-          aria-hidden
-        />
         {items.map((item) => {
           const endComponent =
             item.kind === "uninstalled_tool" ? (
@@ -237,25 +167,6 @@ function CapabilitiesPickerItemsList({
             />
           );
         })}
-      </div>
-      <div
-        className={cn(
-          "pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-t",
-          "from-transparent via-background/65 to-background opacity-0 transition-opacity duration-200",
-          "dark:via-muted-background-night/65 dark:to-muted-background-night",
-          scrollFadeState.hasContentAbove && "opacity-100"
-        )}
-        aria-hidden
-      />
-      <div
-        className={cn(
-          "pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-b",
-          "from-transparent via-background/65 to-background opacity-0 transition-opacity duration-200",
-          "dark:via-muted-background-night/65 dark:to-muted-background-night",
-          scrollFadeState.hasContentBelow && "opacity-100"
-        )}
-        aria-hidden
-      />
     </div>
   );
 }
