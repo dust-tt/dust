@@ -12,6 +12,10 @@ import {
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { useInputBarOverlayTracker } from "@app/components/assistant/conversation/input_bar/useInputBarOverlayTracker";
+import {
+  runInputBarSlashCommandDetails,
+  runInputBarSlashCommandSelect,
+} from "@app/components/editor/extensions/input_bar/commands";
 import type { InputBarSlashSuggestionCapability } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
@@ -44,10 +48,7 @@ import {
 } from "@app/types/assistant/mentions";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
-import {
-  assertNever,
-  assertNeverAndIgnore,
-} from "@app/types/shared/utils/assert_never";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -461,48 +462,28 @@ const InputBarContainer = ({
     }
   };
 
-  const handleSkillSelect = ({
-    sId: skillId,
-    name: skillName,
-    icon: skillIcon,
-  }: SkillWithoutInstructionsAndToolsType) => {
-    editorRef.current
-      ?.chain()
-      .focus()
-      .insertSkillNode({
-        skillId,
-        skillName,
-        skillIcon,
-      })
-      .run();
+  // Shared with the capabilities picker, which selects skills outside of the slash command flow.
+  const handleSkillSelect = (skill: SkillWithoutInstructionsAndToolsType) => {
+    runInputBarSlashCommandSelect(
+      { kind: "skill", skill },
+      { editor: editorRef.current, onMCPServerViewSelect }
+    );
   };
 
   onSelectRef.current = (capability: InputBarSlashSuggestionCapability) => {
-    switch (capability.kind) {
-      case "skill":
-        handleSkillSelect(capability.skill);
-        break;
-      case "tool":
-        onMCPServerViewSelect(capability.serverView);
-        break;
-      default:
-        assertNeverAndIgnore(capability);
-    }
+    runInputBarSlashCommandSelect(capability, {
+      editor: editorRef.current,
+      onMCPServerViewSelect,
+    });
 
     queueMicrotask(() => editorRef.current?.commands.focus());
   };
 
   onDetailsRef.current = (capability: InputBarSlashSuggestionCapability) => {
-    switch (capability.kind) {
-      case "skill":
-        setSelectedSkillIdForDetails(capability.skill.sId);
-        break;
-      case "tool":
-        setSelectedServerViewForDetails(capability.serverView);
-        break;
-      default:
-        assertNeverAndIgnore(capability);
-    }
+    runInputBarSlashCommandDetails(capability, {
+      openSkillDetails: setSelectedSkillIdForDetails,
+      openToolDetails: setSelectedServerViewForDetails,
+    });
   };
 
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
