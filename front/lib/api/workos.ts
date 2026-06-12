@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { getWorkOS } from "@app/lib/api/workos/client";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -7,6 +8,47 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import jwt from "jsonwebtoken";
 import jwksClient from "jwks-rsa";
 import { z } from "zod";
+
+const WorkOSConnectApplicationRedirectUriSchema = z.object({
+  uri: z.string(),
+  default: z.boolean(),
+});
+
+const WorkOSConnectApplicationBaseSchema = z.object({
+  object: z.literal("connect_application"),
+  id: z.string(),
+  client_id: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  scopes: z.array(z.string()),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+const WorkOSConnectOAuthApplicationSchema =
+  WorkOSConnectApplicationBaseSchema.extend({
+    application_type: z.literal("oauth"),
+    redirect_uris: z.array(WorkOSConnectApplicationRedirectUriSchema),
+    uses_pkce: z.boolean(),
+    is_first_party: z.boolean(),
+    was_dynamically_registered: z.boolean().optional(),
+    organization_id: z.string().optional(),
+  });
+
+const WorkOSConnectM2MApplicationSchema =
+  WorkOSConnectApplicationBaseSchema.extend({
+    application_type: z.literal("m2m"),
+    organization_id: z.string(),
+  });
+
+export const WorkOSConnectApplicationSchema = z.discriminatedUnion(
+  "application_type",
+  [WorkOSConnectOAuthApplicationSchema, WorkOSConnectM2MApplicationSchema]
+);
+
+export type WorkOSConnectApplication = z.infer<
+  typeof WorkOSConnectApplicationSchema
+>;
 
 const WorkOSJwtClaimValueSchema = z.union([
   z.string(),
@@ -116,4 +158,32 @@ export async function getUserFromWorkOSToken(
   accessToken: WorkOSJwtPayload
 ): Promise<UserResource | null> {
   return UserResource.fetchByWorkOSUserId(accessToken.sub);
+}
+
+/**
+ * Retrieve a WorkOS Connect application by application ID or client ID.
+ *
+ * @see https://workos.com/docs/reference/workos-connect/applications#get-a-connect-application
+ */
+export async function getWorkOSConnectApplication(
+  clientId: string
+): Promise<Result<WorkOSConnectApplication, Error>> {
+  try {
+    const { data } = await getWorkOS().get(
+      `/connect/applications/${encodeURIComponent(clientId)}`
+    );
+
+    const validation = WorkOSConnectApplicationSchema.safeParse(data);
+    if (!validation.success) {
+      logger.error(
+        { err: validation.error },
+        "Invalid WorkOS Connect application response."
+      );
+      return new Err(new Error("Invalid WorkOS Connect application response."));
+    }
+
+    return new Ok(validation.data);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
 }

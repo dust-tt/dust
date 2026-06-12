@@ -29,7 +29,13 @@ function getOrganizationId(payload: WorkOSJwtPayload): string | null {
 export async function getAuthenticatorFromWorkOSClaims(
   payload: unknown
 ): Promise<
-  Result<WorkOSWorkspaceAuthenticator, WorkOSWorkspaceAuthenticatorError>
+  Result<
+    {
+      authenticator: WorkOSWorkspaceAuthenticator;
+      workOSJWTPayload: WorkOSJwtPayload;
+    },
+    WorkOSWorkspaceAuthenticatorError
+  >
 > {
   const workOSTokenResult = parseWorkOSJwtPayload(payload);
   if (workOSTokenResult.isErr()) {
@@ -69,5 +75,8 @@ export async function getAuthenticatorFromWorkOSClaims(
     return new Err("not_a_member");
   }
 
-  return new Ok(auth as WorkOSWorkspaceAuthenticator);
+  return new Ok({
+    authenticator: auth as WorkOSWorkspaceAuthenticator,
+    workOSJWTPayload: workOSToken,
+  });
 }
