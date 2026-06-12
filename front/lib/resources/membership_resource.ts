@@ -1503,15 +1503,20 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     newSeatType,
     scheduledAt,
     author,
+    transaction: parentTransaction,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     newSeatType: MembershipSeatType;
     scheduledAt: Date;
     author: UserType | "no-author";
+    transaction?: Transaction;
   }): Promise<void> {
     const previousSeatType = this.seatType;
-    await frontSequelize.transaction(async (transaction) => {
+    const txOptions = parentTransaction
+      ? { transaction: parentTransaction }
+      : {};
+    await frontSequelize.transaction(txOptions, async (transaction) => {
       // Replace any existing future row (re-scheduling is idempotent).
       await MembershipModel.destroy({
         where: {

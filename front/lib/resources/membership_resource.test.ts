@@ -1,4 +1,5 @@
 import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
+import type { Transaction } from "sequelize";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const inMemoryCache = vi.hoisted(() => new Map<string, string>());
@@ -660,9 +661,15 @@ describe("MembershipResource", () => {
   describe("scheduleSeatChange", () => {
     let workspace: WorkspaceType;
     let lightWorkspace: LightWorkspaceType;
+    let outerTransaction: Transaction;
     const scheduledAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    beforeEach(async () => {
+    beforeEach(async (ctx) => {
+      // Capture the outer CLS transaction so scheduleSeatChange can use it as
+      // a parent (SAVEPOINT). Without this, scheduleSeatChange opens a second
+      // DB connection that deadlocks waiting for the lock held by the test
+      // isolation transaction on the membership row.
+      outerTransaction = (ctx as any)["transaction"] as Transaction;
       workspace = await WorkspaceFactory.basic();
       lightWorkspace = renderLightWorkspaceType({ workspace });
     });
@@ -691,6 +698,7 @@ describe("MembershipResource", () => {
         newSeatType: "max",
         scheduledAt,
         author: "no-author",
+        transaction: outerTransaction,
       });
 
       const future = await MembershipResource.getScheduledFutureMemberships({
@@ -725,6 +733,7 @@ describe("MembershipResource", () => {
         newSeatType: "workspace",
         scheduledAt,
         author: "no-author",
+        transaction: outerTransaction,
       });
 
       const future = await MembershipResource.getScheduledFutureMemberships({
