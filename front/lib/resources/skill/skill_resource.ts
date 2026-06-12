@@ -382,13 +382,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       addCurrentUserAsEditor = true,
       attachedKnowledge = [],
       fileAttachments = [],
-      referencedSkillIds = [],
     }: {
       mcpServerViews: MCPServerViewResource[];
       addCurrentUserAsEditor?: boolean;
       attachedKnowledge?: SkillAttachedKnowledge[];
       fileAttachments?: FileResource[];
-      referencedSkillIds?: string[];
     }
   ): Promise<SkillResource> {
     const owner = auth.getNonNullableWorkspace();
@@ -454,11 +452,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       });
 
       await skillResource.normalizeSkillReferenceTags(auth, { transaction });
-      await skillResource.syncSkillReferences(
-        auth,
-        { referencedSkillIds },
-        { transaction }
-      );
+      await skillResource.syncSkillReferences(auth, { transaction });
 
       return skillResource;
     });
@@ -2444,7 +2438,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       source,
       sourceMetadata,
       status,
-      referencedSkillIds,
       userFacingDescription,
     }: {
       agentFacingDescription: string;
@@ -2461,7 +2454,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       source?: SkillSourceType;
       sourceMetadata?: SkillSourceMetadata;
       status?: SkillStatus;
-      referencedSkillIds?: string[];
       userFacingDescription: string;
     }
   ): Promise<void> {
@@ -2514,13 +2506,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
 
       await this.normalizeSkillReferenceTags(auth, { transaction });
-      if (referencedSkillIds !== undefined) {
-        await this.syncSkillReferences(
-          auth,
-          { referencedSkillIds },
-          { transaction }
-        );
-      }
+      await this.syncSkillReferences(auth, { transaction });
 
       if (
         name !== previousName ||
@@ -2700,18 +2686,21 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * Persist the skills referenced by the skill form.
+   * Sync the denormalized skill_references rows with the inline skill reference
+   * tags found in the instructions (the source of truth). Deriving from the
+   * instructions keeps the table consistent on every write path, including
+   * restoring a previous version whose references differ from the current ones.
    */
   private async syncSkillReferences(
     auth: Authenticator,
-    {
-      referencedSkillIds,
-    }: {
-      referencedSkillIds: string[];
-    },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
+
+    // Self-references are intentionally kept (#26680 allows them).
+    const referencedSkillIds = extractUniqueSkillReferenceIds(
+      this.instructions
+    );
 
     // Retrieve what we want the end state to be.
     const referencedCustomSkillIds = uniq(

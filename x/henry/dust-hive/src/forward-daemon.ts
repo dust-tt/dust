@@ -26,7 +26,10 @@ if (Number.isNaN(basePort) || basePort < 1 || basePort > 65535) {
 }
 
 const LISTEN_HOST = process.env["DUST_HIVE_FORWARD_LISTEN_HOST"] ?? "127.0.0.1";
-const TARGET_HOST = "127.0.0.1";
+// Upstreams (proxy, core, connectors, oauth, ...) bind to "localhost", which on
+// Node 17+/Bun macOS is IPv6-only (::1). Dialing a hardcoded "127.0.0.1" misses
+// them — resolve "localhost" so both ends pick the same family.
+const TARGET_HOST = "localhost";
 const MAX_PENDING_BYTES = 16 * 1024 * 1024; // 16MB max buffer
 const CONNECT_TIMEOUT_MS = 4000;
 

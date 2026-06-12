@@ -132,10 +132,11 @@ export const confluence = async ({
         }
         await existingPage.update({ skipReason });
       } else {
-        const confluencePage = await confluenceClient.getPageById(
-          pageId.toString()
-        );
-        if (!confluencePage) {
+        const confluencePage =
+          args.skipFetch !== "true"
+            ? await confluenceClient.getPageById(pageId.toString())
+            : null;
+        if (!args.skipFetch && !confluencePage) {
           return {
             skipped: false,
             reason: `Confluence Page id ${pageId} doesn't exist in confluence API`,
@@ -145,10 +146,10 @@ export const confluence = async ({
           connectorId,
           pageId: pageId.toString(),
           skipReason,
-          spaceId: confluencePage.spaceId,
-          title: confluencePage.title ?? "",
-          version: confluencePage.version.number,
-          externalUrl: confluencePage._links.tinyui,
+          spaceId: confluencePage?.spaceId ?? args.spaceId?.toString() ?? "",
+          title: confluencePage?.title ?? "",
+          version: confluencePage?.version.number ?? 0,
+          externalUrl: confluencePage?._links.tinyui ?? "",
         });
       }
 

@@ -2,16 +2,13 @@ import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
-import {
-  ensureSlackNotificationsReady,
-  getNovuClient,
-} from "@app/lib/notifications";
+import { getNovuClient } from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/default";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { getPodRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import { PROJECT_ADDED_AS_MEMBER_TRIGGER_ID } from "@app/types/notification_preferences";
+import { POD_ADDED_AS_MEMBER_TRIGGER_ID } from "@app/types/notification_preferences";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -19,32 +16,32 @@ import type { SpaceType } from "@app/types/space";
 import { workflow } from "@novu/framework";
 import z from "zod";
 
-const ProjectAddedAsMemberPayloadSchema = z.object({
+const PodAddedAsMemberPayloadSchema = z.object({
   workspaceId: z.string(),
-  projectId: z.string(),
+  podId: z.string(),
   userThatAddedYouId: z.string(),
 });
 
-type ProjectAddedAsMemberPayloadType = z.infer<
-  typeof ProjectAddedAsMemberPayloadSchema
+type PodAddedAsMemberPayloadType = z.infer<
+  typeof PodAddedAsMemberPayloadSchema
 >;
 
-const ProjectDetailsSchema = z.object({
-  projectName: z.string(),
+const PodDetailsSchema = z.object({
+  podName: z.string(),
   userThatAddedYouFullname: z.string(),
   workspaceName: z.string(),
 });
 
-type ProjectDetailsType = z.infer<typeof ProjectDetailsSchema>;
+type PodDetailsType = z.infer<typeof PodDetailsSchema>;
 
-const getProjectDetails = async ({
+const getPodDetails = async ({
   subscriberId,
   payload,
 }: {
   subscriberId?: string | null;
-  payload: ProjectAddedAsMemberPayloadType;
-}): Promise<ProjectDetailsType> => {
-  let projectName: string = "A Pod";
+  payload: PodAddedAsMemberPayloadType;
+}): Promise<PodDetailsType> => {
+  let podName: string = "A Pod";
   let userThatAddedYouFullname: string = "Someone";
   let workspaceName: string = "A workspace";
 
@@ -54,11 +51,11 @@ const getProjectDetails = async ({
       payload.workspaceId
     );
 
-    const project = await SpaceResource.fetchById(auth, payload.projectId);
+    const pod = await SpaceResource.fetchById(auth, payload.podId);
 
-    if (project) {
+    if (pod) {
       workspaceName = auth.getNonNullableWorkspace().name;
-      projectName = project.name;
+      podName = pod.name;
 
       const userThatAddedYou = await UserResource.fetchById(
         payload.userThatAddedYouId
@@ -70,18 +67,18 @@ const getProjectDetails = async ({
     }
   }
   return {
-    projectName,
+    podName,
     userThatAddedYouFullname,
     workspaceName,
   };
 };
 
-const shouldSkipProject = async ({
+const shouldSkipPod = async ({
   subscriberId,
   payload,
 }: {
   subscriberId?: string | null;
-  payload: ProjectAddedAsMemberPayloadType;
+  payload: PodAddedAsMemberPayloadType;
 }): Promise<boolean> => {
   if (subscriberId) {
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -89,9 +86,9 @@ const shouldSkipProject = async ({
       payload.workspaceId
     );
 
-    const project = await SpaceResource.fetchById(auth, payload.projectId);
+    const pod = await SpaceResource.fetchById(auth, payload.podId);
 
-    if (!project) {
+    if (!pod) {
       return true;
     }
   }
@@ -99,19 +96,19 @@ const shouldSkipProject = async ({
   return false;
 };
 
-export const projectAddedAsMemberWorkflow = workflow(
-  PROJECT_ADDED_AS_MEMBER_TRIGGER_ID,
+export const podAddedAsMemberWorkflow = workflow(
+  POD_ADDED_AS_MEMBER_TRIGGER_ID,
   async ({ step, payload, subscriber }) => {
     const details = await step.custom(
       "get-project-details",
       async () => {
-        return getProjectDetails({
+        return getPodDetails({
           subscriberId: subscriber.subscriberId,
           payload,
         });
       },
       {
-        outputSchema: ProjectDetailsSchema,
+        outputSchema: PodDetailsSchema,
       }
     );
 
@@ -119,55 +116,21 @@ export const projectAddedAsMemberWorkflow = workflow(
       "send-in-app",
       async () => {
         return {
-          subject: details.projectName,
-          body: `${details.userThatAddedYouFullname} added you to Pod "${details.projectName}".`,
+          subject: details.podName,
+          body: `${details.userThatAddedYouFullname} added you to Pod "${details.podName}".`,
           primaryAction: {
             label: "View",
             redirect: {
-              url: getPodRoute(payload.workspaceId, payload.projectId),
+              url: getPodRoute(payload.workspaceId, payload.podId),
             },
           },
           data: {
             autoDelete: true,
-            projectId: payload.projectId,
           },
         };
       },
       {
-        skip: async () => shouldSkipProject({ payload }),
-      }
-    );
-
-    await step.chat(
-      "slack-notification",
-      async () => {
-        const projectUrl =
-          config.getAppUrl() +
-          getPodRoute(payload.workspaceId, payload.projectId);
-
-        const baseMessage = `${details.userThatAddedYouFullname} added you to Pod "${details.projectName}"`;
-
-        const message = `${baseMessage}\n<${projectUrl}|View Pod>`;
-
-        return {
-          body: message,
-        };
-      },
-      {
-        skip: async () => {
-          const shouldSkip = await shouldSkipProject({ payload });
-          if (shouldSkip) {
-            return true;
-          }
-          const { isReady } = await ensureSlackNotificationsReady(
-            subscriber.subscriberId,
-            payload.workspaceId
-          );
-          if (!isReady) {
-            return true;
-          }
-          return false;
-        },
+        skip: async () => shouldSkipPod({ payload }),
       }
     );
 
@@ -180,48 +143,48 @@ export const projectAddedAsMemberWorkflow = workflow(
             id: payload.workspaceId,
             name: details.workspaceName,
           },
-          content: `${details.userThatAddedYouFullname} added you to Pod "${details.projectName}".`,
+          content: `${details.userThatAddedYouFullname} added you to Pod "${details.podName}".`,
           action: {
             label: "View Pod",
             url:
               config.getAppUrl() +
-              getPodRoute(payload.workspaceId, payload.projectId),
+              getPodRoute(payload.workspaceId, payload.podId),
           },
         });
         return {
-          subject: `[Dust] You were added to Pod '${details.projectName}'`,
+          subject: `[Dust] You were added to Pod '${details.podName}'`,
           body,
         };
       },
       {
         skip: async () => {
-          return shouldSkipProject({ payload });
+          return shouldSkipPod({ payload });
         },
       }
     );
   },
   {
-    payloadSchema: ProjectAddedAsMemberPayloadSchema,
+    payloadSchema: PodAddedAsMemberPayloadSchema,
     tags: ["admin"] as NotificationAllowedTags,
   }
 );
 
 /**
- * Trigger notifications for users added to a project.
+ * Trigger notifications for users added to a pod.
  * Should be called from API endpoints after successfully adding members.
  */
-export const triggerProjectAddedAsMemberNotifications = async (
+export const triggerPodAddedAsMemberNotifications = async (
   auth: Authenticator,
   {
-    project,
+    pod,
     addedUserIds,
   }: {
-    project: SpaceType;
+    pod: SpaceType;
     addedUserIds: string[];
   }
 ): Promise<Result<void, DustError<"internal_error">>> => {
   // Only notify for project spaces.
-  if (project.kind !== "project") {
+  if (pod.kind !== "project") {
     return new Ok(undefined);
   }
 
@@ -249,15 +212,15 @@ export const triggerProjectAddedAsMemberNotifications = async (
   try {
     const novuClient = await getNovuClient();
 
-    const payload: ProjectAddedAsMemberPayloadType = {
+    const payload: PodAddedAsMemberPayloadType = {
       workspaceId: auth.getNonNullableWorkspace().sId,
-      projectId: project.sId,
+      podId: pod.sId,
       userThatAddedYouId: userThatAddedYou.sId,
     };
 
     const r = await novuClient.triggerBulk({
       events: addedUsers.map((user: UserResource) => ({
-        workflowId: PROJECT_ADDED_AS_MEMBER_TRIGGER_ID,
+        workflowId: POD_ADDED_AS_MEMBER_TRIGGER_ID,
         to: {
           subscriberId: user.sId,
           email: user.email,
@@ -276,14 +239,14 @@ export const triggerProjectAddedAsMemberNotifications = async (
       return new Err({
         name: "dust_error",
         code: "internal_error",
-        message: `Failed to trigger project added as member notification: ${eventErrors}`,
+        message: `Failed to trigger pod added as member notification: ${eventErrors}`,
       });
     }
   } catch (err) {
     return new Err({
       name: "dust_error",
       code: "internal_error",
-      message: "Failed to trigger project added as member notification",
+      message: "Failed to trigger pod added as member notification",
       cause: normalizeError(err),
     });
   }
@@ -292,27 +255,27 @@ export const triggerProjectAddedAsMemberNotifications = async (
 };
 
 /**
- * Fire-and-forget helper to trigger project member notifications.
+ * Fire-and-forget helper to trigger pod member notifications.
  * The notification is sent asynchronously and errors are logged but don't block the caller.
  */
-export function notifyProjectMembersAdded(
+export function notifyPodMembersAdded(
   auth: Authenticator,
   {
-    project,
+    pod,
     addedUserIds,
   }: {
-    project: SpaceType;
+    pod: SpaceType;
     addedUserIds: string[];
   }
 ): void {
-  void triggerProjectAddedAsMemberNotifications(auth, {
-    project,
+  void triggerPodAddedAsMemberNotifications(auth, {
+    pod: pod,
     addedUserIds,
   }).then((notifRes) => {
     if (notifRes.isErr()) {
       logger.error(
-        { error: notifRes.error, projectId: project.sId },
-        "Failed to trigger project added as member notification"
+        { error: notifRes.error, podId: pod.sId },
+        "Failed to trigger pod added as member notification"
       );
     }
   });

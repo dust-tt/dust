@@ -2,8 +2,8 @@ import { agentMessageFeedbackWorkflow } from "@app/lib/notifications/workflows/a
 import { agentSuggestionsReadyWorkflow } from "@app/lib/notifications/workflows/agent-suggestions-ready";
 import { balanceThresholdReachedWorkflow } from "@app/lib/notifications/workflows/balance-threshold-reached";
 import { conversationUnreadWorkflow } from "@app/lib/notifications/workflows/conversation-unread";
+import { podAddedAsMemberWorkflow } from "@app/lib/notifications/workflows/pod-added-as-member";
 import { programmaticCapReachedWorkflow } from "@app/lib/notifications/workflows/programmatic-cap-reached";
-import { projectAddedAsMemberWorkflow } from "@app/lib/notifications/workflows/project-added-as-member";
 import { providerCredentialsHealthUpdatedWorkflow } from "@app/lib/notifications/workflows/provider-credential-updated";
 import { skillSuggestionsReadyWorkflow } from "@app/lib/notifications/workflows/skill-suggestions-ready";
 import { userAwuCapReachedWorkflow } from "@app/lib/notifications/workflows/user-awu-cap-reached";
@@ -28,7 +28,7 @@ const options: ServeHandlerOptions = {
     agentMessageFeedbackWorkflow,
     agentSuggestionsReadyWorkflow,
     skillSuggestionsReadyWorkflow,
-    projectAddedAsMemberWorkflow,
+    podAddedAsMemberWorkflow,
     providerCredentialsHealthUpdatedWorkflow,
     userAwuCapReachedWorkflow,
     balanceThresholdReachedWorkflow,

@@ -622,12 +622,11 @@ describe("POST /api/w/:wId/skills", () => {
       name: "Parent Skill",
       agentFacingDescription: "To use with another skill",
       userFacingDescription: "A skill with a nested reference",
-      instructions: "Start with the referenced skill.",
+      instructions: `Start with ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
       icon: "PuzzleIcon",
       tools: [],
       extendedSkillId: null,
       attachedKnowledge: [],
-      referencedSkillIds: [childSkill.sId],
       instructionsHtml: null,
     });
 
@@ -653,12 +652,12 @@ describe("POST /api/w/:wId/skills", () => {
       name: "Parent Skill",
       agentFacingDescription: "To use with another skill",
       userFacingDescription: "A skill with an invalid nested reference",
-      instructions: "Start with an invalid nested reference.",
+      instructions:
+        'Start with <skill id="not-a-skill-reference" name="Ghost Skill" />.',
       icon: "PuzzleIcon",
       tools: [],
       extendedSkillId: null,
       attachedKnowledge: [],
-      referencedSkillIds: ["not-a-skill-reference"],
       instructionsHtml: null,
     });
 

@@ -95,7 +95,7 @@ export const CONVERSATION_NOTIFICATION_METADATA_KEYS = {
 } as const;
 
 export const CONVERSATION_UNREAD_TRIGGER_ID = "conversation-unread" as const;
-export const PROJECT_ADDED_AS_MEMBER_TRIGGER_ID =
+export const POD_ADDED_AS_MEMBER_TRIGGER_ID =
   "project-added-as-member" as const;
 export const AGENT_SUGGESTIONS_READY_TRIGGER_ID =
   "agent-suggestions-ready" as const;
@@ -120,7 +120,7 @@ export const PROGRAMMATIC_CAP_REACHED_TAG = "programmatic-cap-reached" as const;
 
 export type WorkflowTriggerId =
   | typeof CONVERSATION_UNREAD_TRIGGER_ID
-  | typeof PROJECT_ADDED_AS_MEMBER_TRIGGER_ID
+  | typeof POD_ADDED_AS_MEMBER_TRIGGER_ID
   | typeof AGENT_SUGGESTIONS_READY_TRIGGER_ID
   | typeof SKILL_SUGGESTIONS_READY_TRIGGER_ID
   | typeof PROVIDER_CREDENTIALS_HEALTH_UPDATED_TRIGGER_ID

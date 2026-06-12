@@ -32,6 +32,12 @@ const getTopUsersSchema = topListSchema("users");
 const getTopSkillsSchema = topListSchema("skills");
 const getTopToolsSchema = topListSchema("tools");
 
+const getSourceBreakdownSchema = {
+  ...timeWindowSchemaShape,
+  agentIds: usageFilterSchema.agentIds,
+  userIds: usageFilterSchema.userIds,
+};
+
 const getAgentDetailsSchema = {
   agentId: z
     .string()
@@ -175,6 +181,25 @@ export const WORKSPACE_ANALYTICS_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Retrieving top tools",
       done: "Retrieved top tools",
+    },
+  },
+  get_source_breakdown: {
+    description:
+      "Return the workspace's message volume broken down by source — where " +
+      "messages originate (Conversation, Slack, API, Trigger, extension, and " +
+      "more) — over a time window (defaults to the current calendar month), " +
+      "most used first. Sources are labeled and merged exactly as the " +
+      "workspace Usage page's source chart, so the values line up with the " +
+      "dashboard. Use this to discover and compare which channels or " +
+      "integrations drive usage (including programmatic ones like API and " +
+      "triggers) — the source filter on the other tools only narrows to one " +
+      "source, this enumerates them all. Optionally filter by agent or user. " +
+      "Admin-only.",
+    schema: getSourceBreakdownSchema,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving source breakdown",
+      done: "Retrieved source breakdown",
     },
   },
   get_credit_usage: {

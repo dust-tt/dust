@@ -550,7 +550,6 @@ describe("skill_authoring tools", () => {
     const parentSkill = await seedSkill(authenticator, {
       name: "Parent Skill",
       instructions: originalInstructions,
-      referencedSkillIds: [childSkill.sId],
     });
 
     await expect(parentSkill.fetchChildSkills(authenticator)).resolves.toEqual([
@@ -671,17 +670,15 @@ describe("skill_authoring tools", () => {
     });
     const skillReferenceTag =
       SkillFactory.serializeSkillReferenceTag(childSkill);
-    // Seed a parent whose instructions mention the reference but whose links are
-    // not wired yet, mirroring a skill whose references are out of sync.
     const parentSkill = await seedSkill(authenticator, {
       name: "Parent Skill",
       instructions: `Use ${skillReferenceTag} when needed.`,
-      referencedSkillIds: [],
     });
 
-    await expect(parentSkill.fetchChildSkills(authenticator)).resolves.toEqual(
-      []
-    );
+    // References are derived from the instruction tags at creation.
+    await expect(parentSkill.fetchChildSkills(authenticator)).resolves.toEqual([
+      expect.objectContaining({ sId: childSkill.sId }),
+    ]);
 
     // A targeted edit that keeps the reference tag re-derives the references.
     const updateResult = await getTool(UPDATE_SKILL_TOOL_NAME).handler(

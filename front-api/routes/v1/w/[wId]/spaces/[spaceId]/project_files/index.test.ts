@@ -1,6 +1,6 @@
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -97,6 +97,28 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_files", () => {
     });
   });
 
+  it("returns 500 when GCS listing fails", async () => {
+    const { workspace, key } = await createPublicApiMockRequest({
+      systemKey: true,
+    });
+
+    const space = await SpaceFactory.project(workspace);
+
+    listGCSMountFilesMock.mockResolvedValue(
+      new Err(new Error("socket hang up"))
+    );
+
+    const response = await getProjectFiles(workspace, key, space.sId);
+
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "internal_server_error",
+        message: "Failed to list project files.",
+      },
+    });
+  });
+
   it("returns files for a project space and filters by updatedSince", async () => {
     const { workspace, key } = await createPublicApiMockRequest({
       systemKey: true,
@@ -120,19 +142,21 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_files", () => {
       signedDownloadUrl: "https://signed.example/read",
     };
 
-    listGCSMountFilesMock.mockResolvedValue([
-      mockFile,
-      {
-        isDirectory: false as const,
-        fileName: "old.txt",
-        path: "pod/old.txt",
-        sizeBytes: 1,
-        lastModifiedMs: 500,
-        contentType: "text/plain",
-        fileId: null,
-        thumbnailUrl: null,
-      },
-    ]);
+    listGCSMountFilesMock.mockResolvedValue(
+      new Ok([
+        mockFile,
+        {
+          isDirectory: false as const,
+          fileName: "old.txt",
+          path: "pod/old.txt",
+          sizeBytes: 1,
+          lastModifiedMs: 500,
+          contentType: "text/plain",
+          fileId: null,
+          thumbnailUrl: null,
+        },
+      ])
+    );
 
     const response = await getProjectFiles(
       workspace,
