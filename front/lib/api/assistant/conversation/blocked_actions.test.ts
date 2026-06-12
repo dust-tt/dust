@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock Redis hybrid manager to prevent it from removing events
-const { removeEventMock } = vi.hoisted(() => ({
+const { emitAuditLogEventDirectMock, removeEventMock } = vi.hoisted(() => ({
+  emitAuditLogEventDirectMock: vi.fn().mockResolvedValue(undefined),
   removeEventMock: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock("@app/lib/api/redis-hybrid-manager", () => ({
@@ -9,6 +10,15 @@ vi.mock("@app/lib/api/redis-hybrid-manager", () => ({
     removeEvent: removeEventMock,
   }),
 }));
+
+vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/audit/workos_audit")>();
+  return {
+    ...actual,
+    emitAuditLogEventDirect: emitAuditLogEventDirectMock,
+  };
+});
 
 import { updateAgentMessageWithFinalStatus } from "@app/lib/api/assistant/conversation";
 import {
@@ -101,8 +111,31 @@ describe("blocked actions resolution", () => {
         status: "interrupted",
       });
 
-      await action.reload();
-      expect(action.status).toBe("denied");
+      const reloadedAction = await AgentMCPActionResource.fetchById(
+        auth,
+        action.sId
+      );
+      expect(reloadedAction?.status).toBe("denied");
+
+      await vi.waitFor(() =>
+        expect(emitAuditLogEventDirectMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            action: "tool.approval_resolved",
+            actor: {
+              type: "system",
+              id: "agent-message-termination",
+              name: "Agent message termination",
+            },
+            context: { location: "internal" },
+            metadata: expect.objectContaining({
+              action_id: action.sId,
+              decision: "auto_rejected",
+              deciding_user_email: "system",
+              deciding_user_id: "system",
+            }),
+          })
+        )
+      );
 
       // The pending approval event was removed from the message channel.
       expect(removeEventMock).toHaveBeenCalledWith(
@@ -122,7 +155,7 @@ describe("blocked actions resolution", () => {
 
       const { agentMessageRowId: otherAgentMessageRowId } =
         await createAgentMessageAtRank(3);
-      const { action: otherAction } = await AgentMCPActionFactory.create({
+      const { action: otherAction } = await AgentMCPActionFactory.create(auth, {
         workspace,
         conversationModelId: conversation.id,
         agentMessageModelId: otherAgentMessageRowId,
@@ -136,12 +169,18 @@ describe("blocked actions resolution", () => {
         status: "interrupted",
       });
 
-      await action.reload();
-      expect(action.status).toBe("denied");
+      const reloadedAction = await AgentMCPActionResource.fetchById(
+        auth,
+        action.sId
+      );
+      expect(reloadedAction?.status).toBe("denied");
 
       // The other message's blocked action is untouched and keeps the flag up.
-      await otherAction.reload();
-      expect(otherAction.status).toBe("blocked_validation_required");
+      const reloadedOtherAction = await AgentMCPActionResource.fetchById(
+        auth,
+        otherAction.sId
+      );
+      expect(reloadedOtherAction?.status).toBe("blocked_validation_required");
       expect(await getActionRequired()).toBe(true);
     });
 
@@ -183,18 +222,18 @@ describe("blocked actions resolution", () => {
         status: "interrupted",
       });
 
-      await action.reload();
-      expect(action.status).toBe("denied");
+      const reloadedAction = await AgentMCPActionResource.fetchById(
+        auth,
+        action.sId
+      );
+      expect(reloadedAction?.status).toBe("denied");
 
       // The removal predicate matches every blocked-action event type of the denied action,
       // not only approval events.
       const [predicate, channel] = removeEventMock.mock.calls[0];
       expect(channel).toContain(messageRow.sId);
 
-      const actionId = AgentMCPActionResource.modelIdToSId({
-        id: action.id,
-        workspaceId: workspace.id,
-      });
+      const actionId = action.sId;
       const makeEvent = (type: string, eventActionId: string) => ({
         message: {
           payload: JSON.stringify({ type, actionId: eventActionId }),
@@ -212,6 +251,47 @@ describe("blocked actions resolution", () => {
       expect(
         predicate(makeEvent("tool_approve_execution", "other_action_id"))
       ).toBe(false);
+      expect(emitAuditLogEventDirectMock).not.toHaveBeenCalled();
+    });
+
+    it("emits approval audit events only for actions actually denied", async () => {
+      const { agentMessage, action: deniedAction } =
+        await AgentMCPActionFactory.createWithAgentMessage(auth, {
+          workspace,
+          conversation,
+        });
+      const { action: alreadyResolvedAction } =
+        await AgentMCPActionFactory.create(auth, {
+          workspace,
+          conversationModelId: conversation.id,
+          agentMessageModelId: agentMessage.agentMessageId,
+        });
+      await alreadyResolvedAction.updateStatus("ready_allowed_explicitly");
+
+      await updateAgentMessageWithFinalStatus(auth, {
+        conversation,
+        agentMessage,
+        status: "interrupted",
+      });
+
+      await vi.waitFor(() =>
+        expect(emitAuditLogEventDirectMock).toHaveBeenCalledTimes(1)
+      );
+
+      expect(emitAuditLogEventDirectMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata: expect.objectContaining({
+            action_id: deniedAction.sId,
+          }),
+        })
+      );
+      expect(emitAuditLogEventDirectMock).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata: expect.objectContaining({
+            action_id: alreadyResolvedAction.sId,
+          }),
+        })
+      );
     });
 
     it("commits the deny with the terminal status update", async () => {
@@ -238,7 +318,7 @@ describe("blocked actions resolution", () => {
   describe("clearActionRequiredIfNoBlockedActions", () => {
     it("clears the flag when the only blocked action belongs to an unresumable message", async () => {
       const { agentMessageRowId } = await createAgentMessageAtRank(1);
-      await AgentMCPActionFactory.create({
+      await AgentMCPActionFactory.create(auth, {
         workspace,
         conversationModelId: conversation.id,
         agentMessageModelId: agentMessageRowId,
@@ -264,7 +344,7 @@ describe("blocked actions resolution", () => {
 
     it("does not clear the flag when an actionable blocked action remains", async () => {
       const { agentMessageRowId } = await createAgentMessageAtRank(1);
-      await AgentMCPActionFactory.create({
+      await AgentMCPActionFactory.create(auth, {
         workspace,
         conversationModelId: conversation.id,
         agentMessageModelId: agentMessageRowId,
@@ -296,8 +376,11 @@ describe("blocked actions resolution", () => {
         status: "interrupted",
       });
 
-      await action.reload();
-      expect(action.status).toBe("denied");
+      const reloadedAction = await AgentMCPActionResource.fetchById(
+        auth,
+        action.sId
+      );
+      expect(reloadedAction?.status).toBe("denied");
       expect(await getActionRequired()).toBe(false);
     });
 
@@ -317,8 +400,11 @@ describe("blocked actions resolution", () => {
       });
 
       // A graceful stop keeps pending approvals actionable.
-      await action.reload();
-      expect(action.status).toBe("blocked_validation_required");
+      const reloadedAction = await AgentMCPActionResource.fetchById(
+        auth,
+        action.sId
+      );
+      expect(reloadedAction?.status).toBe("blocked_validation_required");
       expect(await getActionRequired()).toBe(true);
     });
   });

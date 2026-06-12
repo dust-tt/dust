@@ -1,6 +1,10 @@
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { isBlockedActionEvent } from "@app/lib/actions/mcp";
 import { getMessageChannelId } from "@app/lib/api/assistant/streaming/helpers";
+import {
+  buildAuditLogTarget,
+  emitAuditLogEventDirect,
+} from "@app/lib/api/audit/workos_audit";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -10,6 +14,7 @@ import type {
   AgentMessageType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export type GetBlockedActionsResponseType = {
   blockedActions: BlockedToolExecution[];
@@ -33,6 +38,12 @@ export async function cleanupDeniedBlockedActions(
   }
 ): Promise<void> {
   if (deniedActions.length > 0) {
+    emitApprovalResolvedAuditEvents(auth, {
+      conversation,
+      agentMessage,
+      deniedActions,
+    });
+
     logger.info(
       {
         actionIds: deniedActions.map((a) => a.sId),
@@ -59,6 +70,91 @@ export async function cleanupDeniedBlockedActions(
   await clearActionRequiredIfNoBlockedActions(auth, {
     conversationId: conversation.sId,
   });
+}
+
+/**
+ * Emits a `tool.approval_resolved` audit event for each manual approval that was auto-denied
+ * when its agent message terminated, so the audit trail doesn't keep `tool.approval_requested`
+ * entries without a resolution. Fire-and-forget (AUDIT1): must never block or break the
+ * termination flow.
+ */
+function emitApprovalResolvedAuditEvents(
+  auth: Authenticator,
+  {
+    conversation,
+    agentMessage,
+    deniedActions,
+  }: {
+    conversation: ConversationWithoutContentType;
+    agentMessage: Pick<AgentMessageType, "agentMessageId" | "sId">;
+    deniedActions: AgentMCPActionResource[];
+  }
+): void {
+  // `deniedActions` are resources fetched before the transaction updates their rows, so their
+  // in-memory status still identifies which blocked state they had before being denied.
+  const deniedApprovals = deniedActions.filter(
+    (a) => a.status === "blocked_validation_required"
+  );
+  if (deniedApprovals.length === 0) {
+    return;
+  }
+
+  void (async () => {
+    try {
+      // All blocked actions belong to the same agent message, so resolve the agent
+      // configuration once.
+      const auditAgentConfig =
+        await deniedApprovals[0].getLightAgentConfiguration(auth);
+      if (!auditAgentConfig) {
+        return;
+      }
+      const workspace = auth.getNonNullableWorkspace();
+      for (const action of deniedApprovals) {
+        void emitAuditLogEventDirect({
+          workspace,
+          action: "tool.approval_resolved",
+          // Auto-denial is a mechanical termination cleanup, not a user approval decision.
+          actor: {
+            type: "system",
+            id: "agent-message-termination",
+            name: "Agent message termination",
+          },
+          targets: [
+            buildAuditLogTarget("workspace", workspace),
+            buildAuditLogTarget("agent", auditAgentConfig),
+            buildAuditLogTarget("tool", {
+              sId: action.toolConfiguration.name,
+              name: action.toolConfiguration.originalName,
+            }),
+          ],
+          context: { location: "internal" },
+          metadata: {
+            // Distinct from the user decisions ("approved", "rejected", ...): the approval was
+            // resolved by the system because the message terminated, not by an explicit user
+            // choice.
+            decision: "auto_rejected",
+            tool_name: action.toolConfiguration.originalName,
+            mcp_server_name: action.toolConfiguration.mcpServerName,
+            stake_level: action.toolConfiguration.permission,
+            conversation_id: conversation.sId,
+            agent_message_id: agentMessage.sId,
+            action_id: action.sId,
+            deciding_user_id: "system",
+            deciding_user_email: "system",
+          },
+        });
+      }
+    } catch (err) {
+      logger.error(
+        {
+          err: normalizeError(err),
+          conversationId: conversation.sId,
+          messageId: agentMessage.sId,
+        },
+        "Failed to emit tool.approval_resolved audit events for terminated message"
+      );
+    }
+  })();
 }
 
 /**
