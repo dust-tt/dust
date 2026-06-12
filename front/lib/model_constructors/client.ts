@@ -1,0 +1,31 @@
+import type { BaseModelConfiguration } from "@app/lib/model_constructors/configuration";
+import type { Credentials } from "@app/lib/model_constructors/types/credentials";
+import type { ModelId } from "@app/lib/model_constructors/types/model_ids";
+import type { ProviderApi } from "@app/lib/model_constructors/types/provider_apis";
+import type { ProviderId } from "@app/lib/model_constructors/types/provider_ids";
+import type { Region } from "@app/lib/model_constructors/types/regions";
+
+export abstract class Client {
+  // Re-type `this.constructor` (typed as `Function` by default) so the concrete
+  // subclass's static config is visible at the type level.
+  declare ["constructor"]: BaseModelConfiguration;
+
+  constructor(protected readonly credentials: Credentials) {}
+
+  // Generic `this` params P/A/R/M capture each concrete class's literal
+  // identity fields, so the returned `id` is an exact literal (not the wide
+  // union) and a registry keyed by it yields a precise `ModelId`.
+  static buildId<
+    P extends ProviderId,
+    A extends ProviderApi,
+    R extends Region,
+    M extends ModelId,
+  >(this: {
+    providerId: P;
+    api: A;
+    region: R;
+    modelId: M;
+  }): `${P}/${A}/${R}/${M}` {
+    return `${this.providerId}/${this.api}/${this.region}/${this.modelId}`;
+  }
+}
