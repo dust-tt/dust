@@ -15,10 +15,21 @@ import type { IncomingMessage } from "http";
 import * as iconv from "iconv-lite";
 import { Writable } from "stream";
 
-// Overall budget for receiving the request body and writing it to GCS. Without
-// it, a stalled GCS connection (or a stalled client) leaves the request
-// hanging forever with no error ever surfaced to the user.
-export const FILE_UPLOAD_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes.
+// Overall budget for receiving the request body and writing it to GCS,
+// scaled with the declared file size so a slow-but-progressing large upload
+// (up to 350MB for large delimited files) is not cut off while a small one
+// fails fast. Without it, a stalled GCS connection (or a stalled client)
+// leaves the request hanging forever with no error ever surfaced to the user.
+const FILE_UPLOAD_BASE_TIMEOUT_MS = 60 * 1000; // 1 minute.
+// Slow-link allowance: ~2 Mbit/s sustained.
+const FILE_UPLOAD_MIN_THROUGHPUT_BYTES_PER_SECOND = 250 * 1024;
+
+export function getFileUploadTimeoutMs(fileSizeBytes: number): number {
+  return (
+    FILE_UPLOAD_BASE_TIMEOUT_MS +
+    (fileSizeBytes / FILE_UPLOAD_MIN_THROUGHPUT_BYTES_PER_SECOND) * 1000
+  );
+}
 
 const FILE_UPLOAD_TIMED_OUT_MESSAGE = "File upload timed out.";
 
@@ -99,7 +110,7 @@ export const parseUploadRequest = async (
     const timeoutPromise = new Promise<"timeout">((resolve) => {
       timeoutHandle = setTimeout(
         () => resolve("timeout"),
-        FILE_UPLOAD_TIMEOUT_MS
+        getFileUploadTimeoutMs(file.fileSize)
       );
     });
 

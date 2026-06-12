@@ -1,13 +1,13 @@
 import {
-  FILE_UPLOAD_TIMEOUT_MS,
+  getFileUploadTimeoutMs,
   parseUploadRequest,
 } from "@app/lib/api/files/utils";
 import { GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES } from "@app/lib/file_storage";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
-import type { IncomingMessage } from "http";
-import { Readable } from "stream";
+import { IncomingMessage } from "http";
+import { Socket } from "net";
 import { afterEach, assert, describe, expect, it, vi } from "vitest";
 
 const BOUNDARY = "----vitestboundary";
@@ -24,15 +24,26 @@ function makeMultipartBody(content: Buffer, contentType: string): Buffer {
   ]);
 }
 
-function makeUploadRequest(stream: Readable, contentLength: number) {
-  return Object.assign(stream, {
-    headers: {
-      "content-type": `multipart/form-data; boundary=${BOUNDARY}`,
-      "content-length": String(contentLength),
-    },
-    // parseUploadRequest only reads the stream, the headers, and destroy();
-    // a full IncomingMessage is not needed.
-  }) as unknown as IncomingMessage;
+function makeUploadRequest(
+  body: Buffer | null,
+  contentLength: number
+): IncomingMessage {
+  // A real IncomingMessage backed by an unconnected socket: pushed chunks are
+  // what formidable reads. A null body leaves the stream open and empty,
+  // simulating a stalled client.
+  const req = new IncomingMessage(new Socket());
+  req.headers = {
+    "content-type": `multipart/form-data; boundary=${BOUNDARY}`,
+    "content-length": String(contentLength),
+  };
+  if (body) {
+    req.push(body);
+    req.push(null);
+    // Normally set by the HTTP parser. Without it, the stream's auto-destroy
+    // after "end" emits "aborted" and formidable fails the parse.
+    req.complete = true;
+  }
+  return req;
 }
 
 describe("parseUploadRequest", () => {
@@ -59,7 +70,7 @@ describe("parseUploadRequest", () => {
     const result = await parseUploadRequest(
       auth,
       file,
-      makeUploadRequest(Readable.from([body]), body.length)
+      makeUploadRequest(body, body.length)
     );
 
     assert(
@@ -96,7 +107,7 @@ describe("parseUploadRequest", () => {
     const result = await parseUploadRequest(
       auth,
       file,
-      makeUploadRequest(Readable.from([body]), body.length)
+      makeUploadRequest(body, body.length)
     );
 
     assert(
@@ -124,15 +135,14 @@ describe("parseUploadRequest", () => {
 
     vi.useFakeTimers();
 
-    // A request stream that never sends any data and never ends.
-    const stalledStream = new Readable({ read() {} });
+    // A request that never sends any data and never ends.
     const resultPromise = parseUploadRequest(
       auth,
       file,
-      makeUploadRequest(stalledStream, 1000)
+      makeUploadRequest(null, 1000)
     );
 
-    await vi.advanceTimersByTimeAsync(FILE_UPLOAD_TIMEOUT_MS + 1);
+    await vi.advanceTimersByTimeAsync(getFileUploadTimeoutMs(1000) + 1);
 
     const result = await resultPromise;
     assert(result.isErr(), "Expected Err, got Ok");
