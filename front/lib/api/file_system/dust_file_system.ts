@@ -63,7 +63,7 @@ type ParsedScopedPrefix =
   | { kind: "conversation"; id: string }
   | { kind: "pod"; id: string };
 
-function parseScopedPrefix(scopedPath: string): ParsedScopedPrefix | null {
+export function parseScopedPrefix(scopedPath: string): ParsedScopedPrefix | null {
   const prefix = scopedPath.includes("/")
     ? scopedPath.slice(0, scopedPath.indexOf("/"))
     : scopedPath;
@@ -656,6 +656,38 @@ export class DustFileSystem {
       return resolved;
     }
     return this.backend.read(resolved.value.path);
+  }
+
+  /**
+   * Returns `Ok(null)` when the file does not exist, `Ok(Buffer)` with the full file contents on success.
+   * Returns `Err` for path/permission errors (including `legacy_path`) or stream read errors.
+   */
+  async readBuffer(
+    scopedPath: string
+  ): Promise<Result<Buffer | null, DustFileSystemError>> {
+    const streamResult = await this.read(scopedPath);
+    if (streamResult.isErr()) {
+      return streamResult;
+    }
+    if (streamResult.value === null) {
+      return new Ok(null);
+    }
+
+    const chunks: Buffer[] = [];
+    try {
+      for await (const chunk of streamResult.value) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      }
+    } catch (err) {
+      return new Err(
+        new DustFileSystemError(
+          "internal",
+          `Failed to read file content: ${err instanceof Error ? err.message : String(err)}`
+        )
+      );
+    }
+
+    return new Ok(Buffer.concat(chunks));
   }
 
   /**

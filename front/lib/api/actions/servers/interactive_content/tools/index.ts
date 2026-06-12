@@ -51,7 +51,7 @@ export function createInteractiveContentTools(
 
       if (mode === "template") {
         const templateResult = await fetchTemplateContent(auth, runContext, {
-          templateNodeId: source,
+          templateRef: source,
         });
 
         if (templateResult.isErr()) {
