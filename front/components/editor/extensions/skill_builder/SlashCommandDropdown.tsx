@@ -266,79 +266,82 @@ export const SlashCommandDropdown = forwardRef<
               {emptyMessage}
             </div>
           ) : (
-            <div ref={listRef} className={cn("relative", listMaxHeightClassName)}>
-                  {items.map((item, index) => {
-                    const sectionLabel =
-                      item.sectionLabel &&
-                      items[index - 1]?.sectionLabel !== item.sectionLabel
-                        ? item.sectionLabel
-                        : undefined;
-                    const canShowDetails = !!onItemDetails && !!item.hasDetails;
-                    const menuItem = (
-                      <DropdownMenuItem
-                        icon={item.icon}
-                        itemId={item.id}
-                        label={item.label}
-                        description={item.description}
-                        truncateText
-                        endComponent={
-                          canShowDetails ? (
-                            <Button
-                              icon={DotsHorizontal}
-                              variant="outline"
-                              size="mini"
-                              className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                                onItemDetails?.(item);
-                              }}
-                            />
-                          ) : undefined
-                        }
-                        onClick={() => selectItem(index)}
-                        // onPointerMove only fires on actual pointer movement
-                        // (not when items scroll under a stationary cursor).
-                        // preventDefault stops Radix from setting
-                        // data-highlighted, avoiding a double highlight.
-                        onPointerMove={(e) => {
-                          e.preventDefault();
-                          setSelectedIndex(index);
-                        }}
-                        onPointerLeave={(e) => e.preventDefault()}
-                        className={cn(
-                          "group",
-                          index === selectedIndex &&
-                            "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
-                        )}
-                      />
-                    );
+            <div
+              ref={listRef}
+              className={cn("relative", listMaxHeightClassName)}
+            >
+              {items.map((item, index) => {
+                const sectionLabel =
+                  item.sectionLabel &&
+                  items[index - 1]?.sectionLabel !== item.sectionLabel
+                    ? item.sectionLabel
+                    : undefined;
+                const canShowDetails = !!onItemDetails && !!item.hasDetails;
+                const menuItem = (
+                  <DropdownMenuItem
+                    icon={item.icon}
+                    itemId={item.id}
+                    label={item.label}
+                    description={item.description}
+                    truncateText
+                    endComponent={
+                      canShowDetails ? (
+                        <Button
+                          icon={DotsHorizontal}
+                          variant="outline"
+                          size="mini"
+                          className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            onItemDetails?.(item);
+                          }}
+                        />
+                      ) : undefined
+                    }
+                    onClick={() => selectItem(index)}
+                    // onPointerMove only fires on actual pointer movement
+                    // (not when items scroll under a stationary cursor).
+                    // preventDefault stops Radix from setting
+                    // data-highlighted, avoiding a double highlight.
+                    onPointerMove={(e) => {
+                      e.preventDefault();
+                      setSelectedIndex(index);
+                    }}
+                    onPointerLeave={(e) => e.preventDefault()}
+                    className={cn(
+                      "group",
+                      index === selectedIndex &&
+                        "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
+                    )}
+                  />
+                );
 
-                    // Wrap with DropdownTooltipTrigger if command has tooltip property.
-                    const itemContent = item.tooltip ? (
-                      <DropdownTooltipTrigger
-                        description={item.tooltip.description}
-                        media={item.tooltip.media}
-                        side="right"
-                        sideOffset={8}
-                      >
-                        {menuItem}
-                      </DropdownTooltipTrigger>
-                    ) : (
-                      menuItem
-                    );
+                // Wrap with DropdownTooltipTrigger if command has tooltip property.
+                const itemContent = item.tooltip ? (
+                  <DropdownTooltipTrigger
+                    description={item.tooltip.description}
+                    media={item.tooltip.media}
+                    side="right"
+                    sideOffset={8}
+                  >
+                    {menuItem}
+                  </DropdownTooltipTrigger>
+                ) : (
+                  menuItem
+                );
 
-                    return (
-                      <Fragment key={item.id}>
-                        {sectionLabel ? (
-                          <div className="px-3 py-2 text-xs font-semibold text-muted-foreground dark:text-muted-foreground-night">
-                            {sectionLabel}
-                          </div>
-                        ) : null}
-                        {itemContent}
-                      </Fragment>
-                    );
-                  })}
+                return (
+                  <Fragment key={item.id}>
+                    {sectionLabel ? (
+                      <div className="px-3 py-2 text-xs font-semibold text-muted-foreground dark:text-muted-foreground-night">
+                        {sectionLabel}
+                      </div>
+                    ) : null}
+                    {itemContent}
+                  </Fragment>
+                );
+              })}
               <div
                 className={cn(
                   "pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-t",
