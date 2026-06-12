@@ -488,6 +488,7 @@ export function UsagePage() {
       members={membersUsage}
       isLoading={isMembersUsageLoading}
       readOnly={isReadOnly}
+      showSpendLimit={!isFreePlanWorkspace}
       totalAllowedUsagePendingMemberIds={totalAllowedUsagePendingMemberIds}
       seatChangePendingMemberIds={seatChangePendingMemberIds}
       seatTypeFilter={seatTypeFilter}
