@@ -6,16 +6,25 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { describe, expect, it, vi } from "vitest";
 
 const CUSTOM_MODEL_ID = vi.hoisted(() => "custom-model-for-global-agent-test");
+const UNBOUND_CUSTOM_MODEL_ID = vi.hoisted(
+  () => "custom-model-unbound-for-global-agent-test"
+);
+const SOUPINOU_CUSTOM_MODEL_ID = vi.hoisted(
+  () => "custom-model-for-soupinou-global-agent-test"
+);
+// Shared reference to the mocked CUSTOM_MODEL_CONFIGS array so tests can
+// simulate a model index missing from the generated config.
+const mockCustomModels = vi.hoisted(() => ({
+  configs: [] as unknown[],
+}));
 
 vi.mock("@app/types/assistant/models/custom_models.generated", async () => {
   const { GPT_5_5_MODEL_CONFIG } = await vi.importActual<
     typeof import("@app/types/assistant/models/openai")
   >("@app/types/assistant/models/openai");
 
-  const customModelConfig = {
+  const baseCustomModelConfig = {
     ...GPT_5_5_MODEL_CONFIG,
-    modelId: CUSTOM_MODEL_ID,
-    displayName: "Custom Model Test",
     availableIfOneOf: {
       featureFlag: "custom_model_feature" as const,
     },
@@ -24,10 +33,38 @@ vi.mock("@app/types/assistant/models/custom_models.generated", async () => {
     },
   };
 
+  // Mirrors the infra config layout: index 0 is bound to the chawi agents,
+  // index 1 is unbound, index 2 is bound to the soupinou agents.
+  mockCustomModels.configs = [
+    {
+      ...baseCustomModelConfig,
+      modelId: CUSTOM_MODEL_ID,
+      displayName: "Custom Model Test",
+    },
+    {
+      ...baseCustomModelConfig,
+      modelId: UNBOUND_CUSTOM_MODEL_ID,
+      displayName: "Unbound Custom Model Test",
+    },
+    {
+      ...baseCustomModelConfig,
+      modelId: SOUPINOU_CUSTOM_MODEL_ID,
+      displayName: "Soupinou Custom Model Test",
+    },
+  ];
+
   return {
-    CUSTOM_MODEL_CONFIGS: [customModelConfig],
-    CUSTOM_MODEL_IDS: [CUSTOM_MODEL_ID],
-    CUSTOM_OPENAI_MODEL_IDS: [CUSTOM_MODEL_ID],
+    CUSTOM_MODEL_CONFIGS: mockCustomModels.configs,
+    CUSTOM_MODEL_IDS: [
+      CUSTOM_MODEL_ID,
+      UNBOUND_CUSTOM_MODEL_ID,
+      SOUPINOU_CUSTOM_MODEL_ID,
+    ],
+    CUSTOM_OPENAI_MODEL_IDS: [
+      CUSTOM_MODEL_ID,
+      UNBOUND_CUSTOM_MODEL_ID,
+      SOUPINOU_CUSTOM_MODEL_ID,
+    ],
     CUSTOM_ANTHROPIC_MODEL_IDS: [],
   };
 });
@@ -126,5 +163,77 @@ describe("getGlobalAgents custom model agents", () => {
         reasoningEffort: "high",
       },
     ]);
+  });
+
+  it("resolves soupinou agent variants to the custom model at index 2", async () => {
+    const auth = await createAuthenticatorWithFlags([
+      "dust_internal_global_agents",
+      "custom_model_feature",
+    ]);
+
+    const agents = await getGlobalAgents(
+      auth,
+      [
+        GLOBAL_AGENTS_SID.DUST_SOUPINOU,
+        GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
+        GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
+        GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE,
+      ],
+      "light"
+    );
+
+    expect(
+      agents.map((agent) => ({
+        sId: agent.sId,
+        modelId: agent.model.modelId,
+        reasoningEffort: agent.model.reasoningEffort,
+      }))
+    ).toEqual([
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_SOUPINOU,
+        modelId: SOUPINOU_CUSTOM_MODEL_ID,
+        reasoningEffort: "light",
+      },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
+        modelId: SOUPINOU_CUSTOM_MODEL_ID,
+        reasoningEffort: "medium",
+      },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
+        modelId: SOUPINOU_CUSTOM_MODEL_ID,
+        reasoningEffort: "high",
+      },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE,
+        modelId: SOUPINOU_CUSTOM_MODEL_ID,
+        reasoningEffort: "none",
+      },
+    ]);
+  });
+
+  it("hides agents whose model index is missing from the generated config", async () => {
+    const auth = await createAuthenticatorWithFlags([
+      "dust_internal_global_agents",
+      "custom_model_feature",
+    ]);
+
+    const removed = mockCustomModels.configs.splice(2, 1);
+    try {
+      const agents = await getGlobalAgents(
+        auth,
+        [
+          GLOBAL_AGENTS_SID.DUST_SOUPINOU,
+          GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
+          GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
+          GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE,
+        ],
+        "light"
+      );
+
+      expect(agents).toEqual([]);
+    } finally {
+      mockCustomModels.configs.push(...removed);
+    }
   });
 });

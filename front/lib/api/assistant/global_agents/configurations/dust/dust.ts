@@ -975,10 +975,10 @@ export function _getDustNextHighGlobalAgent(
   });
 }
 
-// Formerly custom-model dust-* global agents (soupinou, sundae, pistache,
-// chalom). Their eval models were removed from the infra custom-models config
-// (GCS), so they no longer resolve to a custom model. They remain callable for
-// past conversations via a concrete fallback model and are listed in
+// Formerly custom-model dust-* global agents (sundae, pistache, chalom).
+// Their eval models were removed from the infra custom-models config (GCS), so
+// they no longer resolve to a custom model. They remain callable for past
+// conversations via a concrete fallback model and are listed in
 // RETIRED_GLOBAL_AGENTS_SID (see global_agents.ts). We may revive them as
 // custom-model agents in the future by moving them back into
 // CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.
@@ -991,18 +991,6 @@ const RETIRED_DUST_GLOBAL_AGENT_CONFIGS = new Map<
   GLOBAL_AGENTS_SID,
   RetiredDustGlobalAgentConfig
 >([
-  [
-    GLOBAL_AGENTS_SID.DUST_SOUPINOU,
-    { name: "dust-soupinou", preferredReasoningEffort: "light" },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
-    { name: "dust-soupinou-medium", preferredReasoningEffort: "medium" },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
-    { name: "dust-soupinou-high", preferredReasoningEffort: "high" },
-  ],
   [
     GLOBAL_AGENTS_SID.DUST_SUNDAE,
     { name: "dust-sundae", preferredReasoningEffort: "light" },
@@ -1123,6 +1111,40 @@ export const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
       name: "dust-chawi-high",
       customModelIndex: 0,
       preferredReasoningEffort: "high",
+    },
+  ],
+  // Index 2 is the eval model with displayName "Soupinou" in the infra
+  // custom-models config.
+  [
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU,
+    {
+      name: "dust-soupinou",
+      customModelIndex: 2,
+      preferredReasoningEffort: "light",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
+    {
+      name: "dust-soupinou-medium",
+      customModelIndex: 2,
+      preferredReasoningEffort: "medium",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
+    {
+      name: "dust-soupinou-high",
+      customModelIndex: 2,
+      preferredReasoningEffort: "high",
+    },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE,
+    {
+      name: "dust-soupinou-none",
+      customModelIndex: 2,
+      preferredReasoningEffort: "none",
     },
   ],
 ]);

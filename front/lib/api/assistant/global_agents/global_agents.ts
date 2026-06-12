@@ -387,6 +387,12 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
+  [GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
   [GLOBAL_AGENTS_SID.DUST_SUNDAE]: {
     injectsMemory: true,
     injectsToolsets: true,
@@ -1244,6 +1250,10 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.DUST_CHAWI:
     case GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM:
     case GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH:
+    case GLOBAL_AGENTS_SID.DUST_SOUPINOU:
+    case GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM:
+    case GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH:
+    case GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE:
       agentConfiguration = _getCustomModelDustLikeGlobalAgent(
         auth,
         {
@@ -1258,9 +1268,6 @@ function getGlobalAgent({
     // Retired custom-model dust-* agents: their eval models were removed from
     // the infra config, so they resolve to a fallback model for past
     // conversations only (see RETIRED_GLOBAL_AGENTS_SID).
-    case GLOBAL_AGENTS_SID.DUST_SOUPINOU:
-    case GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM:
-    case GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH:
     case GLOBAL_AGENTS_SID.DUST_SUNDAE:
     case GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM:
     case GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH:
@@ -1371,9 +1378,6 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED,
   // Custom-model dust-* agents whose eval models were removed from the infra
   // config. Kept callable for past conversations; may be revived in the future.
-  GLOBAL_AGENTS_SID.DUST_SOUPINOU,
-  GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
-  GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
   GLOBAL_AGENTS_SID.DUST_SUNDAE,
   GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM,
   GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH,
@@ -1512,6 +1516,7 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_SOUPINOU,
     GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE,
     GLOBAL_AGENTS_SID.DUST_SUNDAE,
     GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH,
