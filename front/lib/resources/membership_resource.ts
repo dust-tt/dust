@@ -1531,6 +1531,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
           origin: this.origin,
           seatType: newSeatType,
           firstUsedAt: this.firstUsedAt,
+          creditState: initialCreditStateForSeatType(newSeatType),
           // The pool cap override survives the seat change: it's the
           // pool-only portion, independent of the seat allowance.
           poolCapOverrideAwuCredits: this.poolCapOverrideAwuCredits,

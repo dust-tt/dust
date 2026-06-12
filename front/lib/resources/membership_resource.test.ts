@@ -656,4 +656,83 @@ describe("MembershipResource", () => {
       });
     });
   });
+
+  describe("scheduleSeatChange", () => {
+    let workspace: WorkspaceType;
+    let lightWorkspace: LightWorkspaceType;
+    const scheduledAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    beforeEach(async () => {
+      workspace = await WorkspaceFactory.basic();
+      lightWorkspace = renderLightWorkspaceType({ workspace });
+    });
+
+    it("initializes the scheduled row's creditState to user_seat for an allowance seat", async () => {
+      const user = await UserFactory.basic();
+      await MembershipResource.createMembership({
+        user,
+        workspace: lightWorkspace,
+        role: "user",
+        origin: "invited",
+        seatType: "workspace",
+      });
+      const active =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user,
+          workspace: lightWorkspace,
+        });
+      if (!active) {
+        throw new Error("Expected an active membership");
+      }
+
+      await active.scheduleSeatChange({
+        user,
+        workspace: lightWorkspace,
+        newSeatType: "max",
+        scheduledAt,
+        author: "no-author",
+      });
+
+      const future = await MembershipResource.getScheduledFutureMemberships({
+        workspace: lightWorkspace,
+      });
+      expect(future).toHaveLength(1);
+      expect(future[0].seatType).toBe("max");
+      expect(future[0].creditState).toBe("user_seat");
+    });
+
+    it("initializes the scheduled row's creditState to on_pool for a pool seat", async () => {
+      const user = await UserFactory.basic();
+      await MembershipResource.createMembership({
+        user,
+        workspace: lightWorkspace,
+        role: "user",
+        origin: "invited",
+        seatType: "max",
+      });
+      const active =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user,
+          workspace: lightWorkspace,
+        });
+      if (!active) {
+        throw new Error("Expected an active membership");
+      }
+
+      await active.scheduleSeatChange({
+        user,
+        workspace: lightWorkspace,
+        newSeatType: "workspace",
+        scheduledAt,
+        author: "no-author",
+      });
+
+      const future = await MembershipResource.getScheduledFutureMemberships({
+        workspace: lightWorkspace,
+      });
+      expect(future).toHaveLength(1);
+      expect(future[0].seatType).toBe("workspace");
+      expect(future[0].creditState).toBe("on_pool");
+    });
+  });
 });
