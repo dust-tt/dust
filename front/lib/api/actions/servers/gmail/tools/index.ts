@@ -26,6 +26,7 @@ import {
   extractAttachments,
   fetchFromGmail,
   findAttachmentData,
+  findAttachmentIdByPartId,
   getErrorText,
   getHeaderValue,
   isGmailMessage,
@@ -35,6 +36,7 @@ import {
 } from "@app/lib/api/actions/servers/gmail/helpers";
 import { GMAIL_TOOLS_METADATA } from "@app/lib/api/actions/servers/gmail/metadata";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { unescape } from "html-escaper";
@@ -838,29 +840,43 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     const encodedMessageId = encodeURIComponent(messageId);
     let base64Data: string | null = null;
 
-    // Only try the attachments API if we have a real attachment ID
-    if (hasRealAttachmentId && attachmentId) {
-      const encodedAttachmentId = encodeURIComponent(attachmentId);
+    const fetchAttachmentFromApi = async (
+      gmailAttachmentId: string
+    ): Promise<Result<string, string>> => {
       const response = await fetchFromGmail(
-        `/gmail/v1/users/me/messages/${encodedMessageId}/attachments/${encodedAttachmentId}`,
+        `/gmail/v1/users/me/messages/${encodedMessageId}/attachments/${encodeURIComponent(gmailAttachmentId)}`,
         accessToken,
         { method: "GET" }
       );
+      if (!response.ok) {
+        return new Err(await getErrorText(response));
+      }
+      const body = await response.json();
+      if (typeof body.data !== "string") {
+        return new Err("Gmail API returned no attachment data");
+      }
+      return new Ok(body.data);
+    };
 
-      if (response.ok) {
-        const result = await response.json();
-        base64Data = result.data;
+    let attachmentApiErrorText: string | null = null;
+
+    // Only try the attachments API if we have a real attachment ID
+    if (hasRealAttachmentId && attachmentId) {
+      const fetchResult = await fetchAttachmentFromApi(attachmentId);
+      if (fetchResult.isOk()) {
+        base64Data = fetchResult.value;
       } else {
-        const attachmentErrorText = await getErrorText(response);
-        const lowerError = attachmentErrorText.toLowerCase();
+        attachmentApiErrorText = fetchResult.error;
+        const lowerError = attachmentApiErrorText.toLowerCase();
 
-        // Gmail sometimes returns attachmentIds that look valid but fail with
-        // "invalid attachment token". Fall back to fetching from the MIME body.
+        // Gmail attachment IDs are short-lived tokens: an ID obtained from an
+        // earlier get_messages call can expire and fail with "invalid
+        // attachment token". Fall back to re-fetching the message.
         if (!lowerError.includes("invalid") && !lowerError.includes("token")) {
           return new Err(
             new MCPError(
               `Failed to fetch attachment via Gmail API (messageId: ${messageId}, ` +
-                `filename: "${filename}"): ${attachmentErrorText}`,
+                `filename: "${filename}"): ${attachmentApiErrorText}`,
               { tracked: false }
             )
           );
@@ -868,9 +884,9 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       }
     }
 
-    // Fallback: fetch attachment data from the message MIME body.
-    // Used when hasRealAttachmentId is false (inline content) or when the
-    // attachments API returned an invalid token error.
+    // Fallback: re-fetch the message, then read inline data (content without a
+    // real attachment ID) or retry the attachments API with the fresh
+    // attachment ID found in the re-fetched message (expired token case).
     if (!base64Data) {
       const messageResponse = await fetchFromGmail(
         `/gmail/v1/users/me/messages/${encodedMessageId}?format=full`,
@@ -891,12 +907,31 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       base64Data = findAttachmentData(messageData.payload, partId);
 
       if (!base64Data) {
+        // Real attachments never carry inline data in the message payload, but
+        // the re-fetched message contains a fresh attachment ID for the part.
+        // Skip the retry if the ID is unchanged: the same ID just failed above.
+        const freshAttachmentId = findAttachmentIdByPartId(
+          messageData.payload,
+          partId
+        );
+        if (freshAttachmentId && freshAttachmentId !== attachmentId) {
+          const retryResult = await fetchAttachmentFromApi(freshAttachmentId);
+          if (retryResult.isOk()) {
+            base64Data = retryResult.value;
+          } else {
+            attachmentApiErrorText = retryResult.error;
+          }
+        }
+      }
+
+      if (!base64Data) {
         return new Err(
           new MCPError(
-            `Attachment data not found in message body (messageId: ${messageId}, ` +
-              `filename: "${filename}", partId: ${partId}, mimeType: ${mimeType}). ` +
-              `This can happen when Gmail returns an invalid attachment token and ` +
-              `the attachment is too large to be included inline in the message payload.`
+            `Attachment data not found (messageId: ${messageId}, ` +
+              `filename: "${filename}", partId: ${partId}, mimeType: ${mimeType})` +
+              (attachmentApiErrorText
+                ? `. Gmail API error: ${attachmentApiErrorText}`
+                : ".")
           )
         );
       }
