@@ -30,7 +30,9 @@ export interface InputBarSlashCommandDefinition<
   K extends InputBarSlashCommandKind,
 > {
   kind: K;
-  getItem: (capability: InputBarSlashCommandCapabilityOfKind<K>) => SlashCommand;
+  getItem: (
+    capability: InputBarSlashCommandCapabilityOfKind<K>
+  ) => SlashCommand;
   onSelect: (
     capability: InputBarSlashCommandCapabilityOfKind<K>,
     context: InputBarSlashCommandSelectContext
