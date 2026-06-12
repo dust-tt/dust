@@ -22,6 +22,7 @@ class LLMEventFactory {
       metadata: {
         clientId: "openai",
         inferenceProvider: "openai",
+        inferenceRegion: "global",
         modelId: "gpt-4-turbo",
       },
     };
@@ -36,6 +37,7 @@ class LLMEventFactory {
       metadata: {
         clientId: "openai",
         inferenceProvider: "openai",
+        inferenceRegion: "global",
         modelId: "gpt-4-turbo",
       },
     };
@@ -52,6 +54,7 @@ class LLMEventFactory {
       metadata: {
         clientId: "openai",
         inferenceProvider: "openai",
+        inferenceRegion: "global",
         modelId: "gpt-4-turbo",
       },
     };
@@ -68,6 +71,7 @@ class LLMEventFactory {
       metadata: {
         clientId: "openai",
         inferenceProvider: "openai",
+        inferenceRegion: "global",
         modelId: "gpt-4-turbo",
       },
     };
@@ -83,6 +87,7 @@ class LLMEventFactory {
       {
         clientId: "openai",
         inferenceProvider: "openai",
+        inferenceRegion: "global",
         modelId: "gpt-4-turbo",
       }
     );

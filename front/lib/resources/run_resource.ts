@@ -1,4 +1,7 @@
-import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
+import {
+  computeTokensCostForUsageInMicroUsd,
+  type InferenceRegionType,
+} from "@app/lib/api/assistant/token_pricing";
 import type { TokenUsage } from "@app/lib/api/llm/types/events";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
@@ -380,7 +383,10 @@ export class RunResource extends BaseResource<RunModel> {
     auth: Authenticator,
     usage: TokenUsage,
     modelId: ModelIdType,
-    { isBatch = false }: { isBatch?: boolean } = {}
+    {
+      isBatch = false,
+      inferenceRegion = "global",
+    }: { isBatch?: boolean; inferenceRegion?: InferenceRegionType } = {}
   ) {
     const modelConfig = getModelConfigByModelId(modelId);
 
@@ -396,6 +402,7 @@ export class RunResource extends BaseResource<RunModel> {
       cachedTokens: usage.cachedTokens ?? null,
       cacheCreationTokens: usage.cacheCreationTokens ?? null,
       isBatch,
+      inferenceRegion,
     });
 
     return this.recordRunUsage(auth, [

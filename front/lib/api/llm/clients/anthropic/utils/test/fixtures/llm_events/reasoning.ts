@@ -8,6 +8,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "anthropic" as const,
       inferenceProvider: "anthropic",
+      inferenceRegion: "global",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
@@ -19,6 +20,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "anthropic" as const,
       inferenceProvider: "anthropic",
+      inferenceRegion: "global",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
@@ -30,6 +32,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "anthropic" as const,
       inferenceProvider: "anthropic",
+      inferenceRegion: "global",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
@@ -41,6 +44,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "anthropic" as const,
       inferenceProvider: "anthropic",
+      inferenceRegion: "global",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
       encrypted_content: "",
     },
@@ -53,6 +57,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "anthropic" as const,
       inferenceProvider: "anthropic",
+      inferenceRegion: "global",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
@@ -64,6 +69,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "anthropic" as const,
       inferenceProvider: "anthropic",
+      inferenceRegion: "global",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
@@ -75,6 +81,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "anthropic" as const,
       inferenceProvider: "anthropic",
+      inferenceRegion: "global",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
@@ -92,6 +99,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "anthropic" as const,
       inferenceProvider: "anthropic",
+      inferenceRegion: "global",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
@@ -106,6 +114,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
         metadata: {
           clientId: "anthropic" as const,
           inferenceProvider: "anthropic",
+          inferenceRegion: "global",
           modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
           encrypted_content: "",
         },
@@ -118,6 +127,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
         metadata: {
           clientId: "anthropic" as const,
           inferenceProvider: "anthropic",
+          inferenceRegion: "global",
           modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
         },
       },
@@ -130,6 +140,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
       metadata: {
         clientId: "anthropic" as const,
         inferenceProvider: "anthropic",
+        inferenceRegion: "global",
         modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
       },
     },
@@ -141,6 +152,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
       metadata: {
         clientId: "anthropic" as const,
         inferenceProvider: "anthropic",
+        inferenceRegion: "global",
         modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
         encrypted_content: "",
       },
@@ -149,6 +161,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "anthropic" as const,
       inferenceProvider: "anthropic",
+      inferenceRegion: "global",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },

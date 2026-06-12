@@ -84,6 +84,7 @@ export abstract class LLM<TPayload = unknown> {
     this.metadata = {
       clientId: providerId,
       inferenceProvider: providerId,
+      inferenceRegion: "global",
       modelId: this.modelId,
     };
 
@@ -332,7 +333,8 @@ export abstract class LLM<TPayload = unknown> {
           await run.recordTokenUsage(
             this.authenticator,
             buffer.runTokenUsage,
-            this.modelId
+            this.modelId,
+            { inferenceRegion: this.metadata.inferenceRegion }
           );
         }
 
@@ -517,7 +519,7 @@ export abstract class LLM<TPayload = unknown> {
             this.authenticator,
             event.content,
             this.modelId,
-            { isBatch: true }
+            { isBatch: true, inferenceRegion: this.metadata.inferenceRegion }
           );
         }
       }

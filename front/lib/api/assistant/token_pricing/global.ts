@@ -2,26 +2,14 @@ import type {
   ImageModelIdType,
   StaticModelIdType,
 } from "@app/types/assistant/models/models";
-import type { ModelIdType } from "@app/types/assistant/models/types";
 
 // All pricing are in USD per million tokens (equivalent to micro-USD per token).
-type PricingEntry = {
+export type PricingEntry = {
   input: number;
   output: number;
-  // Optional cached-token pricing.
   cache_creation_input_tokens?: number;
   cache_read_input_tokens?: number;
 };
-
-export const DUST_MARKUP_PERCENT = 30;
-
-// Maximum discount percent that can be applied to credit purchases.
-// A discount above this threshold would result in selling below cost.
-// Formula: (1 - 1 / (1 + MARKUP/100)) * 100
-// With 30% markup: (1 - 1/1.30) * 100 ≈ 23.08%
-export const MAX_DISCOUNT_PERCENT = Math.ceil(
-  (1 - 1 / (1 + DUST_MARKUP_PERCENT / 100)) * 100
-);
 
 // Pricing for current models (USD per million tokens - equivalent to micro-USD per token)
 // This record contains all static model IDs. Custom models use default pricing.
@@ -318,7 +306,7 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 1.68,
     cache_read_input_tokens: 0.28,
   },
-  // https://fireworks.ai/models/deepseek-ai/deepseek-v4-pro
+  // https://fireworks.ai/models/fireworks/deepseek-v4-pro
   "accounts/fireworks/models/deepseek-v4-pro": {
     input: 1.74,
     output: 3.48,
@@ -551,55 +539,8 @@ const LEGACY_MODEL_PRICING: Record<string, PricingEntry> = {
 };
 
 // Combined pricing record for all models (current + legacy + image).
-// This is the exported record used throughout the codebase.
 export const MODEL_PRICING: Record<string, PricingEntry> = {
   ...CURRENT_MODEL_PRICING,
   ...IMAGE_MODEL_PRICING,
   ...LEGACY_MODEL_PRICING,
 };
-
-// If model is not found in the MODEL_PRICING, use the default pricing.
-const DEFAULT_PRICING_MODEL_ID: StaticModelIdType = "gpt-4o";
-
-const DEFAULT_PRICING = MODEL_PRICING[DEFAULT_PRICING_MODEL_ID];
-
-// This discount factor applies to OpenAi, Anthropic, Google and Mistral
-const BATCH_DISCOUNT_FACTOR = 0.5;
-
-/**
- * Calculate the cost in micro USD for token usage.
- * Note: promptTokens currently includes cached read and cache write tokens for some providers.
- * To avoid double counting, price all promptTokens at base input rate, then adjust with deltas.
- */
-export function computeTokensCostForUsageInMicroUsd({
-  modelId,
-  promptTokens,
-  completionTokens,
-  cachedTokens,
-  cacheCreationTokens,
-  isBatch = false,
-}: {
-  modelId: ModelIdType | ImageModelIdType;
-  promptTokens: number;
-  completionTokens: number;
-  cachedTokens: number | null;
-  cacheCreationTokens?: number | null;
-  isBatch?: boolean;
-}): number {
-  const pricing = MODEL_PRICING[modelId] ?? DEFAULT_PRICING;
-
-  const cachedReadTokens = cachedTokens ?? 0;
-  const cacheWriteTokens = cacheCreationTokens ?? 0;
-
-  const cachedReadRate = pricing.cache_read_input_tokens ?? pricing.input;
-  const cacheWriteRate = pricing.cache_creation_input_tokens ?? pricing.input;
-
-  const basePromptCost = promptTokens * pricing.input;
-  const cachedReadDelta = cachedReadTokens * (cachedReadRate - pricing.input);
-  const cacheWriteDelta = cacheWriteTokens * (cacheWriteRate - pricing.input);
-  const outputCost = completionTokens * pricing.output;
-
-  const cost = basePromptCost + cachedReadDelta + cacheWriteDelta + outputCost;
-
-  return isBatch ? Math.round(cost * BATCH_DISCOUNT_FACTOR) : cost;
-}
