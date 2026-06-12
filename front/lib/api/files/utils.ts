@@ -20,7 +20,7 @@ import { Writable } from "stream";
 // (up to 350MB for large delimited files) is not cut off while a small one
 // fails fast. Without it, a stalled GCS connection (or a stalled client)
 // leaves the request hanging forever with no error ever surfaced to the user.
-const FILE_UPLOAD_BASE_TIMEOUT_MS = 60 * 1000; // 1 minute.
+const FILE_UPLOAD_BASE_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes.
 // Slow-link allowance: ~2 Mbit/s sustained.
 const FILE_UPLOAD_MIN_THROUGHPUT_BYTES_PER_SECOND = 250 * 1024;
 
