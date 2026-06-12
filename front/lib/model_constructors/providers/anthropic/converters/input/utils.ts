@@ -1,9 +1,20 @@
 import type {
   CacheControlEphemeral,
   MessageParam,
+  OutputConfig,
   TextBlockParam,
+  ThinkingBlockParam,
+  ThinkingConfigAdaptive,
+  ThinkingConfigDisabled,
 } from "@anthropic-ai/sdk/resources/messages/messages";
+import {
+  type ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS,
+  isAnthropicSupportedNonNullReasoningEffort,
+} from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
+import type { Reasoning } from "@app/lib/model_constructors/types/input/configuration";
 import type {
+  BaseAssistantMessage,
+  BaseAssistantReasoningMessage,
   BaseConversation,
   BaseUserMessage,
   BaseUserTextMessage,
@@ -18,6 +29,9 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 export interface MessageBlockConverters {
   systemMessageToTextBlock(message: SystemTextMessage): TextBlockParam;
   userTextMessageToTextBlock(message: BaseUserTextMessage): TextBlockParam;
+  assistantReasoningMessageToThinkingBlocks(
+    message: BaseAssistantReasoningMessage
+  ): ThinkingBlockParam[];
 }
 
 // -- Small, reusable building blocks --
@@ -60,6 +74,22 @@ export function userTextMessageToTextBlock(
   };
 }
 
+export function assistantReasoningMessageToThinkingBlocks(
+  message: BaseAssistantReasoningMessage
+): ThinkingBlockParam[] {
+  // Anthropic rejects thinking blocks without a signature, so drop unsigned ones.
+  if (!message.signature) {
+    return [];
+  }
+  return [
+    {
+      type: "thinking",
+      thinking: message.content.value,
+      signature: message.signature,
+    },
+  ];
+}
+
 // -- Composite message converters (depend on the leaf converters) --
 
 export function userMessageToContentBlocks(
@@ -71,6 +101,19 @@ export function userMessageToContentBlocks(
       return [converters.userTextMessageToTextBlock(message)];
     default:
       // Other user message types are wired in in subsequent commits.
+      return [];
+  }
+}
+
+export function assistantMessageToContentBlocks(
+  message: BaseAssistantMessage,
+  converters: MessageBlockConverters
+): MessageParam["content"] {
+  switch (message.type) {
+    case "reasoning":
+      return converters.assistantReasoningMessageToThinkingBlocks(message);
+    default:
+      // Other assistant message types are wired in in subsequent commits.
       return [];
   }
 }
@@ -87,8 +130,10 @@ export function conversationToMessages(
           content: userMessageToContentBlocks(message, converters),
         };
       case "assistant":
-        // Assistant content blocks are wired in in subsequent commits.
-        return { role: "assistant", content: [] };
+        return {
+          role: "assistant",
+          content: assistantMessageToContentBlocks(message, converters),
+        };
       default:
         assertNever(message);
     }
@@ -100,4 +145,45 @@ export function systemMessagesToSystemParam(
   converters: MessageBlockConverters
 ): TextBlockParam[] {
   return system.map((message) => converters.systemMessageToTextBlock(message));
+}
+
+// -- Config converters (pure) --
+
+function effortToAnthropicEffort(
+  effort: (typeof ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS)[number]
+): NonNullable<OutputConfig["effort"]> {
+  switch (effort) {
+    case "low":
+      return "low";
+    case "medium":
+      return "medium";
+    case "high":
+      return "high";
+    case "maximal":
+      return "max";
+    default:
+      assertNever(effort);
+  }
+}
+
+export function reasoningToThinkingConfig(reasoning: Reasoning | undefined):
+  | {
+      output_config: { effort: NonNullable<OutputConfig["effort"]> };
+      thinking: ThinkingConfigAdaptive;
+    }
+  | {
+      thinking: ThinkingConfigDisabled;
+    } {
+  if (
+    !reasoning ||
+    reasoning.effort === "none" ||
+    !isAnthropicSupportedNonNullReasoningEffort(reasoning.effort)
+  ) {
+    return { thinking: { type: "disabled" } };
+  }
+
+  return {
+    output_config: { effort: effortToAnthropicEffort(reasoning.effort) },
+    thinking: { type: "adaptive" },
+  };
 }
