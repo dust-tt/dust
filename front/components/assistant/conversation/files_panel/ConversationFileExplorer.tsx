@@ -3,7 +3,11 @@ import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
-import { downloadFile, getFilePathViewUrl } from "@app/lib/swr/files";
+import {
+  downloadFile,
+  getFilePathViewUrl,
+  getFileProcessedUrl,
+} from "@app/lib/swr/files";
 import { usePodFiles } from "@app/lib/swr/pods";
 import {
   type ConversationWithoutContentType,
@@ -41,6 +45,12 @@ export function ConversationFileExplorer({
 
   const getFileUrl = useCallback(
     (path: string) => getFilePathViewUrl(owner, path),
+    [owner]
+  );
+
+  const getProcessedFileUrl = useCallback(
+    (entry: { fileId: string | null }) =>
+      entry.fileId ? getFileProcessedUrl(owner, entry.fileId) : null,
     [owner]
   );
 
@@ -105,6 +115,7 @@ export function ConversationFileExplorer({
             hideBreadcrumbAtRoot
             isLoading={isSandboxFilesLoading}
             getFileUrl={getFileUrl}
+            getProcessedFileUrl={getProcessedFileUrl}
             onFileDownload={onFileDownload}
             onOpenInteractive={onOpenInteractive}
           />
@@ -123,6 +134,7 @@ export function ConversationFileExplorer({
               hideBreadcrumbAtRoot
               isLoading={isPodFilesLoading}
               getFileUrl={getFileUrl}
+              getProcessedFileUrl={getProcessedFileUrl}
               onFileDownload={onFileDownload}
               onOpenInteractive={onOpenInteractive}
             />

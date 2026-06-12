@@ -4,6 +4,7 @@ import {
   getFileDownloadUrl,
   getFilePathDownloadUrl,
   getFilePathViewUrl,
+  getFileProcessedUrl,
   getFileViewUrl,
 } from "@app/lib/swr/files";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -44,6 +45,7 @@ export function FilePreviewProvider({
     entry: FileEntry;
     fileUrl: string;
     downloadUrl: string;
+    processedFileUrl: string | null;
   } | null>(null);
 
   const openFilePreview = useCallback(
@@ -78,6 +80,9 @@ export function FilePreviewProvider({
         },
         fileUrl,
         downloadUrl,
+        processedFileUrl: file.fileId
+          ? getFileProcessedUrl(owner, file.fileId)
+          : null,
       });
     },
     [owner]
@@ -98,6 +103,7 @@ export function FilePreviewProvider({
         entry={previewState?.entry ?? null}
         fileUrl={previewState?.fileUrl ?? null}
         isOpen={!!previewState}
+        processedFileUrl={previewState?.processedFileUrl ?? null}
         onOpenChange={(open) => {
           if (!open) {
             setPreviewState(null);

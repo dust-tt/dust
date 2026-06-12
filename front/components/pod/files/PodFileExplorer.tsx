@@ -23,7 +23,11 @@ import { usePinPodBanner } from "@app/hooks/usePinPodBanner";
 import type { ContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { useAppRouter } from "@app/lib/platform";
-import { downloadFile, getFilePathViewUrl } from "@app/lib/swr/files";
+import {
+  downloadFile,
+  getFilePathViewUrl,
+  getFileProcessedUrl,
+} from "@app/lib/swr/files";
 import {
   useAddPodContextContentNodes,
   useDeletePodFile,
@@ -556,6 +560,12 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
     [owner]
   );
 
+  const getProcessedFileUrl = useCallback(
+    (entry: { fileId: string | null }) =>
+      entry.fileId ? getFileProcessedUrl(owner, entry.fileId) : null,
+    [owner]
+  );
+
   const getFileResponse = useCallback(
     (path: string) => downloadFile(owner, path),
     [owner]
@@ -772,6 +782,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         emptyState={hasFiles ? undefined : emptyState}
         files={podGCSFiles}
         getFileUrl={getFileUrl}
+        getProcessedFileUrl={getProcessedFileUrl}
         navigationResetKey={navigationResetKey}
         onCurrentFolderChange={setCurrentFolderPath}
         onFileDownload={onFileDownload}

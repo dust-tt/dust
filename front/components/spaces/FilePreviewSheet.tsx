@@ -1,4 +1,5 @@
 import { FrameRenderer } from "@app/components/assistant/conversation/interactive_content/FrameRenderer";
+import { TabularFilePreview } from "@app/components/file_explorer/TabularFilePreview";
 import { clientFetch } from "@app/lib/egress/client";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
@@ -60,6 +61,17 @@ const VIEWER_CONTENT_TYPES = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ] as const;
 
+const SPREADSHEET_CONTENT_TYPES = [
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+] as const;
+
+function isSpreadsheetContentType(contentType: string): boolean {
+  return SPREADSHEET_CONTENT_TYPES.includes(
+    contentType as (typeof SPREADSHEET_CONTENT_TYPES)[number]
+  );
+}
+
 function isViewerCompatible(contentType: string): boolean {
   return VIEWER_CONTENT_TYPES.includes(
     contentType as (typeof VIEWER_CONTENT_TYPES)[number]
@@ -99,6 +111,15 @@ export function getFilePreviewConfig(contentType: string): FilePreviewConfig {
   if (isPdfContentType(contentType)) {
     return {
       category: "pdf",
+      needsProcessedVersion: true,
+      supportsExternalViewer: true,
+      supportsCopyContent: false,
+    };
+  }
+
+  if (isSpreadsheetContentType(contentType)) {
+    return {
+      category: "delimited",
       needsProcessedVersion: true,
       supportsExternalViewer: true,
       supportsCopyContent: false,
@@ -284,10 +305,20 @@ function FileContentRenderer({
         </CodeBlock>
       );
     case "markdown":
-    case "delimited":
     case "text":
       if (processedContent) {
         return <TextContent text={processedContent.text} />;
+      }
+      return null;
+    case "delimited":
+      if (rawFileContent) {
+        return (
+          <TabularFilePreview
+            className="min-h-[600px]"
+            content={rawFileContent}
+            mimeType={file.contentType}
+          />
+        );
       }
       return null;
     default:
