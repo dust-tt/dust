@@ -88,7 +88,7 @@ export async function updateAgentMessageDBAndMemory(
               prunedContext: true;
             };
       }
-): Promise<void> {
+): Promise<boolean> {
   const { agentMessage } = args;
   const where: WhereOptions<InferAttributes<AgentMessageModel>> = {
     id: agentMessage.agentMessageId,
@@ -96,39 +96,40 @@ export async function updateAgentMessageDBAndMemory(
   };
 
   // Terminal status updates go through the advisory-locked updateAgentMessageWithFinalStatus.
+  // Returns false when the terminal transition was not applied (message already finalized):
+  // callers must then skip the remaining terminal side effects.
   if ("conversation" in args) {
     const { conversation, update } = args;
     switch (update.type) {
-      case "error":
-        {
-          const result = await updateAgentMessageWithFinalStatus(auth, {
-            conversation,
-            agentMessage,
-            status: "failed",
-            error: update.error,
-          });
-          agentMessage.status = result.status;
-          agentMessage.completedTs = result.completedTs;
+      case "error": {
+        const result = await updateAgentMessageWithFinalStatus(auth, {
+          conversation,
+          agentMessage,
+          status: "failed",
+          error: update.error,
+        });
+        agentMessage.status = result.status;
+        agentMessage.completedTs = result.completedTs;
+        if (result.applied) {
           agentMessage.error = update.error;
         }
-        break;
+        return result.applied;
+      }
 
-      case "status":
-        {
-          const result = await updateAgentMessageWithFinalStatus(auth, {
-            conversation,
-            agentMessage,
-            status: update.status,
-          });
-          agentMessage.status = result.status;
-          agentMessage.completedTs = result.completedTs;
-        }
-        break;
+      case "status": {
+        const result = await updateAgentMessageWithFinalStatus(auth, {
+          conversation,
+          agentMessage,
+          status: update.status,
+        });
+        agentMessage.status = result.status;
+        agentMessage.completedTs = result.completedTs;
+        return result.applied;
+      }
 
       default:
-        assertNever(update);
+        return assertNever(update);
     }
-    return;
   }
 
   // Non-terminal metadata updates — no lock needed.
@@ -189,6 +190,8 @@ export async function updateAgentMessageDBAndMemory(
     default:
       assertNever(update);
   }
+
+  return true;
 }
 
 export async function markAgentMessageAsFailed(
@@ -202,8 +205,8 @@ export async function markAgentMessageAsFailed(
     conversation: ConversationWithoutContentType;
     error: ToolErrorEvent["error"];
   }
-): Promise<void> {
-  await updateAgentMessageDBAndMemory(auth, {
+): Promise<boolean> {
+  return updateAgentMessageDBAndMemory(auth, {
     agentMessage,
     conversation,
     update: {
@@ -214,6 +217,9 @@ export async function markAgentMessageAsFailed(
 }
 
 // Process database operations for agent events before publishing to Redis.
+// Returns false when a terminal event targets an already-finalized message: the event is stale
+// (e.g. emitted by an orphaned activity after an interrupt) and must be dropped by the caller
+// instead of being published.
 export async function processEventForDatabase(
   auth: Authenticator,
   {
@@ -229,7 +235,7 @@ export async function processEventForDatabase(
     conversation: ConversationWithoutContentType;
     modelInteractionDurationMs?: number;
   }
-): Promise<void> {
+): Promise<boolean> {
   // If we have a model interaction duration, store it.
   if (modelInteractionDurationMs) {
     await updateAgentMessageDBAndMemory(auth, {
@@ -254,13 +260,17 @@ export async function processEventForDatabase(
   }
 
   switch (event.type) {
-    case "agent_error":
+    case "agent_error": {
       // Store error in database.
-      await markAgentMessageAsFailed(auth, {
+      const applied = await markAgentMessageAsFailed(auth, {
         agentMessage,
         conversation,
         error: event.error,
       });
+
+      if (!applied) {
+        return false;
+      }
 
       // Mark the conversation as errored.
       await ConversationResource.markHasError(auth, {
@@ -286,24 +296,30 @@ export async function processEventForDatabase(
         },
       });
       break;
+    }
 
-    case "tool_error":
-      await markAgentMessageAsFailed(auth, {
+    case "tool_error": {
+      const applied = await markAgentMessageAsFailed(auth, {
         agentMessage,
         conversation,
         error: event.error,
       });
+
+      if (!applied) {
+        return false;
+      }
 
       // Mark the conversation as errored.
       await ConversationResource.markHasError(auth, {
         conversation,
       });
       break;
+    }
 
-    case "agent_generation_cancelled":
+    case "agent_generation_cancelled": {
       // Store cancellation in database. Also denies blocked actions of the cancelled message
       // (via updateAgentMessageWithFinalStatus).
-      await updateAgentMessageDBAndMemory(auth, {
+      const applied = await updateAgentMessageDBAndMemory(auth, {
         agentMessage,
         conversation,
         update: {
@@ -311,42 +327,50 @@ export async function processEventForDatabase(
           status: event.status,
         },
       });
+
+      if (!applied) {
+        return false;
+      }
       break;
+    }
 
     case "agent_message_gracefully_stopped":
-    case "agent_message_success":
-      await Promise.all([
-        // Store terminal status in database behind advisory lock.
-        updateAgentMessageDBAndMemory(auth, {
-          agentMessage,
-          conversation,
-          update: {
-            type: "status",
-            status:
-              event.type === "agent_message_gracefully_stopped"
-                ? "gracefully_stopped"
-                : "succeeded",
-          },
-        }),
-        // Mark the conversation as updated
-        ConversationResource.markAsUpdated(auth, { conversation }),
-      ]);
+    case "agent_message_success": {
+      // Store terminal status in database behind advisory lock.
+      const applied = await updateAgentMessageDBAndMemory(auth, {
+        agentMessage,
+        conversation,
+        update: {
+          type: "status",
+          status:
+            event.type === "agent_message_gracefully_stopped"
+              ? "gracefully_stopped"
+              : "succeeded",
+        },
+      });
 
+      if (!applied) {
+        return false;
+      }
+
+      // Mark the conversation as updated
+      await ConversationResource.markAsUpdated(auth, { conversation });
       break;
+    }
 
     default:
       // Ensure we handle all event types.
       break;
   }
 
-  if (!TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(event.type)) {
-    return;
+  if (TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(event.type)) {
+    await ConversationResource.setIsRunningAgentLoop(auth, {
+      conversation,
+      isRunningAgentLoop: false,
+    });
   }
 
-  await ConversationResource.setIsRunningAgentLoop(auth, {
-    conversation,
-    isRunningAgentLoop: false,
-  });
+  return true;
 }
 
 // Process unread state for agent events before publishing to Redis.
@@ -400,13 +424,29 @@ export async function updateResourceAndPublishEvent(
   // computed and persisted later, in the finalize activities (see finalize.ts), so it is
   // intentionally not carried on the terminal events here — clients read it from the messages /
   // conversation API on their next revalidation.
-  await processEventForDatabase(auth, {
+  const shouldPublish = await processEventForDatabase(auth, {
     event,
     agentMessage,
     step,
     conversation,
     modelInteractionDurationMs,
   });
+
+  if (!shouldPublish) {
+    // Stale terminal event from an orphaned activity (the message was already finalized): don't
+    // publish it nor let it mutate conversation flags. Usage metadata (runIds,
+    // modelInteractionDurationMs) was still recorded above: those runs really happened and must
+    // stay attributed for cost accounting.
+    logger.info(
+      {
+        conversationId: conversation.sId,
+        messageId: event.messageId,
+        eventType: event.type,
+      },
+      "Dropping late terminal event for already-finalized agent message"
+    );
+    return;
+  }
 
   await processEventForUnreadState(auth, {
     event,
@@ -686,6 +726,22 @@ export async function finalizeInterruption(
   const { auth, agentConfiguration, agentMessage, conversation } =
     runAgentDataRes.value;
 
+  // The message may have been finalized by another path already (e.g. an orphaned activity
+  // erroring during the kill window). Don't publish a stale interrupted event: the single-shot
+  // guard in updateAgentMessageWithFinalStatus would no-op the transition anyway, and pending
+  // messages were already promoted by the first finalization.
+  if (agentMessage.status !== "created") {
+    logger.info(
+      {
+        agentMessageId: agentMessage.sId,
+        conversationId: conversation.sId,
+        status: agentMessage.status,
+      },
+      "finalizeInterruption: message already finalized, skipping"
+    );
+    return;
+  }
+
   const step = maxBy(agentMessage.contents, "step")?.step ?? 0;
 
   const contentParser = new AgentMessageContentParser(
@@ -704,7 +760,10 @@ export async function finalizeInterruption(
   }
 
   // Published before updateAgentMessageWithFinalStatus so clients drop the old message from
-  // generatingMessages before the new agent message appears.
+  // generatingMessages before the new agent message appears. Known TOCTOU: the DB transition
+  // below may no-op if another terminal event wins after the status snapshot above. We accept
+  // the tiny window because the DB is guarded and the worst case is transient UI state,
+  // corrected on reload.
   await publishConversationRelatedEvent({
     event: {
       type: "agent_generation_cancelled",

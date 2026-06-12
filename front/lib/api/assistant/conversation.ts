@@ -3060,6 +3060,9 @@ export async function updateAgentMessageWithFinalStatus(
 ): Promise<{
   completedTs: number;
   status: Exclude<AgentMessageStatus, "created">;
+  // False when the message was already finalized (or deleted): callers must skip the terminal
+  // side effects (event publish, unread state, conversation flags) of a late terminal event.
+  applied: boolean;
 }> {
   const completedAt = new Date();
   const owner = auth.getNonNullableWorkspace();
@@ -3069,7 +3072,7 @@ export async function updateAgentMessageWithFinalStatus(
     promotedAuth,
     agentMessage: newAgentMessage,
     deniedActions,
-    alreadyFinalized,
+    skippedTransition,
   } = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
@@ -3108,12 +3111,13 @@ export async function updateAgentMessageWithFinalStatus(
         transaction: t,
       });
 
+      // existingAgentMessage is null when the message row was deleted mid-finalize.
       return {
         promotedUserMessages: [] as UserMessageTypeWithoutMentions[],
         promotedAuth: auth,
         agentMessage: null as AgentMessageType | null,
         deniedActions: [],
-        alreadyFinalized: existingAgentMessage,
+        skippedTransition: { existingAgentMessage },
       };
     }
 
@@ -3145,7 +3149,7 @@ export async function updateAgentMessageWithFinalStatus(
         promotedAuth: auth,
         agentMessage: null as AgentMessageType | null,
         deniedActions,
-        alreadyFinalized: null,
+        skippedTransition: null,
       };
     }
 
@@ -3202,7 +3206,7 @@ export async function updateAgentMessageWithFinalStatus(
         promotedAuth,
         agentMessage: null,
         deniedActions,
-        alreadyFinalized: null,
+        skippedTransition: null,
       };
     }
 
@@ -3215,7 +3219,7 @@ export async function updateAgentMessageWithFinalStatus(
         promotedAuth,
         agentMessage: null,
         deniedActions,
-        alreadyFinalized: null,
+        skippedTransition: null,
       };
     }
 
@@ -3243,16 +3247,18 @@ export async function updateAgentMessageWithFinalStatus(
       promotedAuth,
       agentMessage: agentMessages[0] ?? null,
       deniedActions,
-      alreadyFinalized: null,
+      skippedTransition: null,
     };
   });
 
-  if (alreadyFinalized) {
+  if (skippedTransition) {
+    const { existingAgentMessage } = skippedTransition;
+
     logger.warn(
       {
         agentMessageId: agentMessage.sId,
         conversationId: conversation.sId,
-        currentStatus: alreadyFinalized.status,
+        currentStatus: existingAgentMessage?.status ?? "not_found",
         requestedStatus: status,
         workspaceId: owner.sId,
       },
@@ -3261,11 +3267,12 @@ export async function updateAgentMessageWithFinalStatus(
 
     return {
       completedTs:
-        alreadyFinalized.completedAt?.getTime() ?? completedAt.getTime(),
+        existingAgentMessage?.completedAt?.getTime() ?? completedAt.getTime(),
       status:
-        alreadyFinalized.status !== "created"
-          ? alreadyFinalized.status
+        existingAgentMessage && existingAgentMessage.status !== "created"
+          ? existingAgentMessage.status
           : status,
+      applied: false,
     };
   }
 
@@ -3330,5 +3337,6 @@ export async function updateAgentMessageWithFinalStatus(
   return {
     completedTs: completedAt.getTime(),
     status,
+    applied: true,
   };
 }
