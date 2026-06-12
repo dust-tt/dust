@@ -5,8 +5,10 @@ import type {
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import type { Client } from "@app/lib/model_constructors/client";
 import {
+  assistantReasoningMessageToThinkingBlocks,
   conversationToMessages,
   type MessageBlockConverters,
+  reasoningToThinkingConfig,
   systemMessagesToSystemParam,
   systemMessageToTextBlock,
   userTextMessageToTextBlock,
@@ -31,6 +33,8 @@ export function WithAnthropicInputConverter<
   {
     systemMessageToTextBlock = systemMessageToTextBlock;
     userTextMessageToTextBlock = userTextMessageToTextBlock;
+    assistantReasoningMessageToThinkingBlocks =
+      assistantReasoningMessageToThinkingBlocks;
 
     conversationToMessages(
       conversation: Payload["conversation"]
@@ -47,14 +51,25 @@ export function WithAnthropicInputConverter<
       config: InputConfig
     ): MessageCreateParamsNonStreaming {
       const { conversation } = payload;
-      const { temperature } = config;
+      const { temperature, reasoning } = config;
+
+      const thinkingConfig = reasoningToThinkingConfig(reasoning);
+      const outputConfig = {
+        ...("output_config" in thinkingConfig
+          ? thinkingConfig.output_config
+          : {}),
+      };
 
       return {
         model: this.constructor.modelId,
         max_tokens: this.constructor.maxOutputTokens,
         messages: this.conversationToMessages(conversation),
         system: this.systemMessagesToSystemParam(conversation.system),
+        thinking: thinkingConfig.thinking,
         ...(temperature !== undefined ? { temperature } : {}),
+        ...(Object.keys(outputConfig).length > 0
+          ? { output_config: outputConfig }
+          : {}),
       };
     }
   }
