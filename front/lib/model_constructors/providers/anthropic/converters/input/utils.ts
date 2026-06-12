@@ -126,11 +126,16 @@ export function toolCallResultMessageToToolResultBlock(
   message: BaseToolCallResultMessage
 ): ToolResultBlockParam {
   const content: Array<TextBlockParam | ImageBlockParam> =
-    message.content.parts.map((part) =>
-      part.type === "text"
-        ? { type: "text", text: part.text }
-        : { type: "image", source: { type: "url", url: part.url } }
-    );
+    message.content.parts.map((part) => {
+      switch (part.type) {
+        case "text":
+          return { type: "text", text: part.text };
+        case "image_url":
+          return { type: "image", source: { type: "url", url: part.url } };
+        default:
+          return assertNever(part);
+      }
+    });
   return {
     type: "tool_result",
     tool_use_id: message.content.callId,
