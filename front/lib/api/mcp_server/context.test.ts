@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 
 function makeAuthenticator(userId: string): WorkOSWorkspaceAuthenticator {
   return {
+    authMethod: () => "oauth",
     user: () =>
       ({ sId: userId }) as ReturnType<WorkOSWorkspaceAuthenticator["user"]>,
     workspace: () =>
@@ -30,5 +31,11 @@ describe("mcp_server context", () => {
     const authInfo = buildMcpAuthInfo(auth, "token");
 
     expect(authInfo.extra?.[MCP_AUTHENTICATOR_AUTH_EXTRA_KEY]).toBe(auth);
+  });
+
+  it("throws when authInfo extra does not contain an authenticator", () => {
+    expect(() => getAuthenticatorFromMcpContext({})).toThrow(
+      "MCP tool called without authenticated request context."
+    );
   });
 });

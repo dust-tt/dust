@@ -82,8 +82,6 @@ export function apiError(
  * throughput / latency metrics.
  */
 export const unhandledErrorHandler: ErrorHandler = (err, ctx) => {
-  // console log the stack trace
-  console.log(err.stack);
   // Hono throws `HTTPException` for client-facing errors raised inside the app
   // before our handlers run — most notably the JSON body parse failure in
   // `@hono/zod-validator` ("Malformed JSON in request body"). These are client
