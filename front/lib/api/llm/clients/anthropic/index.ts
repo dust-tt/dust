@@ -153,6 +153,7 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       this.metadata = {
         ...this.metadata,
         inferenceProvider: "google_vertex_ai",
+        inferenceRegion: "eu",
       };
     }
     this.client = new Anthropic({

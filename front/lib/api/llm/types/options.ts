@@ -1,4 +1,5 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import type { InferenceRegionType } from "@app/lib/api/assistant/token_pricing";
 import type {
   LLMTraceContext,
   LLMTraceCustomization,
@@ -11,6 +12,8 @@ import type {
 } from "@app/types/assistant/models/types";
 import type { LLMCredentialsType } from "@app/types/provider_credential";
 import { isString } from "@app/types/shared/utils/general";
+
+export type { InferenceRegionType };
 
 export interface SystemPromptInstruction {
   role: "instruction";
@@ -115,6 +118,7 @@ export type LLMParameterOverwrites = Partial<
 export type LLMClientMetadata = {
   clientId: ModelProviderIdType;
   inferenceProvider: string;
+  inferenceRegion: InferenceRegionType;
   modelId: ModelIdType;
 };
 

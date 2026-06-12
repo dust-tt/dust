@@ -167,6 +167,7 @@ const modelOutputFunctionCallEvents: PartialGenerateContentResponse[] = [
 const metadata = {
   clientId: "google_ai_studio",
   inferenceProvider: "google_ai_studio",
+  inferenceRegion: "global",
   modelId: "gemini-2.5-pro",
 } as const;
 

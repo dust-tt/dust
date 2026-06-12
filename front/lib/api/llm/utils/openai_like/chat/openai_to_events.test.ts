@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 const metadata = {
   clientId: "openai",
   inferenceProvider: "openai",
+  inferenceRegion: "global",
   modelId: "gpt-5",
 } as const;
 

@@ -63,6 +63,7 @@ export class GoogleLLM extends LLM<GoogleGenerateContentRequestParams> {
       this.metadata = {
         ...this.metadata,
         inferenceProvider: "google_vertex_ai",
+        inferenceRegion: "eu",
       };
       this.client = new GoogleGenAI({
         vertexai: true,
