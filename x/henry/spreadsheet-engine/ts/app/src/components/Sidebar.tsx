@@ -9,6 +9,8 @@ import type { SheetSource } from "../source";
 interface SidebarProps {
   current: SheetSource | null;
   onOpen: (source: SheetSource) => void;
+  /** Local file open; the owner serializes reads against other opens. */
+  onOpenFile: (file: File) => void;
 }
 
 function SampleList({
@@ -49,18 +51,15 @@ function SampleList({
   );
 }
 
-export function Sidebar({ current, onOpen }: SidebarProps) {
+export function Sidebar({ current, onOpen, onOpenFile }: SidebarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState("");
 
   const openFiles = (files: FileList | null) => {
     const file = files?.[0];
-    if (!file) {
-      return;
+    if (file) {
+      onOpenFile(file);
     }
-    void file.arrayBuffer().then((bytes) => {
-      onOpen({ kind: "file", fileName: file.name, src: { bytes } });
-    });
   };
 
   const openUrl = () => {

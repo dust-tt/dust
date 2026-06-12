@@ -55,9 +55,10 @@ export function SearchBox({ client, handle, controller }: SearchBoxProps) {
 
   useEffect(() => {
     const onMouseDown = (e: MouseEvent) => {
-      if (!containerRef.current?.contains(e.target as Node)) {
-        setOpen(false);
+      if (e.target instanceof Node && containerRef.current?.contains(e.target)) {
+        return;
       }
+      setOpen(false);
     };
     document.addEventListener("mousedown", onMouseDown);
     return () => document.removeEventListener("mousedown", onMouseDown);

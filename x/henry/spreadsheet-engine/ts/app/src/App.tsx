@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { BoltIcon, Chip, DustLogo, Spinner } from "@dust-tt/sparkle";
 import { XlsxViewer } from "@extend-ai/react-xlsx";
@@ -55,14 +55,32 @@ export function App() {
     }
   }, [controller, openMs]);
 
+  // Monotonic token: a slow file read must not overwrite a newer open (the
+  // user may click a sample while a large local file is still being read).
+  const openTokenRef = useRef(0);
+  const openSource = useCallback((next: SheetSource) => {
+    openTokenRef.current++;
+    setSource(next);
+  }, []);
+  const openFile = useCallback((file: File) => {
+    const token = ++openTokenRef.current;
+    file
+      .arrayBuffer()
+      .then((bytes) => {
+        if (openTokenRef.current === token) {
+          setSource({ kind: "file", fileName: file.name, src: { bytes } });
+        }
+      })
+      .catch(() => {
+        // File became unreadable after selection; keep the current view.
+      });
+  }, []);
+
   const openDropped = (files: FileList) => {
     const file = files[0];
-    if (!file) {
-      return;
+    if (file) {
+      openFile(file);
     }
-    void file.arrayBuffer().then((bytes) => {
-      setSource({ kind: "file", fileName: file.name, src: { bytes } });
-    });
   };
 
   return (
@@ -87,7 +105,7 @@ export function App() {
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <Sidebar current={source} onOpen={setSource} />
+        <Sidebar current={source} onOpen={openSource} onOpenFile={openFile} />
 
         <main
           className="relative flex min-w-0 flex-1 flex-col"
