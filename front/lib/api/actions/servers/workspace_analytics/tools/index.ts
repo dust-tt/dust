@@ -14,6 +14,10 @@ import {
 } from "@app/lib/api/actions/servers/workspace_analytics/query_input";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import {
+  fetchContextOriginBreakdown,
+  toLabeledSources,
+} from "@app/lib/api/assistant/observability/context_origin";
+import {
   fetchCreditTimeseries,
   fetchCreditTimeseriesBreakdown,
   fetchCreditUsage,
@@ -361,6 +365,62 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
         type: "text" as const,
         text:
           `Most-used tools for ${label} (${tz}), most used first:\n` +
+          lines.join("\n"),
+      },
+    ]);
+  },
+
+  get_source_breakdown: async (
+    { period, startDate, endDate, timezone, agentIds, userIds },
+    { auth }
+  ) => {
+    const denied = workspaceAdminGuard(auth);
+    if (denied) {
+      return new Err(denied);
+    }
+
+    const window = resolveTimeWindow({ period, startDate, endDate, timezone });
+    if (window.isErr()) {
+      return new Err(new MCPError(window.error, { tracked: false }));
+    }
+
+    const baseQuery = scopedBaseQuery(auth, window.value, {
+      agentIds,
+      userIds,
+    });
+
+    const result = await fetchContextOriginBreakdown(baseQuery);
+    if (result.isErr()) {
+      return new Err(
+        new MCPError(
+          `Failed to retrieve source breakdown: ${result.error.message}`
+        )
+      );
+    }
+
+    const { label, timezone: tz } = window.value;
+    const sources = toLabeledSources(result.value);
+
+    if (sources.length === 0) {
+      return new Ok([
+        {
+          type: "text" as const,
+          text: `No source activity recorded for ${label} (${tz}).`,
+        },
+      ]);
+    }
+
+    const total = sources.reduce((sum, source) => sum + source.count, 0);
+    const lines = sources.map((source, index) => {
+      const percent = total > 0 ? Math.round((source.count / total) * 100) : 0;
+      return `${index + 1}. ${source.label} — ${source.count} messages (${percent}%)`;
+    });
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text:
+          `Message sources for ${label} (${tz}), most used first:\n` +
           lines.join("\n"),
       },
     ]);
