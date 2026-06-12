@@ -5,6 +5,7 @@ import {
   accumulatedToolCallToToolCallEvent,
   inputJsonDeltaToToolCallDeltaEvent,
   invalidJsonToolCallToToolCallEvent,
+  messageDeltaUsageToTokenUsageEvent,
   messageStartToResponseIdEvent,
   type OutputEventConverters,
   reasoningDeltaToReasoningDeltaEvent,
@@ -34,6 +35,7 @@ export function WithAnthropicOutputConverter<
     inputJsonDeltaToToolCallDeltaEvent = inputJsonDeltaToToolCallDeltaEvent;
     accumulatedToolCallToToolCallEvent = accumulatedToolCallToToolCallEvent;
     invalidJsonToolCallToToolCallEvent = invalidJsonToolCallToToolCallEvent;
+    messageDeltaUsageToTokenUsageEvent = messageDeltaUsageToTokenUsageEvent;
   }
 
   return WithAnthropicOutputConverter;
