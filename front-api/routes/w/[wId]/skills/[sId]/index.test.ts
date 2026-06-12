@@ -327,7 +327,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     expect(updatedSkill?.agentFacingDescription).toBe(newDescription);
   });
 
-  it("syncs nested skill references", async () => {
+  it("recomputes nested skill references from instructions", async () => {
     const { workspace, skill, requestUserAuth } = await setupTest({
       requestUserRole: "admin",
     });
@@ -335,12 +335,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     const childSkill = await SkillFactory.create(requestUserAuth, {
       name: "Referenced Skill",
     });
-    const instructionsWithReference =
-      "Use the referenced skill for deeper analysis.";
-    const buildBody = (
-      instructions: string,
-      referencedSkillIds?: string[]
-    ) => ({
+    const buildBody = (instructions: string) => ({
       name: skill.name,
       agentFacingDescription: skill.agentFacingDescription,
       userFacingDescription: skill.userFacingDescription,
@@ -349,13 +344,12 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
       tools: [],
       attachedKnowledge: [],
       instructionsHtml: null,
-      ...(referencedSkillIds !== undefined ? { referencedSkillIds } : {}),
     });
 
     const addResponse = await patchSkill(
       workspace,
       skill.sId,
-      buildBody(instructionsWithReference, [childSkill.sId])
+      buildBody(`Use ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`)
     );
     expect(addResponse.status).toBe(200);
     const skillWithReference = await SkillResource.fetchById(
@@ -371,30 +365,13 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
       }),
     ]);
 
-    const omittedResponse = await patchSkill(
-      workspace,
-      skill.sId,
-      buildBody(instructionsWithReference)
-    );
-    expect(omittedResponse.status).toBe(200);
-    const skillAfterOmittedReferences = await SkillResource.fetchById(
-      requestUserAuth,
-      skill.sId
-    );
-    expect(skillAfterOmittedReferences).not.toBeNull();
-    await expect(
-      skillAfterOmittedReferences!.fetchChildSkills(requestUserAuth)
-    ).resolves.toEqual([
-      expect.objectContaining({
-        sId: childSkill.sId,
-      }),
-    ]);
-
-    const removeResponse = await patchSkill(
-      workspace,
-      skill.sId,
-      buildBody("No nested skill references here.", [])
-    );
+    // Restoring a previous version goes through this same endpoint: saving
+    // instructions without the reference tag must clear the denormalized
+    // references, even if the client still sends a stale referencedSkillIds.
+    const removeResponse = await patchSkill(workspace, skill.sId, {
+      ...buildBody("No nested skill references here."),
+      referencedSkillIds: [childSkill.sId],
+    });
     expect(removeResponse.status).toBe(200);
     const skillWithoutReference = await SkillResource.fetchById(
       requestUserAuth,
@@ -420,11 +397,10 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
       name: skill.name,
       agentFacingDescription: skill.agentFacingDescription,
       userFacingDescription: skill.userFacingDescription,
-      instructions: "Use the other workspace skill.",
+      instructions: `Use <skill id="${outOfWorkspaceSkillId}" name="Other Workspace Skill" />.`,
       icon: null,
       tools: [],
       attachedKnowledge: [],
-      referencedSkillIds: [outOfWorkspaceSkillId],
       instructionsHtml: null,
     });
 
@@ -464,7 +440,6 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
       icon: null,
       tools: [],
       attachedKnowledge: [],
-      referencedSkillIds: [childSkill.sId],
       instructionsHtml: null,
     });
 
