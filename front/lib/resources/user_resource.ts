@@ -20,6 +20,7 @@ import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
+import type { MembershipSeatType } from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -837,12 +838,16 @@ export class UserResource extends BaseResource<UserModel> {
     return [this.firstName, this.lastName].filter(Boolean).join(" ");
   }
 
-  toUserSearchDocument(workspace: LightWorkspaceType): UserSearchDocument {
+  toUserSearchDocument(
+    workspace: LightWorkspaceType,
+    seatType: MembershipSeatType
+  ): UserSearchDocument {
     return {
       workspace_id: workspace.sId,
       user_id: this.sId,
       email: this.email,
       full_name: this.fullName(),
+      seat_type: seatType,
       updated_at: this.updatedAt,
     };
   }

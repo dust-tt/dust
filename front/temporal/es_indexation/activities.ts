@@ -35,6 +35,17 @@ export async function indexUserSearchActivity({
     workspaces.map((workspace) => [workspace.id, workspace])
   );
 
+  // The indexed seat type mirrors the currently-active membership (what the
+  // members table shows), not the latest row: a scheduled future seat change
+  // creates a future-dated membership that `getLatestMemberships` would return,
+  // and indexing it would filter the user under their upcoming seat before the
+  // change actually takes effect.
+  const { memberships: activeMemberships } =
+    await MembershipResource.getActiveMemberships({ users: [user] });
+  const activeSeatTypeByWorkspaceModelId = new Map(
+    activeMemberships.map((m) => [m.workspaceId, m.seatType])
+  );
+
   // Process each membership
   for (const membership of memberships) {
     const workspace = workspaceByModelId.get(membership.workspaceId);
@@ -65,8 +76,12 @@ export async function indexUserSearchActivity({
       }
     } else {
       // Membership is active, index user in this workspace
+      const seatType =
+        activeSeatTypeByWorkspaceModelId.get(membership.workspaceId) ??
+        membership.seatType;
       const document = user.toUserSearchDocument(
-        renderLightWorkspaceType({ workspace, role: membership.role })
+        renderLightWorkspaceType({ workspace, role: membership.role }),
+        seatType
       );
       const indexResult = await indexUserDocument(document);
       if (indexResult.isErr()) {

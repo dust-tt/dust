@@ -30,6 +30,15 @@ async function backfillUserSearch(
   const activeMemberships = memberships.filter((m) => !m.isRevoked());
   const revokedMemberships = memberships.filter((m) => m.isRevoked());
 
+  // Seat type indexed alongside each user mirrors the currently-active
+  // membership, so a member with a scheduled future seat change is indexed
+  // under their current seat rather than the upcoming one.
+  const { memberships: currentMemberships } =
+    await MembershipResource.getActiveMemberships({ workspace });
+  const activeSeatTypeByUserModelId = new Map(
+    currentMemberships.map((m) => [m.userId, m.seatType])
+  );
+
   logger.info(
     {
       workspaceId: workspace.sId,
@@ -65,7 +74,10 @@ async function backfillUserSearch(
           }
 
           // Create the user search document
-          const document = user.toUserSearchDocument(workspace);
+          const seatType =
+            activeSeatTypeByUserModelId.get(membership.userId) ??
+            membership.seatType;
+          const document = user.toUserSearchDocument(workspace, seatType);
 
           // Index the document
           const result = await indexUserDocument(document);

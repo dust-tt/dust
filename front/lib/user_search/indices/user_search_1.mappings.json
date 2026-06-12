@@ -29,6 +29,9 @@
         }
       }
     },
+    "seat_type": {
+      "type": "keyword"
+    },
     "updated_at": {
       "type": "date"
     }
