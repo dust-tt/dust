@@ -12,13 +12,20 @@ import {
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { useInputBarOverlayTracker } from "@app/components/assistant/conversation/input_bar/useInputBarOverlayTracker";
-import type { InputBarSlashSuggestionCapability } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import type {
+  InputBarSlashCommand,
+  InputBarSlashSuggestionCapability,
+} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
 import useUrlHandler from "@app/components/editor/input_bar/useUrlHandler";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
+import {
+  useCompactConversation,
+  useConversationContextUsage,
+} from "@app/hooks/conversations";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
@@ -263,6 +270,10 @@ const InputBarContainer = ({
   );
   const selectedMCPServerViewIdsRef = useRef(selectedMCPServerViewIds);
   const shouldEnableSlashSuggestionRef = useRef(shouldEnableSlashSuggestion);
+  // The slash suggestion extension captures its options at editor initialization, while the
+  // conversation may only be created after the first message; the ref keeps it current.
+  const conversationIdRef = useRef<string | null>(conversation?.sId ?? null);
+  conversationIdRef.current = conversation?.sId ?? null;
   const onSelectRef = useRef<
     ((capability: InputBarSlashSuggestionCapability) => void) | undefined
   >(undefined);
@@ -378,6 +389,18 @@ const InputBarContainer = ({
 
   const sendNotification = useSendNotification();
 
+  // Context usage provides the model required by the compaction endpoint; both back the /compact
+  // slash command. SWR dedupes these with the ContextUsageIndicator calls.
+  const { contextUsage, mutateContextUsage } = useConversationContextUsage({
+    conversationId: conversation?.sId,
+    workspaceId: owner.sId,
+    options: { disabled: !conversation?.sId },
+  });
+  const { compact, isCompacting } = useCompactConversation({
+    owner,
+    conversationId: conversation?.sId,
+  });
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleInlineText = useCallback(
     async (fileId: string, textContent: string) => {
@@ -477,8 +500,40 @@ const InputBarContainer = ({
       .run();
   };
 
+  const handleSlashCommandSelect = (command: InputBarSlashCommand) => {
+    switch (command.id) {
+      case "compact":
+        if (isCompacting) {
+          break;
+        }
+        // The cached context usage may be missing or stale (the endpoint reports a null model
+        // until the latest agent run has usage rows); revalidate on demand before giving up.
+        void (async () => {
+          const usage = contextUsage?.model
+            ? contextUsage
+            : await mutateContextUsage();
+          if (usage?.model) {
+            void compact(usage.model);
+          } else {
+            sendNotification({
+              type: "error",
+              title: "Cannot compact conversation",
+              description:
+                "Compaction requires a completed agent message in the conversation.",
+            });
+          }
+        })();
+        break;
+      default:
+        assertNeverAndIgnore(command.id);
+    }
+  };
+
   onSelectRef.current = (capability: InputBarSlashSuggestionCapability) => {
     switch (capability.kind) {
+      case "command":
+        handleSlashCommandSelect(capability.command);
+        break;
       case "skill":
         handleSkillSelect(capability.skill);
         break;
@@ -494,6 +549,9 @@ const InputBarContainer = ({
 
   onDetailsRef.current = (capability: InputBarSlashSuggestionCapability) => {
     switch (capability.kind) {
+      case "command":
+        // Static commands have no details sheet.
+        break;
       case "skill":
         setSelectedSkillIdForDetails(capability.skill.sId);
         break;
@@ -520,6 +578,7 @@ const InputBarContainer = ({
     onInlineText: handleInlineText,
     onFirstAgentMentionPasteRef,
     slashSuggestion: {
+      conversationIdRef,
       enabledRef: shouldEnableSlashSuggestionRef,
       onSelectRef,
       onDetailsRef,

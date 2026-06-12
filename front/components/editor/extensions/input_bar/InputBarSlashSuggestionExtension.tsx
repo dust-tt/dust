@@ -42,6 +42,7 @@ function isAllowedSlashQuery(state: EditorState, range: Range) {
 
 export interface InputBarSlashSuggestionExtensionOptions {
   owner?: WorkspaceType;
+  conversationIdRef?: RefObject<string | null>;
   enabledRef: RefObject<boolean>;
   onSelectRef: RefObject<
     ((capability: InputBarSlashSuggestionCapability) => void) | undefined
@@ -71,6 +72,7 @@ export const InputBarSlashSuggestionExtension =
     addOptions() {
       return {
         owner: undefined,
+        conversationIdRef: { current: null },
         enabledRef: { current: false },
         onSelectRef: { current: undefined },
         onDetailsRef: { current: undefined },
@@ -136,6 +138,7 @@ export const InputBarSlashSuggestionExtension =
                 component = new ReactRenderer(InputBarSlashSuggestionDropdown, {
                   props: {
                     ...props,
+                    conversationIdRef: extensionOptions.conversationIdRef,
                     onClose: closeSuggestionDropdown,
                     onDetailsRef: extensionOptions.onDetailsRef,
                     owner,
@@ -160,6 +163,7 @@ export const InputBarSlashSuggestionExtension =
                 activeTriggerStart = props.range.from;
                 component?.updateProps({
                   ...props,
+                  conversationIdRef: extensionOptions.conversationIdRef,
                   onClose: closeSuggestionDropdown,
                   onDetailsRef: extensionOptions.onDetailsRef,
                   owner,

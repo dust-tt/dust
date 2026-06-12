@@ -27,6 +27,8 @@ import {
   useRef,
 } from "react";
 import {
+  INPUT_BAR_SLASH_COMMANDS,
+  type InputBarSlashCommand,
   type InputBarSlashSuggestionCapability,
   isInputBarSlashSuggestionCapability,
 } from "./InputBarSlashSuggestionTypes";
@@ -35,18 +37,40 @@ import {
 // exactly seven 3.25rem rows without showing a partial row or leaving extra bottom space.
 const LIST_MAX_HEIGHT_CLASS_NAME = "max-h-[22.75rem]";
 
+const COMMANDS_SECTION_LABEL = "Commands";
+const CAPABILITIES_SECTION_LABEL = "Capabilities";
+
 export function filterInputBarSlashSuggestions({
+  commands,
   query,
   selectedMCPServerViewIds,
   serverViews,
   skills,
 }: {
+  commands: InputBarSlashCommand[];
   query: string;
   selectedMCPServerViewIds: Set<string>;
   serverViews: MCPServerViewType[];
   skills: SkillWithoutInstructionsAndToolsType[];
 }): InputBarSlashSuggestionCapability[] {
   const normalizedQuery = query.trim().toLowerCase();
+
+  // Static commands form their own section ahead of capabilities; both are filtered by the query
+  // but sorted independently so command relevance is never weighed against capability names.
+  const commandMatches: (InputBarSlashSuggestionCapability & {
+    sortName: string;
+  })[] = commands
+    .filter((command) =>
+      matchesSlashCommandCapabilityQuery({
+        label: command.label,
+        query: normalizedQuery,
+      })
+    )
+    .map((command) => ({
+      kind: "command" as const,
+      command,
+      sortName: command.label.toLowerCase(),
+    }));
 
   const capabilities: (InputBarSlashSuggestionCapability & {
     sortName: string;
@@ -79,10 +103,16 @@ export function filterInputBarSlashSuggestions({
       })),
   ];
 
-  return sortSlashCommandCapabilityMatches({
-    items: capabilities,
-    normalizedQuery,
-  }).map(({ sortName: _sortName, ...capability }) => capability);
+  return [
+    ...sortSlashCommandCapabilityMatches({
+      items: commandMatches,
+      normalizedQuery,
+    }),
+    ...sortSlashCommandCapabilityMatches({
+      items: capabilities,
+      normalizedQuery,
+    }),
+  ].map(({ sortName: _sortName, ...capability }) => capability);
 }
 
 export const InputBarSlashSuggestionDropdown = forwardRef<
@@ -91,6 +121,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     SuggestionProps<InputBarSlashSuggestionCapability>,
     "clientRect" | "command" | "editor" | "query" | "range"
   > & {
+    conversationIdRef?: RefObject<string | null>;
     onClose: () => void;
     onDetailsRef?: RefObject<
       ((capability: InputBarSlashSuggestionCapability) => void) | undefined
@@ -103,6 +134,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     {
       clientRect,
       command,
+      conversationIdRef,
       editor,
       query,
       range,
@@ -129,16 +161,21 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     const { serverViews, isLoading: isServerViewsLoading } =
       useMCPServerViewsFromSpaces(owner, globalSpaces, { disabled: !isOpen });
 
+    // Static commands operate on the current conversation, so they are only offered once one
+    // exists.
+    const hasConversation = Boolean(conversationIdRef?.current);
+
     const filteredCapabilities = useMemo(
       () =>
         filterInputBarSlashSuggestions({
+          commands: hasConversation ? INPUT_BAR_SLASH_COMMANDS : [],
           query,
           selectedMCPServerViewIds:
             selectedMCPServerViewIdsRef.current ?? new Set<string>(),
           serverViews,
           skills,
         }),
-      [query, selectedMCPServerViewIdsRef, serverViews, skills]
+      [hasConversation, query, selectedMCPServerViewIdsRef, serverViews, skills]
     );
 
     // Items carry their capability in `data` so selection and details handlers can recover it
@@ -147,10 +184,24 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       () =>
         filteredCapabilities.flatMap((capability): SlashCommand[] => {
           switch (capability.kind) {
+            case "command":
+              return [
+                {
+                  action: "run-command",
+                  data: capability,
+                  description: capability.command.description,
+                  icon: capability.command.icon,
+                  id: `command-${capability.command.id}`,
+                  label: capability.command.label,
+                  sectionLabel: COMMANDS_SECTION_LABEL,
+                },
+              ];
             case "skill":
               return [
                 {
-                  ...getSkillSlashCommandItem(capability.skill),
+                  ...getSkillSlashCommandItem(capability.skill, {
+                    sectionLabel: CAPABILITIES_SECTION_LABEL,
+                  }),
                   data: capability,
                   id: `skill-${capability.skill.sId}`,
                 },
@@ -158,7 +209,9 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
             case "tool":
               return [
                 {
-                  ...getToolSlashCommandItem(capability.serverView),
+                  ...getToolSlashCommandItem(capability.serverView, {
+                    sectionLabel: CAPABILITIES_SECTION_LABEL,
+                  }),
                   data: capability,
                   id: `tool-${capability.serverView.sId}`,
                 },
@@ -178,9 +231,11 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       ref,
       () => ({
         onKeyDown: ({ event }) => {
+          // Static commands are shown while capabilities load, so selection is only blocked when
+          // the list has nothing to select.
           if (
             (event.key === "Enter" || event.key === "Tab") &&
-            (isCapabilitiesLoading || capabilityItems.length === 0)
+            capabilityItems.length === 0
           ) {
             event.preventDefault();
             return true;
@@ -189,7 +244,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           return dropdownRef.current?.onKeyDown({ event }) ?? false;
         },
       }),
-      [capabilityItems.length, isCapabilitiesLoading]
+      [capabilityItems.length]
     );
 
     return (
@@ -208,11 +263,8 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
         }}
         clientRect={clientRect}
         emptyMessage={
-          isCapabilitiesLoading
-            ? "Loading capabilities…"
-            : "No capabilities found"
+          isCapabilitiesLoading ? "Loading capabilities…" : "No matches found"
         }
-        header="Capabilities"
         listMaxHeightClassName={LIST_MAX_HEIGHT_CLASS_NAME}
         onClose={onClose}
         onItemDetails={
