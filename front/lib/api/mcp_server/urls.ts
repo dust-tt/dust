@@ -2,6 +2,18 @@ import config from "@app/lib/api/config";
 import { isDevelopment } from "@app/types/shared/env";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
+/** Flip to disable OAuth proxying in dev (e.g. native MCP clients → AuthKit direct). */
+const MCP_OAUTH_PROXY_ENABLED = true;
+
+/**
+ * Whether MCP OAuth metadata/token/registration should be proxied through the
+ * Dust MCP host. Enabled in development only; never active in production.
+ * Toggle via `MCP_OAUTH_PROXY_ENABLED` in this file.
+ */
+export function shouldUseProxy(): boolean {
+  return isDevelopment() && MCP_OAUTH_PROXY_ENABLED;
+}
+
 /**
  * AuthKit Connect domain for MCP OAuth (e.g. `your-env.authkit.app`).
  *
@@ -42,6 +54,25 @@ export function getMcpResourceServerUrl(): string {
 /** MCP server URL safe to display in client UI (uses public API base URL). */
 export function getMcpResourceServerUrlForClient(): string {
   return normalizeOAuthUrl(`${config.getApiBaseUrl().trim()}/mcp`);
+}
+
+/** MCP host origin for OAuth AS metadata discovery (proxied by front-api). */
+export function getMcpAuthorizationServerUrl(): string {
+  return normalizeOAuthUrl(new URL(getMcpResourceServerUrl()).origin);
+}
+
+export function getMcpAuthorizationServers(): string[] {
+  return shouldUseProxy()
+    ? [getMcpAuthorizationServerUrl()]
+    : [getWorkOSAuthKitDomain()];
+}
+
+export function getWorkOSAuthKitOAuthTokenUrl(): string {
+  return `${getWorkOSAuthKitDomain()}/oauth2/token`;
+}
+
+export function getWorkOSAuthKitOAuthRegistrationUrl(): string {
+  return `${getWorkOSAuthKitDomain()}/oauth2/register`;
 }
 
 export function getMcpResourceMetadataUrl(resourceServerUrl: string): URL {

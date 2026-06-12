@@ -8,7 +8,8 @@ import { isDevelopment } from "@app/types/shared/env";
 import type { MiddlewareHandler } from "hono";
 
 const ALLOW_METHODS = "GET, POST, PUT, PATCH, DELETE, OPTIONS";
-const EXPOSE_HEADERS = "X-Reload-Required, WWW-Authenticate";
+const EXPOSE_HEADERS =
+  "X-Reload-Required, WWW-Authenticate, mcp-session-id, mcp-protocol-version";
 
 /**
  * Adds the cross-origin headers expected by browser clients to every

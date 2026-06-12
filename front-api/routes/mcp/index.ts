@@ -81,8 +81,8 @@ mcpApp.all("/", mcpServerAuthMiddleware, async (c) => {
   setMcpTransportAuth(c, mcpAuthInfo);
   try {
     return await (parsedBody !== undefined
-      ? session!.transport.handleRequest(c, parsedBody)
-      : session!.transport.handleRequest(c));
+      ? session.transport.handleRequest(c, parsedBody)
+      : session.transport.handleRequest(c));
   } finally {
     clearMcpTransportAuth(c);
   }
