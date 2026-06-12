@@ -161,7 +161,11 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     auth,
     conversation,
     [messageRes.value],
-    viewType
+    viewType,
+    null,
+    // Single-message fetch (e.g. the message cost dropdown): include the
+    // aggregated sub-agent credit cost on top of the message's own cost.
+    { includeSubAgentCostCredits: true }
   );
 
   if (renderedMessages.isErr()) {
