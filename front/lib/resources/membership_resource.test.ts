@@ -1,4 +1,5 @@
 import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
+import type { Transaction } from "sequelize";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const inMemoryCache = vi.hoisted(() => new Map<string, string>());
@@ -654,6 +655,93 @@ describe("MembershipResource", () => {
         expect(deletedKeys).toContain(roleCacheKey);
         expect(deletedKeys).toContain(seatsCacheKey);
       });
+    });
+  });
+
+  describe("scheduleSeatChange", () => {
+    let workspace: WorkspaceType;
+    let lightWorkspace: LightWorkspaceType;
+    let outerTransaction: Transaction;
+    const scheduledAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    beforeEach(async (ctx) => {
+      // Capture the outer CLS transaction so scheduleSeatChange can use it as
+      // a parent (SAVEPOINT). Without this, scheduleSeatChange opens a second
+      // DB connection that deadlocks waiting for the lock held by the test
+      // isolation transaction on the membership row.
+      outerTransaction = (ctx as any)["transaction"] as Transaction;
+      workspace = await WorkspaceFactory.basic();
+      lightWorkspace = renderLightWorkspaceType({ workspace });
+    });
+
+    it("initializes the scheduled row's creditState to user_seat for an allowance seat", async () => {
+      const user = await UserFactory.basic();
+      await MembershipResource.createMembership({
+        user,
+        workspace: lightWorkspace,
+        role: "user",
+        origin: "invited",
+        seatType: "workspace",
+      });
+      const active =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user,
+          workspace: lightWorkspace,
+        });
+      if (!active) {
+        throw new Error("Expected an active membership");
+      }
+
+      await active.scheduleSeatChange({
+        user,
+        workspace: lightWorkspace,
+        newSeatType: "max",
+        scheduledAt,
+        author: "no-author",
+        transaction: outerTransaction,
+      });
+
+      const future = await MembershipResource.getScheduledFutureMemberships({
+        workspace: lightWorkspace,
+      });
+      expect(future).toHaveLength(1);
+      expect(future[0].seatType).toBe("max");
+      expect(future[0].creditState).toBe("user_seat");
+    });
+
+    it("initializes the scheduled row's creditState to on_pool for a pool seat", async () => {
+      const user = await UserFactory.basic();
+      await MembershipResource.createMembership({
+        user,
+        workspace: lightWorkspace,
+        role: "user",
+        origin: "invited",
+        seatType: "max",
+      });
+      const active =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user,
+          workspace: lightWorkspace,
+        });
+      if (!active) {
+        throw new Error("Expected an active membership");
+      }
+
+      await active.scheduleSeatChange({
+        user,
+        workspace: lightWorkspace,
+        newSeatType: "workspace",
+        scheduledAt,
+        author: "no-author",
+        transaction: outerTransaction,
+      });
+
+      const future = await MembershipResource.getScheduledFutureMemberships({
+        workspace: lightWorkspace,
+      });
+      expect(future).toHaveLength(1);
+      expect(future[0].seatType).toBe("workspace");
+      expect(future[0].creditState).toBe("on_pool");
     });
   });
 });
