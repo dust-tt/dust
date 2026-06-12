@@ -1,4 +1,5 @@
 import { deleteOrLeaveConversation } from "@app/lib/api/assistant/conversation";
+import { clearActionRequiredIfNoBlockedActions } from "@app/lib/api/assistant/conversation/blocked_actions";
 import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import type {
   GetConversationResponseBody,
@@ -285,6 +286,16 @@ app.patch(
         await ConversationResource.markAsReadForAuthUser(auth, {
           conversation,
         });
+
+        // A stale `actionRequired` flag (e.g. left behind by a manual tool approval whose
+        // message got interrupted before blocked actions were resolved on termination) would
+        // keep the conversation stuck in the unread inbox: self-heal it when no actionable
+        // blocked action remains.
+        if (conversation.actionRequired) {
+          await clearActionRequiredIfNoBlockedActions(auth, {
+            conversationId: conversation.sId,
+          });
+        }
       } else {
         await ConversationResource.markAsUnreadForAuthUser(auth, {
           conversation,
