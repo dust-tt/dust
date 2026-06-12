@@ -1,7 +1,4 @@
-import type {
-  ImageModelIdType,
-  StaticModelIdType,
-} from "@app/types/assistant/models/models";
+import type { StaticModelIdType } from "@app/types/assistant/models/models";
 
 // All pricing are in USD per million tokens (equivalent to micro-USD per token).
 export type PricingEntry = {

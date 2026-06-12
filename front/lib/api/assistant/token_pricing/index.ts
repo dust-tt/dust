@@ -1,12 +1,11 @@
+import { EU_MODEL_PRICING } from "@app/lib/api/assistant/token_pricing/eu";
+import type { PricingEntry } from "@app/lib/api/assistant/token_pricing/global";
+import { MODEL_PRICING } from "@app/lib/api/assistant/token_pricing/global";
 import type {
   ImageModelIdType,
   StaticModelIdType,
 } from "@app/types/assistant/models/models";
 import type { ModelIdType } from "@app/types/assistant/models/types";
-
-import { EU_MODEL_PRICING } from "@app/lib/api/assistant/token_pricing/eu";
-import type { PricingEntry } from "@app/lib/api/assistant/token_pricing/global";
-import { MODEL_PRICING } from "@app/lib/api/assistant/token_pricing/global";
 
 export type { PricingEntry } from "@app/lib/api/assistant/token_pricing/global";
 export { MODEL_PRICING } from "@app/lib/api/assistant/token_pricing/global";
