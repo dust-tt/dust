@@ -28,12 +28,14 @@ export async function searchUsers({
   offset,
   limit,
   orderBy,
+  userIds,
 }: {
   owner: LightWorkspaceType;
   searchTerm: string;
   offset: number;
   limit: number;
   orderBy?: SearchUsersOrderBy;
+  userIds?: string[];
 }): Promise<Result<SearchUsersResult, ElasticsearchError>> {
   return withEs(async (client) => {
     // If searchTerm is empty or only whitespace, return all users from the workspace.
@@ -41,7 +43,10 @@ export async function searchUsers({
 
     const query: estypes.QueryDslQueryContainer = {
       bool: {
-        filter: [{ term: { workspace_id: owner.sId } }],
+        filter: [
+          { term: { workspace_id: owner.sId } },
+          ...(userIds ? [{ terms: { user_id: userIds } }] : []),
+        ],
         ...(hasSearchTerm && {
           should: [
             // Prefix matching on full_name using edge n-grams

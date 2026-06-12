@@ -47,6 +47,11 @@ import type {
   MembershipSeatType,
   MembershipUpgradeRequestType,
 } from "@app/types/memberships";
+import {
+  isMembershipSeatType,
+  SEAT_TYPE_ORDER,
+  toBaseSeatType,
+} from "@app/types/memberships";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { isAdmin } from "@app/types/user";
 import {
@@ -102,6 +107,10 @@ function memberFromUpgradeRequest(
 
 const DEFAULT_PAGE_SIZE = 25;
 
+function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
 export function UsagePage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
@@ -129,6 +138,23 @@ export function UsagePage() {
   // changes so the user lands on the start of the new ordering.
   const handleSetSorting = useCallback((next: SortingState) => {
     setSorting(next);
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  }, []);
+
+  // The seat-type filter is applied server-side before pagination, so reset to
+  // the first page whenever it changes to land on the start of the new set.
+  const handleSetSeatTypeFilter = useCallback(
+    (next: MembershipSeatType | "none" | null) => {
+      setSeatTypeFilter(next);
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+    },
+    []
+  );
+
+  // Name/email search is also applied server-side before pagination, so reset
+  // to the first page whenever the search term changes.
+  const handleSetSearchTerm = useCallback((next: string) => {
+    setSearchTerm(next);
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   }, []);
 
@@ -371,6 +397,7 @@ export function UsagePage() {
       pageSize: pagination.pageSize,
       orderColumn: membersOrderColumn,
       orderDirection: membersOrderDirection,
+      seatType: seatTypeFilter ?? undefined,
     });
 
   const { hasAvailableSeats } = useWorkspaceSeatAvailability({
@@ -386,6 +413,21 @@ export function UsagePage() {
   });
 
   const isSeatBased = Object.keys(seatPlans).length > 1;
+
+  // Seat-type filter options derived from the seats available to this
+  // workspace, collapsed to base tiers (monthly/yearly share one entry) and
+  // ordered by tier.
+  const seatFilterOptions = useMemo(() => {
+    const currentBaseSeatTypes = new Set<MembershipSeatType>();
+    for (const key of Object.keys(seatPlans)) {
+      if (isMembershipSeatType(key)) {
+        currentBaseSeatTypes.add(toBaseSeatType(key));
+      }
+    }
+    return [...currentBaseSeatTypes].sort(
+      (a, b) => SEAT_TYPE_ORDER[a] - SEAT_TYPE_ORDER[b]
+    );
+  }, [seatPlans]);
 
   const plan = subscription.plan;
   const isEnterprise = isEnterprisePlanPrefix(plan.code);
@@ -426,7 +468,7 @@ export function UsagePage() {
         placeholder="Search members"
         value={searchTerm}
         name="search"
-        onChange={setSearchTerm}
+        onChange={handleSetSearchTerm}
         className="w-full"
       />
       {isManualInvitationsEnabled && (
@@ -450,8 +492,7 @@ export function UsagePage() {
             seatTypeFilter === "none"
               ? "No seat"
               : seatTypeFilter
-                ? seatTypeFilter.charAt(0).toUpperCase() +
-                  seatTypeFilter.slice(1)
+                ? capitalize(seatTypeFilter)
                 : "All seats"
           }
           size="sm"
@@ -461,24 +502,19 @@ export function UsagePage() {
       <DropdownMenuContent align="end">
         <DropdownMenuItem
           label="All seats"
-          onClick={() => setSeatTypeFilter(null)}
+          onClick={() => handleSetSeatTypeFilter(null)}
         />
         <DropdownMenuItem
           label="No seat"
-          onClick={() => setSeatTypeFilter("none")}
+          onClick={() => handleSetSeatTypeFilter("none")}
         />
-        <DropdownMenuItem
-          label="Free"
-          onClick={() => setSeatTypeFilter("free")}
-        />
-        <DropdownMenuItem
-          label="Pro"
-          onClick={() => setSeatTypeFilter("pro")}
-        />
-        <DropdownMenuItem
-          label="Max"
-          onClick={() => setSeatTypeFilter("max")}
-        />
+        {seatFilterOptions.map((seatType) => (
+          <DropdownMenuItem
+            key={seatType}
+            label={capitalize(seatType)}
+            onClick={() => handleSetSeatTypeFilter(seatType)}
+          />
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -491,7 +527,6 @@ export function UsagePage() {
       showSpendLimit={!isFreePlanWorkspace}
       totalAllowedUsagePendingMemberIds={totalAllowedUsagePendingMemberIds}
       seatChangePendingMemberIds={seatChangePendingMemberIds}
-      seatTypeFilter={seatTypeFilter}
       isSeatBased={isSeatBased}
       onChangeSeat={handleChangeSeatFromTable}
       onRemoveSeat={onRemoveSeat}

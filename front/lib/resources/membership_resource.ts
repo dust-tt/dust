@@ -48,6 +48,7 @@ type GetMembershipsOptions = RequireAtLeastOne<{
   workspace: LightWorkspaceType;
 }> & {
   roles?: MembershipRoleType[];
+  seatTypes?: MembershipSeatType[];
   transaction?: Transaction;
 };
 
@@ -136,6 +137,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     users,
     workspace,
     roles,
+    seatTypes,
     transaction,
     paginationParams,
   }: GetMembershipsOptions & {
@@ -175,6 +177,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     if (roles) {
       whereClause.role = {
         [Op.in]: roles,
+      };
+    }
+    if (seatTypes) {
+      whereClause.seatType = {
+        [Op.in]: seatTypes,
       };
     }
 
