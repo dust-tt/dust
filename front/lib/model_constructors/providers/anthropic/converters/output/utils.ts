@@ -483,10 +483,23 @@ export function contentBlockStartToEvents(
           block.name
         ),
       ];
-    // We only surface text, thinking, and tool_use blocks. The content_block
-    // union also includes server-tool result / container blocks (and Anthropic
-    // may add more), all intentionally ignored — so no exhaustiveness check.
+    // Block types we don't surface: redacted thinking, server tools, and their
+    // result / container blocks. Listed explicitly so the default stays
+    // exhaustive.
+    case "redacted_thinking":
+    case "server_tool_use":
+    case "web_search_tool_result":
+    case "web_fetch_tool_result":
+    case "code_execution_tool_result":
+    case "bash_code_execution_tool_result":
+    case "text_editor_code_execution_tool_result":
+    case "tool_search_tool_result":
+    case "container_upload":
+      return [];
     default:
+      // Anthropic may add new block types before we redeploy; ignore them
+      // rather than crashing the stream.
+      assertNeverAndIgnore(block);
       return [];
   }
 }
@@ -795,8 +808,23 @@ export function messageToEvents(
         events.push(event);
         break;
       }
+      // Block types we don't surface: redacted thinking, server tools, and
+      // their result / container blocks. Listed explicitly so the default
+      // stays exhaustive.
+      case "redacted_thinking":
+      case "server_tool_use":
+      case "web_search_tool_result":
+      case "web_fetch_tool_result":
+      case "code_execution_tool_result":
+      case "bash_code_execution_tool_result":
+      case "text_editor_code_execution_tool_result":
+      case "tool_search_tool_result":
+      case "container_upload":
+        break;
       default:
-        // Ignore block types we don't surface (redacted_thinking, server tools).
+        // Anthropic may add new block types before we redeploy; ignore them
+        // rather than crashing.
+        assertNeverAndIgnore(block);
         break;
     }
   });
