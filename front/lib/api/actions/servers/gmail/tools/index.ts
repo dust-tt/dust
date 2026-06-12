@@ -841,29 +841,32 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     let base64Data: string | null = null;
 
     const fetchAttachmentFromApi = async (
-      id: string
+      gmailAttachmentId: string
     ): Promise<Result<string, string>> => {
       const response = await fetchFromGmail(
-        `/gmail/v1/users/me/messages/${encodedMessageId}/attachments/${encodeURIComponent(id)}`,
+        `/gmail/v1/users/me/messages/${encodedMessageId}/attachments/${encodeURIComponent(gmailAttachmentId)}`,
         accessToken,
         { method: "GET" }
       );
       if (!response.ok) {
         return new Err(await getErrorText(response));
       }
-      const result = await response.json();
-      return new Ok(result.data);
+      const body = await response.json();
+      if (typeof body.data !== "string") {
+        return new Err("Gmail API returned no attachment data");
+      }
+      return new Ok(body.data);
     };
 
     let attachmentApiErrorText: string | null = null;
 
     // Only try the attachments API if we have a real attachment ID
     if (hasRealAttachmentId && attachmentId) {
-      const result = await fetchAttachmentFromApi(attachmentId);
-      if (result.isOk()) {
-        base64Data = result.value;
+      const fetchResult = await fetchAttachmentFromApi(attachmentId);
+      if (fetchResult.isOk()) {
+        base64Data = fetchResult.value;
       } else {
-        attachmentApiErrorText = result.error;
+        attachmentApiErrorText = fetchResult.error;
         const lowerError = attachmentApiErrorText.toLowerCase();
 
         // Gmail attachment IDs are short-lived tokens: an ID obtained from an
