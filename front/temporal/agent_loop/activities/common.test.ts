@@ -1,9 +1,15 @@
+import { updateAgentMessageWithFinalStatus } from "@app/lib/api/assistant/conversation";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import type { AgentMessageSuccessEvent } from "@app/types/assistant/agent";
+import type {
+  AgentErrorEvent,
+  AgentMessageSuccessEvent,
+} from "@app/types/assistant/agent";
+import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   processEventForDatabase,
@@ -1047,5 +1053,165 @@ describe("updateAgentMessageDBAndMemory", () => {
       // Assert: In-memory object should be updated
       expect(agentMessage.prunedContext).toBe(true);
     });
+  });
+});
+
+describe("late terminal events after finalization", () => {
+  let auth: Awaited<ReturnType<typeof createResourceTest>>["authenticator"];
+  let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
+  let conversation: Awaited<ReturnType<typeof ConversationFactory.create>>;
+  let agentMessage: AgentMessageType;
+  let agentConfig: Awaited<
+    ReturnType<typeof AgentConfigurationFactory.createTestAgent>
+  >;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    auth = setup.authenticator;
+    workspace = setup.workspace;
+
+    agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+    });
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+    ({ agentMessage } = await ConversationFactory.createAgentMessage(auth, {
+      workspace,
+      conversation,
+      agentConfig,
+    }));
+
+    // Interrupt the message (e.g. user skipped), as finalizeInterruption would.
+    const result = await updateAgentMessageWithFinalStatus(auth, {
+      conversation,
+      agentMessage,
+      status: "interrupted",
+    });
+    expect(result.applied).toBe(true);
+
+    // Simulate the promotion having started the next agent loop.
+    await ConversationResource.setIsRunningAgentLoop(auth, {
+      conversation,
+      isRunningAgentLoop: true,
+    });
+  });
+
+  it("drops a late success event without mutating status or conversation flags", async () => {
+    const event: AgentMessageSuccessEvent = {
+      type: "agent_message_success",
+      created: Date.now(),
+      configurationId: agentConfig.sId,
+      messageId: agentMessage.sId,
+      message: agentMessage,
+      runIds: [],
+    };
+
+    const shouldPublish = await processEventForDatabase(auth, {
+      event,
+      agentMessage,
+      step: 0,
+      conversation,
+    });
+
+    expect(shouldPublish).toBe(false);
+
+    const dbMessage = await AgentMessageModel.findOne({
+      where: { id: agentMessage.agentMessageId, workspaceId: workspace.id },
+    });
+    expect(dbMessage?.status).toBe("interrupted");
+
+    // The next loop must still be marked as running.
+    const conversationRes =
+      await ConversationResource.fetchConversationWithoutContent(
+        auth,
+        conversation.sId
+      );
+    expect(conversationRes.isOk()).toBe(true);
+    if (conversationRes.isOk()) {
+      expect(conversationRes.value.isRunningAgentLoop).toBe(true);
+    }
+  });
+
+  it("drops a late error event without failing the message or the conversation", async () => {
+    const event: AgentErrorEvent = {
+      type: "agent_error",
+      created: Date.now(),
+      configurationId: agentConfig.sId,
+      messageId: agentMessage.sId,
+      error: {
+        code: "multi_actions_error",
+        message: "Late error from an orphaned activity",
+        metadata: null,
+      },
+      runIds: [],
+    };
+
+    const shouldPublish = await processEventForDatabase(auth, {
+      event,
+      agentMessage,
+      step: 0,
+      conversation,
+    });
+
+    expect(shouldPublish).toBe(false);
+
+    const dbMessage = await AgentMessageModel.findOne({
+      where: { id: agentMessage.agentMessageId, workspaceId: workspace.id },
+    });
+    expect(dbMessage?.status).toBe("interrupted");
+    expect(dbMessage?.errorCode).toBeNull();
+
+    const conversationRes =
+      await ConversationResource.fetchConversationWithoutContent(
+        auth,
+        conversation.sId
+      );
+    expect(conversationRes.isOk()).toBe(true);
+    if (conversationRes.isOk()) {
+      expect(conversationRes.value.hasError).toBe(false);
+      expect(conversationRes.value.isRunningAgentLoop).toBe(true);
+    }
+  });
+
+  it("still applies the first terminal event normally", async () => {
+    // Sanity check on a fresh (non-finalized) message: the pipeline continues.
+    const freshConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+    const { agentMessage: freshAgentMessage } =
+      await ConversationFactory.createAgentMessage(auth, {
+        workspace,
+        conversation: freshConversation,
+        agentConfig,
+      });
+
+    const event: AgentMessageSuccessEvent = {
+      type: "agent_message_success",
+      created: Date.now(),
+      configurationId: agentConfig.sId,
+      messageId: freshAgentMessage.sId,
+      message: freshAgentMessage,
+      runIds: [],
+    };
+
+    const shouldPublish = await processEventForDatabase(auth, {
+      event,
+      agentMessage: freshAgentMessage,
+      step: 0,
+      conversation: freshConversation,
+    });
+
+    expect(shouldPublish).toBe(true);
+
+    const dbMessage = await AgentMessageModel.findOne({
+      where: {
+        id: freshAgentMessage.agentMessageId,
+        workspaceId: workspace.id,
+      },
+    });
+    expect(dbMessage?.status).toBe("succeeded");
   });
 });

@@ -4841,7 +4841,7 @@ describe("updateAgentMessageWithFinalStatus", () => {
 
     const agentMessages = conversation.content
       .flat()
-      .filter((m) => m.type === "agent_message") as AgentMessageType[];
+      .filter((m): m is AgentMessageType => m.type === "agent_message");
     if (agentMessages.length === 0) {
       throw new Error("No agent message found in conversation");
     }
