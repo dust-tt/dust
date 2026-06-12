@@ -78,6 +78,7 @@ program
   .option("--url <url>", "URL")
   .option("--forceUpsert <bool>", 'Force upsert ("true")')
   .option("--skipReason <reason>", "Skip reason")
+  .option("--skipFetch <bool>", 'Skip fetch ("true")')
   .action(async (subcommand: string, opts) => {
     await dispatch("confluence", subcommand, opts);
   });
