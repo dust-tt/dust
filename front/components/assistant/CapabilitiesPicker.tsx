@@ -30,7 +30,6 @@ import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
   Button,
   Chip,
-  cn,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
@@ -39,14 +38,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   LoadingBlock,
-  ScrollArea,
   ShapesPlus,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
-
-// Rare case where we need a Tailwind arbitrary value: after the fixed search bar, the scrollable list should fit
-// exactly seven 3.25rem rows without showing a partial row or leaving extra bottom space.
-const CAPABILITIES_PICKER_LIST_MAX_HEIGHT_CLASS_NAME = "max-h-[22.75rem]";
 
 interface CapabilityPickerItemBase {
   description?: string;
@@ -124,65 +118,7 @@ function CapabilitiesPickerItemsList({
   onSkillDetails,
   onToolDetails,
 }: CapabilitiesPickerItemsListProps) {
-  const [scrollFadeState, setScrollFadeState] = useState({
-    hasContentAbove: false,
-    hasContentBelow: false,
-  });
   const listRef = useRef<HTMLDivElement>(null);
-  const topScrollSentinelRef = useRef<HTMLDivElement>(null);
-  const bottomScrollSentinelRef = useRef<HTMLDivElement>(null);
-  const itemCount = items.length;
-
-  useEffect(() => {
-    const list = listRef.current;
-    const topScrollSentinel = topScrollSentinelRef.current;
-    const bottomScrollSentinel = bottomScrollSentinelRef.current;
-
-    if (
-      itemCount === 0 ||
-      !list ||
-      !topScrollSentinel ||
-      !bottomScrollSentinel ||
-      typeof IntersectionObserver === "undefined"
-    ) {
-      setScrollFadeState((previousState) =>
-        previousState.hasContentAbove || previousState.hasContentBelow
-          ? {
-              hasContentAbove: false,
-              hasContentBelow: false,
-            }
-          : previousState
-      );
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        setScrollFadeState((previousState) => {
-          const nextState = { ...previousState };
-
-          for (const entry of entries) {
-            if (entry.target === topScrollSentinel) {
-              nextState.hasContentAbove = !entry.isIntersecting;
-            } else if (entry.target === bottomScrollSentinel) {
-              nextState.hasContentBelow = !entry.isIntersecting;
-            }
-          }
-
-          return previousState.hasContentAbove === nextState.hasContentAbove &&
-            previousState.hasContentBelow === nextState.hasContentBelow
-            ? previousState
-            : nextState;
-        });
-      },
-      { root: list }
-    );
-
-    observer.observe(topScrollSentinel);
-    observer.observe(bottomScrollSentinel);
-
-    return () => observer.disconnect();
-  }, [itemCount]);
 
   if (items.length === 0) {
     return (
@@ -193,79 +129,44 @@ function CapabilitiesPickerItemsList({
   }
 
   return (
-    <div className="relative">
-      <ScrollArea
-        viewportRef={listRef}
-        viewportClassName={CAPABILITIES_PICKER_LIST_MAX_HEIGHT_CLASS_NAME}
-      >
-        <div className="relative">
-          <div
-            ref={topScrollSentinelRef}
-            className="pointer-events-none absolute left-0 top-0 h-px w-px"
-            aria-hidden
-          />
-          <div
-            ref={bottomScrollSentinelRef}
-            className="pointer-events-none absolute bottom-0 left-0 h-px w-px"
-            aria-hidden
-          />
-          {items.map((item) => {
-            const endComponent =
-              item.kind === "uninstalled_tool" ? (
-                <Chip size="xs" color="golden" label="Configure" />
-              ) : (
-                <Button
-                  icon={DotsHorizontal}
-                  variant="outline"
-                  size="mini"
-                  className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
+    <div ref={listRef}>
+      {items.map((item) => {
+        const endComponent =
+          item.kind === "uninstalled_tool" ? (
+            <Chip size="xs" color="golden" label="Configure" />
+          ) : (
+            <Button
+              icon={DotsHorizontal}
+              variant="outline"
+              size="mini"
+              className="opacity-0 group-data-[highlighted]:opacity-100 group-focus-within:opacity-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
 
-                    if (item.kind === "skill") {
-                      onSkillDetails(item.skill.sId);
-                    } else {
-                      onToolDetails(item.serverView);
-                    }
-                  }}
-                />
-              );
+                if (item.kind === "skill") {
+                  onSkillDetails(item.skill.sId);
+                } else {
+                  onToolDetails(item.serverView);
+                }
+              }}
+            />
+          );
 
-            return (
-              <DropdownMenuItem
-                key={item.id}
-                icon={item.icon}
-                itemId={item.id}
-                label={item.label}
-                description={item.description}
-                truncateText
-                endComponent={endComponent}
-                className="group"
-                onClick={() => onItemSelect(item)}
-              />
-            );
-          })}
-        </div>
-      </ScrollArea>
-      <div
-        className={cn(
-          "pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-t",
-          "from-transparent via-background/65 to-background opacity-0 transition-opacity duration-200",
-          "dark:via-muted-background-night/65 dark:to-muted-background-night",
-          scrollFadeState.hasContentAbove && "opacity-100"
-        )}
-        aria-hidden
-      />
-      <div
-        className={cn(
-          "pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-b",
-          "from-transparent via-background/65 to-background opacity-0 transition-opacity duration-200",
-          "dark:via-muted-background-night/65 dark:to-muted-background-night",
-          scrollFadeState.hasContentBelow && "opacity-100"
-        )}
-        aria-hidden
-      />
+        return (
+          <DropdownMenuItem
+            key={item.id}
+            icon={item.icon}
+            itemId={item.id}
+            label={item.label}
+            description={item.description}
+            truncateText
+            endComponent={endComponent}
+            className="group"
+            onClick={() => onItemSelect(item)}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -593,15 +494,19 @@ export function CapabilitiesPicker({
               setIsClosing(false);
             }
           }}
+          dropdownHeaders={
+            <>
+              <DropdownMenuSearchbar
+                autoFocus={!isMobile}
+                name="search-capabilities"
+                placeholder="Search capabilities"
+                value={searchText}
+                onChange={setSearchText}
+              />
+              <DropdownMenuSeparator />
+            </>
+          }
         >
-          <DropdownMenuSearchbar
-            autoFocus={!isMobile}
-            name="search-capabilities"
-            placeholder="Search capabilities"
-            value={searchText}
-            onChange={setSearchText}
-          />
-          <DropdownMenuSeparator />
           {(!isSkillsDataReady || !isToolsDataReady) && (
             <CapabilitiesPickerLoading />
           )}
