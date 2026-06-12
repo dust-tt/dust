@@ -370,13 +370,13 @@ export class UserResource extends BaseResource<UserModel> {
       offset,
       limit,
       orderBy,
-      restrictToUserIds,
+      seatTypes,
     }: {
       searchTerm: string;
       offset: number;
       limit: number;
       orderBy?: SearchUsersOrderBy;
-      restrictToUserIds?: string[];
+      seatTypes?: MembershipSeatType[];
     }
   ): Promise<Result<{ users: UserResource[]; total: number }, Error>> {
     const owner = auth.getNonNullableWorkspace();
@@ -388,7 +388,7 @@ export class UserResource extends BaseResource<UserModel> {
       offset,
       limit,
       orderBy,
-      userIds: restrictToUserIds,
+      seatTypes,
     });
     if (searchResult.isErr()) {
       return searchResult;

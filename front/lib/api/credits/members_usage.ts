@@ -54,7 +54,6 @@ import {
   toBaseSeatType,
 } from "@app/types/memberships";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { LightWorkspaceType } from "@app/types/user";
 import { z } from "zod";
 
 export type MemberUsageType = {
@@ -713,28 +712,15 @@ export async function getMemberUsage({
   };
 }
 
-// Resolve the member user sIds matching a base seat-type filter, querying the
-// memberships table directly (a base tier matches its monthly + yearly
-// variants). Seat type isn't held in the user search index, so we hand these
-// ids to Elasticsearch as an allowlist and let it own search/sort/pagination
-// over the filtered set.
-async function resolveSeatTypeFilterUserIds({
-  workspace,
-  seatType,
-}: {
-  workspace: LightWorkspaceType;
-  seatType: MembershipSeatType;
-}): Promise<string[]> {
-  const seatTypes = MEMBERSHIP_SEAT_TYPES.filter(
-    (t) => toBaseSeatType(t) === seatType
-  );
-  const { memberships } = await MembershipResource.getActiveMemberships({
-    workspace,
-    seatTypes,
-  });
-  return memberships
-    .map((m) => m.user?.sId)
-    .filter((sId): sId is string => Boolean(sId));
+// Expand a base seat-type filter to the concrete seat types it matches (a base
+// tier matches its monthly + yearly variants, e.g. `pro` → `pro` + `pro_yearly`).
+// The seat type is denormalized into the user search index, so the filter is
+// handed to Elasticsearch which owns search/sort/pagination over the filtered
+// set (a non-matching filter naturally yields an empty page).
+function expandSeatTypeFilter(
+  seatType: MembershipSeatType
+): MembershipSeatType[] {
+  return MEMBERSHIP_SEAT_TYPES.filter((t) => toBaseSeatType(t) === seatType);
 }
 
 export async function getMembersUsage({
@@ -755,19 +741,12 @@ export async function getMembersUsage({
   const { metronomeCustomerId } = workspace;
   const metronomeContractId = subscription?.metronomeContractId ?? null;
 
-  // When a seat-type filter is active, resolve the matching user sIds up front
-  // and restrict the search to them so pagination and the returned `total`
-  // reflect the filtered set. No match means an empty page.
-  let restrictToUserIds: string[] | undefined;
-  if (paginationParams.seatType) {
-    restrictToUserIds = await resolveSeatTypeFilterUserIds({
-      workspace,
-      seatType: paginationParams.seatType,
-    });
-    if (restrictToUserIds.length === 0) {
-      return { members: [], total: 0 };
-    }
-  }
+  // When a seat-type filter is active, hand the matching seat types to the
+  // search index so pagination and the returned `total` reflect the filtered
+  // set. A base tier matches its monthly + yearly variants.
+  const seatTypes = paginationParams.seatType
+    ? expandSeatTypeFilter(paginationParams.seatType)
+    : undefined;
 
   const usersResult = await UserResource.searchUsers(auth, {
     searchTerm: paginationParams.search ?? "",
@@ -777,7 +756,7 @@ export async function getMembersUsage({
       field: paginationParams.orderColumn,
       direction: paginationParams.orderDirection,
     },
-    restrictToUserIds,
+    seatTypes,
   });
 
   if (usersResult.isErr()) {

@@ -1,5 +1,6 @@
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { USER_SEARCH_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
+import type { MembershipSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { UserSearchDocument } from "@app/types/user_search/user_search";
@@ -28,14 +29,19 @@ export async function searchUsers({
   offset,
   limit,
   orderBy,
-  userIds,
+  seatTypes,
 }: {
   owner: LightWorkspaceType;
   searchTerm: string;
   offset: number;
   limit: number;
   orderBy?: SearchUsersOrderBy;
-  userIds?: string[];
+  // Optional seat-type filter. The seat type is denormalized into the index
+  // (see `UserSearchDocument.seat_type`), so the filter is owned by
+  // Elasticsearch and the returned `total`/pagination reflect the filtered set.
+  // A base tier should be expanded to its variants (e.g. `pro` + `pro_yearly`)
+  // by the caller.
+  seatTypes?: MembershipSeatType[];
 }): Promise<Result<SearchUsersResult, ElasticsearchError>> {
   return withEs(async (client) => {
     // If searchTerm is empty or only whitespace, return all users from the workspace.
@@ -45,7 +51,7 @@ export async function searchUsers({
       bool: {
         filter: [
           { term: { workspace_id: owner.sId } },
-          ...(userIds ? [{ terms: { user_id: userIds } }] : []),
+          ...(seatTypes ? [{ terms: { seat_type: seatTypes } }] : []),
         ],
         ...(hasSearchTerm && {
           should: [
