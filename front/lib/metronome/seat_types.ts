@@ -131,35 +131,30 @@ export type FreeSeatCounts = {
 /**
  * Returns the seat type to assign to a new membership on this contract.
  *
- * The default is derived from the contract itself — no rate-card custom
- * field. We order the seat tiers actually billed on the contract by AWU
- * allowance (ascending — the cheapest first) and pick the lowest tier.
+ * The seat is chosen in three phases:
  *
- * Legacy contracts carrying only untagged subscriptions (e.g. the legacy
- * MAU plan products) fall back to `"workspace"` — those subscriptions are
- * quantity-managed by `syncMauCount`, so the seat type is informational
- * only and `"workspace"` matches what new-tier enterprise contracts use.
+ *  1. **Committed seats** — iterate the contract's non-`free` seat types
+ *     ordered by AWU allowance ascending (cheapest first). For each type that
+ *     has a committed allocation (`seatLimits.minSeats > 0`) with remaining
+ *     slots (`assignedCount < minSeats`), assign it.
  *
- * `free` is a one-shot starter tier (its lifetime AWU credit cannot be
- * re-granted). It is skipped, and the next tier in the ordering is
- * tried, when any of the following are true:
+ *  2. **Free seat** — if `free` is on the contract and all of the following
+ *     hold, assign `free`:
+ *       - `isReturningMember` is false (`free` is a one-shot starter tier).
+ *       - `useFreeSeat` is true (caller has not opted out).
+ *       - Active free-seat cap not exceeded.
+ *       - Lifetime free-seat cap not exceeded.
  *
- *   - `isReturningMember` is true (the user already had a membership row
- *     in this workspace at some point).
- *   - `useFreeSeat` is false (caller opted out, e.g. an admin invitation
- *     that should land on a paid tier directly).
- *   - `freeSeatCounts.active >= freeSeatLimits.maxActiveFreeUsers` (and
- *     the limit is not `-1`).
- *   - `freeSeatCounts.lifetime >= freeSeatLimits.maxLifetimeFreeUsers`
- *     (and the limit is not `-1`).
+ *  3. **None** — all committed slots are taken and `free` is unavailable:
+ *     return `"none"` (no-seat tier).
  *
- * Returns `undefined` when no remaining tier is assignable (e.g. a
- * free-only contract that has exhausted its lifetime cap).
+ * Legacy contracts that carry no seat subscriptions return `"workspace"` early
+ * and never reach the three phases.
  *
- * The workspace-wide active-member cap (`plan.limits.users.maxUsers`) is
- * NOT enforced here — it's already enforced upstream by
- * `evaluateWorkspaceSeatAvailability` (signup) and `invitation.ts` (invite
- * creation).
+ * The workspace-wide active-member cap (`plan.limits.users.maxUsers`) is NOT
+ * enforced here — it is already enforced upstream by
+ * `evaluateWorkspaceSeatAvailability` (signup) and `invitation.ts`
+ * (invite creation).
  */
 export function getDefaultSeatTypeForContract(
   contract: CachedContract,
@@ -179,7 +174,7 @@ export function getDefaultSeatTypeForContract(
     seatLimits?: Map<MembershipSeatType, SeatLimit>;
     seatCounts?: Partial<Record<MembershipSeatType, number>>;
   } = {}
-): MembershipSeatType | undefined {
+): MembershipSeatType {
   const seatTypesOnContract = [
     ...getSeatSubscriptionsFromContract(contract, productSeatTypes).keys(),
   ];
@@ -196,53 +191,45 @@ export function getDefaultSeatTypeForContract(
     // and free = 0 on a hybrid contract).
     .sort((a, b) => a.awu - b.awu || a.seatType.localeCompare(b.seatType));
 
-  // Track whether any tier was skipped because it hit its maxSeats cap.
-  // If every tier is capped (and none was skippable for another reason), we
-  // return "none" instead of undefined so callers assign the member to the
-  // "no seat" tier rather than throwing.
-  let anyTierAtMaxCap = false;
-
+  // Phase 1: assign to the cheapest committed seat type with remaining slots.
+  // A seat type is committed if seatLimits.minSeats > 0. The commitment is
+  // exhausted once assignedCount >= minSeats.
   for (const { seatType } of ordered) {
     if (seatType === "free") {
-      if (isReturningMember || !useFreeSeat) {
-        continue;
-      }
-      if (
-        freeSeatLimits &&
-        freeSeatCounts &&
-        freeSeatLimits.maxActiveFreeUsers !== -1 &&
-        freeSeatCounts.active >= freeSeatLimits.maxActiveFreeUsers
-      ) {
-        continue;
-      }
-      if (
-        freeSeatLimits &&
-        freeSeatCounts &&
-        freeSeatLimits.maxLifetimeFreeUsers !== -1 &&
-        freeSeatCounts.lifetime >= freeSeatLimits.maxLifetimeFreeUsers
-      ) {
-        continue;
-      }
+      continue;
     }
-
-    // Skip this tier if it has a maxSeats cap and is at capacity.
     const limit = seatLimits?.get(seatType);
-    if (limit?.maxSeats !== null && limit?.maxSeats !== undefined) {
-      const assignedCount = seatCounts?.[seatType] ?? 0;
-      if (assignedCount >= limit.maxSeats) {
-        anyTierAtMaxCap = true;
-        continue;
-      }
+    if (!limit || limit.minSeats <= 0) {
+      continue;
     }
-
-    return seatType;
+    const assignedCount = seatCounts?.[seatType] ?? 0;
+    if (assignedCount < limit.minSeats) {
+      return seatType;
+    }
   }
 
-  // All tiers were skipped: if at least one was capped by maxSeats, signal
-  // "no seat" so the caller assigns the member to the none tier. Otherwise
-  // (e.g. only the free tier exists and it is exhausted) return undefined so
-  // the caller can surface the appropriate error.
-  return anyTierAtMaxCap ? "none" : undefined;
+  // Phase 2: committed seats exhausted — try "free" if on the contract and
+  // the caller/workspace conditions allow it.
+  if (seatTypesOnContract.includes("free")) {
+    if (!isReturningMember && useFreeSeat) {
+      const activeCapHit =
+        freeSeatLimits !== undefined &&
+        freeSeatCounts !== undefined &&
+        freeSeatLimits.maxActiveFreeUsers !== -1 &&
+        freeSeatCounts.active >= freeSeatLimits.maxActiveFreeUsers;
+      const lifetimeCapHit =
+        freeSeatLimits !== undefined &&
+        freeSeatCounts !== undefined &&
+        freeSeatLimits.maxLifetimeFreeUsers !== -1 &&
+        freeSeatCounts.lifetime >= freeSeatLimits.maxLifetimeFreeUsers;
+      if (!activeCapHit && !lifetimeCapHit) {
+        return "free";
+      }
+    }
+  }
+
+  // Phase 3: no committed seat or free available.
+  return "none";
 }
 
 /**

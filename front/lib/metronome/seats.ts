@@ -24,7 +24,6 @@ import {
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import {
   getAwuAllocationForSeatType,
-  getDefaultSeatTypeForContract,
   getNextSeatCreditRenewalDate,
   getProductSeatTypes,
   getSeatSubscriptionsFromContract,
@@ -243,7 +242,8 @@ export function classifySeatChange({
  *  - keep the current type if the contract still bills it;
  *  - if the current type is monthly and the contract bills its yearly
  *    equivalent (`<type>_yearly`), convert to yearly;
- *  - otherwise fall back to the contract's default tier (no `free`).
+ *  - otherwise fall back to the cheapest seat type on the contract, skipping
+ *    `free` when `useFreeSeat` is false.
  *
  * Returns `undefined` when no target is resolvable (caller leaves the
  * membership untouched).
@@ -266,9 +266,21 @@ export function resolveRemappedSeatType(
       return yearly;
     }
   }
-  return getDefaultSeatTypeForContract(contract, productSeatTypes, {
-    useFreeSeat,
-  });
+  // Fallback: assign the cheapest seat type billed on the contract (by AWU
+  // allowance), skipping "free" when the caller opted out.
+  const ordered = [...onContract]
+    .map((seatType) => ({
+      seatType,
+      awu: getAwuAllocationForSeatType(contract, seatType, productSeatTypes),
+    }))
+    .sort((a, b) => a.awu - b.awu || a.seatType.localeCompare(b.seatType));
+  for (const { seatType } of ordered) {
+    if (seatType === "free" && !useFreeSeat) {
+      continue;
+    }
+    return seatType;
+  }
+  return undefined;
 }
 
 /**
