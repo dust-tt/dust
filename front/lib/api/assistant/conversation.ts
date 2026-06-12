@@ -3057,6 +3057,9 @@ export async function updateAgentMessageWithFinalStatus(
 ): Promise<{
   completedTs: number;
   status: Exclude<AgentMessageStatus, "created">;
+  // False when the message was already finalized (or deleted): callers must skip the terminal
+  // side effects (event publish, unread state, conversation flags) of a late terminal event.
+  applied: boolean;
 }> {
   const completedAt = new Date();
   const owner = auth.getNonNullableWorkspace();
@@ -3065,10 +3068,15 @@ export async function updateAgentMessageWithFinalStatus(
     promotedUserMessages,
     promotedAuth,
     agentMessage: newAgentMessage,
+    skippedTransition,
   } = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
-    await AgentMessageModel.update(
+    // Only transition from "created": finalization is single-shot. A late terminal event from an
+    // orphaned activity (e.g. an LLM call still running after an interrupt) must not overwrite
+    // the final status nor re-run the pending-messages promotion below, which would spawn a
+    // second concurrent agent loop.
+    const [updatedCount] = await AgentMessageModel.update(
       {
         status,
         completedAt,
@@ -3084,10 +3092,29 @@ export async function updateAgentMessageWithFinalStatus(
         where: {
           id: agentMessage.agentMessageId,
           workspaceId: owner.id,
+          status: "created",
         },
         transaction: t,
       }
     );
+
+    if (updatedCount === 0) {
+      const existingAgentMessage = await AgentMessageModel.findOne({
+        where: {
+          id: agentMessage.agentMessageId,
+          workspaceId: owner.id,
+        },
+        transaction: t,
+      });
+
+      // existingAgentMessage is null when the message row was deleted mid-finalize.
+      return {
+        promotedUserMessages: [] as UserMessageTypeWithoutMentions[],
+        promotedAuth: auth,
+        agentMessage: null as AgentMessageType | null,
+        skippedTransition: { existingAgentMessage },
+      };
+    }
 
     // Promote *all* pending messages when the agent loop ends. If a pending message exists it
     // will be promoted and will trigger the ending agentMessage. The `enableSteering` invariants
@@ -3109,6 +3136,7 @@ export async function updateAgentMessageWithFinalStatus(
         promotedUserMessages: [] as UserMessageTypeWithoutMentions[],
         promotedAuth: auth,
         agentMessage: null as AgentMessageType | null,
+        skippedTransition: null,
       };
     }
 
@@ -3164,6 +3192,7 @@ export async function updateAgentMessageWithFinalStatus(
         promotedUserMessages,
         promotedAuth,
         agentMessage: null,
+        skippedTransition: null,
       };
     }
 
@@ -3175,6 +3204,7 @@ export async function updateAgentMessageWithFinalStatus(
         promotedUserMessages,
         promotedAuth,
         agentMessage: null,
+        skippedTransition: null,
       };
     }
 
@@ -3201,8 +3231,34 @@ export async function updateAgentMessageWithFinalStatus(
       promotedUserMessages,
       promotedAuth,
       agentMessage: agentMessages[0] ?? null,
+      skippedTransition: null,
     };
   });
+
+  if (skippedTransition) {
+    const { existingAgentMessage } = skippedTransition;
+
+    logger.warn(
+      {
+        agentMessageId: agentMessage.sId,
+        conversationId: conversation.sId,
+        currentStatus: existingAgentMessage?.status ?? "not_found",
+        requestedStatus: status,
+        workspaceId: owner.sId,
+      },
+      "updateAgentMessageWithFinalStatus: message already finalized, skipping"
+    );
+
+    return {
+      completedTs:
+        existingAgentMessage?.completedAt?.getTime() ?? completedAt.getTime(),
+      status:
+        existingAgentMessage && existingAgentMessage.status !== "created"
+          ? existingAgentMessage.status
+          : status,
+      applied: false,
+    };
+  }
 
   // Publish events and launch agent loop outside of the advisory lock.
   if (promotedUserMessages.length > 0) {
@@ -3251,5 +3307,6 @@ export async function updateAgentMessageWithFinalStatus(
   return {
     completedTs: completedAt.getTime(),
     status,
+    applied: true,
   };
 }

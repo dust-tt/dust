@@ -7,6 +7,7 @@ import {
   retryAgentMessage,
   softDeleteAgentMessage,
   softDeleteUserMessageAndReplies,
+  updateAgentMessageWithFinalStatus,
 } from "@app/lib/api/assistant/conversation";
 import { compactConversation } from "@app/lib/api/assistant/conversation/compaction";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
@@ -4805,5 +4806,113 @@ describe("postUserMessage no-seat gate", () => {
       expect(result.error.status_code).toBe(403);
       expect(result.error.api_error.type).toBe("no_seat");
     }
+  });
+});
+
+describe("updateAgentMessageWithFinalStatus", () => {
+  let auth: Authenticator;
+  let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
+  let conversation: ConversationType;
+  let agentMessage: AgentMessageType;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    auth = setup.authenticator;
+    workspace = setup.workspace;
+
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+      description: "Test Agent Description",
+    });
+
+    const conversationWithoutContent = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const fetchedConversationResult = await getConversation(
+      auth,
+      conversationWithoutContent.sId
+    );
+    if (fetchedConversationResult.isErr()) {
+      throw new Error("Failed to fetch conversation");
+    }
+    conversation = fetchedConversationResult.value;
+
+    const agentMessages = conversation.content
+      .flat()
+      .filter((m): m is AgentMessageType => m.type === "agent_message");
+    if (agentMessages.length === 0) {
+      throw new Error("No agent message found in conversation");
+    }
+    agentMessage = agentMessages[0];
+
+    vi.clearAllMocks();
+  });
+
+  it("only applies the first terminal status (finalization is single-shot)", async () => {
+    const first = await updateAgentMessageWithFinalStatus(auth, {
+      conversation,
+      agentMessage,
+      status: "interrupted",
+    });
+    expect(first.status).toBe("interrupted");
+
+    // A late terminal event from an orphaned activity (e.g. an LLM call still
+    // running after an interrupt) must not overwrite the final status.
+    const second = await updateAgentMessageWithFinalStatus(auth, {
+      conversation,
+      agentMessage,
+      status: "succeeded",
+    });
+    expect(second.status).toBe("interrupted");
+
+    const agentMessageRow = await AgentMessageModel.findOne({
+      where: { id: agentMessage.agentMessageId, workspaceId: workspace.id },
+    });
+    expect(agentMessageRow?.status).toBe("interrupted");
+  });
+
+  it("does not promote pending messages nor spawn a new agent loop when already finalized", async () => {
+    await updateAgentMessageWithFinalStatus(auth, {
+      conversation,
+      agentMessage,
+      status: "interrupted",
+    });
+
+    // Queue a steering message, pending at the time the late terminal event arrives. The
+    // conversation already has messages at ranks 0 and 1.
+    const { messageRow } = await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      content: "steering message",
+      rank: 2,
+    });
+    await MessageModel.update(
+      { visibility: "pending" },
+      {
+        where: { id: messageRow.id, workspaceId: workspace.id },
+        // Bulk update constructs a dummy instance failing the beforeValidate hook; the row is
+        // already valid, we only update visibility.
+        validate: false,
+      }
+    );
+
+    vi.clearAllMocks();
+
+    const result = await updateAgentMessageWithFinalStatus(auth, {
+      conversation,
+      agentMessage,
+      status: "succeeded",
+    });
+    expect(result.status).toBe("interrupted");
+
+    // The pending steering message must remain pending: no promotion, no new agent loop.
+    const pendingMessageRow = await MessageModel.findOne({
+      where: { id: messageRow.id, workspaceId: workspace.id },
+    });
+    expect(pendingMessageRow?.visibility).toBe("pending");
+    expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
   });
 });
