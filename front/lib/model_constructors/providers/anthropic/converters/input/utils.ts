@@ -1,5 +1,6 @@
 import type {
   CacheControlEphemeral,
+  ImageBlockParam,
   MessageParam,
   OutputConfig,
   TextBlockParam,
@@ -16,6 +17,7 @@ import type {
   BaseAssistantMessage,
   BaseAssistantReasoningMessage,
   BaseConversation,
+  BaseUserImageMessage,
   BaseUserMessage,
   BaseUserTextMessage,
   CacheOption,
@@ -29,6 +31,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 export interface MessageBlockConverters {
   systemMessageToTextBlock(message: SystemTextMessage): TextBlockParam;
   userTextMessageToTextBlock(message: BaseUserTextMessage): TextBlockParam;
+  userImageMessageToImageBlock(message: BaseUserImageMessage): ImageBlockParam;
   assistantReasoningMessageToThinkingBlocks(
     message: BaseAssistantReasoningMessage
   ): ThinkingBlockParam[];
@@ -74,6 +77,16 @@ export function userTextMessageToTextBlock(
   };
 }
 
+export function userImageMessageToImageBlock(
+  message: BaseUserImageMessage
+): ImageBlockParam {
+  return {
+    type: "image",
+    source: { type: "url", url: message.content.url },
+    ...cacheControlFor(message.cache),
+  };
+}
+
 export function assistantReasoningMessageToThinkingBlocks(
   message: BaseAssistantReasoningMessage
 ): ThinkingBlockParam[] {
@@ -99,6 +112,8 @@ export function userMessageToContentBlocks(
   switch (message.type) {
     case "text":
       return [converters.userTextMessageToTextBlock(message)];
+    case "image_url":
+      return [converters.userImageMessageToImageBlock(message)];
     default:
       // Other user message types are wired in in subsequent commits.
       return [];
