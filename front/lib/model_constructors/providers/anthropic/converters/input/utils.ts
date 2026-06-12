@@ -7,6 +7,7 @@ import type {
   ThinkingBlockParam,
   ThinkingConfigAdaptive,
   ThinkingConfigDisabled,
+  ToolResultBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import {
   type ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS,
@@ -17,6 +18,7 @@ import type {
   BaseAssistantMessage,
   BaseAssistantReasoningMessage,
   BaseConversation,
+  BaseToolCallResultMessage,
   BaseUserImageMessage,
   BaseUserMessage,
   BaseUserTextMessage,
@@ -32,6 +34,9 @@ export interface MessageBlockConverters {
   systemMessageToTextBlock(message: SystemTextMessage): TextBlockParam;
   userTextMessageToTextBlock(message: BaseUserTextMessage): TextBlockParam;
   userImageMessageToImageBlock(message: BaseUserImageMessage): ImageBlockParam;
+  toolCallResultMessageToToolResultBlock(
+    message: BaseToolCallResultMessage
+  ): ToolResultBlockParam;
   assistantReasoningMessageToThinkingBlocks(
     message: BaseAssistantReasoningMessage
   ): ThinkingBlockParam[];
@@ -87,6 +92,24 @@ export function userImageMessageToImageBlock(
   };
 }
 
+export function toolCallResultMessageToToolResultBlock(
+  message: BaseToolCallResultMessage
+): ToolResultBlockParam {
+  const content: Array<TextBlockParam | ImageBlockParam> =
+    message.content.parts.map((part) =>
+      part.type === "text"
+        ? { type: "text", text: part.text }
+        : { type: "image", source: { type: "url", url: part.url } }
+    );
+  return {
+    type: "tool_result",
+    tool_use_id: message.content.callId,
+    content,
+    ...(message.content.isError ? { is_error: true } : {}),
+    ...cacheControlFor(message.cache),
+  };
+}
+
 export function assistantReasoningMessageToThinkingBlocks(
   message: BaseAssistantReasoningMessage
 ): ThinkingBlockParam[] {
@@ -114,9 +137,10 @@ export function userMessageToContentBlocks(
       return [converters.userTextMessageToTextBlock(message)];
     case "image_url":
       return [converters.userImageMessageToImageBlock(message)];
+    case "tool_call_result":
+      return [converters.toolCallResultMessageToToolResultBlock(message)];
     default:
-      // Other user message types are wired in in subsequent commits.
-      return [];
+      assertNever(message);
   }
 }
 
