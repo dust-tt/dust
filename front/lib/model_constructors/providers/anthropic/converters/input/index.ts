@@ -1,15 +1,21 @@
 import type {
   MessageCreateParamsNonStreaming,
   MessageParam,
+  TextBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import type { Client } from "@app/lib/model_constructors/client";
 import {
   conversationToMessages,
   type MessageBlockConverters,
+  systemMessagesToSystemParam,
+  systemMessageToTextBlock,
   userTextMessageToTextBlock,
 } from "@app/lib/model_constructors/providers/anthropic/converters/input/utils";
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
-import type { Payload } from "@app/lib/model_constructors/types/input/messages";
+import type {
+  Payload,
+  SystemTextMessage,
+} from "@app/lib/model_constructors/types/input/messages";
 
 type AbstractConstructor<T> = abstract new (...args: any[]) => T;
 
@@ -23,12 +29,17 @@ export function WithAnthropicInputConverter<
     extends Base
     implements MessageBlockConverters
   {
+    systemMessageToTextBlock = systemMessageToTextBlock;
     userTextMessageToTextBlock = userTextMessageToTextBlock;
 
     conversationToMessages(
       conversation: Payload["conversation"]
     ): MessageParam[] {
       return conversationToMessages(conversation, this);
+    }
+
+    systemMessagesToSystemParam(system: SystemTextMessage[]): TextBlockParam[] {
+      return systemMessagesToSystemParam(system, this);
     }
 
     buildRequestPayload(
@@ -42,6 +53,7 @@ export function WithAnthropicInputConverter<
         model: this.constructor.modelId,
         max_tokens: this.constructor.maxOutputTokens,
         messages: this.conversationToMessages(conversation),
+        system: this.systemMessagesToSystemParam(conversation.system),
         ...(temperature !== undefined ? { temperature } : {}),
       };
     }

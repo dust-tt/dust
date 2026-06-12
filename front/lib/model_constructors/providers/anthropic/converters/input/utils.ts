@@ -8,6 +8,7 @@ import type {
   BaseUserMessage,
   BaseUserTextMessage,
   CacheOption,
+  SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
@@ -15,6 +16,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 // this interface (`this`), so overriding one leaf on an endpoint changes how
 // every composite uses it.
 export interface MessageBlockConverters {
+  systemMessageToTextBlock(message: SystemTextMessage): TextBlockParam;
   userTextMessageToTextBlock(message: BaseUserTextMessage): TextBlockParam;
 }
 
@@ -37,6 +39,16 @@ export function cacheControlFor(
 }
 
 // -- Leaf converters: one Anthropic block per message --
+
+export function systemMessageToTextBlock(
+  message: SystemTextMessage
+): TextBlockParam {
+  return {
+    type: "text",
+    text: message.content.value,
+    ...cacheControlFor(message.cache),
+  };
+}
 
 export function userTextMessageToTextBlock(
   message: BaseUserTextMessage
@@ -81,4 +93,11 @@ export function conversationToMessages(
         assertNever(message);
     }
   });
+}
+
+export function systemMessagesToSystemParam(
+  system: SystemTextMessage[],
+  converters: MessageBlockConverters
+): TextBlockParam[] {
+  return system.map((message) => converters.systemMessageToTextBlock(message));
 }
