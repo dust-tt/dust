@@ -73,7 +73,10 @@ describe("skill_management enable_skill tool", () => {
   }
 
   it("loads skill files into the conversation and surfaces their paths", async () => {
-    const result = await getTool().handler({ skillName: "commit" }, makeExtra());
+    const result = await getTool().handler(
+      { skillName: "commit" },
+      makeExtra()
+    );
 
     expect(result.isOk()).toBe(true);
     expect(mockLoadSkillFilesToConversation).toHaveBeenCalledWith(auth, {
@@ -94,7 +97,10 @@ describe("skill_management enable_skill tool", () => {
   it("skips file loading when the skill has no attachments", async () => {
     mockGetFileAttachments.mockReturnValue([]);
 
-    const result = await getTool().handler({ skillName: "commit" }, makeExtra());
+    const result = await getTool().handler(
+      { skillName: "commit" },
+      makeExtra()
+    );
 
     expect(result.isOk()).toBe(true);
     expect(mockLoadSkillFilesToConversation).not.toHaveBeenCalled();
@@ -105,7 +111,10 @@ describe("skill_management enable_skill tool", () => {
       new Err(new Error("GCS copy failed"))
     );
 
-    const result = await getTool().handler({ skillName: "commit" }, makeExtra());
+    const result = await getTool().handler(
+      { skillName: "commit" },
+      makeExtra()
+    );
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
@@ -120,7 +129,10 @@ describe("skill_management enable_skill tool", () => {
   it("does not load files when the skill was already enabled", async () => {
     mockEnableForAgent.mockResolvedValue({ wasAlreadyEnabled: true });
 
-    const result = await getTool().handler({ skillName: "commit" }, makeExtra());
+    const result = await getTool().handler(
+      { skillName: "commit" },
+      makeExtra()
+    );
 
     expect(result.isOk()).toBe(true);
     expect(mockLoadSkillFilesToConversation).not.toHaveBeenCalled();
