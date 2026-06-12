@@ -65,7 +65,7 @@ app.get("/", async (ctx): HandlerResult<GetMCPServerViewsListResponseBody> => {
 
   const query = queryValidation.data;
 
-  const views = await MCPServerViewResource.listBySpaceIds(
+  const views = await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
     auth,
     query.spaceIds
   );

@@ -1,3 +1,4 @@
+import { getAvailabilityOfInternalMCPServerById } from "@app/lib/actions/mcp_internal_actions/constants";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceKind } from "@app/types/space";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -52,6 +53,26 @@ app.delete(
           type: "invalid_request_error",
           message:
             "Can only delete MCP Server Views from regular or global spaces.",
+        },
+      });
+    }
+
+    // Auto internal tools are available to every workspace by design; their global-space
+    // views are created automatically (just in time) and would be recreated on the next
+    // read, so deleting them is not allowed.
+    if (
+      space.kind === "global" &&
+      mcpServerView.serverType === "internal" &&
+      mcpServerView.internalMCPServerId &&
+      getAvailabilityOfInternalMCPServerById(
+        mcpServerView.internalMCPServerId
+      ) !== "manual"
+    ) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Auto tools cannot be removed from the company space.",
         },
       });
     }

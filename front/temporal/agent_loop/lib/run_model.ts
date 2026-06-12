@@ -360,10 +360,11 @@ export async function runModel(
   );
   if (globalAgentInjectsToolsets(agentConfiguration.sId) && hasToolsetsAction) {
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-    const allToolsets = await MCPServerViewResource.listBySpace(
-      auth,
-      globalSpace
-    );
+    const allToolsets =
+      await MCPServerViewResource.listBySpaceEnsuringAutoViews(
+        auth,
+        globalSpace
+      );
     const filteredToolsets = allToolsets.filter((toolset) => {
       const mcpServerView = toolset.toJSON();
       return (

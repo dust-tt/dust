@@ -1,4 +1,6 @@
+import { Authenticator } from "@app/lib/auth";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
@@ -24,6 +26,11 @@ async function enableFeatureFlag(
 
   if (execute) {
     await FeatureFlagResource.enable(workspace, featureFlag);
+
+    // The flag may unlock auto internal MCP servers; create their views now so warmed pods
+    // (whose hydration caches still mark the workspace as in sync) see them immediately.
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
   }
 
   console.log(

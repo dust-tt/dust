@@ -16,11 +16,12 @@ export const discoverToolsSkill = {
     auth: Authenticator,
     { spaceIds }: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
   ) => {
-    const allToolsets = await MCPServerViewResource.listBySpaceIds(
-      auth,
-      spaceIds,
-      { includeGlobalSpace: true }
-    );
+    const allToolsets =
+      await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
+        auth,
+        spaceIds,
+        { includeGlobalSpace: true }
+      );
 
     const availableToolsets = allToolsets.filter((toolset) => {
       const mcpServerView = toolset.toJSON();

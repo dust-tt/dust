@@ -105,10 +105,8 @@ export async function listAvailableTools(
   const userSpaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
 
   // Fetch all MCP server views from those spaces.
-  const mcpServerViews = await MCPServerViewResource.listBySpaces(
-    auth,
-    userSpaces
-  );
+  const mcpServerViews =
+    await MCPServerViewResource.listBySpacesEnsuringAutoViews(auth, userSpaces);
 
   return mcpServerViews
     .map((v) => v.toJSON())

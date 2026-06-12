@@ -1,19 +1,16 @@
 import { setCacheSource } from "../lib/cache";
 import { withEnvironments } from "../lib/commands";
 import { startDocker } from "../lib/docker";
-import type { Environment } from "../lib/environment";
 import { isInitialized, markInitialized } from "../lib/environment";
 import { startForwarder } from "../lib/forward";
 import { FORWARDER_PORTS } from "../lib/forwarderConfig";
 import { createTemporalNamespaces, runAllDbInits, runSeedScript } from "../lib/init";
 import { logger } from "../lib/logger";
-import { getEnvFilePath, getWorktreeDir } from "../lib/paths";
 import { cleanupServicePorts, formatBlockedPorts } from "../lib/ports";
 import { isServiceRunning, readPid } from "../lib/process";
 import { startService, waitForServiceReady } from "../lib/registry";
 import { CommandError, Err, Ok } from "../lib/result";
 import type { ServiceName } from "../lib/services";
-import { buildShell } from "../lib/shell";
 import { isDockerRunning } from "../lib/state";
 
 interface WarmOptions {
@@ -32,10 +29,6 @@ const CRITICAL_ROUTES = [
 
 // Marketing routes to pre-compile.
 const MARKETING_ROUTES = ["/", "/home"];
-
-const ENSURE_MCP_SERVER_VIEWS_COMMAND =
-  "npx tsx ./scripts/ensure_all_mcp_server_views_created.ts --execute";
-const MCP_SERVER_VIEWS_ERROR_SUMMARY_PATTERN = /Migration completed with \d+ errors/;
 
 // Spawn a detached curl that retries until the server accepts the connection,
 // then triggers route compilation. Output is discarded; failures are silent.
@@ -73,48 +66,6 @@ async function isTemporalRunning(): Promise<boolean> {
   });
   await proc.exited;
   return proc.exitCode === 0;
-}
-
-async function ensureAllMCPServerViewsCreated(env: Environment): Promise<void> {
-  const envShPath = getEnvFilePath(env.name);
-  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
-
-  const command = buildShell({
-    sourceEnv: envShPath,
-    sourceNvm: true,
-    run: ENSURE_MCP_SERVER_VIEWS_COMMAND,
-  });
-
-  const proc = Bun.spawn(["bash", "-c", command], {
-    cwd: `${worktreePath}/front`,
-    env: process.env,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-
-  const stdout = await new Response(proc.stdout).text();
-  const stderr = await new Response(proc.stderr).text();
-  await proc.exited;
-
-  if (proc.exitCode !== 0) {
-    logger.warn("Failed to ensure MCP server views are created. Continuing.");
-    if (stdout.trim()) {
-      logger.info(`MCP server views ensure stdout:\n${stdout.trim()}`);
-    }
-    if (stderr.trim()) {
-      logger.warn(`MCP server views ensure stderr:\n${stderr.trim()}`);
-    }
-    return;
-  }
-
-  if (MCP_SERVER_VIEWS_ERROR_SUMMARY_PATTERN.test(stdout + stderr)) {
-    logger.warn(
-      "MCP server view ensure script completed with workspace errors. Check script logs for details."
-    );
-    return;
-  }
-
-  logger.success("Ensured MCP server views are created for all workspaces");
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: orchestration function with necessary complexity
@@ -302,11 +253,6 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
     waitForServiceReady(env, "oauth"),
   ]);
   logger.success("All services healthy");
-
-  if (needsInit) {
-    logger.step("Ensuring MCP server views are created for all workspaces...");
-    await ensureAllMCPServerViewsCreated(env);
-  }
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log();
