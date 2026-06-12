@@ -1,3 +1,4 @@
+import { AnthropicError, APIError } from "@anthropic-ai/sdk";
 import type {
   RawContentBlockDeltaEvent,
   RawContentBlockStartEvent,
@@ -5,6 +6,7 @@ import type {
   RawMessageStartEvent,
   RawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/messages/messages";
+import { parseToolArguments } from "@app/lib/model_constructors/providers/anthropic/converters/input/utils";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type {
   ModelResponseEvent,
@@ -13,17 +15,88 @@ import type {
   ResponseIdEvent,
   TextDeltaEvent,
   TextEvent,
+  ToolCallDeltaEvent,
   ToolCallEvent,
+  ToolCallStartedEvent,
 } from "@app/lib/model_constructors/types/output/events";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
+import { isRecord } from "@app/types/shared/utils/general";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+
+// Eager input streaming can produce invalid JSON. We validate inputs below this
+// size to avoid spending time parsing very large payloads.
+const MAX_EAGER_VALIDATION_INPUT_LENGTH = 5_000;
+const INVALID_JSON_MARKER = "JSON: ";
+const INVALID_TOOL_JSON_NEEDLE = "Unable to parse tool parameter JSON";
+
+// Type guard: APIError carrying the server-side invalid-tool-JSON diagnostic.
+function isApiInvalidToolJsonError(
+  err: unknown
+): err is APIError & { error: { error: { message: string } } } {
+  if (!(err instanceof APIError) || err.type !== "invalid_request_error") {
+    return false;
+  }
+  const body = err.error;
+  if (typeof body !== "object" || body === null || !isRecord(body)) {
+    return false;
+  }
+  const innerError = body.error;
+  if (
+    typeof innerError !== "object" ||
+    innerError === null ||
+    !isRecord(innerError)
+  ) {
+    return false;
+  }
+  const { message } = innerError;
+  return (
+    typeof message === "string" &&
+    message.includes(INVALID_TOOL_JSON_NEEDLE) &&
+    message.includes(INVALID_JSON_MARKER)
+  );
+}
+
+// Type guard: AnthropicError thrown when the SDK fails to parse tool JSON client-side.
+function isAnthropicInvalidToolJsonError(err: unknown): err is AnthropicError {
+  return (
+    err instanceof AnthropicError &&
+    err.message.includes(INVALID_TOOL_JSON_NEEDLE) &&
+    err.message.includes(INVALID_JSON_MARKER)
+  );
+}
+
+// Extracts the "Unable to parse tool parameter JSON" message (ending in
+// `JSON: <raw>`) from either an APIError (server-side) or AnthropicError
+// (client-side), or null if unrelated.
+export function getInvalidToolJsonMessage(err: unknown): string | null {
+  if (isApiInvalidToolJsonError(err)) {
+    return err.error.error.message;
+  }
+  if (isAnthropicInvalidToolJsonError(err)) {
+    return err.message;
+  }
+  return null;
+}
 
 // Cursor for the content block being streamed; deltas accumulate here until
 // `content_block_stop` flushes it as an event.
-export type BlockState = {
-  index: number;
-  accumulator: string;
-  type: "text" | "reasoning";
-  signature?: string;
-};
+export type BlockState =
+  | {
+      index: number;
+      accumulator: string;
+      type: "text" | "reasoning";
+      signature?: string;
+    }
+  | {
+      index: number;
+      accumulator: string;
+      type: "tool_use";
+      toolId: string;
+      toolName: string;
+    };
 
 // The per-signal leaf converters. Composites below take an object satisfying
 // this interface (`this`), so overriding one leaf on an endpoint changes how
@@ -50,6 +123,27 @@ export interface OutputEventConverters {
     text: string,
     signature?: string
   ): ReasoningEvent;
+  toolUseBlockStartToToolCallStartedEvent(
+    metadata: EndpointMetadata,
+    id: string,
+    index: number,
+    name: string
+  ): ToolCallStartedEvent;
+  inputJsonDeltaToToolCallDeltaEvent(
+    metadata: EndpointMetadata
+  ): ToolCallDeltaEvent;
+  accumulatedToolCallToToolCallEvent(
+    metadata: EndpointMetadata,
+    id: string,
+    name: string,
+    argumentsJson: string
+  ): ToolCallEvent;
+  invalidJsonToolCallToToolCallEvent(
+    metadata: EndpointMetadata,
+    id: string,
+    name: string,
+    invalidJson: string
+  ): ToolCallEvent;
 }
 
 // -- Leaf converters: one unified event per Anthropic stream signal --
@@ -101,13 +195,61 @@ export function accumulatedReasoningToReasoningEvent(
   };
 }
 
+export function toolUseBlockStartToToolCallStartedEvent(
+  metadata: EndpointMetadata,
+  id: string,
+  index: number,
+  name: string
+): ToolCallStartedEvent {
+  return {
+    type: "tool_call_started",
+    content: { id, index, name },
+    metadata,
+  };
+}
+
+export function inputJsonDeltaToToolCallDeltaEvent(
+  metadata: EndpointMetadata
+): ToolCallDeltaEvent {
+  return { type: "tool_call_delta", metadata };
+}
+
+export function accumulatedToolCallToToolCallEvent(
+  metadata: EndpointMetadata,
+  id: string,
+  name: string,
+  argumentsJson: string
+): ToolCallEvent {
+  return {
+    type: "tool_call",
+    content: { id, name, arguments: parseToolArguments(argumentsJson) },
+    metadata,
+  };
+}
+
+// Wraps invalid tool-call JSON in `{ INVALID_JSON: ... }` so the agent loop can
+// send it back and let the model self-correct.
+// https://platform.claude.com/docs/en/agents-and-tools/tool-use/fine-grained-tool-streaming#handling-invalid-json-in-tool-responses
+export function invalidJsonToolCallToToolCallEvent(
+  metadata: EndpointMetadata,
+  id: string,
+  name: string,
+  invalidJson: string
+): ToolCallEvent {
+  return {
+    type: "tool_call",
+    content: { id, name, arguments: { INVALID_JSON: invalidJson } },
+    metadata,
+  };
+}
+
 // -- Composite state machine: depends on the leaf converters --
 
 export function contentBlockStartToEvents(
   event: RawContentBlockStartEvent,
   state: { current: BlockState | null },
-  _metadata: EndpointMetadata,
-  _converters: OutputEventConverters
+  metadata: EndpointMetadata,
+  converters: OutputEventConverters
 ): ModelResponseEvent[] {
   const block = event.content_block;
   switch (block.type) {
@@ -121,8 +263,39 @@ export function contentBlockStartToEvents(
         type: "reasoning",
       };
       return [];
+    case "tool_use":
+      state.current = {
+        index: event.index,
+        accumulator: "",
+        type: "tool_use",
+        toolId: block.id,
+        toolName: block.name,
+      };
+      return [
+        converters.toolUseBlockStartToToolCallStartedEvent(
+          metadata,
+          block.id,
+          event.index,
+          block.name
+        ),
+      ];
+    // Block types we don't surface: redacted thinking, server tools, and their
+    // result / container blocks. Listed explicitly so the default stays
+    // exhaustive.
+    case "redacted_thinking":
+    case "server_tool_use":
+    case "web_search_tool_result":
+    case "web_fetch_tool_result":
+    case "code_execution_tool_result":
+    case "bash_code_execution_tool_result":
+    case "text_editor_code_execution_tool_result":
+    case "tool_search_tool_result":
+    case "container_upload":
+      return [];
     default:
-      // Other block types are wired in in subsequent commits.
+      // Anthropic may add new block types before we redeploy; ignore them
+      // rather than crashing the stream.
+      assertNeverAndIgnore(block);
       return [];
   }
 }
@@ -149,6 +322,9 @@ export function contentBlockDeltaToEvents(
           delta.thinking
         ),
       ];
+    case "input_json_delta":
+      state.current.accumulator += delta.partial_json;
+      return [converters.inputJsonDeltaToToolCallDeltaEvent(metadata)];
     case "signature_delta":
       if (state.current.type === "reasoning") {
         // Accumulate across deltas: Anthropic may chunk the signature.
@@ -156,8 +332,12 @@ export function contentBlockDeltaToEvents(
           (state.current.signature ?? "") + delta.signature;
       }
       return [];
+    case "citations_delta":
+      return [];
     default:
-      // Other delta types are wired in in subsequent commits.
+      // Anthropic may add new delta types before we redeploy; ignore them
+      // rather than crashing the stream.
+      assertNeverAndIgnore(delta);
       return [];
   }
 }
@@ -186,9 +366,38 @@ export function contentBlockStopToEvents(
           block.signature || undefined
         ),
       ];
+    case "tool_use": {
+      const input = block.accumulator;
+      // With eager_input_streaming enabled, the model may produce invalid JSON.
+      // Validate inputs below a size limit; if invalid, wrap as INVALID_JSON so
+      // the agent loop can self-correct.
+      if (
+        input.length < MAX_EAGER_VALIDATION_INPUT_LENGTH &&
+        input.trim() !== ""
+      ) {
+        const parsed = safeParseJSON(input);
+        if (parsed.isErr()) {
+          return [
+            converters.invalidJsonToolCallToToolCallEvent(
+              metadata,
+              block.toolId,
+              block.toolName,
+              input
+            ),
+          ];
+        }
+      }
+      return [
+        converters.accumulatedToolCallToToolCallEvent(
+          metadata,
+          block.toolId,
+          block.toolName,
+          input
+        ),
+      ];
+    }
     default:
-      // Other block types are wired in in subsequent commits.
-      return [];
+      assertNever(block);
   }
 }
 
@@ -206,7 +415,31 @@ export async function* rawOutputToEvents(
     let result: IteratorResult<RawMessageStreamEvent>;
     try {
       result = await stream.next();
-    } catch {
+    } catch (err) {
+      // On invalid tool JSON aborting the stream, if a tool_use block is in
+      // progress, recover by emitting a tool_call wrapping the invalid JSON so
+      // the agent loop can send it back and let the model self-correct.
+      const invalidJsonMessage = getInvalidToolJsonMessage(err);
+      if (
+        invalidJsonMessage !== null &&
+        blockState.current !== null &&
+        blockState.current.type === "tool_use"
+      ) {
+        const invalidJson = invalidJsonMessage.slice(
+          invalidJsonMessage.lastIndexOf(INVALID_JSON_MARKER) +
+            INVALID_JSON_MARKER.length
+        );
+        const ev = converters.invalidJsonToolCallToToolCallEvent(
+          metadata,
+          blockState.current.toolId,
+          blockState.current.toolName,
+          invalidJson
+        );
+        aggregated.push(ev);
+        yield ev;
+        blockState.current = null;
+        break;
+      }
       // Generic stream-error mapping is wired in in a subsequent commit.
       return;
     }
