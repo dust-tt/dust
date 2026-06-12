@@ -343,12 +343,13 @@ describe("listGCSMountFiles", () => {
       pageFetchCount: 1,
     });
 
-    const entries = await listGCSMountFiles(auth, {
+    const result = await listGCSMountFiles(auth, {
       useCase: "conversation",
       conversationId,
     });
 
-    const paths = entries.filter((e) => !e.isDirectory).map((e) => e.path);
+    assert(result.isOk());
+    const paths = result.value.filter((e) => !e.isDirectory).map((e) => e.path);
     expect(paths).toEqual(
       expect.arrayContaining([
         "conversation/report.pdf",
@@ -376,13 +377,14 @@ describe("listGCSMountFiles", () => {
       pageFetchCount: 1,
     });
 
-    const entries = await listGCSMountFiles(
+    const result = await listGCSMountFiles(
       auth,
       { useCase: "conversation", conversationId },
       { includeProcessed: true }
     );
 
-    const paths = entries.filter((e) => !e.isDirectory).map((e) => e.path);
+    assert(result.isOk());
+    const paths = result.value.filter((e) => !e.isDirectory).map((e) => e.path);
     expect(paths).toEqual(
       expect.arrayContaining([
         "conversation/report.pdf",
