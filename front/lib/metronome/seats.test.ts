@@ -1,9 +1,15 @@
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import {
   classifySeatChange,
+  computeSeatCreditTransfers,
+  getSeatCreditNameForSeatType,
   hasContractSeatSubscription,
   resolveRemappedSeatType,
 } from "@app/lib/metronome/seats";
+import {
+  MAX_SEAT_CREDIT_NAME,
+  PRO_SEAT_CREDIT_NAME,
+} from "@app/lib/metronome/setup_common";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -400,5 +406,166 @@ describe("classifySeatChange", () => {
         change: { userId: "u1", previousSeatType: "max", newSeatType: "pro" },
       })
     ).toBeUndefined();
+  });
+});
+
+describe("getSeatCreditNameForSeatType", () => {
+  it("maps pro tiers to the Pro seat credit", () => {
+    expect(getSeatCreditNameForSeatType("pro")).toBe(PRO_SEAT_CREDIT_NAME);
+    expect(getSeatCreditNameForSeatType("pro_yearly")).toBe(
+      PRO_SEAT_CREDIT_NAME
+    );
+  });
+
+  it("maps max tiers to the Max seat credit", () => {
+    expect(getSeatCreditNameForSeatType("max")).toBe(MAX_SEAT_CREDIT_NAME);
+    expect(getSeatCreditNameForSeatType("max_yearly")).toBe(
+      MAX_SEAT_CREDIT_NAME
+    );
+  });
+
+  it("returns null for seats with no recurring seat credit", () => {
+    // `free` is a one-shot per-user credit, not a recurring seat credit.
+    expect(getSeatCreditNameForSeatType("free")).toBeNull();
+    expect(getSeatCreditNameForSeatType("workspace")).toBeNull();
+    expect(getSeatCreditNameForSeatType("workspace_yearly")).toBeNull();
+    expect(getSeatCreditNameForSeatType("none")).toBeNull();
+  });
+});
+
+describe("computeSeatCreditTransfers", () => {
+  const ALLOCATIONS = new Map<MembershipSeatType, number>([
+    ["pro", 8000],
+    ["pro_yearly", 8000],
+    ["max", 40000],
+    ["max_yearly", 40000],
+  ]);
+
+  it("transfers consumption for an upgrade between allowance seats (pro → max)", () => {
+    // 2000/8000 consumed on pro → carry over: empty 6000 from pro, debit 2000
+    // from max (40000 → 38000).
+    const transfers = computeSeatCreditTransfers({
+      metronomeSeatByUser: new Map([["u1", "pro"]]),
+      desiredSeatByUser: new Map([["u1", "max"]]),
+      balanceByUser: new Map([["u1", 6000]]),
+      allocationBySeatType: ALLOCATIONS,
+    });
+    expect(transfers).toEqual([
+      {
+        userSId: "u1",
+        oldSeatType: "pro",
+        newSeatType: "max",
+        oldCreditName: PRO_SEAT_CREDIT_NAME,
+        newCreditName: MAX_SEAT_CREDIT_NAME,
+        remaining: 6000,
+        consumed: 2000,
+      },
+    ]);
+  });
+
+  it("ignores users whose Metronome seat already matches the DB", () => {
+    expect(
+      computeSeatCreditTransfers({
+        metronomeSeatByUser: new Map([["u1", "max"]]),
+        desiredSeatByUser: new Map([["u1", "max"]]),
+        balanceByUser: new Map([["u1", 30000]]),
+        allocationBySeatType: ALLOCATIONS,
+      })
+    ).toEqual([]);
+  });
+
+  it("is idempotent: skips an already-emptied origin credit", () => {
+    // After a prior transfer the old credit is at 0 → nothing to carry over.
+    expect(
+      computeSeatCreditTransfers({
+        metronomeSeatByUser: new Map([["u1", "pro"]]),
+        desiredSeatByUser: new Map([["u1", "max"]]),
+        balanceByUser: new Map([["u1", 0]]),
+        allocationBySeatType: ALLOCATIONS,
+      })
+    ).toEqual([]);
+  });
+
+  it("transfers across billing frequencies of the same tier (max → max_yearly)", () => {
+    // Same allowance/credit name but distinct recurring credits — consumption
+    // still carries over.
+    const transfers = computeSeatCreditTransfers({
+      metronomeSeatByUser: new Map([["u1", "max"]]),
+      desiredSeatByUser: new Map([["u1", "max_yearly"]]),
+      balanceByUser: new Map([["u1", 30000]]),
+      allocationBySeatType: ALLOCATIONS,
+    });
+    expect(transfers).toEqual([
+      {
+        userSId: "u1",
+        oldSeatType: "max",
+        newSeatType: "max_yearly",
+        oldCreditName: MAX_SEAT_CREDIT_NAME,
+        newCreditName: MAX_SEAT_CREDIT_NAME,
+        remaining: 30000,
+        consumed: 10000,
+      },
+    ]);
+  });
+
+  it("derives consumption from the origin allocation, not the aggregate balance", () => {
+    // After a prior pro→max transfer the max seat shows 39994/40000 used 6. The
+    // consumed amount must be 6 (40000 − 39994), NOT inflated by an emptied
+    // prior tier's starting balance.
+    const transfers = computeSeatCreditTransfers({
+      metronomeSeatByUser: new Map([["u1", "max"]]),
+      desiredSeatByUser: new Map([["u1", "max_yearly"]]),
+      balanceByUser: new Map([["u1", 39994]]),
+      allocationBySeatType: ALLOCATIONS,
+    });
+    expect(transfers[0]).toMatchObject({ remaining: 39994, consumed: 6 });
+  });
+
+  it("skips moves involving non-recurring-credit seats (workspace, free, none)", () => {
+    const balanceByUser = new Map([["u1", 6000]]);
+    // workspace → pro: origin has no recurring seat credit.
+    expect(
+      computeSeatCreditTransfers({
+        metronomeSeatByUser: new Map([["u1", "workspace"]]),
+        desiredSeatByUser: new Map([["u1", "pro"]]),
+        balanceByUser,
+        allocationBySeatType: ALLOCATIONS,
+      })
+    ).toEqual([]);
+    // pro → none: destination has no recurring seat credit (downgrade anyway).
+    expect(
+      computeSeatCreditTransfers({
+        metronomeSeatByUser: new Map([["u1", "pro"]]),
+        desiredSeatByUser: new Map([["u1", "none"]]),
+        balanceByUser,
+        allocationBySeatType: ALLOCATIONS,
+      })
+    ).toEqual([]);
+  });
+
+  it("handles multiple users moving in one sync", () => {
+    const transfers = computeSeatCreditTransfers({
+      metronomeSeatByUser: new Map([
+        ["u1", "pro"],
+        ["u2", "max"],
+        ["u3", "pro"],
+      ]),
+      desiredSeatByUser: new Map([
+        ["u1", "max"],
+        ["u2", "max"], // unchanged
+        ["u3", "max"],
+      ]),
+      balanceByUser: new Map([
+        ["u1", 6000],
+        ["u2", 30000],
+        ["u3", 8000],
+      ]),
+      allocationBySeatType: ALLOCATIONS,
+    });
+    expect(transfers.map((t) => t.userSId).sort()).toEqual(["u1", "u3"]);
+    expect(transfers.find((t) => t.userSId === "u3")).toMatchObject({
+      remaining: 8000,
+      consumed: 0,
+    });
   });
 });

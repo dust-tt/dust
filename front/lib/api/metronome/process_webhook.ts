@@ -1540,8 +1540,8 @@ export async function processMetronomeWebhook({
         pendingSubscription.status === "created_backend_only"
       ) {
         const previousPlanCode = activeSubscription.getPlan().code;
+        // `activatePending` flushes the contract cache itself.
         await pendingSubscription.activatePending();
-        await invalidateContractCache(workspace.sId);
         const auth = await Authenticator.internalAdminForWorkspace(
           workspace.sId
         );
@@ -1590,12 +1590,11 @@ export async function processMetronomeWebhook({
       // End the current subscription as `ended_backend_only` and create
       // a new active subscription on the target plan + new contract.
       const legacyPreviousPlanCode = activeSubscription.getPlan().code;
+      // `swapMetronomeContract` flushes the contract cache itself.
       await activeSubscription.swapMetronomeContract({
         metronomeContractId: contractId,
         planCode: targetPlan.code,
       });
-
-      await invalidateContractCache(workspace.sId);
 
       // Cancel any scheduled scrub workflow, unpause connectors, re-enable
       // triggers. Idempotent — safe to call regardless of prior state.
