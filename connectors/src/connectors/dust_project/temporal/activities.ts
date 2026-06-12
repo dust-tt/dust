@@ -70,7 +70,7 @@ export async function dustProjectConversationsFullSyncActivity({
     );
 
     // Fetch all conversations for the project from Front API
-    const dustAPI = getDustAPI(dataSourceConfig, { useInternalAPI: true });
+    const dustAPI = getDustAPI(dataSourceConfig);
     const conversationsResult =
       await dustAPI.getSpaceConversationsForDataSource({
         spaceId: configuration.projectId,
@@ -213,7 +213,7 @@ export async function dustProjectConversationsIncrementalSyncActivity({
     const maxSourceUpdatedAt =
       await DustProjectConversationResource.getMaxSourceUpdatedAt(connectorId);
 
-    const dustAPI = getDustAPI(dataSourceConfig, { useInternalAPI: true });
+    const dustAPI = getDustAPI(dataSourceConfig);
     const conversationsResult =
       await dustAPI.getSpaceConversationsForDataSource({
         spaceId: configuration.projectId,
@@ -307,7 +307,7 @@ async function dustProjectConversationsGarbageCollectActivity({
 
     // Fetch all visible conversation IDs from Front API
     // This endpoint only returns conversations that still exist (not hard-deleted)
-    const dustAPI = getDustAPI(dataSourceConfig, { useInternalAPI: true });
+    const dustAPI = getDustAPI(dataSourceConfig);
     const conversationIdsResult = await dustAPI.getSpaceConversationIds({
       spaceId: configuration.projectId,
     });
@@ -428,7 +428,7 @@ export async function dustProjectMountFilesFullSyncActivity({
     "Starting full sync for dust_project mount files"
   );
 
-  const dustAPI = getDustAPI(dataSourceConfig, { useInternalAPI: true });
+  const dustAPI = getDustAPI(dataSourceConfig);
   const listRes = await dustAPI.getSpaceProjectFiles({
     spaceId: configuration.projectId,
   });
@@ -531,7 +531,7 @@ export async function dustProjectMountFilesIncrementalSyncActivity({
   const maxSourceUpdatedAt =
     await DustProjectMountFileResource.getMaxSourceUpdatedAt(connectorId);
 
-  const dustAPI = getDustAPI(dataSourceConfig, { useInternalAPI: true });
+  const dustAPI = getDustAPI(dataSourceConfig);
   const listRes = await dustAPI.getSpaceProjectFiles({
     spaceId: configuration.projectId,
     updatedSince:
@@ -621,7 +621,7 @@ export async function dustProjectMountFilesGarbageCollectActivity({
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   try {
-    const dustAPI = getDustAPI(dataSourceConfig, { useInternalAPI: true });
+    const dustAPI = getDustAPI(dataSourceConfig);
     const listRes = await dustAPI.getSpaceProjectFiles({
       spaceId: configuration.projectId,
     });
@@ -711,7 +711,7 @@ export async function dustProjectSyncMetadataActivity({
     "Fetching and syncing project metadata"
   );
 
-  const dustAPI = getDustAPI(dataSourceConfig, { useInternalAPI: true });
+  const dustAPI = getDustAPI(dataSourceConfig);
   const metadataResult = await dustAPI.getSpaceMetadata({
     spaceId: configuration.projectId,
   });
