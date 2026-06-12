@@ -306,105 +306,142 @@ export function stopReasonToErrorEvent(
   }
 }
 
+function isApiConnectionError(err: unknown): err is APIConnectionError {
+  return err instanceof APIConnectionError;
+}
+
+function isApiError(err: unknown): err is APIError {
+  return err instanceof APIError;
+}
+
+// A stream error classified into the categories we surface. `APIConnectionError`
+// is checked before `APIError` since the former extends the latter.
+type ClassifiedStreamError =
+  | { kind: "invalid_tool_json" }
+  | { kind: "connection"; error: APIConnectionError }
+  | { kind: "api"; error: APIError }
+  | { kind: "unknown" };
+
+function classifyStreamError(error: unknown): ClassifiedStreamError {
+  if (getInvalidToolJsonMessage(error) !== null) {
+    return { kind: "invalid_tool_json" };
+  }
+  if (isApiConnectionError(error)) {
+    return { kind: "connection", error };
+  }
+  if (isApiError(error)) {
+    return { kind: "api", error };
+  }
+  return { kind: "unknown" };
+}
+
+// HTTP status is a number, not a union, so the 5xx range stays an `if` in the
+// default branch.
+function apiErrorToErrorEvent(
+  metadata: AgentMetadata,
+  error: APIError
+): ErrorEvent {
+  const status = error.status;
+  switch (status) {
+    case 400:
+    case 422:
+      return buildErrorEvent({
+        metadata,
+        type: "invalid_request_error",
+        message: `Invalid request to Anthropic: ${error.message}`,
+        originalError: error,
+      });
+    case 401:
+      return buildErrorEvent({
+        metadata,
+        type: "authentication_error",
+        message: `Authentication failed for Anthropic: ${error.message}`,
+        originalError: error,
+      });
+    case 403:
+      return buildErrorEvent({
+        metadata,
+        type: "permission_error",
+        message: `Permission denied for Anthropic: ${error.message}`,
+        originalError: error,
+      });
+    case 404:
+      return buildErrorEvent({
+        metadata,
+        type: "not_found_error",
+        message: `Resource not found for Anthropic: ${error.message}`,
+        originalError: error,
+      });
+    case 429:
+      return buildErrorEvent({
+        metadata,
+        type: "rate_limit_error",
+        message: `Rate limit exceeded for Anthropic/${metadata.modelId}: ${error.message}`,
+        originalError: error,
+      });
+    case 503:
+      return buildErrorEvent({
+        metadata,
+        type: "overloaded_error",
+        message: `Anthropic is overloaded: ${error.message}`,
+        originalError: error,
+      });
+    default:
+      if (status !== undefined && status >= 500 && status < 600) {
+        return buildErrorEvent({
+          metadata,
+          type: "server_error",
+          message: `Server error from Anthropic (${status}): ${error.message}`,
+          originalError: error,
+        });
+      }
+
+      return buildErrorEvent({
+        metadata,
+        type: "unknown_error",
+        message: `Error from Anthropic (${status}): ${error.message}`,
+        originalError: error,
+      });
+  }
+}
+
 // Maps any error thrown by the Anthropic SDK while streaming into a unified
 // `ErrorEvent`, so everything leaving the endpoint is an event, not an exception.
 export function streamErrorToErrorEvent(
   metadata: AgentMetadata,
   error: unknown
 ): ErrorEvent {
-  // Invalid tool-call JSON aborted the stream with no tool_use block to recover
-  // from. Surface a distinct, retryable type so the agent loop re-samples
-  // instead of treating it as a terminal invalid_request_error.
-  if (getInvalidToolJsonMessage(error) !== null) {
-    return buildErrorEvent({
-      metadata,
-      type: "model_output_error",
-      message: `Model generated invalid tool call JSON for ${metadata.modelId}.`,
-      originalError: error,
-    });
+  const classified = classifyStreamError(error);
+  switch (classified.kind) {
+    // Invalid tool-call JSON aborted the stream with no tool_use block to
+    // recover from. Surface a distinct, retryable type so the agent loop
+    // re-samples instead of treating it as a terminal invalid_request_error.
+    case "invalid_tool_json":
+      return buildErrorEvent({
+        metadata,
+        type: "model_output_error",
+        message: `Model generated invalid tool call JSON for ${metadata.modelId}.`,
+        originalError: error,
+      });
+    case "connection":
+      return buildErrorEvent({
+        metadata,
+        type: "network_error",
+        message: `Network error connecting to Anthropic: ${classified.error.message}`,
+        originalError: error,
+      });
+    case "api":
+      return apiErrorToErrorEvent(metadata, classified.error);
+    case "unknown":
+      return buildErrorEvent({
+        metadata,
+        type: "unknown_error",
+        message: `Unknown error from Anthropic`,
+        originalError: error,
+      });
+    default:
+      assertNever(classified);
   }
-
-  if (error instanceof APIConnectionError) {
-    return buildErrorEvent({
-      metadata,
-      type: "network_error",
-      message: `Network error connecting to Anthropic: ${error.message}`,
-      originalError: error,
-    });
-  }
-
-  if (error instanceof APIError) {
-    const status = error.status;
-
-    switch (status) {
-      case 400:
-      case 422:
-        return buildErrorEvent({
-          metadata,
-          type: "invalid_request_error",
-          message: `Invalid request to Anthropic: ${error.message}`,
-          originalError: error,
-        });
-      case 401:
-        return buildErrorEvent({
-          metadata,
-          type: "authentication_error",
-          message: `Authentication failed for Anthropic: ${error.message}`,
-          originalError: error,
-        });
-      case 403:
-        return buildErrorEvent({
-          metadata,
-          type: "permission_error",
-          message: `Permission denied for Anthropic: ${error.message}`,
-          originalError: error,
-        });
-      case 404:
-        return buildErrorEvent({
-          metadata,
-          type: "not_found_error",
-          message: `Resource not found for Anthropic: ${error.message}`,
-          originalError: error,
-        });
-      case 429:
-        return buildErrorEvent({
-          metadata,
-          type: "rate_limit_error",
-          message: `Rate limit exceeded for Anthropic/${metadata.modelId}: ${error.message}`,
-          originalError: error,
-        });
-      case 503:
-        return buildErrorEvent({
-          metadata,
-          type: "overloaded_error",
-          message: `Anthropic is overloaded: ${error.message}`,
-          originalError: error,
-        });
-      default:
-        if (status >= 500 && status < 600) {
-          return buildErrorEvent({
-            metadata,
-            type: "server_error",
-            message: `Server error from Anthropic (${status}): ${error.message}`,
-            originalError: error,
-          });
-        }
-
-        return buildErrorEvent({
-          metadata,
-          type: "unknown_error",
-          message: `Error from Anthropic (${status}): ${error.message}`,
-          originalError: error,
-        });
-    }
-  }
-
-  return buildErrorEvent({
-    metadata,
-    type: "unknown_error",
-    message: `Unknown error from Anthropic`,
-    originalError: error,
-  });
 }
 
 // -- Composite state machine: depends on the leaf converters --
