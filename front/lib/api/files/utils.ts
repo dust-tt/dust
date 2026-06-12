@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
+import { GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES } from "@app/lib/file_storage";
 import type {
   FileResource,
   FileVersion,
@@ -12,7 +13,25 @@ import type { File } from "formidable";
 import { IncomingForm } from "formidable";
 import type { IncomingMessage } from "http";
 import * as iconv from "iconv-lite";
-import type { Writable } from "stream";
+import { Writable } from "stream";
+
+// Overall budget for receiving the request body and writing it to GCS,
+// scaled with the declared file size so a slow-but-progressing large upload
+// (up to 350MB for large delimited files) is not cut off while a small one
+// fails fast. Without it, a stalled GCS connection (or a stalled client)
+// leaves the request hanging forever with no error ever surfaced to the user.
+const FILE_UPLOAD_BASE_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes.
+// Slow-link allowance: ~2 Mbit/s sustained.
+const FILE_UPLOAD_MIN_THROUGHPUT_BYTES_PER_SECOND = 250 * 1024;
+
+export function getFileUploadTimeoutMs(fileSizeBytes: number): number {
+  return (
+    FILE_UPLOAD_BASE_TIMEOUT_MS +
+    (fileSizeBytes / FILE_UPLOAD_MIN_THROUGHPUT_BYTES_PER_SECOND) * 1000
+  );
+}
+
+const FILE_UPLOAD_TIMED_OUT_MESSAGE = "File upload timed out.";
 
 export const parseUploadRequest = async (
   auth: Authenticator,
@@ -35,11 +54,27 @@ export const parseUploadRequest = async (
   // destroy it if formidable throws mid-upload after opening the stream.
   let writeStream: Writable | undefined;
 
+  // Below the resumable threshold, buffer the payload in memory and write it
+  // to GCS once fully received: a buffered write is replayable, so transient
+  // GCS errors ("socket hang up") are retried instead of failing the upload.
+  // Streamed writes piped straight from the request cannot be retried (the
+  // request stream is not replayable); above the threshold the resumable
+  // upload in getWriteStream provides per-chunk retry instead.
+  const isBufferedUpload = file.fileSize < GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES;
+  const chunks: Buffer[] = [];
+
   try {
     const form = new IncomingForm({
       // Stream the uploaded document to the cloud storage.
       fileWriteStreamHandler: () => {
-        writeStream = file.getWriteStream({ auth, version: "original" });
+        writeStream = isBufferedUpload
+          ? new Writable({
+              write(chunk: Buffer, _encoding, callback) {
+                chunks.push(chunk);
+                callback();
+              },
+            })
+          : file.getWriteStream({ auth, version: "original" });
         return writeStream;
       },
 
@@ -61,9 +96,53 @@ export const parseUploadRequest = async (
           file.contentType,
     });
 
-    const [, files] = await form.parse(req);
+    const uploadPromise = (async () => {
+      const [, files] = await form.parse(req);
 
-    const maybeFiles = files.file;
+      if (isBufferedUpload && files.file && files.file.length > 0) {
+        await file.uploadOriginalFromBuffer(auth, Buffer.concat(chunks));
+      }
+
+      return files;
+    })();
+
+    let timeoutHandle: NodeJS.Timeout | undefined;
+    const timeoutPromise = new Promise<"timeout">((resolve) => {
+      timeoutHandle = setTimeout(
+        () => resolve("timeout"),
+        getFileUploadTimeoutMs(file.fileSize)
+      );
+    });
+
+    let raced;
+    try {
+      raced = await Promise.race([uploadPromise, timeoutPromise]);
+    } finally {
+      clearTimeout(timeoutHandle);
+    }
+
+    if (raced === "timeout") {
+      // Tear down the GCS write stream (stalled upstream connection), and the
+      // request when the client is the stalled side. If the body was fully
+      // received, keep the socket alive so the error response can reach the
+      // client.
+      writeStream?.destroy(new Error(FILE_UPLOAD_TIMED_OUT_MESSAGE));
+      if (!req.readableEnded) {
+        req.destroy();
+      }
+      // The abandoned promise settles later (a pending buffered GCS write is
+      // not cancelled and may still land); swallow a late rejection to avoid
+      // an unhandled rejection.
+      uploadPromise.catch(() => {});
+
+      return new Err({
+        name: "dust_error",
+        code: "internal_server_error",
+        message: FILE_UPLOAD_TIMED_OUT_MESSAGE,
+      });
+    }
+
+    const maybeFiles = raced.file;
 
     if (!maybeFiles || maybeFiles.length === 0) {
       return new Err({

@@ -31,6 +31,14 @@ const GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH = 0;
 
 const DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS = 5 * 60 * 1000; // 5 minutes.
 
+// Threshold above which file uploads switch from a single multipart POST to a
+// resumable upload (see FileResource.getWriteStream). Below it, uploads are
+// buffered in memory and written with retry (see parseUploadRequest). Chunk
+// size must be a multiple of 256 KiB; GCS recommends at least 8 MiB for
+// performance.
+export const GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES = 8 * 1024 * 1024;
+export const GCS_RESUMABLE_UPLOAD_CHUNK_SIZE_BYTES = 8 * 1024 * 1024;
+
 interface FileStorageOptions {
   useServiceAccount?: boolean;
 }
@@ -146,6 +154,27 @@ export class FileStorage {
       {
         operationName: "file upload (stream)",
         logContext: { destPath },
+      }
+    );
+  }
+
+  async uploadBufferToBucket({
+    buffer,
+    contentType,
+    filePath,
+  }: {
+    buffer: Buffer;
+    contentType: AllSupportedFileContentType;
+    filePath: string;
+  }) {
+    // A single-request upload without preconditions is not retried by the
+    // SDK (conditional idempotency), so retry transient errors at the
+    // application level: the buffer is replayable.
+    await withRetryOnTransientGCSError(
+      () => this.file(filePath).save(buffer, { contentType, resumable: false }),
+      {
+        operationName: "file upload (buffer)",
+        logContext: { filePath },
       }
     );
   }

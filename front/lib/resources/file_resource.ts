@@ -41,6 +41,8 @@ import type { ShareFrameViewerFile } from "@app/lib/api/viz/share_frame_viewer_f
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import {
+  GCS_RESUMABLE_UPLOAD_CHUNK_SIZE_BYTES,
+  GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES,
   getPrivateUploadBucket,
   getPublicUploadBucket,
   getUpsertQueueBucket,
@@ -110,12 +112,6 @@ import { validate } from "uuid";
 import type { ModelStaticWorkspaceAware } from "./storage/wrappers/workspace_models";
 
 export type FileVersion = "processed" | "original" | "public";
-
-// Threshold above which file uploads switch from a single multipart POST to a
-// resumable upload (see getWriteStream). Chunk size must be a multiple of
-// 256 KiB; GCS recommends at least 8 MiB for performance.
-const GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES = 8 * 1024 * 1024;
-const GCS_RESUMABLE_UPLOAD_CHUNK_SIZE_BYTES = 8 * 1024 * 1024;
 
 const FRAME_CONTENT_TYPES = new Set([
   frameContentType,
@@ -988,6 +984,23 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   // Direct upload logic.
+
+  /**
+   * Upload the original version from an in-memory buffer. Unlike a streamed
+   * write (getWriteStream), the buffer can be re-sent, so transient GCS errors
+   * ("socket hang up") are retried instead of failing the upload. Only use for
+   * payloads below GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES.
+   */
+  async uploadOriginalFromBuffer(
+    auth: Authenticator,
+    buffer: Buffer
+  ): Promise<void> {
+    await this.getBucketForVersion("original").uploadBufferToBucket({
+      buffer,
+      contentType: this.contentType,
+      filePath: this.getCloudStoragePath(auth, "original"),
+    });
+  }
 
   async uploadContent(auth: Authenticator, content: string): Promise<void> {
     // Update the file size.

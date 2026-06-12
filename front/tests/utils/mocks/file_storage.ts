@@ -118,6 +118,16 @@ class FileStorageMock {
         .mockResolvedValue({ isOk: () => false, isErr: () => true }),
       getSignedUrl: vi.fn().mockResolvedValue("https://signed-url.test"),
       uploadFileToBucket: vi.fn().mockResolvedValue(undefined),
+      uploadBufferToBucket: vi.fn(
+        (args: { buffer: Buffer; contentType: string; filePath: string }) => {
+          this._saveFileCalls.push({
+            filePath: args.filePath,
+            content: args.buffer,
+            contentType: args.contentType,
+          });
+          return Promise.resolve(undefined);
+        }
+      ),
       uploadRawContentToBucket: vi.fn().mockResolvedValue(undefined),
       uploadSmallRawContentToBucketAsNewFile: vi
         .fn()
