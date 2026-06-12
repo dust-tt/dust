@@ -61,6 +61,7 @@ export const AUDIT_ACTIONS = [
   "credentials.revoked",
   "credentials.invalidated",
   // MCP Connections.
+  "dust_mcp_server.settings_updated",
   "mcp_connection.created",
   "mcp_connection.deleted",
   // Projects.

@@ -522,6 +522,21 @@ app.post(
       };
       await workspace.updateWorkspaceSettings({ metadata: newMetadata });
       owner.metadata = newMetadata;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "dust_mcp_server.settings_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          disabled: String(dustMcpServerSettings.disabled),
+          accept_all_redirect_uris: String(
+            dustMcpServerSettings.acceptAllRedirectUris
+          ),
+          allowed_redirect_uris:
+            dustMcpServerSettings.allowedRedirectUris.join(","),
+        },
+      });
     } else if ("allowOpenProjects" in body) {
       const previousMetadata = owner.metadata ?? {};
       const newMetadata = {

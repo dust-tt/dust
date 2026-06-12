@@ -80,6 +80,7 @@ export function validateDustMcpServerAllowedRedirectUris(
   allowedRedirectUris: string[]
 ): Result<string[], Error> {
   const normalizedUris: string[] = [];
+  const seenUris = new Set<string>();
 
   for (const uri of allowedRedirectUris) {
     const validation = validateDustMcpServerRedirectUri(uri);
@@ -87,10 +88,11 @@ export function validateDustMcpServerAllowedRedirectUris(
       return validation;
     }
 
-    if (normalizedUris.includes(validation.value)) {
+    if (seenUris.has(validation.value)) {
       return new Err(new Error(`Duplicate redirect URI: ${validation.value}`));
     }
 
+    seenUris.add(validation.value);
     normalizedUris.push(validation.value);
   }
 
