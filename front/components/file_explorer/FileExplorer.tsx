@@ -30,7 +30,7 @@ import { isInteractiveContentType } from "@app/types/files";
 import { Err, type Result } from "@app/types/shared/result";
 import { cn, Edit04, FolderOpen, Trash01 } from "@dust-tt/sparkle";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 interface FileExplorerProps {
   contentClassName?: string;
@@ -39,11 +39,11 @@ interface FileExplorerProps {
   emptyState?: React.ReactNode;
   hideBreadcrumbAtRoot?: boolean;
   files: FileSystemEntry[];
+  currentFolderPath: string;
   getFileUrl: (path: string) => string;
   toolbarExtraActions?: React.ReactNode;
   isLoading: boolean;
-  navigationResetKey?: number;
-  onCurrentFolderChange?: (relativePath: string) => void;
+  onCurrentFolderChange: (relativePath: string) => void;
   onDelete?: (entry: FileExplorerEntry) => Promise<void>;
   onFileDownload: (entry: FileEntry) => Promise<void>;
   onMoveFile?: (
@@ -63,11 +63,11 @@ export function FileExplorer({
   defaultViewMode = "grid",
   emptyState,
   files,
+  currentFolderPath,
   getFileUrl,
   toolbarExtraActions,
   hideBreadcrumbAtRoot = false,
   isLoading,
-  navigationResetKey,
   onCurrentFolderChange,
   onDelete,
   onFileDownload,
@@ -76,23 +76,6 @@ export function FileExplorer({
   onRename,
   getExtraFileMenuItems,
 }: FileExplorerProps) {
-  const [currentFolderPath, setCurrentFolderPath] = useState("");
-  const prevNavigationResetKey = useRef(navigationResetKey);
-
-  useEffect(() => {
-    onCurrentFolderChange?.(currentFolderPath);
-  }, [currentFolderPath, onCurrentFolderChange]);
-
-  useEffect(() => {
-    if (
-      navigationResetKey !== undefined &&
-      prevNavigationResetKey.current !== navigationResetKey
-    ) {
-      setCurrentFolderPath("");
-    }
-    prevNavigationResetKey.current = navigationResetKey;
-  }, [navigationResetKey]);
-
   const [viewMode, setViewMode] = useState<ViewMode>(defaultViewMode);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FileExplorerFilter>("all");
@@ -194,16 +177,16 @@ export function FileExplorer({
 
   const handleBreadcrumbNavigate = (index: number) => {
     if (index < 0) {
-      setCurrentFolderPath("");
+      onCurrentFolderChange("");
       return;
     }
 
     const segments = getFolderBreadcrumbSegments(currentFolderPath);
-    setCurrentFolderPath(segments[index]?.path ?? "");
+    onCurrentFolderChange(segments[index]?.path ?? "");
   };
 
   const handleFolderNavigate = (node: FileSystemTreeNode) => {
-    setCurrentFolderPath(node.path);
+    onCurrentFolderChange(node.path);
   };
 
   const fileDragEnabled = Boolean(onMoveFile && totalFolderCount > 0);

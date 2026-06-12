@@ -3,6 +3,7 @@ import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
+import { useConversationFileExplorerState } from "@app/hooks/useConversationFileExplorerState";
 import { downloadFile, getFilePathViewUrl } from "@app/lib/swr/files";
 import { usePodFiles } from "@app/lib/swr/pods";
 import {
@@ -11,9 +12,7 @@ import {
 } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, ButtonGroup, cn, XClose } from "@dust-tt/sparkle";
-import { useCallback, useState } from "react";
-
-type FilesTab = "conversation" | "pod";
+import { useCallback } from "react";
 
 interface ConversationFileExplorerProps {
   conversation: ConversationWithoutContentType;
@@ -26,7 +25,15 @@ export function ConversationFileExplorer({
 }: ConversationFileExplorerProps) {
   const { closePanel, openPanel } = useConversationSidePanelContext();
   const isPod = isPodConversation(conversation);
-  const [activeTab, setActiveTab] = useState<FilesTab>("conversation");
+
+  const {
+    activeTab,
+    setActiveTab,
+    convFolderPath,
+    setConvFolderPath,
+    podFolderPath,
+    setPodFolderPath,
+  } = useConversationFileExplorerState({ isPod });
 
   const { sandboxFiles, isSandboxFilesLoading } = useConversationSandboxFiles({
     conversationId: conversation.sId,
@@ -102,6 +109,8 @@ export function ConversationFileExplorer({
         >
           <FileExplorer
             files={sandboxFiles}
+            currentFolderPath={convFolderPath}
+            onCurrentFolderChange={setConvFolderPath}
             hideBreadcrumbAtRoot
             isLoading={isSandboxFilesLoading}
             getFileUrl={getFileUrl}
@@ -120,6 +129,8 @@ export function ConversationFileExplorer({
             <FileExplorer
               defaultViewMode="list"
               files={podFiles}
+              currentFolderPath={podFolderPath}
+              onCurrentFolderChange={setPodFolderPath}
               hideBreadcrumbAtRoot
               isLoading={isPodFilesLoading}
               getFileUrl={getFileUrl}
