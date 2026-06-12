@@ -1,5 +1,4 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { SCOPED_PREFIX_CONVERSATION } from "@app/lib/api/file_system/types";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -38,12 +37,18 @@ export async function loadSkillFilesToConversation(
   }
   const fileSystem = fsResult.value;
 
+  const conversationMount = fileSystem
+    .getMounts()
+    .find((m) => m.kind === "conversation" && m.id === conversation.sId);
+  // `forConversation` always creates the conversation mount.
+  if (!conversationMount) {
+    throw new Error("Conversation mount not found.");
+  }
+
   const loadedPaths: string[] = [];
 
   for (const file of fileAttachments) {
-    const scopedPath =
-      `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/` +
-      `skills/${skill.name}/${file.fileName}`;
+    const scopedPath = `${conversationMount.scopedPrefix}/skills/${skill.name}/${file.fileName}`;
 
     const writeResult = await fileSystem.write(
       scopedPath,
