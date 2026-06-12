@@ -85,6 +85,18 @@ export async function registerUserAnswer(
     );
   }
 
+  // A blocked action is only actionable while its agent message can still resume: answering one
+  // left behind by an interrupted, cancelled or failed message would relaunch an agent loop that
+  // was already terminated.
+  if (!(await action.canAgentMessageResume(auth))) {
+    return new Err(
+      new DustError(
+        "action_not_blocked",
+        "Action belongs to an agent message that can no longer resume"
+      )
+    );
+  }
+
   await action.updateStepContext({
     ...action.stepContext,
     resumeState: {
@@ -94,7 +106,10 @@ export async function registerUserAnswer(
   });
 
   // Change status to ready so the tool re-runs.
-  const [updatedCount] = await action.updateStatus("ready_allowed_explicitly");
+  const [updatedCount] = await action.updateStatusFromExpected(auth, {
+    status: "ready_allowed_explicitly",
+    expectedStatus: "blocked_user_answer_required",
+  });
 
   if (updatedCount === 0) {
     logger.info(

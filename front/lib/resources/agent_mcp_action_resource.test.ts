@@ -4,6 +4,7 @@ import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import {
   GCS_CONTENT_CACHE_TTL_MS,
   gcsContentCacheKey,
@@ -278,6 +279,32 @@ describe("listBlockedActionsForConversation", () => {
       workspaceId: workspace.id,
     });
     expect(result[0].actionId).toBe(expectedActionId);
+  });
+
+  it("returns zero and leaves the action unchanged when the expected status does not match", async () => {
+    const agentMessage = await AgentMessageModel.create({
+      workspaceId: workspace.id,
+      agentConfigurationId: "test-agent",
+      agentConfigurationVersion: 0,
+      status: "created",
+      skipToolsValidation: false,
+    });
+    const { action } = await createBlockedAction({
+      agentMessageModelId: agentMessage.id,
+    });
+    const actionResource = await AgentMCPActionResource.fetchByModelIdWithAuth(
+      auth,
+      action.id
+    );
+    const [affectedCount] = await actionResource!.updateStatusFromExpected(
+      auth,
+      {
+        status: "denied",
+        expectedStatus: "blocked_authentication_required",
+      }
+    );
+    expect(affectedCount).toBe(0);
+    expect((await action.reload()).status).toBe("blocked_validation_required");
   });
 });
 
