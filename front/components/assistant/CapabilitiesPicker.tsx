@@ -129,7 +129,7 @@ function CapabilitiesPickerItemsList({
   }
 
   return (
-    <div className="relative" ref={listRef}>
+    <div ref={listRef}>
       {items.map((item) => {
         const endComponent =
           item.kind === "uninstalled_tool" ? (
