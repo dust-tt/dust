@@ -94,6 +94,24 @@ export function isNormalizedPoolLimitSeatType(
 }
 
 /**
+ * Collapse a seat type's `_yearly` variant onto its base tier (e.g.
+ * `pro_yearly` → `pro`). Yearly and monthly variants share a tier, icon and
+ * label, so this is used both for display and for matching a base seat-type
+ * filter against either cadence.
+ */
+export function toBaseSeatType(
+  seatType: MembershipSeatType
+): MembershipSeatType {
+  if (seatType.endsWith("_yearly")) {
+    const base = seatType.slice(0, -"_yearly".length);
+    if (isMembershipSeatType(base)) {
+      return base;
+    }
+  }
+  return seatType;
+}
+
+/**
  * Map a membership seat type to its normalized pool-limit seat type.
  * Returns null for `free` seats (they have a fixed lifetime allocation with
  * no pool access).

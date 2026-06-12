@@ -11,9 +11,9 @@ import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
 import { useDefaultUserSpendLimit } from "@app/lib/swr/usage_settings";
 import {
-  isMembershipSeatType,
   type MembershipSeatType,
   SEAT_TYPE_ORDER,
+  toBaseSeatType,
 } from "@app/types/memberships";
 import {
   Clock,
@@ -52,16 +52,6 @@ type RowData = {
 
 type Info = CellContext<RowData, string>;
 
-// Yearly seat types are billed yearly but render in the table identically to
-// their monthly counterpart. Strip the suffix for icon lookup and display.
-function getDisplaySeatType(seatType: MembershipSeatType): MembershipSeatType {
-  if (seatType.endsWith("_yearly")) {
-    const stripped = seatType.slice(0, -"_yearly".length);
-    return isMembershipSeatType(stripped) ? stripped : seatType;
-  }
-  return seatType;
-}
-
 // Builds the tooltip explaining a scheduled seat change, e.g.
 // "This user will be downgraded to Free at the end of the billing period (July 1)".
 function getScheduledSeatChangeLabel(
@@ -77,7 +67,7 @@ function getScheduledSeatChangeLabel(
       : scheduledRank < currentRank
         ? "downgraded"
         : "changed";
-  const target = getDisplaySeatType(scheduledSeatType);
+  const target = toBaseSeatType(scheduledSeatType);
   const targetLabel = target.charAt(0).toUpperCase() + target.slice(1);
   const dateSuffix = scheduledSeatChangeAt
     ? ` (${new Date(scheduledSeatChangeAt).toLocaleDateString("en-US", {
@@ -97,7 +87,7 @@ function SeatTypeIcon({ seatType }: SeatTypeIconProps) {
   if (!seatType) {
     return null;
   }
-  const displaySeatType = getDisplaySeatType(seatType);
+  const displaySeatType = toBaseSeatType(seatType);
   const visual = SEAT_TYPE_ICONS[displaySeatType];
   if (!visual) {
     return null;
@@ -341,7 +331,7 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
       <DataTable.CellContent>
         <span className="flex items-center gap-1.5 text-sm font-semibold capitalize text-muted-foreground dark:text-muted-foreground-night">
           <SeatTypeIcon seatType={seatType} />
-          {seatType ? getDisplaySeatType(seatType) : "—"}
+          {seatType ? toBaseSeatType(seatType) : "—"}
           {scheduledSeatType && (
             <Tooltip
               label={getScheduledSeatChangeLabel(
@@ -430,7 +420,6 @@ interface MembersUsageTableProps {
   isLoading: boolean;
   totalAllowedUsagePendingMemberIds: ReadonlySet<string>;
   seatChangePendingMemberIds: ReadonlySet<string>;
-  seatTypeFilter: MembershipSeatType | "none" | null;
   isSeatBased: boolean;
   showSpendLimit: boolean;
   readOnly: boolean;
@@ -449,7 +438,6 @@ export function MembersUsageTable({
   isLoading,
   totalAllowedUsagePendingMemberIds,
   seatChangePendingMemberIds,
-  seatTypeFilter,
   isSeatBased,
   showSpendLimit,
   readOnly,
@@ -462,29 +450,9 @@ export function MembersUsageTable({
   sorting,
   setSorting,
 }: MembersUsageTableProps) {
-  // Name/email search is handled server-side; only filter by seat type here.
-  const filtered = useMemo(
-    () =>
-      members.filter((m) => {
-        if (seatTypeFilter === "none" && m.seatType !== null) {
-          return false;
-        }
-        if (
-          seatTypeFilter !== null &&
-          seatTypeFilter !== "none" &&
-          m.seatType &&
-          !m.seatType.startsWith(seatTypeFilter)
-        ) {
-          return false;
-        }
-        return true;
-      }),
-    [members, seatTypeFilter]
-  );
-
   const rows: RowData[] = useMemo(
     () =>
-      filtered.map((m) => ({
+      members.map((m) => ({
         sId: m.sId,
         name: m.name,
         email: m.email,
@@ -537,7 +505,7 @@ export function MembersUsageTable({
         ],
       })),
     [
-      filtered,
+      members,
       totalAllowedUsagePendingMemberIds,
       seatChangePendingMemberIds,
       isSeatBased,

@@ -240,6 +240,7 @@ export function useMembersUsage({
   pageSize,
   orderColumn,
   orderDirection,
+  seatType,
   disabled,
 }: {
   workspaceId: string;
@@ -248,6 +249,7 @@ export function useMembersUsage({
   pageSize: number;
   orderColumn?: "name" | "email";
   orderDirection?: "asc" | "desc";
+  seatType?: MembershipSeatType | "none";
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -271,6 +273,9 @@ export function useMembersUsage({
   }
   if (orderDirection) {
     searchParams.set("orderDirection", orderDirection);
+  }
+  if (seatType) {
+    searchParams.set("seatType", seatType);
   }
 
   const { data, error } = useSWRWithDefaults(
