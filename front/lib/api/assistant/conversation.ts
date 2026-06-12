@@ -3069,10 +3069,15 @@ export async function updateAgentMessageWithFinalStatus(
     promotedAuth,
     agentMessage: newAgentMessage,
     deniedActions,
+    alreadyFinalized,
   } = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
-    await AgentMessageModel.update(
+    // Only transition from "created": finalization is single-shot. A late terminal event from an
+    // orphaned activity (e.g. an LLM call still running after an interrupt) must not overwrite
+    // the final status nor re-run the pending-messages promotion below, which would spawn a
+    // second concurrent agent loop.
+    const [updatedCount] = await AgentMessageModel.update(
       {
         status,
         completedAt,
@@ -3088,10 +3093,29 @@ export async function updateAgentMessageWithFinalStatus(
         where: {
           id: agentMessage.agentMessageId,
           workspaceId: owner.id,
+          status: "created",
         },
         transaction: t,
       }
     );
+
+    if (updatedCount === 0) {
+      const existingAgentMessage = await AgentMessageModel.findOne({
+        where: {
+          id: agentMessage.agentMessageId,
+          workspaceId: owner.id,
+        },
+        transaction: t,
+      });
+
+      return {
+        promotedUserMessages: [] as UserMessageTypeWithoutMentions[],
+        promotedAuth: auth,
+        agentMessage: null as AgentMessageType | null,
+        deniedActions: [],
+        alreadyFinalized: existingAgentMessage,
+      };
+    }
 
     const deniedActions = UNRESUMABLE_AGENT_MESSAGE_STATUSES.includes(status)
       ? await AgentMCPActionResource.denyBlockedActionsForAgentMessage(auth, {
@@ -3121,6 +3145,7 @@ export async function updateAgentMessageWithFinalStatus(
         promotedAuth: auth,
         agentMessage: null as AgentMessageType | null,
         deniedActions,
+        alreadyFinalized: null,
       };
     }
 
@@ -3177,6 +3202,7 @@ export async function updateAgentMessageWithFinalStatus(
         promotedAuth,
         agentMessage: null,
         deniedActions,
+        alreadyFinalized: null,
       };
     }
 
@@ -3189,6 +3215,7 @@ export async function updateAgentMessageWithFinalStatus(
         promotedAuth,
         agentMessage: null,
         deniedActions,
+        alreadyFinalized: null,
       };
     }
 
@@ -3216,8 +3243,31 @@ export async function updateAgentMessageWithFinalStatus(
       promotedAuth,
       agentMessage: agentMessages[0] ?? null,
       deniedActions,
+      alreadyFinalized: null,
     };
   });
+
+  if (alreadyFinalized) {
+    logger.warn(
+      {
+        agentMessageId: agentMessage.sId,
+        conversationId: conversation.sId,
+        currentStatus: alreadyFinalized.status,
+        requestedStatus: status,
+        workspaceId: owner.sId,
+      },
+      "updateAgentMessageWithFinalStatus: message already finalized, skipping"
+    );
+
+    return {
+      completedTs:
+        alreadyFinalized.completedAt?.getTime() ?? completedAt.getTime(),
+      status:
+        alreadyFinalized.status !== "created"
+          ? alreadyFinalized.status
+          : status,
+    };
+  }
 
   // Publish events and launch agent loop outside of the advisory lock.
   if (promotedUserMessages.length > 0) {
