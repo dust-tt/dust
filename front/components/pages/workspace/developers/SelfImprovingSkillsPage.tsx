@@ -6,6 +6,7 @@ import {
   useFeatureFlags,
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
+import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import {
   getReinforcementMonthlyCapAwuCredits,
   getReinforcementMonthlyCapMicroUsd,
@@ -25,8 +26,9 @@ import { useState } from "react";
 export function SelfImprovingSkillsPage() {
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
-  const { featureFlags } = useFeatureFlags();
-  const hasReinforcement = featureFlags.includes("reinforced_agents");
+  const { hasFeature } = useFeatureFlags();
+  const hasSelfImprovement = useIsSelfImprovementAvailable();
+  const isBetaTester = hasFeature("self_improvement_beta_tester");
 
   const unit = useReinforcementBillingUnit({ owner });
 
@@ -52,7 +54,7 @@ export function SelfImprovingSkillsPage() {
         </ContentMessage>
       );
     }
-    if (!hasReinforcement) {
+    if (!hasSelfImprovement) {
       return (
         <ContentMessage variant="info" icon={InfoCircle} size="lg">
           Self-improving skills are not enabled for this workspace.
@@ -61,22 +63,24 @@ export function SelfImprovingSkillsPage() {
     }
     return (
       <>
-        <ContentMessage variant="info" size="lg">
-          This feature is currently in <strong>beta</strong>, and only available
-          to a select group of customers.
-          <br />
-          Note that the feature is currently free during beta testing but will
-          generate additional costs upon release.
-          <br />
-          Contact{" "}
-          <LinkWrapper
-            href="mailto:self-improving-skills@dust.tt"
-            className="underline"
-          >
-            self-improving-skills@dust.tt
-          </LinkWrapper>{" "}
-          to share some feedback about this feature.
-        </ContentMessage>
+        {isBetaTester && (
+          <ContentMessage variant="info" size="lg">
+            This feature is currently in <strong>beta</strong>, and only
+            available to a select group of customers.
+            <br />
+            Note that the feature is currently free during beta testing but will
+            generate additional costs upon release.
+            <br />
+            Contact{" "}
+            <LinkWrapper
+              href="mailto:self-improving-skills@dust.tt"
+              className="underline"
+            >
+              self-improving-skills@dust.tt
+            </LinkWrapper>{" "}
+            to share some feedback about this feature.
+          </ContentMessage>
+        )}
         <SelfImprovingSkillsSettingsSection
           owner={owner}
           onCapSaved={setCap}

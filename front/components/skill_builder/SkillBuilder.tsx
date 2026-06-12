@@ -26,6 +26,7 @@ import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import { useAppRouter } from "@app/lib/platform";
 import { getSkillIcon } from "@app/lib/skill";
 import { useSkillHistory } from "@app/lib/swr/skill_configurations";
@@ -79,8 +80,7 @@ export default function SkillBuilder({
     limit: 30,
   });
 
-  const hasSelfImprovingSkills =
-    hasFeature("reinforced_agents") && hasFeature("reinforcement_ui");
+  const hasSelfImprovingSkills = useIsSelfImprovementAvailable();
 
   const { suggestions } = useSkillSuggestions({
     skillId: skill?.sId ?? null,

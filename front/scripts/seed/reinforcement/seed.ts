@@ -6,13 +6,10 @@ import { seedReinforcement } from "@app/scripts/seed/reinforcement/seedReinforce
 makeScript({}, async ({ execute }, logger) => {
   const ctx = await createSeedContext({ execute, logger });
 
-  // Enable the reinforcement feature flags
-  logger.info("Enabling reinforcement feature flags...");
+  // Enable the self-improvement feature flag
+  logger.info("Enabling self-improvement feature flag...");
   if (execute) {
-    await FeatureFlagResource.enableMany(ctx.workspace, [
-      "reinforced_agents",
-      "reinforcement_ui",
-    ]);
+    await FeatureFlagResource.enableMany(ctx.workspace, ["reinforced_agents"]);
     logger.info("Feature flag enabled");
   }
 

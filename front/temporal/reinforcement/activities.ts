@@ -97,9 +97,11 @@ import { Op } from "sequelize";
 export { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 
 /**
- * Report usage for a single reinforcement LLM step to Metronome, ES analytics,
- * and programmatic usage. Gated behind the self_improving_skills_report_usage
- * feature flag. Fire-and-forget: failures are logged but do not break the
+ * Report usage for a single self-improvement LLM step to billing and ES
+ * analytics: as Metronome usage events for workspaces billed by Metronome on
+ * a credit-priced plan, as programmatic usage otherwise. Workspaces with the
+ * `self_improvement_beta_tester` feature flag report nothing and run for
+ * free. Fire-and-forget: failures are logged but do not break the
  * reinforcement workflow.
  */
 async function reportSelfImprovingSkillsStepUsage({
@@ -117,11 +119,7 @@ async function reportSelfImprovingSkillsStepUsage({
   userMessageId: string;
   dustRunIds?: string[];
 }): Promise<void> {
-  const hasFlag = await hasFeatureFlag(
-    auth,
-    "self_improving_skills_report_usage"
-  );
-  if (!hasFlag) {
+  if (await hasFeatureFlag(auth, "self_improvement_beta_tester")) {
     return;
   }
 
@@ -140,11 +138,23 @@ async function reportSelfImprovingSkillsStepUsage({
   };
 
   try {
-    await Promise.all([
-      launchAgentMessageAnalytics(auth, agentLoopArgs),
-      launchTrackProgrammaticUsage(auth, agentLoopArgs),
-      launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-    ]);
+    const unit = getReinforcementBillingUnit(auth);
+    switch (unit) {
+      case "awu_credits":
+        await Promise.all([
+          launchAgentMessageAnalytics(auth, agentLoopArgs),
+          launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
+        ]);
+        break;
+      case "micro_usd":
+        await Promise.all([
+          launchAgentMessageAnalytics(auth, agentLoopArgs),
+          launchTrackProgrammaticUsage(auth, agentLoopArgs),
+        ]);
+        break;
+      default:
+        assertNever(unit);
+    }
   } catch (err) {
     logger.warn(
       {
@@ -963,9 +973,7 @@ export async function finalizeSkillAggregationActivity({
   }
   await skill.recordReinforcementAnalysisCompletion();
 
-  const hasReinforcementUi = await hasFeatureFlag(auth, "reinforcement_ui");
-
-  if (suggestionsCreated > 0 && !disableNotifications && hasReinforcementUi) {
+  if (suggestionsCreated > 0 && !disableNotifications) {
     const skillType = skill.toJSON(auth);
     const editors = (await skill.listEditors(auth)) ?? [];
     const editorTypes = editors.map((e) => e.toJSON());
