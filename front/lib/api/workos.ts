@@ -4,24 +4,36 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
 import jwt from "jsonwebtoken";
 import jwksClient from "jwks-rsa";
+import { z } from "zod";
 
-export const WorkOSJwtPayloadSchema = t.intersection([
-  t.type({
-    exp: t.number,
-    sub: t.string,
-  }),
-  t.record(
-    t.string,
-    t.union([t.string, t.number, t.undefined, t.array(t.string)])
-  ),
+const WorkOSJwtClaimValueSchema = z.union([
+  z.string(),
+  z.number(),
+  z.undefined(),
+  z.array(z.string()),
 ]);
 
-export type WorkOSJwtPayload = t.TypeOf<typeof WorkOSJwtPayloadSchema> &
+export const WorkOSJwtPayloadSchema = z
+  .object({
+    exp: z.number(),
+    sub: z.string(),
+  })
+  .catchall(WorkOSJwtClaimValueSchema);
+
+export type WorkOSJwtPayload = z.infer<typeof WorkOSJwtPayloadSchema> &
   jwt.JwtPayload;
+
+export function parseWorkOSJwtPayload(
+  payload: unknown
+): Result<WorkOSJwtPayload, Error> {
+  const validation = WorkOSJwtPayloadSchema.safeParse(payload);
+  if (!validation.success) {
+    return new Err(new Error("Invalid token payload."));
+  }
+  return new Ok(validation.data);
+}
 
 /**
  * Get the public key to verify a WorkOS token.
@@ -84,13 +96,13 @@ export async function verifyWorkOSToken(
           return resolve(new Err(Error("No token payload")));
         }
 
-        const payloadValidation = WorkOSJwtPayloadSchema.decode(decoded);
-        if (isLeft(payloadValidation)) {
+        const payloadValidation = parseWorkOSJwtPayload(decoded);
+        if (payloadValidation.isErr()) {
           logger.error("Invalid token payload.");
-          return resolve(new Err(Error("Invalid token payload.")));
+          return resolve(payloadValidation);
         }
 
-        return resolve(new Ok(payloadValidation.right));
+        return resolve(new Ok(payloadValidation.value));
       }
     );
   });

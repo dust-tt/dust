@@ -1,13 +1,14 @@
 import {
-  getAuthenticatorFromWorkOSClaims,
-  type McpAuthenticator,
-} from "@app/lib/api/mcp_server/authenticator";
-import {
   getMcpResourceMetadataUrl,
   getMcpResourceServerUrl,
   getWorkOSAuthKitDomain,
   normalizeOAuthUrl,
 } from "@app/lib/api/mcp_server/urls";
+import type { WorkOSJwtPayload } from "@app/lib/api/workos";
+import {
+  getAuthenticatorFromWorkOSClaims,
+  type WorkOSWorkspaceAuthenticator,
+} from "@app/lib/api/workos_authenticator";
 import logger from "@app/logger/logger";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { Context } from "hono";
@@ -19,31 +20,11 @@ import {
   jwtVerify,
 } from "jose";
 
-export type McpServerAuthUser = JWTPayload & { sub: string };
-
 export type McpServerAuthVariables = {
-  mcpUser: McpServerAuthUser;
+  mcpUser: WorkOSJwtPayload;
   mcpAuthInfo: AuthInfo;
-  mcpAuth: McpAuthenticator;
+  mcpAuth: WorkOSWorkspaceAuthenticator;
 };
-
-function tokenScopes(payload: JWTPayload): string[] {
-  const { scope } = payload;
-  if (typeof scope === "string" && scope.trim()) {
-    return scope.split(" ").filter(Boolean);
-  }
-  return [];
-}
-
-function toMcpAuthInfo(token: string, payload: McpServerAuthUser): AuthInfo {
-  return {
-    token,
-    clientId: payload.sub,
-    scopes: tokenScopes(payload),
-    expiresAt: typeof payload.exp === "number" ? payload.exp : undefined,
-    extra: { user: payload },
-  };
-}
 
 const WORKOS_AUTHKIT_DOMAIN = getWorkOSAuthKitDomain();
 const DUST_MCP_SERVER_URL = getMcpResourceServerUrl();
@@ -132,8 +113,7 @@ export const mcpServerAuthMiddleware = createMiddleware<{
       throw new Error("Token audience does not match MCP resource URL");
     }
 
-    const mcpUser = payload as McpServerAuthUser;
-    const authResult = await getAuthenticatorFromWorkOSClaims(mcpUser);
+    const authResult = await getAuthenticatorFromWorkOSClaims(payload);
     if (authResult.isErr()) {
       const descriptions: Record<typeof authResult.error, string> = {
         organization_missing:
@@ -149,8 +129,8 @@ export const mcpServerAuthMiddleware = createMiddleware<{
         {
           error: authResult.error,
           tokenClaims: {
-            sub: mcpUser.sub,
-            org_id: mcpUser.org_id,
+            sub: payload.sub,
+            org_id: payload.org_id,
           },
         },
         "[dust-mcp-server] Failed to build workspace-scoped authenticator"
@@ -162,8 +142,6 @@ export const mcpServerAuthMiddleware = createMiddleware<{
       });
     }
 
-    c.set("mcpUser", mcpUser);
-    c.set("mcpAuthInfo", toMcpAuthInfo(token, mcpUser));
     c.set("mcpAuth", authResult.value);
     await next();
   } catch (err) {
