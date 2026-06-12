@@ -1139,6 +1139,14 @@ export const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
       preferredReasoningEffort: "high",
     },
   ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE,
+    {
+      name: "dust-soupinou-none",
+      customModelIndex: 2,
+      preferredReasoningEffort: "none",
+    },
+  ],
 ]);
 
 export function getCustomModelDustGlobalAgentIndex(

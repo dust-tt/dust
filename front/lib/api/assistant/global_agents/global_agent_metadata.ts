@@ -388,6 +388,13 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "Same as dust-soupinou but with high reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE,
+        name: "dust-soupinou-none",
+        description: "Same as dust-soupinou but with no reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST_SUNDAE:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_SUNDAE,

@@ -177,6 +177,7 @@ describe("getGlobalAgents custom model agents", () => {
         GLOBAL_AGENTS_SID.DUST_SOUPINOU,
         GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
         GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
+        GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE,
       ],
       "light"
     );
@@ -203,6 +204,11 @@ describe("getGlobalAgents custom model agents", () => {
         modelId: SOUPINOU_CUSTOM_MODEL_ID,
         reasoningEffort: "high",
       },
+      {
+        sId: GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE,
+        modelId: SOUPINOU_CUSTOM_MODEL_ID,
+        reasoningEffort: "none",
+      },
     ]);
   });
 
@@ -220,6 +226,7 @@ describe("getGlobalAgents custom model agents", () => {
           GLOBAL_AGENTS_SID.DUST_SOUPINOU,
           GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
           GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
+          GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE,
         ],
         "light"
       );

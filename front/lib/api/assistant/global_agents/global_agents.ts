@@ -387,6 +387,12 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
+  [GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
   [GLOBAL_AGENTS_SID.DUST_SUNDAE]: {
     injectsMemory: true,
     injectsToolsets: true,
@@ -1247,6 +1253,7 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.DUST_SOUPINOU:
     case GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM:
     case GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH:
+    case GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE:
       agentConfiguration = _getCustomModelDustLikeGlobalAgent(
         auth,
         {
@@ -1509,6 +1516,7 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_SOUPINOU,
     GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE,
     GLOBAL_AGENTS_SID.DUST_SUNDAE,
     GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH,
