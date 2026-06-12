@@ -8,10 +8,7 @@ import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guard
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { getSkillDataSourceConfigurations } from "@app/lib/api/assistant/skill_actions";
 import config from "@app/lib/api/config";
-import {
-  DustFileSystem,
-  parseScopedPrefix,
-} from "@app/lib/api/file_system";
+import { DustFileSystem, parseScopedPrefix } from "@app/lib/api/file_system";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";

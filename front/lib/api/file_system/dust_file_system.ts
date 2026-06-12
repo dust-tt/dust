@@ -63,7 +63,9 @@ type ParsedScopedPrefix =
   | { kind: "conversation"; id: string }
   | { kind: "pod"; id: string };
 
-export function parseScopedPrefix(scopedPath: string): ParsedScopedPrefix | null {
+export function parseScopedPrefix(
+  scopedPath: string
+): ParsedScopedPrefix | null {
   const prefix = scopedPath.includes("/")
     ? scopedPath.slice(0, scopedPath.indexOf("/"))
     : scopedPath;
