@@ -1,4 +1,6 @@
 import {
+  addPaymentGatedCommitToContract,
+  addPrepaidCommitToContract,
   createMetronomeContract,
   createMetronomeCredit,
 } from "@app/lib/metronome/client";
@@ -29,6 +31,7 @@ const {
   mockCreate,
   mockList,
   mockContractsCreate,
+  mockContractsEdit,
   mockSetCustomFieldValues,
   MockConflictError,
 } = vi.hoisted(() => {
@@ -39,6 +42,7 @@ const {
     mockCreate: vi.fn(),
     mockList: vi.fn(),
     mockContractsCreate: vi.fn(),
+    mockContractsEdit: vi.fn(),
     mockSetCustomFieldValues: vi.fn(),
     MockConflictError,
   };
@@ -54,6 +58,9 @@ vi.mock("@metronome/sdk", () => {
         },
         contracts: { create: mockContractsCreate },
         customFields: { setValues: mockSetCustomFieldValues },
+      },
+      v2: {
+        contracts: { edit: mockContractsEdit },
       },
     };
   }
@@ -91,6 +98,8 @@ beforeEach(() => {
 
   mockContractsCreate.mockReset();
   mockContractsCreate.mockResolvedValue({ data: { id: "contract-id-1" } });
+  mockContractsEdit.mockReset();
+  mockContractsEdit.mockResolvedValue({ data: { id: "edit-id-1" } });
   mockSetCustomFieldValues.mockReset();
   mockSetCustomFieldValues.mockResolvedValue(undefined);
 });
@@ -189,5 +198,70 @@ describe("createMetronomeContract", () => {
         transition: { type: "RENEWAL", from_contract_id: "prior-contract" },
       })
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// add*CommitToContract — rollover_fraction
+// ---------------------------------------------------------------------------
+
+const BASE_PREPAID_COMMIT_PARAMS = {
+  metronomeCustomerId: "cust-1",
+  metronomeContractId: "contract-1",
+  productId: "prod-1",
+  accessAmount: 10_000,
+  accessCreditTypeId: "credit-type-awu",
+  accessStartingAt: new Date("2026-04-01T00:00:00.000Z"),
+  accessEndingBefore: new Date("2027-04-01T00:00:00.000Z"),
+  invoiceUnitPrice: 5_000,
+  invoiceQuantity: 1,
+  invoiceCreditTypeId: "credit-type-usd",
+  invoiceTimestamp: new Date("2026-04-01T00:00:00.000Z"),
+  priority: 2,
+  name: "Test commit",
+  uniquenessKey: "commit-key-1",
+};
+
+function firstAddedCommit() {
+  return mockContractsEdit.mock.calls[0][0].add_commits[0];
+}
+
+describe("addPrepaidCommitToContract", () => {
+  it("forwards rollover_fraction when provided", async () => {
+    await addPrepaidCommitToContract({
+      ...BASE_PREPAID_COMMIT_PARAMS,
+      rolloverFraction: 1,
+    });
+
+    expect(firstAddedCommit()).toMatchObject({ rollover_fraction: 1 });
+  });
+
+  it("omits rollover_fraction when not provided", async () => {
+    await addPrepaidCommitToContract(BASE_PREPAID_COMMIT_PARAMS);
+
+    expect(firstAddedCommit()).not.toHaveProperty("rollover_fraction");
+  });
+});
+
+describe("addPaymentGatedCommitToContract", () => {
+  const BASE_PAYMENT_GATED_PARAMS = {
+    ...BASE_PREPAID_COMMIT_PARAMS,
+    applicableProducTags: ["usage"],
+    stripeInvoiceMetadata: { workspace_id: "ws-1" },
+  };
+
+  it("forwards rollover_fraction when provided", async () => {
+    await addPaymentGatedCommitToContract({
+      ...BASE_PAYMENT_GATED_PARAMS,
+      rolloverFraction: 1,
+    });
+
+    expect(firstAddedCommit()).toMatchObject({ rollover_fraction: 1 });
+  });
+
+  it("omits rollover_fraction when not provided", async () => {
+    await addPaymentGatedCommitToContract(BASE_PAYMENT_GATED_PARAMS);
+
+    expect(firstAddedCommit()).not.toHaveProperty("rollover_fraction");
   });
 });

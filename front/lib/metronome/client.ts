@@ -1713,6 +1713,7 @@ export async function addPaymentGatedCommitToContract({
   name,
   uniquenessKey,
   stripeInvoiceMetadata,
+  rolloverFraction,
 }: {
   metronomeCustomerId: string;
   metronomeContractId: string;
@@ -1730,6 +1731,10 @@ export async function addPaymentGatedCommitToContract({
   name: string;
   uniquenessKey: string;
   stripeInvoiceMetadata: Record<string, string>;
+  // Fraction (0–1) of unused balance that rolls over to the successor contract
+  // when this contract is ended via a RENEWAL/SUPERSEDE transition. Must be set
+  // at creation time; only affects future transitions, never retroactively.
+  rolloverFraction?: number;
 }): Promise<Result<{ editId: string }, Error>> {
   try {
     const response = await getMetronomeClient().v2.contracts.edit({
@@ -1743,6 +1748,9 @@ export async function addPaymentGatedCommitToContract({
           name,
           priority,
           applicable_product_tags: applicableProducTags,
+          ...(rolloverFraction !== undefined
+            ? { rollover_fraction: rolloverFraction }
+            : {}),
           access_schedule: {
             credit_type_id: accessCreditTypeId,
             schedule_items: [
@@ -1842,6 +1850,7 @@ export async function addPrepaidCommitToContract({
   uniquenessKey,
   applicableProductIds,
   applicableProductTags,
+  rolloverFraction,
 }: {
   metronomeCustomerId: string;
   metronomeContractId: string;
@@ -1859,6 +1868,10 @@ export async function addPrepaidCommitToContract({
   uniquenessKey: string;
   applicableProductIds?: string[];
   applicableProductTags?: string[];
+  // Fraction (0–1) of unused balance that rolls over to the successor contract
+  // when this contract is ended via a RENEWAL/SUPERSEDE transition. Must be set
+  // at creation time; only affects future transitions, never retroactively.
+  rolloverFraction?: number;
 }): Promise<Result<{ editId: string }, Error>> {
   try {
     const response = await getMetronomeClient().v2.contracts.edit({
@@ -1876,6 +1889,9 @@ export async function addPrepaidCommitToContract({
             : {}),
           ...(applicableProductTags && applicableProductTags.length > 0
             ? { applicable_product_tags: applicableProductTags }
+            : {}),
+          ...(rolloverFraction !== undefined
+            ? { rollover_fraction: rolloverFraction }
             : {}),
           access_schedule: {
             credit_type_id: accessCreditTypeId,

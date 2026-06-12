@@ -348,6 +348,8 @@ export async function purchaseAwuCredits(
         ? `Credit top-up: ${amountCredits.toLocaleString()} credits (${discountPercent}% discount)`
         : `Credit top-up: ${amountCredits.toLocaleString()} credits`,
     uniquenessKey,
+    // Carry any unused balance into the successor contract on renewal.
+    rolloverFraction: 1,
     // Stamped on the Stripe invoice Metronome pushes downstream so the
     // existing eligibility check (`isAwuPurchaseInvoice`) still recognises
     // pending AWU purchases.

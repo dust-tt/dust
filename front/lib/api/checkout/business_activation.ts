@@ -311,6 +311,8 @@ export async function createPaymentGatedBusinessActivation({
     applicableProducTags: [SEAT_TAG],
     name: `Business subscription activation (${seatType} ${billingPeriod})`,
     uniquenessKey,
+    // Carry any unused balance into the successor contract on renewal.
+    rolloverFraction: 1,
     stripeInvoiceMetadata: {
       subscription_activation: "true",
       workspace_id: workspace.sId,

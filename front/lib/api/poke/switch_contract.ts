@@ -552,6 +552,8 @@ export async function switchContract({
       // start can otherwise collide with a prior switch that shared the same
       // workspace, start moment, and amount.
       uniquenessKey: `initial-credits-${metronomeContractId}-${body.initialCredits.amountCredits}`,
+      // Carry any unused balance into the successor contract on renewal.
+      rolloverFraction: 1,
     });
     if (commitResult.isErr()) {
       return new Err(
