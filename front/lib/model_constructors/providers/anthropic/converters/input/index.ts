@@ -88,7 +88,7 @@ export function WithAnthropicInputConverter<
         thinking: thinkingConfig.thinking,
         tools: tools.map((tool) => toolSpecToAnthropicTool(tool)),
         tool_choice: forceToolNameToToolChoice(tools, forceTool),
-        ...(temperature !== undefined ? { temperature } : {}),
+        temperature,
         ...(Object.keys(outputConfig).length > 0
           ? { output_config: outputConfig }
           : {}),
