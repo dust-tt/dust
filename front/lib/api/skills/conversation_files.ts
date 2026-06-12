@@ -3,9 +3,7 @@ import { SCOPED_PREFIX_CONVERSATION } from "@app/lib/api/file_system/types";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { Err, Ok, type Result } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
-import streamConsumers from "stream/consumers";
+import { Ok, type Result } from "@app/types/shared/result";
 
 /**
  * Copy a skill's file attachments into the conversation's file system under
@@ -47,18 +45,9 @@ export async function loadSkillFilesToConversation(
       `${SCOPED_PREFIX_CONVERSATION}${conversation.sId}/` +
       `skills/${skill.name}/${file.fileName}`;
 
-    let content: Buffer;
-    try {
-      content = await streamConsumers.buffer(
-        file.getReadStream({ auth, version: "original" })
-      );
-    } catch (err) {
-      return new Err(normalizeError(err));
-    }
-
     const writeResult = await fileSystem.write(
       scopedPath,
-      content,
+      file.getReadStream({ auth, version: "original" }),
       file.contentType
     );
     if (writeResult.isErr()) {
