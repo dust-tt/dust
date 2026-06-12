@@ -25,6 +25,14 @@ const SKIP_LOGGER_PATHS = new Set([
   "/api/kill",
 ]);
 
+// In-flight request tracking, used to report (per request) the peak number of
+// requests processed concurrently during its lifetime. `activeRequests` is the
+// live count; each in-flight request holds a mutable `peak` that we raise
+// whenever a newly arrived request pushes concurrency higher than what that
+// request has seen so far.
+let activeRequests = 0;
+const inFlightPeaks = new Set<{ peak: number }>();
+
 export const requestLogger = createMiddleware<RequestLoggerEnv>(
   async (c, next) => {
     if (SKIP_LOGGER_PATHS.has(c.req.path) || c.req.method === "OPTIONS") {
@@ -44,11 +52,27 @@ export const requestLogger = createMiddleware<RequestLoggerEnv>(
       url: c.req.path,
     };
 
+    // Register this request as in-flight and raise the peak of every other
+    // in-flight request to the new concurrency level. The set size equals the
+    // current concurrency (bounded by the in-flight requests handled by a
+    // single pod, typically well under a hundred), so this loop stays cheap.
+    activeRequests += 1;
+    const peakRef = { peak: activeRequests };
+    for (const ref of inFlightPeaks) {
+      if (activeRequests > ref.peak) {
+        ref.peak = activeRequests;
+      }
+    }
+    inFlightPeaks.add(peakRef);
+
     const startMs = performance.now();
     await runWithRequestContext(reqCtx, async () => {
       try {
         await next();
       } finally {
+        inFlightPeaks.delete(peakRef);
+        activeRequests -= 1;
+
         const _routePath = routePath(c);
         if (_routePath) {
           // dd-trace's Hono auto-instrumentation can land on a wildcard
@@ -94,6 +118,7 @@ export const requestLogger = createMiddleware<RequestLoggerEnv>(
         clientIp,
         durationMs,
         method: c.req.method,
+        peakConcurrency: peakRef.peak,
         route,
         sessionId: session?.sessionId ?? "unknown",
         statusCode,
