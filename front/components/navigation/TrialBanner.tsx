@@ -54,7 +54,7 @@ export function SubscriptionEndBanner({
     return () => {
       document.documentElement.style.setProperty("--banner-height", "0px");
     };
-  });
+  }, []);
 
   // Capture initial timestamp in a ref to avoid re-computation on re-renders.
   // This is intentionally not reactive - the banner state is stable for the session.
