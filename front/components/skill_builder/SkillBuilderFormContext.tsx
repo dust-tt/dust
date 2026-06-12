@@ -62,7 +62,6 @@ export const skillBuilderFormSchema = z.object({
   fileAttachments: z.array(fileAttachmentSchema),
   attachedKnowledge: z.array(attachedKnowledgeSchema).optional(),
   referencedSkills: z.array(referencedSkillSchema),
-  referencedSkillIds: z.array(z.string()),
   additionalSpaces: z.array(z.string()),
 });
 
