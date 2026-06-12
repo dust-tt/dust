@@ -525,7 +525,7 @@ const InputBarContainer = ({
         })();
         break;
       default:
-        assertNeverAndIgnore(command.id);
+        assertNever(command.id);
     }
   };
 
