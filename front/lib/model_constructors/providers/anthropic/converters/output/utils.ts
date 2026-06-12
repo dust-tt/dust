@@ -4,6 +4,7 @@ import {
   APIError,
 } from "@anthropic-ai/sdk";
 import type {
+  Message,
   MessageDeltaUsage,
   RawContentBlockDeltaEvent,
   RawContentBlockStartEvent,
@@ -17,6 +18,7 @@ import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoin
 import type {
   ErrorEvent,
   ModelResponseEvent,
+  NonDeltaResponseEvent,
   ReasoningDeltaEvent,
   ReasoningEvent,
   ResponseIdEvent,
@@ -749,4 +751,104 @@ export async function* rawOutputToEvents(
     content: { aggregated },
     metadata,
   };
+}
+
+// -- Non-streaming entry point: complete message → events --
+
+// Turns a completed (non-streaming) Anthropic `Message` into the unified event
+// array, mirroring `rawOutputToEvents` minus the streaming-only delta heartbeats.
+export function messageToEvents(
+  message: Message,
+  metadata: EndpointMetadata,
+  converters: OutputEventConverters
+): NonDeltaResponseEvent[] {
+  const events: NonDeltaResponseEvent[] = [];
+  const aggregated: (TextEvent | ReasoningEvent | ToolCallEvent)[] = [];
+
+  events.push({
+    type: "response_id",
+    content: { responseId: message.id },
+    metadata,
+  });
+
+  message.content.forEach((block, index) => {
+    switch (block.type) {
+      case "text": {
+        const event = converters.accumulatedTextToTextEvent(
+          metadata,
+          block.text
+        );
+        aggregated.push(event);
+        events.push(event);
+        break;
+      }
+      case "thinking": {
+        const event = converters.accumulatedReasoningToReasoningEvent(
+          metadata,
+          block.thinking,
+          block.signature || undefined
+        );
+        aggregated.push(event);
+        events.push(event);
+        break;
+      }
+      case "tool_use": {
+        events.push(
+          converters.toolUseBlockStartToToolCallStartedEvent(
+            metadata,
+            block.id,
+            index,
+            block.name
+          )
+        );
+        // Non-streaming responses carry the input as an already-parsed object;
+        // re-serialize so the shared converter (which parses) handles it.
+        const event = converters.accumulatedToolCallToToolCallEvent(
+          metadata,
+          block.id,
+          block.name,
+          JSON.stringify(block.input)
+        );
+        aggregated.push(event);
+        events.push(event);
+        break;
+      }
+      // Block types we don't surface: redacted thinking, server tools, and
+      // their result / container blocks. Listed explicitly so the default
+      // stays exhaustive.
+      case "redacted_thinking":
+      case "server_tool_use":
+      case "web_search_tool_result":
+      case "web_fetch_tool_result":
+      case "code_execution_tool_result":
+      case "bash_code_execution_tool_result":
+      case "text_editor_code_execution_tool_result":
+      case "tool_search_tool_result":
+      case "container_upload":
+        break;
+      default:
+        // Anthropic may add new block types before we redeploy; ignore them
+        // rather than crashing.
+        assertNeverAndIgnore(block);
+        break;
+    }
+  });
+
+  if (message.stop_reason) {
+    const errorEvent = converters.stopReasonToErrorEvent(
+      metadata,
+      message.stop_reason
+    );
+    if (errorEvent) {
+      events.push(errorEvent);
+    }
+  }
+
+  events.push(
+    converters.messageDeltaUsageToTokenUsageEvent(metadata, message.usage)
+  );
+
+  events.push({ type: "success", content: { aggregated }, metadata });
+
+  return events;
 }
