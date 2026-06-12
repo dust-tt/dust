@@ -147,10 +147,15 @@ function SelfImprovingSpendChart({
     const today = new Date();
     const effectiveEnd = end < today ? end : today;
 
-    // Build actual data points up to today, in the display unit.
+    // Build actual data points up to today, in the display unit. The billing
+    // period may start mid-day (Metronome periods start at the contract
+    // creation time): iterate from the period's first day at UTC midnight so
+    // every step stays midnight-aligned and today's bucket is included.
     const points: ChartDataPoint[] = [];
     let cumulativeSpend = 0;
-    const current = new Date(start);
+    const current = new Date(
+      Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate())
+    );
 
     while (current < effectiveEnd) {
       const dateStr = current.toISOString().slice(0, 10);
@@ -169,7 +174,9 @@ function SelfImprovingSpendChart({
       current.setUTCDate(current.getUTCDate() + 1);
     }
 
-    // Add remaining days of the period.
+    // Add remaining days of the period: `current` is the first day after the
+    // actual points, so the projection stays midnight-aligned with no
+    // duplicate day.
     if (points.length > 0 && end > today) {
       const elapsedDays = points.length;
       const avgDailySpend = cumulativeSpend / elapsedDays;
@@ -180,14 +187,13 @@ function SelfImprovingSpendChart({
       }
 
       let projectedSpend = cumulativeSpend;
-      const projectionCurrent = new Date(effectiveEnd);
-      while (projectionCurrent < end) {
-        const dateStr = projectionCurrent.toISOString().slice(0, 10);
+      while (current < end) {
+        const dateStr = current.toISOString().slice(0, 10);
         projectedSpend += avgDailySpend;
 
         const point: ChartDataPoint = {
           date: dateStr,
-          timestamp: projectionCurrent.getTime(),
+          timestamp: current.getTime(),
         };
 
         if (displayMode === "cumulative") {
@@ -198,7 +204,7 @@ function SelfImprovingSpendChart({
         }
 
         points.push(point);
-        projectionCurrent.setUTCDate(projectionCurrent.getUTCDate() + 1);
+        current.setUTCDate(current.getUTCDate() + 1);
       }
     }
 
