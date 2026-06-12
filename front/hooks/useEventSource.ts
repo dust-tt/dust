@@ -92,11 +92,32 @@ export function useEventSource(
   buildURL: (lastEvent: string | null) => string | null,
   onEventCallback: (event: string) => void,
   uniqueId: string,
-  { isReadyToConsumeStream = true }: { isReadyToConsumeStream?: boolean } = {}
+  {
+    isReadyToConsumeStream = true,
+    onSuspiciousReconnect,
+  }: {
+    isReadyToConsumeStream?: boolean;
+    // Called when the stream reconnects after an abnormal drop (network
+    // error, server restart, bfcache freeze) — as opposed to the clean
+    // server-initiated "done" cycle. Events published while the stream was
+    // down may have expired from the server's replay history, so callers
+    // should treat their derived state as possibly stale and resync.
+    onSuspiciousReconnect?: () => void;
+  } = {}
 ) {
   const [isError, setIsError] = useState<Error | null>(null);
   const lastEvent = useRef<string | null>(null);
   const reconnectAttempts = useRef(0);
+
+  // Tracks whether the last disconnection was abnormal. Set on error and
+  // bfcache recovery, consumed on the next successful open. The clean "done"
+  // reconnect path never sets it: that reconnect is immediate and replays
+  // from lastEventId, so no event can be missed there.
+  const hadSuspiciousDrop = useRef(false);
+  // Ref so the (possibly unstable) caller callback is read at fire time
+  // without invalidating `connect`.
+  const onSuspiciousReconnectRef = useRef(onSuspiciousReconnect);
+  onSuspiciousReconnectRef.current = onSuspiciousReconnect;
 
   // We use a counter to trigger reconnects when the counter changes.
   const [reconnectCounter, setReconnectCounter] = useState(0);
@@ -140,6 +161,11 @@ export function useEventSource(
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current);
         }
+
+        if (hadSuspiciousDrop.current) {
+          hadSuspiciousDrop.current = false;
+          onSuspiciousReconnectRef.current?.();
+        }
       };
 
       source.onmessage = (event: PolyfillMessageEvent) => {
@@ -158,6 +184,7 @@ export function useEventSource(
       source.onerror = (event: PolyfillEvent) => {
         source.close();
 
+        hadSuspiciousDrop.current = true;
         reconnectAttempts.current++;
 
         if (reconnectAttempts.current >= MAX_RECONNECT_ATTEMPTS) {
@@ -220,6 +247,9 @@ export function useEventSource(
         // not by consecutive network errors. We don't want the user to hit the
         // MAX_RECONNECT_ATTEMPTS wall just because they switched apps.
         reconnectAttempts.current = 0;
+        // The page was frozen for an unknown duration: anything published in
+        // the meantime may already have expired from the replay history.
+        hadSuspiciousDrop.current = true;
         setReconnectCounter((c) => c + 1);
       }
     };

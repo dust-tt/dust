@@ -206,6 +206,49 @@ export function getBranchedInsertIndex(
   return rankOffset === -1 ? data.length : rankOffset;
 }
 
+// Repairs the Virtuoso list from a fresh fetch of the conversation messages.
+//
+// The conversation SSE is best-effort: events published while the stream is
+// disconnected for longer than the Redis replay history TTL are lost forever
+// (e.g. an agent_message_new that never arrives leaves an optimistic
+// placeholder stuck blank). After an abnormal reconnect we refetch the latest
+// messages and repair the list:
+//   - insert messages the list never received (lost user_message_new /
+//     agent_message_new / compaction_message_new);
+//   - replace entries whose sId differs at the same rank/branch (a stranded
+//     optimistic placeholder, or a missed retry which carries a new sId);
+//   - leave same-sId entries untouched, so in-flight streaming state and
+//     terminal state reached through the message-level stream are never
+//     wiped by the (lighter) fetched payload.
+export function reconcileMessagesInList(
+  data: VirtuosoMessageListMethods<
+    VirtuosoMessage,
+    VirtuosoMessageListContext
+  >["data"],
+  messagesFromBackend: VirtuosoMessage[]
+): void {
+  // Insert lower ranks first so getBranchedInsertIndex sees a consistent list.
+  const sorted = [...messagesFromBackend].sort((a, b) => a.rank - b.rank);
+
+  for (const message of sorted) {
+    const predicate = getPredicateForRankAndBranch(message);
+    const exists = data.find(predicate);
+
+    if (!exists) {
+      const currentData = data.get();
+      const offset = getBranchedInsertIndex(currentData, message);
+
+      if (offset < currentData.length) {
+        data.insert([message], offset);
+      } else {
+        data.append([message]);
+      }
+    } else if (exists.sId !== message.sId) {
+      data.map((m) => (predicate(m) ? message : m));
+    }
+  }
+}
+
 function makeConversationForkNoticeMessage(
   sourceMessage: VirtuosoMessage,
   forkedChild: ConversationForkedChildType
@@ -1075,6 +1118,27 @@ export const ConversationViewer = ({
     ]
   );
 
+  // The conversation SSE reconnected after an abnormal drop (network error,
+  // server restart, bfcache freeze): events published while disconnected may
+  // have expired from the server's replay history and will never be
+  // delivered. Refetch the latest messages and repair the Virtuoso list so a
+  // lost agent_message_new (stuck blank placeholder) or user_message_new
+  // (missing message) self-heals without a reload.
+  const onSuspiciousReconnect = useCallback(() => {
+    void mutateMessages().then((pages) => {
+      // Pages are ordered newest-first; lost events only concern the most
+      // recent messages, so reconciling the latest page is enough.
+      const latestPage = pages?.[0];
+      if (!latestPage || !virtuosoMessageListRef.current) {
+        return;
+      }
+      reconcileMessagesInList(
+        virtuosoMessageListRef.current.data,
+        convertLightMessageTypeToVirtuosoMessages(latestPage.messages)
+      );
+    });
+  }, [mutateMessages]);
+
   useConversationEvents({
     owner,
     conversationId,
@@ -1090,6 +1154,7 @@ export const ConversationViewer = ({
       !isLoadingInitialData &&
       messages.length !== 0 &&
       initialListData !== undefined,
+    onSuspiciousReconnect,
   });
 
   const handleSubmit = useCallback(

@@ -1,5 +1,11 @@
-import { getBranchedInsertIndex } from "@app/components/assistant/conversation/ConversationViewer";
-import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
+import {
+  getBranchedInsertIndex,
+  reconcileMessagesInList,
+} from "@app/components/assistant/conversation/ConversationViewer";
+import type {
+  AgentMessageWithStreaming,
+  VirtuosoMessage,
+} from "@app/components/assistant/conversation/types";
 import { describe, expect, it } from "vitest";
 
 describe("getBranchedInsertIndex", () => {
@@ -165,5 +171,127 @@ describe("getBranchedInsertIndex", () => {
     const index = getBranchedInsertIndex(data, newMessage);
     // Pure rank-based behavior: before first rank > 2 (i.e. before rank 3)
     expect(index).toBe(2);
+  });
+});
+
+describe("reconcileMessagesInList", () => {
+  const makeUserMessage = (rank: number, sId: string): VirtuosoMessage =>
+    ({
+      sId,
+      rank,
+      branchId: null,
+      type: "user_message",
+      contentFragments: [],
+      context: { origin: "web" },
+    }) as unknown as VirtuosoMessage;
+
+  const makeAgentMessage = ({
+    rank,
+    sId,
+    agentState = "thinking",
+    content = null,
+  }: {
+    rank: number;
+    sId: string;
+    agentState?: AgentMessageWithStreaming["streaming"]["agentState"];
+    content?: string | null;
+  }): AgentMessageWithStreaming =>
+    ({
+      sId,
+      rank,
+      branchId: null,
+      type: "agent_message",
+      status: "created",
+      content,
+      chainOfThought: null,
+      streaming: {
+        agentState,
+        isRetrying: false,
+        lastUpdated: new Date(),
+        actionProgress: new Map(),
+        pendingToolCalls: [],
+        inlineActivitySteps: [],
+      },
+    }) as unknown as AgentMessageWithStreaming;
+
+  const makeFakeListData = (initial: VirtuosoMessage[]) => {
+    let items = [...initial];
+    const data = {
+      get: () => items,
+      find: (predicate: (m: VirtuosoMessage) => boolean) =>
+        items.find(predicate),
+      map: (fn: (m: VirtuosoMessage) => VirtuosoMessage) => {
+        items = items.map(fn);
+      },
+      insert: (msgs: VirtuosoMessage[], index: number) => {
+        items = [...items.slice(0, index), ...msgs, ...items.slice(index)];
+      },
+      append: (msgs: VirtuosoMessage[]) => {
+        items = [...items, ...msgs];
+      },
+    };
+    return data as unknown as Parameters<typeof reconcileMessagesInList>[0];
+  };
+
+  it("inserts messages the list never received, in rank order", () => {
+    // The list missed both the user and agent message of the last exchange
+    // (lost user_message_new + agent_message_new).
+    const data = makeFakeListData([
+      makeUserMessage(0, "user-0"),
+      makeAgentMessage({ rank: 1, sId: "agent-1" }),
+    ]);
+
+    reconcileMessagesInList(data, [
+      makeAgentMessage({ rank: 3, sId: "agent-3" }),
+      makeUserMessage(2, "user-2"),
+      makeUserMessage(0, "user-0"),
+      makeAgentMessage({ rank: 1, sId: "agent-1" }),
+    ]);
+
+    expect(data.get().map((m) => m.sId)).toEqual([
+      "user-0",
+      "agent-1",
+      "user-2",
+      "agent-3",
+    ]);
+  });
+
+  it("replaces a stranded optimistic placeholder (sId mismatch at same rank)", () => {
+    const placeholder = makeAgentMessage({
+      rank: 3,
+      sId: "placeholder-agent-message-123",
+      agentState: "placeholder",
+    });
+    const data = makeFakeListData([makeUserMessage(2, "user-2"), placeholder]);
+
+    reconcileMessagesInList(data, [
+      makeUserMessage(2, "user-2"),
+      makeAgentMessage({ rank: 3, sId: "real-agent" }),
+    ]);
+
+    const items = data.get();
+    expect(items.map((m) => m.sId)).toEqual(["user-2", "real-agent"]);
+    expect((items[1] as AgentMessageWithStreaming).streaming.agentState).toBe(
+      "thinking"
+    );
+  });
+
+  it("leaves same-sId entries untouched (does not wipe streaming state)", () => {
+    const streaming = makeAgentMessage({
+      rank: 1,
+      sId: "agent-1",
+      agentState: "writing",
+      content: "partially streamed content",
+    });
+    const data = makeFakeListData([makeUserMessage(0, "user-0"), streaming]);
+
+    // The fetched payload for the same message carries no streamed content.
+    reconcileMessagesInList(data, [
+      makeUserMessage(0, "user-0"),
+      makeAgentMessage({ rank: 1, sId: "agent-1" }),
+    ]);
+
+    // Reference equality: the entry was not replaced.
+    expect(data.get()[1]).toBe(streaming);
   });
 });

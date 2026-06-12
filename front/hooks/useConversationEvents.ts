@@ -9,11 +9,15 @@ export function useConversationEvents({
   conversationId,
   onEvent,
   isReadyToConsumeStream,
+  onSuspiciousReconnect,
 }: {
   owner: LightWorkspaceType;
   conversationId: string | null;
   onEvent: ConversationEventCallback;
   isReadyToConsumeStream: boolean;
+  // See useEventSource: fired after reconnecting from an abnormal drop, when
+  // conversation events may have been lost.
+  onSuspiciousReconnect?: () => void;
 }) {
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
@@ -42,6 +46,7 @@ export function useConversationEvents({
     conversationId ? `conversation-${conversationId}` : "",
     {
       isReadyToConsumeStream,
+      onSuspiciousReconnect,
     }
   );
 }
