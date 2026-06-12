@@ -247,11 +247,6 @@ export async function storeEmailThreadConversation({
   await redis.set(key, conversationId, {
     EX: EMAIL_THREAD_CONVERSATION_TTL_SECONDS,
   });
-
-  logger.info(
-    { conversationId, key },
-    "[email] Stored email thread conversation mapping in Redis"
-  );
 }
 
 /**
@@ -739,12 +734,6 @@ export function emailAssistantMatcher({
   });
 }
 
-// Matches a Dust conversation URL anywhere in the email body, independent of the surrounding
-// anchor text (email clients render the agent reply footer link in varying plain-text forms).
-// Also matches the legacy `/assistant/` path present in older agent reply emails.
-const DUST_CONVERSATION_URL_REGEX =
-  /https?:\/\/[^\s<>"]+\/w\/[a-zA-Z0-9]+\/(?:conversation|assistant)\/([a-zA-Z0-9]+)/;
-
 export async function splitThreadContent(content: string) {
   const separators = [
     /\n\s*On\s+[A-Za-z]{3},\s+[A-Za-z]{3}\s+\d{1,2},\s+\d{4}\s+at\s+\d{1,2}:\d{2}\s+[AP]M/,
@@ -770,12 +759,7 @@ export async function splitThreadContent(content: string) {
   const thread =
     firstSeparatorIndex > -1 ? content.slice(firstSeparatorIndex).trim() : "";
 
-  // Only look for a conversation link in the quoted thread: a link in the fresh part of the
-  // message is a reference the user is making, not a sign this email continues a conversation.
-  const conversationIdMatch = thread.match(DUST_CONVERSATION_URL_REGEX);
-  const conversationId = conversationIdMatch ? conversationIdMatch[1] : null;
-
-  return { userMessage: newMessage, restOfThread: thread, conversationId };
+  return { userMessage: newMessage, restOfThread: thread };
 }
 
 /**
@@ -811,34 +795,27 @@ export async function triggerFromEmail(
     });
   }
 
-  const {
-    userMessage,
-    restOfThread,
-    conversationId: bodyConversationId,
-  } = await splitThreadContent(email.text);
+  const { userMessage, restOfThread } = await splitThreadContent(email.text);
 
-  // Prefer the thread mapping over the body link: threading headers are set mechanically by
-  // the email client, while a quoted body can carry conversation links from forwarded content.
   const threadConversationId = await findConversationIdFromThreadingHeaders(
     workspace.sId,
     email.threadingHeaders
   );
 
-  const candidateConversationIds = [
-    ...new Set([threadConversationId, bodyConversationId].filter(isString)),
-  ];
-
   let conversation: ConversationType | null = null;
-  for (const candidateId of candidateConversationIds) {
-    const conversationRes = await getConversation(auth, candidateId);
+  if (threadConversationId) {
+    const conversationRes = await getConversation(auth, threadConversationId);
     if (conversationRes.isOk()) {
       conversation = conversationRes.value;
-      break;
+    } else {
+      localLogger.warn(
+        {
+          conversationId: threadConversationId,
+          errorType: conversationRes.error.type,
+        },
+        "[email] Cannot access conversation matching inbound email, creating a new one."
+      );
     }
-    localLogger.warn(
-      { conversationId: candidateId, errorType: conversationRes.error.type },
-      "[email] Cannot access conversation matching inbound email, ignoring candidate."
-    );
   }
   if (!conversation) {
     conversation = await createConversation(auth, {

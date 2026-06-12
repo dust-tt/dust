@@ -226,60 +226,17 @@ describe("buildReplyThreadingHeaders", () => {
 });
 
 describe("splitThreadContent", () => {
-  it("extracts the conversation id from a forwarded agent reply", async () => {
-    const { conversationId } = await splitThreadContent(
-      "Follow up on this please.\n" +
+  it("splits the fresh reply from the quoted thread", async () => {
+    const { userMessage, restOfThread } = await splitThreadContent(
+      "Can you go deeper on point 2?\n" +
         "\n" +
-        "---------- Forwarded message ----------\n" +
-        "Answered by agent · View full conversation\n" +
-        "https://dust.tt/w/workspace1/conversation/abc123XYZ0\n"
+        "On Mon, Jun 8, 2026 at 10:12 AM agent (Dust agent)\n" +
+        "<agent@dust.team> wrote:\n" +
+        "> Here is my answer.\n"
     );
-
-    expect(conversationId).toBe("abc123XYZ0");
-  });
-
-  it("extracts the conversation id from legacy assistant links", async () => {
-    const { conversationId } = await splitThreadContent(
-      "Thanks!\n" +
-        "\n" +
-        "---------- Forwarded message ----------\n" +
-        "Open in Dust <https://dust.tt/w/workspace1/assistant/abc123XYZ0>\n"
-    );
-
-    expect(conversationId).toBe("abc123XYZ0");
-  });
-
-  it("ignores conversation links outside the quoted thread", async () => {
-    const { conversationId } = await splitThreadContent(
-      "Can you summarize https://dust.tt/w/workspace1/conversation/abc123XYZ0?"
-    );
-
-    expect(conversationId).toBeNull();
-  });
-
-  it("returns null when no conversation link is present", async () => {
-    const { conversationId } = await splitThreadContent(
-      "Hello, can you help with https://example.com/w/foo?"
-    );
-
-    expect(conversationId).toBeNull();
-  });
-
-  it("splits a reply from the quoted thread and finds the link in the quote", async () => {
-    const { userMessage, restOfThread, conversationId } =
-      await splitThreadContent(
-        "Can you go deeper on point 2?\n" +
-          "\n" +
-          "On Mon, Jun 8, 2026 at 10:12 AM agent (Dust agent)\n" +
-          "<agent@dust.team> wrote:\n" +
-          "> Here is my answer.\n" +
-          "> Answered by agent · View full conversation\n" +
-          "> <https://dust.tt/w/workspace1/conversation/abc123XYZ0>\n"
-      );
 
     expect(userMessage).toBe("Can you go deeper on point 2?");
     expect(restOfThread).toContain("Here is my answer.");
-    expect(conversationId).toBe("abc123XYZ0");
   });
 });
 
