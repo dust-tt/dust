@@ -24,7 +24,8 @@
 
   :root {
     --dev-bar-height: 0px;
-    --panel-height: 100dvh;
+    --banner-height: 0px;
+    --panel-height: calc(100dvh - var(--banner-height));
 
     /* Chart tokens (light): exact shadcn palette */
     --chart-1: 211 100% 78%;
@@ -46,7 +47,7 @@
 
 @media (min-width: 768px) {
   :root {
-    --panel-height: calc(100dvh - 1rem - var(--dev-bar-height));
+    --panel-height: calc(100dvh - 1rem - var(--dev-bar-height) - var(--banner-height));
   }
 }
 

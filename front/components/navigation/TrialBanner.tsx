@@ -5,8 +5,8 @@ import {
 import { useAppRouter } from "@app/lib/platform";
 import type { SubscriptionType } from "@app/types/plan";
 import { isCreditPricedPlan } from "@app/types/plan";
-import { Button, cn, LinkWrapper } from "@dust-tt/sparkle";
-import { useMemo, useRef } from "react";
+import { Button, cn } from "@dust-tt/sparkle";
+import { useEffect, useMemo, useRef } from "react";
 
 const SUBSCRIPTION_BANNER_DISPLAY_THRESHOLD_DAYS = 30;
 const THRESHOLD_MS =
@@ -39,6 +39,22 @@ export function SubscriptionEndBanner({
   const ctaHref = isCreditPricedPlan(subscription.plan)
     ? `/w/${owner.sId}/billing`
     : `/w/${owner.sId}/subscription`;
+
+  const bannerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const node = bannerRef.current;
+    if (node) {
+      document.documentElement.style.setProperty(
+        "--banner-height",
+        `${node.offsetHeight}px`
+      );
+    }
+
+    return () => {
+      document.documentElement.style.setProperty("--banner-height", "0px");
+    };
+  }, []);
 
   // Capture initial timestamp in a ref to avoid re-computation on re-renders.
   // This is intentionally not reactive - the banner state is stable for the session.
@@ -97,36 +113,33 @@ export function SubscriptionEndBanner({
 
   return (
     <div
+      ref={bannerRef}
       className={cn(
-        "flex items-center justify-between gap-4 px-4 py-3",
+        "flex items-center justify-between gap-4 px-4 py-1",
         "bg-sky-50 dark:bg-sky-50-night"
       )}
     >
-      <div className="flex flex-col text-sm">
-        <span
+      <div className="text-sm flex gap-2">
+        <p
           className={cn(
             "font-semibold",
             "text-sky-900 dark:text-sky-900-night"
           )}
         >
           {title}
-        </span>
-        <span className="text-sky-800 dark:text-sky-800-night">
+        </p>
+        <p className="text-sky-800 dark:text-sky-800-night hidden md:inline-block">
           {description}
-        </span>
+        </p>
       </div>
       {isAdmin && !isEnterprise && (
-        <LinkWrapper href={ctaHref} className="shrink-0 no-underline">
-          <Button
-            label={isTrial ? "Subscribe to Dust" : "Resume subscription"}
-            className={cn(
-              "bg-sky-600 dark:bg-sky-600-night",
-              "dark:text-white-night text-white",
-              "hover:bg-sky-700 dark:hover:bg-sky-700-night"
-            )}
-            size="sm"
-          />
-        </LinkWrapper>
+        <Button
+          href={ctaHref}
+          label={isTrial ? "Subscribe to Dust" : "Resume subscription"}
+          className="hover:opacity-90 hover:bg-transparent"
+          variant="ghost-secondary"
+          size="sm"
+        />
       )}
     </div>
   );
