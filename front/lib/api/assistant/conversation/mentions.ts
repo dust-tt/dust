@@ -17,7 +17,7 @@ import { extractFromString } from "@app/lib/mentions/format";
 import type { MentionStatusType } from "@app/lib/models/agent/conversation";
 import { MentionModel } from "@app/lib/models/agent/conversation";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
-import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/project-added-as-member";
+import { notifyPodMembersAdded } from "@app/lib/notifications/workflows/pod-added-as-member";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -293,8 +293,8 @@ export async function validateUserMention(
     }
 
     // Notify the user they were added to the project.
-    notifyProjectMembersAdded(auth, {
-      project: space.toJSON(),
+    notifyPodMembersAdded(auth, {
+      pod: space.toJSON(),
       addedUserIds: [userId],
     });
   }
