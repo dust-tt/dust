@@ -172,9 +172,6 @@ describe("getToolSlashCommandItem", () => {
       id: "mcp_server_view_linear",
       label: "Create ticket (Product)",
       sectionLabel: "Capabilities",
-      tooltip: {
-        description: "Draft a ticket.",
-      },
     });
   });
 });
