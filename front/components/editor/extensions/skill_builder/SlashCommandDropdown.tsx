@@ -174,9 +174,7 @@ export const SlashCommandDropdown = forwardRef<
           <div style={virtualTriggerStyle} />
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className={cn(
-            size === "wide" ? "w-80" : "w-64"
-          )}
+          className={size === "wide" ? "w-80" : "w-64"}
           align="start"
           avoidCollisions
           collisionPadding={12}
