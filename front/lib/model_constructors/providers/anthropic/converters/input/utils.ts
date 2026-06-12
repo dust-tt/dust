@@ -8,6 +8,7 @@ import type {
   ThinkingConfigAdaptive,
   ThinkingConfigDisabled,
   ToolResultBlockParam,
+  ToolUseBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import {
   type ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS,
@@ -18,6 +19,7 @@ import type {
   BaseAssistantMessage,
   BaseAssistantReasoningMessage,
   BaseAssistantTextMessage,
+  BaseAssistantToolCallRequestMessage,
   BaseConversation,
   BaseToolCallResultMessage,
   BaseUserImageMessage,
@@ -27,6 +29,8 @@ import type {
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isRecord } from "@app/types/shared/utils/general";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 // The per-message leaf converters. Composites below take an object satisfying
 // this interface (`this`), so overriding one leaf on an endpoint changes how
@@ -44,6 +48,9 @@ export interface MessageBlockConverters {
   assistantReasoningMessageToThinkingBlocks(
     message: BaseAssistantReasoningMessage
   ): ThinkingBlockParam[];
+  assistantToolCallRequestToToolUseBlock(
+    message: BaseAssistantToolCallRequestMessage
+  ): ToolUseBlockParam;
 }
 
 // -- Small, reusable building blocks --
@@ -62,6 +69,18 @@ export function cacheControlFor(
     default:
       assertNever(cache);
   }
+}
+
+// Parses tool-call arguments into an object, falling back to `{}` for malformed
+// or non-object JSON.
+export function parseToolArguments(
+  argumentsJson: string
+): Record<string, unknown> {
+  const parsed = safeParseJSON(argumentsJson);
+  if (parsed.isErr() || parsed.value === null || !isRecord(parsed.value)) {
+    return {};
+  }
+  return parsed.value;
 }
 
 // -- Leaf converters: one Anthropic block per message --
@@ -136,6 +155,17 @@ export function assistantReasoningMessageToThinkingBlocks(
   ];
 }
 
+export function assistantToolCallRequestToToolUseBlock(
+  message: BaseAssistantToolCallRequestMessage
+): ToolUseBlockParam {
+  return {
+    type: "tool_use",
+    id: message.content.callId,
+    name: message.content.toolName,
+    input: parseToolArguments(message.content.arguments),
+  };
+}
+
 // -- Composite message converters (depend on the leaf converters) --
 
 export function userMessageToContentBlocks(
@@ -163,9 +193,10 @@ export function assistantMessageToContentBlocks(
       return [converters.assistantTextMessageToTextBlock(message)];
     case "reasoning":
       return converters.assistantReasoningMessageToThinkingBlocks(message);
+    case "tool_call_request":
+      return [converters.assistantToolCallRequestToToolUseBlock(message)];
     default:
-      // Other assistant message types are wired in in subsequent commits.
-      return [];
+      assertNever(message);
   }
 }
 
