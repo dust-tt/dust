@@ -97,7 +97,7 @@ type HydratedWorkspaceEntry = {
 };
 const hydratedWorkspaces = new Map<ModelId, HydratedWorkspaceEntry>();
 const HYDRATED_WORKSPACES_CACHE_MAX_SIZE = 1_000_000;
-const HYDRATION_TTL_MS = 5 * 60 * 1000;
+const HYDRATION_TTL_MS = 30 * 60 * 1000;
 
 // In-flight hydrations, so concurrent reads on the same pod share a single run instead of
 // racing on the same checks and inserts.
