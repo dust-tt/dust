@@ -28,7 +28,7 @@ HTTP entrypoints live in `front-api/routes/mcp/`. This folder holds the auth and
 
 **Tools use a standard `Authenticator`.** Once auth is resolved, tool code should look like any other Dust backend code that receives an `Authenticator` — same permissions, same APIs.
 
-**Each MCP client session gets its own transport.** On each HTTP request, auth middleware builds a fresh `authInfo` (with the Dust `Authenticator` in `extra`) that `@hono/mcp` passes to tool handlers.
+**Each HTTP request gets its own transport and server.** Auth middleware builds a fresh `authInfo` (with the Dust `Authenticator` in `extra`) that `@hono/mcp` passes to tool handlers. No `Mcp-Session-Id` — stateless mode works across multiple front-api pods.
 
 **Tools use `registerDustMcpTool`.** Handlers receive `(auth, args)`; the wrapper reads auth from `extra.authInfo`.
 

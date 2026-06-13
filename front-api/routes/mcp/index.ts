@@ -1,44 +1,14 @@
 import { mcpServerAuthMiddleware } from "@app/lib/api/mcp_server/auth";
 import { buildMcpAuthInfo } from "@app/lib/api/mcp_server/context";
-import type { WorkOSWorkspaceAuthenticator } from "@app/lib/api/workos_authenticator";
+import { createDustMcpServer } from "@app/lib/api/mcp_server/server";
 import logger from "@app/logger/logger";
 import { createHono } from "@front-api/lib/hono";
+import { StreamableHTTPTransport } from "@hono/mcp";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Context } from "hono";
 
-import { createMcpSession, getMcpSession } from "./sessions";
-
 export const mcpApp = createHono();
-
-type McpSessionFailureReason =
-  | "unknown_session"
-  | "no_session"
-  | "missing_session_id_after_init";
-
-function logMcpSessionFailure(
-  auth: WorkOSWorkspaceAuthenticator,
-  {
-    method,
-    mcpSessionId,
-    reason,
-  }: {
-    method: string;
-    mcpSessionId: string | undefined;
-    reason: McpSessionFailureReason;
-  }
-) {
-  logger.warn(
-    {
-      userId: auth.user().sId,
-      workspaceId: auth.workspace().sId,
-      method,
-      mcpSessionId: mcpSessionId ?? null,
-      reason,
-    },
-    "[dust-mcp-server] MCP session resolution failed"
-  );
-}
 
 function extractBearerToken(authHeader: string | undefined): string | null {
   const match = authHeader?.match(/^Bearer\s+(.+)$/i);
@@ -56,7 +26,83 @@ function clearMcpTransportAuth(c: Context): void {
   c.set("auth", undefined as never);
 }
 
+async function closeMcpServer(server: McpServer): Promise<void> {
+  try {
+    await server.close();
+  } catch {
+    // Ignore double-close races when transport hooks fire more than once.
+  }
+}
+
+// Keep the server alive until SSE streams finish. Closing in `finally` right
+// after handleRequest() returns aborts tools/list before the client reads it.
+function wrapResponseWithCleanup(
+  response: Response,
+  cleanup: () => Promise<void>
+): Response {
+  if (!response.body) {
+    void cleanup();
+    return response;
+  }
+
+  const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>();
+  const reader = response.body.getReader();
+  const writer = writable.getWriter();
+
+  void (async () => {
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+        await writer.write(value);
+      }
+    } catch {
+      // Client disconnected mid-stream.
+    } finally {
+      try {
+        await writer.close();
+      } catch {
+        // ignore
+      }
+      await cleanup();
+    }
+  })();
+
+  const headers = new Headers(response.headers);
+  return new Response(readable, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+async function handleStatelessMcpRequest(
+  c: Context,
+  server: McpServer,
+  transport: StreamableHTTPTransport
+): Promise<Response | undefined> {
+  const cleanup = () => closeMcpServer(server);
+  const response = await transport.handleRequest(c);
+
+  if (!response) {
+    await cleanup();
+    return response;
+  }
+
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("text/event-stream")) {
+    return wrapResponseWithCleanup(response, cleanup);
+  }
+
+  await cleanup();
+  return response;
+}
+
 // POST, GET, DELETE /mcp — all MCP protocol traffic from remote clients.
+// Stateless: each HTTP request gets a fresh transport + server (no Mcp-Session-Id),
+// so any front-api pod can handle any request without shared in-memory state.
 mcpApp.all("/", mcpServerAuthMiddleware, async (c) => {
   const auth = c.get("mcpAuth");
   const token = extractBearerToken(c.req.header("Authorization"));
@@ -64,80 +110,28 @@ mcpApp.all("/", mcpServerAuthMiddleware, async (c) => {
     return c.json({ error: "unauthorized" }, 401);
   }
 
-  const sessionIdHeader = c.req.header("mcp-session-id");
-  let parsedBody: unknown | undefined;
-
-  let session = sessionIdHeader ? getMcpSession(sessionIdHeader) : undefined;
-
-  if (!session) {
-    if (sessionIdHeader) {
-      logMcpSessionFailure(auth, {
-        method: c.req.method,
-        mcpSessionId: sessionIdHeader,
-        reason: "unknown_session",
-      });
-      return c.json(
-        {
-          error: "not_found",
-          error_description: "MCP session not found",
-        },
-        404
-      );
-    }
-
-    if (c.req.method !== "POST") {
-      logMcpSessionFailure(auth, {
-        method: c.req.method,
-        mcpSessionId: sessionIdHeader,
-        reason: "no_session",
-      });
-      return c.json(
-        {
-          error: "invalid_request",
-          error_description: "Bad Request: No valid MCP session",
-        },
-        400
-      );
-    }
-
-    parsedBody = await c.req.json();
-    const messages = Array.isArray(parsedBody) ? parsedBody : [parsedBody];
-    if (!messages.some(isInitializeRequest)) {
-      logMcpSessionFailure(auth, {
-        method: c.req.method,
-        mcpSessionId: sessionIdHeader,
-        reason: "missing_session_id_after_init",
-      });
-      return c.json(
-        {
-          error: "invalid_request",
-          error_description:
-            "Bad Request: Mcp-Session-Id header is required after initialization",
-        },
-        400
-      );
-    }
-
-    session = await createMcpSession();
-  }
-
   logger.info(
     {
       userId: auth.user().sId,
       workspaceId: auth.workspace().sId,
-      sessionId: sessionIdHeader ?? session.sessionId,
       method: c.req.method,
     },
     "[dust-mcp-server] Inbound request"
   );
 
+  const server = createDustMcpServer();
+  const transport = new StreamableHTTPTransport({
+    enableJsonResponse: true,
+  });
   const mcpAuthInfo = buildMcpAuthInfo(auth, token);
 
   setMcpTransportAuth(c, mcpAuthInfo);
   try {
-    return await (parsedBody !== undefined
-      ? session.transport.handleRequest(c, parsedBody)
-      : session.transport.handleRequest(c));
+    await server.connect(transport);
+    return await handleStatelessMcpRequest(c, server, transport);
+  } catch (error) {
+    await closeMcpServer(server);
+    throw error;
   } finally {
     clearMcpTransportAuth(c);
   }
