@@ -6,6 +6,7 @@ const CONTENT_SECURITY_POLICIES = `connect-src 'self'; media-src 'self'; frame-a
 } moz-extension:;`;
 
 const nextConfig = {
+  devIndicators: false,
   async headers() {
     return [
       {
