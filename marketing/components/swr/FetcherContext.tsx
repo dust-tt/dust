@@ -1,5 +1,5 @@
 import type { FetcherFn, FetcherWithBodyFn } from "@marketing/lib/swr/fetcher";
-import { createContext, useContext } from "react";
+import { createContext, useContext, useMemo } from "react";
 
 interface FetcherContextType {
   fetcher: FetcherFn;
@@ -27,8 +27,13 @@ export function FetcherProvider({
   fetcherWithBody,
   children,
 }: FetcherProviderProps) {
+  const value = useMemo(
+    () => ({ fetcher, fetcherWithBody }),
+    [fetcher, fetcherWithBody]
+  );
+
   return (
-    <FetcherContext.Provider value={{ fetcher, fetcherWithBody }}>
+    <FetcherContext.Provider value={value}>
       {children}
     </FetcherContext.Provider>
   );

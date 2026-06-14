@@ -9,6 +9,7 @@ import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
 import { AppReadyProvider } from "@spa/app/contexts/AppReadyContext";
 import { routes } from "@spa/app/routes";
 import { ReactRouterLinkWrapper } from "@spa/lib/ReactRouterLinkWrapper";
+import { useMemo } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
 const router = createBrowserRouter(routes, {
@@ -16,14 +17,17 @@ const router = createBrowserRouter(routes, {
 });
 
 export default function App() {
+  const sparkleContextValue = useMemo(
+    () => ({ components: { link: ReactRouterLinkWrapper } }),
+    []
+  );
+
   return (
     <AppReadyProvider>
       <RegionProvider>
         <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
           <PostHogTracker authenticated>
-            <SparkleContext.Provider
-              value={{ components: { link: ReactRouterLinkWrapper } }}
-            >
+            <SparkleContext.Provider value={sparkleContextValue}>
               <RootLayout>
                 <ErrorBoundary fallback={<GlobalErrorFallback />}>
                   <RouterProvider router={router} />
