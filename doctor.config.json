@@ -4,6 +4,6 @@
     "react-doctor/only-export-components": "off"
   },
   "surfaces": {
-    "include": ["front/**", "front-spa/**", "marketing/**", "extension/**", "viz/**"]
+    "include": ["front/**", "front-spa/**", "marketing/**", "extension/**", "viz/**", "sparkle/**"]
   }
 }
