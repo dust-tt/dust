@@ -89,6 +89,9 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {orderedPlansWithMembers.map(
         ({ seatType, plan, membersCount, unassignedCount }) => {
+          if (membersCount === 0 && !unassignedCount) {
+            return null;
+          }
           const avatarColors = seatTypeAvatarColors(seatType);
 
           return (

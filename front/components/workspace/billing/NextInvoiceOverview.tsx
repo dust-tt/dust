@@ -19,6 +19,7 @@ export function NextInvoiceOverview() {
   } = useSubscriptionContext();
 
   const periodLabel: Record<SubscriptionStatus, string | null> = {
+    free: null,
     active: invoice
       ? `${formatBillingPeriod(invoice.billingPeriod)} - Next billing date: ${periodEndLabel}`
       : null,

@@ -60,7 +60,7 @@ if (isDevelopment() || isTest()) {
   });
   CREDIT_PRICED_PLANS_DATA.push({
     code: CREDIT_PRICED_FREE_PLAN_CODE,
-    name: "Free Trial",
+    name: "Free",
     maxMessages: 100,
     maxMessagesTimeframe: "lifetime",
     maxAwuCredits: -1,
