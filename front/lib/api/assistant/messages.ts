@@ -600,6 +600,16 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       );
     }
   }
+  // Sub-agent cost credits are only aggregated when rendering a single agent
+  // message (e.g. the single-message endpoint), never in bulk conversation
+  // rendering, to avoid fanning out into an N+1 of recursive queries.
+  const subAgentCostCredits =
+    agentMessages.length === 1
+      ? await ConversationResource.sumSubAgentCostCreditsByMessageId(auth, {
+          agentMessageId: agentMessages[0].sId,
+        })
+      : null;
+
   const renderedMessages: Array<
     Result<RenderedAgentMessage, ConversationError>
   > = [];
@@ -616,6 +626,7 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         mentionsByMessageId,
         reactionsByMessageId,
         stepContentsByMessageId,
+        subAgentCostCredits,
         usersById,
         viewType,
       })
@@ -646,6 +657,7 @@ type RenderSingleAgentMessageContext = {
   mentionsByMessageId: Map<ModelId, MentionModel[]>;
   reactionsByMessageId: Record<ModelId, MessageReactionType[]>;
   stepContentsByMessageId: Record<string, AgentStepContentResource[]>;
+  subAgentCostCredits: number | null;
   usersById: Map<ModelId, UserType>;
   viewType: RenderMessageVariant;
 };
@@ -662,6 +674,7 @@ async function renderSingleAgentMessage(
     mentionsByMessageId,
     reactionsByMessageId,
     stepContentsByMessageId,
+    subAgentCostCredits,
     usersById,
     viewType,
   }: RenderSingleAgentMessageContext
@@ -796,9 +809,9 @@ async function renderSingleAgentMessage(
     reactions: reactionsByMessageId[message.id] ?? [],
     prunedContext: agentMessage.prunedContext ?? false,
     costCredits: agentMessage.costCredits ?? null,
-    // Aggregated lazily on single-message fetches only (see the single-message
-    // endpoint), so it is `null` everywhere bulk rendering is used.
-    subAgentCostCredits: null,
+    // Aggregated only when rendering a single agent message (see
+    // batchRenderAgentMessages), so it is `null` for bulk conversation rendering.
+    subAgentCostCredits,
   } satisfies AgentMessageType;
 
   if (viewType === "full") {

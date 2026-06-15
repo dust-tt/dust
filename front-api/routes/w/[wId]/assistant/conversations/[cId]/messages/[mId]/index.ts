@@ -175,26 +175,13 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  // Sub-agent cost credits are aggregated lazily, only on this single-message
-  // fetch (never in bulk conversation rendering). Attach it to the agent
-  // message before returning.
-  const renderedMessage = renderedMessages.value[0];
-  const isAgentMessage = renderedMessage.type === "agent_message";
-  const message = isAgentMessage
-    ? {
-        ...renderedMessage,
-        subAgentCostCredits:
-          await ConversationResource.sumSubAgentCostCreditsByMessageId(auth, {
-            agentMessageId: renderedMessage.sId,
-          }),
-      }
-    : renderedMessage;
-
   switch (viewType) {
     case "light":
-      return ctx.json({ message: message as LightMessageType });
+      return ctx.json({
+        message: renderedMessages.value[0] as LightMessageType,
+      });
     case "full":
-      return ctx.json({ message: message as MessageType });
+      return ctx.json({ message: renderedMessages.value[0] as MessageType });
     default:
       assertNever(viewType);
   }
