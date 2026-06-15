@@ -228,11 +228,8 @@ async function syncMetrics(): Promise<void> {
           );
         }
         console.log(
-          `  ↻ ${desired.name} — config changed${EXECUTE ? ", archiving" : ""} ${ex.id}`
+          `  ↻ ${desired.name} — config changed${EXECUTE ? ", recreating" : ""} ${ex.id}`
         );
-        if (EXECUTE) {
-          await client.v1.billableMetrics.archive({ id: ex.id });
-        }
       }
       if (EXECUTE) {
         console.log(`  + Creating: ${desired.name}`);
@@ -242,6 +239,10 @@ async function syncMetrics(): Promise<void> {
         const id = (created as { data: { id: string } }).data.id;
         console.log(`    → ${id}`);
         ids.metrics[desired.name] = id;
+        if (ex) {
+          console.log(`    archiving old ${ex.id}`);
+          await client.v1.billableMetrics.archive({ id: ex.id });
+        }
       } else {
         console.log(`  + [DRYRUN] Would create: ${desired.name}`);
         // Use existing ID if available (for cascading checks), otherwise placeholder.
@@ -447,16 +448,8 @@ async function syncProducts(): Promise<boolean> {
     } else {
       if (ex) {
         console.log(
-          `  ↻ ${desired.name} — config changed${EXECUTE ? ", archiving" : ""} ${ex.id}`
+          `  ↻ ${desired.name} — config changed${EXECUTE ? ", recreating" : ""} ${ex.id}`
         );
-        if (EXECUTE) {
-          try {
-            await client.v1.contracts.products.archive({ product_id: ex.id });
-            mutated = true;
-          } catch {
-            console.log(`    (archive failed)`);
-          }
-        }
       }
 
       if (EXECUTE) {
@@ -483,6 +476,14 @@ async function syncProducts(): Promise<boolean> {
         console.log(`    → ${id}`);
         ids.products[desired.name] = id;
         mutated = true;
+        if (ex) {
+          try {
+            console.log(`    archiving old ${ex.id}`);
+            await client.v1.contracts.products.archive({ product_id: ex.id });
+          } catch {
+            console.log(`    (archive failed)`);
+          }
+        }
       } else {
         console.log(`  + [DRYRUN] Would create: ${desired.name}`);
         ids.products[desired.name] = ex?.id ?? `dryrun-${desired.name}`;
@@ -757,15 +758,8 @@ async function syncRateCards(): Promise<void> {
     } else {
       if (ex) {
         console.log(
-          `  ↻ ${desired.name} — config changed${EXECUTE ? ", archiving" : ""} ${ex.id}`
+          `  ↻ ${desired.name} — config changed${EXECUTE ? ", recreating" : ""} ${ex.id}`
         );
-        if (EXECUTE) {
-          try {
-            await client.v1.contracts.rateCards.archive({ id: ex.id });
-          } catch {
-            console.log(`    (archive failed)`);
-          }
-        }
       }
 
       if (EXECUTE) {
@@ -804,6 +798,14 @@ async function syncRateCards(): Promise<void> {
               | "WEEKLY"
               | undefined,
           });
+        }
+        if (ex) {
+          try {
+            console.log(`    archiving old ${ex.id}`);
+            await client.v1.contracts.rateCards.archive({ id: ex.id });
+          } catch {
+            console.log(`    (archive failed)`);
+          }
         }
       } else {
         console.log(
@@ -1271,15 +1273,8 @@ async function syncPackages(): Promise<void> {
 
       if (ex) {
         console.log(
-          `  ↻ ${versionedName} — config changed${EXECUTE ? ", archiving" : ""} ${ex.name} (${ex.id})`
+          `  ↻ ${versionedName} — config changed${EXECUTE ? ", recreating" : ""} ${ex.name} (${ex.id})`
         );
-        if (EXECUTE) {
-          try {
-            await client.v1.packages.archive({ package_id: ex.id });
-          } catch {
-            console.log(`    (archive failed)`);
-          }
-        }
       }
 
       if (EXECUTE) {
@@ -1420,6 +1415,14 @@ async function syncPackages(): Promise<void> {
         const id = (created as { data: { id: string } }).data.id;
         console.log(`    → ${id}`);
         ids.packages[desired.name] = id;
+        if (ex) {
+          try {
+            console.log(`    archiving old ${ex.id}`);
+            await client.v1.packages.archive({ package_id: ex.id });
+          } catch {
+            console.log(`    (archive failed)`);
+          }
+        }
       } else {
         console.log(`  + [DRYRUN] Would create: ${versionedName}`);
         ids.packages[desired.name] = ex?.id ?? `dryrun-${desired.name}`;
