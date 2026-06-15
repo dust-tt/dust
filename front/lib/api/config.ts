@@ -387,6 +387,22 @@ const config = {
   getDocumentRendererUrl: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DOCUMENT_RENDERER_URL");
   },
+  // In local dev Gotenberg runs in Docker and cannot reach localhost.
+  // Set DOCUMENT_RENDERER_APP_URL=http://host.docker.internal:3011 in .env.local.
+  getDocumentRendererAppUrl: (): string => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("DOCUMENT_RENDERER_APP_URL") ??
+      config.getAppUrl()
+    );
+  },
+  // API URL reachable from Gotenberg's Chromium (inside Docker).
+  // Set DOCUMENT_RENDERER_API_URL=http://host.docker.internal:3000 in .env.local.
+  getDocumentRendererApiUrl: (): string => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("DOCUMENT_RENDERER_API_URL") ??
+      config.getApiBaseUrl()
+    );
+  },
   // Public viz URL (used by Gotenberg which routes through egress proxy).
   getVizPublicUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("VIZ_PUBLIC_URL");

@@ -305,6 +305,8 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: appDefinition.port,
+      host: true,
+      allowedHosts: ["host.docker.internal"],
       // No proxy - client calls API directly using VITE_DUST_API_URL.
       fs: {
         // Allow serving files from the front directory (for shared code)

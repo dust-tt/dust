@@ -43,13 +43,13 @@ function redirectToDefaultAsset(ctx: Context, asset: BrandingAssetName) {
  * when the workspace is entitled and has one uploaded, Dust default asset otherwise.
  *
  * Caching model: Cache-Control: public, max-age=86400, immutable. Safe because ?v= is
- * a content-addressed cache-buster — the same URL always returns the same bytes.
+ * a content-addressed cache-buster. The same URL always returns the same bytes.
  *
  * History note (do not reintroduce signed URL redirects): the previous design returned a
  * 302 to a short-lived signed URL, with Cache-Control on the redirect itself. Once the
  * browser cached the 302, it would serve the cached redirect after the signed URL had
  * expired (5 min), producing 403s from the storage backend. The ?v= immutability and
- * the signed URL expiry were solving the same problem twice; signed URLs added latency
+ * the signed URL expiry were solving the same problem twice. Signed URLs added latency
  * and a failure mode with no benefit.
  */
 app.get("/:wId/:asset", validate("param", ParamsSchema), async (ctx) => {

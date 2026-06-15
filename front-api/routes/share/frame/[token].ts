@@ -113,12 +113,13 @@ app.get(
       : false;
     const requiresEmailVerification = isEmailScope && hasActiveGrants;
 
-    const { faviconUrl, logoUrl } =
+    const { faviconUrl, logoUrl, ogImageUrl } =
       await getWorkspaceBrandingPublicUrls(workspace);
 
     return ctx.json({
       faviconUrl,
       logoUrl,
+      ogImageUrl,
       requiresEmailVerification,
       shareUrl,
       title: file.fileName,

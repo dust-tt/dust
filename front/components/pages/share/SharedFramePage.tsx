@@ -119,7 +119,7 @@ export function SharedFramePage() {
     addMeta({ property: "og:image:width", content: "1200" });
     addMeta({
       property: "og:image",
-      content: "https://dust.tt/static/og/ic.png",
+      content: shareMetadata.ogImageUrl ?? "https://dust.tt/static/og/ic.png",
     });
     addMeta({ property: "og:site_name", content: "Dust" });
     addMeta({ property: "og:url", content: shareMetadata.shareUrl });

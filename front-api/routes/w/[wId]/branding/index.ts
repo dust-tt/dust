@@ -6,6 +6,7 @@ import {
 import type { BrandingAssetState } from "@app/lib/api/workspace_branding";
 import {
   deleteBrandingAsset,
+  generateAndStoreOgImage,
   getBrandingAssetState,
   promoteBrandingAsset,
   USER_UPLOADABLE_BRANDING_ASSET_NAMES,
@@ -102,6 +103,11 @@ app.patch(
         });
       }
 
+      // When the logo is removed, the OG card is no longer relevant.
+      if (asset === "logo") {
+        await deleteBrandingAsset(auth, "og");
+      }
+
       void emitAuditLogEvent({
         auth,
         action: "workspace_branding.asset_deleted",
@@ -145,6 +151,11 @@ app.patch(
           message: "Failed to promote branding asset.",
         },
       });
+    }
+
+    // Regenerate the OG card whenever the logo is updated.
+    if (asset === "logo") {
+      await generateAndStoreOgImage(auth);
     }
 
     void emitAuditLogEvent({

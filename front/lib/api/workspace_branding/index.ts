@@ -1,12 +1,12 @@
 /**
- * Workspace branding assets — GCS path helpers and asset allowlist.
+ * Workspace branding assets, GCS path helpers and asset allowlist.
  *
  * GCS layout (private bucket):
- *   w/{wId}/branding/logo     — primary logo (light backgrounds)
- *   w/{wId}/branding/favicon  — square mark (256×256)
- *   w/{wId}/branding/og       — 1200×630 OG card (PNG, auto-generated)
+ *   w/{wId}/branding/logo     primary logo (light backgrounds)
+ *   w/{wId}/branding/favicon  square mark (256x256)
+ *   w/{wId}/branding/og       1200x630 OG card (PNG, auto-generated)
  *
- * Keys are extensionless; content type lives in GCS object metadata.
+ * Keys are extensionless, content type lives in GCS object metadata.
  */
 
 import config from "@app/lib/api/config";
@@ -21,39 +21,26 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-export const BRANDING_ASSET_NAMES = ["logo", "favicon", "og"] as const;
-export type BrandingAssetName = (typeof BRANDING_ASSET_NAMES)[number];
+export type {
+  BrandingAssetName,
+  BrandingAssetState,
+  UserUploadableBrandingAssetName,
+} from "./paths";
+export {
+  BRANDING_ASSET_NAMES,
+  BRANDING_DEFAULT_ASSET_PATHS,
+  USER_UPLOADABLE_BRANDING_ASSET_NAMES,
+  buildBrandingAssetPublicUrl,
+  buildBrandingAssetStoragePath,
+  isBrandingAssetName,
+} from "./paths";
+export { generateAndStoreOgImage } from "./og";
 
-export const USER_UPLOADABLE_BRANDING_ASSET_NAMES = [
-  "logo",
-  "favicon",
-] as const;
-export type UserUploadableBrandingAssetName =
-  (typeof USER_UPLOADABLE_BRANDING_ASSET_NAMES)[number];
-
-export type BrandingAssetState = { version: string } | null;
-
-export function isBrandingAssetName(value: string): value is BrandingAssetName {
-  return (BRANDING_ASSET_NAMES as readonly string[]).includes(value);
-}
-
-export function buildBrandingAssetStoragePath(
-  wId: string,
-  asset: BrandingAssetName
-): string {
-  return `w/${wId}/branding/${asset}`;
-}
-
-/**
- * Default public-asset paths (served from /public/static/branding/).
- * These are the Dust defaults returned when a workspace has no custom branding, is not entitled,
- * or has not uploaded a specific asset yet.
- */
-export const BRANDING_DEFAULT_ASSET_PATHS: Record<BrandingAssetName, string> = {
-  logo: "/static/DustHorizontalIcon.png",
-  favicon: "/static/favicon.png",
-  og: "/static/og/ic.png",
-};
+import type { BrandingAssetName, BrandingAssetState } from "./paths";
+import {
+  buildBrandingAssetPublicUrl,
+  buildBrandingAssetStoragePath,
+} from "./paths";
 
 // Takes `wId` directly rather than `Authenticator` because the public branding endpoint
 // serves unauthenticated requests. No auth context is available at that call site.
@@ -82,43 +69,47 @@ export async function getBrandingAssetState(
   }
 }
 
-function buildBrandingAssetPublicUrl(
-  workspace: WorkspaceResource,
-  asset: UserUploadableBrandingAssetName,
-  { version }: { version: string }
-): string {
-  return `${config.getApiBaseUrl()}/api/v1/public/branding/${workspace.sId}/${asset}?v=${version}`;
-}
-
 export async function getWorkspaceBrandingPublicUrls(
   workspace: WorkspaceResource
-): Promise<{ faviconUrl: string | null; logoUrl: string | null }> {
+): Promise<{
+  faviconUrl: string | null;
+  logoUrl: string | null;
+  ogImageUrl: string | null;
+}> {
   const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
     workspace.id
   );
   if (!subscription?.getPlan().isBrandedFramesAllowed) {
-    return { faviconUrl: null, logoUrl: null };
+    return { faviconUrl: null, logoUrl: null, ogImageUrl: null };
   }
 
-  const [logoState, faviconState] = await Promise.all([
+  const [logoState, faviconState, ogState] = await Promise.all([
     getBrandingAssetState({ wId: workspace.sId }, "logo"),
     getBrandingAssetState({ wId: workspace.sId }, "favicon"),
+    getBrandingAssetState({ wId: workspace.sId }, "og"),
   ]);
 
   return {
     faviconUrl:
       faviconState.isOk() && faviconState.value
-        ? buildBrandingAssetPublicUrl(workspace, "favicon", {
+        ? buildBrandingAssetPublicUrl(workspace.sId, "favicon", {
             version: faviconState.value.version,
           })
         : null,
     logoUrl:
       logoState.isOk() && logoState.value
-        ? buildBrandingAssetPublicUrl(workspace, "logo", {
+        ? buildBrandingAssetPublicUrl(workspace.sId, "logo", {
             version: logoState.value.version,
           })
         : null,
+    ogImageUrl:
+      ogState.isOk() && ogState.value
+        ? buildBrandingAssetPublicUrl(workspace.sId, "og", {
+            version: ogState.value.version,
+          })
+        : null,
   };
+
 }
 
 export async function promoteBrandingAsset(

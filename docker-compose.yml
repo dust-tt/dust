@@ -129,6 +129,18 @@ services:
       timeout: 10s
       retries: 20
 
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    profiles:
+      - gotenberg
+    ports:
+      - "3100:3000"
+    command:
+      - gotenberg
+      - --chromium-disable-javascript=false
+      - --chromium-allow-list=.*
+      - --chromium-deny-list=
+
 volumes:
   pgsql:
   qdrant_primary:
