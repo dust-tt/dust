@@ -5,7 +5,9 @@
 
 @config "../tailwind.config.cjs";
 
-/* Anonymous container variants */
+/* Container query variants must be inlined — @tailwindcss/postcss does not
+   resolve @custom-variant from @import'ed files. Keep in sync with
+   front/styles/container-queries.css (which is still used by CLI builds). */
 @custom-variant @xxxs (@container (width >= 16rem));
 @custom-variant @xxs (@container (width >= 24rem));
 @custom-variant @xs (@container (width >= 32rem));

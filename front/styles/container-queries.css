@@ -1,5 +1,13 @@
-/* Shared container query breakpoints (v3 @tailwindcss/container-queries → v4 native).
-   Import this file from every CSS entry point that scans front/ or sparkle/ sources. */
+/* Shared container query breakpoints — canonical source of truth.
+   NOTE: @tailwindcss/postcss does NOT resolve @custom-variant from @import'ed files,
+   so every CSS entry point must inline these definitions. When adding or changing
+   variants here, update ALL CSS entry points:
+   - front/styles/components.css
+   - front-spa/src/index.css
+   - extension/ui/css/components.css
+   - sparkle/src/styles/tailwind.css
+   - marketing/styles/components.css
+   - viz/app/styles/globals.css */
 
 /* Anonymous container variants — match the nearest ancestor with container-type set. */
 @custom-variant @xxxs (@container (width >= 16rem));
