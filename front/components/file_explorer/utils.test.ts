@@ -9,14 +9,14 @@ import {
   getChildrenAtFolderPath,
   isFileExplorerMovableFile,
 } from "@app/components/file_explorer/utils";
-import type { GCSMountEntry } from "@app/lib/api/files/gcs_mount/files";
+import type { FileSystemEntry } from "@app/lib/api/file_system/types";
 import { frameContentType, frameSlideshowContentType } from "@app/types/files";
 import { describe, expect, it } from "vitest";
 
 function mountFile(
   relativePath: string,
   useCase: "project" | "conversation" = "project"
-): GCSMountEntry {
+): FileSystemEntry {
   return {
     isDirectory: false,
     fileName: relativePath.split("/").pop() ?? relativePath,
@@ -32,7 +32,7 @@ function mountFile(
 function mountDir(
   relativePath: string,
   useCase: "project" | "conversation" = "project"
-): GCSMountEntry {
+): FileSystemEntry {
   return {
     isDirectory: true,
     fileName: relativePath.split("/").pop() ?? relativePath,

@@ -9,7 +9,7 @@ import { DustFileSystem } from "@app/lib/api/file_system";
 import type { FileSystemDirectoryEntry } from "@app/lib/api/file_system/types";
 import {
   DustFileSystemError,
-  SCOPED_PREFIX_POD,
+  podScopedPath,
 } from "@app/lib/api/file_system/types";
 import {
   deleteGCSMountFile,
@@ -402,7 +402,7 @@ export async function addFileToProject(
     }
 
     const destFileName = file.fileName;
-    const destScopedPath = `${SCOPED_PREFIX_POD}${space.sId}/${destFileName}`;
+    const destScopedPath = podScopedPath(space.sId, destFileName);
 
     // Reject the move when a file with the same name already exists in the Pod, rather
     // than silently overwriting it. moveFile (raw GCS) does not check, so we check the
@@ -628,6 +628,7 @@ export async function removeFileFromProject(
 /**
  * Create an empty folder in a project GCS mount via a trailing-slash placeholder object.
  */
+// TODO(FILE_SYSTEM): Delete this abstraction.
 export async function createProjectFolder(
   auth: Authenticator,
   {
@@ -670,9 +671,7 @@ export async function createProjectFolder(
     return fsResult;
   }
 
-  return fsResult.value.mkdir(
-    `${SCOPED_PREFIX_POD}${space.sId}/${relativeDirPath}`
-  );
+  return fsResult.value.mkdir(podScopedPath(space.sId, relativeDirPath));
 }
 
 /**

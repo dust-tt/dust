@@ -3,7 +3,6 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import config from "@app/lib/api/config";
 import { GCSMountDirectoryAlreadyExistsError } from "@app/lib/api/files/gcs_mount/errors";
 import {
   getConversationFilesBasePath,
@@ -19,10 +18,6 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
-import {
-  isSupportedImageContentType,
-  stripMimeParameters,
-} from "@app/types/files";
 import { Err, Ok, type Result } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -31,29 +26,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 
 const GCS_MOUNT_COPY_CONCURRENCY = 4;
 const GCS_MOUNT_COPY_MAX_FILES = 5000;
-
-type GCSMountEntryBase = {
-  fileName: string;
-  /** Scoped path, e.g. `pod/report.pdf` or `conversation/.tool_outputs/chart.png`. */
-  path: string;
-  sizeBytes: number;
-  lastModifiedMs: number;
-};
-
-export type GCSMountDirectoryEntry = GCSMountEntryBase & {
-  isDirectory: true;
-};
-
-export type GCSMountFileEntry = GCSMountEntryBase & {
-  isDirectory: false;
-  contentType: string;
-  fileId: string | null;
-  thumbnailUrl: string | null;
-  /** Present when the listing endpoint adds read-signed URLs (e.g. system pod_files API). */
-  signedDownloadUrl?: string | null;
-};
-
-export type GCSMountEntry = GCSMountDirectoryEntry | GCSMountFileEntry;
 
 export type GCSMountPoint =
   | { useCase: "conversation"; conversationId: string }
@@ -120,74 +92,6 @@ export function getScopedPathFromGCSPath({
   }
 
   return `${useCase}/${gcsPath.slice(prefix.length)}`;
-}
-
-function makeFileEntry(
-  {
-    fileName,
-    relativeFilePath,
-    sizeBytes,
-    contentType: rawContentType,
-    lastModifiedMs,
-    fileId,
-  }: {
-    fileName: string;
-    relativeFilePath: string;
-    sizeBytes: number;
-    contentType: string;
-    lastModifiedMs: number;
-    fileId: string | null;
-  },
-  scope: GCSMountPoint,
-  workspaceId: string
-): GCSMountFileEntry {
-  // GCS metadata commonly carries MIME parameters (e.g. `text/csv; charset=utf-8`).
-  // Strip them at the module boundary so every downstream consumer sees a clean type
-  // that matches our content-type lookup tables exactly.
-  const contentType = stripMimeParameters(rawContentType);
-  return {
-    isDirectory: false,
-    fileName,
-    path: `${scope.useCase}/${relativeFilePath}`,
-    sizeBytes,
-    contentType,
-    lastModifiedMs,
-    fileId,
-    thumbnailUrl: makeThumbnailUrl({
-      contentType,
-      relativeFilePath,
-      scope,
-      workspaceId,
-    }),
-  };
-}
-
-function makeThumbnailUrl({
-  contentType,
-  relativeFilePath,
-  scope,
-  workspaceId,
-}: {
-  contentType: string;
-  relativeFilePath: string;
-  scope: GCSMountPoint;
-  workspaceId: string;
-}): string | null {
-  if (!isSupportedImageContentType(contentType)) {
-    return null;
-  }
-
-  switch (scope.useCase) {
-    case "conversation":
-      return `${config.getApiBaseUrl()}/api/w/${workspaceId}/assistant/conversations/${scope.conversationId}/files/thumbnail?filePath=${encodeURIComponent(`${scope.useCase}/${relativeFilePath}`)}`;
-
-    case "pod":
-      // TODO(2026-05-10: FILE SYSTEM) Expose a Pod files thumbnail endpoint.
-      return null;
-
-    default:
-      assertNever(scope);
-  }
 }
 
 /**
@@ -328,61 +232,6 @@ export async function getConversationFileMountSignedUrl(
   } catch (err) {
     return new Err(normalizeError(err));
   }
-}
-
-/**
- * Write a file into a GCS mount point.
- * Returns the entry as it would appear in listGCSMountFiles.
- */
-export async function createGCSMountFile(
-  auth: Authenticator,
-  scope: GCSMountPoint,
-  {
-    relativeFilePath,
-    content,
-    contentType,
-  }: {
-    relativeFilePath: string;
-    content: Buffer;
-    contentType: string;
-  }
-): Promise<Result<GCSMountFileEntry, Error>> {
-  const owner = auth.getNonNullableWorkspace();
-  const prefix = resolvePrefix(owner, scope);
-
-  const gcsPath = `${prefix}${relativeFilePath}`;
-  const bucket = getPrivateUploadBucket();
-  try {
-    await bucket.file(gcsPath).save(content, { contentType });
-
-    // Mirror the write on the projects/ side for pod files.
-    if (scope.useCase === "pod") {
-      const projectsPrefix = getProjectFilesBasePath({
-        workspaceId: owner.sId,
-        projectId: scope.podId,
-      });
-      const projectsGcsPath = `${projectsPrefix}${relativeFilePath}`;
-      await bucket.file(projectsGcsPath).save(content, { contentType });
-    }
-  } catch (error) {
-    return new Err(normalizeError(error));
-  }
-
-  const fileName = relativeFilePath.split("/").pop() ?? relativeFilePath;
-  return new Ok(
-    makeFileEntry(
-      {
-        fileName,
-        relativeFilePath,
-        sizeBytes: content.length,
-        contentType,
-        lastModifiedMs: Date.now(),
-        fileId: null,
-      },
-      scope,
-      owner.sId
-    )
-  );
 }
 
 /**

@@ -7,10 +7,11 @@ import { renderConversationAsText } from "@app/lib/api/assistant/conversation/re
 import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conversation_rendering";
 import { isProviderWhitelisted } from "@app/lib/api/assistant/models";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
-  createGCSMountFile,
-  type GCSMountFileEntry,
-} from "@app/lib/api/files/gcs_mount/files";
+  conversationScopedPath,
+  type DustFileSystemError,
+} from "@app/lib/api/file_system/types";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
@@ -22,6 +23,7 @@ import type {
 import { isCompactionMessageType } from "@app/types/assistant/conversation";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type { SupportedModel } from "@app/types/assistant/models/types";
+import type { FileSystemFileEntry } from "@app/lib/api/file_system/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -134,7 +136,7 @@ async function createCompactionHistoryFile(
     compactionMessage: CompactionMessageType;
     renderedMessages: string;
   }
-): Promise<Result<GCSMountFileEntry, Error>> {
+): Promise<Result<FileSystemFileEntry, DustFileSystemError>> {
   const generatedAt = new Date();
   const relativeFilePath = `history/${formatCompactionHistoryTimestamp(generatedAt)}-compaction-${compactionMessage.sId}.history`;
   const metadataLines = [
@@ -147,23 +149,35 @@ async function createCompactionHistoryFile(
     "",
   ];
 
-  const entryRes = await createGCSMountFile(
-    auth,
-    { useCase: "conversation", conversationId: targetConversation.sId },
-    {
-      relativeFilePath,
-      content: Buffer.from(
-        `${metadataLines.join("\n")}${renderedMessages}`,
-        "utf8"
-      ),
-      contentType: "text/plain",
-    }
-  );
-
-  if (entryRes.isErr()) {
-    return entryRes;
+  const fsResult = await DustFileSystem.forConversation(auth, targetConversation);
+  if (fsResult.isErr()) {
+    return fsResult;
   }
-  return new Ok(entryRes.value);
+
+  const scopedPath = conversationScopedPath({
+    conversationId: targetConversation.sId,
+    rel: relativeFilePath
+  });
+  const content = Buffer.from(
+    `${metadataLines.join("\n")}${renderedMessages}`,
+    "utf8"
+  );
+  const writeRes = await fsResult.value.write(scopedPath, content, "text/plain");
+  if (writeRes.isErr()) {
+    return writeRes;
+  }
+
+  const fileName = relativeFilePath.split("/").pop() ?? relativeFilePath;
+  return new Ok({
+    isDirectory: false,
+    fileName,
+    path: scopedPath,
+    sizeBytes: content.length,
+    contentType: "text/plain",
+    lastModifiedMs: Date.now(),
+    fileId: null,
+    thumbnailUrl: null,
+  });
 }
 
 export async function failCompactionMessage(
