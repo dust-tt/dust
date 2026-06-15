@@ -9,14 +9,12 @@ import {
   getConversationFileMountSignedUrl,
   getGCSPathFromScopedPath,
   getScopedPathFromGCSPath,
-  listGCSMountFiles,
   renameGCSMountDirectory,
   renameGCSMountFile,
 } from "@app/lib/api/files/gcs_mount/files";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -275,147 +273,6 @@ describe("createGCSMountDirectory", () => {
 
     assert(entryRes.isOk());
     expect(saveMock).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe("listGCSMountFiles", () => {
-  let auth: Authenticator;
-  let conversationId: string;
-  let workspaceId: string;
-  let getAllFilesByPrefixMock: ReturnType<typeof vi.fn>;
-
-  beforeEach(async () => {
-    getAllFilesByPrefixMock = vi.fn();
-    vi.mocked(getPrivateUploadBucket).mockReturnValue({
-      getAllFilesByPrefix: getAllFilesByPrefixMock,
-    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
-
-    const { authenticator, conversationsSpace } = await createResourceTest({});
-    auth = authenticator;
-    workspaceId = auth.getNonNullableWorkspace().sId;
-
-    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
-      name: "Test Agent",
-      description: "Test Agent",
-    });
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: agentConfig.sId,
-      messagesCreatedAt: [],
-      spaceId: conversationsSpace.id,
-    });
-    conversationId = conversation.sId;
-  });
-
-  function gcsFile({
-    name,
-    contentType = "text/plain",
-    size = 100,
-  }: {
-    name: string;
-    contentType?: string;
-    size?: number;
-  }) {
-    return {
-      name,
-      metadata: {
-        contentType,
-        size: String(size),
-        updated: new Date().toISOString(),
-      },
-    };
-  }
-
-  it("excludes *.processed.<ext> siblings by default", async () => {
-    const prefix = `w/${workspaceId}/conversations/${conversationId}/files/`;
-    getAllFilesByPrefixMock.mockResolvedValue({
-      files: [
-        gcsFile({
-          name: `${prefix}report.pdf`,
-          contentType: "application/pdf",
-        }),
-        gcsFile({ name: `${prefix}report.processed.txt` }),
-        gcsFile({ name: `${prefix}photo.jpg`, contentType: "image/jpeg" }),
-        gcsFile({
-          name: `${prefix}photo.processed.jpg`,
-          contentType: "image/jpeg",
-        }),
-      ],
-      pageFetchCount: 1,
-    });
-
-    const result = await listGCSMountFiles(auth, {
-      useCase: "conversation",
-      conversationId,
-    });
-
-    assert(result.isOk());
-    const paths = result.value.filter((e) => !e.isDirectory).map((e) => e.path);
-    expect(paths).toEqual(
-      expect.arrayContaining([
-        "conversation/report.pdf",
-        "conversation/photo.jpg",
-      ])
-    );
-    expect(paths).not.toEqual(
-      expect.arrayContaining([
-        "conversation/report.processed.txt",
-        "conversation/photo.processed.jpg",
-      ])
-    );
-  });
-
-  it("includes *.processed.<ext> siblings when includeProcessed is true", async () => {
-    const prefix = `w/${workspaceId}/conversations/${conversationId}/files/`;
-    getAllFilesByPrefixMock.mockResolvedValue({
-      files: [
-        gcsFile({
-          name: `${prefix}report.pdf`,
-          contentType: "application/pdf",
-        }),
-        gcsFile({ name: `${prefix}report.processed.txt` }),
-      ],
-      pageFetchCount: 1,
-    });
-
-    const result = await listGCSMountFiles(
-      auth,
-      { useCase: "conversation", conversationId },
-      { includeProcessed: true }
-    );
-
-    assert(result.isOk());
-    const paths = result.value.filter((e) => !e.isDirectory).map((e) => e.path);
-    expect(paths).toEqual(
-      expect.arrayContaining([
-        "conversation/report.pdf",
-        "conversation/report.processed.txt",
-      ])
-    );
-  });
-
-  it("logs a warning when GCS listing used more than one page", async () => {
-    const warnSpy = vi.spyOn(logger, "warn").mockImplementation(() => {});
-    const prefix = `w/${workspaceId}/conversations/${conversationId}/files/`;
-    getAllFilesByPrefixMock.mockResolvedValue({
-      files: [gcsFile({ name: `${prefix}report.pdf` })],
-      pageFetchCount: 2,
-    });
-
-    await listGCSMountFiles(auth, {
-      useCase: "conversation",
-      conversationId,
-    });
-
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        workspaceId,
-        prefix,
-        pageFetchCount: 2,
-        objectCount: 1,
-      }),
-      "GCS mount file listing required multiple list requests; prefix has many objects."
-    );
-    warnSpy.mockRestore();
   });
 });
 

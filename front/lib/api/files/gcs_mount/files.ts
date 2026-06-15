@@ -9,13 +9,12 @@ import {
   getConversationFilesBasePath,
   getPodFilesBasePath,
   getProjectFilesBasePath,
-  TOOL_OUTPUTS_FOLDER_NAME,
   toProjectMountFilePath,
 } from "@app/lib/api/files/mount_path";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { FileResource } from "@app/lib/resources/file_resource";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -211,136 +210,6 @@ function makeThumbnailUrl({
 
     default:
       assertNever(scope);
-  }
-}
-
-/**
- * List files from a GCS mount point (mounted bucket as source of truth).
- *
- * `.processed.<ext>` siblings are filtered out by default — they are
- * auto-generated artifacts (resized images, transcripts, extracted text) and
- * the UI file panel should not surface them. The MCP `files__list` tool opts
- * in via `includeProcessed: true` so the agent can read them directly.
- */
-export async function listGCSMountFiles(
-  auth: Authenticator,
-  scope: GCSMountPoint,
-  { includeProcessed = false }: { includeProcessed?: boolean } = {}
-): Promise<Result<GCSMountEntry[], Error>> {
-  const owner = auth.getNonNullableWorkspace();
-  const prefix = resolvePrefix(owner, scope);
-
-  try {
-    const bucket = getPrivateUploadBucket();
-    const { files: gcsFiles, pageFetchCount } =
-      await bucket.getAllFilesByPrefix({
-        prefix,
-        pageSize: 200,
-      });
-
-    if (pageFetchCount > 1) {
-      logger.warn(
-        {
-          workspaceId: owner.sId,
-          prefix,
-          scope,
-          pageFetchCount,
-          objectCount: gcsFiles.length,
-        },
-        "GCS mount file listing required multiple list requests; prefix has many objects."
-      );
-    }
-
-    // GCS folder placeholders are zero-byte objects whose path ends with "/".
-    const folderPlaceholders = gcsFiles.filter((f) => f.name.endsWith("/"));
-    const regularFiles = gcsFiles.filter((f) => {
-      if (f.name.endsWith("/")) {
-        return false;
-      }
-
-      if (includeProcessed) {
-        return true;
-      }
-
-      const name = f.name.split("/").pop() ?? "";
-      return !name.includes(".processed.");
-    });
-
-    // GCS files are listed under `pods/` but some FileResource rows still store the
-    // `projects/` form. Query both shapes so old rows still resolve.
-    const mountPaths = regularFiles.map((f) => f.name);
-    const legacyMountPaths = mountPaths.map((p) =>
-      p.replace("/pods/", "/projects/")
-    );
-    const fileResources = await FileResource.fetchByMountFilePaths(auth, [
-      ...mountPaths,
-      ...legacyMountPaths,
-    ]);
-    const fileResourceByMountPath = new Map<string, FileResource>();
-    for (const r of fileResources) {
-      if (r.mountFilePath) {
-        fileResourceByMountPath.set(
-          r.mountFilePath.replace("/projects/", "/pods/"),
-          r
-        );
-      }
-    }
-
-    const folderEntries: GCSMountDirectoryEntry[] = folderPlaceholders.flatMap(
-      (f) => {
-        const trimmed = f.name.replace(/\/$/, "");
-        const name = trimmed.split("/").pop() ?? "";
-        // Skip hidden folders (name starting with "."), except the tool outputs folder which is
-        // surfaced to users despite its dot prefix.
-        if (
-          !name ||
-          (name.startsWith(".") && name !== TOOL_OUTPUTS_FOLDER_NAME)
-        ) {
-          return [];
-        }
-
-        return [
-          makeDirectoryEntry(
-            {
-              fileName: name,
-              relativeFilePath: trimmed.slice(prefix.length),
-              sizeBytes: 0,
-              lastModifiedMs: isString(f.metadata.updated)
-                ? new Date(f.metadata.updated).getTime()
-                : 0,
-            },
-            scope
-          ),
-        ];
-      }
-    );
-
-    const fileEntries: GCSMountFileEntry[] = regularFiles.map((gcsFile) => {
-      const metadata = gcsFile.metadata;
-      const contentType = isString(metadata.contentType)
-        ? metadata.contentType
-        : "application/octet-stream";
-      const fileResource = fileResourceByMountPath.get(gcsFile.name) ?? null;
-
-      return makeFileEntry(
-        {
-          fileName: gcsFile.name.split("/").pop() ?? gcsFile.name,
-          relativeFilePath: gcsFile.name.slice(prefix.length),
-          sizeBytes: Number(metadata.size ?? 0),
-          contentType,
-          lastModifiedMs: isString(metadata.updated)
-            ? new Date(metadata.updated).getTime()
-            : 0,
-          fileId: fileResource?.sId ?? null,
-        },
-        scope,
-        owner.sId
-      );
-    });
-
-    return new Ok([...folderEntries, ...fileEntries]);
-  } catch (err) {
-    return new Err(normalizeError(err));
   }
 }
 

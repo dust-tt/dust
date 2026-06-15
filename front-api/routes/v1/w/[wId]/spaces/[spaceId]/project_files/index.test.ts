@@ -1,21 +1,31 @@
+import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const listGCSMountFilesMock = vi.hoisted(() => vi.fn());
-const getConversationFileMountSignedUrlMock = vi.hoisted(() => vi.fn());
+const getAllFilesByPrefixMock = vi.hoisted(() => vi.fn());
+const getSignedUrlMock = vi.hoisted(() => vi.fn());
 
-vi.mock("@app/lib/api/files/gcs_mount/files", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@app/lib/api/files/gcs_mount/files")>();
+vi.mock("@app/lib/file_storage/config", () => ({
+  default: { getGcsPrivateUploadsBucket: vi.fn(() => "test-bucket") },
+}));
+
+function makeGCSFile(
+  name: string,
+  contentType = "text/plain",
+  size = 1024,
+  updatedMs = 2000
+) {
   return {
-    ...actual,
-    listGCSMountFiles: listGCSMountFilesMock,
-    getConversationFileMountSignedUrl: getConversationFileMountSignedUrlMock,
+    name,
+    metadata: {
+      contentType,
+      size: String(size),
+      updated: new Date(updatedMs).toISOString(),
+    },
   };
-});
+}
 
 function getProjectFiles(
   workspace: { sId: string },
@@ -33,11 +43,14 @@ function getProjectFiles(
 
 describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_files", () => {
   beforeEach(() => {
-    listGCSMountFilesMock.mockReset();
-    getConversationFileMountSignedUrlMock.mockReset();
-    getConversationFileMountSignedUrlMock.mockResolvedValue(
-      new Ok("https://signed.example/read")
-    );
+    getAllFilesByPrefixMock.mockReset();
+    getAllFilesByPrefixMock.mockResolvedValue({ files: [], pageFetchCount: 1 });
+    getSignedUrlMock.mockReset();
+    getSignedUrlMock.mockResolvedValue("https://signed.example/read");
+    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+      getAllFilesByPrefix: getAllFilesByPrefixMock,
+      getSignedUrl: getSignedUrlMock,
+    } as unknown as ReturnType<typeof getPrivateUploadBucket>);
   });
 
   it("returns 403 if not system key", async () => {
@@ -97,66 +110,46 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_files", () => {
     });
   });
 
-  it("returns 500 when GCS listing fails", async () => {
+  it("returns files for a project space with canonical scoped paths", async () => {
     const { workspace, key } = await createPublicApiMockRequest({
       systemKey: true,
     });
 
     const space = await SpaceFactory.project(workspace);
+    const prefix = `w/${workspace.sId}/pods/${space.sId}/files/`;
 
-    listGCSMountFilesMock.mockResolvedValue(
-      new Err(new Error("socket hang up"))
-    );
+    getAllFilesByPrefixMock.mockResolvedValue({
+      files: [makeGCSFile(`${prefix}a.txt`, "text/plain", 3, 2000)],
+      pageFetchCount: 1,
+    });
 
     const response = await getProjectFiles(workspace, key, space.sId);
 
-    expect(response.status).toBe(500);
-    expect(await response.json()).toEqual({
-      error: {
-        type: "internal_server_error",
-        message: "Failed to list project files.",
-      },
-    });
+    expect(response.status).toBe(200);
+    expect(getAllFilesByPrefixMock).toHaveBeenCalledWith(
+      expect.objectContaining({ prefix })
+    );
+    const body = await response.json();
+    expect(body.files).toHaveLength(1);
+    expect(body.files[0].path).toBe(`pod-${space.sId}/a.txt`);
+    expect(body.files[0].signedDownloadUrl).toBe("https://signed.example/read");
   });
 
-  it("returns files for a project space and filters by updatedSince", async () => {
+  it("filters by updatedSince", async () => {
     const { workspace, key } = await createPublicApiMockRequest({
       systemKey: true,
     });
 
     const space = await SpaceFactory.project(workspace);
+    const prefix = `w/${workspace.sId}/pods/${space.sId}/files/`;
 
-    const mockFile = {
-      isDirectory: false as const,
-      fileName: "a.txt",
-      path: "pod/a.txt",
-      sizeBytes: 3,
-      lastModifiedMs: 2000,
-      contentType: "text/plain",
-      fileId: null,
-      thumbnailUrl: null,
-    };
-
-    const mockFileWithUrl = {
-      ...mockFile,
-      signedDownloadUrl: "https://signed.example/read",
-    };
-
-    listGCSMountFilesMock.mockResolvedValue(
-      new Ok([
-        mockFile,
-        {
-          isDirectory: false as const,
-          fileName: "old.txt",
-          path: "pod/old.txt",
-          sizeBytes: 1,
-          lastModifiedMs: 500,
-          contentType: "text/plain",
-          fileId: null,
-          thumbnailUrl: null,
-        },
-      ])
-    );
+    getAllFilesByPrefixMock.mockResolvedValue({
+      files: [
+        makeGCSFile(`${prefix}a.txt`, "text/plain", 3, 2000),
+        makeGCSFile(`${prefix}old.txt`, "text/plain", 1, 500),
+      ],
+      pageFetchCount: 1,
+    });
 
     const response = await getProjectFiles(
       workspace,
@@ -166,12 +159,8 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_files", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(listGCSMountFilesMock).toHaveBeenCalledWith(expect.anything(), {
-      useCase: "pod",
-      podId: space.sId,
-    });
-    expect(await response.json()).toEqual({
-      files: [mockFileWithUrl],
-    });
+    const body = await response.json();
+    expect(body.files).toHaveLength(1);
+    expect(body.files[0].path).toBe(`pod-${space.sId}/a.txt`);
   });
 });

@@ -1,19 +1,21 @@
 import { PROJECT_CONTEXT_FOLDER_ID } from "@connectors/connectors/dust_project/lib/constants";
 import { createHash } from "crypto";
 
-const POD_SCOPE_PREFIX = "pod/";
+// Matches pod-scoped paths from DustFileSystem: pod-{podId}/...
+const POD_SCOPE_RE = /^pod-[^/]+\//;
 
 /**
- * Strip the `pod/` scope prefix from a scoped mount path.
- * Returns null when the path is not a pod-scoped mount path.
+ * Strip the pod scope prefix from a scoped mount path.
+ * Returns null when the path is not pod-scoped.
  */
 export function parseProjectScopedPath(scopedPath: string): string | null {
-  if (!scopedPath.startsWith(POD_SCOPE_PREFIX)) {
-    return null;
+  const podMatch = scopedPath.match(POD_SCOPE_RE);
+  if (podMatch) {
+    const relativePath = scopedPath.slice(podMatch[0].length);
+    return relativePath.length > 0 ? relativePath : null;
   }
 
-  const relativePath = scopedPath.slice(POD_SCOPE_PREFIX.length);
-  return relativePath.length > 0 ? relativePath : null;
+  return null;
 }
 
 export function getMountDirInternalId(

@@ -1,10 +1,7 @@
-import {
-  type GCSMountEntry,
-  getConversationFileMountSignedUrl,
-  getGCSPathFromScopedPath,
-  listGCSMountFiles,
-} from "@app/lib/api/files/gcs_mount/files";
-import { getPodFilesBasePath } from "@app/lib/api/files/mount_path";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import type { FileSystemEntry } from "@app/lib/api/file_system/types";
+import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
+import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { publicApiApp } from "@front-api/middlewares/ctx";
@@ -15,7 +12,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 export type GetSpaceGCSMountFilesResponseType = {
-  files: GCSMountEntry[];
+  files: FileSystemEntry[];
 };
 
 const ParamsSchema = z.object({
@@ -73,12 +70,8 @@ app.get(
         ? updatedSinceMs
         : null;
 
-    const filesResult = await listGCSMountFiles(auth, {
-      useCase: "pod",
-      podId: space.sId,
-    });
-
-    if (filesResult.isErr()) {
+    const fsResult = await DustFileSystem.forPod(auth, space);
+    if (fsResult.isErr()) {
       return apiError(ctx, {
         status_code: 500,
         api_error: {
@@ -87,41 +80,28 @@ app.get(
         },
       });
     }
+    const dustFs = fsResult.value;
 
-    let files = filesResult.value;
+    let entries = await enrichListWithFileResourceIds(
+      auth,
+      dustFs,
+      await dustFs.list(`${SCOPED_PREFIX_POD}${space.sId}`)
+    );
 
     if (updatedSinceFilter !== null) {
-      files = files.filter((e) => e.lastModifiedMs >= updatedSinceFilter);
+      entries = entries.filter((e) => e.lastModifiedMs >= updatedSinceFilter);
     }
 
-    const owner = auth.getNonNullableWorkspace();
-    const gcsPrefix = getPodFilesBasePath({
-      workspaceId: owner.sId,
-      podId: space.sId,
-    });
-
     const filesWithSignedUrls = await concurrentExecutor(
-      files,
+      entries,
       async (entry) => {
         if (entry.isDirectory) {
           return entry;
         }
-        const gcsPath = getGCSPathFromScopedPath({
-          prefix: gcsPrefix,
-          scopedPath: entry.path,
-          useCase: "pod",
-        });
-        if (!gcsPath) {
-          return { ...entry, signedDownloadUrl: null };
-        }
-        const signed = await getConversationFileMountSignedUrl(
-          auth,
-          { useCase: "pod", podId: space.sId },
-          gcsPath
-        );
+        const urlResult = await dustFs.getDownloadUrl(entry.path);
         return {
           ...entry,
-          signedDownloadUrl: signed.isOk() ? signed.value : null,
+          signedDownloadUrl: urlResult.isOk() ? urlResult.value : null,
         };
       },
       { concurrency: 8 }
