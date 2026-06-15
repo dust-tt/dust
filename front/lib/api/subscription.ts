@@ -11,8 +11,10 @@ import { BUSINESS_USD_PACKAGE_ALIAS } from "@app/lib/metronome/types";
 import { PlanModel } from "@app/lib/models/plan";
 import { CREDIT_PRICED_FREE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { terminateScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
@@ -82,6 +84,34 @@ export async function activateCreditPricedFreePlan(
     );
   }
   const { metronomeCustomerId } = customerResult.value;
+
+  // Assign "free" to all members who still hold the pre-contract DB default
+  // ("workspace") before provisioning. The seat sync inside
+  // provisionMetronomeContract reads DB seat state to issue AWU credits, so the
+  // seat must already be correct in DB when that sync runs.
+  // For CP_FREE_PLAN the initial seat is always "free".
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    workspace: lightWorkspace,
+  });
+  const users = await UserResource.fetchByModelIds(
+    memberships.map((m) => m.userId)
+  );
+  const userByModelId = new Map(users.map((u) => [u.id, u]));
+  for (const membership of memberships) {
+    if (membership.seatType !== "workspace") {
+      continue;
+    }
+    const user = userByModelId.get(membership.userId);
+    if (!user) {
+      continue;
+    }
+    await membership.updateMembershipSeat({
+      user,
+      workspace: lightWorkspace,
+      newSeatType: "free",
+      author: "no-author",
+    });
+  }
 
   const contractResult = await provisionMetronomeContract({
     metronomeCustomerId,
