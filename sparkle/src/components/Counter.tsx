@@ -57,7 +57,7 @@ const counterVariants = cva(
       {
         isInButton: true,
         variant: "primary",
-        className: "s:bg-primary-600 s:text-white",
+        className: "s:bg-primary-600 s:text-primary-50",
       },
       {
         isInButton: true,

@@ -21,9 +21,9 @@ const checkboxStyles = cva(
   {
     variants: {
       checked: {
-        true: "s:data-[state=checked]:bg-primary s:data-[state=checked]:text-white s:data-[state=checked]:border-primary",
+        true: "s:data-[state=checked]:bg-primary s:data-[state=checked]:text-primary-50 s:data-[state=checked]:border-primary",
         partial:
-          "s:data-[state=indeterminate]:bg-primary s:data-[state=indeterminate]:text-white s:data-[state=indeterminate]:border-primary",
+          "s:data-[state=indeterminate]:bg-primary s:data-[state=indeterminate]:text-primary-50 s:data-[state=indeterminate]:border-primary",
         false: "",
       },
       isMutedAfterCheck: {

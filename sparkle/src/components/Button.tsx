@@ -67,15 +67,15 @@ const buttonVariants = cva(
           "s:text-primary-50",
           "s:hover:bg-primary-light",
           "s:active:bg-primary-dark",
-          "s:disabled:bg-primary-muted s:disabled:text-highlight-50/60"
+          "s:disabled:bg-primary-muted s:disabled:text-highlight-on/60"
         ),
         highlight: cn(
           "s:border s:border-transparent",
           "s:bg-highlight",
-          "s:text-highlight-50",
+          "s:text-highlight-on",
           "s:hover:bg-highlight-light",
           "s:active:bg-highlight-dark",
-          "s:disabled:bg-highlight-muted s:disabled:text-highlight-50/60"
+          "s:disabled:bg-highlight-muted s:disabled:text-highlight-on/60"
         ),
         "highlight-secondary": cn(
           "s:border",
@@ -95,10 +95,10 @@ const buttonVariants = cva(
         warning: cn(
           "s:border s:border-transparent",
           "s:bg-warning",
-          "s:text-warning-50",
+          "s:text-warning-on",
           "s:hover:bg-warning-light",
           "s:active:bg-warning-dark",
-          "s:disabled:bg-warning-muted s:disabled:text-highlight-50/60"
+          "s:disabled:bg-warning-muted s:disabled:text-highlight-on/60"
         ),
         "warning-secondary": cn(
           "s:border",
