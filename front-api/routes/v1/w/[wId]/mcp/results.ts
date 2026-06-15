@@ -1,5 +1,8 @@
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
-import { publishMCPResults } from "@app/lib/api/assistant/mcp_events";
+import {
+  MCP_RESULTS_MAX_SIZE_BYTES,
+  publishMCPResults,
+} from "@app/lib/api/assistant/mcp_events";
 import type { PostMCPResultsResponseType } from "@dust-tt/client";
 import { PublicPostMCPResultsRequestBodySchema } from "@dust-tt/client";
 import { bodyLimit } from "@front-api/middlewares/body_limit";
@@ -7,9 +10,6 @@ import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-
-// MCP tool results can be large (e.g. file contents): allow up to 16MB.
-const MCP_RESULTS_MAX_SIZE_BYTES = 16 * 1024 * 1024;
 
 // Mounted at /api/v1/w/:wId/mcp/results.
 const app = publicApiApp();

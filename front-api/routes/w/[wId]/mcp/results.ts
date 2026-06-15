@@ -1,13 +1,13 @@
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
-import { publishMCPResults } from "@app/lib/api/assistant/mcp_events";
+import {
+  MCP_RESULTS_MAX_SIZE_BYTES,
+  publishMCPResults,
+} from "@app/lib/api/assistant/mcp_events";
 import { bodyLimit } from "@front-api/middlewares/body_limit";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-// MCP tool results can be large (e.g. file contents): allow up to 16MB.
-const MCP_RESULTS_MAX_SIZE_BYTES = 16 * 1024 * 1024;
 
 const PostMCPResultsBodySchema = z.object({
   result: z.unknown(),
