@@ -11,17 +11,17 @@ interface RenderVisualizationSearchParams {
 
 const { ALLOWED_VISUALIZATION_ORIGIN } = process.env;
 
-export default function RenderVisualization({
+export default async function RenderVisualization({
   searchParams,
 }: {
-  searchParams: RenderVisualizationSearchParams;
+  searchParams: Promise<RenderVisualizationSearchParams>;
 }) {
   const allowedOrigins = ALLOWED_VISUALIZATION_ORIGIN
     ? ALLOWED_VISUALIZATION_ORIGIN.split(",").map((s) => s.trim())
     : [];
 
   const { accessToken, editable, fullHeight, identifier, pdfMode } =
-    searchParams;
+    await searchParams;
 
   const isEditable = editable === "true";
   const isFullHeight = fullHeight === "true";
