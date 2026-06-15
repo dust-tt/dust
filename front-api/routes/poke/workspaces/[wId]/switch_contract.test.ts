@@ -3,7 +3,9 @@ import { listMetronomePackages } from "@app/lib/metronome/client";
 import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
+  syncContractQuantities,
 } from "@app/lib/metronome/contracts";
+import { remapMembershipSeatTypesForContract } from "@app/lib/metronome/seats";
 import { PlanModel } from "@app/lib/models/plan";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
@@ -42,6 +44,17 @@ vi.mock("@app/lib/metronome/contracts", async () => {
     ...actual,
     ensureMetronomeCustomerForWorkspace: vi.fn(),
     provisionMetronomeContract: vi.fn(),
+    syncContractQuantities: vi.fn(),
+  };
+});
+
+vi.mock("@app/lib/metronome/seats", async () => {
+  const actual = await vi.importActual<
+    typeof import("@app/lib/metronome/seats")
+  >("@app/lib/metronome/seats");
+  return {
+    ...actual,
+    remapMembershipSeatTypesForContract: vi.fn(),
   };
 });
 
@@ -224,6 +237,10 @@ beforeEach(() => {
   vi.mocked(provisionMetronomeContract).mockResolvedValue(
     new Ok({ metronomeContractId: NEW_CONTRACT_ID })
   );
+  vi.mocked(remapMembershipSeatTypesForContract).mockResolvedValue(
+    new Ok(undefined)
+  );
+  vi.mocked(syncContractQuantities).mockResolvedValue(new Ok(undefined));
 });
 
 describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () => {
