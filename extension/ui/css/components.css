@@ -9,6 +9,8 @@
 @source "../../../front/components/**/*.{ts,tsx}";
 @source "../../../front/lib/**/*.{ts,tsx}";
 
+@import "../../../front/styles/container-queries.css";
+
 @plugin "@tailwindcss/forms";
 @plugin "tailwind-scrollbar-hide";
 @plugin "tailwindcss-animate";

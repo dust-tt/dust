@@ -12,34 +12,7 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Custom container breakpoints from sparkle preset (v3 @tailwindcss/container-queries → v4 native).
-   The prefix "s" causes Tailwind v4 to namespace container theme vars as --s-container-*,
-   which breaks automatic @<size>: variant resolution. Define them manually. */
-@custom-variant @xxxs (@container (width >= 16rem));
-@custom-variant @xxs (@container (width >= 24rem));
-@custom-variant @xs (@container (width >= 32rem));
-@custom-variant @sm (@container (width >= 40rem));
-@custom-variant @md (@container (width >= 48rem));
-@custom-variant @lg (@container (width >= 64rem));
-@custom-variant @xl (@container (width >= 80rem));
-
-/* Named-container variants. The anonymous @container variants above cannot carry a
-   /<name> modifier — Tailwind v4 silently drops utilities like @sm/conversation:*. So
-   bake the container name into the variant and target it with @<size>-<name>:*. */
-@custom-variant @xxxs-conversation (@container conversation (width >= 16rem));
-@custom-variant @xxs-conversation (@container conversation (width >= 24rem));
-@custom-variant @xs-conversation (@container conversation (width >= 32rem));
-@custom-variant @sm-conversation (@container conversation (width >= 40rem));
-@custom-variant @md-conversation (@container conversation (width >= 48rem));
-@custom-variant @lg-conversation (@container conversation (width >= 64rem));
-@custom-variant @xl-conversation (@container conversation (width >= 80rem));
-@custom-variant @xxxs-table (@container table (width >= 16rem));
-@custom-variant @xxs-table (@container table (width >= 24rem));
-@custom-variant @xs-table (@container table (width >= 32rem));
-@custom-variant @sm-table (@container table (width >= 40rem));
-@custom-variant @md-table (@container table (width >= 48rem));
-@custom-variant @lg-table (@container table (width >= 64rem));
-@custom-variant @xl-table (@container table (width >= 80rem));
+@import "../../../front/styles/container-queries.css";
 
 /* Safelist: avatar color combos */
 @source inline("s:bg-gray-100 s:bg-gray-200 s:bg-gray-300 s:bg-gray-400 s:bg-gray-500 s:bg-gray-600 s:bg-gray-700 s:bg-gray-800 s:bg-gray-900 s:bg-blue-100 s:bg-blue-200 s:bg-blue-300 s:bg-blue-400 s:bg-blue-500 s:bg-blue-600 s:bg-blue-700 s:bg-blue-800 s:bg-blue-900 s:bg-violet-100 s:bg-violet-200 s:bg-violet-300 s:bg-violet-400 s:bg-violet-500 s:bg-violet-600 s:bg-violet-700 s:bg-violet-800 s:bg-violet-900 s:bg-pink-100 s:bg-pink-200 s:bg-pink-300 s:bg-pink-400 s:bg-pink-500 s:bg-pink-600 s:bg-pink-700 s:bg-pink-800 s:bg-pink-900 s:bg-red-100 s:bg-red-200 s:bg-red-300 s:bg-red-400 s:bg-red-500 s:bg-red-600 s:bg-red-700 s:bg-red-800 s:bg-red-900 s:bg-orange-100 s:bg-orange-200 s:bg-orange-300 s:bg-orange-400 s:bg-orange-500 s:bg-orange-600 s:bg-orange-700 s:bg-orange-800 s:bg-orange-900 s:bg-golden-100 s:bg-golden-200 s:bg-golden-300 s:bg-golden-400 s:bg-golden-500 s:bg-golden-600 s:bg-golden-700 s:bg-golden-800 s:bg-golden-900 s:bg-lime-100 s:bg-lime-200 s:bg-lime-300 s:bg-lime-400 s:bg-lime-500 s:bg-lime-600 s:bg-lime-700 s:bg-lime-800 s:bg-lime-900 s:bg-emerald-100 s:bg-emerald-200 s:bg-emerald-300 s:bg-emerald-400 s:bg-emerald-500 s:bg-emerald-600 s:bg-emerald-700 s:bg-emerald-800 s:bg-emerald-900");

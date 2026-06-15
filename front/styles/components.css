@@ -6,26 +6,7 @@
 @config "../tailwind.config.js";
 
 
-/* Custom container query breakpoints (v3 @tailwindcss/container-queries → v4 native).
-   Defined as @custom-variant instead of @theme to avoid overriding the max-w-* scale. */
-@custom-variant @xxxs (@container (width >= 16rem));
-@custom-variant @xxs (@container (width >= 24rem));
-@custom-variant @xs (@container (width >= 32rem));
-@custom-variant @sm (@container (width >= 40rem));
-@custom-variant @md (@container (width >= 48rem));
-@custom-variant @lg (@container (width >= 64rem));
-@custom-variant @xl (@container (width >= 80rem));
-
-/* Named-container variants. The anonymous @container variants above cannot carry a
-   /<name> modifier — Tailwind v4 silently drops utilities like @sm/conversation:*. So
-   bake the container name into the variant and target it with @<size>-conversation:*. */
-@custom-variant @xxxs-conversation (@container conversation (width >= 16rem));
-@custom-variant @xxs-conversation (@container conversation (width >= 24rem));
-@custom-variant @xs-conversation (@container conversation (width >= 32rem));
-@custom-variant @sm-conversation (@container conversation (width >= 40rem));
-@custom-variant @md-conversation (@container conversation (width >= 48rem));
-@custom-variant @lg-conversation (@container conversation (width >= 64rem));
-@custom-variant @xl-conversation (@container conversation (width >= 80rem));
+@import "./container-queries.css";
 
 @plugin "@tailwindcss/forms";
 @plugin "tailwind-scrollbar-hide";
