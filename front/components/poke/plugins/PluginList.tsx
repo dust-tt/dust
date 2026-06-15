@@ -21,7 +21,7 @@ interface PluginCardProps {
 function PluginCard({ onClick, plugin }: PluginCardProps) {
   return (
     <PokeCard
-      className="flex h-20 w-44 cursor-pointer hover:bg-gray-100 dark:hover:bg-muted/10"
+ className="flex h-20 w-44 cursor-pointer hover:bg-gray-100"
       onClick={onClick}
     >
       <PokeCardHeader className="flex space-y-2 overflow-hidden p-2 text-left">
@@ -73,8 +73,8 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
   }, [plugins, searchQuery]);
 
   return (
-    <div className="border-material-200 flex min-h-48 flex-col rounded-lg border bg-muted-background dark:bg-muted-background-night">
-      <div className="flex items-center justify-between gap-3 rounded-t-lg bg-primary-300 p-4 dark:bg-primary-300-night">
+ <div className="border-material-200 flex min-h-48 flex-col rounded-lg border bg-muted-background">
+ <div className="flex items-center justify-between gap-3 rounded-t-lg bg-primary-300 p-4">
         <div className="flex items-center gap-3">
           <h2 className="text-md font-bold">Plugins</h2>
         </div>
@@ -85,7 +85,7 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={cn(
-                "w-full bg-white dark:bg-gray-800",
+"w-full bg-white",
                 showRuns && "invisible"
               )}
             />

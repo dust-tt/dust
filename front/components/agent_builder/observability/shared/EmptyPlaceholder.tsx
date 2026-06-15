@@ -17,13 +17,13 @@ export function EmptyPlaceholder({
       <Icon
         visual={icon}
         size="lg"
-        className="text-muted-foreground dark:text-muted-foreground-night"
+ className="text-muted-foreground"
       />
       <div className="flex flex-col gap-2">
-        <div className="text-base font-medium text-foreground dark:text-foreground-night">
+ <div className="text-base font-medium text-foreground">
           {title}
         </div>
-        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-sm text-muted-foreground">
           {description}
         </div>
       </div>

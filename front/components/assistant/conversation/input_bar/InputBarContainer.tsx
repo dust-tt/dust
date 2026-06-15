@@ -1140,8 +1140,8 @@ const InputBarContainer = ({
               className={cn(
                 INPUT_BAR_COMPACT_PREVIEW_CLASSES,
                 compactPreviewText
-                  ? "text-foreground dark:text-foreground-night"
-                  : "text-faint dark:text-faint-night"
+ ?"text-foreground"
+ :"text-faint"
               )}
             >
               {compactPreviewText || compactDisplayPlaceholder}
@@ -1225,7 +1225,7 @@ const InputBarContainer = ({
                     size="xs"
                     label={getMcpServerViewDisplayName(msv)}
                     icon={getIcon(msv.server.icon)}
-                    className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:flex"
+ className="m-0.5 hidden bg-background text-foreground xs:flex"
                     onClick={() => setSelectedServerViewForDetails(msv)}
                     onRemove={() => {
                       onMCPServerViewDeselect(msv);
@@ -1234,7 +1234,7 @@ const InputBarContainer = ({
                   <Chip
                     size="xs"
                     icon={getIcon(msv.server.icon)}
-                    className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:hidden"
+ className="m-0.5 flex bg-background text-foreground xs:hidden"
                     onClick={() => setSelectedServerViewForDetails(msv)}
                     onRemove={() => {
                       onMCPServerViewDeselect(msv);
@@ -1360,7 +1360,7 @@ const InputBarContainer = ({
                             endComponent={
                               <DropdownMenuShortcut
                                 shortcut={pageShortcut}
-                                className="text-xs text-faint dark:text-faint-night"
+ className="text-xs text-faint"
                               />
                             }
                           />
@@ -1378,7 +1378,7 @@ const InputBarContainer = ({
                             endComponent={
                               <DropdownMenuShortcut
                                 shortcut={screenshotShortcut}
-                                className="text-xs text-faint dark:text-faint-night"
+ className="text-xs text-faint"
                               />
                             }
                           />

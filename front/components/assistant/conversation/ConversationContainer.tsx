@@ -264,8 +264,8 @@ export function ConversationContainerVirtuoso({
                 containerClassName="w-full group"
               >
                 <div className="flex w-full flex-col gap-2 text-sm">
-                  <div className="flex w-full items-center gap-2 font-semibold text-highlight-600 dark:text-highlight-400">
-                    <Lightbulb04 className="text-highlight-600 dark:text-highlight-400 h-5 w-5" />
+ <div className="flex w-full items-center gap-2 font-semibold text-highlight-600">
+ <Lightbulb04 className="text-highlight-600 h-5 w-5" />
                     <div className="w-full">{suggestion.title}</div>
                     <div className="opacity-0 transition-opacity group-hover:opacity-100">
                       <Button
@@ -274,11 +274,11 @@ export function ConversationContainerVirtuoso({
                         icon={XClose}
                         tooltip="Dismiss"
                         onClick={() => onDismissSuggestion?.(suggestion.id)}
-                        className="text-highlight-600 dark:text-highlight-400"
+ className="text-highlight-600"
                       />
                     </div>
                   </div>
-                  <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-sm text-muted-foreground">
                     {suggestion.description}
                   </div>
                 </div>

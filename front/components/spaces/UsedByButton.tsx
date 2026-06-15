@@ -140,7 +140,7 @@ export function UsedByButton({
         size="xs"
         className={cn(
           "border-0 hover:bg-muted-background hover:text-foreground",
-          "dark:hover:bg-muted-background-night dark:hover:text-foreground-night"
+""
         )}
         aria-label="Used by 0 agents"
         disabled
@@ -223,7 +223,7 @@ export function UsedByButton({
           size="xs"
           className={cn(
             "border-0 hover:bg-muted-background hover:text-foreground",
-            "dark:hover:bg-muted-background-night dark:hover:text-foreground-night"
+""
           )}
           aria-label={`Used by ${usageLabel}`}
           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
@@ -295,7 +295,7 @@ export function UsedByButton({
           }
         })}
         {dropdownItems.length === 0 && (
-          <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
             {skills.length > 0 ? "No matches found" : "No agents found"}
           </div>
         )}

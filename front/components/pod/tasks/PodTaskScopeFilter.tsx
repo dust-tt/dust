@@ -63,7 +63,7 @@ export function PodTaskScopeFilter() {
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
-          <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+ <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
             Status
           </div>
           <DropdownMenuRadioGroup

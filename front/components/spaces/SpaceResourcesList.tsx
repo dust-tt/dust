@@ -515,7 +515,7 @@ export const SpaceResourcesList = ({
   const actionButtons = (
     <>
       {isSystemSpace && category === "managed" && (
-        <div className="flex items-center justify-center text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+ <div className="flex items-center justify-center text-sm font-normal text-muted-foreground">
           <AddConnectionMenu
             owner={owner}
             plan={plan}
@@ -612,7 +612,7 @@ export const SpaceResourcesList = ({
         <div
           className={cn(
             "flex h-36 w-full items-center justify-center rounded-xl",
-            "bg-muted-background dark:bg-muted-background-night"
+"bg-muted-background"
           )}
         >
           {actionButtons}

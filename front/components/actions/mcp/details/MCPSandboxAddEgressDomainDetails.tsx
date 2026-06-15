@@ -104,7 +104,7 @@ function ConversationView({
     <div className="flex flex-col gap-1 pl-6 text-sm">
       {domain && (
         <div>
-          <span className="text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-muted-foreground">
             Domain:{" "}
           </span>
           <span className="font-mono">{domain}</span>
@@ -112,14 +112,14 @@ function ConversationView({
       )}
       {reason && (
         <div>
-          <span className="text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-muted-foreground">
             Reason:{" "}
           </span>
           <span>{reason}</span>
         </div>
       )}
       <div>
-        <span className="text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-muted-foreground">
           Status:{" "}
         </span>
         <span>{statusLabel(status, isRunning)}</span>
@@ -132,19 +132,19 @@ function SidebarView({ domain, reason, status, isRunning }: EgressViewProps) {
   return (
     <div className="flex flex-col gap-4 py-4 pl-6 text-sm">
       <div className="flex flex-col gap-1">
-        <span className="font-medium text-foreground dark:text-foreground-night">
+ <span className="font-medium text-foreground">
           Domain
         </span>
         <span className="font-mono">{domain ?? "—"}</span>
       </div>
       <div className="flex flex-col gap-1">
-        <span className="font-medium text-foreground dark:text-foreground-night">
+ <span className="font-medium text-foreground">
           Reason
         </span>
         <span>{reason ?? "—"}</span>
       </div>
       <div className="flex flex-col gap-1">
-        <span className="font-medium text-foreground dark:text-foreground-night">
+ <span className="font-medium text-foreground">
           Status
         </span>
         <span>{statusLabel(status, isRunning)}</span>

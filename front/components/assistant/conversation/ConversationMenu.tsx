@@ -529,7 +529,7 @@ export function ConversationMenu({
                       />
                     }
                     // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
-                    className="!text-foreground dark:!text-foreground-night"
+ className="!text-foreground"
                   />
                 ))}
               </DropdownMenuSubContent>

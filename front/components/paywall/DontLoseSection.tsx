@@ -29,10 +29,10 @@ function DontLoseItem({
   if (isLoading) {
     return (
       <div className="flex items-start gap-3">
-        <div className="h-5 w-5 animate-pulse rounded bg-muted-background dark:bg-muted-background-night" />
+ <div className="h-5 w-5 animate-pulse rounded bg-muted-background" />
         <div className="flex flex-col gap-1">
-          <div className="h-5 w-32 animate-pulse rounded bg-muted-background dark:bg-muted-background-night" />
-          <div className="h-4 w-48 animate-pulse rounded bg-muted-background dark:bg-muted-background-night" />
+ <div className="h-5 w-32 animate-pulse rounded bg-muted-background" />
+ <div className="h-4 w-48 animate-pulse rounded bg-muted-background" />
         </div>
       </div>
     );
@@ -44,14 +44,14 @@ function DontLoseItem({
         <Icon
           visual={icon}
           size="sm"
-          className="text-primary-400 dark:text-primary-400-night"
+ className="text-primary-400"
         />
       </div>
       <div className="flex flex-col">
-        <span className="font-semibold text-foreground dark:text-foreground-night">
+ <span className="font-semibold text-foreground">
           {title}
         </span>
-        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-sm text-muted-foreground">
           {description}
         </span>
       </div>
@@ -82,7 +82,7 @@ export function DontLoseSection({ owner }: DontLoseSectionProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <h2 className="text-lg font-semibold text-foreground dark:text-foreground-night">
+ <h2 className="text-lg font-semibold text-foreground">
         Don't lose:
       </h2>
       <div className="flex flex-col gap-5">

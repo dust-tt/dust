@@ -38,7 +38,7 @@ export function MessageEmojiPicker({
           icon={FaceSmile}
           isSelect
           className={cn(
-            "text-muted-foreground dark:text-muted-foreground-night",
+"text-muted-foreground",
             className
           )}
         />

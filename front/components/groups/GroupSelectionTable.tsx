@@ -147,7 +147,7 @@ export function GroupSelectionTable({
       <div className="flex min-h-0 flex-1 flex-col">
         {isGroupsLoading ? (
           <div className="flex items-center justify-center p-4">
-            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-sm text-muted-foreground">
               Loading groups...
             </span>
           </div>

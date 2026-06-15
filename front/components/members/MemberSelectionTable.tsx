@@ -171,7 +171,7 @@ export function MemberSelectionTable({
                 <div className="flex flex-col">
                   <span className="text-sm">{fullName}</span>
                   {email && (
-                    <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-xs text-muted-foreground">
                       {email}
                     </span>
                   )}
@@ -197,7 +197,7 @@ export function MemberSelectionTable({
       <div className="flex min-h-0 flex-1 flex-col">
         {isLoading ? (
           <div className="flex items-center justify-center p-4">
-            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-sm text-muted-foreground">
               Loading users...
             </span>
           </div>

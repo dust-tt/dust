@@ -40,6 +40,7 @@ const checkboxStyles = cva(
         checked: true,
         isMutedAfterCheck: true,
         className:
+          "s:data-[state=checked]:bg-faint/50 s:data-[state=checked]:border-transparent",
       },
     ],
     defaultVariants: {

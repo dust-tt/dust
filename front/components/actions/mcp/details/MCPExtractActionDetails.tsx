@@ -67,7 +67,7 @@ export function MCPExtractActionDetails({
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
-          <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+ <span className="text-sm font-semibold text-foreground">
             Query
           </span>
           <MCPExtractActionQuery
@@ -78,7 +78,7 @@ export function MCPExtractActionDetails({
 
         {jsonSchema && (
           <div>
-            <span className="font-medium text-foreground dark:text-foreground-night">
+ <span className="font-medium text-foreground">
               Schema
             </span>
             <div className="py-2">
@@ -94,7 +94,7 @@ export function MCPExtractActionDetails({
 
         {displayContext !== "conversation" && (
           <div>
-            <span className="font-medium text-foreground dark:text-foreground-night">
+ <span className="font-medium text-foreground">
               Results
             </span>
             <MCPExtractActionResults
@@ -116,7 +116,7 @@ function MCPExtractActionQuery({
 
   if (queryResource) {
     return (
-      <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm font-normal text-muted-foreground">
         {queryResource.text}
       </p>
     );
@@ -132,7 +132,7 @@ function MCPExtractActionQuery({
       : "all time";
 
   return (
-    <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm font-normal text-muted-foreground">
       Extracted from documents over {timeFrameAsString}.
     </p>
   );
@@ -146,7 +146,7 @@ function MCPExtractActionResults({
 
   if (!resultResource) {
     return (
-      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-sm text-muted-foreground">
         No data was extracted.
       </div>
     );
@@ -188,7 +188,7 @@ function MCPExtractActionResults({
 
       {resultResource.snippet && (
         <div>
-          <span className="font-medium text-foreground dark:text-foreground-night">
+ <span className="font-medium text-foreground">
             Preview
           </span>
           <div className="py-2">

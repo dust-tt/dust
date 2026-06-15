@@ -70,7 +70,7 @@ export function AgentMessageInteractiveContentGeneratedFiles({
             key={fileId}
             tooltip={file.title}
             onClick={handleClick}
-            className="bg-gray-50 dark:bg-gray-800"
+ className="bg-gray-50"
           >
             <div className="flex flex-row items-center">
               <CitationTitle>{file.title}</CitationTitle>
@@ -97,7 +97,7 @@ export function AgentMessageInteractiveContentGeneratedFiles({
                   </div>
                 )}
                 {variant === "list" && description && (
-                  <p className="flex items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="flex items-center gap-1 text-sm text-muted-foreground">
                     <Icon visual={ActionFrame} size="xs" />
                     {description}
                   </p>

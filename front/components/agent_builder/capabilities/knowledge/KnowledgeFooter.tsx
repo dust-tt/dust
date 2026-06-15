@@ -110,13 +110,13 @@ export function KnowledgeFooter() {
   return (
     <Collapsible open={isOpen} onOpenChange={setOpen}>
       <CollapsibleTrigger>
-        <span className="heading-sm text-muted-foreground dark:text-muted-foreground-night">
+ <span className="heading-sm text-muted-foreground">
           Selection ({field.value.in.length} item
           {pluralize(field.value.in.length)})
         </span>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="rounded-xl bg-muted dark:bg-muted-night mt-2">
+ <div className="rounded-xl bg-muted mt-2">
           <ContextItem.List className="max-h-40 overflow-y-auto">
             {field.value.in.length > 0 ? (
               field.value.in.map((item) => (

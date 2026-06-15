@@ -68,7 +68,7 @@ export function MicrosoftLabelsSelector({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <span className="heading-sm text-foreground dark:text-foreground-night">
+ <span className="heading-sm text-foreground">
           Allowed labels
         </span>
         <SliderToggle
@@ -77,7 +77,7 @@ export function MicrosoftLabelsSelector({
           disabled={isDisabled}
         />
       </div>
-      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-xs text-muted-foreground">
         Only labeled content matching one of these labels will be synced.
         Unlabeled content is always included.
       </span>
@@ -92,14 +92,14 @@ export function MicrosoftLabelsSelector({
             onBlur={() => setIsSearchFocused(false)}
           />
           {shouldShowSuggestions && (
-            <div className="max-h-48 overflow-auto rounded-md border border-border bg-background shadow-md dark:border-border-night dark:bg-background-night">
+ <div className="max-h-48 overflow-auto rounded-md border border-border bg-background shadow-md">
               {hasError ? (
-                <p className="px-3 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="px-3 py-2 text-sm text-muted-foreground">
                   Labels could not be retrieved. You must reconnect your
                   Microsoft connection to grant the necessary permissions.
                 </p>
               ) : filteredLabels.length === 0 ? (
-                <p className="px-3 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="px-3 py-2 text-sm text-muted-foreground">
                   {labels.length === 0
                     ? "No labels found. Configure them in your Microsoft Purview console first."
                     : "No matching labels."}
@@ -109,7 +109,7 @@ export function MicrosoftLabelsSelector({
                   <button
                     key={label.id}
                     type="button"
-                    className="block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-muted dark:hover:bg-muted-night"
+ className="block w-full cursor-pointer px-3 py-2 text-left text-sm hover:bg-muted"
                     onMouseDown={(e) => {
                       e.preventDefault();
                       handleSelectLabel(label.id);

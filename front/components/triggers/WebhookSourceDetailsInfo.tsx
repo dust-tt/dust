@@ -109,12 +109,12 @@ export function WebhookSourceDetailsInfo({
   return (
     <div className="flex flex-col gap-2">
       {editedLabel !== null && (
-        <div className="flex w-full justify-end text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="flex w-full justify-end text-sm text-muted-foreground">
           {editedLabel}
         </div>
       )}
 
-      <div className="space-y-5 text-foreground dark:text-foreground-night">
+ <div className="space-y-5 text-foreground">
         <div className="space-y-2">
           <Label htmlFor="trigger-name-icon">
             {provider ? "Name" : "Name & Icon"}

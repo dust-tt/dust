@@ -41,7 +41,7 @@ export function CompactionMessage({
     case "succeeded":
       return (
         <div className="flex items-center justify-center gap-1.5">
-          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-sm text-muted-foreground">
             {getCompactionSuccessLabel(message, conversation)} ·{" "}
             {formatTimestring(message.created)}
           </span>

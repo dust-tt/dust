@@ -145,7 +145,7 @@ export function PodTaskStartWorkingDropdown({
       <Icon
         size="xs"
         visual={Check}
-        className="text-muted-foreground dark:text-muted-foreground-night"
+ className="text-muted-foreground"
       />
     );
     return [

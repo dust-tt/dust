@@ -167,7 +167,7 @@ export function ConversationFilesPanel({
         <div className="flex h-panel flex-col">
           <AppLayoutTitle>
             <div className="flex h-full items-center justify-between">
-              <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+ <span className="text-sm font-semibold text-foreground">
                 Working Files
               </span>
               <Button

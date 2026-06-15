@@ -94,11 +94,11 @@ export function MemberDetails({ userId, onClose, owner }: MemberDetailsProps) {
                   />
                 </div>
                 <div className="flex flex-col items-center gap-1">
-                  <h2 className="text-xl font-semibold text-foreground dark:text-foreground-night">
+ <h2 className="text-xl font-semibold text-foreground">
                     {userDetails.fullName}
                   </h2>
                   {(userDetails.startAt ?? userDetails.endAt) && (
-                    <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm text-muted-foreground">
                       {userDetails.revoked && userDetails.endAt
                         ? `Left the workspace: ${formatDate(userDetails.endAt)}`
                         : userDetails.startAt
@@ -111,26 +111,26 @@ export function MemberDetails({ userId, onClose, owner }: MemberDetailsProps) {
                 <Separator />
                 <div className="grid w-full grid-cols-2 gap-4">
                   <div className="col-span-1">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Username
                     </div>
-                    <div className="mt-1 text-sm text-foreground dark:text-foreground-night">
+ <div className="mt-1 text-sm text-foreground">
                       {userDetails.username}
                     </div>
                   </div>
                   <div className="col-span-1">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Full name
                     </div>
-                    <div className="mt-1 text-sm text-foreground dark:text-foreground-night">
+ <div className="mt-1 text-sm text-foreground">
                       {userDetails.fullName}
                     </div>
                   </div>
                   <div className="col-span-2">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Email
                     </div>
-                    <div className="mt-1 text-sm text-foreground dark:text-foreground-night">
+ <div className="mt-1 text-sm text-foreground">
                       {userDetails.email}
                     </div>
                   </div>

@@ -12,7 +12,7 @@ export function MCPServerViewForm({ mcpServerView }: MCPServerViewFormProps) {
   const form = useFormContext<MCPServerFormValues>();
 
   return (
-    <div className="space-y-5 text-foreground dark:text-foreground-night">
+ <div className="space-y-5 text-foreground">
       <div className="flex items-end space-x-2">
         <div className="flex-grow">
           <Input
@@ -34,7 +34,7 @@ export function MCPServerViewForm({ mcpServerView }: MCPServerViewFormProps) {
           message={form.formState.errors.description?.message}
           placeholder={getMcpServerViewDescription(mcpServerView)}
         />
-        <p className="text-xs text-gray-500 dark:text-gray-500-night">
+ <p className="text-xs text-gray-500">
           This is only for internal reference and is not shown to the model.
         </p>
       </div>

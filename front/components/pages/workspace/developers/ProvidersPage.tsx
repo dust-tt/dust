@@ -99,7 +99,7 @@ export function Providers({ owner }: ProvidersProps) {
             />
             <ul
               role="list"
-              className="divide-y divide-separator pt-4 dark:divide-separator-night"
+ className="divide-y divide-separator pt-4"
             >
               {filteredProviders.map((provider) => (
                 <ProviderListItem
@@ -123,7 +123,7 @@ export function Providers({ owner }: ProvidersProps) {
             />
             <ul
               role="list"
-              className="divide-y divide-separator pt-4 dark:divide-separator-night"
+ className="divide-y divide-separator pt-4"
             >
               {serviceProviders.map((provider) => (
                 <ProviderListItem
@@ -167,8 +167,8 @@ function ProviderListItem({
               className={cn(
                 "heading-base truncate",
                 isEnabled
-                  ? "text-foreground dark:text-foreground-night"
-                  : "text-primary-500 dark:text-primary-500-night"
+ ?"text-foreground"
+ :"text-primary-500"
               )}
             >
               {name}
@@ -180,7 +180,7 @@ function ProviderListItem({
             />
           </div>
           {apiKey && (
-            <div className="flex items-center gap-1 font-mono text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <div className="flex items-center gap-1 font-mono text-xs text-muted-foreground">
               <span className="shrink-0">API Key:</span>
               <div className="dd-privacy-mask max-w-72 truncate">
                 {redactString(apiKey, 4)}

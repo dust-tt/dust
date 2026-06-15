@@ -26,17 +26,17 @@ export function BillingOverview() {
 
   if (isMetronomeInvoiceLoading) {
     return (
-      <div className="w-full rounded-lg bg-muted-background p-6 dark:bg-muted-background-night">
+ <div className="w-full rounded-lg bg-muted-background p-6">
         <Spinner />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-lg bg-muted-background p-4 dark:bg-muted-background-night">
+ <div className="flex flex-col gap-4 rounded-lg bg-muted-background p-4">
       <div className="flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-2">
-          <div className="truncate text-base font-semibold text-foreground dark:text-foreground-night">
+ <div className="truncate text-base font-semibold text-foreground">
             {subscription.plan.name}
           </div>
           <SubscriptionStatusChip />
@@ -45,9 +45,9 @@ export function BillingOverview() {
       </div>
 
       {invoice ? (
-        <div className="flex flex-col gap-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <div className="flex flex-col gap-2 text-xs text-muted-foreground">
           {subscriptionEndLabel && (
-            <div className="flex items-center gap-2 font-semibold text-foreground dark:text-foreground-night">
+ <div className="flex items-center gap-2 font-semibold text-foreground">
               <Icon visual={Calendar} size="xs" />
               <span>Subscription end: {subscriptionEndLabel}</span>
             </div>
@@ -80,7 +80,7 @@ export function BillingOverview() {
           </div>
         </div>
       ) : (
-        <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-xs text-muted-foreground">
           No billing information available for this period yet.
         </div>
       )}

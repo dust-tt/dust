@@ -177,21 +177,21 @@ function TaskDirectivePopoverBodyLoaded({
 
   return (
     <div className="flex flex-col p-3">
-      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground dark:text-foreground-night">
+ <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-foreground">
         {task.text}
       </p>
 
-      <Separator className="-mx-3 my-3 shrink-0 bg-border/60 dark:bg-border-night/60" />
+ <Separator className="-mx-3 my-3 shrink-0 bg-border/60" />
 
       <dl className="grid grid-cols-[minmax(0,7.5rem)_1fr] gap-x-3 gap-y-2 pb-2 text-xs [grid-auto-rows:minmax(2rem,max-content)]">
-        <dt className="flex items-center text-muted-foreground dark:text-muted-foreground-night">
+ <dt className="flex items-center text-muted-foreground">
           ID
         </dt>
-        <dd className="flex min-h-8 min-w-0 items-center justify-end font-mono text-[11px] font-medium tabular-nums text-foreground dark:text-foreground-night">
+ <dd className="flex min-h-8 min-w-0 items-center justify-end font-mono text-[11px] font-medium tabular-nums text-foreground">
           <span className="break-all select-text">{task.sId}</span>
         </dd>
 
-        <dt className="flex items-center text-muted-foreground dark:text-muted-foreground-night">
+ <dt className="flex items-center text-muted-foreground">
           Assignee
         </dt>
         <dd className="flex min-h-8 min-w-0 items-center justify-end">
@@ -208,33 +208,33 @@ function TaskDirectivePopoverBodyLoaded({
                     visual={
                       assignee.image ?? "/static/humanavatar/anonymous.png"
                     }
-                    className="ring-1 ring-border/40 dark:ring-border-night/40"
+ className="ring-1 ring-border/40"
                   />
                 </span>
               }
             />
           ) : (
-            <span className="text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-muted-foreground">
               Unassigned
             </span>
           )}
         </dd>
 
-        <dt className="flex items-center text-muted-foreground dark:text-muted-foreground-night">
+ <dt className="flex items-center text-muted-foreground">
           Created
         </dt>
-        <dd className="flex min-h-8 min-w-0 items-center justify-end text-right font-medium text-foreground dark:text-foreground-night">
+ <dd className="flex min-h-8 min-w-0 items-center justify-end text-right font-medium text-foreground">
           {formatRelativeAgo(task.createdAt)}
         </dd>
 
-        <dt className="flex items-center text-muted-foreground dark:text-muted-foreground-night">
+ <dt className="flex items-center text-muted-foreground">
           Status
         </dt>
-        <dd className="flex min-h-8 min-w-0 flex-wrap items-center justify-end gap-2 font-medium text-foreground dark:text-foreground-night">
+ <dd className="flex min-h-8 min-w-0 flex-wrap items-center justify-end gap-2 font-medium text-foreground">
           <span className="text-right leading-tight">
             {formatTaskStatusLabel(task.status)}
             {task.status === "done" && task.doneAt ? (
-              <span className="mt-1 block text-[11px] font-normal leading-tight text-muted-foreground dark:text-muted-foreground-night">
+ <span className="mt-1 block text-[11px] font-normal leading-tight text-muted-foreground">
                 Completed {formatRelativeAgo(task.doneAt)}
               </span>
             ) : null}
@@ -255,7 +255,7 @@ function TaskDirectivePopoverBodyLoaded({
 
         {hasConversation && task.conversationId && activityCaption ? (
           <>
-            <dt className="flex items-center text-muted-foreground dark:text-muted-foreground-night">
+ <dt className="flex items-center text-muted-foreground">
               Conversation
             </dt>
             <dd className="flex min-h-8 min-w-0 items-center justify-end gap-2 text-right">
@@ -266,7 +266,7 @@ function TaskDirectivePopoverBodyLoaded({
               <LinkWrapper
                 href={getConversationRoute(owner.sId, task.conversationId)}
                 shallow={false}
-                className="min-w-0 max-w-[11rem] truncate text-right text-xs font-medium text-highlight-700 underline-offset-2 hover:underline dark:text-highlight-400-night"
+ className="min-w-0 max-w-[11rem] truncate text-right text-xs font-medium text-highlight-700 underline-offset-2 hover:underline"
               >
                 {activityCaption}
               </LinkWrapper>
@@ -275,18 +275,18 @@ function TaskDirectivePopoverBodyLoaded({
         ) : null}
       </dl>
 
-      <div className="-mx-3 -mb-3 mt-1 border-t border-border/60 bg-muted/25 px-3 py-2.5 dark:border-border-night/60 dark:bg-muted-night/15">
+ <div className="-mx-3 -mb-3 mt-1 border-t border-border/60 bg-muted/25 px-3 py-2.5">
         <LinkWrapper
           href={projectHref}
           shallow={false}
-          className="block w-full min-w-0 rounded-md outline-hidden ring-offset-background hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1 dark:ring-offset-background-night dark:hover:bg-muted-night/25 dark:focus-visible:ring-highlight-300-night"
+ className="block w-full min-w-0 rounded-md outline-hidden ring-offset-background hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1"
         >
-          <div className="break-words text-sm font-semibold leading-snug text-highlight-700 underline-offset-2 hover:underline dark:text-highlight-400-night">
+ <div className="break-words text-sm font-semibold leading-snug text-highlight-700 underline-offset-2 hover:underline">
             {pod.name}
           </div>
         </LinkWrapper>
         {pod.description ? (
-          <p className="mt-1 w-full min-w-0 break-words text-xs leading-tight text-muted-foreground dark:text-muted-foreground-night">
+ <p className="mt-1 w-full min-w-0 break-words text-xs leading-tight text-muted-foreground">
             {pod.description}
           </p>
         ) : null}
@@ -338,7 +338,7 @@ function TaskDirectivePopoverContent({
 
   if (isWorkspacePodTaskError || !task || !pod) {
     return (
-      <div className="p-3 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="p-3 text-center text-sm text-muted-foreground">
         Could not load this task.
       </div>
     );
@@ -377,7 +377,7 @@ function TaskDirectiveChipInner({
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="group flex w-full min-w-0 max-w-full cursor-pointer rounded-md border-0 bg-transparent p-0 text-left outline-hidden ring-offset-background transition focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1 dark:focus-visible:ring-highlight-300-night dark:ring-offset-background-night"
+ className="group flex w-full min-w-0 max-w-full cursor-pointer rounded-md border-0 bg-transparent p-0 text-left outline-hidden ring-offset-background transition focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1"
             aria-label={`Task: ${displayLabel}. Open details.`}
           >
             <AttachmentChip
@@ -393,7 +393,7 @@ function TaskDirectiveChipInner({
           align="start"
           sideOffset={6}
           collisionPadding={16}
-          className="w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-border/70 p-0 shadow-xl ring-1 ring-black/[0.04] dark:border-border-night/70 dark:ring-white/[0.06]"
+ className="w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-border/70 p-0 shadow-xl ring-1 ring-black/[0.04]"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           {open ? (

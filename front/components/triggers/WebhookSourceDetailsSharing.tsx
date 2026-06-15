@@ -119,7 +119,7 @@ export function WebhookSourceDetailsSharing({
           />
         </div>
       </div>
-      <div className="text-foreground dark:text-foreground-night">
+ <div className="text-foreground">
         {isRestricted ? (
           <>
             These tools are only available to the users of the selected spaces:

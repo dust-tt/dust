@@ -123,7 +123,7 @@ export function AssistantSkillsToolsSection({
     <div className="flex flex-col gap-5">
       {hasSkills && (
         <div className="flex flex-col gap-5">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
+ <div className="heading-lg text-foreground">
             Skills
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -151,7 +151,7 @@ export function AssistantSkillsToolsSection({
 
       {hasTools && (
         <div className="flex flex-col gap-5">
-          <div className="heading-lg text-foreground dark:text-foreground-night">
+ <div className="heading-lg text-foreground">
             Tools
           </div>
           <div className="grid grid-cols-2 gap-2">

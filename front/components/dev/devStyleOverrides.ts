@@ -103,15 +103,7 @@ export function injectColorStyles(overrides: ColorOverrides): void {
         );
         rules.push(
           // biome-ignore lint/plugin/noCssImportant: dev-only overrides must win over app styles.
-          `.dark .${className}-night { ${cssProperty}: ${color} !important; }`
-        );
-        rules.push(
-          // biome-ignore lint/plugin/noCssImportant: dev-only overrides must win over app styles.
           `.s-${className} { ${cssProperty}: ${color} !important; }`
-        );
-        rules.push(
-          // biome-ignore lint/plugin/noCssImportant: dev-only overrides must win over app styles.
-          `.dark .s-${className}-night { ${cssProperty}: ${color} !important; }`
         );
       }
     }

@@ -265,11 +265,11 @@ export function ToolExecutionTimeChart({
       >
         <CartesianGrid
           vertical={false}
-          className="stroke-border dark:stroke-border-night"
+ className="stroke-border"
         />
         <XAxis
           dataKey="label"
-          className="text-xs text-muted-foreground dark:text-muted-foreground-night"
+ className="text-xs text-muted-foreground"
           tickLine={false}
           axisLine={false}
           tickMargin={8}
@@ -282,7 +282,7 @@ export function ToolExecutionTimeChart({
           }}
         />
         <YAxis
-          className="text-xs text-muted-foreground dark:text-muted-foreground-night"
+ className="text-xs text-muted-foreground"
           tickLine={false}
           axisLine={false}
           tickMargin={8}

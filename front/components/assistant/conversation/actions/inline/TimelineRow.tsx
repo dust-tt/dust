@@ -31,18 +31,18 @@ export function TimelineRow({
           {spinner ? (
             <Spinner size="xs" />
           ) : icon === "circle" ? (
-            <div className="h-2 w-2 rounded-full border-[1.5px] border-border dark:border-border-night" />
+ <div className="h-2 w-2 rounded-full border-[1.5px] border-border" />
           ) : icon ? (
             <Icon
               visual={icon}
               size="xs"
-              className="text-faint dark:text-faint-night"
+ className="text-faint"
             />
           ) : null}
         </div>
         {!isLast && (
           <div
-            className="w-px flex-1 rounded-full bg-border dark:bg-border-night"
+ className="w-px flex-1 rounded-full bg-border"
             style={LINE_ANIMATION_STYLE}
           />
         )}

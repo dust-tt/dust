@@ -21,24 +21,24 @@ const statusBannerVariants = cva("space-y-2 border-y px-3 py-3 text-xs", {
   variants: {
     variant: {
       info: cn(
-        "border-info-200 dark:border-info-200-night",
-        "bg-info-100 dark:bg-info-100-night",
-        "text-info-900 dark:text-info-900-night"
+"border-info-200",
+"bg-info-100",
+"text-info-900"
       ),
       warning: cn(
-        "border-warning-200 dark:border-warning-200-night",
-        "bg-warning-100 dark:bg-warning-100-night",
-        "text-warning-900 dark:text-warning-900-night"
+"border-warning-200",
+"bg-warning-100",
+"text-warning-900"
       ),
       success: cn(
-        "border-success-200 dark:border-success-200-night",
-        "bg-success-100 dark:bg-success-100-night",
-        "text-success-900 dark:text-success-900-night"
+"border-success-200",
+"bg-success-100",
+"text-success-900"
       ),
       danger: cn(
-        "border-red-200 dark:border-red-200",
-        "bg-red-100 dark:bg-red-100",
-        "text-red-900 dark:text-red-900"
+"border-red-200",
+"bg-red-100",
+"text-red-900"
       ),
     },
   },

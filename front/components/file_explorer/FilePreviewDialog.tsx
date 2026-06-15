@@ -98,7 +98,7 @@ function DelimitedPreview({ content, mimeType }: DelimitedPreviewProps) {
 
   if (lines.length < 2) {
     return (
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm text-muted-foreground">
         No data to preview.
       </p>
     );
@@ -192,7 +192,7 @@ function FilePreviewDialogContent({
       // TODO(20260504 FILE_SYSTEM): add Office viewer preview support.
       return (
         <div className="flex h-48 items-center justify-center">
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm text-muted-foreground">
             Cannot preview this file type. You can download it instead.
           </p>
         </div>
@@ -222,7 +222,7 @@ function FilePreviewDialogContent({
     case "text":
       if (processedContent) {
         return (
-          <div className="rounded-lg bg-muted-background p-4 dark:bg-muted-background-night">
+ <div className="rounded-lg bg-muted-background p-4">
             <Markdown content={processedContent.text} isStreaming={false} />
           </div>
         );
@@ -241,7 +241,7 @@ function FilePreviewDialogContent({
         }
       }
       return (
-        <div className="rounded-lg bg-muted-background dark:bg-muted-background-night">
+ <div className="rounded-lg bg-muted-background">
           <CodeBlock className={`language-${lang}`} wrapLongLines={true}>
             {displayContent}
           </CodeBlock>
@@ -359,13 +359,13 @@ export function FilePreviewDialog({
                 <Icon
                   visual={FileIcon}
                   size="xs"
-                  className="shrink-0 text-foreground dark:text-foreground-night"
+ className="shrink-0 text-foreground"
                 />
               )}
               <span
                 className={cn(
                   "line-clamp-1 text-sm leading-5",
-                  "text-foreground dark:text-foreground-night"
+"text-foreground"
                 )}
               >
                 {entry?.fileName ?? ""}
@@ -375,7 +375,7 @@ export function FilePreviewDialog({
               <span
                 className={cn(
                   "line-clamp-1 shrink-0 text-xs font-normal leading-4",
-                  "text-muted-foreground dark:text-muted-foreground-night"
+"text-muted-foreground"
                 )}
               >
                 Showing {recordCounts.displayed} of {recordCounts.total} records
@@ -386,7 +386,7 @@ export function FilePreviewDialog({
         </DialogHeader>
         {hasError ? (
           <div className="flex h-48 items-center justify-center px-4">
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm text-muted-foreground">
               Unable to preview this file. You can download it instead.
             </p>
           </div>

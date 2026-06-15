@@ -268,7 +268,7 @@ export default function SkillBuilder({
             className={cn(
               "flex h-dvh flex-row",
               "bg-background text-foreground",
-              "dark:bg-background-night dark:text-foreground-night"
+""
             )}
           >
             {showSuggestionsPanel ? (

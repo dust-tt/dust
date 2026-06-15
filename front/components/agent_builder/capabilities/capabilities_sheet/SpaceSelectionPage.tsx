@@ -237,7 +237,7 @@ export function SpaceSelectionPageContent({
                   onClick={row.isAlreadyRequested ? undefined : row.onToggle}
                   className={cn(
                     row.isSelected
-                      ? "bg-primary-50 dark:bg-primary-50-night"
+ ?"bg-primary-50"
                       : "",
                     row.isAlreadyRequested
                       ? "cursor-not-allowed opacity-60"
@@ -246,10 +246,10 @@ export function SpaceSelectionPageContent({
                 >
                   <SpaceIcon className="w-5 h-5 min-w-5 min-h-5" />
                   <div className="flex min-w-0 flex-1 flex-col items-start">
-                    <span className="heading-sm truncate max-w-full text-foreground dark:text-foreground-night">
+ <span className="heading-sm truncate max-w-full text-foreground">
                       {row.name}
                     </span>
-                    <span className="truncate max-w-full text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="truncate max-w-full text-xs text-muted-foreground">
                       {row.description}
                     </span>
                   </div>
@@ -288,7 +288,7 @@ export function SpaceSelectionPageContent({
                     onClick={row.isAlreadyRequested ? undefined : row.onToggle}
                     className={cn(
                       row.isSelected
-                        ? "bg-primary-50 dark:bg-primary-50-night"
+ ?"bg-primary-50"
                         : "",
                       row.isAlreadyRequested
                         ? "cursor-not-allowed opacity-60"
@@ -297,10 +297,10 @@ export function SpaceSelectionPageContent({
                   >
                     <ProjectIcon className="w-5 h-5 min-w-5 min-h-5" />
                     <div className="flex min-w-0 flex-1 flex-col items-start">
-                      <span className="heading-sm max-w-full truncate text-foreground dark:text-foreground-night">
+ <span className="heading-sm max-w-full truncate text-foreground">
                         {row.name}
                       </span>
-                      <span className="truncate max-w-full text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="truncate max-w-full text-xs text-muted-foreground">
                         {row.description}
                       </span>
                     </div>
@@ -330,7 +330,7 @@ export function SpaceSelectionPageContent({
           </>
         </div>
       ) : (
-        <div className="py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="py-4 text-center text-sm text-muted-foreground">
           {searchQuery.length > 0
             ? "No results found for your search"
             : "No spaces and Pods available"}

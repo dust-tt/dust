@@ -103,7 +103,7 @@ export function InputBarMessageNavigation({
         <>
           {stopButton}
           {showNavigationArrows && variant !== "compact" && (
-            <div className="h-4 w-px bg-border dark:bg-border-night" />
+ <div className="h-4 w-px bg-border" />
           )}
         </>
       )}
@@ -137,7 +137,7 @@ export function InputBarMessageNavigation({
   return (
     <div
       className={classNames(
-        "flex items-center gap-1 rounded-xl border border-border bg-white p-1 dark:border-border-night dark:bg-muted-night"
+"flex items-center gap-1 rounded-xl border border-border bg-white p-1"
       )}
       style={{
         position: "absolute",

@@ -181,12 +181,12 @@ export function AssistantDetailsPage() {
                   >
                     <ContextItem.Description>
                       <div className="flex flex-col gap-2">
-                        <div className="ml-4 pt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="ml-4 pt-2 text-sm text-muted-foreground">
                           <div>Created at: {`${a.versionCreatedAt}`}</div>
                           <div>Scope: {a.scope}</div>
                           <div>Description: {a.description}</div>
                         </div>
-                        <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="ml-4 text-sm text-muted-foreground">
                           <div className="font-bold">Author:</div>
                           <div>ID: {a.versionAuthorId}</div>
                           {author && (
@@ -197,7 +197,7 @@ export function AssistantDetailsPage() {
                             </div>
                           )}
                         </div>
-                        <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="ml-4 text-sm text-muted-foreground">
                           <div className="font-bold">Model:</div>
                           <div>
                             {SUPPORTED_MODEL_CONFIGS.find(
@@ -213,7 +213,7 @@ export function AssistantDetailsPage() {
                           />
                         </div>
 
-                        <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="ml-4 text-sm text-muted-foreground">
                           <div className="font-bold">Actions:</div>
                           <div>maxStepPerRun: {a.maxStepsPerRun}</div>
                           {a.actions.map((action, index) => (
@@ -232,7 +232,7 @@ export function AssistantDetailsPage() {
                             </div>
                           ))}
                         </div>
-                        <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                        <div className="ml-4 text-sm text-muted-foreground">
                           <div className="font-bold">Requested spaces:</div>
                           <RequestedSpacesList
                             owner={owner}
@@ -240,7 +240,7 @@ export function AssistantDetailsPage() {
                             spacesById={spacesById}
                           />
                         </div>
-                        <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                        <div className="ml-4 text-sm text-muted-foreground">
                           <div className="font-bold">Skills:</div>
                           {versionSkills.length === 0 ? (
                             <div>No skills</div>
@@ -270,7 +270,7 @@ export function AssistantDetailsPage() {
                             ))
                           )}
                         </div>
-                        <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="ml-4 text-sm text-muted-foreground">
                           <div className="flex items-center gap-2">
                             <span className="font-bold">
                               Instructions markdown:
@@ -294,7 +294,7 @@ export function AssistantDetailsPage() {
                             }}
                           />
                         </div>
-                        <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="ml-4 text-sm text-muted-foreground">
                           <span className="font-bold">Instructions HTML:</span>
                           <TextArea
                             placeholder=""

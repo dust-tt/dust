@@ -285,11 +285,11 @@ export function SkillUsageChart({
         >
           <CartesianGrid
             vertical={false}
-            className="stroke-border dark:stroke-border-night"
+ className="stroke-border"
           />
           <XAxis
             dataKey="label"
-            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
+ className="text-xs text-muted-foreground"
             tickLine={false}
             axisLine={false}
             tickMargin={8}
@@ -301,7 +301,7 @@ export function SkillUsageChart({
             }}
           />
           <YAxis
-            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
+ className="text-xs text-muted-foreground"
             tickLine={false}
             axisLine={false}
             tickMargin={8}
@@ -357,7 +357,7 @@ export function SkillUsageChart({
         >
           <CartesianGrid
             vertical={false}
-            className="stroke-border dark:stroke-border-night"
+ className="stroke-border"
           />
           <XAxis
             dataKey="skillName"
@@ -366,7 +366,7 @@ export function SkillUsageChart({
             tickLine={false}
           />
           <YAxis
-            className="text-xs text-muted-foreground dark:text-muted-foreground-night"
+ className="text-xs text-muted-foreground"
             tickLine={false}
             axisLine={false}
             tickMargin={8}

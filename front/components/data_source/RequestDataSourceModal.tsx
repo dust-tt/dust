@@ -104,7 +104,7 @@ export function RequestDataSourceModal({
           <div className="flex flex-col gap-4 p-4">
             <div className="flex items-center gap-2">
               {dataSources.length === 0 && (
-                <label className="block text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
+ <label className="block text-sm font-medium text-muted-foreground">
                   <p>
                     You have no connection set up. Ask an admin to set one up.
                   </p>
@@ -112,7 +112,7 @@ export function RequestDataSourceModal({
               )}
               {dataSources.length >= 1 && (
                 <>
-                  <label className="block text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
+ <label className="block text-sm font-medium text-muted-foreground">
                     <p>Where are the requested Data hosted?</p>
                   </label>
                   <DropdownMenu>
@@ -160,7 +160,7 @@ export function RequestDataSourceModal({
 
             {selectedDataSource && (
               <div className="flex flex-col gap-2">
-                <p className="mb-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="mb-2 text-sm text-muted-foreground">
                   {capitalize(selectedDataSource.editedByUser?.fullName ?? "")}{" "}
                   is the administrator for the{" "}
                   {getDisplayNameForDataSource(selectedDataSource)} connection

@@ -428,7 +428,7 @@ export const Field: React.FC<FieldProps> = ({
         strValue = "NULL";
         classes = classNames(
           classes,
-          "italic text-muted-foreground dark:text-muted-foreground-night"
+"italic text-muted-foreground"
         );
       }
     }

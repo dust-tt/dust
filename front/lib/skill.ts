@@ -19,9 +19,9 @@ export const SKILL_ICON = PuzzlePiece01;
 export const DUST_PROVIDED_SKILL_LABEL = "Dust-provided skill";
 
 export const SKILL_AVATAR_BACKGROUND_COLOR =
-  "bg-highlight-50 dark:bg-highlight-50-night";
+"bg-highlight-50";
 export const SKILL_AVATAR_ICON_COLOR =
-  "text-highlight dark:text-highlight-night";
+"text-highlight";
 
 interface SkillAvatarIconProps {
   className?: string;

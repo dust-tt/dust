@@ -126,7 +126,7 @@ function SkillInfoContent({
   return (
     <div className="flex flex-col gap-4">
       {editedBy && editedAt && (
-        <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
           <div>
             Edited by {editedBy}, {editedAt}
           </div>

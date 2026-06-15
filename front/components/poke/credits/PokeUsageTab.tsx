@@ -75,13 +75,13 @@ function PokeCreditStatesCard({
   programmaticAlerts,
 }: PokeCreditStatesCardProps) {
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border p-4 dark:border-border-night">
-      <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+ <div className="flex flex-col gap-2 rounded-lg border border-border p-4">
+ <span className="text-sm font-medium text-foreground">
         Credit state machine
       </span>
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-xs text-muted-foreground">
             Pool
           </span>
           <Chip
@@ -94,7 +94,7 @@ function PokeCreditStatesCard({
           <ReconcileCreditStateButton owner={owner} target="pool" />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-xs text-muted-foreground">
             Programmatic
           </span>
           <Chip
@@ -132,13 +132,13 @@ function PokeCreditConfigCard({
   const hasUsageCap = usageCapCredits !== null && usageCapCredits > 0;
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border p-4 dark:border-border-night">
-      <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+ <div className="flex flex-col gap-2 rounded-lg border border-border p-4">
+ <span className="text-sm font-medium text-foreground">
         Credit configuration
       </span>
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-xs text-muted-foreground">
             PAYG
           </span>
           <Chip
@@ -148,10 +148,10 @@ function PokeCreditConfigCard({
           />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-xs text-muted-foreground">
             Usage cap
           </span>
-          <span className="inline-flex items-center gap-1 text-sm font-medium text-foreground dark:text-foreground-night">
+ <span className="inline-flex items-center gap-1 text-sm font-medium text-foreground">
             {hasUsageCap ? (
               <>
                 {formatCredits(usageCapCredits)} credits
@@ -163,10 +163,10 @@ function PokeCreditConfigCard({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-xs text-muted-foreground">
             Default discount
           </span>
-          <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+ <span className="text-sm font-medium text-foreground">
             {defaultDiscountPercent}%
           </span>
         </div>
@@ -188,13 +188,13 @@ function PokeDefaultAlertsCard({ defaultAlerts }: PokeDefaultAlertsCardProps) {
     return null;
   }
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border p-4 dark:border-border-night">
-      <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+ <div className="flex flex-col gap-2 rounded-lg border border-border p-4">
+ <span className="text-sm font-medium text-foreground">
         Default account alerts
       </span>
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-xs text-muted-foreground">
             Pool balance
           </span>
           <AlertChip alert={defaultAlerts.poolEmpty} label="empty (0)" />
@@ -202,7 +202,7 @@ function PokeDefaultAlertsCard({ defaultAlerts }: PokeDefaultAlertsCardProps) {
           <AlertChip alert={defaultAlerts.poolCritical} label="critical (10)" />
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-xs text-muted-foreground">
             Seat balance
           </span>
           <AlertChip alert={defaultAlerts.seatEmpty} label="empty (0)" />
@@ -254,23 +254,23 @@ function PokeCreditPoolCard({ owner }: PokeCreditPoolCardProps) {
       : 0;
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border p-4 dark:border-border-night">
+ <div className="flex flex-col gap-2 rounded-lg border border-border p-4">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+ <span className="text-sm font-medium text-foreground">
           Workspace Credits Pool
         </span>
-        <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+ <span className="text-sm font-semibold text-foreground">
           {formatCredits(consumed)} / {formatCredits(totalActiveCredits)}{" "}
           credits
         </span>
       </div>
-      <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10 dark:bg-muted-foreground-night/10">
+ <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10">
         <div
-          className="h-full shrink-0 bg-highlight transition-all dark:bg-highlight-night"
+ className="h-full shrink-0 bg-highlight transition-all"
           style={{ width: `${consumedPct}%` }}
         />
       </div>
-      <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
         <span>{formatCredits(totalRemainingCredits)} credits remaining</span>
         {overageCredits !== null && overageCredits > 0 && (
           <span>{formatCredits(overageCredits)} overage credits</span>

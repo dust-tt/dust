@@ -554,7 +554,7 @@ export function CreateMCPServerDialog({
               )}
               {needsCustomName && (
                 <div className="space-y-4">
-                  <div className="heading-lg text-foreground dark:text-foreground-night">
+ <div className="heading-lg text-foreground">
                     Tool name
                   </div>
                   <Input

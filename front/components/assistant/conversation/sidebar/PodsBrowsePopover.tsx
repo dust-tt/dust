@@ -47,7 +47,7 @@ function PodBrowseItemSkeleton({ count = 5 }: { count?: number }) {
 function PodBrowseItem({ pod, onClick }: PodBrowseItemProps) {
   return (
     <div
-      className="flex cursor-pointer items-start gap-2 rounded-lg p-2 hover:bg-muted-background dark:hover:bg-muted-background-night"
+ className="flex cursor-pointer items-start gap-2 rounded-lg p-2 hover:bg-muted-background"
       onClick={onClick}
     >
       <Icon visual={getSpaceIcon(pod)} size="sm" className="mt-0.5 shrink-0" />
@@ -63,7 +63,7 @@ function PodBrowseItem({ pod, onClick }: PodBrowseItemProps) {
             label={pod.description}
             tooltipTriggerAsChild
             trigger={
-              <div className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <div className="truncate text-xs text-muted-foreground">
                 {pod.description}
               </div>
             }
@@ -111,7 +111,7 @@ export function PodsBrowsePopover({ owner }: PodsBrowsePopoverProps) {
             {isSearching && pods.length === 0 ? (
               <PodBrowseItemSkeleton count={5} />
             ) : pods.length === 0 ? (
-              <div className="px-2 py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <div className="px-2 py-4 text-center text-sm text-muted-foreground">
                 No Pods found
               </div>
             ) : (

@@ -138,16 +138,16 @@ export function CommandPaletteActionPhase({
       <button
         className={cn(
           "flex items-center gap-2 border-b px-4 py-3",
-          "border-separator dark:border-separator-night",
-          "text-sm text-muted-foreground dark:text-muted-foreground-night",
+"border-separator",
+"text-sm text-muted-foreground",
           "transition-colors duration-100",
-          "hover:text-foreground dark:hover:text-foreground-night"
+"hover:text-foreground"
         )}
         onClick={onBack}
       >
         <Icon visual={ArrowLeft} size="sm" />
         {itemAvatar}
-        <span className="font-medium text-foreground dark:text-foreground-night">
+ <span className="font-medium text-foreground">
           {itemName}
         </span>
       </button>
@@ -158,10 +158,10 @@ export function CommandPaletteActionPhase({
             key={action}
             className={cn(
               "flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors duration-100",
-              "text-foreground dark:text-foreground-night",
+"text-foreground",
               selectedIndex === i
-                ? "bg-primary-100 dark:bg-primary-100-night"
-                : "hover:bg-muted-background dark:hover:bg-muted-background-night"
+ ?"bg-primary-100"
+ :"hover:bg-muted-background"
             )}
             onClick={() => onAction(action)}
             onMouseEnter={() => setSelectedIndex(i)}
@@ -169,7 +169,7 @@ export function CommandPaletteActionPhase({
             <Icon visual={icon} size="sm" className="shrink-0" />
             <div className="flex flex-col">
               <span className="text-sm font-medium">{label}</span>
-              <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-xs text-muted-foreground">
                 {description}
               </span>
             </div>

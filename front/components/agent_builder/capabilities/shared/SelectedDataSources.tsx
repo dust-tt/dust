@@ -153,7 +153,7 @@ function DataSourceTreeItem({
   );
 
   const actions = spaceName ? (
-    <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-xs text-muted-foreground">
       {spaceName}
     </span>
   ) : undefined;
@@ -283,7 +283,7 @@ export function SelectedDataSources() {
       </div>
 
       <div>
-        <div className="rounded-xl bg-muted p-2 dark:bg-muted-night">
+ <div className="rounded-xl bg-muted p-2">
           <div className="max-h-60 overflow-y-auto">
             <Tree>
               {Object.values(dataSourceViews).map((item) => (

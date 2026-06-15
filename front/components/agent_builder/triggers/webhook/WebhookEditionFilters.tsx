@@ -142,7 +142,7 @@ export function WebhookEditionFilters({
         return (
           <div className="flex items-center gap-2">
             <Spinner size="sm" />
-            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-sm text-muted-foreground">
               Generating filter...
             </span>
           </div>
@@ -166,7 +166,7 @@ export function WebhookEditionFilters({
           <Label htmlFor="webhook-filter-description">
             Run only when (optional)
           </Label>
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm text-muted-foreground">
             Set conditions that must be met to run the agent.
           </p>
           <TextArea
@@ -195,7 +195,7 @@ export function WebhookEditionFilters({
           <Label htmlFor="webhook-filter-description">
             Filter Expression (optional)
           </Label>
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm text-muted-foreground">
             Enter a filter that will be used to filter the webhook payload JSON.
             Will always trigger if left empty.
           </p>

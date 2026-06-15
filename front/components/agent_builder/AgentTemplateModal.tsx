@@ -52,7 +52,7 @@ export function AgentTemplateModal({
               <div className="flex max-h-32 max-w-lg flex-row gap-3">
                 <Avatar size="lg" visual={assistantTemplate.pictureUrl} />
                 <div className="flex flex-col gap-1">
-                  <span className="heading-lg text-foreground dark:text-foreground-night">
+ <span className="heading-lg text-foreground">
                     @{assistantTemplate.handle}
                   </span>
                   <LinkWrapper
@@ -82,7 +82,7 @@ export function AgentTemplateModal({
           </SheetContainer>
         ) : (
           <div className="flex h-full items-center justify-center">
-            <span className="text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-muted-foreground">
               Template not found
             </span>
           </div>

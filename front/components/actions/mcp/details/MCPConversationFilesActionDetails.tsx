@@ -54,7 +54,7 @@ export function MCPConversationCatFileDetails({
         <div className="flex flex-col gap-4 pl-6 pt-4">
           {displayContext === "sidebar-single-action" ? (
             <div>
-              <span className="font-medium text-foreground dark:text-foreground-night">
+ <span className="font-medium text-foreground">
                 Preview
               </span>
               <div className="py-2">
@@ -66,7 +66,7 @@ export function MCPConversationCatFileDetails({
           ) : (
             <Collapsible defaultOpen={false}>
               <CollapsibleTrigger>
-                <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+ <span className="text-sm font-semibold text-foreground">
                   Preview
                 </span>
               </CollapsibleTrigger>

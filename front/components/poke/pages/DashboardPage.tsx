@@ -50,7 +50,7 @@ function WorkspaceList({
       <Spinner size="lg" variant="color" />
     </div>
   ) : workspaces.length === 0 ? (
-    <p className="text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-muted-foreground">
       No workspaces found.
     </p>
   ) : (
@@ -61,7 +61,7 @@ function WorkspaceList({
           onClick={() => onWorkspaceClick?.(ws)}
         >
           <LinkWrapper href={`/poke/${ws.sId}`}>
-            <li className="border-material-100 w-80 rounded-lg border p-4 transition-colors duration-200 hover:bg-gray-100 dark:hover:bg-gray-800">
+ <li className="border-material-100 w-80 rounded-lg border p-4 transition-colors duration-200 hover:bg-gray-100">
               <div className="flex items-center justify-between pb-2">
                 <h2 className="text-md flex-grow font-bold">{ws.name}</h2>
                 {showRegion && ws.region && (
@@ -202,11 +202,11 @@ function DashboardPageSPA() {
       />
       <h1 className="mb-4 mt-8 text-2xl font-bold">Search Results</h1>
       {isSearchInputTooShort ? (
-        <p className="text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-muted-foreground">
           Type at least {SEARCH_MIN_LENGTH} characters to search.
         </p>
       ) : isSearchResultsError ? (
-        <p className="text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-muted-foreground">
           An error occurred while fetching search results.
         </p>
       ) : (
@@ -221,7 +221,7 @@ function DashboardPageSPA() {
         Last {WORKSPACE_LIMIT} Upgraded Workspaces
       </h1>
       {isUpgradedWorkspacesError ? (
-        <p className="text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-muted-foreground">
           An error occurred while fetching upgraded workspaces.
         </p>
       ) : (

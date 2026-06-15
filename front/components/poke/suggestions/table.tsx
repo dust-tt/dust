@@ -38,7 +38,7 @@ function SuggestionDetailsDialog({
           <div className="space-y-6">
             <div>
               <h3 className="mb-2 text-sm font-semibold">Analysis</h3>
-              <div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-900">
+ <div className="rounded-lg bg-gray-50 p-4">
                 <pre className="overflow-x-auto whitespace-pre-wrap text-sm">
                   {suggestion.analysis ?? "No analysis"}
                 </pre>
@@ -46,7 +46,7 @@ function SuggestionDetailsDialog({
             </div>
             <div>
               <h3 className="mb-2 text-sm font-semibold">Content</h3>
-              <div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-900">
+ <div className="rounded-lg bg-gray-50 p-4">
                 <pre className="overflow-x-auto whitespace-pre-wrap text-sm">
                   {JSON.stringify(suggestion.suggestion, null, 2)}
                 </pre>

@@ -20,15 +20,15 @@ export function PodSettingsOptionLabel({
     <div className="flex min-w-0 flex-col gap-0.5">
       <div className="flex flex-wrap items-center gap-2">
         <Icon
-          className="h-4 w-4 shrink-0 text-foreground dark:text-foreground-night"
+ className="h-4 w-4 shrink-0 text-foreground"
           aria-hidden
         />
-        <span className="heading-sm text-foreground dark:text-foreground-night">
+ <span className="heading-sm text-foreground">
           {title}
         </span>
         {trailingInTitle}
       </div>
-      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-sm text-muted-foreground">
         {description}
       </div>
     </div>

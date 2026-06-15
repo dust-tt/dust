@@ -325,10 +325,10 @@ export function CreateOrUpdateConnectionSnowflakeModal({
 
               {connectorUIConfiguration.limitations && (
                 <div className="flex flex-col gap-y-2">
-                  <div className="grow text-sm font-medium text-muted-foreground dark:text-muted-foreground-night">
+ <div className="grow text-sm font-medium text-muted-foreground">
                     Limitations
                   </div>
-                  <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-sm font-normal text-muted-foreground">
                     {connectorUIConfiguration.limitations}
                   </div>
                 </div>
@@ -377,7 +377,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
               />
               {credentials.account.trim().length > 0 &&
                 !isValidSnowflakeAccount(credentials.account) && (
-                  <div className="dark:text-warning-night text-xs text-warning">
+ <div className="text-xs text-warning">
                     Invalid format. Use an account identifier like{" "}
                     <span className="font-mono">abc123.us-east-1</span> or{" "}
                     <span className="font-mono">myorg-myaccount</span>.
@@ -475,7 +475,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                       setError(null);
                     }}
                   />
-                  <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-sm text-muted-foreground">
                     <p className="mb-2">To use key-pair authentication:</p>
                     <ol className="ml-4 list-decimal space-y-1">
                       <li>Generate an RSA key pair (minimum 2048 bits)</li>

@@ -186,12 +186,12 @@ export const SlashCommandDropdown = forwardRef<
           scrollHighlightedItemIntoView
         >
           {header ? (
-            <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground dark:text-muted-foreground-night">
+ <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {header}
             </div>
           ) : null}
           {items.length === 0 ? (
-            <div className="px-2 py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="px-2 py-4 text-center text-sm text-muted-foreground">
               {emptyMessage}
             </div>
           ) : (
@@ -241,10 +241,11 @@ export const SlashCommandDropdown = forwardRef<
                     className={cn(
                       "group",
                       index === selectedIndex &&
-                        "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
+                        "bg-muted-background [transition-duration:0ms]"
                     )}
                   />
                 );
+
 
                 // Wrap with DropdownTooltipTrigger if command has tooltip property.
                 const itemContent = item.tooltip ? (
@@ -263,7 +264,7 @@ export const SlashCommandDropdown = forwardRef<
                 return (
                   <Fragment key={item.id}>
                     {sectionLabel ? (
-                      <div className="px-3 py-2 text-xs font-semibold text-muted-foreground dark:text-muted-foreground-night">
+                      <div className="px-3 py-2 text-xs font-semibold text-muted-foreground">
                         {sectionLabel}
                       </div>
                     ) : null}

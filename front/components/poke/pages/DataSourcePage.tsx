@@ -161,7 +161,7 @@ function FolderDisplay({
                       File04({
                         className:
                           className +
-                          " text-muted-foreground dark:text-muted-foreground-night",
+" text-muted-foreground",
                       })
                     }
                   />
@@ -180,7 +180,7 @@ function FolderDisplay({
                 }
               >
                 <ContextItem.Description>
-                  <div className="pt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="pt-2 text-sm text-muted-foreground">
                     {Math.floor(d.text_size / 1024)} kb,{" "}
                     {timeAgoFrom(d.timestamp)} ago
                   </div>
@@ -250,14 +250,14 @@ function FolderDisplay({
                       Table({
                         className:
                           className +
-                          " text-muted-foreground dark:text-muted-foreground-night",
+" text-muted-foreground",
                       })
                     }
                   />
                 }
               >
                 <ContextItem.Description>
-                  <div className="pt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="pt-2 text-sm text-muted-foreground">
                     {timeAgoFrom(t.timestamp)} ago
                   </div>
                 </ContextItem.Description>
@@ -504,7 +504,7 @@ function NotionUrlCheckOrFind({
   };
 
   return (
-    <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="mb-2 flex flex-col gap-2 rounded-md border px-2 py-2 text-sm text-muted-foreground">
       <div className="flex items-center gap-2 px-2 pt-2">
         <div>Notion URL</div>
         <div className="grow">
@@ -551,7 +551,7 @@ function NotionUrlCheckOrFind({
           onClick={handleParentChain}
         />
       </div>
-      <div className="text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-muted-foreground">
         {urlDetails && (
           <div className="text-md flex flex-col gap-2 rounded-md p-4 pt-2">
             <Chip
@@ -812,7 +812,7 @@ function ZendeskTicketCheck({
               )}
             </div>
             {ticketDetails.ticket && (
-              <div className="ml-4 pt-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <div className="ml-4 pt-2 text-xs text-muted-foreground">
                 <div className="mb-1 font-bold">Details</div>
                 <JsonViewer
                   theme={isDark ? "dark" : "light"}

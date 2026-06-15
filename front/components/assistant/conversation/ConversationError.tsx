@@ -79,14 +79,14 @@ export function ErrorDisplay({ icon, message, title }: ErrorDisplayProps) {
       {icon && (
         <Icon
           visual={icon}
-          className="dark:text-golder-400-night text-golden-400"
+ className="text-golden-400"
           size="lg"
         />
       )}
-      <p className="heading-xl text-center text-foreground dark:text-foreground-night">
+ <p className="heading-xl text-center text-foreground">
         {title}
       </p>
-      <p className="copy-sm text-center text-muted-foreground dark:text-muted-foreground-night">
+ <p className="copy-sm text-center text-muted-foreground">
         {Array.isArray(message) ? (
           message.map((line, index) => <p key={index}>{line}</p>)
         ) : (

@@ -14,7 +14,7 @@ export function TabContentLayout({
   return (
     <section className="flex h-full flex-col gap-6 overflow-y-auto p-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground dark:text-foreground-night">
+ <h2 className="text-lg font-semibold text-foreground">
           {title}
         </h2>
         {headerAction}

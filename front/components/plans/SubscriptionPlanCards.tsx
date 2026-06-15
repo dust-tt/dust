@@ -66,14 +66,14 @@ export function SubscriptionPlanCards({
       {/* Pro card */}
       <div className="flex flex-col rounded-[20px] border border-border p-5">
         <div className="mb-4">
-          <h3 className="text-lg font-medium text-foreground dark:text-foreground-night">
+ <h3 className="text-lg font-medium text-foreground">
             {isBusiness ? "Enterprise (Seat-based)" : "Pro"}
           </h3>
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-3xl font-bold tabular-nums text-foreground dark:text-foreground-night">
+ <span className="text-3xl font-bold tabular-nums text-foreground">
               {price}
             </span>
-            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-sm text-muted-foreground">
               per user
             </span>
           </div>
@@ -88,9 +88,9 @@ export function SubscriptionPlanCards({
               <Icon
                 visual={Check}
                 size="sm"
-                className="mt-0.5 shrink-0 text-highlight-500 dark:text-highlight-500-night"
+ className="mt-0.5 shrink-0 text-highlight-500"
               />
-              <span className="text-sm text-foreground dark:text-foreground-night">
+ <span className="text-sm text-foreground">
                 {feature}
               </span>
             </li>
@@ -115,14 +115,14 @@ export function SubscriptionPlanCards({
       {/* Enterprise card */}
       <div className="flex flex-col rounded-[20px] border border-border p-5">
         <div className="mb-4">
-          <h3 className="text-lg font-medium text-foreground dark:text-foreground-night">
+ <h3 className="text-lg font-medium text-foreground">
             Enterprise
           </h3>
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-3xl font-bold tabular-nums text-foreground dark:text-foreground-night">
+ <span className="text-3xl font-bold tabular-nums text-foreground">
               Custom
             </span>
-            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-sm text-muted-foreground">
               based on active users
             </span>
           </div>
@@ -134,9 +134,9 @@ export function SubscriptionPlanCards({
               <Icon
                 visual={Check}
                 size="sm"
-                className="mt-0.5 shrink-0 text-highlight-500 dark:text-highlight-500-night"
+ className="mt-0.5 shrink-0 text-highlight-500"
               />
-              <span className="text-sm text-foreground dark:text-foreground-night">
+ <span className="text-sm text-foreground">
                 {feature}
               </span>
             </li>

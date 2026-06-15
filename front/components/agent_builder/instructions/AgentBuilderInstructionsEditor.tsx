@@ -129,24 +129,24 @@ const editorVariants = cva(
         ],
         false: [
           "border rounded-xl",
-          "bg-muted-background dark:bg-muted-background-night",
-          "focus:ring-highlight-300 dark:focus:ring-highlight-300-night",
-          "focus:outline-highlight-200 dark:focus:outline-highlight-200-night",
-          "focus:border-highlight-300 dark:focus:border-highlight-300-night",
+"bg-muted-background",
+"focus:ring-highlight-300",
+"focus:outline-highlight-200",
+"focus:border-highlight-300",
         ],
       },
       error: {
         true: [
-          "border-warning-500 dark:border-warning-500-night",
-          "focus:ring-warning-500 dark:focus:ring-warning-500-night",
-          "focus:outline-warning-500 dark:focus:outline-warning-500-night",
-          "focus:border-warning-500 dark:focus:border-warning-500-night",
+"border-warning-500",
+"focus:ring-warning-500",
+"focus:outline-warning-500",
+"focus:border-warning-500",
         ],
         false: [
-          "border-border dark:border-border-night",
-          "focus:ring-highlight-300 dark:focus:ring-highlight-300-night",
-          "focus:outline-highlight-200 dark:focus:outline-highlight-200-night",
-          "focus:border-highlight-300 dark:focus:border-highlight-300-night",
+"border-border",
+"focus:ring-highlight-300",
+"focus:outline-highlight-200",
+"focus:border-highlight-300",
         ],
       },
     },
@@ -554,7 +554,7 @@ const CharacterCountDisplay = ({
         "text-end text-xs",
         isOverLimit
           ? "text-warning"
-          : "text-muted-foreground dark:text-muted-foreground-night"
+ :"text-muted-foreground"
       )}
     >
       {count} / {maxCount} characters

@@ -63,15 +63,15 @@ export const PlanCard = React.memo(function PlanCard({
       className={cn(
         "mb-2 flex w-full items-center gap-2 rounded-2xl border px-4 py-3 text-left",
         "border-border-dark/50 bg-muted-background",
-        "dark:border-border-dark-night/30 dark:bg-muted-background-night",
-        "hover:bg-primary-50 dark:hover:bg-primary-50-night"
+"",
+"hover:bg-primary-50"
       )}
     >
       <Icon visual={File04} size="sm" />
       <span className="heading-sm grow truncate">Plan: {title}</span>
       <ApprovalStateChip state={approvalState} />
       {progress.total > 0 && (
-        <span className="copy-xs shrink-0 text-muted-foreground dark:text-muted-foreground-night">
+ <span className="copy-xs shrink-0 text-muted-foreground">
           {progress.done}/{progress.total} done
         </span>
       )}

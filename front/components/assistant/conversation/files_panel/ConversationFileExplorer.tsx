@@ -64,7 +64,7 @@ export function ConversationFileExplorer({
           {isPod ? (
             <ButtonGroup
               removeGaps={false}
-              className="rounded-lg bg-muted p-0.5 dark:bg-muted-night"
+ className="rounded-lg bg-muted p-0.5"
             >
               <Button
                 size="xs"
@@ -80,7 +80,7 @@ export function ConversationFileExplorer({
               />
             </ButtonGroup>
           ) : (
-            <span className="text-sm text-foreground dark:text-foreground-night">
+ <span className="text-sm text-foreground">
               Conversation Files
             </span>
           )}

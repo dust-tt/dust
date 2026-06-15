@@ -37,7 +37,7 @@ function ContentArrayView({ contents }: ContentArrayViewProps) {
         ) : (
           <div
             key={i}
-            className="text-sm text-muted-foreground dark:text-muted-foreground-night"
+ className="text-sm text-muted-foreground"
           >
             [Image: {c.image_url.url.slice(0, 50)}...]
           </div>

@@ -45,10 +45,10 @@ export function PersonalAuthCredentialOverrides({
           <div key={key} className="flex flex-col gap-1">
             <Label
               htmlFor={inputId}
-              className="text-sm font-medium text-foreground dark:text-foreground-night"
+ className="text-sm font-medium text-foreground"
             >
               {label}{" "}
-              <span className="font-normal text-muted-foreground dark:text-muted-foreground-night">
+ <span className="font-normal text-muted-foreground">
                 (optional)
               </span>
             </Label>

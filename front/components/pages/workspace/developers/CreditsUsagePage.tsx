@@ -64,14 +64,14 @@ function CreditCategoryBar({
   return (
     <Page.Vertical sizing="grow">
       <div className="flex w-full items-center justify-between">
-        <p className="my-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="my-1 text-sm text-muted-foreground">
           {title}
         </p>
         {action}
       </div>
-      <div className="text-lg font-semibold text-foreground dark:text-foreground-night">
+ <div className="text-lg font-semibold text-foreground">
         {consumedFormatted}
-        <span className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-sm font-normal text-muted-foreground">
           / {totalFormatted}
           {isCap ? " cap" : ""}
         </span>
@@ -137,7 +137,7 @@ function UsageSection({
 
   if (isLoading) {
     return (
-      <div className="flex flex-col gap-6 rounded-lg border border-border p-6 dark:border-border-night">
+ <div className="flex flex-col gap-6 rounded-lg border border-border p-6">
         <div className="h-8 w-32 animate-pulse rounded bg-muted-foreground/20" />
         <div className="h-24 w-full animate-pulse rounded bg-muted-foreground/20" />
       </div>
@@ -178,7 +178,7 @@ function UsageSection({
       />
 
       {/* Credit Categories */}
-      <div className="grid grid-cols-3 gap-8 border-t border-border pt-6 dark:border-border-night">
+ <div className="grid grid-cols-3 gap-8 border-t border-border pt-6">
         <CreditCategoryBar
           title="Free credits"
           consumed={creditsByType.free.consumed}

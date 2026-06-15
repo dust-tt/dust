@@ -76,18 +76,18 @@ export function CreditHistorySheet({
                 <Spinner size="sm" />
               </div>
             ) : displayedRows.length === 0 ? (
-              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm text-muted-foreground">
                 No expired credits in the last 6 months.
               </p>
             ) : (
               <>
-                <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm text-muted-foreground">
                   Expired credits from the last 6 months.
                 </p>
                 <DataTable data={displayedRows} columns={creditColumns} />
               </>
             )}
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm text-muted-foreground">
               For older credits,{" "}
               <LinkWrapper href="mailto:support@dust.tt" className="underline">
                 contact support

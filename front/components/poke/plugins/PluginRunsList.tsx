@@ -25,7 +25,7 @@ function PluginRunItem({ run, onClick }: PluginRunItemProps) {
     <div
       className={cn(
         "flex cursor-pointer items-center justify-between rounded-lg border p-4 transition-colors",
-        "hover:bg-gray-50 dark:hover:bg-gray-800"
+"hover:bg-gray-50"
       )}
       onClick={onClick}
     >

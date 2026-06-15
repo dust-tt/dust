@@ -36,7 +36,7 @@ export function MCPDataWarehousesBrowseDetails({
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         {nodeId && (
-          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-sm text-muted-foreground">
             <span className="font-medium">Browsing:</span> {nodeId}
           </div>
         )}
@@ -71,7 +71,7 @@ export function MCPDataWarehousesBrowseDetails({
                   </div>
 
                   {node.parentTitle && (
-                    <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-xs text-muted-foreground">
                       {node.parentTitle}
                     </span>
                   )}

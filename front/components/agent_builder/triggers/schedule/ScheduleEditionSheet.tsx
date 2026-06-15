@@ -84,7 +84,7 @@ function ScheduleEditionMessageInput({
   return (
     <div className="space-y-1">
       <Label htmlFor="schedule-custom-prompt">Message (optional)</Label>
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm text-muted-foreground">
         Message for the agent when the trigger runs.
       </p>
       <TextArea

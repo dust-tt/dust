@@ -146,7 +146,7 @@ function SlackChannelsList({
       ) : (
         <div className="overflow-y-auto">
           {filteredChannels.length === 0 ? (
-            <div className="py-4 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="py-4 text-center text-sm text-muted-foreground">
               {searchQuery.trim() === ""
                 ? "No channels available"
                 : `No channels match "${searchQuery}"`}
@@ -167,7 +167,7 @@ function SlackChannelsList({
                     onClick={(e: React.MouseEvent) => e.stopPropagation()}
                     size="xs"
                   />
-                  <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+ <span className="text-sm font-medium text-gray-900">
                     {channel.slackChannelName}
                   </span>
                 </div>
@@ -301,7 +301,7 @@ export function SlackSettingsSheet({
         </SheetHeader>
         <SheetContainer>
           <div className="flex flex-col gap-4">
-            <div className="text-sm font-normal text-foreground dark:text-foreground-night">
+ <div className="text-sm font-normal text-foreground">
               Set this agent as the default agent on one or several of your
               Slack channels. It will answer by default when the{" "}
               <span className="font-bold">@Dust</span> Slack bot is mentioned in
@@ -349,10 +349,10 @@ export function SlackSettingsSheet({
             <div className="flex flex-col border-t p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+ <span className="text-sm font-medium text-foreground">
                     Respond to all messages in channel
                   </span>
-                  <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-xs text-muted-foreground">
                     Agent will automatically respond to all messages and thread
                     replies in selected channels (not just @mentions)
                   </span>

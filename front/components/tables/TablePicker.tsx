@@ -137,7 +137,7 @@ export default function TablePicker({
       <div className="flex items-center">
         {readOnly ? (
           currentTable ? (
-            <div className="copy-sm mr-1 max-w-20 truncate font-semibold text-highlight-500 dark:text-highlight-500-night">
+ <div className="copy-sm mr-1 max-w-20 truncate font-semibold text-highlight-500">
               {currentTable.title}
             </div>
           ) : (
@@ -151,15 +151,15 @@ export default function TablePicker({
                   className={classNames(
                     "copy-sm inline-flex items-center rounded-md py-1 font-normal",
                     readOnly
-                      ? "text-gray-400 dark:text-gray-600"
-                      : "text-muted-foreground dark:text-muted-foreground-night",
+ ?"text-gray-400"
+ :"text-muted-foreground",
                     "focus:outline-hidden focus:ring-0"
                   )}
                 >
-                  <div className="copy-sm mr-1 max-w-xs truncate font-semibold text-highlight-500 dark:text-highlight-500-night">
+ <div className="copy-sm mr-1 max-w-xs truncate font-semibold text-highlight-500">
                     {currentTable.title}
                   </div>
-                  <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-muted-foreground dark:hover:text-muted-foreground-night" />
+ <ChevronDownIcon className="mt-0.5 h-4 w-4 hover:text-muted-foreground" />
                 </div>
               ) : allTablesMap.size > 0 ? (
                 <Button
@@ -173,8 +173,8 @@ export default function TablePicker({
                   className={classNames(
                     "copy-sm",
                     readOnly
-                      ? "text-gray-400 dark:text-gray-600"
-                      : "text-muted-foreground dark:text-muted-foreground-night"
+ ?"text-gray-400"
+ :"text-muted-foreground"
                   )}
                 >
                   No Tables
@@ -211,7 +211,7 @@ export default function TablePicker({
                         }}
                       >
                         <div className="my-1">
-                          <div className="copy-sm text-foreground dark:text-foreground-night">
+ <div className="copy-sm text-foreground">
                             {t.title}
                           </div>
                         </div>
@@ -220,7 +220,7 @@ export default function TablePicker({
                   {debouncedSearch &&
                     allTablesMap.size === 0 &&
                     !showTableLoaders && (
-                      <span className="copy-sm mt-2 block px-2 text-muted-foreground dark:text-muted-foreground-night">
+ <span className="copy-sm mt-2 block px-2 text-muted-foreground">
                         No tables found
                       </span>
                     )}
@@ -232,7 +232,7 @@ export default function TablePicker({
                   hasMore={!!nextPageCursor}
                   showLoader={showTableLoaders}
                   loader={
-                    <div className="copy-sm mt-2 flex items-center gap-2 px-2 text-center text-muted-foreground dark:text-muted-foreground-night">
+ <div className="copy-sm mt-2 flex items-center gap-2 px-2 text-center text-muted-foreground">
                       <Spinner size="xs" />
                       <span>Loading more data...</span>
                     </div>

@@ -143,9 +143,9 @@ export function ResourceAvatar({
 }: ResourceAvatarProps) {
   return (
     <SparkleAvatar
-      iconColor={iconColor ?? "text-foreground dark:text-foreground-night"}
+ iconColor={iconColor ??"text-foreground"}
       backgroundColor={
-        backgroundColor ?? "bg-muted-background dark:bg-muted-background-night"
+ backgroundColor ??"bg-muted-background"
       }
       {...props}
     />
@@ -167,7 +167,7 @@ export function ResourceAvatarWithBadge({
         className={cn(
           "pointer-events-none absolute bottom-0 right-0",
           "flex items-center justify-center bg-background shadow-sm ring-1 ring-border",
-          "dark:bg-background-night dark:ring-border-night",
+"",
           badgeClasses.badge
         )}
       >

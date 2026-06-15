@@ -66,7 +66,7 @@ export function DataSourceNodeContentDetails({
           <Markdown
             content={text}
             isStreaming={false}
-            textColor="text-muted-foreground dark:text-muted-foreground-night"
+ textColor="text-muted-foreground"
             forcedTextSize="text-sm"
           />
         )}
@@ -121,7 +121,7 @@ export function FilesystemPathDetails({
       visual={MarkerPin01}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
-        <span className="text-sm font-bold text-foreground dark:text-foreground-night">
+ <span className="text-sm font-bold text-foreground">
           Location
         </span>
         <Breadcrumbs className="pl-2" items={breadcrumbItems} />

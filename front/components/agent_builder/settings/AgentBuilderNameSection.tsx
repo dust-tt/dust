@@ -198,7 +198,7 @@ export function AgentBuilderNameSection({
                   />
                 ))
               ) : (
-                <div className="flex items-center justify-center p-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="flex items-center justify-center p-4 text-sm text-muted-foreground">
                   No suggestions available
                 </div>
               )}

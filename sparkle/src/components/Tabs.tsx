@@ -19,6 +19,7 @@ const tabsTriggerVariants = cva(
     variants: {
       variant: {
         ghost:
+          "s:data-[state=inactive]:text-muted-foreground s:data-[state=inactive]:hover:text-primary-900",
         primary: "",
         highlight: "",
         "highlight-secondary": "",

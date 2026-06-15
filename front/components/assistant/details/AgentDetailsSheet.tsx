@@ -244,11 +244,11 @@ export function AgentDetailsSheet({
 
         {/* Title and edit info */}
         <div className="flex flex-col items-center gap-1">
-          <h2 className="text-xl font-semibold text-foreground dark:text-foreground-night notranslate">
+ <h2 className="text-xl font-semibold text-foreground notranslate">
             {agentConfiguration?.name ?? ""}
           </h2>
           {editedDate && (
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm text-muted-foreground">
               Last edited: {editedDate}
               {lastAuthor && ` by ${lastAuthor}`}
             </p>
@@ -321,7 +321,7 @@ export function AgentDetailsSheet({
           />
         ) : (
           <>
-            <SheetHeader className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
+ <SheetHeader className="flex flex-col gap-5 text-sm text-foreground">
               {/* eslint-disable-next-line react-hooks/static-components */}
               <DescriptionSection />
             </SheetHeader>
@@ -468,7 +468,7 @@ function TriggerEditView({
 
   return (
     <>
-      <div className="flex flex-row items-center gap-2 p-5 text-sm text-foreground dark:text-foreground-night">
+ <div className="flex flex-row items-center gap-2 p-5 text-sm text-foreground">
         <Button
           icon={ArrowLeft}
           variant="ghost"
@@ -511,7 +511,7 @@ function TriggerEditView({
         </SheetContainer>
       </FormProvider>
       {!isOnSelectionPage && (
-        <div className="flex flex-none justify-end gap-2 border-t border-border p-3 dark:border-border-night">
+ <div className="flex flex-none justify-end gap-2 border-t border-border p-3">
           <Button
             label="Cancel"
             variant="outline"

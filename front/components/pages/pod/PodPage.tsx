@@ -65,7 +65,7 @@ export function PodPage() {
       <div className="flex h-full w-full items-center justify-center">
         <div className="text-center">
           <h2 className="text-lg font-semibold">Pod not found</h2>
-          <p className="text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-muted-foreground">
             The Pod you&apos;re looking for doesn&apos;t exist or you don&apos;t
             have access to it.
           </p>
@@ -81,7 +81,7 @@ export function PodPage() {
         onValueChange={(value) => handleTabChange(value as PodTab)}
         className="flex min-h-0 flex-1 flex-col overflow-hidden pt-2"
       >
-        <div className="flex shrink-0 items-start justify-between border-b border-separator pl-14 pr-6 lg:px-6 dark:border-separator-night">
+ <div className="flex shrink-0 items-start justify-between border-b border-separator pl-14 pr-6 lg:px-6">
           <TabsList border={false}>
             <TabsTrigger
               value="conversations"

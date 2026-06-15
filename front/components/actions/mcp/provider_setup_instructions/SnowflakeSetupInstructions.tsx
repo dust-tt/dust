@@ -23,7 +23,7 @@ export function SnowflakeSetupInstructions({
     <div className="w-full pt-4">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger hideChevron>
-          <div className="flex w-full items-center gap-2 rounded-lg border border-border bg-muted/50 p-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted dark:border-border-night dark:bg-muted-night/50 dark:text-foreground-night dark:hover:bg-muted-night">
+ <div className="flex w-full items-center gap-2 rounded-lg border border-border bg-muted/50 p-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted">
             {isOpen ? (
               <ChevronDownIcon className="h-4 w-4 shrink-0" />
             ) : (
@@ -33,8 +33,8 @@ export function SnowflakeSetupInstructions({
           </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="mt-3 space-y-4 rounded-lg border border-border bg-background p-4 text-sm dark:border-border-night dark:bg-background-night">
-            <p className="text-muted-foreground dark:text-muted-foreground-night">
+ <div className="mt-3 space-y-4 rounded-lg border border-border bg-background p-4 text-sm">
+ <p className="text-muted-foreground">
               Before connecting, you need to create a Custom OAuth Security
               Integration in your Snowflake account. Run the following SQL
               commands as an <strong>ACCOUNTADMIN</strong>:
@@ -42,10 +42,10 @@ export function SnowflakeSetupInstructions({
 
             <div className="space-y-3">
               <div>
-                <p className="mb-2 font-medium text-foreground dark:text-foreground-night">
+ <p className="mb-2 font-medium text-foreground">
                   1. Create the OAuth Security Integration:
                 </p>
-                <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs dark:bg-muted-night">
+ <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs">
                   {`CREATE SECURITY INTEGRATION dust_oauth
   TYPE = OAUTH
   ENABLED = TRUE
@@ -58,19 +58,19 @@ export function SnowflakeSetupInstructions({
               </div>
 
               <div>
-                <p className="mb-2 font-medium text-foreground dark:text-foreground-night">
+ <p className="mb-2 font-medium text-foreground">
                   2. Get the Client ID and Client Secret:
                 </p>
-                <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs dark:bg-muted-night">
+ <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs">
                   {`SELECT SYSTEM$SHOW_OAUTH_CLIENT_SECRETS('DUST_OAUTH');`}
                 </pre>
-                <p className="mt-2 text-muted-foreground dark:text-muted-foreground-night">
+ <p className="mt-2 text-muted-foreground">
                   This returns a JSON object with{" "}
-                  <code className="rounded bg-muted px-1 dark:bg-muted-night">
+ <code className="rounded bg-muted px-1">
                     OAUTH_CLIENT_ID
                   </code>{" "}
                   and{" "}
-                  <code className="rounded bg-muted px-1 dark:bg-muted-night">
+ <code className="rounded bg-muted px-1">
                     OAUTH_CLIENT_SECRET
                   </code>
                   . Copy these values into the form below.
@@ -78,16 +78,16 @@ export function SnowflakeSetupInstructions({
               </div>
 
               <div>
-                <p className="mb-2 font-medium text-foreground dark:text-foreground-night">
+ <p className="mb-2 font-medium text-foreground">
                   3. (Optional) Grant the integration to specific roles:
                 </p>
-                <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs dark:bg-muted-night">
+ <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs">
                   {`GRANT USAGE ON INTEGRATION dust_oauth TO ROLE <role_name>;`}
                 </pre>
               </div>
             </div>
 
-            <p className="text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-muted-foreground">
               <strong>Note:</strong> The warehouse you specify below will be
               used for all users.
               {useCase === "platform_actions"

@@ -48,7 +48,7 @@ export function AgentActionSummary({
           Summary
         </span>
       </div>
-      <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-sm text-muted-foreground">
         {`${statusText} ${timeString}, ${toolsText}${stepsText}.`}
       </div>
     </div>

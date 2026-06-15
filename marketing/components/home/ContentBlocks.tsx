@@ -179,7 +179,7 @@ export const HeaderContentBlock = ({
       {uptitle && (
         <P
           size="lg"
-          className="text-muted-foreground dark:text-muted-foreground-night"
+ className="text-muted-foreground"
         >
           {uptitle}
         </P>

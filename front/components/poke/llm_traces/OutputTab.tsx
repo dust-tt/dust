@@ -14,7 +14,7 @@ interface OutputTabProps {
 export function OutputTab({ output }: OutputTabProps) {
   if (!output) {
     return (
-      <p className="pt-4 text-sm italic text-muted-foreground dark:text-muted-foreground-night">
+ <p className="pt-4 text-sm italic text-muted-foreground">
         No output available
       </p>
     );
@@ -27,7 +27,7 @@ export function OutputTab({ output }: OutputTabProps) {
 
   if (!hasContent) {
     return (
-      <p className="pt-4 text-sm italic text-muted-foreground dark:text-muted-foreground-night">
+ <p className="pt-4 text-sm italic text-muted-foreground">
         No output content
       </p>
     );

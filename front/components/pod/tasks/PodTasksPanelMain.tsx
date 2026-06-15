@@ -38,7 +38,7 @@ export function PodTasksPanelMain() {
           ))}
 
           {filteredTasks.length === 0 && (
-            <p className="text-base italic text-faint dark:text-faint-night">
+ <p className="text-base italic text-faint">
               {hasActiveLocalSearch && assigneeScopedTasks.length > 0
                 ? "No tasks match your filter."
                 : isTasksError

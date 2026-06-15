@@ -34,7 +34,7 @@ export function MCPListToolsActionDetails({
       visual={Zap}
     >
       {displayContext !== "conversation" && (
-        <div className="pl-6 pt-4 text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+ <div className="pl-6 pt-4 text-sm font-normal text-muted-foreground">
           <div className="flex flex-wrap gap-1">
             {results.map((result) => {
               const mcpServerView = mcpServerViews.find(

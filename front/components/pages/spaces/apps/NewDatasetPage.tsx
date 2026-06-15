@@ -121,7 +121,7 @@ export function NewDatasetPage() {
   return (
     <div className="mt-8 flex flex-col">
       <div className="flex flex-1">
-        <div className="space-y-6 divide-y divide-gray-200 dark:divide-gray-200-night">
+ <div className="space-y-6 divide-y divide-gray-200">
           <DatasetView
             readOnly={false}
             datasets={datasets}

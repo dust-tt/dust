@@ -47,7 +47,7 @@ function AppContentInnerWrapper({
 }: AppContentInnerWrapperProps) {
   if (isMobile) {
     return (
-      <div className="bg-panel-background dark:bg-panel-background-night">
+ <div className="bg-panel-background">
         {children}
       </div>
     );
@@ -56,7 +56,7 @@ function AppContentInnerWrapper({
   return (
     <div
       className={cn(
-        "my-2 mr-2 rounded-xl flex-1 bg-panel-background dark:bg-panel-background-night border border-border dark:border-border-night overflow-hidden h-panel",
+"my-2 mr-2 rounded-xl flex-1 bg-panel-background border border-border overflow-hidden h-panel",
         !isNavigationBarOpen && !isFullScreen && "ml-5",
         isFullScreen && "ml-2"
       )}
@@ -118,7 +118,7 @@ export function AppContentLayout({ children }: AppContentLayoutProps) {
           className={cn(
             "relative flex h-full w-full flex-1 flex-col overflow-x-hidden",
             "bg-app-background text-foreground",
-            "dark:bg-app-background-night dark:text-foreground-night"
+""
           )}
         >
           <AppContentInnerWrapper

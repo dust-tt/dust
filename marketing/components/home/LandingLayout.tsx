@@ -122,7 +122,6 @@ export default function LandingLayout({
   useEffect(() => {
     document.documentElement.classList.remove("dark");
     document.documentElement.classList.remove("s-dark");
-    document.body.classList.remove("bg-background-night");
   }, []);
 
   useEffect(() => {

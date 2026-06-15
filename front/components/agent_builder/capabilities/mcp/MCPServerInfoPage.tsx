@@ -21,7 +21,7 @@ export function MCPServerInfoPage({
       <div className="space-y-4">
         <div className="space-y-3">
           <div className="flex items-center gap-3">
-            <h3 className="text-lg font-semibold text-foreground dark:text-foreground-night">
+ <h3 className="text-lg font-semibold text-foreground">
               Available Tools
             </h3>
             <Chip
@@ -33,7 +33,7 @@ export function MCPServerInfoPage({
 
           {nbTools > 0 ? (
             <div className="flex flex-col gap-4">
-              <span className="text-md text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-md text-muted-foreground">
                 {nbTools > 1 ? "These tools" : "This tool"}&nbsp;will be
                 available to your agent during conversations and can be
                 configured with different permission levels:

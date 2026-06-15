@@ -19,8 +19,8 @@ export function ConversationSidebarStatusDot({
     <div
       className={cn(
         "heading-xs m-1 flex h-2 w-2 shrink-0 items-center justify-center rounded-full",
-        status === "unread" && "bg-highlight-500 dark:bg-highlight-500-night",
-        status === "blocked" && "bg-golden-400 dark:bg-golden-400-night",
+ status ==="unread" &&"bg-highlight-500",
+ status ==="blocked" &&"bg-golden-400",
         className
       )}
       aria-hidden

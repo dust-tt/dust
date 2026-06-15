@@ -101,7 +101,7 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
           <DataTable.CellContent>
             <div className="flex items-center gap-2">
               <Avatar size="xs" visual={row.original.agentPictureUrl} />
-              <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
+ <div className="truncate text-sm font-semibold text-foreground">
                 {row.original.agentName}
               </div>
               {row.original.status !== "enabled" && (
@@ -128,7 +128,7 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
             <div
               className={classNames(
                 "flex flex-row items-center gap-1 py-3",
-                "text-muted-foreground dark:text-muted-foreground-night"
+"text-muted-foreground"
               )}
             >
               <Avatar
@@ -202,11 +202,11 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
           sorting={[{ id: "agentName", desc: false }]}
         />
       ) : triggers.length === 0 ? (
-        <div className="py-8 text-center text-muted-foreground dark:text-muted-foreground-night">
+ <div className="py-8 text-center text-muted-foreground">
           You haven't created any triggers yet.
         </div>
       ) : (
-        <div className="py-8 text-center text-muted-foreground dark:text-muted-foreground-night">
+ <div className="py-8 text-center text-muted-foreground">
           No triggers match your search criteria.
         </div>
       )}

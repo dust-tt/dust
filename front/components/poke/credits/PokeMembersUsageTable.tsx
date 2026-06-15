@@ -39,7 +39,7 @@ function MemberSortHeader({ direction, onToggle }: MemberSortHeaderProps) {
     <button
       type="button"
       onClick={onToggle}
-      className="flex items-center gap-1 hover:text-foreground dark:hover:text-foreground-night"
+ className="flex items-center gap-1 hover:text-foreground"
     >
       Member
       <Icon visual={direction === "desc" ? ArrowDown : ArrowUp} size="xs" />
@@ -118,7 +118,7 @@ function makeColumns({
           <div className="flex flex-col">
             <span className="font-medium">{name}</span>
             {email && email !== name && (
-              <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-xs text-muted-foreground">
                 {email}
               </span>
             )}
@@ -167,7 +167,7 @@ function makeColumns({
                 {sourceLabel}
               </LinkWrapper>
             ) : (
-              <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-xs text-muted-foreground">
                 {sourceLabel}
               </span>
             )}
@@ -317,8 +317,8 @@ export function PokeMembersUsageTable({ owner }: PokeMembersUsageTableProps) {
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border p-4 dark:border-border-night">
-      <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+ <div className="flex flex-col gap-2 rounded-lg border border-border p-4">
+ <span className="text-sm font-medium text-foreground">
         Members credit states
       </span>
       <PokeDataTable

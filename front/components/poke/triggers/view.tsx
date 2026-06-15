@@ -173,7 +173,7 @@ export function ViewTriggerTable({
           {trigger.configuration.filter ? (
             <TriggerFilterRenderer data={trigger.configuration.filter} />
           ) : (
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm text-muted-foreground">
               No filter
             </p>
           )}

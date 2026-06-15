@@ -53,9 +53,9 @@ export function EnumSelect({
             role="combobox"
             className={cn(
               "w-auto justify-between border-border-dark bg-background " +
-                "dark:border-border-darker-night dark:bg-background-night",
+"",
               !values?.length &&
-                "text-muted-foreground dark:text-muted-foreground-night"
+"text-muted-foreground"
             )}
           >
             {title}
@@ -110,15 +110,15 @@ export function EnumSelect({
                     <div className="flex w-full items-center gap-2">
                       {multiple ? (
                         isSelected ? (
-                          <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-600-night" />
+ <CheckCircle className="h-4 w-4 text-green-600" />
                         ) : (
-                          <Circle className="h-4 w-4 text-gray-400 dark:text-gray-400-night" />
+ <Circle className="h-4 w-4 text-gray-400" />
                         )
                       ) : null}
                       <span
                         className={cn(
                           option.checked && "font-medium",
-                          "text-gray-900 dark:text-gray-900-night"
+"text-gray-900"
                         )}
                       >
                         {option.label}

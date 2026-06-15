@@ -54,7 +54,7 @@ export function AshbyJobPostingUpdateDetails({
 
   return (
     <div className="flex flex-col gap-3 pt-2">
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm text-muted-foreground">
         This will update the job posting on Ashby. Changes are applied
         immediately and visible to candidates.
       </p>
@@ -70,10 +70,10 @@ export function AshbyJobPostingUpdateDetails({
 
       {fields.map(({ label, value }) => (
         <div key={label}>
-          <div className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-xs font-medium text-muted-foreground">
             {label}
           </div>
-          <div className="mt-0.5 text-sm text-foreground dark:text-foreground-night">
+ <div className="mt-0.5 text-sm text-foreground">
             {value}
           </div>
         </div>
@@ -85,7 +85,7 @@ export function AshbyJobPostingUpdateDetails({
             <span className="text-sm font-medium">New description</span>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <div className="max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-muted px-3 text-sm dark:bg-muted-night">
+ <div className="max-h-80 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-muted px-3 text-sm">
               {descriptionHtml.replace(/<(?!\/)/g, "\n<")}
             </div>
           </CollapsibleContent>
@@ -101,19 +101,19 @@ export function AshbyReferralDetails({
 }: AshbyReferralDetailsProps) {
   return (
     <div className="flex flex-col gap-3 pt-2">
-      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm text-muted-foreground">
         {/* Safe to show: this component only renders for users authorized to
             respond (canCurrentUserRespond guard in parent). */}
         <>
           The referral will be credited to&nbsp;
-          <span className="font-medium text-foreground dark:text-foreground-night">
+ <span className="font-medium text-foreground">
             {userEmail}
           </span>
           .
         </>
       </p>
 
-      <div className="divide-y divide-separator overflow-hidden rounded-xl bg-background dark:divide-separator-night dark:bg-background-night">
+ <div className="divide-y divide-separator overflow-hidden rounded-xl bg-background">
         {fieldSubmissions.map(({ title, value }) => {
           const displayValue = formatFieldValue(value);
 
@@ -123,10 +123,10 @@ export function AshbyReferralDetails({
 
           return (
             <div key={title} className="px-3 py-2">
-              <div className="text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-xs font-medium text-muted-foreground">
                 {title}
               </div>
-              <div className="mt-0.5 text-sm text-foreground dark:text-foreground-night">
+ <div className="mt-0.5 text-sm text-foreground">
                 {displayValue}
               </div>
             </div>

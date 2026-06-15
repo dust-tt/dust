@@ -229,7 +229,7 @@ export function InviteEmailButtonWithModal({
                 showErrorLabel
               />
               <div className="flex items-center gap-2">
-                <div className="heading-base text-foreground dark:text-foreground-night">
+ <div className="heading-base text-foreground">
                   Role:
                 </div>
                 <RoleDropDown
@@ -237,7 +237,7 @@ export function InviteEmailButtonWithModal({
                   onChange={setInvitationRole}
                 />
               </div>
-              <div className="text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-muted-foreground">
                 {ROLES_DATA[invitationRole]["description"]}
               </div>
             </div>

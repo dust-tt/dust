@@ -47,7 +47,7 @@ export function AttachmentCitation({
           <Icon visual={attachmentCitation.spaceIcon} />
           <p>{attachmentCitation.spaceName}</p>
         </div>
-        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-sm text-muted-foreground">
           {attachmentCitation.path}
         </div>
       </div>

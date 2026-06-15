@@ -142,7 +142,7 @@ const AgentBuilderCustomUpload = forwardRef<
         className={classNames(
           "my-3 flex items-center justify-center rounded-xl",
           !src
-            ? "min-h-64 bg-muted-background dark:bg-muted-background-night"
+ ?"min-h-64 bg-muted-background"
             : ""
         )}
       >

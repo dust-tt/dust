@@ -51,7 +51,7 @@ export const createConnectorOptionsPdfEnabled = (description: string) => {
           }
         >
           <ContextItem.Description>
-            <div className="text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-muted-foreground">
               {description}
             </div>
           </ContextItem.Description>

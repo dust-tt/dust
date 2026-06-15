@@ -125,7 +125,7 @@ export function SecretSection({
       error={fieldState.error?.message}
     >
       <div className="flex h-full flex-col gap-3">
-        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-sm text-muted-foreground">
           {customDescription ?? (
             <>
               The agent will use the selected secret to authenticate with the
@@ -138,7 +138,7 @@ export function SecretSection({
           <Card className="p-4">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <KeyIcon className="h-5 w-5 text-muted-foreground dark:text-muted-foreground-night" />
+ <KeyIcon className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <div className="text-sm font-medium">{field.value}</div>
                 </div>
@@ -156,8 +156,8 @@ export function SecretSection({
           <>
             {availableSecrets.length === 0 ? (
               <div className="flex h-40 flex-col items-center justify-center gap-3 text-center">
-                <KeyIcon className="h-8 w-8 text-muted-foreground dark:text-muted-foreground-night" />
-                <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <KeyIcon className="h-8 w-8 text-muted-foreground" />
+ <div className="text-sm text-muted-foreground">
                   No secrets found. Create a secret in your workspace settings
                   first.
                 </div>

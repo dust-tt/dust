@@ -255,13 +255,13 @@ export function DatasourceRetrievalTreemapChart({
       );
     } else if (isDatasourceRetrievalDocumentsError) {
       dialogBody = (
-        <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
           Failed to load document breakdown.
         </div>
       );
     } else if (!zoomTreemapData || zoomTreemapData.length === 0) {
       dialogBody = (
-        <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="flex h-full w-full items-center justify-center text-sm text-muted-foreground">
           No document data for this selection.
         </div>
       );

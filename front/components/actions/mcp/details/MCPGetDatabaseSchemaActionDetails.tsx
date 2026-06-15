@@ -68,7 +68,7 @@ function DatabaseSchemaSection({
   if (displayContext === "sidebar-single-action") {
     return (
       <div>
-        <span className="font-medium text-foreground dark:text-foreground-night">
+ <span className="font-medium text-foreground">
           Database Schema
         </span>
         <div className="py-2">
@@ -89,7 +89,7 @@ function DatabaseSchemaSection({
   return (
     <Collapsible defaultOpen={false}>
       <CollapsibleTrigger>
-        <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+ <span className="text-sm font-semibold text-foreground">
           Database Schema
         </span>
       </CollapsibleTrigger>
@@ -120,7 +120,7 @@ function ExampleRowsSection({
   if (displayContext === "sidebar-single-action") {
     return (
       <div>
-        <span className="font-medium text-foreground dark:text-foreground-night">
+ <span className="font-medium text-foreground">
           Sample Data
         </span>
         <div className="py-2">
@@ -141,7 +141,7 @@ function ExampleRowsSection({
   return (
     <Collapsible defaultOpen={false}>
       <CollapsibleTrigger>
-        <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+ <span className="text-sm font-semibold text-foreground">
           Sample Data
         </span>
       </CollapsibleTrigger>

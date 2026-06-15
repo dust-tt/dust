@@ -328,7 +328,7 @@ function MCPRunAgentActionDetailsDisplay({
     >
       {displayContext === "conversation" ? (
         query && (
-          <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-sm font-normal text-muted-foreground">
             {query}
           </div>
         )
@@ -336,13 +336,13 @@ function MCPRunAgentActionDetailsDisplay({
         <div className="flex flex-col gap-4 pl-6 pt-4">
           <div className="flex flex-col gap-4">
             {query && childAgent && (
-              <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-sm font-normal text-muted-foreground">
                 <ContentMessage title="Query" variant="primary" size="lg">
                   <Markdown
                     content={query}
                     isStreaming={false}
                     forcedTextSize="text-sm"
-                    textColor="text-muted-foreground dark:text-muted-foreground-night"
+ textColor="text-muted-foreground"
                     isLastMessage={false}
                     additionalMarkdownPlugins={additionalMarkdownPlugins}
                     additionalMarkdownComponents={additionalMarkdownComponents}
@@ -352,7 +352,7 @@ function MCPRunAgentActionDetailsDisplay({
             )}
 
             {addedMCPServerViewIds.length > 0 && (
-              <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-sm font-normal text-muted-foreground">
                 <ContentMessage title="Added Tools" variant="primary" size="lg">
                   {addedMCPServerViewIds.map((id) => {
                     const mcpServerView = mcpServerViews.find(
@@ -374,7 +374,7 @@ function MCPRunAgentActionDetailsDisplay({
               </div>
             )}
             {handoverResource && (
-              <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-sm font-normal text-muted-foreground">
                 <ContentMessage title="Handoff" variant="primary" size="lg">
                   <Markdown
                     content={handoverResource.resource.text}
@@ -391,7 +391,7 @@ function MCPRunAgentActionDetailsDisplay({
                 response) && (
                 <>
                   <div className="flex items-center justify-between py-2">
-                    <span className="font-medium text-foreground dark:text-foreground-night">
+ <span className="font-medium text-foreground">
                       @{childAgent.name}'s Answer
                     </span>
                     {conversationUrl && (

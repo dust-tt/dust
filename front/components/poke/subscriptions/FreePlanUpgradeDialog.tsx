@@ -111,7 +111,7 @@ export default function FreePlanUpgradeDialog({
       <DialogTrigger asChild>
         <Button variant="outline" label="🙌🏻 Switch to a Free Plan" />
       </DialogTrigger>
-      <DialogContent className="bg-primary-50 dark:bg-primary-50-night sm:max-w-[600px]">
+ <DialogContent className="bg-primary-50 sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Upgrade {owner.name} to a Free Plan.</DialogTitle>
           <DialogDescription>

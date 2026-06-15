@@ -25,13 +25,13 @@ export default function CustomErrorPage({
             <Icon
               visual={AlertCircle}
               size="lg"
-              className="dark:text-golder-400-night text-golden-400"
+ className="text-golden-400"
             />
           </div>
-          <p className="heading-xl leading-7 text-foreground dark:text-foreground-night">
+ <p className="heading-xl leading-7 text-foreground">
             {title}
           </p>
-          <p className="copy-sm leading-tight text-muted-foreground dark:text-muted-foreground-night">
+ <p className="copy-sm leading-tight text-muted-foreground">
             {description}
           </p>
         </div>

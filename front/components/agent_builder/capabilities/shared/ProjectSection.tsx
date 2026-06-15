@@ -130,7 +130,7 @@ export function ProjectSection() {
       error={fieldState.error?.message}
     >
       <div className="flex h-full flex-col gap-3">
-        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-sm text-muted-foreground">
           Choose the Pod that the agent can access. The agent will have access
           to Pod metadata and context from the selected Pod.
         </div>
@@ -178,7 +178,7 @@ export function ProjectSection() {
                   );
                 })
               ) : (
-                <div className="px-3 py-4 text-center text-xs italic text-muted-foreground dark:text-muted-foreground-night">
+ <div className="px-3 py-4 text-center text-xs italic text-muted-foreground">
                   {searchQuery ? "No matches" : "No Pods"}
                 </div>
               )}

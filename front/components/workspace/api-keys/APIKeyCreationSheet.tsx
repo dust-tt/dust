@@ -51,7 +51,7 @@ export const APIKeyCreationSheet = ({
         </SheetHeader>
         <SheetContainer>
           <div className="mt-4">
-            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm text-muted-foreground">
               Your API key will remain visible for 10 minutes only. You can use
               it to authenticate with the Dust API.
             </p>
@@ -59,7 +59,7 @@ export const APIKeyCreationSheet = ({
             <div className="mt-4">
               <Page.H variant="h5">Name</Page.H>
               <Page.Horizontal align="center">
-                <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
+ <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono">
                   {latestKey?.name}
                 </pre>
                 <IconButton
@@ -76,7 +76,7 @@ export const APIKeyCreationSheet = ({
             <div className="mt-4">
               <Page.H variant="h5">Domain</Page.H>
               <Page.Horizontal align="center">
-                <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
+ <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono">
                   {domain}
                 </pre>
                 <IconButton
@@ -91,7 +91,7 @@ export const APIKeyCreationSheet = ({
             <div className="mt-4">
               <Page.H variant="h5">Workspace ID</Page.H>
               <Page.Horizontal align="center">
-                <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
+ <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono">
                   {workspace.sId}
                 </pre>
                 <IconButton
@@ -106,7 +106,7 @@ export const APIKeyCreationSheet = ({
             <div className="mt-4">
               <Page.H variant="h5">API Key</Page.H>
               <Page.Horizontal align="center">
-                <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono dark:bg-muted-background-night">
+ <pre className="dd-privacy-mask flex-grow overflow-x-auto rounded bg-muted-background p-2 font-mono">
                   {latestKey?.secret}
                 </pre>
                 <IconButton

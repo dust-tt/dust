@@ -125,14 +125,14 @@ export function WorkspaceTopAgentsTable({
     }
     if (isTopAgentsError) {
       return (
-        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-sm text-muted-foreground">
           Failed to load top agents.
         </div>
       );
     }
     if (rows.length === 0) {
       return (
-        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-sm text-muted-foreground">
           No agent activity for this selection.
         </div>
       );
@@ -147,13 +147,13 @@ export function WorkspaceTopAgentsTable({
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4 dark:border-border-night">
+ <div className="rounded-lg border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <h3 className="text-base font-medium text-foreground dark:text-foreground-night">
+ <h3 className="text-base font-medium text-foreground">
             Top agents
           </h3>
-          <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-xs text-muted-foreground">
             Top 100 agents with the most messages over the last {period} days.
           </p>
         </div>

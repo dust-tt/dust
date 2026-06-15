@@ -116,22 +116,22 @@ interface PokeNavItemRowProps {
 
 function PokeNavItemRow({ item, onRemove }: PokeNavItemRowProps) {
   return (
-    <div className="group flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800">
+ <div className="group flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-gray-100">
       <Chip size="xs" color={getFavoriteChipColor(item.data.type)}>
         {item.data.type}
       </Chip>
       <LinkWrapper href={item.url} className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-sm font-medium text-foreground dark:text-foreground-night">
+ <span className="truncate text-sm font-medium text-foreground">
           {item.data.name}
         </span>
         {item.data.subtitle && (
-          <span className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="truncate text-xs text-muted-foreground">
             {item.data.subtitle}
           </span>
         )}
       </LinkWrapper>
       {item.data.sId && (
-        <span className="shrink-0 font-mono text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="shrink-0 font-mono text-xs text-muted-foreground">
           {item.data.sId}
         </span>
       )}
@@ -160,7 +160,7 @@ function PokeNavItemGroups({ items, onRemove }: PokeNavItemGroupsProps) {
     <div className="flex flex-col gap-4">
       {groupByType(items).map((group) => (
         <div key={group.type}>
-          <h3 className="mb-1 px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground dark:text-muted-foreground-night">
+ <h3 className="mb-1 px-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {group.type}
           </h3>
           <div className="flex flex-col">
@@ -187,18 +187,18 @@ export function PokeFavoritesList() {
   }
 
   return (
-    <div className="mb-6 rounded-xl border bg-white p-4 dark:border-border-night dark:bg-background-night">
+ <div className="mb-6 rounded-xl border bg-white p-4">
       <Collapsible defaultOpen={false}>
         <CollapsibleTrigger>
           <div className="flex items-center gap-2">
             <Icon
               visual={Star01}
               size="sm"
-              className="text-muted-foreground dark:text-muted-foreground-night"
+ className="text-muted-foreground"
             />
             <h2 className="text-lg font-semibold">Favorites</h2>
             {favorites.length > 0 && (
-              <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-sm text-muted-foreground">
                 {favorites.length}
               </span>
             )}
@@ -207,7 +207,7 @@ export function PokeFavoritesList() {
         <CollapsibleContent>
           <div className="mt-3">
             {favorites.length === 0 ? (
-              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm text-muted-foreground">
                 No favorites yet. Press{" "}
                 <kbd className="rounded border px-1.5 py-0.5 font-mono text-xs">
                   ⌘D
@@ -244,18 +244,18 @@ function PokeNavCommandItem({
       href={item.url}
       onClick={onNavigate}
     >
-      <div className="flex w-full items-center gap-3 px-2 text-foreground dark:text-foreground-night">
+ <div className="flex w-full items-center gap-3 px-2 text-foreground">
         <Chip size="xs" color={getFavoriteChipColor(item.data.type)}>
           {item.data.type}
         </Chip>
         <span className="text-sm font-medium">{item.data.name}</span>
         {item.data.subtitle && (
-          <span className="truncate text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="truncate text-xs text-muted-foreground">
             {item.data.subtitle}
           </span>
         )}
         {item.data.sId && (
-          <span className="font-mono text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="font-mono text-xs text-muted-foreground">
             {item.data.sId}
           </span>
         )}

@@ -292,7 +292,7 @@ export function ShareFrameSheet({
                   </ContentMessage>
                 )}
                 <fieldset className="flex flex-col gap-2 border-none p-0">
-                  <legend className="text-sm font-semibold text-foreground dark:text-foreground-night mb-2">
+ <legend className="text-sm font-semibold text-foreground mb-2">
                     Who has access
                   </legend>
                   <div className="flex flex-col gap-1">
@@ -305,8 +305,8 @@ export function ShareFrameSheet({
                           htmlFor={inputId}
                           className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors ${
                             isSelected
-                              ? "border-highlight-300 bg-muted-background dark:border-highlight-300-night dark:bg-muted-background-night"
-                              : "border-transparent hover:bg-muted-background/50 dark:hover:bg-muted-background-night/50"
+ ?"border-highlight-300 bg-muted-background"
+ :"border-transparent hover:bg-muted-background/50"
                           }`}
                         >
                           <input
@@ -330,13 +330,13 @@ export function ShareFrameSheet({
                           <Icon
                             visual={option.icon}
                             size="sm"
-                            className="shrink-0 text-muted-foreground dark:text-muted-foreground-night"
+ className="shrink-0 text-muted-foreground"
                           />
                           <div className="flex flex-col">
-                            <span className="text-sm font-medium text-primary dark:text-primary-night">
+ <span className="text-sm font-medium text-primary">
                               {option.label}
                             </span>
-                            <span className="copy-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="copy-xs text-muted-foreground">
                               {option.description}
                             </span>
                           </div>
@@ -379,7 +379,7 @@ export function ShareFrameSheet({
                         <Spinner size="sm" />
                       </div>
                     ) : grants.length === 0 ? (
-                      <p className="py-2 text-center text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="py-2 text-center text-sm text-muted-foreground">
                         No one has been invited yet.
                       </p>
                     ) : (
@@ -393,7 +393,7 @@ export function ShareFrameSheet({
                         ))}
                         {blockedGrants.length > 0 && (
                           <>
-                            <p className="pb-2 pt-6 text-xs font-medium text-warning-500 dark:text-warning-500-night">
+ <p className="pb-2 pt-6 text-xs font-medium text-warning-500">
                               No longer have access since they are not in your
                               workspace
                             </p>
@@ -435,25 +435,25 @@ function ViewerFileLine({ viewerFile }: { viewerFile: ShareFrameViewerFile }) {
   const FileIcon = getFileTypeIcon(viewerFile.contentType, viewerFile.name);
 
   return (
-    <li className="flex min-w-0 items-center gap-1.5 py-0.5 text-xs text-foreground dark:text-foreground-night">
+ <li className="flex min-w-0 items-center gap-1.5 py-0.5 text-xs text-foreground">
       <Icon
         visual={FileIcon}
         size="xs"
-        className="shrink-0 text-muted-foreground dark:text-muted-foreground-night"
+ className="shrink-0 text-muted-foreground"
       />
       <div className="flex min-w-0 items-center gap-1 truncate">
         <span className="shrink-0 font-medium">{viewerFile.name}</span>
-        <span className="shrink-0 text-muted-foreground dark:text-muted-foreground-night">
+ <span className="shrink-0 text-muted-foreground">
           from
         </span>
         <Icon
           visual={SourceIcon}
           size="xs"
-          className="shrink-0 text-muted-foreground dark:text-muted-foreground-night"
+ className="shrink-0 text-muted-foreground"
         />
         <span className="truncate">{viewerFile.sourceName}</span>
         {viewerFile.pathInSource ? (
-          <span className="truncate text-muted-foreground dark:text-muted-foreground-night">{`in /${viewerFile.pathInSource}`}</span>
+ <span className="truncate text-muted-foreground">{`in /${viewerFile.pathInSource}`}</span>
         ) : null}
       </div>
     </li>
@@ -471,10 +471,10 @@ function ViewerFilesSection({
 
   return (
     <fieldset className="flex flex-col gap-2 border-none p-0">
-      <legend className="text-sm font-semibold text-foreground dark:text-foreground-night">
+ <legend className="text-sm font-semibold text-foreground">
         Files used
       </legend>
-      <p className="copy-xs text-muted-foreground dark:text-muted-foreground-night">
+ <p className="copy-xs text-muted-foreground">
         When shared, viewers can only access these files—not the rest of the
         conversation or pod.
       </p>
@@ -533,7 +533,7 @@ function GrantRow({ grant, onRevoke, blocked = false }: GrantRowProps) {
       hoverAction
       className={blocked ? "opacity-60" : undefined}
     >
-      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-xs text-muted-foreground">
         {invitedLabel} · {viewedLabel}
       </span>
     </ContextItem>

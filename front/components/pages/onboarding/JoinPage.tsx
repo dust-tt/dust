@@ -57,15 +57,15 @@ export function JoinPage() {
               <Icon
                 visual={AlertCircle}
                 size="lg"
-                className="dark:text-warning-400-night text-warning-400"
+ className="text-warning-400"
               />
-              <p className="heading-xl leading-7 text-foreground dark:text-foreground-night">
+ <p className="heading-xl leading-7 text-foreground">
                 Something went wrong
               </p>
-              <p className="copy-sm leading-tight text-muted-foreground dark:text-muted-foreground-night">
+ <p className="copy-sm leading-tight text-muted-foreground">
                 We couldn't load the invitation. Please try again.
               </p>
-              <p className="copy-xs font-mono text-muted-foreground dark:text-muted-foreground-night">
+ <p className="copy-xs font-mono text-muted-foreground">
                 {errorMessage}
               </p>
             </div>

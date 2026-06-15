@@ -86,7 +86,7 @@ export function ToolsConfigTable({ mcpServerView }: ToolsConfigTableProps) {
     <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
       <h2 className="text-md pb-4 font-bold">Tools configuration</h2>
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm text-muted-foreground">
           This server exposes no tools.
         </p>
       ) : (
@@ -107,7 +107,7 @@ export function ToolsConfigTable({ mcpServerView }: ToolsConfigTableProps) {
                         className={cn(
                           "font-medium",
                           !row.enabled &&
-                            "text-muted-foreground line-through dark:text-muted-foreground-night"
+"text-muted-foreground line-through"
                         )}
                       >
                         {asDisplayName(row.name)}
@@ -130,7 +130,7 @@ export function ToolsConfigTable({ mcpServerView }: ToolsConfigTableProps) {
                     {row.description && (
                       <span
                         className={cn(
-                          "text-sm text-muted-foreground dark:text-muted-foreground-night",
+"text-sm text-muted-foreground",
                           !row.enabled && "line-through"
                         )}
                       >

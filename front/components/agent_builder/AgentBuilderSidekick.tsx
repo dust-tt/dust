@@ -33,7 +33,7 @@ function EmptyState({ message, description }: EmptyStateProps) {
         <div className="mb-2 text-lg font-medium text-foreground">
           {message}
         </div>
-        <div className="max-w-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="max-w-sm text-muted-foreground">
           {description}
         </div>
       </div>
@@ -50,7 +50,7 @@ function LoadingState({ message }: LoadingStateProps) {
     <div className="flex h-full min-h-0 items-center justify-center">
       <div className="flex items-center gap-3">
         <Spinner />
-        <span className="text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-muted-foreground">
           {message}
         </span>
       </div>

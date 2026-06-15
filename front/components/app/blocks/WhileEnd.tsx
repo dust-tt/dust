@@ -109,7 +109,7 @@ export function While({
                 placeholder=""
                 onChange={(e) => handleConditionCodeChange(e.target.value)}
                 padding={15}
-                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
+ className="rounded-lg bg-muted-background"
                 style={{
                   fontSize: 12,
                   fontFamily:

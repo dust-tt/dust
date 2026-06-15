@@ -96,7 +96,7 @@ export function SpaceSelector({
                         className={cn(
                           "inline-block flex-shrink-0 align-middle",
                           isDisabled
-                            ? "text-muted-foreground dark:text-muted-foreground-night"
+ ?"text-muted-foreground"
                             : ""
                         )}
                       />
@@ -106,8 +106,8 @@ export function SpaceSelector({
                           "font-bold",
                           "align-middle",
                           isDisabled
-                            ? "text-muted-foreground dark:text-muted-foreground-night"
-                            : "text-foreground dark:text-foreground-night"
+ ?"text-muted-foreground"
+ :"text-foreground"
                         )}
                       >
                         {getSpaceName(space)}

@@ -70,7 +70,7 @@ export function PublicInteractiveContentContainer({
 
   return (
     <div className="flex w-full flex-col">
-      <div className="flex-1 overflow-hidden bg-gray-50 dark:bg-gray-900">
+ <div className="flex-1 overflow-hidden bg-gray-50">
         {renderContent()}
       </div>
     </div>

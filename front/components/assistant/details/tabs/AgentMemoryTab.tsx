@@ -125,7 +125,7 @@ export function AgentMemoryTab({
         ) : (
           <>
             {memories.length === 0 ? (
-              <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-sm text-muted-foreground">
                 No memories yet.
               </div>
             ) : (
@@ -146,11 +146,11 @@ export function AgentMemoryTab({
                     }
                   >
                     <div className="flex flex-col gap-2">
-                      <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-xs text-muted-foreground">
                         {timeAgoFrom(new Date(memory.lastUpdated).getTime())}{" "}
                         ago
                       </div>
-                      <div className="text-sm text-foreground dark:text-foreground-night">
+ <div className="text-sm text-foreground">
                         {memory.content}
                       </div>
                     </div>

@@ -564,8 +564,8 @@ export function DataSourceViewsSelector({
           return (
             <div
               className={cn(
-                "m-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-background dark:hover:bg-background-night",
-                selected && "bg-background dark:bg-background-night"
+"m-1 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 hover:bg-background",
+ selected &&"bg-background"
               )}
               onClick={() => {
                 setSearchResult(item);

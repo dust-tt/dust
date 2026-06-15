@@ -260,7 +260,7 @@ export function AssistantKnowledgeSection({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="heading-lg text-foreground dark:text-foreground-night">
+ <div className="heading-lg text-foreground">
         Knowledge
       </div>
       {hasDocuments && hasTables ? (

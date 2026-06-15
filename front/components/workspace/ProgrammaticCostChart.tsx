@@ -593,7 +593,7 @@ export function BaseProgrammaticCostChart({
             tooltip="Previous period"
           />
 
-          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-sm text-muted-foreground">
             {periodLabel}
           </span>
           {canGoNext && (
@@ -738,12 +738,12 @@ export function BaseProgrammaticCostChart({
       >
         <CartesianGrid
           vertical={false}
-          className="stroke-border dark:stroke-border-night"
+ className="stroke-border"
         />
         <XAxis
           dataKey="timestamp"
           type="category"
-          className="text-xs text-muted-foreground dark:text-muted-foreground-night"
+ className="text-xs text-muted-foreground"
           tickLine={true}
           axisLine={false}
           tickMargin={8}
@@ -757,7 +757,7 @@ export function BaseProgrammaticCostChart({
           }
         />
         <YAxis
-          className="text-xs text-muted-foreground dark:text-muted-foreground-night"
+ className="text-xs text-muted-foreground"
           tickLine={false}
           axisLine={false}
           tickMargin={8}

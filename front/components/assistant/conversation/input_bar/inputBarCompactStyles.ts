@@ -1,5 +1,5 @@
 export const INPUT_BAR_COMPACT_PILL_CLASSES =
-  "min-w-0 w-full rounded-full border border-border/30 bg-muted-background/60 px-1 py-0.5 backdrop-blur-sm dark:border-border-night/30 dark:bg-muted-background-night/60";
+"min-w-0 w-full rounded-full border border-border/30 bg-muted-background/60 px-1 py-0.5 backdrop-blur-sm";
 
 export const INPUT_BAR_COMPACT_PILL_INNER_CLASSES =
   "flex h-8 min-w-0 flex-row items-center gap-1";

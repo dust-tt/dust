@@ -160,7 +160,7 @@ export function ConversationBranchApprovalModal({
                     }}
                   />
                 ) : (
-                  <div className="flex h-full items-center justify-center px-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="flex h-full items-center justify-center px-4 text-sm text-muted-foreground">
                     Select an agent message to view its details.
                   </div>
                 )}

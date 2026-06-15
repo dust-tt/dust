@@ -35,7 +35,7 @@ export function WebhookSourceZendeskDetails({
               href={`https://${zendeskSubdomain}.zendesk.com/admin/apps-integrations/webhooks/webhooks/${webhookId}/details`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-action-500 hover:text-action-600 dark:text-action-400 dark:hover:text-action-300 inline-flex items-center gap-1 text-xs"
+ className="text-action-500 hover:text-action-600 inline-flex items-center gap-1 text-xs"
             >
               <IconButton
                 icon={LinkExternal01}

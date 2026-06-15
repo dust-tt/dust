@@ -34,7 +34,7 @@ export const WakeUpBanner = ({
     <ContentMessageInline
       icon={Clock}
       variant="outline"
-      className="mb-5 flex max-h-dvh w-full bg-background dark:bg-background-night"
+ className="mb-5 flex max-h-dvh w-full bg-background"
     >
       {/* ContentMessageInline variant="outline" renders all content children
           in text-muted-foreground by default; override the reason to the
@@ -45,7 +45,7 @@ export const WakeUpBanner = ({
           label={wakeUp.reason}
           tooltipTriggerAsChild
           trigger={
-            <span className="min-w-0 truncate text-foreground dark:text-foreground-night">
+ <span className="min-w-0 truncate text-foreground">
               {wakeUp.reason}
             </span>
           }
@@ -58,7 +58,7 @@ export const WakeUpBanner = ({
           variant="ghost"
           size="xs"
           tooltip="Cancel wake-up"
-          className="text-muted-foreground dark:text-muted-foreground-night"
+ className="text-muted-foreground"
           onClick={() => {
             void cancelWakeUp(wakeUp.sId);
           }}

@@ -132,7 +132,7 @@ const FormDescription = React.forwardRef<
       ref={ref}
       id={formDescriptionId}
       className={cn(
-        "text-sm text-muted-foreground dark:text-muted-foreground-night",
+"text-sm text-muted-foreground",
         className
       )}
       {...props}
@@ -157,7 +157,7 @@ const FormMessage = React.forwardRef<
       ref={ref}
       id={formMessageId}
       className={cn(
-        "text-sm font-medium text-warning-500 dark:text-warning-500-night",
+"text-sm font-medium text-warning-500",
         className
       )}
       {...props}
@@ -179,8 +179,8 @@ const FormInput = React.forwardRef<
     <Input
       ref={ref}
       className={cn(
-        "border-2 border-border-dark dark:border-border-darker-night",
-        "bg-white dark:bg-muted-background-night",
+"border-2 border-border-dark",
+"bg-white",
         className
       )}
       value={value}
@@ -200,8 +200,8 @@ const FormTextArea = React.forwardRef<
     <div ref={ref as React.RefObject<HTMLDivElement>}>
       <TextArea
         className={cn(
-          "border-2 border-border-dark dark:border-border-darker-night",
-          "bg-white dark:bg-muted-background-night",
+"border-2 border-border-dark",
+"bg-white",
           className
         )}
         value={value ?? undefined}

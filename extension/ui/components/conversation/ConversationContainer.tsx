@@ -116,7 +116,7 @@ export const ConversationContainer = ({
         />
       </div>
       {conversation && currentPanel && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-background dark:bg-background-night">
+ <div className="fixed inset-0 z-50 flex flex-col bg-background">
           {/* Hamburger button overlaid in the pl-14 area of AppLayoutTitle header */}
           <div
             className={cn(

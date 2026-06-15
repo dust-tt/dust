@@ -141,7 +141,7 @@ export function WebhookSourceDetailsPage() {
           <div className="border-material-200 flex flex-col rounded-lg border p-4">
             <h2 className="text-md pb-4 font-bold">Views ({views.length})</h2>
             {views.length === 0 ? (
-              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm text-muted-foreground">
                 No views found.
               </p>
             ) : (
@@ -151,7 +151,7 @@ export function WebhookSourceDetailsPage() {
                     <PokeTableRow key={view.sId}>
                       <PokeTableHead>{view.customName}</PokeTableHead>
                       <PokeTableCell>
-                        <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-xs text-muted-foreground">
                           {view.sId}
                         </span>
                         {view.description && (
@@ -173,7 +173,7 @@ export function WebhookSourceDetailsPage() {
               Connected Triggers ({triggers.length})
             </h2>
             {triggers.length === 0 ? (
-              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm text-muted-foreground">
                 No connected triggers.
               </p>
             ) : (
@@ -190,7 +190,7 @@ export function WebhookSourceDetailsPage() {
                           >
                             {trigger.sId}
                           </LinkWrapper>
-                          <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-xs text-muted-foreground">
                             {trigger.status} | {trigger.origin}
                             {trigger.editorUser
                               ? ` | ${trigger.editorUser.email}`
@@ -213,7 +213,7 @@ export function WebhookSourceDetailsPage() {
                 <span className="text-2xl font-bold">
                   {requestStats.last24h}
                 </span>
-                <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-xs text-muted-foreground">
                   Last 24h
                 </span>
               </div>
@@ -221,7 +221,7 @@ export function WebhookSourceDetailsPage() {
                 <span className="text-2xl font-bold">
                   {requestStats.last7d}
                 </span>
-                <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-xs text-muted-foreground">
                   Last 7d
                 </span>
               </div>
@@ -229,7 +229,7 @@ export function WebhookSourceDetailsPage() {
                 <span className="text-2xl font-bold">
                   {requestStats.last30d}
                 </span>
-                <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-xs text-muted-foreground">
                   Last 30d
                 </span>
               </div>

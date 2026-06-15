@@ -109,10 +109,10 @@ function CPSubscribePage() {
       />
       <div className="flex min-h-screen flex-col items-center justify-center gap-8 px-4 py-16">
         <div className="flex flex-col items-center gap-2 text-center">
-          <h1 className="text-4xl font-bold text-foreground dark:text-foreground-night">
+ <h1 className="text-4xl font-bold text-foreground">
             Choose your plan to continue
           </h1>
-          <p className="text-lg text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-lg text-muted-foreground">
             You can change it anytime from the admin page.
           </p>
         </div>

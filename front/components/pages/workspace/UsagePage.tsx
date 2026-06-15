@@ -552,7 +552,7 @@ export function UsagePage() {
         <Page.Vertical gap="xs">
           <Icon
             visual={PieChart01}
-            className="text-muted-foreground dark:text-muted-foreground-night"
+ className="text-muted-foreground"
             size="lg"
           />
           <Page.H variant="h3">Usage</Page.H>
@@ -584,28 +584,28 @@ export function UsagePage() {
             {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
               <>
                 <div className="flex items-baseline gap-1">
-                  <span className="heading-mono-4xl text-foreground dark:text-foreground-night">
+                  <span className="heading-mono-4xl text-foreground">
                     {formatCredits(totalConsumedCredits)}
                   </span>
-                  <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                  <span className="copy-sm text-muted-foreground">
                     /{formatCredits(initialTotalCredits)}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   {isReadOnly ? (
-                    <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                    <span className="copy-sm text-muted-foreground">
                       {formatCredits(periodSpendCredits)} credits spent this
                       period
                     </span>
                   ) : (
                     <>
                       {overageCredits !== null && overageCredits > 0 && (
-                        <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                        <span className="copy-sm text-muted-foreground">
                           {formatCredits(overageCredits)} overage credits
                         </span>
                       )}
                       {isEnterprise ? (
-                        <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                        <span className="copy-sm text-muted-foreground">
                           Contact your Dust sales representative to buy credits
                         </span>
                       ) : (
@@ -651,7 +651,7 @@ export function UsagePage() {
         )}
 
         <Page.Vertical gap="sm" align="stretch">
-          <span className="heading-2xl text-foreground dark:text-foreground-night">
+ <span className="heading-2xl text-foreground">
             Members
           </span>
           {searchAndInviteRow}

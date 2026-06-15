@@ -43,8 +43,8 @@ export function PokeRecentWebhookRequests({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="border-material-200 my-4 flex min-h-24 flex-col rounded-lg border bg-muted-background dark:bg-muted-background-night">
-      <div className="flex justify-between gap-3 rounded-t-lg bg-primary-300 p-4 dark:bg-primary-300-night">
+ <div className="border-material-200 my-4 flex min-h-24 flex-col rounded-lg border bg-muted-background">
+ <div className="flex justify-between gap-3 rounded-t-lg bg-primary-300 p-4">
         <h2 className="text-md font-bold">Webhook Request History</h2>
       </div>
       <div className="flex flex-grow flex-col justify-center p-4">
@@ -94,7 +94,7 @@ function PokeRecentWebhookRequestsContent({
     return (
       <div className="flex items-center gap-2 pt-2">
         <Spinner size="sm" />
-        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-sm text-muted-foreground">
           Loading recent requests...
         </span>
       </div>
@@ -141,7 +141,7 @@ function PokeRecentWebhookRequestsContent({
         ))}
       </div>
       {webhookRequests.length === 0 ? (
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night pt-2">
+ <p className="text-sm text-muted-foreground pt-2">
           {statusFilter
             ? `No ${STATUS_FILTER_LABELS[statusFilter].toLowerCase()} requests.`
             : "No webhook requests yet."}
@@ -149,7 +149,7 @@ function PokeRecentWebhookRequestsContent({
       ) : (
         <>
           {wasRateLimited && !statusFilter && (
-            <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <div className="text-sm text-muted-foreground">
               Some requests were rate limited.
             </div>
           )}
@@ -178,7 +178,7 @@ function PokeRecentWebhookRequestsContent({
                         </pre>
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm text-muted-foreground">
                         No payload available.
                       </p>
                     )}

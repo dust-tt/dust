@@ -885,7 +885,7 @@ export function SkillBuilderInstructionsEditor({
         </div>
 
         {instructionsFieldState.error && (
-          <div className="dark:text-warning-night ml-2 text-xs text-warning">
+ <div className="ml-2 text-xs text-warning">
             {instructionsFieldState.error.message}
           </div>
         )}

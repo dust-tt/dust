@@ -47,17 +47,17 @@ export function BillingUpgrade() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h2 className="text-xl font-semibold text-foreground dark:text-foreground-night">
+ <h2 className="text-xl font-semibold text-foreground">
         Upgrade your workspace
       </h2>
-      <div className="flex flex-col gap-4 rounded-lg bg-muted-background p-4 dark:bg-muted-background-night">
+ <div className="flex flex-col gap-4 rounded-lg bg-muted-background p-4">
         <div className="flex items-center justify-between gap-4">
-          <div className="truncate text-base font-semibold text-foreground dark:text-foreground-night">
+ <div className="truncate text-base font-semibold text-foreground">
             {planName}
           </div>
           <Button size="sm" {...buttonProps} />
         </div>
-        <div className="flex flex-col gap-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <div className="flex flex-col gap-2 text-xs text-muted-foreground">
           {features.map((feature) => (
             <div key={feature}>{feature}</div>
           ))}

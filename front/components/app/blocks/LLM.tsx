@@ -444,7 +444,7 @@ export default function LLM({
                 onChange={(e) => handlePromptChange(e.target.value)}
                 padding={3}
                 minHeight={80}
-                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
+ className="rounded-lg bg-muted-background"
                 style={{
                   fontSize: 13,
                   fontFamily:

@@ -12,13 +12,13 @@ export function ConsumptionProgressBar({
   const percentage = total > 0 ? Math.min((consumed / total) * 100, 100) : 0;
 
   return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10 dark:bg-muted-foreground-night/10">
+ <div className="h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10">
       <div
         className={cn(
           "h-full rounded-full transition-all",
           percentage > 80
             ? "bg-warning-700"
-            : "bg-primary dark:bg-primary-night"
+ :"bg-primary"
         )}
         style={{ width: `${percentage}%` }}
       />
@@ -44,7 +44,7 @@ export function ConsumptionProgressBarWithNumbers({
       <Page.P variant="secondary">Total consumed</Page.P>
       <div className="flex items-baseline gap-2">
         <span className="text-5xl font-bold">{consumedFormatted}</span>
-        <span className="text-2xl text-muted-foreground dark:text-muted-foreground-night">
+ <span className="text-2xl text-muted-foreground">
           /{totalFormatted}
         </span>
       </div>

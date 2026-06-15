@@ -46,7 +46,7 @@ function ToolEditsSection({ toolEdits }: ToolEditsSectionProps) {
     <div className="flex flex-col gap-2">
       {toolsToAdd.length > 0 && (
         <div className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+ <span className="text-sm font-medium text-foreground">
             Tools to add
           </span>
           <div className="flex flex-wrap gap-2">
@@ -63,7 +63,7 @@ function ToolEditsSection({ toolEdits }: ToolEditsSectionProps) {
       )}
       {toolsToRemove.length > 0 && (
         <div className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+ <span className="text-sm font-medium text-foreground">
             Tools to remove
           </span>
           <div className="flex flex-wrap gap-2">
@@ -93,17 +93,17 @@ function AgentFacingDescriptionEditSection({
 }: AgentFacingDescriptionEditSectionProps) {
   return (
     <div className="flex flex-col gap-2">
-      <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+ <span className="text-sm font-medium text-foreground">
         Description change
       </span>
       <DiffBlock>
         <div className="flex flex-col gap-1 p-3 text-sm">
           {currentAgentFacingDescription && (
-            <p className="text-muted-foreground line-through dark:text-muted-foreground-night">
+ <p className="text-muted-foreground line-through">
               {currentAgentFacingDescription}
             </p>
           )}
-          <p className="text-foreground dark:text-foreground-night">
+ <p className="text-foreground">
             {edit.content}
           </p>
         </div>
@@ -178,7 +178,7 @@ function ConversationFooter({
 
   if (shownIds.length === 0) {
     return (
-      <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-xs text-muted-foreground">
         Based on {sourceConversationsCount} conversation
         {sourceConversationsCount > 1 ? "s" : ""}
       </p>
@@ -198,7 +198,7 @@ function ConversationFooter({
   ));
 
   return (
-    <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-xs text-muted-foreground">
       Based on conversation
       {shownIds.length > 1 || remainingCount > 0 ? "s" : ""}{" "}
       {indexedLinks.map((link, i) => (
@@ -249,12 +249,12 @@ export function SkillSuggestionCard({
 
   return (
     <div
-      className={`rounded-xl ${isClickable ? "cursor-pointer transition-shadow" : ""} ${isSelected ? "ring-2 ring-highlight-300 dark:ring-highlight-300-night" : ""}`}
+ className={`rounded-xl ${isClickable ?"cursor-pointer transition-shadow" :""} ${isSelected ?"ring-2 ring-highlight-300" :""}`}
       onClick={onSelect}
     >
       <Card variant="primary" size="md" className="flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
-          <span className="heading-base text-foreground dark:text-foreground-night">
+ <span className="heading-base text-foreground">
             {suggestion.title ?? "Suggestion"}
           </span>
           {hasActions && (
@@ -276,7 +276,7 @@ export function SkillSuggestionCard({
         </div>
 
         {suggestion.analysis && (
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+ <p className="text-sm text-muted-foreground">
             {suggestion.analysis}
           </p>
         )}
@@ -294,7 +294,7 @@ export function SkillSuggestionCard({
 
         {instructionEdits && instructionEdits.length > 0 && (
           <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+ <span className="text-sm font-medium text-foreground">
               Instruction changes
             </span>
             {instructionEdits.map((edit, index) => (
