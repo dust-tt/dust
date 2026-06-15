@@ -278,7 +278,8 @@ app.patch(
       });
     const referencedSkillSpaceIds = await getReferencedSkillSpaceModelIds(
       auth,
-      body.instructions
+      body.instructions,
+      skill.sId
     );
 
     let additionalRequestedSpaceIds: ModelId[];
@@ -309,7 +310,11 @@ app.patch(
           attachedKnowledge: previousAttachedKnowledge,
         });
       const previousReferencedSkillSpaceIds =
-        await getReferencedSkillSpaceModelIds(auth, skill.instructions);
+        await getReferencedSkillSpaceModelIds(
+          auth,
+          skill.instructions,
+          skill.sId
+        );
       const previousComputedRequestedSpaceIdsSet = new Set([
         ...previousComputedRequestedSpaceIds,
         ...previousReferencedSkillSpaceIds,

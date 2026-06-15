@@ -49,9 +49,12 @@ export async function resolveAdditionalRequestedSpaceModelIds(
 
 export async function getReferencedSkillSpaceModelIds(
   auth: Authenticator,
-  instructions: string
+  instructions: string,
+  excludedSkillId?: string
 ): Promise<ModelId[]> {
-  const referencedSkillIds = extractUniqueSkillReferenceIds(instructions);
+  const referencedSkillIds = extractUniqueSkillReferenceIds(
+    instructions
+  ).filter((skillId) => skillId !== excludedSkillId);
 
   if (referencedSkillIds.length === 0) {
     return [];
