@@ -161,7 +161,9 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     auth,
     conversation,
     [messageRes.value],
-    viewType
+    viewType,
+    null,
+    { includeSubAgentCostCredits: true }
   );
 
   if (renderedMessages.isErr()) {
