@@ -1,11 +1,14 @@
 import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
 import LandingLayout from "@marketing/components/home/LandingLayout";
 import config from "@marketing/lib/api/config";
+import {
+  fetchAuthContext,
+  hasWorkosSessionCookie,
+} from "@marketing/lib/api/authContext";
 import type { NewsItem } from "@marketing/lib/homepage_news";
 import { fetchHomepageNews } from "@marketing/lib/homepage_news";
 import { extractUTMParams } from "@marketing/lib/utils/utm";
 import { Landing } from "@marketing/pages/home";
-import { normalizeError } from "@marketing/types/shared/utils/error_utils";
 import logger from "@marketing/logger/logger";
 import type { GetServerSideProps } from "next";
 import type { ParsedUrlQuery } from "querystring";
@@ -18,18 +21,11 @@ interface HomeProps {
   gtmTrackingId: string | null;
 }
 
-// Cap the SSR auth-context lookup so a slow/unavailable front API never hangs
-// the marketing homepage — we render the landing instead.
-const AUTH_CONTEXT_TIMEOUT_MS = 1500;
-
 /**
  * Resolve where an already-authenticated visitor should be sent, server-side.
  *
  * Mirrors the old `front` behaviour (`front/pages/index.tsx` `getServerSideProps`,
- * which called `getSession` and redirected before rendering). Marketing has no
- * WorkOS code of its own, so it asks `front` via `/api/auth-context`, forwarding
- * the incoming cookies — the `workos_session` cookie is scoped to the shared
- * `*.dust.tt` domain (`WORKOS_SESSION_COOKIE_DOMAIN`), so it reaches us here.
+ * which called `getSession` and redirected before rendering).
  *
  * `/api/auth-context` already returns the default workspace, so we redirect
  * straight to the app (`/w/<id>`) rather than bouncing through `/api/login`,
@@ -45,44 +41,29 @@ async function resolveAuthedRedirectDestination(
   cookieHeader: string,
   query: ParsedUrlQuery
 ): Promise<string | null> {
-  try {
-    const res = await fetch(`${config.getApiBaseUrl()}/api/auth-context`, {
-      headers: { cookie: cookieHeader },
-      signal: AbortSignal.timeout(AUTH_CONTEXT_TIMEOUT_MS),
-    });
-    if (!res.ok) {
-      return null;
-    }
-    const data = (await res.json()) as {
-      user?: { sId?: string };
-      defaultWorkspaceId?: string | null;
-    };
-    if (!data.user) {
-      return null;
-    }
-
-    // Forward only marketing/attribution params (UTM + click IDs) so the
-    // destination keeps signup attribution.
-    const utmSearchParams = new URLSearchParams();
-    for (const [key, value] of Object.entries(extractUTMParams(query))) {
-      if (value) {
-        utmSearchParams.set(key, value);
-      }
-    }
-    const utmQueryString = utmSearchParams.toString();
-    const destinationUrl = data.defaultWorkspaceId
-      ? `${config.getAppUrl()}/w/${data.defaultWorkspaceId}`
-      : `${config.getApiBaseUrl()}/api/login`;
-    return utmQueryString
-      ? `${destinationUrl}?${utmQueryString}`
-      : destinationUrl;
-  } catch (err) {
-    logger.warn(
-      { err: normalizeError(err) },
-      "auth-context lookup failed during marketing root SSR; rendering landing"
-    );
+  const authContext = await fetchAuthContext(cookieHeader, {
+    failureLogMessage:
+      "auth-context lookup failed during marketing root SSR; rendering landing",
+  });
+  if (!authContext) {
     return null;
   }
+
+  // Forward only marketing/attribution params (UTM + click IDs) so the
+  // destination keeps signup attribution.
+  const utmSearchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(extractUTMParams(query))) {
+    if (value) {
+      utmSearchParams.set(key, value);
+    }
+  }
+  const utmQueryString = utmSearchParams.toString();
+  const destinationUrl = authContext.defaultWorkspaceId
+    ? `${config.getAppUrl()}/w/${authContext.defaultWorkspaceId}`
+    : `${config.getApiBaseUrl()}/api/login`;
+  return utmQueryString
+    ? `${destinationUrl}?${utmQueryString}`
+    : destinationUrl;
 }
 
 export const getServerSideProps: GetServerSideProps<HomeProps> = async (
@@ -97,7 +78,7 @@ export const getServerSideProps: GetServerSideProps<HomeProps> = async (
   // inviteToken: an expired/invalid one makes /api/login 400, and the redirect
   // intent doesn't depend on it.
   const cookieHeader = context.req.headers.cookie ?? "";
-  if (cookieHeader.includes("workos_session=")) {
+  if (hasWorkosSessionCookie(cookieHeader)) {
     const destination = await resolveAuthedRedirectDestination(
       cookieHeader,
       context.query

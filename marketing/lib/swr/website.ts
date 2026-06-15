@@ -1,15 +1,10 @@
-import config from "@marketing/lib/api/config";
+import {
+  AUTH_CONTEXT_URL,
+  type MarketingAuthContext,
+} from "@marketing/lib/api/authContext";
 import { useSWRWithDefaults } from "@marketing/lib/swr/swr";
-import type { UserType } from "@marketing/types/user";
 
-type GetNoWorkspaceAuthContextResponseType = {
-  user: UserType;
-  defaultWorkspaceId: string | null;
-};
-
-// /api/auth-context lives on front. Marketing reads it cross-origin with
-// credentials so the session cookie still travels.
-const AUTH_CONTEXT_URL = `${config.getApiBaseUrl()}/api/auth-context`;
+type GetNoWorkspaceAuthContextResponseType = MarketingAuthContext;
 
 // A fetcher that does NOT redirect to login on auth errors.
 // The global fetcher in fetcher.ts redirects to /api/workos/login on
