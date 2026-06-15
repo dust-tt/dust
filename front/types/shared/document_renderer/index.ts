@@ -57,7 +57,9 @@ const DEFAULT_PDF_OPTIONS: Omit<Required<PdfOptions>, "footerHtml"> = {
 };
 
 // This matches Open Graph image dimensions for link previews.
-const DEFAULT_SCREENSHOT_OPTIONS: Required<ScreenshotOptions> = {
+const DEFAULT_SCREENSHOT_OPTIONS: Required<
+  Omit<ScreenshotOptions, "waitForExpression">
+> = {
   clip: true,
   height: 630,
   width: 1200,
