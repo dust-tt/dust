@@ -9,7 +9,6 @@
  * Keys are extensionless, content type lives in GCS object metadata.
  */
 
-import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
@@ -21,6 +20,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
+export { generateAndStoreOgImage } from "./og";
 export type {
   BrandingAssetName,
   BrandingAssetState,
@@ -29,12 +29,11 @@ export type {
 export {
   BRANDING_ASSET_NAMES,
   BRANDING_DEFAULT_ASSET_PATHS,
-  USER_UPLOADABLE_BRANDING_ASSET_NAMES,
   buildBrandingAssetPublicUrl,
   buildBrandingAssetStoragePath,
   isBrandingAssetName,
+  USER_UPLOADABLE_BRANDING_ASSET_NAMES,
 } from "./paths";
-export { generateAndStoreOgImage } from "./og";
 
 import type { BrandingAssetName, BrandingAssetState } from "./paths";
 import {
@@ -109,7 +108,6 @@ export async function getWorkspaceBrandingPublicUrls(
           })
         : null,
   };
-
 }
 
 export async function promoteBrandingAsset(

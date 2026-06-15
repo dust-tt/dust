@@ -161,9 +161,13 @@ export class DocumentRenderer {
    * Capture a screenshot of a self-contained HTML string.
    * The HTML is uploaded directly to Gotenberg so no public URL is required.
    */
-  async captureScreenshotFromHtml(
-    {html, options = {}}: { html: string, options?: ScreenshotOptions },
-  ): Promise<Result<Buffer, DocumentRendererError>> {
+  async captureScreenshotFromHtml({
+    html,
+    options = {},
+  }: {
+    html: string;
+    options?: ScreenshotOptions;
+  }): Promise<Result<Buffer, DocumentRendererError>> {
     const { clip, height, waitForExpression, width } = {
       ...DEFAULT_SCREENSHOT_OPTIONS,
       ...options,
@@ -213,7 +217,6 @@ export class DocumentRenderer {
             response.status
           )
         );
-
       }
 
       return new Ok(Buffer.from(await response.arrayBuffer()));

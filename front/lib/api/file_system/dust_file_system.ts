@@ -138,9 +138,11 @@ function collectScopedPrefixesFromPaths(scopedPaths: string[]): {
       case "conversation":
         conversationIds.add(parsed.id);
         break;
+
       case "pod":
         podIds.add(parsed.id);
         break;
+
       default:
         assertNever(parsed);
     }

@@ -31,8 +31,7 @@ export async function generateAndStoreOgImage(
   const renderer = new DocumentRenderer(documentRendererUrl, logger);
   const result = await renderer.captureScreenshot({
     url: pageUrl,
-    waitForExpression:
-      "document.body.getAttribute('data-og-ready') === 'true'",
+    waitForExpression: "document.body.getAttribute('data-og-ready') === 'true'",
   });
   if (result.isErr()) {
     return new Err(result.error);
