@@ -502,7 +502,7 @@ export async function notifyWorkflowError(
   { conversationId, agentMessageId, agentMessageVersion }: AgentLoopArgs,
   error: { message: string; name: string }
 ): Promise<void> {
-  const auth = await AuthenticatorClass.fromJSONForAgentLoop(authType);
+  const auth = await AuthenticatorClass.fromJsonWithRefrehedGroups(authType);
 
   // Use lighter fetchConversationWithoutContent
   const conversation = await ConversationResource.fetchById(

@@ -1313,7 +1313,7 @@ export class Authenticator {
    * workflow start: tools that grant new group access (e.g. create_pod) must see
    * up-to-date memberships on subsequent steps.
    */
-  static async fromJSONForAgentLoop(
+  static async fromJsonWithRefrehedGroups(
     authType: AuthenticatorType
   ): Promise<Authenticator> {
     const auth = await Authenticator.fromJSON(authType);

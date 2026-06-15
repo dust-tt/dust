@@ -152,7 +152,8 @@ describe("Authenticator.fromJSON", () => {
     const staleAuth = await Authenticator.fromJSON(staleAuthJson);
     expect(staleAuth.hasGroupByModelId(editorGroup!.id)).toBe(false);
 
-    const freshAuth = await Authenticator.fromJSONForAgentLoop(staleAuthJson);
+    const freshAuth =
+      await Authenticator.fromJsonWithRefrehedGroups(staleAuthJson);
     expect(freshAuth.hasGroupByModelId(editorGroup!.id)).toBe(true);
   });
 });
