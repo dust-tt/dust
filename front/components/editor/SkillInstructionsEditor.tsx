@@ -246,8 +246,7 @@ export function useSkillInstructionsEditor({
 
 const readOnlyStyles = cn(
   "min-h-60 w-full min-w-0 rounded-xl border p-3",
-  "border-border bg-muted-background",
-  ""
+  "border-border bg-muted-background"
 );
 
 interface SkillInstructionsEditorContentProps {

@@ -31,8 +31,7 @@ export const LoginPage = () => {
       <div
         className={cn(
           "flex h-screen items-center justify-center",
-          "bg-background text-foreground",
-          ""
+          "bg-background text-foreground"
         )}
       >
         <Spinner size="sm" />
@@ -45,8 +44,7 @@ export const LoginPage = () => {
       <div
         className={cn(
           "flex h-screen flex-col p-4",
-          "bg-background text-foreground",
-          ""
+          "bg-background text-foreground"
         )}
       >
         <div className="flex flex-1 flex-col items-center justify-center gap-4">
@@ -118,8 +116,7 @@ export const LoginPage = () => {
       <div
         className={cn(
           "flex h-screen flex-col p-4",
-          "bg-background text-foreground",
-          ""
+          "bg-background text-foreground"
         )}
       >
         <div className="flex h-screen flex-col items-center justify-center gap-2 text-center">
@@ -150,8 +147,7 @@ export const LoginPage = () => {
       <div
         className={cn(
           "flex h-screen flex-col p-4",
-          "bg-background text-foreground",
-          ""
+          "bg-background text-foreground"
         )}
       >
         <div className="flex h-screen flex-col items-center justify-center gap-2 text-center">
@@ -185,8 +181,7 @@ export const LoginPage = () => {
     <div
       className={cn(
         "flex h-screen flex-col p-4",
-        "bg-background text-foreground",
-        ""
+        "bg-background text-foreground"
       )}
     >
       <div className="flex h-screen flex-col items-center justify-center text-center">

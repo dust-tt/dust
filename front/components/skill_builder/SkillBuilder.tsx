@@ -267,8 +267,7 @@ export default function SkillBuilder({
           <div
             className={cn(
               "flex h-dvh flex-row",
-              "bg-background text-foreground",
-              ""
+              "bg-background text-foreground"
             )}
           >
             {showSuggestionsPanel ? (

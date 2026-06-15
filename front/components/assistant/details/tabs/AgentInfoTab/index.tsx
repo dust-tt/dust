@@ -63,8 +63,7 @@ export function AgentInfoTab({
           <div className="heading-lg text-foreground">Instructions</div>
           <div
             className={cn(
-              "max-h-[400px] overflow-y-auto rounded-lg border border-border bg-muted-background px-3 py-2 " +
-                ""
+              "max-h-[400px] overflow-y-auto rounded-lg border border-border bg-muted-background px-3 py-2"
             )}
           >
             <ReadOnlyInstructionsEditor

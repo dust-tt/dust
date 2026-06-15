@@ -451,7 +451,7 @@ export const InputBar = React.memo(function InputBar({
                       "has-[.tiptap:focus]:ring-highlight/30",
                       "sm:has-[.tiptap:focus]:ring-2"
                     )
-                  : classNames("has-[.tiptap:focus]:border-highlight-300", "")
+                  : "has-[.tiptap:focus]:border-highlight-300"
               )
         )}
       >

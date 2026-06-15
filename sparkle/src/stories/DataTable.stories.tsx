@@ -439,7 +439,7 @@ export const DataTableExample = () => {
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
       />
-      <div className="">
+      <div>
         <DataTable
           data={tableData}
           filter={filter}

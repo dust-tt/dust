@@ -138,10 +138,7 @@ export function UsedByButton({
         variant="ghost-secondary"
         isSelect={false}
         size="xs"
-        className={cn(
-          "border-0 hover:bg-muted-background hover:text-foreground",
-          ""
-        )}
+        className="border-0 hover:bg-muted-background hover:text-foreground"
         aria-label="Used by 0 agents"
         disabled
       />
@@ -221,10 +218,7 @@ export function UsedByButton({
           variant="ghost-secondary"
           isSelect={false}
           size="xs"
-          className={cn(
-            "border-0 hover:bg-muted-background hover:text-foreground",
-            ""
-          )}
+          className="border-0 hover:bg-muted-background hover:text-foreground"
           aria-label={`Used by ${usageLabel}`}
           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();

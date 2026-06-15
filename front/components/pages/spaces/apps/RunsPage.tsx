@@ -96,14 +96,8 @@ export function RunsPage() {
               key={tab.name}
               className={classNames(
                 tab.runType == runType
-                  ? cn(
-                      "border-border bg-primary-700 text-foreground hover:bg-primary-800",
-                      ""
-                    )
-                  : cn(
-                      "border-border bg-background text-muted-foreground hover:bg-muted-background hover:text-muted-foreground",
-                      ""
-                    ),
+                  ? "border-border bg-primary-700 text-foreground hover:bg-primary-800"
+                  : "border-border bg-background text-muted-foreground hover:bg-muted-background hover:text-muted-foreground",
                 tabIdx === 0 ? "rounded-l-2xl border-r-0" : "",
                 tabIdx === tabs.length - 1 ? "rounded-r-2xl border-l-0" : "",
                 "flex flex-1 cursor-pointer flex-row border px-3 text-sm font-medium focus:z-10"

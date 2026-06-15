@@ -714,7 +714,7 @@ export default function DatasetView({
             </>
           )}
           <div className="mt-4 w-full leading-4">
-            <div className="">
+            <div>
               <ul className="space-y-2">
                 {datasetData.map((d, i) => (
                   <li key={i} className="space-y-[1px]">

@@ -368,8 +368,7 @@ export function WelcomeTourGuide({
       align={align}
       className={cn(
         "w-[20rem] shadow-xl",
-        "border-highlight-400 ring-2 ring-highlight-400/30",
-        ""
+        "border-highlight-400 ring-2 ring-highlight-400/30"
       )}
       fullWidth
     >
