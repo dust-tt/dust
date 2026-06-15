@@ -382,6 +382,46 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     ).resolves.toHaveLength(0);
   });
 
+  it("adds requested spaces from nested skill references", async () => {
+    const { workspace, skill, requestUserAuth, globalGroup } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    const openSpace = await SpaceFactory.regular(workspace);
+    await GroupSpaceFactory.associate(openSpace, globalGroup);
+
+    const childSkill = await SkillFactory.create(requestUserAuth, {
+      name: "Referenced Pod Skill",
+      requestedSpaceIds: [openSpace.id],
+    });
+
+    const response = await patchSkill(workspace, skill.sId, {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: `Use ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.skill.requestedSpaceIds).toContain(openSpace.sId);
+    expect(data.skill.instructions).not.toContain("<unavailable_skill");
+
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    if (!updatedSkill) {
+      throw new Error("Expected updated skill to be found.");
+    }
+    expect(updatedSkill.requestedSpaceIds).toContain(openSpace.id);
+    expect(updatedSkill.instructions).not.toContain("<unavailable_skill");
+  });
+
   it("drops missing nested skill references", async () => {
     const { workspace, skill, requestUserAuth } = await setupTest({
       requestUserRole: "admin",
