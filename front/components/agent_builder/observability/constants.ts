@@ -80,7 +80,7 @@ export const INDEXED_BASE_COLORS = [
 export type IndexedBaseColor = (typeof INDEXED_BASE_COLORS)[number];
 
 export function buildColorClass(baseColor: string, shade: number): string {
-  return `text-${baseColor}-${shade}${baseColor}-${shade}-night`;
+  return `text-${baseColor}-${shade}`;
 }
 
 export const INDEXED_SHADES = [
