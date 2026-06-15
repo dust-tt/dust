@@ -24,10 +24,7 @@ export function RequestedSpacesList({
         const space = spacesById.get(spaceId);
         if (!space) {
           return (
-            <span
-              key={spaceId}
-              className="text-sm text-muted-foreground"
-            >
+            <span key={spaceId} className="text-sm text-muted-foreground">
               {spaceId} (unknown)
             </span>
           );

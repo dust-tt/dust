@@ -323,7 +323,14 @@ export const TYPO_GROUPS: TypoGroup[] = [
     tokens: [
       typo("heading-xs", ".s\\:heading-xs", "12px", "16px", "normal", "600"),
       typo("heading-sm", ".s\\:heading-sm", "14px", "20px", "-0.28px", "600"),
-      typo("heading-base", ".s\\:heading-base", "16px", "24px", "-0.32px", "600"),
+      typo(
+        "heading-base",
+        ".s\\:heading-base",
+        "16px",
+        "24px",
+        "-0.32px",
+        "600"
+      ),
       typo("heading-lg", ".s\\:heading-lg", "18px", "26px", "-0.36px", "600"),
       typo("heading-xl", ".s\\:heading-xl", "20px", "28px", "-0.4px", "600"),
       typo("heading-2xl", ".s\\:heading-2xl", "24px", "30px", "-0.96px", "600"),

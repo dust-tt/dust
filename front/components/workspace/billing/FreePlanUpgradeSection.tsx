@@ -35,9 +35,7 @@ export function FreePlanUpgradeSection({ owner }: FreePlanUpgradeSectionProps) {
         {UPGRADE_FEATURES.map((feature) => (
           <div key={feature} className="flex items-center gap-2">
             <Icon visual={Check} size="xs" className="text-highlight" />
-            <span className="text-xs text-muted-foreground">
-              {feature}
-            </span>
+            <span className="text-xs text-muted-foreground">{feature}</span>
           </div>
         ))}
       </div>

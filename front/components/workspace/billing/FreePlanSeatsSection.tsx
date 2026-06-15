@@ -48,9 +48,7 @@ export function FreePlanSeatsSection({
             {heading}
           </span>
         </div>
-        <p className="text-sm text-foreground">
-          {description}
-        </p>
+        <p className="text-sm text-foreground">{description}</p>
       </div>
 
       <div className="flex h-1 w-full gap-0.5">
