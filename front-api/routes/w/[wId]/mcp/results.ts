@@ -1,9 +1,13 @@
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import { publishMCPResults } from "@app/lib/api/assistant/mcp_events";
+import { bodyLimit } from "@front-api/middlewares/body_limit";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
+
+// MCP tool results can be large (e.g. file contents): allow up to 16MB.
+const MCP_RESULTS_MAX_SIZE_BYTES = 16 * 1024 * 1024;
 
 const PostMCPResultsBodySchema = z.object({
   result: z.unknown(),
@@ -14,27 +18,33 @@ const PostMCPResultsBodySchema = z.object({
 const app = workspaceApp();
 
 /** @ignoreswagger */
-app.post("/", validate("json", PostMCPResultsBodySchema), async (ctx) => {
-  const auth = ctx.get("auth");
-  const { serverId, result } = ctx.req.valid("json");
+app.post(
+  "/",
+  bodyLimit(MCP_RESULTS_MAX_SIZE_BYTES),
+  validate("json", PostMCPResultsBodySchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
+    const { serverId, result } = ctx.req.valid("json");
 
-  const isValidAccess = await validateMCPServerAccess(auth, { serverId });
-  if (!isValidAccess) {
-    return apiError(ctx, {
-      status_code: 403,
-      api_error: {
-        type: "mcp_auth_error",
-        message: "You don't have access to this MCP server or it has expired.",
-      },
+    const isValidAccess = await validateMCPServerAccess(auth, { serverId });
+    if (!isValidAccess) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "mcp_auth_error",
+          message:
+            "You don't have access to this MCP server or it has expired.",
+        },
+      });
+    }
+
+    await publishMCPResults(auth, {
+      mcpServerId: serverId,
+      result,
     });
+
+    return ctx.json({ success: true });
   }
-
-  await publishMCPResults(auth, {
-    mcpServerId: serverId,
-    result,
-  });
-
-  return ctx.json({ success: true });
-});
+);
 
 export default app;
