@@ -121,7 +121,6 @@ export default function LandingLayout({
   // you can have dark theme so we need to remove them manually
   useEffect(() => {
     document.documentElement.classList.remove("dark");
-    document.documentElement.classList.remove("s-dark");
   }, []);
 
   useEffect(() => {

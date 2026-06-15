@@ -234,10 +234,10 @@ function MotionRow({
       </div>
       <div className="s:relative s:h-10 s:w-full s:rounded-full s:bg-gray-100">
         <div
-          className={`s-absolute s:top-2 s:h-6 s:w-6 s:rounded-full ${circleClass} ${
+          className={`s:absolute s:top-2 s:h-6 s:w-6 s:rounded-full ${circleClass} ${
             resetting
               ? "s:transition-none"
-              : `s-transition-all ${easingStyle ? "" : easingClass} ${durationClass}`
+              : `s:transition-all ${easingStyle ? "" : easingClass} ${durationClass}`
           }`}
           style={{
             left: animate ? "calc(100% - 2rem)" : "0.5rem",
@@ -310,10 +310,10 @@ function EnterExitDemo({
       </div>
       <div className="s:flex s:h-40 s:items-center s:justify-center s:rounded s:bg-gray-100">
         <div
-          className={`s-flex s:h-28 s:w-64 s:items-center s:justify-center s:rounded-xl s:border s:border-border s:bg-background s:text-sm s:text-muted-foreground s:shadow-md s:transition-all ${easingClass} ${
+          className={`s:flex s:h-28 s:w-64 s:items-center s:justify-center s:rounded-xl s:border s:border-border s:bg-background s:text-sm s:text-muted-foreground s:shadow-md s:transition-all ${easingClass} ${
             open
-              ? `s-scale-100 s:opacity-100 ${enterDurationClass}`
-              : `s-scale-95 s:opacity-0 ${exitDurationClass}`
+              ? `s:scale-100 s:opacity-100 ${enterDurationClass}`
+              : `s:scale-95 s:opacity-0 ${exitDurationClass}`
           }`}
         >
           {open ? "Visible" : ""}

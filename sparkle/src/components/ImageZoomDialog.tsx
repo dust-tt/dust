@@ -63,7 +63,7 @@ function ImageZoomDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="fit" className="s:overflow-hidden s:p-3 !s-w-fit">
+      <DialogContent size="fit" className="s:overflow-hidden s:p-3 s:w-fit">
         <div className="s:relative s:flex s:items-center s:justify-center s:gap-2">
           {/* Previous button */}
           {navigation?.hasPrevious && (

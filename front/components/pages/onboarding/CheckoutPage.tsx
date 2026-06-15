@@ -249,19 +249,11 @@ export function CheckoutPage() {
   useEffect(() => {
     const htmlEl = document.documentElement;
     const hadDark = htmlEl.classList.contains("dark");
-    // biome-ignore lint/plugin/noSparkleClassInFront: s-dark is needed for Sparkle dark mode
-    const hadSDark = htmlEl.classList.contains("s-dark");
     htmlEl.classList.remove("dark");
-    // biome-ignore lint/plugin/noSparkleClassInFront: s-dark is needed for Sparkle dark mode
-    htmlEl.classList.remove("s-dark");
 
     return () => {
       if (hadDark) {
         htmlEl.classList.add("dark");
-      }
-      if (hadSDark) {
-        // biome-ignore lint/plugin/noSparkleClassInFront: s-dark is needed for Sparkle dark mode
-        htmlEl.classList.add("s-dark");
       }
     };
   }, []);

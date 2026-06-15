@@ -16,7 +16,7 @@ const contentTypeExtensions: Record<SupportedContentType, string> = {
   "text/csv": ".csv",
 };
 
-const wrapperVariants = cva("s:group s:relative s:w-full !s-overflow-visible", {
+const wrapperVariants = cva("s:group s:relative s:w-full s:overflow-visible", {
   variants: {
     buttonDisplay: {
       inside: "s:mt-0",
