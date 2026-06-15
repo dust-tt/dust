@@ -89,7 +89,7 @@ app.get("/:wId/:asset", validate("param", ParamsSchema), async (ctx) => {
   }
 
   const bucket = getPrivateUploadBucket();
-  const storagePath = buildBrandingAssetStoragePath(wId, asset);
+  const storagePath = buildBrandingAssetStoragePath({ wId, asset });
   const contentTypeResult = await bucket.getFileContentType(storagePath);
   if (contentTypeResult.isErr()) {
     return redirectToDefaultAsset(ctx, asset);
