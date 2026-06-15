@@ -1,6 +1,11 @@
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 
+// Distinct from the skill/tool builder actions: input bar items carry their payload in `data` and
+// are narrowed via `isInputBarSlashSuggestionCapability`, so they must not match the shared
+// action-based guards (isSkillSlashCommand / isToolSlashCommand).
+export const INPUT_BAR_SLASH_COMMAND_ACTION = "input-bar-capability";
+
 export type InputBarSlashSuggestionCapability =
   | {
       kind: "skill";

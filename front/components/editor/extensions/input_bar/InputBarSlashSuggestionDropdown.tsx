@@ -27,6 +27,7 @@ import {
   useRef,
 } from "react";
 import {
+  INPUT_BAR_SLASH_COMMAND_ACTION,
   type InputBarSlashSuggestionCapability,
   isInputBarSlashSuggestionCapability,
 } from "./InputBarSlashSuggestionTypes";
@@ -151,6 +152,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
               return [
                 {
                   ...getSkillSlashCommandItem(capability.skill),
+                  action: INPUT_BAR_SLASH_COMMAND_ACTION,
                   data: capability,
                   id: `skill-${capability.skill.sId}`,
                 },
@@ -159,6 +161,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
               return [
                 {
                   ...getToolSlashCommandItem(capability.serverView),
+                  action: INPUT_BAR_SLASH_COMMAND_ACTION,
                   data: capability,
                   id: `tool-${capability.serverView.sId}`,
                 },
