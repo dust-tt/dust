@@ -213,7 +213,7 @@ const MultiPageSheetContent = React.forwardRef<
               </div>
             </div>
             {showNavigation && pages.length > 1 && (
-              <div className="s:text-xs s:text-muted-foreground s:dark:text-muted-foreground-night">
+              <div className="s:text-xs s:text-muted-foreground">
                 {currentPageIndex + 1} / {pages.length}
               </div>
             )}

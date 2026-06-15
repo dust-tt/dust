@@ -143,7 +143,7 @@ export const AllVariants: Story = {
     const sizes = CARD_SIZES;
 
     return (
-      <div className="s:flex s:flex-col s:gap-8 s:text-foreground s:dark:text-foreground-night">
+      <div className="s:flex s:flex-col s:gap-8 s:text-foreground">
         {variants.map((variant) => (
           <div key={variant} className="s:flex s:flex-col s:gap-4">
             <h3 className="s:text-lg s:font-semibold">

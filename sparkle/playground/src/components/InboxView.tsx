@@ -483,7 +483,7 @@ export function InboxView({
     const title = item.creator ? (
       <>
         <span className="s:shrink-0">{item.creator.fullName}</span>
-        <span className="s:min-w-0 s:truncate s:text-muted-foreground dark:s:text-muted-foreground-night">
+        <span className="s:min-w-0 s:truncate s:text-muted-foreground">
           {item.title}
         </span>
       </>
@@ -549,7 +549,7 @@ export function InboxView({
     actionLabel: string
   ) => (
     <div
-      className="s:mt-2 s:flex s:cursor-pointer s:items-center s:justify-between s:rounded-2xl s:bg-muted-background s:p-1.5 s:pl-3.5 s:heading-sm dark:s:border-border-night dark:s:bg-muted-background-night"
+      className="s:mt-2 s:flex s:cursor-pointer s:items-center s:justify-between s:rounded-2xl s:bg-muted-background s:p-1.5 s:pl-3.5 s:heading-sm"
       onClick={onHeaderClick}
     >
       {label}
@@ -582,7 +582,7 @@ export function InboxView({
         creator={creator || undefined}
         className={cn(
           "s:px-3 s:rounded-2xl !s-border-transparent",
-          isSelected && "s:bg-highlight-50 dark:s:bg-highlight-50-night"
+          isSelected && "s:bg-highlight-50"
         )}
         time={time}
         replySection={
@@ -605,11 +605,11 @@ export function InboxView({
     if (!hasConversationContent) {
       return (
         <div className="s:flex s:flex-1 s:flex-col s:items-center s:justify-center s:gap-2">
-          <div className="s:flex s:flex-col s:items-center s:justify-center s:gap-1 s:text-foreground dark:s:text-foreground-night">
+          <div className="s:flex s:flex-col s:items-center s:justify-center s:gap-1 s:text-foreground">
             <Icon size="md" visual={Inbox01} />
             <h2 className="s:heading-xl">Inbox</h2>
           </div>
-          <p className="s:text-center s:text-lg s:text-muted-foreground dark:s:text-muted-foreground-night">
+          <p className="s:text-center s:text-lg s:text-muted-foreground">
             You're all caught up!
             <br />
             Nothing new under the sun.
@@ -623,11 +623,11 @@ export function InboxView({
         <div className="s:flex s:flex-1 s:flex-col s:gap-3">
           {renderConversationsToolbar()}
           <div className="s:flex s:flex-1 s:flex-col s:items-center s:justify-center s:gap-2">
-            <div className="s:flex s:flex-col s:items-center s:justify-center s:gap-1 s:text-foreground dark:s:text-foreground-night">
+            <div className="s:flex s:flex-col s:items-center s:justify-center s:gap-1 s:text-foreground">
               <Icon size="md" visual={Inbox01} />
               <h2 className="s:heading-xl">Inbox</h2>
             </div>
-            <p className="s:text-center s:text-lg s:text-muted-foreground dark:s:text-muted-foreground-night">
+            <p className="s:text-center s:text-lg s:text-muted-foreground">
               You're all caught up!
               <br />
               Nothing new under the sun.
@@ -721,11 +721,11 @@ export function InboxView({
     if (!hasTaskContent) {
       return (
         <div className="s:flex s:flex-1 s:flex-col s:items-center s:justify-center s:gap-2">
-          <div className="s:flex s:flex-col s:items-center s:justify-center s:gap-1 s:text-foreground dark:s:text-foreground-night">
+          <div className="s:flex s:flex-col s:items-center s:justify-center s:gap-1 s:text-foreground">
             <Icon size="md" visual={Inbox01} />
             <h2 className="s:heading-xl">All tasks done</h2>
           </div>
-          <p className="s:text-center s:text-lg s:text-muted-foreground dark:s:text-muted-foreground-night">
+          <p className="s:text-center s:text-lg s:text-muted-foreground">
             No ongoing tasks across your pods.
           </p>
         </div>
@@ -737,7 +737,7 @@ export function InboxView({
         <div className="s:flex s:flex-1 s:flex-col s:gap-4">
           {renderTasksToolbar()}
           <div className="s:flex s:flex-1 s:flex-col s:items-center s:justify-center s:gap-2">
-            <p className="s:text-center s:text-lg s:text-muted-foreground dark:s:text-muted-foreground-night">
+            <p className="s:text-center s:text-lg s:text-muted-foreground">
               No tasks match your search.
             </p>
           </div>
@@ -750,11 +750,11 @@ export function InboxView({
         <div className="s:flex s:flex-1 s:flex-col s:gap-4">
           {renderTasksToolbar()}
           <div className="s:flex s:flex-1 s:flex-col s:items-center s:justify-center s:gap-2">
-            <div className="s:flex s:flex-col s:items-center s:justify-center s:gap-1 s:text-foreground dark:s:text-foreground-night">
+            <div className="s:flex s:flex-col s:items-center s:justify-center s:gap-1 s:text-foreground">
               <Icon size="md" visual={Inbox01} />
               <h2 className="s:heading-xl">All tasks done</h2>
             </div>
-            <p className="s:text-center s:text-lg s:text-muted-foreground dark:s:text-muted-foreground-night">
+            <p className="s:text-center s:text-lg s:text-muted-foreground">
               No ongoing tasks across your pods.
             </p>
           </div>
@@ -828,11 +828,11 @@ export function InboxView({
   };
 
   return (
-    <div className="s:flex s:h-full s:w-full s:flex-col s:bg-background dark:s:bg-background-night">
+    <div className="s:flex s:h-full s:w-full s:flex-col s:bg-background">
       <div className="s:flex s:h-full s:min-h-0 s:flex-1 s:flex-col s:overflow-y-auto s:px-4">
         <div className="s:mx-auto s:flex s:h-full s:w-full s:max-w-4xl s:flex-col s:gap-3 s:py-6">
           {greeting && (
-            <h2 className="s:heading-2xl s:text-foreground dark:s:text-foreground-night">
+            <h2 className="s:heading-2xl s:text-foreground">
               {greeting}
             </h2>
           )}

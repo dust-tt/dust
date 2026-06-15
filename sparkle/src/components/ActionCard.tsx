@@ -19,11 +19,9 @@ const actionCardDiffVariants = cva("s:p-3", {
     diffStatus: {
       added: cn(
         "s:bg-success-50 s:border-success-200",
-        "s:dark:bg-success-50-night s:dark:border-success-200-night"
       ),
       removed: cn(
         "s:bg-warning-50 s:border-warning-200",
-        "s:dark:bg-warning-50-night s:dark:border-warning-200-night"
       ),
     },
   },
@@ -175,14 +173,14 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
                   />
                 )}
                 {cantAddReason && (
-                  <div className="s:flex-shrink-0 s:text-xs s:italic s:text-muted-foreground s:dark:text-muted-foreground-night">
+                  <div className="s:flex-shrink-0 s:text-xs s:italic s:text-muted-foreground">
                     {cantAddReason}
                   </div>
                 )}
               </div>
             </div>
             <TruncatedText
-              className="s:text-sm s:text-muted-foreground s:dark:text-muted-foreground-night"
+              className="s:text-sm s:text-muted-foreground"
               mountPortal={mountPortal}
               mountPortalContainer={mountPortalContainer}
               lineClamp={descriptionLineClamp}
@@ -198,12 +196,12 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
                     e.stopPropagation();
                     footer.onClick?.();
                   }}
-                  className="s:heading-sm s:cursor-pointer s:text-muted-foreground s:hover:text-highlight-light s:hover:underline s:hover:underline-offset-2 s:dark:text-muted-foreground-night s:dark:hover:text-highlight-light-night"
+                  className="s:heading-sm s:cursor-pointer s:text-muted-foreground s:hover:text-highlight-light s:hover:underline s:hover:underline-offset-2"
                 >
                   {footer.label}
                 </a>
               ) : (
-                <span className="s:text-xs s:text-muted-foreground s:dark:text-muted-foreground-night">
+                <span className="s:text-xs s:text-muted-foreground">
                   {footer.label}
                 </span>
               )}

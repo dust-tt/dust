@@ -228,7 +228,7 @@ export function ImageGenerationPlaceholder({
     <div
       className={cn(
         "s:overflow-hidden s:rounded-2xl",
-        "s:bg-muted-background s:dark:bg-muted-background-night",
+        "s:bg-muted-background",
         fill ? "s:absolute s:inset-0" : "s:relative s:shrink-0",
         className
       )}
@@ -249,7 +249,7 @@ export function ImageGenerationPlaceholder({
           className={cn(
             "s:absolute s:top-3 s:left-3.5 s:z-10",
             "s:text-xs s:font-medium s:pointer-events-none",
-            "s:text-muted-foreground s:dark:text-muted-foreground-night",
+            "s:text-muted-foreground",
             "s:motion-safe:animate-opacity-pulse"
           )}
         >

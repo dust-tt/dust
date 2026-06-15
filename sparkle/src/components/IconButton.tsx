@@ -13,52 +13,52 @@ const iconButtonVariants = cva(
     variants: {
       variant: {
         primary: cn(
-          "s:text-highlight-500 s:dark:text-highlight-500-night",
-          "s:hover:text-highlight-400 s:dark:hover:text-highlight-500-night",
-          "s:active:text-highlight-600 s:dark:active:text-highlight-600-night",
-          "s:text-primary-500 s:dark:text-primary-500-night"
+          "s:text-highlight-500",
+          "s:hover:text-highlight-400",
+          "s:active:text-highlight-600",
+          "s:text-primary-500"
         ),
         warning: cn(
-          "s:text-warning-500 s:dark:text-warning-500-night",
-          "s:hover:text-warning-400 s:dark:hover:text-warning-500-night",
-          "s:active:text-warning-600 s:dark:active:text-warning-600-night",
-          "s:text-primary-500 s:dark:text-primary-500-night"
+          "s:text-warning-500",
+          "s:hover:text-warning-400",
+          "s:active:text-warning-600",
+          "s:text-primary-500"
         ),
         "warning-secondary": cn(
-          "s:text-warning-500 s:dark:text-warning-500-night",
-          "s:hover:text-warning-400 s:dark:hover:text-warning-500-night",
-          "s:active:text-warning-600 s:dark:active:text-warning-600-night",
-          "s:text-primary-500 s:dark:text-primary-500-night"
+          "s:text-warning-500",
+          "s:hover:text-warning-400",
+          "s:active:text-warning-600",
+          "s:text-primary-500"
         ),
         highlight: cn(
-          "s:text-foreground s:dark:text-foreground-night",
-          "s:hover:text-highlight-400 s:dark:hover:text-highlight-500-night",
-          "s:active:text-highlight-600 s:dark:active:text-highlight-600-night",
-          "s:text-primary-500 s:dark:text-primary-500-night"
+          "s:text-foreground",
+          "s:hover:text-highlight-400",
+          "s:active:text-highlight-600",
+          "s:text-primary-500"
         ),
         "highlight-secondary": cn(
-          "s:text-foreground s:dark:text-foreground-night",
-          "s:hover:text-highlight-400 s:dark:hover:text-highlight-500-night",
-          "s:active:text-highlight-600 s:dark:active:text-highlight-600-night",
-          "s:text-primary-500 s:dark:text-primary-500-night"
+          "s:text-foreground",
+          "s:hover:text-highlight-400",
+          "s:active:text-highlight-600",
+          "s:text-primary-500"
         ),
         outline: cn(
-          "s:text-primary-700 s:dark:text-primary-700-night",
-          "s:hover:text-primary-400 s:dark:hover:text-primary-400-night",
-          "s:active:text-highlight-600 s:dark:active:text-highlight-600-night",
-          "s:text-primary-500 s:dark:text-primary-500-night"
+          "s:text-primary-700",
+          "s:hover:text-primary-400",
+          "s:active:text-highlight-600",
+          "s:text-primary-500"
         ),
         ghost: cn(
-          "s:text-white s:dark:text-primary-950",
-          "s:hover:text-primary-100 s:dark:hover:text-primary-100-night",
-          "s:active:text-primary-200 s:dark:active:text-primary-200-night",
-          "s:text-white/50 s:dark:text-primary-950/50"
+          "s:text-white",
+          "s:hover:text-primary-100",
+          "s:active:text-primary-200",
+          "s:text-white/50"
         ),
         "ghost-secondary": cn(
           "s:text-white",
-          "s:hover:text-primary-100 s:dark:hover:text-primary-100-night",
-          "s:active:text-primary-200 s:dark:active:text-primary-200-night",
-          "s:text-white/50 s:dark:text-primary-950/50"
+          "s:hover:text-primary-100",
+          "s:active:text-primary-200",
+          "s:text-white/50"
         ),
       },
     },
@@ -100,7 +100,7 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
         iconButtonVariants({ variant }),
         disabled &&
           cn(
-            "s:text-primary-500 s:dark:text-primary-500-night",
+            "s:text-primary-500",
             "s:cursor-default s:hover:scale-100"
           ),
         className

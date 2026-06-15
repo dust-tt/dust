@@ -8,18 +8,18 @@ const markerVariants = cva(
     variants: {
       variant: {
         complete: cn(
-          "s:border-highlight-500 s:dark:border-highlight-500-night",
-          "s:bg-highlight-500 s:dark:bg-highlight-500-night",
+          "s:border-highlight-500",
+          "s:bg-highlight-500",
           "s:shadow-sm"
         ),
         current: cn(
-          "s:border-highlight-500 s:dark:border-highlight-500-night",
-          "s:bg-background s:dark:bg-background-night",
+          "s:border-highlight-500",
+          "s:bg-background",
           "s:shadow-sm"
         ),
         upcoming: cn(
-          "s:border-border s:dark:border-border-night",
-          "s:bg-background s:dark:bg-background-night"
+          "s:border-border",
+          "s:bg-background"
         ),
       },
     },
@@ -32,9 +32,9 @@ const markerVariants = cva(
 const lineVariants = cva("s:w-[2px] s:flex-1", {
   variants: {
     variant: {
-      complete: "s:bg-highlight-500 s:dark:bg-highlight-500-night",
-      current: "s:bg-highlight-500 s:dark:bg-highlight-500-night",
-      upcoming: "s:bg-border s:dark:bg-border-night",
+      complete: "s:bg-highlight-500",
+      current: "s:bg-highlight-500",
+      upcoming: "s:bg-border",
     },
   },
   defaultVariants: {
@@ -60,7 +60,7 @@ function Timeline({
   return (
     <div
       className={cn(
-        "s:flex s:flex-col s:text-foreground s:dark:text-foreground-night",
+        "s:flex s:flex-col s:text-foreground",
         className
       )}
       {...props}
@@ -125,17 +125,17 @@ const TimelineItem = React.forwardRef<HTMLDivElement, TimelineItemProps>(
         </div>
         <div className="s:flex s:flex-col s:gap-1 s:pb-4">
           {title && (
-            <div className="s:heading-sm s:text-foreground s:dark:text-foreground-night">
+            <div className="s:heading-sm s:text-foreground">
               {title}
             </div>
           )}
           {meta && (
-            <div className="s:text-xs s:font-medium s:text-muted-foreground s:dark:text-muted-foreground-night">
+            <div className="s:text-xs s:font-medium s:text-muted-foreground">
               {meta}
             </div>
           )}
           {description && (
-            <div className="s:text-sm s:text-muted-foreground s:dark:text-muted-foreground-night">
+            <div className="s:text-sm s:text-muted-foreground">
               {description}
             </div>
           )}

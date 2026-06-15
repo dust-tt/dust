@@ -14,13 +14,11 @@ const tabsTriggerVariants = cva(
     "s:after:absolute s:after:bottom-[-10px] s:after:left-1/2 s:after:h-[2px]",
     "s:after:w-full s:after:-translate-x-1/2",
     "s:after:bg-foreground s:after:opacity-0 s:data-[state=active]:after:opacity-100",
-    "s:dark:after:bg-foreground-night",
   ],
   {
     variants: {
       variant: {
         ghost:
-          "s:data-[state=inactive]:text-muted-foreground s:data-[state=inactive]:hover:text-primary-900 s:data-[state=inactive]:dark:text-muted-foreground-night s:data-[state=inactive]:dark:hover:text-primary-900-night",
         primary: "",
         highlight: "",
         "highlight-secondary": "",
@@ -36,7 +34,7 @@ const tabsTriggerVariants = cva(
 const tabsListVariants = cva("s:flex s:h-11 s:gap-2 s:w-full", {
   variants: {
     border: {
-      true: "s:border-b s:border-border s:dark:border-border-night",
+      true: "s:border-b s:border-border",
     },
   },
   defaultVariants: {

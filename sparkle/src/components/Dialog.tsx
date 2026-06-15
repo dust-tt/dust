@@ -20,7 +20,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     className={cn(
       "s:fixed s:inset-0 s:z-50 s:data-[state=open]:animate-in s:data-[state=closed]:animate-out s:data-[state=closed]:fade-out-0 s:data-[state=open]:fade-in-0",
-      "s:bg-muted-foreground/75 s:dark:bg-muted-background-night/75",
+      "s:bg-muted-foreground/75",
       className
     )}
     {...props}
@@ -68,8 +68,8 @@ const dialogVariants = cva(
   cn(
     "s:fixed s:left-[50%] s:z-50 s:overflow-hidden s:translate-x-[-50%]",
     "s:rounded-2xl s:flex s:flex-col s:w-full s:max-w-[calc(100vw-2rem)] s:border s:border s:shadow-lg s:sm:rounded-lg",
-    "s:bg-background s:dark:bg-background-night",
-    "s:border-border s:dark:border-border-night",
+    "s:bg-background",
+    "s:border-border",
     "s:max-h-[90vh]"
   ),
   {
@@ -166,7 +166,7 @@ const DialogHeader = ({
 }: NewDialogHeaderProps) => (
   <div
     className={cn(
-      "s:sticky s:top-0 s:z-50 s:flex s:flex-none s:flex-col s:gap-0 s:bg-background s:px-5 s:pt-4 s:text-left s:dark:bg-background-night",
+      "s:sticky s:top-0 s:z-50 s:flex s:flex-none s:flex-col s:gap-0 s:bg-background s:px-5 s:pt-4 s:text-left",
       className
     )}
     {...props}
@@ -191,7 +191,7 @@ const DialogContainer = ({
   className,
 }: DialogContainerProps) => {
   const contentStyles = cn(
-    "s:copy-base s:break-words s:px-5 s:py-4 s:text-foreground s:dark:text-foreground-night"
+    "s:copy-base s:break-words s:px-5 s:py-4 s:text-foreground"
   );
 
   const scrollableContent = (
@@ -279,7 +279,7 @@ const DialogTitle = React.forwardRef<
       className={cn(
         "s:heading-lg",
         "s:min-w-0 s:break-words",
-        "s:text-foreground s:dark:text-foreground-night",
+        "s:text-foreground",
         className
       )}
       {...props}
@@ -298,7 +298,7 @@ const DialogDescription = React.forwardRef<
     ref={ref}
     className={cn(
       "s:copy-sm",
-      "s:text-muted-foreground s:dark:text-muted-foreground-night",
+      "s:text-muted-foreground",
       className
     )}
     {...props}

@@ -25,9 +25,9 @@ const ShadowBox = ({
 }) => (
   <div className="s:flex s:flex-col s:items-center s:gap-2">
     <div
-      className={`s:h-24 s:w-24 s:rounded-lg s:bg-white s:dark:bg-gray-800 ${shadowClass}`}
+      className={`s:h-24 s:w-24 s:rounded-lg s:bg-white ${shadowClass}`}
     />
-    <span className="s:text-sm s:text-gray-600 s:dark:text-gray-400">
+    <span className="s:text-sm s:text-gray-600">
       {label}
     </span>
   </div>

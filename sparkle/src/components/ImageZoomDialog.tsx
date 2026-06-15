@@ -85,7 +85,7 @@ function ImageZoomDialog({
                 className={cn(
                   "s:mx-auto s:flex s:aspect-square s:w-full s:min-w-[50vh]",
                   "s:max-w-[80vh] s:items-center s:justify-center",
-                  "s:bg-muted-background s:dark:bg-muted-background-night"
+                  "s:bg-muted-background"
                 )}
               >
                 <Spinner variant="dark" size="lg" />

@@ -17,9 +17,9 @@ const barVariants = cva("s:flex s:flex-row s:items-center s:gap-3 s:px-4", {
       bottom: "s:border-t",
     },
     variant: {
-      full: "s:fixed s:left-0 s:right-0 s:z-30 s:backdrop-blur s:border-border-dark/70 s:bg-background/80 s:dark:border-border-dark-night/70 s:dark:bg-background-night/80",
+      full: "s:fixed s:left-0 s:right-0 s:z-30 s:backdrop-blur s:border-border-dark/70 s:bg-background/80",
       default:
-        "s:relative s:z-10 s:border-border s:bg-background s:dark:border-border-night s:dark:bg-background-night",
+        "s:relative s:z-10 s:border-border s:bg-background",
     },
     size: {
       sm: "s:h-12",
@@ -68,7 +68,7 @@ export function Bar({
   size,
 }: BarProps) {
   const titleClasses = cn(
-    "s:text-foreground s:dark:text-foreground-night",
+    "s:text-foreground",
     "s:heading-base s:truncate"
   );
 

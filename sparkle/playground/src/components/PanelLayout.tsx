@@ -74,7 +74,7 @@ interface PanelTopBarProps {
 
 export function PanelTopBar({ left, right }: PanelTopBarProps) {
   return (
-    <header className="s:flex s:h-[52px] s:flex-none s:items-center s:justify-between s:gap-2 s:overflow-hidden s:whitespace-nowrap s:border-b s:border-separator s:px-3 dark:s:border-separator-night">
+    <header className="s:flex s:h-[52px] s:flex-none s:items-center s:justify-between s:gap-2 s:overflow-hidden s:whitespace-nowrap s:border-b s:border-separator s:px-3">
       <div className="s:flex s:min-w-0 s:flex-1 s:items-center s:gap-1 s:overflow-hidden">
         {left}
       </div>
@@ -104,7 +104,6 @@ function ResizeHandle({
     >
       <div
         className={[
-          "s:mx-auto s:w-px s:bg-separator s:transition-all s:duration-[120ms] dark:s:bg-separator-night",
           visible
             ? "group-hover:s:w-[2px] group-hover:[background:var(--panel-resize-focus-border)] group-active:s:w-[2px] group-active:[background:var(--panel-resize-focus-border)]"
             : "",
@@ -318,11 +317,11 @@ export function PanelLayout({ children }: PanelLayoutProps) {
         className={[
           "s:relative s:flex s:h-full s:min-w-0 s:flex-none s:flex-col s:overflow-hidden",
           isNav
-            ? "s:bg-muted-background dark:s:bg-muted-background-night"
-            : "s:bg-white dark:s:bg-structure-0-night",
+            ? "s:bg-muted-background"
+            : "s:bg-white",
           hidden
             ? ""
-            : "s:border-r s:border-separator dark:s:border-separator-night",
+            : "s:border-r s:border-separator",
           dragging
             ? ""
             : "s:transition-[width] s:duration-[260ms] s:ease-[cubic-bezier(.4,0,.2,1)]",
@@ -376,7 +375,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
         :root {
           --panel-resize-focus-border: linear-gradient(to bottom, ${customColors.gray[100]}, ${customColors.blue[400]}, ${customColors.gray[100]});
         }
-        .s-dark {
+        .dark {
           --panel-resize-focus-border: linear-gradient(to bottom, ${customColors.gray[900]}, ${customColors.blue[600]}, ${customColors.gray[900]});
         }
       `}</style>
@@ -546,8 +545,6 @@ export function PanelLayout({ children }: PanelLayoutProps) {
           <div
             className={[
               "s:absolute s:bottom-0 s:left-0 s:top-0 s:z-50 s:flex s:flex-col",
-              "s:bg-muted-background dark:s:bg-muted-background-night",
-              "s:border-r s:border-separator dark:s:border-separator-night",
               "s:transition-[transform,opacity] s:duration-[220ms] s:ease-[cubic-bezier(.4,0,.2,1)]",
               showNavOverlay
                 ? "s:translate-x-0 s:opacity-100 s:pointer-events-auto"

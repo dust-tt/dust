@@ -31,7 +31,7 @@ const Title = ({ className, children }: CardTitleProps) => (
   <div
     className={cn(
       "s:heading-sm",
-      "s:text-foreground s:dark:text-foreground-night",
+      "s:text-foreground",
       className
     )}
   >
@@ -48,7 +48,7 @@ const Subtitle = ({ className, children }: CardSubtitleProps) => (
   <div
     className={cn(
       "s:text-sm",
-      "s:text-muted-foreground s:dark:text-muted-foreground-night",
+      "s:text-muted-foreground",
       className
     )}
   >
@@ -78,7 +78,7 @@ const Content = ({
     <div
       className={cn(
         "s:flex s:flex-col s:gap-3",
-        "s:text-foreground s:dark:text-foreground-night",
+        "s:text-foreground",
         className
       )}
     >

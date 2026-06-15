@@ -71,7 +71,7 @@ export const DoubleIcon = ({
   return (
     <div className={cn(sizeVariants({ size }), className)}>
       <Icon
-        className="s:text-foreground s:dark:text-foreground-night"
+        className="s:text-foreground"
         size={
           size === "sm"
             ? "xs"

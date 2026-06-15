@@ -44,9 +44,9 @@ const SampleSidebar = ({
   onToggle?: () => void;
   isCollapsed?: boolean;
 }) => (
-  <div className="s:flex s:h-full s:flex-col s:border-r s:border-border s:bg-muted-background s:dark:border-border-night s:dark:bg-muted-background-night">
-    <div className="s:flex s:items-center s:justify-between s:gap-2 s:border-b s:border-border s:px-3 s:py-2 s:dark:border-border-night">
-      <div className="s:text-sm s:font-semibold s:text-foreground s:dark:text-foreground-night">
+  <div className="s:flex s:h-full s:flex-col s:border-r s:border-border s:bg-muted-background">
+    <div className="s:flex s:items-center s:justify-between s:gap-2 s:border-b s:border-border s:px-3 s:py-2">
+      <div className="s:text-sm s:font-semibold s:text-foreground">
         Sidebar
       </div>
       {onToggle && (
@@ -83,11 +83,11 @@ const SampleSidebar = ({
 // Sample content
 const SampleContent = () => (
   <div className="s:flex s:h-full s:w-full s:flex-col s:bg-background">
-    <div className="s:border-b s:border-border s:p-4 s:dark:border-border-night">
-      <h1 className="s:heading-xl s:text-foreground s:dark:text-foreground-night">
+    <div className="s:border-b s:border-border s:p-4">
+      <h1 className="s:heading-xl s:text-foreground">
         Main Content
       </h1>
-      <p className="s:text-sm s:text-muted-foreground s:dark:text-muted-foreground-night">
+      <p className="s:text-sm s:text-muted-foreground">
         This is the main content area. Resize the sidebar by dragging the
         handle.
       </p>
@@ -96,10 +96,10 @@ const SampleContent = () => (
       <div className="s:space-y-4">
         {Array.from({ length: 10 }).map((_, i) => (
           <Card key={i} className="s:p-4">
-            <h2 className="s:heading-lg s:mb-2 s:text-foreground s:dark:text-foreground-night">
+            <h2 className="s:heading-lg s:mb-2 s:text-foreground">
               Card {i + 1}
             </h2>
-            <p className="s:text-sm s:text-muted-foreground s:dark:text-muted-foreground-night">
+            <p className="s:text-sm s:text-muted-foreground">
               This is card content {i + 1}. The sidebar can be resized, toggled,
               and will reveal on hover when collapsed.
             </p>
@@ -138,9 +138,9 @@ const ComplexSidebar = ({
   onSearchChange: (value: string) => void;
   onNavigate: (item: string) => void;
 }) => (
-  <div className="s:flex s:h-full s:flex-col s:border-r s:border-border s:bg-muted-background s:dark:border-border-night s:dark:bg-muted-background-night">
-    <div className="s:flex s:items-center s:justify-between s:gap-2 s:border-b s:border-border s:px-3 s:py-2 s:dark:border-border-night">
-      <div className="s:text-sm s:font-semibold s:text-foreground s:dark:text-foreground-night">
+  <div className="s:flex s:h-full s:flex-col s:border-r s:border-border s:bg-muted-background">
+    <div className="s:flex s:items-center s:justify-between s:gap-2 s:border-b s:border-border s:px-3 s:py-2">
+      <div className="s:text-sm s:font-semibold s:text-foreground">
         Navigation
       </div>
       {onToggle && (
@@ -178,7 +178,7 @@ const ComplexSidebar = ({
           />
           <NavigationListItem label="Help" onClick={() => onNavigate("Help")} />
         </NavigationList>
-        <div className="s:mt-4 s:border-t s:border-border s:pt-4 s:dark:border-border-night">
+        <div className="s:mt-4 s:border-t s:border-border s:pt-4">
           <NavigationList>
             <NavigationListItem
               label="Recent"
@@ -202,15 +202,15 @@ const ComplexSidebar = ({
 // Complex content component
 const ComplexContent = ({ selectedItem }: { selectedItem: string | null }) => (
   <div className="s:flex s:h-full s:w-full s:flex-col s:bg-background">
-    <div className="s:border-b s:border-border s:p-6 s:dark:border-border-night">
-      <h1 className="s:heading-2xl s:mb-2 s:text-foreground s:dark:text-foreground-night">
+    <div className="s:border-b s:border-border s:p-6">
+      <h1 className="s:heading-2xl s:mb-2 s:text-foreground">
         Complex Layout Example
       </h1>
-      <p className="s:text-sm s:text-muted-foreground s:dark:text-muted-foreground-night">
+      <p className="s:text-sm s:text-muted-foreground">
         This example demonstrates a more realistic sidebar layout with
         navigation items and content cards.
         {selectedItem && (
-          <span className="s:ml-2 s:font-semibold s:text-foreground s:dark:text-foreground-night">
+          <span className="s:ml-2 s:font-semibold s:text-foreground">
             Selected: {selectedItem}
           </span>
         )}
@@ -220,10 +220,10 @@ const ComplexContent = ({ selectedItem }: { selectedItem: string | null }) => (
       <div className="s:grid s:grid-cols-1 s:gap-4 s:md:grid-cols-2 s:lg:grid-cols-3">
         {Array.from({ length: 12 }).map((_, i) => (
           <Card key={i} className="s:p-4">
-            <h3 className="s:heading-md s:mb-2 s:text-foreground s:dark:text-foreground-night">
+            <h3 className="s:heading-md s:mb-2 s:text-foreground">
               Project {i + 1}
             </h3>
-            <p className="s:text-xs s:text-muted-foreground s:dark:text-muted-foreground-night">
+            <p className="s:text-xs s:text-muted-foreground">
               Description for project {i + 1}. This card demonstrates how
               content flows in the main area.
             </p>

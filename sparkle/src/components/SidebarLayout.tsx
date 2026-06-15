@@ -188,7 +188,7 @@ export const SidebarLayout = React.forwardRef<
           --sash-size: 8px;
           --sash-hover-size: 2px;
         }
-        .s-dark {
+        .dark {
           --focus-border: linear-gradient(to bottom, ${customColors.gray[900]}, ${customColors.blue[600]}, ${customColors.gray[900]}); /* border.focus.night */
           --separator-border: transparent; /* border.dark.night */
         }

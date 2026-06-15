@@ -146,7 +146,6 @@ export const NewConversationSectionHeading = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s:flex s:w-full s:justify-center s:items-center s:gap-3 s:heading-sm s:text-faint dark:s:text-faint-night",
         className
       )}
       {...props}
@@ -322,11 +321,11 @@ export const NewConversationMessageGroupHeader = React.forwardRef<
             isLocutor ? "s:justify-end" : "s:justify-between"
           )}
         >
-          <div className="s:inline-flex s:items-baseline s:gap-2 s:text-foreground dark:s:text-foreground-night">
+          <div className="s:inline-flex s:items-baseline s:gap-2 s:text-foreground">
             <span className="s:heading-sm">
               {isLocutor ? "Me" : renderName(name)}
             </span>
-            <span className="s:text-xs s:text-muted-foreground dark:s:text-muted-foreground-night">
+            <span className="s:text-xs s:text-muted-foreground">
               {timestamp}
             </span>
             {infoChip && infoChip}
@@ -375,9 +374,7 @@ const messageVariants = cva("s:flex s:max-w-full", {
   variants: {
     type: {
       interlocutor:
-        "s:rounded-3xl s:bg-muted-background dark:s:bg-muted-background-night s:px-4 s:gap-2 s:w-fit",
       locutor:
-        "s:rounded-3xl s:bg-muted-background dark:s:bg-muted-background-night s:px-4 s:gap-2 s:w-fit",
       agent: "s:flex-1 s:px-4",
     },
   },
@@ -665,7 +662,6 @@ export const NewConversationUserMessage = React.forwardRef<
                   messageVariants({ type: resolvedType, className }),
                   userCollapsible && "s:flex-col",
                   isEditing &&
-                    "s:w-full s:mt-3 s:flex-col s:border s:border-highlight-300 dark:s:border-highlight-300-night s:ring-2 s:ring-highlight-300/50 dark:s:ring-highlight-700/60"
                 )}
                 {...props}
               >
@@ -686,7 +682,7 @@ export const NewConversationUserMessage = React.forwardRef<
                           handleEditSave();
                         }
                       }}
-                      className="s:w-full s:resize-none s:bg-transparent s:text-base s:text-foreground dark:s:text-foreground-night s:outline-none s:border-none s:p-0 focus:s:outline-none focus:s:ring-0"
+                      className="s:w-full s:resize-none s:bg-transparent s:text-base s:text-foreground s:outline-none s:border-none s:p-0 focus:s:outline-none focus:s:ring-0"
                       rows={1}
                     />
                   </div>
@@ -722,7 +718,7 @@ export const NewConversationUserMessage = React.forwardRef<
                           "s:pointer-events-none s:absolute s:bottom-0 s:left-0 s:right-0 s:h-12 s:bg-gradient-to-b s:from-transparent s:transition-opacity",
                           isExpanded
                             ? "s:opacity-0"
-                            : "s:to-muted-background dark:s:to-muted-background-night s:opacity-80"
+                            : "s:to-muted-background s:opacity-80"
                         )}
                       />
                     )}
@@ -886,10 +882,9 @@ export const NewConversationAgentMessage = React.forwardRef<
                   />
                   <div
                     className={cn(
-                      "s:pointer-events-none s:absolute s:bottom-full s:border-b s:border-border dark:s:border-border-night s:left-0 s:right-0 s:h-8 s:bg-gradient-to-b s:from-transparent s:transition-opacity",
                       isExpanded
                         ? "s:opacity-0"
-                        : "s:to-background/80 dark:s:to-background-night/80 s:opacity-100"
+                        : "s:to-background/80 s:opacity-100"
                     )}
                   />
                 </>
@@ -987,7 +982,7 @@ export const NewConversationMessageContent = React.forwardRef<
         )}
         {...props}
       >
-        <div className="s:text-base s:text-foreground dark:s:text-foreground-night">
+        <div className="s:text-base s:text-foreground">
           {children}
         </div>
         {citations && citations.length > 0 && (
@@ -1088,7 +1083,7 @@ export const NewConversationPendingValidationBlock = React.forwardRef<
         </div>
         {!hideActions && (
           <div className="s:flex s:items-center s:gap-2 s:p-2 s:pl-3 s:rounded-b-2xl s:border-t-2 s:border-border s:border-highlight-100 s:bg-highlight-50">
-            <span className="s:flex-1 s:text-sm s:text-foreground dark:s:text-muted-foreground-night">
+            <span className="s:flex-1 s:text-sm s:text-foreground">
               This agent has access to sensitive data. Do you want to post this
               message in this shared conversation?
             </span>

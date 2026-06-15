@@ -38,7 +38,7 @@ export default meta;
 export const TooltipExample = () => (
   <Tooltip
     trigger={
-      <div className="s:text-foreground s:dark:text-foreground-night">
+      <div className="s:text-foreground">
         Hover
       </div>
     }
@@ -49,7 +49,7 @@ export const TooltipExample = () => (
 export const TooltipWithShortcut = () => (
   <Tooltip
     trigger={
-      <div className="s:text-foreground s:dark:text-foreground-night">
+      <div className="s:text-foreground">
         Hover for shortcut
       </div>
     }
@@ -82,7 +82,7 @@ export const TooltipWithKeyboardShortcutComponent = () => (
   <TooltipProvider>
     <TooltipRoot>
       <TooltipTrigger>
-        <div className="s:text-foreground s:dark:text-foreground-night">
+        <div className="s:text-foreground">
           Hover for inline shortcut
         </div>
       </TooltipTrigger>

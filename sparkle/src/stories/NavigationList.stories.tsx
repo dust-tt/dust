@@ -101,7 +101,7 @@ export const Demo = () => {
   return (
     <div className="s:flex s:h-[400px] s:w-full s:flex-row s:gap-12">
       <div className="s:h-[400px] s:w-[240px]">
-        <NavigationList className="s:relative s:h-full s:w-full s:px-3 s:dark:bg-muted-background-night">
+        <NavigationList className="s:relative s:h-full s:w-full s:px-3">
           {conversationTitles.map((section, sectionIndex) => (
             <React.Fragment key={sectionIndex}>
               <NavigationListLabel label={section.label} />
@@ -144,7 +144,7 @@ export const Demo = () => {
         </NavigationList>
       </div>
       <div className="s:h-[400px] s:w-[240px]">
-        <NavigationList className="s:relative s:h-full s:w-full s:px-3 s:dark:bg-muted-background-night">
+        <NavigationList className="s:relative s:h-full s:w-full s:px-3">
           {conversationTitles.map((section, sectionIndex) => (
             <React.Fragment key={sectionIndex}>
               <NavigationListLabel label={section.label} isSticky />
@@ -234,11 +234,11 @@ export const CollapsibleSection = () => {
   );
 
   return (
-    <div className="s:dark:bg-muted-background-night s:flex s:h-[800px] s:w-[260px] s:flex-col s:border-r s:border-border s:bg-muted-background">
+    <div className="s:flex s:h-[800px] s:w-[260px] s:flex-col s:border-r s:border-border s:bg-muted-background">
       <NavigationList className="s:h-full s:w-[260px]">
         <NavigationListCollapsibleSection
           label="Inbox"
-          className="s:border-b s:border-t s:border-border s:bg-background/50 s:px-2 s:pb-2 s:dark:bg-background-night/50"
+          className="s:border-b s:border-t s:border-border s:bg-background/50 s:px-2 s:pb-2"
           action={
             <>
               {/* <div className="s:heading-xs s:h-5 s:cursor-pointer s:px-2 s:text-muted-foreground s:hover:text-foreground">

@@ -152,7 +152,7 @@ export const WithGaps: Story = {
 const ButtonGroupByVariant = ({ variant }: { variant: ButtonVariantType }) => (
   <>
     <Separator />
-    <h3 className="s:text-primary s:dark:text-primary-50">{variant}</h3>
+    <h3 className="s:text-primary">{variant}</h3>
     <div className="s:flex s:items-center s:gap-4">
       <ButtonGroup>
         <DefaultButtons variant={variant} size="xs" />

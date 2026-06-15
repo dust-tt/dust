@@ -51,7 +51,7 @@
     --tw-checker-color: var(--color-gray-50); /* Pattern color */
   }
 
-  .s-dark .s-checkerboard {
+  .dark .s-checkerboard {
     background-color: var(--color-black); /* Dark mode base color */
     --tw-checker-color: var(--color-slate-950); /* Dark mode pattern color */
   }

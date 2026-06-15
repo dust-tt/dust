@@ -18,12 +18,12 @@ export interface TextareaProps
 const textAreaVariants = cva(
   cn(
     "s:flex s:w-full s:px-3 s:py-2 s:text-sm",
-    "s:text-foreground s:dark:text-foreground-night",
-    "s:bg-muted-background s:dark:bg-muted-background-night",
-    "s:placeholder:text-muted-foreground s:dark:placeholder:text-muted-foreground-night",
+    "s:text-foreground",
+    "s:bg-muted-background",
+    "s:placeholder:text-muted-foreground",
     "s:ring-offset-background",
     "s:border s:rounded-xl s:transition s:duration-100 s:focus-visible:outline-hidden",
-    "s:focus-visible:border-border s:dark:focus-visible:border-border-night s:focus-visible:ring"
+    "s:focus-visible:border-border s:focus-visible:ring"
   ),
   {
     variants: {
@@ -35,24 +35,24 @@ const textAreaVariants = cva(
       },
       error: {
         true: cn(
-          "s:border-border-warning/30 s:dark:border-border-warning-night/60",
-          "s:ring-warning/0 s:dark:ring-warning-night/0",
-          "s:focus-visible:border-border-warning s:dark:focus-visible:border-border-warning-night",
+          "s:border-border-warning/30",
+          "s:ring-warning/0",
+          "s:focus-visible:border-border-warning",
           "s:focus-visible:outline-hidden s:focus-visible:ring-2",
-          "s:focus-visible:ring-warning/10 s:dark:focus-visible:ring-warning/30"
+          "s:focus-visible:ring-warning/10"
         ),
         false: cn(
-          "s:border-border s:dark:border-border-night",
-          "s:ring-highlight/0 s:dark:ring-highlight-night/0",
-          "s:focus-visible:border-border-focus s:dark:focus-visible:border-border-focus-night",
+          "s:border-border",
+          "s:ring-highlight/0",
+          "s:focus-visible:border-border-focus",
           "s:focus-visible:outline-hidden s:focus-visible:ring-2",
-          "s:focus-visible:ring-highlight/20 s:dark:focus-visible:ring-highlight/50"
+          "s:focus-visible:ring-highlight/20"
         ),
       },
       disabled: {
         true: cn(
           "s:disabled:cursor-not-allowed",
-          "s:disabled:text-muted-foreground s:dark:disabled:text-muted-foreground-night"
+          "s:disabled:text-muted-foreground"
         ),
         false: "",
       },
@@ -102,7 +102,7 @@ const TextArea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           {...props}
         />
         {error && showErrorLabel && (
-          <div className="s:ml-2 s:text-xs s:text-warning-500 s:dark:text-warning-500-night">
+          <div className="s:ml-2 s:text-xs s:text-warning-500">
             {error}
           </div>
         )}
@@ -127,7 +127,6 @@ const ReadOnlyTextArea = ({
       className={cn(
         "s:copy-sm s:h-full s:min-h-60 s:w-full s:min-w-0 s:rounded-xl",
         "s:resize-none s:border-border s:bg-muted-background",
-        "s:dark:border-border-night s:dark:bg-muted-background-night"
       )}
       defaultValue={content ?? ""}
     />

@@ -20,7 +20,7 @@ export function DropzoneOverlay({
     <Icon
       visual={Upload01}
       size="lg"
-      className="s:text-white s:dark:text-primary-950"
+      className="s:text-white"
     />
   ),
 }: DropzoneOverlayProps) {
@@ -48,8 +48,8 @@ export function DropzoneOverlay({
     <div
       className={cn(
         "s:absolute s:inset-0 s:z-50 s:flex s:h-full s:w-full s:flex-col s:items-center s:justify-center s:gap-0",
-        "s:bg-background/80 s:dark:bg-background-night/80",
-        "s:text-foreground s:dark:text-foreground-night"
+        "s:bg-background/80",
+        "s:text-foreground"
       )}
       onMouseLeave={() => {
         lottieRef.current?.setDirection(-1);
@@ -74,7 +74,7 @@ export function DropzoneOverlay({
         </div>
       </div>
       <div className="s:heading-xl">{title}</div>
-      <div className="s:text-base s:text-muted-foreground s:dark:text-muted-foreground-night">
+      <div className="s:text-base s:text-muted-foreground">
         {description}
       </div>
     </div>

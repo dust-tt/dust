@@ -933,7 +933,7 @@ export const ActionValidation: Story = {
         content: (
           <div className="s:space-y-6 s:pt-4">
             <div>
-              <p className="s:mb-6 s:text-sm s:text-muted-foreground s:dark:text-muted-foreground-night">
+              <p className="s:mb-6 s:text-sm s:text-muted-foreground">
                 Allow{" "}
                 <span className="s:font-semibold">@Marketing Assistant</span> to
                 use the tool <span className="s:font-semibold">Send Email</span>{" "}
@@ -943,7 +943,7 @@ export const ActionValidation: Story = {
               <div className="s:space-y-3">
                 <Collapsible>
                   <CollapsibleTrigger>
-                    <span className="s:text-sm s:font-medium s:text-muted-foreground s:dark:text-muted-foreground-night">
+                    <span className="s:text-sm s:font-medium s:text-muted-foreground">
                       Details
                     </span>
                   </CollapsibleTrigger>
@@ -1012,7 +1012,7 @@ export const ActionValidation: Story = {
               <div className="s:space-y-3">
                 <Collapsible>
                   <CollapsibleTrigger>
-                    <span className="s:text-sm s:font-medium s:text-muted-foreground s:dark:text-muted-foreground-night">
+                    <span className="s:text-sm s:font-medium s:text-muted-foreground">
                       Details
                     </span>
                   </CollapsibleTrigger>
@@ -1071,7 +1071,7 @@ export const ActionValidation: Story = {
               <div className="s:space-y-3">
                 <Collapsible>
                   <CollapsibleTrigger>
-                    <span className="s:text-sm s:font-medium s:text-muted-foreground s:dark:text-muted-foreground-night">
+                    <span className="s:text-sm s:font-medium s:text-muted-foreground">
                       Details
                     </span>
                   </CollapsibleTrigger>

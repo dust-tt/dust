@@ -24,9 +24,9 @@ const toolbarRootVariants = cva("s:inline-flex s:items-center", {
   variants: {
     variant: {
       overlay:
-        "s:absolute s:left-0 s:top-0 s:z-10 s:justify-start s:gap-3 s:overflow-hidden s:rounded-xl s:bg-primary-50 s:py-1 s:pl-3 s:duration-700 s:ease-in-out s:dark:bg-muted-background-night",
+        "s:absolute s:left-0 s:top-0 s:z-10 s:justify-start s:gap-3 s:overflow-hidden s:rounded-xl s:bg-primary-50 s:py-1 s:pl-3 s:duration-700 s:ease-in-out",
       inline:
-        "s:gap-1 s:border-b s:border-t s:border-border s:bg-background s:p-1 s:dark:border-border-night/50 s:dark:bg-background-night s:sm:rounded-2xl s:sm:border s:sm:border-border/50 s:sm:shadow-md",
+        "s:gap-1 s:border-b s:border-t s:border-border s:bg-background s:p-1 s:sm:rounded-2xl s:sm:border s:sm:border-border/50 s:sm:shadow-md",
     },
   },
   defaultVariants: {
@@ -55,7 +55,7 @@ const toolbarContentVariants = cva("", {
 const toolbarScrollAreaVariants = cva("s:h-full s:w-full", {
   variants: {
     variant: {
-      overlay: "s:border-l s:border-border s:dark:border-border-night/50",
+      overlay: "s:border-l s:border-border",
       inline: "",
     },
   },

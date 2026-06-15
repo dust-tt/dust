@@ -759,7 +759,7 @@ export default function Pods_After() {
                   />
                 ))
               ) : (
-                <div className="s:flex s:h-24 s:items-center s:justify-center s:text-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
+                <div className="s:flex s:h-24 s:items-center s:justify-center s:text-sm s:text-muted-foreground">
                   No participants
                 </div>
               )}
@@ -957,8 +957,8 @@ export default function Pods_After() {
 
   if (!user) {
     return (
-      <div className="s:flex s:h-screen s:items-center s:justify-center s:bg-background dark:s:bg-background-night">
-        <p className="s:text-foreground dark:s:text-foreground-night">
+      <div className="s:flex s:h-screen s:items-center s:justify-center s:bg-background">
+        <p className="s:text-foreground">
           Loading…
         </p>
       </div>
@@ -1093,13 +1093,13 @@ export default function Pods_After() {
       );
     // welcome
     return (
-      <div className="s:flex s:h-full s:w-full s:items-center s:justify-center s:bg-background dark:s:bg-background-night">
+      <div className="s:flex s:h-full s:w-full s:items-center s:justify-center s:bg-background">
         <div className="s:flex s:w-full s:max-w-4xl s:flex-col s:gap-6 s:px-4 s:py-8">
-          <div className="s:heading-2xl s:text-foreground dark:s:text-foreground-night">
+          <div className="s:heading-2xl s:text-foreground">
             {greeting}
           </div>
           <InputBar placeholder="Ask a question" />
-          <div className="s:heading-lg s:text-foreground dark:s:text-foreground-night">
+          <div className="s:heading-lg s:text-foreground">
             Chat with…
           </div>
         </div>
@@ -1131,10 +1131,10 @@ export default function Pods_After() {
     if (p3View.kind === "citation")
       return (
         <div className="s:flex s:h-full s:flex-col s:gap-3 s:p-4">
-          <p className="s:text-sm s:font-medium s:text-foreground dark:s:text-foreground-night">
+          <p className="s:text-sm s:font-medium s:text-foreground">
             {p3View.citation.title}
           </p>
-          <div className="s:flex-1 s:rounded-lg s:border s:border-separator s:bg-muted-background s:p-4 s:text-sm s:text-muted-foreground dark:s:border-separator-night dark:s:bg-muted-background-night dark:s:text-muted-foreground-night">
+          <div className="s:flex-1 s:rounded-lg s:border s:border-separator s:bg-muted-background s:p-4 s:text-sm s:text-muted-foreground">
             Document preview placeholder
           </div>
         </div>
@@ -1146,10 +1146,10 @@ export default function Pods_After() {
   const p4Label = p4Citation?.title ?? "Attachment";
   const p4Content = p4Citation ? (
     <div className="s:flex s:h-full s:flex-col s:gap-3 s:p-4">
-      <p className="s:text-sm s:font-medium s:text-foreground dark:s:text-foreground-night">
+      <p className="s:text-sm s:font-medium s:text-foreground">
         {p4Citation.title}
       </p>
-      <div className="s:flex-1 s:rounded-lg s:border s:border-separator s:bg-muted-background s:p-4 s:text-sm s:text-muted-foreground dark:s:border-separator-night dark:s:bg-muted-background-night dark:s:text-muted-foreground-night">
+      <div className="s:flex-1 s:rounded-lg s:border s:border-separator s:bg-muted-background s:p-4 s:text-sm s:text-muted-foreground">
         Document preview placeholder
       </div>
     </div>
@@ -1300,7 +1300,7 @@ export default function Pods_After() {
 
   // ── Sidebar (Nav) content ─────────────────────────────────────────────────
   const navContent = (
-    <div className="s:flex s:min-h-0 s:flex-1 s:flex-col s:bg-muted-background dark:s:bg-muted-background-night">
+    <div className="s:flex s:min-h-0 s:flex-1 s:flex-col s:bg-muted-background">
       {/* ── Chat tab ── */}
       {activeTab === "chat" && (
         <div className="s:flex s:min-h-0 s:flex-1 s:flex-col">
@@ -1578,21 +1578,21 @@ export default function Pods_After() {
 
       {activeTab === "spaces" && (
         <div className="s:flex s:min-h-0 s:flex-1 s:flex-col">
-          <div className="s:flex s:flex-1 s:items-center s:justify-center s:text-muted-foreground dark:s:text-muted-foreground-night">
+          <div className="s:flex s:flex-1 s:items-center s:justify-center s:text-muted-foreground">
             Spaces — TBD
           </div>
         </div>
       )}
       {activeTab === "admin" && (
         <div className="s:flex s:min-h-0 s:flex-1 s:flex-col">
-          <div className="s:flex s:flex-1 s:items-center s:justify-center s:text-muted-foreground dark:s:text-muted-foreground-night">
+          <div className="s:flex s:flex-1 s:items-center s:justify-center s:text-muted-foreground">
             Admin — TBD
           </div>
         </div>
       )}
 
       {/* Bottom bar */}
-      <div className="s:flex s:h-14 s:items-center s:justify-between s:gap-2 s:border-t s:border-border s:pl-1 s:pr-2 dark:s:border-border-night">
+      <div className="s:flex s:h-14 s:items-center s:justify-between s:gap-2 s:border-t s:border-border s:pl-1 s:pr-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Card
@@ -1608,11 +1608,11 @@ export default function Pods_After() {
                   size="sm"
                   isRounded
                 />
-                <div className="s:flex s:min-w-0 s:grow s:flex-col s:text-sm s:text-foreground dark:s:text-foreground-night">
+                <div className="s:flex s:min-w-0 s:grow s:flex-col s:text-sm s:text-foreground">
                   <span className="s:heading-sm s:truncate">
                     {user.fullName}
                   </span>
-                  <span className="s:-mt-0.5 s:truncate s:text-xs s:text-muted-foreground dark:s:text-muted-foreground-night">
+                  <span className="s:-mt-0.5 s:truncate s:text-xs s:text-muted-foreground">
                     ACME
                   </span>
                 </div>

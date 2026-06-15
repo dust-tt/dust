@@ -109,7 +109,6 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
             <div
               className={cn(
                 "s:line-clamp-1 s:overflow-hidden s:text-ellipsis s:break-all",
-                "s:text-foreground dark:s:text-foreground-night"
               )}
             >
               {label}
@@ -126,8 +125,7 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
         className={cn(
           "s:absolute s:inset-0 s:rounded-[inherit]",
           "s:opacity-0 s:transition-opacity group-hover/card:s:opacity-100",
-          "s:bg-white/80 s:backdrop-blur-sm",
-          "dark:s:bg-black/80"
+          "s:bg-white/80 s:backdrop-blur-sm"
         )}
       />
     ) : null;

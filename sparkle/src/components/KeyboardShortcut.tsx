@@ -117,7 +117,7 @@ export const KeyboardShortcut = ({
   return (
     <span
       className={cn(
-        "s:inline-flex s:items-center s:text-sm s:text-muted-foreground s:dark:text-muted-foreground-night",
+        "s:inline-flex s:items-center s:text-sm s:text-muted-foreground",
         className
       )}
       aria-label={shortcut}

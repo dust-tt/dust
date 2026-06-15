@@ -157,10 +157,10 @@ export function TodoInputBar({
       onDrop={handleDrop}
       className={cn(
         "s:relative s:w-full s:z-10",
-        "s:rounded-3xl s:border s:bg-primary-50/70 dark:s:bg-primary-900/70 s:backdrop-blur-md s:transition-all",
+        "s:rounded-3xl s:border s:bg-primary-50/70 s:backdrop-blur-md s:transition-all",
         showFocusStyle
-          ? "s:border-highlight-300 dark:s:border-highlight-300-night s:ring-2 s:ring-highlight-300/50 dark:s:ring-highlight-700/60"
-          : "s:border-border dark:s:border-border-night",
+          ? "s:border-highlight-300 s:ring-2 s:ring-highlight-300/50"
+          : "s:border-border",
         className
       )}
     >
@@ -202,7 +202,7 @@ export function TodoInputBar({
               variant="compact"
               showFormattingMenu
               showAskSidekickMenu={false}
-              className="placeholder:s:text-muted-foreground dark:placeholder:s:text-muted-foreground-night"
+              className="placeholder:s:text-muted-foreground"
             />
           </div>
           <div className="s:flex s:items-center s:gap-2 md:s:gap-1">
@@ -266,7 +266,7 @@ export function TodoInputBar({
           </SheetHeader>
           <SheetContainer>
             <div className="s:flex s:flex-col s:items-center s:justify-center s:py-16">
-              <p className="s:text-foreground dark:s:text-foreground-night">
+              <p className="s:text-foreground">
                 Document preview — {selectedDroppedFile?.file.type || "file"}
               </p>
             </div>

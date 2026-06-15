@@ -10,7 +10,7 @@ export function SettingsList({ children, className }: SettingsListProps) {
   return (
     <div
       className={cn(
-        "s:flex s:flex-col s:overflow-hidden s:rounded-2xl s:border s:border-border s:divide-y s:divide-border s:dark:border-border-night s:dark:divide-border-night",
+        "s:flex s:flex-col s:overflow-hidden s:rounded-2xl s:border s:border-border s:divide-y s:divide-border",
         className
       )}
     >
@@ -40,11 +40,11 @@ function SettingsListRow({
       )}
     >
       <div className="s:flex s:min-w-0 s:flex-col s:gap-0.5">
-        <span className="s:heading-sm s:text-foreground s:dark:text-foreground-night">
+        <span className="s:heading-sm s:text-foreground">
           {title}
         </span>
         {description && (
-          <span className="s:copy-sm s:text-muted-foreground s:dark:text-muted-foreground-night">
+          <span className="s:copy-sm s:text-muted-foreground">
             {description}
           </span>
         )}

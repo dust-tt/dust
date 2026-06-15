@@ -36,16 +36,16 @@ export const menuStyleClasses = {
   inset: "s:pl-8",
   container: cn(
     "s:rounded-xl s:border-hovering s:p-1",
-    "s:border s:border-border s:dark:border-border-night",
-    "s:bg-background s:dark:bg-muted-background-night",
-    "s:text-foreground s:dark:text-foreground-night",
+    "s:border s:border-border",
+    "s:bg-background",
+    "s:text-foreground",
     "s:z-50 s:min-w-[8rem]",
     "s:data-[state=open]:animate-in s:data-[state=closed]:animate-out s:data-[state=closed]:fade-out-0 s:data-[state=open]:fade-in-0 s:data-[state=closed]:zoom-out-95 s:data-[state=open]:zoom-in-95 s:data-[side=bottom]:slide-in-from-top-2 s:data-[side=left]:slide-in-from-right-2 s:data-[side=right]:slide-in-from-left-2 s:data-[side=top]:slide-in-from-bottom-2"
   ),
   item: cva(
     cn(
       "s:relative s:flex s:gap-2 s:cursor-pointer s:select-none s:items-center s:outline-hidden s:rounded-lg s:heading-sm s:transition-colors s:data-[disabled]:pointer-events-none",
-      "s:data-[disabled]:text-primary-400 s:dark:data-[disabled]:text-primary-400-night"
+      "s:data-[disabled]:text-primary-400"
     ),
     {
       variants: {
@@ -79,21 +79,21 @@ export const menuStyleClasses = {
   subTrigger: {
     default: cn(
       "s:mr-1 s:ml-auto s:tracking-widest",
-      "s:text-primary-400 s:dark:text-primary-400-night"
+      "s:text-primary-400"
     ),
     span: "s:absolute s:left-2 s:flex s:h-3.5 s:w-3.5 s:items-center s:justify-center",
   },
   label: cn(
     "s:px-2 s:py-2 s:heading-xs",
-    "s:text-muted-foreground s:dark:text-muted-foreground-night"
+    "s:text-muted-foreground"
   ),
   description: cn(
     "s:grow s:truncate s:text-xs s:font-normal",
-    "s:text-muted-foreground s:dark:text-muted-foreground-night"
+    "s:text-muted-foreground"
   ),
   separator: cn(
     "s:-mx-1 s:my-1 s:h-px",
-    "s:bg-separator s:dark:bg-separator-night"
+    "s:bg-separator"
   ),
   shortcut: "s:ml-auto",
 };
@@ -156,7 +156,7 @@ const renderIcon = (
         className={
           variant === "warning"
             ? undefined
-            : "s:text-muted-foreground s:dark:text-muted-foreground-night"
+            : "s:text-muted-foreground"
         }
       />
     );
@@ -200,7 +200,7 @@ const ItemWithLabelIconAndDescription = <
             {description && (
               <span
                 className={cn(
-                  "s:text-xs s:font-normal s:text-muted-foreground s:dark:text-muted-foreground-night",
+                  "s:text-xs s:font-normal s:text-muted-foreground",
                   truncate ? "s:truncate" : "s:line-clamp-3"
                 )}
               >
@@ -241,7 +241,7 @@ const DropdownMenuSubTrigger = React.forwardRef<
         <Icon
           size="xs"
           visual={ChevronRight}
-          className="s:text-muted-foreground s:dark:text-muted-foreground-night"
+          className="s:text-muted-foreground"
         />
       }
     >
@@ -274,7 +274,7 @@ const DropdownMenuSubContent = React.forwardRef<
     {...props}
   >
     {dropdownHeaders && (
-      <div className="s:sticky s:top-0 s:bg-background s:dark:bg-muted-background-night">
+      <div className="s:sticky s:top-0 s:bg-background">
         {dropdownHeaders}
       </div>
     )}
@@ -499,7 +499,7 @@ const DropdownMenuContent = React.forwardRef<
         onCloseAutoFocus={handleCloseAutoFocus}
         {...props}
       >
-        <div className="s:sticky s:top-0 s:bg-background s:dark:bg-muted-background-night">
+        <div className="s:sticky s:top-0 s:bg-background">
           {dropdownHeaders && dropdownHeaders}
         </div>
         <ScrollArea
@@ -671,7 +671,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
           <Icon
             size="xs"
             visual={Check}
-            className="s:text-muted-foreground s:dark:text-muted-foreground-night"
+            className="s:text-muted-foreground"
           />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
@@ -1011,7 +1011,7 @@ const DropdownTooltip = ({ description, media }: DropdownTooltipProps) => (
     {media && <div className="s:rounded-sm">{media}</div>}
 
     {/* Description */}
-    <p className="text-foreground dark:text-foreground-night s:text-sm s:font-normal">
+    <p className="text-foreground s:text-sm s:font-normal">
       {description}
     </p>
   </div>
@@ -1129,7 +1129,7 @@ const DropdownMenuStaticItem = React.forwardRef<
     ref={ref}
     className={cn(
       "s:flex s:h-9 s:items-center s:gap-2 s:px-2 s:text-sm",
-      "s:text-foreground s:dark:text-foreground-night",
+      "s:text-foreground",
       className
     )}
   >
@@ -1138,7 +1138,7 @@ const DropdownMenuStaticItem = React.forwardRef<
       <span
         className={cn(
           "s:shrink-0",
-          "s:text-muted-foreground s:dark:text-muted-foreground-night"
+          "s:text-muted-foreground"
         )}
       >
         {value}

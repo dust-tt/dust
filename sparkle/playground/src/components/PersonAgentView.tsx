@@ -229,7 +229,7 @@ export function PersonAgentView({
           <div className="s:flex s:w-full s:items-center s:justify-between s:gap-3">
             <div className="s:flex s:items-center s:gap-3">
               <Avatar {...collaboratorAvatar} size="sm" />
-              <h2 className="s:heading-2xl s:text-foreground dark:s:text-foreground-night">
+              <h2 className="s:heading-2xl s:text-foreground">
                 {collaboratorName}
               </h2>
             </div>
@@ -379,7 +379,7 @@ export function PersonAgentView({
             <SheetTitle>About {collaboratorName}</SheetTitle>
           </SheetHeader>
           <SheetContainer>
-            <div className="s:text-foreground dark:s:text-foreground-night">
+            <div className="s:text-foreground">
               DetailView
             </div>
           </SheetContainer>

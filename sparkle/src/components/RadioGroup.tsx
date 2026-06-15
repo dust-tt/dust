@@ -9,15 +9,14 @@ import * as React from "react";
 export const radioStyles = cva(
   cn(
     "s:aspect-square s:rounded-full s:border s:transition s:duration-200 s:ease-in-out",
-    "s:border-border-dark s:dark:border-primary-500",
-    "s:bg-background s:dark:bg-background-night",
-    "s:text-foreground s:dark:text-foreground-night",
+    "s:border-border-dark",
+    "s:bg-background",
+    "s:text-foreground",
     "s:flex s:items-center s:justify-center",
     "s:focus-visible:outline-hidden s:focus-visible:ring-2 s:focus-visible:ring-offset-2 s:focus-visible:ring-ring",
-    "s:hover:border-highlight s:hover:bg-highlight-50 s:dark:hover:bg-highlight-100-night s:hover:dark:border-highlight",
-    "s:disabled:cursor-not-allowed s:disabled:opacity-50 s:disabled:border-border-dark s:disabled:dark:border-border-dark-night s:disabled:bg-background s:dark:disabled:bg-background-night",
+    "s:hover:border-highlight s:hover:bg-highlight-50",
     "s:checked:ring-0",
-    "s:checked:bg-highlight-500 s:dark:checked:bg-highlight-500-night"
+    "s:checked:bg-highlight-500"
   ),
   {
     variants: {
@@ -33,7 +32,7 @@ export const radioStyles = cva(
 );
 
 export const radioIndicatorStyles = cva(
-  "s:bg-primary s:dark:bg-primary-night s:flex s:items-center s:justify-center s:rounded-full",
+  "s:bg-primary s:flex s:items-center s:justify-center s:rounded-full",
   {
     variants: {
       size: {
@@ -86,7 +85,7 @@ const RadioGroupItem = React.forwardRef<
         visual={visual}
         size="sm"
         className={cn(
-          "s:text-foreground s:dark:text-foreground-night",
+          "s:text-foreground",
           extraClass
         )}
       />

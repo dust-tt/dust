@@ -4,14 +4,14 @@ import { cn } from "@sparkle/lib";
 import React from "react";
 
 const flexSeparatorVariants: Record<ButtonVariantType, string> = {
-  primary: "s:bg-background/50 s:dark:text-background-night/50",
-  highlight: "s:bg-background/50 s:dark:text-background-night/50",
-  "highlight-secondary": "s:bg-separator s:dark:bg-separator-night",
-  warning: "s:bg-background/50 s:dark:text-background-night/50",
-  "warning-secondary": "s:bg-separator s:dark:bg-separator-night",
-  outline: "s:bg-separator s:dark:bg-separator-night",
-  ghost: "s:bg-separator s:dark:bg-separator-night",
-  "ghost-secondary": "s:bg-separator s:dark:bg-separator-night",
+  primary: "s:bg-background/50",
+  highlight: "s:bg-background/50",
+  "highlight-secondary": "s:bg-separator",
+  warning: "s:bg-background/50",
+  "warning-secondary": "s:bg-separator",
+  outline: "s:bg-separator",
+  ghost: "s:bg-separator",
+  "ghost-secondary": "s:bg-separator",
 };
 
 export interface FlexSplitButtonProps extends Omit<ButtonProps, "size"> {

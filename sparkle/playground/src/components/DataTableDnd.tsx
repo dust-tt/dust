@@ -570,7 +570,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
     >
       <div className="s:relative">
         <DataTable.Root className="s:w-full s:table-fixed">
-          <DataTable.Header className="s:sticky s:top-0 s:z-20 s:bg-white s:shadow-sm dark:s:bg-background-night">
+          <DataTable.Header className="s:sticky s:top-0 s:z-20 s:bg-white s:shadow-sm">
             {table.getHeaderGroups().map((headerGroup) => (
               <DataTable.Row
                 key={headerGroup.id}
@@ -718,13 +718,12 @@ export function ScrollableDataTable<TData extends TBaseData>({
       <div
         className={cn(
           "s:pointer-events-none s:sticky s:-bottom-px s:left-0 s:right-0 s:-mt-10 s:h-10 s:bg-gradient-to-t",
-          "s:from-white s:via-white/60 s:to-transparent s:transition-opacity s:duration-300 dark:s:from-background-night dark:s:via-background-night/60",
           canScrollDown ? "s:opacity-100" : "s:opacity-0"
         )}
       />
 
       {isLoading && (
-        <div className="s:sticky s:bottom-0 s:left-0 s:right-0 s:flex s:justify-center s:bg-white/80 s:py-2 s:backdrop-blur-sm dark:s:bg-background-night/80">
+        <div className="s:sticky s:bottom-0 s:left-0 s:right-0 s:flex s:justify-center s:bg-white/80 s:py-2 s:backdrop-blur-sm">
           <div className="s:flex s:items-center s:gap-2 s:text-sm s:text-muted-foreground">
             <Spinner size="xs" />
             <span>Loading more data...</span>
@@ -794,7 +793,6 @@ DataTable.Head = function Head({
     <th
       className={cn(
         "s:heading-xs s:py-2 s:pl-2 s:pr-3 s:text-left s:capitalize",
-        "s:text-foreground dark:s:text-foreground-night",
         column.columnDef.meta?.className,
         className
       )}
@@ -862,16 +860,12 @@ DataTable.Row = function Row({
           "s:group/dt-row s:justify-center s:transition-colors s:duration-300 s:ease-out",
           !hideBottomBorder && [
             "s:border-b",
-            "s:border-separator dark:s:border-separator-night",
           ],
           (onClick || onDoubleClick) &&
-            "s:cursor-pointer [&:hover:not(:has(input:hover)):not(:has(button:hover))]:s:bg-muted-background dark:[&:hover:not(:has(input:hover)):not(:has(button:hover))]:s:bg-muted-background-night",
           props["data-selected"] &&
-            "s:bg-muted-background/50 dark:s:bg-muted-background-night/50",
           rowData?.draggable && "s:cursor-grab active:s:cursor-grabbing",
           rowData?.isDragging && "s:opacity-50",
           rowData?.isDropHighlight &&
-            "s:bg-muted-background dark:s:bg-muted-background-night",
           widthClassName,
           className
         )}
@@ -1159,7 +1153,6 @@ DataTable.CellContent = function CellContent({
           visual={icon}
           size="sm"
           className={cn(
-            "s:mr-2 s:text-foreground dark:s:text-foreground-night",
             iconClassName
           )}
         />
@@ -1174,7 +1167,6 @@ DataTable.CellContent = function CellContent({
           className={cn(
             grow ? "s:flex-grow" : "",
             "s:truncate s:text-sm",
-            "s:text-foreground dark:s:text-foreground-night"
           )}
         >
           {children}
@@ -1183,7 +1175,6 @@ DataTable.CellContent = function CellContent({
           <span
             className={cn(
               "s:pl-2 s:text-sm",
-              "s:text-muted-foreground dark:s:text-muted-foreground-night"
             )}
           >
             {description}
@@ -1232,7 +1223,6 @@ DataTable.BasicCellContent = function BasicCellContent({
               className={cn(
                 cellHeight,
                 "s:group s:flex s:items-center s:gap-2 s:text-sm",
-                "s:text-muted-foreground dark:s:text-muted-foreground-night",
                 disabled && "s:cursor-not-allowed s:opacity-50",
                 className
               )}
@@ -1261,7 +1251,6 @@ DataTable.BasicCellContent = function BasicCellContent({
           className={cn(
             cellHeight,
             "s:group s:flex s:items-center s:gap-2 s:text-sm",
-            "s:text-muted-foreground dark:s:text-muted-foreground-night",
             disabled && "s:cursor-not-allowed s:opacity-50",
             className
           )}
@@ -1400,7 +1389,7 @@ export function createRadioSelectionColumn<TData>(): ColumnDef<TData> {
         <div
           className={cn(
             radioStyles({ size: "xs" }),
-            row.getIsSelected() && "s:bg-muted/50 dark:s:bg-muted/50",
+            row.getIsSelected() && "s:bg-muted/50",
             !row.getCanSelect() && "s:cursor-not-allowed s:opacity-50"
           )}
           aria-checked={row.getIsSelected()}

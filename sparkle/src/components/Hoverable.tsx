@@ -19,15 +19,15 @@ const hoverableVariants: Record<HoverableVariantType, string> = {
   invisible: cn("s:hover:text-highlight-light", "s:active:text-highlight-dark"),
   primary: cn(
     "s:font-semibold",
-    "s:text-foreground s:dark:text-foreground-night",
-    "s:hover:text-highlight-light s:dark:hover:text-highlight-light-night",
-    "s:active:text-highlight-dark s:dark:active:text-highlight-dark-night"
+    "s:text-foreground",
+    "s:hover:text-highlight-light",
+    "s:active:text-highlight-dark"
   ),
   highlight: cn(
     "s:font-semibold",
-    "s:text-highlight s:dark:text-highlight-night",
-    "s:hover:text-highlight-light s:dark:hover:text-highlight-light-night",
-    "s:active:text-highlight-dark s:dark:active:text-highlight-dark-night"
+    "s:text-highlight",
+    "s:hover:text-highlight-light",
+    "s:active:text-highlight-dark"
   ),
 };
 

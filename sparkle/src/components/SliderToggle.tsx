@@ -28,16 +28,15 @@ const cusrsorTranslateSizeClasses = {
 
 const stateClasses = {
   idle: cn(
-    "s:bg-primary-200 s:dark:bg-primary-600",
-    "s:hover:bg-highlight-300 s:hover:dark:bg-highlight-800"
+    "s:bg-primary-200",
+    "s:hover:bg-highlight-300"
   ),
   selected: cn(
-    "s:bg-highlight-400 s:dark:bg-highlight-400-night",
-    "s:hover:bg-highlight-300 s:hover:dark:bg-highlight-200-night"
+    "s:bg-highlight-400",
   ),
   disabled: cn(
-    "s:bg-primary-200 s:dark:bg-primary-200-night",
-    "s:hover:bg-primary-200 s:dark:hover:bg-primary-200-night",
+    "s:bg-primary-200",
+    "s:hover:bg-primary-200",
     "s:cursor-not-allowed s:hover:cursor-not-allowed"
   ),
 };

@@ -82,7 +82,7 @@ export const AssistantCard = React.forwardRef<
             <p
               className={cn(
                 "s:line-clamp-1 s:overflow-hidden s:text-ellipsis s:text-xs",
-                "s:text-muted-foreground s:dark:text-muted-foreground-night"
+                "s:text-muted-foreground"
               )}
             >
               {subtitle}
@@ -94,7 +94,7 @@ export const AssistantCard = React.forwardRef<
             lineClamp={descriptionLineClamp}
             className={cn(
               "s:overflow-hidden s:text-ellipsis s:pb-1 s:text-sm",
-              "s:text-muted-foreground s:dark:text-muted-foreground-night"
+              "s:text-muted-foreground"
             )}
           >
             {description}
@@ -125,14 +125,14 @@ export const LargeAssistantCard = React.forwardRef<
         <div
           className={cn(
             "s:flex s:flex-col s:gap-2 s:text-base",
-            "s:text-foreground s:dark:text-foreground-night"
+            "s:text-foreground"
           )}
         >
           <h3 className="s:heading-base">{title}</h3>
           <p
             className={cn(
               "s:line-clamp-5 s:overflow-hidden s:text-ellipsis",
-              "s:text-muted-foreground s:dark:text-muted-foreground-night"
+              "s:text-muted-foreground"
             )}
           >
             {description}
@@ -174,13 +174,13 @@ export const CompactAssistantCard = React.forwardRef<
       >
         <Avatar visual={pictureUrl} size="sm" />
         <div className="s:min-w-0">
-          <h3 className="s:heading-base s:line-clamp-1 s:text-foreground s:dark:text-foreground-night">
+          <h3 className="s:heading-base s:line-clamp-1 s:text-foreground">
             {title}
           </h3>
           <p
             className={cn(
               "s:line-clamp-3 s:text-sm",
-              "s:text-muted-foreground s:dark:text-muted-foreground-night"
+              "s:text-muted-foreground"
             )}
           >
             {description}

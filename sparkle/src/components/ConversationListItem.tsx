@@ -35,7 +35,7 @@ export function ReplySection({
           size="xs"
         />
       )}
-      <div className="s:min-w-0 s:flex-1 s:truncate s:text-xs s:text-muted-foreground s:dark:text-muted-foreground-night">
+      <div className="s:min-w-0 s:flex-1 s:truncate s:text-xs s:text-muted-foreground">
         {mentionCount > 0 ? (
           <>
             <span className="s:heading-xs s:text-highlight">
@@ -154,7 +154,7 @@ export function ConversationListItem({
       className={cn(
         `s:transition-colors s:duration-500 ${
           isFocusVisible
-            ? "s:bg-highlight-50 s:dark:bg-highlight-100-night"
+            ? "s:bg-highlight-50"
             : ""
         }`,
         className
@@ -178,7 +178,7 @@ export function ConversationListItem({
         />
       ) : null}
       <div className="s:mb-0.5 s:flex s:min-w-0 s:grow s:flex-col s:gap-1">
-        <div className="s:heading-sm s:flex s:w-full s:items-center s:justify-between s:gap-2 s:text-foreground s:dark:text-foreground-night">
+        <div className="s:heading-sm s:flex s:w-full s:items-center s:justify-between s:gap-2 s:text-foreground">
           <div className="s:flex s:min-w-0 s:flex-1 s:gap-2 s:overflow-hidden">
             <span className="s:min-w-0 s:truncate">
               {textAnimation === "streaming" ? (
@@ -190,17 +190,17 @@ export function ConversationListItem({
               )}
             </span>
             {creator && (
-              <span className="s:hidden s:shrink-0 s:text-muted-foreground s:dark:text-muted-foreground-night s:sm:inline">
+              <span className="s:hidden s:shrink-0 s:text-muted-foreground s:sm:inline">
                 {creator.fullName}
               </span>
             )}
           </div>
-          <div className="s:flex s:shrink-0 s:items-center s:gap-2 s:text-xs s:text-muted-foreground s:dark:text-muted-foreground-night">
+          <div className="s:flex s:shrink-0 s:items-center s:gap-2 s:text-xs s:text-muted-foreground">
             <span className="s:font-normal">{time}</span>
           </div>
         </div>
         {conversation.description && (
-          <div className="s:line-clamp-2 s:text-sm s:font-normal s:text-muted-foreground s:dark:text-muted-foreground-night">
+          <div className="s:line-clamp-2 s:text-sm s:font-normal s:text-muted-foreground">
             {textAnimation === "streaming" ? (
               <AnimatedText variant="muted">
                 {conversation.description}

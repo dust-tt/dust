@@ -64,7 +64,7 @@ interface ConversationMessageAction {
 const messageVariants = cva("s:flex s:w-full s:flex-col s:rounded-2xl", {
   variants: {
     type: {
-      user: "s:bg-muted-background s:dark:bg-muted-background-night s:px-5 s:py-4 s:gap-2",
+      user: "s:bg-muted-background s:px-5 s:py-4 s:gap-2",
       agent: "s:w-full s:gap-3",
     },
   },
@@ -202,9 +202,9 @@ const ConversationMessageHeader = React.forwardRef<
           size="sm"
         />
         <div className="s:inline-flex s:w-full s:justify-between s:gap-0.5">
-          <div className="s:inline-flex s:items-baseline s:gap-2 s:text-foreground s:dark:text-foreground-night">
+          <div className="s:inline-flex s:items-baseline s:gap-2 s:text-foreground">
             <span className="s:heading-sm">{renderName(name)}</span>
-            <span className="s:text-xs s:text-muted-foreground s:dark:text-muted-foreground-night">
+            <span className="s:text-xs s:text-muted-foreground">
               {timestamp}
             </span>
             {infoChip && infoChip}

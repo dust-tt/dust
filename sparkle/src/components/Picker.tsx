@@ -16,13 +16,13 @@ const IconSwatch: React.FC<IconSwatchProps> = ({
   <button
     onClick={onClick}
     className={cn(
-      "s:flex s:h-8 s:w-8 s:items-center s:justify-center s:rounded-lg s:border s:border-border s:transition s:duration-300 s:dark:border-border-night",
+      "s:flex s:h-8 s:w-8 s:items-center s:justify-center s:rounded-lg s:border s:border-border s:transition s:duration-300",
       isSelected
-        ? "s:bg-highlight-50 s:dark:bg-highlight-800"
-        : "s:dark:hover:boder-highlight-800 s:bg-muted-background s:hover:border-highlight-100 s:hover:bg-highlight-50 s:dark:bg-muted-background-night s:dark:hover:bg-highlight-800"
+        ? "s:bg-highlight-50"
+        : "s:bg-muted-background s:hover:border-highlight-100 s:hover:bg-highlight-50"
     )}
   >
-    <IconComponent className="s:h-5 s:w-5 s:text-foreground s:dark:text-foreground-night" />
+    <IconComponent className="s:h-5 s:w-5 s:text-foreground" />
   </button>
 );
 

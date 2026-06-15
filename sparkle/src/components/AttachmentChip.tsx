@@ -8,7 +8,6 @@ import type { LinkWrapperProps } from "./LinkWrapper";
 const attachmentChipOverrides = cn(
   "s:rounded-lg s:px-2 s:py-1 s:heading-sm s:gap-1.5",
   "s:bg-background s:text-foreground s:max-w-44",
-  "s:dark:bg-background-night s:dark:text-foreground-night",
   "s:align-middle"
 );
 

@@ -80,7 +80,7 @@ export const Markdown: React.FC<MarkdownProps> = ({
   content,
   isStreaming = false,
   streamingState,
-  textColor = "s:text-foreground s:dark:text-foreground-night",
+  textColor = "s:text-foreground",
   forcedTextSize,
   isLastMessage = false,
   compactSpacing = false,

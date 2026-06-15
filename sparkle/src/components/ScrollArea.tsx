@@ -84,8 +84,8 @@ const scrollBarSizes = {
       horizontal: "s:pb-1 s:pt-2.5 s:px-2",
     },
     thumb: cn(
-      "s:bg-muted-foreground/40 s:dark:bg-muted-foreground-night/40",
-      "s:hover:bg-muted-foreground/70 s:dark:hover:bg-muted-foreground-night/70"
+      "s:bg-muted-foreground/40",
+      "s:hover:bg-muted-foreground/70"
     ),
   },
   classic: {
@@ -98,8 +98,8 @@ const scrollBarSizes = {
       horizontal: "s:py-0.5 s:px-1",
     },
     thumb: cn(
-      "s:bg-muted-foreground/70 s:dark:bg-muted-foreground-night/70",
-      "s:hover:bg-muted-foreground/80 s:dark:hover:bg-muted-foreground-night/80"
+      "s:bg-muted-foreground/70",
+      "s:hover:bg-muted-foreground/80"
     ),
   },
   minimal: {
@@ -112,8 +112,8 @@ const scrollBarSizes = {
       horizontal: "s:pb-px s:pt-1.5 s:px-px",
     },
     thumb: cn(
-      "s:bg-muted-foreground/20 s:dark:bg-muted-foreground-night/20",
-      "s:hover:bg-muted-foreground/50 s:dark:hover:bg-muted-foreground-night/50"
+      "s:bg-muted-foreground/20",
+      "s:hover:bg-muted-foreground/50"
     ),
   },
 } as const;

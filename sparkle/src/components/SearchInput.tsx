@@ -87,14 +87,14 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
               className={cn(
                 "s:px-2",
                 disabled
-                  ? "s:text-muted-foreground s:dark:text-muted-foreground-night"
-                  : "s:text-foreground s:dark:text-foreground-night"
+                  ? "s:text-muted-foreground"
+                  : "s:text-foreground"
               )}
             >
               <Icon
                 visual={SearchMd}
                 size="xs"
-                className="s:text-muted-foreground s:dark:text-muted-foreground-night"
+                className="s:text-muted-foreground"
               />
             </div>
           )}
@@ -235,7 +235,7 @@ function BaseSearchInputWithPopover<T>(
       </PopoverTrigger>
       <PopoverContent
         className={cn(
-          "s:w-[--radix-popover-trigger-width] s:rounded-lg s:border s:bg-background s:shadow-lg s:dark:bg-background-night",
+          "s:w-[--radix-popover-trigger-width] s:rounded-lg s:border s:bg-background s:shadow-lg",
           availableHeight &&
             "s:max-h-[var(--radix-popover-content-available-height)] s:overflow-hidden",
           contentClassName
@@ -259,7 +259,7 @@ function BaseSearchInputWithPopover<T>(
           {showHeader && (
             <div
               className={cn(
-                "s:z-10 s:flex s:shrink-0 s:items-center s:justify-between s:gap-2 s:border-b s:border-border s:bg-background s:p-2 s:dark:border-border-night s:dark:bg-background-night"
+                "s:z-10 s:flex s:shrink-0 s:items-center s:justify-between s:gap-2 s:border-b s:border-border s:bg-background s:p-2"
               )}
               onMouseDown={(e) => e.preventDefault()}
             >
@@ -311,7 +311,7 @@ function BaseSearchInputWithPopover<T>(
                   <Spinner variant="dark" size="md" />
                 </div>
               ) : (
-                <div className="s:p-4 s:text-center s:text-sm s:italic s:text-muted-foreground s:dark:text-muted-foreground-night">
+                <div className="s:p-4 s:text-center s:text-sm s:italic s:text-muted-foreground">
                   {noResults ?? ""}
                 </div>
               )}
@@ -321,7 +321,7 @@ function BaseSearchInputWithPopover<T>(
           {showBottom && (
             <div
               className={cn(
-                "s:z-10 s:hidden s:shrink-0 s:items-center s:justify-between s:gap-2 s:border-t s:border-border s:bg-background s:p-2 s:dark:border-border-night s:dark:bg-background-night s:sm:flex"
+                "s:z-10 s:hidden s:shrink-0 s:items-center s:justify-between s:gap-2 s:border-t s:border-border s:bg-background s:p-2 s:sm:flex"
               )}
             >
               {stickyBottomContent}

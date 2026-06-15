@@ -261,7 +261,7 @@ const MultiPageDialogContent = React.forwardRef<
               {showNavigation && pages.length > 1 && (
                 <div
                   className={cn(
-                    "s:heading-xs s:text-muted-foreground-night",
+                    "s:heading-xs s:text-muted-foreground",
                     !hideCloseButton && "s:pr-8"
                   )}
                 >

@@ -77,12 +77,12 @@ export const ConversationMessageContent = React.forwardRef<
         className={cn(
           "s:flex s:min-w-0 s:flex-col s:gap-1",
           type === "user" &&
-            "s:rounded-2xl s:bg-muted-background s:dark:bg-muted-background-night s:px-4 s:py-3",
+            "s:rounded-2xl s:bg-muted-background s:px-4 s:py-3",
           className
         )}
         {...props}
       >
-        <div className="s:text-base s:text-foreground s:dark:text-foreground-night">
+        <div className="s:text-base s:text-foreground">
           {children}
         </div>
         {type === "agent" && citations && citations.length > 0 && (
@@ -167,9 +167,9 @@ export const ConversationMessageTitle = React.forwardRef<
         )}
         {...props}
       >
-        <div className="s:inline-flex s:items-baseline s:gap-2 s:text-foreground s:dark:text-foreground-night">
+        <div className="s:inline-flex s:items-baseline s:gap-2 s:text-foreground">
           <span className="s:text-sm s:font-medium">{renderName(name)}</span>
-          <span className="s:text-xs s:text-muted-foreground s:dark:text-muted-foreground-night">
+          <span className="s:text-xs s:text-muted-foreground">
             {timestamp}
           </span>
           {infoChip && (

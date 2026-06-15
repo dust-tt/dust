@@ -96,7 +96,7 @@ export const Variants: Story = {
   render: (args) => (
     <div className="s:flex s:flex-col s:gap-6">
       <div className="s:flex s:flex-col s:gap-2">
-        <div className="s:text-sm s:font-medium s:text-primary s:dark:text-primary-night">
+        <div className="s:text-sm s:font-medium s:text-primary">
           Title Position: Bottom
         </div>
         <div className="s:flex s:items-center s:gap-4">
@@ -122,7 +122,7 @@ export const Variants: Story = {
         </div>
       </div>
       <div className="s:flex s:flex-col s:gap-2">
-        <div className="s:text-sm s:font-medium s:text-primary s:dark:text-primary-night">
+        <div className="s:text-sm s:font-medium s:text-primary">
           Title Position: Center
         </div>
         <div className="s:flex s:items-center s:gap-4">

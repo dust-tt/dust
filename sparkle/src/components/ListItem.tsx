@@ -11,7 +11,7 @@ const listItemVariants = cva(
         center: "s:items-center",
       },
       hasSeparator: {
-        true: "s:border-b s:border-border s:dark:border-border-night",
+        true: "s:border-b s:border-border",
         false: "",
       },
       hasSeparatorIfLast: {
@@ -21,8 +21,8 @@ const listItemVariants = cva(
       interactive: {
         true: cn(
           "s:cursor-pointer s:transition s:duration-200",
-          "s:hover:bg-muted-background s:dark:hover:bg-muted-background-night",
-          "s:active:bg-primary-100 s:dark:active:bg-primary-100-night"
+          "s:hover:bg-muted-background",
+          "s:active:bg-primary-100"
         ),
         false: "",
       },
@@ -76,7 +76,7 @@ export function ListItem({
           interactive: !!onClick,
         }),
         `s:group/${groupName}`,
-        isPressed && "s:bg-primary-100 s:dark:bg-primary-100-night",
+        isPressed && "s:bg-primary-100",
         className
       )}
       onClick={onClick}
@@ -103,7 +103,7 @@ export function ListGroup({ children, className }: ListGroupProps) {
   return (
     <div
       className={cn(
-        "s:flex s:flex-col s:border-b s:border-t s:border-border s:dark:border-border-night",
+        "s:flex s:flex-col s:border-b s:border-t s:border-border",
         className
       )}
     >
@@ -123,18 +123,18 @@ type ListItemSectionProps = {
 const listItemSectionVariants = cva("", {
   variants: {
     size: {
-      xs: "s:heading-xs s:uppercase s:pb-2 s:pt-4 s:text-muted-foreground s:dark:text-muted-foreground-night",
-      sm: "s:heading-sm s:bg-muted-background s:p-2 s:dark:bg-muted-background-night/50 s:text-foreground s:dark:text-foreground-night",
+      xs: "s:heading-xs s:uppercase s:pb-2 s:pt-4 s:text-muted-foreground",
+      sm: "s:heading-sm s:bg-muted-background s:p-2 s:text-foreground",
     },
     interactive: {
       true: cn(
         "s:cursor-pointer s:transition s:duration-200",
-        "s:active:bg-primary-100 s:dark:active:bg-primary-100-night"
+        "s:active:bg-primary-100"
       ),
       false: "",
     },
     isHovered: {
-      true: "s:hover:bg-primary-100 s:hover:dark:bg-primary-100-night s:active:bg-primary-150 s:active:dark:bg-primary-150-night",
+      true: "s:hover:bg-primary-100 s:active:bg-primary-150",
       false: "",
     },
   },

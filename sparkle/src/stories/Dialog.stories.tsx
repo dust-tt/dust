@@ -88,11 +88,11 @@ export const ToolValidation: Story = {
         <DialogContainer>
           <div>
             Allow [Agent_name] to use the tool (
-            <span className="s:mono s:text-muted-foreground s:dark:text-muted-foreground-night">
+            <span className="s:mono s:text-muted-foreground">
               [toolset_name]
             </span>
             ,
-            <span className="s:mono s:text-muted-foreground s:dark:text-muted-foreground-night">
+            <span className="s:mono s:text-muted-foreground">
               [tool_name]
             </span>
             )?

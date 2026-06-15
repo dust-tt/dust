@@ -43,9 +43,9 @@ export const MessageCard = React.forwardRef<HTMLDivElement, MessageCardProps>(
         ref={ref}
         className={cn(
           "s:flex s:flex-col s:overflow-hidden",
-          "s:bg-background s:dark:bg-background-night",
+          "s:bg-background",
           "s:rounded-2xl s:shadow-md",
-          "s:border s:border-border/0 s:dark:border-border-night/0",
+          "s:border s:border-border/0",
           className
         )}
         {...props}
@@ -58,10 +58,10 @@ export const MessageCard = React.forwardRef<HTMLDivElement, MessageCardProps>(
         )}
 
         <div className="s:p-4">
-          <div className="s:mb-2 s:text-sm s:font-medium s:text-primary s:dark:text-primary-night">
+          <div className="s:mb-2 s:text-sm s:font-medium s:text-primary">
             {announcementTitle}
           </div>
-          <h4 className="s:mb-4 s:text-lg s:font-medium s:leading-tight s:text-foreground s:dark:text-foreground-night">
+          <h4 className="s:mb-4 s:text-lg s:font-medium s:leading-tight s:text-foreground">
             {announcementMessage}
           </h4>
           <div className="s:flex s:items-center s:justify-between">

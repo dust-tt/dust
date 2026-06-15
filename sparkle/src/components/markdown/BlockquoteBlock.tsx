@@ -13,14 +13,14 @@ export const blockquoteVariants = cva(
     "s:w-full s:text-base s:italic s:p-3",
     "s:relative",
     "s:before:content-[''] s:before:absolute s:before:left-0 s:before:top-3 s:before:bottom-3",
-    "s:before:w-1 s:before:bg-faint s:dark:before:bg-faint-night",
+    "s:before:w-1 s:before:bg-faint",
     "s:before:rounded-full",
   ],
   {
     variants: {
       variant: {
         surface: [
-          "s:text-foreground s:dark:text-foreground-night",
+          "s:text-foreground",
           "s:bg-transparent",
         ],
       },

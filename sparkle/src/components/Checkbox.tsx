@@ -13,18 +13,17 @@ export type CheckboxSizeType = (typeof CHECKBOX_SIZES)[number];
 const checkboxStyles = cva(
   cn(
     "s:shrink-0 s:peer s:border s:transition s:duration-200 s:ease-in-out",
-    "s:border-border-dark s:dark:border-border-dark-night s:bg-background s:dark:bg-background-night",
-    "s:text-foreground s:dark:text-foreground-night",
+    "s:border-border-dark s:bg-background",
+    "s:text-foreground",
     "s:focus-visible:ring-ring s:ring-offset-background s:focus-visible:outline-hidden s:focus-visible:ring-2 s:focus-visible:ring-offset-2",
-    "s:hover:border-highlight s:hover:bg-highlight-50 s:dark:hover:bg-highlight-100-night s:hover:dark:border-highlight",
-    "s:disabled:cursor-not-allowed s:disabled:opacity-50 s:disabled:border-border-dark s:disabled:dark:border-border-dark-night s:disabled:bg-background s:dark:disabled:bg-background-night"
+    "s:hover:border-highlight s:hover:bg-highlight-50",
   ),
   {
     variants: {
       checked: {
-        true: "s:data-[state=checked]:bg-primary s:dark:data-[state=checked]:bg-primary-night s:data-[state=checked]:text-white s:data-[state=checked]:border-primary",
+        true: "s:data-[state=checked]:bg-primary s:data-[state=checked]:text-white s:data-[state=checked]:border-primary",
         partial:
-          "s:data-[state=indeterminate]:bg-primary s:dark:data-[state=indeterminate]:bg-primary-night s:data-[state=indeterminate]:text-white s:data-[state=indeterminate]:border-primary",
+          "s:data-[state=indeterminate]:bg-primary s:data-[state=indeterminate]:text-white s:data-[state=indeterminate]:border-primary",
         false: "",
       },
       isMutedAfterCheck: {
@@ -41,7 +40,6 @@ const checkboxStyles = cva(
         checked: true,
         isMutedAfterCheck: true,
         className:
-          "s:data-[state=checked]:bg-faint/50 s:data-[state=checked]:dark:bg-faint-night s:data-[state=checked]:border-transparent",
       },
     ],
     defaultVariants: {
@@ -88,7 +86,7 @@ const Checkbox = React.forwardRef<
             <Icon
               size="xs"
               visual={checked === "partial" ? Minus : Check}
-              className="s:text-background s:dark:text-background-night"
+              className="s:text-background"
             />
           </span>
         </CheckboxPrimitive.Indicator>
@@ -170,7 +168,7 @@ function CheckBoxWithTextAndDescription({
         <p
           className={cn(
             "s:text-xs",
-            "s:text-muted-foreground s:dark:text-muted-foreground-night"
+            "s:text-muted-foreground"
           )}
         >
           {description}

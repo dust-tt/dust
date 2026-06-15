@@ -21,47 +21,36 @@ type AnimatedTextVariantType = (typeof ANIMATED_TEXT_VARIANTS)[number];
 const animatedVariants: Record<AnimatedTextVariantType, string> = {
   primary: cn(
     "s:from-primary-600 s:via-primary-950 s:via-50% s:to-primary-600",
-    "s:dark:from-primary-800-night s:dark:via-primary-950-night s:dark:via-50% s:dark:to-primary-800-night"
   ),
   muted: cn(
-    "s:from-transparent s:via-primary-950/80 s:via-50% s:to-transparent",
-    "s:dark:from-transparent s:dark:via-primary-50/80 s:dark:via-50% s:dark:to-transparent"
+    "s:from-transparent s:via-primary-950/80 s:via-50% s:to-transparent"
   ),
   highlight: cn(
     "s:from-highlight s:via-highlight-800 s:via-50% s:to-highlight",
-    "s:dark:from-highlight-night s:dark:via-highlight-800-night s:dark:via-50% s:dark:to-highlight-night"
   ),
   warning: cn(
     "s:from-warning-800 s:via-warning-950 s:via-50% s:to-warning-800",
-    "s:dark:from-warning-800-night s:dark:via-warning-950-night s:dark:via-50% s:dark:to-warning-800-night"
   ),
   success: cn(
     "s:from-success-800 s:via-success-950 s:via-50% s:to-success-800",
-    "s:dark:from-success-800-night s:dark:via-success-950-night s:dark:via-50% s:dark:to-success-800-night"
   ),
   info: cn(
     "s:from-info-800 s:via-info-950 s:via-50% s:to-info-800",
-    "s:dark:from-info-800-night s:dark:via-info-950-night s:dark:via-50% s:dark:to-info-800-night"
   ),
   green: cn(
     "s:from-emerald-800 s:via-emerald-950 s:via-50% s:to-emerald-800",
-    "s:dark:from-emerald-800-night s:dark:via-emerald-950-night s:dark:via-50% s:dark:to-emerald-800-night"
   ),
   blue: cn(
     "s:from-sky-800 s:via-sky-950 s:via-50% s:to-sky-800",
-    "s:dark:from-sky-800-night s:dark:via-sky-950-night s:dark:via-50% s:dark:to-sky-800-night"
   ),
   rose: cn(
     "s:from-rose-800 s:via-rose-950 s:via-50% s:to-rose-800",
-    "s:dark:from-rose-800-night s:dark:via-rose-950-night s:dark:via-50% s:dark:to-rose-800-night"
   ),
   golden: cn(
     "s:from-golden-800 s:via-golden-950 s:via-50% s:to-golden-800",
-    "s:dark:from-golden-800-night s:dark:via-golden-950-night s:dark:via-50% s:dark:to-golden-800-night"
   ),
   white: cn(
     "s:from-primary-800 s:via-primary-950 s:via-50% s:to-primary-800",
-    "s:dark:from-primary-800-night s:dark:via-primary-950-night s:dark:via-50% s:dark:to-primary-800-night"
   ),
 };
 
@@ -78,17 +67,17 @@ const animVariants = cva(
 );
 
 const animatedTextVariants: Record<AnimatedTextVariantType, string> = {
-  primary: "s:text-primary-800 s:dark:text-primary-800-night",
-  muted: "s:text-muted-foreground s:dark:text-muted-foreground-night",
-  highlight: "s:text-highlight s:dark:text-highlight-night",
-  success: "s:text-success-800 s:dark:text-success-800-night",
-  info: "s:text-info-800 s:dark:text-info-800-night",
-  warning: "s:text-warning-800 s:dark:text-warning-800-night",
-  green: "s:text-emerald-800 s:dark:text-emerald-800-night",
-  blue: "s:text-sky-800 s:dark:text-sky-800-night",
-  rose: "s:text-rose-800 s:dark:text-rose-800-night",
-  golden: "s:text-golden-800 s:dark:text-rose-golden-night",
-  white: "s:text-primary-800 s:dark:text-primary-800-night",
+  primary: "s:text-primary-800",
+  muted: "s:text-muted-foreground",
+  highlight: "s:text-highlight",
+  success: "s:text-success-800",
+  info: "s:text-info-800",
+  warning: "s:text-warning-800",
+  green: "s:text-emerald-800",
+  blue: "s:text-sky-800",
+  rose: "s:text-rose-800",
+  golden: "s:text-golden-800",
+  white: "s:text-primary-800",
 };
 
 const textVariants = cva("s:absolute s:inset-0", {

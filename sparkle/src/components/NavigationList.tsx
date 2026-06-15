@@ -97,11 +97,11 @@ const NavigationListItem = React.forwardRef<
     const getStatusDotColor = () => {
       switch (status) {
         case "unread":
-          return "s:h-2 s:w-2 s:m-1 s:bg-highlight-500 s:dark:bg-highlight-500-night";
+          return "s:h-2 s:w-2 s:m-1 s:bg-highlight-500";
         case "blocked":
-          return "s:h-2 s:w-2 s:m-1 s:bg-golden-400 s:dark:bg-golden-400-night";
+          return "s:h-2 s:w-2 s:m-1 s:bg-golden-400";
         case "error":
-          return "s:h-2 s:w-2 s:m-1 s:bg-warning-400 s:dark:bg-warning-400-night";
+          return "s:h-2 s:w-2 s:m-1 s:bg-warning-400";
         default:
           return "";
       }
@@ -131,13 +131,13 @@ const NavigationListItem = React.forwardRef<
             aria-disabled={disabled}
             className={cn(
               "s:peer/menu-button",
-              "s:text-primary s:dark:text-primary-night s:font-medium",
+              "s:text-primary s:font-medium",
               "s:box-border s:flex s:items-center s:w-full s:gap-1.5 s:cursor-pointer s:select-none",
               "s:items-center s:outline-hidden s:rounded-lg s:text-sm s:p-2 s:transition-colors",
               "s:data-[disabled]:pointer-events-none",
-              "s:hover:bg-sidebar-foreground s:dark:hover:bg-sidebar-foreground-night",
+              "s:hover:bg-sidebar-foreground",
               selected &&
-                "s:bg-sidebar-foreground s:dark:bg-sidebar-foreground-night",
+                "s:bg-sidebar-foreground",
               disabled && "s:pointer-events-none s:cursor-default s:opacity-50"
             )}
           >
@@ -145,7 +145,7 @@ const NavigationListItem = React.forwardRef<
               <Icon
                 visual={disabled ? Lock01 : icon}
                 size="xs"
-                className="s:m-0.5 s:text-muted-foreground s:dark:text-muted-foreground-night"
+                className="s:m-0.5 s:text-muted-foreground"
               />
             )}
             {avatar}
@@ -240,7 +240,7 @@ const NavigationListItemAction = React.forwardRef<
         size="xmini"
         icon={DotsHorizontal}
         variant="ghost"
-        className="s:hover:bg-sidebar-foreground s:dark:hover:bg-sidebar-foreground-night s:active:bg-sidebar-foreground s:dark:active:bg-sidebar-foreground-night"
+        className="s:hover:bg-sidebar-foreground s:active:bg-sidebar-foreground"
       />
     </div>
   );
@@ -263,10 +263,10 @@ const NavigationListLabel = React.forwardRef<
     className={cn(
       "s:flex s:items-center s:justify-between s:gap-2 s:pt-4 s:pb-2 s:px-2 s:whitespace-nowrap s:overflow-hidden s:text-ellipsis",
       "s:text-sm",
-      "s:bg-app-background s:dark:bg-app-background-night",
-      "s:text-muted-foreground s:dark:text-muted-foreground-night",
+      "s:bg-app-background",
+      "s:text-muted-foreground",
       isSticky &&
-        "s:sticky s:top-0 s:z-10 s:border-border s:dark:border-border-night",
+        "s:sticky s:top-0 s:z-10 s:border-border",
       className
     )}
     {...props}
@@ -293,9 +293,9 @@ const NavigationListCompactLabel = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "s:flex s:px-2 s:py-1 s:pl-3 s:text-[10px] s:font-semibold s:text-faint s:dark:text-faint-night s:pt-3 s:uppercase s:whitespace-nowrap s:overflow-hidden s:text-ellipsis",
+      "s:flex s:px-2 s:py-1 s:pl-3 s:text-[10px] s:font-semibold s:text-faint s:pt-3 s:uppercase s:whitespace-nowrap s:overflow-hidden s:text-ellipsis",
       isSticky &&
-        "s:sticky s:top-0 s:z-10 s:bg-muted-background s:dark:bg-muted-background-night s:border-border s:dark:border-border-night",
+        "s:sticky s:top-0 s:z-10 s:bg-muted-background s:border-border",
       className
     )}
     {...props}
@@ -332,7 +332,7 @@ interface NavigationListCollapsibleSectionProps
 const collapseableStyles = cva(
   cn(
     "s:w-full s:flex-1 s:text-left s:w-full",
-    "s:text-muted-foreground s:dark:text-muted-foreground-night",
+    "s:text-muted-foreground",
     "s:text-sm s:whitespace-nowrap s:overflow-hidden s:text-ellipsis",
     "s:select-none",
     "s:outline-hidden s:rounded-xl",
@@ -343,7 +343,7 @@ const collapseableStyles = cva(
       isCollapsible: {
         true: cn(
           "s:cursor-pointer s:mb-0.5"
-          // "s:hover:bg-primary-100 s:dark:hover:bg-primary-200-night"
+          // "s:hover:bg-primary-100"
         ),
         false: "",
       },
@@ -489,7 +489,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
 
     return (
       <Collapsible ref={ref} className={className} {...collapsibleProps}>
-        <div className="s:group/menu-item s:relative s:flex s:flex-1 s:items-center s:text-sm s:font-medium s:justify-start s:gap-2 s:pl-2 s:py-1.5 s:text-muted-foreground s:dark:text-muted-foreground-night">
+        <div className="s:group/menu-item s:relative s:flex s:flex-1 s:items-center s:text-sm s:font-medium s:justify-start s:gap-2 s:pl-2 s:py-1.5 s:text-muted-foreground">
           <CollapsibleTrigger hideChevron>{label}</CollapsibleTrigger>
           {actionElement}
         </div>

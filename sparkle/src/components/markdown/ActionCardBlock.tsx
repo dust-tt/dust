@@ -21,7 +21,7 @@ export type ActionCardState = "active" | "disabled" | "accepted" | "rejected";
 export type ActionCardBlockSize = "compact" | "default";
 
 const resolvedTitleClass =
-  "s:italic s:font-normal s:text-muted-foreground s:dark:text-muted-foreground-night s:mr-2";
+  "s:italic s:font-normal s:text-muted-foreground s:mr-2";
 
 const titleVariants = cva("", {
   variants: {
@@ -30,8 +30,8 @@ const titleVariants = cva("", {
       default: "s:heading-base",
     },
     status: {
-      active: "s:text-foreground s:dark:text-foreground-night",
-      disabled: "s:text-faint s:dark:text-faint-night",
+      active: "s:text-foreground",
+      disabled: "s:text-faint",
       accepted: resolvedTitleClass,
       rejected: resolvedTitleClass,
     },
@@ -52,10 +52,10 @@ const descriptionVariants = cva("", {
       default: "s:text-base",
     },
     status: {
-      active: "s:text-muted-foreground s:dark:text-muted-foreground-night",
-      disabled: "s:text-faint s:dark:text-faint-night",
-      accepted: "s:text-faint s:dark:text-faint-night",
-      rejected: "s:text-faint s:dark:text-faint-night",
+      active: "s:text-muted-foreground",
+      disabled: "s:text-faint",
+      accepted: "s:text-faint",
+      rejected: "s:text-faint",
     },
   },
   defaultVariants: { size: "default", status: "active" },

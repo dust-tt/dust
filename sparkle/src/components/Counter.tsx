@@ -33,7 +33,7 @@ const counterVariants = cva(
         isInButton: false,
         variant: "primary",
         className:
-          "s:bg-primary s:dark:bg-primary-night s:text-primary-50 s:dark:text-primary-800",
+          "s:bg-primary s:text-primary-50",
       },
       {
         isInButton: false,
@@ -53,13 +53,13 @@ const counterVariants = cva(
       {
         isInButton: false,
         variant: ["ghost", "ghost-secondary"],
-        className: "s:text-primary s:dark:text-primary-night",
+        className: "s:text-primary",
       },
       {
         isInButton: true,
         variant: "primary",
         className:
-          "s:bg-primary-600 s:dark:bg-primary-400 s:text-white s:dark:text-primary-900",
+          "s:bg-primary-600 s:text-white",
       },
       {
         isInButton: true,
@@ -75,13 +75,13 @@ const counterVariants = cva(
         isInButton: true,
         variant: "outline",
         className:
-          "s:bg-primary-150 s:dark:bg-primary-800 s:text-primary-700 s:dark:text-primary-300",
+          "s:bg-primary-150 s:text-primary-700",
       },
       {
         isInButton: true,
         variant: ["ghost", "ghost-secondary"],
         className:
-          "s:bg-primary-150 s:dark:bg-primary-800 s:text-primary-700 s:dark:text-primary-300",
+          "s:bg-primary-150 s:text-primary-700",
       },
     ],
     defaultVariants: {

@@ -119,7 +119,7 @@ const gridStyle = {
 
 export const AvatarExample: Story = {
   render: () => (
-    <div className="s:flex s:flex-col s:gap-4 s:text-foreground s:dark:text-foreground-night">
+    <div className="s:flex s:flex-col s:gap-4 s:text-foreground">
       <div>With nothing</div>
       <div className="s:flex s:gap-4">
         <Avatar size="xs" />

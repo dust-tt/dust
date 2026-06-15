@@ -131,7 +131,7 @@ export function SearchInputWithPopoverScrollableExample() {
           key={item}
           role="option"
           className={cn(
-            "s:cursor-pointer s:truncate s:px-2 s:py-2 s:hover:bg-primary-100 s:dark:hover:bg-primary-100-night",
+            "s:cursor-pointer s:truncate s:px-2 s:py-2 s:hover:bg-primary-100",
             selected && "s:bg-primary-100"
           )}
           onClick={() => {
@@ -185,7 +185,7 @@ export function SearchInputWithPopoverSelectAllExample() {
             key={item}
             role="option"
             className={cn(
-              "s:cursor-pointer s:truncate s:px-2 s:py-2 s:hover:bg-primary-100 s:dark:hover:bg-primary-100-night",
+              "s:cursor-pointer s:truncate s:px-2 s:py-2 s:hover:bg-primary-100",
               selected && "s:bg-primary-100"
             )}
             onClick={() => {

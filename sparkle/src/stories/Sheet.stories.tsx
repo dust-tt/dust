@@ -81,7 +81,7 @@ export function SheetDemo() {
             <div className="s:flex s:flex-col s:gap-6">
               <Input label="Firstname" placeholder="John" />
               <Input label="Lastname" placeholder="Doe" />
-              <div className="s:text-xs s:text-muted-foreground s:dark:text-muted-foreground-night">
+              <div className="s:text-xs s:text-muted-foreground">
                 Tip: Press Cmd/Ctrl + Enter to Save
               </div>
             </div>
@@ -97,7 +97,7 @@ export function SheetDemo() {
           />
         </SheetContent>
       </Sheet>
-      <span className="s:text-xs s:text-muted-foreground s:dark:text-muted-foreground-night">
+      <span className="s:text-xs s:text-muted-foreground">
         Saved: {saveCount}
       </span>
     </div>

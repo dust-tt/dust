@@ -34,8 +34,8 @@ function NavList<T extends string>({
           className={[
             "s:flex s:w-full s:items-center s:rounded-md s:px-3 s:py-2 s:text-left s:text-sm s:transition-colors",
             item === selected
-              ? "s:bg-primary-100 s:font-medium s:text-primary-900 dark:s:bg-primary-900/30 dark:s:text-primary-100"
-              : "s:text-foreground hover:s:bg-structure-100 dark:s:text-foreground-night dark:hover:s:bg-structure-100-night",
+              ? "s:bg-primary-100 s:font-medium s:text-primary-900"
+              : "s:text-foreground hover:s:bg-structure-100",
           ].join(" ")}
         >
           {item}

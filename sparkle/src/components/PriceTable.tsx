@@ -115,7 +115,7 @@ export function PriceTable({
         }}
         className={cn(
           "s:flex s:h-full s:flex-col s:overflow-hidden s:shadow-md",
-          "s:bg-background s:dark:bg-muted-background-night"
+          "s:bg-background"
         )}
       >
         {childrenWithProps}
@@ -157,7 +157,6 @@ PriceTable.Item = function ({
           : "s:gap-3 s:p-4 s:text-base",
         "s:flex s:items-start s:border-b",
         "s:border-border s:text-muted-foreground",
-        "s:dark:border-border-dark-night s:dark:text-muted-foreground-night",
         className
       )}
     >
@@ -171,7 +170,7 @@ PriceTable.Item = function ({
       <div
         className={cn(
           variant === "xmark"
-            ? "s:text-primery-600 s:dark:text-primery-600-night"
+            ? "s:text-primery-600"
             : "",
           "s:overflow-hidden"
         )}
@@ -201,7 +200,7 @@ PriceTable.ActionContainer = function ({
           "s:flex s:w-full s:justify-center s:px-2",
           size === "xs" ? "s:py-2" : "s:py-4",
           position === "top"
-            ? "s:border-b s:border-border s:dark:border-border-dark-night"
+            ? "s:border-b s:border-border"
             : ""
         )}
       >

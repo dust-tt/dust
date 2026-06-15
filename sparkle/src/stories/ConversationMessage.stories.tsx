@@ -56,7 +56,7 @@ export const ConversationExample = () => {
               </Citation>,
             ]}
             infoChip={
-              <span className="s:translate-y-1 s:text-muted-foreground s:dark:text-muted-foreground-night">
+              <span className="s:translate-y-1 s:text-muted-foreground">
                 <Icon size="xs" visual={Zap} />
               </span>
             }

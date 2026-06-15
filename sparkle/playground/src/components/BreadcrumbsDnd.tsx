@@ -25,8 +25,8 @@ const ELLIPSIS_STRING = "...";
 const breadcrumbTextVariants = cva("", {
   variants: {
     isLast: {
-      true: "s:text-foreground dark:s:text-foreground-night",
-      false: "s:text-muted-foreground dark:s:text-muted-foreground-night",
+      true: "s:text-foreground",
+      false: "s:text-muted-foreground",
     },
     size: {
       xs: "",
@@ -154,7 +154,7 @@ function BreadcrumbItemRenderer({
   const isLabelTruncated = truncatedLabel !== item.label;
 
   const dropClassName = item.isDropHighlight
-    ? "s:bg-muted-background dark:s:bg-muted-background-night"
+    ? "s:bg-muted-background"
     : undefined;
 
   if (isLinkItem(item)) {
@@ -377,7 +377,7 @@ export function BreadcrumbSeparator({ className }: { className?: string }) {
     <Icon
       aria-hidden="true"
       visual={ChevronRight}
-      className={cn("s:text-faint dark:s:text-faint-night", className)}
+      className={cn("s:text-faint", className)}
       size="sm"
     />
   );

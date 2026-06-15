@@ -155,7 +155,7 @@ export const Example: Story = {
             timestamp="14:31"
             renderName={(name) => <span>{name}</span>}
             completionStatus={
-              <span className="s:text-xs s:text-muted-foreground s:dark:text-muted-foreground-night">
+              <span className="s:text-xs s:text-muted-foreground">
                 Completed in 18 sec
               </span>
             }
@@ -192,7 +192,7 @@ export const Example: Story = {
             timestamp="14:33"
             renderName={(name) => <span>{name}</span>}
             completionStatus={
-              <span className="s:text-xs s:text-muted-foreground s:dark:text-muted-foreground-night">
+              <span className="s:text-xs s:text-muted-foreground">
                 Awaiting approval
               </span>
             }
@@ -223,7 +223,7 @@ export const Example: Story = {
             timestamp="14:34"
             renderName={(name) => <span>{name}</span>}
             completionStatus={
-              <span className="s:text-xs s:text-muted-foreground s:dark:text-muted-foreground-night">
+              <span className="s:text-xs s:text-muted-foreground">
                 Completed in 46 sec
               </span>
             }

@@ -17,8 +17,8 @@ interface FilePreviewPanelProps {
 
 function DocumentPreviewContent() {
   return (
-    <div className="s:flex s:h-full s:min-h-0 s:flex-1 s:flex-col s:items-center s:justify-center s:rounded-2xl s:border s:border-border s:bg-muted-background dark:s:border-border-night dark:s:bg-muted-background-night">
-      <p className="s:text-foreground dark:s:text-foreground-night">
+    <div className="s:flex s:h-full s:min-h-0 s:flex-1 s:flex-col s:items-center s:justify-center s:rounded-2xl s:border s:border-border s:bg-muted-background">
+      <p className="s:text-foreground">
         Document Preview
       </p>
     </div>
@@ -35,8 +35,8 @@ export function FilePreviewPanel({
 
   if (variant === "document") {
     return (
-      <div className="s:flex s:h-full s:min-h-0 s:flex-1 s:flex-col s:items-center s:justify-center s:bg-muted-background dark:s:bg-muted-background-night">
-        <p className="s:text-foreground dark:s:text-foreground-night">
+      <div className="s:flex s:h-full s:min-h-0 s:flex-1 s:flex-col s:items-center s:justify-center s:bg-muted-background">
+        <p className="s:text-foreground">
           Document Preview
         </p>
       </div>
@@ -48,7 +48,7 @@ export function FilePreviewPanel({
       <div className="s:flex s:flex-col s:gap-4">
         <div className="s:flex s:items-center s:gap-2">
           {dataSource.icon ? <Icon visual={dataSource.icon} size="md" /> : null}
-          <span className="s:heading-base s:text-foreground dark:s:text-foreground-night">
+          <span className="s:heading-base s:text-foreground">
             {dataSource.fileName}
           </span>
         </div>
@@ -86,8 +86,8 @@ export function FilePreviewPanel({
         {documentView === "preview" ? (
           <DocumentPreviewContent />
         ) : (
-          <div className="s:flex s:flex-1 s:flex-col s:items-center s:justify-center s:rounded-2xl s:border s:border-border s:bg-muted-background s:py-16 dark:s:border-border-night dark:s:bg-muted-background-night">
-            <p className="s:text-foreground dark:s:text-foreground-night">
+          <div className="s:flex s:flex-1 s:flex-col s:items-center s:justify-center s:rounded-2xl s:border s:border-border s:bg-muted-background s:py-16">
+            <p className="s:text-foreground">
               Extracted information
             </p>
           </div>

@@ -639,10 +639,10 @@ export default function TemplateSelection({
                               size="sm"
                             />
                             <div className="s:min-w-0">
-                              <div className="s:heading-base s:line-clamp-1 s:text-foreground dark:s:text-foreground-night">
+                              <div className="s:heading-base s:line-clamp-1 s:text-foreground">
                                 {template.handle}
                               </div>
-                              <p className="s:line-clamp-3 s:text-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
+                              <p className="s:line-clamp-3 s:text-sm s:text-muted-foreground">
                                 {template.userFacingDescription}
                               </p>
                             </div>

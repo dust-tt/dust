@@ -62,7 +62,7 @@ export function Tree({
         className={cn(
           "s:flex s:flex-col s:gap-0.5 s:overflow-hidden",
           isBoxed &&
-            "s:rounded-xl s:border s:border-border s:bg-muted-background s:px-3 s:py-2 s:dark:border-border-night s:dark:bg-muted-background-night",
+            "s:rounded-xl s:border s:border-border s:bg-muted-background s:px-3 s:py-2",
           className
         )}
       >
@@ -83,12 +83,12 @@ const treeItemStyleClasses = {
   base: "s:group/tree s:flex s:cursor-default s:flex-row s:items-center s:gap-2 s:h-9",
   isNavigatableBase: "s:rounded-xl s:pl-1.5 s:pr-3 s:ease-out s:cursor-pointer",
   isNavigatableUnselected: cn(
-    "s:bg-sidebar-foreground/0 s:dark:bg-sidebar-foreground-night/0",
-    "s:hover:bg-sidebar-foreground s:dark:hover:bg-sidebar-foreground-night"
+    "s:bg-sidebar-foreground/0",
+    "s:hover:bg-sidebar-foreground"
   ),
   isNavigatableSelected: cn(
     "s:font-medium",
-    "s:bg-sidebar-foreground s:dark:bg-sidebar-foreground-night"
+    "s:bg-sidebar-foreground"
   ),
 };
 
@@ -131,7 +131,7 @@ Tree.Item = React.forwardRef<
       type = "node",
       className = "",
       labelClassName = "",
-      tailwindIconTextColor = "s:text-muted-foreground s:dark:text-muted-foreground-night",
+      tailwindIconTextColor = "s:text-muted-foreground",
       visual,
       checkbox,
       onChevronClick,
@@ -260,7 +260,7 @@ Tree.Item = React.forwardRef<
                   <div
                     ref={labelRef}
                     className={cn(
-                      "s:font-medium s:truncate s:text-sm s:text-primary s:dark:text-primary-night",
+                      "s:font-medium s:truncate s:text-sm s:text-primary",
                       labelClassName
                     )}
                   >
@@ -278,7 +278,7 @@ Tree.Item = React.forwardRef<
             <div
               ref={labelRef}
               className={cn(
-                "s:font-medium s:truncate s:text-sm s:text-primary s:dark:text-primary-night",
+                "s:font-medium s:truncate s:text-sm s:text-primary",
                 labelClassName
               )}
             >
@@ -315,7 +315,7 @@ Tree.Empty = function ({ label, onItemClick }: TreeEmptyProps) {
     <div
       className={cn(
         "s:copy-sm s:py-1.5 s:pl-6 s:italic",
-        "s:text-muted-foreground s:dark:text-muted-foreground-night",
+        "s:text-muted-foreground",
         onItemClick ? "s:cursor-pointer" : ""
       )}
       onClick={onItemClick}

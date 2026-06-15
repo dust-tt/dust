@@ -1304,7 +1304,7 @@ function ProjectSetupEmptyState({
 }) {
   return (
     <div className="s:flex s:h-full s:w-full s:flex-col s:items-center s:justify-center s:gap-0 s:text-center">
-      <h3 className="s:heading-lg s:text-foreground dark:s:text-foreground-night">
+      <h3 className="s:heading-lg s:text-foreground">
         It's quiet in here.
       </h3>
       <p className="s:text-muted-foreground s:textbase s:mb-3">
@@ -1681,7 +1681,7 @@ export function GroupConversationView({
     const title = titlePrefix ? (
       <>
         <span className="s:shrink-0">{titlePrefix}</span>
-        <span className="s:min-w-0 s:truncate s:text-muted-foreground dark:s:text-muted-foreground-night">
+        <span className="s:min-w-0 s:truncate s:text-muted-foreground">
           {item.title}
         </span>
       </>
@@ -3319,7 +3319,7 @@ export function GroupConversationView({
               <Icon
                 visual={CloudArrowLeftRight}
                 size="sm"
-                className="s:text-muted-foreground dark:s:text-muted-foreground-night"
+                className="s:text-muted-foreground"
               />
             </DataTable.CellContent>
           );
@@ -3549,7 +3549,7 @@ export function GroupConversationView({
   const isShowingTodoSuggestions = todoSuggestionStatus !== "idle";
 
   return (
-    <div className="s:flex s:h-full s:w-full s:h-full s:flex-col s:bg-background dark:s:bg-background-night">
+    <div className="s:flex s:h-full s:w-full s:h-full s:flex-col s:bg-background">
       {/* Tabs */}
       <Tabs
         value={activeTab}
@@ -3560,7 +3560,7 @@ export function GroupConversationView({
         <GroupConversationTabContent value="conversations">
           {/* New conversation section */}
           {greeting && (
-            <h2 className="s:heading-2xl s:text-foreground dark:s:text-foreground-night">
+            <h2 className="s:heading-2xl s:text-foreground">
               {greeting}
             </h2>
           )}
@@ -3575,7 +3575,7 @@ export function GroupConversationView({
             ongoingSummary &&
             ongoingSummary.projectPulse.length > 0 && (
               <>
-                <h3 className="s:heading-lg s:text-foreground dark:s:text-foreground-night">
+                <h3 className="s:heading-lg s:text-foreground">
                   {isSummaryUpdating ? (
                     <AnimatedText
                       variant="primary"
@@ -3587,7 +3587,7 @@ export function GroupConversationView({
                     "Catching-up"
                   )}
                 </h3>
-                <div className="s:text-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
+                <div className="s:text-sm s:text-muted-foreground">
                   {ongoingSummary.projectPulse.map((item, index) => {
                     const itemKey = getSummaryItemKey("projectPulse", item);
                     const relatedConversationIds =
@@ -3852,7 +3852,6 @@ export function GroupConversationView({
                                 className={cn(
                                   "s:px-3 s:rounded-2xl",
                                   isSelectedConversation &&
-                                    "s:bg-highlight-50 dark:s:bg-highlight-50-night"
                                 )}
                                 time={listItem.time}
                                 showFocus={
@@ -3980,7 +3979,7 @@ export function GroupConversationView({
                       />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start">
-                      <div className="s:px-2 s:py-1.5 s:text-xs s:font-medium s:text-muted-foreground dark:s:text-muted-foreground-night">
+                      <div className="s:px-2 s:py-1.5 s:text-xs s:font-medium s:text-muted-foreground">
                         Status
                       </div>
                       <DropdownMenuRadioGroup
@@ -4045,7 +4044,7 @@ export function GroupConversationView({
                               isRounded={true}
                             />
                             <div className="s:flex s:flex-col">
-                              <h4 className="s:heading-base s:text-muted-foreground dark:s:text-foreground-night">
+                              <h4 className="s:heading-base s:text-muted-foreground">
                                 {list.user.fullName}
                               </h4>
                             </div>
@@ -4313,13 +4312,13 @@ export function GroupConversationView({
                     );
                   })
                 ) : (
-                  <div className="s:text-base s:text-faint s:italic dark:s:text-faint-night">
+                  <div className="s:text-base s:text-faint s:italic">
                     No tasks match your filters.
                   </div>
                 )
               ) : isShowingTodoSuggestions ? null : (
                 <div className="s:flex s:flex-col s:items-center s:gap-0 s:text-center">
-                  <h3 className="s:heading-lg s:text-foreground dark:s:text-foreground-night">
+                  <h3 className="s:heading-lg s:text-foreground">
                     No pending Tasks
                   </h3>
                   <p className="s:text-muted-foreground s:textbase">
@@ -4448,8 +4447,8 @@ export function GroupConversationView({
                 </ButtonsSwitchList>
               )}
               {tableItems.length === 0 && !isKnowledgeSearchActive ? (
-                <div className="s:flex s:w-full s:flex-col s:items-center s:justify-center s:gap-2 s:rounded-xl s:border s:border-border s:bg-muted-background s:p-12 dark:s:border-border-night dark:s:bg-muted-background-night">
-                  <p className="s:text-center s:text-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
+                <div className="s:flex s:w-full s:flex-col s:items-center s:justify-center s:gap-2 s:rounded-xl s:border s:border-border s:bg-muted-background s:p-12">
+                  <p className="s:text-center s:text-sm s:text-muted-foreground">
                     This folder is empty.
                   </p>
                 </div>
@@ -4486,7 +4485,7 @@ export function GroupConversationView({
         {/* About Tab */}
         {showToolsAndAboutTabs && (
           <GroupConversationTabContent value="about" contentClassName="s:gap-4">
-            <p className="s:text-foreground dark:s:text-foreground-night">
+            <p className="s:text-foreground">
               {space.description}
             </p>
           </GroupConversationTabContent>
@@ -4599,12 +4598,12 @@ export function GroupConversationView({
 
           <div className="s:flex s:w-full s:flex-col s:gap-2">
             <h3 className="s:heading-lg">Visibility</h3>
-            <div className="s:flex s:items-start s:items-center s:justify-between s:gap-4 s:border-y s:border-border dark:s:border-border-night s:py-4">
+            <div className="s:flex s:items-start s:items-center s:justify-between s:gap-4 s:border-y s:border-border s:py-4">
               <div className="s:flex s:flex-col">
-                <div className="s:heading-sm s:text-foreground dark:s:text-foreground-night">
+                <div className="s:heading-sm s:text-foreground">
                   Opened to everyone
                 </div>
-                <div className="s:text-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
+                <div className="s:text-sm s:text-muted-foreground">
                   Anyone in the workspace can find and join the room.
                 </div>
               </div>
@@ -4660,12 +4659,12 @@ export function GroupConversationView({
             )}
           </div>
 
-          <div className="s:flex s:w-full s:flex-col s:gap-8 s:border-t s:border-border dark:s:border-border-night s:pt-8">
+          <div className="s:flex s:w-full s:flex-col s:gap-8 s:border-t s:border-border s:pt-8">
             <div className="s:flex s:w-full s:flex-col s:gap-3">
               <h3 className="s:heading-lg">Danger Zone</h3>
               <h4 className="s:heading-base">Archive</h4>
               {!isProjectArchived && (
-                <p className="s:text-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
+                <p className="s:text-sm s:text-muted-foreground">
                   This project will be removed from the sidebar. Its data stays
                   intact and can still be used as a data source.
                 </p>
@@ -4673,7 +4672,7 @@ export function GroupConversationView({
               {isProjectArchived ? (
                 <div className="s:flex s:flex-col s:gap-3">
                   {archivedAt && archivedByName && (
-                    <p className="s:text-sm s:text-foreground dark:s:text-foreground-night">
+                    <p className="s:text-sm s:text-foreground">
                       Archived on{" "}
                       <span className="s:font-medium">
                         {formatDate(archivedAt)} ·{" "}
@@ -4706,7 +4705,7 @@ export function GroupConversationView({
                 </div>
               )}
               <h4 className="s:heading-base">Delete</h4>
-              <p className="s:text-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
+              <p className="s:text-sm s:text-muted-foreground">
                 {`This permanently removes all content—conversations, folders, websites, and data sources. Assistants using this project's tools will be impacted. This cannot be undone.`}
               </p>
               <div className="s:flex s:w-full s:flex-col s:items-start">
@@ -4791,9 +4790,9 @@ export function GroupConversationView({
             <DialogTitle>Delete {space.name}?</DialogTitle>
           </DialogHeader>
           <DialogContainer className="s:flex s:flex-col s:gap-4">
-            <p className="s:text-sm s:text-muted-foreground dark:s:text-muted-foreground-night">
+            <p className="s:text-sm s:text-muted-foreground">
               Type{" "}
-              <span className="s:font-semibold s:text-foreground dark:s:text-foreground-night">
+              <span className="s:font-semibold s:text-foreground">
                 delete
               </span>{" "}
               below to confirm. This permanently removes all project content and
@@ -4993,7 +4992,7 @@ export function GroupConversationView({
           </SheetHeader>
           <SheetContainer>
             <div className="s:flex s:flex-col s:items-center s:justify-center s:py-16">
-              <p className="s:text-foreground dark:s:text-foreground-night">
+              <p className="s:text-foreground">
                 Member detailview
               </p>
             </div>

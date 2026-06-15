@@ -9,12 +9,12 @@ const taskItemTextVariants = cva("s:min-h-6 s:text-base", {
       false: "s:truncate",
     },
     editing: {
-      true: "s:bg-highlight-50 dark:s:bg-highlight-100-night",
+      true: "s:bg-highlight-50",
       false: "",
     },
     checked: {
-      true: "s:text-faint s:line-through dark:s:text-faint-night",
-      false: "s:text-foreground dark:s:text-foreground-night",
+      true: "s:text-faint s:line-through",
+      false: "s:text-foreground",
     },
   },
   compoundVariants: [
@@ -52,8 +52,8 @@ const relatedConversationLinkVariants = cva(
   {
     variants: {
       checked: {
-        true: "s:text-faint dark:s:text-faint-night",
-        false: "s:text-muted-foreground dark:s:text-muted-foreground-night",
+        true: "s:text-faint",
+        false: "s:text-muted-foreground",
       },
     },
     defaultVariants: {
@@ -246,7 +246,7 @@ export function TaskItem({
         {visual}
         <div className="s:flex s:min-w-0 s:flex-1 s:flex-col">
           {title && (
-            <div className="s:text-xs s:text-muted-foreground dark:s:text-muted-foreground-night">
+            <div className="s:text-xs s:text-muted-foreground">
               {title}
             </div>
           )}
@@ -256,12 +256,12 @@ export function TaskItem({
             <Tooltip trigger={textElement} label={text} />
           )}
           {isChecked && autoCheckRationale ? (
-            <div className="s:text-xs s:text-faint dark:s:text-faint-night">
+            <div className="s:text-xs s:text-faint">
               {autoCheckRationale}
             </div>
           ) : null}
           {relatedConversations.length > 0 ? (
-            <div className="s:text-xs s:text-muted-foreground dark:s:text-muted-foreground-night">
+            <div className="s:text-xs s:text-muted-foreground">
               <span>In </span>
               {relatedConversations.map((conversation, index) => (
                 <span key={conversation.id}>

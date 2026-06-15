@@ -25,8 +25,8 @@ const ELLIPSIS_STRING = "...";
 const breadcrumbTextVariants = cva("", {
   variants: {
     isLast: {
-      true: "s:text-foreground s:dark:text-foreground-night",
-      false: "s:text-muted-foreground s:dark:text-muted-foreground-night",
+      true: "s:text-foreground",
+      false: "s:text-muted-foreground",
     },
     size: {
       xs: "",
@@ -358,7 +358,7 @@ export function BreadcrumbSeparator({ className }: { className?: string }) {
     <Icon
       aria-hidden="true"
       visual={ChevronRight}
-      className={cn("s:text-faint s:dark:text-faint-night", className)}
+      className={cn("s:text-faint", className)}
       size="sm"
     />
   );

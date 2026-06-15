@@ -10,13 +10,13 @@ const labelVariants = cva(
   {
     variants: {
       variant: {
-        primary: "s:text-highlight-600 s:dark:text-highlight-600-night",
-        secondary: "s:text-foreground s:dark:text-foreground-night",
+        primary: "s:text-highlight-600",
+        secondary: "s:text-foreground",
       },
       disabled: {
-        true: "s:text-muted s:dark:text-muted-night",
+        true: "s:text-muted",
         false:
-          "s:group-hover/col:text-highlight-500 s:dark:group-hover/col:text-highlight-500-night s:active:text-highlight-700 s:dark:active:text-highlight-700-night",
+          "s:group-hover/col:text-highlight-500 s:active:text-highlight-700",
       },
     },
     defaultVariants: {
@@ -29,13 +29,13 @@ const labelVariants = cva(
 const chevronVariants = cva("s:transition-transform s:duration-150", {
   variants: {
     variant: {
-      primary: "s:text-muted-foreground s:dark:text-muted-foreground-night",
-      secondary: "s:text-muted-foreground s:dark:text-muted-foreground-night",
+      primary: "s:text-muted-foreground",
+      secondary: "s:text-muted-foreground",
     },
     disabled: {
-      true: "s:text-muted s:dark:text-muted-night",
+      true: "s:text-muted",
       false:
-        "s:group-hover/col:text-highlight-500 s:dark:group-hover/col:text-highlight-500-night s:active:text-highlight-700 s:dark:active:text-highlight-700-night",
+        "s:group-hover/col:text-highlight-500 s:active:text-highlight-700",
     },
   },
   defaultVariants: {
@@ -125,7 +125,7 @@ CollapsibleTrigger.displayName = "CollapsibleTrigger";
 const contentVariants = cva("s:overflow-hidden s:transition-all", {
   variants: {
     variant: {
-      default: "s:text-foreground s:dark:text-foreground-night",
+      default: "s:text-foreground",
     },
   },
   defaultVariants: {

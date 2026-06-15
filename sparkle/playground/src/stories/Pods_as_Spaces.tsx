@@ -625,9 +625,9 @@ function DustMain() {
 
   // Sidebar content
   const sidebarContent = (
-    <div className="s:flex s:h-full s:flex-col s:border-r s:border-border s:bg-muted-background dark:s:border-border-night dark:s:bg-muted-background-night">
+    <div className="s:flex s:h-full s:flex-col s:border-r s:border-border s:bg-muted-background">
       {/* Top Bar */}
-      <div className="s:flex s:h-14 s:items-center s:justify-between s:gap-2 s:border-b s:border-border s:pl-1 s:pr-2 dark:s:border-border-night">
+      <div className="s:flex s:h-14 s:items-center s:justify-between s:gap-2 s:border-b s:border-border s:pl-1 s:pr-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Card
@@ -643,11 +643,11 @@ function DustMain() {
                   size="sm"
                   isRounded={true}
                 />
-                <div className="s:flex s:min-w-0 s:grow s:flex-col s:text-sm s:text-foreground dark:s:text-foreground-night">
+                <div className="s:flex s:min-w-0 s:grow s:flex-col s:text-sm s:text-foreground">
                   <span className="s:heading-sm s:min-w-0 s:overflow-hidden s:text-ellipsis s:whitespace-nowrap">
                     {user.fullName}
                   </span>
-                  <span className="s:-mt-0.5 s:min-w-0 s:overflow-hidden s:text-ellipsis s:whitespace-nowrap s:text-xs s:text-muted-foreground dark:s:text-muted-foreground-night">
+                  <span className="s:-mt-0.5 s:min-w-0 s:overflow-hidden s:text-ellipsis s:whitespace-nowrap s:text-xs s:text-muted-foreground">
                     ACME
                   </span>
                 </div>

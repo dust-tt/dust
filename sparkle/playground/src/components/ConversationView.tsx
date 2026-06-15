@@ -649,7 +649,7 @@ export function ConversationView({
     const groupKey = `${currentGroup.id}-${currentGroupMessages[0].id}`;
     const infoChip =
       currentGroup.infoChip?.icon === "bolt" ? (
-        <span className="s:translate-y-0.5 s:text-muted-foreground dark:s:text-muted-foreground-night">
+        <span className="s:translate-y-0.5 s:text-muted-foreground">
           <Icon size="xs" visual={Zap} />
         </span>
       ) : undefined;
@@ -659,7 +659,7 @@ export function ConversationView({
     );
     const completionStatus =
       currentGroup.completionStatus && !groupHasDeletedMessage ? (
-        <span className="s:text-xs s:text-muted-foreground dark:s:text-muted-foreground-night">
+        <span className="s:text-xs s:text-muted-foreground">
           {currentGroup.completionStatus}
         </span>
       ) : undefined;
@@ -711,7 +711,7 @@ export function ConversationView({
           ));
 
           const messageContent = isDeleted ? (
-            <span className="s:text-sm s:text-muted-foreground dark:s:text-muted-foreground-night s:italic">
+            <span className="s:text-sm s:text-muted-foreground s:italic">
               Message deleted
             </span>
           ) : (
@@ -868,7 +868,7 @@ export function ConversationView({
             name: agent?.name ?? agentMsg.group.name,
             timestamp: agentMsg.group.timestamp,
             completionStatus: agentMsg.group.completionStatus ? (
-              <span className="s:text-xs s:text-muted-foreground dark:s:text-muted-foreground-night">
+              <span className="s:text-xs s:text-muted-foreground">
                 {agentMsg.group.completionStatus}
               </span>
             ) : undefined,
@@ -1033,7 +1033,7 @@ export function ConversationView({
           </SheetHeader>
           <SheetContainer>
             <div className="s:flex s:flex-col s:items-center s:justify-center s:py-16">
-              <p className="s:text-foreground dark:s:text-foreground-night">
+              <p className="s:text-foreground">
                 {documentView === "preview"
                   ? "Document Preview"
                   : "Extracted information"}
@@ -1126,7 +1126,7 @@ export function ConversationView({
                   completionStatus={
                     pendingValidationBlock.agentMessage.group
                       .completionStatus ? (
-                      <span className="s:text-xs s:text-muted-foreground dark:s:text-muted-foreground-night">
+                      <span className="s:text-xs s:text-muted-foreground">
                         {
                           pendingValidationBlock.agentMessage.group
                             .completionStatus

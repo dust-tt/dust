@@ -24,7 +24,7 @@ const SheetOverlay = React.forwardRef<
   <SheetPrimitive.Overlay
     className={cn(
       "s:fixed s:inset-0 s:z-50",
-      "s:bg-muted-foreground/75 s:dark:bg-muted-background-night/75",
+      "s:bg-muted-foreground/75",
       "s:data-[state=open]:animate-in s:data-[state=closed]:animate-out",
       "s:data-[state=closed]:fade-out-0 s:data-[state=open]:fade-in-0",
       className
@@ -54,7 +54,7 @@ const sizeClasses: Record<SheetSizeType, string> = {
 const sheetVariants = cva(
   cn(
     "s:fixed s:z-50 s:overflow-hidden s:flex s:flex-col s:h-full s:w-full",
-    "s:bg-background s:dark:bg-background-night",
+    "s:bg-background",
     "s:transition s:ease-in-out s:data-[state=open]:animate-in s:data-[state=closed]:animate-out s:data-[state=closed]:duration-300 s:data-[state=open]:duration-500"
   ),
   {
@@ -62,19 +62,19 @@ const sheetVariants = cva(
       side: {
         top: cn(
           "s:inset-x-0 s:top-0 s:data-[state=closed]:slide-out-to-top s:data-[state=open]:slide-in-from-top",
-          "s:border-b s:dark:border-border-night s:border-border"
+          "s:border-b s:border-border"
         ),
         bottom: cn(
           "s:inset-x-0 s:bottom-0 s:data-[state=closed]:slide-out-to-bottom s:data-[state=open]:slide-in-from-bottom",
-          "s:border-t s:dark:border-border-night s:border-border"
+          "s:border-t s:border-border"
         ),
         left: cn(
           "s:inset-y-0 s:left-0 s:data-[state=closed]:slide-out-to-left s:data-[state=open]:slide-in-from-left",
-          "s:border-r s:dark:border-border-night s:border-border"
+          "s:border-r s:border-border"
         ),
         right: cn(
           "s:inset-y-0 s:right-0 s:data-[state=closed]:slide-out-to-right s:data-[state=open]:slide-in-from-right",
-          "s:border-l s:dark:border-border-night s:border-border"
+          "s:border-l s:border-border"
         ),
       },
       size: sizeClasses,
@@ -159,7 +159,7 @@ const SheetContent = React.forwardRef<
             className={cn(
               sheetVariants({ size, side }),
               className,
-              "s:sheet s:text-foreground s:dark:text-foreground-night"
+              "s:sheet s:text-foreground"
             )}
             onCloseAutoFocus={handleCloseAutoFocus}
             onOpenAutoFocus={handleOpenAutoFocus}
@@ -188,7 +188,7 @@ const SheetHeader = ({
   <div
     className={cn(
       "s:z-50 s:flex s:flex-none s:flex-col s:p-5 s:text-left",
-      "s:bg-background s:dark:bg-background-night",
+      "s:bg-background",
       className
     )}
     {...props}
@@ -246,12 +246,12 @@ const SheetContainer = ({
       noScroll={noScroll}
       className={cn(
         "s:h-full s:w-full s:flex-grow",
-        "s:border-t s:border-border/60 s:transition-all s:duration-300 s:dark:border-border-night/60"
+        "s:border-t s:border-border/60 s:transition-all s:duration-300"
       )}
     >
       <div
         className={cn(
-          "s:relative s:flex s:h-full s:flex-col s:gap-5 s:text-left s:text-sm s:text-foreground s:dark:text-foreground-night",
+          "s:relative s:flex s:h-full s:flex-col s:gap-5 s:text-left s:text-sm s:text-foreground",
           !isListSelector && "s:px-5 s:pt-3",
           className
         )}
@@ -283,13 +283,13 @@ const SheetFooter = ({
     <div
       className={cn(
         "s:flex s:flex-none s:flex-col s:gap-2",
-        "s:border-border s:dark:border-border-night",
+        "s:border-border",
         className
       )}
       {...props}
     >
       {children}
-      <div className="s:flex s:flex-row s:gap-2 s:border-t s:border-border s:p-3 s:dark:border-border-night">
+      <div className="s:flex s:flex-row s:gap-2 s:border-t s:border-border s:p-3">
         {leftButtonProps &&
           (leftButtonProps.disabled ? (
             <Button {...leftButtonProps} />
@@ -335,7 +335,7 @@ const SheetTitle = React.forwardRef<
       <Icon
         visual={icon}
         size="lg"
-        className="s:text-foreground s:dark:text-foreground-night"
+        className="s:text-foreground"
       />
     )}
     <SheetPrimitive.Title
@@ -355,7 +355,7 @@ const SheetDescription = React.forwardRef<
     ref={ref}
     className={cn(
       "s:text-sm",
-      "s:text-muted-foreground s:dark:text-muted-foreground-night",
+      "s:text-muted-foreground",
       className
     )}
     {...props}

@@ -57,7 +57,7 @@ export const DocumentAndConversation: Story = {
         title={
           <>
             <span className="s:shrink-0">Alex Doe</span>
-            <span className="s:min-w-0 s:truncate s:text-muted-foreground s:dark:text-muted-foreground-night">
+            <span className="s:min-w-0 s:truncate s:text-muted-foreground">
               Project kickoff notes
             </span>
           </>

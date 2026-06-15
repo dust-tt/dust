@@ -1208,7 +1208,7 @@ export default function ConversationStory() {
   const conversation = useMemo(() => buildConversation(), []);
 
   return (
-    <div className="s:flex s:h-screen s:w-full s:bg-background dark:s:bg-background-night">
+    <div className="s:flex s:h-screen s:w-full s:bg-background">
       <ConversationView
         conversation={conversation}
         locutor={locutor}

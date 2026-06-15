@@ -53,12 +53,11 @@ const NavTabPillTrigger = React.forwardRef<
   ) => {
     const triggerClassName = cn(
       "s:group s:flex s:h-8 s:items-center s:justify-center s:whitespace-nowrap s:rounded-lg s:pl-2 s:group-data-[state=active]:pl-2.5 s:[&:not([data-state=active])]:pr-2 s:text-sm",
-      "s:text-muted-foreground s:dark:text-muted-foreground-night",
-      "s:hover:bg-sidebar-foreground s:dark:hover:bg-sidebar-foreground-night",
+      "s:text-muted-foreground",
+      "s:hover:bg-sidebar-foreground",
       "s:font-medium",
       "s:bg-transparent",
       "s:data-[state=active]:bg-sidebar-foreground s:data-[state=active]:text-foreground",
-      "s:dark:data-[state=active]:bg-sidebar-foreground-night s:dark:data-[state=active]:text-foreground-night",
       "s:focus-visible:outline-hidden s:focus-visible:ring-2 s:focus-visible:ring-ring s:focus-visible:ring-offset-2",
       "s:disabled:pointer-events-none s:disabled:opacity-100",
       "s:data-[state=active]:overflow-hidden s:data-[state=active]:shrink",

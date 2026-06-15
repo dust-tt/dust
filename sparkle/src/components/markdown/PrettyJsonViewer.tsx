@@ -4,11 +4,11 @@ import React, { useState } from "react";
 
 // Constants for consistent styling
 const VALUE_CLASSES =
-  "s:text-primary-700 s:dark:text-primary-700-night s:pt-1 s:text-sm";
+  "s:text-primary-700 s:pt-1 s:text-sm";
 const EMPTY_CLASSES =
-  "s:text-primary-500 s:dark:text-primary-500-night s:pt-1 s:text-sm s:italic";
+  "s:text-primary-500 s:pt-1 s:text-sm s:italic";
 const INDENT_CLASSES =
-  "s:border-structure-200 s:dark:border-structure-200-night s:max-w-full s:border-l s:pl-4 s:ml-4";
+  "s:border-structure-200 s:max-w-full s:border-l s:pl-4 s:ml-4";
 
 // Performance limits to prevent browser crashes.
 // These limits are meant to be very conservative.
@@ -43,7 +43,7 @@ function InlineExpandButton({
       {label}{" "}
       <button
         onClick={onClick}
-        className="s:cursor-pointer s:font-medium s:text-highlight s:hover:underline s:dark:text-highlight-night"
+        className="s:cursor-pointer s:font-medium s:text-highlight s:hover:underline"
       >
         {buttonText}
       </button>
@@ -199,7 +199,7 @@ function JsonValue({
           {!isExpanded && "…"}{" "}
           <button
             onClick={() => handleToggleExpanded(longStringPath)}
-            className="s:cursor-pointer s:font-medium s:text-highlight s:hover:underline s:dark:text-highlight-night"
+            className="s:cursor-pointer s:font-medium s:text-highlight s:hover:underline"
           >
             {isExpanded
               ? "collapse"
@@ -339,7 +339,7 @@ function JsonValue({
             key={key}
             className={cn(
               "s:max-w-full s:border-b s:pb-3 s:last:border-0 s:last:pb-0",
-              "s:border-structure-200 s:dark:border-structure-200-night"
+              "s:border-structure-200"
             )}
           >
             <KeyValuePair
@@ -355,7 +355,7 @@ function JsonValue({
           </div>
         ))}
         {hasMore && (
-          <div className="s:border-structure-200 s:dark:border-structure-200-night s:border-t s:pt-3">
+          <div className="s:border-structure-200 s:border-t s:pt-3">
             <InlineExpandButton
               label={`${entries.length - keysToShow} more properties`}
               buttonText="expand"
@@ -371,7 +371,7 @@ function JsonValue({
     <span
       className={cn(
         "s:text-sm",
-        "s:text-element-700 s:dark:text-element-700-night"
+        "s:text-element-700"
       )}
     >
       {String(value)}
@@ -400,7 +400,7 @@ export function PrettyJsonViewer({ data, className }: JsonViewerProps) {
   return (
     <div
       className={cn(
-        "s:bg-structure-50 s:dark:bg-structure-50-night",
+        "s:bg-structure-50",
         "s:overflow-hidden s:rounded-lg s:px-4 s:py-4 s:text-base",
         className
       )}

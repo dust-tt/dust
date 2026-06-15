@@ -29,7 +29,7 @@ const containerVariants = cva(
         standalone: cn(
           "s:group/image-preview",
           "s:relative s:aspect-square",
-          "s:bg-muted-background s:dark:bg-muted-background-night"
+          "s:bg-muted-background"
         ),
       },
     },
@@ -42,7 +42,7 @@ const containerVariants = cva(
 const overlayVariants = cva(
   cn(
     "s:absolute s:inset-0 s:z-10",
-    "s:bg-primary-100/60 s:dark:bg-primary-100-night/60",
+    "s:bg-primary-100/60",
     "s:opacity-0 s:transition s:duration-200"
   ),
   {
@@ -72,7 +72,7 @@ const titleVariants = cva(
   cn(
     "s:max-w-full s:truncate",
     "s:heading-sm",
-    "s:text-foreground s:dark:text-foreground-night"
+    "s:text-foreground"
   ),
   {
     variants: {
@@ -170,7 +170,7 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
             <div
               className={cn(
                 "s:flex s:h-full s:w-full s:items-center s:justify-center",
-                "s:bg-muted-background s:dark:bg-muted-background-night"
+                "s:bg-muted-background"
               )}
             >
               <Spinner variant="dark" size="md" />

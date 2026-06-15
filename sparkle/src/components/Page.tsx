@@ -21,7 +21,7 @@ export function Page({ children, variant = "normal" }: PageProps) {
       <div
         className={cn(
           "s:mx-auto s:flex s:h-full s:max-w-4xl s:flex-col s:text-sm s:font-normal",
-          "s:text-foreground s:dark:text-foreground-night",
+          "s:text-foreground",
           divVariantClassNames
         )}
       >
@@ -42,7 +42,7 @@ Page.Header = function ({ title, description, icon }: PageHeaderProps) {
     <Page.Vertical gap="xs">
       <Icon
         visual={icon}
-        className="s:text-primary-400 s:dark:text-primary-500"
+        className="s:text-primary-400"
         size="lg"
       />
       {typeof title === "string" ? (
@@ -104,8 +104,8 @@ Page.P = function ({ children, variant, size = "sm" }: PagePProps) {
       className={cn(
         PsizeClasses[size],
         variant === "secondary"
-          ? "s:text-muted-foreground s:dark:text-muted-foreground-night"
-          : "s:text-foreground s:dark:text-foreground-night"
+          ? "s:text-muted-foreground"
+          : "s:text-foreground"
       )}
     >
       {children}
@@ -133,7 +133,7 @@ Page.H = function ({ children, variant = "h3" }: PageHProps) {
   return (
     <Component
       className={cn(
-        "s:text-foreground s:dark:text-foreground-night",
+        "s:text-foreground",
         hSizes[variant]
       )}
     >

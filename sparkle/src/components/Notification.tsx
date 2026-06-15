@@ -26,10 +26,10 @@ const NotificationsContext = React.createContext<(n: NotificationType) => void>(
 const notificationVariants = cva("", {
   variants: {
     type: {
-      success: "s:text-success-600 s:dark:text-success-600-night",
-      error: "s:text-warning-600 s:dark:text-warning-600-night",
-      info: "s:text-info-700 s:dark:text-info-700-night",
-      hello: "s:text-primary-700 s:dark:text-highlight-700-night",
+      success: "s:text-success-600",
+      error: "s:text-warning-600",
+      info: "s:text-info-700",
+      hello: "s:text-primary-700",
     },
   },
 });
@@ -39,10 +39,10 @@ const notificationIconBgVariants = cva(
   {
     variants: {
       type: {
-        success: "s:bg-success-100 s:dark:bg-success-100-night",
-        error: "s:bg-warning-100 s:dark:bg-warning-100-night",
-        info: "s:bg-info-100 s:dark:bg-info-100-night",
-        hello: "s:bg-primary-100 s:dark:bg-primary-100-night",
+        success: "s:bg-success-100",
+        error: "s:bg-warning-100",
+        info: "s:bg-info-100",
+        hello: "s:bg-primary-100",
       },
     },
   }
@@ -73,9 +73,9 @@ export function NotificationContent({
     <div
       className={cn(
         "s:pointer-events-auto s:flex s:max-w-[400px] s:flex-row s:items-start s:gap-2 s:rounded-2xl s:border",
-        "s:border-border s:dark:border-border-night",
-        "s:bg-background s:dark:bg-background-night s:shadow-md s:backdrop-blur-sm",
-        "s:cursor-pointer s:p-2 s:pb-3 s:pr-3 s:transition-colors s:hover:bg-muted/50 s:dark:hover:bg-muted-night/50 s:border-border/50 s:dark:border-border-night/50"
+        "s:border-border",
+        "s:bg-background s:shadow-md s:backdrop-blur-sm",
+        "s:cursor-pointer s:p-2 s:pb-3 s:pr-3 s:transition-colors s:hover:bg-muted/50 s:border-border/50"
       )}
       onClick={onDismiss}
     >
@@ -100,7 +100,7 @@ export function NotificationContent({
         {description && (
           <div
             className={cn(
-              "s:text-muted-foreground s:dark:text-muted-foreground-night",
+              "s:text-muted-foreground",
               "s:line-clamp-3 s:text-sm s:font-normal"
             )}
           >

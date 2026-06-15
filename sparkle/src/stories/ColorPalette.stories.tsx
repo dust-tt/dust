@@ -89,11 +89,11 @@ const useIsDark = () => {
   const [isDark, setIsDark] = React.useState(
     () =>
       typeof document !== "undefined" &&
-      document.documentElement.classList.contains("s-dark")
+      document.documentElement.classList.contains("dark")
   );
   React.useEffect(() => {
     const el = document.documentElement;
-    const update = () => setIsDark(el.classList.contains("s-dark"));
+    const update = () => setIsDark(el.classList.contains("dark"));
     update();
     const observer = new MutationObserver(update);
     observer.observe(el, { attributes: true, attributeFilter: ["class"] });
@@ -159,10 +159,10 @@ const ColorSwatch = ({ token, label }: { token: string; label: string }) => {
   return (
     <div className="s:flex s:flex-col s:gap-2">
       <div
-        className="s:relative s:h-16 s:w-24 s:rounded-lg s:border s:border-border s:dark:border-border-night"
+        className="s:relative s:h-16 s:w-24 s:rounded-lg s:border s:border-border"
         style={{ backgroundColor: color }}
       >
-        <div className="s:absolute s:bottom-1 s:left-1 s:font-mono s:text-[10px] s:text-foreground s:opacity-50 s:dark:text-foreground-night">
+        <div className="s:absolute s:bottom-1 s:left-1 s:font-mono s:text-[10px] s:text-foreground s:opacity-50">
           {color ?? "—"}
         </div>
       </div>
@@ -176,7 +176,7 @@ export const UIColorPalette = () => {
     <div className="s:flex s:flex-col s:gap-8">
       <div className="s:flex s:flex-col s:gap-2">
         <h2 className="s:text-xl s:font-semibold">UI Color Palette</h2>
-        <p className="s:text-sm s:text-primary-600 s:dark:text-primary-400">
+        <p className="s:text-sm s:text-primary-600">
           Colors to use in the UI for all direct color references.
         </p>
       </div>
@@ -204,7 +204,7 @@ export const SemanticColorPalette = () => {
     <div className="s:flex s:flex-col s:gap-8">
       <div className="s:flex s:flex-col s:gap-2">
         <h2 className="s:text-xl s:font-semibold">Semantic Color Palette</h2>
-        <p className="s:text-sm s:text-primary-600 s:dark:text-primary-400">
+        <p className="s:text-sm s:text-primary-600">
           Colors to use in the UI for all functional elements.
         </p>
       </div>
@@ -275,10 +275,10 @@ export const BrandColorPalette = () => {
     <div className="s:flex s:flex-col s:gap-8">
       <div className="s:flex s:flex-col s:gap-2">
         <h2 className="s:text-xl s:font-semibold">Brand Color Palette</h2>
-        <p className="s:text-sm s:text-primary-600 s:dark:text-primary-400">
+        <p className="s:text-sm s:text-primary-600">
           Colors to use in Marketing / Brand situations:
         </p>
-        <ul className="s:ml-4 s:list-disc s:text-sm s:text-primary-600 s:dark:text-primary-400">
+        <ul className="s:ml-4 s:list-disc s:text-sm s:text-primary-600">
           <li>Block colors on the website</li>
           <li>Communication in the product</li>
         </ul>
@@ -309,12 +309,12 @@ export const ExtendedColorPalette = () => {
     <div className="s:flex s:flex-col s:gap-8">
       <div className="s:flex s:flex-col s:gap-2">
         <h2 className="s:text-xl s:font-semibold">Extended Color Palette</h2>
-        <p className="s:text-sm s:text-primary-600 s:dark:text-primary-400">
+        <p className="s:text-sm s:text-primary-600">
           These colors are available for product-specific use cases where
           semantic colors might not be appropriate. Use them when you need to
           create visual distinctions, such as:
         </p>
-        <ul className="s:ml-4 s:list-disc s:text-sm s:text-primary-600 s:dark:text-primary-400">
+        <ul className="s:ml-4 s:list-disc s:text-sm s:text-primary-600">
           <li>Avatar background colors</li>
           <li>Data visualization</li>
         </ul>
@@ -345,7 +345,7 @@ export const BackgroundColors = () => {
     <div className="s:flex s:flex-col s:gap-8">
       <div className="s:flex s:flex-col s:gap-2">
         <h2 className="s:text-xl s:font-semibold">Background Colors</h2>
-        <p className="s:text-sm s:text-primary-600 s:dark:text-primary-400">
+        <p className="s:text-sm s:text-primary-600">
           Background colors used for structural elements in the UI.
         </p>
       </div>

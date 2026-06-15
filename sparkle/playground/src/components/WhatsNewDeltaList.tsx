@@ -79,7 +79,7 @@ export function WhatsNewDeltaList({
             }}
           />
         </div>
-        <h4 className="s:heading-lg s:text-foreground dark:s:text-foreground-night">
+        <h4 className="s:heading-lg s:text-foreground">
           {label}
         </h4>
       </div>
@@ -124,8 +124,8 @@ export function WhatsNewDeltaList({
                 className={cn(
                   "s:text-base s:min-h-6",
                   isChecked
-                    ? "s:text-faint s:line-through dark:s:text-faint-night"
-                    : "s:text-foreground dark:s:text-foreground-night"
+                    ? "s:text-faint s:line-through"
+                    : "s:text-foreground"
                 )}
               >
                 {shouldTypeChecklistItem ? (
@@ -139,12 +139,12 @@ export function WhatsNewDeltaList({
                 )}
               </div>
               {isChecked && autoCheckRationale ? (
-                <div className="s:text-xs s:text-faint dark:s:text-faint-night">
+                <div className="s:text-xs s:text-faint">
                   {autoCheckRationale}
                 </div>
               ) : null}
               {relatedConversationIds.length === 0 ? null : (
-                <div className="s:text-xs s:text-muted-foreground dark:s:text-muted-foreground-night">
+                <div className="s:text-xs s:text-muted-foreground">
                   <span>In </span>
                   {relatedConversationIds.map((conversationId, index) => (
                     <span key={conversationId}>
@@ -153,8 +153,8 @@ export function WhatsNewDeltaList({
                         className={cn(
                           "s:underline hover:s:no-underline",
                           isChecked
-                            ? "s:text-faint dark:s:text-faint-night"
-                            : "s:text-muted-foreground dark:s:text-muted-foreground-night"
+                            ? "s:text-faint"
+                            : "s:text-muted-foreground"
                         )}
                         onClick={(event) => {
                           event.stopPropagation();

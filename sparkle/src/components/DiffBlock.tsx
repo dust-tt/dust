@@ -9,9 +9,9 @@ import { ContentBlockWrapper } from "./markdown/ContentBlockWrapper";
 const diffLineVariants = cva("s:rounded s:px-1", {
   variants: {
     type: {
-      add: "s:bg-highlight-50 s:dark:bg-highlight-50-night s:text-highlight-900 s:dark:text-highlight-900-night",
+      add: "s:bg-highlight-50 s:text-highlight-900",
       remove:
-        "s:bg-primary-100 s:dark:bg-primary-100-night s:text-muted-foreground s:dark:text-muted-foreground-night s:line-through",
+        "s:bg-primary-100 s:text-muted-foreground s:line-through",
     },
   },
 });
@@ -116,8 +116,8 @@ export function DiffBlock({
         <div
           ref={containerRef}
           className={cn(
-            "s:rounded-2xl s:border s:border-border s:dark:border-border-night",
-            "s:bg-muted-background s:p-2 s:dark:bg-muted-background-night"
+            "s:rounded-2xl s:border s:border-border",
+            "s:bg-muted-background s:p-2"
           )}
           style={
             !isMeasured

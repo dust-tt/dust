@@ -27,10 +27,10 @@ export type CardSizeType = (typeof CARD_SIZES)[number];
 const interactiveClasses = cn(
   "s:cursor-pointer",
   "s:transition s:duration-200",
-  "s:hover:bg-primary-100 s:dark:hover:bg-primary-100-night",
-  "s:active:bg-primary-150 s:dark:active:bg-primary-150-night",
-  "s:disabled:text-primary-muted s:dark:disabled:text-primary-muted-night",
-  "s:disabled:border-border s:dark:disabled:border-border-night",
+  "s:hover:bg-primary-100",
+  "s:active:bg-primary-150",
+  "s:disabled:text-primary-muted",
+  "s:disabled:border-border",
   "s:disabled:pointer-events-none"
 );
 
@@ -38,7 +38,7 @@ const cardVariants = cva(
   cn(
     "s:flex s:text-left s:group",
     "s:border s:overflow-hidden",
-    "s:text-foreground s:dark:text-foreground-night"
+    "s:text-foreground"
   ),
   {
     variants: {
@@ -46,38 +46,26 @@ const cardVariants = cva(
         primary: cn(
           "s:bg-muted-background",
           "s:border-border/0",
-          "s:dark:bg-muted-background-night",
-          "s:dark:border-border-night/0"
         ),
         active: cn(
           "s:bg-muted-background",
           "s:border-border",
-          "s:dark:bg-muted-background-night",
-          "s:dark:border-border-night"
         ),
         highlight: cn(
           "s:bg-highlight-50",
           "s:border-border/0",
-          "s:dark:bg-highlight-100-night",
-          "s:dark:border-border-night/0"
         ),
         warning: cn(
           "s:bg-warning-50",
           "s:border-border/0",
-          "s:dark:bg-warning-50-night",
-          "s:dark:border-border-night/0"
         ),
         secondary: cn(
           "s:bg-background",
           "s:border-border",
-          "s:dark:bg-background-night",
-          "s:dark:border-border-night"
         ),
         tertiary: cn(
           "s:bg-background",
           "s:border-border/0",
-          "s:dark:bg-background-night",
-          "s:dark:border-border-night/0"
         ),
       },
       size: {
@@ -88,8 +76,8 @@ const cardVariants = cva(
       },
       selected: {
         true: cn(
-          "s:border-highlight-300 s:dark:border-highlight-300-night",
-          "s:ring-2 s:ring-highlight-200/70 s:dark:ring-highlight-300/60",
+          "s:border-highlight-300",
+          "s:ring-2 s:ring-highlight-200/70",
           "s:shadow-sm"
         ),
         false: "",

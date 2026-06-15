@@ -77,7 +77,7 @@ export function SuggestionBox({
   return (
     <Card variant="primary" size="md">
       {status === "working" ? (
-        <div className="s:flex s:items-center s:gap-3 s:text-base s:text-muted-foreground dark:s:text-muted-foreground-night">
+        <div className="s:flex s:items-center s:gap-3 s:text-base s:text-muted-foreground">
           <Spinner size="xs" />
           <span>{workingLabel}</span>
         </div>
@@ -99,7 +99,7 @@ export function SuggestionBox({
                   <div className="s:flex s:items-center s:gap-3">
                     {group.visual}
                     {group.title && (
-                      <div className="s:heading-base s:text-muted-foreground dark:s:text-foreground-night">
+                      <div className="s:heading-base s:text-muted-foreground">
                         {group.title}
                       </div>
                     )}

@@ -8,12 +8,12 @@ import React, { memo } from "react";
 export const preBlockVariants = cva(
   [
     "s:my-2 s:w-full s:break-all s:rounded-2xl s:border",
-    "s:border-border s:dark:border-border-night",
+    "s:border-border",
   ],
   {
     variants: {
       variant: {
-        surface: "s:bg-muted-background s:dark:bg-muted-background-night",
+        surface: "s:bg-muted-background",
       },
     },
   }
