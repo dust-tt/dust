@@ -154,9 +154,7 @@ export async function listHandler(
 
   const listRes = await dustFs.list(scopedPrefix, { includeProcessed: true });
   if (listRes.isErr()) {
-    return new Err(
-      new MCPError("Failed to list files.", { tracked: true })
-    );
+    return new Err(new MCPError("Failed to list files.", { tracked: true }));
   }
 
   // Enrich, so we can expose ids for interactive content files.

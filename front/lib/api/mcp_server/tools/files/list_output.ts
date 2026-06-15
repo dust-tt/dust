@@ -11,7 +11,7 @@ import {
   stripMimeParameters,
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import partition from "lodash/partition";
 
 function getDirAndFileName(path: string): { dir: string; fileName: string } {
