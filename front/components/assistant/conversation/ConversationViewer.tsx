@@ -561,7 +561,13 @@ export const ConversationViewer = ({
     const branchMessages = convertLightMessageTypeToVirtuosoMessages(
       openBranch.messages
     );
+    const existingMessageIds = new Set(
+      virtuosoMessageListRef.current.data.get().map((message) => message.sId)
+    );
     for (const msg of branchMessages) {
+      if (existingMessageIds.has(msg.sId)) {
+        continue;
+      }
       const insertIdx = getBranchedInsertIndex(
         virtuosoMessageListRef.current.data.get(),
         msg
