@@ -1,13 +1,8 @@
 /** @type {import('tailwindcss').Config} */
-const colors = require("tailwindcss/colors");
 const preset = require("@dust-tt/sparkle/tailwind-preset");
 
 module.exports = {
   presets: [preset],
-  content: [
-    "./pages/**/*.{js,ts,jsx,tsx}",
-    "./components/**/*.{js,ts,jsx,tsx}",
-  ],
   theme: {
     extend: {
       height: {
@@ -18,15 +13,12 @@ module.exports = {
         medium: "450",
         semibold: "550",
       },
-      // Container query breakpoints defined via @custom-variant in CSS (see components.css).
-      minWidth: (theme) => ({
-        ...theme("spacing"),
+      minWidth: {
         ...preset.sizeScale,
-      }),
-      minHeight: (theme) => ({
-        ...theme("spacing"),
+      },
+      minHeight: {
         ...preset.sizeScale,
-      }),
+      },
       maxWidth: {
         48: "12rem",
         ...preset.sizeScale,
@@ -39,8 +31,8 @@ module.exports = {
         // Legacy duplicate of `border.dark` kept while callers migrate off.
         border: {
           darker: {
-            DEFAULT: colors.gray[150],
-            night: colors.gray[800],
+            DEFAULT: "var(--color-gray-150)",
+            night: "var(--color-gray-800)",
           },
         },
       },

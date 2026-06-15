@@ -1,200 +1,16 @@
 /** @type {import('tailwindcss').Config} */
-const colors = require("tailwindcss/colors");
 const plugin = require("tailwindcss/plugin");
 
-// Remove unused deprecated colors that just generate noise
-// See here for the hack: https://github.com/tailwindlabs/tailwindcss/discussions/15127
-delete colors.lightBlue;
-delete colors.warmGray;
-delete colors.trueGray;
-delete colors.coolGray;
-delete colors.blueGray;
+// Standard shades present on every palette color.
+const standardShades = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
 
-const customColors = {
-  gray: {
-    950: "#111418",
-    900: "#1C222D",
-    850: "#232A37",
-    800: "#2A3241",
-    700: "#364153",
-    600: "#596170",
-    500: "#7B818D",
-    400: "#969CA5",
-    300: "#B2B6BD",
-    200: "#D3D5D9",
-    150: "#DFE0E2",
-    100: "#EEEEEF",
-    50: "#F7F7F7",
-  },
-  stone: {
-    950: "#0C0A09",
-    900: "#1C1917",
-    800: "#292524",
-    700: "#44403B",
-    600: "#57534D",
-    500: "#79716B",
-    400: "#A6A09B",
-    300: "#D6D3D1",
-    200: "#E7E5E4",
-    150: "#EEEEEC",
-    100: "#F5F5F4",
-    50: "#FBFAF9",
-    25: "#FDFDFC",
-  },
-  golden: {
-    950: "#331606",
-    900: "#70350C",
-    800: "#AF5511",
-    700: "#E27716",
-    600: "#FE9C1A",
-    500: "#FFAA0D",
-    400: "#FFBE2C",
-    300: "#FFD046",
-    200: "#FFE262",
-    100: "#FFEFA8",
-    50: "#FFFAE0",
-  },
-  blue: {
-    950: "#041728",
-    900: "#07355F",
-    800: "#085092",
-    700: "#0A6CC6",
-    600: "#137FE3",
-    500: "#1C91FF",
-    400: "#4BABFF",
-    300: "#7AC6FF",
-    200: "#9FDBFF",
-    100: "#CAEBFF",
-    50: "#E9F7FF",
-  },
-  green: {
-    950: "#04140A",
-    900: "#0A361A",
-    800: "#105B2B",
-    700: "#277644",
-    600: "#418B5C",
-    500: "#6AA668",
-    400: "#91C174",
-    300: "#BCDE81",
-    200: "#E2F78C",
-    100: "#F0FBBD",
-    50: "#FEFFF0",
-  },
-  rose: {
-    950: "#220A04",
-    900: "#571609",
-    800: "#8C230D",
-    700: "#B22E13",
-    600: "#C93913",
-    500: "#E14322",
-    400: "#ED756C",
-    300: "#F8A6B4",
-    200: "#FFC3DF",
-    100: "#FFDCEC",
-    50: "#FFF1F7",
-  },
-  violet: {
-    950: "#2E1065",
-    900: "#4C1D95",
-    800: "#5B21B6",
-    700: "#6D28D9",
-    600: "#7C3AED",
-    500: "#8B5CF6",
-    400: "#A78BFA",
-    300: "#C4B5FD",
-    200: "#DDD6FE",
-    100: "#EDE9FE",
-    50: "#F5F3FF",
-  },
-  red: {
-    950: "#220A04",
-    900: "#571609",
-    800: "#8C230D",
-    700: "#B22E13",
-    600: "#C9391A",
-    500: "#E14322",
-    400: "#E76449",
-    300: "#EC8874",
-    200: "#F2AD9F",
-    100: "#F8CEC7",
-    50: "#FEF2F2",
-  },
-  orange: {
-    950: "#431407",
-    900: "#7C2D12",
-    800: "#9A3412",
-    700: "#C2410C",
-    600: "#EA580C",
-    500: "#F97316",
-    400: "#FB923C",
-    300: "#FDBA74",
-    200: "#FED7AA",
-    100: "#FFEDD5",
-    50: "#FFF7ED",
-  },
-  lime: {
-    950: "#172604",
-    900: "#365314",
-    800: "#3F6212",
-    700: "#4D7C0F",
-    600: "#65A30D",
-    500: "#84CC16",
-    400: "#A3E635",
-    300: "#CCF16E",
-    200: "#E2F78C",
-    100: "#F0FBBD",
-    50: "#FEFFF0",
-  },
-  emerald: {
-    950: "#04140A",
-    900: "#065F46",
-    800: "#0A361A",
-    700: "#277644",
-    600: "#418B5C",
-    500: "#54B47D",
-    400: "#65DA9B",
-    300: "#82EFB8",
-    200: "#99FFCF",
-    100: "#C2FEE2",
-    50: "#ECFDF5",
-  },
-  pink: {
-    950: "#39061A",
-    900: "#841936",
-    800: "#9E254A",
-    700: "#B8315E",
-    600: "#D13C72",
-    500: "#EC4987",
-    400: "#F373A5",
-    300: "#F99BC3",
-    200: "#FFC3DF",
-    100: "#FFDCEC",
-    50: "#FFF1F7",
-  },
-};
-
-Object.assign(colors, {
-  green: customColors.green,
-  blue: customColors.blue,
-  gray: customColors.gray,
-  stone: customColors.stone,
-  rose: customColors.rose,
-  golden: customColors.golden,
-  //For compatibility, to be removed after all direct color ref are edited for golden
-  emerald: customColors.emerald,
-  lime: customColors.lime,
-  red: customColors.red,
-  pink: customColors.pink,
-  //to remove
-  amber: customColors.golden,
-  sky: customColors.blue,
-});
-
-const colorNames = Object.keys(colors).filter(
-  (color) =>
-    typeof colors[color] === "object" &&
-    !["transparent", "current", "inherit", "white", "black"].includes(color)
-);
+// Build a Tailwind color object that references CSS custom properties from tokens.css.
+function paletteColor(name, extraShades = []) {
+  const shades = [...standardShades, ...extraShades].sort((a, b) => a - b);
+  return Object.fromEntries(
+    shades.map((s) => [s, `var(--color-${name}-${s})`])
+  );
+}
 
 // Shared numeric px-size scale applied to w/h/min-*/max-* utilities.
 const sizeScale = {
@@ -291,58 +107,6 @@ const typographyPlugin = plugin(function ({ addComponents, theme }) {
   });
 });
 
-// Tailwind's `safelist` option is a *replacement* (not merged) in preset
-// merge semantics, and it matches against *final rendered* class names — so
-// each consumer must provide its own safelist with the prefix baked in.
-// `buildSafelist(prefix)` returns the shared entries pre-prefixed; consumers
-// spread it and append their package-specific extras.
-const sharedSafelistNames = [
-  "grid-rows-2",
-  "grid-rows-3",
-  "grid-rows-4",
-  "grid-rows-5",
-  "label-xs",
-  "label-sm",
-  "label-base",
-  "copy-xs",
-  "copy-sm",
-  "copy-base",
-  "copy-lg",
-  "copy-xl",
-  "heading-base",
-  "heading-lg",
-  "heading-xl",
-  "heading-2xl",
-  "heading-3xl",
-  "heading-4xl",
-  "heading-5xl",
-  "heading-6xl",
-  "heading-7xl",
-  "heading-8xl",
-  "heading-9xl",
-  "heading-mono-lg",
-  "heading-mono-xl",
-  "heading-mono-2xl",
-  "heading-mono-3xl",
-  "heading-mono-4xl",
-  "heading-mono-5xl",
-  "heading-mono-6xl",
-  "heading-mono-7xl",
-  "heading-mono-8xl",
-  "heading-mono-9xl",
-];
-
-function buildSafelist({ prefix = "", avatarProps = "(bg|text)" } = {}) {
-  return [
-    {
-      pattern: new RegExp(
-        `^${prefix}${avatarProps}-(gray|blue|violet|pink|red|orange|golden|lime|emerald)-(100|200|300|400|500|600|700|800|900)$`
-      ),
-    },
-    ...sharedSafelistNames.map((name) => `${prefix}${name}`),
-  ];
-}
-
 module.exports = {
   theme: {
     screens: {
@@ -398,26 +162,25 @@ module.exports = {
         99: ".99",
       },
       dropShadow: {
-        DEFAULT: `0 2px 4px ${colors.gray[950]}10`,
-        sm: `0 1px 2px ${colors.gray[950]}0D`,
-        md: `0 4px 6px ${colors.gray[950]}1F`,
-        lg: `0 10px 15px ${colors.gray[950]}1F`,
-        xl: `0 20px 20px ${colors.gray[950]}1F`,
-        "2xl": `0 25px 35px ${colors.gray[950]}1F`,
+        DEFAULT: "0 2px 4px #11141810",
+        sm: "0 1px 2px #1114180D",
+        md: "0 4px 6px #1114181F",
+        lg: "0 10px 15px #1114181F",
+        xl: "0 20px 20px #1114181F",
+        "2xl": "0 25px 35px #1114181F",
       },
       boxShadow: {
-        DEFAULT: `0 2px 6px 0 ${colors.gray[950]}1A`,
-        md: `0 4px 12px ${colors.gray[950]}1F`,
-        lg: `0 10px 20px ${colors.gray[950]}1F`,
-        xl: `0 20px 25px ${colors.gray[950]}1F`,
-        "2xl": `0 25px 50px ${colors.gray[950]}1F`,
+        DEFAULT: "0 2px 6px 0 #1114181A",
+        md: "0 4px 12px #1114181F",
+        lg: "0 10px 20px #1114181F",
+        xl: "0 20px 25px #1114181F",
+        "2xl": "0 25px 50px #1114181F",
       },
       zIndex: {
         60: "60",
       },
       width: { ...sizeScale },
       height: { ...sizeScale },
-      minHeight: (theme) => ({ ...theme("spacing") }),
       keyframes: {
         "move-square": {
           "0%": {
@@ -498,33 +261,21 @@ module.exports = {
       colors: {
         // Palette colors — each shade references a CSS custom property from tokens.css
         // that automatically switches between light/dark values.
-        ...Object.fromEntries(
-          colorNames
-            .filter((name) =>
-              [
-                "gray",
-                "stone",
-                "golden",
-                "blue",
-                "green",
-                "rose",
-                "violet",
-                "red",
-                "orange",
-                "lime",
-                "emerald",
-                "pink",
-              ].includes(name)
-            )
-            .map((colorName) => [
-              colorName,
-              Object.fromEntries(
-                Object.keys(colors[colorName])
-                  .filter((shade) => !isNaN(Number(shade)))
-                  .map((shade) => [shade, `var(--color-${colorName}-${shade})`])
-              ),
-            ])
-        ),
+        gray: paletteColor("gray", [150, 850]),
+        stone: paletteColor("stone", [25, 150]),
+        golden: paletteColor("golden"),
+        blue: paletteColor("blue"),
+        green: paletteColor("green"),
+        rose: paletteColor("rose"),
+        violet: paletteColor("violet"),
+        red: paletteColor("red"),
+        orange: paletteColor("orange"),
+        lime: paletteColor("lime"),
+        emerald: paletteColor("emerald"),
+        pink: paletteColor("pink"),
+        // Compatibility aliases — migrate to golden/blue then remove.
+        amber: paletteColor("golden"),
+        sky: paletteColor("blue"),
         // Brand colors (static values, no dark mode switching)
         brand: {
           DEFAULT: "var(--color-brand)",
@@ -666,13 +417,7 @@ module.exports = {
       },
     },
   },
-  variants: {
-    extend: {
-      backgroundColor: ["dark"],
-    },
-  },
   plugins: [typographyPlugin],
 };
 
-module.exports.buildSafelist = buildSafelist;
 module.exports.sizeScale = sizeScale;

@@ -1,7 +1,6 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: "class",
   theme: {
     fontFamily: {
       sans: ["var(--font-geist)", "sans-serif"],

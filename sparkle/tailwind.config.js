@@ -1,11 +1,9 @@
 /** @type {import('tailwindcss').Config} */
-const colors = require("tailwindcss/colors");
 const preset = require("./tailwind-preset");
 
 module.exports = {
   presets: [preset],
   prefix: "s",
-  content: ["./src/**/*.{html,js,ts,jsx,tsx}"],
   theme: {
     extend: {
       fontWeight: {
@@ -21,7 +19,8 @@ module.exports = {
         "2xl": "1024px",
       },
       backgroundImage: {
-        "rainbow-gradient": `linear-gradient(90deg, ${colors.blue[300]}, ${colors.blue[500]}, ${colors.purple[500]}, ${colors.blue[400]}, ${colors.blue[700]})`,
+        "rainbow-gradient":
+          "linear-gradient(90deg, #7AC6FF, #1C91FF, #a855f7, #4BABFF, #0A6CC6)",
       },
       keyframes: {
         pulse: {
@@ -29,8 +28,8 @@ module.exports = {
           "50%": { boxShadow: "0 0 0 4px var(--pulse-color)" },
         },
         "ring-pulse": {
-          "0%, 100%": { boxShadow: `0 0 0 0 ${colors.blue[500]}50` },
-          "50%": { boxShadow: `0 0 0 3px ${colors.blue[500]}50` },
+          "0%, 100%": { boxShadow: "0 0 0 0 #1C91FF50" },
+          "50%": { boxShadow: "0 0 0 3px #1C91FF50" },
         },
         "opacity-pulse": {
           "0%, 100%": { opacity: "1" },
