@@ -413,11 +413,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   /**
-   * Returns true when the user has *any* prior membership row in the
-   * workspace — current, future-scheduled, or revoked. Used to enforce
-   * that `"free"` is a one-shot starter tier: it can only be assigned at
-   * the very first membership creation; any subsequent change refuses
-   * `"free"` (including re-joining after revoke).
+   * Returns true when the user has any prior membership row in the workspace
+   * (current, future-scheduled, or revoked). Used to enforce the one-shot rule:
+   * `free` is a starter tier that can only be assigned on a user's very first
+   * membership creation — any prior membership, regardless of seat type,
+   * disqualifies them from receiving `free` again.
    */
   static async hasAnyMembershipOfUserInWorkspace({
     user,

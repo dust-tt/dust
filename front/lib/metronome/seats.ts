@@ -23,7 +23,6 @@ import {
   FREE_SEAT_LIFETIME_AWU_CREDITS,
   getCreditTypeAwuId,
   getProductSeatSubscriptionCreditsId,
-  PLAN_CODE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import {
@@ -41,7 +40,7 @@ import {
   USAGE_TAG,
 } from "@app/lib/metronome/setup_common";
 import type { BillingFrequency } from "@app/lib/metronome/types";
-import { isFreePlan } from "@app/lib/plans/plan_codes";
+
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { SeatLimit } from "@app/lib/resources/workspace_seat_limit_resource";
@@ -249,8 +248,11 @@ export function classifySeatChange({
  *  - keep the current type if the contract still bills it;
  *  - if the current type is monthly and the contract bills its yearly
  *    equivalent (`<type>_yearly`), convert to yearly;
- *  - otherwise fall back to the cheapest seat type on the contract, skipping
- *    `free` when `useFreeSeat` is false.
+ *  - otherwise fall back to the cheapest non-`free` seat type on the contract.
+ *    `free` is always skipped: it is a one-shot starter tier, the resource-level
+ *    updateMembershipSeat has no one-shot guard, and the remap bypasses
+ *    grantFreeSeatCredits — so assigning `free` here would set the seat type
+ *    without issuing the AWU credit.
  *
  * Returns `undefined` when no target is resolvable (caller leaves the
  * membership untouched).
@@ -258,8 +260,7 @@ export function classifySeatChange({
 export function resolveRemappedSeatType(
   currentSeatType: MembershipSeatType,
   contract: CachedContract,
-  productSeatTypes: Map<string, MembershipSeatType>,
-  useFreeSeat: boolean
+  productSeatTypes: Map<string, MembershipSeatType>
 ): MembershipSeatType | undefined {
   const onContract = new Set(
     getSeatSubscriptionsFromContract(contract, productSeatTypes).keys()
@@ -273,8 +274,11 @@ export function resolveRemappedSeatType(
       return yearly;
     }
   }
-  // Fallback: assign the cheapest seat type billed on the contract (by AWU
-  // allowance), skipping "free" when the caller opted out.
+  // Fallback: cheapest non-free seat type on the contract. `free` is always
+  // skipped here — it is a one-shot starter tier and the resource-level
+  // updateMembershipSeat has no one-shot guard. Re-assigning it through the
+  // remap path would also bypass grantFreeSeatCredits, leaving the member with
+  // a `free` seat type but no AWU credit.
   const ordered = [...onContract]
     .map((seatType) => ({
       seatType,
@@ -282,7 +286,7 @@ export function resolveRemappedSeatType(
     }))
     .sort((a, b) => a.awu - b.awu || a.seatType.localeCompare(b.seatType));
   for (const { seatType } of ordered) {
-    if (seatType === "free" && !useFreeSeat) {
+    if (seatType === "free") {
       continue;
     }
     return seatType;
@@ -338,11 +342,6 @@ export async function remapMembershipSeatTypesForContract({
     }
     resolvedContract = fetched.value;
   }
-
-  const targetPlanCode =
-    resolvedContract.custom_fields?.[PLAN_CODE_CUSTOM_FIELD_KEY];
-  const isFreePlanContract =
-    targetPlanCode !== undefined ? isFreePlan(targetPlanCode) : false;
 
   const productSeatTypes = await getProductSeatTypes();
   const onContract = getSeatSubscriptionsFromContract(
@@ -417,13 +416,16 @@ export async function remapMembershipSeatTypesForContract({
       );
       continue;
     }
-    const target = resolveRemappedSeatType(
-      membership.seatType,
-      resolvedContract,
-      productSeatTypes,
-      isFreePlanContract
-    );
-    if (!target || target === membership.seatType) {
+    // When no non-free seat type exists on the contract, fall back to "none"
+    // so the member is explicitly unprovisioned rather than silently left on
+    // their old (now-unbilled) seat type.
+    const target =
+      resolveRemappedSeatType(
+        membership.seatType,
+        resolvedContract,
+        productSeatTypes
+      ) ?? "none";
+    if (target === membership.seatType) {
       logger.info(
         {
           workspaceId: workspace.sId,

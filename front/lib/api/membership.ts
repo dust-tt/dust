@@ -57,8 +57,7 @@ import type { Transaction } from "sequelize";
  *     (`workspace_seat_limits.minSeats`) still has unassigned slots is picked.
  *  2. **Free seat** — if no committed slot is available and `free` is on the
  *     contract, it is assigned unless any of the following are true:
- *       - `isReturningMember` (one-shot: `free` cannot be re-granted).
- *       - `useFreeSeat` is false (caller opted out).
+ *       - `isReturningMember` is true (one-shot: returning members cannot get `free`).
  *       - `plan.limits.users.maxFreeUsers` reached.
  *       - `plan.limits.users.maxLifetimeFreeUsers` reached.
  *  3. **None** — if both phases are exhausted the member is assigned `"none"`
@@ -75,8 +74,7 @@ import type { Transaction } from "sequelize";
  */
 async function resolveSeatTypeForNewMembership(
   user: UserResource,
-  workspace: LightWorkspaceType,
-  { useFreeSeat = true }: { useFreeSeat?: boolean } = {}
+  workspace: LightWorkspaceType
 ): Promise<MembershipSeatType | undefined> {
   if (!workspace.metronomeCustomerId) {
     return undefined;
@@ -92,11 +90,10 @@ async function resolveSeatTypeForNewMembership(
     return undefined;
   }
   const planLimits = subscription.toJSON().plan.limits.users;
-  // `isReturningMember` is always queried — the one-shot rule (`free`
-  // cannot be re-granted to a user who already had a membership) holds
-  // independently of any configured cap. `freeSeatCounts` is only needed
-  // when at least one of the two caps is set; skip the count queries
-  // otherwise.
+  // `isReturningMember` is always queried — `free` is a one-shot starter tier
+  // that cannot be assigned to any user who previously held any membership in
+  // this workspace (regardless of seat type). `freeSeatCounts` is only needed
+  // when at least one of the two caps is set; skip the count queries otherwise.
   const limitsActive =
     planLimits.maxFreeUsers !== -1 || planLimits.maxLifetimeFreeUsers !== -1;
   const [productSeatTypes, isReturningMember, freeSeatCounts, seatLimits] =
@@ -122,7 +119,6 @@ async function resolveSeatTypeForNewMembership(
 
   return getDefaultSeatTypeForContract(contract, productSeatTypes, {
     isReturningMember,
-    useFreeSeat,
     freeSeatCounts,
     freeSeatLimits: {
       maxActiveFreeUsers: planLimits.maxFreeUsers,
@@ -136,29 +132,21 @@ async function resolveSeatTypeForNewMembership(
 /**
  * Create a membership with tracking, audit logging, and Metronome seat provisioning.
  *
- * For Metronome-billed workspaces with a seat-billed contract, the seat
- * type assigned to the new membership is the lowest-allowance tier billed
- * on the contract (with `free` skipped for returning members, when
- * `useFreeSeat` is false, or when the plan's free-seat caps are hit).
- * Refuses to create the row when no tier is assignable.
- *
- * `useFreeSeat` (default `true`) lets the caller opt the new member out
- * of `free` even when it would otherwise be available — e.g. an admin
- * provisioning a new member directly onto a paid tier.
+ * For Metronome-billed workspaces with a seat-billed contract, the seat type
+ * assigned follows the committed-seat → free → none priority order defined by
+ * `resolveSeatTypeForNewMembership`.
  */
 export async function createAndTrackMembership({
   user,
   workspace,
   role,
   origin,
-  useFreeSeat = true,
   auditActor,
 }: {
   user: UserResource;
   workspace: WorkspaceResource | WorkspaceModel | LightWorkspaceType;
   role: ActiveRoleType;
   origin: MembershipOriginType;
-  useFreeSeat?: boolean;
   // Override for the audit-log actor. Defaults to the user themselves, which
   // is correct for self-signup. SCIM/system-driven provisioning should pass
   // `{ type: "system", id: directoryId, name: "Directory Sync" }` so the
@@ -171,9 +159,7 @@ export async function createAndTrackMembership({
       ? renderLightWorkspaceType({ workspace })
       : workspace;
 
-  const seatType = await resolveSeatTypeForNewMembership(user, w, {
-    useFreeSeat,
-  });
+  const seatType = await resolveSeatTypeForNewMembership(user, w);
 
   const m = await MembershipResource.createMembership({
     role,
