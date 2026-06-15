@@ -33,8 +33,6 @@ export function FetcherProvider({
   );
 
   return (
-    <FetcherContext.Provider value={value}>
-      {children}
-    </FetcherContext.Provider>
+    <FetcherContext.Provider value={value}>{children}</FetcherContext.Provider>
   );
 }

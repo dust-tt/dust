@@ -252,14 +252,12 @@ export const NewConversationMessageGroup = React.forwardRef<
     const messageType = messageTypeFromGroupType(type);
     const messageContainerType: MessageType = type;
     const value = React.useMemo(
-          () => ({ messageType, messageContainerType }),
-          [messageType, messageContainerType]
-        );
+      () => ({ messageType, messageContainerType }),
+      [messageType, messageContainerType]
+    );
 
     return (
-      <messageGroupTypeContext.Provider
-        value={value}
-      >
+      <messageGroupTypeContext.Provider value={value}>
         <div
           ref={ref}
           className={cn(messageGroupVariants({ align, className }))}
@@ -1066,9 +1064,7 @@ export const NewConversationPendingValidationBlock = React.forwardRef<
         {...props}
       >
         <div className="s-flex s-w-full s-flex-col s-gap-1 s-pl-12">
-          <messageGroupTypeContext.Provider
-            value={LOCUTOR_GROUP_CONTEXT}
-          >
+          <messageGroupTypeContext.Provider value={LOCUTOR_GROUP_CONTEXT}>
             <NewConversationUserMessage
               hideActions
               isLastMessage
@@ -1079,9 +1075,7 @@ export const NewConversationPendingValidationBlock = React.forwardRef<
           </messageGroupTypeContext.Provider>
         </div>
         <div className="s-flex s-w-full s-flex-col s-gap-1">
-          <messageGroupTypeContext.Provider
-            value={AGENT_GROUP_CONTEXT}
-          >
+          <messageGroupTypeContext.Provider value={AGENT_GROUP_CONTEXT}>
             <NewConversationMessageGroupHeader
               groupType="agent"
               type="agent"

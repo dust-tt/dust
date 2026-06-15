@@ -156,7 +156,7 @@ function Hover3D({
 
   const hover3DContextValue = useMemo(
     () => ({ isHovered, setHovered, isTouchDevice: isTouch }),
-    [isHovered, setHovered, isTouch]
+    [isHovered, isTouch]
   );
 
   return (
