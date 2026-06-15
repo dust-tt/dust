@@ -143,7 +143,7 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
         .array(z.string())
         .optional()
         .describe(
-          "The email addresses of the recipients (required if replyToMessageId is not set, acts as override if replyToMessageId is set)."
+          "The email addresses of the recipients (optional if replyToMessageId is set, acts as override)."
         ),
       cc: z
         .array(z.string())
@@ -173,18 +173,18 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
         .enum(["text", "html"])
         .optional()
         .describe(
-          "The content type of the email body (required if replyToMessageId is not set, must be omitted if replyToMessageId is set — forced to html for replies)."
+          "The content type of the email body (required if replyToMessageId is not set, must be omitted if replyToMessageId is set (forced to html for replies))."
         ),
       body: z.string().describe("The body of the email"),
       importance: z
-        .string()
+        .enum(["low", "normal", "high"])
         .optional()
-        .describe("The importance level of the email"),
+        .describe("The importance level of the email."),
       replyToMessageId: z
         .string()
         .optional()
         .describe(
-          "Optional. The ID of the message to reply to. If provided, the draft will be created as a reply in the existing thread, with the original message quoted."
+          "Optional. The ID of the message to reply to. If provided, the draft will be created as a reply in the existing thread, with proper threading headers and the original message quoted."
         ),
       replyAll: z
         .boolean()
@@ -197,6 +197,14 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
         .optional()
         .describe(
           "Optional. Scoped path of the file to attach to the email (e.g. `conversation-<id>/report.pdf` or `pod-<id>/data.csv`)."
+        ),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox to create the draft in (e.g. 'support@company.com'). " +
+            "Leave empty to create the draft in your own mailbox. " +
+            "Note: the shared mailbox address must be known in advance — there is no API to auto-discover it."
         ),
     },
     stake: "medium",
@@ -211,6 +219,12 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       messageId: z.string().describe("The ID of the draft to delete"),
       subject: z.string().describe("The subject of the draft to delete"),
       to: z.array(z.string()).describe("The email addresses of the recipients"),
+      sharedMailboxAddress: z
+        .string()
+        .optional()
+        .describe(
+          "The email address of the shared mailbox containing the draft. Omit to use the authenticated user's mailbox."
+        ),
     },
     stake: "low",
     displayLabels: {
@@ -225,8 +239,10 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
     schema: {
       to: z
         .array(z.string())
-        .min(1)
-        .describe("The email addresses of the recipients"),
+        .optional()
+        .describe(
+          "The email addresses of the recipients (optional if replyToMessageId is set, acts as override)."
+        ),
       cc: z.array(z.string()).optional().describe("The email addresses to CC"),
       bcc: z
         .array(z.string())
@@ -238,17 +254,29 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Reply-to email addresses. Replies will go to these addresses instead of the sender."
         ),
-      subject: z.string().describe("The subject line of the email"),
+      subject: z
+        .string()
+        .optional()
+        .describe(
+          "The subject line of the email (required if replyToMessageId is not set, must be omitted if replyToMessageId is set)."
+        ),
       contentType: z
         .enum(["text", "html"])
-        .default("text")
-        .describe("The content type of the email body (text or html)."),
+        .optional()
+        .describe(
+          "The content type of the email body (text or html). Required when replyToMessageId is not set. Must be omitted when replyToMessageId is set."
+        ),
       body: z.string().describe("The body of the email"),
+      importance: z
+        .enum(["low", "normal", "high"])
+        .optional()
+        .describe("The importance level of the email."),
       saveToSentItems: z
         .boolean()
         .optional()
         .describe(
-          "Whether to save the sent email to the Sent Items folder. Defaults to true."
+          "Whether to save the sent email to the Sent Items folder. Defaults to true. " +
+            "Note: this option is ignored when replyToMessageId is set or when an attachment is provided — the email will always be saved to Sent Items in those cases."
         ),
       sharedMailboxAddress: z
         .string()
@@ -263,6 +291,18 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
         .optional()
         .describe(
           "Optional. Scoped path of the file to attach to the email (e.g. `conversation-<id>/report.pdf` or `pod-<id>/data.csv`)."
+        ),
+      replyToMessageId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional. The ID of the message to reply to. If provided, the email will be sent as a reply in the existing thread, with proper threading headers and the original message quoted."
+        ),
+      replyAll: z
+        .boolean()
+        .optional()
+        .describe(
+          "Whether to reply to all recipients. Only used when replyToMessageId is set. Defaults to false."
         ),
     },
     stake: "high",
