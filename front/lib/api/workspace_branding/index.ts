@@ -49,7 +49,7 @@ export async function getBrandingAssetState(
 ): Promise<Result<BrandingAssetState, Error>> {
   try {
     const [metadata] = await getPrivateUploadBucket()
-      .file(buildBrandingAssetStoragePath(wId, asset))
+      .file(buildBrandingAssetStoragePath({ asset, wId }))
       .getMetadata();
 
     return new Ok({ version: String(metadata.generation ?? "") });
@@ -91,21 +91,30 @@ export async function getWorkspaceBrandingPublicUrls(
   return {
     faviconUrl:
       faviconState.isOk() && faviconState.value
-        ? buildBrandingAssetPublicUrl(workspace.sId, "favicon", {
-            version: faviconState.value.version,
-          })
+        ? buildBrandingAssetPublicUrl(
+            { asset: "favicon", wId: workspace.sId },
+            {
+              version: faviconState.value.version,
+            }
+          )
         : null,
     logoUrl:
       logoState.isOk() && logoState.value
-        ? buildBrandingAssetPublicUrl(workspace.sId, "logo", {
-            version: logoState.value.version,
-          })
+        ? buildBrandingAssetPublicUrl(
+            { asset: "logo", wId: workspace.sId },
+            {
+              version: logoState.value.version,
+            }
+          )
         : null,
     ogImageUrl:
       ogState.isOk() && ogState.value
-        ? buildBrandingAssetPublicUrl(workspace.sId, "og", {
-            version: ogState.value.version,
-          })
+        ? buildBrandingAssetPublicUrl(
+            { asset: "og", wId: workspace.sId },
+            {
+              version: ogState.value.version,
+            }
+          )
         : null,
   };
 }
@@ -120,7 +129,7 @@ export async function promoteBrandingAsset(
   try {
     await getPrivateUploadBucket().copyFile(
       srcPath,
-      buildBrandingAssetStoragePath(wId, asset)
+      buildBrandingAssetStoragePath({ asset, wId })
     );
 
     return new Ok(undefined);
@@ -143,7 +152,7 @@ export async function deleteBrandingAsset(
 
   try {
     await getPrivateUploadBucket().delete(
-      buildBrandingAssetStoragePath(wId, asset),
+      buildBrandingAssetStoragePath({ asset, wId }),
       {
         ignoreNotFound: true,
       }

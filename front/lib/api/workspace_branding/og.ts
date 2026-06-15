@@ -20,9 +20,12 @@ export async function generateAndStoreOgImage(
   }
 
   const workspace = auth.getNonNullableWorkspace();
-  const logoUrl = buildBrandingAssetPublicUrl(workspace.sId, "logo", {
-    baseUrl: config.getDocumentRendererApiUrl(),
-  });
+  const logoUrl = buildBrandingAssetPublicUrl(
+    { asset: "logo", wId: workspace.sId },
+    {
+      baseUrl: config.getDocumentRendererApiUrl(),
+    }
+  );
   const pageUrl =
     `${config.getDocumentRendererAppUrl()}/share/og/${workspace.sId}` +
     `?name=${encodeURIComponent(workspace.name)}` +
@@ -37,17 +40,22 @@ export async function generateAndStoreOgImage(
     return new Err(result.error);
   }
 
-  const ogPath = buildBrandingAssetStoragePath(workspace.sId, "og");
+  const ogPath = buildBrandingAssetStoragePath({
+    asset: "og",
+    wId: workspace.sId,
+  });
   try {
     await getPrivateUploadBucket()
       .file(ogPath)
       .save(result.value, { contentType: "image/png", resumable: false });
+
     return new Ok(undefined);
   } catch (err) {
     logger.error(
       { wId: workspace.sId, error: normalizeError(err) },
       "Error saving OG image"
     );
+
     return new Err(normalizeError(err));
   }
 }

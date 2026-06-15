@@ -16,10 +16,13 @@ export function isBrandingAssetName(value: string): value is BrandingAssetName {
   return (BRANDING_ASSET_NAMES as readonly string[]).includes(value);
 }
 
-export function buildBrandingAssetStoragePath(
-  wId: string,
-  asset: BrandingAssetName
-): string {
+export function buildBrandingAssetStoragePath({
+  asset,
+  wId,
+}: {
+  asset: BrandingAssetName;
+  wId: string;
+}): string {
   return `w/${wId}/branding/${asset}`;
 }
 
@@ -35,8 +38,7 @@ export const BRANDING_DEFAULT_ASSET_PATHS: Record<BrandingAssetName, string> = {
 };
 
 export function buildBrandingAssetPublicUrl(
-  wId: string,
-  asset: BrandingAssetName,
+  { asset, wId }: { asset: BrandingAssetName; wId: string },
   { version, baseUrl }: { version?: string; baseUrl?: string } = {}
 ): string {
   const base = baseUrl ?? config.getApiBaseUrl();
