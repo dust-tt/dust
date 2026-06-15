@@ -25,7 +25,8 @@
     "format:lefthook": "biome check --write --error-on-warnings --no-errors-on-unmatched",
     "format:changed": "biome check --write --error-on-warnings --changed",
     "test:grit": "command -v grit >/dev/null 2>&1 || { echo 'Error: grit CLI not found. Install it with: brew install getgrit/tap/grit (or: curl -fsSL https://docs.grit.io/install | bash)'; exit 1; } && grit patterns test",
-    "doctor": "npx react-doctor@latest"
+    "doctor": "npx react-doctor@latest --diff",
+    "doctor:full": "npx react-doctor@latest --diff false"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.8",
