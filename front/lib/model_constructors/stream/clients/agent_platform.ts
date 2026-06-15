@@ -50,11 +50,11 @@ export abstract class AgentPlatformStream extends WithAnthropicInputConverter(
 
   private readonly client: AnthropicVertex;
 
-  constructor(credentials: Credentials) {
+  constructor({ AGENT_PLATFORM_PROJECT_ID }: Credentials) {
     super();
     this.client = new AnthropicVertex({
       region: this.constructor.regionalEndpoint,
-      projectId: credentials.AGENT_PLATFORM_PROJECT_ID,
+      projectId: AGENT_PLATFORM_PROJECT_ID,
     });
   }
 

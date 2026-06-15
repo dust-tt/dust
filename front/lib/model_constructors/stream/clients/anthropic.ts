@@ -42,10 +42,10 @@ export abstract class AnthropicStream extends WithAnthropicInputConverter(
 
   private readonly client: AnthropicClient;
 
-  constructor(credentials: Credentials) {
+  constructor({ ANTHROPIC_API_KEY }: Credentials) {
     super();
     this.client = new AnthropicClient({
-      apiKey: credentials.ANTHROPIC_API_KEY,
+      apiKey: ANTHROPIC_API_KEY,
     });
   }
 
