@@ -6,5 +6,5 @@ export type BatchModelConfiguration = BaseModelConfiguration;
 
 export type BatchEndpointConstructor = (new (
   credentials: Credentials
-) => BatchEndpoint<any, any>) &
+) => BatchEndpoint) &
   BatchModelConfiguration;
