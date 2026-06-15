@@ -3,18 +3,20 @@ import { formatCredits } from "@app/lib/client/credits";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 
-const CREDIT_COST_COPY = {
-  label: "Message credit cost",
-  tooltip:
-    "Credits used for this message: intelligence, tools. Sub-agent costs are tracked separately.",
-};
+const BEGINNING_AGENT_TOOLTIP =
+  "Credits used for this message (intelligence and tools).";
+
+const ITEM_CLASS_NAME =
+  "cursor-default font-normal text-muted-foreground hover:bg-transparent focus:bg-transparent dark:text-muted-foreground-night dark:hover:bg-transparent dark:focus:bg-transparent";
 
 interface UseCreditCostMenuItemProps {
   credits: number | null | undefined;
+  subAgentCredits: number | null | undefined;
 }
 
 export function useCreditCostMenuItem({
   credits,
+  subAgentCredits,
 }: UseCreditCostMenuItemProps): DropdownMenuItemProps | null {
   const { subscription } = useAuth();
 
@@ -22,18 +24,25 @@ export function useCreditCostMenuItem({
     return null;
   }
 
-  if (credits == null || credits <= 0) {
+  const ownCredits = credits ?? 0;
+  const subCredits = subAgentCredits ?? 0;
+  const totalCredits = ownCredits + subCredits;
+
+  if (totalCredits <= 0) {
     return null;
   }
 
-  const { label, tooltip } = CREDIT_COST_COPY;
+  const tooltip =
+    BEGINNING_AGENT_TOOLTIP +
+    (subCredits > 0
+      ? `\nThis message: ${formatCredits(ownCredits)} credits.\nSub-agents: ${formatCredits(subCredits)} credits.`
+      : "");
 
   return {
-    label,
-    endComponent: formatCredits(credits),
+    label: "Credit cost",
+    endComponent: formatCredits(totalCredits),
     tooltip,
-    className:
-      "cursor-default font-normal text-muted-foreground hover:bg-transparent focus:bg-transparent dark:text-muted-foreground-night dark:hover:bg-transparent dark:focus:bg-transparent",
+    className: ITEM_CLASS_NAME,
     onSelect: (e) => e.preventDefault(),
   };
 }

@@ -133,6 +133,8 @@ import {
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
+const RUN_AGENT_TOOL_NAME = "run_agent";
+
 function PrunedContextChip() {
   return (
     <Tooltip
@@ -175,6 +177,21 @@ function PrunedContextChip() {
         />
       }
     />
+  );
+}
+
+function hasMessageSpawnedSubAgent(
+  agentMessage: AgentMessageWithStreaming
+): boolean {
+  return (
+    agentMessage.actions.some(
+      (action) => action.internalMCPServerName === RUN_AGENT_TOOL_NAME
+    ) ||
+    agentMessage.activitySteps.some(
+      (step) =>
+        step.type === "action" &&
+        step.internalMCPServerName === RUN_AGENT_TOOL_NAME
+    )
   );
 }
 
@@ -232,22 +249,30 @@ export function AgentMessage({
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  // The streamed message carries a null cost: it is computed and persisted only
-  // after the agentic loop finishes, in the finalize activities. Re-fetch the
-  // message when the menu opens so a freshly-arrived message shows its cost
-  // without a reload. Falls back to the value already on the message otherwise.
+  // Re-fetch (on menu open) only if a cost we want to show is still missing:
+  // - Own cost: null until the agentic loop finishes; absent while streaming/listed.
+  // - Sub-agent cost: only aggregated by the single-message fetch, and only exists
+  //   when a `run_agent` action is present (it triggers both run_agent and handover).
+  // Messages with no sub-agents only fetch if their own cost is still missing.
+  const needsCostFetch =
+    agentMessage.costCredits == null ||
+    (hasMessageSpawnedSubAgent(agentMessage) &&
+      agentMessage.subAgentCostCredits == null);
   const { message: refreshedMessage } = useConversationMessage({
     conversationId,
     workspaceId: owner.sId,
     messageId: agentMessage.sId,
-    options: { disabled: !isMenuOpen || agentMessage.costCredits != null },
+    options: {
+      disabled: !isMenuOpen || !needsCostFetch,
+    },
   });
-  const refreshedCostCredits =
-    refreshedMessage?.type === "agent_message"
-      ? refreshedMessage.costCredits
-      : null;
+  const refreshedAgentMessage =
+    refreshedMessage?.type === "agent_message" ? refreshedMessage : null;
   const creditCostItem = useCreditCostMenuItem({
-    credits: refreshedCostCredits ?? agentMessage.costCredits,
+    credits: refreshedAgentMessage?.costCredits ?? agentMessage.costCredits,
+    subAgentCredits:
+      refreshedAgentMessage?.subAgentCostCredits ??
+      agentMessage.subAgentCostCredits,
   });
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
