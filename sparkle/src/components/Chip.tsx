@@ -42,22 +42,56 @@ const chipVariants = cva("s:inline-flex s:box-border s:items-center", {
       ),
       highlight: cn(
         "s:bg-highlight-100 s:border-highlight-200",
-        "s:text-highlight-900"
+        "s:text-highlight-900",
+        "s:dark:bg-highlight-900 s:dark:border-highlight-800",
+        "s:dark:text-highlight-100"
       ),
       success: cn(
         "s:bg-success-100 s:border-success-200",
-        "s:text-success-900"
+        "s:text-success-900",
+        "s:dark:bg-success-900 s:dark:border-success-800",
+        "s:dark:text-success-100"
       ),
-      info: cn("s:bg-info-100 s:border-info-200", "s:text-info-900"),
+      info: cn(
+        "s:bg-info-100 s:border-info-200",
+        "s:text-info-900",
+        "s:dark:bg-info-900 s:dark:border-info-800",
+        "s:dark:text-info-100"
+      ),
       warning: cn(
         "s:bg-warning-100 s:border-warning-200",
-        "s:text-warning-900"
+        "s:text-warning-900",
+        "s:dark:bg-warning-900 s:dark:border-warning-800",
+        "s:dark:text-warning-100"
       ),
-      green: cn("s:bg-green-100 s:border-green-200", "s:text-green-900"),
-      blue: cn("s:bg-blue-100 s:border-blue-200", "s:text-blue-900"),
-      rose: cn("s:bg-rose-100 s:border-rose-200", "s:text-rose-900"),
-      golden: cn("s:bg-golden-100 s:border-golden-200", "s:text-golden-900"),
-      white: cn("s:border s:bg-white s:border-border", "s:text-primary-900"),
+      green: cn(
+        "s:bg-green-100 s:border-green-200",
+        "s:text-green-900",
+        "s:dark:bg-green-900 s:dark:border-green-800",
+        "s:dark:text-green-100"
+      ),
+      blue: cn(
+        "s:bg-blue-100 s:border-blue-200",
+        "s:text-blue-900",
+        "s:dark:bg-blue-900 s:dark:border-blue-800",
+        "s:dark:text-blue-100"
+      ),
+      rose: cn(
+        "s:bg-rose-100 s:border-rose-200",
+        "s:text-rose-900",
+        "s:dark:bg-rose-900 s:dark:border-rose-800",
+        "s:dark:text-rose-100"
+      ),
+      golden: cn(
+        "s:bg-golden-100 s:border-golden-200",
+        "s:text-golden-900",
+        "s:dark:bg-golden-900 s:dark:border-golden-800",
+        "s:dark:text-golden-100"
+      ),
+      white: cn(
+        "s:border s:bg-white s:border-border",
+        "s:text-primary-900"
+      ),
     },
   },
   defaultVariants: {
@@ -71,20 +105,36 @@ const closeIconVariants: Record<ChipColorType, string> = {
     "s:text-primary-700 s:hover:text-primary-500 s:active:text-primary-950"
   ),
   highlight: cn(
-    "s:text-highlight-900 s:hover:text-highlight-700 s:active:text-highlight-950"
+    "s:text-highlight-900 s:hover:text-highlight-700 s:active:text-highlight-950",
+    "s:dark:text-highlight-100 s:dark:hover:text-highlight-300 s:dark:active:text-highlight-50"
   ),
   success: cn(
-    "s:text-success-900 s:hover:text-success-700 s:active:text-success-950"
+    "s:text-success-900 s:hover:text-success-700 s:active:text-success-950",
+    "s:dark:text-success-100 s:dark:hover:text-success-300 s:dark:active:text-success-50"
   ),
   warning: cn(
-    "s:text-warning-900 s:hover:text-warning-700 s:active:text-warning-950"
+    "s:text-warning-900 s:hover:text-warning-700 s:active:text-warning-950",
+    "s:dark:text-warning-100 s:dark:hover:text-warning-300 s:dark:active:text-warning-50"
   ),
-  info: cn("s:text-info-900 s:hover:text-info-700 s:active:text-info-950"),
-  green: cn("s:text-green-900 s:hover:text-green-700 s:active:text-green-950"),
-  blue: cn("s:text-blue-900 s:hover:text-blue-700 s:active:text-blue-950"),
-  rose: cn("s:text-rose-900 s:hover:text-rose-700 s:active:text-rose-950"),
+  info: cn(
+    "s:text-info-900 s:hover:text-info-700 s:active:text-info-950",
+    "s:dark:text-info-100 s:dark:hover:text-info-300 s:dark:active:text-info-50"
+  ),
+  green: cn(
+    "s:text-green-900 s:hover:text-green-700 s:active:text-green-950",
+    "s:dark:text-green-100 s:dark:hover:text-green-300 s:dark:active:text-green-50"
+  ),
+  blue: cn(
+    "s:text-blue-900 s:hover:text-blue-700 s:active:text-blue-950",
+    "s:dark:text-blue-100 s:dark:hover:text-blue-300 s:dark:active:text-blue-50"
+  ),
+  rose: cn(
+    "s:text-rose-900 s:hover:text-rose-700 s:active:text-rose-950",
+    "s:dark:text-rose-100 s:dark:hover:text-rose-300 s:dark:active:text-rose-50"
+  ),
   golden: cn(
-    "s:text-golden-900 s:hover:text-golden-700 s:active:text-golden-950"
+    "s:text-golden-900 s:hover:text-golden-700 s:active:text-golden-950",
+    "s:dark:text-golden-100 s:dark:hover:text-golden-300 s:dark:active:text-golden-50"
   ),
   white: cn(
     "s:text-primary-700 s:hover:text-primary-500 s:active:text-primary-950"

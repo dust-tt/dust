@@ -10,6 +10,8 @@
 
 @source "../../src/**/*.{ts,tsx}";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Custom container breakpoints from sparkle preset (v3 @tailwindcss/container-queries → v4 native).
    The prefix "s" causes Tailwind v4 to namespace container theme vars as --s-container-*,
    which breaks automatic @<size>: variant resolution. Define them manually. */
