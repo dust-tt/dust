@@ -235,14 +235,22 @@ export async function handleMembershipInvitations(
       await getWorkspaceAdministrationVersionLock(owner, t);
 
       if (maxUsers !== -1) {
-        const membersCount =
-          await MembershipResource.getMembersCountForWorkspace({
+        const [membersCount, pendingInvitationsCount] = await Promise.all([
+          MembershipResource.getMembersCountForWorkspace({
             workspace: owner,
             activeOnly: true,
             transaction: t,
-          });
+          }),
+          MembershipInvitationResource.getPendingInvitationsCountForWorkspace({
+            workspace: owner,
+            transaction: t,
+          }),
+        ]);
 
-        const availableSeats = Math.max(maxUsers - membersCount, 0);
+        const availableSeats = Math.max(
+          maxUsers - membersCount - pendingInvitationsCount,
+          0
+        );
 
         if (availableSeats < invitationRequests.length) {
           const message =

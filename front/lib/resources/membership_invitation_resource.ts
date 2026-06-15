@@ -298,6 +298,22 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     });
   }
 
+  static async getPendingInvitationsCountForWorkspace({
+    workspace,
+    transaction,
+  }: {
+    workspace: LightWorkspaceType;
+    transaction?: Transaction;
+  }): Promise<number> {
+    return this.model.count({
+      where: {
+        workspaceId: workspace.id,
+        status: "pending",
+      },
+      transaction,
+    });
+  }
+
   static async getPendingInvitations(
     auth: Authenticator,
     { includeExpired = false }: { includeExpired?: boolean } = {}

@@ -7,6 +7,7 @@ import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { getUsageToReportForSubscriptionItem } from "@app/lib/plans/usage";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -429,13 +430,18 @@ export async function evaluateWorkspaceSeatAvailability(
     return true;
   }
 
-  const activeMembersCount =
-    await MembershipResource.getMembersCountForWorkspace({
-      workspace: renderLightWorkspaceType({ workspace }),
+  const lightWorkspace = renderLightWorkspaceType({ workspace });
+  const [activeMembersCount, pendingInvitationsCount] = await Promise.all([
+    MembershipResource.getMembersCountForWorkspace({
+      workspace: lightWorkspace,
       activeOnly: true,
-    });
+    }),
+    MembershipInvitationResource.getPendingInvitationsCountForWorkspace({
+      workspace: lightWorkspace,
+    }),
+  ]);
 
-  return activeMembersCount < maxUsers;
+  return activeMembersCount + pendingInvitationsCount < maxUsers;
 }
 
 export async function unsafeGetWorkspacesByModelId(

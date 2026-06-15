@@ -68,9 +68,12 @@ vi.mock("@app/lib/metronome/constants", async () => {
   };
 });
 
-vi.mock("@app/logger/logger", () => ({
-  default: { info: vi.fn(), error: vi.fn(), warn: vi.fn() },
-}));
+vi.mock("@app/logger/logger", () => {
+  const child = vi.fn();
+  const mock = { info: vi.fn(), error: vi.fn(), warn: vi.fn(), child };
+  child.mockReturnValue(mock);
+  return { default: mock };
+});
 
 // ---------------------------------------------------------------------------
 // Helpers
