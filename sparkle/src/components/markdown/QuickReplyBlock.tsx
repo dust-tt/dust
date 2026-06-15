@@ -87,7 +87,7 @@ export function QuickReplyBlock({
   return (
     <span className={cn("s-float-left s-clear-left s-my-0.5", className)}>
       <Button
-        size="sm"
+        size="md"
         variant="outline"
         label={label}
         icon={icon}

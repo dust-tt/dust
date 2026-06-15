@@ -6,7 +6,7 @@ import {
 import { ResourceAvatar } from "@marketing/components/resources/resources_icons";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 import {
-  Button,
+  DeprecatedButton as Button,
   getPlatformLogo,
   LinkExternal01,
   PuzzlePiece01,

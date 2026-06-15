@@ -26,10 +26,15 @@ export {
 export type {
   ButtonIconType,
   ButtonProps,
-  IconOnlyButtonProps,
-  RegularButtonProps,
+  ButtonSizeType,
+  ButtonVariantType,
 } from "./Button";
-export { Button } from "./Button";
+export {
+  BUTTON_SIZES,
+  BUTTON_VARIANTS,
+  Button,
+  buttonVariants,
+} from "./Button";
 export type { ButtonGroupProps } from "./ButtonGroup";
 export { ButtonGroup, ButtonGroupDropdown } from "./ButtonGroup";
 export { ButtonsSwitch, ButtonsSwitchList } from "./ButtonsSwitch";
@@ -84,6 +89,13 @@ export {
   DataTable,
   ScrollableDataTable,
 } from "./DataTable";
+export type {
+  DeprecatedButtonProps,
+  DeprecatedRegularButtonProps,
+} from "./DeprecatedButton";
+export { DeprecatedButton } from "./DeprecatedButton";
+export type { DeprecatedInputProps } from "./DeprecatedInput";
+export { DeprecatedInput } from "./DeprecatedInput";
 export {
   Dialog,
   DialogClose,
@@ -151,7 +163,8 @@ export {
 } from "./ImagePreview";
 export type { ImageZoomDialogProps } from "./ImageZoomDialog";
 export { downloadFile, ImageZoomDialog } from "./ImageZoomDialog";
-export { Input } from "./Input";
+export type { InputProps, InputSizeType } from "./Input";
+export { INPUT_SIZES, Input } from "./Input";
 export type { InputWithSaveProps } from "./InputWithSave";
 export { InputWithSave } from "./InputWithSave";
 export { InteractiveImageGrid } from "./InteractiveImageGrid";
@@ -193,7 +206,6 @@ export {
 } from "./NavTabPill";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
-export { NotificationButton } from "./NotificationButton";
 export type { OptionCardProps } from "./OptionCard";
 export { OptionCard } from "./OptionCard";
 export { Page } from "./Page";
@@ -244,7 +256,6 @@ export { SliderToggle } from "./SliderToggle";
 export { Spinner } from "./Spinner";
 export type { SpinnerBrandProps } from "./SpinnerBrand";
 export { SpinnerBrand } from "./SpinnerBrand";
-export { FlexSplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { ReadOnlyTextArea, TextArea } from "./TextArea";
 export { Timeline, TimelineItem } from "./Timeline";

@@ -190,7 +190,7 @@ function getTableColumns(
           <DataTable.CellContent>
             <Button
               variant="primary"
-              size="xs"
+              size="sm"
               icon={CloudArrowLeftRight}
               disabled={disabled}
               onClick={buttonOnClick}
@@ -207,7 +207,7 @@ function getTableColumns(
             disabled={disabled}
             onClick={buttonOnClick}
             label={isAdmin ? "Manage" : "View"}
-            size="xs"
+            size="sm"
           />
         </DataTable.CellContent>
       );

@@ -983,7 +983,7 @@ export function ConnectorPermissionsModal({
     <>
       {onManageButtonClick && (
         <Button
-          size="sm"
+          size="md"
           label={`Manage ${getDisplayNameForDataSource(dataSource)}`}
           icon={CloudArrowLeftRight}
           variant="primary"

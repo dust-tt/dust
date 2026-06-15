@@ -77,7 +77,7 @@ export const Default: Story = {
     actions: (
       <Button
         variant="outline"
-        size="xs"
+        size="sm"
         icon={Eye}
         tooltip="View changes"
         onClick={() => {}}

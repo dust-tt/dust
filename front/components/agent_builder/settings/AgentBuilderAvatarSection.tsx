@@ -130,7 +130,7 @@ export function AgentBuilderAvatarSection({
         <Avatar size="lg" visual={field.value ?? null} />
         <Button
           variant="outline"
-          size="sm"
+          size="md"
           icon={Edit04}
           type="button"
           onClick={() => setIsAvatarModalOpen(true)}

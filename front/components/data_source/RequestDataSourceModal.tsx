@@ -132,7 +132,7 @@ export function RequestDataSourceModal({
                         <Button
                           label="Pick your platform"
                           variant="outline"
-                          size="sm"
+                          size="md"
                           isSelect
                         />
                       )}

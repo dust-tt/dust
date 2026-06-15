@@ -55,7 +55,7 @@ export function ErrorMessage({ error, retryHandler }: ErrorMessageProps) {
       <div className="flex flex-col gap-2 pt-3 sm:flex-row">
         <Button
           variant="outline"
-          size="xs"
+          size="sm"
           icon={RefreshCw02}
           label="Retry"
           onClick={retry}

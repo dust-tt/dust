@@ -90,7 +90,7 @@ export function MentionInvalid({
               <Button
                 label="Dismiss"
                 variant="outline"
-                size="xs"
+                size="sm"
                 icon={XClose}
                 disabled={isSubmitting}
                 onClick={handleDismiss}
@@ -116,7 +116,7 @@ export function MentionInvalid({
               <Button
                 label="Dismiss"
                 variant="outline"
-                size="xs"
+                size="sm"
                 icon={XClose}
                 disabled={isSubmitting}
                 onClick={handleDismiss}

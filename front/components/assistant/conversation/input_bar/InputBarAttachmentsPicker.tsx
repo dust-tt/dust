@@ -32,6 +32,7 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { ButtonVariantType } from "@dust-tt/sparkle";
 import {
   Attachment01,
   Button,
@@ -49,13 +50,12 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   Icon,
-  Input,
+  DeprecatedInput as Input,
   LoadingBlock,
   SearchMd,
   Spinner,
   UploadCloud02,
 } from "@dust-tt/sparkle";
-import type { ButtonVariantType } from "@dust-tt/sparkle/dist/esm/components/Button";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const SEARCH_RESULTS_PLACEHOLDER_COUNT = 5;
@@ -96,7 +96,7 @@ interface InputBarAttachmentsPickerProps {
   buttonLabel?: string;
   buttonVariant?: ButtonVariantType;
   disabled?: boolean;
-  buttonSize?: "xs" | "sm" | "md";
+  buttonSize?: "sm" | "md" | "lg";
   // Will be used to upload files found via tools and not the connected datasources.
   toolFileUpload: {
     useCase: "conversation" | "project_context";
@@ -267,7 +267,7 @@ export const InputBarAttachmentsPicker = ({
   attachedNodes,
   isLoading = false,
   disabled = false,
-  buttonSize = "xs",
+  buttonSize = "sm",
   buttonLabel = undefined,
   buttonVariant = "ghost-secondary",
   toolFileUpload,

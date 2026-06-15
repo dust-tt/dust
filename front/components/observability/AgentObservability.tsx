@@ -161,7 +161,7 @@ export function AgentObservability({
                     <div>
                       <Button
                         label="Try again"
-                        size="xs"
+                        size="sm"
                         variant="outline"
                         onClick={() => {
                           void refetchSummary();

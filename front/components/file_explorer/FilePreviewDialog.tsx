@@ -659,7 +659,7 @@ export function FilePreviewDialog({
             <div className="flex items-center gap-1">
               <Button
                 variant="outline"
-                size="sm"
+                size="md"
                 icon={ChevronLeft}
                 onClick={onPrev}
                 disabled={!onPrev}
@@ -667,7 +667,7 @@ export function FilePreviewDialog({
               />
               <Button
                 variant="outline"
-                size="sm"
+                size="md"
                 icon={ChevronRight}
                 onClick={onNext}
                 disabled={!onNext}
@@ -679,7 +679,7 @@ export function FilePreviewDialog({
                 <Button
                   label="Save"
                   variant="highlight"
-                  size="sm"
+                  size="md"
                   isLoading={isMarkdownSaving}
                   disabled={!isMarkdownDirty || isMarkdownSaving}
                   onClick={() => void handleMarkdownSave()}
@@ -687,13 +687,13 @@ export function FilePreviewDialog({
                 <Button
                   label="Revert"
                   variant="outline"
-                  size="sm"
+                  size="md"
                   disabled={!isMarkdownDirty || isMarkdownSaving}
                   onClick={handleMarkdownRevert}
                 />
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="md"
                   icon={Download01}
                   label={isDownloading ? "Downloading…" : "Download"}
                   onClick={handleDownload}
@@ -703,7 +703,7 @@ export function FilePreviewDialog({
             ) : (
               <Button
                 variant="outline"
-                size="sm"
+                size="md"
                 icon={Download01}
                 label={isDownloading ? "Downloading…" : "Download"}
                 onClick={handleDownload}

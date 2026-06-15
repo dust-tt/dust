@@ -63,7 +63,7 @@ export function AppLayoutSimpleSaveCancelTitle({
           <BarHeader.ButtonBar
             variant="validate"
             cancelButtonProps={{
-              size: "sm",
+              size: "md",
               label: "Cancel",
               variant: "ghost",
               onClick: onCancel,
@@ -71,7 +71,7 @@ export function AppLayoutSimpleSaveCancelTitle({
             saveButtonProps={
               onSave
                 ? {
-                    size: "sm",
+                    size: "md",
                     label: isSaving ? "Saving..." : "Save",
                     variant: "primary",
                     onClick: onSave,

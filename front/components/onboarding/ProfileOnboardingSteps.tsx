@@ -176,7 +176,7 @@ export function UserProfileStep({
         )}
       </div>
       <div className="flex justify-end">
-        <Button label="Next" size="md" onClick={onNext} />
+        <Button label="Next" size="lg" onClick={onNext} />
       </div>
     </div>
   );
@@ -229,7 +229,7 @@ export function FavoritePlatformsStep({
           label="Next"
           isLoading={isSubmitting}
           disabled={isSubmitting}
-          size="md"
+          size="lg"
           onClick={onSubmit}
         />
       </div>

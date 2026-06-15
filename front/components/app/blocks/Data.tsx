@@ -93,7 +93,7 @@ export default function Data({
               }}
               icon={Edit04}
               label={readOnly ? "View" : "Edit"}
-              size="xs"
+              size="sm"
             />
           )}
         </div>

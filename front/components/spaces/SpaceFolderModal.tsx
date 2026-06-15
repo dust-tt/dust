@@ -184,7 +184,7 @@ export default function SpaceFolderModal({
                     onClose={() => setShowDeleteConfirmDialog(false)}
                   />
                   <Button
-                    size="sm"
+                    size="md"
                     label="Delete Folder"
                     variant="warning"
                     onClick={() => setShowDeleteConfirmDialog(true)}

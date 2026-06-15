@@ -204,7 +204,7 @@ const MultiPageDialogContent = React.forwardRef<
                     <Button
                       icon={ChevronLeft}
                       variant="ghost"
-                      size="sm"
+                      size="md"
                       disabled={prevButtonDisabled}
                       onClick={handlePrevious}
                       tooltip={
@@ -216,7 +216,7 @@ const MultiPageDialogContent = React.forwardRef<
                     <Button
                       icon={ChevronRight}
                       variant="ghost"
-                      size="sm"
+                      size="md"
                       disabled={nextButtonDisabled}
                       onClick={handleNext}
                       tooltip={

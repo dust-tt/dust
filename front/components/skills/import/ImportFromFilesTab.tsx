@@ -187,7 +187,7 @@ function SkillFileDropzone({
             label="Upload files"
             icon={Plus}
             variant="primary"
-            size="sm"
+            size="md"
             disabled={disabled}
             onClick={() => fileInputRef.current?.click()}
           />

@@ -656,7 +656,7 @@ export function AgentMessage({
         key="stop-msg-button"
         label="Stop agent"
         variant="ghost-secondary"
-        size="xs"
+        size="sm"
         onClick={async () => {
           await cancelMessage([sId]);
         }}
@@ -883,7 +883,7 @@ export function AgentMessage({
         <Button
           tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
           variant="outline"
-          size="xs"
+          size="sm"
           onClick={handleCopyToClipboard}
           icon={isCopied ? ClipboardCheck : Clipboard}
           className="text-muted-foreground dark:text-muted-foreground-night"
@@ -899,7 +899,7 @@ export function AgentMessage({
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
-              size="xs"
+              size="sm"
               icon={DotsHorizontal}
               className="text-muted-foreground dark:text-muted-foreground-night"
             />
@@ -1464,7 +1464,7 @@ function AgentMessageContent({
                 trigger={
                   <Button
                     variant="outline"
-                    size="xs"
+                    size="sm"
                     icon={DotsHorizontal}
                     className="text-muted-foreground dark:text-muted-foreground-night"
                   />

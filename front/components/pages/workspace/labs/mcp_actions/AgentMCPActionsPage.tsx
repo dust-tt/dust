@@ -225,7 +225,7 @@ export function AgentMCPActionsPage() {
                                 </Chip>
                                 {action.conversationId && (
                                   <Button
-                                    size="xs"
+                                    size="sm"
                                     variant="outline"
                                     icon={LinkExternal01}
                                     onClick={() =>

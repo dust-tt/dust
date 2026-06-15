@@ -130,13 +130,13 @@ export function ZendeskRateLimitConfig({
                   ? `${rateLimitTransactionsPerSecond} tps`
                   : "Disabled"
               }
-              className="w-24"
+              fieldClassName="w-24"
             />
             <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               transactions per second
             </span>
             <Button
-              size="sm"
+              size="md"
               onClick={handleSave}
               disabled={
                 readOnly ||

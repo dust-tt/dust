@@ -322,7 +322,7 @@ export function MCPToolValidationRequired({
               <Button
                 label="Decline"
                 variant="outline"
-                size="xs"
+                size="sm"
                 icon={XClose}
                 disabled={isValidating}
                 isPulsing={isPulsing}
@@ -331,7 +331,7 @@ export function MCPToolValidationRequired({
               <Button
                 label="Allow"
                 variant="highlight"
-                size="xs"
+                size="sm"
                 icon={Check}
                 disabled={isValidating}
                 isPulsing={isPulsing}

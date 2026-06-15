@@ -176,7 +176,7 @@ export function DustAppSection() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                size="xs"
+                size="sm"
                 variant="outline"
                 isSelect
                 label={selectedSpace ? selectedSpace.name : "Select a space..."}
@@ -214,7 +214,7 @@ export function DustAppSection() {
               <div className="ml-4 self-start">
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="md"
                   icon={PencilIcon}
                   label="Edit selection"
                   onClick={handleEditClick}

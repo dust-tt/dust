@@ -23,7 +23,7 @@ export function SubscriptionActionButtons() {
       {canReactivateSubscription ? (
         <Button
           label="Resume subscription"
-          size="sm"
+          size="md"
           variant="highlight"
           disabled={isReactivatingSubscription}
           onClick={withTracking(
@@ -37,7 +37,7 @@ export function SubscriptionActionButtons() {
       ) : canCancelSubscription ? (
         <Button
           label="Cancel subscription"
-          size="sm"
+          size="md"
           variant="outline"
           disabled={isCancellingSubscription}
           onClick={withTracking(

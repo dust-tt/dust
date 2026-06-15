@@ -244,7 +244,7 @@ export function DustMcpServerSettingsSheet({
                         </pre>
                         <Button
                           variant="warning"
-                          size="mini"
+                          size="sm"
                           icon={Trash01}
                           tooltip={`Remove ${uri}`}
                           disabled={!isAdmin || isSaving}

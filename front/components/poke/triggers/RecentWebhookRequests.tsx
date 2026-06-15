@@ -192,7 +192,7 @@ function PokeRecentWebhookRequestsContent({
             <div className="flex justify-center pt-2">
               <Button
                 variant="outline"
-                size="sm"
+                size="md"
                 label="Load more"
                 onClick={() => setLimit((prev) => prev + PAGE_SIZE)}
               />

@@ -186,7 +186,7 @@ export function AutoJoinToggle({
                 label={
                   isAnyDomainAutoJoinEnabled ? "Configure" : "Enable Auto-join"
                 }
-                size="sm"
+                size="md"
                 variant={isAnyDomainAutoJoinEnabled ? "outline" : "primary"}
                 tooltip={
                   owner.ssoEnforced
@@ -211,7 +211,7 @@ export function AutoJoinToggle({
             ) : domainAutoJoinEnabled ? (
               <Button
                 label="De-activate Auto-join"
-                size="sm"
+                size="md"
                 variant="outline"
                 disabled={owner.ssoEnforced}
                 tooltip={
@@ -230,7 +230,7 @@ export function AutoJoinToggle({
             ) : (
               <Button
                 label="Activate Auto-join"
-                size="sm"
+                size="md"
                 variant="primary"
                 tooltip={
                   owner.ssoEnforced

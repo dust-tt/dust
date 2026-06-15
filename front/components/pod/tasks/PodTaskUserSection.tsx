@@ -104,7 +104,7 @@ export function PodTaskUserSection({
               <div className="flex items-center justify-start gap-2">
                 <Button
                   label="Dismiss all"
-                  size="sm"
+                  size="md"
                   variant="outline"
                   isLoading={bulkAction === "reject"}
                   disabled={bulkAction !== null}
@@ -115,8 +115,8 @@ export function PodTaskUserSection({
                 />
                 <Button
                   label="Accept all"
-                  size="sm"
-                  variant="highlight-secondary"
+                  size="md"
+                  variant="highlight-ghost"
                   isLoading={bulkAction === "approve"}
                   disabled={bulkAction !== null}
                   onClick={(e) => {

@@ -181,7 +181,7 @@ export function GlobalAgentFeedbacksPage() {
             <div className="mt-4 flex items-center justify-between">
               <Button
                 variant="outline"
-                size="sm"
+                size="md"
                 label="Previous batch"
                 onClick={handlePrevPage}
                 disabled={pages.length === 0}
@@ -192,7 +192,7 @@ export function GlobalAgentFeedbacksPage() {
               </span>
               <Button
                 variant="outline"
-                size="sm"
+                size="md"
                 label="Next batch"
                 onClick={handleNextPage}
                 disabled={!hasMore}

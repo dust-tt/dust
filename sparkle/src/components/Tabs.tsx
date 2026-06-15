@@ -23,9 +23,9 @@ const tabsTriggerVariants = cva(
           "data-[state=inactive]:s-text-muted-foreground data-[state=inactive]:hover:s-text-primary-900 data-[state=inactive]:dark:s-text-muted-foreground-night data-[state=inactive]:dark:hover:s-text-primary-900-night",
         primary: "",
         highlight: "",
-        "highlight-secondary": "",
+        "highlight-ghost": "",
         warning: "",
-        "warning-secondary": "",
+        "warning-ghost": "",
         outline: "",
         "ghost-secondary": "",
       },
@@ -103,7 +103,7 @@ const TabsTrigger = React.forwardRef<
       >
         <Button
           variant={variant}
-          size="sm"
+          size="md"
           label={label}
           tooltip={tooltip}
           icon={icon}

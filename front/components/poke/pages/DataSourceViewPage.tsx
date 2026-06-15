@@ -121,7 +121,7 @@ export function DataSourceViewPage() {
                   <div className="flex flex-1 flex-row gap-8">
                     <div className="flex flex-1 flex-col">
                       <Input
-                        className="w-full"
+                        fieldClassName="w-full"
                         placeholder="Tag"
                         name="tag"
                         disabled={true}

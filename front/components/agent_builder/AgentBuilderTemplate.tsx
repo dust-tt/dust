@@ -103,7 +103,7 @@ function TemplateButtons({ assistantTemplate }: TemplateButtonsProps) {
     <div className="flex items-center justify-end">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button label="Reset" size="sm" variant="outline" isSelect />
+          <Button label="Reset" size="md" variant="outline" isSelect />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem
@@ -170,7 +170,7 @@ function TemplatePresetActions({
             <Button
               label={getActionLabel(presetAction.type)}
               icon={getActionIcon(presetAction.type)}
-              size="sm"
+              size="md"
               variant="outline"
               onClick={() => onAddAction?.(presetAction)}
             />

@@ -51,7 +51,7 @@ function PodBanner({
         <Button
           variant="outline"
           icon={XClose}
-          size="icon-xs"
+          size="sm"
           className="absolute right-1 top-1"
           onClick={onDismiss}
         />
@@ -67,7 +67,7 @@ function PodBanner({
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="highlight"
-            size="xs"
+            size="sm"
             icon={Plus}
             label="Create a Pod"
             onClick={withTracking(
@@ -78,7 +78,7 @@ function PodBanner({
           />
           <Button
             variant="outline"
-            size="xs"
+            size="sm"
             label="Learn more"
             onClick={withTracking(
               TRACKING_AREAS.PODS,

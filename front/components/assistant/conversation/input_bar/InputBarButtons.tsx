@@ -36,7 +36,7 @@ interface InputBarButtonsProps {
   actions: InputBarAction[];
   allAgents: LightAgentConfigurationType[];
   attachedNodes: DataSourceViewContentNode[];
-  buttonSize: "xs" | "sm";
+  buttonSize: "sm" | "md";
   clientType: string;
   conversation?: ConversationWithoutContentType;
   disableAgentSelector: boolean;

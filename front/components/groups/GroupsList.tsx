@@ -48,7 +48,7 @@ const groupColumns = [
         <DataTable.CellContent>
           <Button
             icon={XClose}
-            size="xs"
+            size="sm"
             variant="ghost-secondary"
             onClick={info.row.original.onRemoveGroupClick}
           />

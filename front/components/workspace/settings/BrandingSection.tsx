@@ -134,7 +134,7 @@ function BrandingAssetUploader({
             disabled={busy}
             icon={XClose}
             label="Remove"
-            size="sm"
+            size="md"
             variant="outline"
             onClick={() => void handleRemove()}
           />

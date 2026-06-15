@@ -118,7 +118,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          size="xs"
+          size="sm"
           icon={DotsHorizontal}
           onClick={(e: React.MouseEvent) => e.stopPropagation()}
         />

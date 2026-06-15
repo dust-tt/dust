@@ -27,7 +27,7 @@ function ToolbarPreview({ variant, scroll, onClose }: ToolbarPreviewProps) {
   const [linkText, setLinkText] = useState("Dust");
   const [linkUrl, setLinkUrl] = useState("dust.tt");
   const isOverlay = variant === "overlay";
-  const buttonSize = isOverlay ? "xs" : "sm";
+  const buttonSize = isOverlay ? "sm" : "md";
 
   function handleToolbarAction(): void {}
 

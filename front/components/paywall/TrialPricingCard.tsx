@@ -74,7 +74,7 @@ export function TrialPricingCard({
       {/* CTA Button */}
       <Button
         variant="highlight"
-        size="md"
+        size="lg"
         label="Continue with Pro"
         onClick={onSubscribe}
         disabled={isSubmitting}

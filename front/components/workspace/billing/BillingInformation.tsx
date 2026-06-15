@@ -106,7 +106,7 @@ export function BillingInformation() {
             <Button
               label="Change"
               variant="ghost"
-              size="sm"
+              size="md"
               href={portalHref}
               target="_blank"
               className="absolute right-4 top-3"
@@ -148,7 +148,7 @@ export function BillingInformation() {
           <Button
             label="Change"
             variant="ghost"
-            size="sm"
+            size="md"
             href={portalHref}
             target="_blank"
           />

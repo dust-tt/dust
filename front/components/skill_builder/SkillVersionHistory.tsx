@@ -107,7 +107,7 @@ export function SkillVersionHistory({
         <Button
           variant="outline"
           icon={ClockRewind}
-          size="sm"
+          size="md"
           label={triggerLabel}
           isSelect
         />

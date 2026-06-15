@@ -124,7 +124,7 @@ export function CreateWebhookLinearConnection({
                         label="Add team"
                         variant="outline"
                         icon={Plus}
-                        size="sm"
+                        size="md"
                       />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent

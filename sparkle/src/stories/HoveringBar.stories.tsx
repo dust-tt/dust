@@ -42,11 +42,11 @@ export const Default: Story = {
   args: {
     children: (
       <>
-        <Button icon={Heading01} size="icon" variant="ghost-secondary" />
-        <Button icon={Bold01} size="icon" variant="ghost-secondary" />
-        <Button icon={Italic01} size="icon" variant="ghost-secondary" />
+        <Button icon={Heading01} size="sm" variant="ghost-secondary" />
+        <Button icon={Bold01} size="sm" variant="ghost-secondary" />
+        <Button icon={Italic01} size="sm" variant="ghost-secondary" />
         <HoveringBar.Separator />
-        <Button icon={Link01} size="icon" variant="ghost-secondary" />
+        <Button icon={Link01} size="sm" variant="ghost-secondary" />
       </>
     ),
   },
@@ -64,58 +64,48 @@ export const FullFormattingToolbar = () => (
   <HoveringBar>
     <Button
       icon={Heading01}
-      size="icon"
+      size="sm"
       variant="ghost-secondary"
       tooltip="Heading"
     />
-    <Button
-      icon={Bold01}
-      size="icon"
-      variant="ghost-secondary"
-      tooltip="Bold"
-    />
+    <Button icon={Bold01} size="sm" variant="ghost-secondary" tooltip="Bold" />
     <Button
       icon={Italic01}
-      size="icon"
+      size="sm"
       variant="ghost-secondary"
       tooltip="Italic"
     />
     <HoveringBar.Separator />
-    <Button
-      icon={Link01}
-      size="icon"
-      variant="ghost-secondary"
-      tooltip="Link"
-    />
+    <Button icon={Link01} size="sm" variant="ghost-secondary" tooltip="Link" />
     <HoveringBar.Separator />
     <Button
       icon={CheckDone01}
-      size="icon"
+      size="sm"
       variant="ghost-secondary"
       tooltip="Bulleted list"
     />
     <Button
       icon={List}
-      size="icon"
+      size="sm"
       variant="ghost-secondary"
       tooltip="Ordered list"
     />
     <Button
       icon={DoubleQuotes}
-      size="icon"
+      size="sm"
       variant="ghost-secondary"
       tooltip="Blockquote"
     />
     <HoveringBar.Separator />
     <Button
       icon={Code01}
-      size="icon"
+      size="sm"
       variant="ghost-secondary"
       tooltip="Inline code"
     />
     <Button
       icon={CodeSquare01}
-      size="icon"
+      size="sm"
       variant="ghost-secondary"
       tooltip="Code block"
     />
@@ -125,18 +115,18 @@ export const FullFormattingToolbar = () => (
 export const WithOverflow = () => (
   <div style={{ maxWidth: "200px" }}>
     <HoveringBar className="s-w-full">
-      <Button icon={Heading01} size="icon" variant="ghost-secondary" />
-      <Button icon={Bold01} size="icon" variant="ghost-secondary" />
-      <Button icon={Italic01} size="icon" variant="ghost-secondary" />
+      <Button icon={Heading01} size="sm" variant="ghost-secondary" />
+      <Button icon={Bold01} size="sm" variant="ghost-secondary" />
+      <Button icon={Italic01} size="sm" variant="ghost-secondary" />
       <HoveringBar.Separator />
-      <Button icon={Link01} size="icon" variant="ghost-secondary" />
+      <Button icon={Link01} size="sm" variant="ghost-secondary" />
       <HoveringBar.Separator />
-      <Button icon={CheckDone01} size="icon" variant="ghost-secondary" />
-      <Button icon={List} size="icon" variant="ghost-secondary" />
-      <Button icon={DoubleQuotes} size="icon" variant="ghost-secondary" />
+      <Button icon={CheckDone01} size="sm" variant="ghost-secondary" />
+      <Button icon={List} size="sm" variant="ghost-secondary" />
+      <Button icon={DoubleQuotes} size="sm" variant="ghost-secondary" />
       <HoveringBar.Separator />
-      <Button icon={Code01} size="icon" variant="ghost-secondary" />
-      <Button icon={CodeSquare01} size="icon" variant="ghost-secondary" />
+      <Button icon={Code01} size="sm" variant="ghost-secondary" />
+      <Button icon={CodeSquare01} size="sm" variant="ghost-secondary" />
     </HoveringBar>
   </div>
 );

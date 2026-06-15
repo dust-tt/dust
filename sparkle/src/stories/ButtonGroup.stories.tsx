@@ -2,14 +2,14 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import {
-  BUTTON_VARIANTS,
-  type RegularButtonSize,
-  type ButtonVariantType,
-} from "@sparkle/components/Button";
+  DEPRECATED_BUTTON_VARIANTS,
+  type DeprecatedRegularButtonSize,
+  type DeprecatedButtonVariantType,
+} from "@sparkle/components/DeprecatedButton";
 
 import {
   RefreshCw02,
-  Button,
+  DeprecatedButton as Button,
   ButtonGroup,
   ButtonGroupDropdown,
   ChevronDown,
@@ -24,8 +24,8 @@ const DefaultButtons = ({
   variant = "outline",
   size = "sm",
 }: {
-  variant?: ButtonVariantType;
-  size?: RegularButtonSize;
+  variant?: DeprecatedButtonVariantType;
+  size?: DeprecatedRegularButtonSize;
 }) => (
   <>
     <Button label="First" variant={variant} size={size} />
@@ -49,8 +49,7 @@ const meta = {
 
 **Guidelines**
 - Keep all child **Button**s on the same \`variant\` and \`size\` for visual consistency.
-- Use \`removeGaps\` for a segmented look; keep gaps when the actions are independent.
-- For a single button with an attached chevron menu, prefer **SplitButton** (\`FlexSplitButton\`) instead.`,
+- Use \`removeGaps\` for a segmented look; keep gaps when the actions are independent.`,
       },
     },
   },
@@ -149,7 +148,11 @@ export const WithGaps: Story = {
   },
 };
 
-const ButtonGroupByVariant = ({ variant }: { variant: ButtonVariantType }) => (
+const ButtonGroupByVariant = ({
+  variant,
+}: {
+  variant: DeprecatedButtonVariantType;
+}) => (
   <>
     <Separator />
     <h3 className="s-text-primary dark:s-text-primary-50">{variant}</h3>
@@ -170,7 +173,7 @@ const ButtonGroupByVariant = ({ variant }: { variant: ButtonVariantType }) => (
 export const Gallery: Story = {
   render: () => (
     <div className="s-flex s-flex-col s-gap-4">
-      {BUTTON_VARIANTS.map((variant) => (
+      {DEPRECATED_BUTTON_VARIANTS.map((variant) => (
         <ButtonGroupByVariant key={variant} variant={variant} />
       ))}
     </div>

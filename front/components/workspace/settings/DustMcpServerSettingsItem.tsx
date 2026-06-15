@@ -58,7 +58,7 @@ export function DustMcpServerSettingsItem({
             {isEnabled && (
               <Button
                 label="Manage"
-                size="xs"
+                size="sm"
                 variant="outline"
                 icon={Settings01}
                 disabled={!isAdmin || isSaving}

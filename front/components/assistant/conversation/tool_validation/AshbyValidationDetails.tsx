@@ -61,7 +61,7 @@ export function AshbyJobPostingUpdateDetails({
 
       <Button
         variant="outline"
-        size="xs"
+        size="sm"
         label="View on Ashby"
         icon={LinkExternal01}
         href={jobPostingUrl}

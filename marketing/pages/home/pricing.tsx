@@ -19,11 +19,11 @@ import { appendUTMParams } from "@marketing/lib/utils/utm";
 import { useSignUpModal } from "@marketing/hooks/useSignUpModal";
 import { assertNeverAndIgnore } from "@marketing/types/shared/utils/assert_never";
 import {
-  Button,
   Check,
   ChevronDown,
   Chip,
   cn,
+  DeprecatedButton as Button,
   LayerSingle,
   LayersThree01,
   LayersTwo01,

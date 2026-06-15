@@ -102,7 +102,7 @@ export function MaintenancePage() {
               <Button
                 variant="outline"
                 label={maintenancePageInfo.buttonLabel}
-                size="sm"
+                size="md"
                 onClick={maintenancePageInfo.buttonAction}
               />
             ) : (
@@ -110,7 +110,7 @@ export function MaintenancePage() {
                 <Button
                   variant="outline"
                   label={maintenancePageInfo.buttonLabel}
-                  size="sm"
+                  size="md"
                 />
               </LinkWrapper>
             )}

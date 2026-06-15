@@ -293,7 +293,7 @@ function EnumConfigurationInput({
               <Button
                 isSelect
                 label={currentLabel}
-                size="sm"
+                size="md"
                 tooltip={displayLabel}
                 variant="outline"
               />

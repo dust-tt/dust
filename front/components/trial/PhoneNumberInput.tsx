@@ -77,7 +77,10 @@ const CountrySelectComponent = ({
 };
 
 interface InputComponentProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange"> {
+  extends Omit<
+    React.InputHTMLAttributes<HTMLInputElement>,
+    "onChange" | "size"
+  > {
   value: string;
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   country?: string;
@@ -95,7 +98,7 @@ const InputComponent = React.forwardRef<HTMLInputElement, InputComponentProps>(
           placeholder=""
           value={value}
           onChange={onChange}
-          className={`w-full rounded-l-none ${className ?? ""}`}
+          fieldClassName={`w-full rounded-l-none ${className ?? ""}`}
         />
       </div>
     );

@@ -39,7 +39,7 @@ export function EmbeddingModelSelect({ workspace }: EmbeddingModelSelectProps) {
               isSelect
               label={PRETTIFIED_PROVIDER_NAMES[embeddingProvider]}
               variant="outline"
-              size="sm"
+              size="md"
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent>

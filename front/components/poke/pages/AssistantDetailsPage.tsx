@@ -282,7 +282,7 @@ export function AssistantDetailsPage() {
                                 icon={LinkExternal01}
                                 label="View in editor"
                                 variant="outline"
-                                size="xs"
+                                size="sm"
                               />
                             </LinkWrapper>
                           </div>

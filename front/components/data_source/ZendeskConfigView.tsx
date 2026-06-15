@@ -214,10 +214,10 @@ export function ZendeskConfigView({
                     ? `${retentionPeriodDays} days`
                     : undefined
                 }
-                className="w-24"
+                fieldClassName="w-24"
               />
               <Button
-                size="sm"
+                size="md"
                 onClick={handleRetentionPeriodSave}
                 disabled={
                   readOnly ||

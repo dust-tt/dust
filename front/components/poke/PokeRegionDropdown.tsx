@@ -32,7 +32,7 @@ export function PokeRegionDropdown({ regionUrls }: PokeRegionDropdownProps) {
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          size="sm"
+          size="md"
           isSelect
           label={getRegionDisplay(currentRegion)}
         />

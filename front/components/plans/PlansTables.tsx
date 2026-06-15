@@ -241,7 +241,7 @@ function SeatBasedPriceTable({
   size,
 }: SeatBasedPriceTableProps) {
   const [isFairUseModalOpened, setIsFairUseModalOpened] = useState(false);
-  const biggerButtonSize = size === "xs" ? "sm" : "md";
+  const biggerButtonSize = size === "xs" ? "md" : "lg";
   const items = getSeatBasedPlanItems(plan, () =>
     setIsFairUseModalOpened(true)
   );
@@ -372,7 +372,7 @@ function EnterprisePriceTable({
   size: "sm" | "xs";
   isProcessing?: boolean;
 }) {
-  const biggerButtonSize = size === "xs" ? "sm" : "md";
+  const biggerButtonSize = size === "xs" ? "md" : "lg";
   return (
     <PriceTable
       title="Enterprise"

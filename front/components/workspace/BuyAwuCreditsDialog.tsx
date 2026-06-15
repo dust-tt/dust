@@ -317,7 +317,8 @@ export function BuyAwuCreditsDialog({
                       min="0"
                       step="1"
                       isError={amountExceedsMax && !!maxAmountFormatted}
-                      className="w-32 pl-7 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      fieldClassName="w-32"
+                      className="pl-7 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                   </div>
                   {isValidAmount && (
@@ -331,7 +332,7 @@ export function BuyAwuCreditsDialog({
                         key={amount}
                         label={`${currencySymbol}${amount}`}
                         variant="outline"
-                        size="sm"
+                        size="md"
                         onClick={() => setAmountWithClamp(amount)}
                       />
                     ))}
@@ -410,7 +411,7 @@ export function BuyAwuCreditsDialog({
                       <Button
                         label="Change"
                         variant="ghost"
-                        size="sm"
+                        size="md"
                         href={`/w/${workspaceId}/subscription/manage`}
                       />
                     </div>

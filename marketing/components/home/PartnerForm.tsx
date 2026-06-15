@@ -18,13 +18,13 @@ import { TRACKING_AREAS, trackEvent } from "@marketing/lib/tracking";
 import { getStoredUTMParams } from "@marketing/lib/utils/utm";
 import { normalizeError } from "@marketing/types/shared/utils/error_utils";
 import {
-  Button,
+  DeprecatedButton as Button,
   Checkbox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Input,
+  DeprecatedInput as Input,
   Label,
   Spinner,
   TextArea,

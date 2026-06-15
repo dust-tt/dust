@@ -245,7 +245,7 @@ export const CollapsibleSection = () => {
                 Mark as read
               </div> */}
               <Button
-                size="xmini"
+                size="sm"
                 icon={CheckDouble}
                 variant="ghost"
                 aria-label="Add new item"
@@ -305,7 +305,7 @@ export const CollapsibleSection = () => {
           action={
             <>
               <Button
-                size="xmini"
+                size="sm"
                 icon={Plus}
                 variant="ghost"
                 aria-label="Add new item"
@@ -316,7 +316,7 @@ export const CollapsibleSection = () => {
                 }}
               />
               <Button
-                size="xmini"
+                size="sm"
                 icon={DotsHorizontal}
                 variant="ghost"
                 aria-label="More options"
@@ -402,7 +402,7 @@ export const CollapsibleSection = () => {
           action={
             <>
               <Button
-                size="xmini"
+                size="sm"
                 icon={MessageChatSquare}
                 variant="ghost"
                 aria-label="Add new item"
@@ -414,7 +414,7 @@ export const CollapsibleSection = () => {
                 }}
               />
               <Button
-                size="xmini"
+                size="sm"
                 icon={DotsHorizontal}
                 variant="ghost"
                 aria-label="Add new item"
@@ -464,7 +464,7 @@ export const CollapsibleSection = () => {
           action={
             <>
               <Button
-                size="xmini"
+                size="sm"
                 icon={Plus}
                 variant="ghost"
                 aria-label="Add new item"
@@ -475,7 +475,7 @@ export const CollapsibleSection = () => {
                 }}
               />
               <Button
-                size="xmini"
+                size="sm"
                 icon={DotsHorizontal}
                 variant="ghost"
                 aria-label="Add new item"

@@ -37,7 +37,7 @@ export function SkillVersionHistoryPicker({
         <Button
           icon={XClose}
           variant="outline"
-          size="sm"
+          size="md"
           onClick={exitDiffMode}
           tooltip="Leave comparison mode"
         />

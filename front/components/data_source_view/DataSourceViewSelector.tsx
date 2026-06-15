@@ -830,7 +830,7 @@ export function DataSourceViewSelector({
           !isRootSelectable && (
             <Button
               variant="ghost"
-              size="xs"
+              size="sm"
               disabled={selectAll.isLoading}
               className="mr-4 text-xs"
               label={

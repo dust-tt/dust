@@ -305,7 +305,7 @@ function LegacySubscribePage() {
                       : `Start your subscription with ${billingPeriod} billing`
                   }
                   icon={CreditCardIcon}
-                  size="sm"
+                  size="md"
                   onClick={withTracking(
                     TRACKING_AREAS.AUTH,
                     "subscription_start",

@@ -1,8 +1,7 @@
 import {
   Button,
+  type ButtonSizeType,
   type ButtonVariantType,
-  ICON_SIZE_MAP,
-  type RegularButtonSize,
 } from "@sparkle/components/Button";
 import {
   DropdownMenu,
@@ -110,12 +109,12 @@ function BreadcrumbItemRenderer({
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
+          {/* TODO(button-migration): hasLighterFont dropped */}
           <Button
             variant={buttonVariant}
             label={ELLIPSIS_STRING}
             icon={item.icon}
-            size={size}
-            hasLighterFont={hasLighterFont}
+            size={size === "xs" ? "sm" : "md"}
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
@@ -150,28 +149,28 @@ function BreadcrumbItemRenderer({
 
   if (isLinkItem(item)) {
     return (
+      // TODO(button-migration): hasLighterFont dropped
       <Button
         href={item.href}
         icon={item.icon}
         variant={buttonVariant ?? (isLast ? "ghost" : "ghost-secondary")}
         label={truncatedLabel}
         tooltip={isLabelTruncated ? item.label : undefined}
-        size={size}
-        hasLighterFont={hasLighterFont}
+        size={size === "xs" ? "sm" : "md"}
       />
     );
   }
 
   if (isButtonItem(item)) {
     return (
+      // TODO(button-migration): hasLighterFont dropped
       <Button
         onClick={item.onClick}
         icon={item.icon}
         variant={buttonVariant ?? (isLast ? "ghost" : "ghost-secondary")}
         label={truncatedLabel}
         tooltip={isLabelTruncated ? item.label : undefined}
-        size={size}
-        hasLighterFont={hasLighterFont}
+        size={size === "xs" ? "sm" : "md"}
       />
     );
   }
@@ -181,7 +180,7 @@ function BreadcrumbItemRenderer({
       <div className="s-shrink0 s-label-sm s-inline-flex s-h-9 s-items-center s-gap-2 s-border s-border-border/0 s-px-3">
         <Icon
           visual={item.icon}
-          size={ICON_SIZE_MAP[size]}
+          size={size === "xs" ? "xs" : "sm"}
           className={cn("-s-mx-0.5")}
         />
         <div className={textClassName}>{item.label}</div>
@@ -306,7 +305,7 @@ interface BreadcrumbButtonProps {
   label: string;
   onClick?: () => void;
   variant?: ButtonVariantType;
-  size?: RegularButtonSize;
+  size?: ButtonSizeType;
   icon?: ComponentType<{ className?: string }>;
 }
 
@@ -314,17 +313,17 @@ export function BreadcrumbButton({
   label,
   onClick,
   variant = "ghost",
-  size = "sm",
+  size = "md",
   icon,
 }: BreadcrumbButtonProps) {
   return (
+    // TODO(button-migration): hasLighterFont dropped
     <Button
       label={label}
       onClick={onClick}
       variant={variant}
       size={size}
       icon={icon}
-      hasLighterFont
     />
   );
 }

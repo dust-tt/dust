@@ -28,7 +28,7 @@ interface LinkPosition {
 
 export function ToolBarContent({ editor }: ToolBarContentProps) {
   const isMobile = useIsMobile();
-  const buttonSize = isMobile ? "xs" : "mini";
+  const buttonSize = "sm" as const; // both old sizes (xs/mini, 28px) map to new "sm"
   const headingShortcutLabel = useKeyboardShortcutLabel("Mod+Alt+1");
   const boldShortcutLabel = useKeyboardShortcutLabel("Mod+B");
   const italicShortcutLabel = useKeyboardShortcutLabel("Mod+I");

@@ -67,14 +67,14 @@ export const MessageCard = React.forwardRef<HTMLDivElement, MessageCardProps>(
           <div className="s-flex s-items-center s-justify-between">
             <Button
               variant="highlight"
-              size="sm"
+              size="md"
               onClick={handleLearnMore}
               label="Learn more"
             />
             {dismissible && onDismiss && (
               <Button
                 variant="ghost"
-                size="sm"
+                size="md"
                 onClick={onDismiss}
                 label="Dismiss"
               />

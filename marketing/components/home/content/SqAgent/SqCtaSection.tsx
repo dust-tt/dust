@@ -1,6 +1,6 @@
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 import { appendUTMParams } from "@marketing/lib/utils/utm";
-import { Button } from "@dust-tt/sparkle";
+import { DeprecatedButton as Button } from "@dust-tt/sparkle";
 
 interface SqCtaSectionProps {
   title: string;

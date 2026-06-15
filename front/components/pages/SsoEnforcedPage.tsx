@@ -57,7 +57,7 @@ export function SsoEnforcedPage() {
             <Button
               variant="highlight"
               label="Connect with SSO"
-              size="md"
+              size="lg"
               href={loginUrl}
             />
           </div>

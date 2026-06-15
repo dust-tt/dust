@@ -108,7 +108,7 @@ export function AgentBuilderDescriptionSection({
           <Input
             ref={registerRef}
             placeholder="Enter agent description"
-            className="pr-10"
+            fieldClassName="pr-10"
             onChange={(e) => {
               userSetDescriptionRef.current = true;
               onChange(e);
@@ -120,7 +120,7 @@ export function AgentBuilderDescriptionSection({
           <Button
             icon={isGenerating ? () => <Spinner size="xs" /> : Stars02}
             variant="outline"
-            size="xs"
+            size="sm"
             className="absolute right-0 top-1/2 mr-1 h-7 w-7 -translate-y-1/2 rounded-lg p-0"
             disabled={
               isGenerating ||

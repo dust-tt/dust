@@ -57,7 +57,7 @@ export function InputBarMessageNavigation({
         <Button
           variant="ghost-secondary"
           icon={icon}
-          size="mini"
+          size="sm"
           onClick={onClick}
           disabled={disabled}
           aria-label={ariaLabel}
@@ -84,7 +84,7 @@ export function InputBarMessageNavigation({
         label={stopButtonLabel}
         onClick={onStopClick}
         disabled
-        size={variant === "compact" ? "mini" : "xs"}
+        size="sm"
       />
     ) : (
       <Button
@@ -94,7 +94,7 @@ export function InputBarMessageNavigation({
         aria-label={variant === "compact" ? stopButtonLabel : undefined}
         onClick={onStopClick}
         disabled={pendingAction !== null}
-        size={variant === "compact" ? "mini" : "xs"}
+        size="sm"
       />
     );
 

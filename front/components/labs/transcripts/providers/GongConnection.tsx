@@ -22,14 +22,14 @@ export function GongConnection({
             <Page.Layout direction="horizontal">
               <Button
                 label="Gong connected"
-                size="sm"
+                size="md"
                 icon={CloudArrowLeftRight}
                 disabled={true}
               />
               <Button
                 label="Disconnect"
                 icon={XClose}
-                size="sm"
+                size="md"
                 variant="outline"
                 onClick={() => setIsDeleteProviderDialogOpened(true)}
               />
@@ -40,7 +40,7 @@ export function GongConnection({
               <div>
                 <Button
                   label="Process your Gong transcripts"
-                  size="sm"
+                  size="md"
                   icon={CloudArrowLeftRight}
                   onClick={onConnect}
                 />

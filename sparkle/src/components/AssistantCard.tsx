@@ -1,5 +1,5 @@
 import { Avatar } from "@sparkle/components/Avatar";
-import type { IconOnlyButtonProps } from "@sparkle/components/Button";
+import type { ButtonProps } from "@sparkle/components/Button";
 import type { CardVariantType } from "@sparkle/components/Card";
 import { Card, CardActionButton } from "@sparkle/components/Card";
 import { TruncatedText } from "@sparkle/components/TruncatedText";
@@ -19,14 +19,14 @@ interface BaseAssistantCardProps {
   variant?: CardVariantType;
 }
 
-type AssistantCardMore = Omit<IconOnlyButtonProps, "icon" | "size">;
+type AssistantCardMore = Omit<ButtonProps, "icon" | "size">;
 
 export const AssistantCardMore = React.forwardRef<
   HTMLButtonElement,
   AssistantCardMore
 >(({ ...props }, ref) => {
   return (
-    <CardActionButton size="icon" ref={ref} icon={DotsHorizontal} {...props} />
+    <CardActionButton size="sm" ref={ref} icon={DotsHorizontal} {...props} />
   );
 });
 AssistantCardMore.displayName = "AssistantCardMore";

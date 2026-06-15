@@ -324,7 +324,7 @@ export function AdvancedNotionManagement({
             placeholder="https://www.notion.so/..."
             value={statusUrl}
             onChange={(e) => setStatusUrl(e.target.value)}
-            className="w-full"
+            fieldClassName="w-full"
           />
           <div className="mt-2">
             <Button

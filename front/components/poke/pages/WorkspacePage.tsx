@@ -199,7 +199,7 @@ export function WorkspacePage() {
                 isSelect
                 label={`Segmentation: ${owner.segmentation ?? "none"}`}
                 variant="outline"
-                size="sm"
+                size="md"
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent>

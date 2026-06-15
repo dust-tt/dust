@@ -1,5 +1,9 @@
 import { LinkWrapper } from "@marketing/lib/platform";
-import { AlertCircle, Button, Icon } from "@dust-tt/sparkle";
+import {
+  AlertCircle,
+  DeprecatedButton as Button,
+  Icon,
+} from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
 interface CustomErrorPageProps {

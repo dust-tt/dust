@@ -9,7 +9,13 @@ import { clientFetch } from "@marketing/lib/egress/client";
 import { useGeolocation } from "@marketing/lib/swr/geo";
 import { getStoredUTMParams } from "@marketing/lib/utils/utm";
 import { normalizeError } from "@marketing/types/shared/utils/error_utils";
-import { Button, Checkbox, Input, Label, Spinner } from "@dust-tt/sparkle";
+import {
+  DeprecatedButton as Button,
+  Checkbox,
+  DeprecatedInput as Input,
+  Label,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { useController, useForm } from "react-hook-form";

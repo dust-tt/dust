@@ -89,7 +89,7 @@ export function TruncatedContent({
           {shouldShowToggle && (
             <Button
               variant={variant === "light" ? "ghost-secondary" : "outline"}
-              size="xs"
+              size="sm"
               label={isCollapsed ? expandLabel : collapseLabel}
               icon={
                 variant === "light"

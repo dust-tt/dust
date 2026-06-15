@@ -89,7 +89,7 @@ export function AdvancedSettings() {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button label="Advanced" variant="outline" size="sm" isSelect />
+          <Button label="Advanced" variant="outline" size="md" isSelect />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           <ModelSelectionSubmenu models={models} />

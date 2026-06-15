@@ -54,7 +54,7 @@ export function PodTaskScopeFilter() {
         <DropdownMenuTrigger asChild>
           <Button
             type="button"
-            size="sm"
+            size="md"
             variant="outline"
             icon={Eye}
             isSelect

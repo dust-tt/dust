@@ -74,7 +74,7 @@ export function InvitationsList({
                 <>
                   <span className="text-red-500">(expired)</span>
                   <Button
-                    size="xs"
+                    size="sm"
                     variant="outline"
                     icon={Mail01}
                     label="Resend"

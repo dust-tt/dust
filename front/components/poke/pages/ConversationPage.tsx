@@ -267,7 +267,7 @@ const AgentMessageView = ({
                 {a.mcpIO && (
                   <Button
                     variant={a.mcpIO?.isError ? "warning" : "primary"}
-                    size="xs"
+                    size="sm"
                     icon={
                       isExpanded
                         ? ChevronDown
@@ -577,7 +577,7 @@ export function ConversationPage() {
                 href={`${langfuseUiBaseUrl}/traces?filter=metadata%3BstringObject%3BconversationId%3B%3D%3B${conversationId}`}
                 label="Langfuse Traces"
                 variant="primary"
-                size="xs"
+                size="sm"
                 target="_blank"
               />
             )}
@@ -585,42 +585,42 @@ export function ConversationPage() {
               href={`http://go/trace-conversation/${conversation.sId}`}
               label="Trace Conversation"
               variant="primary"
-              size="xs"
+              size="sm"
               target="_blank"
             />
             <Button
               href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows?query=%60conversationId%60%3D"${conversationId}"`}
               label="Temporal Workflows"
               variant="primary"
-              size="xs"
+              size="sm"
               target="_blank"
             />
             <Button
               href={getDatadogSandboxLogsUrl(conversationId)}
               label="Sandbox Logs"
               variant="primary"
-              size="xs"
+              size="sm"
               target="_blank"
             />
             <Button
               href={`/poke/${owner.sId}/data_sources/${conversationDataSourceId}`}
               label="Conversation DS"
               variant="primary"
-              size="xs"
+              size="sm"
               target="_blank"
               disabled={!conversationDataSourceId}
             />
             <Button
               label={useMarkdown ? "Plain Text" : "Preview Markdown"}
               variant="outline"
-              size="xs"
+              size="sm"
               icon={useMarkdown ? DocumentTextIcon : CodeBracketIcon}
               onClick={() => setUseMarkdown(!useMarkdown)}
             />
             <Button
               label="Render Conversation"
               variant="primary"
-              size="xs"
+              size="sm"
               onClick={() => {
                 if (!showRenderControls) {
                   setShowRenderControls(true);
@@ -633,7 +633,7 @@ export function ConversationPage() {
             <Button
               label="Self-improving skills test"
               variant="primary"
-              size="xs"
+              size="sm"
               onClick={() => void copyTestCase()}
               disabled={isTestCaseLoading}
             />
@@ -652,7 +652,7 @@ export function ConversationPage() {
                           : "Select Agent"
                       }
                       variant="outline"
-                      size="xs"
+                      size="sm"
                     />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
@@ -672,7 +672,7 @@ export function ConversationPage() {
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     setContextSizeOverride(e.target.value)
                   }
-                  className="h-7 w-44"
+                  fieldClassName="h-7 w-44"
                 />
               </div>
             )}
@@ -706,7 +706,7 @@ export function ConversationPage() {
                     <Button
                       label={isCopiedJSON ? "Copied" : "Copy JSON"}
                       variant="outline"
-                      size="xs"
+                      size="sm"
                       icon={isCopiedJSON ? ClipboardCheck : Clipboard}
                       onClick={() =>
                         copyJSON(
@@ -721,7 +721,7 @@ export function ConversationPage() {
                     <Button
                       label="Close"
                       variant="outline"
-                      size="xs"
+                      size="sm"
                       icon={XClose}
                       onClick={() => {
                         setRenderError(null);

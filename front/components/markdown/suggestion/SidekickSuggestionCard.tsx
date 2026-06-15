@@ -123,7 +123,7 @@ const InstructionsSuggestionCard = memo(
             isPending ? (
               <Button
                 variant="outline"
-                size="xs"
+                size="sm"
                 icon={Eye}
                 tooltip="Review in instructions"
                 onClick={() => focusOnSuggestion(agentSuggestion)}

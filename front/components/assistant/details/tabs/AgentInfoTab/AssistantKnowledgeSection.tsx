@@ -467,7 +467,7 @@ function RetrievalActionTagsFilterPopover({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          size="xs"
+          size="sm"
           label="Filters"
           isSelect
           counterValue={tagsCounter ? tagsCounter.toString() : "auto"}

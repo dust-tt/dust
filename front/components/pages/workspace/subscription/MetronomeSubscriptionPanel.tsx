@@ -412,7 +412,7 @@ export function MetronomeSubscriptionPanel() {
             {!isEnterprise &&
               (isCancellationScheduled ? (
                 <Button
-                  size="sm"
+                  size="md"
                   label="Resume subscription"
                   variant="highlight"
                   disabled={isReactivatingSubscription}
@@ -426,7 +426,7 @@ export function MetronomeSubscriptionPanel() {
                 />
               ) : (
                 <Button
-                  size="sm"
+                  size="md"
                   label="Cancel subscription"
                   variant="warning"
                   disabled={isCancellingSubscription}

@@ -587,7 +587,7 @@ export function BaseProgrammaticCostChart({
           <span>Usage cost graph</span>
           <Button
             icon={ChevronLeft}
-            size="xs"
+            size="sm"
             variant="ghost"
             onClick={handlePreviousPeriod}
             tooltip="Previous period"
@@ -599,7 +599,7 @@ export function BaseProgrammaticCostChart({
           {canGoNext && (
             <Button
               icon={ChevronRight}
-              size="xs"
+              size="sm"
               variant="ghost"
               onClick={handleNextPeriod}
               tooltip="Next period"
@@ -607,7 +607,7 @@ export function BaseProgrammaticCostChart({
           )}
           <Button
             icon={Download01}
-            size="xs"
+            size="sm"
             variant="ghost"
             onClick={handleExportCsv}
             tooltip="Export cost data from this period as CSV"
@@ -630,7 +630,7 @@ export function BaseProgrammaticCostChart({
           {hasFilters && (
             <Button
               label="Clear filters"
-              size="xs"
+              size="sm"
               variant="ghost"
               onClick={handleClearFilters}
             />
@@ -642,7 +642,7 @@ export function BaseProgrammaticCostChart({
                   DISPLAY_MODE_OPTIONS.find((opt) => opt.value === displayMode)
                     ?.label ?? "Cumulative"
                 }
-                size="xs"
+                size="sm"
                 variant="outline"
                 isSelect
               />
@@ -666,7 +666,7 @@ export function BaseProgrammaticCostChart({
                         ?.label
                     : "Global"
                 }
-                size="xs"
+                size="sm"
                 variant="outline"
                 isSelect
               />
@@ -693,7 +693,7 @@ export function BaseProgrammaticCostChart({
                     TOP_K_OPTIONS.find((opt) => opt.value === groupByCount)
                       ?.label ?? "Top 5"
                   }
-                  size="xs"
+                  size="sm"
                   variant="outline"
                   isSelect
                 />

@@ -69,7 +69,7 @@ export function CreateConnectionOAuthModal({
               />
               <Button
                 label="Read our guide"
-                size="xs"
+                size="sm"
                 variant="outline"
                 href={connectorUIConfiguration.guideLink ?? ""}
                 target="_blank"
@@ -137,7 +137,7 @@ export function CreateConnectionOAuthModal({
                 <div className="flex gap-2">
                   <Button
                     variant="highlight"
-                    size="md"
+                    size="lg"
                     icon={CloudArrowLeftRight}
                     onClick={() => {
                       setIsLoading(true);

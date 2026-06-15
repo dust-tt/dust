@@ -346,7 +346,7 @@ export function EditSpaceManagedDataSourcesViews({
       }
       variant="primary"
       icon={Plus}
-      size="sm"
+      size="md"
       onClick={() => {
         openAddDataModal();
       }}

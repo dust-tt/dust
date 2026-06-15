@@ -148,7 +148,7 @@ export function ChangeMemberModal({
                           <Button
                             variant="warning"
                             label="Revoke member access"
-                            size="sm"
+                            size="md"
                             disabled={member.origin === "provisioned"}
                             tooltip={
                               member.origin === "provisioned"

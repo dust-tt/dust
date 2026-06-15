@@ -249,7 +249,7 @@ export function SearchDropdownContent({
             onAgentMoreClick ? (
               <Button
                 variant="ghost"
-                size="xs"
+                size="sm"
                 icon={DotsHorizontal}
                 onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.stopPropagation();
@@ -321,7 +321,7 @@ export function AllTabContent({
           <>
             {uniqueTags.map((tag) => (
               <Button
-                size="xs"
+                size="sm"
                 variant={selectedTag === tag.sId ? "primary" : "outline"}
                 key={tag.sId}
                 label={tag.name}

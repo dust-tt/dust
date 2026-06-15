@@ -108,7 +108,7 @@ function RedisInstanceResult({
           <Button
             label={isInvalidating ? "Invalidating..." : "Invalidate"}
             variant="warning"
-            size="sm"
+            size="md"
             disabled={isInvalidating}
             onClick={() => setShowConfirm(true)}
           />
@@ -315,7 +315,7 @@ function ResourceLookupForm({ onSubmit }: ResourceLookupFormProps) {
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
-              size="sm"
+              size="md"
               isSelect
               label={selectedResource?.label ?? "Select a resource..."}
             />
@@ -432,7 +432,7 @@ function ResourceInvalidateForm() {
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
-              size="sm"
+              size="md"
               isSelect
               label={selectedResource?.label ?? "Select a resource..."}
             />

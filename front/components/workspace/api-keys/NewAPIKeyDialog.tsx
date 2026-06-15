@@ -180,7 +180,7 @@ export const NewAPIKeyDialog = ({
                       <Button
                         variant="outline"
                         label="Add Spaces"
-                        size="sm"
+                        size="md"
                         isSelect
                       />
                     </DropdownMenuTrigger>
@@ -232,7 +232,7 @@ export const NewAPIKeyDialog = ({
                 <div className="flex flex-wrap gap-1">
                   <Button
                     label={GLOBAL_SPACE_NAME}
-                    size="xs"
+                    size="sm"
                     variant="outline"
                     disabled
                   />
@@ -246,7 +246,7 @@ export const NewAPIKeyDialog = ({
                         key={gId}
                         label={prettifyGroupName(group)}
                         icon={XClose}
-                        size="xs"
+                        size="sm"
                         variant="ghost"
                         onClick={() => removeGroupId(gId)}
                       />

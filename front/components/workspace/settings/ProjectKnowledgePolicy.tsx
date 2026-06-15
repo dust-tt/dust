@@ -53,7 +53,7 @@ export function ProjectKnowledgePolicy({ owner }: { owner: WorkspaceType }) {
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
-              size="sm"
+              size="md"
               isSelect
               label={selectedPolicy?.label}
               icon={selectedPolicy?.icon}

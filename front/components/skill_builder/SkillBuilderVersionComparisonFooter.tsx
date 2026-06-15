@@ -37,7 +37,7 @@ export function SkillBuilderVersionComparisonFooter() {
       <div className="flex items-center justify-end">
         <Button
           variant="outline"
-          size="sm"
+          size="md"
           icon={ReverseLeft}
           onClick={restoreAll}
           label="Restore all fields from this version"

@@ -78,7 +78,7 @@ export function Pagination({
       >
         <Button
           variant="outline"
-          size="xs"
+          size="sm"
           disabled={!canPreviousPage}
           icon={ChevronLeft}
           onClick={previousPage}
@@ -96,7 +96,7 @@ export function Pagination({
 
         <Button
           variant="outline"
-          size="xs"
+          size="sm"
           disabled={!canNextPage}
           icon={ChevronRight}
           onClick={nextPage}

@@ -82,7 +82,7 @@ export function AgentDetailsButtonBar({
       <Button
         icon={agentIsFavorite ? StarFilled : Star01}
         tooltip={agentIsFavorite ? "Remove from favorites" : "Add to favorites"}
-        size="sm"
+        size="md"
         variant="outline"
         disabled={isFavoriteDisabled}
         onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
@@ -91,7 +91,7 @@ export function AgentDetailsButtonBar({
       {canShowAgentConversationActions(agentConfiguration.sId) && (
         <Button
           icon={MessagePlusCircle}
-          size="sm"
+          size="md"
           variant="outline"
           tooltip="New conversation"
           onClick={handleNewConversation}
@@ -100,7 +100,7 @@ export function AgentDetailsButtonBar({
 
       {agentConfiguration.scope !== "global" && (
         <Button
-          size="sm"
+          size="md"
           tooltip="Edit agent"
           href={
             canEditAgent
@@ -318,7 +318,7 @@ export function AgentDetailsDropdownMenu({
       ) : showTrigger ? (
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
-            <Button icon={DotsHorizontal} size="sm" variant="outline" />
+            <Button icon={DotsHorizontal} size="md" variant="outline" />
           </DropdownMenuTrigger>
           <DropdownMenuContent>{menuItems}</DropdownMenuContent>
         </DropdownMenu>

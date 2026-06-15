@@ -1,8 +1,8 @@
 "use client";
 
 import { appendUTMParams } from "@marketing/lib/utils/utm";
-import type { RegularButtonProps } from "@dust-tt/sparkle";
-import { Button } from "@dust-tt/sparkle";
+import type { DeprecatedRegularButtonProps as RegularButtonProps } from "@dust-tt/sparkle";
+import { DeprecatedButton as Button } from "@dust-tt/sparkle";
 
 interface UTMButtonProps extends Omit<RegularButtonProps, "href"> {
   href?: string;

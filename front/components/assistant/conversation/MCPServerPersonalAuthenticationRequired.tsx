@@ -213,7 +213,7 @@ export function MCPServerPersonalAuthenticationRequired({
       <div className="flex justify-end gap-3">
         <Button
           variant="outline"
-          size="xs"
+          size="sm"
           label="Skip"
           icon={XClose}
           // Not gated on `isConnecting`: the user must always be able to abandon
@@ -223,7 +223,7 @@ export function MCPServerPersonalAuthenticationRequired({
         />
         <Button
           variant="highlight"
-          size="xs"
+          size="sm"
           label={connectionError ? "Retry" : "Connect"}
           icon={Check}
           disabled={

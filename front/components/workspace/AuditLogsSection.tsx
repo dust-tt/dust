@@ -37,14 +37,14 @@ export function AuditLogsSection({ owner }: AuditLogsSectionProps) {
         <div className="flex justify-end gap-2">
           <Button
             label="View Logs"
-            size="sm"
+            size="md"
             variant="outline"
             disabled={loadingPortal !== null}
             onClick={() => void handleClick("view_logs")}
           />
           <Button
             label="Configure Export"
-            size="sm"
+            size="md"
             variant="outline"
             disabled={loadingPortal !== null}
             onClick={() => void handleClick("configure_export")}

@@ -112,7 +112,7 @@ export function ObservabilityPeriodSelector({
                   ? "Loading"
                   : "Not available"
             }
-            size="xs"
+            size="sm"
             variant="outline"
             isSelect
             disabled={versionMarkers.length === 0}
@@ -137,7 +137,7 @@ export function ObservabilityPeriodSelector({
       <DropdownMenuTrigger asChild>
         <Button
           label={`Last ${period} days`}
-          size="xs"
+          size="sm"
           variant="outline"
           isSelect
         />

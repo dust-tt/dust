@@ -1037,7 +1037,7 @@ DataTable.MoreButton = function MoreButton({
       >
         <Button
           icon={DotsHorizontal}
-          size="icon"
+          size="sm"
           variant="ghost-secondary"
           disabled={disabled}
           className={cn(
@@ -1246,7 +1246,7 @@ DataTable.BasicCellContent = function BasicCellContent({
                     e.stopPropagation();
                     await handleCopy();
                   }}
-                  size="xs"
+                  size="sm"
                 />
               )}
             </div>
@@ -1275,7 +1275,7 @@ DataTable.BasicCellContent = function BasicCellContent({
                 e.stopPropagation();
                 await handleCopy();
               }}
-              size="xs"
+              size="sm"
             />
           )}
         </div>

@@ -263,14 +263,14 @@ export function SkillSuggestionCard({
             <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
               <Button
                 variant="outline"
-                size="sm"
+                size="md"
                 label="Decline"
                 onClick={() => onDecline(suggestion)}
                 disabled={disabled}
               />
               <Button
                 variant="highlight"
-                size="sm"
+                size="md"
                 label="Accept"
                 onClick={() => onAccept(suggestion)}
                 disabled={disabled}

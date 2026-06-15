@@ -9,7 +9,7 @@ import {
 } from "@marketing/lib/swr/academy";
 import { TRACKING_AREAS, trackEvent } from "@marketing/lib/tracking";
 import {
-  Button,
+  DeprecatedButton as Button,
   ConversationMessageAvatar,
   ConversationMessageContainer,
   ConversationMessageContent,

@@ -132,7 +132,7 @@ export function JoinPage() {
         <div className="flex flex-col items-center justify-center gap-4">
           <Button
             variant="primary"
-            size="sm"
+            size="md"
             label={userExists ? "Sign in" : "Sign up"}
             icon={LogIn01}
             onClick={() => (window.location.href = signInUrl)}

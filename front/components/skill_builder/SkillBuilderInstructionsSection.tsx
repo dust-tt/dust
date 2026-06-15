@@ -59,7 +59,7 @@ export function SkillBuilderInstructionsSection() {
           {instructionsDiffer && (
             <Button
               variant="outline"
-              size="sm"
+              size="md"
               icon={ReverseLeft}
               onClick={restoreInstructions}
               label="Restore instructions"

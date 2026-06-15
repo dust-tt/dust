@@ -119,7 +119,7 @@ function TaskRowAssigneeMenu({
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          size="icon"
+          size="sm"
           isRounded
           disabled={disabled}
           tooltip={tooltip}
@@ -287,7 +287,7 @@ export function AddTaskComposer({
         }}
       />
       <Button
-        size="sm"
+        size="md"
         variant="highlight"
         label="Add"
         isLoading={isAdding}

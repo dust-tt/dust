@@ -1,81 +1,69 @@
-import { BUTTON_VARIANTS, Button } from "@sparkle/components/Button";
+import {
+  Button,
+  type ButtonProps,
+  type ButtonSizeType,
+  type ButtonVariantType,
+} from "@sparkle/components/Button";
 import type { Tooltip } from "@sparkle/components/Tooltip";
-import { cn } from "@sparkle/lib/utils";
-import { cva } from "class-variance-authority";
 import React, { type ComponentType, type MouseEventHandler } from "react";
 
-export const ICON_BUTTON_VARIANTS = BUTTON_VARIANTS;
+// IconButton is a thin convenience wrapper around the (new) ghost Button,
+// rendered icon-only. Its legacy `variant` only ever set the icon color, so it
+// maps onto the new ghost button family; legacy sizes map onto the new S/M/L
+// scale. The old hover:scale zoom is dropped in favor of the new ghost hover.
+
+export const ICON_BUTTON_VARIANTS = [
+  "primary",
+  "highlight",
+  "highlight-secondary",
+  "warning",
+  "warning-secondary",
+  "outline",
+  "ghost",
+  "ghost-secondary",
+] as const;
 export type IconButtonVariantType = (typeof ICON_BUTTON_VARIANTS)[number];
 
-const iconButtonVariants = cva(
-  "s-transition-all s-ease-out s-duration-300 s-cursor-pointer hover:s-scale-110",
-  {
-    variants: {
-      variant: {
-        primary: cn(
-          "s-text-highlight-500 dark:s-text-highlight-500-night",
-          "hover:s-text-highlight-400 dark:hover:s-text-highlight-500-night",
-          "active:s-text-highlight-600 dark:active:s-text-highlight-600-night",
-          "s-text-primary-500 dark:s-text-primary-500-night"
-        ),
-        warning: cn(
-          "s-text-warning-500 dark:s-text-warning-500-night",
-          "hover:s-text-warning-400 dark:hover:s-text-warning-500-night",
-          "active:s-text-warning-600 dark:active:s-text-warning-600-night",
-          "s-text-primary-500 dark:s-text-primary-500-night"
-        ),
-        "warning-secondary": cn(
-          "s-text-warning-500 dark:s-text-warning-500-night",
-          "hover:s-text-warning-400 dark:hover:s-text-warning-500-night",
-          "active:s-text-warning-600 dark:active:s-text-warning-600-night",
-          "s-text-primary-500 dark:s-text-primary-500-night"
-        ),
-        highlight: cn(
-          "s-text-foreground dark:s-text-foreground-night",
-          "hover:s-text-highlight-400 dark:hover:s-text-highlight-500-night",
-          "active:s-text-highlight-600 dark:active:s-text-highlight-600-night",
-          "s-text-primary-500 dark:s-text-primary-500-night"
-        ),
-        "highlight-secondary": cn(
-          "s-text-foreground dark:s-text-foreground-night",
-          "hover:s-text-highlight-400 dark:hover:s-text-highlight-500-night",
-          "active:s-text-highlight-600 dark:active:s-text-highlight-600-night",
-          "s-text-primary-500 dark:s-text-primary-500-night"
-        ),
-        outline: cn(
-          "s-text-primary-700 dark:s-text-primary-700-night",
-          "hover:s-text-primary-400 dark:hover:s-text-primary-400-night",
-          "active:s-text-highlight-600 dark:active:s-text-highlight-600-night",
-          "s-text-primary-500 dark:s-text-primary-500-night"
-        ),
-        ghost: cn(
-          "s-text-white dark:s-text-primary-950",
-          "hover:s-text-primary-100 dark:hover:s-text-primary-100-night",
-          "active:s-text-primary-200 dark:active:s-text-primary-200-night",
-          "s-text-white/50 dark:s-text-primary-950/50"
-        ),
-        "ghost-secondary": cn(
-          "s-text-white",
-          "hover:s-text-primary-100 dark:hover:s-text-primary-100-night",
-          "active:s-text-primary-200 dark:active:s-text-primary-200-night",
-          "s-text-white/50 dark:s-text-primary-950/50"
-        ),
-      },
-    },
-    defaultVariants: {
-      variant: "outline",
-    },
-  }
-);
+const VARIANT_MAP: Record<IconButtonVariantType, ButtonVariantType> = {
+  primary: "ghost",
+  outline: "ghost",
+  ghost: "ghost",
+  "ghost-secondary": "ghost-secondary",
+  highlight: "highlight-ghost",
+  "highlight-secondary": "highlight-ghost",
+  warning: "warning-ghost",
+  "warning-secondary": "warning-ghost",
+};
+
+type LegacyIconButtonSize =
+  | "xmini"
+  | "mini"
+  | "xs"
+  | "sm"
+  | "md"
+  | "icon-xs"
+  | "icon"
+  | "icon-sm";
+
+const SIZE_MAP: Record<LegacyIconButtonSize, ButtonSizeType> = {
+  xmini: "sm",
+  mini: "sm",
+  "icon-xs": "sm",
+  xs: "sm",
+  icon: "sm",
+  sm: "md",
+  "icon-sm": "md",
+  md: "lg",
+};
 
 export interface IconButtonProps
-  extends Omit<
-    React.ComponentPropsWithoutRef<typeof Button>,
-    "label" | "variant"
-  > {
+  extends Omit<ButtonProps, "label" | "variant" | "size" | "icon"> {
   variant?: IconButtonVariantType;
+  size?: LegacyIconButtonSize;
   onClick?: MouseEventHandler<HTMLButtonElement>;
   tooltip?: string;
+  // Accepted for backwards compatibility; the new Button tooltip has no side
+  // option, so this is not forwarded (matching the previous behavior).
   tooltipPosition?: React.ComponentProps<typeof Tooltip>["side"];
   icon: ComponentType;
 }
@@ -84,33 +72,20 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
   (
     {
       variant = "outline",
-      onClick,
-      disabled = false,
-      tooltip,
-      icon,
-      className,
       size = "sm",
+      disabled = false,
+      tooltipPosition: _tooltipPosition,
+      icon,
       ...props
     },
     ref
   ) => (
     <Button
-      tooltip={tooltip}
-      className={cn(
-        iconButtonVariants({ variant }),
-        disabled &&
-          cn(
-            "s-text-primary-500 dark:s-text-primary-500-night",
-            "s-cursor-default hover:s-scale-100"
-          ),
-        className
-      )}
-      onClick={onClick}
-      disabled={disabled}
       ref={ref}
-      size={size}
+      variant={VARIANT_MAP[variant]}
+      size={SIZE_MAP[size]}
       icon={icon}
-      variant="ghost"
+      disabled={disabled}
       {...props}
     />
   )
@@ -118,4 +93,4 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
 
 IconButton.displayName = "IconButton";
 
-export { IconButton, iconButtonVariants };
+export { IconButton };

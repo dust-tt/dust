@@ -804,7 +804,7 @@ function AgentBuilderContent({
             title={title}
             onCancel={handleCancel}
             saveButtonProps={{
-              size: "sm",
+              size: "md",
               label: saveLabel,
               variant: "highlight",
               onClick: handleSaveWithValidation,

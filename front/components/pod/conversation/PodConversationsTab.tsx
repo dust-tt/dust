@@ -329,7 +329,7 @@ export function PodConversationsTab({
                     </ButtonsSwitchList>
                   )}
                   <Button
-                    size="xs"
+                    size="sm"
                     variant="outline"
                     label="Mark all as read"
                     className="shrink-0"

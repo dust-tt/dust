@@ -6,7 +6,11 @@ import {
   classNames,
   formatTimestampToFriendlyDate,
 } from "@marketing/lib/utils";
-import { Button, Chip, LinkWrapper } from "@dust-tt/sparkle";
+import {
+  DeprecatedButton as Button,
+  Chip,
+  LinkWrapper,
+} from "@dust-tt/sparkle";
 import Image from "next/image";
 
 export const BLOG_PAGE_SIZE = 12;

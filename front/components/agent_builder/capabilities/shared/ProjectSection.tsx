@@ -144,7 +144,7 @@ export function ProjectSection() {
                   selectedProject ? getSpaceIcon(selectedProject) : undefined
                 }
                 variant="outline"
-                size="xs"
+                size="sm"
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent

@@ -549,7 +549,7 @@ export const SpaceDataSourceViewContentList = ({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  size="sm"
+                  size="md"
                   label={viewType === "document" ? "document" : "table"}
                   variant="outline"
                   isSelect

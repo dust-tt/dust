@@ -170,7 +170,7 @@ export default function SpaceSideBarMenu({
                     openSpaceCreationModal && (
                       <Button
                         className="mt-1"
-                        size="xs"
+                        size="sm"
                         variant="ghost"
                         label="New"
                         icon={Plus}

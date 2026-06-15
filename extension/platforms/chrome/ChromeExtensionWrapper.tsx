@@ -1,4 +1,9 @@
-import { Button, cn, DustLogo, Page } from "@dust-tt/sparkle";
+import {
+  DeprecatedButton as Button,
+  cn,
+  DustLogo,
+  Page,
+} from "@dust-tt/sparkle";
 import type { ChromePlatformService } from "@extension/platforms/chrome/services/platform";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { compare } from "compare-versions";

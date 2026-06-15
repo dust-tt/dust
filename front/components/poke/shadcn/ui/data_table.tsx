@@ -142,7 +142,7 @@ export function PokeDataTable<TData, TValue>({
             placeholder="Search ..."
             value={search ?? ""}
             onChange={(e) => onSearchChange?.(e.target.value)}
-            className="max-w-sm"
+            fieldClassName="max-w-sm"
           />
         ) : (
           <Input
@@ -162,7 +162,7 @@ export function PokeDataTable<TData, TValue>({
                     ?.setFilterValue(e.target.value)
                 : table.setGlobalFilter(e.target.value)
             }
-            className="max-w-sm"
+            fieldClassName="max-w-sm"
           />
         )}
         {facets &&

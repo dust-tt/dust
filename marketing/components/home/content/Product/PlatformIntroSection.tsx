@@ -1,6 +1,6 @@
 import { H1, P } from "@marketing/components/home/ContentComponents";
 import { classNames } from "@marketing/lib/utils";
-import { Button } from "@dust-tt/sparkle";
+import { DeprecatedButton as Button } from "@dust-tt/sparkle";
 
 export function PlatformIntroSection() {
   return (

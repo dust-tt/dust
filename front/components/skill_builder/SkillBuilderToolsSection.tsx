@@ -101,7 +101,7 @@ export function SkillBuilderToolsSection() {
           {toolsDiffer && (
             <Button
               variant="outline"
-              size="sm"
+              size="md"
               icon={ReverseLeft}
               onClick={restoreTools}
               label="Restore tools"

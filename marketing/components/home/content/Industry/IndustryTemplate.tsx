@@ -16,7 +16,7 @@ import TrustedBy from "@marketing/components/home/TrustedBy";
 import { useAppRouter } from "@marketing/lib/platform";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
 import { classNames } from "@marketing/lib/utils";
-import { Button, Chip } from "@dust-tt/sparkle";
+import { DeprecatedButton as Button, Chip } from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { ReactElement } from "react";
 

@@ -4,7 +4,7 @@ import {
   P,
 } from "@marketing/components/home/ContentComponents";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
-import { Button, Rocket02 } from "@dust-tt/sparkle";
+import { DeprecatedButton as Button, Rocket02 } from "@dust-tt/sparkle";
 
 import type { FinalCTAConfig } from "./types";
 

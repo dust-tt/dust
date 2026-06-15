@@ -50,7 +50,7 @@ export const CreateDropdown = ({
           data-gtm-label="assistantCreationButton"
           data-gtm-location={dataGtmLocation}
           onClick={withTracking(TRACKING_AREAS.BUILDER, "create_menu")}
-          size="sm"
+          size="md"
           isSelect
           isLoading={isLoading}
           disabled={isLoading}

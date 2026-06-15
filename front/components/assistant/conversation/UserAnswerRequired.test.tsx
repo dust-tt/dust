@@ -101,12 +101,18 @@ vi.mock("@dust-tt/sparkle", () => {
     HTMLInputElement,
     React.InputHTMLAttributes<HTMLInputElement> & {
       containerClassName?: string;
+      fieldClassName?: string;
     }
-  >(({ containerClassName, ...props }, ref) => (
-    <div className={containerClassName}>
-      <input ref={ref} {...props} />
-    </div>
-  ));
+  >(
+    (
+      { containerClassName, fieldClassName: _fieldClassName, ...props },
+      ref
+    ) => (
+      <div className={containerClassName}>
+        <input ref={ref} {...props} />
+      </div>
+    )
+  );
   Input.displayName = "Input";
 
   const Button = ({

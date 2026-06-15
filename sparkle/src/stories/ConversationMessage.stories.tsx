@@ -73,13 +73,13 @@ export const ConversationExample = () => {
               <Button
                 icon={ThumbsUp}
                 onClick={() => {}}
-                size="xs"
+                size="sm"
                 variant={"outline"}
               />,
               <Button
                 icon={ThumbsDown}
                 onClick={() => {}}
-                size="xs"
+                size="sm"
                 variant={"outline"}
               />,
             ]}
@@ -219,13 +219,13 @@ export const ConversationHandoffExample = () => {
               <Button
                 icon={Clipboard}
                 onClick={() => {}}
-                size="xs"
+                size="sm"
                 variant={"outline"}
               />,
               <Button
                 icon={RefreshCw02}
                 onClick={() => {}}
-                size="xs"
+                size="sm"
                 variant={"outline"}
               />,
             ]}

@@ -200,7 +200,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
         {descriptionDiffers && (
           <Button
             variant="outline"
-            size="sm"
+            size="md"
             icon={ReverseLeft}
             onClick={restoreDescription}
             label="Restore description"

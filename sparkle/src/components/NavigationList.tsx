@@ -237,7 +237,7 @@ const NavigationListItemAction = React.forwardRef<
       {...props}
     >
       <Button
-        size="xmini"
+        size="sm"
         icon={DotsHorizontal}
         variant="ghost"
         className="hover:s-bg-sidebar-foreground dark:hover:s-bg-sidebar-foreground-night active:s-bg-sidebar-foreground dark:active:s-bg-sidebar-foreground-night"
@@ -442,7 +442,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
             <div className="s-px-1.5 s-py-1 s-gap-1 s-flex">
               {isShowingAll ? (
                 <Button
-                  size="xs"
+                  size="sm"
                   icon={ChevronUp}
                   variant="ghost-secondary"
                   label="Hide"
@@ -450,7 +450,7 @@ const NavigationListCollapsibleSection = React.forwardRef<
                 />
               ) : (
                 <Button
-                  size="xs"
+                  size="sm"
                   icon={ChevronDown}
                   variant="ghost-secondary"
                   label="Show all"

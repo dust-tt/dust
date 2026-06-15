@@ -85,7 +85,7 @@ function KnowledgeFooterItem({
       visual={<Icon size="sm" visual={VisualComponent} />}
       action={
         <Button
-          size="icon"
+          size="sm"
           variant="ghost"
           icon={XClose}
           onClick={() => removeNodeWithPath(item)}

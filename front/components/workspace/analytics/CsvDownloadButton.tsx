@@ -15,7 +15,7 @@ export function CsvDownloadButton({
     <Button
       icon={Download01}
       variant="outline"
-      size="xs"
+      size="sm"
       tooltip="Download CSV"
       onClick={handleDownload}
       disabled={disabled}

@@ -221,7 +221,7 @@ export function NetworkSection() {
                 </pre>
                 <Button
                   variant="warning"
-                  size="mini"
+                  size="sm"
                   icon={Trash01}
                   tooltip={`Remove ${domain}`}
                   disabled={isUpdatingWorkspaceEgressPolicy}

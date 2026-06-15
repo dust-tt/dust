@@ -48,7 +48,7 @@ export function ConfirmDeleteSpaceDialog({
         <div className="flex w-full flex-col items-end">
           <Button
             icon={Trash01}
-            size="xs"
+            size="sm"
             variant="warning"
             label="Delete space"
           />

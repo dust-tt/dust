@@ -505,13 +505,13 @@ export function CheckoutPage() {
                         placeholder="Enter promotion code"
                         {...registerCoupon("couponCode")}
                         disabled={isApplyingCoupon}
-                        className="flex-1"
+                        fieldClassName="flex-1"
                       />
                       <Button
                         label={isApplyingCoupon ? "Applying…" : "Apply"}
                         disabled={isApplyingCoupon || !couponCodeValue.trim()}
                         onClick={handleApplyCoupon}
-                        size="sm"
+                        size="md"
                         variant="outline"
                       />
                     </div>
@@ -688,13 +688,13 @@ function CheckoutSuccessPage({
           <Button
             label="View receipt"
             variant="outline"
-            size="md"
+            size="lg"
             onClick={() => window.open(receiptUrl, "_blank")}
           />
         )}
         <Button
           label="Start building"
-          size="md"
+          size="lg"
           onClick={() => void router.replace(`/w/${owner.sId}`)}
         />
       </div>
@@ -807,7 +807,7 @@ function RightPane({
               <Button
                 label="Confirm payment"
                 onClick={onConfirmPayment}
-                size="md"
+                size="lg"
                 className="w-full"
               />
             </>

@@ -1,7 +1,12 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { Grid, H1, H3, P } from "@marketing/components/home/ContentComponents";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
-import { Button, Div3D, Hover3D, Rocket02 } from "@dust-tt/sparkle";
+import {
+  DeprecatedButton as Button,
+  Div3D,
+  Hover3D,
+  Rocket02,
+} from "@dust-tt/sparkle";
 import Link from "next/link";
 import type { FC } from "react";
 

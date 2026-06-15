@@ -81,7 +81,7 @@ export default function WorkOSSSOConnection({
             <>
               <Button
                 label="Configure SSO"
-                size="sm"
+                size="md"
                 variant="outline"
                 onClick={() => {
                   window.open(ssoStatus?.setupLink, "_blank");
@@ -90,7 +90,7 @@ export default function WorkOSSSOConnection({
 
               <Button
                 label="De-activate SSO"
-                size="sm"
+                size="md"
                 variant="outline"
                 onClick={() => {
                   setShowDisableWorkOSSSOConnectionModal(true);
@@ -100,7 +100,7 @@ export default function WorkOSSSOConnection({
           ) : (
             <Button
               label="Activate SSO"
-              size="sm"
+              size="md"
               variant="primary"
               tooltip={
                 domains.length === 0 ? "Add a domain to enable SSO" : undefined

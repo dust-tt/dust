@@ -404,7 +404,7 @@ export const CodeBlockWithExtendedSupport = memo(
           actions={
             <Button
               className="s-font-sans"
-              size="xs"
+              size="sm"
               variant={"outline"}
               label={showMermaid ? "Markdown" : "Mermaid"}
               icon={showMermaid ? Terminal : Stars02}
@@ -436,7 +436,7 @@ export const CodeBlockWithExtendedSupport = memo(
           actions={
             <Button
               className="s-font-sans"
-              size="xs"
+              size="sm"
               variant={"outline"}
               label={showPrettyJson ? "Raw JSON" : "Pretty JSON"}
               icon={showPrettyJson ? Terminal : Stars02}

@@ -149,7 +149,7 @@ export function ContentBlockWrapper({
             {getContentToDownload && (
               <Button
                 variant={"outline"}
-                size="xs"
+                size="sm"
                 icon={Download01}
                 onClick={handleDownload}
                 tooltip="Download"
@@ -158,7 +158,7 @@ export function ContentBlockWrapper({
             {content && (
               <Button
                 variant={"outline"}
-                size="xs"
+                size="sm"
                 icon={isCopied ? ClipboardCheck : Clipboard}
                 onClick={handleCopyToClipboard}
                 tooltip="Copy"

@@ -37,7 +37,7 @@ export function AgentActionsPanelHeader({
           {onClose && (
             <Button
               variant="ghost"
-              size="sm"
+              size="md"
               onClick={onClose}
               icon={closeIcon}
               className="text-element-600 hover:text-element-900"

@@ -42,7 +42,7 @@ export function ConversationPlanModePanel({
           </div>
           <Button
             variant="ghost"
-            size="sm"
+            size="md"
             onClick={closePanel}
             icon={XClose}
           />

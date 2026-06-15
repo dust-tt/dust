@@ -554,7 +554,7 @@ export function UsagePage() {
                 ? seatTypeDisplayName(seatTypeFilter)
                 : "All seats"
           }
-          size="sm"
+          size="md"
           isSelect
         />
       </DropdownMenuTrigger>
@@ -631,7 +631,7 @@ export function UsagePage() {
             <Button
               label="Top up"
               icon={ArrowUp}
-              size="sm"
+              size="md"
               variant="outline"
               onClick={() => setShowBuyCreditDialog(true)}
             />

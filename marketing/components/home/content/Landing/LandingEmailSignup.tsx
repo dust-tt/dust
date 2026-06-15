@@ -4,7 +4,13 @@ import { useEnrichmentSubmit } from "@marketing/components/home/content/Landing/
 import { DUST_HAS_SESSION, hasSessionIndicator } from "@marketing/lib/cookies";
 import type { TrackingArea } from "@marketing/lib/tracking";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
-import { ArrowRight, Button, cn, Icon, Spinner } from "@dust-tt/sparkle";
+import {
+  ArrowRight,
+  DeprecatedButton as Button,
+  cn,
+  Icon,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";

@@ -157,7 +157,7 @@ export default function Browser({
                       : "Browserless API not available"
                   }
                   disabled={!isAdmin}
-                  size="xs"
+                  size="sm"
                 />
               </div>
             )}

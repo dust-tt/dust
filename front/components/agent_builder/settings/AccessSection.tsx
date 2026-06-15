@@ -73,7 +73,7 @@ export function AccessSection() {
       <div className="mt-2 flex w-full flex-row flex-wrap items-center gap-2">
         <Button
           variant="outline"
-          size="sm"
+          size="md"
           icon={Users01}
           label="Editors"
           onClick={() => setIsEditorsOpen(true)}
@@ -91,7 +91,7 @@ export function AccessSection() {
           <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
-              size="sm"
+              size="md"
               icon={getDisplayIcon()}
               label={getDisplayValue()}
               isSelect

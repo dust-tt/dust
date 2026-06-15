@@ -156,7 +156,7 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
           <Button
             label="Save"
             variant="highlight"
-            size="xs"
+            size="sm"
             isLoading={isSaving}
             // Prevent the input from blurring (which would revert the edit)
             // before the click registers.

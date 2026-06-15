@@ -69,7 +69,7 @@ function ImageZoomDialog({
           {navigation?.hasPrevious && (
             <Button
               variant="ghost"
-              size="sm"
+              size="md"
               icon={ChevronLeft}
               onClick={(e) => {
                 e.stopPropagation();
@@ -101,7 +101,7 @@ function ImageZoomDialog({
                 <DialogClose asChild>
                   <Button
                     variant="outline"
-                    size="xs"
+                    size="sm"
                     icon={XClose}
                     className="s-absolute s-right-2 s-top-2"
                   />
@@ -109,7 +109,7 @@ function ImageZoomDialog({
                 {imageLoaded && image.downloadUrl && (
                   <Button
                     variant="outline"
-                    size="xs"
+                    size="sm"
                     icon={Download01}
                     tooltip="Download"
                     className="s-absolute s-bottom-2 s-right-2"
@@ -124,7 +124,7 @@ function ImageZoomDialog({
           {navigation?.hasNext && (
             <Button
               variant="ghost"
-              size="sm"
+              size="md"
               icon={ChevronRight}
               onClick={(e) => {
                 e.stopPropagation();

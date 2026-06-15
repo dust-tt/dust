@@ -271,7 +271,7 @@ export function WorkspaceToolUsageChart({
       <DropdownMenuTrigger asChild>
         <Button
           label={getToolSelectorLabel(selectedTools, displayNameMap)}
-          size="xs"
+          size="sm"
           variant="outline"
           isSelect
           disabled={isToolsLoading}

@@ -44,7 +44,7 @@ export function QuickReplyBlock({
   return (
     <span className="float-left clear-left my-0.5">
       <Button
-        size="sm"
+        size="md"
         variant="outline"
         label={label}
         icon={MessageChatSquare}

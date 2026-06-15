@@ -135,7 +135,7 @@ export function RequestActionsModal({ owner, space }: RequestActionsModal) {
                           <Button
                             label="Pick Tools"
                             variant="outline"
-                            size="sm"
+                            size="md"
                             isSelect
                           />
                         )}

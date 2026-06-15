@@ -148,7 +148,7 @@ export function BotToggle({
             <Button
               variant="outline"
               label="Reconnect"
-              size="xs"
+              size="sm"
               icon={RefreshCw02}
               onClick={async () => {
                 const cRes = await setupOAuthConnection({

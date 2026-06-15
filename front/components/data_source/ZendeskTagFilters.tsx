@@ -140,7 +140,7 @@ export function ZendeskTagFilters({
               </div>
               <div className="flex items-center justify-end gap-2">
                 <Button
-                  size="sm"
+                  size="md"
                   onClick={handleSave}
                   disabled={
                     readOnly || !isAdmin || loading || !inputValue.trim()
@@ -148,7 +148,7 @@ export function ZendeskTagFilters({
                   label="Add"
                 />
                 <Button
-                  size="sm"
+                  size="md"
                   variant="outline"
                   onClick={handleCancel}
                   disabled={readOnly || !isAdmin || loading}
@@ -166,7 +166,7 @@ export function ZendeskTagFilters({
             <p>{description}</p>
             {!isEditing && (
               <Button
-                size="sm"
+                size="md"
                 onClick={handleEdit}
                 disabled={readOnly || !isAdmin || loading}
                 label="Add Tags"

@@ -131,7 +131,7 @@ export default function Curl({
                   variant="outline"
                   disabled={readOnly}
                   label={block.spec.method}
-                  size="xs"
+                  size="sm"
                 />
               </DropdownMenuTrigger>
 
@@ -153,7 +153,7 @@ export default function Curl({
               <div className="flex flex-1 gap-2">
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="md"
                   disabled={readOnly}
                   onClick={() => {
                     if (!readOnly) {
@@ -165,7 +165,7 @@ export default function Curl({
                   label={`${block.spec.scheme}://`}
                 />
                 <Input
-                  className="h-full flex-1 rounded-l-none"
+                  fieldClassName="h-full flex-1 rounded-l-none"
                   readOnly={readOnly}
                   value={block.spec.url}
                   onChange={(e) => handleUrlChange(e.target.value)}

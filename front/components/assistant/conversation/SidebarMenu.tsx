@@ -284,7 +284,7 @@ function SearchResults({
           action={
             <>
               <Button
-                size="xs"
+                size="sm"
                 icon={Plus}
                 label="New"
                 variant="ghost-secondary"
@@ -321,7 +321,7 @@ function SearchResults({
                 <div className="flex justify-center py-2">
                   <Button
                     variant="ghost-secondary"
-                    size="xs"
+                    size="sm"
                     label={isLoadingMorePods ? "Loading..." : "Show more"}
                     onClick={handleShowMorePods}
                     disabled={isLoadingMorePods}
@@ -341,7 +341,7 @@ function SearchResults({
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    size="xmini"
+                    size="sm"
                     icon={DotsHorizontal}
                     variant="ghost"
                     aria-label="Conversations options"
@@ -391,7 +391,7 @@ function SearchResults({
             <div className="flex justify-center py-2">
               <Button
                 variant="ghost-secondary"
-                size="xs"
+                size="sm"
                 label={
                   isLoadingMorePrivateConversations ? "Loading..." : "Show more"
                 }
@@ -778,7 +778,7 @@ export function AgentSidebarMenu({
             <>
               {nonStarredSummary.length > 0 && (
                 <Button
-                  size="xs"
+                  size="sm"
                   icon={Plus}
                   label="New"
                   variant="ghost-secondary"
@@ -983,7 +983,7 @@ export function AgentSidebarMenu({
                     <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
                         <Button
-                          size="sm"
+                          size="md"
                           icon={DotsHorizontal}
                           variant="outline"
                         />
@@ -1252,12 +1252,12 @@ function UnreadConversationsSection({
       action={
         shouldShowMarkAllAsReadButton ? (
           <Button
-            size="xmini"
+            size="sm"
             variant="ghost-secondary"
             label="Mark as read"
             onClick={() => onMarkAllAsRead(conversations.map((c) => c.sId))}
             isLoading={isMarkingAllAsRead}
-            hasLighterFont
+            // TODO(button-migration): hasLighterFont dropped
             className="hover:s-bg-sidebar-foreground dark:hover:s-bg-sidebar-foreground-night active:s-bg-sidebar-foreground dark:active:s-bg-sidebar-foreground-night"
           />
         ) : null
@@ -1631,7 +1631,7 @@ function NavigationListWithInbox({
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button
-                      size="xmini"
+                      size="sm"
                       icon={DotsHorizontal}
                       variant="ghost"
                       aria-label="Conversations options"

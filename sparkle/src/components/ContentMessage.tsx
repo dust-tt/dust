@@ -174,7 +174,7 @@ function ContentMessage({
 function ContentMessageAction(props: ButtonProps) {
   return (
     <Button
-      size="xs"
+      size="sm"
       className={cn("s-shrink-0", props.className)}
       {...props}
     />

@@ -94,7 +94,7 @@ export function InteractiveContentSharingToggle({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                size="sm"
+                size="md"
                 isSelect
                 label={selectedOption?.label}
                 icon={selectedOption?.icon}

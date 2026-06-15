@@ -48,7 +48,7 @@ export function PodEmptyCallout({
         isLoading={isSeeding}
         onClick={handleOnboardingClick}
         variant="highlight"
-        size="md"
+        size="lg"
       />
     </div>
   );

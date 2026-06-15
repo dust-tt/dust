@@ -254,7 +254,7 @@ Tree.Item = React.forwardRef<
           {type === "node" && (
             <Button
               icon={isExpanded ? ChevronDown : ChevronRight}
-              size="xmini"
+              size="sm"
               variant="ghost-secondary"
               disabled={!effectiveOnChevronClick}
               onClick={(e) => {

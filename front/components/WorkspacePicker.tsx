@@ -101,7 +101,7 @@ export default function WorkspacePicker({
           <Button
             label={workspace ? workspace.name : "Select workspace"}
             variant="ghost"
-            size="xs"
+            size="sm"
             isSelect
           />
         </DropdownMenuTrigger>

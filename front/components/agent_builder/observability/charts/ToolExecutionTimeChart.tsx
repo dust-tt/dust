@@ -238,7 +238,7 @@ export function ToolExecutionTimeChart({
               <DropdownMenuTrigger asChild>
                 <Button
                   label={selectedServerLabel}
-                  size="xs"
+                  size="sm"
                   variant="outline"
                   isSelect
                   disabled={serverOptions.length === 0}

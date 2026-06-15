@@ -14,9 +14,16 @@ import { describe, expect, it, vi } from "vitest";
 
 // Stub Sparkle UI primitives so they render plain DOM and let us click the checkbox.
 vi.mock("@dust-tt/sparkle", () => ({
-  Button: ({ label, isSelect: _isSelect, ...rest }: any) => (
-    <button {...rest}>{label}</button>
-  ),
+  Button: ({
+    label,
+    isSelect: _isSelect,
+    variant: _variant,
+    size: _size,
+    icon: _icon,
+    iconRight: _iconRight,
+    isLoading: _isLoading,
+    ...rest
+  }: any) => <button {...rest}>{label}</button>,
   Card: ({ children, ...rest }: any) => <div {...rest}>{children}</div>,
   Checkbox: ({ checked, onClick }: any) => (
     <input

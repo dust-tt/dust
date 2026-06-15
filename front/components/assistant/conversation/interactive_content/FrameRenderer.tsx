@@ -496,7 +496,7 @@ function PreviewActionButtons({
             <Button
               icon={isFullScreen ? Minimize01 : Maximize01}
               variant="ghost"
-              size="xs"
+              size="sm"
               onClick={isFullScreen ? exitFullScreen : enterFullScreen}
             />
           }
@@ -515,7 +515,7 @@ function PreviewActionButtons({
             <Button
               variant="ghost"
               disabled={!hasPreviousVersion}
-              size="xs"
+              size="sm"
               icon={ReverseLeft}
               onClick={onRevert}
             />
@@ -530,7 +530,7 @@ function PreviewActionButtons({
           <Button
             icon={RefreshCw01}
             variant="ghost"
-            size="xs"
+            size="sm"
             onClick={reloadFile}
           />
         }

@@ -149,7 +149,7 @@ export function SlackChannelPatternInput({
             <DropdownMenuTrigger asChild value={newPattern.spaceId}>
               <Button
                 variant="outline"
-                size="sm"
+                size="md"
                 className="w-full"
                 label={selectedSpace ? selectedSpace.name : "Select a Space"}
               />

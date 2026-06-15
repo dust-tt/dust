@@ -312,7 +312,7 @@ export function PokeWorkspaceUsageChart({
     <div className="flex items-center gap-2">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button label={timezone} variant="outline" size="xs" isSelect />
+          <Button label={timezone} variant="outline" size="sm" isSelect />
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           <DropdownMenuRadioGroup value={timezone}>

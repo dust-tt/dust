@@ -134,6 +134,8 @@ export function ActionCardBlock({
   const descriptionClasses = descriptionVariants({ size, status: state });
 
   const elementSize = isCompact ? "xs" : "sm";
+  // Button size remap: legacy xs->sm, sm->md (see button-migration).
+  const buttonSize = isCompact ? "sm" : "md";
   const resolvedVisual = visual
     ? React.cloneElement(visual, { size: elementSize })
     : null;
@@ -156,14 +158,14 @@ export function ActionCardBlock({
     <div className="s-flex s-flex-wrap s-justify-end s-gap-2">
       <Button
         variant="outline"
-        size={elementSize}
+        size={buttonSize}
         label={rejectLabel ?? DEFAULT_REJECT_LABEL}
         disabled={isDisabled}
         onClick={handleRejectClick}
       />
       <Button
         variant={applyVariant}
-        size={elementSize}
+        size={buttonSize}
         label={applyLabel ?? DEFAULT_APPLY_LABEL}
         disabled={isDisabled}
         onClick={handleAcceptClick}

@@ -161,7 +161,7 @@ interface NewDialogHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
 const DialogHeader = ({
   className,
   children,
-  buttonSize = "mini",
+  buttonSize = "sm",
   buttonVariant = "ghost",
   hideButton = false,
   ...props

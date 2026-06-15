@@ -472,7 +472,7 @@ function TriggerEditView({
         <Button
           icon={ArrowLeft}
           variant="ghost"
-          size="sm"
+          size="md"
           onClick={() => {
             if (!isOnSelectionPage && mode.type !== "edit") {
               handleCancel();

@@ -4,13 +4,13 @@ import { Button } from "@dust-tt/sparkle";
 interface CapabilityFilterButtonsProps {
   filter: CapabilityFilterType;
   setFilter: (filter: CapabilityFilterType) => void;
-  size?: "xs" | "sm";
+  size?: "sm" | "md";
 }
 
 export function CapabilityFilterButtons({
   filter,
   setFilter,
-  size = "sm",
+  size = "md",
 }: CapabilityFilterButtonsProps) {
   return (
     <div className="flex gap-2">

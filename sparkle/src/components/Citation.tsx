@@ -185,7 +185,7 @@ const CitationClose = React.forwardRef<HTMLButtonElement, CitationCloseProps>(
       <Button
         ref={ref}
         variant="ghost"
-        size="icon"
+        size="sm"
         className={className}
         icon={XClose}
         onClick={(e) => {

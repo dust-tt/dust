@@ -254,7 +254,7 @@ export function ShareFrameSheet({
               <SheetTitle>Share this frame</SheetTitle>
               <Button
                 variant="ghost"
-                size="sm"
+                size="md"
                 icon={isCopied ? ClipboardCheck : Clipboard}
                 label={isCopied ? "Copied!" : "Copy link"}
                 onClick={async () => {

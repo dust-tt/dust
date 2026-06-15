@@ -168,14 +168,14 @@ function ResultView({ status, conversationId, workspaceId }: ResultViewProps) {
                   <Button
                     variant="primary"
                     label="View Conversation"
-                    size="sm"
+                    size="md"
                   />
                 </a>
               )}
               <Button
                 variant="outline"
                 label="Close"
-                size="sm"
+                size="md"
                 onClick={() => window.close()}
               />
             </div>
@@ -211,7 +211,7 @@ function ErrorView({ errorType }: ErrorViewProps) {
               <p className="text-base text-primary-100">{message}</p>
             </div>
             <a href="/">
-              <Button variant="outline" label="Back to Dust" size="sm" />
+              <Button variant="outline" label="Back to Dust" size="md" />
             </a>
           </div>
         </div>

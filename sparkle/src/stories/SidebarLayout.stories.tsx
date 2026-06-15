@@ -52,7 +52,7 @@ const SampleSidebar = ({
       {onToggle && (
         <Button
           variant="ghost-secondary"
-          size="icon"
+          size="sm"
           icon={isCollapsed ? LayoutRight : LayoutLeft}
           onClick={onToggle}
         />
@@ -146,7 +146,7 @@ const ComplexSidebar = ({
       {onToggle && (
         <Button
           variant="ghost-secondary"
-          size="icon"
+          size="sm"
           icon={isCollapsed ? LayoutRight : LayoutLeft}
           onClick={onToggle}
         />

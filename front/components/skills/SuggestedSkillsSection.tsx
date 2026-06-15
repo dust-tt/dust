@@ -63,7 +63,7 @@ function SuggestedSkillCard({
         onClick={onMoreInfoClick}
         action={
           <CardActionButton
-            size="icon"
+            size="sm"
             icon={XClose}
             onClick={(e) => {
               e.stopPropagation();
@@ -84,7 +84,7 @@ function SuggestedSkillCard({
           </div>
           <div>
             <Button
-              size="xs"
+              size="sm"
               variant="outline"
               icon={Plus}
               label="Add skill"

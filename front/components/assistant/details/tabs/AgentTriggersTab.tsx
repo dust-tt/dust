@@ -123,7 +123,7 @@ export function AgentTriggersTab({
           label="Add trigger"
           icon={Plus}
           variant="outline"
-          size="sm"
+          size="md"
           onClick={onAddTrigger}
         />
       </div>

@@ -116,23 +116,23 @@ function buildActionsColumn({
       return (
         <div className="flex w-full items-center justify-end gap-2">
           <Button
-            size="sm"
-            variant="warning-secondary"
+            size="md"
+            variant="warning-ghost"
             icon={X}
             label="Deny"
             onClick={() => onDeny(request)}
           />
           {canUpgradePlan && (
             <Button
-              size="sm"
-              variant="highlight-secondary"
+              size="md"
+              variant="highlight-ghost"
               icon={Check}
               label="Upgrade plan"
               onClick={() => onUpgradePlan(request)}
             />
           )}
           <Button
-            size="sm"
+            size="md"
             variant="outline"
             label="Edit limit"
             onClick={() => onEditLimit(request)}

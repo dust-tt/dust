@@ -45,7 +45,7 @@ function PanelHeader({
               <TabsList>
                 <Button
                   icon={LayoutRight}
-                  size="sm"
+                  size="md"
                   variant="ghost-secondary"
                   tooltip="Hide preview"
                   onClick={onTogglePanel}
@@ -82,7 +82,7 @@ function PanelHeader({
         <div className="flex h-full w-full items-end justify-center pb-3.5">
           <Button
             icon={LayoutRight}
-            size="sm"
+            size="md"
             variant="ghost-secondary"
             tooltip="Open preview"
             onClick={onTogglePanel}
@@ -108,7 +108,7 @@ function CollapsedTabs({
         <Button
           icon={Sidekick}
           variant="ghost"
-          size="sm"
+          size="md"
           tooltip="Sidekick"
           onClick={() => onTabSelect("sidekick")}
         />
@@ -116,14 +116,14 @@ function CollapsedTabs({
       <Button
         icon={Beaker02}
         variant="ghost"
-        size="sm"
+        size="md"
         tooltip="Preview"
         onClick={() => onTabSelect("preview")}
       />
       <Button
         icon={BarChart01}
         variant="ghost"
-        size="sm"
+        size="md"
         tooltip="Insights"
         onClick={withTracking(TRACKING_AREAS.BUILDER, "insights_tab", () =>
           onTabSelect("insights")

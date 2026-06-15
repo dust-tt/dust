@@ -52,7 +52,7 @@ export function MobileOrExtensionAgentBrowser({
                   ? AGENTS_TABS.find((tab) => tab.id === viewTab)?.label
                   : "Select view"
               }
-              size="sm"
+              size="md"
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent>

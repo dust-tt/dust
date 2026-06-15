@@ -14,7 +14,7 @@ import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import TrustedBy from "@marketing/components/home/TrustedBy";
 import { classNames } from "@marketing/lib/utils";
 import {
-  Button,
+  DeprecatedButton as Button,
   Tabs,
   TabsContent,
   TabsList,

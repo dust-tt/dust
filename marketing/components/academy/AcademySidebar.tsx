@@ -7,7 +7,7 @@ import type { SearchableItem } from "@marketing/lib/contentful/types";
 import { LinkWrapper } from "@marketing/lib/platform";
 import {
   ArrowLeft,
-  Button,
+  DeprecatedButton as Button,
   Menu01,
   Sheet,
   SheetContent,

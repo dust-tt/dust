@@ -1,12 +1,17 @@
-import { Button } from "@sparkle/components/Button";
+import { Button, type ButtonSizeType } from "@sparkle/components/Button";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
-type ButtonSize = Extract<
-  React.ComponentProps<typeof Button>["size"],
-  "xs" | "sm" | "md"
->;
+// The switch keeps its own xs/sm/md scale (drives the track padding/rounding
+// below); each maps onto the new button's S/M/L scale for the inner buttons.
+type ButtonSize = "xs" | "sm" | "md";
+
+const BUTTON_SIZE_MAP: Record<ButtonSize, ButtonSizeType> = {
+  xs: "sm",
+  sm: "md",
+  md: "lg",
+};
 
 type ButtonsSwitchContextType = {
   value?: string;
@@ -148,7 +153,7 @@ export const ButtonsSwitch = React.forwardRef<
       ref={ref}
       role="tab"
       aria-selected={isActive}
-      size={size}
+      size={BUTTON_SIZE_MAP[size]}
       variant={isActive ? "outline" : "ghost"}
       label={label}
       icon={icon}

@@ -62,7 +62,7 @@ export function ChartContainer({
               <Button
                 icon={Maximize01}
                 variant="ghost"
-                size="xs"
+                size="sm"
                 onClick={() => setIsFullscreen(true)}
                 tooltip="View fullscreen"
               />

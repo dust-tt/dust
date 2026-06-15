@@ -114,13 +114,13 @@ function DirectorySyncStatus({
             <div className="flex justify-end gap-2">
               <Button
                 label="Configure Directory sync"
-                size="sm"
+                size="md"
                 variant="outline"
                 onClick={onSetupClick}
               />
               <Button
                 label="De-activate Directory sync"
-                size="sm"
+                size="md"
                 variant="outline"
                 onClick={onDisableClick}
               />
@@ -144,7 +144,7 @@ function DirectorySyncStatus({
             <div className="flex justify-end">
               <Button
                 label="Setup Directory sync"
-                size="sm"
+                size="md"
                 variant="primary"
                 onClick={onSetupClick}
               />
@@ -169,7 +169,7 @@ function DirectorySyncStatus({
             <div className="flex justify-end">
               <Button
                 label="Continue setup Directory Sync"
-                size="sm"
+                size="md"
                 variant="primary"
                 onClick={onSetupClick}
               />

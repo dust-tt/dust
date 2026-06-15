@@ -153,7 +153,7 @@ export function TablesManager({
                     "hover:text-muted-foreground dark:hover:text-muted-foreground"
                   )}
                   icon={XClose}
-                  size="xs"
+                  size="sm"
                   variant="outline"
                 />
               </div>
@@ -169,7 +169,7 @@ export function TablesManager({
           className="mt-2"
           icon={Plus}
           label="Add Table"
-          size="xs"
+          size="sm"
           variant="outline"
           disabled={
             !last(block.config.tables as Partial<TableConfig>[])?.table_id

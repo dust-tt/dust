@@ -35,8 +35,8 @@ export const WithFooter = () => (
     <TruncatedContent
       footer={
         <div className="s-flex s-gap-2">
-          <Button variant="outline" size="xs" label="Copy" />
-          <Button variant="outline" size="xs" label="Share" />
+          <Button variant="outline" size="sm" label="Copy" />
+          <Button variant="outline" size="sm" label="Share" />
         </div>
       }
     >

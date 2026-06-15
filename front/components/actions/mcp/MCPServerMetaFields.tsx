@@ -26,14 +26,14 @@ export function MCPServerMetaFields() {
                 <Input
                   {...register(`metaFields.${index}.key`)}
                   placeholder="Key"
-                  className="w-full"
+                  fieldClassName="w-full"
                 />
               </div>
               <div className="col-span-2">
                 <Input
                   {...register(`metaFields.${index}.value`)}
                   placeholder="Value"
-                  className="w-full"
+                  fieldClassName="w-full"
                 />
               </div>
             </div>

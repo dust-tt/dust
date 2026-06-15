@@ -199,7 +199,7 @@ function UsageSection({
               <Button
                 label="Buy credits"
                 variant="outline"
-                size="xs"
+                size="sm"
                 onClick={() => setShowBuyCreditDialog(true)}
               />
             )

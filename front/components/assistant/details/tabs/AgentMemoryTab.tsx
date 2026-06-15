@@ -137,7 +137,7 @@ export function AgentMemoryTab({
                     className="flex flex-col gap-2"
                     action={
                       <CardActionButton
-                        size="icon"
+                        size="sm"
                         icon={Trash01}
                         onClick={() => {
                           setMemoryToDelete(memory.sId);

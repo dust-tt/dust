@@ -166,7 +166,7 @@ export default function TablePicker({
                   variant="outline"
                   label="Select Table"
                   isSelect
-                  size="xs"
+                  size="sm"
                 />
               ) : (
                 <span

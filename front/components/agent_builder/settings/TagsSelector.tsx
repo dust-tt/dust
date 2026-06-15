@@ -148,7 +148,7 @@ export const TagsSelector = ({
               variant="outline"
               label="Add"
               isSelect
-              size="sm"
+              size="md"
               tooltip="Select a tag"
             />
           </DropdownMenuTrigger>

@@ -22,7 +22,7 @@ export function RawJsonTab({ trace }: RawJsonTabProps) {
         <Button
           label={isCopied ? "Copied!" : "Copy JSON"}
           variant="outline"
-          size="sm"
+          size="md"
           icon={isCopied ? ClipboardCheck : Clipboard}
           onClick={() => copy(JSON.stringify(trace, null, 2))}
         />
