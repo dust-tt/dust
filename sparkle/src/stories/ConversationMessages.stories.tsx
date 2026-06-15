@@ -51,7 +51,7 @@ type Story = StoryObj<typeof meta>;
 export const Example: Story = {
   render: () => (
     <div className="s:flex s:w-full s:justify-center s:gap-6">
-      <div className="s:flex s:w-full s:max-w-4xl s:flex-col s:gap-6 s:p-2 s:@sm/conversation:gap-8 s:@md/conversation:gap-10">
+      <div className="s:flex s:w-full s:max-w-4xl s:flex-col s:gap-6 s:p-2 s:@sm-conversation:gap-8 s:@md-conversation:gap-10">
         <ConversationMessageContainer messageType="me" type="user">
           <ConversationMessageAvatar
             avatarUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"

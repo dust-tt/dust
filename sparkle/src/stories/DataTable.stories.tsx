@@ -348,7 +348,7 @@ const columns: ColumnDef<Data>[] = [
     accessorKey: "usedBy",
     id: "usedBy",
     meta: {
-      className: "s:w-[82px] s:hidden s:@xs/table:table-cell",
+      className: "s:w-[82px] s:hidden s:@xs-table:table-cell",
     },
     header: "Used by",
     cell: (info) => (
@@ -375,7 +375,7 @@ const columns: ColumnDef<Data>[] = [
     id: "lastUpdated",
     header: "Last updated",
     meta: {
-      className: "s:w-[128px] s:hidden s:@sm/table:table-cell",
+      className: "s:w-[128px] s:hidden s:@sm-table:table-cell",
     },
     cell: (info) => (
       <DataTable.BasicCellContent label={info.row.original.lastUpdated} />
@@ -387,7 +387,7 @@ const columns: ColumnDef<Data>[] = [
     id: "size",
     header: "Size",
     meta: {
-      className: "s:w-[48px] s:hidden s:@sm/table:table-cell",
+      className: "s:w-[48px] s:hidden s:@sm-table:table-cell",
     },
     cell: (info) => (
       <DataTable.BasicCellContent label={info.row.original.size} />
@@ -944,7 +944,7 @@ const avatarStackColumns: ColumnDef<Data>[] = [
     accessorKey: "usedBy",
     id: "usedBy",
     meta: {
-      className: "s:w-[82px] s:hidden s:@xs/table:table-cell",
+      className: "s:w-[82px] s:hidden s:@xs-table:table-cell",
     },
     header: "Members",
     cell: (info) => (
@@ -971,7 +971,7 @@ const avatarStackColumns: ColumnDef<Data>[] = [
     id: "lastUpdated",
     header: "Last updated",
     meta: {
-      className: "s:w-[128px] s:hidden s:@sm/table:table-cell",
+      className: "s:w-[128px] s:hidden s:@sm-table:table-cell",
     },
     cell: (info) => (
       <DataTable.BasicCellContent label={info.row.original.lastUpdated} />
@@ -983,7 +983,7 @@ const avatarStackColumns: ColumnDef<Data>[] = [
     id: "size",
     header: "Size",
     meta: {
-      className: "s:w-[48px] s:hidden s:@sm/table:table-cell",
+      className: "s:w-[48px] s:hidden s:@sm-table:table-cell",
     },
     cell: (info) => (
       <DataTable.BasicCellContent label={info.row.original.size} />

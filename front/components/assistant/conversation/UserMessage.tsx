@@ -373,7 +373,7 @@ export function UserMessage({
             type="user"
             className={cn(
               isCurrentUser ? "ml-auto" : undefined,
-              "relative max-w-conversation @xxxs/conversation:max-w-[95%] @xxs/conversation:max-w-[80%] @xs/conversation:max-w-[85%]"
+              "relative max-w-conversation @xxxs-conversation:max-w-[95%] @xxs-conversation:max-w-[80%] @xs-conversation:max-w-[85%]"
             )}
             ref={userMessageHoveredRef}
           >
@@ -632,7 +632,7 @@ function ActionMenu({
   // In a narrow container (and in bottom mode), buttons sit below the bubble — always visible.
   const sideItemVisibilityClass = cn(
     "transition-opacity duration-300",
-    mode === "side" && shouldHideActions && "@sm/conversation:opacity-0"
+    mode === "side" && shouldHideActions && "@sm-conversation:opacity-0"
   );
 
   return (

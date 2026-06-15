@@ -26,7 +26,7 @@ export const ConversationContainer = React.forwardRef<
       )}
       {...props}
     >
-      <div className="s:flex s:w-full s:max-w-4xl s:flex-col s:gap-6 s:p-2 s:@sm/conversation:gap-8 s:@md/conversation:gap-10">
+      <div className="s:flex s:w-full s:max-w-4xl s:flex-col s:gap-6 s:p-2 s:@sm-conversation:gap-8 s:@md-conversation:gap-10">
         {children}
       </div>
     </div>
@@ -180,7 +180,7 @@ const ConversationMessageHeader = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          "s:flex s:items-center s:gap-2 s:p-1 s:@sm/conversation:p-0",
+          "s:flex s:items-center s:gap-2 s:p-1 s:@sm-conversation:p-0",
           className
         )}
         {...props}
