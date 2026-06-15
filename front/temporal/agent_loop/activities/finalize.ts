@@ -24,7 +24,7 @@ export async function finalizeSuccessfulAgentLoopActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  const auth = await Authenticator.fromJSON(authType);
+  const auth = await Authenticator.fromJSONForAgentLoop(authType);
 
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
@@ -52,7 +52,7 @@ export async function finalizeGracefullyStoppedAgentLoopActivity(
 ): Promise<void> {
   await finalizeGracefulStop(authType, agentLoopArgs);
 
-  const auth = await Authenticator.fromJSON(authType);
+  const auth = await Authenticator.fromJSONForAgentLoop(authType);
 
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
@@ -81,7 +81,7 @@ export async function finalizeInterruptedAgentLoopActivity(
 ): Promise<void> {
   await finalizeInterruption(authType, agentLoopArgs);
 
-  const auth = await Authenticator.fromJSON(authType);
+  const auth = await Authenticator.fromJSONForAgentLoop(authType);
 
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
@@ -102,7 +102,7 @@ export async function finalizeCancelledAgentLoopActivity(
 ): Promise<void> {
   await finalizeCancellation(authType, agentLoopArgs);
 
-  const auth = await Authenticator.fromJSON(authType);
+  const auth = await Authenticator.fromJSONForAgentLoop(authType);
 
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),
@@ -127,7 +127,7 @@ export async function finalizeErroredAgentLoopActivity(
 ): Promise<void> {
   await notifyWorkflowError(authType, agentLoopArgs, error);
 
-  const auth = await Authenticator.fromJSON(authType);
+  const auth = await Authenticator.fromJSONForAgentLoop(authType);
 
   await Promise.all([
     snapshotAgentMessageSkills(auth, agentLoopArgs),

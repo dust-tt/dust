@@ -1306,6 +1306,20 @@ export class Authenticator {
       clientIp: authType.clientIp,
     });
   }
+
+  /**
+   * Rebuilds an Authenticator from a serialized snapshot and refreshes group
+   * memberships from the database. Used by the agent loop, which freezes auth at
+   * workflow start: tools that grant new group access (e.g. create_pod) must see
+   * up-to-date memberships on subsequent steps.
+   */
+  static async fromJSONForAgentLoop(
+    authType: AuthenticatorType
+  ): Promise<Authenticator> {
+    const auth = await Authenticator.fromJSON(authType);
+    await auth.refresh();
+    return auth;
+  }
 }
 
 /**
