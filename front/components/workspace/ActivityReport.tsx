@@ -69,7 +69,7 @@ export function ActivityReport({
   return (
     <>
       {!!monthOptions.length && (
-        <div className="flex-grow rounded-lg border border-border bg-card p-4">
+        <div className="flex-grow rounded-lg border border-border bg-background p-4">
           <div className="flex flex-col gap-3">
             <h3 className="text-base font-medium text-foreground">
               Detailed activity report

@@ -572,7 +572,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
     >
       <div className="s:relative">
         <DataTable.Root className="s:w-full s:table-fixed">
-          <DataTable.Header className="s:sticky s:top-0 s:z-20 s:bg-white s:shadow-sm">
+          <DataTable.Header className="s:sticky s:top-0 s:z-20 s:bg-background s:shadow-sm">
             {table.getHeaderGroups().map((headerGroup) => (
               <DataTable.Row
                 key={headerGroup.id}
@@ -726,7 +726,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
       />
 
       {isLoading && (
-        <div className="s:sticky s:bottom-0 s:left-0 s:right-0 s:flex s:justify-center s:bg-white/80 s:py-2 s:backdrop-blur-sm">
+        <div className="s:sticky s:bottom-0 s:left-0 s:right-0 s:flex s:justify-center s:bg-background/80 s:py-2 s:backdrop-blur-sm">
           <div className="s:flex s:items-center s:gap-2 s:text-sm s:text-muted-foreground">
             <Spinner size="xs" />
             <span>Loading more data...</span>

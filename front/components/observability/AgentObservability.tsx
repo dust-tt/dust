@@ -133,7 +133,7 @@ export function AgentObservability({
         {isTimeRangeMode && (
           <div className="mb-4">
             {isSummaryLoading ? (
-              <div className="bg-card rounded-lg border border-border p-4">
+              <div className="bg-background rounded-lg border border-border p-4">
                 <div className="mb-2 flex items-center justify-between">
                   <LoadingBlock className="h-5 w-24" />
                 </div>

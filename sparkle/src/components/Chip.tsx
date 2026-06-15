@@ -57,7 +57,10 @@ const chipVariants = cva("s:inline-flex s:box-border s:items-center", {
       blue: cn("s:bg-blue-100 s:border-blue-200", "s:text-blue-900"),
       rose: cn("s:bg-rose-100 s:border-rose-200", "s:text-rose-900"),
       golden: cn("s:bg-golden-100 s:border-golden-200", "s:text-golden-900"),
-      white: cn("s:border s:bg-white s:border-border", "s:text-primary-900"),
+      white: cn(
+        "s:border s:bg-white s:border-border",
+        "s:text-primary-900"
+      ),
     },
   },
   defaultVariants: {

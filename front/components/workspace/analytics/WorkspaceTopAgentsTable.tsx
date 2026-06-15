@@ -147,7 +147,7 @@ export function WorkspaceTopAgentsTable({
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div className="rounded-lg border border-border bg-background p-4">
       <div className="mb-3 flex items-center justify-between">
         <div>
           <h3 className="text-base font-medium text-foreground">Top agents</h3>

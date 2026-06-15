@@ -110,7 +110,7 @@ interface TableBodyBlockProps {
 
 export const TableBodyBlock = memo(
   ({ children }: TableBodyBlockProps) => {
-    return <tbody className="s:bg-white">{children}</tbody>;
+    return <tbody className="s:bg-background">{children}</tbody>;
   },
   (prev, next) => sameNodePosition(prev.node, next.node)
 );

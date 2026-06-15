@@ -431,43 +431,4 @@ module.exports = {
   plugins: [typographyPlugin],
 };
 
-// Tailwind's `safelist` option is a *replacement* (not merged) in preset
-// merge semantics, and it matches against *final rendered* class names — so
-// each consumer must provide its own safelist with the prefix baked in.
-// `buildSafelist(prefix)` returns the shared entries pre-prefixed; consumers
-// spread it and append their package-specific extras.
-const sharedSafelistNames = [
-  "grid-rows-2",
-  "grid-rows-3",
-  "grid-rows-4",
-  "grid-rows-5",
-  "label-xs",
-  "label-sm",
-  "label-base",
-  "copy-xs",
-  "copy-sm",
-  "copy-base",
-  "copy-lg",
-  "copy-xl",
-  "heading-base",
-  "heading-lg",
-  "heading-xl",
-  "heading-2xl",
-  "heading-3xl",
-  "heading-4xl",
-  "heading-mono-4xl",
-];
-
-function buildSafelist({ prefix = "", avatarProps = "(bg|text)" } = {}) {
-  return [
-    {
-      pattern: new RegExp(
-        `^${prefix}${avatarProps}-(gray|blue|violet|pink|red|orange|golden|lime|emerald|green|rose)-(50|100|200|300|400|500|600|700|800|900|950)$`
-      ),
-    },
-    ...sharedSafelistNames.map((name) => `${prefix}${name}`),
-  ];
-}
-
-module.exports.buildSafelist = buildSafelist;
 module.exports.sizeScale = sizeScale;
