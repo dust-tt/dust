@@ -14,7 +14,7 @@ const PROJECT_ID = "spc_test123";
 describe("parseProjectScopedPath", () => {
   it("strips the pod-{podId} scope prefix", () => {
     expect(
-      parseProjectScopedPath("pod-spc_abc123/reports/q1/summary.pdf")
+      parseProjectScopedPath(`pod-${PROJECT_ID}/reports/q1/summary.pdf`)
     ).toBe("reports/q1/summary.pdf");
   });
 
