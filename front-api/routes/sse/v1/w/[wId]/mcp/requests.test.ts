@@ -10,9 +10,13 @@ vi.mock("@app/lib/api/actions/mcp/client_side_registry", () => ({
   validateMCPServerAccess: vi.fn(),
 }));
 
-vi.mock("@app/lib/api/assistant/mcp_events", () => ({
-  getMCPEventsForServer: vi.fn(),
-}));
+vi.mock(
+  import("@app/lib/api/assistant/mcp_events"),
+  async (importOriginal) => ({
+    ...(await importOriginal()),
+    getMCPEventsForServer: vi.fn(),
+  })
+);
 
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import { getMCPEventsForServer } from "@app/lib/api/assistant/mcp_events";
