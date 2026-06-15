@@ -19,9 +19,7 @@ export function WorkspaceBrandingPage() {
             "border-border bg-muted"
           )}
         >
-          <p className="heading-lg text-foreground">
-            Workspace branding
-          </p>
+          <p className="heading-lg text-foreground">Workspace branding</p>
           <p className="text-sm text-muted-foreground">
             Workspace branding is not available on the current plan. Upgrade to
             a plan that includes branded frames to customize your workspace

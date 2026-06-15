@@ -134,9 +134,7 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
           {...props}
         />
         {unit && (
-          <span className="s:shrink-0 s:text-muted-foreground">
-            {unit}
-          </span>
+          <span className="s:shrink-0 s:text-muted-foreground">{unit}</span>
         )}
         {showSaveButton && (
           <Button

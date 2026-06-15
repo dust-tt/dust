@@ -97,12 +97,8 @@ function BrandingAssetUploader({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <p className="heading-lg text-foreground">
-          {title}
-        </p>
-        <p className="text-sm text-muted-foreground">
-          {description}
-        </p>
+        <p className="heading-lg text-foreground">{title}</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </div>
 
       <input

@@ -61,9 +61,7 @@ const reasonColumn: ColumnDef<RowData, string> = {
   enableSorting: false,
   cell: () => (
     <DataTable.CellContent>
-      <span className="text-sm text-muted-foreground">
-        {REASON_LABEL}
-      </span>
+      <span className="text-sm text-muted-foreground">{REASON_LABEL}</span>
     </DataTable.CellContent>
   ),
 };

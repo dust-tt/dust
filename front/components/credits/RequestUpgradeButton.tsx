@@ -63,9 +63,7 @@ export function RequestUpgradeButton({
 
     if (alreadyRequested) {
       return (
-        <span className="copy-sm text-muted-foreground">
-          Request sent
-        </span>
+        <span className="copy-sm text-muted-foreground">Request sent</span>
       );
     }
 
