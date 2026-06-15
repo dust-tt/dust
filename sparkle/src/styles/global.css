@@ -7,11 +7,6 @@
 @config "../../tailwind.config.js";
 
 @layer base {
-  button,
-  [role="button"] {
-    cursor: pointer;
-  }
-
   html {
     touch-action: manipulation;
     font-feature-settings:
