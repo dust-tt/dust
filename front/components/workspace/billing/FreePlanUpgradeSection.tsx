@@ -13,13 +13,13 @@ interface FreePlanUpgradeSectionProps {
 
 export function FreePlanUpgradeSection({ owner }: FreePlanUpgradeSectionProps) {
   return (
-    <div className="flex flex-col gap-4 rounded-lg bg-muted-background p-4 dark:bg-muted-background-night">
+    <div className="flex flex-col gap-4 rounded-lg bg-muted-background p-4">
       <div className="flex items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
           <span className="text-xs font-medium text-highlight">
             Unlock the full workspace
           </span>
-          <span className="text-base font-semibold text-foreground dark:text-foreground-night">
+          <span className="text-base font-semibold text-foreground">
             One paid seat opens up the whole workspace
           </span>
         </div>
@@ -35,7 +35,7 @@ export function FreePlanUpgradeSection({ owner }: FreePlanUpgradeSectionProps) {
         {UPGRADE_FEATURES.map((feature) => (
           <div key={feature} className="flex items-center gap-2">
             <Icon visual={Check} size="xs" className="text-highlight" />
-            <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+            <span className="text-xs text-muted-foreground">
               {feature}
             </span>
           </div>

@@ -26,7 +26,7 @@ export function RequestedSpacesList({
           return (
             <span
               key={spaceId}
-              className="text-sm text-muted-foreground dark:text-muted-foreground-night"
+              className="text-sm text-muted-foreground"
             >
               {spaceId} (unknown)
             </span>

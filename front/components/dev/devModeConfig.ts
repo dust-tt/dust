@@ -374,10 +374,10 @@ export const TYPO_GROUPS: TypoGroup[] = [
   {
     label: "Font Weight",
     tokens: [
-      typo("font-normal", ".s-font-normal", "", "", "", "400"),
-      typo("font-medium", ".s-font-medium", "", "", "", "450"),
-      typo("font-semibold", ".s-font-semibold", "", "", "", "550"),
-      typo("font-bold", ".s-font-bold", "", "", "", "700"),
+      typo("font-normal", ".s\\:font-normal", "", "", "", "400"),
+      typo("font-medium", ".s\\:font-medium", "", "", "", "450"),
+      typo("font-semibold", ".s\\:font-semibold", "", "", "", "550"),
+      typo("font-bold", ".s\\:font-bold", "", "", "", "700"),
     ],
   },
 ];

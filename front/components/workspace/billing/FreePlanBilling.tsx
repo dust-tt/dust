@@ -13,7 +13,7 @@ export function FreePlanBilling({ owner, subscription }: FreePlanBillingProps) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
-        <span className="text-base font-semibold text-foreground dark:text-foreground-night">
+        <span className="text-base font-semibold text-foreground">
           Business
         </span>
         <SubscriptionStatusChip />

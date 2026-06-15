@@ -35,39 +35,51 @@ const fontSize = {
   "9xl": ["80px", { lineHeight: "84px", letterSpacing: "-4.8px" }],
 };
 
+// Font family values used by the typography plugin below.
+// Kept in sync with theme.fontFamily (defined later in this file).
+const fontFamily = {
+  sans: ["Geist", "sans-serif"],
+  mono: ["Geist Mono", "monospace"],
+};
+
 // Typography component classes. `addComponents` (not `addBase`) so that
 // Tailwind's prefix pipeline auto-applies the consumer's prefix:
-// sparkle emits `.s-heading-base`, front emits `.heading-base`.
-const typographyPlugin = plugin(function ({ addComponents, theme }) {
+// sparkle emits `.s\:heading-base`, front emits `.heading-base`.
+//
+// We reference the module-level `fontSize` and `fontFamily` constants directly
+// instead of calling `theme()`, because Tailwind v4's plugin `theme()` resolves
+// to CSS custom properties (e.g. `--text-xs: 0.75rem`) rather than the raw
+// config arrays, which breaks array-index access like `fontSize.xs[0]`.
+const typographyPlugin = plugin(function ({ addComponents }) {
   const label = (size) => ({
-    fontSize: theme(`fontSize.${size}[0]`),
-    lineHeight: theme(`fontSize.${size}[1].lineHeight`),
-    letterSpacing: theme(`fontSize.${size}[1].letterSpacing`),
+    fontSize: fontSize[size][0],
+    lineHeight: fontSize[size][1].lineHeight,
+    letterSpacing: fontSize[size][1].letterSpacing,
     fontWeight: "500",
   });
   const headingHeavy = (size) => ({
-    fontSize: theme(`fontSize.${size}[0]`),
-    lineHeight: theme(`fontSize.${size}[1].lineHeight`),
-    letterSpacing: theme(`fontSize.${size}[1].letterSpacing`),
+    fontSize: fontSize[size][0],
+    lineHeight: fontSize[size][1].lineHeight,
+    letterSpacing: fontSize[size][1].letterSpacing,
     fontWeight: "550",
   });
   const headingLight = (size) => ({
-    fontSize: theme(`fontSize.${size}[0]`),
-    lineHeight: theme(`fontSize.${size}[1].lineHeight`),
-    letterSpacing: theme(`fontSize.${size}[1].letterSpacing`),
+    fontSize: fontSize[size][0],
+    lineHeight: fontSize[size][1].lineHeight,
+    letterSpacing: fontSize[size][1].letterSpacing,
     fontWeight: "450",
   });
   const headingMono = (size) => ({
-    fontSize: theme(`fontSize.${size}[0]`),
-    lineHeight: theme(`fontSize.${size}[1].lineHeight`),
-    letterSpacing: theme(`fontSize.${size}[1].letterSpacing`),
+    fontSize: fontSize[size][0],
+    lineHeight: fontSize[size][1].lineHeight,
+    letterSpacing: fontSize[size][1].letterSpacing,
     fontWeight: "400",
-    fontFamily: theme("fontFamily.mono"),
+    fontFamily: fontFamily.mono.join(", "),
   });
   const copy = (size) => ({
-    fontSize: theme(`fontSize.${size}[0]`),
-    lineHeight: theme(`fontSize.${size}[1].lineHeight`),
-    letterSpacing: theme(`fontSize.${size}[1].letterSpacing`),
+    fontSize: fontSize[size][0],
+    lineHeight: fontSize[size][1].lineHeight,
+    letterSpacing: fontSize[size][1].letterSpacing,
     fontWeight: "400",
   });
 
@@ -118,10 +130,7 @@ module.exports = {
       xl: "1280px",
       "2xl": "1536px",
     },
-    fontFamily: {
-      sans: ["Geist", "sans-serif"],
-      mono: ["Geist Mono", "monospace"],
-    },
+    fontFamily,
     fontSize,
     extend: {
       spacing: {

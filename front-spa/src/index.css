@@ -1,7 +1,22 @@
 /* App-specific CSS overrides go here */
+@import "tailwindcss/preflight" layer(base);
+@import "tailwindcss/theme" layer(theme);
 @import "tailwindcss/utilities" layer(utilities);
 
 @config "../tailwind.config.cjs";
+
+/* Custom container query breakpoints (v3 @tailwindcss/container-queries → v4 native). */
+@custom-variant @xxxs (@container (width >= 16rem));
+@custom-variant @xxs (@container (width >= 24rem));
+@custom-variant @xs (@container (width >= 32rem));
+@custom-variant @sm (@container (width >= 40rem));
+@custom-variant @md (@container (width >= 48rem));
+@custom-variant @lg (@container (width >= 64rem));
+@custom-variant @xl (@container (width >= 80rem));
+
+@plugin "@tailwindcss/forms";
+@plugin "tailwind-scrollbar-hide";
+@plugin "tailwindcss-animate";
 
 /* Cross-package source scanning: front-spa imports components and lib from front */
 @source "../../front/components/**/*.{ts,tsx}";
