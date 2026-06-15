@@ -1,10 +1,10 @@
 import logger from "@app/logger/logger";
 import { createHono } from "@front-api/lib/hono";
-import { createSwaggerSpec } from "next-swagger-doc";
+import { buildSwaggerSpec } from "@front-api/lib/swagger";
 
 const app = createHono();
 
-// `next-swagger-doc` resolves `apiFolder` against `process.cwd()`. The Hono
+// `buildSwaggerSpec` resolves `apiFolder` against `process.cwd()`. The Hono
 // server runs from `front-api/`, so we scan our own public API routes for the
 // `@swagger` JSDoc annotations (and the shared component schemas defined in
 // `routes/v1/w/[wId]/swagger_schemas.ts`).
@@ -12,11 +12,11 @@ const API_FOLDER = "./routes/v1";
 
 app.get("/", (ctx) => {
   try {
-    const spec = createSwaggerSpec({
+    const spec = buildSwaggerSpec({
       definition: {
         openapi: "3.0.0",
         info: {
-          title: "NextJS Swagger",
+          title: "Dust Swagger",
           version: "0.1.0",
         },
       },
