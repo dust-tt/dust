@@ -18,6 +18,7 @@ import config from "@app/lib/api/config";
 import type { FileSystemBackend } from "@app/lib/api/file_system/backends/file_system_backend";
 import { GCSFileSystemBackend } from "@app/lib/api/file_system/backends/gcs_file_system_backend";
 import type {
+  FileSystemDirectoryEntry,
   FileSystemEntry,
   FileSystemFileEntry,
   FileSystemMount,
@@ -749,6 +750,17 @@ export class DustFileSystem {
       return resolved;
     }
     return this.backend.delete(resolved.value.path, opts);
+  }
+
+  async mkdir(
+    scopedPath: string
+  ): Promise<Result<FileSystemDirectoryEntry, DustFileSystemError>> {
+    const resolved = this.requireWriteMount(scopedPath);
+    if (resolved.isErr()) {
+      return resolved;
+    }
+
+    return this.backend.mkdir(resolved.value.path);
   }
 
   /** `src` requires read access, `dest` requires write access. */

@@ -6,11 +6,13 @@ import {
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
 import { DustFileSystem } from "@app/lib/api/file_system";
-import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
+import type { FileSystemDirectoryEntry } from "@app/lib/api/file_system/types";
 import {
-  createGCSMountDirectory,
+  DustFileSystemError,
+  SCOPED_PREFIX_POD,
+} from "@app/lib/api/file_system/types";
+import {
   deleteGCSMountFile,
-  type GCSMountDirectoryEntry,
   moveFile,
   renameGCSMountDirectory,
   renameGCSMountFile,
@@ -637,19 +639,25 @@ export async function createProjectFolder(
     folderName: string;
     parentRelativePath?: string;
   }
-): Promise<Result<GCSMountDirectoryEntry, Error>> {
+): Promise<Result<FileSystemDirectoryEntry, DustFileSystemError>> {
   if (!space.isProject()) {
-    return new Err(new Error("Space is not a project."));
+    return new Err(
+      new DustFileSystemError("invalid_path", "Space is not a project.")
+    );
   }
 
   const folderNameRes = validateMountFolderName(folderName);
   if (folderNameRes.isErr()) {
-    return folderNameRes;
+    return new Err(
+      new DustFileSystemError("invalid_path", folderNameRes.error.message)
+    );
   }
 
   const parentRes = normalizeMountParentRelativePath(parentRelativePath);
   if (parentRes.isErr()) {
-    return parentRes;
+    return new Err(
+      new DustFileSystemError("invalid_path", parentRes.error.message)
+    );
   }
 
   const relativeDirPath = joinMountRelativePath(
@@ -657,10 +665,13 @@ export async function createProjectFolder(
     folderNameRes.value
   );
 
-  return createGCSMountDirectory(
-    auth,
-    { useCase: "pod", podId: space.sId },
-    { relativeDirPath }
+  const fsResult = await DustFileSystem.forPod(auth, space);
+  if (fsResult.isErr()) {
+    return fsResult;
+  }
+
+  return fsResult.value.mkdir(
+    `${SCOPED_PREFIX_POD}${space.sId}/${relativeDirPath}`
   );
 }
 

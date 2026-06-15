@@ -1,6 +1,7 @@
 import type { SandboxMountAdapter } from "@app/lib/api/file_system/sandbox/sandbox_mount_adapter";
 import type {
   DustFileSystemError,
+  FileSystemDirectoryEntry,
   FileSystemEntry,
   FileSystemMount,
 } from "@app/lib/api/file_system/types";
@@ -68,6 +69,14 @@ export interface FileSystemBackend {
     content: Buffer | string | Readable,
     contentType: string
   ): Promise<Result<void, DustFileSystemError>>;
+
+  /**
+   * Create a directory placeholder at `scopedPath`.
+   * Returns `Err("already_exists")` when a directory already exists there.
+   */
+  mkdir(
+    scopedPath: string
+  ): Promise<Result<FileSystemDirectoryEntry, DustFileSystemError>>;
 
   /**
    * Returns `Err("not_found")` when the path does not exist and `ignoreNotFound` is false.

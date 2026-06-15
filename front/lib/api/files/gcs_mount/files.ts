@@ -122,29 +122,6 @@ export function getScopedPathFromGCSPath({
   return `${useCase}/${gcsPath.slice(prefix.length)}`;
 }
 
-function makeDirectoryEntry(
-  {
-    fileName,
-    relativeFilePath,
-    sizeBytes,
-    lastModifiedMs,
-  }: {
-    fileName: string;
-    relativeFilePath: string;
-    sizeBytes: number;
-    lastModifiedMs: number;
-  },
-  scope: GCSMountPoint
-): GCSMountDirectoryEntry {
-  return {
-    isDirectory: true,
-    fileName,
-    path: `${scope.useCase}/${relativeFilePath}`,
-    sizeBytes,
-    lastModifiedMs,
-  };
-}
-
 function makeFileEntry(
   {
     fileName,
@@ -404,64 +381,6 @@ export async function createGCSMountFile(
       },
       scope,
       owner.sId
-    )
-  );
-}
-
-/**
- * Create an empty folder in a GCS mount point via a zero-byte object whose name ends with "/".
- * Returns the entry as it would appear in listGCSMountFiles.
- */
-export async function createGCSMountDirectory(
-  auth: Authenticator,
-  scope: GCSMountPoint,
-  { relativeDirPath }: { relativeDirPath: string }
-): Promise<Result<GCSMountDirectoryEntry, Error>> {
-  const owner = auth.getNonNullableWorkspace();
-  const prefix = resolvePrefix(owner, scope);
-
-  const normalized = relativeDirPath.replace(/^\/+|\/+$/g, "");
-  if (!normalized) {
-    return new Err(new Error("relativeDirPath is required."));
-  }
-
-  const gcsPath = `${prefix}${normalized}/`;
-  const bucket = getPrivateUploadBucket();
-  try {
-    const [exists] = await bucket.file(gcsPath).exists();
-    if (exists) {
-      return new Err(new GCSMountDirectoryAlreadyExistsError());
-    }
-
-    await bucket.file(gcsPath).save(Buffer.alloc(0), {
-      contentType: "application/x-directory",
-    });
-
-    // Mirror the directory placeholder on the projects/ side for pod files.
-    if (scope.useCase === "pod") {
-      const projectsPrefix = getProjectFilesBasePath({
-        workspaceId: owner.sId,
-        projectId: scope.podId,
-      });
-      const projectsGcsPath = `${projectsPrefix}${normalized}/`;
-      await bucket.file(projectsGcsPath).save(Buffer.alloc(0), {
-        contentType: "application/x-directory",
-      });
-    }
-  } catch (error) {
-    return new Err(normalizeError(error));
-  }
-
-  const fileName = normalized.split("/").pop() ?? normalized;
-  return new Ok(
-    makeDirectoryEntry(
-      {
-        fileName,
-        relativeFilePath: normalized,
-        sizeBytes: 0,
-        lastModifiedMs: Date.now(),
-      },
-      scope
     )
   );
 }

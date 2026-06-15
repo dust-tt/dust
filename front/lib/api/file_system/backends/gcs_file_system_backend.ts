@@ -2,6 +2,7 @@ import type { GCSMountTarget } from "@app/lib/api/file_system/sandbox/gcs_sandbo
 import { GCSSandboxMountAdapter } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import type { SandboxMountAdapter } from "@app/lib/api/file_system/sandbox/sandbox_mount_adapter";
 import type {
+  FileSystemDirectoryEntry,
   FileSystemEntry,
   FileSystemMount,
 } from "@app/lib/api/file_system/types";
@@ -371,6 +372,51 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       }
 
       return new Ok(undefined);
+    } catch (err) {
+      return new Err(
+        new DustFileSystemError("internal", normalizeError(err).message)
+      );
+    }
+  }
+
+  async mkdir(
+    scopedPath: string
+  ): Promise<Result<FileSystemDirectoryEntry, DustFileSystemError>> {
+    const gcsPath = this.toGCSPath(scopedPath);
+    if (!gcsPath) {
+      return new Err(
+        new DustFileSystemError(
+          "invalid_path",
+          `GCSFileSystemBackend.mkdir: unrecognised scoped path: ${scopedPath}`
+        )
+      );
+    }
+
+    const dirGcsPath = `${gcsPath}/`;
+    try {
+      const bucket = getPrivateUploadBucket();
+      const [exists] = await bucket.file(dirGcsPath).exists();
+      if (exists) {
+        return new Err(
+          new DustFileSystemError(
+            "already_exists",
+            "A directory already exists at this path."
+          )
+        );
+      }
+
+      await bucket.file(dirGcsPath).save(Buffer.alloc(0), {
+        contentType: "application/x-directory",
+      });
+
+      const fileName = gcsPath.split("/").pop() ?? "";
+      return new Ok({
+        isDirectory: true as const,
+        fileName,
+        path: scopedPath,
+        sizeBytes: 0,
+        lastModifiedMs: Date.now(),
+      });
     } catch (err) {
       return new Err(
         new DustFileSystemError("internal", normalizeError(err).message)
