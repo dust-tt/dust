@@ -66,7 +66,7 @@ if (isDevelopment() || isTest()) {
     maxAwuCredits: -1,
     maxAwuCreditsTimeframe: "lifetime",
     isDeepDiveAllowed: false,
-    maxUsersInWorkspace: 3,
+    maxUsersInWorkspace: 5,
     maxFreeUsersInWorkspace: 5,
     maxLifetimeFreeUsersInWorkspace: 5,
     maxVaultsInWorkspace: 5,
