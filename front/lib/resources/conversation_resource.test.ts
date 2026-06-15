@@ -200,13 +200,13 @@ describe("ConversationResource", () => {
 
       const result =
         await ConversationResource.sumSubAgentCostCreditsByMessageId(auth, {
-          agentMessageIds: [originMessage.sId],
+          agentMessageId: originMessage.sId,
         });
 
-      expect(result.get(originMessage.sId)).toBe(150);
+      expect(result).toBe(150);
     });
 
-    it("returns an empty map when the message has no sub-agents", async () => {
+    it("returns 0 when the message has no sub-agents", async () => {
       const { workspace, authenticator: auth } = await createResourceTest({
         role: "admin",
       });
@@ -229,10 +229,10 @@ describe("ConversationResource", () => {
 
       const result =
         await ConversationResource.sumSubAgentCostCreditsByMessageId(auth, {
-          agentMessageIds: [originMessage.sId],
+          agentMessageId: originMessage.sId,
         });
 
-      expect(result.size).toBe(0);
+      expect(result).toBe(0);
     });
   });
 

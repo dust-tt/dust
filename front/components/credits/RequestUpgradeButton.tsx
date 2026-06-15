@@ -20,9 +20,6 @@ interface RequestUpgradeButtonProps {
   variant?: RequestUpgradeButtonVariant;
 }
 
-// Member-initiated upgrade-request CTA. Opens a confirmation dialog and posts
-// the request via `useRequestUpgrade`. Rendered either as an inline link (usage
-// banner) or as a primary button (personal settings) through `variant`.
 export function RequestUpgradeButton({
   owner,
   hasPendingUpgradeRequest,
