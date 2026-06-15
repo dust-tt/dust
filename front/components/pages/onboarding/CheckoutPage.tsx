@@ -69,7 +69,7 @@ type CouponFormValues = z.infer<typeof couponFormSchema>;
 type CheckoutPhase =
   | "card_capture" // Phase 1 — Stripe setup iframe
   | "payment_review" // Phase 2 — tax breakdown + confirm button
-  | "confirming" // Phase 3 — POST /payment in progress
+  | "confirming" // Phase 3 — POST /business-activation
   | "waiting_for_payment" // Phase 4 — polling Redis for Metronome webhook result
   | "checkout_success" // Phase 5 — success screen, user continues manually
   | "error"; // Terminal error
@@ -596,9 +596,18 @@ export function CheckoutPage() {
         </div>
       </div>
 
-      {/* Right pane: phase-dependent content — centered except when showing the Stripe iframe */}
+      {/* Right pane: phase-dependent content.
+          payment_review + error: top padding of 296px aligns content with the "Price per seat" row in the left pane.
+          card_capture (with Stripe iframe): uniform p-24 with no centering so the iframe fills from the top.
+          All other phases (spinners): centered. */}
       <div
-        className={`flex w-1/2 flex-col overflow-y-auto bg-white p-24 ${phase === "card_capture" && clientSecret ? "" : phase === "payment_review" ? "justify-center" : "items-center justify-center"}`}
+        className={`flex w-1/2 flex-col overflow-y-auto bg-white ${
+          phase === "card_capture" && clientSecret
+            ? "p-24"
+            : phase === "payment_review" || phase === "error"
+              ? "px-24 pb-24 pt-[296px]"
+              : "items-center justify-center p-24"
+        }`}
       >
         <RightPane
           phase={phase}
