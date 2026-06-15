@@ -43,7 +43,7 @@ describe("GET /api/w/:wId/spaces/:spaceId/files", () => {
   it("returns 200 with an empty list when no files exist", async () => {
     const { workspace, project } = await setupProject();
 
-    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+    vi.mocked(getPrivateUploadBucket).mockReturnValueOnce({
       getAllFilesByPrefix: vi
         .fn()
         .mockResolvedValue({ files: [], pageFetchCount: 1 }),
@@ -61,7 +61,7 @@ describe("GET /api/w/:wId/spaces/:spaceId/files", () => {
   it("returns 200 and lists files with canonical scoped paths", async () => {
     const { workspace, project } = await setupProject();
 
-    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+    vi.mocked(getPrivateUploadBucket).mockReturnValueOnce({
       getAllFilesByPrefix: vi.fn().mockResolvedValue({
         files: [
           makeGCSFile(workspace.sId, project.sId, "report.pdf", {
@@ -98,7 +98,7 @@ describe("GET /api/w/:wId/spaces/:spaceId/files", () => {
   it("returns 200 and includes directory entries from GCS folder placeholders", async () => {
     const { workspace, project } = await setupProject();
 
-    vi.mocked(getPrivateUploadBucket).mockReturnValue({
+    vi.mocked(getPrivateUploadBucket).mockReturnValueOnce({
       getAllFilesByPrefix: vi.fn().mockResolvedValue({
         files: [
           // GCS folder placeholder (trailing slash)
