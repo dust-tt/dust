@@ -3798,7 +3798,7 @@ export function GroupConversationView({
                       <ListItemSection className="s:pl-4">
                         {bucketKey}
                       </ListItemSection>
-                      <ListGroup className="!s-border-transparent s:gap-0.5">
+                      <ListGroup className="s:border-transparent! s:gap-0.5">
                         {bucketConversations.map((conversation) => {
                           const listItem = conversationListItemsById.get(
                             conversation.id

@@ -79,20 +79,7 @@ const config: Config = {
         xl: "var(--shadow-xl)",
         "2xl": "var(--shadow-2xl)",
       },
-      containers: {
-        xxxs: "16rem",
-        xxs: "24rem",
-        xs: "32rem",
-        sm: "40rem",
-        md: "48rem",
-        lg: "64rem",
-        xl: "80rem",
-      },
-      backgroundImage: {
-        "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
-        "gradient-conic":
-          "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
-      },
+      /* Container query breakpoints are now defined via @custom-variant in CSS. */
     },
   },
 };

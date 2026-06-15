@@ -5,6 +5,14 @@
 @config "../tailwind.config.js";
 
 @layer base {
+  /* v4 changed border-color default from gray-200 to currentColor.
+     Restore a sensible default so bare `border` keeps the expected look. */
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
   html {
     touch-action: manipulation;
     font-feature-settings:

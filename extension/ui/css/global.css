@@ -6,6 +6,14 @@
 
 /* Custom scrollbar styles */
 @layer base {
+  /* v4 changed border-color default from gray-200 to currentColor.
+     Restore a sensible default so bare `border` keeps the expected look. */
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
   * {
     scrollbar-width: thin;
   }

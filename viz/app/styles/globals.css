@@ -3,6 +3,15 @@
 
 @config "../../tailwind.config.ts";
 
+/* Custom container query breakpoints (v3 @tailwindcss/container-queries → v4 native). */
+@custom-variant @xxxs (@container (width >= 16rem));
+@custom-variant @xxs (@container (width >= 24rem));
+@custom-variant @xs (@container (width >= 32rem));
+@custom-variant @sm (@container (width >= 40rem));
+@custom-variant @md (@container (width >= 48rem));
+@custom-variant @lg (@container (width >= 64rem));
+@custom-variant @xl (@container (width >= 80rem));
+
 /* Viz generates content dynamically (react-runner), so we safelist common utilities */
 @source inline("
   flex grid block inline hidden

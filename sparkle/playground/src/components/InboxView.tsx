@@ -581,7 +581,7 @@ export function InboxView({
         conversation={conversation}
         creator={creator || undefined}
         className={cn(
-          "s:px-3 s:rounded-2xl !s-border-transparent",
+          "s:px-3 s:rounded-2xl s:border-transparent!",
           isSelected && "s:bg-highlight-50"
         )}
         time={time}
@@ -668,7 +668,7 @@ export function InboxView({
                     () => toggleSectionCollapse("my-conversations"),
                     "Mark as read"
                   )}
-                  <ListGroup className="!s-border-transparent s:gap-0.5">
+                  <ListGroup className="s:border-transparent! s:gap-0.5">
                     {myConversations.map(renderInboxConversationItem)}
                   </ListGroup>
                 </div>
@@ -704,7 +704,7 @@ export function InboxView({
                       () => toggleSectionCollapse(space.id),
                       "Mark as read"
                     )}
-                    <ListGroup className="!s-border-transparent s:gap-0.5">
+                    <ListGroup className="s:border-transparent! s:gap-0.5">
                       {spaceConversations.map(renderInboxConversationItem)}
                     </ListGroup>
                   </div>
@@ -793,7 +793,7 @@ export function InboxView({
                   "Mark as done"
                 )}
 
-                <ListGroup className="!s-border-transparent s:gap-0.5">
+                <ListGroup className="s:border-transparent! s:gap-0.5">
                   <div className="s:flex s:flex-col s:gap-2 s:px-3 s:py-1">
                     {group.tasks.map((task) => (
                       <TaskItem
