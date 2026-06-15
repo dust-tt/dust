@@ -421,10 +421,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
   /**
    * Returns true when the user has any prior membership row in the workspace
-   * (current, future-scheduled, or revoked). Used to enforce the one-shot rule:
-   * `free` is a starter tier that can only be assigned on a user's very first
-   * membership creation — any prior membership, regardless of seat type,
-   * disqualifies them from receiving `free` again.
+   * with a real seat (i.e. `seatType != "none"`). `"none"` is the initial
+   * placeholder assigned before a Metronome contract exists and is not counted
+   * as a "real" membership for the one-shot `free` rule. A user who only ever
+   * held `"none"` seats is treated as a new member and is eligible for `free`.
    */
   static async hasAnyMembershipOfUserInWorkspace({
     user,
@@ -439,10 +439,41 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       where: {
         userId: user.id,
         workspaceId: workspace.id,
+        seatType: { [Op.ne]: "none" },
       },
       transaction,
     });
     return count > 0;
+  }
+
+  /**
+   * Batch version of `hasAnyMembershipOfUserInWorkspace` for use in the
+   * contract remap loop. Returns the subset of `userIds` (numeric model IDs)
+   * that have at least one membership row with `seatType != "none"` in the
+   * workspace.
+   */
+  static async getUserIdsWithRealSeatHistory({
+    workspace,
+    userIds,
+  }: {
+    workspace: LightWorkspaceType;
+    userIds: number[];
+  }): Promise<Set<number>> {
+    if (userIds.length === 0) {
+      return new Set();
+    }
+    const rows = await this.model.findAll({
+      attributes: ["userId"],
+      where: {
+        workspaceId: workspace.id,
+        userId: { [Op.in]: userIds },
+        seatType: { [Op.ne]: "none" },
+        // Exclude future-scheduled rows: a pending upgrade should not count as
+        // prior real-seat history when deciding free-tier eligibility.
+        startAt: { [Op.lte]: new Date() },
+      },
+    });
+    return new Set(rows.map((r) => r.userId));
   }
 
   /**
@@ -1468,7 +1499,16 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       return { previousSeatType, newSeatType };
     }
 
-    await this.update({ seatType: newSeatType }, transaction);
+    await this.update(
+      {
+        seatType: newSeatType,
+        // Reset credit state to the optimistic initial state for the new seat
+        // type (same logic as createMembership) so the member isn't stuck in
+        // the wrong state during the seat sync's debounce window.
+        creditState: initialCreditStateForSeatType(newSeatType),
+      },
+      transaction
+    );
 
     auditLog(
       {

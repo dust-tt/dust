@@ -177,7 +177,7 @@ export function getDefaultSeatTypeForContract(
     ...getSeatSubscriptionsFromContract(contract, productSeatTypes).keys(),
   ];
   if (seatTypesOnContract.length === 0) {
-    return "workspace";
+    return "none";
   }
   const ordered = seatTypesOnContract
     .map((seatType) => ({

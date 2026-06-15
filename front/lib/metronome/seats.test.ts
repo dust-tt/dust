@@ -10,6 +10,7 @@ import {
   MAX_SEAT_CREDIT_NAME,
   PRO_SEAT_CREDIT_NAME,
 } from "@app/lib/metronome/setup_common";
+import type { SeatLimit } from "@app/lib/resources/workspace_seat_limit_resource";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -155,9 +156,8 @@ describe("hasContractSeatSubscription", () => {
   });
 });
 
-describe("resolveRemappedSeatType", () => {
-  // Contract bills `pro_yearly` (8000 AWU) and `max` (40000 AWU) — no monthly
-  // `pro`. Lowest non-free tier → `pro_yearly`.
+describe("resolveRemappedSeatType — keep / yearly-convert", () => {
+  // Contract bills `pro_yearly` (8000 AWU) and `max` (40000 AWU).
   const { contract, productSeatTypes } = makeContract({
     seats: [
       { seatType: "pro_yearly", awu: 8000, frequency: "ANNUAL" },
@@ -180,64 +180,88 @@ describe("resolveRemappedSeatType", () => {
     );
   });
 
-  it("falls back to the default tier (no free) otherwise", () => {
-    // `free` has no yearly equivalent on the contract → default lowest tier.
-    expect(resolveRemappedSeatType("free", contract, productSeatTypes)).toBe(
-      "pro_yearly"
-    );
-    // `max_yearly` (already yearly) isn't billed → default tier.
+  it("converts a yearly seat to its monthly equivalent when only monthly is billed", () => {
+    // Contract bills `pro_yearly` and `max` — no `max_yearly`. A member on
+    // `max_yearly` (not on contract) should fall back to `max` (monthly).
     expect(
       resolveRemappedSeatType("max_yearly", contract, productSeatTypes)
-    ).toBe("pro_yearly");
+    ).toBe("max");
+  });
+
+  it("returns none for returning members when no seat matches", () => {
+    // `free` not on contract, no yearly equivalent, no committed seatLimits → none.
+    expect(resolveRemappedSeatType("free", contract, productSeatTypes)).toBe(
+      "none"
+    );
   });
 });
 
-describe("resolveRemappedSeatType (free always skipped in fallback)", () => {
+describe("resolveRemappedSeatType — fallback via getDefaultSeatTypeForContract", () => {
   // Contract bills `free` (0 AWU) and `pro` (8000 AWU).
   const { contract, productSeatTypes } = makeContract({
     seats: [{ seatType: "free" }, { seatType: "pro", awu: 8000 }],
   });
 
-  it("skips free in the fallback and assigns the cheapest non-free tier", () => {
-    // `workspace` is not on the contract → falls back; `free` is always skipped
-    // since the remap only operates on existing members who can never receive
-    // the one-shot `free` starter tier.
+  it("returns none for returning members (free blocked by one-shot rule)", () => {
+    // Default isReturningMember=true → free blocked → none.
+    expect(resolveRemappedSeatType("none", contract, productSeatTypes)).toBe(
+      "none"
+    );
+  });
+
+  it("assigns free for members who only ever had none seats", () => {
+    // isReturningMember=false → free on contract → free.
     expect(
-      resolveRemappedSeatType("workspace", contract, productSeatTypes)
+      resolveRemappedSeatType("none", contract, productSeatTypes, {
+        isReturningMember: false,
+      })
+    ).toBe("free");
+  });
+
+  it("assigns committed seat in fallback when slots available", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 5, maxSeats: null }],
+    ]);
+    const seatCounts = { pro: 2 };
+    expect(
+      resolveRemappedSeatType("none", contract, productSeatTypes, {
+        isReturningMember: false,
+        seatLimits,
+        seatCounts,
+      })
     ).toBe("pro");
   });
 });
 
-describe("resolveRemappedSeatType (entitlement-aware)", () => {
-  // Contract carries every seat subscription, but only `workspace_yearly` is
+describe("resolveRemappedSeatType — entitlement-aware", () => {
+  // Contract carries every seat subscription, but only `pro_yearly` is
   // entitled (the others are dormant `entitled:false` baseline).
   const { contract, productSeatTypes } = makeContract({
     seats: [
-      { seatType: "workspace" },
-      { seatType: "workspace_yearly", entitled: true },
       { seatType: "pro" },
+      { seatType: "pro_yearly", entitled: true },
+      { seatType: "max" },
     ],
   });
 
   it("does not keep a seat whose subscription exists but is not entitled", () => {
-    // `workspace` has a (dormant) subscription but isn't entitled → convert to
-    // its entitled yearly equivalent.
-    expect(
-      resolveRemappedSeatType("workspace", contract, productSeatTypes)
-    ).toBe("workspace_yearly");
+    // `pro` has a (dormant) subscription but isn't entitled → convert to yearly.
+    expect(resolveRemappedSeatType("pro", contract, productSeatTypes)).toBe(
+      "pro_yearly"
+    );
   });
 
   it("keeps an entitled seat type", () => {
     expect(
-      resolveRemappedSeatType("workspace_yearly", contract, productSeatTypes)
-    ).toBe("workspace_yearly");
+      resolveRemappedSeatType("pro_yearly", contract, productSeatTypes)
+    ).toBe("pro_yearly");
   });
 
-  it("falls back to the only entitled tier for unrelated seats", () => {
-    // `pro` is on the contract but not entitled, no `pro_yearly` entitled →
-    // default tier among entitled seats = `workspace_yearly`.
-    expect(resolveRemappedSeatType("pro", contract, productSeatTypes)).toBe(
-      "workspace_yearly"
+  it("returns none for unrelated seats with no committed config", () => {
+    // `max` not entitled on the new contract, no `max_yearly`, no committed
+    // seatLimits → none.
+    expect(resolveRemappedSeatType("max", contract, productSeatTypes)).toBe(
+      "none"
     );
   });
 });

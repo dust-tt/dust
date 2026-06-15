@@ -172,7 +172,7 @@ describe("getDefaultSeatTypeForContract — committed seats", () => {
     ).toBe("free");
   });
 
-  it("legacy: no-seat-subscription contract returns workspace regardless", () => {
+  it("legacy: no-seat-subscription contract returns none", () => {
     const legacyContract = {
       subscriptions: [],
       recurring_credits: [],
@@ -180,7 +180,7 @@ describe("getDefaultSeatTypeForContract — committed seats", () => {
     } as unknown as CachedContract;
     expect(
       getDefaultSeatTypeForContract(legacyContract, productSeatTypes)
-    ).toBe("workspace");
+    ).toBe("none");
   });
 });
 

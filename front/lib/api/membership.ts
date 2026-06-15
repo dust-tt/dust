@@ -75,19 +75,19 @@ import type { Transaction } from "sequelize";
 async function resolveSeatTypeForNewMembership(
   user: UserResource,
   workspace: LightWorkspaceType
-): Promise<MembershipSeatType | undefined> {
+): Promise<MembershipSeatType> {
   if (!workspace.metronomeCustomerId) {
-    return undefined;
+    return "none";
   }
   const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
     workspace.id
   );
   if (!subscription?.metronomeContractId) {
-    return undefined;
+    return "none";
   }
   const contract = await getActiveContract(workspace.sId);
   if (!contract) {
-    return undefined;
+    return "none";
   }
   const planLimits = subscription.toJSON().plan.limits.users;
   // `isReturningMember` is always queried — `free` is a one-shot starter tier
