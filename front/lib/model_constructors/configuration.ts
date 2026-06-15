@@ -8,7 +8,7 @@ import type { z } from "zod";
 
 export type BaseModelConfiguration = {
   // Identity
-  id: `${ProviderId}::${ProviderApi}::${Region}::${ModelId}`;
+  id: `${ProviderId}/${ProviderApi}/${Region}/${ModelId}`;
   providerId: ProviderId;
   api: ProviderApi;
   modelId: ModelId;
