@@ -737,8 +737,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   /**
    * Recursively sums the `costCredits` of every sub-agent spawned by a single
-   * origin agent message (one recursive query, `maxDepth`-bounded). Single-message
-   * by design (and avoids an N+1); returns `0` when there are no sub-agents.
+   * origin agent message (one recursive query, `maxDepth`-bounded). Only counts
+   * sub-agents whose triggering user message is a `run_agent` agentic origin
+   * (`agent_handover` and non-agentic origins are excluded). Single-message by
+   * design (and avoids an N+1); returns `0` when there are no sub-agents.
    */
   static async sumSubAgentCostCreditsByMessageId(
     auth: Authenticator,
@@ -769,6 +771,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
          AND am."workspaceId" = um."workspaceId"
         WHERE um."workspaceId" = :workspaceId
           AND um."agenticOriginMessageId" = :agentMessageId
+          AND um."agenticMessageType" = 'run_agent'
 
         UNION ALL
 
@@ -781,6 +784,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         JOIN user_messages um
           ON um."agenticOriginMessageId" = s.agent_message_sid
          AND um."workspaceId" = :workspaceId
+         AND um."agenticMessageType" = 'run_agent'
         JOIN messages user_msg
           ON user_msg."userMessageId" = um.id
          AND user_msg."workspaceId" = :workspaceId
