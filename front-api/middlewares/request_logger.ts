@@ -14,8 +14,25 @@ type RequestLoggerEnv = {
     auth?: Authenticator;
     session?: SessionWithUser;
     streaming?: boolean;
+    skipRequestLog?: boolean;
   };
 };
+
+export type SkipRequestLogEnv = {
+  Variables: {
+    skipRequestLog?: boolean;
+  };
+};
+
+// Mark a route subtree as too noisy to log. Mount it (`app.use("*",
+// skipRequestLog)`) inside the route module that should opt out; requestLogger
+// reads the flag after the handler runs and drops the log line.
+export const skipRequestLog = createMiddleware<SkipRequestLogEnv>(
+  async (c, next) => {
+    c.set("skipRequestLog", true);
+    return next();
+  }
+);
 
 // We skip k8s probes path to avoid noisy logs and skewed distribution
 const SKIP_LOGGER_PATHS = new Set([
@@ -114,24 +131,29 @@ export const requestLogger = createMiddleware<RequestLoggerEnv>(
       tags
     );
 
-    logger.info(
-      {
-        clientIp,
-        durationMs,
-        method: c.req.method,
-        peakConcurrency: peakRef.peak,
-        route,
-        sessionId: session?.sessionId ?? "unknown",
-        statusCode,
-        streaming,
-        url: c.req.path,
-        ...(user ? { user: { sId: user.sId } } : {}),
-        workspaceId:
-          auth && typeof auth.workspace === "function"
-            ? auth.workspace()?.sId
-            : undefined,
-      },
-      "Processed request"
-    );
+    // Routes that opted out via `skipRequestLog` are too noisy to log. The flag
+    // is set by a downstream route middleware, so it is only readable here,
+    // after `next()` has run the handler.
+    if (!c.get("skipRequestLog")) {
+      logger.info(
+        {
+          clientIp,
+          durationMs,
+          method: c.req.method,
+          peakConcurrency: peakRef.peak,
+          route,
+          sessionId: session?.sessionId ?? "unknown",
+          statusCode,
+          streaming,
+          url: c.req.path,
+          ...(user ? { user: { sId: user.sId } } : {}),
+          workspaceId:
+            auth && typeof auth.workspace === "function"
+              ? auth.workspace()?.sId
+              : undefined,
+        },
+        "Processed request"
+      );
+    }
   }
 );

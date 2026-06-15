@@ -9,6 +9,7 @@ import { skillSuggestionsReadyWorkflow } from "@app/lib/notifications/workflows/
 import { upgradeRequestCreatedWorkflow } from "@app/lib/notifications/workflows/upgrade-request-created";
 import { userAwuCapReachedWorkflow } from "@app/lib/notifications/workflows/user-awu-cap-reached";
 import { createHono } from "@front-api/lib/hono";
+import { skipRequestLog } from "@front-api/middlewares/request_logger";
 import type { ServeHandlerOptions } from "@novu/framework";
 import { NovuRequestHandler } from "@novu/framework";
 
@@ -56,6 +57,9 @@ const handler = new NovuRequestHandler<[Request], Response>({
 }).createHandler();
 
 const app = createHono();
+
+// Novu polls this endpoint frequently; too noisy to log every request.
+app.use("*", skipRequestLog);
 
 /** @ignoreswagger */
 app.get("/", (ctx) => handler(ctx.req.raw));

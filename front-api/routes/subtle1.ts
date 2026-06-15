@@ -1,6 +1,7 @@
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { createHono } from "@front-api/lib/hono";
+import { skipRequestLog } from "@front-api/middlewares/request_logger";
 import type { Context } from "hono";
 import { proxy } from "hono/proxy";
 
@@ -13,6 +14,9 @@ const POSTHOG_ASSETS_URL = "https://eu-assets.i.posthog.com";
 
 // Mounted at /subtle1 (root level, not under /api).
 const app = createHono();
+
+// High-volume PostHog analytics proxy; too noisy to log every request.
+app.use("*", skipRequestLog);
 
 const proxyToPostHog = (upstreamBaseUrl: string) => async (c: Context) => {
   const url = new URL(c.req.url);
