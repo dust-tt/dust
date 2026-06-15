@@ -25,11 +25,12 @@ export interface FileSystemBackend {
    * List entries under `scopedPath` (should end with `/` to list a prefix).
    * Returns an empty array when nothing exists under that path.
    * `.processed.*` siblings are filtered out unless `includeProcessed` is true.
+   * Returns `Err` on storage errors (e.g. network failure).
    */
   list(
     scopedPath: string,
     opts?: { maxFiles?: number; includeProcessed?: boolean }
-  ): Promise<FileSystemEntry[]>;
+  ): Promise<Result<FileSystemEntry[], DustFileSystemError>>;
 
   /**
    * Returns `Ok(null)` when the file does not exist, `Ok(Readable)` on success.

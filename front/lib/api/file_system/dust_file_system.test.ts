@@ -878,9 +878,10 @@ describe("DustFileSystem.list thumbnail URLs", () => {
 
     const fsResult = await DustFileSystem.forConversation(auth, conversation);
     assert(fsResult.isOk());
-    const entries = await fsResult.value.list();
+    const listResult = await fsResult.value.list();
+    assert(listResult.isOk());
 
-    const file = entries.find((e) => !e.isDirectory);
+    const file = listResult.value.find((e) => !e.isDirectory);
     assert(file !== undefined && !file.isDirectory);
     expect(file.thumbnailUrl).toBe(
       `https://dust.tt/api/w/${workspaceId}` +
@@ -919,9 +920,10 @@ describe("DustFileSystem.list thumbnail URLs", () => {
 
     const fsResult = await DustFileSystem.forConversation(auth, conversation);
     assert(fsResult.isOk());
-    const entries = await fsResult.value.list();
+    const listResult = await fsResult.value.list();
+    assert(listResult.isOk());
 
-    const file = entries.find((e) => !e.isDirectory);
+    const file = listResult.value.find((e) => !e.isDirectory);
     assert(file !== undefined && !file.isDirectory);
     expect(file.thumbnailUrl).toBeNull();
   });

@@ -611,8 +611,9 @@ export class DustFileSystem {
   async list(
     scopedPath?: string,
     opts?: { maxFiles?: number; includeProcessed?: boolean }
-  ): Promise<FileSystemEntry[]> {
+  ): Promise<Result<FileSystemEntry[], DustFileSystemError>> {
     const workspaceId = this.auth.getNonNullableWorkspace().sId;
+
     const withThumbnails = (entries: FileSystemEntry[]): FileSystemEntry[] =>
       entries.map((entry) =>
         entry.isDirectory
@@ -630,9 +631,15 @@ export class DustFileSystem {
           { err: resolved.error, scopedPath },
           "DustFileSystem.list: access check failed"
         );
-        return [];
+        return new Ok([]);
       }
-      return withThumbnails(await this.backend.list(resolved.value.path, opts));
+
+      const listResult = await this.backend.list(resolved.value.path, opts);
+      if (listResult.isErr()) {
+        return listResult;
+      }
+
+      return new Ok(withThumbnails(listResult.value));
     }
 
     const results: FileSystemEntry[] = [];
@@ -640,10 +647,18 @@ export class DustFileSystem {
       if (!mount.permissions.canRead) {
         continue;
       }
-      const entries = await this.backend.list(`${mount.scopedPrefix}/`, opts);
-      results.push(...withThumbnails(entries));
+
+      const listResult = await this.backend.list(
+        `${mount.scopedPrefix}/`,
+        opts
+      );
+      if (listResult.isErr()) {
+        return listResult;
+      }
+
+      results.push(...withThumbnails(listResult.value));
     }
-    return results;
+    return new Ok(results);
   }
 
   /**

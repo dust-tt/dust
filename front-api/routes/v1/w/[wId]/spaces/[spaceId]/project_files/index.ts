@@ -82,10 +82,21 @@ app.get(
     }
     const dustFs = fsResult.value;
 
+    const listResult = await dustFs.list(`${SCOPED_PREFIX_POD}${space.sId}`);
+    if (listResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to list project files.",
+        },
+      });
+    }
+
     let entries = await enrichListWithFileResourceIds(
       auth,
       dustFs,
-      await dustFs.list(`${SCOPED_PREFIX_POD}${space.sId}`)
+      listResult.value
     );
 
     if (updatedSinceFilter !== null) {
