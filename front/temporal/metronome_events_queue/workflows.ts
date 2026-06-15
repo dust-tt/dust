@@ -5,7 +5,7 @@ import { proxyActivities } from "@temporalio/workflow";
 const {
   processMetronomeWebhookActivity,
   cleanMetronomeInvoiceActivity,
-  syncMetronomeSeatCountActivity,
+  reconcileWorkspaceUserCreditStatesActivity,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
@@ -35,17 +35,17 @@ export async function cleanMetronomeInvoiceWorkflow({
   await cleanMetronomeInvoiceActivity({ invoiceId, workspaceId });
 }
 /**
- * Dedicated workflow for syncing a workspace's Metronome seat count. Using a
- * separate workflow (rather than calling the sync inline in
+ * Dedicated workflow for reconciling per-user credit states after a seat segment
+ * starts. Using a separate workflow (rather than calling reconcile inline in
  * `metronomeEventsWorkflow`) lets us assign a stable, workspace-scoped workflow
  * ID and set `WorkflowIdConflictPolicy.USE_EXISTING` — so the N concurrent
- * `credit.segment.start` events fired during a seat-type downgrade collapse to a
- * single execution instead of hammering Metronome and the DB N times.
+ * `credit.segment.start` events fired during a seat-type change collapse to a
+ * single execution instead of hammering the DB N times.
  */
-export async function syncMetronomeSeatCountWorkflow({
+export async function reconcileWorkspaceUserCreditStatesWorkflow({
   workspaceId,
 }: {
   workspaceId: string;
 }): Promise<void> {
-  await syncMetronomeSeatCountActivity({ workspaceId });
+  await reconcileWorkspaceUserCreditStatesActivity({ workspaceId });
 }

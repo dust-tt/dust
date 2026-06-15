@@ -88,7 +88,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import { launchSyncMetronomeSeatCountWorkflow } from "@app/temporal/metronome_events_queue/client";
+import { launchReconcileWorkspaceUserCreditStatesWorkflow } from "@app/temporal/metronome_events_queue/client";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
@@ -1411,12 +1411,12 @@ export async function processMetronomeWebhook({
           event.type === "credit.segment.start" &&
           isSeatAwuCredit(creditResult.value)
         ) {
-          await launchSyncMetronomeSeatCountWorkflow({
+          await launchReconcileWorkspaceUserCreditStatesWorkflow({
             workspaceId: workspace.sId,
           });
           logger.info(
             { metronomeCustomerId, creditId, workspaceId: workspace.sId },
-            "[Metronome Webhook] credit.segment.start: seat credit activated, seat sync triggered"
+            "[Metronome Webhook] credit.segment.start: seat credit activated, reconcile triggered"
           );
         }
       }
