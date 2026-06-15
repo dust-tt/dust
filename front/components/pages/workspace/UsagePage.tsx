@@ -74,6 +74,7 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
+import capitalize from "lodash/capitalize";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 // Build a minimal member from an upgrade request to feed the reused seat / spend
@@ -106,10 +107,6 @@ function memberFromUpgradeRequest(
 }
 
 const DEFAULT_PAGE_SIZE = 25;
-
-function capitalize(value: string): string {
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
 
 export function UsagePage() {
   const owner = useWorkspace();

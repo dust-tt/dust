@@ -718,7 +718,8 @@ export async function getMemberUsage({
 // variants). Seat type isn't held in the user search index, so we hand these
 // ids to Elasticsearch as an allowlist and let it own search/sort/pagination
 // over the filtered set. We don't do it in ES because seats can be effective
-// at the end of the billing period so it would require bigger plumbing.
+// at the end of the billing period so it would add a lot of complexity to
+// keep the index up to date with the effective seat type for each user.
 async function resolveSeatTypeFilterUserIds({
   workspace,
   seatType,
@@ -733,9 +734,14 @@ async function resolveSeatTypeFilterUserIds({
     workspace,
     seatTypes,
   });
-  return memberships
-    .map((m) => m.user?.sId)
-    .filter((sId): sId is string => Boolean(sId));
+  return (
+    memberships
+      .map((m) => m.user?.sId)
+      // defensive typecheck: in practice this should never happen because the
+      // memberships are inner-joined to users, but the type system doesn't
+      // know that.
+      .filter((sId): sId is string => Boolean(sId))
+  );
 }
 
 export async function getMembersUsage({
