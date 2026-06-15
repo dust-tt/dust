@@ -110,7 +110,9 @@ class FileStorageMock {
           (content: Buffer | string, opts?: { contentType?: string }) => {
             const path = filePath ?? "unknown";
             if (this._saveShouldFail(path)) {
-              return Promise.reject(new Error(`Simulated GCS write failure: ${path}`));
+              return Promise.reject(
+                new Error(`Simulated GCS write failure: ${path}`)
+              );
             }
             this._saveFileCalls.push({
               filePath: path,

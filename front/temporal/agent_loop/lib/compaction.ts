@@ -8,10 +8,11 @@ import { PREVIOUS_INTERACTIONS_TO_PRESERVE } from "@app/lib/api/assistant/conver
 import { isProviderWhitelisted } from "@app/lib/api/assistant/models";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import {
-  conversationScopedPath,
-  type DustFileSystemError,
+import type {
+  DustFileSystemError,
+  FileSystemFileEntry,
 } from "@app/lib/api/file_system/types";
+import { conversationScopedPath } from "@app/lib/api/file_system/types";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
@@ -23,7 +24,6 @@ import type {
 import { isCompactionMessageType } from "@app/types/assistant/conversation";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type { SupportedModel } from "@app/types/assistant/models/types";
-import type { FileSystemFileEntry } from "@app/lib/api/file_system/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -149,20 +149,27 @@ async function createCompactionHistoryFile(
     "",
   ];
 
-  const fsResult = await DustFileSystem.forConversation(auth, targetConversation);
+  const fsResult = await DustFileSystem.forConversation(
+    auth,
+    targetConversation
+  );
   if (fsResult.isErr()) {
     return fsResult;
   }
 
   const scopedPath = conversationScopedPath({
     conversationId: targetConversation.sId,
-    rel: relativeFilePath
+    rel: relativeFilePath,
   });
   const content = Buffer.from(
     `${metadataLines.join("\n")}${renderedMessages}`,
     "utf8"
   );
-  const writeRes = await fsResult.value.write(scopedPath, content, "text/plain");
+  const writeRes = await fsResult.value.write(
+    scopedPath,
+    content,
+    "text/plain"
+  );
   if (writeRes.isErr()) {
     return writeRes;
   }

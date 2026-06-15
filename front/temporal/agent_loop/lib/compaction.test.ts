@@ -2,13 +2,13 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { compactConversation } from "@app/lib/api/assistant/conversation/compaction";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { Authenticator } from "@app/lib/auth";
-import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { CompactionMessageModel } from "@app/lib/models/agent/conversation";
 import { launchCompactionWorkflow } from "@app/temporal/agent_loop/client";
 import { runCompaction } from "@app/temporal/agent_loop/lib/compaction";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   CompactionMessageType,
