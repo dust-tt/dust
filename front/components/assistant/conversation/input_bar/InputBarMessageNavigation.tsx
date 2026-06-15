@@ -137,7 +137,7 @@ export function InputBarMessageNavigation({
   return (
     <div
       className={classNames(
-        "flex items-center gap-1 rounded-xl border border-border bg-white p-1"
+        "flex items-center gap-1 rounded-xl border border-border bg-white p-1 dark:border-border-night dark:bg-muted-night"
       )}
       style={{
         position: "absolute",
