@@ -66,6 +66,7 @@ import MicrosoftWordLogo from "./MicrosoftWord";
 import MiroLogo from "./Miro";
 import MistralLogo from "./Mistral";
 import MondayLogo from "./Monday";
+import NaptaLogo from "./Napta";
 import NetSuiteLogo from "./NetSuite";
 import NotionLogo from "./Notion";
 import OfficeLogo from "./Office";
@@ -170,6 +171,7 @@ export const PLATFORM_LOGOS = {
   MiroLogo,
   MistralLogo,
   MondayLogo,
+  NaptaLogo,
   NetSuiteLogo,
   NotionLogo,
   OfficeLogo,
