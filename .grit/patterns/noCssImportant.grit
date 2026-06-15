@@ -13,8 +13,9 @@ language js
 // inside a double-quoted string). Each branch covers two flagged forms:
 //   - `!important` keyword (CSS-in-JS, template literals, inline styles)
 //   - Tailwind v4 suffix important: `<utility>!` (e.g. `text-foreground!`, `mt-0!`)
+//     Anchored to a hyphenated class pattern to avoid matching natural English like "Hello!"
 pattern css_important_string() {
-    r"(?:\"[^\"]*(?:!important|[a-z0-9]!)[^\"]*\"|'[^']*(?:!important|[a-z0-9]!)[^']*'|`[^`]*(?:!important|[a-z0-9]!)[^`]*`)"
+    r"(?:\"[^\"]*(?:!important|[a-z0-9]-[a-z0-9!-]*!)[^\"]*\"|'[^']*(?:!important|[a-z0-9]-[a-z0-9!-]*!)[^']*'|`[^`]*(?:!important|[a-z0-9]-[a-z0-9!-]*!)[^`]*`)"
 }
 
 css_important_string() as $val where {

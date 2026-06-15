@@ -89,10 +89,10 @@ export const TASK_TEXTAREA_FIELD_CLASS = cn(
   "outline-hidden ring-0 ring-offset-0",
   "focus:shadow-none focus:[box-shadow:none] focus:outline-hidden focus:ring-0 focus:ring-offset-0",
   // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
-  "focus:!ring-0 focus:!ring-offset-0",
+  "focus:ring-0! focus:ring-offset-0!",
   "focus-visible:shadow-none focus-visible:outline-hidden focus-visible:ring-0 focus-visible:ring-offset-0",
   // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
-  "focus-visible:!ring-0",
+  "focus-visible:ring-0!",
   "placeholder:text-muted-foreground",
   ""
 );

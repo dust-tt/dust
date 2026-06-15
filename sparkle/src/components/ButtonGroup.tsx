@@ -28,10 +28,10 @@ const buttonGroupVariants = cva("s:inline-flex s:w-fit s:items-stretch", {
       className: cn(
         "s:gap-0",
         // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
-        "[&>*:not(:first-child)]:!s-rounded-l-none",
+        "[&>*:not(:first-child)]:s:rounded-l-none!",
         "s:[&>*:not(:first-child)]:border-l-0",
         // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
-        "[&>*:not(:last-child)]:!s-rounded-r-none"
+        "[&>*:not(:last-child)]:s:rounded-r-none!"
       ),
     },
     {
@@ -40,10 +40,10 @@ const buttonGroupVariants = cva("s:inline-flex s:w-fit s:items-stretch", {
       className: cn(
         "s:gap-0",
         // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
-        "[&>*:not(:first-child)]:!s-rounded-t-none",
+        "[&>*:not(:first-child)]:s:rounded-t-none!",
         "s:[&>*:not(:first-child)]:border-t-0",
         // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
-        "[&>*:not(:last-child)]:!s-rounded-b-none"
+        "[&>*:not(:last-child)]:s:rounded-b-none!"
       ),
     },
   ],
