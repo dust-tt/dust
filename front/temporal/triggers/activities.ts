@@ -303,6 +303,16 @@ export async function runTriggeredAgentsActivity({
       errorType === "webhook_storage_error";
 
     if (isNonRetryable) {
+      logger.info(
+        {
+          triggerId: trigger.sId,
+          agentConfigurationId: trigger.agentConfigurationId,
+          workspaceId: auth.workspace()?.sId,
+          errorType,
+        },
+        "Trigger run completed without creating a conversation."
+      );
+
       // If the agent is inaccessible, disable the trigger.
       if (errorType === "agent_inaccessible") {
         logger.info(
