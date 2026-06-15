@@ -8,6 +8,7 @@ import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import uniq from "lodash/uniq";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
@@ -43,10 +44,10 @@ app.get(
     const lastVersionEditors = await getEditors(auth, agentConfigurations[0]);
     const [latestAgentConfiguration] = agentConfigurations;
 
-    const spaces = await SpaceResource.fetchByIds(
-      auth,
-      latestAgentConfiguration.requestedSpaceIds
+    const allRequestedSpaceIds = uniq(
+      agentConfigurations.flatMap((config) => config.requestedSpaceIds)
     );
+    const spaces = await SpaceResource.fetchByIds(auth, allRequestedSpaceIds);
     const authors = await getAuthors(agentConfigurations);
 
     // `SkillResource.listByAgentConfigurations` only works for custom agents, as global agents are not versioned.

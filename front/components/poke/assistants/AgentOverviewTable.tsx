@@ -1,3 +1,4 @@
+import { RequestedSpacesList } from "@app/components/poke/assistants/RequestedSpacesList";
 import {
   PokeTable,
   PokeTableBody,
@@ -6,36 +7,64 @@ import {
 } from "@app/components/poke/shadcn/ui/table";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { SpaceType } from "@app/types/space";
-import type { UserType } from "@app/types/user";
-import { Chip } from "@dust-tt/sparkle";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
+import { ContentMessage, InfoCircle } from "@dust-tt/sparkle";
 
 interface AgentOverviewTableProps {
   agentConfiguration: AgentConfigurationType;
   authors: UserType[];
-  spaces: SpaceType[];
+  owner: LightWorkspaceType;
+  spacesById: Map<string, SpaceType>;
 }
 
 export function AgentOverviewTable({
   agentConfiguration,
   authors,
-  spaces,
+  owner,
+  spacesById,
 }: AgentOverviewTableProps) {
   const author = authors.find(
     (user) => user.id === agentConfiguration.versionAuthorId
   );
 
+  const restrictedSpaces = agentConfiguration.requestedSpaceIds
+    .map((spaceId) => spacesById.get(spaceId))
+    .filter(
+      (space): space is SpaceType => space !== undefined && space.isRestricted
+    );
+
   return (
     <>
       <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-md flex-grow pb-4 font-bold">Overview</h2>
+          <h2 className="text-md flex-grow pb-4 font-bold">
+            @{agentConfiguration.name}
+          </h2>
         </div>
+        {restrictedSpaces.length > 0 && (
+          <ContentMessage
+            title="Restricted space access"
+            variant="warning"
+            icon={InfoCircle}
+            size="lg"
+            className="mb-4 w-full"
+          >
+            <div className="flex flex-col gap-2">
+              <div>
+                Only users who are members of all restricted spaces can access
+                this agent. API keys must also be scoped to include all of these
+                spaces.
+              </div>
+              <RequestedSpacesList
+                owner={owner}
+                requestedSpaceIds={restrictedSpaces.map((space) => space.sId)}
+                spacesById={spacesById}
+              />
+            </div>
+          </ContentMessage>
+        )}
         <PokeTable>
           <PokeTableBody>
-            <PokeTableRow>
-              <PokeTableCell>Name</PokeTableCell>
-              <PokeTableCell>@{agentConfiguration.name}</PokeTableCell>
-            </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>Description</PokeTableCell>
               <PokeTableCell>{agentConfiguration.description}</PokeTableCell>
@@ -48,29 +77,21 @@ export function AgentOverviewTable({
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>Spaces</PokeTableCell>
-              <PokeTableCell className="flex flex-row space-x-2">
-                {spaces.map((s) => {
-                  return (
-                    <Chip
-                      key={s.sId}
-                      size="sm"
-                      color={s.isRestricted ? "warning" : "blue"}
-                    >
-                      {s.name}
-                    </Chip>
-                  );
-                })}
+              <PokeTableCell>
+                <RequestedSpacesList
+                  owner={owner}
+                  requestedSpaceIds={agentConfiguration.requestedSpaceIds}
+                  spacesById={spacesById}
+                />
               </PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>Status</PokeTableCell>
               <PokeTableCell>
-                <span className="capitalize">{agentConfiguration.status}</span>
+                <span className="capitalize">
+                  {agentConfiguration.status} (v{agentConfiguration.version})
+                </span>
               </PokeTableCell>
-            </PokeTableRow>
-            <PokeTableRow>
-              <PokeTableCell>Version</PokeTableCell>
-              <PokeTableCell>v{agentConfiguration.version}</PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>Created at</PokeTableCell>

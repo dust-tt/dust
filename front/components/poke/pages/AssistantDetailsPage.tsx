@@ -1,4 +1,5 @@
 import { AgentOverviewTable } from "@app/components/poke/assistants/AgentOverviewTable";
+import { RequestedSpacesList } from "@app/components/poke/assistants/RequestedSpacesList";
 import { ConversationAgentDataTable } from "@app/components/poke/conversation/agent_table";
 import { DatasourceRetrievalTreemapPluginChart } from "@app/components/poke/plugins/components/DatasourceRetrievalTreemapPluginChart";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
@@ -77,6 +78,7 @@ export function AssistantDetailsPage() {
     spaces,
     skillsByVersion,
   } = agentDetails;
+  const spacesById = new Map(spaces.map((space) => [space.sId, space]));
 
   return (
     <div>
@@ -129,7 +131,8 @@ export function AssistantDetailsPage() {
             <AgentOverviewTable
               agentConfiguration={agentConfigurations[0]}
               authors={authors}
-              spaces={spaces}
+              owner={owner}
+              spacesById={spacesById}
             />
             <div className="flex flex-grow flex-col">
               <PluginList
@@ -228,6 +231,14 @@ export function AssistantDetailsPage() {
                               />
                             </div>
                           ))}
+                        </div>
+                        <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+                          <div className="font-bold">Requested spaces:</div>
+                          <RequestedSpacesList
+                            owner={owner}
+                            requestedSpaceIds={a.requestedSpaceIds}
+                            spacesById={spacesById}
+                          />
                         </div>
                         <div className="ml-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
                           <div className="font-bold">Skills:</div>
