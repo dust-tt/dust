@@ -201,10 +201,7 @@ export const IconsUsedInProduct: Story = {
               size="md"
               className="s:text-foreground"
             />
-            <div
-              style={itemStyle}
-              className="s:text-sm s:text-foreground"
-            >
+            <div style={itemStyle} className="s:text-sm s:text-foreground">
               {iconName}
             </div>
           </div>

@@ -186,12 +186,12 @@ export const SlashCommandDropdown = forwardRef<
           scrollHighlightedItemIntoView
         >
           {header ? (
- <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               {header}
             </div>
           ) : null}
           {items.length === 0 ? (
- <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+            <div className="px-2 py-4 text-center text-sm text-muted-foreground">
               {emptyMessage}
             </div>
           ) : (

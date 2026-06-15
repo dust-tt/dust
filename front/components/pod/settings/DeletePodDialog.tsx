@@ -68,7 +68,7 @@ export function DeletePodDialog({ owner, pod }: DeletePodDialogProps) {
         ) : (
           <>
             <DialogContainer className="flex flex-col gap-4">
- <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Type <strong>delete</strong> below to confirm. This permanently
                 removes all Pod content and cannot be undone.
               </p>

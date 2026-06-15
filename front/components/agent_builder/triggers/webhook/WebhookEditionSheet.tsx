@@ -157,7 +157,7 @@ function WebhookEditionEventSelector({
   return (
     <div className="flex flex-col space-y-1">
       <Label htmlFor="webhook-event">Listen for</Label>
- <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         External event that will trigger a run of this agent.
       </p>
       <DropdownMenu>
@@ -229,7 +229,7 @@ function WebhookEditionMessageInput({
   return (
     <div className="space-y-1">
       <Label htmlFor="webhook-prompt">Message (optional)</Label>
- <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Message for the agent when the trigger runs.
       </p>
       <TextArea

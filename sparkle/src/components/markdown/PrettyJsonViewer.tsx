@@ -3,10 +3,8 @@ import { cn } from "@sparkle/lib/utils";
 import React, { useState } from "react";
 
 // Constants for consistent styling
-const VALUE_CLASSES =
-  "s:text-primary-700 s:pt-1 s:text-sm";
-const EMPTY_CLASSES =
-  "s:text-primary-500 s:pt-1 s:text-sm s:italic";
+const VALUE_CLASSES = "s:text-primary-700 s:pt-1 s:text-sm";
+const EMPTY_CLASSES = "s:text-primary-500 s:pt-1 s:text-sm s:italic";
 const INDENT_CLASSES =
   "s:border-structure-200 s:max-w-full s:border-l s:pl-4 s:ml-4";
 
@@ -368,12 +366,7 @@ function JsonValue({
   }
 
   return (
-    <span
-      className={cn(
-        "s:text-sm",
-        "s:text-element-700"
-      )}
-    >
+    <span className={cn("s:text-sm", "s:text-element-700")}>
       {String(value)}
     </span>
   );

@@ -161,7 +161,7 @@ export function ZendeskTagFilters({
       }
     >
       <ContextItem.Description>
- <div className="text-muted-foreground">
+        <div className="text-muted-foreground">
           <div className="mb-4 flex items-start justify-between gap-4">
             <p>{description}</p>
             {!isEditing && (
@@ -176,34 +176,34 @@ export function ZendeskTagFilters({
 
           {hasIncludedTags && (
             <div className="mb-4">
- <p className="mb-2 text-sm font-medium text-green-800">
+              <p className="mb-2 text-sm font-medium text-green-800">
                 Include Tags (sync only items with these tags):
               </p>
               {renderTagList(
                 includedTags,
                 "include",
-"bg-green-100",
-"text-green-800"
+                "bg-green-100",
+                "text-green-800"
               )}
             </div>
           )}
 
           {hasExcludedTags && (
             <div className="mb-4">
- <p className="mb-2 text-sm font-medium text-red-800">
+              <p className="mb-2 text-sm font-medium text-red-800">
                 Exclude Tags (don't sync items with these tags):
               </p>
               {renderTagList(
                 excludedTags,
                 "exclude",
-"bg-red-100",
-"text-red-800"
+                "bg-red-100",
+                "text-red-800"
               )}
             </div>
           )}
 
           {!hasTags && (
- <p className="mb-4 text-sm text-muted-foreground">
+            <p className="mb-4 text-sm text-muted-foreground">
               No tag filters configured.
             </p>
           )}

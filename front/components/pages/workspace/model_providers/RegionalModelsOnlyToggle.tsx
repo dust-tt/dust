@@ -68,7 +68,7 @@ export function RegionalModelsOnlyToggle({
       }
     >
       <ContextItem.Description>
- <span className="text-sm text-muted-foreground">
+        <span className="text-sm text-muted-foreground">
           {config.description}
         </span>
       </ContextItem.Description>

@@ -154,7 +154,7 @@ export function AgentInstructionsHistory({
                 <div className="flex w-full items-center justify-between">
                   <div className="flex flex-col">
                     <span>{formatVersionLabel(config)}</span>
- <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       by {getAuthorName(config)}
                     </span>
                   </div>

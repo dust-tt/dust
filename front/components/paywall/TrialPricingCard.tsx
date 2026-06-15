@@ -42,10 +42,10 @@ export function TrialPricingCard({
       {/* Price and billing toggle */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-1">
- <span className="text-3xl font-bold tabular-nums text-foreground">
+          <span className="text-3xl font-bold tabular-nums text-foreground">
             {price}
           </span>
- <span className="whitespace-nowrap text-xs leading-tight text-muted-foreground">
+          <span className="whitespace-nowrap text-xs leading-tight text-muted-foreground">
             per user
             <br />
             per month
@@ -70,11 +70,9 @@ export function TrialPricingCard({
             <Icon
               visual={Check}
               size="sm"
- className="mt-0.5 shrink-0 text-highlight-500"
+              className="mt-0.5 shrink-0 text-highlight-500"
             />
- <span className="text-sm text-foreground">
-              {feature}
-            </span>
+            <span className="text-sm text-foreground">{feature}</span>
           </li>
         ))}
       </ul>

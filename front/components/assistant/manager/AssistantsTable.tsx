@@ -124,10 +124,10 @@ const getTableColumns = ({
               <Avatar visual={info.row.original.pictureUrl} size="sm" />
             </div>
             <div className="flex min-w-0 grow flex-col">
- <div className="heading-sm overflow-hidden truncate text-foreground">
+              <div className="heading-sm overflow-hidden truncate text-foreground">
                 {`@${info.getValue()}`}
               </div>
- <div className="overflow-hidden truncate text-sm text-muted-foreground">
+              <div className="overflow-hidden truncate text-sm text-muted-foreground">
                 {info.row.original.description}
               </div>
             </div>
@@ -201,7 +201,7 @@ const getTableColumns = ({
           disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
         >
           <div className="group flex flex-row items-center gap-1">
- <div className="truncate text-muted-foreground">
+            <div className="truncate text-muted-foreground">
               <Tooltip
                 tooltipTriggerAsChild
                 label={info.getValue()}

@@ -99,15 +99,13 @@ export function PodTasksCreateValidationDetails({
 
   return (
     <div className="flex flex-col gap-3 pt-2">
- <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         {input.creatorType === "user" ? (
           <>
             Review the{" "}
- <span className="font-medium text-foreground">
-              {taskCount}
-            </span>{" "}
+            <span className="font-medium text-foreground">{taskCount}</span>{" "}
             task{taskCount === 1 ? "" : "s"} below before adding them to{" "}
- <span className="font-medium text-foreground">
+            <span className="font-medium text-foreground">
               {isPodLabelLoading ? "Loading…" : podLabel}
             </span>
             .
@@ -115,11 +113,9 @@ export function PodTasksCreateValidationDetails({
         ) : (
           <>
             The agent wants to create{" "}
- <span className="font-medium text-foreground">
-              {taskCount}
-            </span>{" "}
+            <span className="font-medium text-foreground">{taskCount}</span>{" "}
             task{taskCount === 1 ? "" : "s"} in{" "}
- <span className="font-medium text-foreground">
+            <span className="font-medium text-foreground">
               {isPodLabelLoading ? "Loading…" : podLabel}
             </span>
             .
@@ -128,7 +124,7 @@ export function PodTasksCreateValidationDetails({
         {doneCount > 0 && <> {doneCount} will be marked as done immediately.</>}
       </p>
 
- <div className="divide-y divide-separator overflow-hidden rounded-xl border border-separator bg-background">
+      <div className="divide-y divide-separator overflow-hidden rounded-xl border border-separator bg-background">
         {input.tasks.map((task, index) => {
           const assigneeLabel = formatAssigneeLabel({
             userId: task.userId,
@@ -148,16 +144,16 @@ export function PodTasksCreateValidationDetails({
               </div>
               <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                 <div className="flex flex-wrap items-start gap-2">
- <p className="min-w-0 flex-1 break-words text-sm leading-5 text-foreground">
+                  <p className="min-w-0 flex-1 break-words text-sm leading-5 text-foreground">
                     {task.text}
                   </p>
                   {isDone && <Chip size="xs" color="green" label="Done" />}
                 </div>
- <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   Assignee: {assigneeLabel}
                 </p>
                 {task.doneRationale && (
- <p className="text-xs italic text-muted-foreground">
+                  <p className="text-xs italic text-muted-foreground">
                     {task.doneRationale}
                   </p>
                 )}
@@ -177,7 +173,7 @@ export function PodTasksCreateValidationDetails({
                           href={source.url}
                           target="_blank"
                           rel="noopener noreferrer"
- className="inline-flex max-w-full items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-foreground hover:bg-muted/80"
+                          className="inline-flex max-w-full items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-foreground hover:bg-muted/80"
                         >
                           <Icon
                             size="xs"

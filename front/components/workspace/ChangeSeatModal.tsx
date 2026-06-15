@@ -205,7 +205,7 @@ function SeatCard({
         {badge}
       </div>
       {info.awuCredits > 0 && (
- <div className="flex items-center gap-2 text-muted-foreground">
+        <div className="flex items-center gap-2 text-muted-foreground">
           <span className="text-xs">{formatAwuCredits(info)}</span>
         </div>
       )}
@@ -339,13 +339,13 @@ export function ChangeSeatModal({
   ): React.ReactNode {
     if (seatType === currentSeatType) {
       return (
- <span className="rounded-full border border-blue-400 px-2 py-0.5 text-xs font-medium text-blue-600">
+        <span className="rounded-full border border-blue-400 px-2 py-0.5 text-xs font-medium text-blue-600">
           Current
         </span>
       );
     }
     return (
- <span className="text-xs text-foreground">
+      <span className="text-xs text-foreground">
         {formatPriceCents(
           info.priceCents,
           info.currency,
@@ -441,7 +441,7 @@ export function ChangeSeatModal({
                   ? `Change seat for ${displayedFirstName}`
                   : "Change seat"}
               </DialogTitle>
- <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Choose a new plan to continue
               </p>
             </div>
@@ -486,12 +486,12 @@ export function ChangeSeatModal({
             })}
 
             {isDeferredChange && (
- <p className="mt-1 text-xs text-amber-600">
+              <p className="mt-1 text-xs text-amber-600">
                 The change will take effect at the next credit refresh.
               </p>
             )}
             {isCancellingScheduledChange && (
- <p className="mt-1 text-xs text-amber-600">
+              <p className="mt-1 text-xs text-amber-600">
                 Scheduled change to{" "}
                 <span className="capitalize">
                   {displayedMember?.scheduledSeatType}

@@ -141,7 +141,7 @@ export function CreateWebhookSourceFormContent({
             return (
               <div className="flex flex-col gap-2">
                 <Label htmlFor="subscribedEvents">Events to watch</Label>
- <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   Choose which events will activate this trigger
                 </p>
                 <div>
@@ -205,7 +205,7 @@ export function CreateWebhookSourceFormContent({
                   </DropdownMenu>
                 </div>
                 {fieldState.error && (
- <div className="flex items-center gap-1 text-xs text-warning">
+                  <div className="flex items-center gap-1 text-xs text-warning">
                     {fieldState.error.message}
                   </div>
                 )}
@@ -231,7 +231,7 @@ export function CreateWebhookSourceFormContent({
             <CollapsibleContent>
               <div className="flex flex-col space-y-2">
                 <Label>Secret</Label>
- <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 text-sm text-muted-foreground">
                   <i>
                     Note: You will be able to see and copy this secret for the
                     first 10 minutes after creating the webhook.

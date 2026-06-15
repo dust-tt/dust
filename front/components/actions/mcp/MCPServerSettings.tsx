@@ -122,7 +122,7 @@ export function MCPServerSettings({
       {connection && (
         <div className="space-y-2">
           <div className="heading-base">Credentials</div>
- <div className="w-full text-muted-foreground">
+          <div className="w-full text-muted-foreground">
             {useCase === "platform_actions" && (
               <>
                 <span className="font-semibold">

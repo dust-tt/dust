@@ -99,10 +99,7 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
       className={cn(
         iconButtonVariants({ variant }),
         disabled &&
-          cn(
-            "s:text-primary-500",
-            "s:cursor-default s:hover:scale-100"
-          ),
+          cn("s:text-primary-500", "s:cursor-default s:hover:scale-100"),
         className
       )}
       onClick={onClick}

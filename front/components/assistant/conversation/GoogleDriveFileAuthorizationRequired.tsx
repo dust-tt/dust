@@ -198,7 +198,7 @@ export function GoogleDriveFileAuthorizationRequired({
     >
       {canCurrentUserRespond ? (
         <>
- <div className="font-sm whitespace-normal break-words text-foreground">
+          <div className="font-sm whitespace-normal break-words text-foreground">
             {isAuthorized ? (
               ` your file is now accessible. Continuing...`
             ) : isExtension ? (
@@ -253,7 +253,7 @@ export function GoogleDriveFileAuthorizationRequired({
           )}
         </>
       ) : (
- <div className="font-sm whitespace-normal break-words text-foreground">
+        <div className="font-sm whitespace-normal break-words text-foreground">
           {triggeringUser?.fullName} needs to authorize a file.
           <br />
           <span className="font-semibold">Waiting for them to continue...</span>

@@ -45,20 +45,20 @@ export function InviteChoosePage() {
           <div className="items-left justify-left flex flex-row">
             <Icon visual={DustLogoSquare} size="md" />
           </div>
- <span className="heading-2xl text-foreground">
+          <span className="heading-2xl text-foreground">
             Hello {user?.firstName}!
           </span>
         </div>
         <div className="flex flex-col gap-4">
           {pendingInvitations.length === 0 ? (
- <div className="body-sm text-muted-foreground">
+            <div className="body-sm text-muted-foreground">
               We couldn&apos;t find any pending invitations for{" "}
               {user?.email ?? "your account"}. Please contact your workspace
               admin or try another email address.
             </div>
           ) : (
             <div className="flex flex-col gap-4">
- <div className="body-md text-foreground">
+              <div className="body-md text-foreground">
                 Choose the workspace you would like to join:
               </div>
               <div className="flex flex-col gap-3">
@@ -66,16 +66,16 @@ export function InviteChoosePage() {
                   <div
                     key={invitation.workspaceName}
                     className={cn(
-"bg-muted-background",
-"border-border",
+                      "bg-muted-background",
+                      "border-border",
                       "flex items-center justify-between gap-4 rounded-xl border p-4 shadow-sm"
                     )}
                   >
                     <div className="flex flex-col gap-1">
- <span className="body-md font-medium text-foreground">
+                      <span className="body-md font-medium text-foreground">
                         {invitation.workspaceName}
                       </span>
- <span className="body-sm text-muted-foreground">
+                      <span className="body-sm text-muted-foreground">
                         Role: {invitation.initialRole}
                       </span>
                     </div>

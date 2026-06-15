@@ -66,7 +66,7 @@ export function FilesTab({ isLoading, owner, rows }: FilesTabProps) {
 
   if (rows.length === 0) {
     return (
- <div className="p-4 text-sm text-muted-foreground">
+      <div className="p-4 text-sm text-muted-foreground">
         Conversation attachments & generated content will appear here.
       </div>
     );
@@ -185,7 +185,7 @@ function FileCards({
                 />
               </div>
               <div className="flex items-center justify-between">
- <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground">
                   {row.date ? `${moment(row.date).fromNow()}` : null}
                 </div>
                 <div className="flex items-center gap-3">
@@ -198,7 +198,7 @@ function FileCards({
                           <Icon
                             visual={SpaceClosed}
                             size="md"
- className="text-muted-foreground"
+                            className="text-muted-foreground"
                           />
                         </span>
                       }
@@ -239,9 +239,5 @@ function CreatorAvatar({ row }: { row: ConversationAttachmentRow }) {
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
- <div className="heading-sm pb-2 text-foreground">
-      {children}
-    </div>
-  );
+  return <div className="heading-sm pb-2 text-foreground">{children}</div>;
 }

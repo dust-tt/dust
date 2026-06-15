@@ -21,14 +21,14 @@ export function ConversationForkNotice({
 }: ConversationForkNoticeProps) {
   return (
     <div className="flex items-center gap-3">
- <div className="h-px flex-1 bg-border" />
- <div className="min-w-0 break-words text-center text-sm text-muted-foreground">
+      <div className="h-px flex-1 bg-border" />
+      <div className="min-w-0 break-words text-center text-sm text-muted-foreground">
         <span>
           {getForkingUserDisplayName(message)} branched this conversation:{" "}
         </span>
         <LinkWrapper
           href={getConversationRoute(owner.sId, message.childConversationId)}
- className="text-foreground transition duration-200 hover:underline"
+          className="text-foreground transition duration-200 hover:underline"
         >
           {getConversationDisplayTitle({
             title: message.childConversationTitle,
@@ -36,7 +36,7 @@ export function ConversationForkNotice({
           })}
         </LinkWrapper>
       </div>
- <div className="h-px flex-1 bg-border" />
+      <div className="h-px flex-1 bg-border" />
     </div>
   );
 }

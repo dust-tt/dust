@@ -168,15 +168,13 @@ const DescriptionSection = ({
 
       {/* Title and edit info */}
       <div className="flex flex-col items-center gap-1">
- <h2 className="text-xl font-semibold text-foreground">
-          {skill.name}
-        </h2>
+        <h2 className="text-xl font-semibold text-foreground">{skill.name}</h2>
         {skill.relations.extendedSkill && (
           <ExtendedSkillBadge extendedSkill={skill.relations.extendedSkill} />
         )}
 
         {editedDate && (
- <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Last edited: {editedDate}
             {editedByUser && ` by ${editedByUser.fullName}`}
           </p>

@@ -348,7 +348,7 @@ export function DataSourceList({
       className={cn("flex max-h-full flex-col overflow-auto pr-1", className)}
     >
       {showSelectAllHeader && selectableItems.length > 0 && (
- <div className="flex items-center justify-between p-3 font-medium text-foreground">
+        <div className="flex items-center justify-between p-3 font-medium text-foreground">
           <div className="flex items-center gap-3">
             <Checkbox
               checked={selectAllState}
@@ -357,7 +357,7 @@ export function DataSourceList({
             {headerTitle && <div>{headerTitle}</div>}
           </div>
           {additionalColumns.length > 0 && (
- <div className="ml-3 flex w-1/3 items-center gap-3 text-muted-foreground">
+            <div className="ml-3 flex w-1/3 items-center gap-3 text-muted-foreground">
               {additionalColumns.map((col, idx) => (
                 <div key={idx} className="min-w-0 flex-1 truncate text-left">
                   {col.title}
@@ -381,7 +381,7 @@ export function DataSourceList({
         return (
           <Fragment key={item.id}>
             <div
- className="flex cursor-pointer items-center justify-between rounded-md p-3 hover:bg-muted/60"
+              className="flex cursor-pointer items-center justify-between rounded-md p-3 hover:bg-muted/60"
               onClick={() => item.onClick?.()}
             >
               <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -399,13 +399,13 @@ export function DataSourceList({
                 )}
 
                 {item.icon && <Icon size="sm" visual={item.icon} />}
- <div className="truncate text-sm text-foreground">
+                <div className="truncate text-sm text-foreground">
                   {item.title}
                 </div>
               </div>
 
               {additionalColumns.length > 0 && (
- <div className="ml-3 flex w-1/3 items-start gap-3 text-sm text-muted-foreground">
+                <div className="ml-3 flex w-1/3 items-start gap-3 text-sm text-muted-foreground">
                   {additionalColumns.map((col, idx) => (
                     <div
                       key={idx}

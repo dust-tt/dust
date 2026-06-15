@@ -1063,7 +1063,7 @@ export function ConnectorPermissionsModal({
                     <>
                       <div className="heading-xl p-1">Connection options</div>
                       <div className="p-1">
- <div className="border-y border-border">
+                        <div className="border-y border-border">
                           <OptionsComponent
                             {...{ owner, readOnly, isAdmin, dataSource, plan }}
                           />

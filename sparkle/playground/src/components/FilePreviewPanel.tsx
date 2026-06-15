@@ -18,9 +18,7 @@ interface FilePreviewPanelProps {
 function DocumentPreviewContent() {
   return (
     <div className="s:flex s:h-full s:min-h-0 s:flex-1 s:flex-col s:items-center s:justify-center s:rounded-2xl s:border s:border-border s:bg-muted-background">
-      <p className="s:text-foreground">
-        Document Preview
-      </p>
+      <p className="s:text-foreground">Document Preview</p>
     </div>
   );
 }
@@ -36,9 +34,7 @@ export function FilePreviewPanel({
   if (variant === "document") {
     return (
       <div className="s:flex s:h-full s:min-h-0 s:flex-1 s:flex-col s:items-center s:justify-center s:bg-muted-background">
-        <p className="s:text-foreground">
-          Document Preview
-        </p>
+        <p className="s:text-foreground">Document Preview</p>
       </div>
     );
   }
@@ -87,9 +83,7 @@ export function FilePreviewPanel({
           <DocumentPreviewContent />
         ) : (
           <div className="s:flex s:flex-1 s:flex-col s:items-center s:justify-center s:rounded-2xl s:border s:border-border s:bg-muted-background s:py-16">
-            <p className="s:text-foreground">
-              Extracted information
-            </p>
+            <p className="s:text-foreground">Extracted information</p>
           </div>
         )}
       </div>

@@ -90,7 +90,7 @@ export function SkillSuggestionDetailsPage() {
           {suggestion.source}
         </Chip>
       </div>
- <p className="mt-1 text-sm text-muted-foreground">
+      <p className="mt-1 text-sm text-muted-foreground">
         {suggestion.sId} · Skill&nbsp;
         <LinkWrapper
           href={`/${owner.sId}/skills/${suggestion.skillConfigurationId}`}
@@ -111,7 +111,7 @@ export function SkillSuggestionDetailsPage() {
         )}
       </p>
       {suggestion.updatedBy && (
- <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-sm text-muted-foreground">
           Updated by{" "}
           <span title={suggestion.updatedBy.email}>
             {suggestion.updatedBy.fullName}
@@ -155,7 +155,7 @@ export function SkillSuggestionDetailsPage() {
 
         <div>
           <h2 className="text-md pb-2 font-bold">Raw suggestion</h2>
- <div className="rounded-lg bg-gray-50 p-4">
+          <div className="rounded-lg bg-gray-50 p-4">
             <pre className="overflow-x-auto whitespace-pre-wrap text-sm">
               {JSON.stringify(suggestion.suggestion, null, 2)}
             </pre>

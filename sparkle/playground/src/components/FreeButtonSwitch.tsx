@@ -395,7 +395,7 @@ export function FreeButtonSwitch<TValue extends string>({
           "s:shrink-0 s:rounded-lg s:transition-colors",
           isDraggable && "s:cursor-grab active:s:cursor-grabbing",
           draggingTabValue === option.value && "s:opacity-50",
-          dropTargetValue === option.value &&
+          dropTargetValue === option.value && "s:bg-muted-background"
         )}
         draggable={isDraggable}
         onDragStart={(event) => handleTabDragStart(option, event)}

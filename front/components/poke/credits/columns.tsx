@@ -58,7 +58,7 @@ function AmountCell({
     return (
       <div className="flex flex-col text-xs">
         <span className="text-gray-400">DB: —</span>
- <span className="text-warning-700">
+        <span className="text-warning-700">
           M: {formatMicroUsdToUsd(metronome ?? 0)}
         </span>
       </div>
@@ -68,17 +68,13 @@ function AmountCell({
     return (
       <div className="flex flex-col text-xs">
         <span>DB: {formatMicroUsdToUsd(internal)}</span>
- <span className="text-warning-700">
-          M: —
-        </span>
+        <span className="text-warning-700">M: —</span>
       </div>
     );
   }
   // Tolerate sub-cent rounding from the credit-unit conversion.
   const matches = Math.abs(internal - metronome) < 10_000;
-  const className = matches
- ?"text-muted-foreground"
- :"text-red-600";
+  const className = matches ? "text-muted-foreground" : "text-red-600";
   return (
     <div className="flex flex-col text-xs">
       <span>DB: {formatMicroUsdToUsd(internal)}</span>

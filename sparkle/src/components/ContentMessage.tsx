@@ -33,8 +33,7 @@ const sharedVariantStyles = {
   blue: "s:bg-blue-100",
   rose: "s:bg-rose-100",
   golden: "s:bg-golden-100",
-  outline:
-    "s:bg-transparent s:border s:border-border",
+  outline: "s:bg-transparent s:border s:border-border",
 };
 
 const contentMessageVariants = cva(

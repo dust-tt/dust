@@ -8,8 +8,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 /** Drop-target highlight for folder / go-up cards (owned by card wrappers, not FileExplorerItem). */
 export const fileExplorerDropActiveClasses = cn(
-"ring-2 ring-highlight-300 ring-inset",
-"bg-highlight-50"
+  "ring-2 ring-highlight-300 ring-inset",
+  "bg-highlight-50"
 );
 
 export function getFileExplorerDropSurfaceClassName(

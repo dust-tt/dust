@@ -171,10 +171,8 @@ export function AgentBuilderSpacesBlock({
     <div className="space-y-3 px-6">
       <div className="flex items-start justify-between">
         <div>
- <h2 className="heading-lg text-foreground">
-            Spaces and Pods
-          </h2>
- <p className="text-sm text-muted-foreground">
+          <h2 className="heading-lg text-foreground">Spaces and Pods</h2>
+          <p className="text-sm text-muted-foreground">
             Set what knowledge and capabilities the agent can access.
           </p>
         </div>

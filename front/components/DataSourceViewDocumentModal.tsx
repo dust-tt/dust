@@ -97,7 +97,7 @@ export default function DataSourceViewDocumentModal({
     />
   ) : (
     <div className="flex flex-col items-center gap-4 py-8">
- <span className="text-sm text-muted-foreground">
+      <span className="text-sm text-muted-foreground">
         PDF preview is not available for this document.
       </span>
     </div>
@@ -126,7 +126,7 @@ export default function DataSourceViewDocumentModal({
               )}
               {!isDocumentLoading && isDocumentError && (
                 <div className="flex flex-col gap-2 py-8">
- <span className="text-sm text-muted-foreground">
+                  <span className="text-sm text-muted-foreground">
                     This document has no raw content available
                     <ul className="list-disc pl-4">
                       <li>
@@ -147,10 +147,10 @@ export default function DataSourceViewDocumentModal({
               {!isDocumentLoading && document && isPdf && pdfViewer}
               {!isDocumentLoading && document && !isPdf && (
                 <>
- <div className="copy-sm mb-4 mt-8 text-foreground">
+                  <div className="copy-sm mb-4 mt-8 text-foreground">
                     Content of the document:
                   </div>
- <pre className="whitespace-pre-wrap bg-background py-8 pl-4 pr-2 text-sm text-muted-foreground">
+                  <pre className="whitespace-pre-wrap bg-background py-8 pl-4 pr-2 text-sm text-muted-foreground">
                     {text}
                   </pre>
                 </>

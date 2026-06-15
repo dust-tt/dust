@@ -98,9 +98,9 @@ function buildColumns(currency: string): ColumnDef<InvoiceRow>[] {
               ) : null}
               <span className="text-sm">{name}</span>
               {isExpanded ? (
- <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
               ) : (
- <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
               )}
             </div>
           );
@@ -142,7 +142,7 @@ function buildColumns(currency: string): ColumnDef<InvoiceRow>[] {
       enableSorting: false,
       meta: { headerAlign: "right", className: "w-[17%]" },
       cell: ({ row }) => (
- <span className="block text-right text-sm text-muted-foreground">
+        <span className="block text-right text-sm text-muted-foreground">
           {row.original.isGroup ? "" : row.original.cost}
         </span>
       ),

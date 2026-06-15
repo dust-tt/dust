@@ -12,9 +12,7 @@ const labelVariants = cva(
     variants: {
       variant: {
         default: "s:text-foreground",
-        muted: cn(
-          "s:text-muted-foreground",
-        ),
+        muted: cn("s:text-muted-foreground"),
       },
     },
     defaultVariants: {

@@ -145,7 +145,7 @@ export function SkillBuilderSuggestionsPanel() {
     <div className="flex h-full flex-col">
       <div className="flex flex-col gap-1 px-4 pb-3 pt-4">
         <div className="flex items-center gap-2">
- <h2 className="heading-lg font-semibold text-foreground">
+          <h2 className="heading-lg font-semibold text-foreground">
             Suggestions
           </h2>
           {isBetaTester && <Chip size="xs" color="golden" label="Beta" />}
@@ -170,8 +170,8 @@ export function SkillBuilderSuggestionsPanel() {
             </div>
           ) : suggestions.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-12 text-center">
- <Lightbulb04 className="text-muted-foreground" />
- <p className="text-sm text-muted-foreground">
+              <Lightbulb04 className="text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
                 No pending suggestions.
               </p>
             </div>

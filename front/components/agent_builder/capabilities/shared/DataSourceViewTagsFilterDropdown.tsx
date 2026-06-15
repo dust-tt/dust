@@ -233,7 +233,7 @@ export function DataSourceViewTagsFilterDropdown() {
 
           <div className="text-sm">
             <div className="mb-1 font-semibold">In-conversation filtering</div>
- <div className="text-xs text-muted-foreground">
+            <div className="text-xs text-muted-foreground">
               Allow agents to determine filters to apply based on conversation
               context.
             </div>

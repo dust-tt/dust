@@ -40,11 +40,7 @@ interface PageHeaderProps {
 Page.Header = function ({ title, description, icon }: PageHeaderProps) {
   return (
     <Page.Vertical gap="xs">
-      <Icon
-        visual={icon}
-        className="s:text-primary-400"
-        size="lg"
-      />
+      <Icon visual={icon} className="s:text-primary-400" size="lg" />
       {typeof title === "string" ? (
         <Page.H variant="h3">{title}</Page.H>
       ) : (
@@ -131,12 +127,7 @@ Page.H = function ({ children, variant = "h3" }: PageHProps) {
   };
 
   return (
-    <Component
-      className={cn(
-        "s:text-foreground",
-        hSizes[variant]
-      )}
-    >
+    <Component className={cn("s:text-foreground", hSizes[variant])}>
       {children}
     </Component>
   );

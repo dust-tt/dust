@@ -64,10 +64,10 @@ export function LLMTracePage() {
   if (isLLMTraceError || !trace) {
     return (
       <div className="flex h-64 flex-col items-center justify-center">
- <div className="text-lg font-medium text-warning">
+        <div className="text-lg font-medium text-warning">
           Failed to load LLM trace
         </div>
- <div className="mt-2 text-sm text-muted-foreground">
+        <div className="mt-2 text-sm text-muted-foreground">
           The trace may not exist or there was an error fetching it from GCS.
         </div>
       </div>
@@ -82,7 +82,7 @@ export function LLMTracePage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">LLM Trace</h1>
- <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-muted-foreground">
               Run ID: <code className="text-xs">{runId}</code>
             </div>
           </div>
@@ -152,19 +152,15 @@ export function LLMTracePage() {
         </div>
 
         {trace.error && (
- <div className="rounded-lg border border-red-300 bg-red-50 p-4">
+          <div className="rounded-lg border border-red-300 bg-red-50 p-4">
             <div className="mb-2 flex items-center gap-2">
- <span className="font-semibold text-red-800">
-                Error
-              </span>
+              <span className="font-semibold text-red-800">Error</span>
               {trace.error.partialCompletion && (
                 <Chip color="warning" label="Partial completion" size="xs" />
               )}
             </div>
- <p className="text-sm text-warning">
-              {trace.error.message}
-            </p>
- <p className="mt-1 text-xs text-red-600">
+            <p className="text-sm text-warning">{trace.error.message}</p>
+            <p className="mt-1 text-xs text-red-600">
               Timestamp: {formatTimestamp(trace.error.timestamp)}
               {trace.error.providerRunId && (
                 <span className="ml-4">

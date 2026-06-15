@@ -171,9 +171,8 @@ export function PodConversationsTab({
             <div className="flex items-center gap-2">
               <h2
                 className={cn(
-"heading-2xl text-foreground",
-                  podInfo.archivedAt &&
-"text-muted-foreground"
+                  "heading-2xl text-foreground",
+                  podInfo.archivedAt && "text-muted-foreground"
                 )}
               >
                 {greeting}
@@ -255,18 +254,18 @@ export function PodConversationsTab({
                         return (
                           <div
                             className={cn(
-"cursor-pointer px-3 py-2 hover:bg-gray-50",
- selected &&"bg-gray-100"
+                              "cursor-pointer px-3 py-2 hover:bg-gray-50",
+                              selected && "bg-gray-100"
                             )}
                             onClick={() => navigateToConversation(conversation)}
                           >
                             <div className="flex items-center justify-between gap-2">
                               <div className="min-w-0 flex-1 truncate">
- <div className="text-sm font-medium text-foreground">
+                                <div className="text-sm font-medium text-foreground">
                                   {conversationLabel}
                                 </div>
                               </div>
- <div className="shrink-0 text-xs text-muted-foreground">
+                              <div className="shrink-0 text-xs text-muted-foreground">
                                 {time}
                               </div>
                             </div>

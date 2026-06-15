@@ -60,7 +60,7 @@ export function TimeFrameSection({ actionType }: TimeFrameSectionProps) {
     <div className="space-y-4">
       <div>
         <h3 className="mb-2 text-lg font-semibold">Time Range Configuration</h3>
- <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           By default, the time frame is determined automatically based on the
           conversation context. Enable manual time frame selection when you need
           to specify an exact range for {contextText}.
@@ -80,9 +80,7 @@ export function TimeFrameSection({ actionType }: TimeFrameSectionProps) {
         <div
           className={cn(
             "text-sm font-semibold",
-            !isChecked
- ?"text-muted-foreground"
- :"text-foreground"
+            !isChecked ? "text-muted-foreground" : "text-foreground"
           )}
         >
           {actionText} data from the last

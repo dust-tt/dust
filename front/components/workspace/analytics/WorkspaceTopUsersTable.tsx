@@ -120,14 +120,14 @@ export function WorkspaceTopUsersTable({
     }
     if (isTopUsersError) {
       return (
- <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-muted-foreground">
           Failed to load top users.
         </div>
       );
     }
     if (rows.length === 0) {
       return (
- <div className="text-sm text-muted-foreground">
+        <div className="text-sm text-muted-foreground">
           No user activity for this selection.
         </div>
       );
@@ -142,13 +142,11 @@ export function WorkspaceTopUsersTable({
   }
 
   return (
- <div className="rounded-lg border border-border bg-card p-4">
+    <div className="rounded-lg border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between">
         <div>
- <h3 className="text-base font-medium text-foreground">
-            Top users
-          </h3>
- <p className="text-xs text-muted-foreground">
+          <h3 className="text-base font-medium text-foreground">Top users</h3>
+          <p className="text-xs text-muted-foreground">
             Top 100 users with the most messages over the last {period} days.
           </p>
         </div>

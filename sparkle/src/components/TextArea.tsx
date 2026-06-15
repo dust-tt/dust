@@ -102,9 +102,7 @@ const TextArea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           {...props}
         />
         {error && showErrorLabel && (
-          <div className="s:ml-2 s:text-xs s:text-warning-500">
-            {error}
-          </div>
+          <div className="s:ml-2 s:text-xs s:text-warning-500">{error}</div>
         )}
       </div>
     );
@@ -126,7 +124,7 @@ const ReadOnlyTextArea = ({
       minRows={minRows}
       className={cn(
         "s:copy-sm s:h-full s:min-h-60 s:w-full s:min-w-0 s:rounded-xl",
-        "s:resize-none s:border-border s:bg-muted-background",
+        "s:resize-none s:border-border s:bg-muted-background"
       )}
       defaultValue={content ?? ""}
     />

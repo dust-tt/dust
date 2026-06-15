@@ -108,7 +108,7 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
           {
             <div
               className={cn(
-                "s:line-clamp-1 s:overflow-hidden s:text-ellipsis s:break-all",
+                "s:line-clamp-1 s:overflow-hidden s:text-ellipsis s:break-all"
               )}
             >
               {label}

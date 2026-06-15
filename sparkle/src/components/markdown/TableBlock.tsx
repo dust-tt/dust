@@ -96,9 +96,7 @@ interface TableHeadBlockProps {
 export const TableHeadBlock = memo(
   ({ children }: TableHeadBlockProps) => {
     return (
-      <thead className="s:bg-muted-background s:px-2 s:py-2">
-        {children}
-      </thead>
+      <thead className="s:bg-muted-background s:px-2 s:py-2">{children}</thead>
     );
   },
   (prev, next) => sameNodePosition(prev.node, next.node)
@@ -112,11 +110,7 @@ interface TableBodyBlockProps {
 
 export const TableBodyBlock = memo(
   ({ children }: TableBodyBlockProps) => {
-    return (
-      <tbody className="s:bg-white">
-        {children}
-      </tbody>
-    );
+    return <tbody className="s:bg-white">{children}</tbody>;
   },
   (prev, next) => sameNodePosition(prev.node, next.node)
 );

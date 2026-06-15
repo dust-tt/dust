@@ -31,7 +31,7 @@ export function EmptyCallToAction({
     <div
       className={classNames(
         "flex h-36 w-full items-center justify-center rounded-xl",
-"bg-muted-background"
+        "bg-muted-background"
       )}
     >
       {href ? <LinkWrapper href={href}>{button}</LinkWrapper> : button}

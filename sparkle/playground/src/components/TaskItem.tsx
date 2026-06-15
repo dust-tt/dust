@@ -246,9 +246,7 @@ export function TaskItem({
         {visual}
         <div className="s:flex s:min-w-0 s:flex-1 s:flex-col">
           {title && (
-            <div className="s:text-xs s:text-muted-foreground">
-              {title}
-            </div>
+            <div className="s:text-xs s:text-muted-foreground">{title}</div>
           )}
           {isEditable ? (
             textElement
@@ -256,9 +254,7 @@ export function TaskItem({
             <Tooltip trigger={textElement} label={text} />
           )}
           {isChecked && autoCheckRationale ? (
-            <div className="s:text-xs s:text-faint">
-              {autoCheckRationale}
-            </div>
+            <div className="s:text-xs s:text-faint">{autoCheckRationale}</div>
           ) : null}
           {relatedConversations.length > 0 ? (
             <div className="s:text-xs s:text-muted-foreground">

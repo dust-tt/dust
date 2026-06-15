@@ -153,9 +153,7 @@ export function ConversationListItem({
       groupName="conversation-item"
       className={cn(
         `s:transition-colors s:duration-500 ${
-          isFocusVisible
-            ? "s:bg-highlight-50"
-            : ""
+          isFocusVisible ? "s:bg-highlight-50" : ""
         }`,
         className
       )}

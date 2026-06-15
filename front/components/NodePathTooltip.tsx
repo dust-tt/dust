@@ -91,14 +91,12 @@ export function NodePathTooltip({
         </TooltipTrigger>
         <TooltipContent side="bottom" align="start">
           {isLoading ? (
- <div className="flex gap-1 text-xs text-muted-foreground">
+            <div className="flex gap-1 text-xs text-muted-foreground">
               {providerName} ›
               <Spinner size="xs" />
             </div>
           ) : (
- <div className="text-xs text-muted-foreground">
-              {path}
-            </div>
+            <div className="text-xs text-muted-foreground">{path}</div>
           )}
         </TooltipContent>
       </TooltipRoot>

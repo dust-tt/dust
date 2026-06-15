@@ -58,7 +58,7 @@ export function MCPTablesQueryActionDetails({
         <div className="flex flex-col gap-4 pl-6 pt-4">
           {thinkingBlocks.length > 0 && (
             <div className="flex flex-col gap-1">
- <span className="text-sm font-semibold text-foreground">
+              <span className="text-sm font-semibold text-foreground">
                 Reasoning
               </span>
               {thinkingBlocks.map((block) => (
@@ -69,7 +69,7 @@ export function MCPTablesQueryActionDetails({
 
           {hasQueryToDisplay && (
             <div className="flex flex-col gap-1">
- <span className="text-sm font-semibold text-foreground">
+              <span className="text-sm font-semibold text-foreground">
                 Query
               </span>
               {sqlQueryBlocks.length > 0
@@ -90,7 +90,7 @@ export function MCPTablesQueryActionDetails({
 
           {generatedFiles.length > 0 && (
             <div className="flex flex-col">
- <span className="text-sm font-semibold text-foreground">
+              <span className="text-sm font-semibold text-foreground">
                 Results
               </span>
               {generatedFiles.map((file) => (
@@ -101,7 +101,7 @@ export function MCPTablesQueryActionDetails({
 
           {errorBlocks.length > 0 && (
             <div className="flex flex-col gap-1">
- <span className="text-sm font-semibold text-foreground">
+              <span className="text-sm font-semibold text-foreground">
                 Error
               </span>
               {errorBlocks.map((block, index) => (

@@ -136,8 +136,7 @@ const NavigationListItem = React.forwardRef<
               "s:items-center s:outline-hidden s:rounded-lg s:text-sm s:p-2 s:transition-colors",
               "s:data-[disabled]:pointer-events-none",
               "s:hover:bg-sidebar-foreground",
-              selected &&
-                "s:bg-sidebar-foreground",
+              selected && "s:bg-sidebar-foreground",
               disabled && "s:pointer-events-none s:cursor-default s:opacity-50"
             )}
           >
@@ -265,8 +264,7 @@ const NavigationListLabel = React.forwardRef<
       "s:text-sm",
       "s:bg-app-background",
       "s:text-muted-foreground",
-      isSticky &&
-        "s:sticky s:top-0 s:z-10 s:border-border",
+      isSticky && "s:sticky s:top-0 s:z-10 s:border-border",
       className
     )}
     {...props}

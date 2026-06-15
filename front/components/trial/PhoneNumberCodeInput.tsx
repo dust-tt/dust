@@ -36,9 +36,9 @@ export function PhoneNumberCodeInput({
           className={cn(
             "h-20 w-16",
             "rounded-xl text-center text-2xl",
-"border border-gray-200 bg-gray-50",
-"font-medium text-foreground",
-"focus:border-primary-400 focus:outline-hidden focus:ring-2 focus:ring-primary-200"
+            "border border-gray-200 bg-gray-50",
+            "font-medium text-foreground",
+            "focus:border-primary-400 focus:outline-hidden focus:ring-2 focus:ring-primary-200"
           )}
         />
       ))}

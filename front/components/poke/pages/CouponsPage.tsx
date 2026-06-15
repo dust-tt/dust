@@ -261,9 +261,7 @@ function CouponRedemptionsPanel({ coupon }: CouponRedemptionsPanelProps) {
         Redemptions for <span className="font-mono">{coupon.code}</span>
       </p>
       {redemptions.length === 0 ? (
- <p className="text-sm text-muted-foreground">
-          No redemptions yet.
-        </p>
+        <p className="text-sm text-muted-foreground">No redemptions yet.</p>
       ) : (
         <DataTable
           data={data}

@@ -366,12 +366,12 @@ export function PodSettingsTab({
         </div>
 
         {isPodEditor && (
- <div className="flex w-full flex-col gap-3 border-t border-border pt-8">
+          <div className="flex w-full flex-col gap-3 border-t border-border pt-8">
             <h3 className="heading-lg">Danger Zone</h3>
             <h4 className="heading-base">Archive</h4>
             {podMetadata?.archivedAt ? (
               <div className="flex flex-col gap-3">
- <p className="text-sm text-foreground">
+                <p className="text-sm text-foreground">
                   Archived on{" "}
                   <span className="font-medium">
                     {formatTimestampToFriendlyDate(
@@ -391,7 +391,7 @@ export function PodSettingsTab({
               </div>
             ) : (
               <>
- <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   This Pod will be removed from the sidebar. Its data stays
                   intact and can still be used as a data source.
                 </p>
@@ -405,7 +405,7 @@ export function PodSettingsTab({
               </>
             )}
             <h4 className="heading-base">Delete</h4>
- <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               This permanently removes all content—conversations, folders,
               websites, and data sources. Agents using this Pod's tools will be
               impacted. This cannot be undone.

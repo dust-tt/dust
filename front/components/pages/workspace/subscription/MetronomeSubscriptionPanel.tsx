@@ -99,47 +99,47 @@ export function CancelMetronomeSubscriptionDialog() {
                 </ContentMessage>
               )}
               <div className="flex flex-col gap-3">
- <div className="text-sm font-semibold text-foreground">
+                <div className="text-sm font-semibold text-foreground">
                   What happens next
                 </div>
                 <div className="flex flex-col gap-3">
                   <div>
- <div className="text-sm font-semibold text-foreground">
+                    <div className="text-sm font-semibold text-foreground">
                       {shortDate
                         ? `Until ${shortDate}`
                         : "Until your plan ends"}
                     </div>
- <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-muted-foreground">
                       Everything works exactly as it does today. You keep full
                       access to your workspace.
                     </div>
                   </div>
                   <div>
- <div className="text-sm font-semibold text-foreground">
+                    <div className="text-sm font-semibold text-foreground">
                       {shortDate
                         ? `After ${shortDate}`
                         : "After your plan ends"}
                     </div>
- <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-muted-foreground">
                       Your workspace becomes read-only. Members keep their
                       accounts and can still sign in to view content.
                     </div>
                   </div>
                   <div>
- <div className="text-sm font-semibold text-foreground">
+                    <div className="text-sm font-semibold text-foreground">
                       Your data
                     </div>
- <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-muted-foreground">
                       Agents, conversations, and connected data sources are
                       preserved for 30 days. Reactivate any time during that
                       window.
                     </div>
                   </div>
                   <div>
- <div className="text-sm font-semibold text-foreground">
+                    <div className="text-sm font-semibold text-foreground">
                       Invoices
                     </div>
- <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-muted-foreground">
                       Past invoices remain available indefinitely from this
                       page.
                     </div>

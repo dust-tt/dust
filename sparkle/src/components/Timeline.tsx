@@ -12,15 +12,8 @@ const markerVariants = cva(
           "s:bg-highlight-500",
           "s:shadow-sm"
         ),
-        current: cn(
-          "s:border-highlight-500",
-          "s:bg-background",
-          "s:shadow-sm"
-        ),
-        upcoming: cn(
-          "s:border-border",
-          "s:bg-background"
-        ),
+        current: cn("s:border-highlight-500", "s:bg-background", "s:shadow-sm"),
+        upcoming: cn("s:border-border", "s:bg-background"),
       },
     },
     defaultVariants: {
@@ -59,10 +52,7 @@ function Timeline({
 
   return (
     <div
-      className={cn(
-        "s:flex s:flex-col s:text-foreground",
-        className
-      )}
+      className={cn("s:flex s:flex-col s:text-foreground", className)}
       {...props}
     >
       {items.map((child, index) => {
@@ -125,9 +115,7 @@ const TimelineItem = React.forwardRef<HTMLDivElement, TimelineItemProps>(
         </div>
         <div className="s:flex s:flex-col s:gap-1 s:pb-4">
           {title && (
-            <div className="s:heading-sm s:text-foreground">
-              {title}
-            </div>
+            <div className="s:heading-sm s:text-foreground">{title}</div>
           )}
           {meta && (
             <div className="s:text-xs s:font-medium s:text-muted-foreground">

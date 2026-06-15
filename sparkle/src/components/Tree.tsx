@@ -86,10 +86,7 @@ const treeItemStyleClasses = {
     "s:bg-sidebar-foreground/0",
     "s:hover:bg-sidebar-foreground"
   ),
-  isNavigatableSelected: cn(
-    "s:font-medium",
-    "s:bg-sidebar-foreground"
-  ),
+  isNavigatableSelected: cn("s:font-medium", "s:bg-sidebar-foreground"),
 };
 
 interface TreeItemProps {

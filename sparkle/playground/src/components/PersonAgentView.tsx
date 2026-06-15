@@ -379,9 +379,7 @@ export function PersonAgentView({
             <SheetTitle>About {collaboratorName}</SheetTitle>
           </SheetHeader>
           <SheetContainer>
-            <div className="s:text-foreground">
-              DetailView
-            </div>
+            <div className="s:text-foreground">DetailView</div>
           </SheetContainer>
         </SheetContent>
       </Sheet>

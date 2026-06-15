@@ -97,7 +97,7 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
           return (
             <div
               key={seatType}
- className="flex min-h-28 flex-col gap-4 rounded-lg bg-muted-background p-4"
+              className="flex min-h-28 flex-col gap-4 rounded-lg bg-muted-background p-4"
             >
               <div className="flex justify-between">
                 <div className="flex items-center gap-2">
@@ -107,7 +107,7 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
                     backgroundColor={avatarColors.backgroundColor}
                     iconColor={avatarColors.iconColor}
                   />
- <div className="truncate text-base font-semibold text-foreground">
+                  <div className="truncate text-base font-semibold text-foreground">
                     {plan.name.replace("Seat", "seat")}
                   </div>
                 </div>
@@ -120,7 +120,7 @@ export function BillingSeatsOverview({ owner }: BillingSeatsOverviewProps) {
                 )}
               </div>
 
- <div className="flex flex-col gap-2 text-xs text-muted-foreground">
+              <div className="flex flex-col gap-2 text-xs text-muted-foreground">
                 <div className="flex items-center gap-2">
                   <Icon visual={User01} size="xs" />
                   <span>

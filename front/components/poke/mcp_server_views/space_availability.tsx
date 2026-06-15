@@ -24,7 +24,7 @@ export function MCPServerSpaceAvailabilityTable({
     <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
       <h2 className="text-md pb-4 font-bold">Available in spaces</h2>
       {spaceViews.length === 0 ? (
- <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           This server is only installed in the system space and not shared to
           any other space yet.
         </p>

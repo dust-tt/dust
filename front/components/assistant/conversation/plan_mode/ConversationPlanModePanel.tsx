@@ -31,7 +31,7 @@ export function ConversationPlanModePanel({
       <AppLayoutTitle>
         <div className="flex h-full items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
- <span className="truncate text-sm font-semibold text-foreground">
+            <span className="truncate text-sm font-semibold text-foreground">
               Plan: {title}
             </span>
             <ApprovalStateChip state={approvalState} />
@@ -50,7 +50,7 @@ export function ConversationPlanModePanel({
             <Spinner />
           </div>
         ) : !planFile ? (
- <div className="text-sm text-muted-foreground">
+          <div className="text-sm text-muted-foreground">
             No active plan for this conversation.
           </div>
         ) : (

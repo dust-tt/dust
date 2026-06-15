@@ -221,7 +221,7 @@ export function MCPServerAuthConnection({
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="w-full space-y-4">
- <div className="heading-lg text-foreground">
+        <div className="heading-lg text-foreground">
           {supportsBoth ? "How do you want to connect?" : "Connection type"}
         </div>
         <div className="grid w-full grid-cols-2 gap-4">
@@ -282,7 +282,7 @@ export function MCPServerAuthConnection({
       )}
 
       {documentationUrl && (
- <div className="w-full pt-6 text-sm text-muted-foreground">
+        <div className="w-full pt-6 text-sm text-muted-foreground">
           Questions ? Read{" "}
           <Hoverable href={documentationUrl} target="_blank" variant="primary">
             our guide
@@ -338,7 +338,7 @@ function OAuthCredentialFields({
 
             return (
               <div key={key} className="w-full space-y-1">
- <Label className="text-sm font-semibold text-foreground">
+                <Label className="text-sm font-semibold text-foreground">
                   {inputData.label}
                 </Label>
                 <Input
@@ -353,7 +353,7 @@ function OAuthCredentialFields({
           })}
           {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY] && (
             <div className="w-full space-y-2">
- <Label className="text-sm font-semibold text-foreground">
+              <Label className="text-sm font-semibold text-foreground">
                 {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.label}
               </Label>
               <div>
@@ -398,7 +398,7 @@ function OAuthCredentialFields({
                 </DropdownMenu>
               </div>
               {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.helpMessage && (
- <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground">
                   {inputs[TOKEN_ENDPOINT_AUTH_METHOD_KEY]?.helpMessage}
                 </div>
               )}
@@ -447,23 +447,19 @@ function UseCaseCard({
           <Icon
             visual={icon}
             className={cn(
-              isSupported
-                ? "text-highlight"
- :"text-muted-foreground"
+              isSupported ? "text-highlight" : "text-muted-foreground"
             )}
           />
           <span
             className={cn(
               "font-medium",
-              isSupported
-                ? "text-highlight"
- :"text-muted-foreground"
+              isSupported ? "text-highlight" : "text-muted-foreground"
             )}
           >
             {OAUTH_USE_CASE_TO_LABEL[useCaseType]}
           </span>
         </div>
- <span className="text-sm text-muted-foreground">
+        <span className="text-sm text-muted-foreground">
           {OAUTH_USE_CASE_TO_DESCRIPTION[useCaseType]}
         </span>
       </div>

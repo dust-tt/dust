@@ -118,70 +118,70 @@ interface PricingTableProps {
 function PricingTable({ rows }: PricingTableProps) {
   if (rows.length === 0) {
     return (
- <div className="py-12 text-center text-muted-foreground">
+      <div className="py-12 text-center text-muted-foreground">
         No models found matching your criteria.
       </div>
     );
   }
 
   return (
- <div className="overflow-hidden rounded-lg border border-border">
+    <div className="overflow-hidden rounded-lg border border-border">
       <table className="w-full">
         <thead>
- <tr className="border-b border-border bg-muted/30">
- <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <tr className="border-b border-border bg-muted/30">
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Model
             </th>
- <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Provider
             </th>
- <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Input
             </th>
- <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Output
             </th>
- <th className="hidden px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">
+            <th className="hidden px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">
               Cache Read
             </th>
- <th className="hidden px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">
+            <th className="hidden px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">
               Cache Write
             </th>
           </tr>
         </thead>
- <tbody className="divide-y divide-border">
+        <tbody className="divide-y divide-border">
           {rows.map((row) => (
             <tr
               key={row.modelId}
- className="transition-colors hover:bg-muted/20"
+              className="transition-colors hover:bg-muted/20"
             >
               <td className="px-4 py-3">
- <span className="font-medium text-foreground">
+                <span className="font-medium text-foreground">
                   {row.displayName}
                 </span>
               </td>
               <td className="px-4 py-3">
- <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-muted-foreground">
                   {row.providerDisplayName}
                 </span>
               </td>
               <td className="px-4 py-3 text-right">
- <span className="font-mono text-sm text-foreground">
+                <span className="font-mono text-sm text-foreground">
                   {formatPrice(row.inputPrice)}
                 </span>
               </td>
               <td className="px-4 py-3 text-right">
- <span className="font-mono text-sm text-foreground">
+                <span className="font-mono text-sm text-foreground">
                   {formatPrice(row.outputPrice)}
                 </span>
               </td>
               <td className="hidden px-4 py-3 text-right md:table-cell">
- <span className="font-mono text-sm text-muted-foreground">
+                <span className="font-mono text-sm text-muted-foreground">
                   {row.cacheReadPrice ? formatPrice(row.cacheReadPrice) : "—"}
                 </span>
               </td>
               <td className="hidden px-4 py-3 text-right lg:table-cell">
- <span className="font-mono text-sm text-muted-foreground">
+                <span className="font-mono text-sm text-muted-foreground">
                   {row.cacheWritePrice ? formatPrice(row.cacheWritePrice) : "—"}
                 </span>
               </td>
@@ -278,7 +278,7 @@ export default function ApiPricingPage() {
           </div>
 
           {/* Summary */}
- <div className="text-sm text-muted-foreground">
+          <div className="text-sm text-muted-foreground">
             Showing {filteredData.length} of {allPricingData.length} models
           </div>
 
@@ -286,7 +286,7 @@ export default function ApiPricingPage() {
           <PricingTable rows={filteredData} />
 
           {/* Footer note */}
- <div className="rounded-lg border border-border bg-muted/20 p-4 text-sm text-muted-foreground">
+          <div className="rounded-lg border border-border bg-muted/20 p-4 text-sm text-muted-foreground">
             <p>
               <strong>Note:</strong> Prices are subject to change. Cache pricing
               is available for models that support prompt caching. Input price

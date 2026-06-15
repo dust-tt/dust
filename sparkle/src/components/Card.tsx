@@ -43,30 +43,12 @@ const cardVariants = cva(
   {
     variants: {
       variant: {
-        primary: cn(
-          "s:bg-muted-background",
-          "s:border-border/0",
-        ),
-        active: cn(
-          "s:bg-muted-background",
-          "s:border-border",
-        ),
-        highlight: cn(
-          "s:bg-highlight-50",
-          "s:border-border/0",
-        ),
-        warning: cn(
-          "s:bg-warning-50",
-          "s:border-border/0",
-        ),
-        secondary: cn(
-          "s:bg-background",
-          "s:border-border",
-        ),
-        tertiary: cn(
-          "s:bg-background",
-          "s:border-border/0",
-        ),
+        primary: cn("s:bg-muted-background", "s:border-border/0"),
+        active: cn("s:bg-muted-background", "s:border-border"),
+        highlight: cn("s:bg-highlight-50", "s:border-border/0"),
+        warning: cn("s:bg-warning-50", "s:border-border/0"),
+        secondary: cn("s:bg-background", "s:border-border"),
+        tertiary: cn("s:bg-background", "s:border-border/0"),
       },
       size: {
         xs: "s:px-2 s:py-1.5 s:rounded-lg",

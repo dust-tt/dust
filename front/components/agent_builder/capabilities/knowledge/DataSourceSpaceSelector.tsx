@@ -85,7 +85,7 @@ export function DataSourceSpaceSelector({
 
   return (
     <div className="flex h-full flex-col">
- <div className="heading-sm bg-muted-background p-2 text-foreground">
+      <div className="heading-sm bg-muted-background p-2 text-foreground">
         From spaces:
       </div>
       <DataSourceList
@@ -95,7 +95,7 @@ export function DataSourceSpaceSelector({
       />
       {projectItems.length > 0 && (
         <>
- <div className="heading-sm bg-muted-background p-2 text-foreground">
+          <div className="heading-sm bg-muted-background p-2 text-foreground">
             From Pods:
           </div>
           <DataSourceList

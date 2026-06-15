@@ -138,7 +138,7 @@ export function CreateCouponForm({
   }
 
   return (
- <div className="rounded-lg border bg-muted/40 p-6">
+    <div className="rounded-lg border bg-muted/40 p-6">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold">Create coupon</h2>
         <Button icon={XClose} variant="ghost" size="sm" onClick={onCancel} />

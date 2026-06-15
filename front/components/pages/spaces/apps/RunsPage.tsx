@@ -98,11 +98,11 @@ export function RunsPage() {
                 tab.runType == runType
                   ? cn(
                       "border-border bg-primary-700 text-foreground hover:bg-primary-800",
-""
+                      ""
                     )
                   : cn(
-"border-border bg-background text-muted-foreground hover:bg-muted-background hover:text-muted-foreground",
-""
+                      "border-border bg-background text-muted-foreground hover:bg-muted-background hover:text-muted-foreground",
+                      ""
                     ),
                 tabIdx === 0 ? "rounded-l-2xl border-r-0" : "",
                 tabIdx === tabs.length - 1 ? "rounded-r-2xl border-l-0" : "",
@@ -149,7 +149,7 @@ export function RunsPage() {
       </div>
 
       {runs.length > 0 ? (
- <div className="mt-4 flex flex-auto pl-1 text-sm text-muted-foreground">
+        <div className="mt-4 flex flex-auto pl-1 text-sm text-muted-foreground">
           Showing runs {offset + 1} - {last} of {total} runs
         </div>
       ) : null}
@@ -158,14 +158,14 @@ export function RunsPage() {
         <ul role="list" className="space-y-4">
           {runs.map((run) => (
             <li key={run.run_id} className="px-0">
- <div className="rounded border border-border px-4 py-4">
+              <div className="rounded border border-border px-4 py-4">
                 <div className="flex items-center justify-between">
                   <div className="flex flex-initial">
                     <LinkWrapper
                       href={`/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/${run.run_id}`}
                       className="block"
                     >
- <p className="truncate font-mono text-base text-highlight-500">
+                      <p className="truncate font-mono text-base text-highlight-500">
                         {run.run_id.slice(0, 8)}...
                         {run.run_id.slice(-8)}
                       </p>
@@ -185,7 +185,7 @@ export function RunsPage() {
                   </div>
                 </div>
                 <div className="mt-2 flex justify-between">
- <div className="flex flex-1 flex-wrap items-center space-x-1 text-sm text-muted-foreground">
+                  <div className="flex flex-1 flex-wrap items-center space-x-1 text-sm text-muted-foreground">
                     {run.status.blocks.map((block) => (
                       <span
                         key={`${block.block_type}-${block.name}`}
@@ -199,11 +199,11 @@ export function RunsPage() {
                         {block.name}
                       </span>
                     ))}
- <span className="ml-2 pt-1 font-mono text-xs text-muted-foreground">
+                    <span className="ml-2 pt-1 font-mono text-xs text-muted-foreground">
                       ({inputCount(run.status)} inputs)
                     </span>
                   </div>
- <div className="mt-2 flex items-center pr-1 text-sm text-muted-foreground sm:mt-0">
+                  <div className="mt-2 flex items-center pr-1 text-sm text-muted-foreground sm:mt-0">
                     <p>{timeAgoFrom(run.created)} ago</p>
                   </div>
                 </div>
@@ -211,7 +211,7 @@ export function RunsPage() {
             </li>
           ))}
           {runs.length == 0 ? (
- <div className="mt-10 flex flex-col items-center justify-center text-sm text-muted-foreground">
+            <div className="mt-10 flex flex-col items-center justify-center text-sm text-muted-foreground">
               <p>No runs found</p>
               {runType == "local" ? (
                 <p className="mt-2">

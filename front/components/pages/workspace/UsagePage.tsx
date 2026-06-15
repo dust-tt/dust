@@ -552,7 +552,7 @@ export function UsagePage() {
         <Page.Vertical gap="xs">
           <Icon
             visual={PieChart01}
- className="text-muted-foreground"
+            className="text-muted-foreground"
             size="lg"
           />
           <Page.H variant="h3">Usage</Page.H>
@@ -651,7 +651,7 @@ export function UsagePage() {
         )}
 
         <Page.Vertical gap="sm" align="stretch">
- <span className="heading-2xl text-foreground">
+          <span className="heading-2xl text-foreground">
             Members
           </span>
           {searchAndInviteRow}

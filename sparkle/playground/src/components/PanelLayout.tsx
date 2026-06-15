@@ -316,12 +316,8 @@ export function PanelLayout({ children }: PanelLayoutProps) {
       <section
         className={[
           "s:relative s:flex s:h-full s:min-w-0 s:flex-none s:flex-col s:overflow-hidden",
-          isNav
-            ? "s:bg-muted-background"
-            : "s:bg-white",
-          hidden
-            ? ""
-            : "s:border-r s:border-separator",
+          isNav ? "s:bg-muted-background" : "s:bg-white",
+          hidden ? "" : "s:border-r s:border-separator",
           dragging
             ? ""
             : "s:transition-[width] s:duration-[260ms] s:ease-[cubic-bezier(.4,0,.2,1)]",

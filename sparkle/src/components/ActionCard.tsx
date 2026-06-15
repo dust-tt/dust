@@ -17,12 +17,8 @@ export type ActionCardDiffStatus = (typeof ACTION_CARD_DIFF_STATUSES)[number];
 const actionCardDiffVariants = cva("s:p-3", {
   variants: {
     diffStatus: {
-      added: cn(
-        "s:bg-success-50 s:border-success-200",
-      ),
-      removed: cn(
-        "s:bg-warning-50 s:border-warning-200",
-      ),
+      added: cn("s:bg-success-50 s:border-success-200"),
+      removed: cn("s:bg-warning-50 s:border-warning-200"),
     },
   },
 });

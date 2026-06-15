@@ -94,5 +94,5 @@ export const TASK_TEXTAREA_FIELD_CLASS = cn(
   // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
   "focus-visible:!ring-0",
   "placeholder:text-muted-foreground",
-""
+  ""
 );

@@ -20,26 +20,10 @@ import { cva, type VariantProps } from "class-variance-authority";
 const statusBannerVariants = cva("space-y-2 border-y px-3 py-3 text-xs", {
   variants: {
     variant: {
-      info: cn(
-"border-info-200",
-"bg-info-100",
-"text-info-900"
-      ),
-      warning: cn(
-"border-warning-200",
-"bg-warning-100",
-"text-warning-900"
-      ),
-      success: cn(
-"border-success-200",
-"bg-success-100",
-"text-success-900"
-      ),
-      danger: cn(
-"border-red-200",
-"bg-red-100",
-"text-red-900"
-      ),
+      info: cn("border-info-200", "bg-info-100", "text-info-900"),
+      warning: cn("border-warning-200", "bg-warning-100", "text-warning-900"),
+      success: cn("border-success-200", "bg-success-100", "text-success-900"),
+      danger: cn("border-red-200", "bg-red-100", "text-red-900"),
     },
   },
   defaultVariants: {

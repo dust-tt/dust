@@ -1304,9 +1304,7 @@ function ProjectSetupEmptyState({
 }) {
   return (
     <div className="s:flex s:h-full s:w-full s:flex-col s:items-center s:justify-center s:gap-0 s:text-center">
-      <h3 className="s:heading-lg s:text-foreground">
-        It's quiet in here.
-      </h3>
+      <h3 className="s:heading-lg s:text-foreground">It's quiet in here.</h3>
       <p className="s:text-muted-foreground s:textbase s:mb-3">
         Your Pod is ready but empty! Let us help you invite people, add key
         data, and more.
@@ -3560,9 +3558,7 @@ export function GroupConversationView({
         <GroupConversationTabContent value="conversations">
           {/* New conversation section */}
           {greeting && (
-            <h2 className="s:heading-2xl s:text-foreground">
-              {greeting}
-            </h2>
+            <h2 className="s:heading-2xl s:text-foreground">{greeting}</h2>
           )}
           <InputBar placeholder={`Start a conversation in ${space.name}`} />
 
@@ -3851,7 +3847,7 @@ export function GroupConversationView({
                                 }
                                 className={cn(
                                   "s:px-3 s:rounded-2xl",
-                                  isSelectedConversation &&
+                                  isSelectedConversation && "s:bg-highlight-50"
                                 )}
                                 time={listItem.time}
                                 showFocus={
@@ -4485,9 +4481,7 @@ export function GroupConversationView({
         {/* About Tab */}
         {showToolsAndAboutTabs && (
           <GroupConversationTabContent value="about" contentClassName="s:gap-4">
-            <p className="s:text-foreground">
-              {space.description}
-            </p>
+            <p className="s:text-foreground">{space.description}</p>
           </GroupConversationTabContent>
         )}
 
@@ -4792,9 +4786,7 @@ export function GroupConversationView({
           <DialogContainer className="s:flex s:flex-col s:gap-4">
             <p className="s:text-sm s:text-muted-foreground">
               Type{" "}
-              <span className="s:font-semibold s:text-foreground">
-                delete
-              </span>{" "}
+              <span className="s:font-semibold s:text-foreground">delete</span>{" "}
               below to confirm. This permanently removes all project content and
               cannot be undone.
             </p>
@@ -4992,9 +4984,7 @@ export function GroupConversationView({
           </SheetHeader>
           <SheetContainer>
             <div className="s:flex s:flex-col s:items-center s:justify-center s:py-16">
-              <p className="s:text-foreground">
-                Member detailview
-              </p>
+              <p className="s:text-foreground">Member detailview</p>
             </div>
           </SheetContainer>
         </SheetContent>

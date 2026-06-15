@@ -75,9 +75,7 @@ export const SpinnerExample: Story = {
   render: () => {
     return (
       <div className="s:flex s:flex-col s:gap-4">
-        <div className="s:heading-base s:text-foreground">
-          Size = XS
-        </div>
+        <div className="s:heading-base s:text-foreground">Size = XS</div>
         <div className="s:flex s:gap-4">
           <div className="s:p-20">
             <Spinner variant="color" size="xs" />
@@ -89,9 +87,7 @@ export const SpinnerExample: Story = {
             <Spinner variant="rose300" size="xs" />
           </div>
         </div>
-        <div className="s:heading-base s:text-foreground">
-          Size = SM
-        </div>
+        <div className="s:heading-base s:text-foreground">Size = SM</div>
         <div className="s:flex s:gap-4">
           <div className="s:p-20">
             <Spinner variant="color" size="sm" />
@@ -103,9 +99,7 @@ export const SpinnerExample: Story = {
             <Spinner variant="rose300" size="sm" />
           </div>
         </div>
-        <div className="s:heading-base s:text-foreground">
-          Size = MD
-        </div>
+        <div className="s:heading-base s:text-foreground">Size = MD</div>
         <div className="s:flex s:gap-4">
           <div className="s:p-20">
             <Spinner variant="color" size="md" />
@@ -117,9 +111,7 @@ export const SpinnerExample: Story = {
             <Spinner variant="rose300" size="md" />
           </div>
         </div>
-        <div className="s:heading-base s:text-foreground">
-          Size = LG
-        </div>
+        <div className="s:heading-base s:text-foreground">Size = LG</div>
         <div className="s:flex s:gap-4">
           <div className="s:p-20">
             <Spinner variant="color" size="lg" />
@@ -131,9 +123,7 @@ export const SpinnerExample: Story = {
             <Spinner variant="rose300" size="lg" />
           </div>
         </div>
-        <div className="s:heading-base s:text-foreground">
-          Size = XL
-        </div>
+        <div className="s:heading-base s:text-foreground">Size = XL</div>
         <div className="s:flex s:gap-4">
           <div className="s:p-20">
             <Spinner variant="color" size="xl" />
@@ -145,9 +135,7 @@ export const SpinnerExample: Story = {
             <Spinner variant="rose300" size="xl" />
           </div>
         </div>
-        <div className="s:heading-base s:text-foreground">
-          Size = XXL
-        </div>
+        <div className="s:heading-base s:text-foreground">Size = XXL</div>
         <div className="s:flex s:gap-4">
           <div className="s:p-20">
             <Spinner variant="color" size="2xl" />

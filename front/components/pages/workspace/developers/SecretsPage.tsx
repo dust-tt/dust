@@ -227,7 +227,7 @@ export function SecretsPage() {
               />
             )}
           </Page.Horizontal>
- <div className="w-full space-y-4 divide-y divide-separator">
+          <div className="w-full space-y-4 divide-y divide-separator">
             <div className="flex w-full flex-col space-y-4 pt-4">
               {secrets
                 .sort((a, b) => a.name.localeCompare(b.name))
@@ -237,7 +237,7 @@ export function SecretsPage() {
                     className="flex items-center space-x-4"
                   >
                     <div className="flex items-center space-x-2">
- <pre className="rounded bg-muted-background p-2 text-sm text-foreground">
+                      <pre className="rounded bg-muted-background p-2 text-sm text-foreground">
                         env.secrets.{secret.name}
                       </pre>
                       <Button

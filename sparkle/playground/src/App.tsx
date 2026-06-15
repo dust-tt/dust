@@ -41,9 +41,7 @@ function StoryList({
   return (
     <div className="s:flex s:min-h-screen s:items-start s:justify-center s:bg-background s:pt-6">
       <div className="s:w-full s:max-w-2xl s:px-4 s:text-left">
-        <h1 className="s:heading-4xl s:mb-2 s:text-foreground">
-          Playgrounds
-        </h1>
+        <h1 className="s:heading-4xl s:mb-2 s:text-foreground">Playgrounds</h1>
         <div className="s:mb-4 s:flex s:items-center s:justify-between s:gap-2">
           <p className="s:text-base s:text-muted-foreground">
             Select a playground to explore
@@ -79,9 +77,7 @@ function StoryList({
               onClick={() => onSelectStory(story.name)}
               hasSeparator={index < stories.length - 1}
             >
-              <div className="s:text-foreground">
-                {story.name}
-              </div>
+              <div className="s:text-foreground">{story.name}</div>
             </ListItem>
           ))}
         </ListGroup>

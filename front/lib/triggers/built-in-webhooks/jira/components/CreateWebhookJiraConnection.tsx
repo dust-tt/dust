@@ -107,7 +107,7 @@ export function CreateWebhookJiraConnection({
                 <span className="text-warning">*</span>
               )}
             </Label>
- <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Select Jira projects to monitor for events
             </p>
             <div className="mt-2 flex flex-col gap-2">
@@ -175,7 +175,7 @@ export function CreateWebhookJiraConnection({
           </div>
 
           {selectedProjects.length === 0 && (
- <p className="mt-1 text-xs text-warning">
+            <p className="mt-1 text-xs text-warning">
               Please select at least one project to create the webhook
             </p>
           )}

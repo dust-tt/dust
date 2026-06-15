@@ -106,7 +106,7 @@ function DurationLabel({ durationMs, isRunning, size }: DurationLabelProps) {
   return (
     <span
       className={cn(
-"text-muted-foreground",
+        "text-muted-foreground",
         size === "xs" ? "text-xs" : "text-sm"
       )}
     >
@@ -139,7 +139,7 @@ export function ActionDetailsWrapper({
       <div className="flex w-full flex-col gap-y-2">
         <div
           className={cn(
-"text-foreground",
+            "text-foreground",
             "flex flex-grow flex-row items-center gap-x-2"
           )}
         >
@@ -167,10 +167,7 @@ export function ActionDetailsWrapper({
   return (
     <>
       <div
-        className={cn(
-"text-foreground",
-          "flex flex-row items-center gap-x-2"
-        )}
+        className={cn("text-foreground", "flex flex-row items-center gap-x-2")}
       >
         <Icon visual={visual} />
         <span className="heading-base">{actionName}</span>

@@ -62,7 +62,7 @@ export const SuggestedTaskItem = memo(function SuggestedTaskItem({
           <TaskMetadataTooltip task={task} agentNameById={agentNameById}>
             <div
               className={cn(
-"min-h-6 w-full min-w-0 break-words text-pretty text-base leading-6 text-foreground",
+                "min-h-6 w-full min-w-0 break-words text-pretty text-base leading-6 text-foreground",
                 typing.isAnimating && "absolute inset-0"
               )}
             >
@@ -81,7 +81,7 @@ export const SuggestedTaskItem = memo(function SuggestedTaskItem({
           </TaskMetadataTooltip>
         </div>
         {!typing.isAnimating && (
- <p className="min-w-0 text-pretty text-xs leading-relaxed text-muted-foreground">
+          <p className="min-w-0 text-pretty text-xs leading-relaxed text-muted-foreground">
             {rationaleText}
           </p>
         )}

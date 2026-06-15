@@ -76,10 +76,7 @@ export function DustAppPageLayout({ children }: DustAppPageLayoutProps) {
 
   return (
     <div className="flex w-full flex-col">
-      <Tabs
-        value={currentTab}
- className="sticky top-0 z-10 bg-background pt-4"
-      >
+      <Tabs value={currentTab} className="sticky top-0 z-10 bg-background pt-4">
         <TabsList>
           {subNavigationApp({ owner, app, current: currentTab }).map((item) => (
             <TabsTrigger

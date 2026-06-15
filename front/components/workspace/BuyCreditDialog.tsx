@@ -172,7 +172,7 @@ export function BuyCreditDialog({
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
             <Spinner size="lg" />
- <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Processing purchase...
             </p>
           </div>
@@ -183,13 +183,13 @@ export function BuyCreditDialog({
           <div className="flex flex-col items-center justify-center gap-4 py-8">
             <Icon visual={CheckCircle} size="lg" className="text-success-500" />
             <div className="text-center">
- <p className="text-lg font-medium text-foreground">
+              <p className="text-lg font-medium text-foreground">
                 Credits purchased successfully!
               </p>
- <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-muted-foreground">
                 Your credits are now available.
               </p>
- <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-muted-foreground">
                 <span className="font-semibold">
                   Invoice has been sent by email.
                 </span>
@@ -201,16 +201,12 @@ export function BuyCreditDialog({
       case "redirect":
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <Icon
-              visual={LinkExternal01}
-              size="lg"
- className="text-primary"
-            />
+            <Icon visual={LinkExternal01} size="lg" className="text-primary" />
             <div className="text-center">
- <p className="text-lg font-medium text-foreground">
+              <p className="text-lg font-medium text-foreground">
                 Payment confirmation required
               </p>
- <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-muted-foreground">
                 Please complete the payment to finalize your credit purchase or
                 contact support to cancel pending invoices.
               </p>
@@ -223,13 +219,13 @@ export function BuyCreditDialog({
           <div className="flex flex-col items-center justify-center gap-4 py-8">
             <Icon visual={XCircle} size="lg" className="text-warning-500" />
             <div className="text-center">
- <p className="text-lg font-medium text-foreground">
+              <p className="text-lg font-medium text-foreground">
                 Something went wrong
               </p>
- <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-muted-foreground">
                 {errorMessage}
               </p>
- <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-2 text-xs text-muted-foreground">
                 Please contact support if the issue persists.
               </p>
             </div>
@@ -252,13 +248,13 @@ export function BuyCreditDialog({
             <div className="flex flex-col gap-2">
               <label
                 htmlFor="amount"
- className="text-sm font-medium text-foreground"
+                className="text-sm font-medium text-foreground"
               >
                 Credits amount
               </label>
               <div className="flex flex-col gap-1">
                 <div className="relative">
- <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                     $
                   </span>
                   <Input
@@ -275,7 +271,7 @@ export function BuyCreditDialog({
                   />
                 </div>
                 {amountExceedsMax && (
- <span className="text-xs text-foreground-warning">
+                  <span className="text-xs text-foreground-warning">
                     Maximum purchase amount is {maxAmountFormatted}
                   </span>
                 )}
@@ -283,19 +279,17 @@ export function BuyCreditDialog({
             </div>
 
             {isValidAmount && !amountExceedsMax && (
- <div className="flex flex-col gap-1 rounded-md border border-border bg-muted-background p-3 text-sm">
+              <div className="flex flex-col gap-1 rounded-md border border-border bg-muted-background p-3 text-sm">
                 <div className="flex justify-between">
- <span className="text-muted-foreground">
-                    Credits
-                  </span>
- <span className="font-medium text-foreground">
+                  <span className="text-muted-foreground">Credits</span>
+                  <span className="font-medium text-foreground">
                     ${parsedAmount.toFixed(2)}
                   </span>
                 </div>
                 {needsConversion && (
                   <div className="flex justify-between">
                     <span></span>
- <span className="text-muted-foreground">
+                    <span className="text-muted-foreground">
                       {currencySymbol}
                       {creditsInCurrency.toFixed(2)}
                     </span>
@@ -303,7 +297,7 @@ export function BuyCreditDialog({
                 )}
                 {effectiveDiscount > 0 && (
                   <div className="flex justify-between">
- <span className="text-muted-foreground">
+                    <span className="text-muted-foreground">
                       Discount ({effectiveDiscount}%)
                     </span>
                     <span className="font-medium text-success-500">
@@ -313,21 +307,17 @@ export function BuyCreditDialog({
                   </div>
                 )}
                 <div className="flex justify-between">
- <span className="text-muted-foreground">
-                    Tax
-                  </span>
- <span className="text-muted-foreground">
+                  <span className="text-muted-foreground">Tax</span>
+                  <span className="text-muted-foreground">
                     Calculated on invoice
                   </span>
                 </div>
- <div className="mt-1 flex justify-between border-t border-border pt-2">
- <span className="font-medium text-foreground">
-                    Total
-                  </span>
- <span className="font-medium text-foreground">
+                <div className="mt-1 flex justify-between border-t border-border pt-2">
+                  <span className="font-medium text-foreground">Total</span>
+                  <span className="font-medium text-foreground">
                     {currencySymbol}
                     {totalInCurrency.toFixed(2)}
- <span className="ml-1 text-xs text-muted-foreground">
+                    <span className="ml-1 text-xs text-muted-foreground">
                       (excl. tax)
                     </span>
                   </span>
@@ -336,7 +326,7 @@ export function BuyCreditDialog({
             )}
 
             {maxAmountFormatted && (
- <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Purchase up to {maxAmountFormatted} worth of credits.
                 <a
                   href={`mailto:${SUPPORT_EMAIL}?subject=Higher%20credit%20limit%20request`}
@@ -348,7 +338,7 @@ export function BuyCreditDialog({
               </p>
             )}
 
- <div className="text-xs text-muted-foreground">
+            <div className="text-xs text-muted-foreground">
               {isEnterprise ? (
                 <p>
                   Credits will be added immediately, will be invoiced at the end
@@ -362,13 +352,13 @@ export function BuyCreditDialog({
               )}
             </div>
 
- <div className="flex flex-col gap-3 border-t border-border pt-4">
+            <div className="flex flex-col gap-3 border-t border-border pt-4">
               <label className="flex cursor-pointer items-start gap-3">
                 <Checkbox
                   checked={acceptedTerms}
                   onCheckedChange={() => setAcceptedTerms(!acceptedTerms)}
                 />
- <span className="text-sm text-foreground">
+                <span className="text-sm text-foreground">
                   I agree to the{" "}
                   <Hoverable
                     href="https://dust.tt/terms"
@@ -395,7 +385,7 @@ export function BuyCreditDialog({
                     setAcceptedNonRefundable(!acceptedNonRefundable)
                   }
                 />
- <span className="text-sm text-foreground">
+                <span className="text-sm text-foreground">
                   I understand credits are non-refundable after purchase
                 </span>
               </label>
@@ -504,7 +494,7 @@ export function BuyCreditDialog({
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col gap-4">
- <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Credit purchases become available once you upgrade to a paid
                 plan. If you need credits during your trial, please contact our
                 support team.
@@ -550,7 +540,7 @@ export function BuyCreditDialog({
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col gap-4">
- <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Please ensure your subscription is active and your payment
                 method is up to date. If you need assistance, please contact our
                 support team.
@@ -596,7 +586,7 @@ export function BuyCreditDialog({
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col gap-4">
- <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Please complete your pending payment before making a new
                 purchase or contact support to cancel your pending payments.{" "}
                 <a
@@ -646,7 +636,7 @@ export function BuyCreditDialog({
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col gap-4">
- <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 Your credit purchase limit resets at the start of your next
                 billing cycle. If you need additional credits before then,
                 please contact our support team.

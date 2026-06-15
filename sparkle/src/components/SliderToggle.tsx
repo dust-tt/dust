@@ -27,13 +27,8 @@ const cusrsorTranslateSizeClasses = {
 };
 
 const stateClasses = {
-  idle: cn(
-    "s:bg-primary-200",
-    "s:hover:bg-highlight-300"
-  ),
-  selected: cn(
-    "s:bg-highlight-400",
-  ),
+  idle: cn("s:bg-primary-200", "s:hover:bg-highlight-300"),
+  selected: cn("s:bg-highlight-400"),
   disabled: cn(
     "s:bg-primary-200",
     "s:hover:bg-primary-200",

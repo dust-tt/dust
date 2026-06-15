@@ -832,9 +832,7 @@ export function InboxView({
       <div className="s:flex s:h-full s:min-h-0 s:flex-1 s:flex-col s:overflow-y-auto s:px-4">
         <div className="s:mx-auto s:flex s:h-full s:w-full s:max-w-4xl s:flex-col s:gap-3 s:py-6">
           {greeting && (
-            <h2 className="s:heading-2xl s:text-foreground">
-              {greeting}
-            </h2>
+            <h2 className="s:heading-2xl s:text-foreground">{greeting}</h2>
           )}
           {activeTab === "conversations"
             ? renderConversationsTab()

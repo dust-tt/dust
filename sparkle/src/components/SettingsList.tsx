@@ -40,9 +40,7 @@ function SettingsListRow({
       )}
     >
       <div className="s:flex s:min-w-0 s:flex-col s:gap-0.5">
-        <span className="s:heading-sm s:text-foreground">
-          {title}
-        </span>
+        <span className="s:heading-sm s:text-foreground">{title}</span>
         {description && (
           <span className="s:copy-sm s:text-muted-foreground">
             {description}

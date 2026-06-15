@@ -554,9 +554,7 @@ export function CreateMCPServerDialog({
               )}
               {needsCustomName && (
                 <div className="space-y-4">
- <div className="heading-lg text-foreground">
-                    Tool name
-                  </div>
+                  <div className="heading-lg text-foreground">Tool name</div>
                   <Input
                     placeholder="Enter a name for this instance"
                     {...form.register("viewName")}

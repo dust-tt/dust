@@ -12,7 +12,7 @@ export function InteractiveContentHeader({
   onClose,
 }: InteractiveContentHeaderProps) {
   return (
- <AppLayoutTitle className="bg-panel-background @container">
+    <AppLayoutTitle className="bg-panel-background @container">
       <div className="flex h-full items-center">
         {children}
         {onClose && (

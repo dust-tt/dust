@@ -94,7 +94,7 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
           {hasDustSystemTag && !isExpanded ? (
             <button
               onClick={() => setIsExpanded(true)}
- className="flex cursor-pointer items-center gap-1 text-sm italic text-muted-foreground hover:text-foreground"
+              className="flex cursor-pointer items-center gap-1 text-sm italic text-muted-foreground hover:text-foreground"
             >
               <ChevronDown className="h-4 w-4" />
               <span>Hidden System Message (click to expand)</span>
@@ -104,7 +104,7 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
               {hasDustSystemTag && (
                 <button
                   onClick={() => setIsExpanded(false)}
- className="mb-2 flex cursor-pointer items-center gap-1 text-sm italic text-muted-foreground hover:text-foreground"
+                  className="mb-2 flex cursor-pointer items-center gap-1 text-sm italic text-muted-foreground hover:text-foreground"
                 >
                   <XClose className="h-4 w-4" />
                   <span>Hide System Message</span>
@@ -117,7 +117,7 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
               )}
             </>
           )}
- <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
             <span>date: {new Date(message.created).toLocaleString()}</span>
             <span
               className={classNames(
@@ -191,7 +191,7 @@ const AgentMessageView = ({
         {message.error && (
           <div className="text-warning">{message.error.message}</div>
         )}
- <div className="mt-2 text-sm text-muted-foreground">
+        <div className="mt-2 text-sm text-muted-foreground">
           <span
             className={classNames(
               "mr-1 rounded-sm px-1 py-0.5 text-xs",
@@ -261,7 +261,7 @@ const AgentMessageView = ({
             <div key={`action-${i}`} className="mt-1">
               <div
                 className={classNames(
-"flex items-center pl-2 text-sm text-muted-foreground"
+                  "flex items-center pl-2 text-sm text-muted-foreground"
                 )}
               >
                 {a.mcpIO && (
@@ -332,12 +332,12 @@ const ContentFragmentView = ({ message }: ContentFragmentViewProps) => {
   return (
     <div className="w-full text-sm">
       <div className="font-bold">[content_fragment] {message.title}</div>
- <div className="text-sm text-muted-foreground">
+      <div className="text-sm text-muted-foreground">
         date : {new Date(message.created).toLocaleString()} {" • "}
         version :{message.version} {" • "}
         textBytes :{isFileContentFragment(message) ? message.textBytes : "N/A"}
       </div>
- <div className="text-sm text-muted-foreground">
+      <div className="text-sm text-muted-foreground">
         textBytes={isFileContentFragment(message) ? message.textBytes : "N/A"}
       </div>
       {message.sourceUrl && (
@@ -368,7 +368,7 @@ const CompactionMessageView = ({ message }: CompactionMessageViewProps) => {
   return (
     <div className="w-full text-sm">
       <div className="font-bold">[compaction]</div>
- <div className="text-sm text-muted-foreground">
+      <div className="text-sm text-muted-foreground">
         <span
           className={classNames(
             "mr-1 rounded-sm px-1 py-0.5 text-xs",

@@ -121,7 +121,7 @@ export const ConversationExample = () => {
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Lime_1.jpg"
             isDisabled={true}
             renderName={(name) => (
-              <span className="s:text-gray-600 s:text-opacity-25">{name}</span>
+              <span className="s:text-gray-600/25">{name}</span>
             )}
           >
             This is a message with a disabled agent

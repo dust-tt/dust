@@ -133,11 +133,11 @@ export function InteractiveFeaturesSection() {
                     onClick={() => setActiveFeature(feature.id)}
                     aria-expanded={isActive}
                   >
- <span className="text-lg font-medium text-foreground">
+                    <span className="text-lg font-medium text-foreground">
                       {feature.title}
                     </span>
                     <span
- className={`ml-6 flex h-6 w-6 flex-shrink-0 items-center justify-center text-muted-foreground transition-transform duration-200 ${
+                      className={`ml-6 flex h-6 w-6 flex-shrink-0 items-center justify-center text-muted-foreground transition-transform duration-200 ${
                         isActive ? "rotate-180" : "rotate-0"
                       }`}
                     >
@@ -153,7 +153,7 @@ export function InteractiveFeaturesSection() {
                   >
                     <div className="overflow-hidden">
                       <div className="pb-6">
- <div className="prose prose-gray max-w-none text-base leading-relaxed text-gray-600">
+                        <div className="prose prose-gray max-w-none text-base leading-relaxed text-gray-600">
                           {feature.description}
                         </div>
                       </div>

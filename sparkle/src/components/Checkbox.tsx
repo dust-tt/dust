@@ -16,7 +16,7 @@ const checkboxStyles = cva(
     "s:border-border-dark s:bg-background",
     "s:text-foreground",
     "s:focus-visible:ring-ring s:ring-offset-background s:focus-visible:outline-hidden s:focus-visible:ring-2 s:focus-visible:ring-offset-2",
-    "s:hover:border-highlight s:hover:bg-highlight-50",
+    "s:hover:border-highlight s:hover:bg-highlight-50"
   ),
   {
     variants: {
@@ -166,12 +166,7 @@ function CheckBoxWithTextAndDescription({
         >
           {text}
         </Label>
-        <p
-          className={cn(
-            "s:text-xs",
-            "s:text-muted-foreground"
-          )}
-        >
+        <p className={cn("s:text-xs", "s:text-muted-foreground")}>
           {description}
         </p>
       </div>

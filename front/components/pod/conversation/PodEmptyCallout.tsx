@@ -33,10 +33,8 @@ export function PodEmptyCallout({
 
   return (
     <div className="flex flex-col gap-3 items-center justify-center">
- <h3 className="heading-lg text-foreground">
-        It's quiet in here.
-      </h3>
- <div className="text-sm text-muted-foreground">
+      <h3 className="heading-lg text-foreground">It's quiet in here.</h3>
+      <div className="text-sm text-muted-foreground">
         Your Pod is ready but empty! Let us help you invite people, add key
         data, and more.
       </div>

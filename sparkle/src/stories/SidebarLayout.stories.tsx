@@ -46,9 +46,7 @@ const SampleSidebar = ({
 }) => (
   <div className="s:flex s:h-full s:flex-col s:border-r s:border-border s:bg-muted-background">
     <div className="s:flex s:items-center s:justify-between s:gap-2 s:border-b s:border-border s:px-3 s:py-2">
-      <div className="s:text-sm s:font-semibold s:text-foreground">
-        Sidebar
-      </div>
+      <div className="s:text-sm s:font-semibold s:text-foreground">Sidebar</div>
       {onToggle && (
         <Button
           variant="ghost-secondary"
@@ -84,9 +82,7 @@ const SampleSidebar = ({
 const SampleContent = () => (
   <div className="s:flex s:h-full s:w-full s:flex-col s:bg-background">
     <div className="s:border-b s:border-border s:p-4">
-      <h1 className="s:heading-xl s:text-foreground">
-        Main Content
-      </h1>
+      <h1 className="s:heading-xl s:text-foreground">Main Content</h1>
       <p className="s:text-sm s:text-muted-foreground">
         This is the main content area. Resize the sidebar by dragging the
         handle.

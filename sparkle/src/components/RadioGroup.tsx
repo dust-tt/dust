@@ -84,10 +84,7 @@ const RadioGroupItem = React.forwardRef<
       <Icon
         visual={visual}
         size="sm"
-        className={cn(
-          "s:text-foreground",
-          extraClass
-        )}
+        className={cn("s:text-foreground", extraClass)}
       />
     );
 

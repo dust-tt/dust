@@ -84,7 +84,7 @@ export function EditInvitationModal({
             <div className="flex flex-col gap-6">
               <div className="flex flex-col gap-2">
                 <Page.H variant="h6">{invitation.inviteEmail}</Page.H>
- <div className="text-muted-foreground">
+                <div className="text-muted-foreground">
                   Invitation sent on{" "}
                   {new Date(invitation.createdAt).toLocaleDateString()}
                   {invitation.isExpired && (
@@ -95,16 +95,14 @@ export function EditInvitationModal({
 
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
- <div className="heading-base text-foreground">
-                    Role:
-                  </div>
+                  <div className="heading-base text-foreground">Role:</div>
                   <RoleDropDown
                     selectedRole={selectedRole}
                     onChange={setSelectedRole}
                     disabled={isRoleManagedByProvisioning}
                   />
                 </div>
- <div className="text-muted-foreground">
+                <div className="text-muted-foreground">
                   {isRoleManagedByProvisioning ? (
                     "This invitation's role is managed by your identity provider through group provisioning (dust-admins and dust-builders groups). Role changes must be made in your identity provider."
                   ) : (

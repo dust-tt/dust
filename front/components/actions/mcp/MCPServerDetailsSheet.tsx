@@ -131,7 +131,7 @@ export function MCPServerDetailsSheet({
   return (
     <Sheet open={isOpen} onOpenChange={(open) => void handleOpenChange(open)}>
       <SheetContent size="lg">
- <SheetHeader className="flex flex-col gap-5 text-foreground">
+        <SheetHeader className="flex flex-col gap-5 text-foreground">
           {header}
         </SheetHeader>
         <SheetContainer>
@@ -225,7 +225,7 @@ export function MCPServerDetailsSheet({
         </SheetContainer>
         {!readOnly && (
           <div className="mt-2">
- <div className="flex flex-row gap-2 border-t border-border px-3 py-3">
+            <div className="flex flex-row gap-2 border-t border-border px-3 py-3">
               <Button
                 label="Cancel"
                 variant="outline"

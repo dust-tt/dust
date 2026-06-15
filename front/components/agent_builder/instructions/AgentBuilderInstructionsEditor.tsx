@@ -129,24 +129,24 @@ const editorVariants = cva(
         ],
         false: [
           "border rounded-xl",
-"bg-muted-background",
-"focus:ring-highlight-300",
-"focus:outline-highlight-200",
-"focus:border-highlight-300",
+          "bg-muted-background",
+          "focus:ring-highlight-300",
+          "focus:outline-highlight-200",
+          "focus:border-highlight-300",
         ],
       },
       error: {
         true: [
-"border-warning-500",
-"focus:ring-warning-500",
-"focus:outline-warning-500",
-"focus:border-warning-500",
+          "border-warning-500",
+          "focus:ring-warning-500",
+          "focus:outline-warning-500",
+          "focus:border-warning-500",
         ],
         false: [
-"border-border",
-"focus:ring-highlight-300",
-"focus:outline-highlight-200",
-"focus:border-highlight-300",
+          "border-border",
+          "focus:ring-highlight-300",
+          "focus:outline-highlight-200",
+          "focus:border-highlight-300",
         ],
       },
     },
@@ -552,9 +552,7 @@ const CharacterCountDisplay = ({
     <span
       className={cn(
         "text-end text-xs",
-        isOverLimit
-          ? "text-warning"
- :"text-muted-foreground"
+        isOverLimit ? "text-warning" : "text-muted-foreground"
       )}
     >
       {count} / {maxCount} characters

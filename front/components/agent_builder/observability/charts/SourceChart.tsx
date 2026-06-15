@@ -131,7 +131,7 @@ export function SourceChart({
             y="50%"
             textAnchor="middle"
             dominantBaseline="middle"
- className="fill-foreground"
+            className="fill-foreground"
           >
             <tspan className="text-2xl font-semibold">
               {total.toLocaleString()}

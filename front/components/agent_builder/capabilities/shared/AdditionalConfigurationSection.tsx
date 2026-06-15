@@ -75,7 +75,7 @@ function BooleanConfigurationInput({
               <Icon
                 visual={InformationCircleIcon}
                 size="xs"
- className="cursor-help text-gray-400 hover:text-gray-600"
+                className="cursor-help text-gray-400 hover:text-gray-600"
               />
             }
             label={description}
@@ -135,7 +135,7 @@ function NumberConfigurationInput({
               <Icon
                 visual={InformationCircleIcon}
                 size="xs"
- className="cursor-help text-gray-400 hover:text-gray-600"
+                className="cursor-help text-gray-400 hover:text-gray-600"
               />
             }
             label={description}
@@ -202,7 +202,7 @@ function StringConfigurationInput({
               <Icon
                 visual={InformationCircleIcon}
                 size="xs"
- className="cursor-help text-gray-400 hover:text-gray-600"
+                className="cursor-help text-gray-400 hover:text-gray-600"
               />
             }
             label={description}
@@ -280,7 +280,7 @@ function EnumConfigurationInput({
                 <Icon
                   visual={InformationCircleIcon}
                   size="xs"
- className="cursor-help text-gray-400 hover:text-gray-600"
+                  className="cursor-help text-gray-400 hover:text-gray-600"
                 />
               }
               label={description}
@@ -316,7 +316,7 @@ function EnumConfigurationInput({
         </div>
       </div>
       {currentDescription && (
- <div className="mt-1 whitespace-pre-line text-sm text-gray-600">
+        <div className="mt-1 whitespace-pre-line text-sm text-gray-600">
           {currentDescription}
         </div>
       )}
@@ -381,9 +381,7 @@ function ListConfigurationInput({
         {formatKeyForDisplay(configKey)}
       </Label>
       {description && (
- <Label className="text-xs text-muted-foreground">
-          {description}
-        </Label>
+        <Label className="text-xs text-muted-foreground">{description}</Label>
       )}
       <div className="space-y-2">
         <SearchInput
@@ -394,7 +392,7 @@ function ListConfigurationInput({
         />
         <div className="space-y-1">
           {filteredOptions.length === 0 ? (
- <div className="py-4 text-center text-sm text-muted-foreground">
+            <div className="py-4 text-center text-sm text-muted-foreground">
               {searchQuery.trim() === ""
                 ? "No options available"
                 : `No options match "${searchQuery}"`}
@@ -403,7 +401,7 @@ function ListConfigurationInput({
             filteredOptions.map((option) => (
               <div
                 key={option.value}
- className="group flex items-center justify-between rounded-lg p-2 hover:bg-gray-50"
+                className="group flex items-center justify-between rounded-lg p-2 hover:bg-gray-50"
               >
                 <div className="flex items-center space-x-3">
                   <Checkbox
@@ -420,11 +418,11 @@ function ListConfigurationInput({
                     }}
                   />
                   <div className="flex flex-col">
- <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-gray-900">
                       {option.label}
                     </span>
                     {option.description && (
- <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-500">
                         {option.description}
                       </span>
                     )}
@@ -500,7 +498,7 @@ function GroupedConfigurationSection({
   return (
     <div className="mb-6 w-full">
       {prefix && (
- <Label className="mb-4 block text-lg font-medium text-foreground">
+        <Label className="mb-4 block text-lg font-medium text-foreground">
           {asDisplayName(prefix)}
         </Label>
       )}

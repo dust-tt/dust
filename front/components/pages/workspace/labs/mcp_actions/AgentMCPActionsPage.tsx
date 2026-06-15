@@ -161,7 +161,7 @@ export function AgentMCPActionsPage() {
               <div className="flex items-center gap-3">
                 <Avatar size="md" name={agent.name} visual={agent.pictureUrl} />
                 <div className="flex flex-col">
- <h3 className="text-lg font-medium text-foreground">
+                  <h3 className="text-lg font-medium text-foreground">
                     {agent.name}
                   </h3>
                   <div className="flex items-center gap-2">
@@ -181,7 +181,7 @@ export function AgentMCPActionsPage() {
                     </Chip>
                   </div>
                   {agent.description && (
- <p className="mt-1 text-sm text-muted-foreground">
+                    <p className="mt-1 text-sm text-muted-foreground">
                       {agent.description}
                     </p>
                   )}
@@ -245,11 +245,11 @@ export function AgentMCPActionsPage() {
                                 description={`Executed on ${new Date(action.createdAt).toLocaleString()}`}
                               />
                               {Object.keys(action.params).length > 0 && (
- <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
- <h4 className="mb-2 text-sm font-medium text-foreground">
+                                <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                                  <h4 className="mb-2 text-sm font-medium text-foreground">
                                     Input Parameters:
                                   </h4>
- <pre className="max-h-32 overflow-auto whitespace-pre-wrap text-xs text-muted-foreground">
+                                  <pre className="max-h-32 overflow-auto whitespace-pre-wrap text-xs text-muted-foreground">
                                     {formatParams(action.params)}
                                   </pre>
                                 </div>

@@ -117,7 +117,7 @@ export function MCPServerDetailsSharing({
           />
         </div>
 
- <div className="text-foreground">
+        <div className="text-foreground">
           {isRestricted ? (
             <>
               These tools are only available to the users of the selected

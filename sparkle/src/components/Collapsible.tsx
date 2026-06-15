@@ -34,8 +34,7 @@ const chevronVariants = cva("s:transition-transform s:duration-150", {
     },
     disabled: {
       true: "s:text-muted",
-      false:
-        "s:group-hover/col:text-highlight-500 s:active:text-highlight-700",
+      false: "s:group-hover/col:text-highlight-500 s:active:text-highlight-700",
     },
   },
   defaultVariants: {

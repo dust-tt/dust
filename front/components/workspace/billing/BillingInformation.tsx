@@ -70,10 +70,10 @@ export function BillingInformation() {
   if (isBillingInfoLoading) {
     return (
       <div className="flex flex-col gap-4">
- <h2 className="text-xl font-semibold text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">
           Billing information
         </h2>
- <div className="w-full rounded-lg bg-muted-background p-6">
+        <div className="w-full rounded-lg bg-muted-background p-6">
           <Spinner />
         </div>
       </div>
@@ -92,12 +92,12 @@ export function BillingInformation() {
 
   return (
     <div className="flex flex-col gap-4">
- <h2 className="text-xl font-semibold text-foreground">
+      <h2 className="text-xl font-semibold text-foreground">
         Billing information
       </h2>
 
- <div className="relative flex flex-col gap-2 rounded-lg bg-muted-background p-4">
- <h3 className="text-base font-semibold text-foreground">
+      <div className="relative flex flex-col gap-2 rounded-lg bg-muted-background p-4">
+        <h3 className="text-base font-semibold text-foreground">
           Billing contact
         </h3>
 
@@ -111,13 +111,13 @@ export function BillingInformation() {
               target="_blank"
               className="absolute right-4 top-3"
             />
- <div className="flex flex-col gap-2 text-xs text-muted-foreground">
+            <div className="flex flex-col gap-2 text-xs text-muted-foreground">
               {addressRows.map(({ icon, value }) => (
                 <div key={value} className="flex items-center gap-2">
                   <Icon
                     visual={icon}
                     size="xs"
- className="shrink-0 text-foreground"
+                    className="shrink-0 text-foreground"
                   />
                   <span>{value}</span>
                 </div>
@@ -125,13 +125,13 @@ export function BillingInformation() {
             </div>
           </>
         ) : (
- <div className="text-xs text-muted-foreground">
+          <div className="text-xs text-muted-foreground">
             No billing address on file.
           </div>
         )}
       </div>
 
- <div className="flex items-center justify-between gap-3 rounded-lg bg-muted-background p-4">
+      <div className="flex items-center justify-between gap-3 rounded-lg bg-muted-background p-4">
         <div className="flex min-w-0 items-center gap-2">
           <div className="flex h-6 w-[34px] shrink-0 items-center justify-center overflow-hidden rounded">
             <CardBrandIcon
@@ -140,7 +140,7 @@ export function BillingInformation() {
               height={22}
             />
           </div>
- <div className="truncate text-sm font-semibold text-foreground">
+          <div className="truncate text-sm font-semibold text-foreground">
             {formatPaymentMethod(paymentMethod)}
           </div>
         </div>

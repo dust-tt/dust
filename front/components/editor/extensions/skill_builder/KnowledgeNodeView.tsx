@@ -374,8 +374,8 @@ function KnowledgeSearchComponent({
       <span
         className={cn(
           "inline-block h-7 cursor-text px-3 py-1 text-sm font-normal",
-"rounded bg-gray-100",
-"text-center text-gray-500",
+          "rounded bg-gray-100",
+          "text-center text-gray-500",
           "empty:before:content-[attr(data-placeholder)] focus:outline-hidden",
           "min-w-36 text-left"
         )}
@@ -403,12 +403,12 @@ function KnowledgeSearchComponent({
             {isSearchLoading ? (
               <div className="flex h-14 items-center justify-center">
                 <Spinner size="sm" />
- <span className="ml-2 text-sm text-gray-500">
+                <span className="ml-2 text-sm text-gray-500">
                   Searching knowledge...
                 </span>
               </div>
             ) : knowledgeItems.length === 0 ? (
- <div className="flex h-14 items-center justify-center text-center text-sm text-gray-500">
+              <div className="flex h-14 items-center justify-center text-center text-sm text-gray-500">
                 {searchQuery.length < 2
                   ? "Type at least 2 characters to search"
                   : "No knowledge found"}
@@ -449,11 +449,7 @@ function KnowledgeSearchComponent({
                     truncateText
                     onClick={() => handleItemClick(item)}
                     onMouseEnter={() => setSelectedIndex(index)}
-                    className={
-                      index === selectedIndex
- ?"bg-gray-100"
-                        : ""
-                    }
+                    className={index === selectedIndex ? "bg-gray-100" : ""}
                   />
                 );
               })

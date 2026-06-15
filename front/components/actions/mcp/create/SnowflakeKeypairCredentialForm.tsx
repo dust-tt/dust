@@ -187,8 +187,8 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
   }));
 
   return (
- <div className="w-full space-y-5 text-foreground">
- <p className="text-sm text-muted-foreground">
+    <div className="w-full space-y-5 text-foreground">
+      <p className="text-sm text-muted-foreground">
         Enter credentials for a Snowflake service user configured for key-pair
         authentication.
       </p>
@@ -228,7 +228,7 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
           rows={8}
         />
         {form.formState.errors.privateKey?.message && (
- <p className="text-sm text-red-600">
+          <p className="text-sm text-red-600">
             {form.formState.errors.privateKey.message}
           </p>
         )}

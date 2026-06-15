@@ -122,7 +122,7 @@ export const FeedbacksSection = ({
 
   if (!agentConfigurationHistory) {
     return (
- <div className="mt-3 text-sm text-foreground">
+      <div className="mt-3 text-sm text-foreground">
         Error loading the previous agent versions.
       </div>
     );
@@ -186,7 +186,7 @@ export const FeedbacksSection = ({
     >
       {!agentConfigurationFeedbacks ||
       agentConfigurationFeedbacks.length === 0 ? (
- <div className="mt-3 text-sm text-muted-foreground">
+        <div className="mt-3 text-sm text-muted-foreground">
           No feedback yet.
         </div>
       ) : (
@@ -320,7 +320,7 @@ function FeedbackCard({
         />
         <div className="flex flex-col">
           <div className="font-semibold">{feedback.userName}</div>
- <div className="text-sm text-muted-foreground">
+          <div className="text-sm text-muted-foreground">
             {timeSinceFeedback} ago
           </div>
         </div>
@@ -332,17 +332,17 @@ function FeedbackCard({
             className={cn(
               "flex-shrink-0 rounded-full p-2",
               feedback.thumbDirection === "up"
- ?"bg-success-200"
- :"bg-info-200"
+                ? "bg-success-200"
+                : "bg-info-200"
             )}
           >
             <Icon
               size="xs"
               className={cn(
-"text-foreground",
+                "text-foreground",
                 feedback.thumbDirection === "up"
- ?"text-success-800"
- :"text-info-800"
+                  ? "text-success-800"
+                  : "text-info-800"
               )}
               visual={feedback.thumbDirection === "up" ? ThumbsUp : ThumbsDown}
             />

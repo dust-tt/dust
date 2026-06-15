@@ -4,16 +4,14 @@ import { cva } from "class-variance-authority";
 import * as React from "react";
 
 const alertVariants = cva(
-"relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground",
+  "relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground",
   {
     variants: {
       variant: {
-        default:
-"bg-background text-foreground",
+        default: "bg-background text-foreground",
         destructive:
-"border-warning-200 text-warning-400 [&>svg]:text-warning-400",
-        success:
-"border-success-200 text-success-400 [&>svg]:text-success-400",
+          "border-warning-200 text-warning-400 [&>svg]:text-warning-400",
+        success: "border-success-200 text-success-400 [&>svg]:text-success-400",
       },
     },
     defaultVariants: {

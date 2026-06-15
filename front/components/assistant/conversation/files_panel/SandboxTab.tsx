@@ -136,7 +136,7 @@ export function SandboxTab({
 
   if (files.length === 0) {
     return (
- <div className="p-4 text-sm text-muted-foreground">
+      <div className="p-4 text-sm text-muted-foreground">
         No files in the Computer yet.
       </div>
     );
@@ -163,9 +163,7 @@ export function SandboxTab({
             }
             return (
               <div key={value}>
- <div className="heading-sm pb-2 text-foreground">
-                  {plural}
-                </div>
+                <div className="heading-sm pb-2 text-foreground">{plural}</div>
                 <CardGrid>
                   {categoryFiles.map((entry) => {
                     if (value === "image") {
@@ -206,7 +204,7 @@ export function SandboxTab({
                               }
                             />
                           </div>
- <div className="text-xs text-muted-foreground">
+                          <div className="text-xs text-muted-foreground">
                             {entry.lastModifiedMs
                               ? moment(entry.lastModifiedMs).fromNow()
                               : null}

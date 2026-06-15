@@ -19,15 +19,39 @@ const colors = preset.theme.extend.colors;
 // Only process colors we explicitly define — skip built-in tailwindcss/colors
 // that leak in from `require("tailwindcss/colors")`.
 const OUR_PALETTE_COLORS = new Set([
-  "gray", "stone", "golden", "blue", "green", "rose", "violet",
-  "red", "orange", "lime", "emerald", "pink",
+  "gray",
+  "stone",
+  "golden",
+  "blue",
+  "green",
+  "rose",
+  "violet",
+  "red",
+  "orange",
+  "lime",
+  "emerald",
+  "pink",
 ]);
 
 // Semantic token groups (everything that isn't a raw palette color)
 const SEMANTIC_TOKENS = new Set([
-  "border", "separator", "ring", "background", "app-background", "panel",
-  "foreground", "hover", "muted", "faint", "primary", "highlight",
-  "warning", "success", "sidebar", "info", "brand",
+  "border",
+  "separator",
+  "ring",
+  "background",
+  "app-background",
+  "panel",
+  "foreground",
+  "hover",
+  "muted",
+  "faint",
+  "primary",
+  "highlight",
+  "warning",
+  "success",
+  "sidebar",
+  "info",
+  "brand",
 ]);
 
 const lightVars = [];
@@ -131,8 +155,8 @@ for (const [name, value] of Object.entries(colors)) {
 // Sort for readability: semantic tokens first, then palette
 function sortKey(varName) {
   const base = varName.replace("--color-", "").split("-")[0];
-  const isSemantic = SEMANTIC_TOKENS.has(base) ||
-    ["app", "panel"].includes(base);
+  const isSemantic =
+    SEMANTIC_TOKENS.has(base) || ["app", "panel"].includes(base);
   return `${isSemantic ? "0" : "1"}-${varName}`;
 }
 
@@ -164,5 +188,7 @@ ${formatBlock(darkVars)}
 const outPath = path.join(__dirname, "..", "src", "styles", "tokens.css");
 fs.writeFileSync(outPath, css, "utf-8");
 
-console.log(`✓ Generated ${lightVars.length} light vars, ${darkVars.length} dark vars`);
+console.log(
+  `✓ Generated ${lightVars.length} light vars, ${darkVars.length} dark vars`
+);
 console.log(`✓ Written to ${outPath}`);

@@ -10,8 +10,7 @@ const diffLineVariants = cva("s:rounded s:px-1", {
   variants: {
     type: {
       add: "s:bg-highlight-50 s:text-highlight-900",
-      remove:
-        "s:bg-primary-100 s:text-muted-foreground s:line-through",
+      remove: "s:bg-primary-100 s:text-muted-foreground s:line-through",
     },
   },
 });

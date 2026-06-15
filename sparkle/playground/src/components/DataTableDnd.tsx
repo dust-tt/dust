@@ -858,15 +858,13 @@ DataTable.Row = function Row({
       <tr
         className={cn(
           "s:group/dt-row s:justify-center s:transition-colors s:duration-300 s:ease-out",
-          !hideBottomBorder && [
-            "s:border-b",
-          ],
+          !hideBottomBorder && ["s:border-b"],
           (onClick || onDoubleClick) &&
-          props["data-selected"] &&
-          rowData?.draggable && "s:cursor-grab active:s:cursor-grabbing",
+            props["data-selected"] &&
+            rowData?.draggable &&
+            "s:cursor-grab active:s:cursor-grabbing",
           rowData?.isDragging && "s:opacity-50",
-          rowData?.isDropHighlight &&
-          widthClassName,
+          rowData?.isDropHighlight && widthClassName,
           className
         )}
         draggable={rowData?.draggable}
@@ -1148,37 +1146,18 @@ DataTable.CellContent = function CellContent({
           size="xs"
         />
       )}
-      {icon && (
-        <Icon
-          visual={icon}
-          size="sm"
-          className={cn(
-            iconClassName
-          )}
-        />
-      )}
+      {icon && <Icon visual={icon} size="sm" className={cn(iconClassName)} />}
       <div
         className={cn(
           "s:flex s:shrink s:truncate s:items-center",
           grow ? "s:flex-grow" : ""
         )}
       >
-        <div
-          className={cn(
-            grow ? "s:flex-grow" : "",
-            "s:truncate s:text-sm",
-          )}
-        >
+        <div className={cn(grow ? "s:flex-grow" : "", "s:truncate s:text-sm")}>
           {children}
         </div>
         {description && (
-          <span
-            className={cn(
-              "s:pl-2 s:text-sm",
-            )}
-          >
-            {description}
-          </span>
+          <span className={cn("s:pl-2 s:text-sm")}>{description}</span>
         )}
       </div>
     </div>

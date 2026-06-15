@@ -45,9 +45,7 @@ export function OptionCard({
         "s:w-full s:items-center s:gap-2 s:rounded-2xl s:text-left s:transition-colors",
         !disabled && "s:cursor-pointer",
         disabled && "s:pointer-events-none s:opacity-60",
-        !selected &&
-          !disableHover &&
-          "s:hover:bg-muted-background/60",
+        !selected && !disableHover && "s:hover:bg-muted-background/60",
         className
       )}
       onClick={disabled ? undefined : onClick}

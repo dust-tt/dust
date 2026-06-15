@@ -497,7 +497,7 @@ export default function SwitchContractDialog({
       <DialogTrigger asChild>
         <Button variant="outline" label="🔁 Switch contract" />
       </DialogTrigger>
- <DialogContent className="bg-primary-50 sm:h-[90vh] sm:max-w-[860px]">
+      <DialogContent className="bg-primary-50 sm:h-[90vh] sm:max-w-[860px]">
         <DialogHeader>
           <DialogTitle>Switch contract for {owner.name}</DialogTitle>
           <DialogDescription>
@@ -527,7 +527,7 @@ export default function SwitchContractDialog({
                   placeholder="cus_1234567890"
                 />
                 {isCurrencyLoading && (
- <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Spinner size="sm" />
                     <span>Resolving customer currency...</span>
                   </div>
@@ -567,7 +567,7 @@ export default function SwitchContractDialog({
                     />
                   )}
                 {isPackagesLoading && (
- <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Spinner size="sm" />
                     <span>Loading Metronome packages...</span>
                   </div>
@@ -624,7 +624,7 @@ export default function SwitchContractDialog({
                 {(selectedTier === "pro" ||
                   selectedTier === "business" ||
                   selectedTier === "free") && (
- <div className="text-sm text-muted-foreground">
+                  <div className="text-sm text-muted-foreground">
                     Target plan:{" "}
                     <span className="font-mono">{form.watch("planCode")}</span>{" "}
                     — swap at the current hour, subscription flips
@@ -659,7 +659,7 @@ export default function SwitchContractDialog({
                         ? `(rate & price in ${resolvedCurrency.toUpperCase()})`
                         : ""}
                     </Label>
- <div className="text-xs text-muted-foreground">
+                    <div className="text-xs text-muted-foreground">
                       Checked seats are entitled on the new contract. Seats the
                       package does not entitle by default are unchecked — check
                       one to entitle it (a non-zero rate is required, except for
@@ -683,7 +683,7 @@ export default function SwitchContractDialog({
                             <span className="font-mono text-sm">
                               {seatType}
                               {!entitled && (
- <span className="ml-1 text-muted-foreground">
+                                <span className="ml-1 text-muted-foreground">
                                   *
                                 </span>
                               )}

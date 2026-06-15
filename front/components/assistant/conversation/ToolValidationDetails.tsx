@@ -207,10 +207,10 @@ export function ToolValidationDetails({
         <span className="my-2 font-medium">Details</span>
       </CollapsibleTrigger>
       <CollapsibleContent>
- <div className="max-h-80 space-y-2 overflow-auto rounded-lg bg-muted p-3 text-sm">
+        <div className="max-h-80 space-y-2 overflow-auto rounded-lg bg-muted p-3 text-sm">
           {displayableInputs.map(({ label, value }) => (
             <div key={label} className="flex flex-col gap-0.5">
- <span className="text-xs font-medium text-muted-foreground">
+              <span className="text-xs font-medium text-muted-foreground">
                 {label}
               </span>
               <span className="whitespace-pre-wrap break-words">{value}</span>

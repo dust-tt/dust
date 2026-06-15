@@ -388,7 +388,7 @@ export const NotificationPreferences = forwardRef<
 
   if (!conversationPreferences) {
     return (
- <div className="text-sm text-muted-foreground">
+      <div className="text-sm text-muted-foreground">
         Unable to load notification preferences. Please contact support.
       </div>
     );
@@ -441,9 +441,7 @@ export const NotificationPreferences = forwardRef<
           </DropdownMenu>
           {notifyCondition !== "never" && (
             <>
- <span className="text-foreground ml-0.5">
-                , by&nbsp;
-              </span>
+              <span className="text-foreground ml-0.5">, by&nbsp;</span>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -492,7 +490,7 @@ export const NotificationPreferences = forwardRef<
               </DropdownMenu>
               {isConversationEmailEnabled && (
                 <>
- <span className="text-foreground ml-0.5">
+                  <span className="text-foreground ml-0.5">
                     . Email me max once&nbsp;
                   </span>
                   <DropdownMenu>

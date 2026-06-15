@@ -234,7 +234,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
         owner={owner}
       />
       <DropdownMenu>
- <DropdownMenuTrigger className="hover:bg-sidebar-foreground data-[state=open]:bg-sidebar-foreground rounded-xl p-2 m-2">
+        <DropdownMenuTrigger className="hover:bg-sidebar-foreground data-[state=open]:bg-sidebar-foreground rounded-xl p-2 m-2">
           <div className="group flex cursor-pointer items-center justify-between gap-2">
             <span className="sr-only">Open user menu</span>
             <div className="flex gap-2 items-center">
@@ -253,12 +253,12 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
                 <span
                   className={cn(
                     "heading-sm w-full truncate transition-colors",
-"text-foreground"
+                    "text-foreground"
                   )}
                 >
                   {user.firstName}
                 </span>
- <span className="-mt-0.5 w-full truncate text-sm text-muted-foreground">
+                <span className="-mt-0.5 w-full truncate text-sm text-muted-foreground">
                   {owner.name}
                 </span>
               </div>
@@ -266,7 +266,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
             <div className="flex-shrink-0">
               <Icon
                 visual={ChevronDown}
- className="text-muted-foreground group-hover:text-primary-400 group-active:text-primary-950"
+                className="text-muted-foreground group-hover:text-primary-400 group-active:text-primary-950"
               />
             </div>
           </div>

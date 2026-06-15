@@ -52,13 +52,9 @@ export const BarHeaderWithDescription = () => {
       title="My Custom Skill"
       description={
         <div className="s:flex s:items-center s:gap-1 s:text-sm">
-          <p className="s:text-muted-foreground">
-            Based on
-          </p>
+          <p className="s:text-muted-foreground">Based on</p>
           <Icon visual={Robot} size="xs" />
-          <p className="s:text-foreground">
-            Research Assistant
-          </p>
+          <p className="s:text-foreground">Research Assistant</p>
         </div>
       }
     />

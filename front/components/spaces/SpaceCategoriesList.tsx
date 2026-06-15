@@ -207,7 +207,7 @@ export const SpaceCategoriesList = ({
         <div
           className={cn(
             "flex h-36 w-full items-center justify-center gap-2 rounded-xl",
-"bg-muted-background"
+            "bg-muted-background"
           )}
         >
           {actionButtons}

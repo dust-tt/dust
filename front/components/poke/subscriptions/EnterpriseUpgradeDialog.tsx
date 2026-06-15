@@ -217,7 +217,7 @@ export default function EnterpriseUpgradeDialog({
       <DialogTrigger asChild>
         <Button variant="outline" label="🏢 Upgrade to Enterprise" />
       </DialogTrigger>
- <DialogContent className="bg-primary-50 sm:max-w-[600px]">
+      <DialogContent className="bg-primary-50 sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Upgrade {owner.name} to Enterprise.</DialogTitle>
           <DialogDescription>
@@ -259,7 +259,7 @@ export default function EnterpriseUpgradeDialog({
                   {useMetronomePath ? (
                     <>
                       {isPackagesLoading && (
- <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Spinner size="sm" />
                           <span>Loading Metronome packages...</span>
                         </div>

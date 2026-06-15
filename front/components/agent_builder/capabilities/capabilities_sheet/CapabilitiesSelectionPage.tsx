@@ -91,12 +91,12 @@ export function CapabilitiesSelectionPageContent({
       ) : !hasAnyResults ? (
         <div className="flex flex-1 items-center justify-center py-12">
           <div className="px-4 text-center">
- <div className="mb-2 text-lg font-medium text-foreground">
+            <div className="mb-2 text-lg font-medium text-foreground">
               {searchQuery
                 ? "No capability matches your search"
                 : "No capabilities available"}
             </div>
- <div className="max-w-sm text-muted-foreground">
+            <div className="max-w-sm text-muted-foreground">
               {searchQuery
                 ? "Try a different search term."
                 : "Add tools or create skills to enhance your agents."}
@@ -109,7 +109,7 @@ export function CapabilitiesSelectionPageContent({
             <>
               <div>
                 <span className="text-lg font-semibold">Skills</span>
- <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   Reusable packages of instructions and tools that enable agents
                   to perform specialized tasks.
                 </p>
@@ -132,7 +132,7 @@ export function CapabilitiesSelectionPageContent({
             <>
               <div>
                 <span className="text-lg font-semibold">Tools</span>
- <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   Tools that allow agents to retrieve data and take actions.
                 </p>
               </div>

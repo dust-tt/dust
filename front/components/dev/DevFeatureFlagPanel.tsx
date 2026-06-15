@@ -77,10 +77,7 @@ function DockedToolbar({ serverFlags, onSwitchMode }: DockedToolbarProps) {
   });
 
   return (
-    <div
-      style={S.docked}
- className="text-muted-foreground"
-    >
+    <div style={S.docked} className="text-muted-foreground">
       <div style={S.dockedBar}>
         <ToolbarControls
           metrics={metrics}

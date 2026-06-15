@@ -80,18 +80,16 @@ function ToolItem({
     <div className="flex flex-col gap-1 pb-2">
       <div className="flex items-center gap-2">
         {mayUpdate && <Checkbox checked={toolEnabled} onClick={handleToggle} />}
- <h4 className="heading-base flex-grow text-foreground">
+        <h4 className="heading-base flex-grow text-foreground">
           {asDisplayName(tool.name)}
         </h4>
       </div>
       {tool.description && (
- <p className="text-sm text-muted-foreground">
-          {tool.description}
-        </p>
+        <p className="text-sm text-muted-foreground">{tool.description}</p>
       )}
       {toolEnabled && (
         <Card variant="primary" className="flex-col">
- <div className="heading-sm text-muted-foreground">
+          <div className="heading-sm text-muted-foreground">
             Tool stake setting
           </div>
           <div className="flex justify-end">

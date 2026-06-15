@@ -119,10 +119,8 @@ export function ResourceAvatar({
 }: ResourceAvatarProps) {
   return (
     <SparkleAvatar
- iconColor={iconColor ??"text-foreground"}
-      backgroundColor={
- backgroundColor ??"bg-muted-background"
-      }
+      iconColor={iconColor ?? "text-foreground"}
+      backgroundColor={backgroundColor ?? "bg-muted-background"}
       {...props}
     />
   );

@@ -20,14 +20,10 @@ export function AgentBuilderSectionContainer({
       <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-end">
         <div>
           <div className="flex flex-row items-center gap-2">
- <h2 className="heading-lg text-foreground">
-              {title}
-            </h2>
+            <h2 className="heading-lg text-foreground">{title}</h2>
           </div>
           {description && (
- <p className="text-sm text-muted-foreground">
-              {description}
-            </p>
+            <p className="text-sm text-muted-foreground">{description}</p>
           )}
         </div>
         {headerActions && (

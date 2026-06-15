@@ -502,8 +502,18 @@ module.exports = {
           colorNames
             .filter((name) =>
               [
-                "gray", "stone", "golden", "blue", "green", "rose", "violet",
-                "red", "orange", "lime", "emerald", "pink",
+                "gray",
+                "stone",
+                "golden",
+                "blue",
+                "green",
+                "rose",
+                "violet",
+                "red",
+                "orange",
+                "lime",
+                "emerald",
+                "pink",
               ].includes(name)
             )
             .map((colorName) => [

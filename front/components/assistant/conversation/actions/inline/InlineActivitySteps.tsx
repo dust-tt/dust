@@ -112,7 +112,7 @@ export function InlineActivitySteps({
   // Done with no steps: show a static line — no toggle, not clickable.
   if (isDone && completedSteps.length === 0) {
     return (
- <div className="mt-2 text-sm text-muted-foreground">
+      <div className="mt-2 text-sm text-muted-foreground">
         {headerLabel ? `${headerLabel}, without tools.` : "No tools used."}
       </div>
     );
@@ -123,7 +123,7 @@ export function InlineActivitySteps({
   if (isWritingOnly) {
     return (
       <div className="flex flex-col text-sm">
- <span className="self-start text-muted-foreground flex gap-1 items-center">
+        <span className="self-start text-muted-foreground flex gap-1 items-center">
           <AnimatedText>Writing…</AnimatedText>
         </span>
         {agentMessage.content && (

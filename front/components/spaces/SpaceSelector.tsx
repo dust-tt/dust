@@ -95,9 +95,7 @@ export function SpaceSelector({
                         size="md"
                         className={cn(
                           "inline-block flex-shrink-0 align-middle",
-                          isDisabled
- ?"text-muted-foreground"
-                            : ""
+                          isDisabled ? "text-muted-foreground" : ""
                         )}
                       />
                       <Label
@@ -106,8 +104,8 @@ export function SpaceSelector({
                           "font-bold",
                           "align-middle",
                           isDisabled
- ?"text-muted-foreground"
- :"text-foreground"
+                            ? "text-muted-foreground"
+                            : "text-foreground"
                         )}
                       >
                         {getSpaceName(space)}

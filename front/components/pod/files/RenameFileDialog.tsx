@@ -153,7 +153,7 @@ export function RenameFileDialog({
                 }}
               />
               {extension && (
- <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-muted-foreground">
                   {extension}
                 </span>
               )}

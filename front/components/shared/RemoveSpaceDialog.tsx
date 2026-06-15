@@ -135,19 +135,15 @@ export function useRemoveSpaceConfirm({
             {allItems.map((item, index) => (
               <span key={item.id} className="inline-flex items-center gap-1">
                 {item.icon}
- <span className="text-sm text-foreground">
-                  {item.name}
-                </span>
+                <span className="text-sm text-foreground">{item.name}</span>
                 {index < allItems.length - 1 && (
- <span className="text-sm text-muted-foreground">
-                    ,
-                  </span>
+                  <span className="text-sm text-muted-foreground">,</span>
                 )}
               </span>
             ))}
           </span>
           {hasKnowledge && (
- <p className="text-sm">
+            <p className="text-sm">
               To remove this {space.kind === "project" ? "Pod" : "space"}, first
               update your instructions to remove the knowledge references.
             </p>
@@ -211,7 +207,7 @@ export function useBlockedSkillSpaceRemovalConfirm({
               />
             ))}
           </div>
- <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Update the skill to stop relying on these items, then remove the
             space.
           </p>

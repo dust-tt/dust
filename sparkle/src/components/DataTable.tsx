@@ -867,14 +867,10 @@ DataTable.Row = function Row({
       <tr
         className={cn(
           "s:group/dt-row s:justify-center s:transition-colors s:duration-300 s:ease-out",
-          !hideBottomBorder && [
-            "s:border-b",
-            "s:border-separator",
-          ],
+          !hideBottomBorder && ["s:border-b", "s:border-separator"],
           (onClick || onDoubleClick) &&
             "s:cursor-pointer s:[&:hover:not(:has(input:hover)):not(:has(button:hover))]:bg-muted-background",
-          props["data-selected"] &&
-            "s:bg-muted-background/50",
+          props["data-selected"] && "s:bg-muted-background/50",
           widthClassName,
           className
         )}
@@ -1155,10 +1151,7 @@ DataTable.CellContent = function CellContent({
         <Icon
           visual={icon}
           size="sm"
-          className={cn(
-            "s:mr-2 s:text-foreground",
-            iconClassName
-          )}
+          className={cn("s:mr-2 s:text-foreground", iconClassName)}
         />
       )}
       <div
@@ -1177,12 +1170,7 @@ DataTable.CellContent = function CellContent({
           {children}
         </div>
         {description && (
-          <span
-            className={cn(
-              "s:pl-2 s:text-sm",
-              "s:text-muted-foreground"
-            )}
-          >
+          <span className={cn("s:pl-2 s:text-sm", "s:text-muted-foreground")}>
             {description}
           </span>
         )}

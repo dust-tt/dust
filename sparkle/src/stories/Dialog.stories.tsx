@@ -91,10 +91,7 @@ export const ToolValidation: Story = {
             <span className="s:mono s:text-muted-foreground">
               [toolset_name]
             </span>
-            ,
-            <span className="s:mono s:text-muted-foreground">
-              [tool_name]
-            </span>
+            ,<span className="s:mono s:text-muted-foreground">[tool_name]</span>
             )?
           </div>
         </DialogContainer>

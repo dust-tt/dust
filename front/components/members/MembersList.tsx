@@ -82,9 +82,7 @@ const memberColumns = [
       <DataTable.CellContent avatarUrl={info.row.original.icon} roundedAvatar>
         {info.row.original.name}
         {info.row.original.isCurrentUser && (
- <span className="ml-3 text-muted-foreground">
-            (you)
-          </span>
+          <span className="ml-3 text-muted-foreground">(you)</span>
         )}
       </DataTable.CellContent>
     ),

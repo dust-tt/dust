@@ -42,7 +42,7 @@ export function ReactionPill({
           onClick={onClick}
           className={cn(
             hasCurrentUserReacted &&
-"border-blue-200 bg-blue-50 hover:border-blue-200 hover:bg-blue-100"
+              "border-blue-200 bg-blue-50 hover:border-blue-200 hover:bg-blue-100"
           )}
         />
       }

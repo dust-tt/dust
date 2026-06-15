@@ -94,7 +94,7 @@ export function CreateWebhookSourceWithProviderForm({
     <div className="flex flex-col space-y-4">
       <div>
         <Label>{preset.name} Connection</Label>
- <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           {preset.name} connection is required
         </p>
         {OAuthExtraConfigInput && (

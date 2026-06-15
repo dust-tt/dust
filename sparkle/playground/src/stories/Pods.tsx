@@ -699,9 +699,7 @@ function Pods() {
   if (!user) {
     return (
       <div className="s:flex s:h-screen s:items-center s:justify-center s:bg-background">
-        <p className="s:text-foreground">
-          Loading…
-        </p>
+        <p className="s:text-foreground">Loading…</p>
       </div>
     );
   }
@@ -783,13 +781,9 @@ function Pods() {
     return (
       <div className="s:flex s:h-full s:w-full s:items-center s:justify-center s:bg-background">
         <div className="s:flex s:w-full s:max-w-4xl s:flex-col s:gap-6 s:px-4 s:py-8">
-          <div className="s:heading-2xl s:text-foreground">
-            {greeting}
-          </div>
+          <div className="s:heading-2xl s:text-foreground">{greeting}</div>
           <InputBar placeholder="Ask a question" />
-          <div className="s:heading-lg s:text-foreground">
-            Chat with…
-          </div>
+          <div className="s:heading-lg s:text-foreground">Chat with…</div>
         </div>
       </div>
     );

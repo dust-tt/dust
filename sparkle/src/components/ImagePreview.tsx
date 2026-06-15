@@ -69,11 +69,7 @@ const overlayVariants = cva(
 );
 
 const titleVariants = cva(
-  cn(
-    "s:max-w-full s:truncate",
-    "s:heading-sm",
-    "s:text-foreground"
-  ),
+  cn("s:max-w-full s:truncate", "s:heading-sm", "s:text-foreground"),
   {
     variants: {
       titlePosition: {

@@ -200,7 +200,7 @@ export function ScheduleEditionScheduler({
   return (
     <div className="space-y-1">
       <Label htmlFor="schedule-description">Scheduler</Label>
- <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Describe when you want the agent to run in natural language.
       </p>
       <TextArea
@@ -215,7 +215,7 @@ export function ScheduleEditionScheduler({
       {cronDescription && (
         <div className="my-2">
           <ContentMessage variant="outline" size="lg">
- <div className="flex flex-row items-start gap-2 text-foreground">
+            <div className="flex flex-row items-start gap-2 text-foreground">
               {generationStatus === "loading" ? (
                 <>
                   <Dot className="mt-0.5 h-4 w-4 shrink-0 self-start" />
@@ -252,7 +252,7 @@ export function ScheduleEditionScheduler({
                           <Icon
                             visual={InfoCircle}
                             size="xs"
- className="shrink-0 text-faint"
+                            className="shrink-0 text-faint"
                           />
                         }
                       />

@@ -118,8 +118,7 @@ ContextItem.List = function ({
       className={cn(
         "s:flex s:flex-col",
         className,
-        hasBorder &&
-          "s:border-b s:border-t s:border-border"
+        hasBorder && "s:border-b s:border-t s:border-border"
       )}
     >
       {children}
@@ -174,13 +173,9 @@ ContextItem.SectionHeader = function ({
         hasBorder && "s:border-b s:border-border"
       )}
     >
-      <div className="s:heading-xl s:text-foreground">
-        {title}
-      </div>
+      <div className="s:heading-xl s:text-foreground">{title}</div>
       {description && (
-        <div className="s:copy-sm s:text-muted-foreground">
-          {description}
-        </div>
+        <div className="s:copy-sm s:text-muted-foreground">{description}</div>
       )}
     </div>
   );

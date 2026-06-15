@@ -15,10 +15,8 @@ export const ItemRow = React.forwardRef<HTMLDivElement, ItemRowProps>(
         ref={ref}
         className={cn(
           "flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors duration-100",
-"text-foreground",
-          isSelected
- ?"bg-primary-100"
- :"hover:bg-muted-background"
+          "text-foreground",
+          isSelected ? "bg-primary-100" : "hover:bg-muted-background"
         )}
         onClick={onClick}
         onMouseMove={onMouseMove}
@@ -35,7 +33,7 @@ interface ItemTitleProps {
 
 export function ItemTitle({ children }: ItemTitleProps) {
   return (
- <div className="px-3 pb-1.5 pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="px-3 pb-1.5 pt-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
       {children}
     </div>
   );
@@ -47,7 +45,7 @@ interface ItemEmptyStateProps {
 
 export function ItemEmptyState({ children }: ItemEmptyStateProps) {
   return (
- <div className="px-3 py-8 text-center text-sm text-muted-foreground">
+    <div className="px-3 py-8 text-center text-sm text-muted-foreground">
       {children}
     </div>
   );
@@ -64,8 +62,8 @@ export function KeyboardHints({ hints }: { hints: KeyboardHint[] }) {
     <div
       className={cn(
         "flex items-center justify-end gap-4 border-t px-4 py-2",
-"border-separator",
-"text-xs text-muted-foreground"
+        "border-separator",
+        "text-xs text-muted-foreground"
       )}
     >
       {hints.map((hint) => (
@@ -75,7 +73,7 @@ export function KeyboardHints({ hints }: { hints: KeyboardHint[] }) {
               key={key}
               className={cn(
                 "inline-flex h-6 min-w-6 items-center justify-center rounded border px-1",
-"border-separator",
+                "border-separator",
                 hint.textSize ?? "text-xs"
               )}
             >

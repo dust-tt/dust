@@ -12,9 +12,9 @@ export type ObservabilityTimeRangeType =
 export const DEFAULT_PERIOD_DAYS = 30;
 
 export const USAGE_METRICS_PALETTE = {
- messages:"text-golden-500",
- conversations:"text-blue-500",
- activeUsers:"text-violet-500",
+  messages: "text-golden-500",
+  conversations: "text-blue-500",
+  activeUsers: "text-violet-500",
 } as const;
 
 export const USAGE_METRICS_LEGEND = [
@@ -24,9 +24,9 @@ export const USAGE_METRICS_LEGEND = [
 ] as const;
 
 export const ACTIVE_USERS_PALETTE = {
- dau:"text-blue-500",
- wau:"text-violet-500",
- mau:"text-golden-500",
+  dau: "text-blue-500",
+  wau: "text-violet-500",
+  mau: "text-golden-500",
 } as const;
 
 export const ACTIVE_USERS_LEGEND = [
@@ -36,8 +36,8 @@ export const ACTIVE_USERS_LEGEND = [
 ] as const;
 
 export const LATENCY_PALETTE = {
- average:"text-blue-500",
- median:"text-violet-500",
+  average: "text-blue-500",
+  median: "text-violet-500",
 } as const;
 
 export const LATENCY_LEGEND = [
@@ -46,9 +46,9 @@ export const LATENCY_LEGEND = [
 ] as const;
 
 export const TOOL_EXECUTION_TIME_PALETTE = {
- avgLatencyMs:"text-blue-500",
- p50LatencyMs:"text-violet-500",
- p95LatencyMs:"text-orange-500",
+  avgLatencyMs: "text-blue-500",
+  p50LatencyMs: "text-violet-500",
+  p95LatencyMs: "text-orange-500",
 } as const;
 
 export const TOOL_EXECUTION_TIME_LEGEND = [
@@ -58,8 +58,8 @@ export const TOOL_EXECUTION_TIME_LEGEND = [
 ] as const;
 
 export const COST_PALETTE = {
- costMicroUsd:"text-blue-400",
- totalCredits:"text-orange-400",
+  costMicroUsd: "text-blue-400",
+  totalCredits: "text-orange-400",
 } as const;
 
 export const CHART_HEIGHT = 260;
@@ -80,7 +80,7 @@ export const INDEXED_BASE_COLORS = [
 export type IndexedBaseColor = (typeof INDEXED_BASE_COLORS)[number];
 
 export function buildColorClass(baseColor: string, shade: number): string {
- return `text-${baseColor}-${shade}${baseColor}-${shade}-night`;
+  return `text-${baseColor}-${shade}${baseColor}-${shade}-night`;
 }
 
 export const INDEXED_SHADES = [
@@ -98,18 +98,18 @@ export const MAX_TOOLS_DISPLAYED = 5;
 export const OTHER_LABEL = {
   key: "others",
   label: "Others",
- color:"text-blue-300",
+  color: "text-blue-300",
 };
 
 export const UNKNOWN_LABEL = {
   key: "unknown",
   label: "Unknown",
- color:"text-gray-400",
+  color: "text-gray-400",
 };
 
 export const FEEDBACK_DISTRIBUTION_PALETTE = {
- positive:"text-green-400",
- negative:"text-rose-400",
+  positive: "text-green-400",
+  negative: "text-rose-400",
 } as const;
 
 export const FEEDBACK_DISTRIBUTION_LEGEND = [

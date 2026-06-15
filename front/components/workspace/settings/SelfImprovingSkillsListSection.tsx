@@ -472,9 +472,7 @@ export function SelfImprovingSkillsListSection({
           <Spinner />
         </div>
       ) : rows.length === 0 ? (
- <div className="text-sm text-muted-foreground">
-          No active skills.
-        </div>
+        <div className="text-sm text-muted-foreground">No active skills.</div>
       ) : (
         <DataTable
           data={rows}

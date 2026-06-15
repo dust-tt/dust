@@ -131,9 +131,7 @@ function renderPageNumber(
       key={pageNumber}
       className={cn(
         "s:font-medium s:transition-colors s:duration-200",
-        currentPage === pageNumber
-          ? "s:text-foreground"
-          : "s:text-primary-400",
+        currentPage === pageNumber ? "s:text-foreground" : "s:text-primary-400",
         size === "xs" ? "s:text-xs" : "s:text-sm"
       )}
       onClick={() => onPageClick && onPageClick(pageNumber)}

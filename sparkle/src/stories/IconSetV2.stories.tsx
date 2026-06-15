@@ -51,10 +51,7 @@ const renderIconGrid = () => (
             size="md"
             className="s:text-foreground"
           />
-          <div
-            style={itemStyle}
-            className="s:text-sm s:text-foreground"
-          >
+          <div style={itemStyle} className="s:text-sm s:text-foreground">
             {iconName}
           </div>
         </div>

@@ -114,10 +114,10 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             aria-label={`Selected agent: ${selectedAgent.label}`}
             aria-disabled={isInputDisabled}
             className={cn(
-"inline-flex box-border items-center rounded-lg h-7 heading-xs px-2 gap-1.5 bg-muted-background border-border text-primary-900 transition-colors duration-200",
+              "inline-flex box-border items-center rounded-lg h-7 heading-xs px-2 gap-1.5 bg-muted-background border-border text-primary-900 transition-colors duration-200",
               isInputDisabled
                 ? "opacity-50 pointer-events-none"
- :"cursor-pointer hover:bg-hover"
+                : "cursor-pointer hover:bg-hover"
             )}
           >
             <Avatar size="xxs" visual={selectedAgent.pictureUrl} />
@@ -127,7 +127,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             <button
               type="button"
               aria-label="Remove agent"
- className="p-0.5 text-faint hover:text-foreground transition-colors duration-200"
+              className="p-0.5 text-faint hover:text-foreground transition-colors duration-200"
               onPointerDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -148,9 +148,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             icon={Robot}
             label="Agent"
             disabled={isInputDisabled}
-            className={cn(
- disableAgentSelector &&"bg-gray-150"
-            )}
+            className={cn(disableAgentSelector && "bg-gray-150")}
           />
         )
       }

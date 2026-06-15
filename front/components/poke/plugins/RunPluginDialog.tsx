@@ -131,16 +131,16 @@ export function RunPluginDialog({
       <DialogContent
         className={cn(
           "w-auto",
-"bg-muted-background",
+          "bg-muted-background",
           "sm:min-w-[600px] sm:max-w-[1000px]",
           "overflow-visible"
         )}
       >
- <DialogHeader className="bg-structure-100 rounded-t-2xl pb-4">
+        <DialogHeader className="bg-structure-100 rounded-t-2xl pb-4">
           <DialogTitle>Run {plugin.name} plugin</DialogTitle>
           <DialogDescription>{plugin.description}</DialogDescription>
         </DialogHeader>
- <div className="flex flex-col gap-2 px-5 py-4 text-foreground">
+        <div className="flex flex-col gap-2 px-5 py-4 text-foreground">
           {isLoading || (hasAsyncArgs && isLoadingAsyncArgs) ? (
             <Spinner />
           ) : !manifest ? (
@@ -205,7 +205,7 @@ export function RunPluginDialog({
                   <div className="max-h-[400px] overflow-auto rounded-lg bg-gray-800 p-4">
                     <Markdown
                       content={result.value}
- textColor="text-slate-500"
+                      textColor="text-slate-500"
                     />
                   </div>
                 </div>

@@ -59,7 +59,7 @@ export function AgentBuilderLayout({
         className={cn(
           "relative h-full w-full flex-1 flex-col overflow-hidden",
           "bg-background text-foreground",
-""
+          ""
         )}
       >
         <main className="flex h-full w-full flex-col items-center">

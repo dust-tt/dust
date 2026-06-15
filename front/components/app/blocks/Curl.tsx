@@ -186,7 +186,7 @@ export default function Curl({
                 placeholder=""
                 onChange={(e) => handleHeadersCodeChange(e.target.value)}
                 padding={15}
- className="rounded-lg bg-muted-background"
+                className="rounded-lg bg-muted-background"
                 style={{
                   fontSize: 12,
                   fontFamily:
@@ -208,7 +208,7 @@ export default function Curl({
                 placeholder=""
                 onChange={(e) => handleBodyCodeChange(e.target.value)}
                 padding={15}
- className="rounded-lg bg-muted-background"
+                className="rounded-lg bg-muted-background"
                 style={{
                   fontSize: 12,
                   fontFamily:

@@ -96,7 +96,7 @@ export const MainPage = () => {
     >
       {!conversationId && (
         <div className="element fixed bottom-0 right-0 z-10 p-2 text-sm">
- <p className="text-muted-foreground text-sm font-normal">
+          <p className="text-muted-foreground text-sm font-normal">
             {shortcut}
           </p>
         </div>

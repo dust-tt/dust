@@ -77,24 +77,15 @@ export const menuStyleClasses = {
     }
   ),
   subTrigger: {
-    default: cn(
-      "s:mr-1 s:ml-auto s:tracking-widest",
-      "s:text-primary-400"
-    ),
+    default: cn("s:mr-1 s:ml-auto s:tracking-widest", "s:text-primary-400"),
     span: "s:absolute s:left-2 s:flex s:h-3.5 s:w-3.5 s:items-center s:justify-center",
   },
-  label: cn(
-    "s:px-2 s:py-2 s:heading-xs",
-    "s:text-muted-foreground"
-  ),
+  label: cn("s:px-2 s:py-2 s:heading-xs", "s:text-muted-foreground"),
   description: cn(
     "s:grow s:truncate s:text-xs s:font-normal",
     "s:text-muted-foreground"
   ),
-  separator: cn(
-    "s:-mx-1 s:my-1 s:h-px",
-    "s:bg-separator"
-  ),
+  separator: cn("s:-mx-1 s:my-1 s:h-px", "s:bg-separator"),
   shortcut: "s:ml-auto",
 };
 
@@ -154,9 +145,7 @@ const renderIcon = (
         size={size}
         visual={icon as React.ComponentType}
         className={
-          variant === "warning"
-            ? undefined
-            : "s:text-muted-foreground"
+          variant === "warning" ? undefined : "s:text-muted-foreground"
         }
       />
     );
@@ -274,9 +263,7 @@ const DropdownMenuSubContent = React.forwardRef<
     {...props}
   >
     {dropdownHeaders && (
-      <div className="s:sticky s:top-0 s:bg-background">
-        {dropdownHeaders}
-      </div>
+      <div className="s:sticky s:top-0 s:bg-background">{dropdownHeaders}</div>
     )}
     <ScrollArea
       className="s:w-full s:flex-1"
@@ -668,11 +655,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
     >
       <span className={menuStyleClasses.subTrigger.span}>
         <DropdownMenuPrimitive.ItemIndicator>
-          <Icon
-            size="xs"
-            visual={Check}
-            className="s:text-muted-foreground"
-          />
+          <Icon size="xs" visual={Check} className="s:text-muted-foreground" />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
       <ItemWithLabelIconAndDescription
@@ -1011,9 +994,7 @@ const DropdownTooltip = ({ description, media }: DropdownTooltipProps) => (
     {media && <div className="s:rounded-sm">{media}</div>}
 
     {/* Description */}
-    <p className="text-foreground s:text-sm s:font-normal">
-      {description}
-    </p>
+    <p className="text-foreground s:text-sm s:font-normal">{description}</p>
   </div>
 );
 
@@ -1135,12 +1116,7 @@ const DropdownMenuStaticItem = React.forwardRef<
   >
     <span className="s:grow s:font-medium">{label}</span>
     {value && (
-      <span
-        className={cn(
-          "s:shrink-0",
-          "s:text-muted-foreground"
-        )}
-      >
+      <span className={cn("s:shrink-0", "s:text-muted-foreground")}>
         {value}
       </span>
     )}

@@ -222,7 +222,7 @@ function PermissionProfileSelector({
       }
     >
       <ContextItem.Description>
- <div className="text-muted-foreground">
+        <div className="text-muted-foreground">
           Filter calls by Gong permission profile. Only calls involving users
           listed in the selected profile's "Specific Teams" section will be
           synced. Changing the filter only affects future syncs.
@@ -409,7 +409,7 @@ export function GongOptionComponent({
           }
         >
           <ContextItem.Description>
- <div className="text-muted-foreground">
+            <div className="text-muted-foreground">
               Exclude calls whose title contains these keywords
               (case-insensitive, comma-separated).
               <br />
@@ -457,7 +457,7 @@ export function GongOptionComponent({
           }
         >
           <ContextItem.Description>
- <div className="text-muted-foreground">
+            <div className="text-muted-foreground">
               Set the number of days to retain Gong transcripts.
               <br />
               Leave empty to disable retention (no limit).
@@ -487,7 +487,7 @@ export function GongOptionComponent({
           }
         >
           <ContextItem.Description>
- <div className="text-muted-foreground">
+            <div className="text-muted-foreground">
               If activated, Dust will sync the list of keyword and smart
               trackers associated to each call transcript.
               <br />
@@ -518,7 +518,7 @@ export function GongOptionComponent({
           }
         >
           <ContextItem.Description>
- <div className="text-muted-foreground">
+            <div className="text-muted-foreground">
               If activated, Dust will sync the account names from CRM context
               associated to each call transcript.
               <br />

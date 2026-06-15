@@ -21,13 +21,9 @@ export function ConfigurationSectionContainer({
   return (
     <div className={cn("flex flex-col gap-4", className)}>
       <div className={cn(description && "flex flex-col gap-2")}>
- <h3 className="heading-base font-semibold text-foreground">
-          {title}
-        </h3>
+        <h3 className="heading-base font-semibold text-foreground">{title}</h3>
         {description && (
- <p className="text-sm text-muted-foreground">
-            {description}
-          </p>
+          <p className="text-sm text-muted-foreground">{description}</p>
         )}
       </div>
 

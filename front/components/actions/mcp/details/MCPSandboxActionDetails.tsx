@@ -156,9 +156,7 @@ function ExitCodeBadge({ exitCode }: ExitCodeBadgeProps) {
     <span
       className={cn(
         "text-xs font-medium",
-        exitCode === 0
- ?"text-success"
- :"text-warning"
+        exitCode === 0 ? "text-success" : "text-warning"
       )}
     >
       exit code: {exitCode}
@@ -182,9 +180,7 @@ function SectionBlock({ type, content, defaultOpen }: SectionBlockProps) {
 
   const labelClass = cn(
     "font-mono text-xs uppercase tracking-wide",
-    isStderr
- ?"text-warning"
- :"text-muted-foreground"
+    isStderr ? "text-warning" : "text-muted-foreground"
   );
 
   if (!isLongContent(content)) {
@@ -225,7 +221,7 @@ function SandboxOutput({ sections, exitCode, isRunning }: SandboxOutputProps) {
 
   if (renderable.length === 0) {
     return (
- <p className="text-sm italic text-muted-foreground">
+      <p className="text-sm italic text-muted-foreground">
         {isRunning ? "Waiting for output…" : "No output"}
       </p>
     );
@@ -278,9 +274,7 @@ function SidebarView({
     <div className="flex flex-col gap-4 py-4 pl-6">
       {command && (
         <div>
- <span className="font-medium text-foreground">
-            Command
-          </span>
+          <span className="font-medium text-foreground">Command</span>
           <div className="py-2">
             <Markdown content={`\`\`\`bash\n${command}\n\`\`\``} />
           </div>
@@ -288,9 +282,7 @@ function SidebarView({
       )}
 
       <div>
- <span className="font-medium text-foreground">
-          Output
-        </span>
+        <span className="font-medium text-foreground">Output</span>
         <div className="py-2">
           <SandboxOutput
             sections={parsedSections}

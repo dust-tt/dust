@@ -76,17 +76,9 @@ interface ErrorDisplayProps {
 export function ErrorDisplay({ icon, message, title }: ErrorDisplayProps) {
   return (
     <div className="flex h-dvh flex-col items-center justify-center gap-3">
-      {icon && (
-        <Icon
-          visual={icon}
- className="text-golden-400"
-          size="lg"
-        />
-      )}
- <p className="heading-xl text-center text-foreground">
-        {title}
-      </p>
- <p className="copy-sm text-center text-muted-foreground">
+      {icon && <Icon visual={icon} className="text-golden-400" size="lg" />}
+      <p className="heading-xl text-center text-foreground">{title}</p>
+      <p className="copy-sm text-center text-muted-foreground">
         {Array.isArray(message) ? (
           message.map((line, index) => <p key={index}>{line}</p>)
         ) : (

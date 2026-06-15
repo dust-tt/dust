@@ -92,7 +92,7 @@ function getLimitPromptForCode(
                 You can invite up to {subscription.plan.limits.users.maxUsers}
                 &nbsp;members in during trial.
               </Page.P>
- <p className="text-sm font-bold text-muted-foreground">
+              <p className="text-sm font-bold text-muted-foreground">
                 You can end your trial and start paying now to invite more
                 members.
               </p>
@@ -187,7 +187,7 @@ function getLimitPromptForCode(
                 We limit usage of Dust during the trial. You've reached your
                 limit for today.
               </Page.P>
- <p className="text-sm font-normal text-muted-foreground">
+              <p className="text-sm font-normal text-muted-foreground">
                 Come back tomorrow for a fresh start or&nbsp;
                 <span className="font-bold">
                   end your trial and start paying now.
@@ -202,7 +202,7 @@ function getLimitPromptForCode(
             title: "Credit quota exceeded",
             validateLabel: "Ok",
             children: (
- <p className="text-sm font-normal text-muted-foreground">
+              <p className="text-sm font-normal text-muted-foreground">
                 We've paused messaging for your account due to our fair usage
                 policy. Your account has reached its limit of{" "}
                 {assistantLimits.maxAwuCredits} credits{" "}
@@ -223,7 +223,7 @@ function getLimitPromptForCode(
             title: "Message quota exceeded",
             validateLabel: "Ok",
             children: (
- <p className="text-sm font-normal text-muted-foreground">
+              <p className="text-sm font-normal text-muted-foreground">
                 We've paused messaging for your workspace due to our fair usage
                 policy. Your workspace has reached its shared limit of{" "}
                 {subscription.plan.limits.assistant.maxMessages} messages per

@@ -55,35 +55,24 @@ export function TrialMessageUsage({
 
   return (
     <div
-      className={cn(
-        "rounded-lg border p-3",
-"border-border",
-"bg-background"
-      )}
+      className={cn("rounded-lg border p-3", "border-border", "bg-background")}
     >
       <div className="mb-2 flex items-center justify-between text-sm">
- <span className="font-semibold text-foreground">
+        <span className="font-semibold text-foreground">
           Trial messages used
         </span>
- <span className="font-medium text-foreground">
- <span className={cn(isCritical &&"text-red-600")}>
-            {count}
-          </span>{" "}
-          / {limit}
+        <span className="font-medium text-foreground">
+          <span className={cn(isCritical && "text-red-600")}>{count}</span> /{" "}
+          {limit}
         </span>
       </div>
       <div
-        className={cn(
-          "h-2 w-full overflow-hidden rounded-full",
-"bg-gray-100"
-        )}
+        className={cn("h-2 w-full overflow-hidden rounded-full", "bg-gray-100")}
       >
         <div
           className={cn(
             "h-full rounded-full transition-all",
-            isCritical
- ?"bg-red-700"
- :"bg-foreground"
+            isCritical ? "bg-red-700" : "bg-foreground"
           )}
           style={{ width: `${Math.min(percentage * 100, 100)}%` }}
         />

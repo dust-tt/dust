@@ -74,7 +74,7 @@ export function BigQueryUseMetadataForDBMLView({
         }
       >
         <ContextItem.Description>
- <div className="text-muted-foreground">
+          <div className="text-muted-foreground">
             Your tables and columns description set in BigQuery will be used to
             describe the schemas to Agents.
           </div>

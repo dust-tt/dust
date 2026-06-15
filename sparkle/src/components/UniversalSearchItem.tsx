@@ -25,10 +25,7 @@ export function UniversalSearchItem({
   return (
     <ListItem
       onClick={onClick}
-      className={cn(
-        selected && "s:bg-highlight-50",
-        className
-      )}
+      className={cn(selected && "s:bg-highlight-50", className)}
       hasSeparator={hasSeparator}
     >
       <div className="s:flex s:min-w-0 s:flex-1 s:items-center s:gap-2">

@@ -5,17 +5,17 @@ const SEAT_TIER_STYLES = {
   max: {
     icon: "text-brand-orange-golden",
     barFill: "bg-brand-orange-golden",
- barTrack:"bg-golden-100",
+    barTrack: "bg-golden-100",
   },
   pro: {
- icon:"text-highlight",
- barFill:"bg-highlight",
- barTrack:"bg-blue-100",
+    icon: "text-highlight",
+    barFill: "bg-highlight",
+    barTrack: "bg-blue-100",
   },
   muted: {
- icon:"text-muted-foreground",
- barFill:"bg-muted-foreground",
- barTrack:"bg-muted-background",
+    icon: "text-muted-foreground",
+    barFill: "bg-muted-foreground",
+    barTrack: "bg-muted-background",
   },
 };
 

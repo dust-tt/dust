@@ -21,7 +21,7 @@ function MarkerDotLabel({ viewBox }: MarkerDotLabelProps) {
         cx={cx}
         cy={cy}
         r={3}
- className="text-gray-300"
+        className="text-gray-300"
         fill="currentColor"
       />
     </g>
@@ -48,7 +48,7 @@ export function VersionMarkersDots({
       <ReferenceLine
         key={m.timestamp}
         x={formattedDate}
- className="text-gray-300"
+        className="text-gray-300"
         stroke="currentColor"
         strokeDasharray="5 5"
         strokeWidth={1}

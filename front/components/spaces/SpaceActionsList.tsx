@@ -109,7 +109,7 @@ export const SpaceActionsList = ({
               <div>{info.row.original.avatar}</div>
               <div className="flex-grow truncate">{info.getValue()}</div>
               {isDevelopment() && (
- <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground">
                   {info.row.original.id}
                 </div>
               )}
@@ -206,7 +206,7 @@ export const SpaceActionsList = ({
     <>
       {!isEmpty && portalToHeader(actionButton)}
       {isEmpty ? (
- <div className="flex h-36 w-full items-center justify-center gap-2 rounded-lg bg-muted-background">
+        <div className="flex h-36 w-full items-center justify-center gap-2 rounded-lg bg-muted-background">
           {actionButton}
         </div>
       ) : (

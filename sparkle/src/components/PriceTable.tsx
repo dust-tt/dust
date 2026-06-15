@@ -169,9 +169,7 @@ PriceTable.Item = function ({
       </div>
       <div
         className={cn(
-          variant === "xmark"
-            ? "s:text-primery-600"
-            : "",
+          variant === "xmark" ? "s:text-primery-600" : "",
           "s:overflow-hidden"
         )}
       >
@@ -199,9 +197,7 @@ PriceTable.ActionContainer = function ({
         className={cn(
           "s:flex s:w-full s:justify-center s:px-2",
           size === "xs" ? "s:py-2" : "s:py-4",
-          position === "top"
-            ? "s:border-b s:border-border"
-            : ""
+          position === "top" ? "s:border-b s:border-border" : ""
         )}
       >
         <div className="s:flex s:h-full s:flex-col s:justify-end">

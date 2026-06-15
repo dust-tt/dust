@@ -58,13 +58,11 @@ export function PlanCard({
   // The "free" seat maps to the muted bar track, which matches the card
   // background (invisible in dark mode), so use a contrasting neutral instead.
   const iconBackgroundClass =
-    seatType === "free"
- ?"bg-muted"
-      : getSeatBarClasses(seatType).track;
+    seatType === "free" ? "bg-muted" : getSeatBarClasses(seatType).track;
   const iconColorClass = getSeatIconColorClass(seatType);
 
   return (
- <div className="flex w-full flex-col rounded-2xl border border-border bg-background p-6">
+    <div className="flex w-full flex-col rounded-2xl border border-border bg-background p-6">
       <div className="flex items-center gap-2">
         <div
           className={cn(
@@ -74,22 +72,16 @@ export function PlanCard({
         >
           <Icon visual={icon} size="sm" className={iconColorClass} />
         </div>
- <span className="text-lg font-semibold text-foreground">
-          {name}
-        </span>
+        <span className="text-lg font-semibold text-foreground">{name}</span>
       </div>
 
       <div className="mt-6 flex items-baseline gap-2">
- <span className="text-4xl font-bold text-foreground">
-          {credits}
-        </span>
- <span className="whitespace-nowrap text-sm text-muted-foreground">
+        <span className="text-4xl font-bold text-foreground">{credits}</span>
+        <span className="whitespace-nowrap text-sm text-muted-foreground">
           {creditsLabel}
         </span>
       </div>
- <p className="mt-1 text-sm text-muted-foreground">
-        {priceLabel}
-      </p>
+      <p className="mt-1 text-sm text-muted-foreground">{priceLabel}</p>
 
       <ul className="mt-6 flex flex-col gap-3">
         {features.map((feature) => (
@@ -99,9 +91,7 @@ export function PlanCard({
               size="sm"
               className="mt-0.5 text-primary-500"
             />
- <span className="text-sm text-foreground">
-              {feature}
-            </span>
+            <span className="text-sm text-foreground">{feature}</span>
           </li>
         ))}
       </ul>
@@ -109,7 +99,7 @@ export function PlanCard({
       <div className="mt-auto flex flex-col items-center gap-2 pt-12">
         {action}
         {footnote && (
- <p className="text-center text-xs text-muted-foreground">
+          <p className="text-center text-xs text-muted-foreground">
             {footnote}
           </p>
         )}

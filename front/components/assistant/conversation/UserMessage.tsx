@@ -83,7 +83,7 @@ function UserMessageEditor({
 
   return (
     <div
- className="w-full rounded-2xl bg-muted-background py-3 pl-4 pr-3 focus-within:ring-1 focus-within:ring-highlight/30 sm:focus-within:ring-2"
+      className="w-full rounded-2xl bg-muted-background py-3 pl-4 pr-3 focus-within:ring-1 focus-within:ring-highlight/30 sm:focus-within:ring-2"
       onClick={(e) => {
         // If e.target is not a child of a div with class "tiptap", then focus on the editor
         if (!(e.target instanceof HTMLElement && e.target.closest(".tiptap"))) {
@@ -331,14 +331,12 @@ export function UserMessage({
                   displayChip ? (
                     <>
                       {isTriggeredOrigin(message.context.origin) && (
- <span className="inline-block leading-none text-muted-foreground">
+                        <span className="inline-block leading-none text-muted-foreground">
                           <TriggerChip message={message} />
                         </span>
                       )}
                       {message.version > 0 && !isDeleted && (
- <span className="text-xs text-faint">
-                          (edited)
-                        </span>
+                        <span className="text-xs text-faint">(edited)</span>
                       )}
                     </>
                   ) : undefined
@@ -356,14 +354,12 @@ export function UserMessage({
                   displayChip ? (
                     <>
                       {isTriggeredOrigin(message.context.origin) && (
- <span className="inline-block leading-none text-muted-foreground">
+                        <span className="inline-block leading-none text-muted-foreground">
                           <TriggerChip message={message} />
                         </span>
                       )}
                       {message.version > 0 && !isDeleted && (
- <span className="text-xs text-faint">
-                          (edited)
-                        </span>
+                        <span className="text-xs text-faint">(edited)</span>
                       )}
                     </>
                   ) : undefined
@@ -398,21 +394,18 @@ export function UserMessage({
                     <Icon
                       visual={Clock}
                       size="xs"
- className="mt-1 shrink-0 text-faint"
+                      className="mt-1 shrink-0 text-faint"
                     />
                   )}
                   {isDeleted ? (
                     <DeletedMessage />
                   ) : isEmpty ? (
- <div className="text-faint text-sm">
-                      (no message)
-                    </div>
+                    <div className="text-faint text-sm">(no message)</div>
                   ) : (
                     <div
                       className={cn(
                         "min-w-0",
-                        isPending &&
-"text-muted-foreground"
+                        isPending && "text-muted-foreground"
                       )}
                     >
                       <UserMessageMarkdown
@@ -465,7 +458,7 @@ export function UserMessage({
       {isLastMessage && pendingMessageCount > 0 && (
         <div
           className={cn(
-"mt-1 mr-3 flex items-center gap-1 text-xs text-muted-foreground",
+            "mt-1 mr-3 flex items-center gap-1 text-xs text-muted-foreground",
             isCurrentUser && "justify-end"
           )}
         >

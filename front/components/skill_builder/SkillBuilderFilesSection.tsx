@@ -162,10 +162,8 @@ export function SkillBuilderFilesSection() {
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <div>
- <h3 className="heading-lg font-semibold text-foreground">
-            Files
-          </h3>
- <p className="text-sm text-muted-foreground">
+          <h3 className="heading-lg font-semibold text-foreground">Files</h3>
+          <p className="text-sm text-muted-foreground">
             Add files that will be available to the skill at runtime. Templates,
             schemas, scripts, or reference materials.
           </p>
@@ -230,7 +228,7 @@ export function SkillBuilderFilesSection() {
                       <span
                         className={cn(
                           "text-sm font-normal",
- isAdded &&"text-success"
+                          isAdded && "text-success"
                         )}
                       >
                         {field.fileName}
@@ -259,7 +257,7 @@ export function SkillBuilderFilesSection() {
             className={cn(
               "pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t",
               "from-background via-background/60 to-transparent transition-opacity duration-300",
-"",
+              "",
               canScrollFilesDown ? "opacity-100" : "opacity-0"
             )}
             aria-hidden

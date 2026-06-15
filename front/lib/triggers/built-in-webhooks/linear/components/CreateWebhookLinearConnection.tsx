@@ -163,7 +163,7 @@ export function CreateWebhookLinearConnection({
           </div>
 
           {selectedTeams.length === 0 && (
- <p className="mt-1 text-xs text-warning">
+            <p className="mt-1 text-xs text-warning">
               Please select at least one team to create the webhook
             </p>
           )}

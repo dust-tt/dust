@@ -71,11 +71,11 @@ function MemberChangeRow({
         isRounded
       />
       <div className="min-w-0 flex-1">
- <div className="truncate text-sm font-medium text-foreground">
+        <div className="truncate text-sm font-medium text-foreground">
           {displayName}
         </div>
         {member?.email && displayName !== member.email && (
- <div className="truncate text-xs text-muted-foreground">
+          <div className="truncate text-xs text-muted-foreground">
             {member.email}
           </div>
         )}
@@ -126,9 +126,9 @@ export function PodMembersUpdateValidationDetails({
 
   return (
     <div className="flex flex-col gap-3 pt-2">
- <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         The agent wants to {summaryParts.join(" and ")} in{" "}
- <span className="font-medium text-foreground">
+        <span className="font-medium text-foreground">
           {isPodLabelLoading ? "Loading…" : podLabel}
         </span>
         .
@@ -136,12 +136,12 @@ export function PodMembersUpdateValidationDetails({
 
       {addMemberIds.length > 0 && (
         <div className="flex flex-col gap-1.5">
- <div className="text-xs font-medium text-muted-foreground">
+          <div className="text-xs font-medium text-muted-foreground">
             Members to add
           </div>
           <div
             className={cn(
-"divide-y divide-separator overflow-hidden rounded-xl border border-separator bg-background"
+              "divide-y divide-separator overflow-hidden rounded-xl border border-separator bg-background"
             )}
           >
             {addMemberIds.map((memberSId) => (
@@ -160,12 +160,12 @@ export function PodMembersUpdateValidationDetails({
 
       {removeMemberIds.length > 0 && (
         <div className="flex flex-col gap-1.5">
- <div className="text-xs font-medium text-muted-foreground">
+          <div className="text-xs font-medium text-muted-foreground">
             Members to remove
           </div>
           <div
             className={cn(
-"divide-y divide-separator overflow-hidden rounded-xl border border-separator bg-background"
+              "divide-y divide-separator overflow-hidden rounded-xl border border-separator bg-background"
             )}
           >
             {removeMemberIds.map((memberSId) => (

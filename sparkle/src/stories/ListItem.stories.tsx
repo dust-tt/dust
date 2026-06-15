@@ -117,51 +117,33 @@ export const WithGroupAndSection: Story = {
     <ListGroup>
       <ListItemSection>Today</ListItemSection>
       <ListItem onClick={() => console.log("Today item 1")}>
-        <div className="s:text-foreground">
-          Today - Item 1
-        </div>
+        <div className="s:text-foreground">Today - Item 1</div>
       </ListItem>
       <ListItem onClick={() => console.log("Today item 2")}>
-        <div className="s:text-foreground">
-          Today - Item 2
-        </div>
+        <div className="s:text-foreground">Today - Item 2</div>
       </ListItem>
       <ListItem onClick={() => console.log("Today item 3")}>
-        <div className="s:text-foreground">
-          Today - Item 3
-        </div>
+        <div className="s:text-foreground">Today - Item 3</div>
       </ListItem>
       <ListItemSection>Yesterday</ListItemSection>
       <ListItem onClick={() => console.log("Yesterday item 1")}>
-        <div className="s:text-foreground">
-          Yesterday - Item 1
-        </div>
+        <div className="s:text-foreground">Yesterday - Item 1</div>
       </ListItem>
       <ListItem onClick={() => console.log("Yesterday item 2")}>
-        <div className="s:text-foreground">
-          Yesterday - Item 2
-        </div>
+        <div className="s:text-foreground">Yesterday - Item 2</div>
       </ListItem>
       <ListItemSection>Last Week</ListItemSection>
       <ListItem onClick={() => console.log("Last week item 1")}>
-        <div className="s:text-foreground">
-          Last Week - Item 1
-        </div>
+        <div className="s:text-foreground">Last Week - Item 1</div>
       </ListItem>
       <ListItem onClick={() => console.log("Last week item 2")}>
-        <div className="s:text-foreground">
-          Last Week - Item 2
-        </div>
+        <div className="s:text-foreground">Last Week - Item 2</div>
       </ListItem>
       <ListItem onClick={() => console.log("Last week item 3")}>
-        <div className="s:text-foreground">
-          Last Week - Item 3
-        </div>
+        <div className="s:text-foreground">Last Week - Item 3</div>
       </ListItem>
       <ListItem onClick={() => console.log("Last week item 4")}>
-        <div className="s:text-foreground">
-          Last Week - Item 4
-        </div>
+        <div className="s:text-foreground">Last Week - Item 4</div>
       </ListItem>
     </ListGroup>
   ),

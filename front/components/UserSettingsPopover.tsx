@@ -96,19 +96,17 @@ function SectionContent({
     <div className="relative flex flex-1 flex-col overflow-hidden">
       <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 py-8">
         <header className="flex flex-col gap-1">
- <h2 className="min-h-9 text-2xl font-semibold leading-9 text-foreground">
+          <h2 className="min-h-9 text-2xl font-semibold leading-9 text-foreground">
             {title}
           </h2>
           {description && (
- <p className="text-sm text-muted-foreground">
-              {description}
-            </p>
+            <p className="text-sm text-muted-foreground">{description}</p>
           )}
         </header>
         {children}
       </div>
       {footer && (
- <div className="flex flex-shrink-0 items-center justify-end gap-2 border-t border-border px-6 py-4">
+        <div className="flex flex-shrink-0 items-center justify-end gap-2 border-t border-border px-6 py-4">
           {footer}
         </div>
       )}
@@ -178,13 +176,13 @@ function UsageSection({ owner, onClose }: UsageSectionProps) {
       title="Usage"
       description="Manage the usage of your Dust workspace"
     >
- <section className="flex flex-col gap-2 rounded-lg bg-muted-background p-4">
+      <section className="flex flex-col gap-2 rounded-lg bg-muted-background p-4">
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-2">
- <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-highlight-100 outline outline-1 outline-highlight-500/20">
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-highlight-100 outline outline-1 outline-highlight-500/20">
               <Stars02 className="h-3 w-3 text-highlight-500" />
             </span>
- <span className="text-base font-semibold text-foreground">
+            <span className="text-base font-semibold text-foreground">
               {seatName}
             </span>
           </span>
@@ -210,27 +208,27 @@ function UsageSection({ owner, onClose }: UsageSectionProps) {
             <Spinner size="sm" />
           </div>
         ) : isAwuPoolSummaryError ? (
- <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Failed to load credits data.
           </p>
         ) : (
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
- <span className="text-sm font-medium text-foreground">
+              <span className="text-sm font-medium text-foreground">
                 Workspace Credits Pool
               </span>
- <span className="text-sm font-semibold text-foreground">
+              <span className="text-sm font-semibold text-foreground">
                 {formatCredits(totalConsumedCredits)} /{" "}
                 {formatCredits(totalActiveCredits)}
               </span>
             </div>
- <div className="h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10">
               <div
- className="h-full bg-highlight transition-all"
+                className="h-full bg-highlight transition-all"
                 style={{ width: `${consumedPercentage}%` }}
               />
             </div>
- <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
               {overageCredits !== null && overageCredits > 0 ? (
                 <span>{formatCredits(overageCredits)} overage credits</span>
               ) : (
@@ -242,17 +240,17 @@ function UsageSection({ owner, onClose }: UsageSectionProps) {
                 <Separator />
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col gap-0.5">
- <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                    <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
                       <User01 className="h-3.5 w-3.5" />
                       Personal Credit
                     </span>
                     {billingCycleStartDay !== null && (
- <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         Every {ordinalDay(billingCycleStartDay)} of the month
                       </span>
                     )}
                   </div>
- <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground">
                     {formatCredits(myUsage.consumedFromAllowanceAwuCredits)}
                     <span className="font-medium">
                       /{formatCredits(myUsage.memberUsageLimit)}
@@ -266,12 +264,12 @@ function UsageSection({ owner, onClose }: UsageSectionProps) {
       </section>
 
       {isAdmin && (
- <section className="flex items-center justify-between border-b border-border pb-4">
+        <section className="flex items-center justify-between border-b border-border pb-4">
           <div className="flex flex-col gap-0.5">
- <span className="text-sm font-semibold text-foreground">
+            <span className="text-sm font-semibold text-foreground">
               Invoices
             </span>
- <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground">
               Access and download your invoices
             </span>
           </div>
@@ -439,9 +437,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 
           <div className="flex items-center gap-2">
             <Label>Email</Label>
- <span className="text-sm text-muted-foreground">
-              {user?.email}
-            </span>
+            <span className="text-sm text-muted-foreground">{user?.email}</span>
           </div>
         </div>
       </FormProvider>
@@ -558,7 +554,7 @@ function CustomizationSection() {
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
- <div className="copy-sm flex items-center gap-2 text-foreground">
+              <div className="copy-sm flex items-center gap-2 text-foreground">
                 Send message:
                 <Button
                   variant="outline"
@@ -607,7 +603,7 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
   if (!user?.subscriberHash) {
     return (
       <SectionContent title="Notifications">
- <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Notification preferences are not available for your account.
         </p>
       </SectionContent>
@@ -650,7 +646,7 @@ function ToolsSection({ owner }: { owner: WorkspaceType }) {
           <UserToolsTable owner={owner} />
         </TabsContent>
         <TabsContent value="triggers">
- <p className="py-8 text-center text-sm text-muted-foreground">
+          <p className="py-8 text-center text-sm text-muted-foreground">
             Coming soon
           </p>
         </TabsContent>
@@ -696,7 +692,7 @@ export function UserSettingsPopover({
       >
         <div className="flex h-full flex-col overflow-hidden sm:flex-row">
           {/* Mobile: horizontal tab strip */}
- <nav className="flex flex-shrink-0 items-center border-b border-border bg-muted-background sm:hidden">
+          <nav className="flex flex-shrink-0 items-center border-b border-border bg-muted-background sm:hidden">
             <DialogClose asChild>
               <Button
                 variant="ghost"
@@ -714,8 +710,8 @@ export function UserSettingsPopover({
                   className={cn(
                     "flex flex-1 flex-col items-center gap-1 py-2 transition-colors",
                     activeSection === section
- ?"bg-highlight-100 text-highlight-600"
- :"text-muted-foreground hover:bg-muted-background"
+                      ? "bg-highlight-100 text-highlight-600"
+                      : "text-muted-foreground hover:bg-muted-background"
                   )}
                 >
                   <span className="flex size-4 items-center justify-center">
@@ -728,7 +724,7 @@ export function UserSettingsPopover({
           </nav>
 
           {/* Desktop: vertical sidebar */}
- <div className="hidden w-64 flex-shrink-0 flex-col border-r border-border bg-muted-background sm:flex">
+          <div className="hidden w-64 flex-shrink-0 flex-col border-r border-border bg-muted-background sm:flex">
             <div className="flex-shrink-0 p-2">
               <DialogClose asChild>
                 <Button variant="ghost" size="mini" icon={XClose} />

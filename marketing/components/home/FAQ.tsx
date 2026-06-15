@@ -33,11 +33,11 @@ function FAQItemComponent({
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
       >
- <span className="text-lg font-medium text-foreground">
+        <span className="text-lg font-medium text-foreground">
           {item.question}
         </span>
         <span
- className={`ml-6 flex h-6 w-6 flex-shrink-0 items-center justify-center text-muted-foreground transition-transform duration-200 ${
+          className={`ml-6 flex h-6 w-6 flex-shrink-0 items-center justify-center text-muted-foreground transition-transform duration-200 ${
             isOpen ? "rotate-180" : "rotate-0"
           }`}
         >
@@ -55,7 +55,7 @@ function FAQItemComponent({
       >
         <div className="overflow-hidden">
           <div className="pb-6">
- <div className="prose prose-gray max-w-none text-base leading-relaxed text-gray-600 [&>h3]:mb-2 [&>h3]:mt-3 [&>h3]:text-lg [&>h3]:font-semibold [&>h3]:text-gray-800 [&>li]:mb-1 [&>strong]:font-semibold [&>strong]:text-gray-700 [&>ul]:mb-4 [&>ul]:list-disc [&>ul]:pl-6">
+            <div className="prose prose-gray max-w-none text-base leading-relaxed text-gray-600 [&>h3]:mb-2 [&>h3]:mt-3 [&>h3]:text-lg [&>h3]:font-semibold [&>h3]:text-gray-800 [&>li]:mb-1 [&>strong]:font-semibold [&>strong]:text-gray-700 [&>ul]:mb-4 [&>ul]:list-disc [&>ul]:pl-6">
               {item.answer}
             </div>
           </div>
@@ -70,9 +70,7 @@ export function FAQ({ title = "FAQ", items, className }: FAQProps) {
   return (
     <div className={cn("w-full", className)}>
       <div className="w-full">
- <H2 className="mb-12 text-left text-foreground">
-          {title}
-        </H2>
+        <H2 className="mb-12 text-left text-foreground">{title}</H2>
         <div className="w-full">
           {items.map((item, index) => (
             <FAQItemComponent

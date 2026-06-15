@@ -83,10 +83,7 @@ const scrollBarSizes = {
       vertical: "s:pr-1 s:pl-2.5 s:py-2 s:hover:pl-2",
       horizontal: "s:pb-1 s:pt-2.5 s:px-2",
     },
-    thumb: cn(
-      "s:bg-muted-foreground/40",
-      "s:hover:bg-muted-foreground/70"
-    ),
+    thumb: cn("s:bg-muted-foreground/40", "s:hover:bg-muted-foreground/70"),
   },
   classic: {
     bar: {
@@ -97,10 +94,7 @@ const scrollBarSizes = {
       vertical: "s:pl-2 s:pr-1 s:py-1",
       horizontal: "s:py-0.5 s:px-1",
     },
-    thumb: cn(
-      "s:bg-muted-foreground/70",
-      "s:hover:bg-muted-foreground/80"
-    ),
+    thumb: cn("s:bg-muted-foreground/70", "s:hover:bg-muted-foreground/80"),
   },
   minimal: {
     bar: {
@@ -111,10 +105,7 @@ const scrollBarSizes = {
       vertical: "s:pr-px s:pl-1.5 s:py-px",
       horizontal: "s:pb-px s:pt-1.5 s:px-px",
     },
-    thumb: cn(
-      "s:bg-muted-foreground/20",
-      "s:hover:bg-muted-foreground/50"
-    ),
+    thumb: cn("s:bg-muted-foreground/20", "s:hover:bg-muted-foreground/50"),
   },
 } as const;
 

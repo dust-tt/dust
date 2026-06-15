@@ -86,9 +86,7 @@ const UsageMetricsChart = safeLazy(
 );
 
 function ChartFallback() {
-  return (
- <div className="h-64 animate-pulse rounded-lg bg-muted-background" />
-  );
+  return <div className="h-64 animate-pulse rounded-lg bg-muted-background" />;
 }
 
 interface AgentObservabilityProps {
@@ -135,7 +133,7 @@ export function AgentObservability({
         {isTimeRangeMode && (
           <div className="mb-4">
             {isSummaryLoading ? (
- <div className="bg-card rounded-lg border border-border p-4">
+              <div className="bg-card rounded-lg border border-border p-4">
                 <div className="mb-2 flex items-center justify-between">
                   <LoadingBlock className="h-5 w-24" />
                 </div>
@@ -193,7 +191,7 @@ export function AgentObservability({
               content={
                 <div className="flex flex-col gap-1 text-2xl">
                   {agentAnalytics?.activeUsers !== undefined ? (
- <div className="truncate text-foreground">
+                    <div className="truncate text-foreground">
                       {agentAnalytics.activeUsers}
                     </div>
                   ) : (

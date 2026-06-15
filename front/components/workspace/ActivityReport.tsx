@@ -69,12 +69,12 @@ export function ActivityReport({
   return (
     <>
       {!!monthOptions.length && (
- <div className="flex-grow rounded-lg border border-border bg-card p-4">
+        <div className="flex-grow rounded-lg border border-border bg-card p-4">
           <div className="flex flex-col gap-3">
- <h3 className="text-base font-medium text-foreground">
+            <h3 className="text-base font-medium text-foreground">
               Detailed activity report
             </h3>
- <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Download workspace activity details.
             </p>
             <div className="flex flex-row items-center gap-2">
@@ -85,7 +85,7 @@ export function ActivityReport({
                   onIncludeInactiveChange(!includeInactive);
                 }}
               />
- <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-muted-foreground">
                 Include members and agents without messages.
               </div>
             </div>

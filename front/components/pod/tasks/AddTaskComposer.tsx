@@ -190,7 +190,7 @@ function TaskRowAssigneeMenu({
               ))}
             </>
           ) : (
- <div className="px-3 py-2 text-sm text-muted-foreground">
+            <div className="px-3 py-2 text-sm text-muted-foreground">
               No members found
             </div>
           )}

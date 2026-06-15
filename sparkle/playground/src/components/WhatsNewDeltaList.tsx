@@ -79,9 +79,7 @@ export function WhatsNewDeltaList({
             }}
           />
         </div>
-        <h4 className="s:heading-lg s:text-foreground">
-          {label}
-        </h4>
+        <h4 className="s:heading-lg s:text-foreground">{label}</h4>
       </div>
 
       {items.map((item) => {
@@ -152,9 +150,7 @@ export function WhatsNewDeltaList({
                         type="button"
                         className={cn(
                           "s:underline hover:s:no-underline",
-                          isChecked
-                            ? "s:text-faint"
-                            : "s:text-muted-foreground"
+                          isChecked ? "s:text-faint" : "s:text-muted-foreground"
                         )}
                         onClick={(event) => {
                           event.stopPropagation();

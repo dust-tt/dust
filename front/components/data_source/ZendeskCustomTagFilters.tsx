@@ -212,7 +212,7 @@ export function ZendeskCustomFieldFilters({
       }
     >
       <div className="space-y-4">
- <div className="text-muted-foreground">
+        <div className="text-muted-foreground">
           <p className="text-sm">
             Configure custom ticket field that should be included as tags when
             syncing tickets. Custom field values will be added as tags in the
@@ -238,7 +238,7 @@ export function ZendeskCustomFieldFilters({
                 label="Add Field"
               />
             </div>
- <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Enter the numeric ID of the custom field from Zendesk. You can
               find this in your Zendesk admin settings under Fields.
             </p>
@@ -268,7 +268,7 @@ export function ZendeskCustomFieldFilters({
               ))}
             </div>
           ) : (
- <p className="mb-4 text-sm text-muted-foreground">
+            <p className="mb-4 text-sm text-muted-foreground">
               No tag filters configured.
             </p>
           )}

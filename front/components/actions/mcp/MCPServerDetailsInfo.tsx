@@ -44,20 +44,18 @@ export function MCPServerDetailsInfo({
         <div className="heading-lg">Available Tools ({tools.length})</div>
         {tools.map((tool, index) => (
           <div key={index} className="flex flex-col gap-1 py-1">
- <div className="heading-base text-foreground">
+            <div className="heading-base text-foreground">
               {asDisplayName(tool.name)}
             </div>
             {tool.description && (
- <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 {tool.description}
               </p>
             )}
           </div>
         ))}
         {tools.length === 0 && (
- <p className="text-sm text-muted-foreground">
-            No tools available.
-          </p>
+          <p className="text-sm text-muted-foreground">No tools available.</p>
         )}
       </div>
     );
@@ -69,7 +67,7 @@ export function MCPServerDetailsInfo({
   return (
     <div className="flex flex-col gap-3">
       {mcpServerView.editedByUser && (
- <div className="flex w-full text-sm text-muted-foreground">
+        <div className="flex w-full text-sm text-muted-foreground">
           Edited by {mcpServerView.editedByUser.fullName}, {editedAt}
         </div>
       )}

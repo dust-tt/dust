@@ -19,10 +19,7 @@ export const blockquoteVariants = cva(
   {
     variants: {
       variant: {
-        surface: [
-          "s:text-foreground",
-          "s:bg-transparent",
-        ],
+        surface: ["s:text-foreground", "s:bg-transparent"],
       },
       buttonDisplay: {
         inside: ["s:pr-12"],

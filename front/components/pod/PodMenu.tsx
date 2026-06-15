@@ -299,7 +299,7 @@ export function PodMenu({
                       />
                     }
                     // biome-ignore lint/plugin/noCssImportant: legacy [GEN12] — needs cleanup
- className="!text-foreground"
+                    className="!text-foreground"
                   />
                 ))}
               </DropdownMenuSubContent>

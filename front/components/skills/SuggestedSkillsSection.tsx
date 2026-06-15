@@ -78,7 +78,7 @@ function SuggestedSkillCard({
               <SkillAvatar size="sm" />
               <span className="truncate text-sm font-medium">{skill.name}</span>
             </div>
- <p className="line-clamp-2 text-sm text-muted-foreground">
+            <p className="line-clamp-2 text-sm text-muted-foreground">
               {skill.userFacingDescription}
             </p>
           </div>
@@ -122,7 +122,7 @@ export function SuggestedSkillsSection({
 
   return (
     <div className="mt-6 flex flex-col gap-3 pb-6">
- <h4 className="heading-sm flex items-center gap-1.5 text-foreground">
+      <h4 className="heading-sm flex items-center gap-1.5 text-foreground">
         Suggested skills
         <Stars02 className="h-4 w-4" />
       </h4>

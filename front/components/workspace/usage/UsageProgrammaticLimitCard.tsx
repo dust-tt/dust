@@ -44,9 +44,7 @@ export function UsageProgrammaticLimitCard({
   return (
     <Page.Vertical gap="sm" align="stretch">
       <div className="flex flex-col gap-0.5">
- <span className="heading-base text-foreground">
-          Programmatic usage
-        </span>
+        <span className="heading-base text-foreground">Programmatic usage</span>
       </div>
       <SettingsList>
         <SettingsList.Row

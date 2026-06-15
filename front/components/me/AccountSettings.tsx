@@ -276,9 +276,7 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
 
         <div className="flex items-center gap-2 py-2">
           <Label>Email</Label>
- <span className="text-muted-foreground">
-            {user?.email}
-          </span>
+          <span className="text-muted-foreground">{user?.email}</span>
         </div>
 
         <div className="flex w-full flex-row justify-between gap-4">
@@ -335,7 +333,7 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
- <div className="copy-sm flex items-center gap-2 text-foreground">
+                <div className="copy-sm flex items-center gap-2 text-foreground">
                   Send message:
                   <Button
                     variant="outline"

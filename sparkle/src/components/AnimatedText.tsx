@@ -20,38 +20,26 @@ type AnimatedTextVariantType = (typeof ANIMATED_TEXT_VARIANTS)[number];
 
 const animatedVariants: Record<AnimatedTextVariantType, string> = {
   primary: cn(
-    "s:from-primary-600 s:via-primary-950 s:via-50% s:to-primary-600",
+    "s:from-primary-600 s:via-primary-950 s:via-50% s:to-primary-600"
   ),
   muted: cn(
     "s:from-transparent s:via-primary-950/80 s:via-50% s:to-transparent"
   ),
   highlight: cn(
-    "s:from-highlight s:via-highlight-800 s:via-50% s:to-highlight",
+    "s:from-highlight s:via-highlight-800 s:via-50% s:to-highlight"
   ),
   warning: cn(
-    "s:from-warning-800 s:via-warning-950 s:via-50% s:to-warning-800",
+    "s:from-warning-800 s:via-warning-950 s:via-50% s:to-warning-800"
   ),
   success: cn(
-    "s:from-success-800 s:via-success-950 s:via-50% s:to-success-800",
+    "s:from-success-800 s:via-success-950 s:via-50% s:to-success-800"
   ),
-  info: cn(
-    "s:from-info-800 s:via-info-950 s:via-50% s:to-info-800",
-  ),
-  green: cn(
-    "s:from-emerald-800 s:via-emerald-950 s:via-50% s:to-emerald-800",
-  ),
-  blue: cn(
-    "s:from-sky-800 s:via-sky-950 s:via-50% s:to-sky-800",
-  ),
-  rose: cn(
-    "s:from-rose-800 s:via-rose-950 s:via-50% s:to-rose-800",
-  ),
-  golden: cn(
-    "s:from-golden-800 s:via-golden-950 s:via-50% s:to-golden-800",
-  ),
-  white: cn(
-    "s:from-primary-800 s:via-primary-950 s:via-50% s:to-primary-800",
-  ),
+  info: cn("s:from-info-800 s:via-info-950 s:via-50% s:to-info-800"),
+  green: cn("s:from-emerald-800 s:via-emerald-950 s:via-50% s:to-emerald-800"),
+  blue: cn("s:from-sky-800 s:via-sky-950 s:via-50% s:to-sky-800"),
+  rose: cn("s:from-rose-800 s:via-rose-950 s:via-50% s:to-rose-800"),
+  golden: cn("s:from-golden-800 s:via-golden-950 s:via-50% s:to-golden-800"),
+  white: cn("s:from-primary-800 s:via-primary-950 s:via-50% s:to-primary-800"),
 };
 
 const animVariants = cva(

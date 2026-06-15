@@ -67,9 +67,7 @@ export function UsageSettingsCard({
 
   return (
     <Page.Vertical gap="sm" align="stretch">
- <span className="heading-2xl text-foreground">
-        Settings
-      </span>
+      <span className="heading-2xl text-foreground">Settings</span>
       <SettingsList>
         <SettingsList.Row
           title="Default pool credit limit"

@@ -412,7 +412,7 @@ function PreviewDialog({ form }: { form: any }) {
       <DialogTrigger asChild>
         <Button variant="outline" label="Preview Template Card" />
       </DialogTrigger>
- <DialogContent className="bg-primary-50 sm:max-w-[600px]">
+      <DialogContent className="bg-primary-50 sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Preview</DialogTitle>
         </DialogHeader>
@@ -572,7 +572,7 @@ export function TemplateDetailPage() {
 
   if (isSubmitting) {
     return (
- <div className="flex min-h-dvh items-center justify-center bg-primary-50">
+      <div className="flex min-h-dvh items-center justify-center bg-primary-50">
         <div className="text-primary-900">Creating/Updating template...</div>
       </div>
     );

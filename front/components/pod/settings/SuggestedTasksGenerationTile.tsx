@@ -148,7 +148,7 @@ export function SuggestedTasksGenerationTile({
           trigger={
             <button
               type="button"
- className="inline-flex rounded-md p-1 text-muted-foreground hover:text-foreground"
+              className="inline-flex rounded-md p-1 text-muted-foreground hover:text-foreground"
               aria-label="Last automatic task suggestion scan"
             >
               <Icon visual={InfoCircle} size="sm" />

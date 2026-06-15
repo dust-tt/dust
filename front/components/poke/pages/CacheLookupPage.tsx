@@ -71,14 +71,12 @@ function RedisInstanceResult({
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
- <h3 className="text-sm font-semibold text-foreground">
-          {label}
-        </h3>
+        <h3 className="text-sm font-semibold text-foreground">{label}</h3>
         <span
           className={`rounded px-1.5 py-0.5 text-xs font-medium ${
             found
- ?"bg-success-100 text-success-800"
- :"bg-muted-background text-muted-foreground"
+              ? "bg-success-100 text-success-800"
+              : "bg-muted-background text-muted-foreground"
           }`}
         >
           {found ? "Found" : "Not found"}
@@ -88,7 +86,7 @@ function RedisInstanceResult({
         <>
           <div>
             <Label isMuted>TTL</Label>
- <p className="mt-1 text-sm text-foreground">
+            <p className="mt-1 text-sm text-foreground">
               {formatTtl(result.ttlSeconds)}
             </p>
           </div>
@@ -173,7 +171,7 @@ function CacheResults({
 }: CacheResultsProps) {
   if (!submitted) {
     return (
- <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Fill in the parameters and click Lookup to see results.
       </p>
     );
@@ -189,9 +187,7 @@ function CacheResults({
 
   if (isError) {
     return (
- <p className="text-sm text-warning-400">
-        Error fetching cache value.
-      </p>
+      <p className="text-sm text-warning-400">Error fetching cache value.</p>
     );
   }
 
@@ -224,7 +220,7 @@ function CacheResults({
       />
       <div>
         <Label isMuted>Redis Key</Label>
- <code className="mt-1 block break-all rounded bg-muted-background p-2 text-sm text-foreground">
+        <code className="mt-1 block break-all rounded bg-muted-background p-2 text-sm text-foreground">
           {data.key}
         </code>
       </div>
@@ -348,7 +344,7 @@ function ResourceLookupForm({ onSubmit }: ResourceLookupFormProps) {
           {computedKey && (
             <div>
               <Label isMuted>Computed Key</Label>
- <code className="mt-1 block break-all rounded bg-muted-background p-2 text-xs text-muted-foreground">
+              <code className="mt-1 block break-all rounded bg-muted-background p-2 text-xs text-muted-foreground">
                 {computedKey}
               </code>
             </div>
@@ -459,7 +455,7 @@ function ResourceInvalidateForm() {
         <>
           <div>
             <Label isMuted>Key Pattern</Label>
- <code className="mt-1 block break-all rounded bg-muted-background p-2 text-xs text-muted-foreground">
+            <code className="mt-1 block break-all rounded bg-muted-background p-2 text-xs text-muted-foreground">
               {pattern}
             </code>
           </div>
@@ -551,16 +547,16 @@ export function CacheLookupPage() {
     <main className="px-4 sm:px-6 lg:px-8">
       <div className="py-12">
         <div className="mb-8">
- <h1 className="text-3xl font-bold tracking-tight text-foreground">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
             Redis Cache Lookup
           </h1>
- <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-sm text-muted-foreground">
             Inspect cached values in Redis
           </p>
         </div>
 
         <div className="flex gap-6">
- <div className="w-80 shrink-0 rounded-lg bg-background p-4">
+          <div className="w-80 shrink-0 rounded-lg bg-background p-4">
             <Tabs defaultValue="resource">
               <TabsList>
                 <TabsTrigger value="resource" label="Resource" />
@@ -582,7 +578,7 @@ export function CacheLookupPage() {
             </Tabs>
           </div>
 
- <div className="min-w-0 flex-1 rounded-lg bg-background p-4">
+          <div className="min-w-0 flex-1 rounded-lg bg-background p-4">
             <CacheResults
               data={data}
               isLoading={isCacheLoading}

@@ -69,7 +69,7 @@ export function SelfImprovingSkillsSettingsSection({
     <Page.Vertical align="stretch" gap="md">
       <Page.SectionHeader title="Settings" />
       <ContextItem.List>
- <div className="h-full border-b border-border" />
+        <div className="h-full border-b border-border" />
         <ContextItem
           title="Allow self-improving skills"
           visual={<></>}

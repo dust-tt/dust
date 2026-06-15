@@ -480,9 +480,7 @@ export function BaseAwuUsageChart({
               tooltip="Previous period"
             />
           )}
- <span className="text-sm text-muted-foreground">
-            {periodLabel}
-          </span>
+          <span className="text-sm text-muted-foreground">{periodLabel}</span>
           {canGoNext && (
             <Button
               icon={ChevronRight}
@@ -626,14 +624,11 @@ export function BaseAwuUsageChart({
         data={chartData}
         margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
       >
-        <CartesianGrid
-          vertical={false}
- className="stroke-border"
-        />
+        <CartesianGrid vertical={false} className="stroke-border" />
         <XAxis
           dataKey="timestamp"
           type="category"
- className="text-xs text-muted-foreground"
+          className="text-xs text-muted-foreground"
           tickLine={true}
           axisLine={false}
           tickMargin={8}
@@ -647,7 +642,7 @@ export function BaseAwuUsageChart({
           }
         />
         <YAxis
- className="text-xs text-muted-foreground"
+          className="text-xs text-muted-foreground"
           tickLine={false}
           axisLine={false}
           tickMargin={8}

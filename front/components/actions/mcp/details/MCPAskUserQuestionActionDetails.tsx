@@ -31,7 +31,7 @@ export function MCPAskUserQuestionActionDetails({
     >
       {displayContext !== "conversation" && userQuestion && outputText && (
         <div className="flex flex-col gap-3 pl-6 pt-4">
- <div className="text-sm font-medium text-foreground">
+          <div className="text-sm font-medium text-foreground">
             {userQuestion.question}
           </div>
           <div className="flex flex-col gap-1.5">
@@ -41,23 +41,17 @@ export function MCPAskUserQuestionActionDetails({
               return (
                 <div
                   key={index}
- className="flex flex-col text-sm text-muted-foreground"
+                  className="flex flex-col text-sm text-muted-foreground"
                 >
                   <div className="flex items-center gap-2">
                     <Icon
                       visual={Check}
                       size="xs"
-                      className={
-                        isSelected
- ?"text-primary"
-                          : "invisible"
-                      }
+                      className={isSelected ? "text-primary" : "invisible"}
                     />
                     <span
                       className={
-                        isSelected
- ?"font-medium text-foreground"
-                          : ""
+                        isSelected ? "font-medium text-foreground" : ""
                       }
                     >
                       {label}
@@ -71,19 +65,15 @@ export function MCPAskUserQuestionActionDetails({
             })}
             {customAnswer && (
               <div className="flex items-center gap-2 text-sm">
-                <Icon
-                  visual={Check}
-                  size="xs"
- className="text-primary"
-                />
- <span className="font-medium text-foreground">
+                <Icon visual={Check} size="xs" className="text-primary" />
+                <span className="font-medium text-foreground">
                   {customAnswer}
                 </span>
               </div>
             )}
           </div>
           {isDeclined && (
- <div className="text-sm text-foreground">
+            <div className="text-sm text-foreground">
               User declined to answer
             </div>
           )}

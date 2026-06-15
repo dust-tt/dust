@@ -48,15 +48,8 @@ const renderIconGrid = (icons: IconModule) => (
       ) as React.ComponentType<{ className?: string }>;
       return (
         <div key={iconName}>
-          <Icon
-            visual={CurrentIcon}
-            size="md"
-            className="s:text-foreground"
-          />
-          <div
-            style={itemStyle}
-            className="s:text-sm s:text-foreground"
-          >
+          <Icon visual={CurrentIcon} size="md" className="s:text-foreground" />
+          <div style={itemStyle} className="s:text-sm s:text-foreground">
             {iconName}
           </div>
         </div>

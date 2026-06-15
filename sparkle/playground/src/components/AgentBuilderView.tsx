@@ -177,11 +177,7 @@ function MetadataRow({
   description,
   descriptionClassName,
 }: MetadataRowProps) {
-  const descriptionClasses = [
-    descriptionClassName,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const descriptionClasses = [descriptionClassName].filter(Boolean).join(" ");
 
   return (
     <div className="s:flex s:items-center s:gap-2 s:border-t s:border-border s:py-2">
@@ -666,9 +662,7 @@ export function AgentBuilderView({
     return (
       <div className="s:flex s:w-full s:items-end s:gap-2">
         <div className="s:flex s:flex-1 s:flex-col">
-          <div className="s:heading-base s:text-foreground">
-            {title}
-          </div>
+          <div className="s:heading-base s:text-foreground">{title}</div>
           <div className="s:text-base s:text-muted-foreground">
             {description}
           </div>
@@ -1522,11 +1516,7 @@ export function AgentBuilderView({
                           key={space.id}
                           itemsAlignment="center"
                           onClick={() => toggleDraftSpace(space.id)}
-                          className={
-                            isSelected
-                              ? "s:bg-primary-50"
-                              : ""
-                          }
+                          className={isSelected ? "s:bg-primary-50" : ""}
                         >
                           <Icon
                             visual={
@@ -1569,11 +1559,7 @@ export function AgentBuilderView({
                         key={space.id}
                         itemsAlignment="center"
                         onClick={() => toggleDraftProject(space.id)}
-                        className={
-                          isSelected
-                            ? "s:bg-primary-50"
-                            : ""
-                        }
+                        className={isSelected ? "s:bg-primary-50" : ""}
                       >
                         <Icon
                           visual={
@@ -1617,11 +1603,7 @@ export function AgentBuilderView({
                         key={space.id}
                         itemsAlignment="center"
                         onClick={() => toggleDraftProject(space.id)}
-                        className={
-                          isSelected
-                            ? "s:bg-primary-50"
-                            : ""
-                        }
+                        className={isSelected ? "s:bg-primary-50" : ""}
                       >
                         <Icon
                           visual={

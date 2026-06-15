@@ -149,8 +149,8 @@ export function TablesManager({
                 <Button
                   onClick={() => removeTable(index)}
                   className={classNames(
-"text-muted-foreground",
-"hover:text-muted-foreground"
+                    "text-muted-foreground",
+                    "hover:text-muted-foreground"
                   )}
                   icon={XClose}
                   size="xs"
@@ -256,7 +256,7 @@ export default function Database({
               }}
               padding={3}
               minHeight={80}
- className="rounded-lg bg-muted-background"
+              className="rounded-lg bg-muted-background"
               style={{
                 fontSize: 13,
                 fontFamily:

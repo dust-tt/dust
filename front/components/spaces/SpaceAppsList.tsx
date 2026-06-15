@@ -149,7 +149,7 @@ export const SpaceAppsList = ({
     <>
       {!isEmpty && portalToHeader(actionButtons)}
       {isEmpty ? (
- <div className="flex h-36 w-full items-center justify-center gap-2 rounded-lg bg-muted-background">
+        <div className="flex h-36 w-full items-center justify-center gap-2 rounded-lg bg-muted-background">
           <Button
             label="Create App"
             disabled={!isBuilder}

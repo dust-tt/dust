@@ -255,11 +255,11 @@ export function DataSourceSearchResults({
   if (!error && !isLoading && searchResults.length === 0) {
     return (
       <div className="flex w-full flex-col gap-2">
- <div className="text-end text-sm text-muted-foreground">
+        <div className="text-end text-sm text-muted-foreground">
           0 results found
         </div>
         <div className="flex items-center justify-center p-8 text-center">
- <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             No matching results found. Try different search terms.
           </p>
         </div>
@@ -270,7 +270,7 @@ export function DataSourceSearchResults({
   return (
     <>
       {error ? (
- <div className="text-end text-sm text-muted-foreground">
+        <div className="text-end text-sm text-muted-foreground">
           Error searching results.
         </div>
       ) : (

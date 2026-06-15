@@ -37,7 +37,7 @@ interface ThinkingBlockProps {
 export function ThinkingBlock({ resource }: ThinkingBlockProps) {
   return (
     resource.text && (
- <div className="text-sm font-normal text-muted-foreground">
+      <div className="text-sm font-normal text-muted-foreground">
         <ContentMessage
           title="Reasoning"
           variant="primary"
@@ -48,7 +48,7 @@ export function ThinkingBlock({ resource }: ThinkingBlockProps) {
             content={resource.text}
             isStreaming={false}
             forcedTextSize="text-sm"
- textColor="text-muted-foreground"
+            textColor="text-muted-foreground"
             isLastMessage={false}
           />
         </ContentMessage>
@@ -63,7 +63,7 @@ interface SqlQueryBlockProps {
 
 export function SqlQueryBlock({ resource }: SqlQueryBlockProps) {
   return (
- <div className="text-sm font-normal text-muted-foreground">
+    <div className="text-sm font-normal text-muted-foreground">
       <ContentBlockWrapper content={resource.text}>
         <CodeBlock
           className="language-sql max-h-60 overflow-y-auto"
@@ -199,18 +199,14 @@ export function SearchResultDetails({
       visual={visual}
     >
       {displayContext === "conversation" ? (
- <div className="text-sm font-normal text-muted-foreground">
+        <div className="text-sm font-normal text-muted-foreground">
           {displayQuery}
         </div>
       ) : (
         <div className="flex flex-col gap-4 pl-6 pt-4">
           <div className="flex flex-col gap-1">
- <span className="font-medium text-foreground">
-              Query
-            </span>
- <div className="text-muted-foreground">
-              {displayQuery}
-            </div>
+            <span className="font-medium text-foreground">Query</span>
+            <div className="text-muted-foreground">{displayQuery}</div>
             {warning && (
               <Tooltip
                 label={warning.text}
@@ -220,15 +216,13 @@ export function SearchResultDetails({
           </div>
           {actionOutput && (
             <div className="flex flex-col gap-2">
- <span className="font-medium text-foreground">
-                Results
-              </span>
+              <span className="font-medium text-foreground">Results</span>
               {singleFileContentText && (
                 <Markdown
                   content={singleFileContentText}
                   isStreaming={false}
                   forcedTextSize="text-sm"
- textColor="text-muted-foreground"
+                  textColor="text-muted-foreground"
                 />
               )}
               <PaginatedCitationsGrid items={citations} />

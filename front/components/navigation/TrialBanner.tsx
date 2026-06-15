@@ -123,7 +123,7 @@ export function SubscriptionEndBanner({
         <p
           className={cn(
             "font-semibold",
-"text-sky-900"
+            "text-sky-900"
           )}
         >
           {title}

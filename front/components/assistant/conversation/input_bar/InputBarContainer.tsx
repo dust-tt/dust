@@ -1139,9 +1139,7 @@ const InputBarContainer = ({
               aria-hidden
               className={cn(
                 INPUT_BAR_COMPACT_PREVIEW_CLASSES,
-                compactPreviewText
- ?"text-foreground"
- :"text-faint"
+                compactPreviewText ? "text-foreground" : "text-faint"
               )}
             >
               {compactPreviewText || compactDisplayPlaceholder}
@@ -1225,7 +1223,7 @@ const InputBarContainer = ({
                     size="xs"
                     label={getMcpServerViewDisplayName(msv)}
                     icon={getIcon(msv.server.icon)}
- className="m-0.5 hidden bg-background text-foreground xs:flex"
+                    className="m-0.5 hidden bg-background text-foreground xs:flex"
                     onClick={() => setSelectedServerViewForDetails(msv)}
                     onRemove={() => {
                       onMCPServerViewDeselect(msv);
@@ -1234,7 +1232,7 @@ const InputBarContainer = ({
                   <Chip
                     size="xs"
                     icon={getIcon(msv.server.icon)}
- className="m-0.5 flex bg-background text-foreground xs:hidden"
+                    className="m-0.5 flex bg-background text-foreground xs:hidden"
                     onClick={() => setSelectedServerViewForDetails(msv)}
                     onRemove={() => {
                       onMCPServerViewDeselect(msv);
@@ -1360,7 +1358,7 @@ const InputBarContainer = ({
                             endComponent={
                               <DropdownMenuShortcut
                                 shortcut={pageShortcut}
- className="text-xs text-faint"
+                                className="text-xs text-faint"
                               />
                             }
                           />
@@ -1378,7 +1376,7 @@ const InputBarContainer = ({
                             endComponent={
                               <DropdownMenuShortcut
                                 shortcut={screenshotShortcut}
- className="text-xs text-faint"
+                                className="text-xs text-faint"
                               />
                             }
                           />

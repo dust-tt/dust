@@ -113,7 +113,7 @@ export function ChildAgentSection() {
               <div className="heading-sm truncate font-medium">
                 {row.original.name}
               </div>
- <div className="truncate text-xs text-muted-foreground">
+              <div className="truncate text-xs text-muted-foreground">
                 {row.original.description || "No description available"}
               </div>
             </div>
@@ -188,7 +188,7 @@ export function ChildAgentSection() {
                 />
                 <div className="text-md font-medium">{selectedAgent.name}</div>
               </div>
- <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground">
+              <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground">
                 {selectedAgent.description || "No description available"}
               </div>
             </div>

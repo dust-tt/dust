@@ -68,7 +68,7 @@ export const ThinkingStep = memo(function ThinkingStep({
       animationDurationSeconds={0.3}
       delimiter=" "
       forcedTextSize="text-sm"
- textColor="text-muted-foreground"
+      textColor="text-muted-foreground"
       isLastMessage={false}
     />
   ) : null;

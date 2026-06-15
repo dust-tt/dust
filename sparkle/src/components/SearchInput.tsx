@@ -86,9 +86,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
             <div
               className={cn(
                 "s:px-2",
-                disabled
-                  ? "s:text-muted-foreground"
-                  : "s:text-foreground"
+                disabled ? "s:text-muted-foreground" : "s:text-foreground"
               )}
             >
               <Icon
@@ -235,9 +233,9 @@ function BaseSearchInputWithPopover<T>(
       </PopoverTrigger>
       <PopoverContent
         className={cn(
-          "s:w-[--radix-popover-trigger-width] s:rounded-lg s:border s:bg-background s:shadow-lg",
+          "s:w-(--radix-popover-trigger-width) s:rounded-lg s:border s:bg-background s:shadow-lg",
           availableHeight &&
-            "s:max-h-[var(--radix-popover-content-available-height)] s:overflow-hidden",
+            "s:max-h-(--radix-popover-content-available-height) s:overflow-hidden",
           contentClassName
         )}
         sideOffset={0}

@@ -82,8 +82,8 @@ interface SummaryRowProps {
 
 function SummaryRow({ label, value, dimmed = false }: SummaryRowProps) {
   const cls = dimmed
- ?"text-sm text-muted-foreground"
- :"text-sm text-foreground";
+    ? "text-sm text-muted-foreground"
+    : "text-sm text-foreground";
   return (
     <div className="flex items-center justify-between">
       <span className={cls}>{label}</span>
@@ -243,10 +243,10 @@ export function BuyAwuCreditsDialog({
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
             <Spinner size="lg" />
- <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Processing payment...
             </p>
- <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               This may take a few seconds.
             </p>
           </div>
@@ -257,13 +257,13 @@ export function BuyAwuCreditsDialog({
           <div className="flex flex-col items-center justify-center gap-4 py-8">
             <Icon visual={CheckCircle} size="lg" className="text-success-500" />
             <div className="text-center">
- <p className="text-lg font-medium text-foreground">
+              <p className="text-lg font-medium text-foreground">
                 Credits purchased successfully!
               </p>
- <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-muted-foreground">
                 Your credits are now available.
               </p>
- <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-muted-foreground">
                 <span className="font-semibold">
                   Invoice has been sent by email.
                 </span>
@@ -277,13 +277,13 @@ export function BuyAwuCreditsDialog({
           <div className="flex flex-col items-center justify-center gap-4 py-8">
             <Icon visual={XCircle} size="lg" className="text-warning-500" />
             <div className="text-center">
- <p className="text-lg font-medium text-foreground">
+              <p className="text-lg font-medium text-foreground">
                 Something went wrong
               </p>
- <p className="mt-1 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-muted-foreground">
                 {errorMessage}
               </p>
- <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-2 text-xs text-muted-foreground">
                 Please contact support if the issue persists.
               </p>
             </div>
@@ -522,7 +522,7 @@ export function BuyAwuCreditsDialog({
           <DialogContainer>
             <div className="flex flex-col items-center justify-center gap-4 py-8">
               <Icon visual={XCircle} size="lg" className="text-warning-500" />
- <p className="text-center text-sm text-muted-foreground">
+              <p className="text-center text-sm text-muted-foreground">
                 Something went wrong while loading your top-up options. Please
                 try again in a moment, or{" "}
                 <a
@@ -564,7 +564,7 @@ export function BuyAwuCreditsDialog({
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
- <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Please{" "}
               <a
                 href={`mailto:${supportEmail}?subject=Credit%20purchase`}
@@ -604,7 +604,7 @@ export function BuyAwuCreditsDialog({
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
- <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Please{" "}
               <a
                 href={`mailto:${supportEmail}?subject=Credit%20purchase%20-%20billing%20setup`}
@@ -644,7 +644,7 @@ export function BuyAwuCreditsDialog({
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
- <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Please complete your pending payment before making a new purchase
               or{" "}
               <a
@@ -691,7 +691,7 @@ export function BuyAwuCreditsDialog({
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
- <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Your credit purchase limit resets at the start of your next
               billing cycle. If you need additional credits before then, please{" "}
               <a

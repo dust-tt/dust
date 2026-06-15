@@ -143,13 +143,7 @@ export const NewConversationSectionHeading = React.forwardRef<
   NewConversationSectionHeadingProps
 >(({ label, children, className, ...props }, ref) => {
   return (
-    <div
-      ref={ref}
-      className={cn(
-        className
-      )}
-      {...props}
-    >
+    <div ref={ref} className={cn(className)} {...props}>
       {label ?? children}
     </div>
   );
@@ -374,7 +368,8 @@ const messageVariants = cva("s:flex s:max-w-full", {
   variants: {
     type: {
       interlocutor:
-      locutor:
+        "s:rounded-3xl s:bg-muted-background s:px-4 s:gap-2 s:w-fit",
+      locutor: "s:rounded-3xl s:bg-muted-background s:px-4 s:gap-2 s:w-fit",
       agent: "s:flex-1 s:px-4",
     },
   },
@@ -662,6 +657,7 @@ export const NewConversationUserMessage = React.forwardRef<
                   messageVariants({ type: resolvedType, className }),
                   userCollapsible && "s:flex-col",
                   isEditing &&
+                    "s:w-full s:mt-3 s:flex-col s:border s:border-highlight-300 s:ring-2 s:ring-highlight-300/50"
                 )}
                 {...props}
               >
@@ -982,9 +978,7 @@ export const NewConversationMessageContent = React.forwardRef<
         )}
         {...props}
       >
-        <div className="s:text-base s:text-foreground">
-          {children}
-        </div>
+        <div className="s:text-base s:text-foreground">{children}</div>
         {citations && citations.length > 0 && (
           <NewCitationGrid>{citations}</NewCitationGrid>
         )}

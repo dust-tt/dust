@@ -67,9 +67,7 @@ export function MCPExtractActionDetails({
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
- <span className="text-sm font-semibold text-foreground">
-            Query
-          </span>
+          <span className="text-sm font-semibold text-foreground">Query</span>
           <MCPExtractActionQuery
             toolParams={toolParams}
             queryResource={queryResource}
@@ -78,9 +76,7 @@ export function MCPExtractActionDetails({
 
         {jsonSchema && (
           <div>
- <span className="font-medium text-foreground">
-              Schema
-            </span>
+            <span className="font-medium text-foreground">Schema</span>
             <div className="py-2">
               <CodeBlock
                 className="language-json max-h-60 overflow-y-auto"
@@ -94,9 +90,7 @@ export function MCPExtractActionDetails({
 
         {displayContext !== "conversation" && (
           <div>
- <span className="font-medium text-foreground">
-              Results
-            </span>
+            <span className="font-medium text-foreground">Results</span>
             <MCPExtractActionResults
               owner={owner}
               resultResource={resultResource}
@@ -116,7 +110,7 @@ function MCPExtractActionQuery({
 
   if (queryResource) {
     return (
- <p className="text-sm font-normal text-muted-foreground">
+      <p className="text-sm font-normal text-muted-foreground">
         {queryResource.text}
       </p>
     );
@@ -132,7 +126,7 @@ function MCPExtractActionQuery({
       : "all time";
 
   return (
- <p className="text-sm font-normal text-muted-foreground">
+    <p className="text-sm font-normal text-muted-foreground">
       Extracted from documents over {timeFrameAsString}.
     </p>
   );
@@ -146,7 +140,7 @@ function MCPExtractActionResults({
 
   if (!resultResource) {
     return (
- <div className="text-sm text-muted-foreground">
+      <div className="text-sm text-muted-foreground">
         No data was extracted.
       </div>
     );
@@ -188,9 +182,7 @@ function MCPExtractActionResults({
 
       {resultResource.snippet && (
         <div>
- <span className="font-medium text-foreground">
-            Preview
-          </span>
+          <span className="font-medium text-foreground">Preview</span>
           <div className="py-2">
             <CodeBlock
               className="language-json max-h-60 overflow-y-auto"

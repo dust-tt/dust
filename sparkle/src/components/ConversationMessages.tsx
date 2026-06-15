@@ -82,9 +82,7 @@ export const ConversationMessageContent = React.forwardRef<
         )}
         {...props}
       >
-        <div className="s:text-base s:text-foreground">
-          {children}
-        </div>
+        <div className="s:text-base s:text-foreground">{children}</div>
         {type === "agent" && citations && citations.length > 0 && (
           <CitationGrid>{citations}</CitationGrid>
         )}
@@ -169,9 +167,7 @@ export const ConversationMessageTitle = React.forwardRef<
       >
         <div className="s:inline-flex s:items-baseline s:gap-2 s:text-foreground">
           <span className="s:text-sm s:font-medium">{renderName(name)}</span>
-          <span className="s:text-xs s:text-muted-foreground">
-            {timestamp}
-          </span>
+          <span className="s:text-xs s:text-muted-foreground">{timestamp}</span>
           {infoChip && (
             <div className="s:inline-flex s:self-[anchor-center]">
               {infoChip}

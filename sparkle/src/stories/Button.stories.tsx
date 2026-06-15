@@ -138,9 +138,7 @@ const ButtonBySize = ({
 }) => (
   <>
     <Separator />
-    <h3 className="s:text-primary">
-      {size?.toUpperCase()}
-    </h3>
+    <h3 className="s:text-primary">{size?.toUpperCase()}</h3>
     <div className="s:flex s:flex-col s:gap-4">
       {BUTTON_VARIANTS.map((variant) => (
         <div key={variant} className="s:flex s:flex-col s:gap-2">

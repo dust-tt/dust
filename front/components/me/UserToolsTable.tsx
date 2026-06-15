@@ -149,10 +149,10 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
             >
               {getAvatar(row.original.serverView.server)}
               <div className="flex flex-grow flex-col gap-0 overflow-hidden truncate">
- <div className="truncate text-sm font-semibold text-foreground">
+                <div className="truncate text-sm font-semibold text-foreground">
                   {getMcpServerViewDisplayName(row.original.serverView)}
                 </div>
- <div className="truncate text-sm text-muted-foreground">
+                <div className="truncate text-sm text-muted-foreground">
                   {getMcpServerViewDescription(row.original.serverView)}
                 </div>
               </div>
@@ -239,7 +239,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
           sorting={[{ id: "name", desc: false }]}
         />
       ) : (
- <p className="py-8 text-center text-muted-foreground">
+        <p className="py-8 text-center text-muted-foreground">
           {searchQuery
             ? "No matching tools found"
             : "You don't have any tool-specific settings yet."}

@@ -142,11 +142,7 @@ export function PodTaskStartWorkingDropdown({
 
   const startRedirectMenuItems = useMemo((): DropdownMenuItemProps[] => {
     const check = (
-      <Icon
-        size="xs"
-        visual={Check}
- className="text-muted-foreground"
-      />
+      <Icon size="xs" visual={Check} className="text-muted-foreground" />
     );
     return [
       {

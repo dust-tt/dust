@@ -155,7 +155,7 @@ export function CreatePodModal({
                 autoFocus
               />
               {nameNotAvailable && (
- <div className="mt-1 text-xs text-warning-500">
+                <div className="mt-1 text-xs text-warning-500">
                   A Pod or space with this name already exists.
                 </div>
               )}
@@ -167,7 +167,7 @@ export function CreatePodModal({
                 disabled={!areWorkspaceOpenPodsAllowed}
                 onChange={setIsPodOpen}
               />
- <div className="text-xs text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 {isPodOpen
                   ? "Anyone in the workspace can find and join the Pod."
                   : "Only invited members can access the Pod."}

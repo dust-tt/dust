@@ -24,7 +24,7 @@ export function AgentActionsPanelHeader({
           <span
             className={cn(
               "hidden min-w-0 truncate text-sm font-normal @xxxs:inline",
-"text-primary"
+              "text-primary"
             )}
           >
             {title}

@@ -102,9 +102,7 @@ export function SkillBuilderToolsSection({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
- <h3 className="heading-lg font-semibold text-foreground">
-            Tools
-          </h3>
+          <h3 className="heading-lg font-semibold text-foreground">Tools</h3>
           {extendedSkill && (
             <Chip
               color="highlight"

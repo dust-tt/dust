@@ -14,9 +14,7 @@ export function SettingSectionContainer({
 }: SettingSectionContainerProps) {
   return (
     <div className={cn("flex flex-col gap-2", className)}>
- <Label className="text-base font-semibold text-foreground">
-        {title}
-      </Label>
+      <Label className="text-base font-semibold text-foreground">{title}</Label>
       {children}
     </div>
   );
