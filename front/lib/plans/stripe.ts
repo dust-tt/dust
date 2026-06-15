@@ -1501,10 +1501,10 @@ export async function cleanAndFinalizeMetronomeDraftInvoice({
     // inspecting line shapes and designing the transform, leave the invoice as a
     // draft so it can be reviewed manually rather than charged. Re-enable once
     // the line transform is in place.
-    // const finalizeResult = await finalizeInvoice(invoice);
-    // if (finalizeResult.isErr()) {
-    //   return finalizeResult;
-    // }
+    const finalizeResult = await finalizeInvoice(invoice);
+    if (finalizeResult.isErr()) {
+      return finalizeResult;
+    }
 
     logger.info(
       { stripeInvoiceId: invoiceId, workspaceId },
