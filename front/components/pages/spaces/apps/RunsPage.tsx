@@ -8,7 +8,7 @@ import {
 import { useApp, useRuns } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import type { RunRunType, RunStatus } from "@app/types/run";
-import { Button, cn, Spinner } from "@dust-tt/sparkle";
+import { Button, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
 const TABS = [

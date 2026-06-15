@@ -113,8 +113,8 @@ const RadioGroupItem = React.forwardRef<
           htmlFor={id}
           {...labelProps}
           className={cn(
-            "s-cursor-pointer",
-            props.disabled && "s-cursor-not-allowed s-opacity-70",
+            "s:cursor-pointer",
+            props.disabled && "s:cursor-not-allowed s:opacity-70",
             labelProps?.className
           )}
         >

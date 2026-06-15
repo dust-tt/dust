@@ -120,17 +120,8 @@ export function SubscriptionEndBanner({
       )}
     >
       <div className="text-sm flex gap-2">
-        <p
-          className={cn(
-            "font-semibold",
-            "text-sky-900"
-          )}
-        >
-          {title}
-        </p>
-        <p className="text-sky-800 hidden md:inline-block">
-          {description}
-        </p>
+        <p className={cn("font-semibold", "text-sky-900")}>{title}</p>
+        <p className="text-sky-800 hidden md:inline-block">{description}</p>
       </div>
       {isAdmin && !isEnterprise && (
         <Button

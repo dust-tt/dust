@@ -129,7 +129,7 @@ function FileCards({
                 alt={row.title}
                 className="absolute inset-0 h-full w-full object-cover"
               />
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2 pt-6">
+              <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 via-black/40 to-transparent p-2 pt-6">
                 <Tooltip
                   tooltipTriggerAsChild
                   label={row.title}

@@ -31,7 +31,7 @@ export const Hover3DExample = () => (
     <div className="s:flex s:gap-4">
       <div>
         <Hover3D
-          className="s:rounded-[30px] s:bg-gradient-to-r s:from-cyan-500 s:to-blue-500 s:p-10 s:shadow-xl"
+          className="s:rounded-[30px] s:bg-linear-to-r s:from-cyan-500 s:to-blue-500 s:p-10 s:shadow-xl"
           depth={-30}
         >
           <Div3D depth={20}>Coucou</Div3D>
@@ -58,7 +58,7 @@ export const Hover3DExample = () => (
       </div>
       <div>
         <Hover3D
-          className="s:relative s:h-44 s:w-44 s:rounded-[32px] s:bg-gradient-to-t s:from-stone-400 s:to-stone-300 s:p-2"
+          className="s:relative s:h-44 s:w-44 s:rounded-[32px] s:bg-linear-to-t s:from-stone-400 s:to-stone-300 s:p-2"
           depth={-10}
         >
           <Div3D depth={25} className="s:absolute s:h-40 s:w-40">
@@ -74,7 +74,7 @@ export const Hover3DExample = () => (
     <div className="s:flex s:gap-4">
       <div>
         <Hover3D
-          className="s:rounded-[30px] s:bg-gradient-to-r s:from-cyan-500 s:to-blue-500 s:p-10 s:shadow-xl"
+          className="s:rounded-[30px] s:bg-linear-to-r s:from-cyan-500 s:to-blue-500 s:p-10 s:shadow-xl"
           perspective={1000}
           fullscreenSensible
         >
@@ -108,7 +108,7 @@ export const Hover3DExample = () => (
       </div>
       <div>
         <Hover3D
-          className="s:relative s:h-44 s:w-44 s:rounded-[32px] s:bg-gradient-to-t s:from-stone-400 s:to-stone-300 s:p-2"
+          className="s:relative s:h-44 s:w-44 s:rounded-[32px] s:bg-linear-to-t s:from-stone-400 s:to-stone-300 s:p-2"
           depth={-10}
           perspective={1000}
           fullscreenSensible

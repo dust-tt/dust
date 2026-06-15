@@ -519,7 +519,7 @@ const instructionSnippetMark = Mark.create({
 
 const richTextAreaVariants = cva(
   cn(
-    "s:w-full s:text-base s:leading-6 s:outline-none s:whitespace-pre-wrap s:break-words"
+    "s:w-full s:text-base s:leading-6 s:outline-hidden s:whitespace-pre-wrap s:break-words"
   ),
   {
     variants: {
@@ -527,7 +527,7 @@ const richTextAreaVariants = cva(
         default: cn(
           "s:px-3 s:py-2",
           "s:border s:rounded-xl s:transition s:duration-100",
-          "focus-visible:s:outline-none focus-visible:s:ring-2",
+          "focus-visible:s:outline-hidden focus-visible:s:ring-2",
           "focus-visible:s:ring-highlight/20",
           "s:min-h-40"
         ),
@@ -1143,7 +1143,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
           <div
             className={cn(
               "s:flex s:w-full s:flex-col",
-              "focus-within:s:outline-none focus-within:s:ring-2",
+              "focus-within:s:outline-hidden focus-within:s:ring-2",
               "focus-within:s:ring-highlight/20",
               "s:min-h-40",
               containerClassName

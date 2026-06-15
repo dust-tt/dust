@@ -26,16 +26,13 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
     <div
       className={cn(
         "mb-2 flex w-full items-center gap-2 rounded-2xl border px-4 py-3",
-        "border-border-dark/50 bg-background",
-        "dark:border-border-dark-night/30 dark:bg-background-night"
+        "border-border-dark/50 bg-background"
       )}
     >
       <span
         className={cn(
           "copy-sm grow truncate",
-          isBlocked
-            ? "text-warning-500 dark:text-warning-500-night"
-            : "text-foreground dark:text-foreground-night"
+          isBlocked ? "text-warning-500" : "text-foreground"
         )}
       >
         {isBlocked

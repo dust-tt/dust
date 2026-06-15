@@ -135,7 +135,7 @@ DESIGN PRINCIPLES:
 
 COLOR STRATEGY:
 - Use neutral bright backgrounds consistently (bg-white, bg-gray-50, bg-slate-50)
- - Avoid gradients unless explicitly requested by the user (no bg-gradient-to-br, from-blue-50, etc.)
+ - Avoid gradients unless explicitly requested by the user (no bg-linear-to-br, from-blue-50, etc.)
 - Apply color strategically to key elements that need emphasis
 - Maintain the same background color across all slides for visual cohesion
 - Select 1-2 accent colors for the ENTIRE presentation and use them consistently

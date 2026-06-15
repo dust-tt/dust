@@ -41,7 +41,7 @@ export function HomeAIOperatorsCTASection() {
     <section className="relative w-full overflow-hidden bg-slate-950 py-32 text-white">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[1px] bg-linear-to-r from-transparent via-white/20 to-transparent"
       />
       <div className="mx-auto flex w-full max-w-[1180px] flex-col items-center gap-10 px-6 text-center">
         <HomeReveal>

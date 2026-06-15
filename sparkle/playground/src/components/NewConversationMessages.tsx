@@ -678,7 +678,7 @@ export const NewConversationUserMessage = React.forwardRef<
                           handleEditSave();
                         }
                       }}
-                      className="s:w-full s:resize-none s:bg-transparent s:text-base s:text-foreground s:outline-none s:border-none s:p-0 focus:s:outline-none focus:s:ring-0"
+                      className="s:w-full s:resize-none s:bg-transparent s:text-base s:text-foreground s:outline-hidden s:border-none s:p-0 focus:s:outline-hidden focus:s:ring-0"
                       rows={1}
                     />
                   </div>
@@ -711,7 +711,7 @@ export const NewConversationUserMessage = React.forwardRef<
                     {shouldAutoCollapse && isCollapsible && (
                       <div
                         className={cn(
-                          "s:pointer-events-none s:absolute s:bottom-0 s:left-0 s:right-0 s:h-12 s:bg-gradient-to-b s:from-transparent s:transition-opacity",
+                          "s:pointer-events-none s:absolute s:bottom-0 s:left-0 s:right-0 s:h-12 s:bg-linear-to-b s:from-transparent s:transition-opacity",
                           isExpanded
                             ? "s:opacity-0"
                             : "s:to-muted-background s:opacity-80"

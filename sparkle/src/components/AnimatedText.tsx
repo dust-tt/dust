@@ -43,7 +43,7 @@ const animatedVariants: Record<AnimatedTextVariantType, string> = {
 };
 
 const animVariants = cva(
-  "s:relative s:mx-auto s:max-w-md s:text-black/0 s:animate-shiny-text s:bg-clip-text s:bg-no-repeat [background-position:0_0] [background-size:50%_100%] s:bg-gradient-to-r",
+  "s:relative s:mx-auto s:max-w-md s:text-black/0 s:animate-shiny-text s:bg-clip-text s:bg-no-repeat [background-position:0_0] [background-size:50%_100%] s:bg-linear-to-r",
   {
     variants: {
       variant: animatedVariants,

@@ -5,7 +5,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 const taskItemTextVariants = cva("s:min-h-6 s:text-base", {
   variants: {
     editable: {
-      true: "s:cursor-text s:outline-none focus:s:outline-none",
+      true: "s:cursor-text s:outline-hidden focus:s:outline-hidden",
       false: "s:truncate",
     },
     editing: {

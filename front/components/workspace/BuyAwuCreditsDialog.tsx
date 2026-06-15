@@ -353,9 +353,7 @@ export function BuyAwuCreditsDialog({
 
               {isValidAmount && !amountExceedsMax && (
                 <div className="flex flex-col gap-2 rounded-xl bg-muted-background p-4">
-                  <p className="font-semibold text-foreground">
-                    Summary
-                  </p>
+                  <p className="font-semibold text-foreground">Summary</p>
                   {currentTotalPoolCredits !== undefined && (
                     <SummaryRow
                       label="Current Credits Pool"

@@ -61,7 +61,7 @@ const reasonColumn: ColumnDef<RowData, string> = {
   enableSorting: false,
   cell: () => (
     <DataTable.CellContent>
-      <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <span className="text-sm text-muted-foreground">
         {REASON_LABEL}
       </span>
     </DataTable.CellContent>
@@ -74,7 +74,7 @@ const requestedColumn: ColumnDef<RowData, string> = {
   accessorFn: (row) => row.createdAt.toString(),
   cell: (info: Info) => (
     <DataTable.CellContent>
-      <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+      <span className="text-sm text-muted-foreground">
         {timeAgoFrom(info.row.original.createdAt, { useLongFormat: true })} ago
       </span>
     </DataTable.CellContent>
@@ -207,7 +207,7 @@ export function UpgradeRequestsTable({
   if (rows.length === 0) {
     return (
       <div className="flex w-full justify-center py-8">
-        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <span className="text-sm text-muted-foreground">
           No pending upgrade requests.
         </span>
       </div>

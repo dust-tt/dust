@@ -106,9 +106,7 @@ export function PluginRunDetailsModal({
                     <span className="text-sm font-medium text-gray-500">
                       Resource ID:
                     </span>
-                    <span
-                      className="ml-2 rounded bg-gray-100 px-2 py-1 font-mono text-sm text-xs"
-                    >
+                    <span className="ml-2 rounded bg-gray-100 px-2 py-1 font-mono text-sm text-xs">
                       {run.resourceId}
                     </span>
                   </div>
@@ -132,9 +130,7 @@ export function PluginRunDetailsModal({
                 <h3 className="mb-3 text-lg font-semibold text-green-600">
                   Result
                 </h3>
-                <div
-                  className="rounded-lg border border-green-200 bg-green-50 p-4"
-                >
+                <div className="rounded-lg border border-green-200 bg-green-50 p-4">
                   <pre className="overflow-x-auto whitespace-pre-wrap text-sm">
                     {formatJsonOutput(run.result)}
                   </pre>
@@ -148,9 +144,7 @@ export function PluginRunDetailsModal({
                 <h3 className="mb-3 text-lg font-semibold text-red-600">
                   Error
                 </h3>
-                <div
-                  className="rounded-lg border border-red-200 bg-red-50 p-4"
-                >
+                <div className="rounded-lg border border-red-200 bg-red-50 p-4">
                   <pre
                     className={cn(
                       "overflow-x-auto whitespace-pre-wrap text-sm text-red-700"

@@ -246,7 +246,6 @@ export const SlashCommandDropdown = forwardRef<
                   />
                 );
 
-
                 // Wrap with DropdownTooltipTrigger if command has tooltip property.
                 const itemContent = item.tooltip ? (
                   <DropdownTooltipTrigger

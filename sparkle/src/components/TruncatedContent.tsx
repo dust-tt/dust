@@ -79,7 +79,7 @@ export function TruncatedContent({
       >
         {children}
         {isCurrentlyCollapsed && (
-          <div className="s:pointer-events-none s:absolute s:bottom-0 s:left-0 s:right-0 s:h-24 s:bg-gradient-to-t s:from-background" />
+          <div className="s:pointer-events-none s:absolute s:bottom-0 s:left-0 s:right-0 s:h-24 s:bg-linear-to-t s:from-background" />
         )}
       </div>
       {(shouldShowToggle || footer) && (

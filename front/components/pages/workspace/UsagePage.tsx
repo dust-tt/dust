@@ -651,9 +651,7 @@ export function UsagePage() {
         )}
 
         <Page.Vertical gap="sm" align="stretch">
-          <span className="heading-2xl text-foreground">
-            Members
-          </span>
+          <span className="heading-2xl text-foreground">Members</span>
           {searchAndInviteRow}
           {isWorkspaceAdmin ? (
             <Tabs

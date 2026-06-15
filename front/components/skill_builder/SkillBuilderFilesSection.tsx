@@ -255,7 +255,7 @@ export function SkillBuilderFilesSection() {
           </div>
           <div
             className={cn(
-              "pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t",
+              "pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-linear-to-t",
               "from-background via-background/60 to-transparent transition-opacity duration-300",
               "",
               canScrollFilesDown ? "opacity-100" : "opacity-0"

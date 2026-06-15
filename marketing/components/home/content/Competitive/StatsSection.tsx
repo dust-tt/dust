@@ -18,22 +18,22 @@ interface StatsSectionProps {
 
 const colorSchemes = [
   {
-    bg: "bg-gradient-to-br from-blue-50 to-blue-100",
+    bg: "bg-linear-to-br from-blue-50 to-blue-100",
     text: "text-blue-600",
     border: "border-blue-200",
   },
   {
-    bg: "bg-gradient-to-br from-purple-50 to-purple-100",
+    bg: "bg-linear-to-br from-purple-50 to-purple-100",
     text: "text-purple-600",
     border: "border-purple-200",
   },
   {
-    bg: "bg-gradient-to-br from-emerald-50 to-emerald-100",
+    bg: "bg-linear-to-br from-emerald-50 to-emerald-100",
     text: "text-emerald-600",
     border: "border-emerald-200",
   },
   {
-    bg: "bg-gradient-to-br from-amber-50 to-amber-100",
+    bg: "bg-linear-to-br from-amber-50 to-amber-100",
     text: "text-amber-600",
     border: "border-amber-200",
   },

@@ -42,23 +42,23 @@ const EASING_GROUPS: MotionGroup[] = [
     items: [
       {
         label: "out-quad",
-        easingClass: "s-ease-out-quad",
+        easingClass: "s:ease-out-quad",
         note: "subtle: button press, small fades",
       },
       {
         label: "out-cubic",
-        easingClass: "s-ease-out-cubic",
+        easingClass: "s:ease-out-cubic",
         note: "the everyday default",
       },
-      { label: "out-quart", easingClass: "s-ease-out-quart" },
+      { label: "out-quart", easingClass: "s:ease-out-quart" },
       {
         label: "out-quint",
-        easingClass: "s-ease-out-quint",
+        easingClass: "s:ease-out-quint",
         note: "pronounced settle: modals, drawers",
       },
       {
         label: "out-expo",
-        easingClass: "s-ease-out-expo",
+        easingClass: "s:ease-out-expo",
         note: "very snappy: large surfaces, sheets",
       },
     ],
@@ -70,17 +70,17 @@ const EASING_GROUPS: MotionGroup[] = [
     items: [
       {
         label: "in-out-quad",
-        easingClass: "s-ease-in-out-quad",
+        easingClass: "s:ease-in-out-quad",
         note: "gentle: small position shifts",
       },
       {
         label: "in-out-cubic",
-        easingClass: "s-ease-in-out-cubic",
+        easingClass: "s:ease-in-out-cubic",
         note: "standard on-screen movement",
       },
       {
         label: "in-out-quint",
-        easingClass: "s-ease-in-out-quint",
+        easingClass: "s:ease-in-out-quint",
         note: "dramatic: full-screen morphs",
       },
     ],
@@ -92,17 +92,17 @@ const EASING_GROUPS: MotionGroup[] = [
     items: [
       {
         label: "enter",
-        easingClass: "s-ease-enter",
+        easingClass: "s:ease-enter",
         note: "= out-cubic — tooltips, dropdowns, popovers",
       },
       {
         label: "emphasized",
-        easingClass: "s-ease-emphasized",
+        easingClass: "s:ease-emphasized",
         note: "= out-quint — modals, drawers",
       },
       {
         label: "move",
-        easingClass: "s-ease-move",
+        easingClass: "s:ease-move",
         note: "= in-out-quad — tab indicators, reorder",
       },
     ],
@@ -116,14 +116,14 @@ const EASE_IN_COMPARISON: MotionGroup = {
   items: [
     {
       label: "out-cubic",
-      easingClass: "s-ease-out-cubic",
-      circleClass: "s-bg-green-500",
+      easingClass: "s:ease-out-cubic",
+      circleClass: "s:bg-green-500",
       note: "responds instantly, settles naturally",
     },
     {
       label: "ease-in",
       easingStyle: "cubic-bezier(0.55, 0.085, 0.68, 0.53)",
-      circleClass: "s-bg-red-500",
+      circleClass: "s:bg-red-500",
       note: "sluggish start, abrupt stop — avoid",
     },
   ],
@@ -137,22 +137,22 @@ const DURATION_GROUPS: MotionGroup[] = [
     items: [
       {
         label: "duration-100",
-        durationClass: "s-duration-100",
+        durationClass: "s:duration-100",
         note: "micro-interactions (press, toggle)",
       },
       {
         label: "duration-150",
-        durationClass: "s-duration-150",
+        durationClass: "s:duration-150",
         note: "hover & color transitions",
       },
       {
         label: "duration-200",
-        durationClass: "s-duration-200",
+        durationClass: "s:duration-200",
         note: "standard UI (tooltips, dropdowns)",
       },
       {
         label: "duration-300",
-        durationClass: "s-duration-300",
+        durationClass: "s:duration-300",
         note: "modals & drawers — the ceiling",
       },
     ],
@@ -164,22 +164,22 @@ const DURATION_GROUPS: MotionGroup[] = [
     items: [
       {
         label: "duration-enter",
-        durationClass: "s-duration-enter",
+        durationClass: "s:duration-enter",
         note: "200ms — standard UI appearing",
       },
       {
         label: "duration-exit",
-        durationClass: "s-duration-exit",
+        durationClass: "s:duration-exit",
         note: "160ms — same element leaving",
       },
       {
         label: "duration-modal-enter",
-        durationClass: "s-duration-modal-enter",
+        durationClass: "s:duration-modal-enter",
         note: "300ms — largest surfaces",
       },
       {
         label: "duration-modal-exit",
-        durationClass: "s-duration-modal-exit",
+        durationClass: "s:duration-modal-exit",
         note: "240ms — largest surfaces leaving",
       },
     ],
@@ -188,10 +188,10 @@ const DURATION_GROUPS: MotionGroup[] = [
 
 function MotionRow({
   label,
-  easingClass = "s-ease-out-cubic",
+  easingClass = "s:ease-out-cubic",
   easingStyle,
-  durationClass = "s-duration-1000",
-  circleClass = "s-bg-foreground",
+  durationClass = "s:duration-1000",
+  circleClass = "s:bg-foreground",
   note,
   playSignal,
 }: MotionToken & { playSignal?: number }) {
@@ -218,25 +218,25 @@ function MotionRow({
   }, [playSignal, play]);
 
   return (
-    <div className="s-flex s-items-center s-gap-2">
+    <div className="s:flex s:items-center s:gap-2">
       <button
         onClick={play}
         aria-label={`Play ${label}`}
-        className="s-flex s-h-7 s-w-7 s-shrink-0 s-items-center s-justify-center s-rounded s-text-muted-foreground hover:s-bg-gray-100 hover:s-text-foreground"
+        className="s:flex s:h-7 s:w-7 s:shrink-0 s:items-center s:justify-center s:rounded s:text-muted-foreground hover:s:bg-gray-100 hover:s:text-foreground"
       >
-        <Play className="s-h-4 s-w-4" />
+        <Play className="s:h-4 s:w-4" />
       </button>
-      <div className="s-w-44 s-shrink-0">
-        <div className="s-font-mono s-text-xs s-text-foreground">{label}</div>
+      <div className="s:w-44 s:shrink-0">
+        <div className="s:font-mono s:text-xs s:text-foreground">{label}</div>
         {note && (
-          <div className="s-text-xs s-text-muted-foreground">{note}</div>
+          <div className="s:text-xs s:text-muted-foreground">{note}</div>
         )}
       </div>
-      <div className="s-relative s-h-10 s-w-full s-rounded-full s-bg-gray-100">
+      <div className="s:relative s:h-10 s:w-full s:rounded-full s:bg-gray-100">
         <div
-          className={`s-absolute s-top-2 s-h-6 s-w-6 s-rounded-full ${circleClass} ${
+          className={`s-absolute s:top-2 s:h-6 s:w-6 s:rounded-full ${circleClass} ${
             resetting
-              ? "s-transition-none"
+              ? "s:transition-none"
               : `s-transition-all ${easingStyle ? "" : easingClass} ${durationClass}`
           }`}
           style={{
@@ -253,18 +253,18 @@ function MotionGroupSection({ group, description, items }: MotionGroup) {
   const [playSignal, setPlaySignal] = useState(0);
 
   return (
-    <div className="s-flex s-flex-col s-gap-3">
+    <div className="s:flex s:flex-col s:gap-3">
       <div>
-        <div className="s-flex s-items-center s-gap-3">
-          <h3 className="s-text-lg s-font-semibold">{group}</h3>
+        <div className="s:flex s:items-center s:gap-3">
+          <h3 className="s:text-lg s:font-semibold">{group}</h3>
           <button
             onClick={() => setPlaySignal((n) => n + 1)}
-            className="s-rounded s-border s-border-border s-px-3 s-py-1 s-text-xs s-font-medium s-text-muted-foreground hover:s-bg-gray-100"
+            className="s:rounded s:border s:border-border s:px-3 s:py-1 s:text-xs s:font-medium s:text-muted-foreground hover:s:bg-gray-100"
           >
             Play all
           </button>
         </div>
-        <p className="s-mt-1 s-text-sm s-text-muted-foreground">
+        <p className="s:mt-1 s:text-sm s:text-muted-foreground">
           {description}
         </p>
       </div>
@@ -293,27 +293,27 @@ function EnterExitDemo({
   const [open, setOpen] = useState(true);
 
   return (
-    <div className="s-flex s-flex-col s-gap-3">
+    <div className="s:flex s:flex-col s:gap-3">
       <div>
-        <div className="s-flex s-items-center s-gap-3">
-          <h3 className="s-text-lg s-font-semibold">{label}</h3>
+        <div className="s:flex s:items-center s:gap-3">
+          <h3 className="s:text-lg s:font-semibold">{label}</h3>
           <button
             onClick={() => setOpen((prev) => !prev)}
-            className="s-rounded s-bg-blue-500 s-px-3 s-py-1 s-text-xs s-font-medium s-text-white hover:s-bg-blue-600"
+            className="s:rounded s:bg-blue-500 s:px-3 s:py-1 s:text-xs s:font-medium s:text-white hover:s:bg-blue-600"
           >
             {open ? "Dismiss" : "Open"}
           </button>
         </div>
-        <p className="s-mt-1 s-text-sm s-text-muted-foreground">
+        <p className="s:mt-1 s:text-sm s:text-muted-foreground">
           {description}
         </p>
       </div>
-      <div className="s-flex s-h-40 s-items-center s-justify-center s-rounded s-bg-gray-100">
+      <div className="s:flex s:h-40 s:items-center s:justify-center s:rounded s:bg-gray-100">
         <div
-          className={`s-flex s-h-28 s-w-64 s-items-center s-justify-center s-rounded-xl s-border s-border-border s-bg-background s-text-sm s-text-muted-foreground s-shadow-md s-transition-all ${easingClass} ${
+          className={`s-flex s:h-28 s:w-64 s:items-center s:justify-center s:rounded-xl s:border s:border-border s:bg-background s:text-sm s:text-muted-foreground s:shadow-md s:transition-all ${easingClass} ${
             open
-              ? `s-scale-100 s-opacity-100 ${enterDurationClass}`
-              : `s-scale-95 s-opacity-0 ${exitDurationClass}`
+              ? `s-scale-100 s:opacity-100 ${enterDurationClass}`
+              : `s-scale-95 s:opacity-0 ${exitDurationClass}`
           }`}
         >
           {open ? "Visible" : ""}
@@ -325,10 +325,10 @@ function EnterExitDemo({
 
 export const Easing: Story = {
   render: () => (
-    <div className="s-flex s-w-[640px] s-flex-col s-gap-8 s-p-8">
+    <div className="s:flex s:w-[640px] s:flex-col s:gap-8 s:p-8">
       <div>
-        <h2 className="s-text-xl s-font-semibold">Easing</h2>
-        <p className="s-mt-1 s-text-sm s-text-muted-foreground">
+        <h2 className="s:text-xl s:font-semibold">Easing</h2>
+        <p className="s:mt-1 s:text-sm s:text-muted-foreground">
           Entering or exiting the screen → ease-out. Moving while on screen →
           ease-in-out.
         </p>
@@ -343,10 +343,10 @@ export const Easing: Story = {
 
 export const Durations: Story = {
   render: () => (
-    <div className="s-flex s-w-[640px] s-flex-col s-gap-8 s-p-8">
+    <div className="s:flex s:w-[640px] s:flex-col s:gap-8 s:p-8">
       <div>
-        <h2 className="s-text-xl s-font-semibold">Durations</h2>
-        <p className="s-mt-1 s-text-sm s-text-muted-foreground">
+        <h2 className="s:text-xl s:font-semibold">Durations</h2>
+        <p className="s:mt-1 s:text-sm s:text-muted-foreground">
           Bigger elements need more time. Use “Play all” to compare (all rows
           use ease-out-cubic).
         </p>
@@ -360,27 +360,27 @@ export const Durations: Story = {
 
 export const EnterExitPairing: Story = {
   render: () => (
-    <div className="s-flex s-w-[640px] s-flex-col s-gap-8 s-p-8">
+    <div className="s:flex s:w-[640px] s:flex-col s:gap-8 s:p-8">
       <div>
-        <h2 className="s-text-xl s-font-semibold">Pairing the tokens</h2>
-        <p className="s-mt-1 s-text-sm s-text-muted-foreground">
+        <h2 className="s:text-xl s:font-semibold">Pairing the tokens</h2>
+        <p className="s:mt-1 s:text-sm s:text-muted-foreground">
           Pick the pair that matches the element’s size. The exit is quicker
           than the entrance.
         </p>
       </div>
       <EnterExitDemo
         label="Standard UI"
-        description="Tooltips, dropdowns, popovers: s-ease-enter with s-duration-enter (200ms) in, s-duration-exit (160ms) out."
-        easingClass="s-ease-enter"
-        enterDurationClass="s-duration-enter"
-        exitDurationClass="s-duration-exit"
+        description="Tooltips, dropdowns, popovers: s:ease-enter with s:duration-enter (200ms) in, s:duration-exit (160ms) out."
+        easingClass="s:ease-enter"
+        enterDurationClass="s:duration-enter"
+        exitDurationClass="s:duration-exit"
       />
       <EnterExitDemo
         label="Modals & drawers"
-        description="Larger surfaces, longer + stronger: s-ease-emphasized with s-duration-modal-enter (300ms) in, s-duration-modal-exit (240ms) out."
-        easingClass="s-ease-emphasized"
-        enterDurationClass="s-duration-modal-enter"
-        exitDurationClass="s-duration-modal-exit"
+        description="Larger surfaces, longer + stronger: s:ease-emphasized with s:duration-modal-enter (300ms) in, s:duration-modal-exit (240ms) out."
+        easingClass="s:ease-emphasized"
+        enterDurationClass="s:duration-modal-enter"
+        exitDurationClass="s:duration-modal-exit"
       />
     </div>
   ),

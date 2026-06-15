@@ -52,7 +52,7 @@ function SandboxImageCard({ entry, onClick }: SandboxImageCardProps) {
           <Spinner size="sm" />
         </div>
       )}
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-2 pt-6">
+      <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 via-black/40 to-transparent p-2 pt-6">
         <Tooltip
           tooltipTriggerAsChild
           label={entry.fileName}
