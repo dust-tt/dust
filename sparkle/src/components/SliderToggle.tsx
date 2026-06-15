@@ -61,7 +61,7 @@ export function SliderToggle({
       <div
         id="cursor"
         className={cn(
-          "s:transform s:rounded-full s:bg-background s:drop-shadow s:transition-transform s:duration-300 s:ease-out",
+          "s:transform s:rounded-full s:bg-white s:drop-shadow s:transition-transform s:duration-300 s:ease-out",
           disabled && "s:opacity-50",
           size && cusrsorSizeClasses[size],
           selected ? cusrsorTranslateSizeClasses[size] : "s:translate-x-[2px]"
