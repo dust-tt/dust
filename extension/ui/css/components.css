@@ -5,6 +5,10 @@
 
 @config "../../config/tailwind.config.js";
 
+/* Cross-package source scanning: extension imports components and lib from front */
+@source "../../../front/components/**/*.{ts,tsx}";
+@source "../../../front/lib/**/*.{ts,tsx}";
+
 @plugin "@tailwindcss/forms";
 @plugin "tailwind-scrollbar-hide";
 @plugin "tailwindcss-animate";

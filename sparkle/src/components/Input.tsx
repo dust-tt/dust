@@ -65,7 +65,7 @@ const inputStyleClasses = cva(
   cn(
     "s:text-sm s:rounded-xl s:flex s:h-9 s:w-full s:px-3 s:py-1.5",
     "s:bg-background",
-    "s:border s:focus-visible:ring",
+    "s:border s:border-border s:focus-visible:ring",
     "s:file:border-0 s:file:bg-transparent s:file:text-sm s:file:font-medium s:file:text-foreground",
     "s:placeholder:text-muted-foreground"
   ),

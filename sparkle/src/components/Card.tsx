@@ -37,7 +37,7 @@ const interactiveClasses = cn(
 const cardVariants = cva(
   cn(
     "s:flex s:text-left s:group",
-    "s:border s:overflow-hidden",
+    "s:border s:border-border s:overflow-hidden",
     "s:text-foreground"
   ),
   {

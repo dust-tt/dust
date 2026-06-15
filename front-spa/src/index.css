@@ -3,6 +3,10 @@
 
 @config "../tailwind.config.cjs";
 
+/* Cross-package source scanning: front-spa imports components and lib from front */
+@source "../../front/components/**/*.{ts,tsx}";
+@source "../../front/lib/**/*.{ts,tsx}";
+
 /* SPA uses #root instead of Next.js #__next - ensure full height */
 #root {
   height: 100%;

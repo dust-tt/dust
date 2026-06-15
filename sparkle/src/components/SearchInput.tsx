@@ -233,7 +233,7 @@ function BaseSearchInputWithPopover<T>(
       </PopoverTrigger>
       <PopoverContent
         className={cn(
-          "s:w-(--radix-popover-trigger-width) s:rounded-lg s:border s:bg-background s:shadow-lg",
+          "s:w-(--radix-popover-trigger-width) s:rounded-lg s:border s:border-border s:bg-background s:shadow-lg",
           availableHeight &&
             "s:max-h-(--radix-popover-content-available-height) s:overflow-hidden",
           contentClassName
