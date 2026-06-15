@@ -1,4 +1,5 @@
 import type { BaseModelConfiguration } from "@app/lib/model_constructors/configuration";
+import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type { ModelId } from "@app/lib/model_constructors/types/model_ids";
 import type { ProviderApi } from "@app/lib/model_constructors/types/provider_apis";
 import type { ProviderId } from "@app/lib/model_constructors/types/provider_ids";
@@ -8,6 +9,15 @@ export abstract class Client {
   // Re-type `this.constructor` (typed as `Function` by default) so the concrete
   // subclass's static config is visible at the type level.
   declare ["constructor"]: BaseModelConfiguration;
+
+  metadata(): EndpointMetadata {
+    return {
+      providerId: this.constructor.providerId,
+      api: this.constructor.api,
+      region: this.constructor.region,
+      modelId: this.constructor.modelId,
+    };
+  }
 
   // Generic `this` params P/A/R/M capture each concrete class's literal
   // identity fields, so the returned `id` is an exact literal (not the wide
