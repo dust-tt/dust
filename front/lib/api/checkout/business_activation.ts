@@ -1,4 +1,5 @@
 import { updateMembershipSeatAndTrack } from "@app/lib/api/membership";
+import { reconcileCreditStateForNewContract } from "@app/lib/api/metronome/reconcile_credit_state";
 import {
   isMetronomeBillingEnabled,
   restoreWorkspaceAfterSubscription,
@@ -526,6 +527,12 @@ export async function handleSubscriptionActivationSuccess({
       );
     }
   }
+
+  await reconcileCreditStateForNewContract({
+    workspace,
+    metronomeCustomerId: workspace.metronomeCustomerId!,
+    metronomeContractId: contractId,
+  });
 
   // Restore workspace (unblock connectors, triggers, cancel scrub).
   await restoreWorkspaceAfterSubscription(auth);

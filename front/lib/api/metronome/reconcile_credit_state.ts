@@ -1,4 +1,7 @@
-import { getWorkspacePoolAwuBalance } from "@app/lib/api/metronome/credit_state_dispatcher";
+import {
+  getWorkspacePoolAwuBalance,
+  syncPoolCreditStateFromBalance,
+} from "@app/lib/api/metronome/credit_state_dispatcher";
 import type { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
 import { getMetronomeProgrammaticCapAlertStates } from "@app/lib/metronome/alerts/programmatic_cap";
@@ -512,4 +515,25 @@ export async function reconcileWorkspaceUserCreditStates({
       );
     }
   }
+}
+
+export async function reconcileCreditStateForNewContract({
+  workspace,
+  metronomeCustomerId,
+  metronomeContractId,
+}: {
+  workspace: WorkspaceResource;
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+}): Promise<void> {
+  await syncPoolCreditStateFromBalance({
+    workspace,
+    metronomeCustomerId,
+  });
+
+  await reconcileWorkspaceUserCreditStates({
+    workspace: renderLightWorkspaceType({ workspace }),
+    metronomeCustomerId,
+    metronomeContractId,
+  });
 }

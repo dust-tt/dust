@@ -2,6 +2,7 @@ import {
   dispatchPaygCapReached,
   dispatchPerUserCapReached,
   dispatchPerUserCapResolved,
+  syncPoolCreditStateFromBalance,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import * as defaultUserCapAlert from "@app/lib/metronome/alerts/spend_limits";
@@ -16,6 +17,8 @@ import {
   CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
   CONTRACT_CREDIT_TYPE_POOL,
   getCreditTypeAwuId,
+  PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY,
+  PAYMENT_GATE_TYPE_SUBSCRIPTION_ACTIVATION,
   PLAN_CODE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
@@ -65,6 +68,7 @@ vi.mock("@app/lib/api/metronome/credit_state_dispatcher", async () => {
     dispatchPerUserCapReached: vi.fn(),
     dispatchPerUserCapResolved: vi.fn(),
     dispatchPaygCapReached: vi.fn(),
+    syncPoolCreditStateFromBalance: vi.fn(),
   };
 });
 
@@ -195,6 +199,7 @@ beforeEach(() => {
     new Ok({} as never)
   );
   vi.mocked(restoreWorkspaceAfterSubscription).mockResolvedValue(undefined);
+  vi.mocked(syncPoolCreditStateFromBalance).mockResolvedValue(undefined);
   vi.mocked(dispatchPerUserCapReached).mockResolvedValue(new Ok(undefined));
   vi.mocked(dispatchPerUserCapResolved).mockResolvedValue(new Ok(undefined));
   vi.mocked(dispatchPaygCapReached).mockResolvedValue(undefined);
@@ -422,6 +427,62 @@ describe("processMetronomeWebhook — contract.start", () => {
     expect(oldSub!.status).toBe("ended");
 
     expect(restoreWorkspaceAfterSubscription).toHaveBeenCalledTimes(1);
+  });
+
+  it("reconciles credit state for a non-payment-gated contract.start", async () => {
+    await PlanFactory.enterprise(ENT_PLAN_CODE);
+    const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID);
+    const event = contractEvent("contract.start", NEW_CONTRACT_ID);
+    vi.mocked(getMetronomeContractById).mockResolvedValue(
+      new Ok({
+        id: NEW_CONTRACT_ID,
+        customer_id: METRONOME_CUSTOMER_ID,
+        starting_at: new Date().toISOString(),
+        custom_fields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: ENT_PLAN_CODE },
+      } as never)
+    );
+
+    const result = await processMetronomeWebhook({
+      event: event as never,
+      workspace,
+    });
+    expect(result.isOk()).toBe(true);
+
+    expect(syncPoolCreditStateFromBalance).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not reconcile credit state for a payment-gated activation contract", async () => {
+    await PlanFactory.enterprise(ENT_PLAN_CODE);
+    const workspace = await setupMetronomeWorkspace(OLD_CONTRACT_ID);
+    const event = contractEvent("contract.start", NEW_CONTRACT_ID);
+    vi.mocked(getMetronomeContractById).mockResolvedValue(
+      new Ok({
+        id: NEW_CONTRACT_ID,
+        customer_id: METRONOME_CUSTOMER_ID,
+        starting_at: new Date().toISOString(),
+        custom_fields: {
+          [PLAN_CODE_CUSTOM_FIELD_KEY]: ENT_PLAN_CODE,
+          [PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY]:
+            PAYMENT_GATE_TYPE_SUBSCRIPTION_ACTIVATION,
+        },
+      } as never)
+    );
+
+    const result = await processMetronomeWebhook({
+      event: event as never,
+      workspace,
+    });
+    expect(result.isOk()).toBe(true);
+
+    // Workspace stays on the old contract — the swap is deferred to
+    // payment_gate.payment_status — and credit state must not be reconciled
+    // onto the unpaid contract.
+    const refreshed = await WorkspaceResource.fetchById(workspace.sId);
+    const sub = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+      refreshed!.id
+    );
+    expect(sub!.metronomeContractId).toBe(OLD_CONTRACT_ID);
+    expect(syncPoolCreditStateFromBalance).not.toHaveBeenCalled();
   });
 });
 

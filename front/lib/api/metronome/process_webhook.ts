@@ -23,7 +23,7 @@ import {
   dispatchSeatLowBalance,
   syncPoolCreditStateFromBalance,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
-import { reconcileWorkspaceUserCreditStates } from "@app/lib/api/metronome/reconcile_credit_state";
+import { reconcileCreditStateForNewContract } from "@app/lib/api/metronome/reconcile_credit_state";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
@@ -1417,38 +1417,6 @@ export async function processMetronomeWebhook({
     case "contract.start": {
       const { contract_id: contractId, customer_id: customerId } = event;
 
-      // Reconcile the workspace pool credit state against the new contract's
-      // live AWU balance. Replaces the in-process call we previously made
-      // from `provisionMetronomeContract` (removed to break a dependency
-      // cycle through auth → subscription_resource → contracts). Without
-      // this, a workspace whose previous contract ended `depleted` would
-      // stay stuck after the new contract spins up with a fresh commit.
-      await syncPoolCreditStateFromBalance({
-        workspace,
-        metronomeCustomerId: customerId,
-      });
-
-      // Reconcile per-user credit states against the new contract's live
-      // per-seat balances. Seats were synced to this contract at provision
-      // time (`syncContractQuantities` → `syncSeatCount`), but that path does
-      // not touch per-user credit states; now that the contract is active the
-      // balances are live, so this lands each user in the right seat↔pool
-      // state. Without it, a switch that changes seat allocations (e.g. moving
-      // onto a business plan) leaves users stuck in their previous state.
-      // Mirrors the pool reconcile above; pass the new contract id directly
-      // since the subscription swap below may not have happened yet.
-      await reconcileWorkspaceUserCreditStates({
-        workspace: renderLightWorkspaceType({ workspace }),
-        metronomeCustomerId: customerId,
-        metronomeContractId: contractId,
-      });
-
-      // Read the PLAN_CODE custom field to know which plan to swap the
-      // workspace subscription onto. The actual swap is gated below on
-      // `isMetronomeOnlyBilled` — other billing paths (shadow, pure
-      // Stripe) handle their own state transitions, and contracts whose
-      // start aligns with a synchronous DB flip get caught by the
-      // idempotency check.
       const contractResult = await getMetronomeContractById({
         metronomeCustomerId: customerId,
         metronomeContractId: contractId,
@@ -1471,6 +1439,21 @@ export async function processMetronomeWebhook({
         );
       }
 
+      const paymentGateType =
+        contractResult.value.custom_fields?.[
+          PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY
+        ];
+      const isPaymentGatedActivation =
+        paymentGateType === PAYMENT_GATE_TYPE_SUBSCRIPTION_ACTIVATION;
+
+      if (!isPaymentGatedActivation) {
+        await reconcileCreditStateForNewContract({
+          workspace,
+          metronomeCustomerId: customerId,
+          metronomeContractId: contractId,
+        });
+      }
+
       const targetPlanCode =
         contractResult.value.custom_fields?.[PLAN_CODE_CUSTOM_FIELD_KEY];
       if (!targetPlanCode) {
@@ -1484,11 +1467,7 @@ export async function processMetronomeWebhook({
       // Payment-gated subscription activation: skip the automatic swap here.
       // The payment_gate.payment_status webhook handles the plan switch once
       // payment succeeds, ensuring the workspace stays on CP_FREE_PLAN until paid.
-      const paymentGateType =
-        contractResult.value.custom_fields?.[
-          PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY
-        ];
-      if (paymentGateType === PAYMENT_GATE_TYPE_SUBSCRIPTION_ACTIVATION) {
+      if (isPaymentGatedActivation) {
         logger.info(
           { contractId, workspaceId: workspace.sId },
           "[Metronome Webhook] contract.start: payment-gated activation contract, skipping — payment_gate.payment_status will activate"
