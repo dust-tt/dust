@@ -434,10 +434,17 @@ export function createProjectManagerTools(
             })
           );
         }
-        const podFiles = await fsResult.value.list(
+        const podFilesResult = await fsResult.value.list(
           `${SCOPED_PREFIX_POD}${pod.sId}`
         );
-        const projectFileCount = podFiles.filter((e) => !e.isDirectory).length;
+        if (podFilesResult.isErr()) {
+          return new Err(
+            new MCPError("Failed to list Pod files.", { tracked: true })
+          );
+        }
+        const projectFileCount = podFilesResult.value.filter(
+          (e) => !e.isDirectory
+        ).length;
 
         // Construct project URL
         const projectPath = getPodRoute(owner.sId, pod.sId);

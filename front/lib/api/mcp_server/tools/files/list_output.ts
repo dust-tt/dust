@@ -10,6 +10,8 @@ import {
   isInteractiveContentType,
   stripMimeParameters,
 } from "@app/types/files";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import partition from "lodash/partition";
 
 function getDirAndFileName(path: string): { dir: string; fileName: string } {
@@ -28,11 +30,18 @@ export async function formatFileListOutput(
   auth: Authenticator,
   dustFs: DustFileSystem,
   scopedPrefix: string
-): Promise<string> {
+): Promise<Result<string, Error>> {
+  const listResult = await dustFs.list(scopedPrefix, {
+    includeProcessed: true,
+  });
+  if (listResult.isErr()) {
+    return listResult;
+  }
+
   const entries = await enrichListWithFileResourceIds(
     auth,
     dustFs,
-    await dustFs.list(scopedPrefix, { includeProcessed: true })
+    listResult.value
   );
 
   const [dirs, rawFiles] = partition(entries, (e) => e.isDirectory);
@@ -41,10 +50,10 @@ export async function formatFileListOutput(
   );
 
   if (dirs.length === 0 && files.length === 0) {
-    return "No files available.";
+    return new Ok("No files available.");
   }
 
-  return formatFileEntries(dirs, files);
+  return new Ok(formatFileEntries(dirs, files));
 }
 
 function formatFileEntries(

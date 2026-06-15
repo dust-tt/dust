@@ -28,13 +28,16 @@ export function registerFilesListTool(server: McpServer) {
         return mcpError(fsResult.error);
       }
 
-      const text = await formatFileListOutput(
+      const textResult = await formatFileListOutput(
         auth,
         fsResult.value,
         scopedPrefixForScope(scope)
       );
+      if (textResult.isErr()) {
+        return mcpError("Failed to list files.");
+      }
 
-      return mcpJsonResponse({ text });
+      return mcpJsonResponse({ text: textResult.value });
     }
   );
 }
