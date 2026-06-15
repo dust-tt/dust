@@ -1367,35 +1367,72 @@ export async function finalizeInvoice(
 const METRONOME_INVOICE_LINES_CLEANED_FLAG = "lines_cleaned";
 
 /**
- * Normalizes the line items of a Metronome-pushed draft invoice in place (via the
- * Stripe API) before finalization — e.g. dropping zero-amount noise, merging
- * granular usage lines into summary lines, or relabeling descriptions.
+ * Removes from a Metronome-pushed Stripe draft invoice the line items that
+ * should not appear on the customer-facing invoice, mirroring the filters
+ * applied by the /invoice/lines API endpoint:
  *
- * INVARIANT: the transform MUST preserve the invoice's pre-tax total. Metronome
- * remains the source of truth for what was billed (credit drawdown, revenue
- * reporting, the `payment_gate.*` reconciliation all key off Metronome's figure);
- * changing the amount here would silently desync Stripe from Metronome. Cleaning
- * is presentation-only.
+ * 1. Negative lines
+ * 2. Lines with an applied commit or credit — usage/subscription lines whose
+ *    cost is covered by a commit/credit (identified by `metronome_commit_id`
+ *    in the Stripe line item metadata).
+ * 3. Wrong-currency lines — non-fiat lines (e.g. AWU-priced) that Metronome may
+ *    not transfer to Stripe; guard retained for safety.
  *
- * TODO(billing): implement the actual line transform once the target invoice
- * shape is pinned down. Use `stripe.invoices.updateLines` / `addLines` /
- * `removeLines` (or `stripe.invoiceItems.*` for invoice-item-backed lines).
- * For now this only reads and logs every line item (auto-paginated) so we can
- * inspect the exact shape Metronome pushes before deciding the transform.
+ * Filters 1 and 2 cancel each other out: every negative credit line is paired
+ * with a positive usage line of the same absolute amount, so removing both
+ * leaves the invoice total unchanged.
  */
 async function cleanMetronomeInvoiceLines(
   stripe: Stripe,
   invoice: Stripe.Invoice
 ): Promise<void> {
+  const invoiceCurrency = invoice.currency;
+
   // `invoice.lines` only holds the first page; iterate the list endpoint so we
   // see every line. The Stripe SDK list result auto-paginates when iterated.
   for await (const line of stripe.invoices.listLineItems(invoice.id, {
     limit: 100,
   })) {
+    const isNegative = line.amount < 1;
+    const hasAppliedCommitOrCredit = !!line.metadata?.metronome_commit_id;
+    const isWrongCurrency = line.currency !== invoiceCurrency;
+    const shouldRemove =
+      isNegative || hasAppliedCommitOrCredit || isWrongCurrency;
+
     logger.info(
-      { stripeInvoiceId: invoice.id, line },
+      {
+        stripeInvoiceId: invoice.id,
+        lineId: line.id,
+        amount: line.amount,
+        currency: line.currency,
+        metadata: line.metadata,
+        isNegative,
+        hasAppliedCommitOrCredit,
+        isWrongCurrency,
+        shouldRemove,
+        line,
+      },
       "[Stripe] Metronome invoice line item"
     );
+
+    if (!shouldRemove) {
+      continue;
+    }
+
+    const invoiceItemId =
+      typeof line.invoice_item === "string"
+        ? line.invoice_item
+        : line.invoice_item?.id;
+
+    if (!invoiceItemId) {
+      logger.warn(
+        { stripeInvoiceId: invoice.id, lineId: line.id },
+        "[Stripe] Cannot remove line item: not backed by an invoice item"
+      );
+      continue;
+    }
+
+    await stripe.invoiceItems.del(invoiceItemId);
   }
 }
 
