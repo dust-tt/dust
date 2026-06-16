@@ -29,6 +29,7 @@ interface Env {
   DUST_API_URL: string;
 }
 
+// z.ZodType<Pick<...>> makes TS flag any drift with GetShareFrameMetadataResponseBody.
 const ShareFrameMetadataSchema: z.ZodType<
   Pick<
     GetShareFrameMetadataResponseBody,
