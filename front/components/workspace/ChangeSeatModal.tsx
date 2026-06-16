@@ -5,7 +5,7 @@ import {
   groupSeatTypesByFrequency,
   SeatCard,
   sortSeatTypes,
-} from "@app/components/workspace/seat_card";
+} from "@app/components/workspace/SeatCard";
 import type {
   CheckoutBillingPeriod,
   CheckoutSeatType,
