@@ -63,7 +63,7 @@ export function sortSeatTypes(
     const i = SEAT_DISPLAY_ORDER.indexOf(s);
     return i === -1 ? SEAT_DISPLAY_ORDER.length : i;
   };
-  return [...seatTypes].sort((a, b) => indexOf(a) - indexOf(b));
+  return seatTypes.toSorted((a, b) => indexOf(a) - indexOf(b));
 }
 
 // Group seat types by their billing frequency, preserving the input order
