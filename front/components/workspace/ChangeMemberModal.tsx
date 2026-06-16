@@ -2,7 +2,9 @@ import { ROLES_DATA } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { handleMembersRoleChange } from "@app/lib/client/members";
+import { isCreditPricedFreePlan } from "@app/lib/plans/plan_codes";
 import { useProvisioningStatus } from "@app/lib/swr/workos";
 import { hasPermission } from "@app/types/permissions";
 import type {
@@ -45,6 +47,11 @@ export function ChangeMemberModal({
   workspace: LightWorkspaceType;
 }) {
   const { role = null } = member?.workspace ?? {};
+
+  const { subscription } = useAuth();
+  const isFreeCreditPlan = isCreditPricedFreePlan(
+    subscription?.plan?.code ?? ""
+  );
 
   const sendNotification = useSendNotification();
   const [selectedRole, setSelectedRole] = useState<ActiveRoleType | null>(
@@ -149,11 +156,16 @@ export function ChangeMemberModal({
                             variant="warning"
                             label="Revoke member access"
                             size="sm"
-                            disabled={member.origin === "provisioned"}
+                            disabled={
+                              member.origin === "provisioned" ||
+                              isFreeCreditPlan
+                            }
                             tooltip={
                               member.origin === "provisioned"
                                 ? "This user is managed by your identity provider."
-                                : undefined
+                                : isFreeCreditPlan
+                                  ? "Upgrade your plan to revoke members."
+                                  : undefined
                             }
                           />
                         </DialogTrigger>
