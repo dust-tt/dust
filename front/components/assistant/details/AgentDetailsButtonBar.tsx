@@ -90,18 +90,6 @@ export function AgentDetailsButtonBar({
           disabled={isFavoriteDisabled}
           onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
         />
-
-        <Button
-          icon={Star01}
-          tooltip={
-            agentIsFavorite ? "Remove from favorites" : "Add to favorites"
-          }
-          size="sm"
-          className="hidden group-hover:block"
-          variant={agentIsFavorite ? "outline" : "highlight-secondary"}
-          disabled={isFavoriteDisabled}
-          onClick={() => updateUserFavorite(!agentConfiguration.userFavorite)}
-        />
       </div>
 
       {canShowAgentConversationActions(agentConfiguration.sId) && (
