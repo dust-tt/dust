@@ -6,7 +6,7 @@ type ReasoningEffortOf<C extends InputConfig> = NonNullable<
   C["reasoning"]
 >["effort"];
 
-export type DustEndpointConfiguration<C extends InputConfig> =
+export type DustStreamEndpointConfiguration<C extends InputConfig> =
   BaseEndpointConfiguration<C> & {
     // Description
     displayName: string;

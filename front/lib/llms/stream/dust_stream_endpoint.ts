@@ -1,4 +1,4 @@
-import type { DustEndpointConfiguration } from "@app/lib/llms/configuration";
+import type { DustStreamEndpointConfiguration } from "@app/lib/llms/stream/types/configuration";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
@@ -9,10 +9,10 @@ export abstract class DustStreamEndpoint<
   O = unknown,
   C extends InputConfig = InputConfig,
 > extends StreamEndpoint<I, O> {
-  declare ["constructor"]: DustEndpointConfiguration<C>;
+  declare ["constructor"]: DustStreamEndpointConfiguration<C>;
 }
 
-// Like `StreamEndpointConstructor`, but with `DustEndpointConfiguration`.
+// Like `StreamEndpointConstructor`, but with `DustStreamEndpointConfiguration`.
 export type DustStreamEndpointConstructor<
   I = unknown,
   O = unknown,
@@ -20,7 +20,7 @@ export type DustStreamEndpointConstructor<
 > = (new (
   credentials: Credentials
 ) => StreamEndpoint<I, O>) &
-  DustEndpointConfiguration<C>;
+  DustStreamEndpointConfiguration<C>;
 
 // Infers `C` from the class's `configSchema` so `defaultReasoningEffort` is
 // checked against the endpoint's supported efforts. Returns the class unchanged.
