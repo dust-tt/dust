@@ -88,10 +88,10 @@ export function PodSettingsTab({
       (a) => a.sId === (podMetadata?.defaultAgentId || GLOBAL_AGENTS_SID.DUST)
     ) ?? null;
   const saveDefaultAgent = useCallback(
-    async (sId: string | null) => {
+    async (agentId: string | null) => {
       // Warn about the implications of using another default agentbefore switching.
       // Resetting back to @dust needs no confirmation.
-      if (sId && sId !== GLOBAL_AGENTS_SID.DUST) {
+      if (agentId && agentId !== GLOBAL_AGENTS_SID.DUST) {
         const confirmed = await confirm({
           title: "Warning",
           message:
@@ -104,7 +104,7 @@ export function PodSettingsTab({
           return;
         }
       }
-      await doUpdateMetadata({ defaultAgentId: sId });
+      await doUpdateMetadata({ defaultAgentId: agentId });
     },
     [confirm, doUpdateMetadata]
   );
