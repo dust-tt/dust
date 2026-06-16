@@ -316,7 +316,8 @@ const EXTRACT_TEXT_TOOL = {
     "and save the result as a plain-text file next to the source. " +
     "Returns the scoped path of the extracted file. " +
     `Use this before \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` or \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_GREP_ACTION_NAME)}\` ` +
-    "on binary documents that cannot be read as text.",
+    "on binary documents that cannot be read as text. " +
+    "Do NOT use on plain-text files (.txt, .md, .csv, etc.) — read those directly.",
   schema: {
     path: z
       .string()
