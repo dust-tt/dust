@@ -181,10 +181,14 @@ function FilePreviewDialogContent({
       );
 
     case "pdf":
-      return <PDFViewer url={fileUrl} />;
+      return <PDFViewer url={`${fileUrl}?v=${entry.lastModifiedMs}`} />;
 
     case "viewer":
-      return <PDFViewer url={`${fileUrl}?preview=pdf`} />;
+      return (
+        <PDFViewer
+          url={`${fileUrl}?preview=pdf&v=${entry.lastModifiedMs}`}
+        />
+      );
 
     case "audio":
       return (

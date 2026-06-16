@@ -157,7 +157,7 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
         "Content-Type": "application/pdf",
         "Content-Disposition": `inline; filename="${asciiFallback}"; filename*=UTF-8''${encodedName}`,
         "Content-Length": String(pdfBuffer.length),
-        "Cache-Control": "private, max-age=300",
+        "Cache-Control": "private, max-age=3600",
       },
     });
   }
