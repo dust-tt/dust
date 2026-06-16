@@ -1,3 +1,0 @@
-ALTER TABLE "public"."google_drive_sync_tokens"
-  ADD COLUMN IF NOT EXISTS "lastSyncAt" TIMESTAMP WITH TIME ZONE,
-  ADD COLUMN IF NOT EXISTS "lastRelevantChangeAt" TIMESTAMP WITH TIME ZONE;
