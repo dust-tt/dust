@@ -35,52 +35,17 @@ export async function backfillUnavailableSkillReferencesForWorkspace(
   auth: Authenticator,
   { execute }: { execute: boolean }
 ): Promise<BackfillUnavailableSkillReferencesStats> {
-  if (!execute) {
-    const plan = await buildBackfillPlan(auth);
+  const plan = await buildBackfillPlan(auth);
 
-    return {
-      totalCandidates: plan.candidateSkillModelIds.length,
-      repaired: plan.repairPlans.length,
-      skipped: plan.skippedSkillModelIds.length,
-    };
-  }
-
-  const candidateSkillModelIds = new Set<ModelId>();
-  const repairedSkillModelIds = new Set<ModelId>();
-  const skippedSkillModelIds = new Set<ModelId>();
-  let repaired = 0;
-
-  for (let pass = 1; pass <= MAX_BACKFILL_PASSES; pass++) {
-    const plan = await buildBackfillPlan(auth);
-
-    for (const skillModelId of plan.candidateSkillModelIds) {
-      candidateSkillModelIds.add(skillModelId);
-    }
-    for (const skillModelId of plan.skippedSkillModelIds) {
-      skippedSkillModelIds.add(skillModelId);
-    }
-
-    if (plan.repairPlans.length === 0) {
-      return {
-        totalCandidates: candidateSkillModelIds.size,
-        repaired,
-        skipped: [...skippedSkillModelIds].filter(
-          (skillModelId) => !repairedSkillModelIds.has(skillModelId)
-        ).length,
-      };
-    }
-
+  if (execute) {
     await executeRepairPlans(auth, plan.repairPlans);
-
-    repaired += plan.repairPlans.length;
-    for (const { skill } of plan.repairPlans) {
-      repairedSkillModelIds.add(skill.id);
-    }
   }
 
-  throw new Error(
-    `Unavailable skill reference backfill did not converge after ${MAX_BACKFILL_PASSES} passes.`
-  );
+  return {
+    totalCandidates: plan.candidateSkillModelIds.length,
+    repaired: plan.repairPlans.length,
+    skipped: plan.skippedSkillModelIds.length,
+  };
 }
 
 async function buildBackfillPlan(auth: Authenticator): Promise<BackfillPlan> {
@@ -91,7 +56,10 @@ async function buildBackfillPlan(auth: Authenticator): Promise<BackfillPlan> {
       status: "active",
       // One-off backfill: the workspace/status index narrows the scan enough;
       // an instructions index is not warranted for this temporary script.
-      instructions: { [Op.like]: "%<unavailable_skill%" },
+      [Op.or]: [
+        { instructions: { [Op.like]: "%<skill%" } },
+        { instructions: { [Op.like]: "%<unavailable_skill%" } },
+      ],
     },
     attributes: ["id"],
     order: [["id", "ASC"]],
@@ -112,6 +80,18 @@ async function buildBackfillPlan(auth: Authenticator): Promise<BackfillPlan> {
   const skillsByModelId = new Map(skills.map((skill) => [skill.id, skill]));
   const referencedSkillsById = await fetchReferencedSkillsById(auth, skills);
   const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+  const skillReferencesBySkillModelId = new Map(
+    skills.map((skill) => [
+      skill.id,
+      extractSkillReferenceTags(skill.instructions),
+    ])
+  );
+  const requestedSpaceIdsBySkillModelId =
+    computeBackfilledRequestedSpaceIdsBySkillModelId({
+      referencedSkillsById,
+      skillReferencesBySkillModelId,
+      skills,
+    });
 
   const repairPlans: BackfillRepairPlan[] = [];
   const skippedSkillModelIds: ModelId[] = [];
@@ -124,20 +104,24 @@ async function buildBackfillPlan(auth: Authenticator): Promise<BackfillPlan> {
       continue;
     }
 
-    const skillReferences = extractSkillReferenceTags(skill.instructions);
+    const skillReferences = getSkillReferences(
+      skillReferencesBySkillModelId,
+      skill
+    );
     const referencedSkills = referencedSkillsForSkill(
       skillReferences,
       referencedSkillsById
     );
-    const requestedSpaceIds = computeBackfilledRequestedSpaceIds(
-      skill,
-      referencedSkills
+    const requestedSpaceIds = getRequestedSpaceIds(
+      requestedSpaceIdsBySkillModelId,
+      skill
     );
     const shouldNormalizeUnavailableReferences =
       canNormalizeUnavailableReferences({
         globalSpaceId: globalSpace.id,
         parentRequestedSpaceIds: requestedSpaceIds,
         referencedSkills,
+        requestedSpaceIdsBySkillModelId,
         skillReferences,
       });
 
@@ -280,32 +264,107 @@ function referencedSkillsForSkill(
   return referencedSkills;
 }
 
-function computeBackfilledRequestedSpaceIds(
-  skill: SkillResource,
-  referencedSkills: readonly SkillResource[]
-): ModelId[] {
-  const referencedSkillSpaceIds = uniq(
-    referencedSkills
-      .filter(
-        (referencedSkill) =>
-          referencedSkill.status === "active" &&
-          referencedSkill.sId !== skill.sId
-      )
-      .flatMap((referencedSkill) => referencedSkill.requestedSpaceIds)
+function computeBackfilledRequestedSpaceIdsBySkillModelId({
+  referencedSkillsById,
+  skillReferencesBySkillModelId,
+  skills,
+}: {
+  referencedSkillsById: ReadonlyMap<string, SkillResource>;
+  skillReferencesBySkillModelId: ReadonlyMap<
+    ModelId,
+    ReturnType<typeof extractSkillReferenceTags>
+  >;
+  skills: readonly SkillResource[];
+}): Map<ModelId, ModelId[]> {
+  const requestedSpaceIdsBySkillModelId = new Map(
+    skills.map((skill) => [skill.id, skill.requestedSpaceIds])
   );
 
-  return uniq([...skill.requestedSpaceIds, ...referencedSkillSpaceIds]);
+  for (let pass = 1; pass <= MAX_BACKFILL_PASSES; pass++) {
+    let changed = false;
+
+    for (const skill of skills) {
+      const skillReferences = getSkillReferences(
+        skillReferencesBySkillModelId,
+        skill
+      );
+      const referencedSkills = referencedSkillsForSkill(
+        skillReferences,
+        referencedSkillsById
+      );
+      const requestedSpaceIds = getRequestedSpaceIds(
+        requestedSpaceIdsBySkillModelId,
+        skill
+      );
+      const referencedSkillSpaceIds = referencedSkills
+        .filter(
+          (referencedSkill) =>
+            referencedSkill.status === "active" &&
+            referencedSkill.sId !== skill.sId
+        )
+        .flatMap((referencedSkill) =>
+          getRequestedSpaceIds(requestedSpaceIdsBySkillModelId, referencedSkill)
+        );
+      const backfilledRequestedSpaceIds = uniq([
+        ...requestedSpaceIds,
+        ...referencedSkillSpaceIds,
+      ]);
+
+      if (!hasSameSpaceIds(requestedSpaceIds, backfilledRequestedSpaceIds)) {
+        requestedSpaceIdsBySkillModelId.set(
+          skill.id,
+          backfilledRequestedSpaceIds
+        );
+        changed = true;
+      }
+    }
+
+    if (!changed) {
+      return requestedSpaceIdsBySkillModelId;
+    }
+  }
+
+  throw new Error(
+    `Unavailable skill reference backfill did not converge after ${MAX_BACKFILL_PASSES} passes.`
+  );
+}
+
+function getSkillReferences(
+  skillReferencesBySkillModelId: ReadonlyMap<
+    ModelId,
+    ReturnType<typeof extractSkillReferenceTags>
+  >,
+  skill: SkillResource
+): ReturnType<typeof extractSkillReferenceTags> {
+  const skillReferences = skillReferencesBySkillModelId.get(skill.id);
+
+  if (!skillReferences) {
+    throw new Error(`Missing skill references for skill ${skill.sId}.`);
+  }
+
+  return skillReferences;
+}
+
+function getRequestedSpaceIds(
+  requestedSpaceIdsBySkillModelId: ReadonlyMap<ModelId, ModelId[]>,
+  skill: SkillResource
+): ModelId[] {
+  return (
+    requestedSpaceIdsBySkillModelId.get(skill.id) ?? skill.requestedSpaceIds
+  );
 }
 
 function canNormalizeUnavailableReferences({
   globalSpaceId,
   parentRequestedSpaceIds,
   referencedSkills,
+  requestedSpaceIdsBySkillModelId,
   skillReferences,
 }: {
   globalSpaceId: ModelId;
   parentRequestedSpaceIds: readonly ModelId[];
   referencedSkills: readonly SkillResource[];
+  requestedSpaceIdsBySkillModelId: ReadonlyMap<ModelId, ModelId[]>;
   skillReferences: ReturnType<typeof extractSkillReferenceTags>;
 }): boolean {
   const unavailableSkillIds = new Set(
@@ -330,9 +389,10 @@ function canNormalizeUnavailableReferences({
     (referencedSkill) =>
       unavailableSkillIds.has(referencedSkill.sId) &&
       referencedSkill.status === "active" &&
-      referencedSkill.requestedSpaceIds.every((spaceId) =>
-        parentRequestedSpaceIdSet.has(spaceId)
-      )
+      getRequestedSpaceIds(
+        requestedSpaceIdsBySkillModelId,
+        referencedSkill
+      ).every((spaceId) => parentRequestedSpaceIdSet.has(spaceId))
   );
 }
 

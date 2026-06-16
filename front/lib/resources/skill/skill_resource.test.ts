@@ -903,7 +903,7 @@ describe("SkillResource", () => {
         { execute: true }
       );
 
-      expect(stats.repaired).toBe(3);
+      expect(stats.repaired).toBe(2);
 
       const updatedMiddleSkill = await SkillResource.fetchById(
         testContext.authenticator,
