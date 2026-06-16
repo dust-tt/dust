@@ -55,25 +55,35 @@ export class FirefoxMcpService extends McpService {
       throw new Error("Cannot connect null server");
     }
 
-    try {
-      if (this.transport) {
-        return;
+    if (this.transport) {
+      return;
+    }
+
+    const transport = new BrowserMCPTransport(
+      owner.sId,
+      "dust-firefox-extension",
+      (serverId) => {
+        this.serverId = serverId;
+        onServerIdReceived(serverId);
       }
+    );
 
-      const transport = new BrowserMCPTransport(
-        owner.sId,
-        "dust-firefox-extension",
-        (serverId) => {
-          this.serverId = serverId;
-          onServerIdReceived(serverId);
-        }
-      );
+    // Claim the slot synchronously, before the async `server.connect` round-trip,
+    // so a concurrent getOrCreateServer/connectServer call short-circuits on the
+    // guard above instead of creating a second transport. A leaked transport keeps
+    // a heartbeat timer alive forever; many such timers firing on the same tick
+    // produce bursts of register/heartbeat calls.
+    this.server = server;
+    this.transport = transport;
 
+    try {
       await server.connect(transport);
-
-      this.server = server;
-      this.transport = transport;
     } catch (error) {
+      // Roll back the claim and tear down the half-open transport so a later
+      // attempt can retry cleanly.
+      this.server = null;
+      this.transport = null;
+      await transport.close();
       console.error("Failed to connect MCP server:", error);
       throw error;
     }
