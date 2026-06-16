@@ -33,7 +33,7 @@
     "@typescript/native-preview": "^7.0.0-dev.20260420.1",
     "knip": "^5.80.0",
     "lefthook": "2.1.8",
-    "react-doctor": "^0.4.2",
+    "react-doctor": "^0.5.0",
     "wrangler": "4.80.0"
   },
   "engines": {
