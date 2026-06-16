@@ -28,6 +28,7 @@ import {
   type MembershipSeatType,
 } from "@app/types/memberships";
 import type { SubscriptionPerSeatPricing } from "@app/types/plan";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -180,8 +181,17 @@ export function InviteEmailButtonWithModal({
   // Switch billing cadence; keep the selection valid by falling back to the
   // first selectable tier in the new cadence when the current one isn't offered.
   function handleSeatFrequencyChange(period: "monthly" | "yearly") {
-    const frequency: SeatBillingFrequency =
-      period === "yearly" ? "annual" : "monthly";
+    let frequency: SeatBillingFrequency;
+    switch (period) {
+      case "yearly":
+        frequency = "annual";
+        break;
+      case "monthly":
+        frequency = "monthly";
+        break;
+      default:
+        assertNever(period);
+    }
     setActiveFrequency(frequency);
     const inFrequency = seatTypesByFrequency[frequency];
     if (!selectedSeatType || !inFrequency.includes(selectedSeatType)) {
