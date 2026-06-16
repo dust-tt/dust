@@ -644,7 +644,7 @@ describe("POST /api/w/:wId/skills", () => {
     ]);
   });
 
-  it("keeps readable nested skill references without adding child spaces", async () => {
+  it("adds requested spaces from nested skill references", async () => {
     const { auth, workspace, globalGroup } = await setupTest("admin");
 
     const openSpace = await SpaceFactory.regular(workspace);
@@ -669,14 +669,14 @@ describe("POST /api/w/:wId/skills", () => {
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.skill.requestedSpaceIds).not.toContain(openSpace.sId);
+    expect(data.skill.requestedSpaceIds).toContain(openSpace.sId);
     expect(data.skill.instructions).not.toContain("<unavailable_skill");
 
     const createdSkill = await SkillResource.fetchById(auth, data.skill.sId);
     if (!createdSkill) {
       throw new Error("Expected created skill to be found.");
     }
-    expect(createdSkill.requestedSpaceIds).not.toContain(openSpace.id);
+    expect(createdSkill.requestedSpaceIds).toContain(openSpace.id);
     expect(createdSkill.instructions).not.toContain("<unavailable_skill");
   });
 
