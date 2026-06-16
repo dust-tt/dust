@@ -152,6 +152,20 @@ pre-commit:
         exit 1
       priority: 1
 
+    no-legacy-db-migration-front:
+      glob: "front/migrations/db/*.sql"
+      run: |
+        echo ""
+        echo "ERROR: front/migrations/db/ is frozen. Do not add files here."
+        echo ""
+        echo "Use the new phased migration system instead:"
+        echo "  npm run -w front migration:generate:pre-deploy <description>"
+        echo "  npm run -w front migration:generate:post-deploy <description>"
+        echo ""
+        echo "See: https://app.notion.com/p/dust-tt/Runbook-Deploy-Run-migrations-5669e328475d489ba16298a77f2aa45c?source=copy_link#36728599d94180898358cf59a8725740"
+        exit 1
+      priority: 1
+
     # Biome checks (all JS/TS files in monorepo)
     biome:
       glob: "*.{js,jsx,ts,tsx,css,scss}"
