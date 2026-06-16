@@ -1,3 +1,4 @@
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type {
   GetPodMetadataResponseBody,
   PatchPodMetadataResponseBody,
@@ -87,6 +88,24 @@ app.patch(
           api_error: {
             type: "invalid_request_error",
             message: validation.error.message,
+          },
+        });
+      }
+    }
+
+    // Validate the default agent exists and is usable (handles both global agents like
+    // "claude-4.5-sonnet" and workspace agents). A null value clears the default (@dust).
+    if (body.defaultAgentSId) {
+      const agent = await getAgentConfiguration(auth, {
+        agentId: body.defaultAgentSId,
+        variant: "extra_light",
+      });
+      if (!agent || agent.status !== "active") {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Agent "${body.defaultAgentSId}" was not found or is not usable in this workspace.`,
           },
         });
       }

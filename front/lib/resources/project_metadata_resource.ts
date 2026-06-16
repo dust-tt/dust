@@ -172,23 +172,13 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     await this.update({ pinnedFramePath }, transaction);
   }
 
+  // Persists the pod's default agent sId. The caller is responsible for validating that the
+  // agent exists and is usable in the workspace (global or workspace agent) — see the PATCH
+  // project_metadata route, which uses getAgentConfiguration() for that.
   async updateDefaultAgentSId(
     defaultAgentSId: string | null,
     transaction?: Transaction
   ) {
-    // check the agent id exists in the system before updating the project metadata
-    if (defaultAgentSId) {
-      const agentExists =
-        await ProjectMetadataModel.sequelize?.models.AgentModel.findOne({
-          where: { sId: defaultAgentSId, workspaceId: this.workspaceId },
-        });
-
-      if (!agentExists) {
-        throw new Error(
-          `Agent with sId ${defaultAgentSId} does not exist in the workspace.`
-        );
-      }
-    }
     await this.update({ defaultAgentSId }, transaction);
   }
 
