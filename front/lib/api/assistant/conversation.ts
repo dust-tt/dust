@@ -153,6 +153,7 @@ import {
   isUserMention,
   toMentionType,
 } from "@app/types/assistant/mentions";
+import { ACTIVE_WAKE_UP_STATUSES } from "@app/types/assistant/wakeups";
 import type {
   ContentFragmentContextType,
   ContentFragmentType,
@@ -2317,6 +2318,27 @@ export async function softDeleteUserMessageAndReplies(
       messageIds: runningOrphans.map((m) => m.sId),
       conversationId: conversation.sId,
     });
+  }
+
+  // Cancel active wake-ups owned by the message author when their message is deleted.
+  if (message.user) {
+    const activeWakeUps = await WakeUpResource.listByConversation(
+      auth,
+      conversation,
+      { status: ACTIVE_WAKE_UP_STATUSES }
+    );
+    const authorWakeUps = activeWakeUps.filter(
+      (w) => w.userId === message.user!.id
+    );
+    for (const wakeUp of authorWakeUps) {
+      const cancelResult = await wakeUp.cancel(auth);
+      if (cancelResult.isErr()) {
+        logger.error(
+          { wakeUpId: wakeUp.sId, err: cancelResult.error },
+          "Failed to cancel wake-up on message deletion"
+        );
+      }
+    }
   }
 
   auditLog(
