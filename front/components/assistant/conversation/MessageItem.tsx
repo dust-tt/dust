@@ -265,7 +265,11 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             !nextData && "mb-10"
           )}
         >
-          <WakeUpMessage message={data} />
+          <WakeUpMessage
+            message={data}
+            owner={context.owner}
+            conversationId={context.conversation?.sId ?? null}
+          />
         </div>
       );
     }
