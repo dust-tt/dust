@@ -417,10 +417,7 @@ export const Field: React.FC<FieldProps> = ({
     if (typeof x === "string") {
       if (!x) {
         strValue = "NULL";
-        classes = classNames(
-          classes,
-          "italic text-muted-foreground dark:text-muted-foreground-night"
-        );
+        classes = classNames(classes, "italic text-muted-foreground");
       }
     }
     if (typeof x === "number") {

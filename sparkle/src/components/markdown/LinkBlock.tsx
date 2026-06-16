@@ -38,10 +38,10 @@ export const LinkBlock = memo(
         rel={rel}
         onClick={onClick}
         className={cn(
-          "s-break-all s-font-semibold s-transition-all s-duration-200 s-ease-in-out hover:s-underline",
-          "s-text-highlight dark:s-text-highlight-night",
-          "hover:s-text-highlight-400 dark:hover:s-text-highlight-400-night",
-          "active:s-text-highlight-dark dark:active:s-text-highlight-dark-night",
+          "s:break-all s:font-semibold s:transition-all s:duration-200 s:ease-in-out s:hover:underline",
+          "s:text-highlight",
+          "s:hover:text-highlight-400",
+          "s:active:text-highlight-dark",
           className
         )}
       >

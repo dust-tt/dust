@@ -116,21 +116,12 @@ export function SubscriptionEndBanner({
       ref={bannerRef}
       className={cn(
         "flex items-center justify-between gap-4 px-4 py-1",
-        "bg-sky-50 dark:bg-sky-50-night"
+        "bg-sky-50"
       )}
     >
       <div className="text-sm flex gap-2">
-        <p
-          className={cn(
-            "font-semibold",
-            "text-sky-900 dark:text-sky-900-night"
-          )}
-        >
-          {title}
-        </p>
-        <p className="text-sky-800 dark:text-sky-800-night hidden md:inline-block">
-          {description}
-        </p>
+        <p className={cn("font-semibold", "text-sky-900")}>{title}</p>
+        <p className="text-sky-800 hidden md:inline-block">{description}</p>
       </div>
       {isAdmin && !isEnterprise && (
         <Button

@@ -44,12 +44,12 @@ export function NextInvoiceOverview() {
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <span className="text-lg font-semibold text-foreground dark:text-foreground-night">
+            <span className="text-lg font-semibold text-foreground">
               Next Bill preview
             </span>
             <SubscriptionStatusChip />
           </div>
-          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <div className="text-sm text-muted-foreground">
             A preview of what your invoice will look like based on your recent
             usage.
           </div>
@@ -59,15 +59,15 @@ export function NextInvoiceOverview() {
 
       {invoice ? (
         <div className="flex flex-col gap-1">
-          <div className="text-4xl text-foreground dark:text-foreground-night">
+          <div className="text-4xl text-foreground">
             {formatAmount(invoice.estimatedAmountCents, invoice.currency)}
           </div>
-          <div className="text-xs text-faint dark:text-faint-night">
+          <div className="text-xs text-faint">
             {periodLabel[subscriptionStatus]}
           </div>
         </div>
       ) : (
-        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <div className="text-sm text-muted-foreground">
           No billing information available for this period yet.
         </div>
       )}

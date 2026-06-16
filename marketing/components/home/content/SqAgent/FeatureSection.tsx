@@ -41,7 +41,7 @@ export function FeatureSection({
     <div className="flex flex-col justify-center lg:w-1/2">
       <H2 className="mb-4">
         {title}{" "}
-        <span className="bg-gradient-to-r from-blue-500 to-emerald-500 bg-clip-text text-transparent">
+        <span className="bg-linear-to-r from-blue-500 to-emerald-500 bg-clip-text text-transparent">
           {titleHighlight}
         </span>
       </H2>

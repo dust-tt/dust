@@ -31,37 +31,37 @@ const LONG_TEXT = Array(20)
   .join("\n\n");
 
 export const WithFooter = () => (
-  <div className="s-w-[600px]">
+  <div className="s:w-[600px]">
     <TruncatedContent
       footer={
-        <div className="s-flex s-gap-2">
+        <div className="s:flex s:gap-2">
           <Button variant="outline" size="xs" label="Copy" />
           <Button variant="outline" size="xs" label="Share" />
         </div>
       }
     >
-      <p className="s-whitespace-pre-line">{LONG_TEXT}</p>
+      <p className="s:whitespace-pre-line">{LONG_TEXT}</p>
     </TruncatedContent>
   </div>
 );
 
 export const Animated = () => (
-  <div className="s-w-[600px]">
+  <div className="s:w-[600px]">
     <TruncatedContent animated animationDurationMs={300}>
-      <p className="s-whitespace-pre-line">{LONG_TEXT}</p>
+      <p className="s:whitespace-pre-line">{LONG_TEXT}</p>
     </TruncatedContent>
   </div>
 );
 
 export const CustomThreshold = () => (
-  <div className="s-w-[600px]">
+  <div className="s:w-[600px]">
     <TruncatedContent
       thresholdPx={200}
       collapsedHeightPx={150}
       expandLabel="Read more"
       collapseLabel="Read less"
     >
-      <p className="s-whitespace-pre-line">{LONG_TEXT}</p>
+      <p className="s:whitespace-pre-line">{LONG_TEXT}</p>
     </TruncatedContent>
   </div>
 );

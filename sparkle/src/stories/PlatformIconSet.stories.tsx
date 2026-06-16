@@ -37,7 +37,7 @@ export const PlatformLogos = () => (
       return (
         <div key={iconName}>
           <Icon visual={CurrentIcon} size="lg" />
-          <div style={itemStyle as React.CSSProperties} className="s-text-base">
+          <div style={itemStyle as React.CSSProperties} className="s:text-base">
             {iconName}
           </div>
         </div>

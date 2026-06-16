@@ -232,10 +232,10 @@ export function SkillBuilderRequestedSpacesSection({
     <div className="space-y-3">
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
+          <h3 className="heading-lg font-semibold text-foreground">
             Spaces and Pods
           </h3>
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <p className="text-sm text-muted-foreground">
             Choose which spaces and Pods this skill can access. The skill can
             use their knowledge and capabilities, and only users with access to
             all selected spaces and Pods can use it.

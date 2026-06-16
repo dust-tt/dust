@@ -42,9 +42,7 @@ export function WorkspaceAnalyticsOverviewCards({
         className="h-24"
         content={
           <div className="flex flex-col gap-1 text-2xl">
-            <div className="truncate text-foreground dark:text-foreground-night">
-              {totalMembers}
-            </div>
+            <div className="truncate text-foreground">{totalMembers}</div>
           </div>
         }
       />
@@ -53,9 +51,7 @@ export function WorkspaceAnalyticsOverviewCards({
         className="h-24"
         content={
           <div className="flex flex-col gap-1 text-2xl">
-            <div className="truncate text-foreground dark:text-foreground-night">
-              {activeUsers}
-            </div>
+            <div className="truncate text-foreground">{activeUsers}</div>
           </div>
         }
       />

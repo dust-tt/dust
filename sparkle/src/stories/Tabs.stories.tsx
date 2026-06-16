@@ -38,12 +38,12 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   render: () => (
-    <div className="s-w-80">
+    <div className="s:w-80">
       <Tabs defaultValue="account">
-        <TabsList className="s-px-2">
+        <TabsList className="s:px-2">
           <TabsTrigger value="account" label="Hello" icon={Command} />
           <TabsTrigger value="password" label="World" icon={Lightbulb04} />
-          <div className="s-grow" />
+          <div className="s:grow" />
           <TabsTrigger value="settings" icon={Settings01} tooltip="Settings" />
         </TabsList>
         <TabsContent value="account">Hello</TabsContent>
@@ -56,16 +56,16 @@ export const Default: Story = {
 
 export const WithMultipleTabs: Story = {
   render: () => (
-    <div className="s-w-[100%]">
+    <div className="s:w-[100%]">
       <Tabs defaultValue="tab1">
-        <TabsList className="s-px-2">
+        <TabsList className="s:px-2">
           <TabsTrigger value="tab1" label="Tab 1" icon={Command} />
           <TabsTrigger value="tab2" label="Tab 2" icon={Lightbulb04} />
           <TabsTrigger value="tab3" label="Tab 3" icon={Settings01} />
           <TabsTrigger value="tab4" label="Tab 4" icon={Command} />
           <TabsTrigger value="tab5" label="Tab 5" icon={Lightbulb04} />
           <TabsTrigger value="tab6" label="Tab 6" icon={Settings01} />
-          <div className="s-grow" />
+          <div className="s:grow" />
           <Button label="Hello" />
         </TabsList>
         <TabsContent value="tab1">Content for Tab 1</TabsContent>

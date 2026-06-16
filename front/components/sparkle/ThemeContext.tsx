@@ -83,7 +83,7 @@ const disableAnimation = () => {
 // We want to run this before React hydration in the browser's global scope,
 // so we should not rely on any external variables.
 // TODO (05/12/2025 yuka) I'm not sure how to minify at build time, using manually minified script for now.
-const minifiedThemeScript = `function(){try{const theme=localStorage.getItem("theme")||"system";const isDark=theme==="dark"||(theme==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);if(isDark){document.documentElement.classList.add("dark");document.documentElement.classList.add("s-dark")}}catch(e){}}`;
+const minifiedThemeScript = `function(){try{const theme=localStorage.getItem("theme")||"system";const isDark=theme==="dark"||(theme==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);if(isDark){document.documentElement.classList.add("dark")}}catch(e){}}`;
 
 const ThemeScript = memo(function ThemeInitScript() {
   return (
@@ -109,19 +109,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     const restoreAnimation = disableAnimation();
     document.documentElement.classList.toggle("dark", nextIsDark);
-    // biome-ignore lint/plugin/noSparkleClassInFront: s-dark is needed for Sparkle dark mode
-    document.documentElement.classList.toggle("s-dark", nextIsDark);
 
-    if (nextIsDark) {
-      document.body.classList.remove("bg-app-background");
-      document.body.classList.add("bg-app-background-night");
-    } else {
-      document.body.classList.remove(
-        "bg-app-background-night",
-        "text-foreground-night"
-      );
-      document.body.classList.add("bg-app-background");
-    }
+    document.body.classList.add("bg-app-background");
     restoreAnimation();
   }, []);
 

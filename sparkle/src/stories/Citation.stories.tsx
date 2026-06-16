@@ -46,12 +46,12 @@ const meta = {
 export default meta;
 
 export const CitationsExample = () => (
-  <div className="s-flex s-flex-col s-gap-8">
+  <div className="s:flex s:flex-col s:gap-8">
     Example of attachement
     <CitationGrid>
       <Citation
         onClick={() => alert("Card clicked")}
-        className="s-w-48"
+        className="s:w-48"
         tooltip="@ed at 16:32 This is the latest ve"
       >
         <CitationIcons>
@@ -66,7 +66,7 @@ export const CitationsExample = () => (
     <CitationGrid>
       <Citation
         onClick={() => alert("Card clicked")}
-        className="s-w-48"
+        className="s:w-48"
         tooltip="@ed at 16:32 This is the latest ve"
       >
         <CitationIcons>
@@ -77,27 +77,27 @@ export const CitationsExample = () => (
           @ed at 16:32 This is the latest ve
         </CitationDescription>
       </Citation>
-      <Citation onClick={() => alert("Card clicked")} className="s-w-48">
+      <Citation onClick={() => alert("Card clicked")} className="s:w-48">
         <CitationIcons>
           <Icon visual={Table} size="sm" />
         </CitationIcons>
         <CitationTitle>extract_financa.csv</CitationTitle>
       </Citation>
-      <Citation onClick={() => alert("Card clicked")} className="s-w-48">
+      <Citation onClick={() => alert("Card clicked")} className="s:w-48">
         <CitationIcons>
           <FaviconIcon websiteUrl="https://www.linkedin.com" size="sm" />
         </CitationIcons>
         <CitationTitle>Linkedin, Edouard Wautier</CitationTitle>
       </Citation>
 
-      <Citation onClick={() => alert("Card clicked")} className="s-w-48">
+      <Citation onClick={() => alert("Card clicked")} className="s:w-48">
         <CitationIcons>
           <FaviconIcon websiteUrl="https://github.com" size="sm" />
         </CitationIcons>
         <CitationTitle>GitHub Repository</CitationTitle>
       </Citation>
 
-      <Citation className="s-w-48">
+      <Citation className="s:w-48">
         <CitationImage
           imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
           title="screenshot.png"
@@ -105,7 +105,7 @@ export const CitationsExample = () => (
         />
       </Citation>
 
-      <Citation className="s-w-48">
+      <Citation className="s:w-48">
         <CitationImage
           imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
           title="screenshot.png (loading)"
@@ -117,7 +117,7 @@ export const CitationsExample = () => (
     <CitationGrid>
       <Citation
         onClick={() => alert("Card clicked")}
-        className="s-w-48"
+        className="s:w-48"
         action={<CitationClose onClick={() => alert("Close clicked")} />}
       >
         <CitationIcons>
@@ -130,7 +130,7 @@ export const CitationsExample = () => (
       </Citation>
       <Citation
         onClick={() => alert("Card clicked")}
-        className="s-w-48"
+        className="s:w-48"
         action={<CitationClose onClick={() => alert("Close clicked")} />}
       >
         <CitationIcons>
@@ -140,7 +140,7 @@ export const CitationsExample = () => (
       </Citation>
       <Citation
         onClick={() => alert("Card clicked")}
-        className="s-w-48"
+        className="s:w-48"
         action={<CitationClose onClick={() => alert("Close clicked")} />}
       >
         <CitationIcons>
@@ -149,7 +149,7 @@ export const CitationsExample = () => (
         <CitationTitle>Linkedin, Edouard Wautier</CitationTitle>
       </Citation>
 
-      <Citation className="s-w-48">
+      <Citation className="s:w-48">
         <CitationImage
           imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
           title="screenshot.png"
@@ -171,7 +171,7 @@ export const CitationsExample = () => (
             <Button
               variant={"ghost"}
               icon={LinkExternal01}
-              className="s-absolute s-right-2 s-top-2"
+              className="s:absolute s:right-2 s:top-2"
             />
           </>
         }

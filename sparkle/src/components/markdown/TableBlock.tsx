@@ -74,14 +74,14 @@ export const TableBlock = memo(
 
     return (
       <ContentBlockWrapper
-        innerClassName="s-relative s-my-2 s-w-full s-border s-border-border dark:s-border-border-night s-rounded-2xl"
+        innerClassName="s:relative s:my-2 s:w-full s:border s:border-border s:rounded-2xl"
         content={tableData}
       >
         <ScrollArea
           scrollContainment="horizontal"
-          className="s-w-full s-rounded-2xl"
+          className="s:w-full s:rounded-2xl"
         >
-          <table className="s-w-full">{children}</table>
+          <table className="s:w-full">{children}</table>
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </ContentBlockWrapper>
@@ -99,9 +99,7 @@ interface TableHeadBlockProps {
 export const TableHeadBlock = memo(
   ({ children }: TableHeadBlockProps) => {
     return (
-      <thead className="s-bg-muted-background s-px-2 s-py-2 dark:s-bg-muted-background-night">
-        {children}
-      </thead>
+      <thead className="s:bg-muted-background s:px-2 s:py-2">{children}</thead>
     );
   },
   (prev, next) => sameNodePosition(prev.node, next.node)
@@ -115,11 +113,7 @@ interface TableBodyBlockProps {
 
 export const TableBodyBlock = memo(
   ({ children }: TableBodyBlockProps) => {
-    return (
-      <tbody className="s-bg-white dark:s-bg-background-night">
-        {children}
-      </tbody>
-    );
+    return <tbody className="s:bg-background">{children}</tbody>;
   },
   (prev, next) => sameNodePosition(prev.node, next.node)
 );
@@ -133,7 +127,7 @@ interface TableHeaderBlockProps {
 export const TableHeaderBlock = memo(
   ({ children }: TableHeaderBlockProps) => {
     return (
-      <th className="s-truncate s-whitespace-nowrap s-break-words s-py-3.5 s-pl-4 s-text-left s-text-xs s-font-semibold s-text-muted-foreground dark:s-text-muted-foreground-night">
+      <th className="s:truncate s:whitespace-nowrap s:break-words s:py-3.5 s:pl-4 s:text-left s:text-xs s:font-semibold s:text-muted-foreground">
         {children}
       </th>
     );
@@ -150,7 +144,7 @@ interface TableDataBlockProps {
 export const TableDataBlock = memo(
   ({ children }: TableDataBlockProps) => {
     return (
-      <td className="s-px-4 s-py-3 s-text-sm s-text-foreground dark:s-text-foreground-night">
+      <td className="s:px-4 s:py-3 s:text-sm s:text-foreground">
         {Array.isArray(children) ? (
           children.map((child: any, i) => {
             if (child === "<br>") {

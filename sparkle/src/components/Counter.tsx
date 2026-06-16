@@ -5,13 +5,13 @@ import * as React from "react";
 export const COUNTER_SIZES = ["xs", "sm", "md"] as const;
 
 const counterVariants = cva(
-  "s-inline-flex s-items-center s-justify-center s-rounded-full",
+  "s:inline-flex s:items-center s:justify-center s:rounded-full",
   {
     variants: {
       size: {
-        xs: "s-h-4 s-min-w-[16px] s-px-0.5 s-text-xs",
-        sm: "s-h-5 s-min-w-[20px] s-px-1 s-heading-xs",
-        md: "s-h-6 s-min-w-[24px] s-px-1.5 s-heading-sm",
+        xs: "s:h-4 s:min-w-[16px] s:px-0.5 s:text-xs",
+        sm: "s:h-5 s:min-w-[20px] s:px-1 s:heading-xs",
+        md: "s:h-6 s:min-w-[24px] s:px-1.5 s:heading-sm",
       },
       variant: {
         primary: "",
@@ -32,56 +32,52 @@ const counterVariants = cva(
       {
         isInButton: false,
         variant: "primary",
-        className:
-          "s-bg-primary dark:s-bg-primary-night s-text-primary-50 dark:s-text-primary-800",
+        className: "s:bg-primary s:text-primary-50",
       },
       {
         isInButton: false,
         variant: ["highlight", "highlight-secondary"],
-        className: "s-bg-highlight s-text-white",
+        className: "s:bg-highlight s:text-white",
       },
       {
         isInButton: false,
         variant: ["warning", "warning-secondary"],
-        className: "s-bg-warning s-text-white",
+        className: "s:bg-warning s:text-white",
       },
       {
         isInButton: false,
         variant: "outline",
-        className: "s-bg-primary-150 s-text-primary-900",
+        className: "s:bg-primary-150 s:text-primary-900",
       },
       {
         isInButton: false,
         variant: ["ghost", "ghost-secondary"],
-        className: "s-text-primary dark:s-text-primary-night",
+        className: "s:text-primary",
       },
       {
         isInButton: true,
         variant: "primary",
-        className:
-          "s-bg-primary-600 dark:s-bg-primary-400 s-text-white dark:s-text-primary-900",
+        className: "s:bg-primary-600 s:text-primary-50",
       },
       {
         isInButton: true,
         variant: ["highlight", "highlight-secondary"],
-        className: "s-bg-highlight-400 s-text-white",
+        className: "s:bg-highlight-400 s:text-white",
       },
       {
         isInButton: true,
         variant: ["warning", "warning-secondary"],
-        className: "s-bg-warning-400 s-text-white",
+        className: "s:bg-warning-400 s:text-white",
       },
       {
         isInButton: true,
         variant: "outline",
-        className:
-          "s-bg-primary-150 dark:s-bg-primary-800 s-text-primary-700 dark:s-text-primary-300",
+        className: "s:bg-primary-150 s:text-primary-700",
       },
       {
         isInButton: true,
         variant: ["ghost", "ghost-secondary"],
-        className:
-          "s-bg-primary-150 dark:s-bg-primary-800 s-text-primary-700 dark:s-text-primary-300",
+        className: "s:bg-primary-150 s:text-primary-700",
       },
     ],
     defaultVariants: {

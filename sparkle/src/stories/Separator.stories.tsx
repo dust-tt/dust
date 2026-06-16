@@ -17,7 +17,7 @@ const meta = {
 
 **Guidelines**
 - Set **decorative={false}** only when the separation is meaningful to screen-reader users; otherwise leave it decorative.
-- Add spacing via margin utilities (e.g. \`s-my-4\`) rather than relying on the line itself.`,
+- Add spacing via margin utilities (e.g. \`s:my-4\`) rather than relying on the line itself.`,
       },
     },
   },
@@ -27,15 +27,15 @@ export default meta;
 
 export const SeparatorExample = () => (
   <div>
-    <div className="s-space-y-1">
-      <h4 className="s-text-sm s-font-medium s-leading-none">Dust Separator</h4>
-      <p className="s-text-sm s-text-muted-foreground">
+    <div className="s:space-y-1">
+      <h4 className="s:text-sm s:font-medium s:leading-none">Dust Separator</h4>
+      <p className="s:text-sm s:text-muted-foreground">
         Lorem Ipsum is simply dummy text of the printing and typesetting
         industry.
       </p>
     </div>
-    <Separator className="s-my-4" />
-    <div className="s-flex s-h-5 s-items-center s-space-x-4 s-text-sm">
+    <Separator className="s:my-4" />
+    <div className="s:flex s:h-5 s:items-center s:space-x-4 s:text-sm">
       <div>Dust</div>
       <Separator orientation="vertical" />
       <div>Separator</div>
@@ -50,7 +50,7 @@ type Story = StoryObj<typeof meta>;
 export const Horizontal: Story = {
   tags: ["ai-generated", "needs-work"],
   render: () => (
-    <div className="s-w-64">
+    <div className="s:w-64">
       <Separator />
     </div>
   ),
@@ -62,7 +62,7 @@ export const Vertical: Story = {
   args: { orientation: "vertical", decorative: false },
   tags: ["ai-generated", "needs-work"],
   render: (args) => (
-    <div className="s-flex s-h-16">
+    <div className="s:flex s:h-16">
       <Separator {...args} />
     </div>
   ),

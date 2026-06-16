@@ -407,7 +407,7 @@ export function InviteEmailButtonWithModal({
                   onChange={setInvitationRole}
                 />
               </div>
-              <div className="text-muted-foreground dark:text-muted-foreground-night">
+              <div className="text-muted-foreground">
                 {ROLES_DATA[invitationRole]["description"]}
               </div>
             </div>

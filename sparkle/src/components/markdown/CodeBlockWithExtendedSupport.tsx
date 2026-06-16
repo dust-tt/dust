@@ -16,7 +16,9 @@ import {
 import { Stars02, Terminal } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import React, { memo, useContext, useEffect, useRef, useState } from "react";
-import {
+import colors from "tailwindcss/colors";
+
+const {
   amber,
   blue,
   gray,
@@ -28,7 +30,7 @@ import {
   sky,
   violet,
   yellow,
-} from "tailwindcss/colors";
+} = colors;
 
 const PRETTY_JSON_PREFERENCE_KEY = "pretty-json-preference";
 
@@ -299,8 +301,8 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
         ref={graphRef}
         className={cn(
           "mermaid",
-          "s-w-full",
-          "s-rounded-2xl s-transition-all s-duration-200"
+          "s:w-full",
+          "s:rounded-2xl s:transition-all s:duration-200"
         )}
       />
     </>
@@ -319,7 +321,7 @@ export function StyledMermaidGraph({
   const validChildrenContent = String(children).trim();
 
   return (
-    <div className={cn("s-relative", className)}>
+    <div className={cn("s:relative", className)}>
       <MermaidGraph chart={validChildrenContent} />
     </div>
   );
@@ -403,7 +405,7 @@ export const CodeBlockWithExtendedSupport = memo(
           getContentToDownload={getContentToDownload}
           actions={
             <Button
-              className="s-font-sans"
+              className="s:font-sans"
               size="xs"
               variant={"outline"}
               label={showMermaid ? "Markdown" : "Mermaid"}
@@ -435,7 +437,7 @@ export const CodeBlockWithExtendedSupport = memo(
           getContentToDownload={getContentToDownload}
           actions={
             <Button
-              className="s-font-sans"
+              className="s:font-sans"
               size="xs"
               variant={"outline"}
               label={showPrettyJson ? "Raw JSON" : "Pretty JSON"}

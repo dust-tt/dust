@@ -78,14 +78,12 @@ const KILL_SWITCH_DEFINITIONS: Record<KillSwitchType, KillSwitchDefinition> = {
 };
 
 const PANEL_HEADING_CLASSES =
-  "flex items-center gap-2.5 text-2xl font-semibold tracking-tight text-foreground dark:text-foreground-night";
-const PANEL_ICON_CLASSES =
-  "h-4 w-4 text-muted-foreground dark:text-muted-foreground-night";
-const PANEL_DESCRIPTION_CLASSES =
-  "text-sm text-muted-foreground dark:text-muted-foreground-night";
+  "flex items-center gap-2.5 text-2xl font-semibold tracking-tight text-foreground";
+const PANEL_ICON_CLASSES = "h-4 w-4 text-muted-foreground";
+const PANEL_DESCRIPTION_CLASSES = "text-sm text-muted-foreground";
 const PANEL_SECTION_CLASSES = cn(
   "mt-6 rounded-2xl border border-border",
-  "bg-background shadow-sm dark:border-border-night dark:bg-background-night"
+  "bg-background shadow-sm"
 );
 
 type SandboxKillRequestKey = string;
@@ -226,22 +224,21 @@ export function KillPage() {
                   key={type}
                   className={cn(
                     "grid gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center",
-                    index > 0 &&
-                      "border-t border-border dark:border-border-night"
+                    index > 0 && "border-t border-border"
                   )}
                 >
                   <div className="space-y-1">
-                    <h3 className="flex items-center gap-3 text-sm font-medium text-foreground dark:text-foreground-night">
-                      <Icon className="h-4 w-4 text-foreground dark:text-foreground-night" />
+                    <h3 className="flex items-center gap-3 text-sm font-medium text-foreground">
+                      <Icon className="h-4 w-4 text-foreground" />
                       <span>{title}</span>
                     </h3>
 
-                    <p className="text-sm leading-6 text-muted-foreground dark:text-muted-foreground-night">
+                    <p className="text-sm leading-6 text-muted-foreground">
                       {description}
                     </p>
 
                     {note && (
-                      <p className="text-xs leading-5 text-muted-foreground dark:text-muted-foreground-night">
+                      <p className="text-xs leading-5 text-muted-foreground">
                         {note}
                       </p>
                     )}
@@ -282,7 +279,7 @@ export function KillPage() {
             <Spinner />
           </div>
         ) : images.length === 0 ? (
-          <div className="mt-6 flex items-center gap-2 rounded-2xl border border-border bg-background p-5 text-sm text-muted-foreground dark:border-border-night dark:bg-background-night dark:text-muted-foreground-night">
+          <div className="mt-6 flex items-center gap-2 rounded-2xl border border-border bg-background p-5 text-sm text-muted-foreground">
             <AlertCircle className="h-4 w-4" />
             <span>No registered sandbox images found.</span>
           </div>
@@ -299,18 +296,15 @@ export function KillPage() {
                   key={olderKey}
                   className={cn(
                     "grid gap-4 p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center",
-                    index > 0 &&
-                      "border-t border-border dark:border-border-night"
+                    index > 0 && "border-t border-border"
                   )}
                 >
                   <div className="space-y-1">
-                    <h3 className="text-sm font-medium text-foreground dark:text-foreground-night">
+                    <h3 className="text-sm font-medium text-foreground">
                       {baseImage}
-                      <span className="text-muted-foreground dark:text-muted-foreground-night">
-                        :{version}
-                      </span>
+                      <span className="text-muted-foreground">:{version}</span>
                     </h3>
-                    <p className="text-xs leading-5 text-muted-foreground dark:text-muted-foreground-night">
+                    <p className="text-xs leading-5 text-muted-foreground">
                       Current registered version.
                     </p>
                   </div>

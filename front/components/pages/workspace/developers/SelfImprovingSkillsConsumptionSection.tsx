@@ -294,14 +294,11 @@ function SelfImprovingSpendChart({
         data={chartData}
         margin={{ top: 10, right: 30, left: 10, bottom: 20 }}
       >
-        <CartesianGrid
-          vertical={false}
-          className="stroke-border dark:stroke-border-night"
-        />
+        <CartesianGrid vertical={false} className="stroke-border" />
         <XAxis
           dataKey="timestamp"
           type="category"
-          className="text-xs text-muted-foreground dark:text-muted-foreground-night"
+          className="text-xs text-muted-foreground"
           tickLine={true}
           axisLine={false}
           tickMargin={8}
@@ -314,7 +311,7 @@ function SelfImprovingSpendChart({
           }
         />
         <YAxis
-          className="text-xs text-muted-foreground dark:text-muted-foreground-night"
+          className="text-xs text-muted-foreground"
           tickLine={false}
           axisLine={false}
           tickMargin={8}

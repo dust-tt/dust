@@ -3,12 +3,10 @@ import { cn } from "@sparkle/lib/utils";
 import React, { useState } from "react";
 
 // Constants for consistent styling
-const VALUE_CLASSES =
-  "s-text-primary-700 dark:s-text-primary-700-night s-pt-1 s-text-sm";
-const EMPTY_CLASSES =
-  "s-text-primary-500 dark:s-text-primary-500-night s-pt-1 s-text-sm s-italic";
+const VALUE_CLASSES = "s:text-primary-700 s:pt-1 s:text-sm";
+const EMPTY_CLASSES = "s:text-primary-500 s:pt-1 s:text-sm s:italic";
 const INDENT_CLASSES =
-  "s-border-structure-200 dark:s-border-structure-200-night s-max-w-full s-border-l s-pl-4 s-ml-4";
+  "s:border-structure-200 s:max-w-full s:border-l s:pl-4 s:ml-4";
 
 // Performance limits to prevent browser crashes.
 // These limits are meant to be very conservative.
@@ -43,7 +41,7 @@ function InlineExpandButton({
       {label}{" "}
       <button
         onClick={onClick}
-        className="s-cursor-pointer s-font-medium s-text-highlight hover:s-underline dark:s-text-highlight-night"
+        className="s:cursor-pointer s:font-medium s:text-highlight s:hover:underline"
       >
         {buttonText}
       </button>
@@ -80,9 +78,9 @@ function KeyValuePair({
           size="xs"
           color={chipColor}
           label={formatKey(keyName)}
-          className="s-mb-2"
+          className="s:mb-2"
         />
-        <div className={cn("s-max-w-full", isRootLevel && "s-ml-4")}>
+        <div className={cn("s:max-w-full", isRootLevel && "s:ml-4")}>
           <JsonValue
             value={value}
             depth={depth + 1}
@@ -98,8 +96,8 @@ function KeyValuePair({
   return (
     <div
       className={cn(
-        "s-flex s-items-start",
-        isRootLevel ? "s-gap-3" : "s-gap-2"
+        "s:flex s:items-start",
+        isRootLevel ? "s:gap-3" : "s:gap-2"
       )}
     >
       <Chip size="xs" color={chipColor} label={formatKey(keyName)} />
@@ -164,7 +162,7 @@ function JsonValue({
     }
 
     return (
-      <div className="s-flex s-items-center s-gap-1">
+      <div className="s:flex s:items-center s:gap-1">
         <InlineExpandButton
           label="Maximum depth reached"
           buttonText="expand"
@@ -193,13 +191,13 @@ function JsonValue({
 
       return (
         <span
-          className={cn(VALUE_CLASSES, "s-whitespace-pre-wrap s-break-normal")}
+          className={cn(VALUE_CLASSES, "s:whitespace-pre-wrap s:break-normal")}
         >
           {isExpanded ? value : value.substring(0, MAX_STRING_LENGTH)}
           {!isExpanded && "…"}{" "}
           <button
             onClick={() => handleToggleExpanded(longStringPath)}
-            className="s-cursor-pointer s-font-medium s-text-highlight hover:s-underline dark:s-text-highlight-night"
+            className="s:cursor-pointer s:font-medium s:text-highlight s:hover:underline"
           >
             {isExpanded
               ? "collapse"
@@ -211,7 +209,7 @@ function JsonValue({
 
     return (
       <span
-        className={cn(VALUE_CLASSES, "s-whitespace-pre-wrap s-break-normal")}
+        className={cn(VALUE_CLASSES, "s:whitespace-pre-wrap s:break-normal")}
       >
         {value}
       </span>
@@ -256,12 +254,12 @@ function JsonValue({
     const hasMore = value.length > MAX_ARRAY_ITEMS && !isExpanded;
 
     return (
-      <div className="s-mt-2">
+      <div className="s:mt-2">
         {value.slice(0, itemsToShow).map((item, index) => (
           <div key={index} className={cn(INDENT_CLASSES)}>
-            <div className="s-flex s-flex-col s-gap-2">
+            <div className="s:flex s:flex-col s:gap-2">
               <Chip size="xs" color="primary" label={`Item ${index + 1}`} />
-              <div className="s-max-w-full">
+              <div className="s:max-w-full">
                 <JsonValue
                   value={item}
                   depth={depth + 1}
@@ -304,7 +302,7 @@ function JsonValue({
     // For nested objects, use a card-like layout with vertical bars.
     if (depth > 0) {
       return (
-        <div className="s-space-y-2">
+        <div className="s:space-y-2">
           {visibleEntries.map(([key, val]) => (
             <div key={key} className={cn(INDENT_CLASSES)}>
               <KeyValuePair
@@ -333,13 +331,13 @@ function JsonValue({
 
     // Root level objects use a table-like layout.
     return (
-      <div className="s-max-w-full s-space-y-3">
+      <div className="s:max-w-full s:space-y-3">
         {visibleEntries.map(([key, val]) => (
           <div
             key={key}
             className={cn(
-              "s-max-w-full s-border-b s-pb-3 last:s-border-0 last:s-pb-0",
-              "s-border-structure-200 dark:s-border-structure-200-night"
+              "s:max-w-full s:border-b s:pb-3 s:last:border-0 s:last:pb-0",
+              "s:border-structure-200"
             )}
           >
             <KeyValuePair
@@ -355,7 +353,7 @@ function JsonValue({
           </div>
         ))}
         {hasMore && (
-          <div className="s-border-structure-200 dark:s-border-structure-200-night s-border-t s-pt-3">
+          <div className="s:border-structure-200 s:border-t s:pt-3">
             <InlineExpandButton
               label={`${entries.length - keysToShow} more properties`}
               buttonText="expand"
@@ -368,12 +366,7 @@ function JsonValue({
   }
 
   return (
-    <span
-      className={cn(
-        "s-text-sm",
-        "s-text-element-700 dark:s-text-element-700-night"
-      )}
-    >
+    <span className={cn("s:text-sm", "s:text-element-700")}>
       {String(value)}
     </span>
   );
@@ -400,13 +393,13 @@ export function PrettyJsonViewer({ data, className }: JsonViewerProps) {
   return (
     <div
       className={cn(
-        "s-max-w-full s-min-w-0 s-overflow-x-auto s-overflow-y-visible",
-        "s-bg-structure-50 dark:s-bg-structure-50-night",
-        "s-rounded-lg s-px-4 s-py-4 s-text-base",
+        "s:max-w-full s:min-w-0 s:overflow-x-auto s:overflow-y-visible",
+        "s:bg-structure-50",
+        "s:rounded-lg s:px-4 s:py-4 s:text-base",
         className
       )}
     >
-      <div className="s-max-w-full s-overflow-x-auto">
+      <div className="s:max-w-full s:overflow-x-auto">
         <JsonValue
           value={data}
           expandedPaths={expandedPaths}

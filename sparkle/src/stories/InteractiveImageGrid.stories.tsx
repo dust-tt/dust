@@ -72,20 +72,20 @@ const images = [
 ];
 
 export const InteractiveImageExample = () => (
-  <div className="s-flex s-flex-col s-gap-8">
-    <div className="s-w-[700px]">
+  <div className="s:flex s:flex-col s:gap-8">
+    <div className="s:w-[700px]">
       <h2>Interactive Image Grid</h2>
       <InteractiveImageGrid images={images} />
     </div>
-    <div className="s-w-[300px]">
+    <div className="s:w-[300px]">
       <h2>Interactive Image Grid with small width</h2>
       <InteractiveImageGrid images={images} />
     </div>
-    <div className="s-w-[700px]">
+    <div className="s:w-[700px]">
       <h2>Interactive Image Grid with 1 image</h2>
       <InteractiveImageGrid images={images.slice(1, 2)} />
     </div>
-    <div className="s-w-[700px]">
+    <div className="s:w-[700px]">
       <h2>Interactive Image Grid with 1 image (loading)</h2>
       <InteractiveImageGrid images={images.slice(0, 1)} />
     </div>
@@ -96,16 +96,16 @@ export const InteractiveImageWithRemove = () => {
   const [removed, setRemoved] = React.useState(false);
 
   return (
-    <div className="s-flex s-flex-col s-gap-8">
+    <div className="s:flex s:flex-col s:gap-8">
       <div>
-        <h2 className="s-mb-2">
+        <h2 className="s:mb-2">
           With onClose callback (hover to see X button, no download button)
         </h2>
         {removed ? (
-          <div className="s-flex s-h-24 s-w-24 s-items-center s-justify-center s-rounded-2xl s-bg-muted s-text-muted-foreground">
+          <div className="s:flex s:h-24 s:w-24 s:items-center s:justify-center s:rounded-2xl s:bg-muted s:text-muted-foreground">
             Removed!
             <button
-              className="s-ml-2 s-text-primary-600 s-underline"
+              className="s:ml-2 s:text-primary-600 s:underline"
               onClick={() => setRemoved(false)}
             >
               Reset
@@ -119,7 +119,7 @@ export const InteractiveImageWithRemove = () => {
         )}
       </div>
       <div>
-        <h2 className="s-mb-2">
+        <h2 className="s:mb-2">
           Without onClose (hover to see download button, no X button)
         </h2>
         <InteractiveImageGrid images={images.slice(1, 2)} />

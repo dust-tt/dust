@@ -143,7 +143,7 @@ function PrunedContextChip() {
           <div className="font-semibold">
             This conversation reached its size limit
           </div>
-          <div className="flex flex-col gap-2 text-justify text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <div className="flex flex-col gap-2 text-justify text-sm text-muted-foreground">
             <p>
               Dust had to trim part of the tool output used to generate this
               message to fit the model&apos;s context window. This usually
@@ -159,7 +159,7 @@ function PrunedContextChip() {
                 href={CONTEXT_WINDOW_DOC_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline hover:text-foreground dark:hover:text-foreground-night"
+                className="underline hover:text-foreground"
               >
                 Learn more
               </a>
@@ -661,7 +661,7 @@ export function AgentMessage({
           await cancelMessage([sId]);
         }}
         icon={Stop}
-        className="text-muted-foreground dark:text-muted-foreground-night"
+        className="text-muted-foreground"
       />
     );
   }
@@ -886,7 +886,7 @@ export function AgentMessage({
           size="xs"
           onClick={handleCopyToClipboard}
           icon={isCopied ? ClipboardCheck : Clipboard}
-          className="text-muted-foreground dark:text-muted-foreground-night"
+          className="text-muted-foreground"
         />
         <DropdownMenu
           onOpenChange={(open) => {
@@ -901,7 +901,7 @@ export function AgentMessage({
               variant="outline"
               size="xs"
               icon={DotsHorizontal}
-              className="text-muted-foreground dark:text-muted-foreground-night"
+              className="text-muted-foreground"
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -1060,7 +1060,7 @@ export function AgentMessage({
           className="flex flex-col gap-5"
           defaultCollapsed={!isLastMessage}
           footer={footerButtons}
-          buttonClassName="text-muted-foreground dark:text-muted-foreground-night"
+          buttonClassName="text-muted-foreground"
         >
           {messageContent}
         </TruncatedContent>
@@ -1450,13 +1450,11 @@ function AgentMessageContent({
          * including Retry), so we only show the "Generation stopped." note here.
          */}
         {agentMessage.status === "cancelled" && (
-          <div className="text-sm text-faint dark:text-faint-night">
-            Generation stopped.
-          </div>
+          <div className="text-sm text-faint">Generation stopped.</div>
         )}
         {agentMessage.status === "interrupted" && (
           <div className="flex flex-col gap-2">
-            <div className="text-sm text-faint dark:text-faint-night">
+            <div className="text-sm text-faint">
               Skipped. Running your next message.
             </div>
             <div>
@@ -1466,7 +1464,7 @@ function AgentMessageContent({
                     variant="outline"
                     size="xs"
                     icon={DotsHorizontal}
-                    className="text-muted-foreground dark:text-muted-foreground-night"
+                    className="text-muted-foreground"
                   />
                 }
                 items={[

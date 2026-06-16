@@ -83,7 +83,7 @@ export function UsageSettingsCard({
 
   return (
     <Page.Vertical gap="sm" align="stretch">
-      <span className="heading-base text-foreground dark:text-foreground-night">
+      <span className="heading-base text-foreground">
         Spending policies
       </span>
       <SettingsList>

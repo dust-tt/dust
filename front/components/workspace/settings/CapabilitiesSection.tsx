@@ -29,7 +29,7 @@ export function CapabilitiesSection({
     <Page.Vertical align="stretch" gap="md">
       <Page.H variant="h4">Capabilities</Page.H>
       <ContextItem.List>
-        <div className="h-full border-b border-border dark:border-border-night" />
+        <div className="h-full border-b border-border" />
         <InteractiveContentSharingToggle owner={owner} />
         {!subscription.plan.isByok && (
           <VoiceTranscriptionToggle owner={owner} />

@@ -78,7 +78,7 @@ export function SelfImprovingSkillsPage() {
                 href="https://docs.dust.tt/docs/self-improving-skills"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-highlight dark:text-highlight-night underline"
+                className="text-highlight underline"
               >
                 Learn more
               </a>

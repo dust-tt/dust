@@ -149,12 +149,12 @@ export function NetworkSection() {
 
     return (
       <Page.Vertical align="stretch" gap="lg">
-        <div className="flex items-center justify-between gap-4 border-y border-border py-4 dark:border-border-night">
+        <div className="flex items-center justify-between gap-4 border-y border-border py-4">
           <div className="flex min-w-0 flex-col">
-            <div className="heading-sm text-foreground dark:text-foreground-night">
+            <div className="heading-sm text-foreground">
               Agent-requested domains
             </div>
-            <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <div className="text-sm text-muted-foreground">
               Allow agents using the Computer to ask for additional domains, one
               approval per domain, during the conversation. When disabled,
               agents cannot request new domains and should only rely on the
@@ -210,12 +210,12 @@ export function NetworkSection() {
             No workspace-specific domains are currently allowed.
           </ContentMessage>
         ) : (
-          <div className="flex w-full flex-col divide-y divide-separator dark:divide-separator-night">
+          <div className="flex w-full flex-col divide-y divide-separator">
             {policy.allowedDomains.map((domain) => (
               <div key={domain} className="flex items-center gap-3 py-3">
                 <pre
                   title={domain}
-                  className="min-w-0 grow overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2 text-sm text-foreground dark:bg-muted-background-night dark:text-foreground-night"
+                  className="min-w-0 grow overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2 text-sm text-foreground"
                 >
                   {domain}
                 </pre>

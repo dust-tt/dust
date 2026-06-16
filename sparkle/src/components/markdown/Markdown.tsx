@@ -59,7 +59,7 @@ export const Markdown: React.FC<MarkdownProps> = ({
   content,
   isStreaming = false,
   streamingState,
-  textColor = "s-text-foreground dark:s-text-foreground-night",
+  textColor = "s:text-foreground",
   forcedTextSize,
   isLastMessage = false,
   compactSpacing = false,
@@ -156,7 +156,7 @@ export const Markdown: React.FC<MarkdownProps> = ({
 
   try {
     return (
-      <div className="s-w-full">
+      <div className="s:w-full">
         <MarkdownStyleContext.Provider value={styleContextValue}>
           <MarkdownContentContext.Provider value={contentContextValue}>
             <ReactMarkdown
@@ -173,7 +173,7 @@ export const Markdown: React.FC<MarkdownProps> = ({
     );
   } catch (_error) {
     return (
-      <div className="s-w-full">
+      <div className="s:w-full">
         <Chip color="warning">
           There was an error parsing this markdown content
         </Chip>

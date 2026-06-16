@@ -90,7 +90,7 @@ export const ExampleInputWithSave: Story = {
 
 export function InputWithSaveExamples() {
   return (
-    <div className="s-flex s-max-w-md s-flex-col s-gap-4">
+    <div className="s:flex s:max-w-md s:flex-col s:gap-4">
       <ControlledInputWithSave initialValue="12,890" unit="Credits" />
       <ControlledInputWithSave initialValue="49" unit="$" />
       <ControlledInputWithSave

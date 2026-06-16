@@ -29,7 +29,7 @@ export function FilterChips<T extends string>({
   );
 
   return (
-    <div className="s-flex s-flex-row s-flex-wrap s-gap-2">
+    <div className="s:flex s:flex-row s:flex-wrap s:gap-2">
       {filters.map((filterName) => (
         <Button
           label={filterName}

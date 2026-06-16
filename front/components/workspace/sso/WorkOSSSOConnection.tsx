@@ -63,7 +63,7 @@ export default function WorkOSSSOConnection({
             {isSSOConfigured && (
               <>
                 <Chip label="Enabled" color="success" size="xs" />
-                <span className="text-base font-normal text-muted-foreground dark:text-muted-foreground-night">
+                <span className="text-base font-normal text-muted-foreground">
                   {ssoStatus.connection?.type}
                 </span>
               </>

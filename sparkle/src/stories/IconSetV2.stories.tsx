@@ -49,12 +49,9 @@ const renderIconGrid = () => (
           <Icon
             visual={IconComponent}
             size="md"
-            className="s-text-foreground dark:s-text-foreground-night"
+            className="s:text-foreground"
           />
-          <div
-            style={itemStyle}
-            className="s-text-sm s-text-foreground dark:s-text-foreground-night"
-          >
+          <div style={itemStyle} className="s:text-sm s:text-foreground">
             {iconName}
           </div>
         </div>

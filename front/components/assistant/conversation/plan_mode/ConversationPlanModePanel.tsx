@@ -36,7 +36,7 @@ export function ConversationPlanModePanel({
       <AppLayoutTitle>
         <div className="flex h-full items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
-            <span className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
+            <span className="truncate text-sm font-semibold text-foreground">
               Plan: {title}
             </span>
           </div>
@@ -54,7 +54,7 @@ export function ConversationPlanModePanel({
             <Spinner />
           </div>
         ) : !content ? (
-          <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <div className="text-sm text-muted-foreground">
             No active plan for this conversation.
           </div>
         ) : (

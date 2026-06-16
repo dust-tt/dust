@@ -38,7 +38,7 @@ export const Basic: Story = {
     shortcut: "Cmd+K",
   },
   render: () => (
-    <div className="s-flex s-flex-col s-gap-2">
+    <div className="s:flex s:flex-col s:gap-2">
       <KeyboardShortcut shortcut="Shift+Cmd+P" />
       <KeyboardShortcut shortcut="Ctrl+Alt+Del" />
       <KeyboardShortcut shortcut="Cmd+K" />
@@ -56,7 +56,7 @@ export const InDropdown: Story = {
       <DropdownMenuTrigger asChild>
         <Button label="Open Menu" variant="outline" size="sm" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="s-w-56">
+      <DropdownMenuContent className="s:w-56">
         <DropdownMenuItem
           label="Quick Open"
           endComponent={<DropdownMenuShortcut shortcut="Cmd+K" />}

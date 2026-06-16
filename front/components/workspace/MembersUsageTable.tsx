@@ -302,7 +302,7 @@ export function AwuUsageBar({
 
   return (
     <div className="flex w-full flex-col gap-1">
-      <div className="flex justify-between text-xs tabular-nums text-foreground dark:text-foreground-night">
+      <div className="flex justify-between text-xs tabular-nums text-foreground">
         <span>
           {isFreeWithBalance
             ? formatCredits(lifetimeConsumed! + overage)
@@ -349,7 +349,7 @@ const seatTypeColumn: ColumnDef<RowData, string> = {
     const scheduledSeatChangeAt = info.row.original.scheduledSeatChangeAt;
     return (
       <DataTable.CellContent>
-        <span className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
+        <span className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
           <SeatTypeIcon seatType={seatType} />
           {seatType ? seatTypeDisplayName(seatType) : seatType}
           {scheduledSeatType && (

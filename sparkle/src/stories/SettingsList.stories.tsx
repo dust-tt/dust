@@ -31,7 +31,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   render: () => (
-    <div className="s-w-full s-max-w-xl">
+    <div className="s:w-full s:max-w-xl">
       <SettingsList>
         <SettingsList.Row
           title="Upgrade request"
@@ -51,7 +51,7 @@ export const Default: Story = {
               type="text"
               inputMode="numeric"
               defaultValue="1000"
-              className="s-w-28"
+              className="s:w-28"
             />
           }
         />
@@ -64,7 +64,7 @@ export const Default: Story = {
 // either, and the layout should remain coherent when mixed.
 export const OptionalDescriptionAndAction: Story = {
   render: () => (
-    <div className="s-w-full s-max-w-xl">
+    <div className="s:w-full s:max-w-xl">
       <SettingsList>
         <SettingsList.Row
           title="Title and action only"

@@ -92,32 +92,27 @@ const STATUS_CONFIG: Record<
   paymentFailed: {
     chipColor: "info",
     chipLabel: "Past Due",
-    cardClass:
-      "border-info-200 bg-info-50 dark:border-info-200-night dark:bg-info-50-night",
+    cardClass: "border-info-200 bg-info-50",
   },
   trialing: {
     chipColor: "blue",
     chipLabel: "Trialing",
-    cardClass:
-      "border-blue-200 bg-blue-50 dark:border-blue-200-night dark:bg-blue-50-night",
+    cardClass: "border-highlight-200 bg-highlight-50",
   },
   ended: {
     chipColor: "warning",
     chipLabel: "Ended",
-    cardClass:
-      "border-warning-200 bg-warning-50 dark:border-warning-200-night dark:bg-warning-50-night",
+    cardClass: "border-warning-200 bg-warning-50",
   },
   active: {
     chipColor: "success",
     chipLabel: "Active",
-    cardClass:
-      "border-success-200 bg-success-50 dark:border-success-200-night dark:bg-success-50-night",
+    cardClass: "border-success-200 bg-success-50",
   },
   inconsistent: {
     chipColor: "rose",
     chipLabel: "Inconsistent",
-    cardClass:
-      "border-rose-200 bg-rose-50 dark:border-rose-200-night dark:bg-rose-50-night",
+    cardClass: "border-warning-200 bg-warning-50",
   },
 };
 
@@ -419,7 +414,7 @@ export function ActiveSubscriptionTable({
       </div>
       {pendingSubscription && (
         <div className="flex justify-between gap-3">
-          <div className="flex flex-grow flex-col rounded-lg border border-blue-200 bg-blue-50 p-4 pb-2 dark:border-blue-200-night dark:bg-blue-50-night">
+          <div className="flex flex-grow flex-col rounded-lg border border-highlight-200 bg-highlight-50 p-4 pb-2">
             <div className="flex items-center justify-between gap-2 pb-4">
               <div className="flex items-center gap-2">
                 <h2 className="text-md font-bold">Pending Subscription</h2>
@@ -427,7 +422,7 @@ export function ActiveSubscriptionTable({
               </div>
               <CancelPendingSubscriptionButton owner={owner} />
             </div>
-            <p className="pb-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
+            <p className="pb-2 text-xs text-muted-foreground">
               Provisioned in DB. The `contract.start` Metronome webhook will
               flip it to active and end the current subscription.
             </p>

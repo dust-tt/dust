@@ -451,21 +451,18 @@ export const InputBar = React.memo(function InputBar({
               )
             : classNames(
                 "w-full rounded-2xl",
-                "bg-muted-background dark:bg-muted-background-night",
+                "bg-muted-background",
                 "border",
-                "border-border-dark dark:border-border-dark/10",
+                "border-border-dark",
                 "md:border-border-dark/50 md:has-[.tiptap:focus]:border-border-dark",
-                "dark:has-[.tiptap:focus]:border-border-dark-night md:has-[.tiptap:focus]:border-border-dark",
+                "md:has-[.tiptap:focus]:border-border-dark",
                 isFloating
                   ? classNames(
-                      "has-[.tiptap:focus]:ring-1 dark:has-[.tiptap:focus]:ring-1",
-                      "dark:has-[.tiptap:focus]:ring-highlight/30-night has-[.tiptap:focus]:ring-highlight/30",
-                      "md:has-[.tiptap:focus]:ring-2 dark:md:has-[.tiptap:focus]:ring-2"
+                      "has-[.tiptap:focus]:ring-1",
+                      "has-[.tiptap:focus]:ring-highlight/30",
+                      "md:has-[.tiptap:focus]:ring-2"
                     )
-                  : classNames(
-                      "has-[.tiptap:focus]:border-highlight-300",
-                      "dark:has-[.tiptap:focus]:border-highlight-300-night"
-                    )
+                  : classNames("has-[.tiptap:focus]:border-highlight-300")
               )
         )}
       >

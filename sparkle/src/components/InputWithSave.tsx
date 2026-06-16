@@ -97,18 +97,18 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
     return (
       <div
         className={cn(
-          "s-flex s-h-9 s-w-full s-items-center s-gap-1.5 s-rounded-xl s-border s-py-1.5 s-pl-3 s-text-sm",
-          showSaveButton ? "s-pr-1.5" : "s-pr-3",
-          "s-bg-background dark:s-bg-background-night",
-          "s-border-border dark:s-border-border-night",
-          "s-ring-inset s-ring-highlight/0 dark:s-ring-highlight-night/0",
+          "s:flex s:h-9 s:w-full s:items-center s:gap-1.5 s:rounded-xl s:border s:py-1.5 s:pl-3 s:text-sm",
+          showSaveButton ? "s:pr-1.5" : "s:pr-3",
+          "s:bg-background",
+          "s:border-border",
+          "s:ring-inset s:ring-highlight/0",
           disabled
-            ? "s-cursor-not-allowed"
+            ? "s:cursor-not-allowed"
             : cn(
-                "s-cursor-text",
-                "focus-within:s-border-border-focus dark:focus-within:s-border-border-focus-night",
-                "focus-within:s-ring-2",
-                "focus-within:s-ring-highlight/20 dark:focus-within:s-ring-highlight/50"
+                "s:cursor-text",
+                "focus-within:s:border-border-focus",
+                "focus-within:s:ring-2",
+                "focus-within:s:ring-highlight/20"
               ),
           className
         )}
@@ -117,15 +117,13 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
         <input
           ref={inputRef}
           className={cn(
-            "s-h-full s-w-full s-min-w-0 s-flex-1 s-border-0 s-bg-transparent s-p-0 s-text-right",
+            "s:h-full s:w-full s:min-w-0 s:flex-1 s:border-0 s:bg-transparent s:p-0 s:text-right",
             // The container carries the focus styles (via focus-within); the
             // inner input must not render its own outline or ring.
-            "s-outline-none focus:s-outline-none focus-visible:s-outline-none",
-            "s-ring-0 focus:s-ring-0 focus-visible:s-ring-0 s-shadow-none",
-            "dark:s-text-primary-50",
-            "placeholder:s-text-muted-foreground dark:placeholder:s-text-muted-foreground-night",
-            disabled &&
-              "s-cursor-not-allowed s-text-muted-foreground dark:s-text-muted-foreground-night"
+            "s:outline-hidden focus:s:outline-hidden focus-visible:s:outline-hidden",
+            "s:ring-0 focus:s:ring-0 focus-visible:s:ring-0 s:shadow-none",
+            "placeholder:s:text-muted-foreground",
+            disabled && "s:cursor-not-allowed s:text-muted-foreground"
           )}
           data-1p-ignore
           value={
@@ -148,9 +146,7 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
           {...props}
         />
         {unit && (
-          <span className="s-shrink-0 s-text-muted-foreground dark:s-text-muted-foreground-night">
-            {unit}
-          </span>
+          <span className="s:shrink-0 s:text-muted-foreground">{unit}</span>
         )}
         {showSaveButton && (
           <Button

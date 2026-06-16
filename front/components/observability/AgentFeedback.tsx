@@ -23,9 +23,7 @@ const FeedbackDistributionChart = safeLazy(
 );
 
 function ChartFallback() {
-  return (
-    <div className="h-64 animate-pulse rounded-lg bg-muted-background dark:bg-muted-background-night" />
-  );
+  return <div className="h-64 animate-pulse rounded-lg bg-muted-background" />;
 }
 
 interface AgentFeedbackProps {
@@ -62,11 +60,11 @@ export function AgentFeedback({
               {allowReactions && agentAnalytics?.feedbacks ? (
                 <>
                   <div className="flex flex-row items-center">
-                    <ThumbsUp className="w-7 pr-2 text-gray-400 dark:text-muted-foreground-night" />
+                    <ThumbsUp className="w-7 pr-2 text-primary-400" />
                     <div>{agentAnalytics.feedbacks.positiveFeedbacks}</div>
                   </div>
                   <div className="flex flex-row items-center">
-                    <ThumbsDown className="w-7 pr-2 text-gray-400 dark:text-muted-foreground-night" />
+                    <ThumbsDown className="w-7 pr-2 text-primary-400" />
                     <div>{agentAnalytics.feedbacks.negativeFeedbacks}</div>
                   </div>
                 </>

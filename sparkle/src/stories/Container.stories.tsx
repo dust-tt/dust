@@ -15,7 +15,7 @@ const meta = {
 
 **Guidelines**
 - Use **fixed** for reading-width content (forms, articles) and full width for dashboards or tables.
-- Since it owns the scroll region, give it a bounded height (e.g. \`s-h-full\`) rather than nesting another **ScrollArea**.`,
+- Since it owns the scroll region, give it a bounded height (e.g. \`s:h-full\`) rather than nesting another **ScrollArea**.`,
       },
     },
   },
@@ -25,9 +25,9 @@ export default meta;
 
 export const AppContainer = () => {
   return (
-    <div className="s-h-[700px] s-w-full">
-      <Container className="s-h-full s-border s-border-pink-300" fixed>
-        <div className="s-space-y-4 s-text-base s-leading-relaxed s-text-gray-800">
+    <div className="s:h-[700px] s:w-full">
+      <Container className="s:h-full s:border s:border-pink-300" fixed>
+        <div className="s:space-y-4 s:text-base s:leading-relaxed s:text-gray-800">
           <div>
             Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum
             ultricies dictum sapien, sed imperdiet dui consequat et. Nullam
@@ -101,9 +101,9 @@ export const AppContainer = () => {
 
 export const FixedExample = () => {
   return (
-    <div className="s-h-[700px] s-w-full">
-      <Container className="s-h-full s-border s-border-pink-300" fixed>
-        <div className="s-space-y-4 s-text-base s-leading-relaxed s-text-gray-800">
+    <div className="s:h-[700px] s:w-full">
+      <Container className="s:h-full s:border s:border-pink-300" fixed>
+        <div className="s:space-y-4 s:text-base s:leading-relaxed s:text-gray-800">
           <div>
             Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum
             ultricies dictum sapien, sed imperdiet dui consequat et. Nullam
@@ -177,9 +177,9 @@ export const FixedExample = () => {
 
 export const FluidExample = () => {
   return (
-    <div className="s-h-[700px] s-w-full">
-      <Container className="s-h-full s-border s-border-pink-300">
-        <div className="s-space-y-4 s-text-base s-leading-relaxed s-text-gray-800">
+    <div className="s:h-[700px] s:w-full">
+      <Container className="s:h-full s:border s:border-pink-300">
+        <div className="s:space-y-4 s:text-base s:leading-relaxed s:text-gray-800">
           <div>
             Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vestibulum
             ultricies dictum sapien, sed imperdiet dui consequat et. Nullam

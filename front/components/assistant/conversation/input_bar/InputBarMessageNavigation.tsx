@@ -104,7 +104,7 @@ export function InputBarMessageNavigation({
         <>
           {stopButton}
           {showNavigationArrows && variant !== "compact" && (
-            <div className="h-4 w-px bg-border dark:bg-border-night" />
+            <div className="h-4 w-px bg-border" />
           )}
         </>
       )}

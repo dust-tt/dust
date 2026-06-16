@@ -20,13 +20,10 @@ export function InstructionBlock({ tagName, children }: InstructionBlockProps) {
       <div className="flex items-start gap-1">
         {/* Static chevron - matches editor but non-interactive */}
         <div className="mt-[3px] p-0.5">
-          <ChevronDown className="text-element-600 dark:text-element-600-night h-4 w-4" />
+          <ChevronDown className="text-primary-600 h-4 w-4" />
         </div>
         <div className="mt-0.5 w-full">
-          <Chip
-            size="mini"
-            className="bg-gray-100 transition-colors dark:bg-gray-800"
-          >
+          <Chip size="mini" className="bg-primary-100 transition-colors">
             {`<${displayType}>`}
           </Chip>
           <div
@@ -41,10 +38,7 @@ export function InstructionBlock({ tagName, children }: InstructionBlockProps) {
           >
             {children}
           </div>
-          <Chip
-            size="mini"
-            className="bg-gray-100 transition-colors dark:bg-gray-800"
-          >
+          <Chip size="mini" className="bg-primary-100 transition-colors">
             {`</${displayType}>`}
           </Chip>
         </div>

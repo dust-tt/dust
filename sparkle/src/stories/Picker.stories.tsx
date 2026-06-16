@@ -117,9 +117,9 @@ const ColorPickerExample = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="s-mt-14 s-flex s-flex-col s-items-center s-gap-6">
-      <div className="s-w-full s-max-w-2xl">
-        <h3 className="s-mb-4 s-text-lg s-font-medium">Color Picker</h3>
+    <div className="s:mt-14 s:flex s:flex-col s:items-center s:gap-6">
+      <div className="s:w-full s:max-w-2xl">
+        <h3 className="s:mb-4 s:text-lg s:font-medium">Color Picker</h3>
         <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -131,7 +131,7 @@ const ColorPickerExample = () => {
               isSelect
             />
           </PopoverTrigger>
-          <PopoverContent className="s-w-fit">
+          <PopoverContent className="s:w-fit">
             <ColorPicker
               colors={colors}
               selectedColor={selectedColor}
@@ -153,9 +153,9 @@ const IconPickerExample = () => {
   const SelectedIcon = ActionIcons[selectedIcon as keyof typeof ActionIcons];
 
   return (
-    <div className="s-mt-14 s-flex s-flex-col s-items-center s-gap-6">
-      <div className="s-w-full s-max-w-2xl">
-        <h3 className="s-mb-4 s-text-lg s-font-medium">Icon Picker</h3>
+    <div className="s:mt-14 s:flex s:flex-col s:items-center s:gap-6">
+      <div className="s:w-full s:max-w-2xl">
+        <h3 className="s:mb-4 s:text-lg s:font-medium">Icon Picker</h3>
         <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
           <PopoverTrigger asChild>
             <Button
@@ -166,7 +166,7 @@ const IconPickerExample = () => {
               isSelect
             />
           </PopoverTrigger>
-          <PopoverContent className="s-w-fit s-p-0">
+          <PopoverContent className="s:w-fit s:p-0">
             <IconPicker
               icons={ActionIcons}
               selectedIcon={selectedIcon}
@@ -186,9 +186,9 @@ const EmojiPickerExample = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="s-mt-14 s-flex s-flex-col s-items-center s-gap-6">
-      <div className="s-w-full s-max-w-2xl">
-        <h3 className="s-mb-4 s-text-lg s-font-medium">Emoji Picker</h3>
+    <div className="s:mt-14 s:flex s:flex-col s:items-center s:gap-6">
+      <div className="s:w-full s:max-w-2xl">
+        <h3 className="s:mb-4 s:text-lg s:font-medium">Emoji Picker</h3>
         <PopoverRoot open={isOpen} onOpenChange={setIsOpen}>
           <PopoverTrigger asChild>
             <Button

@@ -136,9 +136,7 @@ export function SkillBuilderUserFacingDescriptionSection() {
             />
           </div>
           {errorMessage && (
-            <div className="dark:text-warning-night mt-1 text-xs text-warning">
-              {errorMessage}
-            </div>
+            <div className="mt-1 text-xs text-warning">{errorMessage}</div>
           )}
         </>
       )}

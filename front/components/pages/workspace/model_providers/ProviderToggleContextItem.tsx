@@ -39,9 +39,7 @@ export function ProviderToggleContextItem({
       }
     >
       <ContextItem.Description>
-        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          {description}
-        </span>
+        <span className="text-sm text-muted-foreground">{description}</span>
       </ContextItem.Description>
     </ContextItem>
   );

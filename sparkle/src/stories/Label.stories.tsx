@@ -32,7 +32,7 @@ export const LabelDemo = () => {
   };
   return (
     <div>
-      <div className="s-flex s-items-center s-space-x-2">
+      <div className="s:flex s:items-center s:space-x-2">
         <Checkbox onChange={handleChange} />
         <Label htmlFor="terms">Accept terms and conditions</Label>
       </div>

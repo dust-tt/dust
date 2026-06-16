@@ -682,10 +682,10 @@ export function UsagePage() {
             {!isAwuPoolSummaryLoading && !isAwuPoolSummaryError && (
               <>
                 <div className="flex items-baseline gap-1">
-                  <span className="heading-mono-4xl text-foreground dark:text-foreground-night">
+                  <span className="heading-mono-4xl text-foreground">
                     {formatCredits(totalConsumedCredits)}
                   </span>
-                  <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                  <span className="copy-sm text-muted-foreground">
                     /{formatCredits(initialTotalCredits)}
                   </span>
                 </div>
@@ -701,19 +701,19 @@ export function UsagePage() {
                 )}
                 <div className="flex items-center gap-2">
                   {isReadOnly ? (
-                    <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                    <span className="copy-sm text-muted-foreground">
                       {formatCredits(periodSpendCredits)} credits spent this
                       period
                     </span>
                   ) : (
                     <>
                       {overageCredits !== null && overageCredits > 0 && (
-                        <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                        <span className="copy-sm text-muted-foreground">
                           {formatCredits(overageCredits)} overage credits
                         </span>
                       )}
                       {isEnterprise && (
-                        <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
+                        <span className="copy-sm text-muted-foreground">
                           Contact your Dust sales representative to buy credits
                         </span>
                       )}

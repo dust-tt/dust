@@ -150,10 +150,10 @@ export function SkillBuilderSuggestionsPanel({
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-col gap-1 px-4 pb-3 pt-4">
-        <h2 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
+        <h2 className="heading-lg font-semibold text-foreground">
           Suggestions
         </h2>
-        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <p className="text-sm text-muted-foreground">
           Dust continuously analyses conversations using this skill to suggest
           improvements.
         </p>
@@ -167,8 +167,8 @@ export function SkillBuilderSuggestionsPanel({
             </div>
           ) : suggestions.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-12 text-center">
-              <Lightbulb04 className="text-muted-foreground dark:text-muted-foreground-night" />
-              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              <Lightbulb04 className="text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
                 No pending suggestions.
               </p>
             </div>

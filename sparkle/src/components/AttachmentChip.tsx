@@ -6,10 +6,9 @@ import { DoubleIcon, type DoubleIconProps, Icon, type IconProps } from "./Icon";
 import type { LinkWrapperProps } from "./LinkWrapper";
 
 const attachmentChipOverrides = cn(
-  "s-rounded-lg s-px-2 s-py-1 s-heading-sm s-gap-1.5",
-  "s-bg-background s-text-foreground s-max-w-44",
-  "dark:s-bg-background-night dark:s-text-foreground-night",
-  "s-align-middle"
+  "s:rounded-lg s:px-2 s:py-1 s:heading-sm s:gap-1.5",
+  "s:bg-background s:text-foreground s:max-w-44",
+  "s:align-middle"
 );
 
 export type AttachmentChipIconProps = IconProps;
@@ -58,7 +57,7 @@ export function AttachmentChip({
 }: AttachmentChipProps) {
   const chipClassName = cn(attachmentChipOverrides, className);
   const iconElement = (icon || doubleIcon) && (
-    <div className="s-shrink-0">
+    <div className="s:shrink-0">
       {doubleIcon ? <DoubleIcon {...doubleIcon} /> : <Icon {...icon} />}
     </div>
   );

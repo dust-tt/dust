@@ -84,7 +84,7 @@ function PodPinnedBannerControls({
         "group-hover/banner:opacity-100 group-focus-within/banner:opacity-100"
       )}
     >
-      <div className="pointer-events-auto flex items-center gap-0.5 rounded-lg border border-border/60 bg-background/95 p-0.5 shadow-sm backdrop-blur-sm dark:border-border-night/60 dark:bg-background-night/95">
+      <div className="pointer-events-auto flex items-center gap-0.5 rounded-lg border border-border/60 bg-background/95 p-0.5 shadow-sm backdrop-blur-sm">
         <Button
           icon={EyeOff}
           variant="ghost"
@@ -125,20 +125,14 @@ function PodPinnedBannerCollapsedAffordance({
   onOpenFullscreen,
 }: PodPinnedBannerCollapsedAffordanceProps) {
   return (
-    <div className="mb-2 flex min-w-0 items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+    <div className="mb-2 flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
       <Pin02 className="h-3.5 w-3.5 shrink-0" />
       <span className="shrink-0">Frame</span>
-      <span
-        aria-hidden
-        className="shrink-0 text-muted-foreground/50 dark:text-muted-foreground-night/50"
-      >
+      <span aria-hidden className="shrink-0 text-muted-foreground/50">
         ·
       </span>
       <span className="min-w-0 truncate">{fileName}</span>
-      <span
-        aria-hidden
-        className="shrink-0 text-muted-foreground/50 dark:text-muted-foreground-night/50"
-      >
+      <span aria-hidden className="shrink-0 text-muted-foreground/50">
         ·
       </span>
       <Button label="Show" variant="ghost" size="xs" onClick={onShow} />
@@ -258,7 +252,7 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
   if (isPodFilesLoading || (fileId && !fileContent)) {
     return (
       <div
-        className="mb-4 flex h-16 items-center justify-center rounded-xl bg-muted-background dark:bg-muted-background-night"
+        className="mb-4 flex h-16 items-center justify-center rounded-xl bg-muted-background"
         style={{ height: BANNER_HEIGHT_PX }}
       />
     );
@@ -287,7 +281,7 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
     isFullscreen &&
     typeof document !== "undefined" &&
     createPortal(
-      <div className="group/banner fixed inset-0 z-50 bg-background dark:bg-background-night">
+      <div className="group/banner fixed inset-0 z-50 bg-background">
         <PodPinnedBannerControls
           {...controlsProps}
           isFullscreen
@@ -318,7 +312,7 @@ export function PodPinnedBanner({ owner, podInfo }: PodPinnedBannerProps) {
   return (
     <>
       <div
-        className="group/banner relative mb-4 overflow-hidden rounded-xl bg-background ring-1 ring-border/60 dark:bg-background-night dark:ring-border-night/60"
+        className="group/banner relative mb-4 overflow-hidden rounded-xl bg-background ring-1 ring-border/60"
         style={{ height: BANNER_HEIGHT_PX }}
       >
         <PodPinnedBannerControls {...controlsProps} />
