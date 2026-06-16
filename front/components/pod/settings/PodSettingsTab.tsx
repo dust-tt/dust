@@ -92,7 +92,7 @@ export function PodSettingsTab({
         const confirmed = await confirm({
           title: "Warning",
           message:
-            "@dust ensures the best experience for users. Changing the default agent may reduce your experience. Are you sure you want to switch to another default agent?",
+            "@dust is designed to give your users the best experience by default. A custom default agent may not handle every request as reliably. Do you want to set it as the default anyway?",
           validateVariant: "warning",
           validateLabel: "Yes",
           cancelLabel: "No",
