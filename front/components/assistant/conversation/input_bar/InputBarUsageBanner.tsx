@@ -10,15 +10,39 @@ interface InputBarUsageBannerProps {
 
 export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
   const { isAdmin } = useAuth();
-  const { awuStatus, canRequestUpgrade, hasPendingUpgradeRequest } =
+  const { awuStatus, canRequestUpgrade, hasPendingUpgradeRequest, noSeat } =
     useWorkspaceUsageStatus({
       owner,
     });
 
-  const showAwuBanner = awuStatus !== "normal";
   const showUpgradeCta = canRequestUpgrade || isAdmin;
 
-  if (!showAwuBanner) {
+  if (noSeat) {
+    return (
+      <div
+        className={cn(
+          "mb-2 flex w-full items-center gap-2 rounded-2xl border px-4 py-3",
+          "border-warning-200 bg-warning-100",
+          "dark:border-warning-200-night dark:bg-warning-100-night"
+        )}
+      >
+        <span className="copy-sm grow truncate text-warning-900 dark:text-warning-900-night">
+          You don&apos;t have a seat in this workspace.
+        </span>
+        {showUpgradeCta && (
+          <div className="shrink-0">
+            <UsageUpgradeButton
+              owner={owner}
+              hasPendingUpgradeRequest={hasPendingUpgradeRequest}
+              isAdmin={isAdmin}
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (awuStatus === "normal") {
     return null;
   }
 

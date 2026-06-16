@@ -208,12 +208,8 @@ interface WorkspaceUsageStatusBannerProps {
 function WorkspaceUsageStatusBanner({
   owner,
 }: WorkspaceUsageStatusBannerProps) {
-  const {
-    poolCreditState,
-    programmaticCreditStatus,
-    balanceThresholdReached,
-    noSeat,
-  } = useWorkspaceUsageStatus({ owner });
+  const { poolCreditState, programmaticCreditStatus, balanceThresholdReached } =
+    useWorkspaceUsageStatus({ owner });
 
   // The low/critical pool states are internal throttling signals and are not
   // surfaced. Admins are alerted when the pool is fully depleted (agents
@@ -258,17 +254,6 @@ function WorkspaceUsageStatusBanner({
   );
 
   const banner = ((): StatusBannerProps | null => {
-    // A seatless member cannot run agents at all, so this takes precedence over
-    // every credit-related banner.
-    if (noSeat) {
-      return {
-        variant: "danger",
-        title: "You don't have a seat in this workspace",
-        description:
-          "You can no longer run agents. Contact your admin to be assigned a seat.",
-      };
-    }
-
     if (showPoolBanner) {
       return {
         variant: isPoolDepleted ? "danger" : "warning",

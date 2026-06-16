@@ -73,7 +73,7 @@ app.get(
 
     const { canRequestUpgrade, hasPendingUpgradeRequest } =
       await getUpgradeRequestAvailabilityForUser(auth, {
-        isNearOrAtLimit: awuStatus !== "normal",
+        isNearOrAtLimit: awuStatus !== "normal" || noSeat,
       });
 
     return ctx.json({
