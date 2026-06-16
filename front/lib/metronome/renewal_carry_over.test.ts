@@ -1,7 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { carryOverContractBalancesOnRenewal } from "@app/lib/metronome/renewal_carry_over";
 import { Err, Ok } from "@app/types/shared/result";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockListCommits,
@@ -115,7 +114,9 @@ describe("carryOverContractBalancesOnRenewal", () => {
 
     await run();
 
-    expect(mockAddComplimentaryCommit.mock.calls[0][0].accessAmount).toBe(7_500);
+    expect(mockAddComplimentaryCommit.mock.calls[0][0].accessAmount).toBe(
+      7_500
+    );
   });
 
   it("skips commits that are not flagged", async () => {

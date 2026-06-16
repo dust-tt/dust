@@ -131,11 +131,11 @@ export async function carryOverContractBalancesOnRenewal({
     return new Err(creditsResult.error);
   }
 
-  const commits = commitsResult.value.filter((c) =>
-    c.custom_fields?.[CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY] !== undefined
+  const commits = commitsResult.value.filter(
+    (c) => c.custom_fields?.[CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY] !== undefined
   );
-  const credits = creditsResult.value.filter((c) =>
-    c.custom_fields?.[CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY] !== undefined
+  const credits = creditsResult.value.filter(
+    (c) => c.custom_fields?.[CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY] !== undefined
   );
 
   logger.info(
