@@ -34,11 +34,11 @@ type Action =
   | { type: "zoom_out" };
 
 const initialState: State = {
-  isFetching: true,
-  hasError: false,
-  objectUrl: null,
-  numPages: null,
   currentPage: 1,
+  hasError: false,
+  isFetching: true,
+  numPages: null,
+  objectUrl: null,
   zoomIdx: DEFAULT_ZOOM_IDX,
 };
 
