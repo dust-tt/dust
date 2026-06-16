@@ -36,7 +36,8 @@ export type ValueFilter<T> = T extends readonly (infer U)[]
 // Combined set of operators supported for a single field. The runtime matcher branches on the
 // shape of the value rather than the filter, so it needs a type accepted by both the array and
 // scalar matchers. Since every operator is optional, every `ValueFilter<T>` is assignable to it.
-export type AnyValueFilter = ArrayValueFilter<unknown> & ScalarValueFilter<unknown>;
+export type AnyValueFilter = ArrayValueFilter<unknown> &
+  ScalarValueFilter<unknown>;
 
 export type LogicalFilters<T> = {
   and?: Where<T>[];
