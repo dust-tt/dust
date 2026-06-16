@@ -18,8 +18,8 @@ import type { RootCommand } from "@app/lib/api/sandbox/root_command";
 import { SANDBOX_TRUST_ENV_VARS } from "@app/lib/api/sandbox/trust_env";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
-import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -28,7 +28,7 @@ import { makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { WorkspaceSandboxEnvVarResource } from "@app/lib/resources/workspace_sandbox_env_var_resource";
 import logger from "@app/logger/logger";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -147,17 +147,17 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   }
 
   /**
-   * Return conversation sIds and workspace ModelIds for sandboxes with the given `status`
-   * whose `lastActivityAt` is older than `olderThanMs`. Used by the reaper
-   * workflow to identify candidates for sleep/destroy.
+   * Return sandboxes with the given `status` whose `lastActivityAt` is older
+   * than `olderThanMs`. Used by the reaper workflow to identify candidates for
+   * sleep/destroy.
    *
    * / WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
    */
-  static async dangerouslyGetStaleConversationIds(opts: {
+  static async dangerouslyGetStaleSandboxes(opts: {
     status: SandboxStatus;
     olderThanMs: number;
     limit: number;
-  }): Promise<Array<{ conversationId: string; workspaceModelId: ModelId }>> {
+  }): Promise<SandboxResource[]> {
     const rows = await this.model.findAll({
       // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
@@ -167,21 +167,11 @@ export class SandboxResource extends BaseResource<SandboxModel> {
           [Op.lt]: new Date(Date.now() - opts.olderThanMs),
         },
       },
-      include: [
-        {
-          model: ConversationModel,
-          attributes: ["sId", "workspaceId"],
-          required: true,
-        },
-      ],
       order: [["lastActivityAt", "ASC"]],
       limit: opts.limit,
     });
 
-    return rows.map((r) => ({
-      conversationId: r.conversation.sId,
-      workspaceModelId: r.conversation.workspaceId,
-    }));
+    return rows.map((r) => new this(this.model, r.get()));
   }
 
   /**
@@ -190,42 +180,35 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    *
    * / WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
    */
-  private static async dangerouslyFetchByConversationId(
-    conversationId: string
+  private static async dangerouslyFetchByConversation(
+    conversation: ConversationResource
   ): Promise<SandboxResource | null> {
     const row = await this.model.findOne({
       // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
-      include: [
-        {
-          model: ConversationModel,
-          attributes: [],
-          required: true,
-          where: { sId: conversationId },
-        },
-      ],
+      where: {
+        conversationId: conversation.id,
+      },
     });
 
     return row ? new this(this.model, row.get()) : null;
   }
 
-  static async fetchByConversationId(
+  static async fetchByConversation(
     auth: Authenticator,
-    conversationId: string
+    conversation: ConversationWithoutContentType
   ): Promise<SandboxResource | null> {
-    const row = await this.model.findOne({
-      where: { workspaceId: auth.getNonNullableWorkspace().id },
-      include: [
-        {
-          model: ConversationModel,
-          attributes: [],
-          required: true,
-          where: { sId: conversationId },
-        },
-      ],
+    const sandboxes = await this.baseFetch(auth, {
+      where: {
+        conversationId: conversation.id,
+      },
     });
 
-    return row ? new this(this.model, row.get()) : null;
+    if (sandboxes.length === 0) {
+      return null;
+    }
+
+    return sandboxes[0];
   }
 
   async updateStatus(
@@ -282,14 +265,14 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * Full cleanup under the lifecycle lock: best-effort destroy at the provider,
    * then delete the DB row.
    */
-  static async deleteByConversationId(
+  static async deleteByConversation(
     auth: Authenticator,
-    conversationId: string
+    conversation: ConversationResource
   ): Promise<Result<void, Error>> {
-    return this.withLifecycleLock(conversationId, async (provider) => {
-      const sandbox = await SandboxResource.fetchByConversationId(
+    return this.withLifecycleLock(conversation.sId, async (provider) => {
+      const sandbox = await SandboxResource.fetchByConversation(
         auth,
-        conversationId
+        conversation.toJSON()
       );
       if (!sandbox) {
         return new Ok(undefined);
@@ -348,7 +331,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   // cannot shadow a system var like CONVERSATION_ID.
   private static async buildSandboxEnvVars(
     auth: Authenticator,
-    conversation: ConversationType,
+    conversation: ConversationWithoutContentType,
     imageEnvVars: Record<string, string> | undefined
   ): Promise<Result<Record<string, string>, Error>> {
     const workspaceEnvResult =
@@ -387,7 +370,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    */
   static async ensureActive(
     auth: Authenticator,
-    conversation: ConversationType
+    conversation: ConversationWithoutContentType
   ): Promise<Result<EnsureSandboxResult, Error>> {
     assert(
       auth.getNonNullableWorkspace().id !== undefined,
@@ -397,9 +380,9 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     return this.withLifecycleLock(conversation.sId, async (provider) => {
       const ctx = { workspaceId: auth.getNonNullableWorkspace().sId };
       const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
-      const existing = await SandboxResource.fetchByConversationId(
+      const existing = await SandboxResource.fetchByConversation(
         auth,
-        conversation.sId
+        conversation
       );
 
       if (!existing) {
@@ -597,11 +580,11 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    */
   static async dangerouslySleepIfRunning(
     auth: Authenticator,
-    conversationId: string
+    conversation: ConversationResource
   ): Promise<Result<void, Error>> {
-    return this.withLifecycleLock(conversationId, async (provider) => {
+    return this.withLifecycleLock(conversation.sId, async (provider) => {
       const sandbox =
-        await SandboxResource.dangerouslyFetchByConversationId(conversationId);
+        await SandboxResource.dangerouslyFetchByConversation(conversation);
       if (!sandbox || sandbox.status !== "running") {
         return new Ok(undefined);
       }
@@ -636,12 +619,12 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    */
   static async pauseForApproval(
     auth: Authenticator,
-    conversationId: string
+    conversation: ConversationWithoutContentType
   ): Promise<Result<void, Error>> {
-    return this.withLifecycleLock(conversationId, async (provider) => {
-      const sandbox = await SandboxResource.fetchByConversationId(
+    return this.withLifecycleLock(conversation.sId, async (provider) => {
+      const sandbox = await SandboxResource.fetchByConversation(
         auth,
-        conversationId
+        conversation
       );
       if (!sandbox || sandbox.status !== "running") {
         return new Ok(undefined);
@@ -688,11 +671,11 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    */
   static async dangerouslySleepIfPendingApproval(
     auth: Authenticator,
-    conversationId: string
+    conversation: ConversationResource
   ): Promise<Result<void, Error>> {
-    return this.withLifecycleLock(conversationId, async () => {
+    return this.withLifecycleLock(conversation.sId, async () => {
       const sandbox =
-        await SandboxResource.dangerouslyFetchByConversationId(conversationId);
+        await SandboxResource.dangerouslyFetchByConversation(conversation);
       if (!sandbox || sandbox.status !== "pending_approval") {
         return new Ok(undefined);
       }
@@ -717,11 +700,11 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    */
   static async dangerouslyDestroyIfSleeping(
     auth: Authenticator,
-    conversationId: string
+    conversation: ConversationResource
   ): Promise<Result<void, Error>> {
-    return this.withLifecycleLock(conversationId, async (provider) => {
+    return this.withLifecycleLock(conversation.sId, async (provider) => {
       const sandbox =
-        await SandboxResource.dangerouslyFetchByConversationId(conversationId);
+        await SandboxResource.dangerouslyFetchByConversation(conversation);
       if (!sandbox || sandbox.status !== "sleeping") {
         return new Ok(undefined);
       }
@@ -814,15 +797,15 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   }
 
   /**
-   * Return conversation sIds for sandboxes with `killRequestedAt` set and not
-   * yet deleted. The kill-requester workflow marks rows; the reaper (and the
-   * bash path) is responsible for actually destroying them.
+   * Return sandboxes with `killRequestedAt` set and not yet deleted. The
+   * kill-requester workflow marks rows; the reaper (and the bash path) is
+   * responsible for actually destroying them.
    *
    * WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
    */
-  static async dangerouslyGetKillRequestedConversationIds(opts: {
+  static async dangerouslyGetKillRequestedSandboxes(opts: {
     limit: number;
-  }): Promise<Array<{ conversationId: string; workspaceModelId: ModelId }>> {
+  }): Promise<SandboxResource[]> {
     const rows = await this.model.findAll({
       // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
@@ -830,21 +813,11 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         killRequestedAt: { [Op.ne]: null },
         status: { [Op.ne]: "deleted" },
       },
-      include: [
-        {
-          model: ConversationModel,
-          attributes: ["sId", "workspaceId"],
-          required: true,
-        },
-      ],
       order: [["killRequestedAt", "ASC"]],
       limit: opts.limit,
     });
 
-    return rows.map((r) => ({
-      conversationId: r.conversation.sId,
-      workspaceModelId: r.conversation.workspaceId,
-    }));
+    return rows.map((r) => new this(this.model, r.get()));
   }
 
   /**
@@ -857,11 +830,11 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    */
   static async dangerouslyDestroyIfKillRequested(
     auth: Authenticator,
-    conversationId: string
+    conversation: ConversationResource
   ): Promise<Result<void, Error>> {
-    return this.withLifecycleLock(conversationId, async (provider) => {
+    return this.withLifecycleLock(conversation.sId, async (provider) => {
       const sandbox =
-        await SandboxResource.dangerouslyFetchByConversationId(conversationId);
+        await SandboxResource.dangerouslyFetchByConversation(conversation);
       if (
         !sandbox ||
         sandbox.status === "deleted" ||

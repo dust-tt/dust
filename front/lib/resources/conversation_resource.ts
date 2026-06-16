@@ -263,12 +263,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     {
       transaction,
       excludeTest,
+      includeDeleted,
       updatedAfter,
       includeForkingData,
       loadSpaces,
     }: {
       transaction?: Transaction;
       excludeTest?: boolean;
+      includeDeleted?: boolean;
       updatedAfter?: Date;
       includeForkingData?: boolean;
       loadSpaces?: boolean;
@@ -280,7 +282,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const workspace = auth.getNonNullableWorkspace();
 
-    const excludedVisibilities: ConversationVisibility[] = ["deleted"];
+    const excludedVisibilities: ConversationVisibility[] = [];
+
+    if (!includeDeleted) {
+      excludedVisibilities.push("deleted");
+    }
     if (excludeTest) {
       excludedVisibilities.push("test");
     }
@@ -289,7 +295,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       where: {
         workspaceId: workspace.id,
         id: ids,
-        visibility: { [Op.notIn]: excludedVisibilities },
+        ...(excludedVisibilities.length > 0
+          ? { visibility: { [Op.notIn]: excludedVisibilities } }
+          : {}),
         ...(updatedAfter ? { updatedAt: { [Op.gte]: updatedAfter } } : {}),
       } as WhereOptions<ConversationModel>,
       ...(includeForkingData ? { include: this.getForkedFromInclude() } : {}),
