@@ -70,22 +70,22 @@ const FAKE_AGENTS = [
   {
     name: "Translator",
     emoji: "💬",
-    backgroundColor: "bg-green-200",
+    backgroundColor: "bg-success-200",
   },
   {
     name: "TrailblazerGuard",
     emoji: "👮",
-    backgroundColor: "bg-blue-100",
+    backgroundColor: "bg-highlight-100",
   },
   {
     name: "Transport",
     emoji: "🚌",
-    backgroundColor: "bg-blue-200",
+    backgroundColor: "bg-highlight-200",
   },
   {
     name: "TrendTracker",
     emoji: "😻",
-    backgroundColor: "bg-rose-50",
+    backgroundColor: "bg-warning-50",
   },
 ] as const;
 
@@ -93,42 +93,42 @@ const EXAMPLE_AGENTS = [
   {
     name: "FeedbackHelper",
     emoji: "❤️",
-    backgroundColor: "bg-rose-100",
+    backgroundColor: "bg-warning-100",
   },
   {
     name: "RiskAnalyzer",
     emoji: "💀",
-    backgroundColor: "bg-lime-800",
+    backgroundColor: "bg-success-800",
   },
   {
     name: "EngagementPro",
     emoji: "😂",
-    backgroundColor: "bg-golden-200",
+    backgroundColor: "bg-info-200",
   },
   {
     name: "RunbookMaster",
     emoji: "🧑‍🚀",
-    backgroundColor: "bg-violet-800",
+    backgroundColor: "bg-highlight-800",
   },
   {
     name: "BrandSpecialist",
     emoji: "👕",
-    backgroundColor: "bg-blue-200",
+    backgroundColor: "bg-highlight-200",
   },
   {
     name: "CrisisManager",
     emoji: "🚒",
-    backgroundColor: "bg-red-200",
+    backgroundColor: "bg-warning-200",
   },
   {
     name: "PerformanceCoach",
     emoji: "🏆",
-    backgroundColor: "bg-yellow-200",
+    backgroundColor: "bg-info-200",
   },
   {
     name: "StrategyPlanner",
     emoji: "🎯",
-    backgroundColor: "bg-pink-100",
+    backgroundColor: "bg-warning-100",
   },
 ] as const;
 
@@ -268,7 +268,7 @@ export function WelcomeTourGuide({
                     <Avatar
                       size="md"
                       icon={c.logo}
-                      backgroundColor="bg-white"
+                      backgroundColor="bg-background"
                     />
                   }
                 />

@@ -228,7 +228,7 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
           rows={8}
         />
         {form.formState.errors.privateKey?.message && (
-          <p className="text-sm text-red-600">
+          <p className="text-sm text-warning-600">
             {form.formState.errors.privateKey.message}
           </p>
         )}

@@ -383,7 +383,7 @@ function TaskDirectiveChipInner({
           align="start"
           sideOffset={6}
           collisionPadding={16}
-          className="w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-border/70 p-0 shadow-xl ring-1 ring-black/[0.04]"
+          className="w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-border/70 p-0 shadow-xl ring-1 ring-black/[0.04] dark:ring-white/[0.06]"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           {open ? (

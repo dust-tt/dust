@@ -70,7 +70,7 @@ export function AgentMessageInteractiveContentGeneratedFiles({
             key={fileId}
             tooltip={file.title}
             onClick={handleClick}
-            className="bg-gray-50"
+            className="bg-primary-50"
           >
             <div className="flex flex-row items-center">
               <CitationTitle>{file.title}</CitationTitle>

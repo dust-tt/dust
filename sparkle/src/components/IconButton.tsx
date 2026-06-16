@@ -49,16 +49,16 @@ const iconButtonVariants = cva(
           "s:text-primary-500"
         ),
         ghost: cn(
-          "s:text-white",
+          "s:text-background",
           "s:hover:text-primary-100",
           "s:active:text-primary-200",
-          "s:text-white/50"
+          "s:text-background/50"
         ),
         "ghost-secondary": cn(
           "s:text-white",
           "s:hover:text-primary-100",
           "s:active:text-primary-200",
-          "s:text-white/50"
+          "s:text-background/50"
         ),
       },
     },

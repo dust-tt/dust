@@ -5,12 +5,12 @@ const SEAT_TIER_STYLES = {
   max: {
     icon: "text-brand-orange-golden",
     barFill: "bg-brand-orange-golden",
-    barTrack: "bg-golden-100",
+    barTrack: "bg-info-100",
   },
   pro: {
     icon: "text-highlight",
     barFill: "bg-highlight",
-    barTrack: "bg-blue-100",
+    barTrack: "bg-highlight-100",
   },
   muted: {
     icon: "text-muted-foreground",
@@ -29,8 +29,8 @@ export const MUTED_BAR_CLASSES = {
 // Overage bar colors (spend beyond the seat allowance + pool limit) — red, to
 // signal the user is over their cap.
 export const OVERAGE_BAR_CLASSES = {
-  track: "bg-red-200",
-  fill: "bg-red-700",
+  track: "bg-warning-200",
+  fill: "bg-warning-700",
 };
 
 // Seat icon text color: golden for max, highlight blue for pro, muted grey

@@ -38,7 +38,7 @@ export function InternalMCPBearerTokenForm({
               message={form.formState.errors.sharedSecret?.message}
               placeholder={placeholder}
             />
-            <p className="text-xs text-gray-500">{tooltip}</p>
+            <p className="text-xs text-primary-500">{tooltip}</p>
           </div>
         </CollapsibleContent>
       </Collapsible>

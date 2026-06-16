@@ -21,7 +21,7 @@ export function legendFromConstant<K extends string>(
     base.push({
       key: "versionMarkers",
       label: "Version",
-      colorClassName: "text-gray-300",
+      colorClassName: "text-primary-300",
     });
   }
 

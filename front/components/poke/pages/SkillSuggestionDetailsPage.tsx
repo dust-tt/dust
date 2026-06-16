@@ -155,7 +155,7 @@ export function SkillSuggestionDetailsPage() {
 
         <div>
           <h2 className="text-md pb-2 font-bold">Raw suggestion</h2>
-          <div className="rounded-lg bg-gray-50 p-4">
+          <div className="rounded-lg bg-primary-50 p-4">
             <pre className="overflow-x-auto whitespace-pre-wrap text-sm">
               {JSON.stringify(suggestion.suggestion, null, 2)}
             </pre>

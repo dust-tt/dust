@@ -26,18 +26,18 @@ export function WebhookEndpointUsageInfo({
             <ol className="ml-4 list-inside list-decimal space-y-1">
               <li>
                 Hash the entire request payload using{" "}
-                <span className="rounded bg-gray-100 px-1 font-mono">
+                <span className="rounded bg-primary-100 px-1 font-mono">
                   {signatureAlgorithm}
                 </span>{" "}
                 with the secret shown above
               </li>
               <li>
                 Include the resulting hash in the{" "}
-                <span className="rounded bg-gray-100 px-1 font-mono">
+                <span className="rounded bg-primary-100 px-1 font-mono">
                   {signatureHeader}
                 </span>{" "}
                 header of your HTTP request, prefixed with{" "}
-                <span className="rounded bg-gray-100 px-1 font-mono">
+                <span className="rounded bg-primary-100 px-1 font-mono">
                   {signatureAlgorithm}=
                 </span>
               </li>

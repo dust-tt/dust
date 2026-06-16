@@ -42,7 +42,7 @@ const ResizableHandle = ({
       "s:data-[panel-group-direction=vertical]:after:-translate-y-1/2",
       "s:data-[panel-group-direction=vertical]:after:translate-x-0",
       "s:[&[data-panel-group-direction=vertical]>div]:rotate-90",
-      "s:bg-gray-100",
+      "s:bg-primary-100",
       className
     )}
     {...props}

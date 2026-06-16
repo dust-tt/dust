@@ -99,7 +99,7 @@ const NavigationListItem = React.forwardRef<
         case "unread":
           return "s:h-2 s:w-2 s:m-1 s:bg-highlight-500";
         case "blocked":
-          return "s:h-2 s:w-2 s:m-1 s:bg-golden-400";
+          return "s:h-2 s:w-2 s:m-1 s:bg-info-400";
         case "error":
           return "s:h-2 s:w-2 s:m-1 s:bg-warning-400";
         default:

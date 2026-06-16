@@ -148,7 +148,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
             icon={Robot}
             label="Agent"
             disabled={isInputDisabled}
-            className={cn(disableAgentSelector && "bg-gray-150")}
+            className={cn(disableAgentSelector && "bg-primary-150")}
           />
         )
       }

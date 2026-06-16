@@ -216,7 +216,7 @@ export function DatasourceRetrievalTreemapContent({
           pointerEvents="none"
         >
           <div className="flex h-full w-full items-center justify-center overflow-hidden">
-            <div className="w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap rounded bg-white/70 px-1 py-0.5 text-center text-[11px] font-medium text-foreground">
+            <div className="w-full min-w-0 overflow-hidden text-ellipsis whitespace-nowrap rounded bg-white/70 px-1 py-0.5 text-center text-[11px] font-medium text-foreground dark:bg-black/30">
               {groupLabel}
             </div>
           </div>

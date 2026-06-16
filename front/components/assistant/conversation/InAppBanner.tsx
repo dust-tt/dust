@@ -38,7 +38,7 @@ function PodBanner({
       initial={{ opacity: 100, translateY: "0%" }}
       transition={{ duration: 0.1, ease: "easeIn" }}
       exit={{ opacity: 0, translateY: "120%" }}
-      className="relative z-10 mx-2 mb-2 hidden max-w-[300px] flex-col rounded-2xl border border-border-dark bg-white shadow-md sm:flex"
+      className="relative z-10 mx-2 mb-2 hidden max-w-[300px] flex-col rounded-2xl border border-border-dark bg-background shadow-md sm:flex"
     >
       <div className="relative overflow-hidden rounded-t-2xl">
         <img

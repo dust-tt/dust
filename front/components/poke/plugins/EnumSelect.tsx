@@ -108,15 +108,15 @@ export function EnumSelect({
                     <div className="flex w-full items-center gap-2">
                       {multiple ? (
                         isSelected ? (
-                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <CheckCircle className="h-4 w-4 text-success-600" />
                         ) : (
-                          <Circle className="h-4 w-4 text-gray-400" />
+                          <Circle className="h-4 w-4 text-primary-400" />
                         )
                       ) : null}
                       <span
                         className={cn(
                           option.checked && "font-medium",
-                          "text-gray-900"
+                          "text-primary-900"
                         )}
                       >
                         {option.label}

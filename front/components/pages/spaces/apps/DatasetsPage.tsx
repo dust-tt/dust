@@ -102,7 +102,7 @@ export function DatasetsPage() {
                     href={`/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${d.name}`}
                     className="block"
                   >
-                    <div className="group rounded border border-gray-300 px-4 py-4">
+                    <div className="group rounded border border-primary-300 px-4 py-4">
                       <div className="flex items-center justify-between">
                         <p className="heading-base truncate text-highlight-500">
                           {d.name}
@@ -110,7 +110,7 @@ export function DatasetsPage() {
                         {readOnly ? null : (
                           <div className="ml-2 flex flex-shrink-0">
                             <Trash01
-                              className="hidden h-4 w-4 text-gray-400 hover:text-warning group-hover:block"
+                              className="hidden h-4 w-4 text-primary-400 hover:text-warning group-hover:block"
                               onClick={async (e) => {
                                 e.preventDefault();
                                 await handleDelete(d.name);
@@ -123,7 +123,9 @@ export function DatasetsPage() {
                         <div className="sm:flex">
                           <p
                             className={classNames(
-                              d.description ? "text-gray-700" : "text-gray-300",
+                              d.description
+                                ? "text-primary-700"
+                                : "text-primary-300",
                               "text-s flex items-center"
                             )}
                           >
@@ -138,7 +140,7 @@ export function DatasetsPage() {
               })}
             </ul>
             <div className="mt-2 px-2">
-              <div className="py-2 text-sm text-gray-400">
+              <div className="py-2 text-sm text-primary-400">
                 Datasets are used as input data to apps (
                 <Chip label="input" /> block) or few-shot examples to prompt
                 models (

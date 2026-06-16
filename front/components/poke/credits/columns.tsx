@@ -74,7 +74,7 @@ function AmountCell({
   }
   // Tolerate sub-cent rounding from the credit-unit conversion.
   const matches = Math.abs(internal - metronome) < 10_000;
-  const className = matches ? "text-muted-foreground" : "text-red-600";
+  const className = matches ? "text-muted-foreground" : "text-warning-600";
   return (
     <div className="flex flex-col text-xs">
       <span>DB: {formatMicroUsdToUsd(internal)}</span>

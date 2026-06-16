@@ -116,7 +116,7 @@ interface PokeNavItemRowProps {
 
 function PokeNavItemRow({ item, onRemove }: PokeNavItemRowProps) {
   return (
-    <div className="group flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-gray-100">
+    <div className="group flex items-center gap-3 rounded-md px-2 py-1.5 hover:bg-primary-100">
       <Chip size="xs" color={getFavoriteChipColor(item.data.type)}>
         {item.data.type}
       </Chip>
@@ -187,7 +187,7 @@ export function PokeFavoritesList() {
   }
 
   return (
-    <div className="mb-6 rounded-xl border bg-white p-4">
+    <div className="mb-6 rounded-xl border bg-background p-4">
       <Collapsible defaultOpen={false}>
         <CollapsibleTrigger>
           <div className="flex items-center gap-2">

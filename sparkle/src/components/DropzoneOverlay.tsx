@@ -16,7 +16,7 @@ export function DropzoneOverlay({
   description,
   isDragActive,
   title,
-  visual = <Icon visual={Upload01} size="lg" className="s:text-white" />,
+  visual = <Icon visual={Upload01} size="lg" className="s:text-background" />,
 }: DropzoneOverlayProps) {
   const lottieRef = useRef<LottieRefCurrentProps | null>(null);
 

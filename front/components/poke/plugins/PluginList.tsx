@@ -21,7 +21,7 @@ interface PluginCardProps {
 function PluginCard({ onClick, plugin }: PluginCardProps) {
   return (
     <PokeCard
-      className="flex h-20 w-44 cursor-pointer hover:bg-gray-100"
+      className="flex h-20 w-44 cursor-pointer hover:bg-primary-100"
       onClick={onClick}
     >
       <PokeCardHeader className="flex space-y-2 overflow-hidden p-2 text-left">
@@ -84,7 +84,7 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
               placeholder="Search plugins..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={cn("w-full bg-white", showRuns && "invisible")}
+              className={cn("w-full bg-background", showRuns && "invisible")}
             />
             <Button
               label={showRuns ? "Show Available" : "Show History"}

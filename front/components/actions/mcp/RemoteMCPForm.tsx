@@ -151,7 +151,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
                 message={form.formState.errors.sharedSecret?.message}
                 placeholder="Paste the Bearer Token here"
               />
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-primary-500">
                 This will be sent alongside the request made to your server as a
                 Bearer token in the headers.
               </p>
@@ -181,7 +181,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="space-y-2">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-primary-500">
               Key-value pairs sent as <code className="font-mono">_meta</code>{" "}
               on every tool call to this server.
             </p>

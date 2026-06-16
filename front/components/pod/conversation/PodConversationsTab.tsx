@@ -254,8 +254,8 @@ export function PodConversationsTab({
                         return (
                           <div
                             className={cn(
-                              "cursor-pointer px-3 py-2 hover:bg-gray-50",
-                              selected && "bg-gray-100"
+                              "cursor-pointer px-3 py-2 hover:bg-primary-50",
+                              selected && "bg-primary-100"
                             )}
                             onClick={() => navigateToConversation(conversation)}
                           >

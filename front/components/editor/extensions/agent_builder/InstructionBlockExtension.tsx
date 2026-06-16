@@ -40,7 +40,7 @@ const InstructionBlockChip = ({ text }: { text: string }) => {
   return (
     <Chip
       size="mini"
-      className="bg-gray-100 transition-colors hover:bg-gray-200"
+      className="bg-primary-100 transition-colors hover:bg-primary-200"
     >
       {text}
     </Chip>
@@ -133,7 +133,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
     >
       <Chip
         size="mini"
-        className="bg-gray-100 transition-colors hover:bg-gray-200"
+        className="bg-primary-100 transition-colors hover:bg-primary-200"
       >
         {"<"}
         <span
@@ -179,7 +179,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
         <div className="flex items-start gap-1">
           <button
             onClick={handleToggle}
-            className="mt-[3px] rounded p-0.5 transition-colors hover:bg-gray-200"
+            className="mt-[3px] rounded p-0.5 transition-colors hover:bg-primary-200"
             type="button"
             contentEditable={false}
           >

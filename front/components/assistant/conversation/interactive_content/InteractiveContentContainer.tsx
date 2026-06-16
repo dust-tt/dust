@@ -102,7 +102,9 @@ export function InteractiveContentContainer({
 
   return (
     <div className="flex h-full w-full">
-      <div className="flex-1 overflow-hidden bg-gray-50">{renderContent()}</div>
+      <div className="flex-1 overflow-hidden bg-primary-50">
+        {renderContent()}
+      </div>
     </div>
   );
 }

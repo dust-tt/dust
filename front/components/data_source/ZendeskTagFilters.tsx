@@ -176,28 +176,28 @@ export function ZendeskTagFilters({
 
           {hasIncludedTags && (
             <div className="mb-4">
-              <p className="mb-2 text-sm font-medium text-green-800">
+              <p className="mb-2 text-sm font-medium text-success-800">
                 Include Tags (sync only items with these tags):
               </p>
               {renderTagList(
                 includedTags,
                 "include",
-                "bg-green-100",
-                "text-green-800"
+                "bg-success-100",
+                "text-success-800"
               )}
             </div>
           )}
 
           {hasExcludedTags && (
             <div className="mb-4">
-              <p className="mb-2 text-sm font-medium text-red-800">
+              <p className="mb-2 text-sm font-medium text-warning-800">
                 Exclude Tags (don't sync items with these tags):
               </p>
               {renderTagList(
                 excludedTags,
                 "exclude",
-                "bg-red-100",
-                "text-red-800"
+                "bg-warning-100",
+                "text-warning-800"
               )}
             </div>
           )}

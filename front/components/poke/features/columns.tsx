@@ -48,7 +48,7 @@ export function makeColumnsForFeatureFlags(): ColumnDef<FeatureFlagsDisplayType>
       header: "Description",
       cell: ({ row }) => {
         return (
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-primary-600">
             {row.original.description}
           </span>
         );

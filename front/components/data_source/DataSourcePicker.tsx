@@ -142,7 +142,7 @@ export default function DataSourcePicker({
                 <div
                   className={classNames(
                     "inline-flex items-center rounded-md py-1 text-sm font-normal",
-                    readOnly ? "text-gray-400" : "text-muted-foreground",
+                    readOnly ? "text-primary-400" : "text-muted-foreground",
                     "focus:outline-hidden focus:ring-0"
                   )}
                 >
@@ -164,7 +164,7 @@ export default function DataSourcePicker({
                 <LinkWrapper
                   href={`/w/${owner.sId}/spaces/${space.sId}`}
                   className={classNames(
-                    readOnly ? "text-gray-400" : "text-muted-foreground"
+                    readOnly ? "text-primary-400" : "text-muted-foreground"
                   )}
                 >
                   Create DataSource

@@ -170,7 +170,7 @@ export function ServerSideSearchEnumSelect({
                         <span
                           className={cn(
                             isSelected && "font-medium",
-                            "text-gray-900"
+                            "text-primary-900"
                           )}
                         >
                           {option.label}
@@ -197,7 +197,7 @@ export function ServerSideSearchEnumSelect({
                           <span
                             className={cn(
                               isSelected && "font-medium",
-                              "text-gray-900"
+                              "text-primary-900"
                             )}
                           >
                             {memberLabel}

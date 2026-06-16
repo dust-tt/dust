@@ -339,7 +339,7 @@ export function ChangeSeatModal({
   ): React.ReactNode {
     if (seatType === currentSeatType) {
       return (
-        <span className="rounded-full border border-blue-400 px-2 py-0.5 text-xs font-medium text-blue-600">
+        <span className="rounded-full border border-blue-400 px-2 py-0.5 text-xs font-medium text-highlight-600">
           Current
         </span>
       );
@@ -486,12 +486,12 @@ export function ChangeSeatModal({
             })}
 
             {isDeferredChange && (
-              <p className="mt-1 text-xs text-amber-600">
+              <p className="mt-1 text-xs text-info-600">
                 The change will take effect at the next credit refresh.
               </p>
             )}
             {isCancellingScheduledChange && (
-              <p className="mt-1 text-xs text-amber-600">
+              <p className="mt-1 text-xs text-info-600">
                 Scheduled change to{" "}
                 <span className="capitalize">
                   {displayedMember?.scheduledSeatType}

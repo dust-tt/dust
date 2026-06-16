@@ -25,7 +25,7 @@ function VerificationLayout({
 
   return (
     <div className="flex h-dvh w-full flex-col">
-      <AppLayoutTitle className="h-12 bg-gray-50 px-4">
+      <AppLayoutTitle className="h-12 bg-primary-50 px-4">
         <div className="flex h-full items-center">
           <LinkWrapper href={`${staticWebsiteUrl}/home`}>
             <DustLogo className="h-[20px] w-[80px]" />

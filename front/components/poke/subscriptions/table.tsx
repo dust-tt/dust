@@ -96,7 +96,7 @@ const STATUS_CONFIG: Record<
   trialing: {
     chipColor: "blue",
     chipLabel: "Trialing",
-    cardClass: "border-blue-200 bg-blue-50",
+    cardClass: "border-highlight-200 bg-highlight-50",
   },
   ended: {
     chipColor: "warning",
@@ -111,7 +111,7 @@ const STATUS_CONFIG: Record<
   inconsistent: {
     chipColor: "rose",
     chipLabel: "Inconsistent",
-    cardClass: "border-rose-200 bg-rose-50",
+    cardClass: "border-warning-200 bg-warning-50",
   },
 };
 
@@ -380,7 +380,7 @@ export function ActiveSubscriptionTable({
       </div>
       {pendingSubscription && (
         <div className="flex justify-between gap-3">
-          <div className="flex flex-grow flex-col rounded-lg border border-blue-200 bg-blue-50 p-4 pb-2">
+          <div className="flex flex-grow flex-col rounded-lg border border-highlight-200 bg-highlight-50 p-4 pb-2">
             <div className="flex items-center justify-between gap-2 pb-4">
               <div className="flex items-center gap-2">
                 <h2 className="text-md font-bold">Pending Subscription</h2>

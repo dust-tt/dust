@@ -150,7 +150,7 @@ export default function TablePicker({
                 <div
                   className={classNames(
                     "copy-sm inline-flex items-center rounded-md py-1 font-normal",
-                    readOnly ? "text-gray-400" : "text-muted-foreground",
+                    readOnly ? "text-primary-400" : "text-muted-foreground",
                     "focus:outline-hidden focus:ring-0"
                   )}
                 >
@@ -170,7 +170,7 @@ export default function TablePicker({
                 <span
                   className={classNames(
                     "copy-sm",
-                    readOnly ? "text-gray-400" : "text-muted-foreground"
+                    readOnly ? "text-primary-400" : "text-muted-foreground"
                   )}
                 >
                   No Tables

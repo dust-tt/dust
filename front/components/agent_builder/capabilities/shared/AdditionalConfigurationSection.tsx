@@ -75,7 +75,7 @@ function BooleanConfigurationInput({
               <Icon
                 visual={InformationCircleIcon}
                 size="xs"
-                className="cursor-help text-gray-400 hover:text-gray-600"
+                className="cursor-help text-primary-400 hover:text-primary-600"
               />
             }
             label={description}
@@ -135,7 +135,7 @@ function NumberConfigurationInput({
               <Icon
                 visual={InformationCircleIcon}
                 size="xs"
-                className="cursor-help text-gray-400 hover:text-gray-600"
+                className="cursor-help text-primary-400 hover:text-primary-600"
               />
             }
             label={description}
@@ -202,7 +202,7 @@ function StringConfigurationInput({
               <Icon
                 visual={InformationCircleIcon}
                 size="xs"
-                className="cursor-help text-gray-400 hover:text-gray-600"
+                className="cursor-help text-primary-400 hover:text-primary-600"
               />
             }
             label={description}
@@ -280,7 +280,7 @@ function EnumConfigurationInput({
                 <Icon
                   visual={InformationCircleIcon}
                   size="xs"
-                  className="cursor-help text-gray-400 hover:text-gray-600"
+                  className="cursor-help text-primary-400 hover:text-primary-600"
                 />
               }
               label={description}
@@ -316,7 +316,7 @@ function EnumConfigurationInput({
         </div>
       </div>
       {currentDescription && (
-        <div className="mt-1 whitespace-pre-line text-sm text-gray-600">
+        <div className="mt-1 whitespace-pre-line text-sm text-primary-600">
           {currentDescription}
         </div>
       )}
@@ -401,7 +401,7 @@ function ListConfigurationInput({
             filteredOptions.map((option) => (
               <div
                 key={option.value}
-                className="group flex items-center justify-between rounded-lg p-2 hover:bg-gray-50"
+                className="group flex items-center justify-between rounded-lg p-2 hover:bg-primary-50"
               >
                 <div className="flex items-center space-x-3">
                   <Checkbox
@@ -418,11 +418,11 @@ function ListConfigurationInput({
                     }}
                   />
                   <div className="flex flex-col">
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-primary-900">
                       {option.label}
                     </span>
                     {option.description && (
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-primary-500">
                         {option.description}
                       </span>
                     )}

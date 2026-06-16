@@ -172,7 +172,7 @@ const FormInput = React.forwardRef<
   return (
     <Input
       ref={ref}
-      className={cn("border-2 border-border-dark", "bg-white", className)}
+      className={cn("border-2 border-border-dark", "bg-background", className)}
       value={value}
       {...props}
     />
@@ -189,7 +189,11 @@ const FormTextArea = React.forwardRef<
   return (
     <div ref={ref as React.RefObject<HTMLDivElement>}>
       <TextArea
-        className={cn("border-2 border-border-dark", "bg-white", className)}
+        className={cn(
+          "border-2 border-border-dark",
+          "bg-background",
+          className
+        )}
         value={value ?? undefined}
         minRows={2}
         {...props}

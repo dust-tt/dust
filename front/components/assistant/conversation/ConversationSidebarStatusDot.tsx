@@ -20,7 +20,7 @@ export function ConversationSidebarStatusDot({
       className={cn(
         "heading-xs m-1 flex h-2 w-2 shrink-0 items-center justify-center rounded-full",
         status === "unread" && "bg-highlight-500",
-        status === "blocked" && "bg-golden-400",
+        status === "blocked" && "bg-info-400",
         className
       )}
       aria-hidden

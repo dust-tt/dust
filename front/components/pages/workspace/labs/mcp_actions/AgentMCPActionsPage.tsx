@@ -245,7 +245,7 @@ export function AgentMCPActionsPage() {
                                 description={`Executed on ${new Date(action.createdAt).toLocaleString()}`}
                               />
                               {Object.keys(action.params).length > 0 && (
-                                <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                                <div className="rounded-md border border-primary-200 bg-primary-50 p-3">
                                   <h4 className="mb-2 text-sm font-medium text-foreground">
                                     Input Parameters:
                                   </h4>

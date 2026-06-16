@@ -106,7 +106,7 @@ export const TableTagSelector = ({
           )}
         </DropdownMenuTagList>
         {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white/50">
+          <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-black/50">
             <Spinner variant={isDark ? "light" : "dark"} />
           </div>
         )}

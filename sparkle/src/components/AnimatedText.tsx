@@ -37,8 +37,8 @@ const animatedVariants: Record<AnimatedTextVariantType, string> = {
   info: cn("s:from-info-800 s:via-info-950 s:via-50% s:to-info-800"),
   green: cn("s:from-emerald-800 s:via-emerald-950 s:via-50% s:to-emerald-800"),
   blue: cn("s:from-sky-800 s:via-sky-950 s:via-50% s:to-sky-800"),
-  rose: cn("s:from-rose-800 s:via-rose-950 s:via-50% s:to-rose-800"),
-  golden: cn("s:from-golden-800 s:via-golden-950 s:via-50% s:to-golden-800"),
+  rose: cn("s:from-warning-800 s:via-warning-950 s:via-50% s:to-warning-800"),
+  golden: cn("s:from-info-800 s:via-info-950 s:via-50% s:to-info-800"),
   white: cn("s:from-primary-800 s:via-primary-950 s:via-50% s:to-primary-800"),
 };
 
@@ -63,8 +63,8 @@ const animatedTextVariants: Record<AnimatedTextVariantType, string> = {
   warning: "s:text-warning-800",
   green: "s:text-emerald-800",
   blue: "s:text-sky-800",
-  rose: "s:text-rose-800",
-  golden: "s:text-golden-800",
+  rose: "s:text-warning-800",
+  golden: "s:text-info-800",
   white: "s:text-primary-800",
 };
 

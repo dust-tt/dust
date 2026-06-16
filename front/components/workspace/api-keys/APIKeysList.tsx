@@ -58,7 +58,7 @@ export const APIKeysList = ({
   showLegacyUsdMonthlyCap,
 }: APIKeysListProps) => {
   return (
-    <div className="space-y-4 divide-y divide-gray-200">
+    <div className="space-y-4 divide-y divide-primary-200">
       <ul role="list" className="pt-4">
         {sortBy(keys, (key) => key.status[0] + key.name).map((key) => (
           <li key={key.secret} className="px-2 py-4">

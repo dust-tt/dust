@@ -452,7 +452,7 @@ export function EmailTemplatesPage() {
               <select
                 value={selectedTemplateId}
                 onChange={(e) => setSelectedTemplateId(e.target.value)}
-                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500"
+                className="rounded-md border border-primary-300 bg-background px-3 py-2 text-sm focus:border-primary-500 focus:outline-hidden focus:ring-1 focus:ring-primary-500"
               >
                 {Object.values(EMAIL_TEMPLATES).map((template) => (
                   <option key={template.id} value={template.id}>

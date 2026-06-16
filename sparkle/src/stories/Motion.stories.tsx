@@ -222,7 +222,7 @@ function MotionRow({
       <button
         onClick={play}
         aria-label={`Play ${label}`}
-        className="s:flex s:h-7 s:w-7 s:shrink-0 s:items-center s:justify-center s:rounded s:text-muted-foreground hover:s:bg-gray-100 hover:s:text-foreground"
+        className="s:flex s:h-7 s:w-7 s:shrink-0 s:items-center s:justify-center s:rounded s:text-muted-foreground hover:s:bg-primary-100 hover:s:text-foreground"
       >
         <Play className="s:h-4 s:w-4" />
       </button>
@@ -232,7 +232,7 @@ function MotionRow({
           <div className="s:text-xs s:text-muted-foreground">{note}</div>
         )}
       </div>
-      <div className="s:relative s:h-10 s:w-full s:rounded-full s:bg-gray-100">
+      <div className="s:relative s:h-10 s:w-full s:rounded-full s:bg-primary-100">
         <div
           className={`s:absolute s:top-2 s:h-6 s:w-6 s:rounded-full ${circleClass} ${
             resetting
@@ -259,7 +259,7 @@ function MotionGroupSection({ group, description, items }: MotionGroup) {
           <h3 className="s:text-lg s:font-semibold">{group}</h3>
           <button
             onClick={() => setPlaySignal((n) => n + 1)}
-            className="s:rounded s:border s:border-border s:px-3 s:py-1 s:text-xs s:font-medium s:text-muted-foreground hover:s:bg-gray-100"
+            className="s:rounded s:border s:border-border s:px-3 s:py-1 s:text-xs s:font-medium s:text-muted-foreground hover:s:bg-primary-100"
           >
             Play all
           </button>
@@ -308,7 +308,7 @@ function EnterExitDemo({
           {description}
         </p>
       </div>
-      <div className="s:flex s:h-40 s:items-center s:justify-center s:rounded s:bg-gray-100">
+      <div className="s:flex s:h-40 s:items-center s:justify-center s:rounded s:bg-primary-100">
         <div
           className={`s:flex s:h-28 s:w-64 s:items-center s:justify-center s:rounded-xl s:border s:border-border s:bg-background s:text-sm s:text-muted-foreground s:shadow-md s:transition-all ${easingClass} ${
             open

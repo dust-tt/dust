@@ -167,7 +167,7 @@ function SlackChannelsList({
                     onClick={(e: React.MouseEvent) => e.stopPropagation()}
                     size="xs"
                   />
-                  <span className="text-sm font-medium text-gray-900">
+                  <span className="text-sm font-medium text-primary-900">
                     {channel.slackChannelName}
                   </span>
                 </div>

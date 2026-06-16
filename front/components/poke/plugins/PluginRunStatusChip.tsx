@@ -35,17 +35,17 @@ export function getStatusColorClasses(
   variant: "default" | "border" = "default"
 ) {
   const baseClasses = {
-    success: "text-green-600 bg-green-50",
-    error: "text-red-600 bg-red-50",
-    pending: "text-yellow-600 bg-yellow-50",
-    default: "text-gray-600 bg-gray-50",
+    success: "text-success-600 bg-success-50",
+    error: "text-warning-600 bg-warning-50",
+    pending: "text-info-600 bg-info-50",
+    default: "text-primary-600 bg-primary-50",
   };
 
   const borderClasses = {
-    success: "border-green-200",
-    error: "border-red-200",
-    pending: "border-yellow-200",
-    default: "border-gray-200",
+    success: "border-success-200",
+    error: "border-warning-200",
+    pending: "border-info-200",
+    default: "border-primary-200",
   };
 
   const statusKey = status as keyof typeof baseClasses;

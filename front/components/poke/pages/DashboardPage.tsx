@@ -59,7 +59,7 @@ function WorkspaceList({
           onClick={() => onWorkspaceClick?.(ws)}
         >
           <LinkWrapper href={`/poke/${ws.sId}`}>
-            <li className="border-material-100 w-80 rounded-lg border p-4 transition-colors duration-200 hover:bg-gray-100">
+            <li className="border-material-100 w-80 rounded-lg border p-4 transition-colors duration-200 hover:bg-primary-100">
               <div className="flex items-center justify-between pb-2">
                 <h2 className="text-md flex-grow font-bold">{ws.name}</h2>
                 {showRegion && ws.region && (
