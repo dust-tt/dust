@@ -12,7 +12,10 @@ import {
   builderFullPageRoutes,
   builderRedirectRoutes,
 } from "@spa/app/routes/builderRoutes";
-import { conversationRoutes } from "@spa/app/routes/conversationRoutes";
+import {
+  conversationRedirectRoutes,
+  conversationRoutes,
+} from "@spa/app/routes/conversationRoutes";
 import { labsRoutes } from "@spa/app/routes/labsRoutes";
 import {
   loginAuthenticatedRoutes,
@@ -73,6 +76,7 @@ export const routes: RouteObject[] = [
           ...adminFullPageRoutes,
           ...builderFullPageRoutes,
           ...builderRedirectRoutes,
+          ...conversationRedirectRoutes,
           ...onboardingRoutes,
         ],
       },
