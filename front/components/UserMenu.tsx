@@ -74,7 +74,7 @@ interface UserMenuProps {
 
 export function UserMenu({ user, owner, subscription }: UserMenuProps) {
   const router = useAppRouter();
-  const { featureFlags, hasFeature } = useFeatureFlags();
+  const { featureFlags } = useFeatureFlags();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const sendNotification = useSendNotification();
@@ -375,9 +375,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
             <DropdownMenuItem
               label="Personal Settings"
               icon={User01}
-              {...(hasFeature("user_settings_v2")
-                ? { onSelect: () => setSettingsOpen(true) }
-                : { href: `/w/${owner.sId}/me` })}
+              onSelect={() => setSettingsOpen(true)}
             />
           )}
 

@@ -705,7 +705,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "claude_fable_5_feature"
-  | "sessions_branching"
   | "databricks_tool"
   | "deepseek_feature"
   | "dev_mcp_actions"
@@ -775,10 +774,10 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "new_file_explorer"
   | "use_vertex_for_supported_models"
   | "metronome_billing_usage_page"
-  | "user_settings_v2"
   | "admin_governance"
   | "use_new_llm_router"
   | "live_speech_to_text"
+  | "force_us_api_url"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
