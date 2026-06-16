@@ -210,8 +210,8 @@ export const extractTextFromAudioAndUpload: ProcessingFunction = async (
 interface ProcessingEntry {
   process: ProcessingFunction;
   processedContentType: AllSupportedFileContentType;
-  // When set, this entry only applies for matching use cases. Omit to apply for all use cases.
-  useCases?: (useCase: FileUseCase) => boolean;
+  // When set, this entry only applies when the predicate returns true. Omit to apply for all use cases.
+  appliesTo?: (useCase: FileUseCase) => boolean;
 }
 
 const PROCESSING_BY_CONTENT_TYPE = new Map<
@@ -310,7 +310,7 @@ const PROCESSING_BY_CONTENT_TYPE = new Map<
     {
       process: extractTextFromFileAndUpload,
       processedContentType: "text/plain",
-      useCases: (uc) => uc !== "conversation",
+      appliesTo: (uc) => uc !== "conversation",
     },
   ],
   [
@@ -318,7 +318,7 @@ const PROCESSING_BY_CONTENT_TYPE = new Map<
     {
       process: extractTextFromFileAndUpload,
       processedContentType: "text/plain",
-      useCases: (uc) => uc !== "conversation",
+      appliesTo: (uc) => uc !== "conversation",
     },
   ],
   [
@@ -326,7 +326,7 @@ const PROCESSING_BY_CONTENT_TYPE = new Map<
     {
       process: extractTextFromFileAndUpload,
       processedContentType: "text/plain",
-      useCases: (uc) => uc !== "conversation",
+      appliesTo: (uc) => uc !== "conversation",
     },
   ],
   [
@@ -334,7 +334,7 @@ const PROCESSING_BY_CONTENT_TYPE = new Map<
     {
       process: extractTextFromFileAndUpload,
       processedContentType: "text/plain",
-      useCases: (uc) => uc !== "conversation",
+      appliesTo: (uc) => uc !== "conversation",
     },
   ],
   [
@@ -342,7 +342,7 @@ const PROCESSING_BY_CONTENT_TYPE = new Map<
     {
       process: extractTextFromFileAndUpload,
       processedContentType: "text/plain",
-      useCases: (uc) => uc !== "conversation",
+      appliesTo: (uc) => uc !== "conversation",
     },
   ],
 ]);
@@ -358,7 +358,7 @@ function getProcessingEntry(
     return undefined;
   }
 
-  if (entry.useCases && useCase !== undefined && !entry.useCases(useCase)) {
+  if (entry.appliesTo && useCase !== undefined && !entry.appliesTo(useCase)) {
     return undefined;
   }
 
