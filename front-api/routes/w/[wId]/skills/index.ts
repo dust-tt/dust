@@ -304,6 +304,7 @@ app.post(
         mcpServerViews,
         attachedKnowledge: attachedKnowledgeWithDataSourceViews,
       });
+
     const additionalRequestedSpaceIdsRes =
       await resolveAdditionalRequestedSpaceModelIds(
         auth,

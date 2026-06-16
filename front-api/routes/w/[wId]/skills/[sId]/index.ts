@@ -273,6 +273,7 @@ app.patch(
         mcpServerViews,
         attachedKnowledge: attachedKnowledgeWithDataSourceViews,
       });
+
     let additionalRequestedSpaceIds: ModelId[];
 
     if (body.additionalRequestedSpaceIds !== undefined) {
