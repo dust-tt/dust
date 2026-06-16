@@ -13,3 +13,6 @@ dist/
 # Cache
 .cache/
 .vite/
+
+# Wrangler local dev secrets
+.dev.vars
