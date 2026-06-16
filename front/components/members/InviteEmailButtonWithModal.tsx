@@ -44,6 +44,7 @@ import {
   Plus,
   TextArea,
 } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { mutate } from "swr";
 
@@ -90,6 +91,28 @@ function isSeatSelectable(
     return available === null || available > 0;
   }
   return true;
+}
+
+function seatBadge(
+  seatType: MembershipSeatType,
+  info: SeatTypeInfo
+): ReactNode {
+  let label: string;
+  if (seatType === "free") {
+    const available = seatAvailability(info);
+    label = available === null ? "Available" : `${available} available`;
+  } else {
+    label = formatPriceCents(
+      info.priceCents,
+      info.currency,
+      info.billingFrequency
+    );
+  }
+  return (
+    <span className="text-xs text-foreground dark:text-foreground-night">
+      {label}
+    </span>
+  );
 }
 
 interface InviteEmailButtonWithModalProps {
@@ -150,12 +173,15 @@ export function InviteEmailButtonWithModal({
       const info = seatPlans[s];
       return info && isSeatSelectable(s, info);
     });
-    const cheapestPaid = selectable
-      .filter((s) => s !== "free")
-      .sort(
-        (a, b) =>
-          (seatPlans[a]?.priceCents ?? 0) - (seatPlans[b]?.priceCents ?? 0)
-      )[0];
+    const paidSelectable = selectable.filter((s) => s !== "free");
+    const cheapestPaid = paidSelectable.reduce<MembershipSeatType | undefined>(
+      (min, s) =>
+        min === undefined ||
+        (seatPlans[s]?.priceCents ?? 0) < (seatPlans[min]?.priceCents ?? 0)
+          ? s
+          : min,
+      undefined
+    );
     const defaultSeat =
       selectable.find((s) => s === "free") ??
       cheapestPaid ??
@@ -204,28 +230,6 @@ export function InviteEmailButtonWithModal({
         null;
       setSelectedSeatType(nextSeat);
     }
-  }
-
-  function seatBadge(
-    seatType: MembershipSeatType,
-    info: SeatTypeInfo
-  ): React.ReactNode {
-    let label: string;
-    if (seatType === "free") {
-      const available = seatAvailability(info);
-      label = available === null ? "Available" : `${available} available`;
-    } else {
-      label = formatPriceCents(
-        info.priceCents,
-        info.currency,
-        info.billingFrequency
-      );
-    }
-    return (
-      <span className="text-xs text-foreground dark:text-foreground-night">
-        {label}
-      </span>
-    );
   }
 
   async function handleSendInvitations(
