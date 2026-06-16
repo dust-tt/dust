@@ -485,17 +485,16 @@ export async function botValidateToolExecution(
       }
     }
 
-    // The Slack click only performs the validation when the action is still
-    // blocked. If it was already resolved elsewhere (e.g. approved from the Dust
-    // web app), `validateAction` returns `action_not_blocked` and the click is a
-    // no-op: confirming "approved"/"rejected" here would be misleading.
+    // The Slack click only performs the validation when the action is still blocked. If it was
+    // already resolved elsewhere (e.g. approved from the Dust web app), `validateAction` returns
+    // `action_not_blocked` and the click is a no-op: surface that to the user.
     let confirmationText: string;
     if (res.isOk()) {
       confirmationText = text;
     } else if (String(res.error.type) === "action_not_blocked") {
-      confirmationText = "Request already handled in Dust";
+      confirmationText = "Tool validation was already handled in Dust.";
     } else {
-      confirmationText = "An error occurred while processing the request";
+      confirmationText = "An error occurred while validating the tool.";
     }
 
     reportSlackUsage({
