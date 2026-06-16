@@ -77,10 +77,6 @@ It comes in several visual **variants** and **sizes**, and supports icons, loadi
       description: "Whether the button should display a counter",
       control: "boolean",
     },
-    briefPulse: {
-      description: "Whether the button should display a brief pulse",
-      control: "boolean",
-    },
     hasLighterFont: {
       description: "Whether the label uses a normal font weight",
       control: "boolean",
@@ -114,7 +110,6 @@ export const ExampleButton: Story = {
     isLoading: false,
     isPulsing: false,
     isSelect: false,
-    briefPulse: false,
     hasLighterFont: false,
     disabled: false,
     isCounter: false,

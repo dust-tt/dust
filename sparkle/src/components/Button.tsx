@@ -72,11 +72,11 @@ const buttonVariants = cva(
       variant: {
         primary: cn(
           OVERLAY,
-          "s-bg-gradient-to-b s-from-gray-700 s-to-gray-800",
+          "s-bg-gradient-to-b s-from-stone-700 s-to-stone-800",
           "s-text-white",
-          SOLID_SHADOW("#364153"),
+          SOLID_SHADOW("#44403b"),
           "hover:after:s-bg-white/10 active:after:s-bg-black/10",
-          "disabled:s-from-gray-300 disabled:s-to-gray-400 disabled:s-shadow-none"
+          "disabled:s-from-stone-300 disabled:s-to-stone-400 disabled:s-shadow-none"
         ),
         highlight: cn(
           OVERLAY,
@@ -99,7 +99,7 @@ const buttonVariants = cva(
         outline: cn(
           OVERLAY,
           "s-border s-border-border-dark dark:s-border-border-dark-night",
-          "s-bg-gradient-to-b s-from-white s-to-gray-50",
+          "s-bg-gradient-to-b s-from-white s-to-stone-50",
           "dark:s-from-gray-800 dark:s-to-gray-900",
           "s-text-muted-foreground dark:s-text-muted-foreground-night",
           OUTLINE_SHADOW,

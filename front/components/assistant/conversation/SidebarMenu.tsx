@@ -973,6 +973,7 @@ export function AgentSidebarMenu({
                 <div className="flex gap-2">
                   <Button
                     label="New"
+                    variant="highlight"
                     href={getConversationRoute(owner.sId)}
                     icon={MessagePlusCircle}
                     className="shrink-0"

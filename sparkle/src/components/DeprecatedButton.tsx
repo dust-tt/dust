@@ -12,9 +12,7 @@ import { ChevronDown } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
-import { useEffect, useMemo, useState } from "react";
-
-const PULSE_ANIMATION_DURATION = 1;
+import { useMemo } from "react";
 
 export const DEPRECATED_BUTTON_VARIANTS = [
   "primary",
@@ -387,7 +385,6 @@ type CommonButtonProps = Omit<DeprecatedMetaButtonProps, "children"> &
     isSelect?: boolean;
     isLoading?: boolean;
     isPulsing?: boolean;
-    briefPulse?: boolean;
     tooltip?: string;
     tooltipShortcut?: string;
     isCounter?: boolean;
@@ -435,7 +432,6 @@ const DeprecatedButton = React.forwardRef<
       tooltipShortcut,
       isSelect = false,
       isPulsing = false,
-      briefPulse = false,
       isCounter = false,
       counterValue,
       size = "sm",
@@ -453,22 +449,6 @@ const DeprecatedButton = React.forwardRef<
   ) => {
     const iconSize = DEPRECATED_ICON_SIZE_MAP[size];
     const counterSize = COUNTER_SIZE_MAP[size];
-
-    const [isPulsingBriefly, setIsPulsingBriefly] = useState(false);
-
-    useEffect(() => {
-      if (!briefPulse) {
-        return;
-      }
-      const startPulse = () => {
-        setIsPulsingBriefly(true);
-        setTimeout(
-          () => setIsPulsingBriefly(false),
-          PULSE_ANIMATION_DURATION * 3000
-        );
-      };
-      startPulse();
-    }, [briefPulse]);
 
     const renderIcon = (visual: DeprecatedButtonIconType, extraClass = "") => {
       if (isReactElement(visual)) {
@@ -552,7 +532,7 @@ const DeprecatedButton = React.forwardRef<
         isRounded={isRounded}
         disabled={isLoading || props.disabled}
         className={cn(
-          (isPulsing || isPulsingBriefly) && "s-animate-ring-pulse",
+          isPulsing && "s-animate-ring-pulse",
           isSelect && selectButtonSizeVariants({ size }),
           className
         )}
