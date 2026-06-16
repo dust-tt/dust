@@ -51,7 +51,7 @@ export function UsageProgrammaticLimitCard({
       <SettingsList>
         <SettingsList.Row
           title="Programmatic monthly limit"
-          description="Maximum credits allowed for programmatic usage per month"
+          description="Maximum credits allowed for programmatic usage per month."
           action={
             <div className="w-52">
               <InputWithSave

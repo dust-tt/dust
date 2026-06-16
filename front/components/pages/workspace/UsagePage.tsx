@@ -2,12 +2,12 @@ import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { ConfirmContext } from "@app/components/Confirm";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
-import { AwuUsageChart } from "@app/components/workspace/AwuUsageChart";
 import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDialog";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { UpgradeRequestsTable } from "@app/components/workspace/UpgradeRequestsTable";
+import { LockedSection } from "@app/components/workspace/usage/LockedSection";
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
 import { UsageSettingsCard } from "@app/components/workspace/usage/UsageSettingsCard";
@@ -58,20 +58,17 @@ import {
   AlertCircle,
   ArrowUp,
   Button,
+  ButtonsSwitch,
+  ButtonsSwitchList,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Icon,
   Page,
   PieChart01,
   SearchInput,
   Spinner,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
 import capitalize from "lodash/capitalize";
@@ -360,10 +357,9 @@ export function UsagePage() {
       disabled: !showBuyCreditDialog,
     });
 
-  const { billingCycleStartDay, isCreditPurchaseInfoLoading } =
-    useCreditPurchaseInfo({
-      workspaceId: owner.sId,
-    });
+  const { billingCycleStartDay } = useCreditPurchaseInfo({
+    workspaceId: owner.sId,
+  });
 
   // Legacy contracts have no pool credits or commits, so the pool summary's
   // overage figure is meaningless. In read-only mode we instead show the
@@ -454,10 +450,15 @@ export function UsagePage() {
     totalActiveCredits - totalRemainingCredits
   );
   const initialTotalCredits = totalActiveCredits;
+  const hasPool = totalActiveCredits > 0;
 
   if (!canViewUsage) {
     return null;
   }
+
+  const showPoolSection =
+    !isAwuPoolSummaryLoading &&
+    (!!isAwuPoolSummaryError || hasPool || isReadOnly);
 
   const searchAndInviteRow = (
     <div className="flex flex-row gap-2">
@@ -549,20 +550,23 @@ export function UsagePage() {
       />
 
       <div className="flex flex-col items-stretch gap-10 pb-20">
-        <Page.Vertical gap="xs">
-          <Icon
-            visual={PieChart01}
-            className="text-muted-foreground dark:text-muted-foreground-night"
-            size="lg"
-          />
-          <Page.H variant="h3">Usage</Page.H>
-          <Page.P variant="secondary">
-            Manage the usage of your Dust workspace
-          </Page.P>
-        </Page.Vertical>
+        <div className="flex items-center justify-between">
+          <Page.Header title="Usage" icon={PieChart01} />
+          {!isReadOnly && !isEnterprise && (
+            <Button
+              label="Top up"
+              icon={ArrowUp}
+              size="sm"
+              variant="outline"
+              onClick={() => setShowBuyCreditDialog(true)}
+            />
+          )}
+        </div>
 
-        {!isFreePlanWorkspace && (
+        {showPoolSection && (
           <Page.Vertical gap="xs" align="stretch">
+            <Page.H variant="h4">Workspace Credit Pool</Page.H>
+
             {isAwuPoolSummaryError && (
               <ContentMessage
                 title="Failed to load Workspace Credits Pool"
@@ -591,6 +595,16 @@ export function UsagePage() {
                     /{formatCredits(initialTotalCredits)}
                   </span>
                 </div>
+                {hasPool && (
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted-foreground/20">
+                    <div
+                      className="h-full rounded-full bg-foreground/80 transition-all"
+                      style={{
+                        width: `${Math.min(100, initialTotalCredits > 0 ? (totalConsumedCredits / initialTotalCredits) * 100 : 0)}%`,
+                      }}
+                    />
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   {isReadOnly ? (
                     <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -604,18 +618,10 @@ export function UsagePage() {
                           {formatCredits(overageCredits)} overage credits
                         </span>
                       )}
-                      {isEnterprise ? (
+                      {isEnterprise && (
                         <span className="copy-sm text-muted-foreground dark:text-muted-foreground-night">
                           Contact your Dust sales representative to buy credits
                         </span>
-                      ) : (
-                        <Button
-                          label="Top up"
-                          icon={ArrowUp}
-                          size="xs"
-                          variant="outline"
-                          onClick={() => setShowBuyCreditDialog(true)}
-                        />
                       )}
                     </>
                   )}
@@ -625,47 +631,45 @@ export function UsagePage() {
           </Page.Vertical>
         )}
 
-        {isCreditPurchaseInfoLoading ? (
-          <div className="h-64 animate-pulse rounded bg-muted-foreground/20" />
-        ) : (
-          <AwuUsageChart
-            workspaceId={owner.sId}
-            billingCycleStartDay={billingCycleStartDay ?? 1}
-          />
-        )}
-
-        {!isFreePlanWorkspace && (
-          <>
-            <UsageSettingsCard workspaceId={owner.sId} readOnly={isReadOnly} />
-
-            <UsageProgrammaticLimitCard
+        <Page.Vertical gap="md" align="stretch">
+          <Page.H variant="h4">Settings</Page.H>
+          <div className="flex flex-col gap-10">
+            <UsageSettingsCard
               workspaceId={owner.sId}
               readOnly={isReadOnly}
+              hasPool={hasPool}
             />
-
-            <UsageNotificationsCard
-              workspaceId={owner.sId}
-              readOnly={isReadOnly}
-            />
-          </>
-        )}
+            <LockedSection
+              locked={!isAwuPoolSummaryLoading && !hasPool}
+              className="flex flex-col gap-10"
+            >
+              <UsageProgrammaticLimitCard
+                workspaceId={owner.sId}
+                readOnly={isReadOnly}
+              />
+              <UsageNotificationsCard
+                workspaceId={owner.sId}
+                readOnly={isReadOnly}
+              />
+            </LockedSection>
+          </div>
+        </Page.Vertical>
 
         <Page.Vertical gap="sm" align="stretch">
-          <span className="heading-2xl text-foreground dark:text-foreground-night">
-            Members
-          </span>
+          <Page.H variant="h4">Members</Page.H>
           {searchAndInviteRow}
           {isWorkspaceAdmin ? (
-            <Tabs
-              value={membersTab}
-              onValueChange={(value) =>
-                setMembersTab(value === "requests" ? "requests" : "members")
-              }
-            >
+            <div className="flex flex-col gap-2">
               <div className="flex flex-row items-center justify-between gap-2">
-                <TabsList border={false} className="w-auto">
-                  <TabsTrigger value="members" label="Members" />
-                  <TabsTrigger
+                <ButtonsSwitchList
+                  size="xs"
+                  defaultValue="members"
+                  onValueChange={(v) =>
+                    setMembersTab(v === "requests" ? "requests" : "members")
+                  }
+                >
+                  <ButtonsSwitch value="members" label="Members" />
+                  <ButtonsSwitch
                     value="requests"
                     label="Requests"
                     isCounter
@@ -675,14 +679,13 @@ export function UsagePage() {
                         : undefined
                     }
                   />
-                </TabsList>
+                </ButtonsSwitchList>
                 {membersTab === "members" && seatFilterDropdown}
               </div>
-              <TabsContent value="members">
-                <div className="pt-2">{membersTable}</div>
-              </TabsContent>
-              <TabsContent value="requests">
-                <div className="pt-2">
+              <div className="pt-2">
+                {membersTab === "members" ? (
+                  membersTable
+                ) : (
                   <UpgradeRequestsTable
                     requests={filteredUpgradeRequests}
                     isLoading={isUpgradeRequestsLoading}
@@ -692,9 +695,9 @@ export function UsagePage() {
                     onEditLimit={handleEditLimitRequest}
                     onDeny={handleDenyRequest}
                   />
-                </div>
-              </TabsContent>
-            </Tabs>
+                )}
+              </div>
+            </div>
           ) : (
             <>
               {seatFilterDropdown && (
@@ -706,43 +709,43 @@ export function UsagePage() {
             </>
           )}
         </Page.Vertical>
-
-        {inviteBlockedPopupReason && (
-          <ReachedLimitPopup
-            isAdmin={isAdmin(owner)}
-            isOpened={!!inviteBlockedPopupReason}
-            onClose={() => setInviteBlockedPopupReason(null)}
-            subscription={subscription}
-            owner={owner}
-            code={inviteBlockedPopupReason}
-          />
-        )}
-
-        <ChangeSeatModal
-          isOpen={changeSeatMember !== null}
-          onClose={() => {
-            setChangeSeatMember(null);
-            setPendingApproveRequestId(null);
-          }}
-          member={changeSeatMember}
-          owner={owner}
-          seatPlans={seatPlans}
-          onSavingChange={handleSeatChangePendingChange}
-          onSaved={handleApproveOnModalSaved}
-        />
-
-        <EditSpendLimitModal
-          isOpen={editSpendLimitMember !== null}
-          onClose={() => {
-            setEditSpendLimitMember(null);
-            setPendingApproveRequestId(null);
-          }}
-          member={editSpendLimitMember}
-          owner={owner}
-          onSavingChange={handleUsagePendingChange}
-          onSaved={handleApproveOnModalSaved}
-        />
       </div>
+
+      {inviteBlockedPopupReason && (
+        <ReachedLimitPopup
+          isAdmin={isAdmin(owner)}
+          isOpened={!!inviteBlockedPopupReason}
+          onClose={() => setInviteBlockedPopupReason(null)}
+          subscription={subscription}
+          owner={owner}
+          code={inviteBlockedPopupReason}
+        />
+      )}
+
+      <ChangeSeatModal
+        isOpen={changeSeatMember !== null}
+        onClose={() => {
+          setChangeSeatMember(null);
+          setPendingApproveRequestId(null);
+        }}
+        member={changeSeatMember}
+        owner={owner}
+        seatPlans={seatPlans}
+        onSavingChange={handleSeatChangePendingChange}
+        onSaved={handleApproveOnModalSaved}
+      />
+
+      <EditSpendLimitModal
+        isOpen={editSpendLimitMember !== null}
+        onClose={() => {
+          setEditSpendLimitMember(null);
+          setPendingApproveRequestId(null);
+        }}
+        member={editSpendLimitMember}
+        owner={owner}
+        onSavingChange={handleUsagePendingChange}
+        onSaved={handleApproveOnModalSaved}
+      />
     </>
   );
 }
