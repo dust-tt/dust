@@ -22,9 +22,9 @@ const config = {
   getLLMTracesBucket: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_LLM_TRACES_BUCKET");
   },
-  getPokeSuperUserConfigBucket: (): string => {
+  getPokeUserConfigBucket: (): string => {
     return EnvironmentConfig.getEnvVariable(
-      "DUST_POKE_SUPER_USER_CONFIG_BUCKET"
+      "DUST_POKE_USER_CONFIG_BUCKET"
     );
   },
   getDustTablesBucket: (): string => {

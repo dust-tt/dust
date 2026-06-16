@@ -1,4 +1,4 @@
-import { getPokeSuperUserConfigBucket } from "@app/lib/file_storage";
+import { getPokeUserConfigBucket } from "@app/lib/file_storage";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -27,7 +27,7 @@ async function loadRoles(): Promise<RolesConfig> {
 
   try {
     const content =
-      await getPokeSuperUserConfigBucket().fetchFileContent(POKE_ROLES_FILE);
+      await getPokeUserConfigBucket().fetchFileContent(POKE_ROLES_FILE);
     const parsed: unknown = JSON.parse(content);
     const result = RolesConfigSchema.safeParse(parsed);
 
@@ -59,5 +59,6 @@ export function hasPokeRole(
   userRoles: PokeRole[],
   requiredRoles: PokeRole[]
 ): boolean {
-  return requiredRoles.some((r) => userRoles.includes(r));
+  const userRoleSet = new Set(userRoles);
+  return requiredRoles.some((r) => userRoleSet.has(r));
 }
