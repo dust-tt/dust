@@ -1,5 +1,6 @@
 /** @ignoreswagger */
 import { resolveGoDestination } from "@marketing/lib/go/resolveDestination";
+import { assertNever } from "@marketing/types/shared/utils/assert_never";
 import { isString } from "@marketing/types/shared/utils/general";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -31,5 +32,7 @@ export default async function handler(
       return res.status(404).json({ error: "template_not_found" });
     case "error":
       return res.status(500).json({ error: "internal_server_error" });
+    default:
+      assertNever(result);
   }
 }
