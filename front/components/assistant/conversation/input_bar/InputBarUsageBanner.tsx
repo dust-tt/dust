@@ -10,14 +10,18 @@ interface InputBarUsageBannerProps {
 
 export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
   const { isAdmin } = useAuth();
-  const { awuStatus, canRequestUpgrade, hasPendingUpgradeRequest, noSeat } =
-    useWorkspaceUsageStatus({
-      owner,
-    });
+  const {
+    userNearCreditLimit,
+    canRequestUpgrade,
+    hasPendingUpgradeRequest,
+    userBlockedReason,
+  } = useWorkspaceUsageStatus({
+    owner,
+  });
 
   const showUpgradeCta = canRequestUpgrade || isAdmin;
 
-  if (noSeat) {
+  if (userBlockedReason === "no_seat") {
     return (
       <div
         className={cn(
@@ -42,11 +46,11 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
     );
   }
 
-  if (awuStatus === "normal") {
+  if (!userNearCreditLimit && userBlockedReason !== "user_cap_reached") {
     return null;
   }
 
-  const isBlocked = awuStatus === "blocked";
+  const isBlocked = userBlockedReason === "user_cap_reached";
 
   return (
     <div

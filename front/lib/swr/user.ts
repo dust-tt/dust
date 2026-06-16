@@ -282,11 +282,11 @@ export function useWorkspaceUsageStatus({
   );
 
   return {
-    awuStatus: data?.awuStatus ?? "normal",
+    userNearCreditLimit: data?.userNearCreditLimit ?? false,
     poolCreditState: data?.poolCreditState ?? "active",
     programmaticCreditStatus: data?.programmaticCreditStatus ?? "active",
     balanceThresholdReached: data?.balanceThresholdReached ?? false,
-    noSeat: data?.noSeat ?? false,
+    userBlockedReason: data?.userBlockedReason ?? null,
     canRequestUpgrade: data?.canRequestUpgrade ?? false,
     hasPendingUpgradeRequest: data?.hasPendingUpgradeRequest ?? false,
     isUsageStatusLoading: !error && !data && !disabled,

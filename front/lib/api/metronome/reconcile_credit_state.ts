@@ -502,11 +502,10 @@ export async function reconcileWorkspaceUserCreditStates({
         effectiveCapAwuCredits !== null ? (usageByUser.get(userId) ?? 0) : null,
     });
 
-    if (normalizeUserCreditState(membership.creditState) === expectedState) {
-      continue;
-    }
-
     try {
+      // Always call setUserCreditStateReconciled even when DB state already
+      // matches: it skips the DB write but always refreshes the Redis cache,
+      // fixing stale "capped" entries that survive after the DB is corrected.
       await setUserCreditStateReconciled(membership, expectedState, {
         workspaceId,
         userId,

@@ -67,13 +67,15 @@ const DEFAULT_FAIR_USE_AWU_CREDITS_STATUS: FairUseAwuCreditsStatus = {
 };
 
 export type GetWorkspaceUsageStatusResponseBody = {
-  awuStatus: "normal" | "warned" | "blocked";
+  // True when the user has consumed ≥ 80 % of their credit allowance (soft warning, not yet blocked).
+  userNearCreditLimit: boolean;
   poolCreditState: WorkspacePoolCreditState;
   programmaticCreditStatus: ProgrammaticCreditStatus;
   balanceThresholdReached: boolean;
-  // True when the current user has no billable seat in the workspace and is
-  // therefore blocked from sending messages.
-  noSeat: boolean;
+  // Authoritative block reason from isUserBlocked — null means the user can
+  // send messages. Replaces the old client-side derivations (noSeat,
+  // awuStatus === "blocked", poolCreditState === "depleted").
+  userBlockedReason: UserBlockedReason | null;
   canRequestUpgrade: boolean;
   hasPendingUpgradeRequest: boolean;
 };

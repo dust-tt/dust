@@ -30,11 +30,11 @@ app.get(
     // Workspaces not on Metronome billing have no usage status to report.
     if (!workspace.metronomeCustomerId || !isCreditPriced) {
       return ctx.json({
-        awuStatus: "normal",
+        userNearCreditLimit: false,
         poolCreditState: "active",
         programmaticCreditStatus: "active",
         balanceThresholdReached: false,
-        noSeat: false,
+        userBlockedReason: null,
         canRequestUpgrade: false,
         hasPendingUpgradeRequest: false,
       });
@@ -42,7 +42,7 @@ app.get(
 
     const [
       poolCreditState,
-      blockedReason,
+      userBlockedReason,
       programmaticState,
       balanceThresholdReached,
     ] = await Promise.all([
@@ -52,14 +52,8 @@ app.get(
       isWorkspaceBalanceThresholdReached(workspace.sId),
     ]);
 
-    let awuStatus: GetWorkspaceUsageStatusResponseBody["awuStatus"] = "normal";
-    if (blockedReason === "user_cap_reached") {
-      awuStatus = "blocked";
-    } else if (await isUserAwuWarned(workspace.sId, user.sId)) {
-      awuStatus = "warned";
-    }
-
-    const noSeat = blockedReason === "no_seat";
+    const userNearCreditLimit =
+      !userBlockedReason && (await isUserAwuWarned(workspace.sId, user.sId));
 
     let programmaticCreditStatus: ProgrammaticCreditStatus = "active";
     if (programmaticState === "depleted") {
@@ -73,15 +67,15 @@ app.get(
 
     const { canRequestUpgrade, hasPendingUpgradeRequest } =
       await getUpgradeRequestAvailabilityForUser(auth, {
-        isNearOrAtLimit: awuStatus !== "normal" || noSeat,
+        isNearOrAtLimit: userNearCreditLimit || userBlockedReason !== null,
       });
 
     return ctx.json({
-      awuStatus,
+      userNearCreditLimit,
       poolCreditState,
       programmaticCreditStatus,
       balanceThresholdReached,
-      noSeat,
+      userBlockedReason,
       canRequestUpgrade,
       hasPendingUpgradeRequest,
     });

@@ -1,3 +1,4 @@
+import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -142,6 +143,7 @@ export type VirtuosoMessageListContext = {
   setBranchIdToApprove?: (branchId: string | null) => void;
   isAutoScrollEnabledRef: MutableRefObject<boolean>;
   isNoSeat?: boolean;
+  setLimitReachedCode?: (code: WorkspaceLimit) => void;
 };
 
 export const areSameRankAndBranch = (
