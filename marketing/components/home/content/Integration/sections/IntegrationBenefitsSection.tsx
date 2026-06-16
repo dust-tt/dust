@@ -3,6 +3,7 @@ import {
   getIcon,
   ResourceAvatar,
 } from "@app/components/resources/resources_icons";
+import { Chip } from "@dust-tt/sparkle";
 
 import type { BenefitCard, BenefitCardColor } from "../types";
 
@@ -109,12 +110,7 @@ function BenefitCardView({ benefit }: BenefitCardViewProps) {
       {benefit.toolMatches.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {benefit.toolMatches.map((toolName) => (
-            <span
-              key={toolName}
-              className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground"
-            >
-              {toolName}
-            </span>
+            <Chip key={toolName} label={toolName} size="mini" color="primary" />
           ))}
         </div>
       )}

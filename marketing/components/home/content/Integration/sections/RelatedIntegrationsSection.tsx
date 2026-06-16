@@ -7,6 +7,13 @@ import Link from "next/link";
 
 import type { IntegrationBase } from "../types";
 
+function formatCategory(category: string): string {
+  if (category === "crm") {
+    return "CRM";
+  }
+  return category.charAt(0).toUpperCase() + category.slice(1);
+}
+
 interface RelatedIntegrationsSectionProps {
   integrations: IntegrationBase[];
 }
@@ -41,8 +48,8 @@ export function RelatedIntegrationsSection({
               <h3 className="mt-3 text-center text-sm font-semibold text-foreground">
                 {integration.name}
               </h3>
-              <span className="mt-1 text-xs capitalize text-muted-foreground">
-                {integration.category}
+              <span className="mt-1 text-xs text-muted-foreground">
+                {formatCategory(integration.category)}
               </span>
               <span className="mt-3 flex items-center gap-1 text-xs font-medium text-green-600 opacity-0 transition-opacity group-hover:opacity-100">
                 Learn more

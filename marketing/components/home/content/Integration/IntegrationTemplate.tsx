@@ -139,7 +139,7 @@ export default function IntegrationTemplate({
         )}
       </Head>
 
-      <div className="-mb-24 flex w-full flex-col">
+      <div className="-mb-4 flex w-full flex-col">
         {/* Hero Section */}
         <IntegrationHeroSection
           integration={integration}
