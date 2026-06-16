@@ -28,7 +28,6 @@ mprocs.log
 AGENTS.local.md
 CLAUDE.local.md
 node_modules
-**/.next
 thoughts/*
 
 # dust-hive worktrees
