@@ -6,8 +6,9 @@ import {
   SEAT_AUTO_UPGRADED_TAG,
   SEAT_AUTO_UPGRADED_TRIGGER_ID,
 } from "@app/types/notification_preferences";
+import { isDevelopment } from "@app/types/shared/env";
 import { workflow } from "@novu/framework";
-import z from "zod";
+import { z } from "zod";
 
 const SeatAutoUpgradedPayloadSchema = z.object({
   workspaceId: z.string(),
@@ -22,6 +23,11 @@ type SeatAutoUpgradedPayloadType = z.infer<
   typeof SeatAutoUpgradedPayloadSchema
 >;
 
+const isSeatAutoUpgradedPayload = (
+  payload: unknown
+): payload is SeatAutoUpgradedPayloadType =>
+  SeatAutoUpgradedPayloadSchema.safeParse(payload).success;
+
 function formatMember(payload: SeatAutoUpgradedPayloadType): string {
   return payload.memberEmail
     ? `${payload.memberName} (${payload.memberEmail})`
@@ -31,28 +37,71 @@ function formatMember(payload: SeatAutoUpgradedPayloadType): string {
 export const seatAutoUpgradedWorkflow = workflow(
   SEAT_AUTO_UPGRADED_TRIGGER_ID,
   async ({ step, payload, subscriber }) => {
-    await step.email("seat-auto-upgraded-email", async () => {
-      const member = formatMember(payload);
-      const subject = `[Dust] ${member} was auto-upgraded to a ${payload.newSeatType} seat`;
-      const content = [
-        `${member} reached their credit limit and was automatically upgraded from a ${payload.previousSeatType} seat to a ${payload.newSeatType} seat so they can keep working.`,
-        `This increases your subscription cost. You can turn off automatic seat upgrades from your workspace usage settings.`,
-      ].join("\n\n");
-
-      const body = await renderEmail({
-        name: subscriber.firstName ?? "there",
-        workspace: {
-          id: payload.workspaceId,
-          name: payload.workspaceName,
-        },
-        content,
-        action: {
-          label: "Go to workspace usage",
-          url: `${config.getAppUrl()}/w/${payload.workspaceId}/usage`,
-        },
-      });
-      return { subject, body };
+    const { events } = await step.digest("digest", async () => {
+      const digestKey = `${subscriber.subscriberId}-workspace-${payload.workspaceId}-seat-auto-upgrades`;
+      return isDevelopment()
+        ? { amount: 2, unit: "minutes", digestKey }
+        : { cron: "0 9 * * *", digestKey }; // Every day at 9:00 AM UTC.
     });
+
+    await step.email(
+      "seat-auto-upgraded-email",
+      async () => {
+        // Dedupe by member (a member could be upgraded more than once across
+        // the window) and keep insertion order so the email lists each once.
+        const memberByKey = new Map<string, SeatAutoUpgradedPayloadType>();
+        for (const event of events) {
+          if (!isSeatAutoUpgradedPayload(event.payload)) {
+            continue;
+          }
+          const key = event.payload.memberEmail ?? event.payload.memberName;
+          if (!memberByKey.has(key)) {
+            memberByKey.set(key, event.payload);
+          }
+        }
+        const members = Array.from(memberByKey.values());
+        const count = members.length;
+
+        const subject =
+          count > 1
+            ? `[Dust] ${count} members were auto-upgraded to higher seats`
+            : `[Dust] ${formatMember(members[0])} was auto-upgraded to a ${members[0].newSeatType} seat`;
+
+        const intro =
+          count > 1
+            ? `${count} members reached their credit limit and were automatically upgraded to higher seats so they can keep working:`
+            : `${formatMember(members[0])} reached their credit limit and was automatically upgraded from a ${members[0].previousSeatType} seat to a ${members[0].newSeatType} seat so they can keep working.`;
+        const list =
+          count > 1
+            ? members
+                .map(
+                  (m) =>
+                    `• ${formatMember(m)} — ${m.previousSeatType} → ${m.newSeatType}`
+                )
+                .join("\n")
+            : "";
+        const outro = `This might increase your subscription cost. You can turn off automatic seat upgrades from your workspace usage settings.`;
+        const content = [intro, list, outro].filter(Boolean).join("\n\n");
+
+        const body = await renderEmail({
+          name: subscriber.firstName ?? "there",
+          workspace: {
+            id: payload.workspaceId,
+            name: payload.workspaceName,
+          },
+          content,
+          action: {
+            label: "Go to workspace usage",
+            url: `${config.getAppUrl()}/w/${payload.workspaceId}/usage`,
+          },
+        });
+        return { subject, body };
+      },
+      {
+        skip: async () =>
+          !events.some((event) => isSeatAutoUpgradedPayload(event.payload)),
+      }
+    );
   },
   {
     payloadSchema: SeatAutoUpgradedPayloadSchema,
