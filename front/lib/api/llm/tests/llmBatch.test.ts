@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from "node:util";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { getLLM } from "@app/lib/api/llm";
+import { getLegacyLLM } from "@app/lib/api/llm";
 import { MODELS } from "@app/lib/api/llm/tests/models";
 import type { ResponseChecker } from "@app/lib/api/llm/tests/types";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
@@ -277,7 +277,7 @@ describe.skipIf(!RUN_LLM_BATCH_TEST || modelsWithBatchSupport.length === 0)(
           const credentials = await getLlmCredentials(authenticator, {
             skipEmbeddingApiKeyRequirement: true,
           });
-          const llm = await getLLM(authenticator, {
+          const llm = await getLegacyLLM(authenticator, {
             modelId: modelId as ModelIdType,
             bypassFeatureFlag: true,
             credentials,
