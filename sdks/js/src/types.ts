@@ -776,6 +776,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "metronome_billing_usage_page"
   | "user_settings_v2"
   | "admin_governance"
+  | "use_new_llm_router"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
