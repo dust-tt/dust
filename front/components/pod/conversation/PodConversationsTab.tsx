@@ -207,9 +207,9 @@ export function PodConversationsTab({
                 space={podInfo}
                 disableAutoFocus={false}
                 placeholder={`Get work done in ${podInfo.name}`}
-                defaultAgentSId={
+                defaultAgentId={
                   hasFeature("pod_default_agent")
-                    ? (podMetadata?.defaultAgentSId ?? null)
+                    ? (podMetadata?.defaultAgentId ?? null)
                     : null
                 }
                 isDefaultAgentLoading={isPodMetadataLoading}

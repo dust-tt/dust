@@ -175,11 +175,11 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
   // Persists the pod's default agent sId. The caller is responsible for validating that the
   // agent exists and is usable in the workspace (global or workspace agent) — see the PATCH
   // project_metadata route, which uses getAgentConfiguration() for that.
-  async updateDefaultAgentSId(
-    defaultAgentSId: string | null,
+  async updateDefaultAgentId(
+    defaultAgentId: string | null,
     transaction?: Transaction
   ) {
-    await this.update({ defaultAgentSId }, transaction);
+    await this.update({ defaultAgentId }, transaction);
   }
 
   async delete(
@@ -210,7 +210,7 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       todoGenerationEnabled: this.todoGenerationEnabled,
       lastTodoAnalysisAt: this.lastTodoAnalysisAt?.getTime() ?? null,
       pinnedFramePath: this.pinnedFramePath ?? null,
-      defaultAgentSId: this.defaultAgentSId ?? null,
+      defaultAgentId: this.defaultAgentId ?? null,
     };
   }
 }

@@ -9,5 +9,5 @@ export interface PodMetadataType {
   lastTodoAnalysisAt: number | null;
   pinnedFramePath: string | null;
   // sId of the agent pre-selected for new conversations in this pod. Null = @dust.
-  defaultAgentSId: string | null;
+  defaultAgentId: string | null;
 }

@@ -27,7 +27,7 @@ interface UseHandleMentionsOptions {
   } | null;
   // The user's personal default agent for new conversations (sId), or null when unset.
   // Resolved against `allAgents`, falling back to @dust.
-  defaultAgentSId?: string | null;
+  defaultAgentId?: string | null;
   // While true, the personal default is still loading; we hold off on committing a
   // new-conversation default so we don't pick @dust first and then visibly swap.
   isDefaultAgentLoading?: boolean;
@@ -42,7 +42,7 @@ const useHandleMentions = ({
   conversation,
   editorService,
   getDraft,
-  defaultAgentSId,
+  defaultAgentId,
   isDefaultAgentLoading,
   isAgentBuilder,
   pendingInputText,
@@ -111,7 +111,7 @@ const useHandleMentions = ({
 
       // Prefer the user's personal default (if set and still accessible), else @dust.
       const defaultAgent =
-        (defaultAgentSId && allAgents.find((a) => a.sId === defaultAgentSId)) ||
+        (defaultAgentId && allAgents.find((a) => a.sId === defaultAgentId)) ||
         allAgents.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST);
       if (defaultAgent) {
         setSelectedSingleAgent(toRichAgentMentionType(defaultAgent));
@@ -124,7 +124,7 @@ const useHandleMentions = ({
     allAgents,
     getDraft,
     setSelectedSingleAgent,
-    defaultAgentSId,
+    defaultAgentId,
     isDefaultAgentLoading,
   ]);
 

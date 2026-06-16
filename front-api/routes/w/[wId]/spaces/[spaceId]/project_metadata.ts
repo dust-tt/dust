@@ -100,9 +100,9 @@ app.patch(
     // Validate the default agent exists and is usable (handles both global agents like
     // "claude-4.5-sonnet" and workspace agents). A null value clears the default (@dust).
     // Gated behind the pod_default_agent feature flag.
-    if (defaultAgentEnabled && body.defaultAgentSId) {
+    if (defaultAgentEnabled && body.defaultAgentId) {
       const agent = await getAgentConfiguration(auth, {
-        agentId: body.defaultAgentSId,
+        agentId: body.defaultAgentId,
         variant: "extra_light",
       });
       if (!agent || agent.status !== "active") {
@@ -110,7 +110,7 @@ app.patch(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Agent "${body.defaultAgentSId}" was not found or is not usable in this workspace.`,
+            message: `Agent "${body.defaultAgentId}" was not found or is not usable in this workspace.`,
           },
         });
       }
@@ -133,8 +133,8 @@ app.patch(
         todoGenerationEnabled: body.todoGenerationEnabled ?? false,
         initialTodoAnalysisLookback: body.initialTodoAnalysisLookback ?? null,
         pinnedFramePath: body.pinnedFramePath ?? null,
-        defaultAgentSId: defaultAgentEnabled
-          ? (body.defaultAgentSId ?? null)
+        defaultAgentId: defaultAgentEnabled
+          ? (body.defaultAgentId ?? null)
           : null,
       });
       if (!body.archive) {
@@ -182,8 +182,8 @@ app.patch(
       if (body.pinnedFramePath !== undefined) {
         await metadata.updatePinnedFramePath(body.pinnedFramePath);
       }
-      if (defaultAgentEnabled && body.defaultAgentSId !== undefined) {
-        await metadata.updateDefaultAgentSId(body.defaultAgentSId);
+      if (defaultAgentEnabled && body.defaultAgentId !== undefined) {
+        await metadata.updateDefaultAgentId(body.defaultAgentId);
       }
       if (body.todoGenerationEnabled === true && !priorTodoGenerationEnabled) {
         void launchOrSignalProjectTodoWorkflow({

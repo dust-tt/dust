@@ -85,7 +85,7 @@ export function PodSettingsTab({
   });
   const displayedDefaultAgent =
     agentConfigurations.find(
-      (a) => a.sId === (podMetadata?.defaultAgentSId || GLOBAL_AGENTS_SID.DUST)
+      (a) => a.sId === (podMetadata?.defaultAgentId || GLOBAL_AGENTS_SID.DUST)
     ) ?? null;
   const saveDefaultAgent = useCallback(
     async (sId: string | null) => {
@@ -104,7 +104,7 @@ export function PodSettingsTab({
           return;
         }
       }
-      await doUpdateMetadata({ defaultAgentSId: sId });
+      await doUpdateMetadata({ defaultAgentId: sId });
     },
     [confirm, doUpdateMetadata]
   );
@@ -382,7 +382,7 @@ export function PodSettingsTab({
                   label={displayedDefaultAgent?.name ?? "Dust"}
                 />
               )}
-              {isPodEditor && podMetadata?.defaultAgentSId && (
+              {isPodEditor && podMetadata?.defaultAgentId && (
                 <Button
                   variant="ghost"
                   size="sm"
