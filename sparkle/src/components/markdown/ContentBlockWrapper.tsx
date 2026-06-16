@@ -1,10 +1,10 @@
 import { Button } from "@sparkle/components/Button";
 import { useCopyToClipboard } from "@sparkle/hooks";
 import {
-  ArrowDownOnSquareIcon,
-  ClipboardCheckIcon,
-  ClipboardIcon,
-} from "@sparkle/icons/app";
+  Clipboard,
+  ClipboardCheck,
+  Download01,
+} from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React, { useCallback } from "react";
@@ -162,7 +162,7 @@ export function ContentBlockWrapper({
               <Button
                 variant={"outline"}
                 size="xs"
-                icon={ArrowDownOnSquareIcon}
+                icon={Download01}
                 onClick={handleDownload}
                 tooltip="Download"
               />
@@ -171,7 +171,7 @@ export function ContentBlockWrapper({
               <Button
                 variant={"outline"}
                 size="xs"
-                icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                icon={isCopied ? ClipboardCheck : Clipboard}
                 onClick={handleCopyToClipboard}
                 tooltip="Copy"
               />

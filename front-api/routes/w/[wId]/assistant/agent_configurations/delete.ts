@@ -19,6 +19,7 @@ const PostAgentConfigurationArchiveSchema = z.object({
 // Mounted at /api/w/:wId/assistant/agent_configurations/delete.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostAgentConfigurationArchiveSchema),

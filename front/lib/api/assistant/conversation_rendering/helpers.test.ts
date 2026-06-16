@@ -308,6 +308,7 @@ The following skills are available for use with the skill_management__enable_ski
       richMentions: [],
       completionDurationMs: null,
       reactions: [],
+      costCredits: null,
     } satisfies AgentMessageType;
 
     const steps = await getSteps(authenticator, {
@@ -437,6 +438,7 @@ describe("vision image rendering in getSteps", () => {
       richMentions: [],
       completionDurationMs: null,
       reactions: [],
+      costCredits: null,
     };
 
     return { auth: authenticator, message, model, workspaceId, conversationId };

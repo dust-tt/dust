@@ -1,6 +1,9 @@
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import { getStatsDClient } from "@app/lib/utils/statsd";
-import type { MaxMessagesTimeframeType } from "@app/types/plan";
+import type {
+  MaxAwuCreditsTimeframeType,
+  MaxMessagesTimeframeType,
+} from "@app/types/plan";
 import type { LoggerInterface } from "@app/types/shared/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -14,26 +17,40 @@ export const RATE_LIMITER_PREFIX = "rate_limiter";
 
 const makeRateLimiterKey = (key: string) => `${RATE_LIMITER_PREFIX}:${key}`;
 
+type RateLimiterArgs = {
+  key: string;
+  logger: LoggerInterface;
+  maxPerTimeframe: number;
+  timeframeSeconds: number;
+  incrementBy?: number;
+};
+
 export async function rateLimiter({
   key,
   maxPerTimeframe,
   timeframeSeconds,
   logger,
-}: {
-  key: string;
-  logger: LoggerInterface;
-  maxPerTimeframe: number;
-  timeframeSeconds: number;
-}): Promise<number> {
+  incrementBy = 1,
+}: RateLimiterArgs): Promise<number> {
   const now = new Date();
   const redisKey = makeRateLimiterKey(key);
   const tags: string[] = [];
+
+  if (!Number.isInteger(incrementBy) || incrementBy <= 0) {
+    throw new Error("incrementBy must be a positive integer.");
+  }
+  if (!Number.isInteger(maxPerTimeframe) || maxPerTimeframe < 0) {
+    throw new Error("maxPerTimeframe must be a non-negative integer.");
+  }
+  if (!Number.isInteger(timeframeSeconds) || timeframeSeconds <= 0) {
+    throw new Error("timeframeSeconds must be a positive integer.");
+  }
 
   const luaScript = `
     local key = KEYS[1]
     local window_seconds = tonumber(ARGV[1])
     local limit = tonumber(ARGV[2])
-    local value = ARGV[3]
+    local increment_by = tonumber(ARGV[3])
 
     -- Use Redis server time to avoid client clock skew
     local t = redis.call('TIME') -- { seconds, microseconds }
@@ -44,12 +61,13 @@ export async function rateLimiter({
     local window_ms = window_seconds * 1000
     local trim_before = now_ms - window_ms
 
-    -- Current count in window
     local count = redis.call('ZCOUNT', key, trim_before, '+inf')
 
-    if count < limit then
-      -- Allow: record this request at now_ms
-      redis.call('ZADD', key, now_ms, value)
+    if count + increment_by <= limit then
+      -- Allow: record one entry per consumed unit at now_ms.
+      for i = 1, increment_by do
+        redis.call('ZADD', key, now_ms, ARGV[3 + i])
+      end
       -- Keep the key around a bit longer than the window to allow trims
       local ttl_ms = window_ms + 60000
       redis.call('PEXPIRE', key, ttl_ms)
@@ -64,12 +82,14 @@ export async function rateLimiter({
 
   try {
     const redis = await getRedisStreamClient({ origin: "rate_limiter" });
+    const values = Array.from({ length: incrementBy }, () => uuidv4());
     const remaining = (await redis.eval(luaScript, {
       keys: [redisKey],
       arguments: [
         timeframeSeconds.toString(),
         maxPerTimeframe.toString(),
-        uuidv4(),
+        incrementBy.toString(),
+        ...values,
       ],
     })) as number;
 
@@ -92,6 +112,7 @@ export async function rateLimiter({
         key,
         maxPerTimeframe,
         timeframeSeconds,
+        incrementBy,
         error: e,
       },
       `RateLimiter error`
@@ -124,6 +145,10 @@ export async function getRateLimiterCount({
   key: string;
   timeframeSeconds: number;
 }): Promise<Result<number, Error>> {
+  if (!Number.isInteger(timeframeSeconds) || timeframeSeconds <= 0) {
+    return new Err(new Error("timeframeSeconds must be a positive integer."));
+  }
+
   try {
     const redis = await getRedisStreamClient({ origin: "rate_limiter" });
     const redisKey = makeRateLimiterKey(key);
@@ -140,12 +165,16 @@ export async function getRateLimiterCount({
 }
 
 export function getTimeframeSecondsFromLiteral(
-  timeframeLiteral: MaxMessagesTimeframeType
+  timeframeLiteral: MaxMessagesTimeframeType | MaxAwuCreditsTimeframeType
 ): number {
   switch (timeframeLiteral) {
     case "day":
       return 60 * 60 * 24; // 1 day.
 
+    case "week":
+      return 60 * 60 * 24 * 7; // 7 days.
+
+    case "month":
     // Lifetime is intentionally mapped to a 30-day period.
     case "lifetime":
       return 60 * 60 * 24 * 30; // 30 days.

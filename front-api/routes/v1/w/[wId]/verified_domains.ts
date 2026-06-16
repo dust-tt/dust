@@ -11,6 +11,10 @@ export type { GetWorkspaceVerifiedDomainsResponseType } from "@dust-tt/client";
 // Mounted at /api/v1/w/:wId/verified_domains.
 const app = publicApiApp();
 
+/**
+ * @ignoreswagger
+ * System-key-only internal endpoint, not part of the public API docs.
+ */
 app.get("/", ensureIsSystemKey(), async (ctx) => {
   const auth = ctx.get("auth");
   const workspace = auth.getNonNullableWorkspace();

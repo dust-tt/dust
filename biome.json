@@ -53,7 +53,8 @@
       "connectors/**",
       "front-spa/**",
       "front/**",
-      "front-api/**"
+      "front-api/**",
+      "marketing/**"
     ],
     "rules": {
       "recommended": false,
@@ -102,7 +103,6 @@
       "includes": [
         "front/components/**/*.{js,jsx,ts,tsx}",
         "front/lib/**/*.tsx",
-        "front/pages/**/*.{jsx,tsx}",
         "front-spa/**/*.{js,jsx,ts,tsx}",
         "sparkle/src/**/*.{js,jsx,ts,tsx}",
         "viz/**/*.{js,jsx,ts,tsx}",
@@ -130,8 +130,6 @@
         "front/**/*.{js,jsx,ts,tsx}",
         "front-api/**/*.{js,jsx,ts,tsx}",
         "sparkle/**/*.{js,jsx,ts,tsx}",
-        "!front/pages/**",
-        "!front/lib/api/sse.ts",
         "!front-api/server.ts",
         "!sparkle/.storybook/**",
         "!sparkle/playground/**"
@@ -143,7 +141,7 @@
       "plugins": ["./.grit/patterns/noSparkleClassInFront.grit"]
     },
     {
-      "includes": ["**/pages/**/*.{js,jsx,ts,tsx}"],
+      "includes": ["marketing/pages/**/*.{js,jsx,ts,tsx}"],
       "plugins": [
         "./.grit/patterns/nextjsPageComponentNaming.grit",
         "./.grit/patterns/nextjsNoDataFetchingInGetssp.grit"
@@ -166,9 +164,14 @@
         "connectors/src/resources/storage/models/**/*.ts",
         "front/lib/models/**/*.ts",
         "front/lib/resources/storage/models/**/*.ts",
-        "front/lib/resources/storage/wrappers/**/*.ts"
+        "front/lib/resources/storage/wrappers/**/*.ts",
+        "!front/lib/resources/storage/data_types.ts",
+        "!connectors/src/resources/storage/data_types.ts"
       ],
-      "plugins": ["./.grit/patterns/tooLongIndexName.grit"]
+      "plugins": [
+        "./.grit/patterns/tooLongIndexName.grit",
+        "./.grit/patterns/noSequelizeDataTypesImport.grit"
+      ]
     },
     {
       "includes": ["cli/dust-cli/**", "sparkle/**"],

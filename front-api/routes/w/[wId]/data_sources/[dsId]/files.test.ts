@@ -45,17 +45,6 @@ const CORE_VALIDATE_CSV_FAKE_RESPONSE = {
   },
 };
 
-vi.mock(import("@app/lib/api/config"), (() => ({
-  default: {
-    getCoreAPIConfig: vi.fn().mockReturnValue({
-      url: "http://localhost:9999",
-      apiKey: "foo",
-    }),
-    getApiBaseUrl: vi.fn().mockReturnValue("http://localhost:3000"),
-    getWorkOSClientId: vi.fn(() => "test-workos-client-id"),
-  },
-})) as any);
-
 const mockFileContent = {
   content: "default content",
   setContent: (newContent: string) => {

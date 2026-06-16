@@ -126,6 +126,7 @@ describe("/api/w/[wId]/metronome/contract", () => {
           mauTiers: null,
           contractEndingAtMs: new Date("2025-05-01T00:00:00.000Z").getTime(),
           hasSeatSubscription: false,
+          hasPersonalCreditSeats: false,
         },
       });
       expect(vi.mocked(getMetronomeContractById)).toHaveBeenCalledWith({

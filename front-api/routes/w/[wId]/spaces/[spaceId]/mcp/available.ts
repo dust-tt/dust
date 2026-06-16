@@ -18,6 +18,7 @@ export type GetMCPServersResponseBody = {
 // space.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   withSpace({ requireCanRead: true }),
@@ -32,7 +33,7 @@ app.get(
     ] = await Promise.all([
       InternalMCPServerInMemoryResource.listByWorkspace(auth),
       RemoteMCPServerResource.listByWorkspace(auth),
-      MCPServerViewResource.listByWorkspace(auth),
+      MCPServerViewResource.listByWorkspaceEnsuringAutoViews(auth),
     ]);
 
     const globalServersId = workspaceServerViews

@@ -26,6 +26,7 @@ export interface GetWorkspaceProjectTaskResponseBody {
 // Mounted at /api/w/:wId/project_tasks/:taskSId.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { taskSId } = ctx.req.valid("param");

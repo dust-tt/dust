@@ -25,6 +25,7 @@ const MessageReactionRequestBodySchema = z.object({
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/reactions.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

@@ -13,24 +13,6 @@ vi.spyOn(sgMail, "send").mockResolvedValue([
   {},
 ] as never);
 
-// Mock config to provide required values for invitation emails.
-vi.mock(import("@app/lib/api/config"), async (importOriginal) => {
-  const mod = await importOriginal();
-  return {
-    ...mod,
-    default: {
-      ...mod.default,
-      getSendgridApiKey: vi.fn().mockReturnValue("SG.test"),
-      getInvitationEmailTemplate: vi.fn().mockReturnValue("d-test"),
-      getSupportEmailAddress: vi.fn().mockReturnValue("test@dust.tt"),
-      getAppUrl: vi.fn().mockReturnValue("http://localhost:3000"),
-      getDustInviteTokenSecret: vi
-        .fn()
-        .mockReturnValue("test-invite-secret-32chars!!!!!"),
-    },
-  };
-});
-
 function patchInvitation(workspace: { sId: string }, invitationSId: string) {
   return honoApp.request(
     `/api/poke/workspaces/${workspace.sId}/invitations/${invitationSId}`,

@@ -107,6 +107,8 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       defaultDiscountPercent: number;
       paygEnabled: boolean;
       usageCapCredits: number | null;
+      allowMemberUpgradeRequests: boolean;
+      upgradeRequestEmailEnabled: boolean;
     }>,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
@@ -166,6 +168,8 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       defaultDiscountPercent: this.defaultDiscountPercent,
       paygEnabled: this.paygEnabled,
       usageCapCredits: this.usageCapCredits,
+      allowMemberUpgradeRequests: this.allowMemberUpgradeRequests,
+      upgradeRequestEmailEnabled: this.upgradeRequestEmailEnabled,
     };
   }
 
@@ -176,6 +180,8 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       defaultDiscountPercent: this.defaultDiscountPercent,
       paygEnabled: String(this.paygEnabled),
       usageCapCredits: this.usageCapCredits,
+      allowMemberUpgradeRequests: String(this.allowMemberUpgradeRequests),
+      upgradeRequestEmailEnabled: String(this.upgradeRequestEmailEnabled),
     };
   }
 }

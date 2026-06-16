@@ -24,18 +24,18 @@ import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  ArrowCircleIcon,
-  ArrowGoBackIcon,
   Button,
-  CheckCircleIcon,
-  CloudArrowUpIcon,
+  CheckCircle,
   CodeBlock,
-  CommandLineIcon,
-  EyeIcon,
-  FullscreenExitIcon,
-  FullscreenIcon,
+  Eye,
+  Maximize01,
+  Minimize01,
+  RefreshCw01,
+  ReverseLeft,
   Spinner,
+  Terminal,
   Tooltip,
+  UploadCloud02,
 } from "@dust-tt/sparkle";
 import React, {
   useCallback,
@@ -343,7 +343,7 @@ export function FrameRenderer({
 
   if (error) {
     return (
-      <div className="flex h-full flex-col">
+      <div className="flex h-panel flex-col">
         <InteractiveContentHeader onClose={onClosePanel} />
         <CenteredState>
           <p className="text-warning-500">
@@ -355,11 +355,11 @@ export function FrameRenderer({
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-panel flex-col">
       <InteractiveContentHeader onClose={onClosePanel}>
         <div className="flex w-full items-center justify-between">
           <Button
-            icon={showCode ? EyeIcon : CommandLineIcon}
+            icon={showCode ? Eye : Terminal}
             onClick={() => setShowCode(!showCode)}
             tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
             variant="ghost"
@@ -372,7 +372,12 @@ export function FrameRenderer({
               fileContent={fileContent ?? null}
               fileName={fileMetadata?.fileName}
             />
-            <ShareFrameSheet fileId={fileId} owner={owner} />
+            <ShareFrameSheet
+              key={contentHash ?? fileId}
+              fileId={fileId}
+              owner={owner}
+              contentHash={contentHash}
+            />
             <PinPodBannerButton
               owner={owner}
               spaceId={projectId ?? ""}
@@ -384,7 +389,7 @@ export function FrameRenderer({
             />
             {projectSaveState === "saved" && (
               <Button
-                icon={CheckCircleIcon}
+                icon={CheckCircle}
                 variant="ghost"
                 disabled={true}
                 label={isMobile ? undefined : "Saved"}
@@ -393,7 +398,7 @@ export function FrameRenderer({
             )}
             {projectSaveState === "supported" && (
               <Button
-                icon={CloudArrowUpIcon}
+                icon={UploadCloud02}
                 variant="ghost"
                 label={
                   isMobile ? undefined : isSavingToProject ? "Saving…" : "Save"
@@ -481,7 +486,7 @@ function PreviewActionButtons({
 }: PreviewActionButtonsProps) {
   const clientType = useClientType();
   return (
-    <div className="fixed bottom-4 right-3 flex flex-col gap-1 rounded-lg bg-white p-1 shadow-md dark:bg-gray-900">
+    <div className="fixed bottom-5 right-5 flex flex-col gap-1 rounded-lg bg-white p-1 shadow-md dark:bg-gray-900">
       {clientType !== "extension" && (
         <Tooltip
           label={`${isFullScreen ? "Exit" : "Go to"} full screen mode`}
@@ -489,7 +494,7 @@ function PreviewActionButtons({
           tooltipTriggerAsChild
           trigger={
             <Button
-              icon={isFullScreen ? FullscreenExitIcon : FullscreenIcon}
+              icon={isFullScreen ? Minimize01 : Maximize01}
               variant="ghost"
               size="xs"
               onClick={isFullScreen ? exitFullScreen : enterFullScreen}
@@ -511,7 +516,7 @@ function PreviewActionButtons({
               variant="ghost"
               disabled={!hasPreviousVersion}
               size="xs"
-              icon={ArrowGoBackIcon}
+              icon={ReverseLeft}
               onClick={onRevert}
             />
           }
@@ -523,7 +528,7 @@ function PreviewActionButtons({
         tooltipTriggerAsChild
         trigger={
           <Button
-            icon={ArrowCircleIcon}
+            icon={RefreshCw01}
             variant="ghost"
             size="xs"
             onClick={reloadFile}

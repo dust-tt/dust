@@ -1,9 +1,12 @@
 import { connectorsSequelize } from "@connectors/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@connectors/resources/storage/data_types";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 import type { CrawlingFrequency, DepthOption } from "@connectors/types";
 import type { Action } from "@mendable/firecrawl-js";
 import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
 
 export class WebCrawlerConfigurationModel extends ConnectorBaseModel<WebCrawlerConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -154,7 +157,7 @@ WebCrawlerFolderModel.init(
       defaultValue: DataTypes.NOW,
     },
     url: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     urlMd5: {
@@ -162,7 +165,7 @@ WebCrawlerFolderModel.init(
       allowNull: false,
     },
     parentUrl: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     internalId: {
@@ -222,7 +225,7 @@ WebCrawlerPageModel.init(
       defaultValue: DataTypes.NOW,
     },
     url: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     urlMd5: {
@@ -230,11 +233,11 @@ WebCrawlerPageModel.init(
       allowNull: false,
     },
     title: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     parentUrl: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
     },
     documentId: {

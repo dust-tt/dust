@@ -11,7 +11,7 @@ import { Err, Ok } from "@app/types/shared/result";
 // side as the alert uniqueness key. Changing it would orphan any existing
 // alert (the new key wouldn't match, so `clearMetronomeUsageCapAlert` would
 // silently no-op for workspaces that have a pre-rename alert).
-function usageCapAlertUniquenessKey(workspaceId: string): string {
+export function usageCapAlertUniquenessKey(workspaceId: string): string {
   return `payg-cap-${workspaceId}`;
 }
 

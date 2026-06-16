@@ -8,7 +8,7 @@ import {
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import {
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
   isFreePlan,
   isFriendsAndFamilyPlan,
   isOldFreePlan,
@@ -99,7 +99,7 @@ function WorkspaceList({
                         <label
                           className={classNames(
                             "rounded px-1 text-sm text-gray-500 text-white",
-                            isEntreprisePlanPrefix(ws.subscription.plan.code) &&
+                            isEnterprisePlanPrefix(ws.subscription.plan.code) &&
                               "bg-red-500",
                             isFriendsAndFamilyPlan(ws.subscription.plan.code) &&
                               "bg-pink-500",

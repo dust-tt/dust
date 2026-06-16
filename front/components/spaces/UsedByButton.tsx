@@ -3,13 +3,14 @@ import type {
   SkillUsageType,
   UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
+import type { AgentsUsageType } from "@app/types/data_source";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   Avatar,
   Button,
-  ChevronDownIcon,
+  ChevronDown,
   cn,
   DropdownMenu,
   DropdownMenuContent,
@@ -17,8 +18,8 @@ import {
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  PuzzleIcon,
-  RobotIcon,
+  PuzzlePiece01,
+  Robot,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -77,7 +78,7 @@ function UsedByButtonIcon({
     <span className="mx-0.5 flex h-5 items-center justify-center gap-1.5 leading-none">
       {(hasAgents || !hasSkills) && (
         <span className="inline-flex h-5 items-center gap-1">
-          <RobotIcon className="h-4 w-4 shrink-0" />
+          <Robot className="h-4 w-4 shrink-0" />
           <span className="inline-flex h-5 items-center text-sm leading-none tabular-nums">
             {agentCount}
           </span>
@@ -85,13 +86,13 @@ function UsedByButtonIcon({
       )}
       {hasSkills && (
         <span className="inline-flex h-5 items-center gap-1">
-          <PuzzleIcon className="h-4 w-4 shrink-0" />
+          <PuzzlePiece01 className="h-4 w-4 shrink-0" />
           <span className="inline-flex h-5 items-center text-sm leading-none tabular-nums">
             {skillCount}
           </span>
         </span>
       )}
-      <ChevronDownIcon
+      <ChevronDown
         className={
           showChevron
             ? "-mr-px h-4 w-4 shrink-0 text-faint"
@@ -103,7 +104,7 @@ function UsedByButtonIcon({
 }
 
 interface UsedByButtonProps {
-  usage: SkillUsageType | null;
+  usage: AgentsUsageType | SkillUsageType | null;
   onItemClick: (assistantSid: string) => void;
   onSkillClick?: (skillId: string) => void;
 }
@@ -117,7 +118,7 @@ export function UsedByButton({
   const [isOpen, setIsOpen] = useState(false);
 
   const agents = usage?.agents ?? [];
-  const skills = usage?.skills ?? [];
+  const skills = usage && "skills" in usage ? usage.skills : [];
   const agentCount = agents.length;
   const skillCount = skills.length;
   const totalCount = agentCount + skillCount;
@@ -294,7 +295,7 @@ export function UsedByButton({
           }
         })}
         {dropdownItems.length === 0 && (
-          <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+          <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
             {skills.length > 0 ? "No matches found" : "No agents found"}
           </div>
         )}

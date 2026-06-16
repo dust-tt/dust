@@ -1,5 +1,5 @@
 import { WebCrawlerHeaderRedactedValue } from "@app/types/connectors/webcrawler";
-import { Button, Input, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, Input, XClose } from "@dust-tt/sparkle";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 type FormWithCustomHeaders = {
@@ -54,7 +54,7 @@ export function MCPServerHeaders() {
               {!isPredefined && (
                 <Button
                   variant="outline"
-                  icon={XMarkIcon}
+                  icon={XClose}
                   onClick={() => remove(index)}
                 />
               )}

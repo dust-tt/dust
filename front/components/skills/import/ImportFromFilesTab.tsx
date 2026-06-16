@@ -9,8 +9,8 @@ import {
   cn,
   DropzoneOverlay,
   Hoverable,
-  InformationCircleIcon,
-  PlusIcon,
+  InfoCircle,
+  Plus,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -185,7 +185,7 @@ function SkillFileDropzone({
           />
           <Button
             label="Upload files"
-            icon={PlusIcon}
+            icon={Plus}
             variant="primary"
             size="sm"
             disabled={disabled}
@@ -201,7 +201,7 @@ function FileRequirements() {
   return (
     <ContentMessage
       title="File requirements"
-      icon={InformationCircleIcon}
+      icon={InfoCircle}
       variant="outline"
       size="lg"
     >

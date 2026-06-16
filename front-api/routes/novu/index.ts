@@ -2,12 +2,14 @@ import { agentMessageFeedbackWorkflow } from "@app/lib/notifications/workflows/a
 import { agentSuggestionsReadyWorkflow } from "@app/lib/notifications/workflows/agent-suggestions-ready";
 import { balanceThresholdReachedWorkflow } from "@app/lib/notifications/workflows/balance-threshold-reached";
 import { conversationUnreadWorkflow } from "@app/lib/notifications/workflows/conversation-unread";
+import { podAddedAsMemberWorkflow } from "@app/lib/notifications/workflows/pod-added-as-member";
 import { programmaticCapReachedWorkflow } from "@app/lib/notifications/workflows/programmatic-cap-reached";
-import { projectAddedAsMemberWorkflow } from "@app/lib/notifications/workflows/project-added-as-member";
 import { providerCredentialsHealthUpdatedWorkflow } from "@app/lib/notifications/workflows/provider-credential-updated";
 import { skillSuggestionsReadyWorkflow } from "@app/lib/notifications/workflows/skill-suggestions-ready";
+import { upgradeRequestCreatedWorkflow } from "@app/lib/notifications/workflows/upgrade-request-created";
 import { userAwuCapReachedWorkflow } from "@app/lib/notifications/workflows/user-awu-cap-reached";
 import { createHono } from "@front-api/lib/hono";
+import { skipRequestLog } from "@front-api/middlewares/request_logger";
 import type { ServeHandlerOptions } from "@novu/framework";
 import { NovuRequestHandler } from "@novu/framework";
 
@@ -28,11 +30,12 @@ const options: ServeHandlerOptions = {
     agentMessageFeedbackWorkflow,
     agentSuggestionsReadyWorkflow,
     skillSuggestionsReadyWorkflow,
-    projectAddedAsMemberWorkflow,
+    podAddedAsMemberWorkflow,
     providerCredentialsHealthUpdatedWorkflow,
     userAwuCapReachedWorkflow,
     balanceThresholdReachedWorkflow,
     programmaticCapReachedWorkflow,
+    upgradeRequestCreatedWorkflow,
   ],
 };
 
@@ -55,6 +58,10 @@ const handler = new NovuRequestHandler<[Request], Response>({
 
 const app = createHono();
 
+// Novu polls this endpoint frequently; too noisy to log every request.
+app.use("*", skipRequestLog);
+
+/** @ignoreswagger */
 app.get("/", (ctx) => handler(ctx.req.raw));
 app.post("/", (ctx) => handler(ctx.req.raw));
 app.options("/", (ctx) => handler(ctx.req.raw));

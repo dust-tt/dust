@@ -1,8 +1,8 @@
-import { PublicWebsiteLogo } from "@app/components/home/PublicWebsiteLogo";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import config from "@app/lib/api/config";
+import { LinkWrapper } from "@app/lib/platform";
 import { useSendOtpVerification, useVerifyOtpCode } from "@app/lib/swr/share";
-import { Button, Input, Label } from "@dust-tt/sparkle";
+import { Button, DustLogo, Input, Label } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { usePostHog } from "posthog-js/react";
 import type { ReactNode } from "react";
@@ -27,7 +27,9 @@ function VerificationLayout({
     <div className="flex h-dvh w-full flex-col">
       <AppLayoutTitle className="h-12 bg-gray-50 px-4 dark:bg-gray-900">
         <div className="flex h-full items-center">
-          <PublicWebsiteLogo size="small" baseUrl={staticWebsiteUrl} />
+          <LinkWrapper href={`${staticWebsiteUrl}/home`}>
+            <DustLogo className="h-[20px] w-[80px]" />
+          </LinkWrapper>
         </div>
       </AppLayoutTitle>
       <div className="flex flex-1 items-center justify-center px-4">

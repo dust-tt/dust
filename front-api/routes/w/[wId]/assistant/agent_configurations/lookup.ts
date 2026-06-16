@@ -11,6 +11,7 @@ const GetLookupRequestSchema = z.object({
 // Mounted at /api/w/:wId/assistant/agent_configurations/lookup.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", validate("query", GetLookupRequestSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { handle } = ctx.req.valid("query");

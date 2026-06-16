@@ -211,6 +211,31 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
       done: "Upload file to OneDrive/SharePoint",
     },
   },
+  rename_drive_item: {
+    description:
+      "Rename a file or folder in OneDrive or SharePoint. Uses driveId if provided, otherwise falls back to siteId.",
+    schema: {
+      itemId: z.string().describe("The ID of the file or folder to rename."),
+      driveId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the drive containing the item. Takes priority over siteId if provided."
+        ),
+      siteId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the SharePoint site containing the item. Used if driveId is not provided."
+        ),
+      name: z.string().describe("The new name for the file or folder."),
+    },
+    stake: "medium",
+    displayLabels: {
+      running: "Renaming OneDrive/SharePoint item",
+      done: "Rename OneDrive/SharePoint item",
+    },
+  },
   copy_file: {
     description:
       "Copy a file or folder to a new location in OneDrive or SharePoint.",

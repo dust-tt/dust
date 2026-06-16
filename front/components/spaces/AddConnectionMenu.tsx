@@ -3,6 +3,7 @@ import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_sour
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { PostDataSourceRequestBody } from "@app/lib/api/data_sources";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import {
@@ -23,7 +24,6 @@ import {
   trackEvent,
   withTracking,
 } from "@app/lib/tracking";
-import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type {
   ConnectorProvider,
   ConnectorType,
@@ -41,7 +41,7 @@ import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import {
   Button,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRight,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -540,7 +540,7 @@ export const AddConnectionMenu = ({
             <Button
               label="Add Connections"
               variant="primary"
-              icon={CloudArrowLeftRightIcon}
+              icon={CloudArrowLeftRight}
               size="sm"
               onClick={withTracking(
                 TRACKING_AREAS.DATA_SOURCES,

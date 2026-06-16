@@ -9,8 +9,22 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Primitives/Collapsible",
+  title: "Layout/Collapsible",
   component: Collapsible,
+  parameters: {
+    docs: {
+      description: {
+        component: `A disclosure primitive that shows or hides a region of content. Compose **Collapsible** with a **CollapsibleTrigger** (pass a \`label\` for the default chevron toggle, or custom children) and a **CollapsibleContent** wrapping the hidden region.
+
+**When to use**
+- To progressively disclose secondary content (details, advanced options) behind a toggle.
+
+**Guidelines**
+- Use the **CollapsibleTrigger** \`label\` prop for the standard chevron affordance; only supply custom children when you need a bespoke trigger.
+- For a richer expandable panel with header styling, consider sibling layout components rather than nesting heavy UI in the trigger.`,
+      },
+    },
+  },
 } satisfies Meta<typeof Collapsible>;
 
 export default meta;

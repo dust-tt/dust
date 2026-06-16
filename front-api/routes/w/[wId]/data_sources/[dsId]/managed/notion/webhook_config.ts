@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import type { GetNotionWebhookConfigResponseBody } from "@app/lib/api/data_sources/managed_notion";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
@@ -12,14 +13,10 @@ const ParamsSchema = z.object({
   dsId: z.string(),
 });
 
-export type GetNotionWebhookConfigResponseBody = {
-  webhookUrl: string;
-  verificationToken: string | null;
-};
-
 // Mounted at /api/w/:wId/data_sources/:dsId/managed/notion/webhook_config.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

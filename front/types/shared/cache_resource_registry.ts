@@ -20,6 +20,11 @@ export interface CacheResourceDefinition {
   fnName: string;
   params: CacheResourceParam[];
   buildResolverKey: (params: Record<string, string>) => string;
+  // Redis glob pattern matching the resolver keys of all entries of this resource type. Used by
+  // poke to bulk-delete every cache entry for the resource. Omit when the full key (fnName +
+  // resolver key) is too generic to match safely (e.g. an anonymous fnName with an unprefixed
+  // resolver key).
+  resolverKeyPattern?: string;
 }
 
 export function buildCacheKey(
@@ -29,7 +34,17 @@ export function buildCacheKey(
   return `cacheWithRedis-${resource.fnName}-${resource.buildResolverKey(params)}`;
 }
 
+export function buildCacheKeyPattern(
+  resource: CacheResourceDefinition
+): string | null {
+  if (!resource.resolverKeyPattern) {
+    return null;
+  }
+  return `cacheWithRedis-${resource.fnName}-${resource.resolverKeyPattern}`;
+}
+
 export const WORKSPACE_CACHE_KEY_VERSION = 2;
+export const SUBSCRIPTION_CACHE_KEY_VERSION = 1;
 
 export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
   {
@@ -46,6 +61,7 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
     ],
     buildResolverKey: (p) =>
       `workspace:v${WORKSPACE_CACHE_KEY_VERSION}:${p.wId}`,
+    resolverKeyPattern: `workspace:v${WORKSPACE_CACHE_KEY_VERSION}:*`,
   },
   {
     id: "user_by_workos_id",
@@ -60,6 +76,7 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) => `user:workos:${p.workOSUserId}`,
+    resolverKeyPattern: "user:workos:*",
   },
   {
     id: "subscription_by_workspace",
@@ -74,7 +91,8 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) =>
-      `subscription:active:workspaceId:${p.workspaceModelId}`,
+      `subscription:active:workspaceId:${p.workspaceModelId}:v${SUBSCRIPTION_CACHE_KEY_VERSION}`,
+    resolverKeyPattern: `subscription:active:workspaceId:*:v${SUBSCRIPTION_CACHE_KEY_VERSION}`,
   },
   {
     id: "membership_role",
@@ -96,6 +114,7 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
     ],
     buildResolverKey: (p) =>
       `role:user:${p.userModelId}:workspace:${p.workspaceModelId}`,
+    resolverKeyPattern: "role:user:*",
   },
   {
     id: "membership_seats",
@@ -110,6 +129,7 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) => `count-active-seats-in-workspace:${p.workspaceId}`,
+    resolverKeyPattern: "count-active-seats-in-workspace:*",
   },
   {
     id: "workos_orgs_for_user",
@@ -124,6 +144,7 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) => `workos-orgs-${p.userId}`,
+    resolverKeyPattern: "workos-orgs-*",
   },
   {
     id: "workspace_region",
@@ -138,6 +159,7 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) => `workspace-region:${p.wId}`,
+    resolverKeyPattern: "workspace-region:*",
   },
   {
     id: "provider_status",
@@ -152,6 +174,7 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) => `provider-status-${p.region}`,
+    resolverKeyPattern: "provider-status-*",
   },
   {
     id: "dust_status",
@@ -166,6 +189,7 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) => `dust-status-${p.region}`,
+    resolverKeyPattern: "dust-status-*",
   },
   {
     id: "key_monthly_cap",
@@ -180,6 +204,7 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) => `key-cap:${p.keyId}`,
+    resolverKeyPattern: "key-cap:*",
   },
   {
     id: "slack_channels",
@@ -208,6 +233,95 @@ export const CACHE_RESOURCE_REGISTRY: CacheResourceDefinition[] = [
       },
     ],
     buildResolverKey: (p) => `slack_users_${p.mcpServerId}`,
+    resolverKeyPattern: "slack_users_*",
+  },
+  {
+    id: "metronome_balance_threshold",
+    label: "Metronome balance threshold",
+    fnName: "fetchWorkspaceBalanceThreshold",
+    params: [
+      {
+        key: "metronomeCustomerId",
+        label: "Metronome Customer ID",
+        type: "string",
+        placeholder: "e.g. 550e8400-e29b-41d4-a716-446655440000",
+      },
+      {
+        key: "workspaceId",
+        label: "Workspace sId",
+        type: "string",
+        placeholder: "e.g. abc123",
+      },
+    ],
+    buildResolverKey: (p) =>
+      `balance-threshold-${p.metronomeCustomerId}-${p.workspaceId}`,
+    resolverKeyPattern: "balance-threshold-*",
+  },
+  {
+    id: "metronome_per_user_cap_alert_ids",
+    label: "Metronome per-user cap alert ids",
+    fnName: "fetchPerUserCapAlertIds",
+    params: [
+      {
+        key: "metronomeCustomerId",
+        label: "Metronome Customer ID",
+        type: "string",
+        placeholder: "e.g. 550e8400-e29b-41d4-a716-446655440000",
+      },
+      {
+        key: "workspaceId",
+        label: "Workspace sId",
+        type: "string",
+        placeholder: "e.g. abc123",
+      },
+    ],
+    buildResolverKey: (p) =>
+      `per-user-cap-alert-${p.metronomeCustomerId}-${p.workspaceId}`,
+    resolverKeyPattern: "per-user-cap-alert-*",
+  },
+  {
+    id: "metronome_default_cap_thresholds_by_seat_type",
+    label: "Metronome default cap thresholds by seat type",
+    fnName: "fetchDefaultCapThresholdsBySeatType",
+    params: [
+      {
+        key: "metronomeCustomerId",
+        label: "Metronome Customer ID",
+        type: "string",
+        placeholder: "e.g. 550e8400-e29b-41d4-a716-446655440000",
+      },
+      {
+        key: "workspaceId",
+        label: "Workspace sId",
+        type: "string",
+        placeholder: "e.g. abc123",
+      },
+    ],
+    buildResolverKey: (p) =>
+      `cap-threshold-by-seat-${p.metronomeCustomerId}-${p.workspaceId}`,
+    resolverKeyPattern: "cap-threshold-by-seat-*",
+  },
+  {
+    id: "metronome_workspace_alert_ids",
+    label: "Metronome workspace alert IDs",
+    fnName: "fetchWorkspaceMetronomeAlertIds",
+    params: [
+      {
+        key: "metronomeCustomerId",
+        label: "Metronome Customer ID",
+        type: "string",
+        placeholder: "e.g. 550e8400-e29b-41d4-a716-446655440000",
+      },
+      {
+        key: "workspaceId",
+        label: "Workspace sId",
+        type: "string",
+        placeholder: "e.g. abc123",
+      },
+    ],
+    buildResolverKey: (p) =>
+      `metronome-alerts-${p.metronomeCustomerId}-${p.workspaceId}`,
+    resolverKeyPattern: "metronome-alerts-*",
   },
 ];
 

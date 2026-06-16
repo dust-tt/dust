@@ -17,6 +17,7 @@ export const SKILL_SOURCES = [
   "github",
   "api",
   "local_file",
+  "agent",
 ] as const;
 
 export type SkillSourceType = (typeof SKILL_SOURCES)[number];
@@ -45,6 +46,7 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
   lastReinforcementAnalysisAt: z.string().nullable().optional(),
   selfImprovementLock: z.boolean(),
   selfImprovementCostsCapMicroUsd: z.number().nullable(),
+  selfImprovementCostsCapAwuCredits: z.number().nullable(),
   requestedSpaceIds: z.array(z.string()),
   fileAttachments: z.array(
     z.object({
@@ -77,7 +79,7 @@ export type UsedBySkillType = {
 };
 
 export type SkillUsageType = AgentsUsageType & {
-  skills?: UsedBySkillType[];
+  skills: UsedBySkillType[];
 };
 
 export type SkillRelations = {
@@ -85,7 +87,7 @@ export type SkillRelations = {
   editors: UserType[] | null;
   editedByUser: UserType | null;
   extendedSkill: SkillType | null;
-  childSkills?: SkillWithoutInstructionsAndToolsType[];
+  childSkills: SkillWithoutInstructionsAndToolsType[];
 };
 
 export type SkillWithRelationsType = SkillType & {

@@ -19,7 +19,7 @@ import { fromError } from "zod-validation-error";
  *     summary: Get workspace usage data
  *     deprecated: true
  *     description: |
- *       Deprecated: this endpoint will be removed after 2026-06-01.
+ *       Deprecated: this endpoint will be removed after 2026-07-01.
  *       Use GET /api/v1/w/{wId}/analytics/export instead.
  *
  *       Get usage data for the workspace identified by {wId} in CSV or JSON format.
@@ -100,8 +100,6 @@ import { fromError } from "zod-validation-error";
  *         description: The workspace does not have access to the usage data API
  *       404:
  *         description: The workspace was not found
- *       405:
- *         description: Method not supported
  */
 
 // Mounted at /api/v1/w/:wId/workspace-usage. publicApiAuth is applied by the

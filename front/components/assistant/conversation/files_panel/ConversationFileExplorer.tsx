@@ -3,15 +3,14 @@ import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
 import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
-import config from "@app/lib/api/config";
-import { downloadFile } from "@app/lib/swr/files";
+import { downloadFile, getFilePathViewUrl } from "@app/lib/swr/files";
 import { usePodFiles } from "@app/lib/swr/pods";
 import {
   type ConversationWithoutContentType,
   isPodConversation,
 } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, ButtonGroup, cn, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, ButtonGroup, cn, XClose } from "@dust-tt/sparkle";
 import { useCallback, useState } from "react";
 
 type FilesTab = "conversation" | "pod";
@@ -41,11 +40,8 @@ export function ConversationFileExplorer({
   });
 
   const getFileUrl = useCallback(
-    (path: string) => {
-      const encoded = path.split("/").map(encodeURIComponent).join("/");
-      return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}`;
-    },
-    [owner.sId]
+    (path: string) => getFilePathViewUrl(owner, path),
+    [owner]
   );
 
   const getFileResponse = useCallback(
@@ -62,7 +58,7 @@ export function ConversationFileExplorer({
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex h-panel min-h-0 flex-col">
       <AppLayoutTitle>
         <div className="flex h-full items-center justify-between gap-2">
           {isPod ? (
@@ -84,14 +80,14 @@ export function ConversationFileExplorer({
               />
             </ButtonGroup>
           ) : (
-            <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+            <span className="text-sm text-foreground dark:text-foreground-night">
               Conversation Files
             </span>
           )}
           <Button
             variant="ghost"
             size="sm"
-            icon={XMarkIcon}
+            icon={XClose}
             onClick={closePanel}
           />
         </div>

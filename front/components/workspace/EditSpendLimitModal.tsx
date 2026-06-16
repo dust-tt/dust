@@ -6,7 +6,7 @@ import {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ActionCreditCoinsIcon,
+  AlertCircle,
   Avatar,
   ContentMessage,
   Dialog,
@@ -15,8 +15,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  ExclamationCircleIcon,
-  Icon,
   Input,
   RadioGroup,
   RadioGroupItem,
@@ -38,6 +36,10 @@ interface EditSpendLimitModalProps {
   onClose: () => void;
   member: MemberUsageType | null;
   owner: WorkspaceType;
+  onSavingChange?: (memberId: string, isSaving: boolean) => void;
+  // Fired once the spend limit has been persisted successfully (not on cancel
+  // or a load error). Used to resolve a linked upgrade request as approved.
+  onSaved?: () => void;
 }
 
 export function EditSpendLimitModal({
@@ -45,6 +47,8 @@ export function EditSpendLimitModal({
   onClose,
   member,
   owner,
+  onSavingChange,
+  onSaved,
 }: EditSpendLimitModalProps) {
   // Keep the last non-null member so the dialog can render its content through
   // the exit animation after the parent has cleared `member`.
@@ -148,6 +152,7 @@ export function EditSpendLimitModal({
     }
 
     setIsSaving(true);
+    onSavingChange?.(displayedMember.sId, true);
     try {
       let limit:
         | { kind: "unlimited" }
@@ -169,10 +174,12 @@ export function EditSpendLimitModal({
         limit,
       });
       if (body) {
+        onSaved?.();
         onClose();
       }
     } finally {
       setIsSaving(false);
+      onSavingChange?.(displayedMember.sId, false);
     }
   }
 
@@ -200,7 +207,9 @@ export function EditSpendLimitModal({
                 Edit spend limit for {displayedMember?.name}
               </DialogTitle>
               <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                Maximum credits this member can consume during a billing cycle.
+                Maximum pool credits this member can consume during a billing
+                cycle. This limit is added on top of the seat&apos;s built-in
+                allowance.
               </p>
             </div>
           </div>
@@ -209,7 +218,7 @@ export function EditSpendLimitModal({
           {isSpendLimitError ? (
             <ContentMessage
               title="Failed to load spend limit"
-              icon={ExclamationCircleIcon}
+              icon={AlertCircle}
               variant="warning"
             >
               <p>
@@ -245,9 +254,6 @@ export function EditSpendLimitModal({
               {kind === "override" && (
                 <div className="flex flex-col gap-1.5 pl-6">
                   <div className="relative">
-                    <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
-                      <Icon visual={ActionCreditCoinsIcon} size="xs" />
-                    </div>
                     <Input
                       id="spend-credit-limit-input"
                       type="text"
@@ -256,13 +262,16 @@ export function EditSpendLimitModal({
                       placeholder="1000"
                       value={creditsInput}
                       onChange={(e) => handleCreditsChange(e.target.value)}
-                      className="pl-8"
                       isError={validationMessage !== null}
                       message={validationMessage ?? undefined}
                       messageStatus={
                         validationMessage !== null ? "error" : undefined
                       }
+                      className="pr-16 text-right"
                     />
+                    <span className="copy-sm pointer-events-none absolute right-3 top-0 flex h-9 items-center text-muted-foreground dark:text-muted-foreground-night">
+                      credits
+                    </span>
                   </div>
                 </div>
               )}

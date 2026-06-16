@@ -12,7 +12,7 @@ import type {
 import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
-import { Button, ContentMessage, PlanetIcon } from "@dust-tt/sparkle";
+import { Button, ContentMessage, Planet } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
@@ -65,9 +65,7 @@ export function SkillBuilderRequestedSpacesSection({
   });
 
   const allSpaces = useMemo(() => {
-    return [...spaces, ...missingSpaces].filter(
-      (space) => space.kind !== "project"
-    );
+    return [...spaces, ...missingSpaces];
   }, [spaces, missingSpaces]);
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -235,15 +233,17 @@ export function SkillBuilderRequestedSpacesSection({
       <div className="flex items-start justify-between">
         <div>
           <h3 className="heading-lg font-semibold text-foreground dark:text-foreground-night">
-            Spaces
+            Spaces and Pods
           </h3>
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Set what knowledge and tools the skill can access.
+            Choose which spaces and Pods this skill can access. The skill can
+            use their knowledge and capabilities, and only users with access to
+            all selected spaces and Pods can use it.
           </p>
         </div>
         <Button
           label="Manage"
-          icon={PlanetIcon}
+          icon={Planet}
           variant="outline"
           disabled={!areSpaceRequirementsReady}
           onClick={handleOpenSheet}
@@ -252,8 +252,9 @@ export function SkillBuilderRequestedSpacesSection({
       {nonGlobalSpacesWithRestrictions.length > 0 && (
         <div className="mb-4 w-full">
           <ContentMessage variant="golden" size="lg">
-            Based on your selection of spaces, knowledge, and tools, this skill
-            can only be used by users with access to:&nbsp;
+            This skill can access knowledge and capabilities from these spaces
+            and Pods, and only users with access to all of them can use
+            it:&nbsp;
             <strong>
               {nonGlobalSpacesWithRestrictions
                 .map((space) => space.name)
@@ -268,7 +269,6 @@ export function SkillBuilderRequestedSpacesSection({
       <SpaceSelectionSheet
         alreadyRequestedSpaceIds={spaceIdsUsedBySkill}
         entityName="skill"
-        includeProjects={false}
         missingSpaceIds={missingSpaceIds}
         onClose={handleCloseSheet}
         onSave={handleSaveSpaces}

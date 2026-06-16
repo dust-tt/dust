@@ -15,7 +15,7 @@ import type { WorkspaceType } from "@app/types/user";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isConnectorsAPIError } from "@dust-tt/client";
 import {
-  BookOpenIcon,
+  BookOpen01,
   Button,
   Chip,
   Icon,
@@ -320,7 +320,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                 target="_blank"
                 rel="noopener noreferrer"
                 variant="outline"
-                icon={BookOpenIcon}
+                icon={BookOpen01}
               />
 
               {connectorUIConfiguration.limitations && (
@@ -475,7 +475,7 @@ export function CreateOrUpdateConnectionSnowflakeModal({
                       setError(null);
                     }}
                   />
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                     <p className="mb-2">To use key-pair authentication:</p>
                     <ol className="ml-4 list-decimal space-y-1">
                       <li>Generate an RSA key pair (minimum 2048 bits)</li>

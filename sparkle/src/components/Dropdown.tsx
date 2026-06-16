@@ -20,8 +20,9 @@ import {
   SearchInput,
   type SearchInputProps,
 } from "@sparkle/components/SearchInput";
+import { Tooltip } from "@sparkle/components/Tooltip";
 import { useSheetContainer } from "@sparkle/hooks/useSheetContainer";
-import { CheckIcon, ChevronRightIcon } from "@sparkle/icons/app";
+import { Check, ChevronRight } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import * as React from "react";
@@ -43,7 +44,7 @@ export const menuStyleClasses = {
   ),
   item: cva(
     cn(
-      "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-md s-heading-sm s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none",
+      "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-lg s-heading-sm s-transition-colors data-[disabled]:s-pointer-events-none",
       "data-[disabled]:s-text-primary-400 dark:data-[disabled]:s-text-primary-400-night"
     ),
     {
@@ -51,21 +52,18 @@ export const menuStyleClasses = {
         variant: {
           default: cn(
             "s-p-2",
-            "hover:s-bg-muted-background dark:hover:s-bg-muted-night",
-            "focus:s-text-foreground dark:focus:s-text-foreground-night",
-            "focus:s-bg-muted-background dark:focus:s-bg-muted-night"
+            "data-[highlighted]:s-text-foreground dark:data-[highlighted]:s-text-foreground-night",
+            "data-[highlighted]:s-bg-muted-background dark:data-[highlighted]:s-bg-muted-night"
           ),
           tags: cn(
             "s-p-0.5",
-            "hover:s-bg-muted-background dark:hover:s-bg-muted-night",
-            "focus:s-text-foreground dark:focus:s-text-foreground-night",
-            "focus:s-bg-muted-background dark:focus:s-bg-muted-night"
+            "data-[highlighted]:s-text-foreground dark:data-[highlighted]:s-text-foreground-night",
+            "data-[highlighted]:s-bg-muted-background dark:data-[highlighted]:s-bg-muted-night"
           ),
           warning: cn(
             "s-p-2",
             "s-text-warning-500 dark:s-text-warning-500-night",
-            "hover:s-bg-warning-50 dark:hover:s-bg-warning-50-night",
-            "focus:s-bg-warning-50 dark:focus:s-bg-warning-50-night",
+            "data-[highlighted]:s-bg-warning-50 dark:data-[highlighted]:s-bg-warning-50-night",
             "active:s-bg-warning-100 dark:active:s-bg-warning-100-night"
           ),
         },
@@ -133,11 +131,13 @@ interface ItemWithLabelIconAndDescriptionProps {
   children?: React.ReactNode;
   truncate?: boolean;
   endComponent?: React.ReactNode;
+  variant?: ItemVariantType;
 }
 
 const renderIcon = (
   icon: React.ComponentType | React.ReactNode,
-  size: "xs" | "sm" = "xs"
+  size: "xs" | "sm" = "xs",
+  variant?: ItemVariantType
 ) => {
   // If it's a React element (already rendered), return it as is
   if (React.isValidElement(icon)) {
@@ -146,7 +146,17 @@ const renderIcon = (
 
   // For any component type (including exotic components), render it with Icon
   if (typeof icon === "function" || typeof icon === "object") {
-    return <Icon size={size} visual={icon as React.ComponentType} />;
+    return (
+      <Icon
+        size={size}
+        visual={icon as React.ComponentType}
+        className={
+          variant === "warning"
+            ? undefined
+            : "s-text-muted-foreground dark:s-text-muted-foreground-night"
+        }
+      />
+    );
   }
 
   // For primitive values, return null
@@ -162,6 +172,7 @@ const ItemWithLabelIconAndDescription = <
   truncate,
   children,
   endComponent,
+  variant,
 }: T) => {
   return (
     <>
@@ -178,7 +189,7 @@ const ItemWithLabelIconAndDescription = <
                   : "s-grid-cols-[1fr]"
           )}
         >
-          {renderIcon(icon, "sm")}
+          {renderIcon(icon, "sm", variant)}
           <div className={cn("s-flex s-flex-col", truncate && "s-truncate")}>
             <span className={cn(truncate ? "s-truncate" : "s-line-clamp-3")}>
               {label}
@@ -223,7 +234,13 @@ const DropdownMenuSubTrigger = React.forwardRef<
     <ItemWithLabelIconAndDescription
       label={label}
       icon={icon}
-      endComponent={<Icon size="xs" visual={ChevronRightIcon} />}
+      endComponent={
+        <Icon
+          size="xs"
+          visual={ChevronRight}
+          className="s-text-muted-foreground dark:s-text-muted-foreground-night"
+        />
+      }
     >
       {children}
     </ItemWithLabelIconAndDescription>
@@ -517,6 +534,7 @@ export type DropdownMenuItemProps = MutuallyExclusiveProps<
     inset?: boolean;
     itemId?: string;
     variant?: ItemVariantType;
+    tooltip?: React.ReactNode;
   } & Omit<LinkWrapperProps, "children" | "className">,
   LabelAndIconProps & {
     description?: string;
@@ -548,6 +566,7 @@ const DropdownMenuItem = React.forwardRef<
       shallow,
       prefetch,
       endComponent,
+      tooltip,
       ...props
     },
     ref
@@ -569,7 +588,7 @@ const DropdownMenuItem = React.forwardRef<
       [dropdownItemRegistry, itemId, ref]
     );
 
-    return (
+    const item = (
       <LinkWrapper
         href={href}
         target={target}
@@ -595,6 +614,7 @@ const DropdownMenuItem = React.forwardRef<
               description={description}
               truncate={truncateText}
               endComponent={endComponent}
+              variant={variant}
             >
               {children}
             </ItemWithLabelIconAndDescription>
@@ -602,6 +622,18 @@ const DropdownMenuItem = React.forwardRef<
         </DropdownMenuPrimitive.Item>
       </LinkWrapper>
     );
+
+    const itemWithTooltip = tooltip ? (
+      <Tooltip
+        tooltipTriggerAsChild
+        label={tooltip}
+        trigger={<span className="s-block s-w-full">{item}</span>}
+      />
+    ) : (
+      item
+    );
+
+    return itemWithTooltip;
   }
 );
 DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
@@ -627,14 +659,17 @@ const DropdownMenuCheckboxItem = React.forwardRef<
       ref={ref}
       className={cn(
         menuStyleClasses.item({ variant: "default" }),
-        menuStyleClasses.inset,
-        className
+        menuStyleClasses.inset
       )}
       {...props}
     >
       <span className={menuStyleClasses.subTrigger.span}>
         <DropdownMenuPrimitive.ItemIndicator>
-          <Icon size="xs" visual={CheckIcon} />
+          <Icon
+            size="xs"
+            visual={Check}
+            className="s-text-muted-foreground dark:s-text-muted-foreground-night"
+          />
         </DropdownMenuPrimitive.ItemIndicator>
       </span>
       <ItemWithLabelIconAndDescription

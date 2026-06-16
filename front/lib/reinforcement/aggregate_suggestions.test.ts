@@ -22,6 +22,7 @@ function makeSkill(overrides: Partial<SkillType> = {}): SkillType {
     reinforcement: "auto",
     selfImprovementLock: false,
     selfImprovementCostsCapMicroUsd: null,
+    selfImprovementCostsCapAwuCredits: null,
     requestedSpaceIds: [],
     tools: [],
     fileAttachments: [],
@@ -217,24 +218,11 @@ describe("buildSkillAggregationPrompt", () => {
     expect(userMessage).not.toContain("Previously rejected suggestions");
   });
 
-  it("system prompt mentions the suggestion tool", () => {
+  it("system prompt mentions inline tool references", () => {
     const { systemPrompt } = buildSkillAggregationPrompt(
       makeSkill(),
       [makeInstructionSuggestion()],
       { pending: [], rejected: [] }
-    );
-
-    expect(systemPrompt).toContain("edit_skill");
-    expect(systemPrompt).not.toContain("inline <tool>");
-    expect(systemPrompt).not.toContain('Do NOT include "toolEdits"');
-  });
-
-  it("system prompt mentions inline tool references when inline tools are enabled", () => {
-    const { systemPrompt } = buildSkillAggregationPrompt(
-      makeSkill(),
-      [makeInstructionSuggestion()],
-      { pending: [], rejected: [] },
-      { useInlineTools: true }
     );
 
     expect(systemPrompt).toContain("edit_skill");
@@ -301,7 +289,7 @@ describe("buildSkillAggregationPrompt", () => {
     expect(userMessage).not.toContain("<title>");
   });
 
-  it("includes skill tools as a separate user message block by default", () => {
+  it("does not include skill tools as a separate user message block", () => {
     const skill = makeSkill({
       tools: [
         {
@@ -314,27 +302,6 @@ describe("buildSkillAggregationPrompt", () => {
       skill,
       [makeInstructionSuggestion()],
       { pending: [], rejected: [] }
-    );
-
-    expect(userMessage).toContain("<tools>");
-    expect(userMessage).toContain('name="web_search"');
-    expect(userMessage).toContain('sId="tool-ws"');
-  });
-
-  it("does not include skill tools as a separate user message block when inline tools are enabled", () => {
-    const skill = makeSkill({
-      tools: [
-        {
-          sId: "tool-ws",
-          name: "web_search",
-        } as SkillType["tools"][number],
-      ],
-    });
-    const { userMessage } = buildSkillAggregationPrompt(
-      skill,
-      [makeInstructionSuggestion()],
-      { pending: [], rejected: [] },
-      { useInlineTools: true }
     );
 
     expect(userMessage).not.toContain("<tools>");

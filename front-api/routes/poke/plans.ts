@@ -1,74 +1,22 @@
+import type {
+  GetPokePlansResponseBody,
+  UpsertPokePlanResponseBody,
+} from "@app/lib/api/poke/plans";
+import { PlanTypeSchema } from "@app/lib/api/poke/plans";
+import { MAX_DOCUMENT_UPSERT_SIZE_MB } from "@app/lib/data_sources";
 import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
-import { config as documentBodyParserConfig } from "@app/pages/api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents/[documentId]";
 import type { PlanType } from "@app/types/plan";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { z } from "zod";
-
-export type GetPokePlansResponseBody = {
-  plans: PlanType[];
-};
-
-export type UpsertPokePlanResponseBody = {
-  plan: PlanType;
-};
-
-export const PlanTypeSchema = z.object({
-  code: z.string(),
-  name: z.string(),
-  limits: z.object({
-    assistant: z.object({
-      isSlackBotAllowed: z.boolean(),
-      maxMessages: z.number(),
-      maxMessagesTimeframe: z.enum(["day", "lifetime"]),
-      isDeepDiveAllowed: z.boolean(),
-    }),
-    capabilities: z.object({
-      images: z.object({
-        maxImagesPerWeek: z.number(),
-      }),
-    }),
-    connections: z.object({
-      isConfluenceAllowed: z.boolean(),
-      isSlackAllowed: z.boolean(),
-      isNotionAllowed: z.boolean(),
-      isGoogleDriveAllowed: z.boolean(),
-      isGithubAllowed: z.boolean(),
-      isIntercomAllowed: z.boolean(),
-      isWebCrawlerAllowed: z.boolean(),
-      isSalesforceAllowed: z.boolean(),
-    }),
-    dataSources: z.object({
-      count: z.number(),
-      documents: z.object({
-        count: z.number(),
-        sizeMb: z.number(),
-      }),
-    }),
-    users: z.object({
-      maxUsers: z.number(),
-      maxFreeUsers: z.number(),
-      maxLifetimeFreeUsers: z.number(),
-      isSSOAllowed: z.boolean(),
-      isSCIMAllowed: z.boolean(),
-    }),
-    vaults: z.object({
-      maxVaults: z.number(),
-    }),
-    canUseProduct: z.boolean(),
-  }),
-  trialPeriodDays: z.number(),
-  isByok: z.boolean(),
-  isAuditLogsAllowed: z.boolean(),
-});
 
 // Mounted at /api/poke/plans. pokeAuth is applied by the parent poke sub-app.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetPokePlansResponseBody> => {
   const planModels = await PlanModel.findAll({
     order: [["createdAt", "ASC"]],
@@ -86,15 +34,14 @@ app.post(
   async (ctx): HandlerResult<UpsertPokePlanResponseBody> => {
     const body = ctx.req.valid("json");
 
-    const { sizeLimit } = documentBodyParserConfig.api.bodyParser;
-    const maxSizeMb = parseInt(sizeLimit.replace("mb", ""), 10);
-
-    if (body.limits.dataSources.documents.sizeMb >= maxSizeMb) {
+    if (
+      body.limits.dataSources.documents.sizeMb >= MAX_DOCUMENT_UPSERT_SIZE_MB
+    ) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: `Document size limit must be less than ${maxSizeMb}MB.`,
+          message: `Document size limit must be less than ${MAX_DOCUMENT_UPSERT_SIZE_MB}MB.`,
         },
       });
     }
@@ -105,6 +52,8 @@ app.post(
       maxImagesPerWeek: body.limits.capabilities.images.maxImagesPerWeek,
       maxMessages: body.limits.assistant.maxMessages,
       maxMessagesTimeframe: body.limits.assistant.maxMessagesTimeframe,
+      maxAwuCredits: body.limits.assistant.maxAwuCredits,
+      maxAwuCreditsTimeframe: body.limits.assistant.maxAwuCreditsTimeframe,
       isDeepDiveAllowed: body.limits.assistant.isDeepDiveAllowed,
       isManagedConfluenceAllowed: body.limits.connections.isConfluenceAllowed,
       isManagedSlackAllowed: body.limits.connections.isSlackAllowed,
@@ -117,6 +66,7 @@ app.post(
       isSSOAllowed: body.limits.users.isSSOAllowed,
       isSCIMAllowed: body.limits.users.isSCIMAllowed,
       isAuditLogsAllowed: body.isAuditLogsAllowed,
+      isBrandedFramesAllowed: body.isBrandedFramesAllowed,
       maxDataSourcesCount: body.limits.dataSources.count,
       maxDataSourcesDocumentsCount: body.limits.dataSources.documents.count,
       maxDataSourcesDocumentsSizeMb: body.limits.dataSources.documents.sizeMb,

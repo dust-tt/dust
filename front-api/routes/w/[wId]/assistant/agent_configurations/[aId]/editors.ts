@@ -2,10 +2,14 @@ import {
   getAgentConfiguration,
   updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
+import type {
+  AgentEditorsLightResponseBody,
+  AgentEditorsResponseBody,
+} from "@app/lib/api/assistant/configuration/editors";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { UserType } from "@app/types/user";
+import { toLightUser } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -15,14 +19,6 @@ import { z } from "zod";
 const ParamsSchema = z.object({
   aId: z.string(),
 });
-
-export type GetAgentEditorsResponseBody = {
-  editors: UserType[];
-};
-
-export type PatchAgentEditorsResponseBody = {
-  editors: UserType[];
-};
 
 const PatchAgentEditorsRequestBodySchema = z
   .object({
@@ -43,10 +39,15 @@ const PatchAgentEditorsRequestBodySchema = z
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/editors.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),
-  async (ctx): HandlerResult<GetAgentEditorsResponseBody> => {
+  async (
+    ctx
+  ): HandlerResult<
+    AgentEditorsResponseBody | AgentEditorsLightResponseBody
+  > => {
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
@@ -119,7 +120,16 @@ app.get(
     }
 
     const members = await editorGroup.getActiveMembers(auth);
-    return ctx.json({ editors: members.map((m) => m.toJSON()) });
+    const memberUsers = members.map((m) => m.toJSON());
+
+    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
+    if (auth.isAdmin()) {
+      return ctx.json({ editors: memberUsers });
+    }
+
+    return ctx.json({
+      editors: memberUsers.map(toLightUser),
+    });
   }
 );
 
@@ -127,7 +137,11 @@ app.patch(
   "/",
   validate("param", ParamsSchema),
   validate("json", PatchAgentEditorsRequestBodySchema),
-  async (ctx): HandlerResult<PatchAgentEditorsResponseBody> => {
+  async (
+    ctx
+  ): HandlerResult<
+    AgentEditorsResponseBody | AgentEditorsLightResponseBody
+  > => {
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
@@ -316,7 +330,16 @@ app.patch(
     }
 
     const updatedMembers = await editorGroup.getActiveMembers(auth);
-    return ctx.json({ editors: updatedMembers.map((m) => m.toJSON()) });
+    const updatedEditors = updatedMembers.map((m) => m.toJSON());
+
+    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
+    if (auth.isAdmin()) {
+      return ctx.json({ editors: updatedEditors });
+    }
+
+    return ctx.json({
+      editors: updatedEditors.map(toLightUser),
+    });
   }
 );
 

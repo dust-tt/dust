@@ -14,6 +14,7 @@ import { isTextContent } from "@app/types/assistant/generation";
 const metadata = {
   clientId: "noop" as const,
   inferenceProvider: "noop",
+  inferenceRegion: "global" as const,
   modelId: "noop" as const,
 };
 

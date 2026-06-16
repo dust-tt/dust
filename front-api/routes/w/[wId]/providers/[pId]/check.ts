@@ -1,12 +1,9 @@
+import type { GetProvidersCheckResponseBody } from "@app/lib/api/provider_credentials";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type GetProvidersCheckResponseBody =
-  | { ok: true }
-  | { ok: false; error: string };
 
 const PostCheckBodySchema = z.object({
   config: z.object({
@@ -22,6 +19,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/providers/:pId/check.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),
@@ -112,7 +110,7 @@ app.post(
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: "claude-3-5-sonnet-20241022",
+              model: "claude-sonnet-4-6",
               system: "You are a scientist",
               messages: [
                 {

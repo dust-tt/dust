@@ -13,6 +13,7 @@ export type { GetMetronomeUsageResponse };
 // Mounted at /api/w/:wId/analytics/metronome-usage.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", validate("query", MetronomeUsageQuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
 

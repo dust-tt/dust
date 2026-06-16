@@ -1,9 +1,12 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { WorkspaceSandboxEnvVarKind } from "@app/types/sandbox/env_var";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
-import { DataTypes } from "sequelize";
 
 export class WorkspaceSandboxEnvVarModel extends WorkspaceAwareModel<WorkspaceSandboxEnvVarModel> {
   declare id: CreationOptional<number>;
@@ -39,7 +42,7 @@ WorkspaceSandboxEnvVarModel.init(
       allowNull: false,
     },
     kind: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
       defaultValue: "config",
     },
@@ -49,12 +52,12 @@ WorkspaceSandboxEnvVarModel.init(
       field: "placeholder_nonce",
     },
     allowedDomains: {
-      type: DataTypes.ARRAY(DataTypes.TEXT),
+      type: DataTypes.ARRAY(DANGEROUSLY_UNBOUNDED_TEXT),
       allowNull: true,
       field: "allowed_domains",
     },
     encryptedValue: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
   },

@@ -7,10 +7,9 @@ import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import { stripMimeParameters } from "@app/types/files";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
-  ArrowDownOnSquareIcon,
   Button,
-  ChevronLeftIcon,
-  ChevronRightIcon,
+  ChevronLeft,
+  ChevronRight,
   CodeBlock,
   cn,
   DataTable,
@@ -19,6 +18,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Download01,
   Icon,
   Markdown,
   ScrollableDataTable,
@@ -257,7 +257,7 @@ function FilePreviewDialogContent({
 
 interface FilePreviewDialogProps {
   entry: FileEntry | null;
-  getFileUrl: (path: string) => string;
+  fileUrl: string | null;
   isOpen: boolean;
   onDownload: (entry: FileEntry) => Promise<void>;
   onNext?: () => void;
@@ -267,7 +267,7 @@ interface FilePreviewDialogProps {
 
 export function FilePreviewDialog({
   entry,
-  getFileUrl,
+  fileUrl,
   isOpen,
   onOpenChange,
   onDownload,
@@ -321,8 +321,6 @@ export function FilePreviewDialog({
     category === "markdown" ||
     category === "text" ||
     category === "delimited";
-
-  const fileUrl = entry ? getFileUrl(entry.path) : null;
 
   const { fileContent, isFileContentLoading, fileContentError } =
     useFileContent({
@@ -425,7 +423,7 @@ export function FilePreviewDialog({
               <Button
                 variant="outline"
                 size="sm"
-                icon={ChevronLeftIcon}
+                icon={ChevronLeft}
                 onClick={onPrev}
                 disabled={!onPrev}
                 tooltip="Previous"
@@ -433,7 +431,7 @@ export function FilePreviewDialog({
               <Button
                 variant="outline"
                 size="sm"
-                icon={ChevronRightIcon}
+                icon={ChevronRight}
                 onClick={onNext}
                 disabled={!onNext}
                 tooltip="Next"
@@ -442,7 +440,7 @@ export function FilePreviewDialog({
             <Button
               variant="outline"
               size="sm"
-              icon={ArrowDownOnSquareIcon}
+              icon={Download01}
               label={isDownloading ? "Downloading…" : "Download"}
               onClick={handleDownload}
               disabled={!entry || isDownloading}

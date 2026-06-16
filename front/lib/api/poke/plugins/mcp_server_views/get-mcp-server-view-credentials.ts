@@ -1,10 +1,8 @@
-import config from "@app/lib/api/config";
-import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
+import { getMCPConnectionAccessToken } from "@app/lib/actions/mcp_oauth_access_token";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const getMcpServerViewAccessTokenPlugin = createPlugin({
@@ -94,9 +92,7 @@ export const getMcpServerViewAccessTokenPlugin = createPlugin({
         );
       }
 
-      const tokenRes = await getOAuthConnectionAccessToken({
-        config: config.getOAuthAPIConfig(),
-        logger,
+      const tokenRes = await getMCPConnectionAccessToken(auth, {
         connectionId: connection.connectionId,
       });
 

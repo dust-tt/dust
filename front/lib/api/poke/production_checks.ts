@@ -12,6 +12,14 @@ import type {
   CheckSummaryStatus,
 } from "@app/types/production_checks";
 
+export type GetProductionChecksResponseBody = {
+  checks: CheckSummary[];
+};
+
+export type GetCheckHistoryResponseBody = {
+  runs: CheckHistoryRun[];
+};
+
 export function getRegisteredCheck(checkName: string): Check | null {
   return REGISTERED_CHECKS.find((c) => c.name === checkName) ?? null;
 }

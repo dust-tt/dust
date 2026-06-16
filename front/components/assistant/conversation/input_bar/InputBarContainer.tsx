@@ -1,6 +1,7 @@
 import { ContextUsageIndicator } from "@app/components/assistant/conversation/input_bar/ContextUsageIndicator";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarButtons } from "@app/components/assistant/conversation/input_bar/InputBarButtons";
+import type { PendingInputText } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
   INPUT_BAR_COMPACT_CONTENT_ENTER_ANIMATION_CLASSES,
   INPUT_BAR_COMPACT_PILL_INNER_CLASSES,
@@ -12,12 +13,20 @@ import {
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { useInputBarOverlayTracker } from "@app/components/assistant/conversation/input_bar/useInputBarOverlayTracker";
-import type { InputBarSlashSuggestionCapability } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import type {
+  InputBarSlashCommand,
+  InputBarSlashSuggestionCapability,
+} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
 import useUrlHandler from "@app/components/editor/input_bar/useUrlHandler";
 import { getIcon } from "@app/components/resources/resources_icons";
+import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
+import {
+  useCompactConversation,
+  useConversationContextUsage,
+} from "@app/hooks/conversations";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
@@ -51,10 +60,10 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
-  ArrowUpIcon,
-  AttachmentIcon,
+  ArrowUp,
+  Attachment01,
   Button,
-  CameraIcon,
+  Camera01,
   Chip,
   cn,
   DropdownMenu,
@@ -62,14 +71,15 @@ import {
   DropdownMenuItem,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
-  GlobeAltIcon,
-  PlusIcon,
-  TextIcon,
+  FilePlus03,
+  Globe01,
+  Plus,
   Toolbar,
   TooltipContent,
   TooltipProvider,
   TooltipRoot,
   TooltipTrigger,
+  Type01,
   VoicePicker,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
@@ -137,7 +147,7 @@ export interface InputBarContainerProps {
   onResetMCPServerViews: () => void;
   owner: WorkspaceType;
   saveDraft: (markdown: string, agentMention?: RichAgentMention | null) => void;
-  pendingInputText: string | null;
+  pendingInputText: PendingInputText | null;
   selectedAgent: RichAgentMention | null;
   selectedMCPServerViews: MCPServerViewType[];
   stickyMentions?: RichMention[];
@@ -195,7 +205,7 @@ const InputBarContainer = ({
   );
   const { subscription } = useAuth();
   const isMobile = useIsMobile();
-  const { selectedSingleAgent, setSelectedSingleAgent } =
+  const { selectedSingleAgent, setSelectedSingleAgent, isLoadingGoTemplate } =
     useContext(InputBarContext);
 
   const [startsWithUserMention, setStartsWithUserMention] = useState(false);
@@ -261,9 +271,21 @@ const InputBarContainer = ({
   );
   const selectedMCPServerViewIdsRef = useRef(selectedMCPServerViewIds);
   const shouldEnableSlashSuggestionRef = useRef(shouldEnableSlashSuggestion);
+  // The slash suggestion extension captures its options at editor initialization, while the
+  // conversation may only be created after the first message; the ref keeps it current.
+  const conversationIdRef = useRef<string | null>(conversation?.sId ?? null);
+  conversationIdRef.current = conversation?.sId ?? null;
   const onSelectRef = useRef<
     ((capability: InputBarSlashSuggestionCapability) => void) | undefined
   >(undefined);
+  const onDetailsRef = useRef<
+    ((capability: InputBarSlashSuggestionCapability) => void) | undefined
+  >(undefined);
+  const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
+    string | null
+  >(null);
+  const [selectedServerViewForDetails, setSelectedServerViewForDetails] =
+    useState<MCPServerViewType | null>(null);
   selectedMCPServerViewIdsRef.current = selectedMCPServerViewIds;
   shouldEnableSlashSuggestionRef.current = shouldEnableSlashSuggestion;
 
@@ -368,6 +390,18 @@ const InputBarContainer = ({
 
   const sendNotification = useSendNotification();
 
+  // Context usage provides the model required by the compaction endpoint; both back the /compact
+  // slash command. SWR dedupes these with the ContextUsageIndicator calls.
+  const { contextUsage, mutateContextUsage } = useConversationContextUsage({
+    conversationId: conversation?.sId,
+    workspaceId: owner.sId,
+    options: { disabled: !conversation?.sId },
+  });
+  const { compact, isCompacting } = useCompactConversation({
+    owner,
+    conversationId: conversation?.sId,
+  });
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const handleInlineText = useCallback(
     async (fileId: string, textContent: string) => {
@@ -467,8 +501,40 @@ const InputBarContainer = ({
       .run();
   };
 
+  const handleSlashCommandSelect = (command: InputBarSlashCommand) => {
+    switch (command.id) {
+      case "compact":
+        if (isCompacting) {
+          break;
+        }
+        // The cached context usage may be missing or stale (the endpoint reports a null model
+        // until the latest agent run has usage rows); revalidate on demand before giving up.
+        void (async () => {
+          const usage = contextUsage?.model
+            ? contextUsage
+            : await mutateContextUsage();
+          if (usage?.model) {
+            void compact(usage.model);
+          } else {
+            sendNotification({
+              type: "error",
+              title: "Cannot compact conversation",
+              description:
+                "Compaction requires a completed agent message in the conversation.",
+            });
+          }
+        })();
+        break;
+      default:
+        assertNeverAndIgnore(command.id);
+    }
+  };
+
   onSelectRef.current = (capability: InputBarSlashSuggestionCapability) => {
     switch (capability.kind) {
+      case "command":
+        handleSlashCommandSelect(capability.command);
+        break;
       case "skill":
         handleSkillSelect(capability.skill);
         break;
@@ -480,6 +546,22 @@ const InputBarContainer = ({
     }
 
     queueMicrotask(() => editorRef.current?.commands.focus());
+  };
+
+  onDetailsRef.current = (capability: InputBarSlashSuggestionCapability) => {
+    switch (capability.kind) {
+      case "command":
+        // Static commands have no details sheet.
+        break;
+      case "skill":
+        setSelectedSkillIdForDetails(capability.skill.sId);
+        break;
+      case "tool":
+        setSelectedServerViewForDetails(capability.serverView);
+        break;
+      default:
+        assertNeverAndIgnore(capability);
+    }
   };
 
   // Current space is taken from the conversation (if already set) or from the space prop (if provided).
@@ -497,8 +579,11 @@ const InputBarContainer = ({
     onInlineText: handleInlineText,
     onFirstAgentMentionPasteRef,
     slashSuggestion: {
+      conversationIdRef,
       enabledRef: shouldEnableSlashSuggestionRef,
       onSelectRef,
+      onDetailsRef,
+      onSkillDetails: setSelectedSkillIdForDetails,
       selectedMCPServerViewIdsRef,
     },
     placeholderOverride: disableInput ? submitBlockMessage : placeholder,
@@ -969,6 +1054,47 @@ const InputBarContainer = ({
     };
   }, [clientType, editorService]);
 
+  useEffect(() => {
+    editorService.setLoading(isLoadingGoTemplate);
+  }, [editorService, isLoadingGoTemplate]);
+
+  const pendingReplaceInputRef = useRef<PendingInputText | null>(null);
+
+  // Apply replace-mode pending text once the editor is ready. The async /go
+  // template fetch often completes before TipTap initializes; applying earlier
+  // would no-op and the pending payload is already consumed by InputBar.
+  useEffect(() => {
+    if (pendingInputText?.replace) {
+      pendingReplaceInputRef.current = pendingInputText;
+    }
+
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      !editor.isEditable ||
+      !editor.isInitialized
+    ) {
+      return;
+    }
+
+    const pending = pendingReplaceInputRef.current;
+    if (!pending?.replace) {
+      return;
+    }
+
+    pendingReplaceInputRef.current = null;
+    queueMicrotask(() =>
+      editorService.setContent(pending.text, { focus: !disableAutoFocus })
+    );
+  }, [
+    pendingInputText,
+    editor,
+    editor?.isInitialized,
+    editor?.isEditable,
+    editorService,
+    disableAutoFocus,
+  ]);
+
   // Restore draft text when switching conversations (including new conversations).
   // Agent selection is handled by useHandleMention.
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -979,6 +1105,10 @@ const InputBarContainer = ({
       !editor.isEditable ||
       !editor.isInitialized
     ) {
+      return;
+    }
+
+    if (pendingReplaceInputRef.current?.replace) {
       return;
     }
 
@@ -1092,6 +1222,15 @@ const InputBarContainer = ({
 
   return (
     <>
+      <CapabilityDetailsSheets
+        owner={owner}
+        user={user}
+        selectedSkillId={selectedSkillIdForDetails}
+        selectedMCPServerView={selectedServerViewForDetails}
+        onCloseSkill={() => setSelectedSkillIdForDetails(null)}
+        onCloseTool={() => setSelectedServerViewForDetails(null)}
+      />
+
       {isCompact && (
         <div
           className={cn(
@@ -1192,6 +1331,7 @@ const InputBarContainer = ({
                     label={getMcpServerViewDisplayName(msv)}
                     icon={getIcon(msv.server.icon)}
                     className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:flex"
+                    onClick={() => setSelectedServerViewForDetails(msv)}
                     onRemove={() => {
                       onMCPServerViewDeselect(msv);
                     }}
@@ -1200,6 +1340,7 @@ const InputBarContainer = ({
                     size="xs"
                     icon={getIcon(msv.server.icon)}
                     className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night xs:hidden"
+                    onClick={() => setSelectedServerViewForDetails(msv)}
                     onRemove={() => {
                       onMCPServerViewDeselect(msv);
                     }}
@@ -1235,7 +1376,7 @@ const InputBarContainer = ({
                   <div className="flex items-center">
                     <Button
                       variant="ghost-secondary"
-                      icon={TextIcon}
+                      icon={Type01}
                       size={buttonSize}
                       className={cn("flex", !isMobile && "hidden")}
                       onClick={() => setIsToolbarOpen(!isToolbarOpen)}
@@ -1294,7 +1435,7 @@ const InputBarContainer = ({
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost-secondary"
-                        icon={PlusIcon}
+                        icon={Plus}
                         size={buttonSize}
                         disabled={disableInput}
                       />
@@ -1302,7 +1443,7 @@ const InputBarContainer = ({
                     <DropdownMenuContent align="end">
                       {actions.includes("attachment") && (
                         <DropdownMenuItem
-                          icon={AttachmentIcon}
+                          icon={Attachment01}
                           label="Attach knowledge"
                           onClick={() => {
                             setIsCaptureDropdownOpen(false);
@@ -1313,7 +1454,7 @@ const InputBarContainer = ({
                       {captureActions && (
                         <>
                           <DropdownMenuItem
-                            icon={GlobeAltIcon}
+                            icon={Globe01}
                             label="Attach page content"
                             disabled={
                               disableInput ||
@@ -1329,7 +1470,7 @@ const InputBarContainer = ({
                             }
                           />
                           <DropdownMenuItem
-                            icon={CameraIcon}
+                            icon={Camera01}
                             label="Take screenshot"
                             disabled={
                               disableInput ||
@@ -1346,6 +1487,21 @@ const InputBarContainer = ({
                               />
                             }
                           />
+                          {captureActions.onSavePageToPod && (
+                            <DropdownMenuItem
+                              icon={FilePlus03}
+                              label="Save page to Pod"
+                              disabled={
+                                disableInput ||
+                                captureActions.isCapturing ||
+                                captureActions.isSavingPageToPod ||
+                                fileUploaderService.isProcessingFiles
+                              }
+                              onClick={() => {
+                                void captureActions.onSavePageToPod?.();
+                              }}
+                            />
+                          )}
                         </>
                       )}
                     </DropdownMenuContent>
@@ -1426,7 +1582,7 @@ const InputBarContainer = ({
                       isSubmitting &&
                       voiceTranscriberService.status !== "transcribing"
                     }
-                    icon={ArrowUpIcon}
+                    icon={ArrowUp}
                     variant={isSubmitBlocked ? "ghost-secondary" : "highlight"}
                     disabled={isSubmitDisabled}
                     onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {

@@ -2,11 +2,13 @@
 
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import {
-  type DefaultUserSpendLimit,
   type DefaultUserSpendLimitError,
+  type GetDefaultUserSpendLimitResponseBody,
   getDefaultUserSpendLimit,
+  type PutDefaultUserSpendLimitResponseBody,
   setDefaultUserSpendLimit,
 } from "@app/lib/api/workspace/default_user_spend_limit";
+import { getPlanDefaultPoolLimitAwuCredits } from "@app/lib/plans/plan_codes";
 import {
   MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
@@ -26,12 +28,6 @@ const UpdateDefaultUserSpendLimitBodySchema = z.object({
     .min(MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS)
     .max(MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS),
 });
-
-export type GetDefaultUserSpendLimitResponseBody = {
-  awuCredits: number | null;
-};
-
-export type PutDefaultUserSpendLimitResponseBody = DefaultUserSpendLimit;
 
 function mapErrorToApiError(
   error: DefaultUserSpendLimitError
@@ -58,6 +54,14 @@ function mapErrorToApiError(
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
+          message: error.message,
+        },
+      };
+    case "contract_not_found":
+      return {
+        status_code: 404,
+        api_error: {
+          type: "workspace_not_found",
           message: error.message,
         },
       };
@@ -98,7 +102,12 @@ app.get(
     const result = await getDefaultUserSpendLimit(auth);
     if (result.isErr()) {
       if (result.error.type === "not_found") {
-        return ctx.json({ awuCredits: null });
+        const planCode = auth
+          .getNonNullableSubscriptionResource()
+          .getPlan().code;
+        return ctx.json({
+          awuCredits: getPlanDefaultPoolLimitAwuCredits(planCode),
+        });
       }
       return apiError(ctx, mapErrorToApiError(result.error));
     }

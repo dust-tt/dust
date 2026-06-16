@@ -7,11 +7,23 @@ import type {
 import { VoicePicker } from "@sparkle/index_with_tw_base";
 
 const meta = {
-  title: "Primitives/VoicePicker",
+  title: "Forms & Inputs/VoicePicker",
   component: VoicePicker,
   tags: ["autodocs"],
   parameters: {
     layout: "padded",
+    docs: {
+      description: {
+        component: `A push-to-talk button for capturing voice and transcribing it to text. It is a controlled component driven by **status** (\`"idle"\`, \`"authorizing_microphone"\`, \`"recording"\`, \`"transcribing"\`), an audio **level** for the live waveform, and **elapsedSeconds**, firing **onRecordStart** / **onRecordStop**. Supports **size** (\`xs\` / \`sm\` / \`md\`), **disabled**, a **showStopLabel** toggle, and a **pressDelayMs** that distinguishes hold-to-record from click-to-toggle.
+
+**When to use**
+- To let users dictate input by voice, such as recording a message before sending.
+
+**Guidelines**
+- Own the recording lifecycle yourself: keep **status**, **level**, and **elapsedSeconds** in state and update them from your capture logic.
+- Tune **pressDelayMs** to set how long a press must be held before it counts as hold-to-record rather than a click toggle.`,
+      },
+    },
   },
   argTypes: {
     status: { control: false },

@@ -28,6 +28,11 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+export type GetWebhookSourceViewsListResponseBody = {
+  success: boolean;
+  webhookSourceViews: WebhookSourceViewType[];
+};
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface WebhookSourcesViewResource

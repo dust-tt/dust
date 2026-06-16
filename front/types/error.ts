@@ -74,6 +74,7 @@ const API_ERROR_TYPES = [
   "plan_message_limit_exceeded",
   "credits_exhausted",
   "user_cap_reached",
+  "no_seat",
   "model_disabled",
   "global_agent_error",
   "stripe_invalid_product_id_error",
@@ -178,6 +179,13 @@ export type RegionRedirectError = {
 
 export type APIErrorType = (typeof API_ERROR_TYPES)[number];
 
+// Error types that are expected outcomes of normal operation rather than
+// failures (e.g. a region redirect). Callers can use this to log them at a
+// lower level so they don't pollute error monitoring.
+export const EXPECTED_API_ERROR_TYPES: ReadonlySet<APIErrorType> = new Set([
+  "workspace_in_different_region",
+]);
+
 export type APIError = {
   type: APIErrorType;
   message: string;
@@ -186,6 +194,7 @@ export type APIError = {
   app_error?: CoreAPIError;
   connectors_error?: ConnectorsAPIError;
   redirect?: RegionRedirectError;
+  unverifiableRefs?: string[];
 };
 
 export function isAPIError(obj: unknown): obj is APIError {

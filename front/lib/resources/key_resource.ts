@@ -36,6 +36,7 @@ type CachedKeyData = Omit<
 
 export interface KeyAuthType {
   id: ModelId;
+  userModelId: ModelId | null;
   name: string;
   isSystem: boolean;
   role: RoleType;
@@ -336,6 +337,7 @@ export class KeyResource extends BaseResource<KeyModel> {
   toAuthJSON(): KeyAuthType {
     return {
       id: this.id,
+      userModelId: this.userId ?? null,
       name: this.name,
       isSystem: this.isSystem,
       role: this.role,

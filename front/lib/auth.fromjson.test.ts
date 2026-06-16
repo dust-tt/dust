@@ -83,7 +83,9 @@ import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { PlanFactory } from "@app/tests/utils/PlanFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 
 async function swapSubscription(workspaceId: string): Promise<string> {
@@ -128,5 +130,30 @@ describe("Authenticator.fromJSON", () => {
     const fresh = await Authenticator.fromJSON(authJson);
     expect(fresh.plan()).not.toBeNull();
     expect(fresh.subscription()?.sId).toBe(newSubId);
+  });
+
+  it("refreshes group memberships so pod admin access granted mid-run is visible after serialization", async () => {
+    const {
+      workspace,
+      user,
+      authenticator: auth,
+    } = await createResourceTest({
+      role: "user",
+    });
+
+    const staleAuthJson = auth.toJSON();
+
+    const pod = await SpaceFactory.project(workspace, user.id);
+    const editorGroup = pod.groups.find(
+      (group) => group.kind === "space_editors"
+    );
+    expect(editorGroup).toBeDefined();
+
+    const staleAuth = await Authenticator.fromJSON(staleAuthJson);
+    expect(staleAuth.hasGroupByModelId(editorGroup!.id)).toBe(false);
+
+    const freshAuth =
+      await Authenticator.fromJsonWithRefrehedGroups(staleAuthJson);
+    expect(freshAuth.hasGroupByModelId(editorGroup!.id)).toBe(true);
   });
 });

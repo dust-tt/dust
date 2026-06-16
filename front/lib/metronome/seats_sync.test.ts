@@ -13,6 +13,14 @@ const {
   mockGetActiveMemberships,
   mockGetScheduledFutureMemberships,
   mockFetchSeatLimits,
+  mockListPerUserCreditUserIds,
+  mockListPerUserCreditBalances,
+  mockAddPerUserCredit,
+  mockArchiveContractCredit,
+  mockUpsertPerUserCreditAlerts,
+  mockClearPerUserCreditAlerts,
+  mockListSeatBalances,
+  mockGetAssignedSeatIds,
 } = vi.hoisted(() => ({
   mockGetProductSeatTypes: vi.fn(),
   mockUpdateSubscriptionQuantity: vi.fn(),
@@ -21,6 +29,14 @@ const {
   mockGetActiveMemberships: vi.fn(),
   mockGetScheduledFutureMemberships: vi.fn(),
   mockFetchSeatLimits: vi.fn(),
+  mockListPerUserCreditUserIds: vi.fn(),
+  mockListPerUserCreditBalances: vi.fn(),
+  mockAddPerUserCredit: vi.fn(),
+  mockArchiveContractCredit: vi.fn(),
+  mockUpsertPerUserCreditAlerts: vi.fn(),
+  mockClearPerUserCreditAlerts: vi.fn(),
+  mockListSeatBalances: vi.fn(),
+  mockGetAssignedSeatIds: vi.fn(),
 }));
 
 vi.mock("@app/lib/metronome/client", () => ({
@@ -28,7 +44,22 @@ vi.mock("@app/lib/metronome/client", () => ({
   updateSubscriptionQuantity: mockUpdateSubscriptionQuantity,
   updateSubscriptionSeats: mockUpdateSubscriptionSeats,
   getMetronomeSubscriptionSeatState: mockGetSeatState,
-  getMetronomeSubscriptionAssignedSeatIds: vi.fn(),
+  getMetronomeSubscriptionAssignedSeatIds: mockGetAssignedSeatIds,
+  listContractPerUserCreditUserIds: mockListPerUserCreditUserIds,
+  listContractPerUserCreditBalances: mockListPerUserCreditBalances,
+  addPerUserCreditToContract: mockAddPerUserCredit,
+  archiveContractCredit: mockArchiveContractCredit,
+  // Seat-credit transfer path (no-op in these tests: empty balances ⇒ no
+  // transfers ⇒ the segment-find / adjust helpers are never reached).
+  listMetronomeSeatBalances: mockListSeatBalances,
+  findSeatCreditSegmentForPeriod: vi.fn(),
+  getMetronomeSeatActiveSince: vi.fn(),
+  adjustSeatCreditBalances: vi.fn(),
+}));
+
+vi.mock("@app/lib/metronome/alerts/per_user_credit_balance", () => ({
+  upsertPerUserCreditBalanceAlerts: mockUpsertPerUserCreditAlerts,
+  clearPerUserCreditBalanceAlerts: mockClearPerUserCreditAlerts,
 }));
 
 vi.mock("@app/lib/metronome/seat_types", async () => {
@@ -81,6 +112,18 @@ describe("syncSeatCount min clamping", () => {
     mockGetScheduledFutureMemberships.mockResolvedValue([]);
     mockUpdateSubscriptionQuantity.mockResolvedValue(new Ok(undefined));
     mockUpdateSubscriptionSeats.mockResolvedValue(new Ok(undefined));
+    // Free-seat credit grant/revoke runs on every syncSeatCount; default to
+    // "no existing credits" so the clamping tests (no free seats) are no-ops.
+    mockListPerUserCreditUserIds.mockResolvedValue(new Ok(new Set()));
+    mockListPerUserCreditBalances.mockResolvedValue(new Ok(new Map()));
+    mockAddPerUserCredit.mockResolvedValue(new Ok(null));
+    mockArchiveContractCredit.mockResolvedValue(new Ok(undefined));
+    mockUpsertPerUserCreditAlerts.mockResolvedValue(new Ok(undefined));
+    mockClearPerUserCreditAlerts.mockResolvedValue(new Ok(undefined));
+    // No seat balances / assignments ⇒ the credit-transfer reconciliation
+    // finds nothing to move (the focus of these tests is seat-count sync).
+    mockListSeatBalances.mockResolvedValue(new Ok([]));
+    mockGetAssignedSeatIds.mockResolvedValue(new Ok([]));
   });
 
   it("clamps a QUANTITY_ONLY count up to the configured minSeats", async () => {

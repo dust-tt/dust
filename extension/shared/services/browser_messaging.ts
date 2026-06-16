@@ -1,18 +1,18 @@
-import type { AttachSelectionMessage } from "@extension/shared/messages";
+import type { ExtensionAppMessage } from "@extension/shared/messages";
 import type { BrowserMessagingService } from "@extension/shared/services/platform";
 
 export class ChromeFirefoxBrowserMessagingService
   implements BrowserMessagingService
 {
   addMessageListener(
-    listener: (message: AttachSelectionMessage) => void | Promise<void>
+    listener: (message: ExtensionAppMessage) => void | Promise<void>
   ) {
     chrome.runtime.onMessage.addListener(listener);
     return () => this.removeMessageListener(listener);
   }
 
   removeMessageListener(
-    listener: (message: AttachSelectionMessage) => void | Promise<void>
+    listener: (message: ExtensionAppMessage) => void | Promise<void>
   ) {
     chrome.runtime.onMessage.removeListener(listener);
   }

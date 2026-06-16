@@ -30,6 +30,8 @@ if (isDevelopment() || isTest()) {
     name: "Business",
     maxMessages: -1,
     maxMessagesTimeframe: "lifetime",
+    maxAwuCredits: -1,
+    maxAwuCreditsTimeframe: "lifetime",
     isDeepDiveAllowed: true,
     maxImagesPerWeek: 100,
     maxUsersInWorkspace: 100,
@@ -54,18 +56,21 @@ if (isDevelopment() || isTest()) {
     trialPeriodDays: 14,
     canUseProduct: true,
     isByok: false,
+    isBrandedFramesAllowed: false,
   });
   CREDIT_PRICED_PLANS_DATA.push({
     code: CREDIT_PRICED_FREE_PLAN_CODE,
-    name: "Free Trial",
+    name: "Free",
     maxMessages: 100,
+    maxMessagesTimeframe: "lifetime",
+    maxAwuCredits: -1,
+    maxAwuCreditsTimeframe: "lifetime",
     isDeepDiveAllowed: false,
-    maxUsersInWorkspace: 3,
+    maxUsersInWorkspace: 5,
     maxFreeUsersInWorkspace: 5,
     maxLifetimeFreeUsersInWorkspace: 5,
     maxVaultsInWorkspace: 5,
     maxImagesPerWeek: 10,
-    maxMessagesTimeframe: "lifetime",
     isSlackbotAllowed: true,
     isManagedConfluenceAllowed: true,
     isManagedSlackAllowed: true,
@@ -84,12 +89,15 @@ if (isDevelopment() || isTest()) {
     trialPeriodDays: 0,
     canUseProduct: true,
     isByok: false,
+    isBrandedFramesAllowed: false,
   });
   CREDIT_PRICED_PLANS_DATA.push({
     code: CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
     name: "Enterprise",
     maxMessages: -1,
     maxMessagesTimeframe: "lifetime",
+    maxAwuCredits: -1,
+    maxAwuCreditsTimeframe: "lifetime",
     isDeepDiveAllowed: true,
     maxImagesPerWeek: 100,
     maxUsersInWorkspace: -1,
@@ -114,6 +122,7 @@ if (isDevelopment() || isTest()) {
     trialPeriodDays: 0,
     canUseProduct: true,
     isByok: false,
+    isBrandedFramesAllowed: false,
   });
 }
 

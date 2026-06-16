@@ -6,8 +6,9 @@ import type {
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
 import {
   buildAgentAnalyticsBaseQuery,
-  timezoneSchema,
+  daysToInstantRange,
 } from "@app/lib/api/assistant/observability/utils";
+import { timezoneSchema } from "@app/lib/api/timezone";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -31,15 +32,18 @@ export type PokeGetWorkspaceUsageMetricsResponse = {
 // Mounted at /api/poke/workspaces/:wId/analytics/usage-metrics.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", validate("query", QuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();
 
   const { days, interval, timezone } = ctx.req.valid("query");
 
+  const { startDate, endDate } = daysToInstantRange(days, timezone);
   const baseQuery = buildAgentAnalyticsBaseQuery({
     workspaceId: owner.sId,
-    days,
+    startDate,
+    endDate,
   });
 
   const usageMetricsResult = await fetchMessageMetrics(

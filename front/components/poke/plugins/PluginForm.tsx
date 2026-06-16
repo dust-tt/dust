@@ -1,4 +1,5 @@
 import { EnumSelect } from "@app/components/poke/plugins/EnumSelect";
+import { ServerSideSearchEnumSelect } from "@app/components/poke/plugins/ServerSideSearchEnumSelect";
 import {
   PokeForm,
   PokeFormControl,
@@ -11,8 +12,12 @@ import {
   PokeFormTextArea,
   PokeFormUpload,
 } from "@app/components/poke/shadcn/ui/form";
-import type { PokeGetPluginDetailsResponseBody } from "@app/pages/api/poke/plugins/[pluginId]/manifest";
-import type { AsyncEnumValues, EnumValues } from "@app/types/poke/plugins";
+import type { PokeGetPluginDetailsResponseBody } from "@app/lib/api/poke/plugins/manifest";
+import type {
+  AsyncEnumValues,
+  EnumValues,
+  PluginResourceTarget,
+} from "@app/types/poke/plugins";
 import { createZodSchemaFromArgs } from "@app/types/poke/plugins";
 import { Button, Checkbox, SliderToggle } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,6 +37,7 @@ interface PluginFormProps {
   disabled?: boolean;
   manifest: PokeGetPluginDetailsResponseBody["manifest"];
   onSubmit: (args: FormValues<any>) => Promise<void>;
+  pluginResourceTarget: PluginResourceTarget;
 }
 
 export function PluginForm({
@@ -39,6 +45,7 @@ export function PluginForm({
   disabled,
   manifest,
   onSubmit,
+  pluginResourceTarget,
 }: PluginFormProps) {
   const [isSubmitted, setIsSubmitted] = useState(false);
 
@@ -152,6 +159,11 @@ export function PluginForm({
     return null;
   }
 
+  const workspaceId =
+    "workspace" in pluginResourceTarget
+      ? pluginResourceTarget.workspace.sId
+      : null;
+
   return (
     <PokeForm {...form}>
       <form
@@ -165,9 +177,15 @@ export function PluginForm({
                 ? arg.dependsOn
                 : [arg.dependsOn]
               : [];
-            const isDependentFieldHidden = conditions.some(
-              (c) => watchedValues[c.field] !== c.value
-            );
+            const isDependentFieldHidden = conditions.some((c) => {
+              const watched = watchedValues[c.field];
+              // Enum fields surface their selection as an array of values, so
+              // match by membership; everything else compares by value.
+              if (Array.isArray(watched)) {
+                return !watched.includes(c.value);
+              }
+              return watched !== c.value;
+            });
 
             if (isDependentFieldHidden) {
               return null;
@@ -244,18 +262,33 @@ export function PluginForm({
                                 onCheckedChange={field.onChange}
                               />
                             )}
-                          {arg.type === "enum" && (
-                            <EnumSelect
-                              label={arg.label}
-                              onValuesChange={(values) =>
-                                field.onChange(values)
-                              }
-                              options={options ?? []}
-                              placeholder="Select value"
-                              values={field.value}
-                              multiple={arg.multiple}
-                            />
-                          )}
+                          {arg.type === "enum" &&
+                            arg.serverSideSearch &&
+                            workspaceId && (
+                              <ServerSideSearchEnumSelect
+                                label={arg.label}
+                                onValuesChange={(values) =>
+                                  field.onChange(values)
+                                }
+                                placeholder="Search by name or email"
+                                staticOptions={options ?? arg.values}
+                                values={field.value}
+                                workspaceId={workspaceId}
+                              />
+                            )}
+                          {arg.type === "enum" &&
+                            !(arg.serverSideSearch && workspaceId) && (
+                              <EnumSelect
+                                label={arg.label}
+                                onValuesChange={(values) =>
+                                  field.onChange(values)
+                                }
+                                options={options ?? []}
+                                placeholder="Select value"
+                                values={field.value}
+                                multiple={arg.multiple}
+                              />
+                            )}
                           {arg.type === "file" && (
                             <PokeFormUpload type="file" {...field} />
                           )}

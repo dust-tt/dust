@@ -4,14 +4,16 @@ import {
   isExtractQueryResourceType,
   isExtractResultResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { getFilePathDownloadUrl } from "@app/lib/swr/files";
 import { isTimeFrame } from "@app/types/shared/utils/time_frame";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Citation,
   CitationIcons,
   CitationTitle,
   CodeBlock,
   Icon,
-  ScanIcon,
+  Scan,
 } from "@dust-tt/sparkle";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { useState } from "react";
@@ -26,11 +28,13 @@ interface MCPExtractActionQueryProps {
 }
 
 interface MCPExtractActionResultsProps {
+  owner: LightWorkspaceType;
   resultResource?: {
     text: string;
     uri: string;
     mimeType: string;
-    fileId: string;
+    path?: string;
+    fileId?: string;
     title: string;
     contentType: string;
     snippet: string | null;
@@ -41,6 +45,7 @@ export function MCPExtractActionDetails({
   toolParams,
   toolOutput,
   displayContext,
+  owner,
 }: ToolExecutionDetailsProps) {
   const queryResource = toolOutput
     ?.filter(isExtractQueryResourceType)
@@ -58,7 +63,7 @@ export function MCPExtractActionDetails({
       actionName={
         displayContext === "conversation" ? "Extracting data" : "Extract data"
       }
-      visual={ScanIcon}
+      visual={Scan}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
@@ -92,7 +97,10 @@ export function MCPExtractActionDetails({
             <span className="font-medium text-foreground dark:text-foreground-night">
               Results
             </span>
-            <MCPExtractActionResults resultResource={resultResource} />
+            <MCPExtractActionResults
+              owner={owner}
+              resultResource={resultResource}
+            />
           </div>
         )}
       </div>
@@ -131,6 +139,7 @@ function MCPExtractActionQuery({
 }
 
 function MCPExtractActionResults({
+  owner,
   resultResource,
 }: MCPExtractActionResultsProps) {
   const [isDownloading, setIsDownloading] = useState(false);
@@ -143,12 +152,18 @@ function MCPExtractActionResults({
     );
   }
 
+  const downloadUrl = resultResource.path
+    ? getFilePathDownloadUrl(owner, resultResource.path)
+    : resultResource.uri || null;
+
   const handleDownload = async () => {
+    if (!downloadUrl) {
+      return;
+    }
+
     setIsDownloading(true);
     try {
-      window.open(resultResource.uri, "_blank");
-    } catch (error) {
-      console.error("Download failed:", error);
+      window.open(downloadUrl, "_blank");
     } finally {
       setIsDownloading(false);
     }
@@ -160,12 +175,12 @@ function MCPExtractActionResults({
         <Citation
           className="w-48 min-w-48 max-w-48"
           containerClassName="my-2"
-          onClick={handleDownload}
+          onClick={downloadUrl ? handleDownload : undefined}
           tooltip={resultResource.title}
           isLoading={isDownloading}
         >
           <CitationIcons>
-            <Icon visual={ScanIcon} />
+            <Icon visual={Scan} />
           </CitationIcons>
           <CitationTitle>{resultResource.title}</CitationTitle>
         </Citation>

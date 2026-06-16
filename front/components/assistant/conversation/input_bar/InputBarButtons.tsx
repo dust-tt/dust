@@ -19,7 +19,7 @@ import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { getSupportedFileExtensions } from "@app/types/files";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { Avatar, Button, cn, RobotIcon, XMarkIcon } from "@dust-tt/sparkle";
+import { Avatar, Button, cn, Robot, XClose } from "@dust-tt/sparkle";
 import React from "react";
 
 interface InputBarButtonsProps {
@@ -138,14 +138,14 @@ export const InputBarButtons = React.memo(function InputBarButtons({
                 onAgentRemove();
               }}
             >
-              <XMarkIcon className="h-3 w-3" />
+              <XClose className="h-3 w-3" />
             </button>
           </div>
         ) : (
           <Button
             variant="ghost-secondary"
             size={buttonSize}
-            icon={RobotIcon}
+            icon={Robot}
             label="Agent"
             disabled={isInputDisabled}
             className={cn(

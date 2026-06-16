@@ -1,8 +1,8 @@
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { PublicFrameRenderer } from "@app/components/assistant/conversation/interactive_content/PublicFrameRenderer";
 import { UnsupportedContentRenderer } from "@app/components/assistant/conversation/interactive_content/UnsupportedContentRenderer";
+import Custom404 from "@app/components/pages/Custom404";
 import { usePublicFrame } from "@app/lib/swr/frames";
-import Custom404 from "@app/pages/404";
 import { frameContentType, frameSlideshowContentType } from "@app/types/files";
 import { Spinner } from "@dust-tt/sparkle";
 
@@ -10,6 +10,7 @@ interface PublicInteractiveContentContainerProps {
   shareToken: string;
   workspaceId: string;
   vizUrl: string;
+  logoUrl?: string | null;
   hideHeader?: boolean;
 }
 
@@ -21,6 +22,7 @@ export function PublicInteractiveContentContainer({
   shareToken,
   workspaceId,
   vizUrl,
+  logoUrl,
   hideHeader = false,
 }: PublicInteractiveContentContainerProps) {
   const { frameMetadata, isFrameLoading, error } = usePublicFrame({
@@ -51,6 +53,7 @@ export function PublicInteractiveContentContainer({
             shareToken={shareToken}
             workspaceId={workspaceId}
             vizUrl={vizUrl}
+            logoUrl={logoUrl}
             hideHeader={hideHeader}
           />
         );

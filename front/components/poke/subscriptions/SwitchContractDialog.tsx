@@ -10,7 +10,7 @@ import { isPaygEligibleTier } from "@app/lib/metronome/types";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
   CREDIT_PRICED_FREE_PLAN_CODE,
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
@@ -350,7 +350,7 @@ export default function SwitchContractDialog({
       plans
         .filter(
           (plan) =>
-            isEntreprisePlanPrefix(plan.code) && isCreditPricedPlan(plan)
+            isEnterprisePlanPrefix(plan.code) && isCreditPricedPlan(plan)
         )
         .map((plan) => ({
           value: plan.code,
@@ -525,10 +525,9 @@ export default function SwitchContractDialog({
                   name="stripeCustomerId"
                   title="Stripe Customer Id (optional for free plans)"
                   placeholder="cus_1234567890"
-                  readOnly={stripeCustomerId !== null}
                 />
                 {isCurrencyLoading && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                     <Spinner size="sm" />
                     <span>Resolving customer currency...</span>
                   </div>
@@ -568,7 +567,7 @@ export default function SwitchContractDialog({
                     />
                   )}
                 {isPackagesLoading && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                     <Spinner size="sm" />
                     <span>Loading Metronome packages...</span>
                   </div>
@@ -625,7 +624,7 @@ export default function SwitchContractDialog({
                 {(selectedTier === "pro" ||
                   selectedTier === "business" ||
                   selectedTier === "free") && (
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                     Target plan:{" "}
                     <span className="font-mono">{form.watch("planCode")}</span>{" "}
                     — swap at the current hour, subscription flips
@@ -660,7 +659,7 @@ export default function SwitchContractDialog({
                         ? `(rate & price in ${resolvedCurrency.toUpperCase()})`
                         : ""}
                     </Label>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                       Checked seats are entitled on the new contract. Seats the
                       package does not entitle by default are unchecked — check
                       one to entitle it (a non-zero rate is required, except for
@@ -684,7 +683,7 @@ export default function SwitchContractDialog({
                             <span className="font-mono text-sm">
                               {seatType}
                               {!entitled && (
-                                <span className="ml-1 text-muted-foreground">
+                                <span className="ml-1 text-muted-foreground dark:text-muted-foreground-night">
                                   *
                                 </span>
                               )}

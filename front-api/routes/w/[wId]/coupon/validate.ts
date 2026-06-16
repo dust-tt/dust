@@ -1,15 +1,12 @@
 import { CouponRedemptionResource } from "@app/lib/resources/coupon_redemption_resource";
 import { CouponResource } from "@app/lib/resources/coupon_resource";
-import type { CouponType } from "@app/types/coupon";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
-export type GetCouponValidateResponseBody = {
-  coupon: CouponType;
-};
+export type { GetCouponValidateResponseBody } from "@app/lib/resources/coupon_resource";
 
 const GetCouponValidateQuerySchema = z.object({
   code: z.string(),
@@ -18,6 +15,7 @@ const GetCouponValidateQuerySchema = z.object({
 // Mounted at /api/w/:wId/coupon/validate.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

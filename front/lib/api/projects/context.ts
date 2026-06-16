@@ -5,10 +5,14 @@ import {
 } from "@app/lib/api/assistant/conversation/attachments";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getContentNodesForDataSourceView } from "@app/lib/api/data_source_view";
+import { DustFileSystem } from "@app/lib/api/file_system";
+import type { FileSystemDirectoryEntry } from "@app/lib/api/file_system/types";
 import {
-  createGCSMountDirectory,
+  DustFileSystemError,
+  podScopedPath,
+} from "@app/lib/api/file_system/types";
+import {
   deleteGCSMountFile,
-  type GCSMountDirectoryEntry,
   moveFile,
   renameGCSMountDirectory,
   renameGCSMountFile,
@@ -39,6 +43,38 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { Op } from "sequelize";
+import { z } from "zod";
+
+/** GET: project context (file-backed + content-node fragments). */
+export type GetProjectContextResponseBody = {
+  attachments: ConversationAttachmentType[];
+};
+
+export const PostProjectContextContentNodeItemSchema = z.object({
+  title: z.string().min(1, "title is required"),
+  nodeId: z.string().min(1, "nodeId is required"),
+  nodeDataSourceViewId: z.string().min(1, "nodeDataSourceViewId is required"),
+  url: z.string().nullable().optional(),
+  supersededContentFragmentId: z.string().nullable().optional(),
+});
+
+export const PostProjectContextContentNodeBodySchema = z.object({
+  items: z.array(PostProjectContextContentNodeItemSchema),
+});
+
+export type PostProjectContextContentNodeFragment = {
+  sId: string;
+  title: string;
+  contentType: string;
+  nodeId: string;
+  nodeDataSourceViewId: string;
+  nodeType: ContentNodeType;
+};
+
+export type PostProjectContextContentNodeResponseBody = {
+  contentFragments: PostProjectContextContentNodeFragment[];
+  errors: Array<{ index: number; message: string }>;
+};
 
 /**
  * Folder internal id under which conversation transcripts are indexed in the dust_project
@@ -366,6 +402,36 @@ export async function addFileToProject(
     }
 
     const destFileName = file.fileName;
+    const destScopedPath = podScopedPath(space.sId, destFileName);
+
+    // Reject the move when a file with the same name already exists in the Pod, rather
+    // than silently overwriting it. moveFile (raw GCS) does not check, so we check the
+    // destination through a Pod-scoped file system first.
+    const fsRes = await DustFileSystem.forPod(auth, space);
+    if (fsRes.isErr()) {
+      return new Err({
+        name: "dust_error",
+        code: "internal_error",
+        message: fsRes.error.message,
+      });
+    }
+
+    const destExistsRes = await fsRes.value.exists(destScopedPath);
+    if (destExistsRes.isErr()) {
+      return new Err({
+        name: "dust_error",
+        code: "internal_error",
+        message: destExistsRes.error.message,
+      });
+    }
+    if (destExistsRes.value) {
+      return new Err({
+        name: "dust_error",
+        code: "invalid_request_error",
+        message: "A file with this name already exists in the Pod.",
+      });
+    }
+
     const moveRes = await moveFile(auth, {
       file,
       sourceGcsPath: file.mountFilePath,
@@ -562,6 +628,7 @@ export async function removeFileFromProject(
 /**
  * Create an empty folder in a project GCS mount via a trailing-slash placeholder object.
  */
+// TODO(FILE_SYSTEM): Delete this abstraction.
 export async function createProjectFolder(
   auth: Authenticator,
   {
@@ -573,19 +640,25 @@ export async function createProjectFolder(
     folderName: string;
     parentRelativePath?: string;
   }
-): Promise<Result<GCSMountDirectoryEntry, Error>> {
+): Promise<Result<FileSystemDirectoryEntry, DustFileSystemError>> {
   if (!space.isProject()) {
-    return new Err(new Error("Space is not a project."));
+    return new Err(
+      new DustFileSystemError("invalid_path", "Space is not a project.")
+    );
   }
 
   const folderNameRes = validateMountFolderName(folderName);
   if (folderNameRes.isErr()) {
-    return folderNameRes;
+    return new Err(
+      new DustFileSystemError("invalid_path", folderNameRes.error.message)
+    );
   }
 
   const parentRes = normalizeMountParentRelativePath(parentRelativePath);
   if (parentRes.isErr()) {
-    return parentRes;
+    return new Err(
+      new DustFileSystemError("invalid_path", parentRes.error.message)
+    );
   }
 
   const relativeDirPath = joinMountRelativePath(
@@ -593,11 +666,12 @@ export async function createProjectFolder(
     folderNameRes.value
   );
 
-  return createGCSMountDirectory(
-    auth,
-    { useCase: "pod", podId: space.sId },
-    { relativeDirPath }
-  );
+  const fsResult = await DustFileSystem.forPod(auth, space);
+  if (fsResult.isErr()) {
+    return fsResult;
+  }
+
+  return fsResult.value.mkdir(podScopedPath(space.sId, relativeDirPath));
 }
 
 /**

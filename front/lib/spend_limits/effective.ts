@@ -17,6 +17,24 @@ export function resolveEffectiveSpendLimitAwuCredits({
   return defaultAwuCredits;
 }
 
+// Where the effective spend limit comes from: a user-specific `override`, the
+// seat-type `default`, or `none` when neither is configured (unlimited).
+export function resolveEffectiveSpendLimitSource({
+  overrideAwuCredits,
+  defaultAwuCredits,
+}: {
+  overrideAwuCredits: number | null;
+  defaultAwuCredits: number | null;
+}): EffectiveSpendLimitSource {
+  if (overrideAwuCredits !== null) {
+    return "override";
+  }
+  if (defaultAwuCredits !== null) {
+    return "default";
+  }
+  return "none";
+}
+
 export function resolveEffectiveSpendLimitState({
   overrideState,
   defaultState,

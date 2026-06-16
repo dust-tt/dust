@@ -3,8 +3,6 @@ import {
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
 import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
-import { INTERACTIVE_CONTENT_INSTRUCTIONS_V2 } from "@app/lib/api/actions/servers/interactive_content/instructions";
-import { framesSkill } from "@app/lib/resources/skill/code_defined/frames";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { stripSkillTagPresentationAttributes } from "@app/lib/skills/format";
 import { stripToolTagPresentationAttributes } from "@app/lib/tools/format";
@@ -15,24 +13,6 @@ export type EnabledSkill = SkillResource & {
 };
 
 type SkillInstructionsSource = Pick<SkillResource, "sId" | "instructions">;
-
-// `useFramesV2` is a workspace-level feature flag gate, not a per-agent
-// switch. When a third variant lands, replace the boolean with a
-// discriminated union + exhaustive `switch` so reviewers can't forget a
-// branch (the previous shape used `assertNever` on a `FramesVariant` union).
-export function resolveSkillInstructions({
-  skill,
-  useFramesV2,
-}: {
-  skill: SkillInstructionsSource;
-  useFramesV2: boolean;
-}): string {
-  if (skill.sId !== framesSkill.sId) {
-    return skill.instructions;
-  }
-
-  return useFramesV2 ? INTERACTIVE_CONTENT_INSTRUCTIONS_V2 : skill.instructions;
-}
 
 function renderSystemSkillMessage(text: string): UserMessageTypeModel {
   return {
@@ -51,16 +31,11 @@ function stripInstructionPresentationAttributes(content: string): string {
 export function getEnabledSkillInstructions(
   skill: Pick<SkillResource, "sId" | "name" | "instructions"> & {
     extendedSkill: SkillInstructionsSource | null;
-  },
-  {
-    useFramesV2 = false,
-  }: {
-    useFramesV2?: boolean;
-  } = {}
+  }
 ): string {
   const { name, extendedSkill } = skill;
   const modelInstructions = stripInstructionPresentationAttributes(
-    resolveSkillInstructions({ skill, useFramesV2 })
+    skill.instructions
   );
 
   if (!extendedSkill) {
@@ -68,7 +43,7 @@ export function getEnabledSkillInstructions(
   }
 
   const extendedModelInstructions = stripInstructionPresentationAttributes(
-    resolveSkillInstructions({ skill: extendedSkill, useFramesV2 })
+    extendedSkill.instructions
   );
 
   return [
@@ -104,14 +79,10 @@ export function renderEquippedSkillsUserMessage(
 
 export function renderEnabledSkillUserMessageFromInstructions({
   skill,
-  useFramesV2 = false,
 }: {
   skill: EnabledSkill;
-  useFramesV2?: boolean;
 }): UserMessageTypeModel {
-  const skillInstructions = getEnabledSkillInstructions(skill, {
-    useFramesV2,
-  });
+  const skillInstructions = getEnabledSkillInstructions(skill);
 
   return renderSystemSkillMessage(
     `<dust_system>\n${skillInstructions}\n</dust_system>`

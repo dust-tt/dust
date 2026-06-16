@@ -1,0 +1,398 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import {
+  AnnouncementBanner,
+  BANNER_VISIBLE_AFTER_MS,
+} from "@marketing/components/home/AnnouncementBanner";
+import { A } from "@marketing/components/home/ContentComponents";
+import { FooterNavigation } from "@marketing/components/home/menu/FooterNavigation";
+import { MainNavigation } from "@marketing/components/home/menu/MainNavigation";
+import { MobileNavigation } from "@marketing/components/home/menu/MobileNavigation";
+import { OpenDustButton } from "@marketing/components/home/OpenDustButton";
+import { PromoBanner } from "@marketing/components/home/PromoBanner";
+import { PublicWebsiteLogo } from "@marketing/components/home/PublicWebsiteLogo";
+import ScrollingHeader from "@marketing/components/home/ScrollingHeader";
+import UTMButton from "@marketing/components/UTMButton";
+import { useStripUtmParams } from "@marketing/hooks/useStripUtmParams";
+import {
+  DUST_COOKIES_ACCEPTED,
+  DUST_HAS_SESSION,
+  hasCookiesAccepted,
+  hasSessionIndicator,
+  shouldCheckGeolocation,
+} from "@marketing/lib/cookies";
+import { useGeolocation } from "@marketing/lib/swr/geo";
+import { useLandingAuthContext } from "@marketing/lib/swr/website";
+import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
+import { classNames, getFaviconPath } from "@marketing/lib/utils";
+import { getOrCreateAnonymousId } from "@marketing/lib/utils/anonymous_id";
+import { appendUTMParams } from "@marketing/lib/utils/utm";
+import { Button, cn } from "@dust-tt/sparkle";
+import Head from "next/head";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import Script from "next/script";
+import { useCallback, useEffect, useState } from "react";
+import { useCookies } from "react-cookie";
+
+export interface LandingLayoutProps {
+  shape: number;
+  postLoginReturnToUrl?: string;
+  gtmTrackingId?: string;
+  hideNavigation?: boolean;
+  fullWidth?: boolean;
+}
+
+export default function LandingLayout({
+  children,
+  pageProps,
+}: {
+  children: React.ReactNode;
+  pageProps: LandingLayoutProps;
+}) {
+  const {
+    postLoginReturnToUrl = "/api/login",
+    gtmTrackingId,
+    hideNavigation,
+    fullWidth,
+  } = pageProps;
+
+  const router = useRouter();
+  // Initialize from the timestamp so there's no layout shift on first render.
+  // ?preview_banner in the URL forces it on for pre-launch testing.
+  const [showBanner, setShowBanner] = useState(
+    () => Date.now() >= BANNER_VISIBLE_AFTER_MS
+  );
+  useEffect(() => {
+    if ("preview_banner" in router.query) {
+      setShowBanner(true);
+    }
+  }, [router.query]);
+
+  useStripUtmParams();
+
+  const [cookies, setCookie] = useCookies(
+    [DUST_COOKIES_ACCEPTED, DUST_HAS_SESSION],
+    {
+      doNotParse: true,
+    }
+  );
+  const [showCookieBanner, setShowCookieBanner] = useState<boolean>(false);
+  const cookieValue = cookies[DUST_COOKIES_ACCEPTED];
+  const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(
+    hasCookiesAccepted(cookieValue, null)
+  );
+
+  // Check session cookie only on client to avoid hydration mismatch.
+  const [hasSession, setHasSession] = useState(false);
+  useEffect(() => {
+    setHasSession(hasSessionIndicator(cookies[DUST_HAS_SESSION]));
+  }, [cookies]);
+
+  // Verify actual auth state when session cookie is present. SWR deduplicates
+  // this call with the one in OpenDustButton, so there's no extra request.
+  const { isAuthenticated, isLoading: isAuthLoading } = useLandingAuthContext({
+    hasSessionCookie: hasSession,
+  });
+
+  const shouldCheckGeo = shouldCheckGeolocation(cookieValue);
+
+  const { geoData, isGeoDataLoading } = useGeolocation({
+    disabled: !shouldCheckGeo,
+  });
+
+  const setCookieApproval = useCallback(
+    (type: "true" | "auto" | "false") => {
+      // true is when the user accepts all cookies.
+      // auto is when not in GDPR region
+      if (type === "true" || type === "auto") {
+        setHasAcceptedCookies(true);
+      }
+      setShowCookieBanner(false);
+      setCookie(DUST_COOKIES_ACCEPTED, type, {
+        path: "/",
+        maxAge: 183 * 24 * 60 * 60, // 6 months
+        sameSite: "lax",
+      });
+    },
+    [setCookie]
+  );
+
+  // If you come back to the public site (e.g. pricing page) with browser's back button from the app,
+  // you can have dark theme so we need to remove them manually
+  useEffect(() => {
+    document.documentElement.classList.remove("dark");
+    document.documentElement.classList.remove("s-dark");
+    document.body.classList.remove("bg-background-night");
+  }, []);
+
+  useEffect(() => {
+    if (cookieValue !== undefined) {
+      setShowCookieBanner(false);
+      return;
+    }
+
+    if (isGeoDataLoading) {
+      return;
+    }
+
+    if (geoData && geoData.isGDPR === false) {
+      // For non-GDPR countries (like US), show banner and set cookies to auto
+      setShowCookieBanner(true);
+      setHasAcceptedCookies(true); // Enable cookies immediately for non-GDPR
+      getOrCreateAnonymousId();
+    } else {
+      // For GDPR countries, just show the banner
+      setShowCookieBanner(true);
+    }
+  }, [geoData, isGeoDataLoading, cookieValue]);
+
+  return (
+    <>
+      <Header />
+      {hideNavigation ? (
+        <div className="flex w-full justify-center pt-12 pb-2">
+          <div className="container flex items-center justify-center px-6">
+            <PublicWebsiteLogo />
+          </div>
+        </div>
+      ) : (
+        <>
+          <AnnouncementBanner show={showBanner} />
+          <ScrollingHeader hasBanner={showBanner}>
+            <div className="flex h-full w-full items-center gap-4 px-6 xl:gap-10">
+              <div className="hidden h-[24px] w-[96px] xl:block">
+                <PublicWebsiteLogo />
+              </div>
+              <MobileNavigation />
+              <div className="block xl:hidden">
+                <PublicWebsiteLogo />
+              </div>
+              <MainNavigation />
+              <div className="flex flex-grow items-center justify-end gap-4">
+                {hasSession && (isAuthLoading || isAuthenticated) ? (
+                  <OpenDustButton
+                    variant="highlight"
+                    size="sm"
+                    trackingArea={TRACKING_AREAS.NAVIGATION}
+                    trackingObject="go_to_app"
+                  />
+                ) : (
+                  <>
+                    <a
+                      href={appendUTMParams(
+                        `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`
+                      )}
+                      onClick={withTracking(
+                        TRACKING_AREAS.NAVIGATION,
+                        "sign_in"
+                      )}
+                      className="hidden xl:inline-flex h-9 w-max items-center justify-center rounded-md pl-4 pr-1 py-2 text-base font-medium font-sans text-primary-700 hover:text-primary-600 active:text-primary-800 transition-colors hover:underline hover:underline-offset-4"
+                    >
+                      Sign in
+                    </a>
+                    <Link href="/sign-up">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        label="Try for free"
+                        onClick={withTracking(
+                          TRACKING_AREAS.NAVIGATION,
+                          "sign_up"
+                        )}
+                      />
+                    </Link>
+                    <UTMButton
+                      href="/home/contact"
+                      className="hidden xs:inline-flex"
+                      variant="highlight"
+                      size="sm"
+                      label="Contact sales"
+                      onClick={withTracking(
+                        TRACKING_AREAS.NAVIGATION,
+                        "contact_sales"
+                      )}
+                    />
+                  </>
+                )}
+              </div>
+            </div>
+          </ScrollingHeader>
+        </>
+      )}
+      <main className="z-10 flex w-full flex-col items-center">
+        <div
+          className={classNames(
+            "flex w-full flex-col",
+            fullWidth ? "" : "container",
+            "gap-6 px-6 md:gap-24",
+            hideNavigation ? "pt-6" : showBanner ? "pt-[136px]" : "pt-[96px]",
+            "xl:gap-16",
+            "2xl:gap-24"
+          )}
+        >
+          {children}
+        </div>
+        <PromoBanner />
+        <CookieBanner
+          className="fixed bottom-0 left-0 z-50 w-full"
+          show={showCookieBanner}
+          onClickAccept={() => {
+            setCookieApproval("true");
+          }}
+          onClickRefuse={() => {
+            setCookieApproval("false");
+          }}
+        />
+        {hasAcceptedCookies && (
+          <Script id="google-tag-manager" strategy="afterInteractive">
+            {`
+              (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+              new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+              j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+              'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+              })(window,document,'script','dataLayer','${gtmTrackingId}');
+            `}
+          </Script>
+        )}
+        {cookieValue === "true" && (
+          // Marketing tier requires explicit Accept; skip the geo-based "auto" consent path.
+          <Script
+            id="claydar"
+            src="https://static.claydar.com/init.v1.js?id=clmYho8v0U"
+            strategy="afterInteractive"
+          />
+        )}
+        {!hideNavigation && <FooterNavigation />}
+      </main>
+    </>
+  );
+}
+
+const CookieBanner = ({
+  show,
+  onClickAccept,
+  onClickRefuse,
+  className,
+}: {
+  show: boolean;
+  onClickAccept: () => void;
+  onClickRefuse: () => void;
+  className?: string;
+}) => {
+  const [isVisible, setIsVisible] = useState(show);
+
+  useEffect(() => {
+    setIsVisible(show);
+  }, [show]);
+
+  if (!isVisible) {
+    return null;
+  }
+
+  return (
+    <div
+      className={cn(
+        "fixed bottom-0 left-0 z-30 flex w-full flex-col items-center justify-between gap-6 border-t border-slate-700 bg-slate-900/90 p-8 shadow-2xl backdrop-blur-sm md:flex-row md:gap-8",
+        "transition-opacity duration-300 ease-in-out",
+        isVisible ? "opacity-100" : "opacity-0",
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        className || ""
+      )}
+    >
+      <div className="flex max-w-2xl flex-col gap-2">
+        <div className="text-base font-medium text-white md:text-lg">
+          We use cookies
+        </div>
+        <div className="text-sm font-normal text-slate-300 md:text-base">
+          By clicking "Accept All Cookies", you agree to the storing of cookies
+          on your device to enhance site navigation, analyze site usage, and
+          assist in our marketing efforts. You can also{" "}
+          <button
+            className="text-slate-400 underline transition-colors hover:text-slate-200"
+            onClick={() => {
+              setIsVisible(false);
+              onClickRefuse();
+            }}
+          >
+            reject non-essential cookies
+          </button>
+          . View our{" "}
+          <A variant="primary" href="/home/platform-privacy">
+            Privacy Policy
+          </A>{" "}
+          for more information.
+        </div>
+      </div>
+      <div className="flex shrink-0 gap-3">
+        <Button
+          variant="highlight"
+          size="md"
+          label="Accept All Cookies"
+          onClick={() => {
+            setIsVisible(false);
+            onClickAccept();
+          }}
+        />
+      </div>
+    </div>
+  );
+};
+
+const Header = () => {
+  const faviconPath = getFaviconPath();
+
+  return (
+    <Head>
+      <link rel="icon" type="image/png" href={faviconPath} />
+      <link
+        rel="preload"
+        href="/static/fonts/GeistVariable.woff2"
+        as="font"
+        type="font/woff2"
+        crossOrigin="anonymous"
+      />
+      <meta name="apple-mobile-web-app-title" content="Dust" />
+      <link rel="apple-touch-icon" href="/static/AppIcon.png" />
+      <link
+        rel="apple-touch-icon"
+        sizes="60x60"
+        href="/static/AppIcon_60.png"
+      />
+      <link
+        rel="apple-touch-icon"
+        sizes="76x76"
+        href="/static/AppIcon_76.png"
+      />
+      <link
+        rel="apple-touch-icon"
+        sizes="120x120"
+        href="/static/AppIcon_120.png"
+      />
+      <link
+        rel="apple-touch-icon"
+        sizes="152x152"
+        href="/static/AppIcon_152.png"
+      />
+      <link
+        rel="apple-touch-icon"
+        sizes="167x167"
+        href="/static/AppIcon_167.png"
+      />
+      <link
+        rel="apple-touch-icon"
+        sizes="180x180"
+        href="/static/AppIcon_180.png"
+      />
+      <link
+        rel="apple-touch-icon"
+        sizes="192x192"
+        href="/static/AppIcon_192.png"
+      />
+      <link
+        rel="apple-touch-icon"
+        sizes="228x228"
+        href="/static/AppIcon_228.png"
+      />
+    </Head>
+  );
+};

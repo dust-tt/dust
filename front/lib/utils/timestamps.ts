@@ -14,12 +14,16 @@ export const cleanTimestamp = (
 ) => {
   if (timestamp !== null && timestamp !== undefined) {
     const timestampNumber = Number(timestamp);
-    if (isNaN(timestampNumber)) {
+    // Reject NaN, Infinity and negative timestamps: CoreAPI expects a
+    // non-negative u64 (epoch ms). A pre-1970 timestamp (e.g. a Google Drive
+    // file with a 1601 "zero" modifiedTime) would otherwise be rejected by
+    // core with a 422 and retried forever.
+    if (!Number.isFinite(timestampNumber) || timestampNumber < 0) {
       return null;
     }
 
-    // Timestamps is in seconds, convert to ms
-    if (timestampNumber < (10 ^ 10)) {
+    // Timestamps below 1e10 are expressed in seconds, convert to ms.
+    if (timestampNumber < 1e10) {
       return Math.floor(timestampNumber * 1000);
     }
 

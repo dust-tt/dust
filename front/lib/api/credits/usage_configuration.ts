@@ -1,0 +1,144 @@
+import {
+  getWorkspaceBalanceThreshold,
+  syncMetronomeBalanceThresholdAlert,
+} from "@app/lib/api/credits/balance_threshold_alert";
+import type { Authenticator } from "@app/lib/auth";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { z } from "zod";
+
+// Combined workspace-level usage configuration surfaced to admins on the Usage
+// page. `balanceThresholdCredits` is derived from the workspace's Metronome
+// balance-threshold alert (see `balance_threshold_alert.ts`); the upgrade-request
+// toggles are stored on the `credit_usage_configurations` row.
+export type CreditUsageConfigurationBody = {
+  // Credit balance (in AWU credits) below which workspace admins are emailed.
+  // `null` means no threshold is configured (the warning is off).
+  balanceThresholdCredits: number | null;
+  // Whether non-admin members who reach their per-user spend limit can request a
+  // spend-limit upgrade from the product.
+  allowMemberUpgradeRequests: boolean;
+  // Whether workspace admins are emailed when a member requests an upgrade.
+  upgradeRequestEmailEnabled: boolean;
+};
+
+export type GetCreditUsageConfigurationResponseBody = {
+  configuration: CreditUsageConfigurationBody;
+};
+
+export type PatchCreditUsageConfigurationResponseBody = {
+  configuration: CreditUsageConfigurationBody;
+};
+
+export const PatchCreditUsageConfigurationRequestBody = z.object({
+  // 0 (or null) clears the threshold; a positive value enables the alert.
+  balanceThresholdCredits: z.number().int().min(0).nullable().optional(),
+  allowMemberUpgradeRequests: z.boolean().optional(),
+  upgradeRequestEmailEnabled: z.boolean().optional(),
+});
+
+export type PatchCreditUsageConfigurationBody = z.infer<
+  typeof PatchCreditUsageConfigurationRequestBody
+>;
+
+const DEFAULT_ALLOW_MEMBER_UPGRADE_REQUESTS = true;
+const DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED = true;
+
+/**
+ * Read the full usage configuration for a workspace: the Metronome-derived
+ * balance threshold plus the upgrade-request toggles. Toggles fall back to their
+ * defaults when no configuration row exists yet.
+ */
+export async function getUsageConfiguration(
+  auth: Authenticator
+): Promise<CreditUsageConfigurationBody> {
+  const [balanceThresholdCredits, config] = await Promise.all([
+    getWorkspaceBalanceThreshold(auth),
+    CreditUsageConfigurationResource.fetchByWorkspaceId(auth),
+  ]);
+
+  return {
+    balanceThresholdCredits,
+    allowMemberUpgradeRequests:
+      config?.allowMemberUpgradeRequests ??
+      DEFAULT_ALLOW_MEMBER_UPGRADE_REQUESTS,
+    upgradeRequestEmailEnabled:
+      config?.upgradeRequestEmailEnabled ??
+      DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
+  };
+}
+
+async function setUpgradeRequestToggles(
+  auth: Authenticator,
+  toggles: {
+    allowMemberUpgradeRequests?: boolean;
+    upgradeRequestEmailEnabled?: boolean;
+  }
+): Promise<Result<undefined, Error>> {
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+  if (config) {
+    return config.updateConfiguration(auth, toggles);
+  }
+
+  // No configuration row yet — create one carrying the requested toggles, with
+  // defaults for the remaining (purchase-related) fields.
+  const createResult = await CreditUsageConfigurationResource.makeNew(auth, {
+    defaultDiscountPercent: 0,
+    usageCapCredits: null,
+    allowMemberUpgradeRequests:
+      toggles.allowMemberUpgradeRequests ??
+      DEFAULT_ALLOW_MEMBER_UPGRADE_REQUESTS,
+    upgradeRequestEmailEnabled:
+      toggles.upgradeRequestEmailEnabled ??
+      DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
+  });
+  if (createResult.isErr()) {
+    return new Err(createResult.error);
+  }
+
+  return new Ok(undefined);
+}
+
+/**
+ * Persist a partial usage-configuration update. Only the fields present in the
+ * patch are touched: `balanceThresholdCredits` syncs the Metronome alert, and
+ * the upgrade-request toggles update (or create) the configuration row. Returns
+ * the resulting configuration.
+ */
+export async function updateUsageConfiguration(
+  auth: Authenticator,
+  patch: PatchCreditUsageConfigurationBody
+): Promise<Result<CreditUsageConfigurationBody, Error>> {
+  if (patch.balanceThresholdCredits !== undefined) {
+    // Normalize 0 to null — both mean "no threshold / warning off".
+    const threshold =
+      patch.balanceThresholdCredits && patch.balanceThresholdCredits > 0
+        ? patch.balanceThresholdCredits
+        : null;
+
+    const syncResult = await syncMetronomeBalanceThresholdAlert({
+      auth,
+      balanceThresholdCredits: threshold,
+    });
+    if (syncResult.isErr()) {
+      return new Err(syncResult.error);
+    }
+  }
+
+  if (
+    patch.allowMemberUpgradeRequests !== undefined ||
+    patch.upgradeRequestEmailEnabled !== undefined
+  ) {
+    const toggleResult = await setUpgradeRequestToggles(auth, {
+      allowMemberUpgradeRequests: patch.allowMemberUpgradeRequests,
+      upgradeRequestEmailEnabled: patch.upgradeRequestEmailEnabled,
+    });
+    if (toggleResult.isErr()) {
+      return new Err(toggleResult.error);
+    }
+  }
+
+  return new Ok(await getUsageConfiguration(auth));
+}

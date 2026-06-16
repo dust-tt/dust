@@ -29,7 +29,7 @@ export function transformSkillTypeToFormData(
     reinforcement: skill.reinforcement,
     additionalSpaces: [],
     referencedSkills:
-      skill.relations?.childSkills?.map((childSkill) => ({
+      skill.relations?.childSkills.map((childSkill) => ({
         id: childSkill.sId,
         name: childSkill.name,
         icon: childSkill.icon,
@@ -37,7 +37,7 @@ export function transformSkillTypeToFormData(
       })) ?? [],
     referencedSkillIds: [
       ...new Set([
-        ...(skill.relations?.childSkills?.map((childSkill) => childSkill.sId) ??
+        ...(skill.relations?.childSkills.map((childSkill) => childSkill.sId) ??
           []),
         ...extractUniqueSkillReferenceIds(skill.instructions ?? ""),
       ]),

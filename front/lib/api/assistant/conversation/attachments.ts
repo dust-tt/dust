@@ -75,6 +75,10 @@ export type ConversationAttachmentType =
 /** Same item shape as GET `/assistant/conversations/[cId]/attachments` and GET project context. */
 export type ContextAttachmentItem = ConversationAttachmentType;
 
+export type GetConversationAttachmentsResponseBody = {
+  attachments: ConversationAttachmentType[];
+};
+
 export function isFileAttachmentType(
   attachment: ConversationAttachmentType
 ): attachment is FileAttachmentType {
@@ -223,7 +227,10 @@ export function getAttachmentFromFileContentFragment(
   const isIncludable =
     !shouldSuppressTabularHints &&
     isConversationIncludableFileContentType(cf.contentType);
-  const isSearchable = canDoJIT && isSearchableContentType(cf.contentType);
+  const isSearchable =
+    canDoJIT &&
+    isSearchableContentType(cf.contentType) &&
+    cf.skipDataSourceIndexing !== true;
   const creator: AttachmentCreator | null = cf.context.fullName
     ? {
         type: "user",

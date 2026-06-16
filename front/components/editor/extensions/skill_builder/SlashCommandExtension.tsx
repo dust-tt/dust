@@ -1,16 +1,14 @@
 import {
   getSkillSlashCommandItem,
-  matchesSlashCommandQuery,
-  SELECT_SKILL_SLASH_COMMAND_ACTION,
-  type SlashCommandSkillSuggestion,
-  sortSlashCommandMatches,
-} from "@app/components/editor/extensions/shared/SlashCommandSkillItems";
-import {
   getToolSlashCommandItem,
   getToolSlashCommandLabel,
-  SELECT_TOOL_SLASH_COMMAND_ACTION,
+  isSkillSlashCommand,
+  isToolSlashCommand,
+  matchesSlashCommandCapabilityQuery,
+  type SlashCommandSkillSuggestion,
   type SlashCommandToolSuggestion,
-} from "@app/components/editor/extensions/shared/SlashCommandToolItems";
+  sortSlashCommandCapabilityMatches,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type {
   SlashCommand,
   SlashCommandDropdownRef,
@@ -21,7 +19,7 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
-import { AttachmentIcon } from "@dust-tt/sparkle";
+import { Attachment01 } from "@dust-tt/sparkle";
 import { Extension } from "@tiptap/core";
 import { type EditorState, Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
@@ -30,7 +28,7 @@ import type { SuggestionOptions, SuggestionProps } from "@tiptap/suggestion";
 import { exitSuggestion, Suggestion } from "@tiptap/suggestion";
 import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 
-const slashCommandPluginKey = new PluginKey("slashCommand");
+export const slashCommandPluginKey = new PluginKey("slashCommand");
 const capabilitiesOnlySlashCommandMetaKey =
   "skillBuilderCapabilitiesOnlySlashCommand";
 
@@ -53,12 +51,20 @@ function hasSlashCharacterAtPosition(state: EditorState, position: number) {
   );
 }
 
+function shouldInsertSlashBoundarySpace(state: EditorState) {
+  const textBefore = state.selection.$from.nodeBefore?.isText
+    ? state.selection.$from.nodeBefore.text
+    : null;
+
+  return !!textBefore && !textBefore.endsWith(" ");
+}
+
 // Define available slash commands.
 const SLASH_COMMANDS: SlashCommand[] = [
   {
     id: "add-knowledge",
     action: INSERT_KNOWLEDGE_NODE_ACTION,
-    icon: AttachmentIcon,
+    icon: Attachment01,
     label: "Attach knowledge",
     tooltip: {
       description: "Use company knowledge for context.",
@@ -110,13 +116,13 @@ function filterSkillBuilderSlashCommandCapabilities({
 }): SkillBuilderSlashCommandCapability[] {
   const normalizedQuery = query.trim().toLowerCase();
 
-  return sortSlashCommandMatches({
+  return sortSlashCommandCapabilityMatches({
     normalizedQuery,
     items: [
       ...skills
         .filter((skill) => skill.sId !== currentSkillId)
         .filter((skill) =>
-          matchesSlashCommandQuery({
+          matchesSlashCommandCapabilityQuery({
             label: skill.name,
             query: normalizedQuery,
           })
@@ -128,7 +134,7 @@ function filterSkillBuilderSlashCommandCapabilities({
         })),
       ...tools
         .filter((tool) =>
-          matchesSlashCommandQuery({
+          matchesSlashCommandCapabilityQuery({
             label: getToolSlashCommandLabel(tool),
             query: normalizedQuery,
           })
@@ -161,6 +167,7 @@ export function buildSkillBuilderSlashCommandItems({
     return baseItems;
   }
 
+  const visibleBaseItems = query.trim().length === 0 ? baseItems : [];
   const capabilityItems = filterSkillBuilderSlashCommandCapabilities({
     currentSkillId,
     query,
@@ -174,17 +181,19 @@ export function buildSkillBuilderSlashCommandItems({
       : getToolSlashCommandItem(capability.tool, { sectionLabel });
   });
 
-  return [...baseItems, ...capabilityItems];
+  return [...visibleBaseItems, ...capabilityItems];
 }
 
 interface SkillBuilderSlashCommandDropdownProps
   extends Pick<
     SuggestionProps<SlashCommand>,
-    "clientRect" | "command" | "items" | "query"
+    "clientRect" | "command" | "editor" | "items" | "query" | "range"
   > {
   currentSkillId?: string | null;
   includeSkillSuggestions: boolean;
   onClose: () => void;
+  onSkillDetails?: (skill: SlashCommandSkillSuggestion) => void;
+  onToolDetails?: (tool: MCPServerViewType) => void;
   owner?: LightWorkspaceType;
   showCapabilitiesOnly: boolean;
 }
@@ -203,10 +212,14 @@ const SkillBuilderSlashCommandDropdownWithSkills = forwardRef<
       clientRect,
       command,
       currentSkillId,
+      editor,
       items,
       onClose,
+      onSkillDetails,
+      onToolDetails,
       owner,
       query,
+      range,
       showCapabilitiesOnly,
     },
     ref
@@ -273,6 +286,24 @@ const SkillBuilderSlashCommandDropdownWithSkills = forwardRef<
           isCapabilitiesLoading ? "Loading capabilities…" : "No commands found"
         }
         onClose={onClose}
+        onItemDetails={
+          onSkillDetails || onToolDetails
+            ? (item) => {
+                if (isSkillSlashCommand(item)) {
+                  editor.chain().focus().deleteRange(range).run();
+                  onSkillDetails?.(item.data.skill);
+                  onClose();
+                  return;
+                }
+
+                if (isToolSlashCommand(item)) {
+                  editor.chain().focus().deleteRange(range).run();
+                  onToolDetails?.(item.data.tool.view);
+                  onClose();
+                }
+              }
+            : undefined
+        }
         size="wide"
       />
     );
@@ -313,8 +344,10 @@ SkillBuilderSlashCommandDropdown.displayName =
 export interface SlashCommandExtensionOptions {
   currentSkillId?: string | null;
   includeSkillSuggestions: boolean;
+  onSkillDetails?: (skill: SlashCommandSkillSuggestion) => void;
   onSelectSkill?: (skill: SlashCommandSkillSuggestion) => void;
   onSelectTool?: (tool: MCPServerViewType) => void;
+  onToolDetails?: (tool: MCPServerViewType) => void;
   owner?: LightWorkspaceType;
   suggestion: Partial<SuggestionOptions>;
 }
@@ -349,8 +382,10 @@ export const SlashCommandExtension =
       return {
         currentSkillId: null,
         includeSkillSuggestions: false,
+        onSkillDetails: undefined,
         onSelectSkill: undefined,
         onSelectTool: undefined,
+        onToolDetails: undefined,
         owner: undefined,
         suggestion: {
           char: "/",
@@ -367,13 +402,20 @@ export const SlashCommandExtension =
         openCapabilitiesSlashCommand:
           () =>
           ({ chain }) => {
+            this.storage.hasBeenFocused = true;
+            const triggerText = shouldInsertSlashBoundarySpace(
+              this.editor.state
+            )
+              ? " /"
+              : "/";
+
             const inserted = chain()
               .focus()
               .command(({ tr }) => {
                 tr.setMeta(capabilitiesOnlySlashCommandMetaKey, true);
                 return true;
               })
-              .insertContent("/")
+              .insertContent(triggerText)
               .run();
 
             return inserted;
@@ -413,36 +455,32 @@ export const SlashCommandExtension =
                 .deleteRange(range)
                 .insertKnowledgeNode()
                 .run();
-            } else if (props.action === SELECT_SKILL_SLASH_COMMAND_ACTION) {
-              const skill = props.data?.skill;
-              if (skill) {
-                editor
-                  .chain()
-                  .focus()
-                  .deleteRange(range)
-                  .insertSkillNode({
-                    skillId: skill.sId,
-                    skillIcon: skill.icon,
-                    skillName: skill.name,
-                  })
-                  .run();
-                extensionOptions.onSelectSkill?.(skill);
-              }
-            } else if (props.action === SELECT_TOOL_SLASH_COMMAND_ACTION) {
-              const tool = props.data?.tool;
-              if (tool) {
-                editor
-                  .chain()
-                  .focus()
-                  .deleteRange(range)
-                  .insertToolNode({
-                    mcpServerViewId: tool.id,
-                    toolIcon: tool.icon,
-                    toolName: tool.name,
-                  })
-                  .run();
-                extensionOptions.onSelectTool?.(tool.view);
-              }
+            } else if (isSkillSlashCommand(props)) {
+              const { skill } = props.data;
+              editor
+                .chain()
+                .focus()
+                .deleteRange(range)
+                .insertSkillNode({
+                  skillId: skill.sId,
+                  skillIcon: skill.icon,
+                  skillName: skill.name,
+                })
+                .run();
+              extensionOptions.onSelectSkill?.(skill);
+            } else if (isToolSlashCommand(props)) {
+              const { tool } = props.data;
+              editor
+                .chain()
+                .focus()
+                .deleteRange(range)
+                .insertToolNode({
+                  mcpServerViewId: tool.id,
+                  toolIcon: tool.icon,
+                  toolName: tool.name,
+                })
+                .run();
+              extensionOptions.onSelectTool?.(tool.view);
             }
           },
           render: () => {
@@ -469,6 +507,8 @@ export const SlashCommandExtension =
                       includeSkillSuggestions:
                         extensionOptions.includeSkillSuggestions,
                       onClose: closeSuggestionDropdown,
+                      onSkillDetails: extensionOptions.onSkillDetails,
+                      onToolDetails: extensionOptions.onToolDetails,
                       owner: extensionOptions.owner,
                       showCapabilitiesOnly:
                         props.range.from ===
@@ -493,6 +533,8 @@ export const SlashCommandExtension =
                   includeSkillSuggestions:
                     extensionOptions.includeSkillSuggestions,
                   onClose: closeSuggestionDropdown,
+                  onSkillDetails: extensionOptions.onSkillDetails,
+                  onToolDetails: extensionOptions.onToolDetails,
                   owner: extensionOptions.owner,
                   showCapabilitiesOnly:
                     props.range.from ===

@@ -1,7 +1,6 @@
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { compactConversation } from "@app/lib/api/assistant/conversation/compaction";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { createGCSMountFile } from "@app/lib/api/files/gcs_mount/files";
 import type { Authenticator } from "@app/lib/auth";
 import { CompactionMessageModel } from "@app/lib/models/agent/conversation";
 import { launchCompactionWorkflow } from "@app/temporal/agent_loop/client";
@@ -9,6 +8,7 @@ import { runCompaction } from "@app/temporal/agent_loop/lib/compaction";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   CompactionMessageType,
@@ -21,10 +21,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/assistant/call_llm", () => ({
   runMultiActionsAgent: vi.fn(),
-}));
-
-vi.mock("@app/lib/api/files/gcs_mount/files", () => ({
-  createGCSMountFile: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/assistant/streaming/events", () => ({
@@ -74,19 +70,7 @@ describe("runCompaction", () => {
     conversation = fetchedConversationResult.value;
 
     vi.clearAllMocks();
-    vi.mocked(createGCSMountFile).mockImplementation(
-      async (_auth, scope, { relativeFilePath, content, contentType }) =>
-        new Ok({
-          isDirectory: false,
-          fileName: relativeFilePath.split("/").pop() ?? relativeFilePath,
-          path: `${scope.useCase}/${relativeFilePath}`,
-          sizeBytes: content.length,
-          contentType,
-          lastModifiedMs: Date.now(),
-          fileId: null,
-          thumbnailUrl: null,
-        })
-    );
+    fileStorageMock.reset();
   });
 
   async function createCompactionMessage(
@@ -176,7 +160,7 @@ describe("runCompaction", () => {
     expect(compactionMessageRow?.status).toBe("succeeded");
     expect(compactionMessageRow?.content).toContain("Summary.");
     expect(compactionMessageRow?.content).toContain(
-      "Full conversation history before compaction: conversation/history/"
+      `Full conversation history before compaction: conversation-${conversation.sId}/history/`
     );
   });
 
@@ -284,21 +268,19 @@ describe("runCompaction", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(createGCSMountFile).toHaveBeenCalledWith(
-      auth,
-      { useCase: "conversation", conversationId: conversation.sId },
-      expect.objectContaining({
-        relativeFilePath: expect.stringMatching(
-          new RegExp(
-            `^history/\\d{8}-\\d{4}-compaction-${compactionMessage.sId}\\.history$`
-          )
-        ),
-        contentType: "text/plain",
-      })
-    );
 
-    const createCall = vi.mocked(createGCSMountFile).mock.calls[0];
-    const writtenContent = createCall?.[2].content.toString("utf8");
+    const historySave = fileStorageMock.saveFileCalls.find((c) =>
+      c.filePath.includes("/history/")
+    );
+    expect(historySave).toBeDefined();
+    expect(historySave?.filePath).toMatch(
+      new RegExp(
+        `w/.+/conversations/${conversation.sId}/files/history/\\d{8}-\\d{4}-compaction-${compactionMessage.sId}\\.history$`
+      )
+    );
+    expect(historySave?.contentType).toBe("text/plain");
+
+    const writtenContent = historySave?.content.toString("utf8");
     expect(writtenContent).toContain(
       "# Conversation History Before Compaction"
     );
@@ -310,7 +292,9 @@ describe("runCompaction", () => {
         workspaceId: workspace.id,
       },
     });
-    expect(compactionMessageRow?.content).toContain(`conversation/history/`);
+    expect(compactionMessageRow?.content).toContain(
+      `conversation-${conversation.sId}/history/`
+    );
     expect(compactionMessageRow?.content).toContain(compactionMessage.sId);
   });
 
@@ -462,7 +446,7 @@ describe("runCompaction", () => {
       'Use file_child_1, `file_child_2`, and "cf_child_1". Keep prefixfile_parent_1suffix unchanged.'
     );
     expect(updatedCompactionMessageRow?.content).toContain(
-      "Full conversation history before compaction: conversation/history/"
+      `Full conversation history before compaction: conversation-${conversation.sId}/history/`
     );
   });
 
@@ -511,8 +495,10 @@ describe("runCompaction", () => {
 
     expect(result.isOk()).toBe(true);
 
-    const createCall = vi.mocked(createGCSMountFile).mock.calls[0];
-    const writtenContent = createCall?.[2].content.toString("utf8");
+    const historySave = fileStorageMock.saveFileCalls.find((c) =>
+      c.filePath.includes("/history/")
+    );
+    const writtenContent = historySave?.content.toString("utf8");
     expect(writtenContent).toContain("file_child_1");
     expect(writtenContent).toContain("file_child_2");
     expect(writtenContent).toContain("prefixfile_parent_1suffix");
@@ -521,9 +507,7 @@ describe("runCompaction", () => {
 
   it("marks compaction as failed when history file creation fails", async () => {
     const compactionMessage = await createCompactionMessage();
-    vi.mocked(createGCSMountFile).mockResolvedValueOnce(
-      new Err(new Error("GCS write failed"))
-    );
+    fileStorageMock.setFileSaveFails((path) => path.includes("/history/"));
     vi.mocked(runMultiActionsAgent).mockResolvedValueOnce(
       new Ok({
         actions: [],

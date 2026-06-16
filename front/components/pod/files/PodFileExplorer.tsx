@@ -22,9 +22,8 @@ import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { usePinPodBanner } from "@app/hooks/usePinPodBanner";
 import type { ContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
-import config from "@app/lib/api/config";
 import { useAppRouter } from "@app/lib/platform";
-import { downloadFile } from "@app/lib/swr/files";
+import { downloadFile, getFilePathViewUrl } from "@app/lib/swr/files";
 import {
   useAddPodContextContentNodes,
   useDeletePodFile,
@@ -47,10 +46,8 @@ import {
 import type { PodType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ActionPushpinIcon,
   Button,
-  CloudArrowLeftRightIcon,
-  CloudArrowUpIcon,
+  CloudArrowLeftRight,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -62,8 +59,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   EmptyCTA,
-  FolderIcon,
+  Folder,
+  Pin02,
   Tooltip,
+  UploadCloud02,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import {
@@ -105,17 +104,17 @@ function AttachKnowledgeDropdown({
       </DropdownMenuTrigger>
       <DropdownMenuContent>
         <DropdownMenuItem
-          icon={CloudArrowLeftRightIcon}
+          icon={CloudArrowLeftRight}
           label="From Company Data"
           onClick={onShowCompanyDataClick}
         />
         <DropdownMenuItem
-          icon={FolderIcon}
+          icon={Folder}
           label="New folder"
           onClick={onCreateFolderClick}
         />
         <DropdownMenuItem
-          icon={CloudArrowUpIcon}
+          icon={UploadCloud02}
           label="Upload file"
           onClick={onUploadFileClick}
         />
@@ -279,7 +278,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
       return [
         {
           label: pinned ? "Unpin from banner" : "Pin as Pod banner",
-          icon: ActionPushpinIcon,
+          icon: Pin02,
           onClick: (e) => {
             e.stopPropagation();
             void togglePin(entry.path, { fileName: entry.fileName });
@@ -552,12 +551,9 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
   );
 
   const getFileUrl = useCallback(
-    (path: string) => {
-      // path is the canonical scoped path, e.g. "pod-{sId}/subdir/file.txt".
-      const encoded = path.split("/").map(encodeURIComponent).join("/");
-      return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}`;
-    },
-    [owner.sId]
+    // path is the canonical scoped path, e.g. "pod-{sId}/subdir/file.txt".
+    (path: string) => getFilePathViewUrl(owner, path),
+    [owner]
   );
 
   const getFileResponse = useCallback(

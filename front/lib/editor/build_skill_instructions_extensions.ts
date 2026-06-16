@@ -13,6 +13,7 @@ import {
 } from "@app/components/editor/extensions/skill_builder/RawMarkdownBlock";
 import { ToolNodeWithView } from "@app/components/editor/extensions/skill_builder/ToolNodeWithView";
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { markdownStyles } from "@dust-tt/sparkle";
 import type { Extensions } from "@tiptap/core";
 import { Markdown } from "@tiptap/markdown";
@@ -21,7 +22,8 @@ import { StarterKit } from "@tiptap/starter-kit";
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
 
 interface BuildSkillInstructionsExtensionsOptions {
-  enableSkillReferences?: boolean;
+  onSkillNodeDetails?: (skillId: string) => void;
+  onToolDetails?: (tool: MCPServerViewType) => void;
 }
 
 /**
@@ -34,7 +36,8 @@ export function buildSkillInstructionsExtensions(
   isReadOnly: boolean,
   editableExtensions: Extensions = [],
   {
-    enableSkillReferences = false,
+    onSkillNodeDetails,
+    onToolDetails,
   }: BuildSkillInstructionsExtensionsOptions = {}
 ): Extensions {
   const baseExtensions: Extensions = [
@@ -95,21 +98,15 @@ export function buildSkillInstructionsExtensions(
     }),
     BlockIdExtension,
     KnowledgeNodeWithView.configure({ readOnly: isReadOnly }),
+    ToolNodeWithView.configure({ onToolDetails }),
+    SkillNode.configure({ onSkillDetails: onSkillNodeDetails }),
   ];
-
-  if (enableSkillReferences) {
-    baseExtensions.push(ToolNodeWithView);
-  }
 
   baseExtensions.push(
     InstructionSuggestionExtension.configure({ showBlockHighlight: false }),
     RawMarkdownBlock,
     ...rawMarkdownBlockParsers
   );
-
-  if (enableSkillReferences) {
-    baseExtensions.push(SkillNode);
-  }
 
   if (!isReadOnly) {
     baseExtensions.push(...editableExtensions);

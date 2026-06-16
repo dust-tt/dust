@@ -1,6 +1,14 @@
+import type {
+  GetSkillsResponseBody,
+  GetSkillsWithRelationsResponseBody,
+  PostSkillResponseBody,
+} from "@app/lib/api/skills";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
-import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
-import { getFeatureFlags } from "@app/lib/auth";
+import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
+import {
+  getReferencedSkillSpaceModelIds,
+  resolveAdditionalRequestedSpaceModelIds,
+} from "@app/lib/api/skills/space_requirements";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -8,10 +16,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import {
   SKILL_REINFORCEMENT_MODES,
-  type SkillType,
-  type SkillWithoutInstructionsAndToolsType,
   type SkillWithoutInstructionsAndToolsWithRelationsType,
-  type UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { isBuilder } from "@app/types/user";
@@ -28,29 +33,9 @@ import reinforcementDailySpend from "./reinforcement_daily_spend";
 import reinforcementSpend from "./reinforcement_spend";
 import similar from "./similar";
 
-export type GetSkillsResponseBody = {
-  skills: SkillWithoutInstructionsAndToolsType[];
-};
-
-export type GetSkillsWithRelationsResponseBody = {
-  skills: SkillWithoutInstructionsAndToolsWithRelationsType[];
-};
-
-export type PostSkillResponseBody = {
-  skill: SkillType;
-};
-
 const SkillStatusSchema = z
   .enum(["active", "archived", "suggested"])
   .optional();
-
-// Schema for attached knowledge.
-export const AttachedKnowledgeSchema = z.object({
-  dataSourceViewId: z.string(),
-  nodeId: z.string(),
-  spaceId: z.string(),
-  title: z.string(),
-});
 
 // Request body schema for POST.
 const PostSkillRequestBodySchema = z.intersection(
@@ -69,7 +54,6 @@ const PostSkillRequestBodySchema = z.intersection(
     attachedKnowledge: z.array(AttachedKnowledgeSchema),
     instructionsHtml: z.string().nullable(),
     additionalRequestedSpaceIds: z.array(z.string()).optional(),
-    referencedSkillIds: z.array(z.string()).optional(),
     fileAttachments: z.array(z.object({ fileId: z.string() })).optional(),
     isDefault: z.boolean().optional(),
     reinforcement: z.enum(SKILL_REINFORCEMENT_MODES).optional(),
@@ -103,6 +87,7 @@ app.route("/reinforcement_daily_spend", reinforcementDailySpend);
 app.route("/reinforcement_spend", reinforcementSpend);
 app.route("/similar", similar);
 
+/** @ignoreswagger */
 app.get(
   "/",
   async (
@@ -142,9 +127,6 @@ app.get(
     });
 
     if (withRelations === "true") {
-      const featureFlags = await getFeatureFlags(auth);
-      const includeNestedSkills = featureFlags.includes("nested_skills");
-
       const extendedSkills = await SkillResource.fetchByIds(
         auth,
         removeNulls(uniq(skills.map((s) => s.extendedSkillId)))
@@ -155,16 +137,14 @@ app.get(
         auth,
         skills
       );
-      let childSkillsMap = new Map<string, SkillResource[]>();
-      if (includeNestedSkills) {
-        childSkillsMap = await SkillResource.batchFetchChildSkills(
-          auth,
-          skills
-        );
-      }
-      const usedBySkillsMap = includeNestedSkills
-        ? await SkillResource.batchFetchUsedBySkills(auth, skills)
-        : new Map<string, UsedBySkillType[]>();
+      const childSkillsMap = await SkillResource.batchFetchChildSkills(
+        auth,
+        skills
+      );
+      const usedBySkillsMap = await SkillResource.batchFetchUsedBySkills(
+        auth,
+        skills
+      );
 
       const extendedSkillsMap = new Map(extendedSkills.map((s) => [s.sId, s]));
 
@@ -180,13 +160,11 @@ app.get(
         const editors = editorsMap.get(sc.sId) ?? null;
         const editedByUser = editedByUsersMap.get(sc.sId) ?? null;
         const usedBySkills = usedBySkillsMap.get(sc.sId) ?? [];
-        const usageWithSkills = includeNestedSkills
-          ? {
-              ...usage,
-              count: usage.count + usedBySkills.length,
-              skills: usedBySkills,
-            }
-          : usage;
+        const usageWithSkills = {
+          ...usage,
+          count: usage.count + usedBySkills.length,
+          skills: usedBySkills,
+        };
 
         return {
           ...skillWithoutInstructionsAndTools,
@@ -198,22 +176,18 @@ app.get(
               ? (extendedSkillsMap.get(sc.extendedSkillId)?.toJSON(auth) ??
                 null)
               : null,
-            ...(includeNestedSkills
-              ? {
-                  childSkills: (childSkillsMap.get(sc.sId) ?? []).map(
-                    (childSkill) => {
-                      const {
-                        instructions,
-                        instructionsHtml,
-                        tools,
-                        ...childSkillWithoutInstructionsAndTools
-                      } = childSkill.toJSON(auth);
+            childSkills: (childSkillsMap.get(sc.sId) ?? []).map(
+              (childSkill) => {
+                const {
+                  instructions,
+                  instructionsHtml,
+                  tools,
+                  ...childSkillWithoutInstructionsAndTools
+                } = childSkill.toJSON(auth);
 
-                      return childSkillWithoutInstructionsAndTools;
-                    }
-                  ),
-                }
-              : {}),
+                return childSkillWithoutInstructionsAndTools;
+              }
+            ),
           },
         } satisfies SkillWithoutInstructionsAndToolsWithRelationsType;
       });
@@ -333,6 +307,10 @@ app.post(
         mcpServerViews,
         attachedKnowledge: attachedKnowledgeWithDataSourceViews,
       });
+    const referencedSkillSpaceIds = await getReferencedSkillSpaceModelIds(
+      auth,
+      body.instructions
+    );
 
     const additionalRequestedSpaceIdsRes =
       await resolveAdditionalRequestedSpaceModelIds(
@@ -352,6 +330,7 @@ app.post(
 
     const requestedSpaceIds = uniq([
       ...computedRequestedSpaceIds,
+      ...referencedSkillSpaceIds,
       ...additionalRequestedSpaceIdsRes.value,
     ]);
 
@@ -370,26 +349,9 @@ app.post(
       });
     }
 
-    const featureFlags = await getFeatureFlags(auth);
-    const enableSkillReferences = featureFlags.includes("nested_skills");
-    const referencedSkillIds = uniq(body.referencedSkillIds ?? []);
-
-    // Validate file attachments if provided (gated behind sandbox_tools).
+    // Validate file attachments if provided.
     let files: FileResource[] | undefined;
     if (fileAttachments) {
-      if (
-        !featureFlags.includes("sandbox_tools") &&
-        fileAttachments.length > 0
-      ) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "invalid_request_error",
-            message: "File attachments are not supported.",
-          },
-        });
-      }
-
       const fileAttachmentIds = uniq(fileAttachments.map((f) => f.fileId));
       files = await FileResource.fetchByIds(auth, fileAttachmentIds);
       if (files.length !== fileAttachmentIds.length) {
@@ -456,8 +418,6 @@ app.post(
         mcpServerViews,
         attachedKnowledge: attachedKnowledgeWithDataSourceViews,
         fileAttachments: files,
-        enableSkillReferences,
-        referencedSkillIds,
       }
     );
 

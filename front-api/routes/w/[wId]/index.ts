@@ -1,15 +1,18 @@
+import { listActiveAgentsUsingNonRegionalModels } from "@app/lib/api/assistant/workspace_capabilities";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { validateDustMcpServerAllowedRedirectUris } from "@app/lib/api/mcp_server/dust_mcp_server_settings";
+import type { GetWorkspaceResponseBody } from "@app/lib/api/workspace";
 import { renameWorkspace } from "@app/lib/api/workspace";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import logger from "@app/logger/logger";
 import { EmbeddingProviderSchema } from "@app/types/assistant/models/embedding";
 import { ModelProviderIdSchema } from "@app/types/assistant/models/providers";
-import type { WorkspaceType } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -22,6 +25,7 @@ import assistant from "./assistant";
 import auditLogs from "./audit-logs";
 import authContext from "./auth-context";
 import billing from "./billing";
+import branding from "./branding";
 import builder from "./builder";
 import coupon from "./coupon";
 import credentials from "./credentials";
@@ -33,6 +37,7 @@ import domains from "./domains";
 import dsync from "./dsync";
 import dustAppSecrets from "./dust_app_secrets";
 import extension from "./extension";
+import fairUseCredits from "./fair-use-credits";
 import featureFlags from "./feature-flags";
 import files from "./files";
 import googleDrivePickerToken from "./google_drive/picker_token";
@@ -147,6 +152,14 @@ const WorkspaceExtensionMcpToolsUpdateBodySchema = z.object({
   disableExtensionMcpTools: z.boolean(),
 });
 
+const WorkspaceDustMcpServerSettingsUpdateBodySchema = z.object({
+  dustMcpServerSettings: z.object({
+    disabled: z.boolean(),
+    acceptAllRedirectUris: z.boolean(),
+    allowedRedirectUris: z.array(z.string()),
+  }),
+});
+
 const WorkspaceOpenProjectsUpdateBodySchema = z.object({
   allowOpenProjects: z.boolean(),
 });
@@ -165,6 +178,15 @@ const WorkspaceReinforcementCapUpdateBodySchema = z.object({
 
 const WorkspaceSelfImprovementCapPerSkillUpdateBodySchema = z.object({
   selfImprovementCapPerSkillMicroUsd: z.number(),
+});
+
+// Same caps in AWU credits, used for workspaces billed by Metronome.
+const WorkspaceReinforcementCapAwuCreditsUpdateBodySchema = z.object({
+  reinforcementCapAwuCredits: z.number(),
+});
+
+const WorkspaceSelfImprovementCapPerSkillAwuCreditsUpdateBodySchema = z.object({
+  selfImprovementCapPerSkillAwuCredits: z.number(),
 });
 
 const WorkspaceAuditLogsUpdateBodySchema = z.object({
@@ -187,11 +209,14 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceAgentReinforcementUpdateBodySchema,
   WorkspaceReinforcementBatchModeUpdateBodySchema,
   WorkspaceExtensionMcpToolsUpdateBodySchema,
+  WorkspaceDustMcpServerSettingsUpdateBodySchema,
   WorkspaceOpenProjectsUpdateBodySchema,
   WorkspaceManualProjectKnowledgeManagementUpdateBodySchema,
   WorkspaceSandboxAgentEgressRequestsUpdateBodySchema,
   WorkspaceReinforcementCapUpdateBodySchema,
   WorkspaceSelfImprovementCapPerSkillUpdateBodySchema,
+  WorkspaceReinforcementCapAwuCreditsUpdateBodySchema,
+  WorkspaceSelfImprovementCapPerSkillAwuCreditsUpdateBodySchema,
   WorkspaceAuditLogsUpdateBodySchema,
 ]);
 
@@ -251,6 +276,10 @@ app.use(
   "/usage-status/*",
   workspaceAuth({ doesNotRequireCanUseProduct: true })
 );
+app.use(
+  "/fair-use-credits/*",
+  workspaceAuth({ doesNotRequireCanUseProduct: true })
+);
 app.use("/seats/count", workspaceAuth({ doesNotRequireCanUseProduct: true }));
 app.use("/subscriptions", workspaceAuth({ doesNotRequireCanUseProduct: true }));
 app.use(
@@ -273,10 +302,7 @@ app.use(
 // === Default auth for everything else.
 app.use("*", workspaceAuth());
 
-interface GetWorkspaceResponseBody {
-  workspace: WorkspaceType;
-}
-
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),
@@ -328,6 +354,27 @@ app.post(
 
       owner.ssoEnforced = body.ssoEnforced;
     } else if ("regionalModelsOnly" in body) {
+      if (body.regionalModelsOnly) {
+        const incompatibleAgentIds =
+          await listActiveAgentsUsingNonRegionalModels(auth);
+        if (incompatibleAgentIds.length > 0) {
+          logger.warn(
+            {
+              workspaceId: owner.sId,
+              incompatibleAgentIds,
+            },
+            "Blocked enabling regionalModelsOnly: active agents use non-regional models."
+          );
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `${incompatibleAgentIds.length} active agent(s) use a non-regional model. Update them first.`,
+            },
+          });
+        }
+      }
+
       await workspace.updateWorkspaceSettings({
         regionalModelsOnly: body.regionalModelsOnly,
       });
@@ -442,6 +489,54 @@ app.post(
       };
       await workspace.updateWorkspaceSettings({ metadata: newMetadata });
       owner.metadata = newMetadata;
+    } else if ("dustMcpServerSettings" in body) {
+      const { dustMcpServerSettings } = body;
+
+      if (
+        !dustMcpServerSettings.disabled &&
+        !dustMcpServerSettings.acceptAllRedirectUris
+      ) {
+        const validation = validateDustMcpServerAllowedRedirectUris(
+          dustMcpServerSettings.allowedRedirectUris
+        );
+        if (validation.isErr()) {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: validation.error.message,
+            },
+          });
+        }
+        dustMcpServerSettings.allowedRedirectUris = validation.value;
+      }
+
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        dustMcpServerDisabled: dustMcpServerSettings.disabled,
+        dustMcpServerAcceptAllRedirectUris:
+          dustMcpServerSettings.acceptAllRedirectUris,
+        dustMcpServerAllowedRedirectUris:
+          dustMcpServerSettings.allowedRedirectUris,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "dust_mcp_server.settings_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          disabled: String(dustMcpServerSettings.disabled),
+          accept_all_redirect_uris: String(
+            dustMcpServerSettings.acceptAllRedirectUris
+          ),
+          allowed_redirect_uris:
+            dustMcpServerSettings.allowedRedirectUris.join(","),
+        },
+      });
     } else if ("allowOpenProjects" in body) {
       const previousMetadata = owner.metadata ?? {};
       const newMetadata = {
@@ -473,6 +568,23 @@ app.post(
         ...previousMetadata,
         selfImprovementCapPerSkillMicroUsd:
           body.selfImprovementCapPerSkillMicroUsd,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+    } else if ("reinforcementCapAwuCredits" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        reinforcementCapAwuCredits: body.reinforcementCapAwuCredits,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+    } else if ("selfImprovementCapPerSkillAwuCredits" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        selfImprovementCapPerSkillAwuCredits:
+          body.selfImprovementCapPerSkillAwuCredits,
       };
       await workspace.updateWorkspaceSettings({ metadata: newMetadata });
       owner.metadata = newMetadata;
@@ -572,6 +684,7 @@ app.route("/analytics", analytics);
 app.route("/assistant", assistant);
 app.route("/audit-logs", auditLogs);
 app.route("/billing", billing);
+app.route("/branding", branding);
 app.route("/builder", builder);
 app.route("/credentials", credentials);
 app.route("/credits", credits);
@@ -582,6 +695,7 @@ app.route("/domains", domains);
 app.route("/dsync", dsync);
 app.route("/dust_app_secrets", dustAppSecrets);
 app.route("/extension", extension);
+app.route("/fair-use-credits", fairUseCredits);
 app.route("/files", files);
 app.route("/google_drive/picker_token", googleDrivePickerToken);
 app.route(

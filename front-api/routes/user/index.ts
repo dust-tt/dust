@@ -1,3 +1,7 @@
+import type {
+  GetUserResponseBody,
+  PostUserMetadataResponseBody,
+} from "@app/lib/api/user";
 import { getUserFromSession } from "@app/lib/iam/session";
 import { getSubscriberHash } from "@app/lib/notifications";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -7,7 +11,6 @@ import logger from "@app/logger/logger";
 import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import { isJobType } from "@app/types/job_type";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
-import type { UserTypeWithWorkspaces } from "@app/types/user";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import { sessionAuth } from "@front-api/middlewares/session_auth";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -16,14 +19,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import metadata from "./metadata";
-
-export type GetUserResponseBody = {
-  user: UserTypeWithWorkspaces & { subscriberHash: string | null };
-};
-
-export type PostUserMetadataResponseBody = {
-  success: boolean;
-};
+import onboarding from "./onboarding";
 
 const PatchUserBodySchema = z.object({
   firstName: z.string(),
@@ -37,6 +33,78 @@ const PatchUserBodySchema = z.object({
 
 // Mounted under /api/user. Every route below inherits sessionAuth.
 const app = sessionApp();
+
+/**
+ * @swagger
+ * /api/user:
+ *   get:
+ *     summary: Get current user
+ *     description: Returns the authenticated user with their workspaces and subscriber hash.
+ *     tags:
+ *       - Private User
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: The authenticated user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user:
+ *                   $ref: '#/components/schemas/PrivateUser'
+ *       404:
+ *         description: User not found
+ *   patch:
+ *     summary: Update current user
+ *     description: Update the authenticated user's profile (name, job type, favorite platforms, image).
+ *     tags:
+ *       - Private User
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - firstName
+ *               - lastName
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               jobType:
+ *                 type: string
+ *               imageUrl:
+ *                 type: string
+ *                 nullable: true
+ *               favoritePlatforms:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               emailProvider:
+ *                 type: string
+ *               workspaceId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: User updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       400:
+ *         description: Invalid request body
+ *       404:
+ *         description: User not found
+ */
 
 app.use("*", sessionAuth);
 
@@ -218,5 +286,6 @@ app.patch(
 );
 
 app.route("/metadata", metadata);
+app.route("/onboarding", onboarding);
 
 export default app;

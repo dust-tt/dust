@@ -108,6 +108,7 @@ function makeLightAgentMessage(
     richMentions: [],
     completionDurationMs: null,
     reactions: [],
+    costCredits: null,
     configuration: {
       sId: "agent_123",
       name: "dust",
@@ -566,6 +567,106 @@ describe("useAgentMessageStream", () => {
     expect(currentMessage.content).toBe("");
   });
 
+  it("applies the server-rendered content view at success", () => {
+    let currentMessage = makeInitialMessageStreamState(
+      makeLightAgentMessage({ content: null, chainOfThought: null })
+    );
+    let onEventCallback: ((event: string) => void) | null = null;
+
+    mockUseVirtuosoMethods.mockReturnValue(
+      makeVirtuosoMethodsMock(
+        (
+          updater: (message: typeof currentMessage) => typeof currentMessage
+        ) => {
+          currentMessage = updater(currentMessage);
+          return [currentMessage];
+        }
+      )
+    );
+
+    mockUseEventSource.mockImplementation(
+      (
+        _buildURL: unknown,
+        callback: (event: string) => void
+      ): { isError: null } => {
+        onEventCallback = callback;
+        return { isError: null };
+      }
+    );
+
+    renderHook(() =>
+      useAgentMessageStream({
+        agentMessage: currentMessage,
+        conversationId: "conv_123",
+        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
+        owner: mockOwner,
+        streamId: "stream_123",
+      })
+    );
+
+    act(() => {
+      // Some activity streamed live, but the final view is whatever the server
+      // renders and ships on the terminal event; the client trusts it.
+      onEventCallback!(
+        JSON.stringify({
+          eventId: "1-0",
+          data: {
+            type: "generation_tokens",
+            created: Date.now(),
+            configurationId: "agent_123",
+            messageId: currentMessage.sId,
+            text: "I should inspect the tool results first.",
+            classification: "chain_of_thought",
+          },
+        })
+      );
+      onEventCallback!(
+        JSON.stringify({
+          eventId: "2-0",
+          data: {
+            type: "agent_message_success",
+            created: Date.now(),
+            configurationId: "agent_123",
+            messageId: currentMessage.sId,
+            message: {
+              ...makeLightAgentMessage({
+                content: "Here is the final answer from the model.",
+                chainOfThought: "I should inspect the tool results first.",
+              }),
+              actions: [],
+            },
+            contentView: {
+              content: "Here is the final answer from the model.",
+              chainOfThought: "I should inspect the tool results first.",
+              activitySteps: [
+                {
+                  type: "thinking",
+                  content: "I should inspect the tool results first.",
+                  id: "cot-0-0",
+                },
+              ],
+            },
+          },
+        })
+      );
+    });
+
+    expect(currentMessage.content).toBe(
+      "Here is the final answer from the model."
+    );
+    expect(currentMessage.chainOfThought).toBe(
+      "I should inspect the tool results first."
+    );
+    expect(currentMessage.streaming.agentState).toBe("done");
+    expect(currentMessage.streaming.inlineActivitySteps).toEqual([
+      {
+        type: "thinking",
+        content: "I should inspect the tool results first.",
+        id: "cot-0-0",
+      },
+    ]);
+  });
+
   it("discards stale tokens from prior Temporal retries at tool_params", () => {
     let currentMessage = makeInitialMessageStreamState(
       makeLightAgentMessage({ content: null, chainOfThought: null })
@@ -793,7 +894,8 @@ describe("useAgentMessageStream", () => {
           },
         })
       );
-      // Retry 2 completes successfully.
+      // Retry 2 completes successfully; the terminal event carries the
+      // server-rendered view, which the client trusts for the final timeline.
       onEventCallback!(
         JSON.stringify({
           eventId: "3-0",
@@ -809,6 +911,17 @@ describe("useAgentMessageStream", () => {
               }),
               actions: [],
             },
+            contentView: {
+              content: null,
+              chainOfThought: "I need to search the web.",
+              activitySteps: [
+                {
+                  type: "thinking",
+                  content: "I need to search the web.",
+                  id: "cot-0-0",
+                },
+              ],
+            },
           },
         })
       );
@@ -816,12 +929,12 @@ describe("useAgentMessageStream", () => {
 
     // chainOfThought never went blank — no empty string between the two runs.
     expect(chainOfThoughtSnapshots).not.toContain("");
-    // appendThinkingStep deduplicates exact matches — only one thinking step.
+    // Final timeline comes from the server-rendered content view.
     expect(currentMessage.streaming.inlineActivitySteps).toEqual([
       {
         type: "thinking",
         content: "I need to search the web.",
-        id: expect.stringContaining("thinking-final-"),
+        id: "cot-0-0",
       },
     ]);
   });

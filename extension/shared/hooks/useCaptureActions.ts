@@ -1,7 +1,12 @@
+import { useActivePodId } from "@app/hooks/useActivePodId";
 import { useExtensionConfig } from "@app/lib/swr/extension";
+import { usePodFiles } from "@app/lib/swr/pods";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCurrentUrlAndDomain } from "@extension/shared/hooks/useCurrentDomain";
-import type { CaptureActions } from "@extension/shared/services/platform";
+import type {
+  CaptureActions,
+  SavePageToPodActions,
+} from "@extension/shared/services/platform";
 import { useCallback, useMemo } from "react";
 
 export function useCaptureActions(
@@ -10,10 +15,18 @@ export function useCaptureActions(
     includeContent: boolean;
     includeCapture: boolean;
   }) => Promise<unknown>,
-  isCapturing: boolean
+  isCapturing: boolean,
+  savePageToPodActions?: SavePageToPodActions | null
 ): CaptureActions | undefined {
+  const activePodId = useActivePodId();
   const { currentDomain, currentUrl } = useCurrentUrlAndDomain();
   const { blacklistedDomains } = useExtensionConfig(workspace);
+
+  const { refreshPodFiles } = usePodFiles({
+    owner: workspace,
+    podId: activePodId ?? "",
+    disabled: true,
+  });
 
   const handleCapture = useCallback(
     (type: "text" | "screenshot") => {
@@ -33,6 +46,22 @@ export function useCaptureActions(
     [uploadContentTab]
   );
 
+  const handleSavePageToPod = useCallback(async () => {
+    if (!savePageToPodActions) {
+      return;
+    }
+
+    if (!activePodId) {
+      savePageToPodActions.openSavePageToPodDialog();
+      return;
+    }
+
+    const saved = await savePageToPodActions.savePageToPod(activePodId);
+    if (saved) {
+      await refreshPodFiles();
+    }
+  }, [activePodId, refreshPodFiles, savePageToPodActions]);
+
   const isEnabled = useMemo(() => {
     if (currentDomain === "chrome" || currentDomain === "firefox-internal") {
       return false;
@@ -45,8 +74,26 @@ export function useCaptureActions(
     );
   }, [currentDomain, currentUrl, blacklistedDomains]);
 
-  return useMemo(
-    () => (isEnabled ? { onCapture: handleCapture, isCapturing } : undefined),
-    [handleCapture, isCapturing, isEnabled]
-  );
+  return useMemo(() => {
+    if (!isEnabled) {
+      return undefined;
+    }
+
+    return {
+      onCapture: handleCapture,
+      isCapturing,
+      ...(savePageToPodActions
+        ? {
+            onSavePageToPod: handleSavePageToPod,
+            isSavingPageToPod: savePageToPodActions.isSavingPageToPod,
+          }
+        : {}),
+    };
+  }, [
+    handleCapture,
+    handleSavePageToPod,
+    isCapturing,
+    isEnabled,
+    savePageToPodActions,
+  ]);
 }

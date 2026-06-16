@@ -1,7 +1,8 @@
 import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { connectToMCPServer } from "@app/lib/actions/mcp_metadata";
 import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
-import type { MCPOAuthConnectionMetadataType } from "@app/lib/api/oauth/providers/mcp";
+import type { DiscoverOAuthMetadataResponseBody } from "@app/lib/api/oauth/providers/mcp";
+import { validateExternalUrl } from "@app/lib/api/url_safety";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { headersArrayToRecord } from "@app/types/shared/utils/http_headers";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -9,15 +10,6 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type DiscoverOAuthMetadataResponseBody =
-  | {
-      oauthRequired: true;
-      connectionMetadata: MCPOAuthConnectionMetadataType;
-    }
-  | {
-      oauthRequired: false;
-    };
 
 const PostBodySchema = z.object({
   url: z.string(),
@@ -35,6 +27,7 @@ const app = workspaceApp();
 //
 // Note: callers should not invoke this frequently — the remote server is
 // likely to rate-limit.
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostBodySchema),
@@ -42,14 +35,13 @@ app.post(
     const auth = ctx.get("auth");
     const { url, customHeaders } = ctx.req.valid("json");
 
-    try {
-      new URL(url);
-    } catch {
+    const urlError = await validateExternalUrl(url);
+    if (urlError) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: "Invalid URL format. Please provide a valid URL.",
+          message: urlError,
         },
       });
     }

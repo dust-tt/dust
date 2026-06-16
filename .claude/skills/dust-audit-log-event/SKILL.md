@@ -103,16 +103,36 @@ one with `Authenticator.fromUserIdAndWorkspaceId(...)` and then use `emitAuditLo
 
 Use `void`, not `await`, for audit emission. Audit logging should not block the main write path.
 
-### 6. Register the schema after merge
+### 6. Register the schema and commit the version map (pre-merge)
 
-WorkOS drops events whose schemas were never registered. After the PR is merged and before deploy,
-run one of:
+WorkOS drops events whose schemas were never registered, and validates each emitted event against
+the schema *version* we send. Register from your branch **before merging**, then commit the
+generated version map in the same PR — the same way a DB migration file ships with the code that
+needs it.
 
 ```bash
+# Preview (dry-run) — does not touch WorkOS or the version map.
 npx tsx front/admin/register_audit_log_schemas.ts --changed
+
+# Register the new/changed schemas and write the version map.
 npx tsx front/admin/register_audit_log_schemas.ts --execute --changed
+
+# Or register specific actions.
 npx tsx front/admin/register_audit_log_schemas.ts --execute user.login api_key.created
 ```
+
+The `--execute` runs register the schemas with WorkOS and merge the latest version for each
+registered action into `front/lib/api/audit/schema_versions.json`. **Commit
+`schema_versions.json` in the same PR.** `createAuditLogEvent` reads it to send the right version
+with every event; a stale or missing version causes WorkOS validation failures.
+
+A CI test (`audit_log_schemas.test.ts`) fails if any `AuditAction` has no entry in the version map,
+so a forgotten registration is caught before merge — just like a missing migration.
+
+DangerJS also fails the PR if a schema file under `front/admin/audit_log_schemas/` changed but its
+version in `schema_versions.json` was not bumped relative to `main` (i.e. the registration step was
+skipped). In the rare case the edit is a no-op WorkOS treats as identical (so no new version is
+created), add the `audit-log-ack` label to override.
 
 ## Validation
 
@@ -128,7 +148,7 @@ Check all of the following:
 - the emit call uses `void`
 - the targets in the emit call exactly match (in type and count) the targets in the schema JSON file
 - if modifying an existing event's targets, the schema JSON file has been updated to match
-- if the schema JSON file changed, `register_audit_log_schemas.ts --execute --changed` must be run after merge and before deploy
+- if a schema JSON file was added or changed, `register_audit_log_schemas.ts --execute --changed` must be run pre-merge and the regenerated `front/lib/api/audit/schema_versions.json` committed in the same PR (the `audit_log_schemas.test.ts` version check enforces this)
 
 ## References
 

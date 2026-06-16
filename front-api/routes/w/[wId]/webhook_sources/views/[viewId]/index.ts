@@ -36,6 +36,7 @@ export type PatchWebhookSourceViewResponseBody = {
 // Mounted at /api/w/:wId/webhook_sources/views/:viewId.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

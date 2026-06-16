@@ -9,6 +9,7 @@ export type { AwuPoolSummaryResponseBody };
 // Mounted at /api/poke/workspaces/:wId/credits/awu-pool-summary.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");
 

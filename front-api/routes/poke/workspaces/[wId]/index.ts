@@ -30,6 +30,7 @@ import observability from "./observability";
 import projects from "./projects";
 import revoke from "./revoke";
 import roles from "./roles";
+import seatType from "./seat_type";
 import skillSuggestions from "./skill_suggestions";
 import skills from "./skills";
 import spaces from "./spaces";
@@ -61,6 +62,7 @@ app.route("/auth-context", authContext);
 // parent /poke `pokeAuth`) to the target workspace.
 app.use("*", withPokeWorkspace);
 
+/** @ignoreswagger */
 app.patch(
   "/",
   validate("json", WorkspaceSegmentationSchema),
@@ -100,6 +102,7 @@ app.route("/observability", observability);
 app.route("/projects", projects);
 app.route("/revoke", revoke);
 app.route("/roles", roles);
+app.route("/seat_type", seatType);
 app.route("/skill_suggestions", skillSuggestions);
 app.route("/skills", skills);
 app.route("/spaces", spaces);

@@ -3,25 +3,7 @@ import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { faker } from "@faker-js/faker";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it, vi } from "vitest";
-
-// The poke search also queries the Connectors API (for connector ID lookups).
-// Mock it to return a dummy URL so it doesn't throw on missing env var.
-vi.mock("@app/lib/api/config", async (importOriginal) => {
-  const mod = await importOriginal<typeof import("@app/lib/api/config")>();
-  return {
-    ...mod,
-    default: {
-      ...mod.default,
-      getConnectorsAPIConfig: vi.fn().mockReturnValue({
-        url: "http://localhost:0",
-        secret: "test",
-        webhookSecret: "test",
-      }),
-      getPokeAppUrl: vi.fn().mockReturnValue("http://localhost:3000/poke"),
-    },
-  };
-});
+import { describe, expect, it } from "vitest";
 
 function searchRequest(query: string) {
   return honoApp.request(

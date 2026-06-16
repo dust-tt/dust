@@ -4,8 +4,23 @@ import React from "react";
 import { Markdown } from "../index_with_tw_base";
 
 const meta = {
-  title: "Conversation/Markdown",
+  title: "Product/Conversation/Markdown",
   component: Markdown,
+  parameters: {
+    docs: {
+      description: {
+        component: `Renders agent message bodies from a Markdown \`content\` string. Supports the full GitHub-flavored set — headings, lists, task lists, tables, blockquotes, links, and footnotes — plus fenced code (via **CodeBlock**), LaTeX math, CSV/JSON pretty-printing, and Mermaid diagrams. Typography can be tuned with \`textColor\` and \`forcedTextSize\`.
+
+**When to use**
+- To display formatted text produced by an agent, wherever rich content (code, tables, math, diagrams) may appear.
+
+**Guidelines**
+- Pass raw Markdown through \`content\`; the component handles escaping and rendering, so avoid pre-formatting to HTML.
+- Use \`forcedTextSize\` to match the surrounding context (e.g. inside an **ActionCardBlock** detail section).
+- Code fences are delegated to **CodeBlock**; rely on language hints (\`ts\`, \`json\`) for correct highlighting and formatting.`,
+      },
+    },
+  },
   tags: ["autodocs"],
   decorators: [(Story) => <Story />],
   argTypes: {

@@ -7,6 +7,14 @@ import type { StorageService } from "@extension/shared/services/storage";
 export interface CaptureActions {
   onCapture: (type: "text" | "screenshot") => void;
   isCapturing: boolean;
+  onSavePageToPod?: () => Promise<void>;
+  isSavingPageToPod?: boolean;
+}
+
+export interface SavePageToPodActions {
+  isSavingPageToPod: boolean;
+  openSavePageToPodDialog: () => void;
+  savePageToPod: (podId: string) => Promise<boolean>;
 }
 
 export type UseCaptureActionsHook = (
@@ -15,7 +23,8 @@ export type UseCaptureActionsHook = (
     includeContent: boolean;
     includeCapture: boolean;
   }) => Promise<unknown>,
-  isCapturing: boolean
+  isCapturing: boolean,
+  savePageToPodActions?: SavePageToPodActions | null
 ) => CaptureActions | undefined;
 
 const PLATFORM_TYPES = ["chrome", "front", "firefox"] as const;

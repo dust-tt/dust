@@ -11,10 +11,14 @@ import { isProcessRunning, killProcess } from "./process";
 // Offsets chosen so base_port + offset resembles standard ports:
 // postgres: 432 -> 10432 (resembles 5432), redis: 379 -> 10379 (resembles 6379),
 // qdrant: 333 -> 10333 (resembles 6333 HTTP), elasticsearch: 200 -> 10200 (resembles 9200)
+// `front` (offset 0) is the public/main port; it now hosts the in-hive HTTP
+// proxy that routes /api/* to front-api and everything else to marketing.
 export const PORT_OFFSETS = {
   front: 0,
   core: 1,
   connectors: 2,
+  frontApi: 3,
+  marketing: 4,
   oauth: 6,
   viz: 7,
   frontSpaPoke: 10,
@@ -39,6 +43,8 @@ const PortAllocationSchema = z
     front: z.number(),
     core: z.number(),
     connectors: z.number(),
+    frontApi: z.number().optional(),
+    marketing: z.number().optional(),
     oauth: z.number(),
     viz: z.number().optional(),
     frontSpaPoke: z.number().optional(),
@@ -52,6 +58,8 @@ const PortAllocationSchema = z
   })
   .transform((data) => ({
     ...data,
+    frontApi: data.frontApi ?? data.base + PORT_OFFSETS.frontApi,
+    marketing: data.marketing ?? data.base + PORT_OFFSETS.marketing,
     viz: data.viz ?? data.base + PORT_OFFSETS.viz,
     frontSpaPoke: data.frontSpaPoke ?? data.base + PORT_OFFSETS.frontSpaPoke,
     frontSpaApp: data.frontSpaApp ?? data.base + PORT_OFFSETS.frontSpaApp,
@@ -66,6 +74,8 @@ export function calculatePorts(base: number): PortAllocation {
     front: base + PORT_OFFSETS.front,
     core: base + PORT_OFFSETS.core,
     connectors: base + PORT_OFFSETS.connectors,
+    frontApi: base + PORT_OFFSETS.frontApi,
+    marketing: base + PORT_OFFSETS.marketing,
     oauth: base + PORT_OFFSETS.oauth,
     viz: base + PORT_OFFSETS.viz,
     frontSpaPoke: base + PORT_OFFSETS.frontSpaPoke,
@@ -225,9 +235,9 @@ export function isPortInUse(port: number): boolean {
   return getPidsOnPort(port).length > 0;
 }
 
-// Check and clean service ports (front, core, connectors, oauth)
+// Check and clean service ports (proxy, front-api, marketing, core, connectors, oauth)
 export function getServicePorts(ports: PortAllocation): number[] {
-  return [ports.front, ports.core, ports.connectors, ports.oauth];
+  return [ports.front, ports.frontApi, ports.marketing, ports.core, ports.connectors, ports.oauth];
 }
 
 export interface PortProcessInfo {

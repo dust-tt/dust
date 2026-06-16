@@ -1,11 +1,12 @@
 import type { AwuPoolSummaryResponseBody } from "@app/lib/api/credits/awu_pool_summary";
 import type { GetMembersSeatsResponseBody } from "@app/lib/api/credits/members_seats";
+import type { GetMemberUsageResponseBody } from "@app/lib/api/credits/members_usage";
+import type { GetCreditPurchaseInfoResponseBody } from "@app/lib/api/credits/purchase";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
+import type { GetAwuPurchaseInfoResponseBody } from "@app/lib/credits/awu_purchase";
+import type { GetAwuPurchaseStatusResponseBody } from "@app/lib/credits/awu_purchase_status";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetCreditPurchaseInfoResponseBody } from "@app/pages/api/w/[wId]/credits/purchase";
-import type { GetAwuPurchaseInfoResponseBody } from "@app/pages/api/w/[wId]/subscriptions/awu-purchase";
-import type { GetAwuPurchaseStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/awu-purchase-status";
 import type {
   GetCreditsResponseBody,
   PendingCreditData,
@@ -255,7 +256,6 @@ export function useAwuPoolSummary({
   return {
     totalRemainingCredits: data?.totalRemainingCredits ?? 0,
     totalActiveCredits: data?.totalActiveCredits ?? 0,
-    resetDate: data?.resetDate ?? "",
     overageCredits: data?.overageCredits ?? null,
     overageAmountCents: data?.overageAmountCents ?? null,
     overageCurrency: data?.overageCurrency ?? null,
@@ -328,6 +328,29 @@ export function useAwuPurchaseInfo({
   };
 }
 
+export function useMyUsage({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const myUsageFetcher: Fetcher<GetMemberUsageResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/credits/my-usage`,
+    myUsageFetcher,
+    { disabled }
+  );
+
+  return {
+    myUsage: data?.member ?? null,
+    isMyUsageLoading: !error && !data && !disabled,
+    isMyUsageError: error,
+  };
+}
+
 const EMPTY_SEAT_PLANS: SeatPlanResponseBody = {};
 
 export function useMembersSeats({
@@ -348,6 +371,7 @@ export function useMembersSeats({
 
   return {
     membersSeats: data?.seatTypes ?? {},
+    metronomeSeats: data?.metronomeSeats ?? {},
     totalMembersSeats: data?.total ?? 0,
     isMembersSeatsLoading: !error && !data && !disabled,
     isMembersSeatsError: error,

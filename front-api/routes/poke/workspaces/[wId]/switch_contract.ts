@@ -35,6 +35,7 @@ function statusForKind(kind: SwitchContractErrorKind): {
 // Mounted at /api/poke/workspaces/:wId/switch_contract.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   async (ctx): HandlerResult<PokeSwitchContractSuccessResponseBody> => {

@@ -1,8 +1,8 @@
+import Custom404 from "@app/components/pages/Custom404";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { dumpSpecification } from "@app/lib/specification";
 import { useApp } from "@app/lib/swr/apps";
-import Custom404 from "@app/pages/404";
 import type { SpecificationType } from "@app/types/app";
 import { Spinner } from "@dust-tt/sparkle";
 import { useMemo } from "react";

@@ -52,6 +52,25 @@ enum ConversationService {
         return try await APIClient.authenticatedGet(query, tokenProvider: tokenProvider, snakeCase: false)
     }
 
+    static func fetchMessage(
+        workspaceId: String,
+        conversationId: String,
+        messageId: String,
+        tokenProvider: TokenProvider
+    ) async throws -> ConversationMessage {
+        let endpoint = AppConfig.Endpoints.conversationMessage(
+            workspaceId: workspaceId,
+            conversationId: conversationId,
+            messageId: messageId
+        )
+        let response: ConversationMessageResponse = try await APIClient.authenticatedGet(
+            endpoint,
+            tokenProvider: tokenProvider,
+            snakeCase: false
+        )
+        return response.message
+    }
+
     static func createConversation(
         workspaceId: String,
         request: CreateConversationRequest,
@@ -188,6 +207,28 @@ enum ConversationService {
         )
     }
 
+    // swiftlint:disable:next function_parameter_count
+    static func answerQuestion(
+        workspaceId: String,
+        conversationId: String,
+        messageId: String,
+        actionId: String,
+        answer: UserQuestionAnswer,
+        tokenProvider: TokenProvider
+    ) async throws {
+        let endpoint = AppConfig.Endpoints.answerQuestion(
+            workspaceId: workspaceId,
+            conversationId: conversationId,
+            messageId: messageId
+        )
+        try await APIClient.authenticatedSend(
+            endpoint,
+            method: "POST",
+            body: AnswerQuestionRequest(actionId: actionId, answer: answer),
+            tokenProvider: tokenProvider
+        )
+    }
+
     static func retryMessage(
         workspaceId: String,
         conversationId: String,
@@ -214,6 +255,11 @@ enum ConversationService {
         let approved: String
     }
 
+    private struct AnswerQuestionRequest: Encodable {
+        let actionId: String
+        let answer: UserQuestionAnswer
+    }
+
     private struct RetryMessageRequest: Encodable {}
 
     private struct MarkAsReadRequest: Encodable {
@@ -226,6 +272,10 @@ enum ConversationService {
     }
 
     private struct EmptyRequest: Encodable {}
+
+    private struct ConversationMessageResponse: Decodable {
+        let message: ConversationMessage
+    }
 
     private static func buildQuery(endpoint: String, params: [String: String]) -> String {
         var components = URLComponents()

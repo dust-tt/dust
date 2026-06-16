@@ -21,6 +21,7 @@ import {
   upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import { DataSourceQuotaExceededError } from "@connectors/lib/error";
+import { htmlToMarkdown } from "@connectors/lib/html_to_markdown";
 import {
   IntercomConversationModel,
   IntercomTeamModel,
@@ -29,10 +30,6 @@ import {
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
-import TurndownService from "turndown";
-
-const turndownService = new TurndownService();
-
 export async function deleteTeamAndConversations({
   connectorId,
   dataSourceConfig,
@@ -237,7 +234,7 @@ export async function syncConversation({
   const source = conversation.source?.type ?? null;
   const firstMessageAuthor = conversation.source?.author ?? null;
   const firstMessageContent = conversation.source?.body
-    ? turndownService.turndown(conversation.source.body)
+    ? htmlToMarkdown(conversation.source.body)
     : null;
 
   markdown += `# ${convoTitle}\n\n`;
@@ -253,9 +250,7 @@ export async function syncConversation({
   conversation.conversation_parts.conversation_parts.forEach(
     (part: ConversationPartType) => {
       const messageAuthor = part.author;
-      const messageContent = part.body
-        ? turndownService.turndown(part.body)
-        : null;
+      const messageContent = part.body ? htmlToMarkdown(part.body) : null;
       const type = part.part_type === "note" ? "Internal note" : "Message";
 
       const shouldSync =

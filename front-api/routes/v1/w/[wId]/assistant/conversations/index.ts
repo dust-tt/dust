@@ -5,6 +5,7 @@ import {
   postNewContentFragment,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
+import { MAX_CONVERSATION_DEPTH } from "@app/lib/api/assistant/conversation/constants";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { isUserMessageContextOverflowing } from "@app/lib/api/assistant/conversation/helper";
@@ -54,8 +55,6 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
 import conversation from "./[cId]";
-
-export const MAX_CONVERSATION_DEPTH = 4;
 
 // Mounted at /api/v1/w/:wId/assistant/conversations.
 const app = publicApiApp();

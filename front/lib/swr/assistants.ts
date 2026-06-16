@@ -1,14 +1,40 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { GetAgentUsageResponseBody } from "@app/lib/api/assistant/agent_usage";
+import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/lib/api/assistant/builder/slack/channels_linked_with_agent";
+import type { GetAgentConfigurationsResponseBody } from "@app/lib/api/assistant/configuration";
 import type {
   AgentMessageFeedbackType,
   AgentMessageFeedbackWithMetadataType,
 } from "@app/lib/api/assistant/feedback";
+import type { GetAgentMcpConfigurationsResponseBody } from "@app/lib/api/assistant/mcp_configurations";
+import type { GetContextOriginResponse } from "@app/lib/api/assistant/observability/context_origin";
+import type { GetDatasourceRetrievalResponse } from "@app/lib/api/assistant/observability/datasource_retrieval";
+import type { GetDatasourceRetrievalDocumentsResponse } from "@app/lib/api/assistant/observability/datasource_retrieval_documents";
+import type { GetFeedbackDistributionResponse } from "@app/lib/api/assistant/observability/feedback_distribution";
 import type {
+  GetErrorRateResponse,
+  GetLatencyResponse,
+  GetUsageMetricsResponse,
+} from "@app/lib/api/assistant/observability/messages_metrics";
+import type { GetAgentOverviewResponseBody } from "@app/lib/api/assistant/observability/overview";
+import type { GetSkillExecutionResponse } from "@app/lib/api/assistant/observability/skill_execution";
+import type { GetAgentSummaryResponseBody } from "@app/lib/api/assistant/observability/summary";
+import type { GetToolExecutionResponse } from "@app/lib/api/assistant/observability/tool_execution";
+import type {
+  GetToolLatencyResponse,
   ToolLatencyRow,
   ToolLatencyView,
 } from "@app/lib/api/assistant/observability/tool_latency";
+import type { GetToolStepIndexResponse } from "@app/lib/api/assistant/observability/tool_step_index";
+import type { GetVersionMarkersResponse } from "@app/lib/api/assistant/observability/version_markers";
+import type { PostAgentUserFavoriteRequestBody } from "@app/lib/api/assistant/user_relation";
+import type { GetMemberResponseBody } from "@app/lib/api/user";
 import { clientFetch } from "@app/lib/egress/client";
+import type {
+  FetchAgentTemplateResponse,
+  FetchAssistantTemplatesResponse,
+} from "@app/lib/resources/template_resource";
 import {
   emptyArray,
   getErrorFromResponse,
@@ -17,28 +43,6 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import { BROWSER_TIMEZONE } from "@app/lib/swr/workspaces";
-import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
-import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
-import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
-import type { GetAgentMcpConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/mcp_configurations";
-import type { GetDatasourceRetrievalResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/datasource-retrieval";
-import type { GetDatasourceRetrievalDocumentsResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/datasource-retrieval-documents";
-import type { GetErrorRateResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/error_rate";
-import type { GetFeedbackDistributionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/feedback-distribution";
-import type { GetLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/latency";
-import type { GetAgentOverviewResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/overview";
-import type { GetSkillExecutionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/skill-execution";
-import type { GetContextOriginResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/source";
-import type { GetAgentSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/summary";
-import type { GetToolExecutionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-execution";
-import type { GetToolLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-latency";
-import type { GetToolStepIndexResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-step-index";
-import type { GetUsageMetricsResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/usage-metrics";
-import type { GetVersionMarkersResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/version-markers";
-import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
-import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/assistant/builder/slack/channels_linked_with_agent";
-import type { GetMemberResponseBody } from "@app/pages/api/w/[wId]/members/[uId]";
-import type { PostAgentUserFavoriteRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_favorite";
 import type {
   AgentConfigurationType,
   AgentsGetViewType,
@@ -686,7 +690,7 @@ export function useUpdateUserFavorite({
 
         if (res.ok) {
           sendNotification({
-            title: `Assistant ${
+            title: `Agent ${
               userFavorite ? "added to favorites" : "removed from favorites"
             }`,
             type: "success",
@@ -697,7 +701,7 @@ export function useUpdateUserFavorite({
         } else {
           const data = await res.json();
           sendNotification({
-            title: `Error ${userFavorite ? "adding" : "removing"} Assistant`,
+            title: `Error ${userFavorite ? "adding" : "removing"} Agent`,
             description: data.error.message,
             type: "error",
           });

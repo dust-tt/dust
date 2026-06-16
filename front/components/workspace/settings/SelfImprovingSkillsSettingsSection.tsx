@@ -1,27 +1,60 @@
 import {
+  DEFAULT_REINFORCEMENT_CAP_AWU_CREDITS,
   DEFAULT_REINFORCEMENT_CAP_MICRO_USD,
+  DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_AWU_CREDITS,
   DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD,
 } from "@app/lib/reinforcement/constants";
+import type { ReinforcementBillingUnit } from "@app/lib/reinforcement/enforcement";
 import {
   useSelfImprovementCapPerSkillSetting,
   useSelfImprovingBatchModeToggle,
   useSelfImprovingCapSetting,
   useSelfImprovingToggle,
 } from "@app/lib/swr/useSelfImprovingSkillsSettings";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  Button,
   ContextItem,
-  Input,
+  InputWithSave,
   Page,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+export function capUnitLabel(unit: ReinforcementBillingUnit): string {
+  switch (unit) {
+    case "awu_credits":
+      return "credits";
+    case "micro_usd":
+      return "$";
+    default:
+      assertNeverAndIgnore(unit);
+      return "";
+  }
+}
+
+// Credits are integers; dollars allow decimals.
+export function normalizeCapInput(
+  value: string,
+  unit: ReinforcementBillingUnit
+): string {
+  switch (unit) {
+    case "awu_credits":
+      return value.replace(/[^\d]/g, "");
+    case "micro_usd":
+      return value.replace(/[^\d.]/g, "");
+    default:
+      assertNeverAndIgnore(unit);
+      return value.replace(/[^\d.]/g, "");
+  }
+}
+
 interface SelfImprovingSkillsSettingsSectionProps {
   owner: WorkspaceType;
-  onCapSaved?: (capMicroUsd: number) => void;
-  onDefaultCapPerSkillSaved?: (microUsd: number) => void;
+  // Saved cap values are in the display unit: AWU credits for workspaces
+  // billed by Metronome, dollars otherwise.
+  onCapSaved?: (cap: number) => void;
+  onDefaultCapPerSkillSaved?: (cap: number) => void;
 }
 
 export function SelfImprovingSkillsSettingsSection({
@@ -88,36 +121,39 @@ function SelfImprovingBatchModeToggle({
 
 interface SelfImprovementCapPerSkillItemProps {
   owner: WorkspaceType;
-  onSaved?: (microUsd: number) => void;
+  onSaved?: (cap: number) => void;
 }
 
 function SelfImprovementCapPerSkillItem({
   owner,
   onSaved,
 }: SelfImprovementCapPerSkillItemProps) {
-  const { capDollars, isSaving, saveCapDollars } =
-    useSelfImprovementCapPerSkillSetting({ owner });
-  const [inputValue, setInputValue] = useState<string>(() =>
-    String(capDollars)
-  );
+  const { unit, cap, saveCap } = useSelfImprovementCapPerSkillSetting({
+    owner,
+  });
+  // InputWithSave displays `value` once editing ends, and `owner` is not
+  // refetched after save: track the saved value locally.
+  const [savedValue, setSavedValue] = useState<string>(() => String(cap));
 
-  const parsedInputDollars = Number(inputValue);
-  const isInputDollarsValid =
-    inputValue.trim() !== "" &&
-    Number.isFinite(parsedInputDollars) &&
-    parsedInputDollars >= 0;
+  const defaultCap =
+    unit === "awu_credits"
+      ? DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_AWU_CREDITS
+      : DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD / 1_000_000;
 
-  const defaultDollars =
-    DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD / 1_000_000;
-
-  const handleSave = async () => {
-    if (!isInputDollarsValid) {
+  const handleSave = async (newValue: string) => {
+    const trimmed = newValue.trim();
+    const parsed = Number(trimmed);
+    if (trimmed === "" || !Number.isFinite(parsed) || parsed < 0) {
+      // Revert to the saved value.
       return;
     }
-    const ok = await saveCapDollars(parsedInputDollars);
-    if (ok) {
-      onSaved?.(Math.round(parsedInputDollars * 1_000_000));
+    const ok = await saveCap(parsed);
+    if (!ok) {
+      // Keep editing; the hook already sent an error notification.
+      throw new Error("Failed to update self-improvement cost cap per skill");
     }
+    setSavedValue(String(parsed));
+    onSaved?.(parsed);
   };
 
   return (
@@ -126,40 +162,22 @@ function SelfImprovementCapPerSkillItem({
       visual={<></>}
       hasSeparatorIfLast={true}
       action={
-        <form
-          className="flex items-center gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void handleSave();
-          }}
-        >
-          <div className="w-32">
-            <Input
-              name="selfImprovementCapPerSkill"
-              placeholder={String(defaultDollars)}
-              value={inputValue}
-              message={
-                !isInputDollarsValid && inputValue !== ""
-                  ? "Enter a non-negative number."
-                  : undefined
-              }
-              messageStatus={
-                !isInputDollarsValid && inputValue !== "" ? "error" : undefined
-              }
-              onChange={(event) => setInputValue(event.target.value)}
-              disabled={isSaving}
-            />
-          </div>
-          <Button
-            type="submit"
-            label="Save"
-            disabled={!isInputDollarsValid}
-            isLoading={isSaving}
+        <div className="w-48">
+          <InputWithSave
+            name="selfImprovementCapPerSkill"
+            inputMode={unit === "awu_credits" ? "numeric" : "decimal"}
+            placeholder={String(defaultCap)}
+            value={savedValue}
+            unit={capUnitLabel(unit)}
+            normalizeValue={(value) => normalizeCapInput(value, unit)}
+            onSave={handleSave}
           />
-        </form>
+        </div>
       }
     >
-      <ContextItem.Description description="Maximum cost per skill per self-improvement run (in USD). Once reached, no further self-improvement runs are started for that skill." />
+      <ContextItem.Description
+        description={`Maximum cost per skill per self-improvement run (in ${unit === "awu_credits" ? "AWU credits" : "USD"}). Once reached, no further self-improvement runs are started for that skill.`}
+      />
     </ContextItem>
   );
 }
@@ -168,29 +186,32 @@ function SelfImprovingCapItem({
   owner,
   onCapSaved,
 }: SelfImprovingSkillsSettingsSectionProps) {
-  const { capDollars, isSaving, saveCapDollars } = useSelfImprovingCapSetting({
+  const { unit, cap, saveCap } = useSelfImprovingCapSetting({
     owner,
   });
-  const [inputValue, setInputValue] = useState<string>(() =>
-    String(capDollars)
-  );
+  // InputWithSave displays `value` once editing ends, and `owner` is not
+  // refetched after save: track the saved value locally.
+  const [savedValue, setSavedValue] = useState<string>(() => String(cap));
 
-  const parsedInput = Number(inputValue);
-  const isInputValid =
-    inputValue.trim() !== "" &&
-    Number.isFinite(parsedInput) &&
-    parsedInput >= 0;
+  const defaultCap =
+    unit === "awu_credits"
+      ? DEFAULT_REINFORCEMENT_CAP_AWU_CREDITS
+      : DEFAULT_REINFORCEMENT_CAP_MICRO_USD / 1_000_000;
 
-  const defaultDollars = DEFAULT_REINFORCEMENT_CAP_MICRO_USD / 1_000_000;
-
-  const handleSave = async () => {
-    if (!isInputValid) {
+  const handleSave = async (newValue: string) => {
+    const trimmed = newValue.trim();
+    const parsed = Number(trimmed);
+    if (trimmed === "" || !Number.isFinite(parsed) || parsed < 0) {
+      // Revert to the saved value.
       return;
     }
-    const ok = await saveCapDollars(parsedInput);
-    if (ok) {
-      onCapSaved?.(Math.round(parsedInput * 1_000_000));
+    const ok = await saveCap(parsed);
+    if (!ok) {
+      // Keep editing; the hook already sent an error notification.
+      throw new Error("Failed to update reinforcement spending cap");
     }
+    setSavedValue(String(parsed));
+    onCapSaved?.(parsed);
   };
 
   return (
@@ -199,40 +220,22 @@ function SelfImprovingCapItem({
       visual={<></>}
       hasSeparatorIfLast={true}
       action={
-        <form
-          className="flex items-center gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void handleSave();
-          }}
-        >
-          <div className="w-32">
-            <Input
-              name="reinforcementCap"
-              placeholder={String(defaultDollars)}
-              value={inputValue}
-              message={
-                !isInputValid && inputValue !== ""
-                  ? "Enter a non-negative number."
-                  : undefined
-              }
-              messageStatus={
-                !isInputValid && inputValue !== "" ? "error" : undefined
-              }
-              onChange={(event) => setInputValue(event.target.value)}
-              disabled={isSaving}
-            />
-          </div>
-          <Button
-            type="submit"
-            label="Save"
-            disabled={!isInputValid}
-            isLoading={isSaving}
+        <div className="w-48">
+          <InputWithSave
+            name="reinforcementCap"
+            inputMode={unit === "awu_credits" ? "numeric" : "decimal"}
+            placeholder={String(defaultCap)}
+            value={savedValue}
+            unit={capUnitLabel(unit)}
+            normalizeValue={(value) => normalizeCapInput(value, unit)}
+            onSave={handleSave}
           />
-        </form>
+        </div>
       }
     >
-      <ContextItem.Description description="Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in USD) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month." />
+      <ContextItem.Description
+        description={`Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in ${unit === "awu_credits" ? "AWU credits" : "USD"}) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month.`}
+      />
     </ContextItem>
   );
 }

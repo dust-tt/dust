@@ -1,4 +1,5 @@
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
+import { _getAnalystGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/analyst";
 import {
   _getClaude3_7GlobalAgent,
   _getClaude3GlobalAgent,
@@ -8,7 +9,6 @@ import {
   _getClaude4_5SonnetGlobalAgent,
   _getClaude4SonnetGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/anthropic";
-import { _getDeepSeekR1GlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/deepseek";
 import {
   _getArchivedBrowserSummaryAgent,
   _getDeepDiveGlobalAgent,
@@ -39,6 +39,9 @@ import {
   _getDustKimiGlobalAgent,
   _getDustKimiHighGlobalAgent,
   _getDustKimiMediumGlobalAgent,
+  _getDustLionelGlobalAgent,
+  _getDustLionelHighGlobalAgent,
+  _getDustLionelMediumGlobalAgent,
   _getDustMinimaxGlobalAgent,
   _getDustMinimaxHighGlobalAgent,
   _getDustMinimaxMediumGlobalAgent,
@@ -53,6 +56,7 @@ import {
   _getDustOmittedGlobalAgent,
   _getDustQuickGlobalAgent,
   _getDustQuickMediumGlobalAgent,
+  _getRetiredDustLikeGlobalAgent,
   getCustomModelDustGlobalAgentIndex,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
@@ -86,6 +90,7 @@ import {
   _getNotionGlobalAgent,
   _getSlackGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/retired_managed";
+import { canRoleSeeGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import {
   buildSidekickContext,
   type SidekickContext,
@@ -382,6 +387,12 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
+  [GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
   [GLOBAL_AGENTS_SID.DUST_SUNDAE]: {
     injectsMemory: true,
     injectsToolsets: true,
@@ -436,6 +447,24 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
+  [GLOBAL_AGENTS_SID.DUST_LIONEL]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH]: {
+    injectsMemory: true,
+    injectsToolsets: true,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
   [GLOBAL_AGENTS_SID.HELPER]: {
     injectsMemory: false,
     injectsToolsets: false,
@@ -473,6 +502,12 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsWorkspaceContext: true,
   },
   [GLOBAL_AGENTS_SID.REINFORCEMENT]: {
+    injectsMemory: false,
+    injectsToolsets: false,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
+  [GLOBAL_AGENTS_SID.ANALYST]: {
     injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
@@ -635,12 +670,6 @@ const GLOBAL_AGENT_FLAGS: Record<
     injectsWorkspaceContext: false,
   },
   [GLOBAL_AGENTS_SID.GEMINI_PRO]: {
-    injectsMemory: false,
-    injectsToolsets: false,
-    injectsUserContext: false,
-    injectsWorkspaceContext: false,
-  },
-  [GLOBAL_AGENTS_SID.DEEPSEEK_R1]: {
     injectsMemory: false,
     injectsToolsets: false,
     injectsUserContext: false,
@@ -863,9 +892,6 @@ function getGlobalAgent({
         settings,
         mcpServerViews,
       });
-      break;
-    case GLOBAL_AGENTS_SID.DEEPSEEK_R1:
-      agentConfiguration = _getDeepSeekR1GlobalAgent({ auth, settings });
       break;
     case GLOBAL_AGENTS_SID.SLACK:
       agentConfiguration = _getSlackGlobalAgent(auth, {
@@ -1196,12 +1222,52 @@ function getGlobalAgent({
         hasDeepDive,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_LIONEL:
+      agentConfiguration = _getDustLionelGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM:
+      agentConfiguration = _getDustLionelMediumGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH:
+      agentConfiguration = _getDustLionelHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    // Active custom-model dust-* agents.
     case GLOBAL_AGENTS_SID.DUST_CHAWI:
     case GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM:
     case GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH:
     case GLOBAL_AGENTS_SID.DUST_SOUPINOU:
     case GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM:
     case GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH:
+    case GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE:
+      agentConfiguration = _getCustomModelDustLikeGlobalAgent(
+        auth,
+        {
+          settings,
+          preFetchedDataSources,
+          mcpServerViews,
+          hasDeepDive,
+        },
+        sId
+      );
+      break;
+    // Retired custom-model dust-* agents: their eval models were removed from
+    // the infra config, so they resolve to a fallback model for past
+    // conversations only (see RETIRED_GLOBAL_AGENTS_SID).
     case GLOBAL_AGENTS_SID.DUST_SUNDAE:
     case GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM:
     case GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH:
@@ -1211,7 +1277,7 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.DUST_CHALOM:
     case GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM:
     case GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH:
-      agentConfiguration = _getCustomModelDustLikeGlobalAgent(
+      agentConfiguration = _getRetiredDustLikeGlobalAgent(
         auth,
         {
           settings,
@@ -1258,6 +1324,9 @@ function getGlobalAgent({
       break;
     case GLOBAL_AGENTS_SID.REINFORCEMENT:
       agentConfiguration = _getReinforcementGlobalAgent();
+      break;
+    case GLOBAL_AGENTS_SID.ANALYST:
+      agentConfiguration = _getAnalystGlobalAgent({ auth });
       break;
     case GLOBAL_AGENTS_SID.NOOP:
       // we want only to have it in development
@@ -1307,6 +1376,17 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM,
   GLOBAL_AGENTS_SID.DUST_ANT_MEDIUM_OMITTED,
   GLOBAL_AGENTS_SID.DUST_ANT_HIGH_OMITTED,
+  // Custom-model dust-* agents whose eval models were removed from the infra
+  // config. Kept callable for past conversations; may be revived in the future.
+  GLOBAL_AGENTS_SID.DUST_SUNDAE,
+  GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH,
+  GLOBAL_AGENTS_SID.DUST_PISTACHE,
+  GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH,
+  GLOBAL_AGENTS_SID.DUST_CHALOM,
+  GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
 ];
 
 function getCustomModelIndexForGlobalAgent(sId: string): number | null {
@@ -1389,9 +1469,9 @@ export async function getGlobalAgents(
       (sId) => sId !== GLOBAL_AGENTS_SID.O1_HIGH_REASONING
     );
   }
-  if (!flags.includes("deepseek_r1_global_agent_feature")) {
+  if (!flags.includes("workspace_analytics")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DEEPSEEK_R1
+      (sId) => sId !== GLOBAL_AGENTS_SID.ANALYST
     );
   }
   const DUST_INTERNAL_AGENTS: readonly GLOBAL_AGENTS_SID[] = [
@@ -1436,6 +1516,7 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_SOUPINOU,
     GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE,
     GLOBAL_AGENTS_SID.DUST_SUNDAE,
     GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH,
@@ -1445,6 +1526,9 @@ export async function getGlobalAgents(
     GLOBAL_AGENTS_SID.DUST_CHALOM,
     GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM,
     GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
+    GLOBAL_AGENTS_SID.DUST_LIONEL,
+    GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM,
+    GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH,
   ];
   if (!flags.includes("dust_internal_global_agents")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
@@ -1473,6 +1557,10 @@ export async function getGlobalAgents(
 
     return !customModelFlag || flags.includes(customModelFlag);
   });
+
+  agentsIdsToFetch = agentsIdsToFetch.filter(
+    (sId) => !isGlobalAgentId(sId) || canRoleSeeGlobalAgent(sId, auth)
+  );
 
   const sidekickContext =
     variant === "full"

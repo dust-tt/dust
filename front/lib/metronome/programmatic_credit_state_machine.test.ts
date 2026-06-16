@@ -1,4 +1,7 @@
-import { transitionProgrammaticCreditState } from "@app/lib/metronome/programmatic_credit_state_machine";
+import {
+  expectedProgrammaticCreditStateFromAlerts,
+  transitionProgrammaticCreditState,
+} from "@app/lib/metronome/programmatic_credit_state_machine";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { WorkspaceProgrammaticCreditState } from "@app/types/credits";
 import type { Transaction } from "sequelize";
@@ -9,13 +12,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // ---------------------------------------------------------------------------
 
 const {
-  mockSetWorkspaceProgrammaticDepleted,
-  mockClearWorkspaceProgrammaticDepleted,
   mockSetWorkspaceProgrammaticCreditStatus,
   mockInvalidateCacheAfterCommit,
 } = vi.hoisted(() => ({
-  mockSetWorkspaceProgrammaticDepleted: vi.fn(),
-  mockClearWorkspaceProgrammaticDepleted: vi.fn(),
   mockSetWorkspaceProgrammaticCreditStatus: vi.fn(),
   mockInvalidateCacheAfterCommit: vi.fn(
     (_tx: Transaction | undefined, fn: () => Promise<void>) => {
@@ -25,8 +24,6 @@ const {
 }));
 
 vi.mock("@app/lib/metronome/user_block", () => ({
-  setWorkspaceProgrammaticDepleted: mockSetWorkspaceProgrammaticDepleted,
-  clearWorkspaceProgrammaticDepleted: mockClearWorkspaceProgrammaticDepleted,
   setWorkspaceProgrammaticCreditStatus:
     mockSetWorkspaceProgrammaticCreditStatus,
 }));
@@ -79,9 +76,6 @@ describe("ProgrammaticCreditStateMachine — low balance", () => {
     expect(workspace.updateProgrammaticCreditState).toHaveBeenCalledWith(
       "active_low_balance",
       undefined
-    );
-    expect(mockClearWorkspaceProgrammaticDepleted).toHaveBeenCalledWith(
-      "ws_test"
     );
   });
 
@@ -162,9 +156,6 @@ describe("ProgrammaticCreditStateMachine — cap reached", () => {
     if (result.isOk()) {
       expect(result.value).toBe("depleted");
     }
-    expect(mockSetWorkspaceProgrammaticDepleted).toHaveBeenCalledWith(
-      "ws_test"
-    );
   });
 
   it("depleted + cap_reached is idempotent", async () => {
@@ -177,9 +168,6 @@ describe("ProgrammaticCreditStateMachine — cap reached", () => {
       expect(result.value).toBe("depleted");
     }
     expect(workspace.updateProgrammaticCreditState).not.toHaveBeenCalled();
-    expect(mockSetWorkspaceProgrammaticDepleted).toHaveBeenCalledWith(
-      "ws_test"
-    );
   });
 });
 
@@ -208,9 +196,6 @@ describe("ProgrammaticCreditStateMachine — cap reset", () => {
         undefined
       );
     }
-    expect(mockClearWorkspaceProgrammaticDepleted).toHaveBeenCalledWith(
-      "ws_test"
-    );
   });
 });
 
@@ -247,5 +232,47 @@ describe("ProgrammaticCreditStateMachine — side effects", () => {
       tx,
       expect.any(Function)
     );
+  });
+});
+
+describe("expectedProgrammaticCreditStateFromAlerts", () => {
+  it("returns depleted when the cap alert is in alarm (regardless of others)", () => {
+    expect(
+      expectedProgrammaticCreditStateFromAlerts({
+        capInAlarm: true,
+        criticalInAlarm: true,
+        lowInAlarm: true,
+      })
+    ).toBe("depleted");
+  });
+
+  it("returns active_critical_balance when only critical is in alarm", () => {
+    expect(
+      expectedProgrammaticCreditStateFromAlerts({
+        capInAlarm: false,
+        criticalInAlarm: true,
+        lowInAlarm: true,
+      })
+    ).toBe("active_critical_balance");
+  });
+
+  it("returns active_low_balance when only low is in alarm", () => {
+    expect(
+      expectedProgrammaticCreditStateFromAlerts({
+        capInAlarm: false,
+        criticalInAlarm: false,
+        lowInAlarm: true,
+      })
+    ).toBe("active_low_balance");
+  });
+
+  it("returns active when no alert is in alarm", () => {
+    expect(
+      expectedProgrammaticCreditStateFromAlerts({
+        capInAlarm: false,
+        criticalInAlarm: false,
+        lowInAlarm: false,
+      })
+    ).toBe("active");
   });
 });

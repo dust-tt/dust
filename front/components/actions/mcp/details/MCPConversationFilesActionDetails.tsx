@@ -6,7 +6,7 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-  DocumentIcon,
+  File02,
 } from "@dust-tt/sparkle";
 
 const MAX_PREVIEW_LINES = 10;
@@ -27,7 +27,7 @@ export function MCPConversationCatFileDetails({
             ? "Reading conversation file"
             : "Read conversation file"
         }
-        visual={DocumentIcon}
+        visual={File02}
       />
     );
   }
@@ -48,7 +48,7 @@ export function MCPConversationCatFileDetails({
           ? "Reading conversation file"
           : "Read conversation file"
       }
-      visual={DocumentIcon}
+      visual={File02}
     >
       {displayContext !== "conversation" && (
         <div className="flex flex-col gap-4 pl-6 pt-4">

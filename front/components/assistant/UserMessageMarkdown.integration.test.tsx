@@ -1,6 +1,5 @@
 import { render } from "@testing-library/react";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React from "react";
+import type React from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { UserMessageMarkdown } from "./UserMessageMarkdown";
@@ -14,10 +13,11 @@ vi.mock("@app/lib/auth/AuthContext", () => ({
 
 // Mock router utilities and hooks for mention directives
 const pushMock = vi.fn();
-vi.mock("next/router", () => ({
-  useRouter: () => ({
+vi.mock("@app/lib/platform", () => ({
+  useAppRouter: () => ({
     push: pushMock,
   }),
+  LinkWrapper: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 const openChangeMock = vi.fn();

@@ -79,7 +79,7 @@ function TypoPropInput({
         onBlur={(e) => {
           setEditing(null);
           e.currentTarget.style.borderColor = isOverridden
-            ? "#7fdbca55"
+            ? "#00897B55"
             : "transparent";
           e.currentTarget.style.background = "transparent";
         }}
@@ -91,11 +91,11 @@ function TypoPropInput({
         style={{
           fontSize: 11,
           fontFamily: "monospace",
-          color: isOverridden ? "#7fdbca" : "#b0b0b8",
+          color: isOverridden ? "#00897B" : "#b0b0b8",
           width: 56,
           textAlign: "right" as const,
           background: "transparent",
-          border: isOverridden ? "1px solid #7fdbca55" : "1px solid #333",
+          border: isOverridden ? "1px solid #00897B55" : "1px solid #333",
           borderRadius: 3,
           padding: "2px 4px",
           outline: "none",
@@ -296,10 +296,10 @@ function FontFamilySection({
             fontFamily: fontOverrides.sans
               ? `"${fontOverrides.sans}", sans-serif`
               : "inherit",
-            color: fontOverrides.sans ? "#7fdbca" : "#888",
+            color: fontOverrides.sans ? "#00897B" : "#888",
             background: "#0f0f23",
             border: fontOverrides.sans
-              ? "1px solid #7fdbca55"
+              ? "1px solid #00897B55"
               : "1px solid #333",
             borderRadius: 4,
             padding: "4px 8px",
@@ -322,12 +322,12 @@ function FontFamilySection({
                 padding: "1px 5px",
                 border:
                   fontOverrides.sans === f
-                    ? "1px solid #7fdbca"
+                    ? "1px solid #00897B"
                     : "1px solid #333",
                 borderRadius: 3,
                 background:
-                  fontOverrides.sans === f ? "#7fdbca22" : "transparent",
-                color: fontOverrides.sans === f ? "#7fdbca" : "#888",
+                  fontOverrides.sans === f ? "#00897B22" : "transparent",
+                color: fontOverrides.sans === f ? "#00897B" : "#888",
                 cursor: "pointer",
               }}
               onClick={() => onUpdate({ ...fontOverrides, sans: f })}
@@ -390,10 +390,10 @@ function FontFamilySection({
             fontFamily: fontOverrides.mono
               ? `"${fontOverrides.mono}", monospace`
               : "inherit",
-            color: fontOverrides.mono ? "#7fdbca" : "#888",
+            color: fontOverrides.mono ? "#00897B" : "#888",
             background: "#0f0f23",
             border: fontOverrides.mono
-              ? "1px solid #7fdbca55"
+              ? "1px solid #00897B55"
               : "1px solid #333",
             borderRadius: 4,
             padding: "4px 8px",
@@ -416,12 +416,12 @@ function FontFamilySection({
                 padding: "1px 5px",
                 border:
                   fontOverrides.mono === f
-                    ? "1px solid #7fdbca"
+                    ? "1px solid #00897B"
                     : "1px solid #333",
                 borderRadius: 3,
                 background:
-                  fontOverrides.mono === f ? "#7fdbca22" : "transparent",
-                color: fontOverrides.mono === f ? "#7fdbca" : "#888",
+                  fontOverrides.mono === f ? "#00897B22" : "transparent",
+                color: fontOverrides.mono === f ? "#00897B" : "#888",
                 cursor: "pointer",
               }}
               onClick={() => onUpdate({ ...fontOverrides, mono: f })}
@@ -562,8 +562,8 @@ export function TypoOverridePanel({ onClose }: TypoOverridePanelProps) {
                   <span
                     style={{
                       fontSize: 9,
-                      background: "#7fdbca33",
-                      color: "#7fdbca",
+                      background: "#00897B33",
+                      color: "#00897B",
                       borderRadius: 8,
                       padding: "1px 6px",
                       marginLeft: "auto",
@@ -623,8 +623,8 @@ export function TypoOverridePanel({ onClose }: TypoOverridePanelProps) {
             <span
               style={{
                 fontSize: 9,
-                background: "#7fdbca33",
-                color: "#7fdbca",
+                background: "#00897B33",
+                color: "#00897B",
                 borderRadius: 8,
                 padding: "1px 6px",
                 marginLeft: "auto",

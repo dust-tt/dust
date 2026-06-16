@@ -101,7 +101,7 @@ export async function moveHandler(
   > = [
     {
       type: "text",
-      text: `Moved \`${source}\` to \`${dest}\`.`,
+      text: `Moved \`${source}\` to \`${dest}\`. The user is presented with an attachment to download the file, do not attempt to generate a link to it.`,
     },
   ];
 

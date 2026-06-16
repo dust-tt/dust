@@ -1,3 +1,4 @@
+import type { Permission } from "@app/types/permissions";
 import type {
   PublicApiCtx,
   WorkspaceAwareCtx,
@@ -27,6 +28,23 @@ export const ensureIsAdmin = () =>
         api_error: {
           type: "workspace_auth_error",
           message: ENSURE_IS_ADMIN_ERROR_MESSAGE,
+        },
+      });
+    }
+
+    await next();
+  });
+
+export const ensureHasPermission = (permission: Permission) =>
+  createMiddleware<WorkspaceAwareCtx>(async (ctx, next) => {
+    const auth = ctx.get("auth");
+
+    if (!auth.hasPermission(permission)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "You do not have permission to perform this action.",
         },
       });
     }

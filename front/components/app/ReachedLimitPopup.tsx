@@ -2,6 +2,7 @@ import { FairUsageModal } from "@app/components/FairUsageModal";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import type { AppRouter } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
+import type { SubmitMessageError } from "@app/types/assistant/conversation";
 import type { SubscriptionType } from "@app/types/plan";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -25,7 +26,48 @@ export type WorkspaceLimit =
   | "message_limit"
   | "credits_exhausted"
   | "pool_credits_exhausted"
-  | "user_credits_exhausted";
+  | "user_credits_exhausted"
+  | "no_seat";
+
+// Maps a message-send failure to the blocking popup it should open, or null when
+// the failure is transient and should be surfaced as a notification instead.
+export function getWorkspaceLimitForSubmitError(
+  type: SubmitMessageError["type"]
+): WorkspaceLimit | null {
+  switch (type) {
+    case "plan_limit_reached_error":
+      return "message_limit";
+    case "credits_exhausted_error":
+      return "pool_credits_exhausted";
+    case "user_cap_reached_error":
+      return "user_credits_exhausted";
+    case "no_seat_error":
+      return "no_seat";
+    case "user_not_found":
+    case "attachment_upload_error":
+    case "message_send_error":
+    case "content_too_large":
+      return null;
+    default:
+      assertNeverAndIgnore(type);
+      return null;
+  }
+}
+
+function formatLimitTimeframe(timeframe: string): string {
+  switch (timeframe) {
+    case "day":
+      return "over the past 24 hours";
+    case "week":
+      return "over the past 7 days";
+    case "month":
+      return "over the past 30 days";
+    case "lifetime":
+      return "for your current plan";
+    default:
+      return `per ${timeframe}`;
+  }
+}
 
 function getLimitPromptForCode(
   router: AppRouter,
@@ -109,6 +151,9 @@ function getLimitPromptForCode(
       };
 
     case "message_limit": {
+      const assistantLimits = subscription.plan.limits.assistant;
+      const isAwuCreditsFairUseLimit = assistantLimits.maxAwuCredits !== -1;
+
       if (isFreeTrialPhonePlan(subscription.plan.code)) {
         return {
           title: "Dust trial message limit reached",
@@ -152,26 +197,53 @@ function getLimitPromptForCode(
           ),
         };
       } else {
-        return {
-          title: "Message quota exceeded",
-          validateLabel: "Ok",
-          children: (
-            <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-              We've paused messaging for your workspace due to our fair usage
-              policy. Your workspace has reached its shared limit of{" "}
-              {subscription.plan.limits.assistant.maxMessages} messages per user
-              over the past 24 hours. This total limit is collectively shared by
-              all users in the workspace. Check our{" "}
-              <Hoverable
-                variant="highlight"
-                onClick={() => displayFairUseModal()}
-              >
-                Fair Use policy
-              </Hoverable>
-              &nbsp; to learn more.
-            </p>
-          ),
-        };
+        if (isAwuCreditsFairUseLimit) {
+          return {
+            title: "Credit quota exceeded",
+            validateLabel: "Ok",
+            children: (
+              <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                We've paused messaging for your account due to our fair usage
+                policy. Your account has reached its limit of{" "}
+                {assistantLimits.maxAwuCredits} credits{" "}
+                {formatLimitTimeframe(assistantLimits.maxAwuCreditsTimeframe)}.
+                Check our{" "}
+                <Hoverable
+                  variant="highlight"
+                  onClick={() => displayFairUseModal()}
+                >
+                  Fair Use policy
+                </Hoverable>
+                &nbsp; to learn more.
+              </p>
+            ),
+          };
+        } else {
+          return {
+            title: "Message quota exceeded",
+            validateLabel: "Ok",
+            children: (
+              <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                We've paused messaging for your workspace due to our fair usage
+                policy. Your workspace has reached its shared limit of{" "}
+                {subscription.plan.limits.assistant.maxMessages} messages per
+                user{" "}
+                {formatLimitTimeframe(
+                  subscription.plan.limits.assistant.maxMessagesTimeframe
+                )}
+                . This total limit is collectively shared by all users in the
+                workspace. Check our{" "}
+                <Hoverable
+                  variant="highlight"
+                  onClick={() => displayFairUseModal()}
+                >
+                  Fair Use policy
+                </Hoverable>
+                &nbsp; to learn more.
+              </p>
+            ),
+          };
+        }
       }
     }
 
@@ -194,6 +266,21 @@ function getLimitPromptForCode(
               {isAdmin
                 ? "Your workspace has run out of credits. Please purchase more credits to continue using Dust."
                 : "Your workspace has run out of credits. Please contact your administrator to purchase more credits."}
+            </Page.P>
+          </>
+        ),
+      };
+    }
+
+    case "no_seat": {
+      return {
+        title: "No seat assigned",
+        validateLabel: "Ok",
+        children: (
+          <>
+            <Page.P>
+              You don&apos;t have a seat assigned in this workspace. Please
+              contact your administrator to assign you one.
             </Page.P>
           </>
         ),

@@ -3,9 +3,11 @@ import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 import type { DataSourceViewContentNode } from "@app/lib/swr/search";
 import {
+  AlertCircle,
   AttachmentChip,
+  Chip,
   DoubleIcon,
-  ExclamationCircleIcon,
+  Icon,
 } from "@dust-tt/sparkle";
 import type React from "react";
 
@@ -56,6 +58,68 @@ export function KnowledgeChip({
   );
 }
 
+interface InlineKnowledgeChipProps {
+  color?: React.ComponentProps<typeof Chip>["color"];
+  node: KnowledgeNode;
+  onRemove?: () => void;
+  title: string;
+}
+
+interface InlineKnowledgeIconProps {
+  node: KnowledgeNode;
+}
+
+function InlineKnowledgeIcon({ node }: InlineKnowledgeIconProps) {
+  if (
+    isWebsite(node.dataSourceView.dataSource) ||
+    isFolder(node.dataSourceView.dataSource)
+  ) {
+    return (
+      <Icon visual={getVisualForDataSourceViewContentNode(node)} size="xs" />
+    );
+  }
+
+  return (
+    <DoubleIcon
+      size="sm"
+      mainIcon={getVisualForDataSourceViewContentNode(node)}
+      secondaryIcon={getConnectorProviderLogoWithFallback({
+        provider: node.dataSourceView.dataSource.connectorProvider,
+      })}
+    />
+  );
+}
+
+export function InlineKnowledgeChip({
+  color = "white",
+  node,
+  title,
+  onRemove,
+}: InlineKnowledgeChipProps) {
+  const children = <InlineKnowledgeIcon node={node} />;
+
+  if (node.sourceUrl) {
+    return (
+      <Chip
+        label={title}
+        href={node.sourceUrl}
+        target="_blank"
+        color={color}
+        onRemove={onRemove}
+        size="xs"
+      >
+        {children}
+      </Chip>
+    );
+  }
+
+  return (
+    <Chip label={title} color={color} onRemove={onRemove} size="xs">
+      {children}
+    </Chip>
+  );
+}
+
 interface KnowledgeErrorChipProps {
   errorMessage?: string;
   onRemove?: () => void;
@@ -67,10 +131,9 @@ export function KnowledgeErrorChip({
   title,
 }: KnowledgeErrorChipProps) {
   return (
-    <AttachmentChip
+    <Chip
       label={title}
-      icon={{ visual: ExclamationCircleIcon }}
-      target="_blank"
+      icon={AlertCircle}
       color="white"
       onRemove={onRemove}
       size="xs"

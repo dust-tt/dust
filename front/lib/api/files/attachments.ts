@@ -6,10 +6,11 @@ import {
 } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 // When we send the attachments at the conversation creation, we are missing the useCaseMetadata
@@ -40,8 +41,9 @@ export async function maybeUpsertFileAttachment(
 
   if (filesIds.length > 0) {
     const fileResources = await FileResource.fetchByIds(auth, filesIds);
-    await Promise.all([
-      ...fileResources.map(async (fileResource) => {
+    const results = await concurrentExecutor(
+      fileResources,
+      async (fileResource): Promise<Result<undefined, Error>> => {
         if (
           fileResource.useCase === "conversation" &&
           !fileResource.useCaseMetadata?.conversationId
@@ -62,7 +64,16 @@ export async function maybeUpsertFileAttachment(
                 fileResource
               );
             if (jitDataSource.isErr()) {
-              return jitDataSource;
+              logger.warn({
+                fileModelId: fileResource.id,
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                contentType: fileResource.contentType,
+                useCase: fileResource.useCase,
+                useCaseMetadata: fileResource.useCaseMetadata,
+                message: "Failed to get or create JIT data source.",
+                error: jitDataSource.error,
+              });
+              return new Ok(undefined);
             }
 
             const r = await processAndUpsertToDataSource(
@@ -83,12 +94,32 @@ export async function maybeUpsertFileAttachment(
                 error: r.error,
               });
 
-              return r;
+              // Only surface user-actionable failures (e.g. a CSV the user can re-save in a
+              // supported encoding); transient internal errors must not block the conversation.
+              if (
+                r.error.code === "invalid_csv_content" ||
+                r.error.code === "invalid_file"
+              ) {
+                return new Err(
+                  new Error(
+                    `Failed to attach the file "${fileResource.fileName}": ${r.error.message}`
+                  )
+                );
+              }
             }
           }
         }
-      }),
-    ]);
+        return new Ok(undefined);
+      },
+      { concurrency: 4 }
+    );
+
+    const failures = removeNulls(
+      results.map((r) => (r.isErr() ? r.error : null))
+    );
+    if (failures.length > 0) {
+      return new Err(new Error(failures.map((e) => e.message).join("; ")));
+    }
   }
   return new Ok(undefined);
 }

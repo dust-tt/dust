@@ -171,6 +171,7 @@ export async function createDataSourceAndConnectorForProject(
           // Clean up Core API project if data source creation fails
           await coreAPI.deleteProject({
             projectId: coreProjectId,
+            caller: "projects-connector-rollback-create-data-source",
           });
           return new Err(
             new Error(
@@ -205,9 +206,11 @@ export async function createDataSourceAndConnectorForProject(
           await coreAPI.deleteDataSource({
             projectId: coreProjectId,
             dataSourceId: coreDataSourceId,
+            caller: "projects-connector-rollback-folder-failed",
           });
           await coreAPI.deleteProject({
             projectId: coreProjectId,
+            caller: "projects-connector-rollback-folder-failed",
           });
         }
         return new Err(
@@ -279,9 +282,11 @@ export async function createDataSourceAndConnectorForProject(
             await coreAPI.deleteDataSource({
               projectId: coreProjectId,
               dataSourceId: coreDataSourceId,
+              caller: "projects-connector-rollback-connector-failed",
             });
             await coreAPI.deleteProject({
               projectId: coreProjectId,
+              caller: "projects-connector-rollback-connector-failed",
             });
           }
 

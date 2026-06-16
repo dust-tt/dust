@@ -1,18 +1,10 @@
+import type { PokeGetSkillDetails } from "@app/lib/api/poke/skills";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
-import type { SpaceType } from "@app/types/space";
-import type { UserType } from "@app/types/user";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PokeGetSkillDetails = {
-  skill: SkillType;
-  editedByUser: UserType | null;
-  spaces: SpaceType[];
-};
 
 const ParamsSchema = z.object({
   sId: z.string(),
@@ -21,6 +13,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/poke/workspaces/:wId/skills/:sId/details.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),
@@ -46,10 +39,18 @@ app.get(
       serializedSkill.requestedSpaceIds
     );
 
+    const agentsUsage = await skill.fetchUsage(auth);
+    const usedBySkillsMap = await SkillResource.batchFetchUsedBySkills(auth, [
+      skill,
+    ]);
+    const usedBySkills = usedBySkillsMap.get(skill.sId) ?? [];
+
     return ctx.json({
       skill: serializedSkill,
       editedByUser: editedByUser ? editedByUser.toJSON() : null,
       spaces: spaces.map((s) => s.toJSON()),
+      agentsUsage,
+      usedBySkills,
     });
   }
 );

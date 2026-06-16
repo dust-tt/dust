@@ -1,7 +1,13 @@
+import {
+  BillingPeriodSwitch,
+  PaidPlanCards,
+  type PaidPlanTier,
+} from "@app/components/pages/onboarding/SubscriptionPlans";
 import { ProPlansTable } from "@app/components/plans/ProPlansTable";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { useIsMetronomeCheckout } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { isFreeTrialPhonePlan, isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
@@ -13,11 +19,118 @@ import {
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { BillingPeriod } from "@app/types/plan";
 import { isDevelopment } from "@app/types/shared/env";
-import { BarHeader, Button, LockIcon, Page, Spinner } from "@dust-tt/sparkle";
+import { BarHeader, Button, Lock01, Page, Spinner } from "@dust-tt/sparkle";
 import { CreditCardIcon } from "@heroicons/react/20/solid";
 import React, { useEffect } from "react";
 
-export function SubscribePage() {
+function CPSubscribePage() {
+  const { workspace, isAdmin, user: authUser } = useAuth();
+  const router = useAppRouter();
+  const { user } = useUser();
+  const { shouldRedirect, redirectUrl, isSubscriptionStatusLoading } =
+    useSubscriptionStatus({ workspaceId: workspace.sId });
+
+  const [billingPeriod, setBillingPeriod] =
+    React.useState<BillingPeriod>("monthly");
+
+  const { submit: handleSubscribe } = useSubmitFunction(
+    async (seatType: PaidPlanTier) => {
+      const query = new URLSearchParams({
+        seatType,
+        billingPeriod,
+        targetUserId: authUser.sId,
+      });
+      await router.push(
+        `/w/${workspace.sId}/subscription/checkout?${query.toString()}`
+      );
+    }
+  );
+
+  useEffect(() => {
+    if (shouldRedirect && redirectUrl) {
+      void router.replace(redirectUrl);
+    }
+  }, [shouldRedirect, redirectUrl, router]);
+
+  if (isSubscriptionStatusLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <>
+        <BarHeader
+          title="Joining Dust"
+          className="ml-10 lg:ml-0"
+          rightActions={
+            user && (
+              <UserMenu user={user} owner={workspace} subscription={null} />
+            )
+          }
+        />
+        <Page>
+          <div className="flex h-full flex-col justify-center">
+            <Page.Horizontal>
+              <Page.Vertical sizing="grow" gap="lg">
+                <Page.Header icon={Lock01} title="Workspace locked" />
+                <Page.P>
+                  <span className="font-bold">
+                    The subscription for this workspace is not active.
+                  </span>
+                </Page.P>
+                <Page.P>
+                  To unlock premium features, your workspace needs to be
+                  upgraded by an admin.
+                </Page.P>
+              </Page.Vertical>
+            </Page.Horizontal>
+          </div>
+        </Page>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <BarHeader
+        title="Choose your plan"
+        className="ml-10 lg:ml-0"
+        rightActions={
+          <div className="flex flex-row items-center">
+            {user && (
+              <UserMenu user={user} owner={workspace} subscription={null} />
+            )}
+          </div>
+        }
+      />
+      <div className="flex min-h-screen flex-col items-center justify-center gap-8 px-4 py-16">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <h1 className="text-4xl font-bold text-foreground dark:text-foreground-night">
+            Choose your plan to continue
+          </h1>
+          <p className="text-lg text-muted-foreground dark:text-muted-foreground-night">
+            You can change it anytime from the admin page.
+          </p>
+        </div>
+
+        <BillingPeriodSwitch onValueChange={setBillingPeriod} />
+
+        <div className="flex w-full max-w-2xl flex-col gap-4 sm:flex-row">
+          <PaidPlanCards
+            billingPeriod={billingPeriod}
+            onSubscribe={(seatType) => void handleSubscribe(seatType)}
+          />
+        </div>
+      </div>
+    </>
+  );
+}
+
+function LegacySubscribePage() {
   const { workspace, isAdmin } = useAuth();
   const router = useAppRouter();
   const { user } = useUser();
@@ -218,7 +331,7 @@ export function SubscribePage() {
           ) : (
             <Page.Horizontal>
               <Page.Vertical sizing="grow" gap="lg">
-                <Page.Header icon={LockIcon} title="Workspace locked" />
+                <Page.Header icon={Lock01} title="Workspace locked" />
                 <Page.P>
                   <span className="font-bold">
                     The subscription for this workspace is not active.
@@ -243,4 +356,14 @@ export function SubscribePage() {
       </Page>
     </>
   );
+}
+
+export function SubscribePage() {
+  const isMetronomeCheckout = useIsMetronomeCheckout();
+
+  if (isMetronomeCheckout) {
+    return <CPSubscribePage />;
+  }
+
+  return <LegacySubscribePage />;
 }

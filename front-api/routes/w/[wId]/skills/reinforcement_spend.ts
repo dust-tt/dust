@@ -1,3 +1,4 @@
+import type { GetSkillsSpendResponseBody } from "@app/lib/api/skills";
 import { getCurrentPeriod } from "@app/lib/reinforcement/billing";
 import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -5,15 +6,10 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
-export type GetSkillsSpendResponseBody = {
-  // Map from skill sId to total spent in the current billing period (microUSD).
-  // Skills with no usage in the period are omitted.
-  spentMicroUsdBySkillId: Record<string, number>;
-};
-
 // Mounted at /api/w/:wId/skills/reinforcement_spend.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),
@@ -28,7 +24,7 @@ app.get(
     });
 
     const spentByModelId =
-      await SelfImprovingSkillsUsageResource.getSumPriceMicroUsdWithMarkupAfterDateForSkills(
+      await SelfImprovingSkillsUsageResource.getSumSpendWithMarkupAfterDateForSkills(
         auth,
         {
           createdAfter: (await getCurrentPeriod(auth)).cycleStart,
@@ -37,14 +33,21 @@ app.get(
       );
 
     const spentMicroUsdBySkillId: Record<string, number> = {};
+    const spentAwuCreditsBySkillId: Record<string, number> = {};
     for (const skill of skills) {
       const spent = spentByModelId.get(skill.id);
-      if (spent && spent > 0) {
-        spentMicroUsdBySkillId[skill.sId] = spent;
+      if (!spent) {
+        continue;
+      }
+      if (spent.priceMicroUsd > 0) {
+        spentMicroUsdBySkillId[skill.sId] = spent.priceMicroUsd;
+      }
+      if (spent.priceAwuCredits > 0) {
+        spentAwuCreditsBySkillId[skill.sId] = spent.priceAwuCredits;
       }
     }
 
-    return ctx.json({ spentMicroUsdBySkillId });
+    return ctx.json({ spentMicroUsdBySkillId, spentAwuCreditsBySkillId });
   }
 );
 

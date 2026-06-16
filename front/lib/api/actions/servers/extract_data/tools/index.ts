@@ -1,4 +1,3 @@
-import { uploadFileToConversationDataSource } from "@app/lib/actions/action_file_helpers";
 import { PROCESS_ACTION_TOP_K } from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
@@ -144,8 +143,7 @@ export function createExtractDataTools(
       total_documents: res.value.totalDocuments,
     };
 
-    // Generate file and process tool output
-    const { jsonFile, processToolOutput } = await generateProcessToolOutput({
+    const result = await generateProcessToolOutput({
       auth,
       conversation,
       outputs,
@@ -153,15 +151,11 @@ export function createExtractDataTools(
       timeFrame: timeFrame ?? null,
       objective,
     });
+    if (result.isErr()) {
+      return new Err(new MCPError(result.error.message));
+    }
 
-    // Upload the file to the conversation data source.
-    // This step is critical for file persistence across sessions.
-    await uploadFileToConversationDataSource({
-      auth,
-      file: jsonFile,
-    });
-
-    return new Ok(processToolOutput);
+    return new Ok(result.value.processToolOutput);
   }
 
   if (!areTagsDynamic) {

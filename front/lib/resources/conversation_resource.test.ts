@@ -24,8 +24,10 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { launchIndexConversationEsWorkflow } from "@app/temporal/es_indexation/client";
+import * as wakeUpTemporalClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -39,6 +41,7 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 import { destroyConversation } from "../api/assistant/conversation/destroy";
@@ -87,6 +90,152 @@ const dateFromDaysAgo = (days: number) => {
 };
 
 describe("ConversationResource", () => {
+  describe("sumSubAgentCostCreditsByMessageId", () => {
+    // Creates a sub-agent: a user message in `conversation` whose
+    // agenticOriginMessageId points at `originSid`, plus its agent reply with
+    // the given costCredits. Returns the reply's sId (the origin for any deeper
+    // sub-agents).
+    async function createSubAgent({
+      auth,
+      conversation,
+      agentConfigurationId,
+      originSid,
+      costCredits,
+    }: {
+      auth: Authenticator;
+      conversation: ConversationWithoutContentType;
+      agentConfigurationId: string;
+      originSid: string;
+      costCredits: number;
+    }): Promise<string> {
+      const workspace = auth.getNonNullableWorkspace();
+      const { messageRow: userMessageRow } =
+        await ConversationFactory.createUserMessage({
+          auth,
+          workspace,
+          conversation,
+          content: "sub-agent trigger",
+          agenticMessageType: "run_agent",
+          agenticOriginMessageId: originSid,
+        });
+
+      const replyRow = await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversation.id,
+        rank: 1,
+        agentConfigurationId,
+        parentId: userMessageRow.id,
+      });
+
+      assert(replyRow.agentMessageId, "Reply must have an agent message");
+      await ConversationResource.updateAgentMessageCostCredits(auth, {
+        agentMessageModelId: replyRow.agentMessageId,
+        costCredits,
+      });
+
+      return replyRow.sId;
+    }
+
+    it("sums sub-agent costs recursively and ignores unrelated messages", async () => {
+      const { workspace, authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Sub Agent Cost",
+        description: "agent",
+      });
+
+      // Origin agent message lives in a parent conversation.
+      const parentConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [new Date("2026-01-01T00:00:00.000Z")],
+      });
+      const originMessage = await MessageModel.findOne({
+        where: {
+          conversationId: parentConversation.id,
+          workspaceId: workspace.id,
+          rank: 1,
+        },
+      });
+      assert(originMessage, "Origin agent message not found");
+
+      // Direct sub-agent (cost 100) in a child conversation, then a nested
+      // sub-agent (cost 50) spawned by that sub-agent in a grandchild.
+      const childConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+      const childReplySid = await createSubAgent({
+        auth,
+        conversation: childConversation,
+        agentConfigurationId: agent.sId,
+        originSid: originMessage.sId,
+        costCredits: 100,
+      });
+
+      const grandChildConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+      await createSubAgent({
+        auth,
+        conversation: grandChildConversation,
+        agentConfigurationId: agent.sId,
+        originSid: childReplySid,
+        costCredits: 50,
+      });
+
+      // An unrelated sub-agent of a different origin must not be counted.
+      const unrelatedConversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [],
+      });
+      await createSubAgent({
+        auth,
+        conversation: unrelatedConversation,
+        agentConfigurationId: agent.sId,
+        originSid: "msg_unrelated_origin",
+        costCredits: 999,
+      });
+
+      const result =
+        await ConversationResource.sumSubAgentCostCreditsByMessageId(auth, {
+          agentMessageId: originMessage.sId,
+        });
+
+      expect(result).toBe(150);
+    });
+
+    it("returns 0 when the message has no sub-agents", async () => {
+      const { workspace, authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "No Sub Agent",
+        description: "agent",
+      });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [new Date("2026-01-01T00:00:00.000Z")],
+      });
+      const originMessage = await MessageModel.findOne({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: workspace.id,
+          rank: 1,
+        },
+      });
+      assert(originMessage, "Origin agent message not found");
+
+      const result =
+        await ConversationResource.sumSubAgentCostCreditsByMessageId(auth, {
+          agentMessageId: originMessage.sId,
+        });
+
+      expect(result).toBe(0);
+    });
+  });
+
   describe("fetchByModelIds", () => {
     it("should fetch by model ids within workspace", async () => {
       const workspace = await WorkspaceFactory.basic();
@@ -2500,6 +2649,66 @@ describe("listPrivateConversationsForUser", () => {
     expect(userConversations).toHaveLength(1);
     expect(userConversations[0].sId).toBe(conversationIds[0]);
     expect(userConversations[0]).toBeInstanceOf(ConversationResource);
+  });
+
+  it("hydrates nextWakeupAt in the DB paginated list", async () => {
+    vi.spyOn(
+      wakeUpTemporalClient,
+      "launchOrScheduleWakeUpTemporalWorkflow"
+    ).mockResolvedValue(new Ok(undefined));
+
+    const agentConfiguration =
+      await AgentConfigurationFactory.createTestAgent(adminAuth);
+    const conversation = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agentConfiguration.sId,
+      messagesCreatedAt: [new Date()],
+    });
+    await ConversationResource.upsertParticipation(userAuth, {
+      conversation,
+      action: "posted",
+      user: userAuth.getNonNullableUser().toJSON(),
+    });
+
+    const scheduledFireAt = new Date("2030-01-01T12:00:00.000Z");
+    const cancelledFireAt = new Date("2029-01-01T12:00:00.000Z");
+
+    const cancelledWakeUpResult = await WakeUpResource.makeNew(
+      adminAuth,
+      {
+        scheduleType: "one_shot",
+        fireAt: cancelledFireAt,
+        cronExpression: null,
+        cronTimezone: null,
+        reason: "Cancelled wake-up",
+      },
+      conversation,
+      agentConfiguration
+    );
+    assert(cancelledWakeUpResult.isOk(), "Failed to create cancelled wake-up.");
+    await cancelledWakeUpResult.value.markCancelled(adminAuth);
+
+    const scheduledWakeUpResult = await WakeUpResource.makeNew(
+      adminAuth,
+      {
+        scheduleType: "one_shot",
+        fireAt: scheduledFireAt,
+        cronExpression: null,
+        cronTimezone: null,
+        reason: "Scheduled wake-up",
+      },
+      conversation,
+      agentConfiguration
+    );
+    assert(scheduledWakeUpResult.isOk(), "Failed to create scheduled wake-up.");
+
+    const result =
+      await ConversationResource.listPrivateConversationsForUserPaginatedFromDB(
+        userAuth,
+        { limit: 100 }
+      );
+    const item = result.conversations.find((c) => c.sId === conversation.sId);
+
+    expect(item?.nextWakeupAt).toBe(scheduledFireAt.getTime());
   });
 
   it("should return conversations with populated participation data", async () => {

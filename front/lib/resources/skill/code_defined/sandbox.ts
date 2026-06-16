@@ -378,6 +378,9 @@ export const sandboxSkill = {
   mcpServers: [{ name: "sandbox" }],
   version: 1,
   icon: "CommandLineIcon",
+  // Auto-enabled for every agent when the `sandbox_tools` flag is on (the flag gate lives in
+  // isRestricted), so agents do not need to opt in.
+  isAutoEnabledForAgentLoop: () => true,
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
 

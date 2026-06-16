@@ -1,8 +1,11 @@
+import type {
+  GetAppsResponseBody,
+  PostAppResponseBody,
+} from "@app/lib/api/apps";
 import config from "@app/lib/api/config";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
-import type { AppType } from "@app/types/app";
 import { APP_NAME_REGEXP } from "@app/types/app";
 import { CoreAPI } from "@app/types/core/core_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -14,14 +17,6 @@ import { z } from "zod";
 
 import aId from "./[aId]";
 
-export type GetAppsResponseBody = {
-  apps: AppType[];
-};
-
-export type PostAppResponseBody = {
-  app: AppType;
-};
-
 const PostAppBodySchema = z.object({
   name: z.string(),
   description: z.string(),
@@ -31,6 +26,7 @@ const PostAppBodySchema = z.object({
 const app = workspaceApp();
 
 // GET / — list apps in space.
+/** @ignoreswagger */
 app.get(
   "/",
   withSpace({ requireCanReadOrAdministrate: true }),

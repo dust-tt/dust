@@ -18,6 +18,7 @@ const PRIVATE_OPTIONS: MessageEventsOptions = {
 const app = workspaceApp();
 
 app.use("*", streamingTag);
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", MessageParamSchema),

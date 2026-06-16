@@ -23,6 +23,7 @@ export interface PdfOptions {
 export interface ScreenshotOptions {
   clip?: boolean;
   height?: number;
+  waitForExpression?: string;
   width?: number;
 }
 
@@ -56,7 +57,9 @@ const DEFAULT_PDF_OPTIONS: Omit<Required<PdfOptions>, "footerHtml"> = {
 };
 
 // This matches Open Graph image dimensions for link previews.
-const DEFAULT_SCREENSHOT_OPTIONS: Required<ScreenshotOptions> = {
+const DEFAULT_SCREENSHOT_OPTIONS: Required<
+  Omit<ScreenshotOptions, "waitForExpression">
+> = {
   clip: true,
   height: 630,
   width: 1200,
@@ -147,6 +150,81 @@ export class DocumentRenderer {
       return new Ok(result);
     } catch (error) {
       this.logger.error({ error }, "PDF export network error");
+      return new Err(
+        new DocumentRendererError(
+          "network_error",
+          normalizeError(error).message
+        )
+      );
+    }
+  }
+
+  /**
+   * Capture a screenshot of a self-contained HTML string.
+   * The HTML is uploaded directly to Gotenberg so no public URL is required.
+   */
+  async captureScreenshotFromHtml({
+    html,
+    options = {},
+  }: {
+    html: string;
+    options?: ScreenshotOptions;
+  }): Promise<Result<Buffer, DocumentRendererError>> {
+    const { clip, height, waitForExpression, width } = {
+      ...DEFAULT_SCREENSHOT_OPTIONS,
+      ...options,
+    };
+
+    const formData = new FormData();
+    formData.append(
+      "files",
+      new Blob([html], { type: "text/html" }),
+      "index.html"
+    );
+    formData.append("width", width.toString());
+    formData.append("height", height.toString());
+    formData.append("format", "png");
+
+    if (clip) {
+      formData.append("clip", "true");
+    }
+
+    if (waitForExpression) {
+      formData.append("waitForExpression", waitForExpression);
+    }
+
+    try {
+      // eslint-disable-next-line no-restricted-globals
+      const response = await fetch(
+        `${this.serviceUrl}/forms/chromium/screenshot/html`,
+        {
+          method: "POST",
+          body: formData,
+          signal: AbortSignal.timeout(this.timeoutMs),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+
+        this.logger.error(
+          { status: response.status, error: errorText },
+          "HTML screenshot capture failed"
+        );
+
+        return new Err(
+          new DocumentRendererError(
+            "render_failed",
+            `HTML screenshot capture failed: ${errorText}`,
+            response.status
+          )
+        );
+      }
+
+      return new Ok(Buffer.from(await response.arrayBuffer()));
+    } catch (error) {
+      this.logger.error({ error }, "HTML screenshot capture network error");
+
       return new Err(
         new DocumentRendererError(
           "network_error",

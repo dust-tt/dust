@@ -1,8 +1,4 @@
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
-import {
-  dispatchPaygDisabled,
-  dispatchPaygEnabled,
-} from "@app/lib/api/metronome/credit_state_dispatcher";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { getDefaultDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/daily_cap";
 import type { Authenticator } from "@app/lib/auth";
@@ -16,7 +12,7 @@ import {
 } from "@app/lib/credits/payg";
 import { PAYG_ELIGIBLE_TIERS } from "@app/lib/metronome/types";
 import {
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
 import {
@@ -24,7 +20,6 @@ import {
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -327,7 +322,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       } else {
         const planCode = subscription?.plan.code ?? "";
         const isEligible =
-          isEntreprisePlanPrefix(planCode) ||
+          isEnterprisePlanPrefix(planCode) ||
           planCode === PRO_PLAN_SEAT_39_CODE;
         if (!isEligible) {
           return new Err(
@@ -381,7 +376,6 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
       }
     }
 
-    const workspace = auth.getNonNullableWorkspace();
     if (paygEnabled) {
       assert(
         paygCapDollars !== undefined,
@@ -408,15 +402,9 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
             return updateResult;
           }
         }
-        // Note: the Metronome AWU PAYG cap alert is no longer driven from
-        // here. AWU concerns live on `credit_usage_configuration` and are
-        // managed via the "Manage Credit Usage Configuration" plugin.
-        const workspaceResource = await WorkspaceResource.fetchById(
-          workspace.sId
-        );
-        if (workspaceResource) {
-          await dispatchPaygEnabled({ workspace: workspaceResource });
-        }
+        // Legacy programmatic usage is billed in USD (Stripe PAYG /
+        // CreditResource). It must never touch the new-pricing workspace pool
+        // credit state machine or create any Metronome alert.
       }
     } else {
       const refreshedConfig =
@@ -436,14 +424,6 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
           });
           if (clearResult.isErr()) {
             return clearResult;
-          }
-          // Note: clearing the Metronome AWU PAYG cap alert lives on the
-          // "Manage Credit Usage Configuration" plugin now.
-          const workspaceResource = await WorkspaceResource.fetchById(
-            workspace.sId
-          );
-          if (workspaceResource) {
-            await dispatchPaygDisabled({ workspace: workspaceResource });
           }
         }
       }

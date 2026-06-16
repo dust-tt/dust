@@ -21,6 +21,8 @@ on:
         options:
           - front
           - front-edge
+          - marketing
+          - marketing-edge
           - connectors
           - core
           - front-sse
@@ -29,6 +31,7 @@ on:
           - viz
           - dante
           - egress-proxy
+          - sparkle-storybook
       check_deployment_blocked:
         description: "Check #deployment locks or force deploy"
         required: true
@@ -61,7 +64,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: "deploy_${{ inputs.component }}${{ inputs.component == 'front-edge' && format('_{0}', github.run_id) || '' }}"
+  group: "deploy_${{ inputs.component }}${{ (inputs.component == 'front-edge' || inputs.component == 'marketing-edge') && format('_{0}', github.run_id) || '' }}"
   cancel-in-progress: false
 
 jobs:
@@ -77,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check if deployment is from main branch
-        if: ${{ github.ref != 'refs/heads/main' && inputs.component != 'front-edge' }}
+        if: ${{ github.ref != 'refs/heads/main' && inputs.component != 'front-edge' && inputs.component != 'marketing-edge' }}
         run: |
           echo "Error: Deployments for ${{ inputs.component }} are only allowed from the main branch"
           exit 1
@@ -218,8 +221,6 @@ jobs:
         build,
         deploy-app,
         deploy-poke,
-        deploy-app-bleeding-edge,
-        deploy-poke-bleeding-edge,
         ensure-sandbox-images,
       ]
     if: ${{ !failure() && !cancelled() && (needs.ensure-sandbox-images.result == 'success' || needs.ensure-sandbox-images.result == 'skipped') }}
@@ -330,28 +331,6 @@ jobs:
     with:
       app: "poke"
       env: ${{ inputs.component == 'front-edge' && 'edge' || 'prod' }}
-      region: "us"
-      thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
-    secrets: inherit
-
-  deploy-app-bleeding-edge:
-    if: inputs.component == 'front' && inputs.deploy_spa_app
-    needs: [notify-start]
-    uses: ./.github/workflows/deploy-spa.yaml
-    with:
-      app: "app"
-      env: "bleeding-edge"
-      region: "us"
-      thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
-    secrets: inherit
-
-  deploy-poke-bleeding-edge:
-    if: inputs.component == 'front' && inputs.deploy_spa_poke
-    needs: [notify-start]
-    uses: ./.github/workflows/deploy-spa.yaml
-    with:
-      app: "poke"
-      env: "bleeding-edge"
       region: "us"
       thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
     secrets: inherit

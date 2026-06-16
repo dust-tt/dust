@@ -9,9 +9,9 @@ import {
   Button,
   Card,
   CardActionButton,
-  PlusIcon,
-  SparklesIcon,
-  XMarkIcon,
+  Plus,
+  Stars02,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -31,7 +31,7 @@ function SuggestedSkillCard({
   const router = useAppRouter();
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
   const [isAddingSkill, setIsAddingSkill] = useState(false);
-  const SkillAvatar = getSkillAvatarIcon(skill.icon);
+  const SkillAvatar = getSkillAvatarIcon(skill);
   const updateSkillEditors = useUpdateSkillEditors({
     owner,
     skillId: skill.sId,
@@ -64,7 +64,7 @@ function SuggestedSkillCard({
         action={
           <CardActionButton
             size="icon"
-            icon={XMarkIcon}
+            icon={XClose}
             onClick={(e) => {
               e.stopPropagation();
               setIsArchiveDialogOpen(true);
@@ -86,7 +86,7 @@ function SuggestedSkillCard({
             <Button
               size="xs"
               variant="outline"
-              icon={PlusIcon}
+              icon={Plus}
               label="Add skill"
               isLoading={isAddingSkill}
               onClick={(e) => {
@@ -124,7 +124,7 @@ export function SuggestedSkillsSection({
     <div className="mt-6 flex flex-col gap-3 pb-6">
       <h4 className="heading-sm flex items-center gap-1.5 text-foreground dark:text-foreground-night">
         Suggested skills
-        <SparklesIcon className="h-4 w-4" />
+        <Stars02 className="h-4 w-4" />
       </h4>
       <div className="flex gap-2 overflow-x-auto">
         {skills.map((skill) => (

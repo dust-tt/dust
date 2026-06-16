@@ -1,7 +1,7 @@
-import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandSkillItems";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
+  Button,
   cn,
+  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -29,28 +29,14 @@ const DEFAULT_EMPTY_MESSAGE = "No commands found";
 
 const DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME = "max-h-96";
 
-interface ScrollFadeState {
-  hasContentAbove: boolean;
-  hasContentBelow: boolean;
-}
-
-const EMPTY_SCROLL_FADE_STATE: ScrollFadeState = {
-  hasContentAbove: false,
-  hasContentBelow: false,
-};
-
 export interface SlashCommand {
   action: string;
-  data?: {
-    skill?: SlashCommandSkillSuggestion;
-    tool?: {
-      icon: string | null;
-      id: string;
-      name: string;
-      view: MCPServerViewType;
-    };
-  };
+  // Command-specific payload, opaque to the dropdown. Consumers narrow it back with type guards
+  // (e.g. isSkillSlashCommand) when handling selection or details.
+  data?: unknown;
   description?: string;
+  // Whether the item exposes a details affordance (the "…" button) when onItemDetails is provided.
+  hasDetails?: boolean;
   icon: React.ComponentType<any>;
   id: string;
   label: string;
@@ -67,7 +53,7 @@ export interface SlashCommandDropdownProps
   header?: string;
   listMaxHeightClassName?: `max-h-${string}`;
   onClose?: () => void;
-  showScrollFade?: boolean;
+  onItemDetails?: (item: SlashCommand) => void;
   size?: "default" | "wide";
 }
 
@@ -88,19 +74,13 @@ export const SlashCommandDropdown = forwardRef<
       header,
       listMaxHeightClassName = DEFAULT_LIST_MAX_HEIGHT_CLASS_NAME,
       onClose,
-      showScrollFade = false,
+      onItemDetails,
       size = "default",
     },
     ref
   ) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
-    const [scrollFadeState, setScrollFadeState] = useState<ScrollFadeState>(
-      EMPTY_SCROLL_FADE_STATE
-    );
-    const itemCount = items.length;
     const listRef = useRef<HTMLDivElement>(null);
-    const topScrollSentinelRef = useRef<HTMLDivElement>(null);
-    const bottomScrollSentinelRef = useRef<HTMLDivElement>(null);
     const [virtualTriggerStyle, setVirtualTriggerStyle] =
       useState<React.CSSProperties>({});
 
@@ -150,56 +130,6 @@ export const SlashCommandDropdown = forwardRef<
       }),
       [selectItem, selectedIndex, items.length]
     );
-
-    useEffect(() => {
-      const list = listRef.current;
-      const topScrollSentinel = topScrollSentinelRef.current;
-      const bottomScrollSentinel = bottomScrollSentinelRef.current;
-
-      if (
-        !showScrollFade ||
-        itemCount === 0 ||
-        !list ||
-        !topScrollSentinel ||
-        !bottomScrollSentinel ||
-        typeof IntersectionObserver === "undefined"
-      ) {
-        setScrollFadeState((previousState) =>
-          previousState.hasContentAbove || previousState.hasContentBelow
-            ? EMPTY_SCROLL_FADE_STATE
-            : previousState
-        );
-        return;
-      }
-
-      const observer = new IntersectionObserver(
-        (entries) => {
-          setScrollFadeState((previousState) => {
-            const nextState = { ...previousState };
-
-            for (const entry of entries) {
-              if (entry.target === topScrollSentinel) {
-                nextState.hasContentAbove = !entry.isIntersecting;
-              } else if (entry.target === bottomScrollSentinel) {
-                nextState.hasContentBelow = !entry.isIntersecting;
-              }
-            }
-
-            return previousState.hasContentAbove ===
-              nextState.hasContentAbove &&
-              previousState.hasContentBelow === nextState.hasContentBelow
-              ? previousState
-              : nextState;
-          });
-        },
-        { root: list }
-      );
-
-      observer.observe(topScrollSentinel);
-      observer.observe(bottomScrollSentinel);
-
-      return () => observer.disconnect();
-    }, [itemCount, showScrollFade]);
 
     // Reset selected index when items change.
     // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -265,94 +195,82 @@ export const SlashCommandDropdown = forwardRef<
               {emptyMessage}
             </div>
           ) : (
-            <div className="relative">
-              <div
-                ref={listRef}
-                className={cn("overflow-y-auto", listMaxHeightClassName)}
-              >
-                <div className="relative">
-                  <div
-                    ref={topScrollSentinelRef}
-                    className="pointer-events-none absolute left-0 top-0 h-px w-px"
-                    aria-hidden
+            <div ref={listRef} className={listMaxHeightClassName}>
+              {items.map((item, index) => {
+                const sectionLabel =
+                  item.sectionLabel &&
+                  items[index - 1]?.sectionLabel !== item.sectionLabel
+                    ? item.sectionLabel
+                    : undefined;
+                const canShowDetails = !!onItemDetails && !!item.hasDetails;
+                const menuItem = (
+                  <DropdownMenuItem
+                    icon={item.icon}
+                    itemId={item.id}
+                    label={item.label}
+                    description={item.description}
+                    truncateText
+                    endComponent={
+                      canShowDetails ? (
+                        <Button
+                          icon={DotsHorizontal}
+                          variant="outline"
+                          size="mini"
+                          className={cn(
+                            "opacity-0 group-focus-within:opacity-100",
+                            index === selectedIndex && "opacity-100"
+                          )}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            onItemDetails?.(item);
+                          }}
+                        />
+                      ) : undefined
+                    }
+                    onClick={() => selectItem(index)}
+                    // onPointerMove only fires on actual pointer movement
+                    // (not when items scroll under a stationary cursor).
+                    // preventDefault stops Radix from setting
+                    // data-highlighted, avoiding a double highlight.
+                    onPointerMove={(e) => {
+                      e.preventDefault();
+                      setSelectedIndex(index);
+                    }}
+                    onPointerLeave={(e) => e.preventDefault()}
+                    className={cn(
+                      "group",
+                      index === selectedIndex &&
+                        "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
+                    )}
                   />
-                  <div
-                    ref={bottomScrollSentinelRef}
-                    className="pointer-events-none absolute bottom-0 left-0 h-px w-px"
-                    aria-hidden
-                  />
-                  {items.map((item, index) => {
-                    const sectionLabel =
-                      item.sectionLabel &&
-                      items[index - 1]?.sectionLabel !== item.sectionLabel
-                        ? item.sectionLabel
-                        : undefined;
-                    const menuItem = (
-                      <DropdownMenuItem
-                        icon={item.icon}
-                        itemId={item.id}
-                        label={item.label}
-                        description={item.description}
-                        truncateText
-                        onClick={() => selectItem(index)}
-                        onMouseEnter={() => setSelectedIndex(index)}
-                        className={
-                          index === selectedIndex
-                            ? "bg-muted-background dark:bg-muted-night [transition-duration:0ms]"
-                            : ""
-                        }
-                      />
-                    );
+                );
 
-                    // Wrap with DropdownTooltipTrigger if command has tooltip property.
-                    const itemContent = item.tooltip ? (
-                      <DropdownTooltipTrigger
-                        description={item.tooltip.description}
-                        media={item.tooltip.media}
-                        side="right"
-                        sideOffset={8}
-                      >
-                        {menuItem}
-                      </DropdownTooltipTrigger>
-                    ) : (
-                      menuItem
-                    );
+                // Wrap with DropdownTooltipTrigger if command has tooltip property.
+                const itemContent = item.tooltip ? (
+                  <DropdownTooltipTrigger
+                    description={item.tooltip.description}
+                    media={item.tooltip.media}
+                    side="right"
+                    sideOffset={8}
+                  >
+                    {menuItem}
+                  </DropdownTooltipTrigger>
+                ) : (
+                  menuItem
+                );
 
-                    return (
-                      <Fragment key={item.id}>
-                        {sectionLabel ? (
-                          <div className="px-3 py-2 text-xs font-semibold text-muted-foreground dark:text-muted-foreground-night">
-                            {sectionLabel}
-                          </div>
-                        ) : null}
-                        {itemContent}
-                      </Fragment>
-                    );
-                  })}
-                </div>
-              </div>
-              <div
-                className={cn(
-                  "pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-t",
-                  "from-transparent via-background/65 to-background opacity-0 transition-opacity duration-200",
-                  "dark:via-muted-background-night/65 dark:to-muted-background-night",
-                  showScrollFade &&
-                    scrollFadeState.hasContentAbove &&
-                    "opacity-100"
-                )}
-                aria-hidden
-              />
-              <div
-                className={cn(
-                  "pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-b",
-                  "from-transparent via-background/65 to-background opacity-0 transition-opacity duration-200",
-                  "dark:via-muted-background-night/65 dark:to-muted-background-night",
-                  showScrollFade &&
-                    scrollFadeState.hasContentBelow &&
-                    "opacity-100"
-                )}
-                aria-hidden
-              />
+                return (
+                  <Fragment key={item.id}>
+                    {sectionLabel ? (
+                      <div className="px-3 py-2 text-xs font-semibold text-muted-foreground dark:text-muted-foreground-night">
+                        {sectionLabel}
+                      </div>
+                    ) : null}
+                    {itemContent}
+                  </Fragment>
+                );
+              })}
             </div>
           )}
         </DropdownMenuContent>

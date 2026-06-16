@@ -11,6 +11,9 @@ import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
+// Must match the deployment's terminationGracePeriodSeconds minus 10s buffer.
+const SHUTDOWN_GRACE_TIME_MS = 70 * 1_000;
+
 export async function runRemoteToolsSyncWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const worker = await Worker.create({
@@ -23,6 +26,7 @@ export async function runRemoteToolsSyncWorker() {
     connection,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
     namespace,
+    shutdownGraceTime: SHUTDOWN_GRACE_TIME_MS,
     interceptors: {
       activity: [
         (ctx: Context) => {

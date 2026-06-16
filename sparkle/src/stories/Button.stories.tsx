@@ -6,18 +6,36 @@ import {
   BUTTON_VARIANTS,
 } from "@sparkle/components/Button";
 
-import { Button, PlusIcon, RobotIcon, Separator } from "../index_with_tw_base";
+import { Button, Plus, Robot, Separator } from "../index_with_tw_base";
 
 const ICONS = {
   none: null,
-  PlusIcon: PlusIcon,
-  RobotIcon: RobotIcon,
+  Plus: Plus,
+  Robot: Robot,
 } as const;
 
 const meta = {
-  title: "Primitives/Button",
+  title: "Actions/Button",
   component: Button,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `Buttons let users trigger an action or event — submitting a form, opening a dialog, or confirming a choice. Sparkle buttons come in several visual **variants** and **sizes**, and support icons, loading and pulsing states, an inline counter, and a dropdown-chevron affordance (**isSelect**).
+
+**When to use**
+- To perform an action on the current page (save, delete, open a menu).
+- As the primary call-to-action in a form, dialog, or empty state.
+
+**Guidelines**
+- Use a single **highlight** (primary) button per view; use **outline** or **ghost** for secondary actions.
+- Write concise, verb-first labels ("Save changes", not "OK").
+- The **mini** / icon-only sizes require an **icon** and have no label — always pair them with a tooltip.
+- Set **isLoading** during async work to communicate progress and prevent double submits.
+- For navigation between pages, prefer a link styled as a button over an \`onClick\` handler.`,
+      },
+    },
+  },
   argTypes: {
     variant: {
       description: "The visual style variant of the button",
@@ -83,7 +101,7 @@ const meta = {
   },
   render: (args) => {
     if (args.size === "mini" && !args.icon) {
-      args.icon = ICONS.PlusIcon;
+      args.icon = ICONS.Plus;
     }
     return <Button {...args} />;
   },
@@ -109,7 +127,7 @@ export const ExampleButton: Story = {
 };
 
 export const MiniButton: Story = {
-  render: () => <Button size="icon" icon={PlusIcon} />,
+  render: () => <Button size="icon" icon={Plus} />,
 };
 
 const ButtonBySize = ({
@@ -132,12 +150,7 @@ const ButtonBySize = ({
           <div className="s-flex s-items-center s-gap-4">
             <Button size={size} variant={variant} label="Button" />
             <Button size={size} variant={variant} label="Button" isLoading />
-            <Button
-              size={size}
-              variant={variant}
-              icon={PlusIcon}
-              label="Button"
-            />
+            <Button size={size} variant={variant} icon={Plus} label="Button" />
             <Button size={size} variant={variant} label="Button" disabled />
           </div>
         </div>

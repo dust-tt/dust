@@ -1,5 +1,5 @@
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { Button, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, XClose } from "@dust-tt/sparkle";
 import type React from "react";
 
 interface InteractiveContentHeaderProps {
@@ -12,14 +12,14 @@ export function InteractiveContentHeader({
   onClose,
 }: InteractiveContentHeaderProps) {
   return (
-    <AppLayoutTitle className="bg-gray-50 @container dark:bg-gray-900">
+    <AppLayoutTitle className="bg-panel-background dark:bg-panel-background-night @container">
       <div className="flex h-full items-center">
         {children}
         {onClose && (
           <Button
             variant="ghost"
             onClick={onClose}
-            icon={XMarkIcon}
+            icon={XClose}
             className="text-element-600 hover:text-element-900 ml-auto"
           />
         )}

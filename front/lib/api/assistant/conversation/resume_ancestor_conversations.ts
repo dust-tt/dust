@@ -1,9 +1,9 @@
+import { MAX_CONVERSATION_DEPTH } from "@app/lib/api/assistant/conversation/constants";
 import { retryBlockedActions } from "@app/lib/api/assistant/conversation/retry_blocked_actions";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import { MAX_CONVERSATION_DEPTH } from "@app/pages/api/v1/w/[wId]/assistant/conversations";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 

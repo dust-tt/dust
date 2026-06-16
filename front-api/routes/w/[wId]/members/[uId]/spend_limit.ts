@@ -1,10 +1,10 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import {
-  type GetUserSpendLimitResponse,
+  type GetUserSpendLimitResponseBody,
   getUserSpendLimit,
   MAX_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_USER_SPEND_LIMIT_AWU_CREDITS,
-  type SetUserSpendLimitResponse,
+  type PutUserSpendLimitResponseBody,
   setUserSpendLimit,
   type UserSpendLimitError,
 } from "@app/lib/api/users/spend_limit";
@@ -31,10 +31,6 @@ const UpdateUserSpendLimitBodySchema = z.discriminatedUnion("kind", [
 const ParamsSchema = z.object({
   uId: z.string(),
 });
-
-export type GetUserSpendLimitResponseBody = GetUserSpendLimitResponse;
-
-export type PutUserSpendLimitResponseBody = SetUserSpendLimitResponse;
 
 function spendLimitErrorToApiError(
   error: UserSpendLimitError
@@ -72,6 +68,7 @@ function spendLimitErrorToApiError(
 // Mounted at /api/w/:wId/members/:uId/spend_limit.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

@@ -152,11 +152,16 @@ export async function listHandler(
       assertNever(listScope);
   }
 
+  const listRes = await dustFs.list(scopedPrefix, { includeProcessed: true });
+  if (listRes.isErr()) {
+    return new Err(new MCPError("Failed to list files.", { tracked: true }));
+  }
+
   // Enrich, so we can expose ids for interactive content files.
   const entries = await enrichListWithFileResourceIds(
     extra.auth,
     dustFs,
-    await dustFs.list(scopedPrefix, { includeProcessed: true })
+    listRes.value
   );
 
   const [dirs, files] = partition(entries, (e) => e.isDirectory);

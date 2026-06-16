@@ -1,5 +1,10 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import type {
+  GetProviderCredentialsResponseBody,
+  ProviderCredentialBody,
+  ProviderCredentialResponseBody,
+} from "@app/lib/resources/provider_credential_resource";
 import {
   emptyArray,
   getErrorFromResponse,
@@ -7,11 +12,6 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import { workspaceAuthContextUrl } from "@app/lib/swr/workspaces";
-import type { GetProviderCredentialsResponseBody } from "@app/pages/api/w/[wId]/provider_credentials";
-import type {
-  ProviderCredentialBody,
-  ProviderCredentialResponseBody,
-} from "@app/pages/api/w/[wId]/provider_credentials/[providerId]";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import type { ProviderCredentialType } from "@app/types/provider_credential";
 import { normalizeError } from "@app/types/shared/utils/error_utils";

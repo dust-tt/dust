@@ -1,8 +1,9 @@
+import type { GetRunBlockResponseBody } from "@app/lib/api/apps";
 import config from "@app/lib/api/config";
 import { AppResource } from "@app/lib/resources/app_resource";
 import logger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { BlockType, RunType } from "@app/types/run";
+import type { BlockType } from "@app/types/run";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -17,14 +18,11 @@ const ParamsSchema = z.object({
   name: z.string(),
 });
 
-export type GetRunBlockResponseBody = {
-  run: RunType | null;
-};
-
 // Mounted under
 // /api/w/:wId/spaces/:spaceId/apps/:aId/runs/:runId/blocks/:type/:name.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

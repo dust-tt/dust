@@ -2,6 +2,8 @@ const STATIC_ALLOWED_ORIGINS = [
   // Front edge.
   "https://front-edge.dust.tt",
   "https://eu.front-edge.dust.tt",
+  // Marketing edge.
+  "https://marketing-edge.dust.tt",
   // Front extension.
   "https://front-ext.dust.tt",
   // Chrome extension.
@@ -14,13 +16,13 @@ const STATIC_ALLOWED_ORIGINS = [
   "https://office-addins.dust.tt",
   // Poke SPA (backoffice).
   "https://poke.dust.tt",
-  "https://poke.bleeding-edge.dust.tt",
   // Main app (front-spa).
   "https://app.dust.tt",
-  "https://bleeding-edge.dust.tt",
   // Next.js server (landing page, OAuth, API routes).
   "https://dust.tt",
   "https://eu.dust.tt",
+  // Marketing edge (standalone marketing Next.js app).
+  "https://marketing-edge.dust.tt",
 ] as const;
 
 const ALLOWED_ORIGIN_PATTERNS = [
@@ -44,11 +46,16 @@ export function isAllowedOrigin(origin: string): boolean {
 export const ALLOWED_HEADERS = [
   "authorization",
   "content-type",
+  "mcp-protocol-version",
+  "mcp-session-id",
   "x-commit-hash",
   "x-dust-extension-version",
   "x-build-date",
   "x-hackerone-research",
   "x-request-origin",
+  // Marketing site (academy quiz/progress endpoints).
+  "x-academy-browser-id",
+  "x-csrf-token",
   // Datadog RUM tracing headers (injected automatically by the browser SDK).
   "traceparent",
   "tracestate",

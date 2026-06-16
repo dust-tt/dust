@@ -1,15 +1,14 @@
+import { BillingPeriodSwitch } from "@app/components/pages/onboarding/SubscriptionPlans";
 import { SubscriptionPlanCards } from "@app/components/plans/SubscriptionPlanCards";
-import {
-  useCancelMetronomeContract,
-  useReactivateMetronomeContract,
-} from "@app/hooks/useMetronomeContractLifecycleAction";
+import { useSubscriptionContext } from "@app/components/workspace/billing/SubscriptionContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
+import type { PatchSubscriptionRequestBody } from "@app/lib/api/subscription";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import {
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
   isProPlan,
   isUpgraded,
   isWhitelistedBusinessPlan,
@@ -17,20 +16,17 @@ import {
 import { useAppRouter } from "@app/lib/platform";
 import {
   useMetronomeContract,
-  useMetronomeInvoice,
+  type useMetronomeInvoice,
   useWorkspaceSeatsCount,
 } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
-import type { BillingPeriod, SubscriptionType } from "@app/types/plan";
+import type { BillingPeriod } from "@app/types/plan";
 import { isSubscriptionMetronomeBilled } from "@app/types/plan";
-import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
-  ButtonsSwitch,
-  ButtonsSwitchList,
-  CardIcon,
   Chip,
+  ContentMessage,
+  CreditCard01,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -54,57 +50,173 @@ function formatDate(msEpoch: number): string {
   });
 }
 
-interface CancelMetronomeSubscriptionDialogProps {
-  show: boolean;
-  onClose: () => void;
-  onValidate: () => Promise<void>;
-  isSaving: boolean;
-  periodEndLabel: string | null;
-}
+export function CancelMetronomeSubscriptionDialog() {
+  const {
+    periodEndLabel,
+    isCancellingSubscription,
+    cancelSubscription,
+    showCancelDialog,
+    setShowCancelDialog,
+  } = useSubscriptionContext();
+  // "July 12, 2026" → "July 12"
+  const shortDate = periodEndLabel ? periodEndLabel.split(",")[0] : null;
 
-export function CancelMetronomeSubscriptionDialog({
-  show,
-  onClose,
-  onValidate,
-  isSaving,
-  periodEndLabel,
-}: CancelMetronomeSubscriptionDialogProps) {
   return (
     <Dialog
-      open={show}
+      open={showCancelDialog}
       onOpenChange={(open) => {
         if (!open) {
-          onClose();
+          setShowCancelDialog(false);
         }
       }}
     >
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>Cancel subscription</DialogTitle>
+          <DialogTitle>Cancel your subscription</DialogTitle>
           <DialogDescription>
-            {periodEndLabel
-              ? `Your subscription will end on ${periodEndLabel}. Until then you keep full access.`
-              : "Your subscription will end at the end of the current billing period. Until then you keep full access."}
+            {periodEndLabel ? (
+              <>
+                Your plan will remain active until{" "}
+                <span className="font-bold">{periodEndLabel}</span>.
+              </>
+            ) : (
+              "Your plan will remain active until the end of the current billing period."
+            )}
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
-          {isSaving ? (
+          {isCancellingSubscription ? (
             <div className="flex justify-center py-8">
               <Spinner variant="dark" size="md" />
             </div>
           ) : (
-            <div className="font-bold">Are you sure you want to proceed?</div>
+            <div className="flex flex-col gap-4">
+              {periodEndLabel && (
+                <ContentMessage size="sm" variant="highlight">
+                  You can resume your subscription any time before{" "}
+                  {periodEndLabel} with no interruption to your plan.
+                </ContentMessage>
+              )}
+              <div className="flex flex-col gap-3">
+                <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                  What happens next
+                </div>
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                      {shortDate
+                        ? `Until ${shortDate}`
+                        : "Until your plan ends"}
+                    </div>
+                    <div className="text-sm text-muted-foreground ark:text-muted-foreground-night">
+                      Everything works exactly as it does today. You keep full
+                      access to your workspace.
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                      {shortDate
+                        ? `After ${shortDate}`
+                        : "After your plan ends"}
+                    </div>
+                    <div className="text-sm text-muted-foreground ark:text-muted-foreground-night">
+                      Your workspace becomes read-only. Members keep their
+                      accounts and can still sign in to view content.
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                      Your data
+                    </div>
+                    <div className="text-sm text-muted-foreground ark:text-muted-foreground-night">
+                      Agents, conversations, and connected data sources are
+                      preserved for 30 days. Reactivate any time during that
+                      window.
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                      Invoices
+                    </div>
+                    <div className="text-sm text-muted-foreground ark:text-muted-foreground-night">
+                      Past invoices remain available indefinitely from this
+                      page.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Keep subscription",
+            label: "Keep my subscription",
             variant: "outline",
           }}
           rightButtonProps={{
-            label: "Cancel subscription",
+            label: "Cancel Subscription",
             variant: "warning",
-            onClick: onValidate,
+            onClick: cancelSubscription,
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function ReactivateMetronomeSubscriptionDialog() {
+  const {
+    subscriptionEndLabel,
+    isReactivatingSubscription,
+    reactivateSubscription,
+    showReactivateDialog,
+    setShowReactivateDialog,
+  } = useSubscriptionContext();
+  return (
+    <Dialog
+      open={showReactivateDialog}
+      onOpenChange={(open) => {
+        if (!open) {
+          setShowReactivateDialog(false);
+        }
+      }}
+    >
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>Resume your subscription</DialogTitle>
+          <DialogDescription>
+            {subscriptionEndLabel ? (
+              <>
+                Your plan is scheduled to end on{" "}
+                <span className="font-bold">{subscriptionEndLabel}</span>.
+                Resuming now keeps everything active without interruption.
+              </>
+            ) : (
+              "Resuming your subscription will keep everything active without interruption."
+            )}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogContainer>
+          {isReactivatingSubscription ? (
+            <div className="flex justify-center py-8">
+              <Spinner variant="dark" size="md" />
+            </div>
+          ) : (
+            <ContentMessage size="sm" variant="highlight">
+              Your billing cycle will continue as normal and you will not be
+              charged again until the next billing date.
+            </ContentMessage>
+          )}
+        </DialogContainer>
+        <DialogFooter
+          leftButtonProps={{
+            label: "Cancel",
+            variant: "outline",
+          }}
+          rightButtonProps={{
+            label: "Resume subscription",
+            variant: "highlight",
+            onClick: reactivateSubscription,
           }}
         />
       </DialogContent>
@@ -168,23 +280,25 @@ function UpgradeToBusinessDialog({
   );
 }
 
-interface MetronomeSubscriptionPanelProps {
-  owner: LightWorkspaceType;
-  subscription: SubscriptionType;
-}
-
-export function MetronomeSubscriptionPanel({
-  owner,
-  subscription,
-}: MetronomeSubscriptionPanelProps) {
+export function MetronomeSubscriptionPanel() {
   const router = useAppRouter();
   const sendNotification = useSendNotification();
 
+  const {
+    subscription,
+    owner,
+    setShowCancelDialog,
+    invoice,
+    isMetronomeInvoiceLoading,
+    isCancellingSubscription,
+    isReactivatingSubscription,
+    reactivateSubscription,
+  } = useSubscriptionContext();
+
   const isMetronomeBilled = isSubscriptionMetronomeBilled(subscription);
-  const isEnterprise = isEntreprisePlanPrefix(subscription.plan.code);
+  const isEnterprise = isEnterprisePlanPrefix(subscription.plan.code);
 
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
-  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showUpgradeDialog, setShowUpgradeDialog] = useState(false);
 
   const { seatsCount, isSeatsCountLoading } = useWorkspaceSeatsCount({
@@ -195,18 +309,6 @@ export function MetronomeSubscriptionPanel({
     workspaceId: owner.sId,
     disabled: !isMetronomeBilled,
   });
-  const { invoice, isMetronomeInvoiceLoading } = useMetronomeInvoice({
-    workspaceId: owner.sId,
-    disabled: !isMetronomeBilled,
-  });
-  const { cancelMetronomeContract, isCancellingMetronomeContract } =
-    useCancelMetronomeContract({
-      workspaceId: owner.sId,
-    });
-  const { reactivateMetronomeContract, isReactivatingMetronomeContract } =
-    useReactivateMetronomeContract({
-      workspaceId: owner.sId,
-    });
 
   const { submit: handleSubscribePlan, isSubmitting: isSubscribingPlan } =
     useSubmitFunction(async () => {
@@ -214,31 +316,6 @@ export function MetronomeSubscriptionPanel({
         `/w/${owner.sId}/subscription/checkout?billingPeriod=${billingPeriod}`
       );
     });
-
-  const { submit: cancelSubscription, isSubmitting: isCancelling } =
-    useSubmitFunction(async () => {
-      try {
-        const success = await cancelMetronomeContract();
-        if (success) {
-          router.reload();
-        }
-      } finally {
-        setShowCancelDialog(false);
-      }
-    });
-
-  const { submit: reactivateSubscription, isSubmitting: isReactivating } =
-    useSubmitFunction(async () => {
-      const success = await reactivateMetronomeContract();
-      if (success) {
-        router.reload();
-      }
-    });
-
-  const isCancellingSubscription =
-    isCancelling || isCancellingMetronomeContract;
-  const isReactivatingSubscription =
-    isReactivating || isReactivatingMetronomeContract;
 
   const {
     submit: handleUpgradeToBusiness,
@@ -283,18 +360,11 @@ export function MetronomeSubscriptionPanel({
             <Page.H variant="h5">Choose a plan</Page.H>
             <Page.P>Pick a plan that best suits your team.</Page.P>
           </div>
-          <ButtonsSwitchList
+          <BillingPeriodSwitch
             defaultValue={billingPeriod}
             size="xs"
-            onValueChange={(v) => {
-              if (v === "monthly" || v === "yearly") {
-                setBillingPeriod(v);
-              }
-            }}
-          >
-            <ButtonsSwitch value="monthly" label="Monthly billing" />
-            <ButtonsSwitch value="yearly" label="Yearly billing" />
-          </ButtonsSwitchList>
+            onValueChange={setBillingPeriod}
+          />
         </div>
         <div className="pt-4">
           <SubscriptionPlanCards
@@ -327,13 +397,7 @@ export function MetronomeSubscriptionPanel({
 
   return (
     <>
-      <CancelMetronomeSubscriptionDialog
-        show={showCancelDialog}
-        onClose={() => setShowCancelDialog(false)}
-        onValidate={cancelSubscription}
-        isSaving={isCancellingSubscription}
-        periodEndLabel={periodEndLabel}
-      />
+      <CancelMetronomeSubscriptionDialog />
       <UpgradeToBusinessDialog
         show={showUpgradeDialog}
         onClose={() => setShowUpgradeDialog(false)}
@@ -423,7 +487,7 @@ export function MetronomeSubscriptionPanel({
           )}
           <div className="my-5">
             <Button
-              icon={CardIcon}
+              icon={CreditCard01}
               label="Your billing dashboard on Stripe"
               variant="ghost"
               onClick={withTracking(

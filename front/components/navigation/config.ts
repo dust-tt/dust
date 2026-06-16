@@ -1,28 +1,32 @@
+import { computeIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { AppType } from "@app/types/app";
+import { hasPermission } from "@app/types/permissions";
 import { isCreditPricedPlan, type SubscriptionType } from "@app/types/plan";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
-import { isAdmin, isBuilder } from "@app/types/user";
+import { isAdmin, isBuilder, isOnlyBusinessAdmin } from "@app/types/user";
 import {
-  ActionPieChartIcon,
-  BarChartIcon,
-  BoltIcon,
-  BracesIcon,
-  BrainIcon,
-  CardIcon,
-  ChatBubbleLeftRightIcon,
-  Cog6ToothIcon,
-  CommandLineIcon,
-  CompanyIcon,
-  DocumentTextIcon,
-  FolderOpenIcon,
-  GlobeAltIcon,
-  LockIcon,
-  PlanetIcon,
-  ShapesIcon,
-  SparklesIcon,
-  UserIcon,
+  BarChart01,
+  Brackets,
+  Brain,
+  Building04,
+  CreditCard01,
+  File04,
+  Fingerprint04,
+  FolderOpen,
+  Globe01,
+  IntersectDust,
+  Lock01,
+  Palette,
+  PieChart01,
+  Planet,
+  Settings01,
+  Shapes,
+  Stars02,
+  Terminal,
+  Users01,
+  Zap,
 } from "@dust-tt/sparkle";
 
 /**
@@ -80,8 +84,10 @@ export type SubNavigationAdminId =
   | "subscription"
   | "billing"
   | "workspace"
+  | "workspace_branding"
   | "model_providers"
   | "members"
+  | "identity_and_provisioning"
   | "providers"
   | "api_keys"
   | "dev_secrets"
@@ -93,7 +99,9 @@ export type SubNavigationAdminId =
 
 export const ADMIN_ROUTE_PATTERNS: Record<SubNavigationAdminId, string[]> = {
   members: ["/w/[wId]/members"],
+  identity_and_provisioning: ["/w/[wId]/identity-and-provisioning"],
   workspace: ["/w/[wId]/workspace"],
+  workspace_branding: ["/w/[wId]/brand"],
   model_providers: ["/w/[wId]/model-providers"],
   analytics: ["/w/[wId]/analytics"],
   subscription: ["/w/[wId]/subscription"],
@@ -125,11 +133,13 @@ export type AppLayoutNavigation = {
   icon: React.ComponentType<{ className?: string }>;
   href?: string;
   target?: string;
-  hideLabel?: boolean;
   sizing?: "hug" | "expand";
   hasSeparator?: boolean;
   current: boolean;
   featureFlag?: WhitelistableFeature;
+  // When true, the item is shown but greyed out and not navigable (the current
+  // role lacks the permission to access it).
+  disabled?: boolean;
 };
 
 export type TabAppLayoutNavigation = {
@@ -142,7 +152,6 @@ export type TabAppLayoutNavigation = {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   href?: string;
-  hideLabel?: boolean;
   sizing?: "hug" | "expand";
   hasSeparator?: boolean;
   current?: never;
@@ -159,7 +168,6 @@ export type SidebarNavigation = {
     | "help"
     | "api";
   label: string | null;
-  variant: "primary" | "secondary";
   menus: AppLayoutNavigation[];
 };
 
@@ -173,7 +181,7 @@ export const getTopNavigationTabs = (
     id: "conversations",
     label: "Work",
     href: getConversationRoute(owner.sId),
-    icon: ChatBubbleLeftRightIcon,
+    icon: IntersectDust,
     sizing: "hug",
     isCurrent: (currentRoute) =>
       matchesRoutePattern(currentRoute, [
@@ -186,7 +194,7 @@ export const getTopNavigationTabs = (
   nav.push({
     id: "data_sources",
     label: "Spaces",
-    icon: PlanetIcon,
+    icon: Planet,
     href: `/w/${owner.sId}/spaces`,
     isCurrent: (currentRoute: string) =>
       currentRoute.startsWith("/w/[wId]/spaces") ||
@@ -195,16 +203,18 @@ export const getTopNavigationTabs = (
     ref: spaceMenuButtonRef,
   });
 
-  if (isAdmin(owner)) {
+  if (isAdmin(owner) || isOnlyBusinessAdmin(owner)) {
     nav.push({
       id: "settings",
       label: "Admin",
-      icon: Cog6ToothIcon,
+      icon: Settings01,
       href: `/w/${owner.sId}/members`,
       isCurrent: (currentRoute) =>
         matchesRoutePattern(currentRoute, [
           "/w/[wId]/members",
+          "/w/[wId]/identity-and-provisioning",
           "/w/[wId]/workspace",
+          "/w/[wId]/branding",
           "/w/[wId]/model-providers",
           "/w/[wId]/subscription",
           "/w/[wId]/billing",
@@ -228,7 +238,7 @@ export const getTopNavigationTabs = (
 export const subNavigationAdmin = ({
   owner,
   currentRoute,
-  featureFlags: _featureFlags,
+  featureFlags,
   subscription,
 }: {
   owner: WorkspaceType;
@@ -238,141 +248,184 @@ export const subNavigationAdmin = ({
 }): SidebarNavigation[] => {
   const nav: SidebarNavigation[] = [];
 
-  if (!isBuilder(owner)) {
+  // Admins and business admins see the admin sidebar; builders and members do
+  // not. Each item is then individually enabled/disabled based on permission.
+  if (!isAdmin(owner) && !isOnlyBusinessAdmin(owner)) {
     return nav;
   }
 
   const isCurrent = (id: SubNavigationAdminId): boolean =>
     matchesRoutePattern(currentRoute, ADMIN_ROUTE_PATTERNS[id]);
 
-  if (isAdmin(owner)) {
-    nav.push({
-      id: "workspace",
-      label: "Workspace",
-      variant: "primary",
-      menus: [
-        {
-          id: "members",
-          label: "People & Security",
-          icon: UserIcon,
-          href: `/w/${owner.sId}/members`,
-          current: isCurrent("members"),
-        },
-        {
-          id: "workspace",
-          label: "Workspace Settings",
-          icon: CompanyIcon,
-          href: `/w/${owner.sId}/workspace`,
-          current: isCurrent("workspace"),
-        },
-        ...(isCreditPricedPlan(subscription.plan)
-          ? [
-              {
-                id: "usage" as const,
-                label: "Usage",
-                icon: ActionPieChartIcon,
-                href: `/w/${owner.sId}/usage`,
-                current: isCurrent("usage"),
-              },
-            ]
-          : []),
-        {
-          id: "model_providers",
-          label: "Model Providers",
-          icon: BrainIcon,
-          href: `/w/${owner.sId}/model-providers`,
-          current: isCurrent("model_providers"),
-        },
-        {
-          id: "analytics",
-          label: "Analytics",
-          icon: BarChartIcon,
-          href: `/w/${owner.sId}/analytics`,
-          current: isCurrent("analytics"),
-        },
-        isCreditPricedPlan(subscription.plan)
-          ? {
-              id: "billing",
-              label: "Billing",
-              icon: CardIcon,
-              href: `/w/${owner.sId}/billing`,
-              current: isCurrent("billing"),
-            }
-          : {
-              id: "subscription",
-              label: "Subscription",
-              icon: CardIcon,
-              href: `/w/${owner.sId}/subscription`,
-              current: isCurrent("subscription"),
+  const hasWorkspaceAdminPermission = hasPermission(
+    owner.role,
+    "workspace:admin"
+  );
+
+  nav.push({
+    id: "workspace",
+    label: "Workspace",
+    menus: [
+      {
+        id: "members",
+        label: "People",
+        icon: Users01,
+        href: `/w/${owner.sId}/members`,
+        current: isCurrent("members"),
+        disabled: !hasPermission(owner.role, "workspace:manage_members"),
+      },
+      {
+        id: "identity_and_provisioning",
+        label: "Identity & Provisioning",
+        icon: Fingerprint04,
+        href: `/w/${owner.sId}/identity-and-provisioning`,
+        current: isCurrent("identity_and_provisioning"),
+        disabled: !hasWorkspaceAdminPermission,
+      },
+      {
+        id: "workspace",
+        label: "Workspace Settings",
+        icon: Building04,
+        href: `/w/${owner.sId}/workspace`,
+        current: isCurrent("workspace"),
+        disabled: !hasWorkspaceAdminPermission,
+      },
+      ...(subscription.plan.isBrandedFramesAllowed
+        ? [
+            {
+              id: "workspace_branding" as const,
+              label: "Branding",
+              icon: Palette,
+              href: `/w/${owner.sId}/branding`,
+              current: isCurrent("workspace_branding"),
+              disabled: !hasWorkspaceAdminPermission,
             },
-      ],
-    });
+          ]
+        : []),
+      ...(isCreditPricedPlan(subscription.plan) ||
+      featureFlags.includes("usage_page_read_only")
+        ? [
+            {
+              id: "usage" as const,
+              label: "Usage",
+              icon: PieChart01,
+              href: `/w/${owner.sId}/usage`,
+              current: isCurrent("usage"),
+              disabled: !hasWorkspaceAdminPermission,
+            },
+          ]
+        : []),
+      {
+        id: "model_providers",
+        label: "Model Providers",
+        icon: Brain,
+        href: `/w/${owner.sId}/model-providers`,
+        current: isCurrent("model_providers"),
+        disabled: !hasWorkspaceAdminPermission,
+      },
+      {
+        id: "analytics",
+        label: "Analytics",
+        icon: BarChart01,
+        href: `/w/${owner.sId}/analytics`,
+        current: isCurrent("analytics"),
+        disabled: !hasPermission(owner.role, "workspace:view_analytics"),
+      },
+      isCreditPricedPlan(subscription.plan)
+        ? {
+            id: "billing",
+            label: "Billing",
+            icon: CreditCard01,
+            href: `/w/${owner.sId}/billing`,
+            current: isCurrent("billing"),
+            disabled: !hasWorkspaceAdminPermission,
+          }
+        : {
+            id: "subscription",
+            label: "Subscription",
+            icon: CreditCard01,
+            href: `/w/${owner.sId}/subscription`,
+            current: isCurrent("subscription"),
+            disabled: !hasWorkspaceAdminPermission,
+          },
+    ],
+  });
 
-    nav.push({
-      id: "api",
-      label: "API & Programmatic",
-      variant: "primary",
-      menus: [
-        {
-          id: "api_keys",
-          label: "API Keys",
-          icon: LockIcon,
-          href: `/w/${owner.sId}/developers/api-keys`,
-          current: isCurrent("api_keys"),
-        },
-        ...(isCreditPricedPlan(subscription.plan)
-          ? []
-          : [
-              {
-                id: "credits_usage" as const,
-                label: "Programmatic Usage",
-                icon: BoltIcon,
-                href: `/w/${owner.sId}/developers/credits-usage`,
-                current: isCurrent("credits_usage"),
-              },
-            ]),
-      ],
-    });
+  nav.push({
+    id: "api",
+    label: "API & Programmatic",
+    menus: [
+      {
+        id: "api_keys",
+        label: "API Keys",
+        icon: Lock01,
+        href: `/w/${owner.sId}/developers/api-keys`,
+        current: isCurrent("api_keys"),
+        disabled: !hasWorkspaceAdminPermission,
+      },
+      ...(isCreditPricedPlan(subscription.plan)
+        ? []
+        : [
+            {
+              id: "credits_usage" as const,
+              label: "Programmatic Usage",
+              icon: Zap,
+              href: `/w/${owner.sId}/developers/credits-usage`,
+              current: isCurrent("credits_usage"),
+              disabled: !hasWorkspaceAdminPermission,
+            },
+          ]),
+    ],
+  });
 
-    nav.push({
-      id: "developers",
-      label: "Builder Tools",
-      variant: "primary",
-      menus: [
-        {
-          id: "providers",
-          label: "App Credentials",
-          icon: ShapesIcon,
-          href: `/w/${owner.sId}/developers/providers`,
-          current: isCurrent("providers"),
-          featureFlag: "legacy_dust_apps",
-        },
-        {
-          id: "dev_secrets",
-          label: "Secrets",
-          icon: BracesIcon,
-          href: `/w/${owner.sId}/developers/dev-secrets`,
-          current: isCurrent("dev_secrets"),
-        },
-        {
-          id: "sandbox",
-          label: "Computer",
-          icon: GlobeAltIcon,
-          href: `/w/${owner.sId}/developers/sandbox`,
-          current: isCurrent("sandbox"),
-          featureFlag: "sandbox_workspace_admin",
-        },
-        {
-          id: "self_improving_skills",
-          label: "Self-Improving Skills",
-          icon: SparklesIcon,
-          href: `/w/${owner.sId}/developers/self-improving-skills`,
-          current: isCurrent("self_improving_skills"),
-          featureFlag: "reinforcement_ui",
-        },
-      ],
-    });
-  }
+  nav.push({
+    id: "developers",
+    label: "Builder Tools",
+    menus: [
+      {
+        id: "providers",
+        label: "App Credentials",
+        icon: Shapes,
+        href: `/w/${owner.sId}/developers/providers`,
+        current: isCurrent("providers"),
+        featureFlag: "legacy_dust_apps",
+        disabled: !hasWorkspaceAdminPermission,
+      },
+      {
+        id: "dev_secrets",
+        label: "Secrets",
+        icon: Brackets,
+        href: `/w/${owner.sId}/developers/dev-secrets`,
+        current: isCurrent("dev_secrets"),
+        disabled: !hasWorkspaceAdminPermission,
+      },
+      {
+        id: "sandbox",
+        label: "Computer",
+        icon: Globe01,
+        href: `/w/${owner.sId}/developers/sandbox`,
+        current: isCurrent("sandbox"),
+        featureFlag: "sandbox_workspace_admin",
+        disabled: !hasWorkspaceAdminPermission,
+      },
+      ...(computeIsSelfImprovementAvailable({
+        owner,
+        plan: subscription.plan,
+        featureFlags,
+      })
+        ? [
+            {
+              id: "self_improving_skills" as const,
+              label: "Self-Improving Skills",
+              icon: Stars02,
+              href: `/w/${owner.sId}/developers/self-improving-skills`,
+              current: isCurrent("self_improving_skills"),
+              disabled: !hasWorkspaceAdminPermission,
+            },
+          ]
+        : []),
+    ],
+  });
 
   return nav;
 };
@@ -390,14 +443,14 @@ export const subNavigationApp = ({
     {
       value: "specification",
       label: "Specification",
-      icon: CommandLineIcon,
+      icon: Terminal,
       href: `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}`,
       current: current === "specification",
     },
     {
       value: "datasets",
       label: "Datasets",
-      icon: DocumentTextIcon,
+      icon: File04,
       href: `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets`,
       current: current === "datasets",
     },
@@ -408,14 +461,14 @@ export const subNavigationApp = ({
       {
         value: "runs",
         label: "Logs",
-        icon: FolderOpenIcon,
+        icon: FolderOpen,
         href: `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs`,
         current: current === "runs",
       },
       {
         value: "settings",
         label: "Settings",
-        icon: Cog6ToothIcon,
+        icon: Settings01,
         href: `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/settings`,
         current: current === "settings",
       },

@@ -1,6 +1,10 @@
 import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { frontSequelize } from "@app/lib/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
@@ -8,7 +12,6 @@ import type {
   WakeUpStatus,
 } from "@app/types/assistant/wakeups";
 import type { CreationOptional, ForeignKey } from "sequelize";
-import { DataTypes } from "sequelize";
 
 export class WakeUpModel extends WorkspaceAwareModel<WakeUpModel> {
   declare createdAt: CreationOptional<Date>;
@@ -68,17 +71,17 @@ WakeUpModel.init(
       defaultValue: null,
     },
     cronExpression: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
       defaultValue: null,
     },
     cronTimezone: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: true,
       defaultValue: null,
     },
     reason: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     status: {

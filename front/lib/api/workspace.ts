@@ -7,6 +7,7 @@ import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { getUsageToReportForSubscriptionItem } from "@app/lib/plans/usage";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -19,6 +20,7 @@ import {
   WorkspaceResource,
 } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
@@ -34,6 +36,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { md5 } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type {
+  LightUserTypeWithWorkspace,
   LightWorkspaceType,
   RoleType,
   UserTypeWithWorkspace,
@@ -42,6 +45,7 @@ import type {
   WorkspaceType,
 } from "@app/types/user";
 import { ACTIVE_ROLES, isBuilder } from "@app/types/user";
+import type { WorkspaceDomain } from "@app/types/workspace";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -201,6 +205,7 @@ export async function getMembers(
     if (!m.isRevoked()) {
       switch (m.role) {
         case "admin":
+        case "business_admin":
         case "builder":
         case "user":
           role = m.role;
@@ -223,6 +228,7 @@ export async function getMembers(
       ...user.toJSON(),
       workspaces: [{ ...owner, role, flags: null }],
       origin,
+      seatType: m.seatType,
     };
   });
 
@@ -425,13 +431,18 @@ export async function evaluateWorkspaceSeatAvailability(
     return true;
   }
 
-  const activeMembersCount =
-    await MembershipResource.getMembersCountForWorkspace({
-      workspace: renderLightWorkspaceType({ workspace }),
+  const lightWorkspace = renderLightWorkspaceType({ workspace });
+  const [activeMembersCount, pendingInvitationsCount] = await Promise.all([
+    MembershipResource.getMembersCountForWorkspace({
+      workspace: lightWorkspace,
       activeOnly: true,
-    });
+    }),
+    MembershipInvitationResource.getPendingInvitationsCountForWorkspace({
+      workspace: lightWorkspace,
+    }),
+  ]);
 
-  return activeMembersCount < maxUsers;
+  return activeMembersCount + pendingInvitationsCount < maxUsers;
 }
 
 export async function unsafeGetWorkspacesByModelId(
@@ -514,6 +525,24 @@ type WorkspaceKillSwitchValue =
   | typeof WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE
   | WorkspaceConversationKillSwitchValue;
 
+export const WEB_SEARCH_PROVIDERS = ["exa", "firecrawl"] as const;
+export type WebSearchProvider = (typeof WEB_SEARCH_PROVIDERS)[number];
+
+export const WEB_BROWSE_PROVIDERS = ["exa", "firecrawl", "spider"] as const;
+export type WebBrowseProvider = (typeof WEB_BROWSE_PROVIDERS)[number];
+
+export function isWebSearchProvider(
+  value: unknown
+): value is WebSearchProvider {
+  return WEB_SEARCH_PROVIDERS.includes(value as WebSearchProvider);
+}
+
+export function isWebBrowseProvider(
+  value: unknown
+): value is WebBrowseProvider {
+  return WEB_BROWSE_PROVIDERS.includes(value as WebBrowseProvider);
+}
+
 export interface WorkspaceMetadata {
   maintenance?: "relocation" | "relocation-done";
   killSwitched?: WorkspaceKillSwitchValue;
@@ -529,12 +558,22 @@ export interface WorkspaceMetadata {
   autoCreateSpaceForProvisionedGroups?: boolean;
   disableManualInvitations?: boolean;
   disableExtensionMcpTools?: boolean;
+  dustMcpServerDisabled?: boolean;
+  dustMcpServerAcceptAllRedirectUris?: boolean;
+  dustMcpServerAllowedRedirectUris?: string[];
   disableAuditLogs?: boolean;
   isBusiness?: boolean;
   phoneCountry?: string;
   sandboxAllowAgentEgressRequests?: boolean;
+  // Caps for self-improving skills.
+  // USD are the legacy ones, AWU are the new ones for workspaces
+  // billed by metronome.
   reinforcementCapMicroUsd?: number;
   selfImprovementCapPerSkillMicroUsd?: number;
+  reinforcementCapAwuCredits?: number;
+  selfImprovementCapPerSkillAwuCredits?: number;
+  webSearchProvider?: WebSearchProvider;
+  webBrowseProvider?: WebBrowseProvider;
 }
 
 export async function updateWorkspaceMetadata(
@@ -730,3 +769,55 @@ export async function findWorkspaceByWorkOSOrganizationId(
 
   return renderLightWorkspaceType({ workspace });
 }
+
+export type GetWorkspaceLookupResponseBody = {
+  workspace: LightWorkspaceType;
+  status: "auto-join-disabled" | "revoked";
+  workspaceVerifiedDomain: string | null;
+};
+
+export type GetSeatAvailabilityResponseBody = {
+  hasAvailableSeats: boolean;
+};
+
+export type GetMembersResponseBody = {
+  members: UserTypeWithWorkspaces[];
+  total: number;
+  nextPageUrl?: string;
+};
+
+export type GetWorkspaceSeatsCountResponseBody = {
+  seatsCount: number;
+};
+
+export type GetWorkspaceVerifiedDomainsResponseBody = {
+  verifiedDomains: WorkspaceDomain[];
+};
+
+export type GetProvisioningStatusResponseBody = {
+  hasAdminGroup: boolean;
+  hasBuilderGroup: boolean;
+};
+
+export type GetWelcomeResponseBody = {
+  isFirstAdmin: boolean;
+  emailProvider: EmailProviderType;
+};
+
+export type PostWorkspaceResponseBody = {
+  workspace: WorkspaceType;
+};
+
+export type GetWorkspaceResponseBody = {
+  workspace: WorkspaceType;
+};
+
+export type SearchMembersResponseBody = {
+  members: LightUserTypeWithWorkspace[];
+  total: number;
+};
+
+export type SearchMembersAdminResponseBody = {
+  members: UserTypeWithWorkspace[];
+  total: number;
+};

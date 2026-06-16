@@ -21,6 +21,7 @@ export type PatchGlobalAgentSettingResponseBody = {
 // Mounted at /api/w/:wId/assistant/global_agents/:aId.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.patch(
   "/",
   validate("param", ParamsSchema),

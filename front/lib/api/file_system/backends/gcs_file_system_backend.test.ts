@@ -1,6 +1,7 @@
 import { GCSFileSystemBackend } from "@app/lib/api/file_system/backends/gcs_file_system_backend";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import logger from "@app/logger/logger";
+import assert from "assert";
 import { Readable } from "stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -101,7 +102,9 @@ describe("GCSFileSystemBackend.list", () => {
       pageFetchCount: 1,
     });
 
-    const entries = await makeBackend().list(`conversation-${CONV_ID}/`);
+    const result = await makeBackend().list(`conversation-${CONV_ID}/`);
+    assert(result.isOk());
+    const entries = result.value;
 
     const paths = entries.filter((e) => !e.isDirectory).map((e) => e.path);
     expect(paths).toContain(`conversation-${CONV_ID}/report.pdf`);
@@ -123,9 +126,11 @@ describe("GCSFileSystemBackend.list", () => {
       pageFetchCount: 1,
     });
 
-    const entries = await makeBackend().list(`conversation-${CONV_ID}/`, {
+    const result = await makeBackend().list(`conversation-${CONV_ID}/`, {
       includeProcessed: true,
     });
+    assert(result.isOk());
+    const entries = result.value;
 
     const paths = entries.filter((e) => !e.isDirectory).map((e) => e.path);
     expect(paths).toContain(`conversation-${CONV_ID}/report.pdf`);
@@ -139,7 +144,9 @@ describe("GCSFileSystemBackend.list", () => {
       pageFetchCount: 1,
     });
 
-    const entries = await makeBackend().list(`conversation-${CONV_ID}/`);
+    const result = await makeBackend().list(`conversation-${CONV_ID}/`);
+    assert(result.isOk());
+    const entries = result.value;
 
     expect(entries[0].path).toBe(`conversation-${CONV_ID}/subdir/data.csv`);
     expect(entries[0].fileName).toBe("data.csv");
@@ -155,9 +162,10 @@ describe("GCSFileSystemBackend.list", () => {
       pageFetchCount: 1,
     });
 
-    const entries = await makeBackend().list(`conversation-${CONV_ID}/`);
+    const result = await makeBackend().list(`conversation-${CONV_ID}/`);
+    assert(result.isOk());
 
-    for (const entry of entries) {
+    for (const entry of result.value) {
       expect(entry.isDirectory).toBe(false);
       if (!entry.isDirectory) {
         expect(entry.thumbnailUrl).toBeNull();
@@ -175,7 +183,9 @@ describe("GCSFileSystemBackend.list", () => {
       pageFetchCount: 1,
     });
 
-    const entries = await makeBackend().list(`conversation-${CONV_ID}/`);
+    const result = await makeBackend().list(`conversation-${CONV_ID}/`);
+    assert(result.isOk());
+    const entries = result.value;
 
     const dirs = entries.filter((e) => e.isDirectory);
     const files = entries.filter((e) => !e.isDirectory);
@@ -197,8 +207,9 @@ describe("GCSFileSystemBackend.list", () => {
       pageFetchCount: 1,
     });
 
-    const entries = await makeBackend().list(`conversation-${CONV_ID}/`);
-    const entry = entries[0];
+    const result = await makeBackend().list(`conversation-${CONV_ID}/`);
+    assert(result.isOk());
+    const entry = result.value[0];
 
     expect(entry.isDirectory).toBe(false);
     if (!entry.isDirectory) {
@@ -224,8 +235,9 @@ describe("GCSFileSystemBackend.list", () => {
   });
 
   it("returns empty array for unrecognised scoped path prefix", async () => {
-    const entries = await makeBackend().list("unknown-prefix/foo");
-    expect(entries).toEqual([]);
+    const result = await makeBackend().list("unknown-prefix/foo");
+    assert(result.isOk());
+    expect(result.value).toEqual([]);
   });
 });
 

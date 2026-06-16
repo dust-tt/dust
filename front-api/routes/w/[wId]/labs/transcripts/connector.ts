@@ -25,6 +25,7 @@ export type GetLabsTranscriptsIsConnectorConnectedResponseBody = {
 // Mounted at /api/w/:wId/labs/transcripts/connector.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("query", GetConnectorQuerySchema),

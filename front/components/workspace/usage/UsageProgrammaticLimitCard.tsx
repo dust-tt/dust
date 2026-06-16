@@ -2,21 +2,16 @@ import {
   useProgrammaticUsageLimit,
   useUpdateProgrammaticUsageLimit,
 } from "@app/lib/swr/usage_settings";
-import {
-  ActionCreditCoinsIcon,
-  Icon,
-  Input,
-  Page,
-  SettingsList,
-} from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { InputWithSave, Page, SettingsList } from "@dust-tt/sparkle";
 
 interface UsageProgrammaticLimitCardProps {
   workspaceId: string;
+  readOnly: boolean;
 }
 
 export function UsageProgrammaticLimitCard({
   workspaceId,
+  readOnly,
 }: UsageProgrammaticLimitCardProps) {
   const { programmaticUsageLimit, isProgrammaticUsageLimitLoading } =
     useProgrammaticUsageLimit({ workspaceId });
@@ -24,56 +19,27 @@ export function UsageProgrammaticLimitCard({
     workspaceId,
   });
 
-  const [limitInput, setLimitInput] = useState<string>("");
-  const [isSaving, setIsSaving] = useState(false);
+  const currentLimit = programmaticUsageLimit?.monthlyCapCredits ?? null;
 
-  useEffect(() => {
-    if (programmaticUsageLimit?.monthlyCapCredits !== undefined) {
-      setLimitInput(
-        programmaticUsageLimit.monthlyCapCredits !== null
-          ? String(programmaticUsageLimit.monthlyCapCredits)
-          : ""
-      );
-    }
-  }, [programmaticUsageLimit]);
+  const handleSaveLimit = async (newValue: string) => {
+    const trimmed = newValue.trim();
 
-  const handleCommitLimit = async () => {
-    const current = programmaticUsageLimit?.monthlyCapCredits ?? null;
-
-    if (limitInput.trim() === "") {
-      if (current === null) {
+    // An empty value means no limit.
+    if (trimmed === "") {
+      if (currentLimit === null) {
         return;
       }
-      setIsSaving(true);
-      try {
-        const result = await doUpdateProgrammaticUsageLimit(null);
-        if (!result) {
-          setLimitInput(current !== null ? String(current) : "");
-        }
-      } finally {
-        setIsSaving(false);
-      }
+      await doUpdateProgrammaticUsageLimit(null);
       return;
     }
 
-    const parsed = Number(limitInput);
-    if (!Number.isInteger(parsed) || parsed < 0 || parsed === current) {
-      setLimitInput(current !== null ? String(current) : "");
+    const parsed = Number(trimmed);
+    if (!Number.isInteger(parsed) || parsed < 0 || parsed === currentLimit) {
+      // The component reverts to the current value when nothing is persisted.
       return;
     }
-
-    setIsSaving(true);
-    try {
-      const result = await doUpdateProgrammaticUsageLimit(parsed);
-      if (!result) {
-        setLimitInput(current !== null ? String(current) : "");
-      }
-    } finally {
-      setIsSaving(false);
-    }
+    await doUpdateProgrammaticUsageLimit(parsed);
   };
-
-  const isInputDisabled = isSaving || isProgrammaticUsageLimitLoading;
 
   return (
     <Page.Vertical gap="sm" align="stretch">
@@ -85,24 +51,18 @@ export function UsageProgrammaticLimitCard({
       <SettingsList>
         <SettingsList.Row
           title="Programmatic monthly limit"
-          description="Maximum credits allowed for programmatic usage per month"
+          description="Maximum credits allowed for programmatic usage per month."
           action={
-            <div className="relative w-32">
-              <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
-                <Icon visual={ActionCreditCoinsIcon} size="xs" />
-              </div>
-              <Input
-                type="text"
+            <div className="w-52">
+              <InputWithSave
                 inputMode="numeric"
                 pattern="[0-9]*"
                 placeholder="No limit"
-                value={limitInput}
-                onChange={(e) =>
-                  setLimitInput(e.target.value.replace(/[^\d]/g, ""))
-                }
-                onBlur={() => void handleCommitLimit()}
-                disabled={isInputDisabled}
-                className="pl-8 text-right"
+                value={currentLimit !== null ? String(currentLimit) : ""}
+                unit="credits"
+                normalizeValue={(value) => value.replace(/[^\d]/g, "")}
+                onSave={handleSaveLimit}
+                disabled={readOnly || isProgrammaticUsageLimitLoading}
               />
             </div>
           }

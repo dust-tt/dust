@@ -197,6 +197,8 @@ export function getLightAgentMessageFromAgentMessage(
     completionDurationMs: agentMessage.completionDurationMs,
     reactions: agentMessage.reactions,
     prunedContext: agentMessage.prunedContext,
+    costCredits: agentMessage.costCredits,
+    subAgentCostCredits: agentMessage.subAgentCostCredits,
     activitySteps: [],
   };
 }

@@ -2,6 +2,8 @@ import config from "@app/lib/api/config";
 import {
   CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
   CONTRACT_CREDIT_TYPE_POOL,
+  type ContractCreditType,
+  PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY,
   PLAN_CODE_CUSTOM_FIELD_KEY,
   SEAT_TYPE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
@@ -24,6 +26,7 @@ import type {
 } from "@metronome/sdk/resources/v1/customers";
 import type { ContractEditParams } from "@metronome/sdk/resources/v2/contracts";
 import type { IncomingHttpHeaders } from "http";
+import { z } from "zod";
 import type {
   MetronomeBalance,
   MetronomeEvent,
@@ -726,6 +729,26 @@ export async function setMetronomeContractCreditCustomFields({
   }
 }
 
+/** Set custom field values on a Metronome commit. */
+export async function setMetronomeCommitCustomFields({
+  commitId,
+  customFields,
+}: {
+  commitId: string;
+  customFields: Record<string, string>;
+}): Promise<Result<void, Error>> {
+  try {
+    await getMetronomeClient().v1.customFields.setValues({
+      entity: "commit",
+      entity_id: commitId,
+      custom_fields: customFields,
+    });
+    return new Ok(undefined);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Contract management
 // ---------------------------------------------------------------------------
@@ -744,6 +767,8 @@ export async function createMetronomeContract({
   startingAt,
   enableStripeBilling,
   planCode,
+  additionalCustomFields,
+  fromContractId,
 }: {
   metronomeCustomerId: string;
   /** Mutually exclusive with `packageId`. */
@@ -758,6 +783,16 @@ export async function createMetronomeContract({
   // webhook can swap the workspace's subscription onto this plan when the
   // contract becomes active.
   planCode: string;
+  // Additional custom fields merged with PLAN_CODE_CUSTOM_FIELD_KEY when
+  // stamping the contract. Used to signal payment-gated activation flows
+  // (DUST_PAYMENT_GATE_TYPE) so the contract.start webhook can skip the
+  // automatic subscription swap.
+  additionalCustomFields?: Record<string, string>;
+  // When set, the contract is created as a RENEWAL transition from this prior
+  // contract: Metronome records the lineage and automatically ends the prior
+  // contract at `startingAt`. Unused commit balance only carries over for
+  // commits that were created with a `rollover_fraction`
+  fromContractId?: string;
 }): Promise<Result<{ contractId: string }, Error>> {
   if (!packageAlias === !packageId) {
     return new Err(
@@ -775,6 +810,11 @@ export async function createMetronomeContract({
   // side, and re-running them is what makes the overall function recoverable.
   let contractId: string;
   let recovered = false;
+
+  const transition = fromContractId
+    ? { type: "RENEWAL" as const, from_contract_id: fromContractId }
+    : undefined;
+
   try {
     const response = await getMetronomeClient().v1.contracts.create({
       customer_id: metronomeCustomerId,
@@ -782,6 +822,7 @@ export async function createMetronomeContract({
       ...(packageId ? { package_id: packageId } : {}),
       starting_at: startingAtISO,
       ...(uniquenessKey ? { uniqueness_key: uniquenessKey } : {}),
+      ...(transition ? { transition } : {}),
     });
     contractId = response.data.id;
   } catch (err) {
@@ -831,7 +872,10 @@ export async function createMetronomeContract({
 
   const customFieldsResult = await setMetronomeContractCustomFields({
     contractId,
-    customFields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: planCode },
+    customFields: {
+      [PLAN_CODE_CUSTOM_FIELD_KEY]: planCode,
+      ...additionalCustomFields,
+    },
   });
   if (customFieldsResult.isErr()) {
     return new Err(customFieldsResult.error);
@@ -1328,6 +1372,82 @@ export async function getMetronomeSubscriptionSeatState({
 }
 
 /**
+ * The hour-aligned `starting_at` of the seat-history segment in which `seatId`
+ * is assigned — i.e. when the seat's current (or next upcoming) active window
+ * begins. This is the timestamp a per-seat manual ledger entry must fall in:
+ * Metronome rejects adjustments on a seat not active at the entry time, and
+ * seat changes are applied on hour boundaries (a seat requested "now" only
+ * becomes active at the next boundary).
+ *
+ * Prefers the segment covering `coveringDate`; if the seat is only assigned in
+ * a future segment (e.g. just assigned, effective next hour), returns that
+ * segment's start. Returns `null` when the seat is not assigned in any segment
+ * at/after `coveringDate` (no valid window to adjust in).
+ */
+export async function getMetronomeSeatActiveSince({
+  metronomeCustomerId,
+  contractId,
+  subscriptionId,
+  seatId,
+  coveringDate = new Date(),
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+  subscriptionId: string;
+  seatId: string;
+  coveringDate?: Date;
+}): Promise<Result<Date | null, Error>> {
+  if (!config.getMetronomeApiKey()) {
+    return new Ok(null);
+  }
+  try {
+    const response =
+      await getMetronomeClient().post<SubscriptionSeatsHistoryResponse>(
+        "/v1/contracts/getSubscriptionSeatsHistory",
+        {
+          body: {
+            customer_id: metronomeCustomerId,
+            contract_id: contractId,
+            subscription_id: subscriptionId,
+            covering_date: coveringDate.toISOString(),
+          },
+        }
+      );
+    const coveringMs = coveringDate.getTime();
+    // Segments are ascending by `starting_at`. Among those that assign the
+    // seat, prefer the one covering `coveringDate`; otherwise the earliest one
+    // starting at/after it (a future activation).
+    let covering: string | null = null;
+    let earliestUpcoming: string | null = null;
+    for (const seg of response.data) {
+      if (!seg.assigned_seat_ids.includes(seatId)) {
+        continue;
+      }
+      const startMs = new Date(seg.starting_at).getTime();
+      const endMs = seg.ending_before
+        ? new Date(seg.ending_before).getTime()
+        : Number.POSITIVE_INFINITY;
+      if (startMs <= coveringMs && coveringMs < endMs) {
+        covering = seg.starting_at;
+        break;
+      }
+      if (startMs >= coveringMs && earliestUpcoming === null) {
+        earliestUpcoming = seg.starting_at;
+      }
+    }
+    const activeSince = covering ?? earliestUpcoming;
+    return new Ok(activeSince ? new Date(activeSince) : null);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, contractId, subscriptionId, seatId },
+      "[Metronome] Failed to read seat active-since"
+    );
+    return new Err(error);
+  }
+}
+
+/**
  * Fetch the assigned seat IDs on a SEAT_BASED subscription at `coveringDate`
  * (defaults to now), via the (untyped) getSubscriptionSeatsHistory endpoint.
  */
@@ -1665,6 +1785,7 @@ export async function addPaymentGatedCommitToContract({
   invoiceCreditTypeId,
   invoiceTimestamp,
   priority,
+  applicableProducTags,
   name,
   uniquenessKey,
   stripeInvoiceMetadata,
@@ -1681,6 +1802,7 @@ export async function addPaymentGatedCommitToContract({
   invoiceCreditTypeId: string;
   invoiceTimestamp: Date;
   priority: number;
+  applicableProducTags: string[];
   name: string;
   uniquenessKey: string;
   stripeInvoiceMetadata: Record<string, string>;
@@ -1696,7 +1818,7 @@ export async function addPaymentGatedCommitToContract({
           type: "PREPAID",
           name,
           priority,
-          applicable_product_tags: ["usage"],
+          applicable_product_tags: applicableProducTags,
           access_schedule: {
             credit_type_id: accessCreditTypeId,
             schedule_items: [
@@ -2014,14 +2136,14 @@ export async function listMetronomeBalances(
         : {}),
       ...(includeArchived ? { include_archived: true } : {}),
     })) {
-      // Mirror the default ContractCredit alert filter: include only
+      // Mirror the pool balance alert filter for credits: include only
       // credits explicitly tagged DUST_CONTRACT_CREDIT_TYPE=pool. Excess
       // credits (tagged "excess") and per-seat / unstamped credits are
       // excluded — they're not part of the workspace pool balance the
-      // alert tracks. Commits are not stamped and pass through unchanged.
+      // alert tracks. Commits always pass through here (the alert counts
+      // them via the ContractCreditOrCommit filter).
       if (
         onlyPoolCredits &&
-        entry.type === "CREDIT" &&
         entry.custom_fields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY] !==
           CONTRACT_CREDIT_TYPE_POOL
       ) {
@@ -2035,6 +2157,60 @@ export async function listMetronomeBalances(
     logger.error(
       { error, metronomeCustomerId },
       "[Metronome] Failed to list balances"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Get the combined net balance a customer can use right now across all
+ * pertinent commits and credits, denominated in `creditTypeId`. Unlike
+ * `listMetronomeBalances`, this delegates the reduction to Metronome and
+ * returns a single number, so it can't surface per-schedule details.
+ *
+ * By default it restricts to pool credits/commits via the
+ * `DUST_CONTRACT_CREDIT_TYPE=pool` custom field — mirroring the
+ * `onlyPoolCredits` filter of `listMetronomeBalances`.
+ */
+export async function getNetBalance(
+  metronomeCustomerId: string,
+  {
+    creditTypeId,
+    onlyPoolCredits = true,
+  }: {
+    creditTypeId?: string;
+    onlyPoolCredits?: boolean;
+  } = {}
+): Promise<Result<number, Error>> {
+  if (!config.getMetronomeApiKey()) {
+    return new Ok(0);
+  }
+
+  const client = getMetronomeClient();
+
+  try {
+    const response = await client.v1.contracts.getNetBalance({
+      customer_id: metronomeCustomerId,
+      ...(creditTypeId !== undefined ? { credit_type_id: creditTypeId } : {}),
+      ...(onlyPoolCredits
+        ? {
+            filters: [
+              {
+                custom_fields: {
+                  [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]:
+                    CONTRACT_CREDIT_TYPE_POOL,
+                },
+              },
+            ],
+          }
+        : {}),
+    });
+    return new Ok(response.data.balance);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId },
+      "[Metronome] Failed to get net balance"
     );
     return new Err(error);
   }
@@ -2201,6 +2377,325 @@ export async function updateMetronomeCreditSegmentAmount({
 }
 
 /**
+ * Add a one-time credit scoped to a single seat (user) on a contract via
+ * `v2.contracts.edit` (`add_credits`).
+ *
+ * The credit is scoped to one seat through a `user_id` presentation specifier:
+ * only usage tagged for that `userId` draws it down. This is how we express a
+ * per-seat credit that the recurring INDIVIDUAL credit mechanism cannot — a
+ * grant issued exactly once per seat, whenever that seat first appears, with no
+ * periodic refill. Idempotency is enforced through `uniquenessKey`: a repeated
+ * edit with the same key returns the existing edit (surfaced here as `Ok(null)`)
+ * rather than granting twice.
+ *
+ * `specifiers` is mutually exclusive with `applicable_product_ids` /
+ * `applicable_product_tags`, so the usage-product scope is passed as
+ * `product_tags` *inside* the specifier rather than as a top-level applicable
+ * filter.
+ *
+ * The `userId` is also stamped as the `DUST_PER_USER_CREDIT_USER` custom field.
+ * Metronome alerts can filter on custom fields but not on a credit's
+ * presentation specifier, so this is what lets a per-user
+ * `low_remaining_contract_credit_balance_reached` alert fire as the user
+ * depletes their credit. The key must be registered with Metronome (see
+ * `scripts/metronome_setup.ts`) or the edit is rejected with "Invalid custom
+ * field keys".
+ */
+export async function addPerUserCreditToContract({
+  metronomeCustomerId,
+  metronomeContractId,
+  productId,
+  creditTypeId,
+  contractCreditType,
+  amount,
+  userId,
+  productTags,
+  startingAt,
+  endingBefore,
+  name,
+  priority,
+  uniquenessKey,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  productId: string;
+  creditTypeId: string;
+  contractCreditType: ContractCreditType;
+  amount: number;
+  userId: string;
+  productTags: string[];
+  startingAt: Date;
+  endingBefore: Date;
+  name: string;
+  priority: number;
+  uniquenessKey: string;
+}): Promise<Result<{ editId: string } | null, Error>> {
+  // Metronome requires dates on hour boundaries — floor both to the hour.
+  const roundedStartingAt = floorToHourISO(startingAt);
+  const roundedEndingBefore = floorToHourISO(endingBefore);
+
+  try {
+    const response = await getMetronomeClient().v2.contracts.edit({
+      customer_id: metronomeCustomerId,
+      contract_id: metronomeContractId,
+      uniqueness_key: uniquenessKey,
+      add_credits: [
+        {
+          product_id: productId,
+          name,
+          priority,
+          custom_fields: {
+            [PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY]: userId,
+            [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]: contractCreditType,
+          },
+          access_schedule: {
+            credit_type_id: creditTypeId,
+            schedule_items: [
+              {
+                amount,
+                starting_at: roundedStartingAt,
+                ending_before: roundedEndingBefore,
+              },
+            ],
+          },
+          specifiers: [
+            {
+              presentation_group_values: { user_id: userId },
+              product_tags: productTags,
+            },
+          ],
+        },
+      ],
+    });
+
+    logger.info(
+      {
+        metronomeCustomerId,
+        metronomeContractId,
+        userId,
+        editId: response.data.id,
+        amount,
+      },
+      "[Metronome] Per-user seat credit added to contract"
+    );
+
+    return new Ok({ editId: response.data.id });
+  } catch (err) {
+    const error = normalizeError(err);
+    // Idempotency conflict on the uniqueness key — the credit was already
+    // granted. Metronome surfaces this as a 409 (`ConflictError`) on some
+    // endpoints and as a 422 "Uniqueness key already exists" on
+    // `v2.contracts.edit`, so match both.
+    if (
+      err instanceof ConflictError ||
+      error.message.includes("Uniqueness key already exists")
+    ) {
+      logger.info(
+        { metronomeCustomerId, metronomeContractId, userId, uniquenessKey },
+        "[Metronome] Per-user seat credit already exists (idempotent)"
+      );
+      return new Ok(null);
+    }
+
+    logger.error(
+      { error, metronomeCustomerId, metronomeContractId, userId, amount },
+      "[Metronome] Failed to add per-user seat credit to contract"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Return the set of seat user sIds that already have a per-user credit named
+ * `creditName` on the contract. The seat sId is read back from the credit's
+ * `user_id` presentation specifier — the same specifier that scopes the credit
+ * to the seat (no separate custom field, which would require registering a
+ * managed-field key with Metronome).
+ *
+ * `covering_date` is intentionally dropped and archived credits are included so
+ * EXPIRED and archived grants still count — a per-user credit is once-ever, and
+ * a user whose grant has lapsed must not be re-credited. (The grant's
+ * `uniqueness_key` enforces this server-side regardless; this pre-check just
+ * avoids the redundant edit call.)
+ *
+ * Uses the credits-list endpoint (not `listBalances`): it returns only credits
+ * (no commits) and we pass `include_balance: false`, so Metronome skips balance
+ * computation — lighter than the balances endpoint for this identity-only read.
+ */
+export async function listContractPerUserCreditUserIds({
+  metronomeCustomerId,
+  metronomeContractId,
+  creditName,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  creditName: string;
+}): Promise<Result<Set<string>, Error>> {
+  if (!config.getMetronomeApiKey()) {
+    return new Ok(new Set());
+  }
+
+  const client = getMetronomeClient();
+
+  try {
+    const userIds = new Set<string>();
+    for await (const entry of client.v1.customers.credits.list({
+      customer_id: metronomeCustomerId,
+      include_balance: false,
+      include_contract_credits: true,
+      include_archived: true,
+    })) {
+      if (
+        entry.contract?.id !== metronomeContractId ||
+        entry.name !== creditName
+      ) {
+        continue;
+      }
+      for (const specifier of entry.specifiers ?? []) {
+        const userId = specifier.presentation_group_values?.user_id;
+        if (userId) {
+          userIds.add(userId);
+        }
+      }
+    }
+    return new Ok(userIds);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, metronomeContractId },
+      "[Metronome] Failed to list per-user contract credits"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Return the live AWU balance of each free-seat per-user credit on the contract,
+ * keyed by the seat's user sId (read from the `DUST_PER_USER_CREDIT_USER` custom
+ * field). `balanceAwu` is the amount remaining now; `startingBalanceAwu` is the
+ * full granted allocation (the access-schedule total). Per-user credits aren't
+ * seat balances, so they don't appear in `listMetronomeSeatBalances` — this is
+ * how the seat↔pool/capped state for free seats reads their remaining balance.
+ *
+ * `covering_date` defaults to now and archived credits are excluded, so the
+ * balance reflects only the currently-active credit.
+ *
+ * Uses the credits-list endpoint (not `listBalances`) so Metronome returns only
+ * credits, not commits.
+ */
+export async function listContractPerUserCreditBalances({
+  metronomeCustomerId,
+  metronomeContractId,
+  contractCreditType,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  contractCreditType: ContractCreditType;
+}): Promise<
+  Result<
+    Map<
+      string,
+      { creditIds: string[]; balanceAwu: number; startingBalanceAwu: number }
+    >,
+    Error
+  >
+> {
+  if (!config.getMetronomeApiKey()) {
+    return new Ok(new Map());
+  }
+
+  const client = getMetronomeClient();
+
+  try {
+    // A user could in theory hold more than one per-user credit of the same type
+    // on a contract, so we accumulate a list of credit ids and sum their
+    // balances per user.
+    const byUser = new Map<
+      string,
+      { creditIds: string[]; balanceAwu: number; startingBalanceAwu: number }
+    >();
+    for await (const entry of client.v1.customers.credits.list({
+      customer_id: metronomeCustomerId,
+      include_balance: true,
+      include_contract_credits: true,
+    })) {
+      if (entry.contract?.id !== metronomeContractId) {
+        continue;
+      }
+      const userId =
+        entry.custom_fields?.[PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY];
+      if (!userId) {
+        continue;
+      }
+      // Only the requested credit type — a per-user credit of another type must
+      // not be counted here (nor archived by the revoke path).
+      if (
+        entry.custom_fields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY] !==
+        contractCreditType
+      ) {
+        continue;
+      }
+      const startingBalanceAwu = (
+        entry.access_schedule?.schedule_items ?? []
+      ).reduce((sum, item) => sum + item.amount, 0);
+      const existing = byUser.get(userId);
+      byUser.set(userId, {
+        creditIds: [...(existing?.creditIds ?? []), entry.id],
+        balanceAwu: (existing?.balanceAwu ?? 0) + (entry.balance ?? 0),
+        startingBalanceAwu:
+          (existing?.startingBalanceAwu ?? 0) + startingBalanceAwu,
+      });
+    }
+    return new Ok(byUser);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, metronomeContractId },
+      "[Metronome] Failed to list per-user contract credit balances"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Archive a contract credit (e.g. a free-seat per-user credit when the user
+ * leaves the free seat) so it stops drawing against usage. This is a fresh
+ * `v2.contracts.edit` with no `uniqueness_key`, so it does NOT release the
+ * original grant edit's key — the user can never re-claim a free credit on this
+ * contract (re-grant 409/422s, and the archived credit still satisfies the
+ * dedup check).
+ */
+export async function archiveContractCredit({
+  metronomeCustomerId,
+  metronomeContractId,
+  creditId,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  creditId: string;
+}): Promise<Result<undefined, Error>> {
+  try {
+    await getMetronomeClient().v2.contracts.edit({
+      customer_id: metronomeCustomerId,
+      contract_id: metronomeContractId,
+      archive_credits: [{ id: creditId }],
+    });
+    logger.info(
+      { metronomeCustomerId, metronomeContractId, creditId },
+      "[Metronome] Archived contract credit"
+    );
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, metronomeContractId, creditId },
+      "[Metronome] Failed to archive contract credit"
+    );
+    return new Err(error);
+  }
+}
+
+/**
  * Create a credit grant on a Metronome customer.
  * Used for monthly free programmatic credits on legacy plans.
  */
@@ -2214,7 +2709,6 @@ export async function createMetronomeCredit({
   name,
   idempotencyKey,
   applicableProductTags,
-  applicableProductIds,
   priority,
 }: {
   metronomeCustomerId: string;
@@ -2226,7 +2720,6 @@ export async function createMetronomeCredit({
   name: string;
   idempotencyKey: string;
   applicableProductTags?: string[];
-  applicableProductIds?: string[];
   priority: number;
 }): Promise<Result<{ id: string } | null, Error>> {
   // Metronome requires dates on hour boundaries — round down start, round up end.
@@ -2241,9 +2734,6 @@ export async function createMetronomeCredit({
       priority,
       ...(applicableProductTags
         ? { applicable_product_tags: applicableProductTags }
-        : {}),
-      ...(applicableProductIds
-        ? { applicable_product_ids: applicableProductIds }
         : {}),
       access_schedule: {
         credit_type_id: creditTypeId,
@@ -2290,6 +2780,169 @@ export async function createMetronomeCredit({
     logger.error(
       { error, metronomeCustomerId, name, idempotencyKey },
       "[Metronome] Failed to create credit grant"
+    );
+    return new Err(error);
+  }
+}
+
+// The SDK types ContractEditResponse as { data: { id } } but the actual payload
+// includes edit.add_credits[].id — this schema parses the undocumented fields.
+const CONTRACT_EDIT_WITH_CREDITS_RESPONSE_SCHEMA = z.object({
+  data: z.object({
+    edit: z.object({
+      add_credits: z.array(z.object({ id: z.string() })),
+    }),
+  }),
+});
+
+/**
+ * Add a credit grant to a Metronome contract.
+ * Uses v2.contracts.edit with add_credits, so uniqueness_key applies to the
+ * whole edit operation (not per-credit). On 409 the edit already exists and
+ * the credit is considered granted.
+ */
+export async function addCreditToContract({
+  metronomeCustomerId,
+  metronomeContractId,
+  productId,
+  creditTypeId,
+  amount,
+  startingAt,
+  endingBefore,
+  name,
+  uniquenessKey,
+  applicableProductTags,
+  priority,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  productId: string;
+  creditTypeId: string;
+  amount: number;
+  startingAt: string;
+  endingBefore: string;
+  name: string;
+  uniquenessKey: string;
+  applicableProductTags?: string[];
+  priority: number;
+}): Promise<Result<{ creditId: string } | null, Error>> {
+  const roundedStartingAt = floorToHourISO(new Date(startingAt));
+  const roundedEndingBefore = floorToHourISO(new Date(endingBefore));
+
+  try {
+    const response = await getMetronomeClient().v2.contracts.edit({
+      customer_id: metronomeCustomerId,
+      contract_id: metronomeContractId,
+      uniqueness_key: uniquenessKey,
+      add_credits: [
+        {
+          product_id: productId,
+          name,
+          priority,
+          ...(applicableProductTags && applicableProductTags.length > 0
+            ? { applicable_product_tags: applicableProductTags }
+            : {}),
+          access_schedule: {
+            credit_type_id: creditTypeId,
+            schedule_items: [
+              {
+                amount,
+                starting_at: roundedStartingAt,
+                ending_before: roundedEndingBefore,
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    // The SDK types ContractEditResponse as { data: { id } } but the actual
+    // payload includes edit.add_credits[].id — parse at runtime to extract it.
+    const parsed =
+      CONTRACT_EDIT_WITH_CREDITS_RESPONSE_SCHEMA.safeParse(response);
+    const creditId = parsed.success
+      ? (parsed.data.data.edit.add_credits[0]?.id ?? null)
+      : null;
+
+    logger.info(
+      {
+        metronomeCustomerId,
+        metronomeContractId,
+        creditId,
+        amount,
+        name,
+        uniquenessKey,
+      },
+      "[Metronome] Credit added to contract"
+    );
+
+    return new Ok(creditId ? { creditId } : null);
+  } catch (err) {
+    const error = normalizeError(err);
+    if (err instanceof ConflictError) {
+      // Idempotency key conflict — credit already granted, look it up via
+      // edit history so the caller can persist the existing credit id.
+      const existing = await findContractCreditByUniquenessKey({
+        metronomeCustomerId,
+        metronomeContractId,
+        uniquenessKey,
+      });
+      if (existing.isOk() && existing.value) {
+        logger.info(
+          {
+            metronomeCustomerId,
+            metronomeContractId,
+            uniquenessKey,
+            creditId: existing.value.creditId,
+          },
+          "[Metronome] Contract credit edit already exists (idempotent), reusing credit id"
+        );
+        return new Ok({ creditId: existing.value.creditId });
+      }
+      logger.info(
+        { metronomeCustomerId, metronomeContractId, uniquenessKey },
+        "[Metronome] Contract credit edit already exists (idempotent) but lookup did not find it"
+      );
+      return new Ok(null);
+    }
+
+    logger.error(
+      { error, metronomeCustomerId, metronomeContractId, name, uniquenessKey },
+      "[Metronome] Failed to add credit to contract"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Find a contract-level credit id by the edit's uniqueness_key.
+ * Used to recover the credit id after a 409 conflict on addCreditToContract.
+ */
+async function findContractCreditByUniquenessKey({
+  metronomeCustomerId,
+  metronomeContractId,
+  uniquenessKey,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  uniquenessKey: string;
+}): Promise<Result<{ creditId: string } | null, Error>> {
+  try {
+    const response = await getMetronomeClient().v2.contracts.getEditHistory({
+      customer_id: metronomeCustomerId,
+      contract_id: metronomeContractId,
+    });
+    logger.info({ response }, "findContractCreditByUniquenessKey response");
+    const match = response.data.find(
+      (edit) => edit.uniqueness_key === uniquenessKey
+    );
+    const creditId = match?.add_credits?.[0]?.id ?? null;
+    return new Ok(creditId ? { creditId } : null);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, metronomeContractId, uniquenessKey },
+      "[Metronome] Failed to look up contract credit by uniqueness key"
     );
     return new Err(error);
   }
@@ -2525,6 +3178,170 @@ export async function deductMetronomeCreditBalance({
 }
 
 /**
+ * Resolve a seat-based recurring credit pool (e.g. "Max Seat Credits") on a
+ * contract and the access-schedule segment active at `coveringDate`. This is
+ * the `{ creditId, segmentId }` pair required to make per-seat ledger
+ * adjustments via `adjustSeatCreditBalances`.
+ *
+ * Matches on the credit `name`: Metronome materializes the recurring credit
+ * template into a concrete credit that carries a `recurring_credit_id`, so we
+ * also require that field to avoid matching a one-off credit of the same name.
+ * `covering_date` scopes the listing to the credit active now, and we then pick
+ * the schedule item covering `coveringDate`. Returns `null` when none matches.
+ */
+export async function findSeatCreditSegmentForPeriod({
+  metronomeCustomerId,
+  metronomeContractId,
+  recurringCreditId,
+  coveringDate = new Date(),
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  recurringCreditId: string;
+  coveringDate?: Date;
+}): Promise<
+  Result<
+    { creditId: string; segmentId: string; segmentStartingAt: string } | null,
+    Error
+  >
+> {
+  if (!config.getMetronomeApiKey()) {
+    return new Ok(null);
+  }
+
+  const client = getMetronomeClient();
+  const coveringMs = coveringDate.getTime();
+
+  try {
+    for await (const entry of client.v1.customers.credits.list({
+      customer_id: metronomeCustomerId,
+      include_contract_credits: true,
+      covering_date: coveringDate.toISOString(),
+    })) {
+      if (entry.recurring_credit_id !== recurringCreditId) {
+        continue;
+      }
+      const segment = (entry.access_schedule?.schedule_items ?? []).find(
+        (item) => {
+          const startMs = new Date(item.starting_at).getTime();
+          const endMs = new Date(item.ending_before).getTime();
+          return startMs <= coveringMs && coveringMs < endMs;
+        }
+      );
+      if (segment) {
+        return new Ok({
+          creditId: entry.id,
+          segmentId: segment.id,
+          segmentStartingAt: segment.starting_at,
+        });
+      }
+    }
+    logger.warn(
+      { metronomeCustomerId, metronomeContractId, recurringCreditId },
+      "[Metronome] No active seat credit segment found for period"
+    );
+    return new Ok(null);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, metronomeContractId, recurringCreditId },
+      "[Metronome] Failed to find seat credit segment"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Apply per-seat manual ledger entries to a seat-based recurring credit pool
+ * (e.g. "Max Seat Credits"). Each entry adjusts a single seat's slice of the
+ * shared pool: a negative amount draws that seat's balance down, a positive one
+ * tops it up. This is the API equivalent of the per-seat "Add a manual ledger
+ * entry" action in the Metronome "Seat balances" UI.
+ *
+ * `perSeatAmounts` maps a seat id (the `user_id` presentation value) to its
+ * signed delta. Metronome requires the top-level `amount` to equal the sum of
+ * the per-seat deltas, which we compute here. `timestamp` must fall within the
+ * segment window AND after the seat was assigned — Metronome rejects
+ * adjustments on seats not active at that time — so it defaults to now (floored
+ * to the hour as Metronome requires) rather than the segment start.
+ */
+export async function adjustSeatCreditBalances({
+  metronomeCustomerId,
+  metronomeContractId,
+  creditId,
+  segmentId,
+  perSeatAmounts,
+  reason,
+  timestamp = new Date(),
+  alignToHour = true,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  creditId: string;
+  segmentId: string;
+  perSeatAmounts: Record<string, number>;
+  reason: string;
+  timestamp?: Date;
+  // When false, the timestamp is used as-is. A seat is NOT considered active at
+  // the exact hour boundary it was assigned on, so an adjustment for a
+  // just-changed seat must use a time strictly inside its active window (not
+  // floored back onto the boundary).
+  alignToHour?: boolean;
+}): Promise<Result<void, Error>> {
+  const seatIds = Object.keys(perSeatAmounts);
+  if (seatIds.length === 0) {
+    return new Ok(undefined);
+  }
+
+  const totalAmount = seatIds.reduce(
+    (sum, seatId) => sum + perSeatAmounts[seatId],
+    0
+  );
+
+  try {
+    await getMetronomeClient().v1.contracts.addManualBalanceEntry({
+      id: creditId,
+      customer_id: metronomeCustomerId,
+      contract_id: metronomeContractId,
+      segment_id: segmentId,
+      amount: totalAmount,
+      per_group_amounts: perSeatAmounts,
+      reason,
+      timestamp: alignToHour
+        ? floorToHourISO(timestamp)
+        : timestamp.toISOString(),
+    });
+    logger.info(
+      {
+        metronomeCustomerId,
+        metronomeContractId,
+        creditId,
+        segmentId,
+        seatIds,
+        totalAmount,
+      },
+      "[Metronome] Per-seat manual ledger entries applied"
+    );
+    return new Ok(undefined);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      {
+        error,
+        metronomeCustomerId,
+        metronomeContractId,
+        creditId,
+        segmentId,
+        seatIds,
+        totalAmount,
+      },
+      "[Metronome] Failed to apply per-seat manual ledger entries"
+    );
+    return new Err(error);
+  }
+}
+
+/**
  * List per-seat balances for a SEAT_BASED contract.
  * Uses a raw fetch because the Metronome SDK does not yet expose this endpoint.
  * Returns one entry per seat_id (user sId), with balance (remaining) and
@@ -2533,9 +3350,11 @@ export async function deductMetronomeCreditBalance({
 export async function listMetronomeSeatBalances({
   metronomeCustomerId,
   metronomeContractId,
+  coveringDate = new Date(),
 }: {
   metronomeCustomerId: string;
   metronomeContractId: string;
+  coveringDate?: Date;
 }): Promise<Result<MetronomeSeatBalance[], Error>> {
   if (!config.getMetronomeApiKey()) {
     return new Ok([]);
@@ -2549,7 +3368,7 @@ export async function listMetronomeSeatBalances({
           customer_id: metronomeCustomerId,
           contract_id: metronomeContractId,
           include_credits_and_commits: true,
-          covering_date: new Date().toISOString(),
+          covering_date: coveringDate.toISOString(),
         },
       }
     );
@@ -2597,5 +3416,36 @@ export async function* listMetronomeAlerts(
     params
   )) {
     yield entry;
+  }
+}
+
+// Retrieve a single customer alert by its Metronome id, including its enforced
+// `custom_field_filters` and `uniqueness_key`. Returns null when no API key is
+// configured. Used to resolve a per-user credit alert's target user from the
+// `alert_id` carried in the webhook (the payload omits both the filters and the
+// uniqueness key).
+export async function getMetronomeAlertById({
+  metronomeCustomerId,
+  alertId,
+}: {
+  metronomeCustomerId: string;
+  alertId: string;
+}): Promise<Result<CustomerAlert | null, Error>> {
+  if (!config.getMetronomeApiKey()) {
+    return new Ok(null);
+  }
+  try {
+    const response = await getMetronomeClient().v1.customers.alerts.retrieve({
+      customer_id: metronomeCustomerId,
+      alert_id: alertId,
+    });
+    return new Ok(response.data);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, alertId },
+      "[Metronome] Failed to retrieve alert by id"
+    );
+    return new Err(error);
   }
 }

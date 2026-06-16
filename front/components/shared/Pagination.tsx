@@ -1,5 +1,5 @@
 import { LinkWrapper } from "@app/lib/platform";
-import { ChevronLeftIcon, ChevronRightIcon } from "@dust-tt/sparkle";
+import { ChevronLeft, ChevronRight } from "@dust-tt/sparkle";
 
 type PageNumber = number | "ellipsis-start" | "ellipsis-end";
 
@@ -60,7 +60,7 @@ function PaginationLink({
   return (
     <LinkWrapper
       href={buildPageUrl(page)}
-      className="flex h-7 w-7 items-center justify-center rounded-md text-xs font-medium text-muted-foreground transition-colors hover:bg-gray-100 hover:text-foreground"
+      className="flex h-7 w-7 items-center justify-center rounded-md text-xs font-medium text-muted-foreground dark:text-muted-foreground-night transition-colors hover:bg-gray-100 hover:text-foreground"
     >
       {page}
     </LinkWrapper>
@@ -103,20 +103,20 @@ export function Pagination({
           href={canGoPrev ? buildPageUrl(currentPage - 1) : "#"}
           className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
             canGoPrev
-              ? "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+              ? "text-muted-foreground dark:text-muted-foreground-night hover:bg-gray-100 hover:text-foreground"
               : "pointer-events-none text-gray-300"
           }`}
           aria-disabled={!canGoPrev}
           tabIndex={canGoPrev ? undefined : -1}
         >
-          <ChevronLeftIcon className="h-4 w-4" />
+          <ChevronLeft className="h-4 w-4" />
         </LinkWrapper>
 
         {pageNumbers.map((pageNum) =>
           pageNum === "ellipsis-start" || pageNum === "ellipsis-end" ? (
             <span
               key={pageNum}
-              className="flex h-7 w-7 items-center justify-center text-xs text-muted-foreground"
+              className="flex h-7 w-7 items-center justify-center text-xs text-muted-foreground dark:text-muted-foreground-night"
             >
               ...
             </span>
@@ -134,17 +134,17 @@ export function Pagination({
           href={canGoNext ? buildPageUrl(currentPage + 1) : "#"}
           className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
             canGoNext
-              ? "text-muted-foreground hover:bg-gray-100 hover:text-foreground"
+              ? "text-muted-foreground dark:text-muted-foreground-night hover:bg-gray-100 hover:text-foreground"
               : "pointer-events-none text-gray-300"
           }`}
           aria-disabled={!canGoNext}
           tabIndex={canGoNext ? undefined : -1}
         >
-          <ChevronRightIcon className="h-4 w-4" />
+          <ChevronRight className="h-4 w-4" />
         </LinkWrapper>
       </div>
 
-      <span className="text-xs text-muted-foreground">
+      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
         {startItem}-{endItem} of {rowCount}
       </span>
     </nav>

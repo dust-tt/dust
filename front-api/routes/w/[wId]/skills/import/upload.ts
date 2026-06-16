@@ -15,6 +15,7 @@ import formidable from "formidable";
 // `ctx.env.incoming`) to `formidable.parse(...)` — matching the Next handler.
 const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 
+/** @ignoreswagger */
 app.post("/", ensureIsBuilder(), async (ctx) => {
   const auth = ctx.get("auth");
   const incoming = ctx.env?.incoming;

@@ -13,6 +13,7 @@ const BatchUpdateAgentScopeRequestBodySchema = z.object({
 // Mounted at /api/w/:wId/assistant/agent_configurations/batch_update_scope.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   ensureIsBuilder(),

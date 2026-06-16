@@ -8,6 +8,16 @@ import {
 } from "@app/temporal/labs/transcripts/client";
 import type { LabsTranscriptsConfigurationStatus } from "@app/types/labs";
 import { Ok } from "@app/types/shared/result";
+import { z } from "zod";
+
+export const PostRequestFeatureAccessBodySchema = z.object({
+  emailMessage: z.string(),
+  featureName: z.string(),
+});
+
+export type PostRequestFeatureAccessBody = z.infer<
+  typeof PostRequestFeatureAccessBodySchema
+>;
 
 /**
  * Pauses all Labs transcripts temporal workflows and their schedules for a workspace.

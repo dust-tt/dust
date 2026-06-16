@@ -1,24 +1,23 @@
 import {
-  FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
-  FALLBACK_MCP_TOOL_STAKE_LEVEL,
-} from "@app/lib/actions/constants";
-import { makeServerSideMCPToolConfigurations } from "@app/lib/actions/mcp_actions";
+  buildToolConfigurationsFromRawTools,
+  deduplicateMCPServerConfigurations,
+  disambiguateServerNamesBySpace,
+} from "@app/lib/actions/mcp_actions";
 import {
-  getAvailabilityOfInternalMCPServerById,
   getInternalMCPServerDisplayedAs,
   getInternalMCPServerNameFromSId,
-  getInternalMCPServerToolStakes,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import { getApprovalArgsLabel } from "@app/lib/actions/tool_approval_labels";
+import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
-import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
+import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import { pauseSandboxBashForBlockedChild } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
@@ -103,58 +102,79 @@ export async function createSandboxChildAction(
     return new Err(new Error("Agent message not found."));
   }
 
-  // JIT servers cover tools added via the conversation input bar.
-  let serverSideConfig = agentConfiguration.actions
+  // JIT servers cover tools added via the conversation input bar, skill
+  // servers cover tools attached through skills. Resolve the server config
+  // through the same deduplication and space-name disambiguation as the direct
+  // agent-loop path (`tryListMCPTools`): when several configs share a name
+  // across spaces, the model-visible name is space-prefixed, and approval keys
+  // are derived from it.
+  const { servers: jitServers } = await getJITServers(auth, {
+    agentConfiguration,
+    conversation,
+    attachments: [],
+  });
+  const skillServers = await resolveSkillMCPServers(auth, {
+    agentConfiguration,
+    conversation,
+  });
+
+  const serverConfigs = await disambiguateServerNamesBySpace(
+    auth,
+    deduplicateMCPServerConfigurations({
+      agentActions: agentConfiguration.actions,
+      clientSideActions: [],
+      skillServers,
+      jitServers,
+    })
+  );
+  const serverSideConfig = serverConfigs
     .filter(isServerSideMCPServerConfiguration)
     .find((a) => a.mcpServerViewId === view.sId);
 
   if (!serverSideConfig) {
-    const { servers: jitServers } = await getJITServers(auth, {
-      agentConfiguration,
-      conversation,
-      attachments: [],
-    });
-    serverSideConfig = jitServers.find((s) => s.mcpServerViewId === view.sId);
-  }
-
-  if (!serverSideConfig) {
     return new Err(
       new Error("Tool is not available to this agent or conversation.")
     );
   }
 
-  const availability = getAvailabilityOfInternalMCPServerById(view.mcpServerId);
-  const internalServerName = getInternalMCPServerNameFromSId(view.mcpServerId);
-  const serverDefaultStake = internalServerName
-    ? getInternalMCPServerToolStakes(internalServerName)[toolName]
-    : undefined;
-
-  const stakeLevel =
-    view.getToolPermission(toolName) ??
-    serverDefaultStake ??
-    (availability === "manual"
-      ? FALLBACK_MCP_TOOL_STAKE_LEVEL
-      : FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL);
-
-  const [fullToolConfiguration] = makeServerSideMCPToolConfigurations(
+  // Resolve the tool configuration (stake, enabled state, approval-requiring
+  // arguments, retry policy, timeout) through the same code path as direct
+  // agent-loop tool calls, so that approvals recorded on direct calls apply to
+  // sandbox child calls too.
+  const toolConfigurationsRes = await buildToolConfigurationsFromRawTools(
+    auth,
+    view.mcpServerId,
     serverSideConfig,
-    [
-      {
-        name: toolName,
-        description: "",
-        availability,
-        stakeLevel,
-        toolServerId: view.mcpServerId,
-        retryPolicy: DEFAULT_MCP_TOOL_RETRY_POLICY,
-      },
-    ]
+    [{ name: toolName, description: "" }]
   );
+  if (toolConfigurationsRes.isErr()) {
+    return toolConfigurationsRes;
+  }
+  // Empty when the tool has been disabled by an admin.
+  const [toolConfiguration] = toolConfigurationsRes.value;
 
-  if (!fullToolConfiguration) {
+  if (!toolConfiguration) {
     return new Err(
       new Error("Tool is not available to this agent or conversation.")
     );
   }
+
+  // User tool approvals ("low"/"medium" stakes) are keyed on the prefixed
+  // function-call name the model sees on direct calls (e.g.
+  // `salesforce__update_object`), while `dsbx` sends the raw tool name. Align
+  // the configuration name so approval checks and recordings share one key.
+  const prefixedToolNameRes = tryGetPrefixedToolName(
+    serverSideConfig.name,
+    toolName
+  );
+  if (prefixedToolNameRes.isErr()) {
+    return prefixedToolNameRes;
+  }
+
+  const fullToolConfiguration = {
+    ...toolConfiguration,
+    name: prefixedToolNameRes.value,
+  };
 
   const validateInputsResult = validateToolInputs(rawInputs);
   if (validateInputsResult.isErr()) {

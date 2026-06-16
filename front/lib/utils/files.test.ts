@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { FileVersion } from "@app/lib/resources/file_resource";
 import { copyContent } from "@app/lib/utils/files";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -72,12 +73,15 @@ function makeTargetFile() {
 }
 
 describe("copyContent", () => {
-  beforeEach(() => {
+  let auth: Authenticator;
+
+  beforeEach(async () => {
     vi.clearAllMocks();
+    const setup = await createResourceTest({});
+    auth = setup.authenticator;
   });
 
   it("copies only the original version for files without processing", async () => {
-    const auth = {} as Authenticator;
     const sourceFile = makeSourceFile("text/plain");
     const targetFile = makeTargetFile();
 
@@ -106,9 +110,10 @@ describe("copyContent", () => {
     expect(sourceFile.sourceBuckets.processed.copyFile).not.toHaveBeenCalled();
   });
 
-  it("copies only the original version for processed files by default", async () => {
-    const auth = {} as Authenticator;
-    const sourceFile = makeSourceFile("application/pdf");
+  it("copies only the original version for files with processing by default", async () => {
+    const sourceFile = makeSourceFile(
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
     const targetFile = makeTargetFile();
 
     await copyContent(
@@ -127,8 +132,9 @@ describe("copyContent", () => {
   });
 
   it("copies both original and processed versions when requested", async () => {
-    const auth = {} as Authenticator;
-    const sourceFile = makeSourceFile("application/pdf");
+    const sourceFile = makeSourceFile(
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
     const targetFile = makeTargetFile();
 
     await copyContent(
@@ -155,7 +161,6 @@ describe("copyContent", () => {
   });
 
   it("does not copy a processed version when upload-time processing was skipped", async () => {
-    const auth = {} as Authenticator;
     const sourceFile = makeSourceFile(
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       { skipFileProcessing: true }

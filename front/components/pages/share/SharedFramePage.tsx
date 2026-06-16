@@ -1,4 +1,5 @@
 import { PublicInteractiveContentContainer } from "@app/components/assistant/conversation/interactive_content/PublicInteractiveContentContainer";
+import Custom404 from "@app/components/pages/Custom404";
 import { EmailVerificationFlow } from "@app/components/pages/share/EmailVerificationFlow";
 import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { formatFilenameForDisplay } from "@app/lib/files";
@@ -6,7 +7,6 @@ import { usePathParam } from "@app/lib/platform";
 import { usePublicFrame } from "@app/lib/swr/frames";
 import { useShareFrameMetadata } from "@app/lib/swr/share";
 import { getFaviconPath } from "@app/lib/utils";
-import Custom404 from "@app/pages/404";
 import { Spinner } from "@dust-tt/sparkle";
 import { usePostHog } from "posthog-js/react";
 import { useEffect, useMemo, useState } from "react";
@@ -78,7 +78,7 @@ export function SharedFramePage() {
     }
 
     const description = `Discover what ${shareMetadata.workspaceName} built with AI. Explore now.`;
-    const faviconPath = getFaviconPath();
+    const faviconPath = shareMetadata.faviconUrl ?? getFaviconPath();
     const elements: HTMLElement[] = [];
 
     const addMeta = (attrs: Record<string, string>) => {
@@ -119,7 +119,7 @@ export function SharedFramePage() {
     addMeta({ property: "og:image:width", content: "1200" });
     addMeta({
       property: "og:image",
-      content: "https://dust.tt/static/og/ic.png",
+      content: shareMetadata.ogImageUrl ?? "https://dust.tt/static/og/ic.png",
     });
     addMeta({ property: "og:site_name", content: "Dust" });
     addMeta({ property: "og:url", content: shareMetadata.shareUrl });
@@ -168,6 +168,7 @@ export function SharedFramePage() {
         shareToken={token}
         workspaceId={shareMetadata.workspaceId}
         vizUrl={shareMetadata.vizUrl}
+        logoUrl={shareMetadata.logoUrl}
         hideHeader={hideHeader}
       />
     </div>

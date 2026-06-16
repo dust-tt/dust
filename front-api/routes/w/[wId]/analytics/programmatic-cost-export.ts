@@ -9,6 +9,7 @@ import { validate } from "@front-api/middlewares/validator";
 // Mounted at /api/w/:wId/analytics/programmatic-cost-export.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", validate("query", ExportQuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
   const query = ctx.req.valid("query");

@@ -12,9 +12,24 @@ const SPINNER_DUST_VARIANTS = [
 ] as const;
 
 const meta = {
-  title: "Primitives/SpinnerBrand",
+  title: "Feedback & Status/SpinnerBrand",
   component: SpinnerBrand,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `A branded, Dust-logo loading indicator for indeterminate waits. Pick a **size** (\`xs\` through \`2xl\`) to fit the context and a **variant** to suit the background — \`mono\`, \`mono-white\` (for dark surfaces), \`colored\`, or \`colored-gray\`. The **speed** prop multiplies the animation rate (1 = normal).
+
+**When to use**
+- For prominent, brand-forward loading moments such as app or page initialization.
+
+**Guidelines**
+- Use \`mono-white\` on dark backgrounds and the colored variants on light surfaces.
+- For a neutral, utilitarian spinner (e.g. inside a button or a small inline area), use **Spinner** instead.
+- When the loading layout is known ahead of time, prefer a **LoadingBlock** skeleton.`,
+      },
+    },
+  },
   argTypes: {
     size: {
       options: SPINNER_DUST_SIZES,

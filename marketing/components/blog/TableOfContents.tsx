@@ -1,0 +1,165 @@
+import { useScrollSpy } from "@marketing/components/blog/useScrollSpy";
+import type { TocItem } from "@marketing/lib/contentful/tableOfContents";
+import { classNames } from "@marketing/lib/utils";
+import type React from "react";
+import { useMemo } from "react";
+
+interface TableOfContentsProps {
+  items: TocItem[];
+  className?: string;
+  onItemClick?: () => void;
+  cta?: React.ReactNode;
+}
+
+interface TocItemWithChildren extends TocItem {
+  children: TocItemWithChildren[];
+}
+
+function buildHierarchy(items: TocItem[]): TocItemWithChildren[] {
+  const result: TocItemWithChildren[] = [];
+  const stack: TocItemWithChildren[] = [];
+
+  for (const item of items) {
+    const itemWithChildren: TocItemWithChildren = {
+      ...item,
+      children: [],
+    };
+
+    while (stack.length > 0 && stack[stack.length - 1].level >= item.level) {
+      stack.pop();
+    }
+
+    if (stack.length === 0) {
+      result.push(itemWithChildren);
+    } else {
+      stack[stack.length - 1].children.push(itemWithChildren);
+    }
+
+    stack.push(itemWithChildren);
+  }
+
+  return result;
+}
+
+interface TocItemComponentProps {
+  item: TocItemWithChildren;
+  activeId: string;
+  onItemClick: (itemId: string, e: React.MouseEvent<HTMLAnchorElement>) => void;
+}
+
+function TocItemComponent({
+  item,
+  activeId,
+  onItemClick,
+}: TocItemComponentProps) {
+  const isActive = activeId === item.id;
+  const hasActiveChild = item.children.some(
+    (child) =>
+      activeId === child.id ||
+      child.children.some((grandchild) => activeId === grandchild.id)
+  );
+  const shouldShowChildren = isActive || hasActiveChild;
+
+  return (
+    <div className="transition-all duration-200">
+      <a
+        href={`#${item.id}`}
+        onClick={(e) => onItemClick(item.id, e)}
+        className={classNames(
+          "block border-l-2 py-1 pl-3 text-sm transition-all duration-200 ease-in-out",
+          item.level === 1 && "font-medium",
+          item.level === 2 && "ml-4",
+          item.level === 3 && "ml-8",
+          item.level === 4 && "ml-12",
+          isActive
+            ? "border-primary text-foreground dark:text-foreground-night"
+            : "border-transparent text-muted-foreground hover:border-border hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
+        )}
+      >
+        {item.text}
+      </a>
+      {item.children.length > 0 && (
+        <div
+          className={classNames(
+            "transition-all duration-300 ease-in-out",
+            shouldShowChildren
+              ? "max-h-screen opacity-100"
+              : "max-h-0 overflow-hidden opacity-0"
+          )}
+        >
+          <div className="mt-1 space-y-1 pl-1">
+            {item.children.map((child) => (
+              <TocItemComponent
+                key={child.id}
+                item={child}
+                activeId={activeId}
+                onItemClick={onItemClick}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function TableOfContents({
+  items,
+  className,
+  onItemClick,
+  cta,
+}: TableOfContentsProps) {
+  const { activeId, handleClick } = useScrollSpy(items);
+  const hierarchy = useMemo(() => buildHierarchy(items), [items]);
+
+  const handleItemClick = (
+    itemId: string,
+    e: React.MouseEvent<HTMLAnchorElement>
+  ) => {
+    handleClick(itemId, e);
+    onItemClick?.();
+  };
+
+  if (items.length === 0 && !cta) {
+    return null;
+  }
+
+  return (
+    <div
+      className={classNames(
+        "sticky top-5 flex max-h-[calc(100vh-2.5rem)] flex-col",
+        className ?? null
+      )}
+    >
+      {items.length > 0 && (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide text-muted-foreground dark:text-muted-foreground-night">
+            Table of contents
+          </h3>
+          <nav className="space-y-1" aria-label="Table of contents">
+            {hierarchy.map((item) => (
+              <TocItemComponent
+                key={item.id}
+                item={item}
+                activeId={activeId}
+                onItemClick={handleItemClick}
+              />
+            ))}
+          </nav>
+        </div>
+      )}
+      {cta && (
+        <div
+          className={classNames(
+            "flex-none",
+            items.length > 0
+              ? "mt-6 border-t border-border pt-6 dark:border-border-night"
+              : null
+          )}
+        >
+          {cta}
+        </div>
+      )}
+    </div>
+  );
+}

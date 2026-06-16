@@ -1,5 +1,5 @@
+import type { GetConversationContextUsageResponse } from "@app/lib/api/assistant/conversation/context_usage";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetConversationContextUsageResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/context-usage";
 import { useMemo, useRef } from "react";
 import type { Fetcher } from "swr";
 

@@ -256,6 +256,7 @@ app.delete(
       dataSourceId: dataSource.dustAPIDataSourceId,
       tableId: tId,
       rowId: rId,
+      caller: "public-api",
     });
 
     if (deleteRes.isErr()) {

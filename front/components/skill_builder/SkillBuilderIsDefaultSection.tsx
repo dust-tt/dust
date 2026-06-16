@@ -1,4 +1,5 @@
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
+import { SKILL_INVOCATION_LABEL } from "@app/lib/skills/labels";
 import {
   ContentMessage,
   Dialog,
@@ -7,7 +8,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  InformationCircleIcon,
+  InfoCircle,
   SliderToggle,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -47,7 +48,7 @@ export function SkillBuilderIsDefaultSection() {
         <Tooltip
           label="This skill will be set as default. Agents with Discover Skills will be able to find and enable it on their own"
           trigger={
-            <InformationCircleIcon className="text-muted-foreground dark:text-muted-foreground-night h-4 w-4" />
+            <InfoCircle className="text-muted-foreground dark:text-muted-foreground-night h-4 w-4" />
           }
         />
       </div>
@@ -82,13 +83,13 @@ export function SkillBuilderIsDefaultSection() {
                 <ContentMessage
                   variant="golden"
                   title="Agents may not understand when to use this skill"
-                  icon={InformationCircleIcon}
+                  icon={InfoCircle}
                   size="lg"
                   className="w-full"
                 >
                   The content in&nbsp;
                   <span className="font-semibold">
-                    What will this skill be used for
+                    {SKILL_INVOCATION_LABEL}
                   </span>
                   &nbsp;may be too short for agents to clearly understand when
                   to use this skill. Consider making it more descriptive before

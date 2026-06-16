@@ -127,7 +127,6 @@ export interface MockSkillConfig {
 
 interface BaseTestCase {
   scenarioId: string;
-  useInlineTools?: boolean;
   expectedToolCalls?: ToolCallAssertion[];
   judgeCriteria: string;
   workspaceContext: WorkspaceContext;

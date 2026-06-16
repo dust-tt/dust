@@ -1,11 +1,13 @@
 // LABS - CAN BE REMOVED ANYTIME
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import type {
+  GetLabsTranscriptsConfigurationResponseBody,
+  PatchTranscriptsConfiguration,
+} from "@app/lib/api/labs/transcripts";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
-import type { PatchTranscriptsConfiguration } from "@app/pages/api/w/[wId]/labs/transcripts/[tId]";
 import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

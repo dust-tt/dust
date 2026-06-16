@@ -1,11 +1,11 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
-import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import datadogLogger from "@app/logger/datadogLogger";
 import type {
   ConversationSkillActionRequest,
   FetchConversationSkillsResponse,
-} from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/skills";
+} from "@app/lib/api/assistant/conversation/skills";
+import { clientFetch } from "@app/lib/egress/client";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import datadogLogger from "@app/logger/datadogLogger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";

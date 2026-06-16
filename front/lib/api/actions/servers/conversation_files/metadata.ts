@@ -82,7 +82,8 @@ export const CONVERSATION_FILES_TOOLS_METADATA = createToolsRecord({
 
 // In file-system mode, regular files are accessed via the `files` MCP server. This server is
 // narrowed to listing the attachments that don't live on the file mount: content nodes
-// (Notion pages, Slack threads, etc.) and queryable tables.
+// (Notion pages, Slack threads, etc.) and queryable tables. The `cat` tool is kept so agents
+// can read content node attachments.
 export const CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM =
   createToolsRecord({
     [CONVERSATION_LIST_CONTENT_NODES_AND_TABLES_ACTION_NAME]: {
@@ -97,6 +98,7 @@ export const CONVERSATION_FILES_TOOLS_METADATA_WITH_FILESYSTEM =
         done: "List conversation attachments",
       },
     },
+    [CONVERSATION_CAT_FILE_ACTION_NAME]: CAT_FILE_TOOL,
   });
 
 // Union of the legacy and file-system-mode metadata. The runtime picks one or the other based on

@@ -1,4 +1,5 @@
 import { updateMCPServerHeartbeat } from "@app/lib/api/actions/mcp/client_side_registry";
+import { maybePersistDustDesktopClientSideMCPServerRegistration } from "@app/lib/api/actions/mcp/dust_desktop";
 import type { HeartbeatMCPResponseType } from "@dust-tt/client";
 import { PublicHeartbeatMCPRequestBodySchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
@@ -85,6 +86,10 @@ app.post(
         },
       });
     }
+
+    await maybePersistDustDesktopClientSideMCPServerRegistration(auth, {
+      serverId,
+    });
 
     return ctx.json(result);
   }

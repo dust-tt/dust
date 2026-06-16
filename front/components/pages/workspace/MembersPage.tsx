@@ -2,10 +2,12 @@ import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { InvitationsList } from "@app/components/members/InvitationsList";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
+import {
+  isFullUserType,
+  type SearchMemberWithWorkspaceType,
+} from "@app/components/members/MemberSelectionTable";
 import { MembersList } from "@app/components/members/MembersList";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
-import WorkspaceAccessPanel from "@app/components/workspace/WorkspaceAccessPanel";
-import { WorkspaceSection } from "@app/components/workspace/WorkspaceSection";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSearchMembers } from "@app/lib/swr/memberships";
@@ -28,9 +30,8 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  UserIcon,
+  Users01,
 } from "@dust-tt/sparkle";
-import { UsersIcon } from "@heroicons/react/20/solid";
 import type { PaginationState } from "@tanstack/react-table";
 import { useCallback, useEffect, useState } from "react";
 
@@ -99,7 +100,7 @@ function WorkspaceMembersList({
   const [selectedMember, setSelectedMember] =
     useState<UserTypeWithWorkspace | null>(null);
 
-  const membersData = useSearchMembers({
+  const membersData = useSearchMembers<UserTypeWithWorkspace>({
     workspaceId: owner.sId,
     searchTerm,
     pageIndex: pagination.pageIndex,
@@ -117,12 +118,19 @@ function WorkspaceMembersList({
     setSelectedMember(null);
   }, [setSelectedMember]);
 
+  const handleRowClick = useCallback((user: SearchMemberWithWorkspaceType) => {
+    // This page is admin-only so members are always full UserTypeWithWorkspace.
+    if (isFullUserType(user)) {
+      setSelectedMember(user);
+    }
+  }, []);
+
   return (
     <>
       <MembersList
         currentUser={currentUser}
         membersData={membersData}
-        onRowClick={setSelectedMember}
+        onRowClick={handleRowClick}
         showColumns={
           isProvisioningEnabled
             ? ["name", "email", "role", "status", "groups"]
@@ -157,17 +165,6 @@ export function MembersPage() {
     workspaceId: owner.sId,
   });
 
-  const hasVerifiedDomains = verifiedDomains.length > 0;
-  const isProvisioningEnabled =
-    plan.limits.users.isSCIMAllowed && hasVerifiedDomains;
-  const isManualInvitationsEnabled =
-    owner.metadata?.disableManualInvitations !== true;
-
-  const isLoading =
-    isVerifiedDomainsLoading ||
-    isSeatAvailabilityLoading ||
-    isPerSeatPricingLoading;
-
   const onInviteClick = useCallback(
     (event: React.MouseEvent<HTMLButtonElement>) => {
       if (!isUpgraded(plan)) {
@@ -184,6 +181,17 @@ export function MembersPage() {
     [plan, subscription.paymentFailingSince, hasAvailableSeats]
   );
 
+  const hasVerifiedDomains = verifiedDomains.length > 0;
+  const isProvisioningEnabled =
+    plan.limits.users.isSCIMAllowed && hasVerifiedDomains;
+  const isManualInvitationsEnabled =
+    owner.metadata?.disableManualInvitations !== true;
+
+  const isLoading =
+    isVerifiedDomainsLoading ||
+    isSeatAvailabilityLoading ||
+    isPerSeatPricingLoading;
+
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -196,43 +204,36 @@ export function MembersPage() {
     <div className="mb-4">
       <Page.Vertical gap="lg" align="stretch">
         <Page.Header
-          title="People & Security"
-          icon={UsersIcon}
-          description="Verify your domain, manage team members and their permissions."
+          title="People"
+          icon={Users01}
+          description="Manage team members and their roles."
         />
-        <WorkspaceAccessPanel
-          workspaceVerifiedDomains={verifiedDomains}
-          owner={owner}
-          plan={plan}
-        />
-        <WorkspaceSection title="Members" icon={UserIcon}>
-          <div className="flex flex-row gap-2">
-            <SearchInput
-              placeholder={
-                isProvisioningEnabled ? "Search" : "Search members (email)"
-              }
-              value={searchTerm}
-              name="search"
-              onChange={setSearchTerm}
-              className="w-full"
-            />
-            {isManualInvitationsEnabled && (
-              <InviteEmailButtonWithModal
-                owner={owner}
-                prefillText=""
-                perSeatPricing={perSeatPricing}
-                onInviteClick={onInviteClick}
-              />
-            )}
-          </div>
-          <WorkspaceMembersGroupsList
-            currentUser={user}
-            owner={owner}
-            searchTerm={searchTerm}
-            isProvisioningEnabled={isProvisioningEnabled}
-            isManualInvitationsEnabled={isManualInvitationsEnabled}
+        <div className="flex flex-row gap-2">
+          <SearchInput
+            placeholder={
+              isProvisioningEnabled ? "Search" : "Search members (email)"
+            }
+            value={searchTerm}
+            name="search"
+            onChange={setSearchTerm}
+            className="w-full"
           />
-        </WorkspaceSection>
+          {isManualInvitationsEnabled && (
+            <InviteEmailButtonWithModal
+              owner={owner}
+              prefillText=""
+              perSeatPricing={perSeatPricing}
+              onInviteClick={onInviteClick}
+            />
+          )}
+        </div>
+        <WorkspaceMembersGroupsList
+          currentUser={user}
+          owner={owner}
+          searchTerm={searchTerm}
+          isProvisioningEnabled={isProvisioningEnabled}
+          isManualInvitationsEnabled={isManualInvitationsEnabled}
+        />
         {inviteBlockedPopupReason && (
           <ReachedLimitPopup
             isAdmin={isAdmin(owner)}

@@ -3,7 +3,7 @@ import { Card, type CardProps } from "@sparkle/components/Card";
 import { ImagePreview } from "@sparkle/components/ImagePreview";
 import { Spinner } from "@sparkle/components/Spinner";
 import { Tooltip } from "@sparkle/components/Tooltip";
-import { XMarkIcon } from "@sparkle/icons/app";
+import { XClose } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React, { type ReactNode } from "react";
@@ -185,7 +185,7 @@ const CitationClose = React.forwardRef<HTMLButtonElement, CitationCloseProps>(
         variant="ghost"
         size="icon"
         className={className}
-        icon={XMarkIcon}
+        icon={XClose}
         onClick={(e) => {
           e.stopPropagation();
           onClick?.(e);
@@ -205,11 +205,15 @@ interface CitationImageProps {
   downloadUrl?: string;
   isLoading?: boolean;
   onClose?: () => void;
+  onClick?: (e: React.MouseEvent) => void;
   className?: string;
 }
 
 const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
-  ({ imgSrc, alt, title, downloadUrl, isLoading, onClose, className }, ref) => {
+  (
+    { imgSrc, alt, title, downloadUrl, isLoading, onClose, onClick, className },
+    ref
+  ) => {
     return (
       <ImagePreview
         ref={ref}
@@ -219,6 +223,7 @@ const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
         downloadUrl={downloadUrl}
         isLoading={isLoading}
         onClose={onClose ? () => onClose() : undefined}
+        onClick={onClick}
         className={className}
         variant="embedded"
         titlePosition="bottom"

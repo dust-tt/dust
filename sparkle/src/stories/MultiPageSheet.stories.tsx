@@ -10,11 +10,27 @@ import {
   type MultiPageSheetPage,
   MultiPageSheetTrigger,
 } from "@sparkle/components/MultiPageSheet";
-import { Cog6ToothIcon, DocumentTextIcon, UserIcon } from "@sparkle/icons/app";
+import { File04, Settings01, User01 } from "@sparkle/icons/v2-stroke";
 
 const meta: Meta<typeof MultiPageSheetContent> = {
-  title: "Modules/MultiPageSheet",
+  title: "Overlays/MultiPageSheet",
   component: MultiPageSheetContent,
+  parameters: {
+    docs: {
+      description: {
+        component: `A side **Sheet** that hosts multiple **pages**, combining a slide-in panel with step-based navigation. Built from **MultiPageSheetTrigger** and **MultiPageSheetContent**, it takes an array of \`pages\` (each with \`id\`, \`title\`, optional \`description\` / \`icon\`, \`content\`, optional per-page \`footerContent\`, and a \`noScroll\` flag), plus \`currentPageId\` / \`onPageChange\`. It supports \`size\`, an \`onSave\` callback, built-in \`showNavigation\` with \`disableNext\` / \`disableSave\` guards.
+
+**When to use**
+- For multi-step flows or detail panels that should keep the underlying page partially visible.
+- When a page hosts tall or scrollable content (e.g. a **ScrollableDataTable**) better suited to a wide side panel.
+
+**Guidelines**
+- Use \`disableNext\` / \`disableSave\` to gate progression until the current step is valid.
+- Set a page's \`noScroll\` when it manages its own internal scrolling (e.g. a data table).
+- For a focus-stealing centered modal flow, use **MultiPageDialog** instead.`,
+      },
+    },
+  },
 };
 
 export default meta;
@@ -25,7 +41,7 @@ const samplePages: MultiPageSheetPage[] = [
     id: "profile",
     title: "User Profile",
     description: "Manage your personal information",
-    icon: UserIcon,
+    icon: User01,
     content: (
       <div className="s-space-y-4">
         <div>
@@ -61,7 +77,7 @@ const samplePages: MultiPageSheetPage[] = [
     id: "documents",
     title: "Documents",
     description: "Manage your uploaded files",
-    icon: DocumentTextIcon,
+    icon: File04,
     content: (
       <div className="s-space-y-4">
         <div>
@@ -87,7 +103,7 @@ const samplePages: MultiPageSheetPage[] = [
     id: "settings",
     title: "Settings",
     description: "Configure your preferences",
-    icon: Cog6ToothIcon,
+    icon: Settings01,
     content: (
       <div className="s-space-y-4">
         <div>
@@ -163,7 +179,7 @@ export const InteractiveContent: Story = {
         id: "step1",
         title: "Personal Info",
         description: "Enter your basic information",
-        icon: UserIcon,
+        icon: User01,
         content: (
           <div className="s-space-y-4">
             <div>
@@ -216,7 +232,7 @@ export const InteractiveContent: Story = {
         id: "step2",
         title: "File Selection",
         description: "Choose your files",
-        icon: DocumentTextIcon,
+        icon: File04,
         content: (
           <div className="s-space-y-4">
             <div>
@@ -273,7 +289,7 @@ export const InteractiveContent: Story = {
         id: "step3",
         title: "Final Settings",
         description: "Configure your preferences",
-        icon: Cog6ToothIcon,
+        icon: Settings01,
         content: (
           <div className="s-space-y-4">
             <div>
@@ -349,7 +365,7 @@ export const WithConditionalNavigation: Story = {
         id: "data-selection",
         title: "Select Data Sources",
         description: "Choose which data sources to include",
-        icon: DocumentTextIcon,
+        icon: File04,
         content: (
           <div className="s-space-y-4">
             <div>
@@ -407,7 +423,7 @@ export const WithConditionalNavigation: Story = {
         id: "description",
         title: "Add Description",
         description: "Describe your configuration",
-        icon: Cog6ToothIcon,
+        icon: Settings01,
         content: (
           <div className="s-space-y-4">
             <div>
@@ -632,7 +648,7 @@ export const WithScrollableDataTable: Story = {
         id: "users",
         title: "User Management",
         description: "Manage users with infinite scroll",
-        icon: UserIcon,
+        icon: User01,
         noScroll: true,
         content: (
           <div className="s-flex s-h-full s-flex-col s-space-y-4">

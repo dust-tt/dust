@@ -20,6 +20,7 @@ const QuerySchema = z.object({
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/observability/tool-step-index.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

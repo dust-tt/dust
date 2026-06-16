@@ -1,9 +1,18 @@
+import {
+  capUnitLabel,
+  normalizeCapInput,
+} from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
+import { formatCredits } from "@app/lib/client/credits";
+import type { ReinforcementBillingUnit } from "@app/lib/reinforcement/enforcement";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import {
   useSkillsWithRelations,
   useUpdateSkillReinforcement,
 } from "@app/lib/swr/skill_configurations";
-import { useSkillsSelfImprovingSpend } from "@app/lib/swr/useSelfImprovingSkillsSettings";
+import {
+  useReinforcementBillingUnit,
+  useSkillsSelfImprovingSpend,
+} from "@app/lib/swr/useSelfImprovingSkillsSettings";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type {
   SkillReinforcementMode,
@@ -12,7 +21,7 @@ import type {
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
   DataTable,
-  Input,
+  InputWithSave,
   Page,
   SearchInput,
   SliderToggle,
@@ -27,13 +36,16 @@ import { useCallback, useMemo, useState } from "react";
 
 interface SelfImprovingSkillsListSectionProps {
   owner: LightWorkspaceType;
-  defaultCapPerSkillMicroUsd: number;
+  // In the display unit: AWU credits for workspaces billed by Metronome,
+  // dollars otherwise.
+  defaultCapPerSkill: number;
 }
 
 type RowData = {
   sId: string;
   name: string;
   icon: string | null;
+  editedBy: number | null;
   editors: UserType[] | null;
   enabled: boolean;
   pendingEnabled: boolean | null;
@@ -41,14 +53,14 @@ type RowData = {
   lock: boolean;
   pendingLock: boolean | null;
   isLockUpdating: boolean;
-  currentSpentDollars: number;
-  capInputValue: string;
+  currentSpent: number;
+  currentSpentFormatted: string;
+  // Saved cap in the display unit, "" when using the workspace default.
+  savedCapValue: string;
   capPlaceholder: string;
-  isCapUpdating: boolean;
   onToggleEnabled: () => void;
   onToggleLock: () => void;
-  onCapChange: (value: string) => void;
-  onCapCommit: () => void;
+  onCapSave: (value: string) => Promise<void>;
   onClick?: () => void;
 };
 
@@ -59,134 +71,139 @@ function isReinforcementEnabled(
   return reinforcement !== "off";
 }
 
-const COLUMNS: ColumnDef<RowData, unknown>[] = [
-  {
-    header: "Name",
-    accessorKey: "name",
-    cell: (info: CellContext<RowData, unknown>) => {
-      const SkillAvatar = getSkillAvatarIcon(info.row.original.icon);
-      return (
-        <DataTable.CellContent>
-          <div className="flex flex-row items-center gap-2 py-3">
-            <SkillAvatar />
-            <div className="heading-sm overflow-hidden truncate text-foreground dark:text-foreground-night">
-              {info.row.original.name}
+function getColumns(
+  unit: ReinforcementBillingUnit
+): ColumnDef<RowData, unknown>[] {
+  // "(credits)" goes on its own line: the single-line header is too wide and
+  // overlaps the neighboring columns.
+  const headerWithUnit = (label: string) =>
+    unit === "awu_credits"
+      ? () => (
+          <>
+            {label}
+            <br />
+            (credits)
+          </>
+        )
+      : `${label} ($)`;
+  return [
+    {
+      header: "Name",
+      accessorKey: "name",
+      cell: (info: CellContext<RowData, unknown>) => {
+        const SkillAvatar = getSkillAvatarIcon(info.row.original);
+        return (
+          <DataTable.CellContent>
+            <div className="flex flex-row items-center gap-2 py-3">
+              <SkillAvatar />
+              <div className="heading-sm overflow-hidden truncate text-foreground dark:text-foreground-night">
+                {info.row.original.name}
+              </div>
             </div>
-          </div>
-        </DataTable.CellContent>
-      );
+          </DataTable.CellContent>
+        );
+      },
+      meta: { className: "w-40 @lg:w-full" },
     },
-    meta: { className: "w-40 @lg:w-full" },
-  },
-  {
-    header: "Editors",
-    accessorKey: "editors",
-    cell: (info: CellContext<RowData, unknown>) => {
-      const editors = info.row.original.editors;
-      const items = editors
-        ? editors.map((editor) => ({
-            name: editor.fullName,
-            visual: editor.image,
-            isRounded: true,
-          }))
-        : [{ name: "Dust", visual: DUST_AVATAR_URL, isRounded: false }];
-      return (
-        <DataTable.CellContent avatarStack={{ items, nbVisibleItems: 4 }} />
-      );
+    {
+      header: "Editors",
+      accessorKey: "editors",
+      cell: (info: CellContext<RowData, unknown>) => {
+        const editors = info.row.original.editors;
+        const items = editors
+          ? editors.map((editor) => ({
+              name: editor.fullName,
+              visual: editor.image,
+              isRounded: true,
+            }))
+          : [{ name: "Dust", visual: DUST_AVATAR_URL, isRounded: false }];
+        return (
+          <DataTable.CellContent avatarStack={{ items, nbVisibleItems: 4 }} />
+        );
+      },
+      meta: { className: "w-32" },
     },
-    meta: { className: "w-32" },
-  },
-  {
-    header: "Enabled",
-    accessorKey: "enabled",
-    cell: (info: CellContext<RowData, unknown>) => {
-      const {
-        enabled,
-        pendingEnabled,
-        isEnabledUpdating,
-        lock,
-        pendingLock,
-        onToggleEnabled,
-      } = info.row.original;
-      const selected = pendingEnabled ?? enabled;
-      const isLocked = pendingLock ?? lock;
-      return (
-        <DataTable.CellContent>
-          <SliderToggle
-            size="xs"
-            selected={selected}
-            disabled={isEnabledUpdating || isLocked}
-            onClick={onToggleEnabled}
-          />
-        </DataTable.CellContent>
-      );
+    {
+      header: "Enabled",
+      accessorKey: "enabled",
+      cell: (info: CellContext<RowData, unknown>) => {
+        const {
+          enabled,
+          pendingEnabled,
+          isEnabledUpdating,
+          lock,
+          pendingLock,
+          onToggleEnabled,
+        } = info.row.original;
+        const selected = pendingEnabled ?? enabled;
+        const isLocked = pendingLock ?? lock;
+        return (
+          <DataTable.CellContent>
+            <SliderToggle
+              size="xs"
+              selected={selected}
+              disabled={isEnabledUpdating || isLocked}
+              onClick={onToggleEnabled}
+            />
+          </DataTable.CellContent>
+        );
+      },
+      meta: { className: "w-24" },
     },
-    meta: { className: "w-24" },
-  },
-  {
-    header: "Currently Spent ($)",
-    accessorKey: "currentSpentDollars",
-    cell: (info: CellContext<RowData, unknown>) => (
-      <DataTable.BasicCellContent
-        label={formatDollars(info.row.original.currentSpentDollars)}
-      />
-    ),
-    meta: { className: "w-32" },
-  },
-  {
-    header: "Cap ($)",
-    accessorKey: "capInputValue",
-    cell: (info: CellContext<RowData, unknown>) => {
-      const {
-        sId,
-        capInputValue,
-        capPlaceholder,
-        isCapUpdating,
-        onCapChange,
-        onCapCommit,
-      } = info.row.original;
-      return (
-        <DataTable.CellContent>
-          <Input
-            name={`cap-${sId}`}
-            value={capInputValue}
-            placeholder={capPlaceholder}
-            disabled={isCapUpdating}
-            onChange={(e) => onCapChange(e.target.value)}
-            onBlur={onCapCommit}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                onCapCommit();
-              }
-            }}
-          />
-        </DataTable.CellContent>
-      );
+    {
+      header: headerWithUnit("Currently Spent"),
+      accessorKey: "currentSpent",
+      cell: (info: CellContext<RowData, unknown>) => (
+        <DataTable.BasicCellContent
+          label={info.row.original.currentSpentFormatted}
+        />
+      ),
+      meta: { className: "w-32" },
     },
-    meta: { className: "w-32" },
-  },
-  {
-    header: "Lock State",
-    accessorKey: "lock",
-    cell: (info: CellContext<RowData, unknown>) => {
-      const { lock, pendingLock, isLockUpdating, onToggleLock } =
-        info.row.original;
-      const selected = pendingLock ?? lock;
-      return (
-        <DataTable.CellContent>
-          <SliderToggle
-            size="xs"
-            selected={selected}
-            disabled={isLockUpdating}
-            onClick={onToggleLock}
-          />
-        </DataTable.CellContent>
-      );
+    {
+      header: headerWithUnit("Cap"),
+      accessorKey: "savedCapValue",
+      cell: (info: CellContext<RowData, unknown>) => {
+        const { sId, savedCapValue, capPlaceholder, onCapSave } =
+          info.row.original;
+        return (
+          <DataTable.CellContent>
+            <InputWithSave
+              name={`cap-${sId}`}
+              inputMode={unit === "awu_credits" ? "numeric" : "decimal"}
+              value={savedCapValue}
+              placeholder={capPlaceholder}
+              unit={capUnitLabel(unit)}
+              normalizeValue={(value) => normalizeCapInput(value, unit)}
+              onSave={onCapSave}
+            />
+          </DataTable.CellContent>
+        );
+      },
+      meta: { className: unit === "awu_credits" ? "w-48" : "w-40" },
     },
-    meta: { className: "w-24" },
-  },
-];
+    {
+      header: "Lock State",
+      accessorKey: "lock",
+      cell: (info: CellContext<RowData, unknown>) => {
+        const { lock, pendingLock, isLockUpdating, onToggleLock } =
+          info.row.original;
+        const selected = pendingLock ?? lock;
+        return (
+          <DataTable.CellContent>
+            <SliderToggle
+              size="xs"
+              selected={selected}
+              disabled={isLockUpdating}
+              onClick={onToggleLock}
+            />
+          </DataTable.CellContent>
+        );
+      },
+      meta: { className: "w-24" },
+    },
+  ];
+}
 
 function formatDollars(value: number): string {
   if (value === 0) {
@@ -194,6 +211,19 @@ function formatDollars(value: number): string {
   }
   // Show up to 2 decimals, trimming trailing zeros.
   return value.toFixed(2).replace(/\.?0+$/, "");
+}
+
+function formatSpend(value: number, unit: ReinforcementBillingUnit): string {
+  return unit === "awu_credits" ? formatCredits(value) : formatDollars(value);
+}
+
+// Plain (unformatted) value for cap inputs: thousands separators would not
+// round-trip through Number().
+function capInputValueFromSaved(
+  value: number,
+  unit: ReinforcementBillingUnit
+): string {
+  return unit === "awu_credits" ? String(value) : formatDollars(value);
 }
 
 function microUsdToDollars(microUsd: number): number {
@@ -215,15 +245,31 @@ function withoutSkill<T>(
 
 export function SelfImprovingSkillsListSection({
   owner,
-  defaultCapPerSkillMicroUsd,
+  defaultCapPerSkill,
 }: SelfImprovingSkillsListSectionProps) {
+  const unit = useReinforcementBillingUnit({ owner });
   const { skillsWithRelations, isSkillsWithRelationsLoading } =
     useSkillsWithRelations({ owner, status: "active", onlyCustom: true });
-  const { spentMicroUsdBySkillId } = useSkillsSelfImprovingSpend({ owner });
+  const { spentMicroUsdBySkillId, spentAwuCreditsBySkillId } =
+    useSkillsSelfImprovingSpend({ owner });
   const { updateSkillReinforcement } = useUpdateSkillReinforcement({
     owner,
     onlyCustom: true,
   });
+
+  // Spend per skill in the display unit.
+  const spentBySkillId = useMemo(
+    () =>
+      unit === "awu_credits"
+        ? spentAwuCreditsBySkillId
+        : Object.fromEntries(
+            Object.entries(spentMicroUsdBySkillId).map(([skillId, spent]) => [
+              skillId,
+              microUsdToDollars(spent),
+            ])
+          ),
+    [unit, spentMicroUsdBySkillId, spentAwuCreditsBySkillId]
+  );
 
   // Per-skill optimistic state during in-flight updates.
   const [pendingEnabledBySkillId, setPendingEnabledBySkillId] = useState<
@@ -236,12 +282,6 @@ export function SelfImprovingSkillsListSection({
     Record<string, boolean>
   >({});
   const [lockUpdatingBySkillId, setLockUpdatingBySkillId] = useState<
-    Record<string, boolean>
-  >({});
-  const [capInputBySkillId, setCapInputBySkillId] = useState<
-    Record<string, string>
-  >({});
-  const [capUpdatingBySkillId, setCapUpdatingBySkillId] = useState<
     Record<string, boolean>
   >({});
 
@@ -288,56 +328,52 @@ export function SelfImprovingSkillsListSection({
     [updateSkillReinforcement]
   );
 
-  const handleCapCommit = useCallback(
-    async (skillId: string, savedCapMicroUsd: number | null) => {
-      const inputValue = capInputBySkillId[skillId];
-      if (inputValue === undefined) {
-        return;
-      }
+  // `savedCap` is the skill's saved cap in the display unit (null when using
+  // the workspace default). Throws on failed updates so InputWithSave stays
+  // in editing mode (the SWR hook already sent the error notification).
+  const handleCapSave = useCallback(
+    async (skillId: string, savedCap: number | null, newValue: string) => {
+      const capUpdate = (value: number | null) =>
+        unit === "awu_credits"
+          ? {
+              selfImprovementCostsCapAwuCredits:
+                value === null ? null : Math.round(value),
+            }
+          : {
+              selfImprovementCostsCapMicroUsd:
+                value === null ? null : dollarsToMicroUsd(value),
+            };
 
-      const trimmed = inputValue.trim();
+      const trimmed = newValue.trim();
 
       // Empty input resets to default (null).
       if (trimmed === "") {
-        if (savedCapMicroUsd === null) {
-          // Already using default — just drop the local override.
-          setCapInputBySkillId((prev) => withoutSkill(prev, skillId));
+        if (savedCap === null) {
+          // Already using default.
           return;
         }
-        setCapUpdatingBySkillId((prev) => ({ ...prev, [skillId]: true }));
-        const ok = await updateSkillReinforcement(skillId, {
-          selfImprovementCostsCapMicroUsd: null,
-        });
-        setCapUpdatingBySkillId((prev) => withoutSkill(prev, skillId));
-        if (ok) {
-          setCapInputBySkillId((prev) => withoutSkill(prev, skillId));
+        const ok = await updateSkillReinforcement(skillId, capUpdate(null));
+        if (!ok) {
+          throw new Error("Failed to reset the per-skill cap");
         }
         return;
       }
 
       const parsed = Number(trimmed);
-      const isInvalid = !Number.isFinite(parsed) || parsed < 0;
-      const isUnchanged =
-        savedCapMicroUsd !== null &&
-        parsed === microUsdToDollars(savedCapMicroUsd);
-      if (isInvalid || isUnchanged) {
-        // Drop the local input override so the field falls back to the server value.
-        setCapInputBySkillId((prev) => withoutSkill(prev, skillId));
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        // Let the field revert to the server value.
+        return;
+      }
+      if (savedCap !== null && parsed === savedCap) {
         return;
       }
 
-      setCapUpdatingBySkillId((prev) => ({ ...prev, [skillId]: true }));
-      const ok = await updateSkillReinforcement(skillId, {
-        selfImprovementCostsCapMicroUsd: dollarsToMicroUsd(parsed),
-      });
-      setCapUpdatingBySkillId((prev) => withoutSkill(prev, skillId));
-
-      if (ok) {
-        // Drop the local override so the row reflects the freshly-mutated server value.
-        setCapInputBySkillId((prev) => withoutSkill(prev, skillId));
+      const ok = await updateSkillReinforcement(skillId, capUpdate(parsed));
+      if (!ok) {
+        throw new Error("Failed to update the per-skill cap");
       }
     },
-    [capInputBySkillId, updateSkillReinforcement]
+    [updateSkillReinforcement, unit]
   );
 
   const [filter, setFilter] = useState("");
@@ -349,18 +385,20 @@ export function SelfImprovingSkillsListSection({
   const sortedSkills = useMemo(
     () =>
       [...skillsWithRelations].sort((a, b) => {
-        const spentA = spentMicroUsdBySkillId[a.sId] ?? 0;
-        const spentB = spentMicroUsdBySkillId[b.sId] ?? 0;
+        const spentA = spentBySkillId[a.sId] ?? 0;
+        const spentB = spentBySkillId[b.sId] ?? 0;
         // Sort by currently spent descending, then by name ascending as tiebreaker.
         if (spentB !== spentA) {
           return spentB - spentA;
         }
         return a.name.localeCompare(b.name);
       }),
-    [skillsWithRelations, spentMicroUsdBySkillId]
+    [skillsWithRelations, spentBySkillId]
   );
 
-  const defaultCapPlaceholder = `${formatDollars(microUsdToDollars(defaultCapPerSkillMicroUsd))} (default)`;
+  const columns = useMemo(() => getColumns(unit), [unit]);
+
+  const defaultCapPlaceholder = `${capInputValueFromSaved(defaultCapPerSkill, unit)} (default)`;
 
   const rows: RowData[] = useMemo(
     () =>
@@ -368,17 +406,20 @@ export function SelfImprovingSkillsListSection({
         (skill: SkillWithoutInstructionsAndToolsWithRelationsType) => {
           const enabled = isReinforcementEnabled(skill.reinforcement);
           const lock = skill.selfImprovementLock;
-          const savedCapMicroUsd = skill.selfImprovementCostsCapMicroUsd;
-          const capInput =
-            capInputBySkillId[skill.sId] ??
-            (savedCapMicroUsd !== null
-              ? formatDollars(microUsdToDollars(savedCapMicroUsd))
-              : "");
+          // Saved cap in the display unit.
+          const savedCap =
+            unit === "awu_credits"
+              ? skill.selfImprovementCostsCapAwuCredits
+              : skill.selfImprovementCostsCapMicroUsd !== null
+                ? microUsdToDollars(skill.selfImprovementCostsCapMicroUsd)
+                : null;
+          const currentSpent = spentBySkillId[skill.sId] ?? 0;
 
           return {
             sId: skill.sId,
             name: skill.name,
             icon: skill.icon,
+            editedBy: skill.editedBy,
             editors: skill.relations.editors,
             enabled,
             pendingEnabled: pendingEnabledBySkillId[skill.sId] ?? null,
@@ -386,24 +427,19 @@ export function SelfImprovingSkillsListSection({
             lock,
             pendingLock: pendingLockBySkillId[skill.sId] ?? null,
             isLockUpdating: lockUpdatingBySkillId[skill.sId] ?? false,
-            currentSpentDollars: microUsdToDollars(
-              spentMicroUsdBySkillId[skill.sId] ?? 0
-            ),
-            capInputValue: capInput,
+            currentSpent,
+            currentSpentFormatted: formatSpend(currentSpent, unit),
+            savedCapValue:
+              savedCap !== null ? capInputValueFromSaved(savedCap, unit) : "",
             capPlaceholder: defaultCapPlaceholder,
-            isCapUpdating: capUpdatingBySkillId[skill.sId] ?? false,
             onToggleEnabled: () => {
               void handleToggleEnabled(skill.sId, enabled);
             },
             onToggleLock: () => {
               void handleToggleLock(skill.sId, lock);
             },
-            onCapChange: (value: string) => {
-              setCapInputBySkillId((prev) => ({ ...prev, [skill.sId]: value }));
-            },
-            onCapCommit: () => {
-              void handleCapCommit(skill.sId, savedCapMicroUsd);
-            },
+            onCapSave: (value: string) =>
+              handleCapSave(skill.sId, savedCap, value),
           };
         }
       ),
@@ -414,12 +450,11 @@ export function SelfImprovingSkillsListSection({
       enabledUpdatingBySkillId,
       pendingLockBySkillId,
       lockUpdatingBySkillId,
-      capInputBySkillId,
-      capUpdatingBySkillId,
-      spentMicroUsdBySkillId,
+      spentBySkillId,
+      unit,
       handleToggleEnabled,
       handleToggleLock,
-      handleCapCommit,
+      handleCapSave,
     ]
   );
 
@@ -443,7 +478,7 @@ export function SelfImprovingSkillsListSection({
       ) : (
         <DataTable
           data={rows}
-          columns={COLUMNS}
+          columns={columns}
           filter={filter}
           filterColumn="name"
           pagination={pagination}

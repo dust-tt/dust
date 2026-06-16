@@ -15,13 +15,33 @@ const preview: Preview = {
     options: {
       storySort: {
         order: [
+          "Getting Started",
+          "Foundations",
+          ["Colors", "Typography", "Shadows", "Motion"],
           "Assets",
-          "Primitives",
-          "Components",
-          "Modules",
-          "Styles",
+          [
+            "Logo",
+            "Platform Logos",
+            "Icons",
+            ["Used in Product", "All Icons"],
+            "Avatars",
+            "*",
+          ],
+          "Actions",
+          "Forms & Inputs",
+          "Data Display",
+          "Feedback & Status",
+          "Navigation",
+          "Overlays",
+          "Layout",
+          "Lists",
+          "Product",
+          ["Conversation", "Agent"],
+          "Effects & Motion",
+          "Lab",
           "Example",
-        ], // Define your order here
+          "*",
+        ],
       },
     },
     themes: {

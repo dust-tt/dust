@@ -5,18 +5,18 @@ import {
   ActionCardBlock,
   AttachmentChip,
   Avatar,
-  BoltIcon,
+  Zap,
   Citation,
   CitationIcons,
   CitationTitle,
-  DocumentIcon,
+  File02,
   DriveLogo,
-  FolderIcon,
+  Folder,
   Icon,
   Markdown,
   NotionLogo,
   SlackLogo,
-  TableIcon,
+  Table,
 } from "../index_with_tw_base";
 import {
   ConversationMessageAvatar,
@@ -27,7 +27,22 @@ import {
 import { ConversationContainer } from "../components/ConversationMessage";
 
 const meta = {
-  title: "Conversation/ConversationMessages",
+  title: "Product/Conversation/ConversationMessages",
+  parameters: {
+    docs: {
+      description: {
+        component: `The building blocks for laying out a chat thread of user and agent messages. Compose each turn from **ConversationMessageContainer** (with \`messageType\` and \`type\` to distinguish user vs. agent), **ConversationMessageAvatar**, **ConversationMessageTitle** (name, timestamp, optional \`infoChip\` and \`completionStatus\`), and **ConversationMessageContent** (which accepts message body plus a \`citations\` array).
+
+**When to use**
+- To render a full conversation between people and agents, including attachments, citations, and action cards.
+
+**Guidelines**
+- Set both \`messageType\` and \`type\` on the container so user and agent messages are styled and aligned correctly.
+- Put **Markdown** in the content for agent text, pass source references through the \`citations\` prop (using **Citation**), and embed **AttachmentChip** or **ActionCardBlock** inline as needed.
+- Use \`completionStatus\` on the title for agent timing/approval states rather than inventing custom labels.`,
+      },
+    },
+  },
 } satisfies Meta;
 
 export default meta;
@@ -47,7 +62,7 @@ export const Example: Story = {
             name="Edouard"
             timestamp="14:30"
             renderName={(name) => <span>{name}</span>}
-            infoChip={<Icon size="xs" visual={BoltIcon} />}
+            infoChip={<Icon size="xs" visual={Zap} />}
           />
           <ConversationMessageContent type="user">
             Can you summarize the customer feedback from this week?
@@ -85,12 +100,12 @@ export const Example: Story = {
               <div className="s-flex s-flex-wrap s-gap-2">
                 <AttachmentChip
                   label="Q1_feedback_summary.pdf"
-                  icon={{ visual: DocumentIcon }}
+                  icon={{ visual: File02 }}
                 />
                 <AttachmentChip
                   label="Customer interviews"
                   doubleIcon={{
-                    mainIcon: FolderIcon,
+                    mainIcon: Folder,
                     secondaryIcon: DriveLogo,
                     size: "sm",
                   }}
@@ -117,7 +132,7 @@ export const Example: Story = {
                 <AttachmentChip
                   label="Notes — Interviews"
                   doubleIcon={{
-                    mainIcon: DocumentIcon,
+                    mainIcon: File02,
                     secondaryIcon: NotionLogo,
                     size: "sm",
                   }}
@@ -150,7 +165,7 @@ export const Example: Story = {
             citations={[
               <Citation key="table">
                 <CitationIcons>
-                  <Icon visual={TableIcon} size="sm" />
+                  <Icon visual={Table} size="sm" />
                 </CitationIcons>
                 <CitationTitle>Weekly support report</CitationTitle>
               </Citation>,
@@ -218,7 +233,7 @@ export const Example: Story = {
             citations={[
               <Citation key="long-table">
                 <CitationIcons>
-                  <Icon visual={TableIcon} size="sm" />
+                  <Icon visual={Table} size="sm" />
                 </CitationIcons>
                 <CitationTitle>Support queue trends</CitationTitle>
               </Citation>,

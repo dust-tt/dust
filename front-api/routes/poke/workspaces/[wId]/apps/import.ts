@@ -50,6 +50,7 @@ const ImportQuerySchema = z.object({
 // Mounted at /api/poke/workspaces/:wId/apps/import.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("query", ImportQuerySchema),

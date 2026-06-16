@@ -12,6 +12,7 @@ export type PokeDsyncResponseBody = Omit<
 // Mounted at /api/poke/workspaces/:wId/dsync.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<PokeDsyncResponseBody> => {
   const auth = ctx.get("auth");
   const owner = auth.getNonNullableWorkspace();

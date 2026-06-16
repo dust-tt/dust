@@ -7,6 +7,8 @@
 //                     the same Pod.
 
 import {
+  LEGACY_PREFIX_CONVERSATION,
+  LEGACY_PREFIX_PROJECT,
   SCOPED_PREFIX_CONVERSATION,
   SCOPED_PREFIX_POD,
 } from "@app/lib/api/file_system/types";
@@ -227,6 +229,33 @@ export function parseRawVizScope(rawScope: string): ParsedVizScope | null {
   return r.success ? { kind: "legacy", prefix: r.data } : null;
 }
 
+export type ParsedCanonicalScopedPath = {
+  scope:
+    | { kind: "canonical-conversation"; id: string }
+    | { kind: "canonical-pod"; id: string };
+  relPath: string;
+};
+
+/**
+ * Parse a canonical agent-visible scoped path (`conversation-{id}/...`, `pod-{id}/...`)
+ * into its scope and path relative to that mount.
+ */
+export function parseCanonicalScopedPath(
+  scopedPath: string
+): ParsedCanonicalScopedPath | null {
+  const slashIdx = scopedPath.indexOf("/");
+  const rawScope = slashIdx === -1 ? scopedPath : scopedPath.slice(0, slashIdx);
+  const parsed = parseRawVizScope(rawScope);
+  if (!parsed || parsed.kind === "legacy") {
+    return null;
+  }
+
+  return {
+    scope: parsed,
+    relPath: slashIdx === -1 ? "" : scopedPath.slice(slashIdx + 1),
+  };
+}
+
 /**
  * Parse a scoped file path like "conversation/chart.png" or "pod/report.pdf".
  * Returns null if the path is missing a valid scope prefix.
@@ -243,6 +272,124 @@ export function parseScopedFilePath(filePath: string): ScopedFilePath | null {
     return null;
   }
   return { prefix: prefixResult.data, rel: filePath.slice(slashIdx + 1) };
+}
+
+/** Conversation/pod context used to resolve legacy scoped paths for a frame. */
+export type FrameScopedPathContext = {
+  conversationId: string | null;
+  spaceId: string | null;
+};
+
+function getScopedPathPrefix(scopedPath: string): string | null {
+  const slashIdx = scopedPath.indexOf("/");
+  if (slashIdx <= 0) {
+    return null;
+  }
+  return scopedPath.slice(0, slashIdx);
+}
+
+/**
+ * True for canonical agent-visible paths (`conversation-{id}/...`, `pod-{id}/...`).
+ * The id segment after the prefix must be non-empty.
+ */
+export function isCanonicalScopedPath(scopedPath: string): boolean {
+  const prefix = getScopedPathPrefix(scopedPath);
+  if (!prefix) {
+    return false;
+  }
+
+  if (prefix.startsWith(SCOPED_PREFIX_CONVERSATION)) {
+    return prefix.length > SCOPED_PREFIX_CONVERSATION.length;
+  }
+
+  if (prefix.startsWith(SCOPED_PREFIX_POD)) {
+    return prefix.length > SCOPED_PREFIX_POD.length;
+  }
+
+  return false;
+}
+
+/** True for legacy bare-prefix paths (`conversation/...`, `pod/...`, `project/...`). */
+export function isLegacyScopedPath(scopedPath: string): boolean {
+  const prefix = getScopedPathPrefix(scopedPath);
+  if (!prefix) {
+    return false;
+  }
+
+  return (
+    prefix === LEGACY_PREFIX_CONVERSATION ||
+    prefix === "pod" ||
+    prefix === LEGACY_PREFIX_PROJECT
+  );
+}
+
+/** True for any agent-visible scoped path (canonical or legacy). */
+export function isAgentScopedPath(scopedPath: string): boolean {
+  return isCanonicalScopedPath(scopedPath) || isLegacyScopedPath(scopedPath);
+}
+
+/**
+ * Resolve a legacy scoped path to its canonical form under the frame context.
+ * Canonical paths are returned unchanged.
+ */
+export function resolveCanonicalScopedPath(
+  scopedPath: string,
+  frameContext: FrameScopedPathContext
+): string | null {
+  if (isCanonicalScopedPath(scopedPath)) {
+    return scopedPath;
+  }
+
+  if (!isLegacyScopedPath(scopedPath)) {
+    return null;
+  }
+
+  const slashIdx = scopedPath.indexOf("/");
+  const prefix = scopedPath.slice(0, slashIdx);
+  const rel = path.posix.normalize(scopedPath.slice(slashIdx + 1));
+
+  if (rel.startsWith("..") || rel.startsWith("/")) {
+    return null;
+  }
+
+  switch (prefix) {
+    case LEGACY_PREFIX_CONVERSATION: {
+      if (!frameContext.conversationId) {
+        return null;
+      }
+      return `${SCOPED_PREFIX_CONVERSATION}${frameContext.conversationId}/${rel}`;
+    }
+    case "pod":
+    case LEGACY_PREFIX_PROJECT: {
+      if (!frameContext.spaceId) {
+        return null;
+      }
+      return `${SCOPED_PREFIX_POD}${frameContext.spaceId}/${rel}`;
+    }
+    default:
+      return null;
+  }
+}
+
+/** Match a requested legacy scoped path against a stored legacy alias. */
+export function legacyScopedPathsMatch(
+  storedLegacyPath: string | undefined,
+  requestedRef: string
+): boolean {
+  if (!storedLegacyPath) {
+    return false;
+  }
+
+  if (storedLegacyPath === requestedRef) {
+    return true;
+  }
+
+  // Older frame code may request `project/...` while the stored alias uses `pod/...`.
+  return (
+    requestedRef.startsWith(`${LEGACY_PREFIX_PROJECT}/`) &&
+    storedLegacyPath ===
+      `pod/${requestedRef.slice(`${LEGACY_PREFIX_PROJECT}/`.length)}`
+  );
 }
 
 export class ResolveScopedMountFilePathError extends Error {

@@ -85,8 +85,8 @@ export class AgentYAMLConverter {
     editors: AgentBuilderFormData["agentSettings"]["editors"]
   ): string[] {
     return editors
-      .filter((editor) => editor.email)
-      .map((editor) => editor.email);
+      .map((editor) => editor.email)
+      .filter((email): email is string => !!email);
   }
 
   private static convertSkills(

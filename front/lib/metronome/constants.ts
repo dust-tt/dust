@@ -10,6 +10,10 @@ const DEV_METRIC_LLM_PROVIDER_COST_PROGRAMMATIC =
   "e02846b3-956c-48bc-9fd1-162061aed624";
 const DEV_METRIC_TOOL_INVOCATIONS = "1d18c447-ac86-4f68-be6a-d72e05291d46";
 const DEV_METRIC_LLM_PROVIDER_COST_AWU = "98a768d3-e3dd-423b-a97e-5ee348dc55b8";
+const DEV_METRIC_TOOL_INVOCATIONS_NON_FREE =
+  "85ec107d-5d69-40fe-ae72-914c39659d75";
+const DEV_METRIC_LLM_PROVIDER_COST_AWU_NON_FREE =
+  "933c7ee3-fd2d-40a6-8c4e-f6a93045a273";
 
 // Products
 const DEV_PRODUCT_PROGRAMMATIC_USAGE = "daaf92ec-d0a7-444d-972e-a2d48c7edd0c";
@@ -32,6 +36,8 @@ const DEV_PRODUCT_EXCESS_CREDITS = "7e74d48b-44be-4e9c-9543-7136e6da8d96";
 const DEV_PRODUCT_PREPAID_COMMIT = "5f4331b7-4bf6-488b-9a0c-51bd139ac91c";
 const DEV_PRODUCT_SEAT_SUBSCRIPTION_CREDITS =
   "92f3466b-2423-4f2a-a8d1-0f6e9f7f0140";
+const DEV_PRODUCT_SEAT_SUBSCRIPTION_COMMIT =
+  "475eb7dd-5043-49bc-96eb-1b08f94fda51";
 
 // --- PROD (production) — TODO: update after running setup script in production ---
 
@@ -41,6 +47,10 @@ const PROD_METRIC_LLM_PROVIDER_COST_PROGRAMMATIC =
 const PROD_METRIC_TOOL_INVOCATIONS = "5905f2d8-bb38-4593-9bfe-e71c48f6fe3b";
 const PROD_METRIC_LLM_PROVIDER_COST_AWU =
   "162e09b0-a40b-4b09-b7b1-97bb057e901e";
+const PROD_METRIC_TOOL_INVOCATIONS_NON_FREE =
+  "6ac97dd2-42a8-44b4-8b5e-9c1157baa349";
+const PROD_METRIC_LLM_PROVIDER_COST_AWU_NON_FREE =
+  "cba95808-1063-4324-a09c-9f5b104674fd";
 
 // Products
 const PROD_PRODUCT_PROGRAMMATIC_USAGE = "cb21a6da-9790-4ab4-bb2d-0a82d5fdf4f3";
@@ -63,6 +73,8 @@ const PROD_PRODUCT_EXCESS_CREDITS = "26f0023b-e123-4154-a82d-104451fba068";
 const PROD_PRODUCT_PREPAID_COMMIT = "1408c9fc-dea1-4269-bd6d-1bc0aa1f1218";
 const PROD_PRODUCT_SEAT_SUBSCRIPTION_CREDITS =
   "03faa744-c1ab-4b94-aaf1-5fdaec89e11a";
+const PROD_PRODUCT_SEAT_SUBSCRIPTION_COMMIT =
+  "5cdb49e6-0a92-4a55-9c92-c8913b2df0d5";
 
 // --- Credit type IDs (stable across envs unless noted) ---
 
@@ -71,6 +83,13 @@ export const CREDIT_TYPE_USD_ID = "2714e483-4ff1-48e4-9e25-ac732e8f24f2";
 export const CREDIT_TYPE_EUR_ID = "58f0be15-cc47-4220-bdaf-072ab0e44f96";
 
 export const PLAN_CODE_CUSTOM_FIELD_KEY = "DUST_PLAN_CODE";
+
+// Custom field stamped on payment-gated contracts to identify the activation
+// flow type. The contract.start webhook checks this field and skips the
+// automatic subscription swap when set — payment_gate.payment_status handles it.
+export const PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY = "DUST_PAYMENT_GATE_TYPE";
+export const PAYMENT_GATE_TYPE_SUBSCRIPTION_ACTIVATION =
+  "subscription_activation";
 
 // Custom field stamped on every seat-style product (Workspace / Pro / Max /
 // Free / future seat tiers). Value is the membership seat type ("workspace"
@@ -88,14 +107,40 @@ export const SEAT_TYPE_CUSTOM_FIELD_KEY = "DUST_SEAT_TYPE";
 // for Metronome Product '…'".
 export const STRIPE_PRODUCT_ID_CUSTOM_FIELD_KEY = "STRIPE_PRODUCT_ID";
 
-// Custom field stamped on contract credits / commits to identify whether they
-// belong to the workspace pool ("pool") or are excess-overage accounting
-// credits ("excess"). Default Metronome alerts filter on this field to
-// exclude excess credits from low-balance notifications.
+// Custom field stamped on contract credits AND commits to identify whether they
+// belong to the workspace pool ("pool") or are excess-overage accounting credits
+// ("excess"). The pool balance alert carries per-entity ContractCredit + Commit
+// filters that both match "pool", so pool credits and pool commits count toward
+// the balance while excess credits are excluded. The key must be shared across
+// both entities: Metronome rejects an alert whose custom_field_filters use
+// different key/value pairs per entity type ("must specify the same set of key
+// and value pairs for every entity type"). Commits only ever take "pool" (they
+// have no excess variant).
 export const CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY =
   "DUST_CONTRACT_CREDIT_TYPE";
 export const CONTRACT_CREDIT_TYPE_EXCESS = "excess";
 export const CONTRACT_CREDIT_TYPE_POOL = "pool";
+// Per-user free-seat credits. Stamped at creation so they're explicitly typed
+// (not just "unstamped") and excluded from the pool balance — the pool filter
+// matches "pool", so "free_seat" never counts. Lets the credit.create /
+// credit.segment.start webhook leave them alone via its existing
+// already-stamped early-return, with no per-credit special-casing.
+export const CONTRACT_CREDIT_TYPE_FREE_SEAT = "free_seat";
+
+export type ContractCreditType =
+  | typeof CONTRACT_CREDIT_TYPE_EXCESS
+  | typeof CONTRACT_CREDIT_TYPE_POOL
+  | typeof CONTRACT_CREDIT_TYPE_FREE_SEAT;
+
+// Custom field stamped on a per-user (free) seat credit, carrying the seat's
+// user sId. Metronome alerts can filter on custom fields but not on a credit's
+// presentation specifier, so this is what lets a per-user
+// `low_remaining_contract_credit_balance_reached` alert fire as each free
+// user depletes their individual credit. The key must be registered with
+// Metronome (see `CUSTOM_FIELD_KEYS` in `scripts/metronome_setup.ts`) before it
+// can be stamped, or the create is rejected with "Invalid custom field keys".
+export const PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY =
+  "DUST_PER_USER_CREDIT_USER";
 
 // Pricing/billable-metric group key that splits AWU usage into "user",
 // "programmatic", and "free" slices. Emitted on every usage event and used
@@ -152,6 +197,16 @@ export const getMetricLlmProviderCostAwuId = () =>
     DEV_METRIC_LLM_PROVIDER_COST_AWU,
     PROD_METRIC_LLM_PROVIDER_COST_AWU
   );
+export const getMetricToolInvocationsNonFreeId = () =>
+  devOrProd(
+    DEV_METRIC_TOOL_INVOCATIONS_NON_FREE,
+    PROD_METRIC_TOOL_INVOCATIONS_NON_FREE
+  );
+export const getMetricLlmProviderCostAwuNonFreeId = () =>
+  devOrProd(
+    DEV_METRIC_LLM_PROVIDER_COST_AWU_NON_FREE,
+    PROD_METRIC_LLM_PROVIDER_COST_AWU_NON_FREE
+  );
 
 // Products
 export const getProductProgrammaticUsageId = () =>
@@ -183,11 +238,34 @@ export const getProductSeatSubscriptionCreditsId = () =>
     DEV_PRODUCT_SEAT_SUBSCRIPTION_CREDITS,
     PROD_PRODUCT_SEAT_SUBSCRIPTION_CREDITS
   );
+export const getProductSeatSubscriptionCommitId = () =>
+  devOrProd(
+    DEV_PRODUCT_SEAT_SUBSCRIPTION_COMMIT,
+    PROD_PRODUCT_SEAT_SUBSCRIPTION_COMMIT
+  );
 
 // AWU commit priorities — lower number is consumed first.
 // Seat allocations are consumed before purchased top-ups.
-export const AWU_PRIORITY_SEAT_ALLOCATION = 200;
+export const AWU_PRIORITY_SEAT_ALLOCATION = 0;
+// Free-seat per-user credits are a non-seat-based credit (created via
+// `add_credits` with a `user_id` specifier, not a SEAT_BASED subscription).
+// Metronome forbids a non-seat-based commit/credit from being prioritized over
+// a seat-based one, so this MUST be strictly greater than
+// `AWU_PRIORITY_SEAT_ALLOCATION`. Kept below `AWU_PRIORITY_PURCHASED_COMMIT` so
+// a free user's free allowance is consumed before any purchased top-up.
+export const AWU_PRIORITY_FREE_SEAT_CREDIT = 100;
 export const AWU_PRIORITY_PURCHASED_COMMIT = 300;
+
+// Per-seat AWU grant for free seats. Granted once per seat as a per-user
+// contract credit at seat-assignment time (see `grantFreeSeatCredits`) rather
+// than via a recurring credit, so this constant is also the authoritative
+// source for the free seat's displayed allowance (see
+// `getAwuAllocationInfoForSeatType`).
+export const FREE_SEAT_LIFETIME_AWU_CREDITS = 300;
+
+// Seat commit/credit priorities
+export const SEAT_PRIORITY_SUBSCRIPTION_COMMIT = 300;
+export const SEAT_PRIORITY_COUPON_CREDIT = 300;
 
 // tier product accessors — ordered array for indexed access.
 export const MAX_MAU_TIERS = 6;

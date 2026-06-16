@@ -61,6 +61,13 @@ const SKILL_ATTACHMENT_CONTENT_TYPES = [
   "text/x-perl",
   "text/x-perl-script",
   "message/rfc822",
+
+  // Fonts (used as-is by agents in Frames or the Computer).
+  "font/woff",
+  "font/woff2",
+  "font/otf",
+  "font/ttf",
+  "font/collection",
 ] as const satisfies readonly AllSupportedFileContentType[];
 
 export type SkillAttachmentContentType =

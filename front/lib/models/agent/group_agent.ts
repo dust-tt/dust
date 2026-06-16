@@ -1,5 +1,6 @@
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
@@ -7,7 +8,6 @@ import type {
   CreationOptional,
   ForeignKey,
 } from "sequelize";
-import { DataTypes } from "sequelize";
 
 export class GroupAgentModel extends WorkspaceAwareModel<GroupAgentModel> {
   declare id: CreationOptional<number>;

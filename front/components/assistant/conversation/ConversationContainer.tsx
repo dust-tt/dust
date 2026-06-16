@@ -1,5 +1,8 @@
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
-import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
+import {
+  getWorkspaceLimitForSubmitError,
+  ReachedLimitPopup,
+} from "@app/components/app/ReachedLimitPopup";
 import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -13,9 +16,13 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
+import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
 import { classNames } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { ConversationListItemType } from "@app/types/assistant/conversation";
+import type {
+  ConversationListItemType,
+  SubmitMessageError,
+} from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import {
   toMentionType,
@@ -27,7 +34,14 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
-import { Button, Card, LightbulbIcon, Page, XMarkIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  Card,
+  Lightbulb04,
+  Page,
+  ScrollArea,
+  XClose,
+} from "@dust-tt/sparkle";
 import { useCallback, useContext, useEffect, useState } from "react";
 
 interface ConversationContainerProps {
@@ -79,6 +93,30 @@ export function ConversationContainerVirtuoso({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // A seatless member can never send a message. We surface this up-front rather
+  // than relying on the deferred background message-post failure, which lands
+  // after navigation and would otherwise leave behind an empty conversation.
+  const { noSeat } = useWorkspaceUsageStatus({ owner });
+
+  // Maps a message-send failure to the right surface: blocking limits (no seat,
+  // credits, per-user cap, plan limit) open the dedicated popup, everything else
+  // is a transient error shown as a notification.
+  const handleSubmitMessageError = useCallback(
+    (error: SubmitMessageError) => {
+      const limitCode = getWorkspaceLimitForSubmitError(error.type);
+      if (limitCode) {
+        setLimitReachedCode(limitCode);
+      } else {
+        sendNotification({
+          title: error.title,
+          description: error.message,
+          type: "error",
+        });
+      }
+    },
+    [sendNotification]
+  );
+
   const handleConversationCreation = useCallback(
     async (
       input: string,
@@ -94,6 +132,18 @@ export function ConversationContainerVirtuoso({
         });
       }
 
+      // Block seatless members before creating the conversation: the backend
+      // would reject the message anyway, and doing it here shows the popup
+      // immediately without leaving an empty conversation behind.
+      if (noSeat) {
+        setLimitReachedCode("no_seat");
+        return new Err({
+          code: "internal_error",
+          name: "NoSeat",
+          message: "You don't have a seat in this workspace.",
+        });
+      }
+
       setIsSubmitting(true);
 
       const conversationRes = await createConversationWithMessage({
@@ -106,26 +156,17 @@ export function ConversationContainerVirtuoso({
           richMentions: mentions,
         },
         // Navigate as soon as the conversation exists; the first message is posted
-        // in the background by useCreateConversationWithMessage.
+        // in the background by useCreateConversationWithMessage. Background-post
+        // failures (e.g. no seat, credits) are surfaced through `onError` so the
+        // same blocking popup shows even though the conversation already exists.
         deferMessage: true,
+        onError: handleSubmitMessageError,
       });
 
       setIsSubmitting(false);
 
       if (conversationRes.isErr()) {
-        if (conversationRes.error.type === "plan_limit_reached_error") {
-          setLimitReachedCode("message_limit");
-        } else if (conversationRes.error.type === "credits_exhausted_error") {
-          setLimitReachedCode("pool_credits_exhausted");
-        } else if (conversationRes.error.type === "user_cap_reached_error") {
-          setLimitReachedCode("user_credits_exhausted");
-        } else {
-          sendNotification({
-            title: conversationRes.error.title,
-            description: conversationRes.error.message,
-            type: "error",
-          });
-        }
+        handleSubmitMessageError(conversationRes.error);
 
         return new Err({
           code: "internal_error",
@@ -154,10 +195,11 @@ export function ConversationContainerVirtuoso({
     },
     [
       isSubmitting,
+      noSeat,
       mutateConversations,
       owner,
       router,
-      sendNotification,
+      handleSubmitMessageError,
       createConversationWithMessage,
       clientSideMCPServerIds,
     ]
@@ -185,6 +227,7 @@ export function ConversationContainerVirtuoso({
           user={user}
           conversationId={activeConversationId}
           setLimitReachedCode={setLimitReachedCode}
+          limitReachedCode={limitReachedCode}
           key={conversationViewerKey}
           clientSideMCPServerIds={clientSideMCPServerIds}
         />
@@ -222,13 +265,13 @@ export function ConversationContainerVirtuoso({
               >
                 <div className="flex w-full flex-col gap-2 text-sm">
                   <div className="flex w-full items-center gap-2 font-semibold text-highlight-600 dark:text-highlight-400">
-                    <LightbulbIcon className="text-highlight-600 dark:text-highlight-400 h-5 w-5" />
+                    <Lightbulb04 className="text-highlight-600 dark:text-highlight-400 h-5 w-5" />
                     <div className="w-full">{suggestion.title}</div>
                     <div className="opacity-0 transition-opacity group-hover:opacity-100">
                       <Button
                         variant="ghost"
                         size="xs"
-                        icon={XMarkIcon}
+                        icon={XClose}
                         tooltip="Dismiss"
                         onClick={() => onDismissSuggestion?.(suggestion.id)}
                         className="text-highlight-600 dark:text-highlight-400"
@@ -267,6 +310,6 @@ export function ConversationContainerVirtuoso({
   return activeConversationId ? (
     body
   ) : (
-    <div className="h-full overflow-auto px-4 py-4 md:px-8">{body}</div>
+    <ScrollArea className="px-4 md:px-8">{body}</ScrollArea>
   );
 }

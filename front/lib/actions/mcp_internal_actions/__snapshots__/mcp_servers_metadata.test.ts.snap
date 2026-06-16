@@ -2,9 +2,6 @@
 
 exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across all servers 1`] = `
 {
-  "agent_management": {
-    "create_agent": "high",
-  },
   "agent_memory": {
     "compact_memory": "never_ask",
     "edit_entries": "never_ask",
@@ -100,6 +97,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "databricks": {
     "list_warehouses": "never_ask",
   },
+  "exa_people_and_company": {
+    "search_companies": "never_ask",
+    "search_people": "never_ask",
+  },
   "extract_data": {
     "extract_information_from_documents": "never_ask",
   },
@@ -117,10 +118,12 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "copy": "never_ask",
     "create": "never_ask",
     "delete": "medium",
+    "extract_text": "never_ask",
     "grep": "never_ask",
     "list": "never_ask",
     "move": "never_ask",
     "resolve": "never_ask",
+    "upload_from_url": "never_ask",
   },
   "freshservice": {
     "add_ticket_note": "low",
@@ -230,6 +233,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "copy_file": "low",
     "create_comment": "low",
     "create_document": "low",
+    "create_folder": "low",
     "create_presentation": "low",
     "create_reply": "low",
     "create_spreadsheet": "low",
@@ -370,6 +374,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "copy_file": "never_ask",
     "get_file_content": "never_ask",
     "list_drive_items": "never_ask",
+    "rename_drive_item": "medium",
     "search_drive_items": "never_ask",
     "search_in_files": "never_ask",
     "update_word_document": "high",
@@ -460,6 +465,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_attachments": "never_ask",
     "get_contacts": "never_ask",
     "get_drafts": "never_ask",
+    "get_message_body": "never_ask",
     "get_messages": "never_ask",
     "list_folders": "never_ask",
     "move_messages": "medium",
@@ -576,6 +582,12 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "search": {
     "semantic_search": "never_ask",
   },
+  "skill_authoring": {
+    "create_skill": "high",
+    "get_skill": "never_ask",
+    "list_skills": "never_ask",
+    "update_skill": "high",
+  },
   "skill_management": {
     "enable_skill": "never_ask",
   },
@@ -629,6 +641,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "generate_sound_effects": "low",
   },
   "speech_generator": {
+    "speech_to_text": "low",
     "text_to_dialogue": "low",
     "text_to_speech": "low",
   },
@@ -694,6 +707,17 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "web_search_&_browse": {
     "webbrowser": "never_ask",
     "websearch": "never_ask",
+  },
+  "workspace_analytics": {
+    "get_agent_details": "never_ask",
+    "get_credit_timeseries": "never_ask",
+    "get_credit_usage": "never_ask",
+    "get_source_breakdown": "never_ask",
+    "get_top_agents": "never_ask",
+    "get_top_skills": "never_ask",
+    "get_top_tools": "never_ask",
+    "get_top_users": "never_ask",
+    "get_usage_timeseries": "never_ask",
   },
   "zendesk": {
     "draft_reply": "low",

@@ -5,7 +5,6 @@ import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/discov
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
@@ -407,48 +406,18 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
 
     expect(skillResult).toMatchObject({
       relations: {
-        usage: { count: 0, agents: [] },
+        usage: { count: 0, agents: [], skills: [] },
       },
     });
   });
 
-  it("should not return used-by skills without the nested_skills feature flag", async () => {
+  it("should return child skills", async () => {
     const { workspace, user } = await setupTest();
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
     );
-
-    const { childSkill } = await SkillFactory.createWithNestedSkill(auth, {
-      childOverrides: {
-        name: "Referenced Skill",
-      },
-      parentOverrides: {
-        name: "Parent Skill",
-      },
-    });
-
-    const response = await getSkills(workspace, { withRelations: "true" });
-
-    expect(response.status).toBe(200);
-
-    const skillResult = (await response.json()).skills.find(
-      (s: SkillWithoutInstructionsAndToolsWithRelationsType) =>
-        s.sId === childSkill.sId
-    );
-
-    expect(skillResult.relations.usage).not.toHaveProperty("skills");
-  });
-
-  it("should return child skills when nested_skills is enabled", async () => {
-    const { workspace, user } = await setupTest();
-
-    const auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-    await FeatureFlagFactory.basic(auth, "nested_skills");
 
     const { parentSkill, childSkill } =
       await SkillFactory.createWithNestedSkill(auth, {
@@ -479,19 +448,18 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
         ],
       },
     });
-    expect(skillResult.relations.childSkills?.[0]).not.toHaveProperty(
+    expect(skillResult.relations.childSkills[0]).not.toHaveProperty(
       "instructions"
     );
   });
 
-  it("should return skills that reference a skill when nested_skills is enabled", async () => {
+  it("should return skills that reference a skill", async () => {
     const { workspace, user } = await setupTest();
 
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
     );
-    await FeatureFlagFactory.basic(auth, "nested_skills");
 
     const { childSkill, parentSkill } =
       await SkillFactory.createWithNestedSkill(auth, {
@@ -642,10 +610,9 @@ describe("POST /api/w/:wId/skills", () => {
     expect(createdSkill).not.toBeNull();
   });
 
-  it("creates skill references when nested skills is enabled", async () => {
+  it("creates skill references", async () => {
     const { auth, workspace } = await setupTest("admin");
 
-    await FeatureFlagFactory.basic(auth, "nested_skills");
     const childSkill = await SkillFactory.create(auth, {
       name: "Referenced Skill",
     });
@@ -654,12 +621,11 @@ describe("POST /api/w/:wId/skills", () => {
       name: "Parent Skill",
       agentFacingDescription: "To use with another skill",
       userFacingDescription: "A skill with a nested reference",
-      instructions: "Start with the referenced skill.",
+      instructions: `Start with ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
       icon: "PuzzleIcon",
       tools: [],
       extendedSkillId: null,
       attachedKnowledge: [],
-      referencedSkillIds: [childSkill.sId],
       instructionsHtml: null,
     });
 
@@ -678,21 +644,55 @@ describe("POST /api/w/:wId/skills", () => {
     ]);
   });
 
+  it("adds requested spaces from nested skill references", async () => {
+    const { auth, workspace, globalGroup } = await setupTest("admin");
+
+    const openSpace = await SpaceFactory.regular(workspace);
+    await GroupSpaceFactory.associate(openSpace, globalGroup);
+
+    const childSkill = await SkillFactory.create(auth, {
+      name: "Referenced Pod Skill",
+      requestedSpaceIds: [openSpace.id],
+    });
+
+    const response = await postSkill(workspace, {
+      name: "Parent Skill",
+      agentFacingDescription: "To use with another skill",
+      userFacingDescription: "A skill with a nested reference",
+      instructions: `Start with ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
+      icon: "PuzzleIcon",
+      tools: [],
+      extendedSkillId: null,
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.skill.requestedSpaceIds).toContain(openSpace.sId);
+    expect(data.skill.instructions).not.toContain("<unavailable_skill");
+
+    const createdSkill = await SkillResource.fetchById(auth, data.skill.sId);
+    if (!createdSkill) {
+      throw new Error("Expected created skill to be found.");
+    }
+    expect(createdSkill.requestedSpaceIds).toContain(openSpace.id);
+    expect(createdSkill.instructions).not.toContain("<unavailable_skill");
+  });
+
   it("drops missing nested skill references", async () => {
     const { auth, workspace } = await setupTest("admin");
-
-    await FeatureFlagFactory.basic(auth, "nested_skills");
 
     const response = await postSkill(workspace, {
       name: "Parent Skill",
       agentFacingDescription: "To use with another skill",
       userFacingDescription: "A skill with an invalid nested reference",
-      instructions: "Start with an invalid nested reference.",
+      instructions:
+        'Start with <skill id="not-a-skill-reference" name="Ghost Skill" />.',
       icon: "PuzzleIcon",
       tools: [],
       extendedSkillId: null,
       attachedKnowledge: [],
-      referencedSkillIds: ["not-a-skill-reference"],
       instructionsHtml: null,
     });
 
@@ -1006,10 +1006,8 @@ describe("POST /api/w/:wId/skills", () => {
 });
 
 describe("POST /api/w/:wId/skills - file attachments", () => {
-  it("creates a skill with file attachments when sandbox_tools is enabled", async () => {
+  it("creates a skill with file attachments", async () => {
     const { auth, workspace, user } = await setupTest("builder");
-
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     const file1 = await FileFactory.create(auth, user, {
       contentType: "text/plain",
@@ -1055,37 +1053,7 @@ describe("POST /api/w/:wId/skills - file attachments", () => {
     expect(createdSkill!.toJSON(auth).fileAttachments).toHaveLength(2);
   });
 
-  it("rejects file attachments when sandbox_tools is not enabled", async () => {
-    const { auth, workspace, user } = await setupTest("admin");
-
-    const file = await FileFactory.create(auth, user, {
-      contentType: "text/plain",
-      fileName: "template.txt",
-      fileSize: 100,
-      status: "ready",
-      useCase: "skill_attachment",
-    });
-
-    const response = await postSkill(workspace, {
-      name: "Skill With Files",
-      agentFacingDescription: "A skill with file attachments",
-      userFacingDescription: "User description",
-      instructions: "Instructions",
-      icon: "PuzzleIcon",
-      tools: [],
-      extendedSkillId: null,
-      attachedKnowledge: [],
-      instructionsHtml: null,
-      fileAttachments: [{ fileId: file.sId }],
-    });
-
-    expect(response.status).toBe(403);
-    expect((await response.json()).error.message).toContain(
-      "File attachments are not supported"
-    );
-  });
-
-  it("succeeds without file attachments when sandbox_tools is not enabled", async () => {
+  it("succeeds without file attachments", async () => {
     const { workspace } = await setupTest("admin");
 
     const response = await postSkill(workspace, {
@@ -1106,8 +1074,6 @@ describe("POST /api/w/:wId/skills - file attachments", () => {
 
   it("rejects file attachments with wrong use case", async () => {
     const { auth, workspace, user } = await setupTest("admin");
-
-    await FeatureFlagFactory.basic(auth, "sandbox_tools");
 
     const file = await FileFactory.create(auth, user, {
       contentType: "text/plain",

@@ -144,6 +144,7 @@ makeScript(
       completionDurationMs: null,
       richMentions: [],
       reactions: [],
+      costCredits: null,
     };
 
     const { serverToolsAndInstructions, error: mcpToolsListingError } =

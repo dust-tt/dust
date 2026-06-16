@@ -11,13 +11,27 @@ import {
   SearchInput,
   SidebarLayout,
   type SidebarLayoutRef,
-  SidebarLeftCloseIcon,
-  SidebarLeftOpenIcon,
+  LayoutLeft,
+  LayoutRight,
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "WIP/SidebarLayout",
+  title: "Lab/SidebarLayout",
   component: SidebarLayout,
+  parameters: {
+    docs: {
+      description: {
+        component: `An app-shell layout pairing a collapsible side panel with a main content area. It exposes an imperative handle (**SidebarLayoutRef**) so you can toggle or collapse the sidebar programmatically, making it suitable for navigation rails alongside scrollable content.
+
+**When to use**
+- For top-level page scaffolding that needs a persistent, collapsible sidebar next to a main region.
+
+**Guidelines**
+- Drive collapse/expand through the **SidebarLayoutRef** handle and reflect state in the toggle control's icon.
+- Compose the sidebar from **NavigationList** / **NavigationListItem** and wrap long content in **ScrollArea** so each region scrolls independently.`,
+      },
+    },
+  },
 } satisfies Meta<typeof SidebarLayout>;
 
 export default meta;
@@ -39,7 +53,7 @@ const SampleSidebar = ({
         <Button
           variant="ghost-secondary"
           size="icon"
-          icon={isCollapsed ? SidebarLeftOpenIcon : SidebarLeftCloseIcon}
+          icon={isCollapsed ? LayoutRight : LayoutLeft}
           onClick={onToggle}
         />
       )}
@@ -133,7 +147,7 @@ const ComplexSidebar = ({
         <Button
           variant="ghost-secondary"
           size="icon"
-          icon={isCollapsed ? SidebarLeftOpenIcon : SidebarLeftCloseIcon}
+          icon={isCollapsed ? LayoutRight : LayoutLeft}
           onClick={onToggle}
         />
       )}

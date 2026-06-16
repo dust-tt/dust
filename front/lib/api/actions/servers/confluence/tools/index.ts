@@ -125,6 +125,7 @@ export function createConfluenceTools(): ToolDefinition[] {
           if (result.isErr()) {
             throw new MCPError(`Error getting page: ${result.error}`);
           }
+
           return result.value;
         }
       );

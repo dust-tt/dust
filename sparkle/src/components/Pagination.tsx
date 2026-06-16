@@ -1,8 +1,7 @@
-import { ChevronLeftIcon, ChevronRightIcon } from "@sparkle/icons/app";
+import { ChevronLeft, ChevronRight } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import type { PaginationState } from "@tanstack/react-table";
 import React, { useCallback } from "react";
-
 import { Button } from "./Button";
 
 type Size = "sm" | "xs";
@@ -81,7 +80,7 @@ export function Pagination({
           variant="outline"
           size="xs"
           disabled={!canPreviousPage}
-          icon={ChevronLeftIcon}
+          icon={ChevronLeft}
           onClick={previousPage}
         />
 
@@ -99,7 +98,7 @@ export function Pagination({
           variant="outline"
           size="xs"
           disabled={!canNextPage}
-          icon={ChevronRightIcon}
+          icon={ChevronRight}
           onClick={nextPage}
         />
       </div>

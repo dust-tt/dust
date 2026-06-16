@@ -1,7 +1,7 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import type { DatasourceRetrievalData } from "@app/lib/api/assistant/observability/datasource_retrieval";
 import { fetchDatasourceRetrievalMetrics } from "@app/lib/api/assistant/observability/datasource_retrieval";
+import type { PokeGetDatasourceRetrievalResponse } from "@app/lib/api/poke/agent_configurations";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -16,14 +16,10 @@ const ParamsSchema = z.object({
   aId: z.string(),
 });
 
-export type PokeGetDatasourceRetrievalResponse = {
-  datasources: DatasourceRetrievalData[];
-  total: number;
-};
-
 // Mounted at /api/poke/workspaces/:wId/agent_configurations/:aId/observability/datasource-retrieval.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

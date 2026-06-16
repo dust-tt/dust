@@ -6,6 +6,7 @@ import { withSpace } from "@front-api/middlewares/with_space";
 // Mounted under /api/w/:wId/spaces/:spaceId/project_tasks/mark_read.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post("/", withSpace({ requireCanRead: true }), async (ctx) => {
   const auth = ctx.get("auth");
   const space = ctx.get("space");

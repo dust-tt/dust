@@ -8,6 +8,11 @@ import logger from "@app/logger/logger";
 const CPU_PROFILE_DURATION_MS = 30_000;
 const HEAP_PROFILE_DURATION_MS = 30_000;
 
+export interface GetProfilerResponse {
+  cpu: string;
+  heap: string;
+}
+
 export async function saveProfile({
   extension,
   filename,

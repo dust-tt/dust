@@ -1,5 +1,5 @@
+import type { GetGroupsResponseBody } from "@app/lib/api/groups";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetGroupsResponseBody } from "@app/pages/api/w/[wId]/groups";
 import type { GroupKind, GroupType } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useMemo } from "react";

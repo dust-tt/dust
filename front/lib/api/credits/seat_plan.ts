@@ -11,6 +11,8 @@ import {
   isMauContract,
   type SeatAwuCreditsPeriod,
 } from "@app/lib/metronome/seat_types";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
 import type { MembershipSeatType } from "@app/types/memberships";
@@ -35,6 +37,10 @@ export interface SeatTypeInfo {
   // `priceCents` is the amount billed per `billingFrequency` (per month for
   // monthly, per year for annual).
   billingFrequency: SeatBillingFrequency;
+  // Hard cap on assignments; null means no cap.
+  maxSeats: number | null;
+  // Number of workspace members currently assigned to this seat type.
+  assignedCount: number;
 }
 
 // Dynamic seat-type → info map. The list of seat types is driven by the
@@ -105,7 +111,11 @@ export async function getSeatPlan(
 
   // Build `productId → seatType` from contract subscriptions so we can resolve
   // rate-schedule entries without comparing product names or IDs.
-  const productSeatTypes = await getProductSeatTypes();
+  const [productSeatTypes, seatLimits, seatCounts] = await Promise.all([
+    getProductSeatTypes(),
+    WorkspaceSeatLimitResource.fetchByWorkspace({ workspace }),
+    MembershipResource.getActiveSeatTypeCountsForWorkspace({ workspace }),
+  ]);
   const seatTypesByProductId = getSeatTypesByProductIdFromContract(
     contract,
     productSeatTypes
@@ -191,6 +201,7 @@ export async function getSeatPlan(
       seatType,
       productSeatTypes
     );
+    const limit = seatLimits.get(seatType);
     response[seatType] = {
       name,
       awuCredits: awuAllocation.credits,
@@ -198,6 +209,8 @@ export async function getSeatPlan(
       priceCents,
       currency,
       billingFrequency: billingFrequencyBySeatType.get(seatType) ?? "monthly",
+      maxSeats: limit?.maxSeats ?? null,
+      assignedCount: seatCounts[seatType] ?? 0,
     };
   }
   return new Ok(response);

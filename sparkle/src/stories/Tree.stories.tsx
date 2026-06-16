@@ -11,22 +11,36 @@ import {
 import {
   Button,
   Chip,
-  CloudArrowDownIcon,
-  Cog6ToothIcon,
-  DocumentIcon,
-  DustIcon,
-  EyeIcon,
-  FolderIcon,
-  HistoryIcon,
+  DownloadCloud01,
+  Settings01,
+  File02,
+  DustLogo,
+  Eye,
+  Folder,
+  ClockRewind,
   Icon,
   IconButton,
-  PlusCircleIcon,
+  PlusCircle,
   Tree,
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Components/Tree",
+  title: "Data Display/Tree",
   component: Tree,
+  parameters: {
+    docs: {
+      description: {
+        component: `A hierarchical, expandable list. **Tree** wraps a set of **Tree.Item** nodes, each taking a **label**, optional **visual** icon, and nested children. Items support a **type** (\`node\` / \`leaf\`), optional **checkbox** for multi-selection, per-item actions, and an \`isLoading\` state on a child **Tree** for lazy expansion.
+
+**When to use**
+- To browse nested structures such as folders, data sources, or document hierarchies.
+
+**Guidelines**
+- Provide a **visual** to distinguish node kinds (e.g. folders vs. leaves), and use \`type="leaf"\` for terminal items.
+- For lazily loaded branches, render a child \`<Tree isLoading />\` until data arrives rather than blocking the whole tree.`,
+      },
+    },
+  },
 } satisfies Meta<typeof Tree>;
 
 export default meta;
@@ -47,11 +61,11 @@ export const TreeExample = () => {
           <div className="s-text-xl">Tree</div>
           <div>
             <Tree>
-              <Tree.Item label="Item 1 (no children)" visual={FolderIcon} />
-              <Tree.Item label="Item 2 (loading)" visual={FolderIcon}>
+              <Tree.Item label="Item 1 (no children)" visual={Folder} />
+              <Tree.Item label="Item 2 (loading)" visual={Folder}>
                 <Tree isLoading />
               </Tree.Item>
-              <Tree.Item label="Item 3" visual={FolderIcon}>
+              <Tree.Item label="Item 3" visual={Folder}>
                 <Tree>
                   <Tree.Item
                     type="leaf"
@@ -87,62 +101,50 @@ export const TreeExample = () => {
               </Tree.Item>
               <Tree.Item
                 label="Item 4 (forced expanded)"
-                visual={FolderIcon}
+                visual={Folder}
                 collapsed={false}
               >
                 <Tree>
                   <Tree.Item
                     label="Item 1"
-                    visual={FolderIcon}
+                    visual={Folder}
                     defaultCollapsed={false}
                   >
-                    <Tree.Item
-                      label="Item 3"
-                      type="leaf"
-                      visual={DocumentIcon}
-                    />
-                    <Tree.Item
-                      label="Item 3"
-                      type="leaf"
-                      visual={DocumentIcon}
-                    />
+                    <Tree.Item label="Item 3" type="leaf" visual={File02} />
+                    <Tree.Item label="Item 3" type="leaf" visual={File02} />
                     <Tree.Empty label="(+ 4 items)" />
                   </Tree.Item>
                 </Tree>
               </Tree.Item>
               <Tree.Item
                 label="Item 5 (forced expanded)"
-                visual={FolderIcon}
+                visual={Folder}
                 collapsed={false}
               >
                 <Tree>
                   <Tree.Item
                     label="Item 1"
-                    visual={DocumentIcon}
+                    visual={File02}
                     type="leaf"
                     actions={
                       <>
                         <div className="s-text-sm s-text-muted-foreground">
                           hello
                         </div>
-                        <IconButton
-                          size="xs"
-                          icon={EyeIcon}
-                          variant="outline"
-                        />
+                        <IconButton size="xs" icon={Eye} variant="outline" />
                       </>
                     }
                   />
 
                   <Tree.Item
                     label="t"
-                    visual={DocumentIcon}
+                    visual={File02}
                     type="leaf"
                     actions={
                       <div className="s-flex s-grow s-flex-row s-items-center s-justify-between">
-                        <Button size="icon" variant="outline" icon={EyeIcon} />
+                        <Button size="icon" variant="outline" icon={Eye} />
                         <div className="s-flex s-flex-row s-items-center s-gap-1 s-text-sm s-text-muted-foreground">
-                          <Icon visual={HistoryIcon} size="xs" />
+                          <Icon visual={ClockRewind} size="xs" />
                           1y
                         </div>
                       </div>
@@ -152,27 +154,27 @@ export const TreeExample = () => {
               </Tree.Item>
               <Tree.Item
                 label="Item 6 (default collapsed)"
-                visual={FolderIcon}
+                visual={Folder}
                 defaultCollapsed={true}
               >
                 <Tree>
-                  <Tree.Item label="Item 1" visual={DocumentIcon} />
+                  <Tree.Item label="Item 1" visual={File02} />
                 </Tree>
               </Tree.Item>
 
               <Tree.Item
                 label="Item 7 (default expanded)"
-                visual={FolderIcon}
+                visual={Folder}
                 defaultCollapsed={false}
               >
                 <Tree>
-                  <Tree.Item label="Item 1" visual={DocumentIcon} />
-                  <Tree.Item label="Item 2" visual={DocumentIcon} />
+                  <Tree.Item label="Item 1" visual={File02} />
+                  <Tree.Item label="Item 2" visual={File02} />
                 </Tree>
               </Tree.Item>
               <Tree.Item
                 label="Item 8 (loading, with existing nodes)"
-                visual={FolderIcon}
+                visual={Folder}
               >
                 <Tree isLoading>
                   <Tree.Item
@@ -197,7 +199,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Item 1"
                 type="item"
-                visual={FolderIcon}
+                visual={Folder}
                 checkbox={{
                   checked: "partial",
                   onCheckedChange: () => {
@@ -208,7 +210,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Item 2"
                 type="item"
-                visual={FolderIcon}
+                visual={Folder}
                 checkbox={{
                   checked: checked["Item 2"],
                   onCheckedChange: () => {
@@ -219,7 +221,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Item 3"
                 type="item"
-                visual={FolderIcon}
+                visual={Folder}
                 checkbox={{
                   checked: checked["Item 3"],
                   onCheckedChange: () => {
@@ -230,7 +232,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Item 4"
                 type="item"
-                visual={FolderIcon}
+                visual={Folder}
                 checkbox={{
                   checked: checked["Item 4"],
                   onCheckedChange: () => {
@@ -241,7 +243,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Item 5"
                 type="item"
-                visual={FolderIcon}
+                visual={Folder}
                 checkbox={{
                   checked: checked["Item 5"],
                   onCheckedChange: () => {
@@ -292,7 +294,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Dust"
                 type="item"
-                visual={DustIcon}
+                visual={DustLogo}
                 checkbox={{
                   checked: checked["Dust"],
                   onCheckedChange: () => {
@@ -316,37 +318,37 @@ export const TreeExample = () => {
                 <Tree variant="navigator">
                   <Tree.Item
                     label="Item 1 with a very very very very very very very long text"
-                    visual={FolderIcon}
+                    visual={Folder}
                   >
                     <Tree variant="navigator">
                       <Tree.Item
                         label="Item 1 with a very very very very very very very long text"
-                        visual={FolderIcon}
+                        visual={Folder}
                         type="leaf"
                       />
-                      <Tree.Item label="Item 2" visual={FolderIcon} />
-                      <Tree.Item label="Item 3" visual={FolderIcon} />
+                      <Tree.Item label="Item 2" visual={Folder} />
+                      <Tree.Item label="Item 3" visual={Folder} />
                     </Tree>
                   </Tree.Item>
-                  <Tree.Item label="Item 2" visual={FolderIcon}>
+                  <Tree.Item label="Item 2" visual={Folder}>
                     <Tree variant="navigator">
-                      <Tree.Item label="Item 1" visual={FolderIcon} />
-                      <Tree.Item label="Item 2" visual={FolderIcon} />
-                      <Tree.Item label="Item 3" visual={FolderIcon} />
+                      <Tree.Item label="Item 1" visual={Folder} />
+                      <Tree.Item label="Item 2" visual={Folder} />
+                      <Tree.Item label="Item 3" visual={Folder} />
                     </Tree>
                   </Tree.Item>
-                  <Tree.Item label="Item 3" visual={FolderIcon}>
+                  <Tree.Item label="Item 3" visual={Folder}>
                     <Tree variant="navigator">
-                      <Tree.Item label="Item 1" visual={FolderIcon} />
-                      <Tree.Item label="Item 2" visual={FolderIcon} />
-                      <Tree.Item label="Item 3" visual={FolderIcon} />
+                      <Tree.Item label="Item 1" visual={Folder} />
+                      <Tree.Item label="Item 2" visual={Folder} />
+                      <Tree.Item label="Item 3" visual={Folder} />
                     </Tree>
                   </Tree.Item>
                 </Tree>
               </Tree.Item>
               <Tree.Item label="Notion" visual={NotionLogo} />
               <Tree.Item label="Slack" visual={SlackLogo} />
-              <Tree.Item label="Dust" visual={DustIcon} />
+              <Tree.Item label="Dust" visual={DustLogo} />
             </Tree>
           </div>
         </div>
@@ -364,12 +366,12 @@ export const TreeExample = () => {
                 <Tree variant="navigator">
                   <Tree.Item
                     label="Item 1 with a very very very very very very very long text"
-                    visual={FolderIcon}
+                    visual={Folder}
                   >
                     <Tree variant="navigator">
                       <Tree.Item
                         label="Item 1 with a very very very very very very very long text"
-                        visual={FolderIcon}
+                        visual={Folder}
                         type="leaf"
                         checkbox={{
                           checked: checked["Item 1"],
@@ -380,7 +382,7 @@ export const TreeExample = () => {
                       />
                       <Tree.Item
                         label="Item 2"
-                        visual={FolderIcon}
+                        visual={Folder}
                         checkbox={{
                           checked: checked["Item 2"],
                           onCheckedChange: () => {
@@ -390,7 +392,7 @@ export const TreeExample = () => {
                       />
                       <Tree.Item
                         label="Item 3"
-                        visual={FolderIcon}
+                        visual={Folder}
                         checkbox={{
                           checked: checked["Item 3"],
                           onCheckedChange: () => {
@@ -400,25 +402,25 @@ export const TreeExample = () => {
                       />
                     </Tree>
                   </Tree.Item>
-                  <Tree.Item label="Item 2" visual={FolderIcon}>
+                  <Tree.Item label="Item 2" visual={Folder}>
                     <Tree variant="navigator">
-                      <Tree.Item label="Item 1" visual={FolderIcon} />
-                      <Tree.Item label="Item 2" visual={FolderIcon} />
-                      <Tree.Item label="Item 3" visual={FolderIcon} />
+                      <Tree.Item label="Item 1" visual={Folder} />
+                      <Tree.Item label="Item 2" visual={Folder} />
+                      <Tree.Item label="Item 3" visual={Folder} />
                     </Tree>
                   </Tree.Item>
-                  <Tree.Item label="Item 3" visual={FolderIcon}>
+                  <Tree.Item label="Item 3" visual={Folder}>
                     <Tree variant="navigator">
-                      <Tree.Item label="Item 1" visual={FolderIcon} />
-                      <Tree.Item label="Item 2" visual={FolderIcon} />
-                      <Tree.Item label="Item 3" visual={FolderIcon} />
+                      <Tree.Item label="Item 1" visual={Folder} />
+                      <Tree.Item label="Item 2" visual={Folder} />
+                      <Tree.Item label="Item 3" visual={Folder} />
                     </Tree>
                   </Tree.Item>
                 </Tree>
               </Tree.Item>
               <Tree.Item label="Notion" visual={NotionLogo} />
               <Tree.Item label="Slack" visual={SlackLogo} />
-              <Tree.Item label="Dust" visual={DustIcon} />
+              <Tree.Item label="Dust" visual={DustLogo} />
             </Tree>
           </div>
         </div>
@@ -429,11 +431,11 @@ export const TreeExample = () => {
           <div className="s-text-xl">Tree</div>
           <div>
             <Tree isBoxed>
-              <Tree.Item label="Item 1 (no children)" visual={FolderIcon} />
-              <Tree.Item label="Item 2 (loading)" visual={FolderIcon}>
+              <Tree.Item label="Item 1 (no children)" visual={Folder} />
+              <Tree.Item label="Item 2 (loading)" visual={Folder}>
                 <Tree isLoading />
               </Tree.Item>
-              <Tree.Item label="Item 3" visual={FolderIcon}>
+              <Tree.Item label="Item 3" visual={Folder}>
                 <Tree>
                   <Tree.Item
                     type="leaf"
@@ -469,7 +471,7 @@ export const TreeExample = () => {
               </Tree.Item>
               <Tree.Item
                 label="Item 4 (forced collapsed)"
-                visual={FolderIcon}
+                visual={Folder}
                 collapsed={true}
               >
                 <Tree>
@@ -478,7 +480,7 @@ export const TreeExample = () => {
               </Tree.Item>
               <Tree.Item
                 label="Item 5 (forced expanded)"
-                visual={FolderIcon}
+                visual={Folder}
                 collapsed={false}
               >
                 <Tree>
@@ -499,7 +501,7 @@ export const TreeExample = () => {
               </Tree.Item>
               <Tree.Item
                 label="Item 6 (default collapsed)"
-                visual={FolderIcon}
+                visual={Folder}
                 defaultCollapsed={true}
               >
                 <Tree>
@@ -553,7 +555,7 @@ export const TreeExample = () => {
 
               <Tree.Item
                 label="Item 7 (default expanded)"
-                visual={FolderIcon}
+                visual={Folder}
                 defaultCollapsed={false}
               >
                 <Tree>
@@ -590,7 +592,7 @@ export const TreeExample = () => {
 
               <Tree.Item
                 label="Item 8 (loading, with existing nodes)"
-                visual={FolderIcon}
+                visual={Folder}
               >
                 <Tree isLoading>
                   <Tree.Item
@@ -615,7 +617,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Item 1"
                 type="item"
-                visual={FolderIcon}
+                visual={Folder}
                 checkbox={{
                   checked: checked["Item 1"],
                   onCheckedChange: () => {
@@ -626,7 +628,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Item 2"
                 type="item"
-                visual={FolderIcon}
+                visual={Folder}
                 checkbox={{
                   checked: checked["Item 2"],
                   onCheckedChange: () => {
@@ -637,7 +639,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Item 3"
                 type="item"
-                visual={FolderIcon}
+                visual={Folder}
                 checkbox={{
                   checked: checked["Item 3"],
                   onCheckedChange: () => {
@@ -648,7 +650,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Item 4"
                 type="item"
-                visual={FolderIcon}
+                visual={Folder}
                 checkbox={{
                   checked: checked["Item 4"],
                   onCheckedChange: () => {
@@ -659,7 +661,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Item 5"
                 type="item"
-                visual={FolderIcon}
+                visual={Folder}
                 checkbox={{
                   checked: checked["Item 5"],
                   onCheckedChange: () => {
@@ -710,7 +712,7 @@ export const TreeExample = () => {
               <Tree.Item
                 label="Dust"
                 type="item"
-                visual={DustIcon}
+                visual={DustLogo}
                 checkbox={{
                   checked: checked["Dust"],
                   onCheckedChange: () => {
@@ -732,32 +734,32 @@ export const TreeExample = () => {
                 isSelected={true}
               >
                 <Tree tailwindIconTextColor="s-text-foreground">
-                  <Tree.Item label="Item 1" visual={FolderIcon}>
+                  <Tree.Item label="Item 1" visual={Folder}>
                     <Tree>
-                      <Tree.Item label="Item 1" visual={FolderIcon} />
-                      <Tree.Item label="Item 2" visual={FolderIcon} />
-                      <Tree.Item label="Item 3" visual={FolderIcon} />
+                      <Tree.Item label="Item 1" visual={Folder} />
+                      <Tree.Item label="Item 2" visual={Folder} />
+                      <Tree.Item label="Item 3" visual={Folder} />
                     </Tree>
                   </Tree.Item>
-                  <Tree.Item label="Item 2" visual={FolderIcon}>
+                  <Tree.Item label="Item 2" visual={Folder}>
                     <Tree>
-                      <Tree.Item label="Item 1" visual={FolderIcon} />
-                      <Tree.Item label="Item 2" visual={FolderIcon} />
-                      <Tree.Item label="Item 3" visual={FolderIcon} />
+                      <Tree.Item label="Item 1" visual={Folder} />
+                      <Tree.Item label="Item 2" visual={Folder} />
+                      <Tree.Item label="Item 3" visual={Folder} />
                     </Tree>
                   </Tree.Item>
-                  <Tree.Item label="Item 3" visual={FolderIcon}>
+                  <Tree.Item label="Item 3" visual={Folder}>
                     <Tree>
-                      <Tree.Item label="Item 1" visual={FolderIcon} />
-                      <Tree.Item label="Item 2" visual={FolderIcon} />
-                      <Tree.Item label="Item 3" visual={FolderIcon} />
+                      <Tree.Item label="Item 1" visual={Folder} />
+                      <Tree.Item label="Item 2" visual={Folder} />
+                      <Tree.Item label="Item 3" visual={Folder} />
                     </Tree>
                   </Tree.Item>
                 </Tree>
               </Tree.Item>
               <Tree.Item label="Notion" visual={NotionLogo} />
               <Tree.Item label="Slack" visual={SlackLogo} />
-              <Tree.Item label="Dust" visual={DustIcon} />
+              <Tree.Item label="Dust" visual={DustLogo} />
             </Tree>
           </div>
         </div>
@@ -794,7 +796,7 @@ export const SelectDataSourceExample = () => {
                     <Chip size="sm" color="green" label="Syncing (235)" />
                     <Button
                       label="Manage"
-                      icon={Cog6ToothIcon}
+                      icon={Settings01}
                       variant="outline"
                       size="sm"
                     />
@@ -814,7 +816,7 @@ export const SelectDataSourceExample = () => {
                     <Chip size="sm" color="green" label="Syncing (235)" />
                     <Button
                       label="Manage"
-                      icon={Cog6ToothIcon}
+                      icon={Settings01}
                       variant="outline"
                       size="sm"
                     />
@@ -833,7 +835,7 @@ export const SelectDataSourceExample = () => {
                     <Chip size="sm" color="green" label="Syncing (235)" />
                     <Button
                       label="Manage"
-                      icon={Cog6ToothIcon}
+                      icon={Settings01}
                       variant="outline"
                       size="sm"
                     />
@@ -861,7 +863,7 @@ export const SelectDataSourceExample = () => {
                     <Chip size="sm" color="green" label="Syncing (235)" />
                     <Button
                       label="Manage"
-                      icon={Cog6ToothIcon}
+                      icon={Settings01}
                       variant="outline"
                       size="sm"
                     />
@@ -978,14 +980,14 @@ const TreeItem = ({
   return (
     <Tree.Item
       label={label}
-      visual={FolderIcon}
+      visual={Folder}
       actions={
         <div className="s-flex s-flex-row s-justify-center s-gap-2">
           <span className="s-text-xs s-text-muted-foreground">
             last updated Jan 6
           </span>
-          <IconButton icon={CloudArrowDownIcon} size="xs" variant="outline" />
-          <IconButton icon={PlusCircleIcon} size="xs" />
+          <IconButton icon={DownloadCloud01} size="xs" variant="outline" />
+          <IconButton icon={PlusCircle} size="xs" />
         </div>
       }
       renderTreeItems={() => <Tree>{createTreeItems(n, getLabel)}</Tree>}

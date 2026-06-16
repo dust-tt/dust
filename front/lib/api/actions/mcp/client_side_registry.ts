@@ -59,7 +59,7 @@ export function getMCPServerIdFromServerName({
 /**
  * Interface for MCP server registration metadata.
  */
-interface MCPServerRegistration {
+export interface MCPServerRegistration {
   lastHeartbeat: number;
   registeredAt: number;
   serverId: string;
@@ -225,7 +225,7 @@ export async function updateMCPServerHeartbeat(
         EX: MCP_SERVER_REGISTRATION_TTL_SECONDS,
       });
 
-      return true;
+      return metadata;
     }
   );
 
@@ -263,6 +263,7 @@ export async function deregisterMCPServer(
     { origin: "mcp_client_side_request" },
     async (redis) => redis.del(key)
   );
+
   return deleted === 1;
 }
 

@@ -137,6 +137,7 @@ describe("renderAllMessages", () => {
             richMentions: [],
             completionDurationMs: null,
             reactions: [],
+            costCredits: null,
           } satisfies AgentMessageType,
         ];
       }

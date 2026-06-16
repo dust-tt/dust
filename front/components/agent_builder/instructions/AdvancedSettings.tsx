@@ -17,11 +17,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DocumentTextIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  File04,
 } from "@dust-tt/sparkle";
 import React from "react";
 import { useController } from "react-hook-form";
@@ -116,7 +116,7 @@ export function AdvancedSettings() {
       >
         <DialogContent size="xl" height="lg">
           <DialogHeader>
-            <DialogTitle visual={<DocumentTextIcon />}>
+            <DialogTitle visual={<File04 />}>
               Structured response format
             </DialogTitle>
             <DialogDescription>

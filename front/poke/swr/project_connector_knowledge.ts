@@ -1,5 +1,5 @@
+import type { PokeListProjectKnowledgeFromConnectors } from "@app/lib/api/poke/projects";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PokeListProjectKnowledgeFromConnectors } from "@app/pages/api/poke/workspaces/[wId]/projects/[projectId]/connector-knowledge";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 

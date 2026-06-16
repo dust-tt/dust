@@ -83,9 +83,13 @@ final class ConversationListViewModel: ObservableObject {
     @Published var isPodsExpanded: Bool = true
 
     private let tokenProvider: TokenProvider
+    private var titleObserver: ConversationTitleObserver?
 
     init(tokenProvider: TokenProvider) {
         self.tokenProvider = tokenProvider
+        self.titleObserver = ConversationTitleObserver { [weak self] conversationId, title in
+            self?.conversations.updateTitle(conversationId: conversationId, title: title)
+        }
     }
 
     func load() async {

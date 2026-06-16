@@ -47,8 +47,10 @@ RUN if [ -n "$DATADOG_API_KEY" ]; then \
 EXPOSE 3002
 
 ARG COMMIT_HASH_LONG
-ENV DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/
-ENV DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
+ARG DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust
+ARG DD_GIT_COMMIT_SHA=${COMMIT_HASH_LONG}
+ENV DD_GIT_REPOSITORY_URL=${DD_GIT_REPOSITORY_URL}
+ENV DD_GIT_COMMIT_SHA=${DD_GIT_COMMIT_SHA}
 ENV DD_VERSION=${COMMIT_HASH}
 
 # Set a default command, it will start the API service if no command is provided

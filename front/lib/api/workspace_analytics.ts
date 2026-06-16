@@ -18,6 +18,8 @@ export type WorkspaceAnalytics = {
   };
 };
 
+export type GetWorkspaceAnalyticsResponse = WorkspaceAnalytics;
+
 export async function getWorkspaceAnalytics(
   auth: Authenticator
 ): Promise<WorkspaceAnalytics> {

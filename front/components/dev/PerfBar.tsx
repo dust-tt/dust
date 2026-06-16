@@ -6,6 +6,7 @@ interface MetricItemProps {
   valueWidthPx: number;
   color?: string;
   tooltip?: string;
+  compact?: boolean;
 }
 
 function MetricItem({
@@ -14,6 +15,7 @@ function MetricItem({
   valueWidthPx,
   color,
   tooltip,
+  compact,
 }: MetricItemProps) {
   return (
     <span
@@ -27,10 +29,10 @@ function MetricItem({
         cursor: tooltip ? "help" : undefined,
       }}
     >
-      <span style={{ color: "#9ca3af" }}>{label}</span>
+      {!compact && <span style={{ color: "inherit" }}>{label}</span>}
       <span
         style={{
-          color: color ?? "#ccc",
+          color: color ?? "inherit",
           fontWeight: 600,
           width: valueWidthPx,
           textAlign: "right",
@@ -44,9 +46,10 @@ function MetricItem({
 
 interface PerfBarProps {
   metrics: PerfMetrics;
+  compact?: boolean;
 }
 
-export function PerfBar({ metrics }: PerfBarProps) {
+export function PerfBar({ metrics, compact }: PerfBarProps) {
   return (
     <div
       style={{
@@ -60,6 +63,7 @@ export function PerfBar({ metrics }: PerfBarProps) {
           label="Mem"
           value={`${(metrics.memoryMb / 1024).toFixed(2)}GB`}
           valueWidthPx={48}
+          compact={compact}
           tooltip={[
             "JS Heap Memory (Chrome only)",
             `Used: ${metrics.memoryMb}MB`,
@@ -77,12 +81,13 @@ export function PerfBar({ metrics }: PerfBarProps) {
         label="FPS"
         value={String(metrics.fps)}
         valueWidthPx={22}
+        compact={compact}
         color={
           metrics.fps < 30
             ? "#ff6b6b"
             : metrics.fps < 50
               ? "#ffaa0d"
-              : "#7fdbca"
+              : "#00897B"
         }
         tooltip={[
           "Frames Per Second",
@@ -100,12 +105,13 @@ export function PerfBar({ metrics }: PerfBarProps) {
         label="Jank"
         value={`${metrics.jankPct}%`}
         valueWidthPx={30}
+        compact={compact}
         color={
           metrics.jankPct > 12
             ? "#ff6b6b"
             : metrics.jankPct > 4
               ? "#ffaa0d"
-              : "#ccc"
+              : "inherit"
         }
         tooltip={[
           "Jank — UI sluggishness caused by long",
@@ -122,6 +128,7 @@ export function PerfBar({ metrics }: PerfBarProps) {
         label="Net"
         value={String(metrics.netRequests)}
         valueWidthPx={22}
+        compact={compact}
         tooltip={[
           "Network requests in the last 1 second.",
           "Counts both fetch() and XMLHttpRequest calls.",

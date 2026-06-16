@@ -451,7 +451,7 @@ function BackendSearch({
       >
         {showSearch ? (
           <div className="flex w-full flex-col gap-2">
-            <div className="text-end text-sm text-muted-foreground">
+            <div className="text-end text-sm text-muted-foreground dark:text-muted-foreground-night">
               Showing {searchResults.length} of {searchHitCount} results
             </div>
             <SearchResultsTable

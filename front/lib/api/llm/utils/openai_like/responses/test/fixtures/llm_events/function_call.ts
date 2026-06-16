@@ -11,6 +11,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "openai",
       inferenceProvider: "openai",
+      inferenceRegion: "global",
       modelId: "gpt-5",
     },
   },
@@ -19,6 +20,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "openai",
       inferenceProvider: "openai",
+      inferenceRegion: "global",
       modelId: "gpt-5",
     },
   },
@@ -27,6 +29,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "openai",
       inferenceProvider: "openai",
+      inferenceRegion: "global",
       modelId: "gpt-5",
     },
   },
@@ -40,6 +43,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "openai",
       inferenceProvider: "openai",
+      inferenceRegion: "global",
       modelId: "gpt-5",
     },
   },
@@ -48,6 +52,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "openai",
       inferenceProvider: "openai",
+      inferenceRegion: "global",
       modelId: "gpt-5",
     },
   },
@@ -56,6 +61,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "openai",
       inferenceProvider: "openai",
+      inferenceRegion: "global",
       modelId: "gpt-5",
     },
   },
@@ -69,6 +75,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "openai",
       inferenceProvider: "openai",
+      inferenceRegion: "global",
       modelId: "gpt-5",
     },
   },
@@ -82,6 +89,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "openai",
       inferenceProvider: "openai",
+      inferenceRegion: "global",
       modelId: "gpt-5",
     },
   },
@@ -97,6 +105,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "openai",
       inferenceProvider: "openai",
+      inferenceRegion: "global",
       modelId: "gpt-5",
     },
   },
@@ -113,6 +122,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
         metadata: {
           clientId: "openai",
           inferenceProvider: "openai",
+          inferenceRegion: "global",
           modelId: "gpt-5",
         },
       },
@@ -129,6 +139,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
         metadata: {
           clientId: "openai",
           inferenceProvider: "openai",
+          inferenceRegion: "global",
           modelId: "gpt-5",
         },
       },
@@ -144,6 +155,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
         metadata: {
           clientId: "openai",
           inferenceProvider: "openai",
+          inferenceRegion: "global",
           modelId: "gpt-5",
         },
       },
@@ -160,6 +172,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
         metadata: {
           clientId: "openai",
           inferenceProvider: "openai",
+          inferenceRegion: "global",
           modelId: "gpt-5",
         },
       },
@@ -167,6 +180,7 @@ export const functionCallLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "openai",
       inferenceProvider: "openai",
+      inferenceRegion: "global",
       modelId: "gpt-5",
     },
   },

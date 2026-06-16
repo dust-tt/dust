@@ -1,3 +1,4 @@
+import type { GetWorkspaceAuthContextResponseType } from "@app/lib/api/auth_context";
 import config from "@app/lib/api/config";
 import {
   getForcedApiUrlRedirect,
@@ -5,10 +6,6 @@ import {
 } from "@app/lib/api/regions/lookup";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial";
-import type { SubscriptionType } from "@app/types/plan";
-import type { ProvidersHealth } from "@app/types/provider_credential";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -18,18 +15,6 @@ const ParamsSchema = z.object({
   wId: z.string(),
 });
 
-export type GetWorkspaceAuthContextResponseType = {
-  user: UserType;
-  workspace: LightWorkspaceType;
-  subscription: SubscriptionType;
-  isAdmin: boolean;
-  isBuilder: boolean;
-  featureFlags: WhitelistableFeature[];
-  isEligibleForTrial?: boolean;
-  vizUrl: string;
-  providersHealth: ProvidersHealth | null;
-};
-
 // Mounted at /api/w/:wId/auth-context.
 //
 // Unlike most workspace-scoped routes, this one runs even when the workspace
@@ -38,6 +23,7 @@ export type GetWorkspaceAuthContextResponseType = {
 // (not `workspaceAuth`) and resolve the `Authenticator` inline.
 const app = sessionApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

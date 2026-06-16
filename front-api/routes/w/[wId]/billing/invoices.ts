@@ -9,6 +9,7 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 // Mounted at /api/w/:wId/billing/invoices.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),

@@ -377,6 +377,17 @@ See `front/lib/api/actions/servers/github/tools/index.ts` for a full example.
 Use an existing similar icon temporarily, then request the final icon from design/Sparkle and
 update the `icon` field once available.
 
+When wiring up the icon:
+
+1. Add the SVG to `sparkle/src/logo/platforms/` if it doesn't already exist, and re-export it
+   from `sparkle/src/logo/platforms/index.ts`.
+2. Always check `sparkle/src/logo/platforms/registry.ts` and add the logo to `PLATFORM_LOGOS`.
+   The marketing site resolves icons by string name via `getPlatformLogo()`, so a missing
+   registry entry silently falls back to a placeholder puzzle-piece on `/integrations`.
+3. **Marketing must be redeployed for the new icon to appear on the public integrations page —
+   explicitly tell the engineer.** The change lands in the sparkle bundle that marketing builds
+   against, so a marketing rebuild is required.
+
 ## Feature Flags and Restrictions
 
 Gate preview or limited-access servers through `isRestricted` in the server config, using feature
@@ -432,6 +443,8 @@ Before marking implementation complete:
 - the server is registered in `servers/index.ts`
 - response rendering is implemented
 - a temporary icon is set
+- the icon is present in `PLATFORM_LOGOS` in `sparkle/src/logo/platforms/registry.ts`
+- the engineer has been told marketing needs a redeploy for the icon to appear publicly
 - feature gating is configured if needed
 - `npx tsgo --noEmit` passes
 - `npm run format:changed` passes from the repo root

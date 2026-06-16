@@ -1,10 +1,22 @@
+import { BillingPeriodSwitch } from "@app/components/pages/onboarding/SubscriptionPlans";
+import {
+  getSeatBarClasses,
+  getSeatIconColorClass,
+} from "@app/components/workspace/seat_styles";
+import type {
+  CheckoutBillingPeriod,
+  CheckoutSeatType,
+} from "@app/lib/api/checkout/types";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import type {
   SeatBillingFrequency,
   SeatPlanResponseBody,
   SeatTypeInfo,
 } from "@app/lib/api/credits/seat_plan";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { SEAT_PRODUCT_YEARLY_SUFFIX } from "@app/lib/metronome/constants";
+import { isFreePlan } from "@app/lib/plans/plan_codes";
+import { useAppRouter } from "@app/lib/platform";
 import { useUpdateMemberSeatType } from "@app/lib/swr/memberships";
 import type { SupportedCurrency } from "@app/types/currency";
 import { CURRENCY_SYMBOLS } from "@app/types/currency";
@@ -12,37 +24,65 @@ import {
   isMembershipSeatType,
   type MembershipSeatType,
 } from "@app/types/memberships";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
+  AlertCircle,
   Avatar,
-  Button,
-  ButtonGroup,
   Card,
-  Chip,
-  CoinsStacked03V2,
+  cn,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  SeatFreeIcon,
-  SeatMaxIcon,
-  SeatProIcon,
+  Icon,
+  LayerSingle,
+  LayersThree01,
+  LayersTwo01,
 } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 
-// Per-seat-type display icon. The label / name comes from the API
+function toCheckoutParams(
+  seatType: MembershipSeatType
+): { seatType: CheckoutSeatType; billingPeriod: CheckoutBillingPeriod } | null {
+  switch (seatType) {
+    case "pro":
+      return { seatType: "pro", billingPeriod: "monthly" };
+    case "pro_yearly":
+      return { seatType: "pro", billingPeriod: "yearly" };
+    case "max":
+      return { seatType: "max", billingPeriod: "monthly" };
+    case "max_yearly":
+      return { seatType: "max", billingPeriod: "yearly" };
+    case "workspace":
+    case "workspace_yearly":
+    case "none":
+    case "free":
+      return null;
+    default:
+      assertNeverAndIgnore(seatType);
+      return null;
+  }
+}
+
+// Per-seat-type display icon, matching the plan-selection pages
+// (SubscriptionPlans.tsx). The label / name comes from the API
 // (`SeatTypeInfo.name`) so adding a new seat tier only requires tagging the
 // product in Metronome — no code change here.
-const SEAT_TYPE_ICONS: Record<MembershipSeatType, React.ComponentType> = {
-  free: SeatFreeIcon,
-  pro: SeatProIcon,
-  pro_yearly: SeatProIcon,
-  max: SeatMaxIcon,
-  max_yearly: SeatMaxIcon,
-  workspace: SeatProIcon,
-  workspace_yearly: SeatProIcon,
+const SEAT_TYPE_ICONS: Record<
+  MembershipSeatType,
+  React.ComponentType<{ className?: string }>
+> = {
+  none: AlertCircle,
+  free: LayerSingle,
+  pro: LayersTwo01,
+  pro_yearly: LayersTwo01,
+  max: LayersThree01,
+  max_yearly: LayersThree01,
+  workspace: LayersTwo01,
+  workspace_yearly: LayersTwo01,
 };
 
 // Display order when multiple seat tiers are returned by the endpoint. Seat
@@ -101,13 +141,6 @@ function formatAwuCredits(info: SeatTypeInfo): string {
   }`;
 }
 
-function formatFrequencyLabel(frequency: SeatBillingFrequency): string {
-  if (frequency === "annual") {
-    return "Yearly";
-  }
-  return frequency.charAt(0).toUpperCase() + frequency.slice(1);
-}
-
 // The Metronome product names append SEAT_PRODUCT_YEARLY_SUFFIX to the
 // annual variant (e.g. "Pro Seat (Yearly)"). The billing cadence is conveyed
 // by the tab selector, so the suffix is redundant in the seat card label.
@@ -134,7 +167,14 @@ function SeatCard({
   badge,
   onClick,
 }: SeatCardProps) {
-  const Icon = SEAT_TYPE_ICONS[seatType];
+  const seatIcon = SEAT_TYPE_ICONS[seatType];
+  // Same treatment as PlanCard (SubscriptionPlans.tsx): seat tiers without a
+  // colored bar track map to the muted track, which matches the card
+  // background, so use a contrasting neutral instead.
+  const iconBackgroundClass =
+    seatType.startsWith("pro") || seatType.startsWith("max")
+      ? getSeatBarClasses(seatType).track
+      : "bg-muted dark:bg-muted-night";
 
   return (
     <Card
@@ -146,7 +186,18 @@ function SeatCard({
     >
       <div className="flex w-full items-center justify-between">
         <div className="flex items-center gap-2">
-          {Icon && <Icon />}
+          <div
+            className={cn(
+              "flex h-7 w-7 items-center justify-center rounded-lg",
+              iconBackgroundClass
+            )}
+          >
+            <Icon
+              visual={seatIcon}
+              size="sm"
+              className={getSeatIconColorClass(seatType)}
+            />
+          </div>
           <span className="text-base font-semibold text-foreground dark:text-foreground-night">
             {stripYearlySuffix(info.name)}
           </span>
@@ -155,7 +206,6 @@ function SeatCard({
       </div>
       {info.awuCredits > 0 && (
         <div className="flex items-center gap-2 text-muted-foreground dark:text-muted-foreground-night">
-          <CoinsStacked03V2 className="size-4" />
           <span className="text-xs">{formatAwuCredits(info)}</span>
         </div>
       )}
@@ -169,6 +219,10 @@ interface ChangeSeatModalProps {
   member: MemberUsageType | null;
   owner: WorkspaceType;
   seatPlans: SeatPlanResponseBody;
+  onSavingChange?: (memberId: string, isSaving: boolean) => void;
+  // Fired once the seat change has been persisted successfully (not on cancel
+  // or a no-op close). Used to resolve a linked upgrade request as approved.
+  onSaved?: () => void;
 }
 
 export function ChangeSeatModal({
@@ -177,7 +231,12 @@ export function ChangeSeatModal({
   member,
   owner,
   seatPlans,
+  onSavingChange,
+  onSaved,
 }: ChangeSeatModalProps) {
+  const { subscription } = useAuth();
+  const router = useAppRouter();
+  const useCheckoutPath = isFreePlan(subscription.plan.code);
   // Keep the last non-null member so the dialog can render its content through
   // the exit animation after the parent has cleared `member`.
   const lastMemberRef = useRef<MemberUsageType | null>(null);
@@ -296,36 +355,6 @@ export function ChangeSeatModal({
     );
   }
 
-  // Compute the yearly discount as a percentage by comparing the yearly price
-  // to monthly × 12 for the cheapest tier present in both frequencies. Falls
-  // back to no chip when the data doesn't allow a meaningful comparison.
-  function computeYearlyDiscountPercent(): number | null {
-    const yearlyDiscounts: number[] = [];
-    for (const yearlyKey of Object.keys(seatPlans)) {
-      if (!yearlyKey.endsWith("_yearly")) {
-        continue;
-      }
-      const monthlyKey = yearlyKey.slice(0, -"_yearly".length);
-      const yearly = seatPlans[yearlyKey as MembershipSeatType];
-      const monthly = seatPlans[monthlyKey as MembershipSeatType];
-      if (!yearly || !monthly || monthly.priceCents <= 0) {
-        continue;
-      }
-      const expectedYearly = monthly.priceCents * 12;
-      if (yearly.priceCents >= expectedYearly) {
-        continue;
-      }
-      yearlyDiscounts.push(1 - yearly.priceCents / expectedYearly);
-    }
-    if (yearlyDiscounts.length === 0) {
-      return null;
-    }
-    // Use the max discount surfaced — matches "best savings" framing.
-    const max = Math.max(...yearlyDiscounts);
-    return Math.round(max * 100);
-  }
-  const yearlyDiscountPercent = computeYearlyDiscountPercent();
-
   // Member has a scheduled seat change and is re-selecting their current seat to cancel it.
   const isCancellingScheduledChange =
     !!displayedMember?.scheduledSeatType && selectedSeat === currentSeatType;
@@ -334,12 +363,28 @@ export function ChangeSeatModal({
     if (!selectedSeat || !displayedMember) {
       return;
     }
+
+    if (useCheckoutPath) {
+      const params = toCheckoutParams(selectedSeat);
+      if (params) {
+        const query = new URLSearchParams({
+          ...params,
+          targetUserId: displayedMember.sId,
+        });
+        void router.push(
+          `/w/${owner.sId}/subscription/checkout?${query.toString()}`
+        );
+      }
+      return;
+    }
+
     if (selectedSeat === currentSeatType && !isCancellingScheduledChange) {
       onClose();
       return;
     }
 
     setIsSaving(true);
+    onSavingChange?.(displayedMember.sId, true);
     try {
       const ok = await doUpdateSeatType({
         memberId: displayedMember.sId,
@@ -351,10 +396,12 @@ export function ChangeSeatModal({
         hasSeatPool: (seatPlans[selectedSeat]?.awuCredits ?? 0) > 0,
       });
       if (ok) {
+        onSaved?.();
         onClose();
       }
     } finally {
       setIsSaving(false);
+      onSavingChange?.(displayedMember.sId, false);
     }
   }
 
@@ -403,25 +450,20 @@ export function ChangeSeatModal({
         <DialogContainer>
           <div className="flex flex-col gap-3">
             {availableFrequencies.length > 1 && (
-              <div className="mb-1 flex items-center gap-2 self-start">
-                <ButtonGroup>
-                  {availableFrequencies.map((f) => (
-                    <Button
-                      key={f}
-                      size="sm"
-                      variant={activeFrequency === f ? "primary" : "outline"}
-                      label={formatFrequencyLabel(f)}
-                      onClick={() => setActiveFrequency(f)}
-                    />
-                  ))}
-                </ButtonGroup>
-                {yearlyDiscountPercent !== null && (
-                  <Chip
-                    size="xs"
-                    color="green"
-                    label={`-${yearlyDiscountPercent}%`}
-                  />
-                )}
+              <div className="mb-1 self-start">
+                {/* Remount per member so the uncontrolled switch picks up the
+                    member's current billing frequency as its default. */}
+                <BillingPeriodSwitch
+                  key={displayedMemberId ?? "none"}
+                  defaultValue={
+                    currentFrequency === "annual" ? "yearly" : "monthly"
+                  }
+                  onValueChange={(period) =>
+                    setActiveFrequency(
+                      period === "yearly" ? "annual" : "monthly"
+                    )
+                  }
+                />
               </div>
             )}
 
@@ -466,13 +508,14 @@ export function ChangeSeatModal({
             onClick: onClose,
           }}
           rightButtonProps={{
-            label: "Validate",
+            label: useCheckoutPath ? "Continue to checkout" : "Validate",
             variant: "primary",
-            disabled:
-              isSaving ||
-              !selectedSeat ||
-              (selectedSeat === currentSeatType &&
-                !isCancellingScheduledChange),
+            disabled: useCheckoutPath
+              ? !selectedSeat || !toCheckoutParams(selectedSeat)
+              : isSaving ||
+                !selectedSeat ||
+                (selectedSeat === currentSeatType &&
+                  !isCancellingScheduledChange),
             onClick: handleValidate,
           }}
         />

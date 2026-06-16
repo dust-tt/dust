@@ -25,6 +25,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/files/:fileId/save-in-project.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),
@@ -116,9 +117,9 @@ app.post(
     });
     if (result.isErr()) {
       return apiError(ctx, {
-        status_code: 500,
+        status_code: 400,
         api_error: {
-          type: "internal_server_error",
+          type: "invalid_request_error",
           message: result.error.message,
         },
       });

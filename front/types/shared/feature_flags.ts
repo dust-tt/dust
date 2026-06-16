@@ -43,6 +43,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to Claude 4.5 Opus model in the agent builder",
     stage: "on_demand",
   },
+  claude_fable_5_feature: {
+    description:
+      "Access to Claude Fable 5 model (served through the EAP Anthropic key)",
+    stage: "dust_only",
+  },
   deepseek_feature: {
     description:
       "Access to DeepSeek models (they cannot use tool so can't be selected in the agent builder)",
@@ -52,12 +57,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to Fireworks new model",
     stage: "on_demand",
   },
-  deepseek_r1_global_agent_feature: {
-    description: "Access to DeepSeek R1 model as global agent",
-    stage: "on_demand",
-  },
   dev_mcp_actions: {
     description: "MCP tools currently in development",
+    stage: "dust_only",
+  },
+  exa_people_and_company: {
+    description: "Access to Exa MCP server (search_people, search_companies)",
     stage: "dust_only",
   },
   disable_run_logs: {
@@ -132,6 +137,16 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "API for accessing usage data (Means that any builder with an API key can access usage data of the workspace from API)",
     stage: "on_demand",
   },
+  workspace_analytics: {
+    description:
+      "Admin-only workspace usage analytics: the workspace_analytics MCP server, its skill, and the Workspace Analyst agent.",
+    stage: "on_demand",
+  },
+  usage_page_read_only: {
+    description:
+      "Allow legacy-contract workspaces to view the Usage page in read-only mode (analytics and member spend visible; all actions disabled).",
+    stage: "on_demand",
+  },
   xai_feature: {
     description: "Access to xAI models in the agent builder",
     stage: "on_demand",
@@ -143,10 +158,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   gemini_3_1_pro_feature: {
     description: "Access to Gemini 3.1 Pro model in the agent builder",
     stage: "on_demand",
-  },
-  agent_management_tool: {
-    description: "MCP tool for creating and managing agent configurations",
-    stage: "dust_only",
   },
   hootl_subscriptions: {
     description: "Subscription feature for Schedule & Triggers.",
@@ -161,11 +172,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slideshow MCP tool",
     stage: "dust_only",
   },
-  frames_skill_v2: {
-    description:
-      "Use the merged Frames skill v2 prose for every agent in the workspace. Temporary, remove after global rollout.",
-    stage: "dust_only",
-  },
   slack_message_splitting: {
     description:
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
@@ -174,10 +180,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   legacy_dust_apps: {
     description: "Access to legacy Dust Apps (editor and associated tools)",
     stage: "on_demand",
-  },
-  nested_skills: {
-    description: "Enable nested skills",
-    stage: "dust_only",
   },
   power_bi_mcp: {
     description: "Power BI MCP tool for querying semantic models and DAX",
@@ -228,17 +230,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   reinforced_agents: {
     description:
-      "Enable reinforcement: background analysis of conversations to suggest improvements to skills.",
+      "Enable self-improvement (background analysis of conversations to suggest improvements to skills).",
     stage: "dust_only",
   },
-  reinforcement_ui: {
+  self_improvement_beta_tester: {
     description:
-      "Enable the reinforcement suggestions UI panel in the Skills Builder.",
-    stage: "dust_only",
-  },
-  self_improving_skills_report_usage: {
-    description:
-      "Report reinforcement LLM costs to Metronome, ES analytics, and programmatic usage tracking.",
+      "Self-improvement runs for free: consumption is not reported to billing (Metronome or programmatic usage).",
     stage: "dust_only",
   },
   collapsible_messages: {
@@ -253,11 +250,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "Enable Metronome usage event emission (llm_usage, tool_use) for this workspace.",
     stage: "dust_only",
-  },
-  clari_copilot_mcp: {
-    description:
-      "Enable the Clari Copilot MCP server for call transcript and summary access.",
-    stage: "on_demand",
   },
   plan_mode: {
     description:
@@ -289,11 +281,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable Microsoft sensitivity labels for data classification on connectors and MCP servers",
     stage: "on_demand",
   },
-  deferred_conversation_creation: {
-    description:
-      "Create conversations in two steps (conversation first, first message in background) for faster navigation to the conversation page",
-    stage: "dust_only",
-  },
   conversation_search_indexing: {
     description: "Enable ES indexing of conversations on mutation (write path)",
     stage: "dust_only",
@@ -317,6 +304,21 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Force the SPA to use the regional API subdomain (us-api/eu-api.dust.tt) " +
       "as its backend for this workspace",
     stage: "on_demand",
+  },
+  disable_formatting_prompt: {
+    description:
+      "Skip injecting the OpenAI formatting meta prompt entirely (no markdown/paragraph style guidance)",
+    stage: "dust_only",
+  },
+  dust_desktop: {
+    description:
+      "Auto-attach the Dust Desktop client-side MCP server to agent runs when registered for the user.",
+    stage: "dust_only",
+  },
+  admin_governance: {
+    description:
+      "Access to admin governance features, including assigning the business_admin role from the UI",
+    stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

@@ -16,6 +16,7 @@ import * as reporter from "io-ts-reporters";
 // zod is outside the scope of this PR; we keep io-ts decoding inline here.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post("/", async (ctx): HandlerResult<AdminResponseType> => {
   const body = await ctx.req.json().catch(() => null);
   const bodyValidation = AdminCommandSchema.decode(body);

@@ -18,7 +18,10 @@ import { getMembershipInvitationUrl } from "@app/lib/utils/invitation_token";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
-import type { MembershipInvitationType } from "@app/types/membership_invitation";
+import type {
+  MembershipInvitationType,
+  PendingInvitationOption,
+} from "@app/types/membership_invitation";
 import type { MembershipSeatType } from "@app/types/memberships";
 import type { SubscriptionType } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -32,14 +35,54 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
+import { ActiveRoleSchema } from "@app/types/user";
 import sgMail from "@sendgrid/mail";
 import { escape } from "html-escaper";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
+import { z } from "zod";
 
 import { MembershipInvitationResource } from "../resources/membership_invitation_resource";
 
 const EMAIL_CONCURRENCY = 8;
+
+export type GetWorkspaceInvitationsResponseBody = {
+  invitations: MembershipInvitationType[];
+};
+
+export type GetPendingInvitationsLookupResponseBody = {
+  pendingInvitations: PendingInvitationOption[];
+};
+
+export type GetPendingInvitationsResponseBody = {
+  pendingInvitations: PendingInvitationOption[];
+};
+
+export const PostInvitationRequestBodySchema = z.array(
+  z.object({
+    email: z.string(),
+    role: ActiveRoleSchema,
+  })
+);
+
+export type PostInvitationRequestBody = z.infer<
+  typeof PostInvitationRequestBodySchema
+>;
+
+export type PostInvitationResponseBody = {
+  success: boolean;
+  email: string;
+  error_message?: string;
+}[];
+
+export type PostMemberInvitationsResponseBody = {
+  invitation: MembershipInvitationType;
+};
+
+export const PostMemberInvitationBodySchema = z.object({
+  status: z.enum(["revoked", "pending"]),
+  initialRole: ActiveRoleSchema,
+});
 
 export async function getInvitation(
   auth: Authenticator,
@@ -50,7 +93,7 @@ export async function getInvitation(
   }
 ): Promise<MembershipInvitationType | null> {
   const owner = auth.workspace();
-  if (!owner || !auth.isAdmin()) {
+  if (!owner || !auth.hasPermission("workspace:manage_members")) {
     return null;
   }
 
@@ -119,9 +162,9 @@ export async function batchUnrevokeInvitations(
   transaction?: Transaction
 ) {
   const owner = auth.workspace();
-  if (!owner || !auth.isAdmin()) {
+  if (!owner || !auth.hasPermission("workspace:manage_members")) {
     throw new Error(
-      "Only users that are `admins` for the current workspace can see membership invitations or modify them."
+      "Only users that can manage members for the current workspace can see membership invitations or modify them."
     );
   }
 
@@ -194,14 +237,22 @@ export async function handleMembershipInvitations(
       await getWorkspaceAdministrationVersionLock(owner, t);
 
       if (maxUsers !== -1) {
-        const membersCount =
-          await MembershipResource.getMembersCountForWorkspace({
+        const [membersCount, pendingInvitationsCount] = await Promise.all([
+          MembershipResource.getMembersCountForWorkspace({
             workspace: owner,
             activeOnly: true,
             transaction: t,
-          });
+          }),
+          MembershipInvitationResource.getPendingInvitationsCountForWorkspace({
+            workspace: owner,
+            transaction: t,
+          }),
+        ]);
 
-        const availableSeats = Math.max(maxUsers - membersCount, 0);
+        const availableSeats = Math.max(
+          maxUsers - membersCount - pendingInvitationsCount,
+          0
+        );
 
         if (availableSeats < invitationRequests.length) {
           const message =
@@ -440,22 +491,32 @@ export async function handleMembershipInvitations(
     ...emailResults,
   ];
 
+  // Emit one member.invited event per invited user, each recording the invitee
+  // as the user target and the role they were invited with. A single event with
+  // one target per invite would exceed WorkOS's `maxItems: 20` targets limit on
+  // bulk invites (causing `invalid_audit_log`). Bulk vs. individual is captured
+  // separately by `member.bulk_invited`, so it is not duplicated here.
+  // Key on the sanitized email (trim + lowercase) since that is how invitation
+  // emails are normalized when stored, so the role lookup matches both the
+  // freshly-emailed invites and the unrevoked ones.
+  const roleByEmail = new Map(
+    invitationRequests.map((r) => [sanitizeString(r.email), r.role])
+  );
   const successfulInvites = allResults.filter((r) => r.success);
-  if (successfulInvites.length > 0) {
+  for (const invite of successfulInvites) {
+    const role = roleByEmail.get(sanitizeString(invite.email));
     void emitAuditLogEvent({
       auth,
       action: "member.invited",
       targets: [
         buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-        ...successfulInvites.map((r) =>
-          buildAuditLogTarget("user", { sId: r.email, name: r.email })
-        ),
+        buildAuditLogTarget("user", {
+          sId: invite.email,
+          name: invite.email,
+        }),
       ],
       context: getAuditLogContext(auth),
-      metadata: {
-        invited_count: String(successfulInvites.length),
-        emails: successfulInvites.map((r) => r.email).join(","),
-      },
+      metadata: role ? { role } : {},
     });
   }
 

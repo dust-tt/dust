@@ -23,8 +23,6 @@ type CreateSkillOverrides = Partial<{
   addCurrentUserAsEditor: boolean;
   attachedKnowledge: SkillAttachedKnowledge[];
   mcpServerViews: MCPServerViewResource[];
-  enableSkillReferences: boolean;
-  referencedSkillIds: string[];
 }>;
 
 export class SkillFactory {
@@ -72,8 +70,6 @@ export class SkillFactory {
         mcpServerViews,
         addCurrentUserAsEditor: overrides.addCurrentUserAsEditor,
         attachedKnowledge,
-        enableSkillReferences: overrides.enableSkillReferences,
-        referencedSkillIds: overrides.referencedSkillIds ?? [],
       }
     );
   }
@@ -107,8 +103,6 @@ export class SkillFactory {
     const parentSkill = await this.create(auth, {
       ...parentOverrides,
       instructions: parentOverrides.instructions ?? `Use ${skillReferenceTag}.`,
-      enableSkillReferences: true,
-      referencedSkillIds: [childSkill.sId],
     });
 
     return { parentSkill, childSkill, skillReferenceTag };
@@ -144,8 +138,6 @@ export class SkillFactory {
       mcpServerViews: parentSkill.mcpServerViews,
       attachedKnowledge: await parentSkill.getAttachedKnowledge(auth),
       requestedSpaceIds: parentSkill.requestedSpaceIds,
-      enableSkillReferences: true,
-      referencedSkillIds: childSkills.map((childSkill) => childSkill.sId),
     });
 
     const updatedParentSkill = await SkillResource.fetchById(

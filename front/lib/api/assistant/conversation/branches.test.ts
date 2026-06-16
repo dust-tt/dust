@@ -14,6 +14,7 @@ import {
 import { ConversationBranchModel } from "@app/lib/models/agent/conversation_branch";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -414,6 +415,95 @@ describe("mergeConversationBranch", () => {
       where: { id: branch.id, workspaceId: workspace.id },
     });
     expect(updatedBranch?.state).toBe("merged");
+  });
+
+  it("should unlink deleted task conversations from their task", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const projectSpace = await SpaceFactory.project(workspace);
+
+    const task = await ProjectTaskResource.makeNew(auth, {
+      spaceId: projectSpace.id,
+      userId: user.id,
+      createdByType: "user",
+      createdByUserId: user.id,
+      createdByAgentConfigurationId: null,
+      markedAsDoneByType: null,
+      markedAsDoneByUserId: null,
+      markedAsDoneByAgentConfigurationId: null,
+      text: "Task with rejected branch conversation",
+      status: "todo",
+      doneAt: null,
+      actorRationale: null,
+      agentInstructions: null,
+      agentSuggestionStatus: null,
+      agentSuggestionReviewedAt: null,
+      agentSuggestionReviewedByUserId: null,
+    });
+
+    const conversation = await ConversationModel.create({
+      workspaceId: workspace.id,
+      sId: generateRandomModelSId(),
+      title: "Task branch rejection test conversation",
+      requestedSpaceIds: [],
+      spaceId: projectSpace.id,
+      metadata: {
+        projectTaskId: task.sId,
+      },
+    });
+
+    await task.addConversation(auth, { conversationModelId: conversation.id });
+    await expect(task.getLatestConversationId(auth)).resolves.toBe(
+      conversation.sId
+    );
+
+    const anchorUserMessage = await UserMessageModel.create({
+      userId: user.id,
+      workspaceId: workspace.id,
+      content: "",
+      userContextUsername: "testuser",
+      userContextTimezone: "UTC",
+      userContextFullName: "Test User",
+      userContextEmail: "test@example.com",
+      userContextProfilePictureUrl: null,
+      userContextOrigin: "branch_anchor",
+      clientSideMCPServerIds: [],
+    });
+
+    const anchorMessage = await MessageModel.create({
+      workspaceId: workspace.id,
+      sId: generateRandomModelSId(),
+      rank: 0,
+      conversationId: conversation.id,
+      parentId: null,
+      userMessageId: anchorUserMessage.id,
+      agentMessageId: null,
+      contentFragmentId: null,
+    });
+
+    const branch = await ConversationBranchResource.makeNew(auth, {
+      state: "open",
+      previousMessageId: anchorMessage.id,
+      conversationId: conversation.id,
+      userId: user.id,
+    });
+
+    const res = await closeConversationBranch(auth, {
+      branchId: branch.sId,
+      conversationId: conversation.sId,
+    });
+    if (res.isErr()) {
+      throw res.error;
+    }
+
+    expect(res.value.conversationDeleted).toBe(true);
+    await expect(task.getLatestConversationId(auth)).resolves.toBeNull();
   });
 
   it("should return branch_not_found when branch does not exist", async () => {

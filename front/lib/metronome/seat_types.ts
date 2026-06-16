@@ -1,9 +1,22 @@
 import { listMetronomeProducts } from "@app/lib/metronome/client";
-import { SEAT_TYPE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
+import {
+  FREE_SEAT_LIFETIME_AWU_CREDITS,
+  SEAT_TYPE_CUSTOM_FIELD_KEY,
+} from "@app/lib/metronome/constants";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
+import { getActiveContract } from "@app/lib/metronome/plan_type";
+import type { SeatLimit } from "@app/lib/resources/workspace_seat_limit_resource";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
-import type { MembershipSeatType } from "@app/types/memberships";
-import { isMembershipSeatType } from "@app/types/memberships";
+import type {
+  MembershipSeatType,
+  NormalizedPoolLimitSeatType,
+} from "@app/types/memberships";
+import {
+  isMembershipSeatType,
+  NORMALIZED_POOL_LIMIT_SEAT_TYPES,
+  normalizeToPoolLimitSeatType,
+} from "@app/types/memberships";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Subscription } from "@metronome/sdk/resources";
 
 /**
@@ -118,56 +131,53 @@ export type FreeSeatCounts = {
 /**
  * Returns the seat type to assign to a new membership on this contract.
  *
- * The default is derived from the contract itself — no rate-card custom
- * field. We order the seat tiers actually billed on the contract by AWU
- * allowance (ascending — the cheapest first) and pick the lowest tier.
+ * The seat is chosen in three phases:
  *
- * Legacy contracts carrying only untagged subscriptions (e.g. the legacy
- * MAU plan products) fall back to `"workspace"` — those subscriptions are
- * quantity-managed by `syncMauCount`, so the seat type is informational
- * only and `"workspace"` matches what new-tier enterprise contracts use.
+ *  1. **Committed seats** — iterate `pro` and `pro_yearly` seat types ordered
+ *     by AWU allowance ascending. For each type that has a committed allocation
+ *     (`seatLimits.minSeats > 0`) with remaining slots (`assignedCount <
+ *     minSeats`), assign it. Higher tiers (`max`, `workspace`, …) are never
+ *     auto-assigned; they must be set manually.
  *
- * `free` is a one-shot starter tier (its lifetime AWU credit cannot be
- * re-granted). It is skipped, and the next tier in the ordering is
- * tried, when any of the following are true:
+ *  2. **Free seat** — if `free` is on the contract and all of the following
+ *     hold, assign `free`:
+ *       - `isReturningMember` is false (`free` is a one-shot starter tier).
+ *       - Active free-seat cap not exceeded.
+ *       - Lifetime free-seat cap not exceeded.
  *
- *   - `isReturningMember` is true (the user already had a membership row
- *     in this workspace at some point).
- *   - `useFreeSeat` is false (caller opted out, e.g. an admin invitation
- *     that should land on a paid tier directly).
- *   - `freeSeatCounts.active >= freeSeatLimits.maxActiveFreeUsers` (and
- *     the limit is not `-1`).
- *   - `freeSeatCounts.lifetime >= freeSeatLimits.maxLifetimeFreeUsers`
- *     (and the limit is not `-1`).
+ *  3. **None** — all committed slots are taken and `free` is unavailable:
+ *     return `"none"` (no-seat tier).
  *
- * Returns `undefined` when no remaining tier is assignable (e.g. a
- * free-only contract that has exhausted its lifetime cap).
+ * Legacy contracts that carry no seat subscriptions return `"workspace"` early
+ * and never reach the three phases.
  *
- * The workspace-wide active-member cap (`plan.limits.users.maxUsers`) is
- * NOT enforced here — it's already enforced upstream by
- * `evaluateWorkspaceSeatAvailability` (signup) and `invitation.ts` (invite
- * creation).
+ * The workspace-wide active-member cap (`plan.limits.users.maxUsers`) is NOT
+ * enforced here — it is already enforced upstream by
+ * `evaluateWorkspaceSeatAvailability` (signup) and `invitation.ts`
+ * (invite creation).
  */
 export function getDefaultSeatTypeForContract(
   contract: CachedContract,
   productSeatTypes: Map<string, MembershipSeatType>,
   {
     isReturningMember = false,
-    useFreeSeat = true,
     freeSeatCounts,
     freeSeatLimits,
+    seatLimits,
+    seatCounts,
   }: {
     isReturningMember?: boolean;
-    useFreeSeat?: boolean;
     freeSeatCounts?: FreeSeatCounts;
     freeSeatLimits?: FreeSeatLimits;
+    seatLimits?: Map<MembershipSeatType, SeatLimit>;
+    seatCounts?: Partial<Record<MembershipSeatType, number>>;
   } = {}
-): MembershipSeatType | undefined {
+): MembershipSeatType {
   const seatTypesOnContract = [
     ...getSeatSubscriptionsFromContract(contract, productSeatTypes).keys(),
   ];
   if (seatTypesOnContract.length === 0) {
-    return "workspace";
+    return "none";
   }
   const ordered = seatTypesOnContract
     .map((seatType) => ({
@@ -178,31 +188,54 @@ export function getDefaultSeatTypeForContract(
     // deterministic when two tiers share an allowance (e.g. workspace = 0
     // and free = 0 on a hybrid contract).
     .sort((a, b) => a.awu - b.awu || a.seatType.localeCompare(b.seatType));
+
+  // Only `pro` and `pro_yearly` are eligible for auto-assignment. Higher tiers
+  // (`max`, `max_yearly`, `workspace`, `workspace_yearly`) must be assigned
+  // manually; they are never handed out automatically to new joiners.
+  const AUTO_ASSIGNABLE: ReadonlySet<MembershipSeatType> = new Set([
+    "pro",
+    "pro_yearly",
+  ]);
+
+  // Phase 1: assign to the cheapest committed seat type with remaining slots.
+  // A seat type is committed if seatLimits.minSeats > 0. The commitment is
+  // exhausted once assignedCount >= minSeats.
   for (const { seatType } of ordered) {
-    if (seatType === "free") {
-      if (isReturningMember || !useFreeSeat) {
-        continue;
-      }
-      if (
-        freeSeatLimits &&
-        freeSeatCounts &&
+    if (!AUTO_ASSIGNABLE.has(seatType)) {
+      continue;
+    }
+    const limit = seatLimits?.get(seatType);
+    if (!limit || limit.minSeats <= 0) {
+      continue;
+    }
+    const assignedCount = seatCounts?.[seatType] ?? 0;
+    if (assignedCount < limit.minSeats) {
+      return seatType;
+    }
+  }
+
+  // Phase 2: committed seats exhausted — try "free" if on the contract and
+  // the caller/workspace conditions allow it.
+  if (seatTypesOnContract.includes("free")) {
+    if (!isReturningMember) {
+      const activeCapHit =
+        freeSeatLimits !== undefined &&
+        freeSeatCounts !== undefined &&
         freeSeatLimits.maxActiveFreeUsers !== -1 &&
-        freeSeatCounts.active >= freeSeatLimits.maxActiveFreeUsers
-      ) {
-        continue;
-      }
-      if (
-        freeSeatLimits &&
-        freeSeatCounts &&
+        freeSeatCounts.active >= freeSeatLimits.maxActiveFreeUsers;
+      const lifetimeCapHit =
+        freeSeatLimits !== undefined &&
+        freeSeatCounts !== undefined &&
         freeSeatLimits.maxLifetimeFreeUsers !== -1 &&
-        freeSeatCounts.lifetime >= freeSeatLimits.maxLifetimeFreeUsers
-      ) {
-        continue;
+        freeSeatCounts.lifetime >= freeSeatLimits.maxLifetimeFreeUsers;
+      if (!activeCapHit && !lifetimeCapHit) {
+        return "free";
       }
     }
-    return seatType;
   }
-  return undefined;
+
+  // Phase 3: no committed seat or free available.
+  return "none";
 }
 
 /**
@@ -373,6 +406,15 @@ export function getAwuAllocationInfoForSeatType(
   if (!subscription?.id) {
     return { credits: 0, period: "monthly" };
   }
+
+  // Free seats no longer carry a recurring credit — their AWU grant is created
+  // as a per-user contract credit at seat-assignment time (see
+  // `grantFreeSeatCredits`). The allowance is therefore a code constant rather
+  // than something discoverable on the contract's `recurring_credits`.
+  if (seatType === "free") {
+    return { credits: FREE_SEAT_LIFETIME_AWU_CREDITS, period: "lifetime" };
+  }
+
   const credit = (contract.recurring_credits ?? []).find(
     (c) => c.subscription_config?.subscription_id === subscription.id
   );
@@ -393,4 +435,165 @@ export function getAwuAllocationForSeatType(
 ): number {
   return getAwuAllocationInfoForSeatType(contract, seatType, productSeatTypes)
     .credits;
+}
+
+/**
+ * The next time the per-seat AWU credit for `seatType` recurs (renews),
+ * strictly after `now`.
+ *
+ * This is the credit *recurrence*, which is deliberately independent of the
+ * subscription's billing period: in new pricing every per-seat AWU credit
+ * recurs MONTHLY (see `getPerSeatIndividualAwuCredits` /
+ * `buildPerSeatCredits` in `setup_new_pricing.ts`, which set
+ * `recurrence_frequency: "MONTHLY"` for both the monthly and the annual
+ * subscription of each seat pair). So a `pro_yearly` seat is billed once a
+ * year but its allowance refreshes every month. We therefore step the
+ * credit's recurrence anchor (the subscription's current billing-period
+ * start) forward by its `recurrence_frequency` rather than reading
+ * `billing_periods.next.starting_at`, which on an annual seat would point up
+ * to a year out.
+ *
+ * Returns `undefined` when the seat carries no recurring credit (e.g. `free`,
+ * whose AWU grant is a one-shot lifetime contract credit created at
+ * assignment time — see `grantFreeSeatCredits` — or `none`), when the credit
+ * never recurs (`lifetime`), or when the subscription exposes no
+ * billing-period anchor. Callers decide the fallback.
+ */
+export function getNextSeatCreditRenewalDate({
+  contract,
+  seatType,
+  productSeatTypes,
+  now,
+}: {
+  contract: CachedContract;
+  seatType: MembershipSeatType;
+  productSeatTypes: Map<string, MembershipSeatType>;
+  now: Date;
+}): Date | undefined {
+  const subscription = getSeatSubscriptionsFromContract(
+    contract,
+    productSeatTypes
+  ).get(seatType);
+  if (!subscription?.id) {
+    return undefined;
+  }
+
+  const credit = (contract.recurring_credits ?? []).find(
+    (c) => c.subscription_config?.subscription_id === subscription.id
+  );
+  if (!credit) {
+    return undefined;
+  }
+
+  const period = getSeatAwuCreditsPeriod(credit);
+  if (period === "lifetime") {
+    return undefined;
+  }
+
+  // Recurrences are anchored at the subscription start and refresh every
+  // `period`; the current billing-period start sits on that grid (one period
+  // back for monthly seats, up to a year back for annual seats whose credit
+  // still recurs monthly).
+  const anchorIso =
+    subscription.billing_periods?.current?.starting_at ??
+    subscription.billing_periods?.next?.starting_at;
+  if (!anchorIso) {
+    return undefined;
+  }
+
+  // Step in UTC: `date-fns` add* operate in local time and would shift the
+  // recurrence date across timezones. Month overflow is handled by `Date.UTC`
+  // (e.g. month 13 → next January).
+  const anchor = new Date(anchorIso);
+  const addMonthsUtc = (months: number): Date =>
+    new Date(
+      Date.UTC(
+        anchor.getUTCFullYear(),
+        anchor.getUTCMonth() + months,
+        anchor.getUTCDate(),
+        anchor.getUTCHours(),
+        anchor.getUTCMinutes(),
+        anchor.getUTCSeconds(),
+        anchor.getUTCMilliseconds()
+      )
+    );
+  const step = (n: number): Date => {
+    switch (period) {
+      case "weekly":
+        return new Date(anchor.getTime() + n * 7 * 24 * 60 * 60 * 1000);
+      case "monthly":
+        return addMonthsUtc(n);
+      case "quarterly":
+        return addMonthsUtc(3 * n);
+      case "annual":
+        return addMonthsUtc(12 * n);
+      default:
+        // `lifetime` already returned above; this guards new period values.
+        return assertNever(period);
+    }
+  };
+
+  // Step forward until the first occurrence strictly after `now`. Bounded:
+  // the anchor is at most one period before `now`, except an annual seat with
+  // a monthly credit, where it's at most ~12 months back.
+  let next = anchor;
+  for (let n = 1; next.getTime() <= now.getTime(); n++) {
+    next = step(n);
+  }
+  return next;
+}
+
+/**
+ * AWU allowance for a normalized pool-limit seat type (e.g. `"pro"`). Monthly
+ * and yearly variants of a tier share the same allowance, so this resolves the
+ * normalized type to whichever variant the contract actually sells and reads
+ * its allowance — a direct `getAwuAllocationForSeatType(contract, "pro", ...)`
+ * returns 0 on a contract that only sells `"pro_yearly"`. Returns 0 when no
+ * matching seat is sold.
+ */
+export function getAwuAllocationForNormalizedSeatType(
+  contract: CachedContract,
+  normalizedSeatType: NormalizedPoolLimitSeatType,
+  productSeatTypes: Map<string, MembershipSeatType>
+): number {
+  const seatSubscriptions = getSeatSubscriptionsFromContract(
+    contract,
+    productSeatTypes
+  );
+  for (const actualSeatType of seatSubscriptions.keys()) {
+    if (normalizeToPoolLimitSeatType(actualSeatType) === normalizedSeatType) {
+      return getAwuAllocationForSeatType(
+        contract,
+        actualSeatType,
+        productSeatTypes
+      );
+    }
+  }
+  return 0;
+}
+
+/**
+ * Resolve the seat AWU allowance for each normalized pool-limit seat type of
+ * the workspace's active contract. Returns an empty record when the workspace
+ * has no active contract. Used to derive total per-user cap thresholds (pool
+ * override + seat allowance) from the pool-only override persisted on
+ * memberships.
+ */
+export async function getSeatAllowancesByNormalizedSeatType(
+  workspaceId: string
+): Promise<Partial<Record<NormalizedPoolLimitSeatType, number>>> {
+  const contract = await getActiveContract(workspaceId);
+  if (!contract) {
+    return {};
+  }
+  const productSeatTypes = await getProductSeatTypes();
+  const allowances: Partial<Record<NormalizedPoolLimitSeatType, number>> = {};
+  for (const seatType of NORMALIZED_POOL_LIMIT_SEAT_TYPES) {
+    allowances[seatType] = getAwuAllocationForNormalizedSeatType(
+      contract,
+      seatType,
+      productSeatTypes
+    );
+  }
+  return allowances;
 }

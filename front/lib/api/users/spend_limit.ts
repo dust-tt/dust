@@ -5,6 +5,7 @@ import {
 import {
   dispatchPerUserCapReached,
   dispatchPerUserCapResolved,
+  dispatchPerUserCapWarningResolved,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { getUserForWorkspace } from "@app/lib/api/user";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
@@ -12,15 +13,16 @@ import type { Authenticator } from "@app/lib/auth";
 import {
   clearMetronomePerUserCapAlert,
   clearMetronomePerUserWarningAlert,
-  getMetronomeDefaultUserCapAlert,
-  getMetronomePerUserCap,
+  getMetronomeDefaultUserCapAlertForSeatType,
   upsertMetronomePerUserCapAlert,
   upsertMetronomePerUserWarningAlert,
 } from "@app/lib/metronome/alerts/spend_limits";
 import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
-import { clearUserAwuWarned } from "@app/lib/metronome/user_block";
+import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
+import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -33,6 +35,10 @@ export type UserSpendLimit =
   | { kind: "limited"; awuCredits: number };
 
 export type GetUserSpendLimitResponse = UserSpendLimit;
+
+export type GetUserSpendLimitResponseBody = GetUserSpendLimitResponse;
+
+export type PutUserSpendLimitResponseBody = SetUserSpendLimitResponse;
 
 export type SetUserSpendLimitResponse = {
   limit: UserSpendLimit;
@@ -55,6 +61,41 @@ export class UserSpendLimitError extends Error {
   ) {
     super(message);
   }
+}
+
+/**
+ * Resolve the seat AWU allowance for a membership based on its seat type and
+ * the active contract. Returns 0 when the contract or seat type can't be
+ * resolved (e.g. free seats, no contract).
+ */
+async function resolveUserSeatAllowance(
+  auth: Authenticator,
+  membership: MembershipResource
+): Promise<number> {
+  const workspace = auth.getNonNullableWorkspace();
+  const normalizedSeatType = normalizeToPoolLimitSeatType(membership.seatType);
+  if (!normalizedSeatType) {
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        seatType: membership.seatType,
+      },
+      "[Metronome PerUserCap] seat type does not map to a pool-limit seat type; seat allowance is 0"
+    );
+    return 0;
+  }
+  const allowances = await getSeatAllowancesByNormalizedSeatType(workspace.sId);
+  const seatAllowance = allowances[normalizedSeatType] ?? 0;
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      seatType: membership.seatType,
+      normalizedSeatType,
+      seatAllowance,
+    },
+    "[Metronome PerUserCap] resolved seat AWU allowance for membership"
+  );
+  return seatAllowance;
 }
 
 export async function getUserSpendLimit(
@@ -81,21 +122,21 @@ export async function getUserSpendLimit(
     );
   }
 
-  const result = await getMetronomePerUserCap({
-    metronomeCustomerId: workspace.metronomeCustomerId,
-    workspaceId: workspace.sId,
-    userId: user.sId,
-  });
-  if (result.isErr()) {
-    return new Err(
-      new UserSpendLimitError("metronome_error", result.error.message)
-    );
-  }
-
-  if (!result.value) {
+  // The override persisted on the membership is the source of truth (the
+  // Metronome alert is derived from it, with the seat allowance added).
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
+  if (!membership || membership.poolCapOverrideAwuCredits === null) {
     return new Ok({ kind: "unlimited" });
   }
-  return new Ok({ kind: "limited", awuCredits: result.value.alert.threshold });
+
+  return new Ok({
+    kind: "limited",
+    awuCredits: membership.poolCapOverrideAwuCredits,
+  });
 }
 
 /**
@@ -126,6 +167,7 @@ async function resolveLocalCapState({
   const usageResult = await fetchPerUserAwuUsage({
     metronomeCustomerId,
     metronomeContractId,
+    userIds: [userId],
   });
   if (usageResult.isErr()) {
     logger.warn(
@@ -182,6 +224,10 @@ export async function setUserSpendLimit(
 ): Promise<Result<SetUserSpendLimitResponse, UserSpendLimitError>> {
   const workspace = auth.getNonNullableWorkspace();
   if (!workspace.metronomeCustomerId) {
+    logger.info(
+      { workspaceId: workspace.sId, userId },
+      "[Metronome PerUserCap] set: workspace is not on Metronome billing"
+    );
     return new Err(
       new UserSpendLimitError(
         "workspace_not_metronome_billed",
@@ -190,8 +236,23 @@ export async function setUserSpendLimit(
     );
   }
 
+  logger.info(
+    {
+      workspaceId: workspace.sId,
+      metronomeCustomerId: workspace.metronomeCustomerId,
+      userId,
+      kind: limit.kind,
+      awuCredits: limit.kind === "limited" ? limit.awuCredits : null,
+    },
+    "[Metronome PerUserCap] set: starting per-user spend limit update"
+  );
+
   const user = await getUserForWorkspace(auth, { userId });
   if (!user) {
+    logger.info(
+      { workspaceId: workspace.sId, userId },
+      "[Metronome PerUserCap] set: user not found in workspace"
+    );
     return new Err(
       new UserSpendLimitError(
         "user_not_found",
@@ -210,7 +271,28 @@ export async function setUserSpendLimit(
     );
   }
 
-  let transitionedTo: "reached" | "resolved" | null;
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
+  if (!membership) {
+    return new Err(
+      new UserSpendLimitError(
+        "user_not_found",
+        "Could not find an active membership for the user in this workspace."
+      )
+    );
+  }
+
+  // Persist the admin's intent first: the membership is the source of truth,
+  // the Metronome alerts below are derived enforcement (a failed sync can be
+  // retried and re-derives from this value).
+  await membership.updatePoolCapOverride(
+    limit.kind === "limited" ? limit.awuCredits : null
+  );
+
+  let transitionedTo: "reached" | "resolved" | null = null;
 
   switch (limit.kind) {
     case "unlimited": {
@@ -220,6 +302,15 @@ export async function setUserSpendLimit(
         userId: user.sId,
       });
       if (clearResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            metronomeCustomerId: workspace.metronomeCustomerId,
+            userId: user.sId,
+            err: clearResult.error,
+          },
+          "[Metronome PerUserCap] set(unlimited): failed to clear per-user cap alert"
+        );
         return new Err(
           new UserSpendLimitError("metronome_error", clearResult.error.message)
         );
@@ -241,21 +332,47 @@ export async function setUserSpendLimit(
           "[Metronome PerUserCap] Failed to clear warning alert; continuing"
         );
       }
-      void clearUserAwuWarned(workspace.sId, user.sId);
-
-      const defaultResult = await getMetronomeDefaultUserCapAlert({
-        metronomeCustomerId: workspace.metronomeCustomerId,
-        workspaceId: workspace.sId,
+      void dispatchPerUserCapResolved({
+        workspace: workspaceResource,
+        userId,
       });
-      if (defaultResult.isErr()) {
-        return new Err(
-          new UserSpendLimitError(
-            "metronome_error",
-            defaultResult.error.message
-          )
-        );
+      void dispatchPerUserCapWarningResolved({
+        workspace: workspaceResource,
+        userId,
+      });
+
+      // Look up the user's seat type to find the matching default cap.
+      const normalizedSeatType = normalizeToPoolLimitSeatType(
+        membership.seatType
+      );
+
+      let defaultAlert = null;
+      if (normalizedSeatType) {
+        const defaultResult = await getMetronomeDefaultUserCapAlertForSeatType({
+          metronomeCustomerId: workspace.metronomeCustomerId,
+          workspaceId: workspace.sId,
+          seatType: normalizedSeatType,
+        });
+        if (defaultResult.isErr()) {
+          logger.error(
+            {
+              workspaceId: workspace.sId,
+              metronomeCustomerId: workspace.metronomeCustomerId,
+              userId: user.sId,
+              seatType: normalizedSeatType,
+              err: defaultResult.error,
+            },
+            "[Metronome PerUserCap] set(unlimited): failed to read default cap alert for seat type"
+          );
+          return new Err(
+            new UserSpendLimitError(
+              "metronome_error",
+              defaultResult.error.message
+            )
+          );
+        }
+        defaultAlert = defaultResult.value;
       }
-      const defaultAlert = defaultResult.value;
 
       if (defaultAlert) {
         transitionedTo = await resolveLocalCapState({
@@ -279,13 +396,28 @@ export async function setUserSpendLimit(
       break;
     }
     case "limited": {
+      // The admin enters pool credits. Add the seat allowance to get the
+      // total Metronome threshold.
+      const seatAllowance = await resolveUserSeatAllowance(auth, membership);
+      const totalAwuCredits = limit.awuCredits + seatAllowance;
+
       const upsertResult = await upsertMetronomePerUserCapAlert({
         metronomeCustomerId: workspace.metronomeCustomerId,
         workspaceId: workspace.sId,
         userId: user.sId,
-        awuCredits: limit.awuCredits,
+        awuCredits: totalAwuCredits,
       });
       if (upsertResult.isErr()) {
+        logger.error(
+          {
+            workspaceId: workspace.sId,
+            userId: user.sId,
+            awuCredits: totalAwuCredits,
+            seatAllowance,
+            err: upsertResult.error,
+          },
+          "[Metronome PerUserCap] Failed to upsert per-user cap alert"
+        );
         return new Err(
           new UserSpendLimitError("metronome_error", upsertResult.error.message)
         );
@@ -296,14 +428,14 @@ export async function setUserSpendLimit(
         metronomeCustomerId: workspace.metronomeCustomerId,
         workspaceId: workspace.sId,
         userId: user.sId,
-        capAwuCredits: limit.awuCredits,
+        capAwuCredits: totalAwuCredits,
       });
       if (upsertWarningResult.isErr()) {
         logger.warn(
           {
             workspaceId: workspace.sId,
             userId: user.sId,
-            awuCredits: limit.awuCredits,
+            awuCredits: totalAwuCredits,
             err: upsertWarningResult.error,
           },
           "[Metronome PerUserCap] Failed to upsert warning alert; continuing"
@@ -314,7 +446,7 @@ export async function setUserSpendLimit(
         metronomeCustomerId: workspace.metronomeCustomerId,
         metronomeContractId: auth.subscription()?.metronomeContractId ?? null,
         userId: user.sId,
-        awuCapCredits: limit.awuCredits,
+        awuCapCredits: totalAwuCredits,
       });
       if (transitionedTo !== null) {
         await dispatchTransition({

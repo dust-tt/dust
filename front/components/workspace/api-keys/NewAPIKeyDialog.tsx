@@ -19,7 +19,7 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
-  PlusIcon,
+  Plus,
   RadioGroup,
   RadioGroupItem,
   Sheet,
@@ -29,7 +29,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  XMarkIcon,
+  XClose,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -147,7 +147,7 @@ export const NewAPIKeyDialog = ({
       <SheetTrigger asChild>
         <Button
           label="Create API Key"
-          icon={PlusIcon}
+          icon={Plus}
           disabled={isGenerating || isRevoking}
         />
       </SheetTrigger>
@@ -245,7 +245,7 @@ export const NewAPIKeyDialog = ({
                       <Button
                         key={gId}
                         label={prettifyGroupName(group)}
-                        icon={XMarkIcon}
+                        icon={XClose}
                         size="xs"
                         variant="ghost"
                         onClick={() => removeGroupId(gId)}

@@ -143,6 +143,7 @@ describe("getAwuPurchaseInfo", () => {
       remainingCycleCredits: 0,
       currency: "eur",
       discountPercent: 0,
+      paymentMethod: null,
     });
   });
 });

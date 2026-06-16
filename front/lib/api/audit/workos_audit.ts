@@ -10,8 +10,15 @@ import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { getClientIp } from "@app/lib/utils/request";
 import logger from "@app/logger/logger";
+import type { AgenticMessageData } from "@app/types/assistant/conversation";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+
+export type AuditLogsPortal = "view_logs" | "configure_export";
+
+export type AuditLogsPortalResponse = {
+  portalUrl: string;
+};
 
 export const AUDIT_ACTIONS = [
   // Existing Tier 1 events.
@@ -40,6 +47,8 @@ export const AUDIT_ACTIONS = [
   "member.bulk_invited",
   "member.bulk_revoked",
   "member.spend_limit_updated",
+  "membership.upgrade_request_created",
+  "membership.upgrade_request_resolved",
   // Domains & SSO.
   "domain.verified",
   "domain.verification_failed",
@@ -52,6 +61,7 @@ export const AUDIT_ACTIONS = [
   "credentials.revoked",
   "credentials.invalidated",
   // MCP Connections.
+  "dust_mcp_server.settings_updated",
   "mcp_connection.created",
   "mcp_connection.deleted",
   // Projects.
@@ -74,6 +84,8 @@ export const AUDIT_ACTIONS = [
   "workspace.audit_logs_updated",
   "workspace.default_user_spend_limit_updated",
   "workspace.programmatic_usage_limit_updated",
+  "workspace_branding.asset_promoted",
+  "workspace_branding.asset_deleted",
   // SCIM / Directory Sync.
   "scim.user_provisioned",
   "scim.user_updated",
@@ -84,6 +96,8 @@ export const AUDIT_ACTIONS = [
   "scim.group_user_removed",
   // Agent & Tool Execution.
   "agent.executed",
+  "tool.approval_requested",
+  "tool.approval_resolved",
   "tool.executed",
   // Triggers.
   "trigger.created",
@@ -400,4 +414,28 @@ export function getAuditLogContext(
     return { location: getClientIp(req) };
   }
   return { location: auth.clientIp() ?? "internal" };
+}
+
+export type AgentTriggerType = "user" | "agent" | "trigger" | "handover";
+
+/**
+ * Classifies how an agent run was triggered, for the `trigger_type` metadata on
+ * `agent.executed`. A sub-agent run carries `agenticMessageData` (its type wins
+ * over a trigger), otherwise a trigger-backed conversation is `"trigger"` and
+ * everything else is a plain user message.
+ */
+export function deriveAgentTriggerType(
+  agenticMessageData: AgenticMessageData | undefined,
+  triggerId: string | null
+): AgentTriggerType {
+  if (agenticMessageData?.type === "run_agent") {
+    return "agent";
+  }
+  if (agenticMessageData?.type === "agent_handover") {
+    return "handover";
+  }
+  if (triggerId) {
+    return "trigger";
+  }
+  return "user";
 }

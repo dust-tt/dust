@@ -1,7 +1,7 @@
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { editorVariants } from "@app/components/editor/editorStyles";
 import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
-import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandSkillItems";
+import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { TOOL_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/ToolNode";
@@ -9,6 +9,7 @@ import {
   SkillInstructionsEditorContent,
   useSkillInstructionsEditor,
 } from "@app/components/editor/SkillInstructionsEditor";
+import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
 import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import type {
@@ -22,7 +23,7 @@ import {
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import {
   postProcessMarkdown,
   preprocessMarkdownForEditor,
@@ -40,7 +41,7 @@ import type { Editor } from "@tiptap/react";
 import type { Config } from "dompurify";
 import DOMPurify from "dompurify";
 import debounce from "lodash/debounce";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 const INSTRUCTIONS_FIELD_NAME = "instructions";
@@ -57,21 +58,17 @@ const SKILL_REFERENCE_ALLOWED_TAGS = [
 ];
 const SKILL_REFERENCE_ALLOWED_ATTRS = ["id", "name", "icon"];
 
-function getSkillInstructionsSanitizeConfig({
-  enableSkillReferences,
-}: {
-  enableSkillReferences: boolean;
-}): Config {
-  return {
-    ADD_TAGS: enableSkillReferences
-      ? [...BASE_ALLOWED_INSTRUCTIONS_TAGS, ...SKILL_REFERENCE_ALLOWED_TAGS]
-      : [...BASE_ALLOWED_INSTRUCTIONS_TAGS],
-    ADD_ATTR: enableSkillReferences
-      ? [...BASE_ALLOWED_INSTRUCTIONS_ATTRS, ...SKILL_REFERENCE_ALLOWED_ATTRS]
-      : [...BASE_ALLOWED_INSTRUCTIONS_ATTRS],
-    FORBID_ATTR: ["style", "class"],
-  };
-}
+const SKILL_INSTRUCTIONS_SANITIZE_CONFIG: Config = {
+  ADD_TAGS: [
+    ...BASE_ALLOWED_INSTRUCTIONS_TAGS,
+    ...SKILL_REFERENCE_ALLOWED_TAGS,
+  ],
+  ADD_ATTR: [
+    ...BASE_ALLOWED_INSTRUCTIONS_ATTRS,
+    ...SKILL_REFERENCE_ALLOWED_ATTRS,
+  ],
+  FORBID_ATTR: ["style", "class"],
+};
 
 function collectKnowledgeItems(editor: Editor): KnowledgeItem[] {
   const items: KnowledgeItem[] = [];
@@ -228,21 +225,15 @@ function toReferencedSkill(
   };
 }
 
-function sanitizeSkillInstructionsHtml(
-  html: string,
-  { enableSkillReferences = false }: { enableSkillReferences?: boolean } = {}
-): string {
+function sanitizeSkillInstructionsHtml(html: string): string {
   try {
-    return DOMPurify.sanitize(
-      html,
-      getSkillInstructionsSanitizeConfig({ enableSkillReferences })
-    );
+    return DOMPurify.sanitize(html, SKILL_INSTRUCTIONS_SANITIZE_CONFIG);
   } catch {
     return html;
   }
 }
 
-const INSTRUCTIONS_EDITOR_SIZE = "min-h-60 max-h-[1024px]";
+const INSTRUCTIONS_EDITOR_SIZE = "min-h-60 max-h-[50vh]";
 const INSTRUCTIONS_EDITOR_REFERENCE_SUMMARY_SIZE =
   "min-h-80 rounded-b-none border-b-0 pb-44";
 
@@ -268,12 +259,19 @@ export function SkillBuilderInstructionsEditor({
   const referencedSkillIdsRef = useRef<
     SkillBuilderFormData["referencedSkillIds"]
   >([]);
-  const { owner, skillId, selectedSuggestionId, setAcceptInstructionEdits } =
-    useSkillBuilderContext();
-  const { hasFeature } = useFeatureFlags();
-  const hasReinforcementFeature =
-    hasFeature("reinforced_agents") && hasFeature("reinforcement_ui");
-  const enableSkillReferences = hasFeature("nested_skills");
+  const {
+    owner,
+    user,
+    skillId,
+    selectedSuggestionId,
+    setAcceptInstructionEdits,
+  } = useSkillBuilderContext();
+  const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
+    string | null
+  >(null);
+  const [selectedServerViewForDetails, setSelectedServerViewForDetails] =
+    useState<MCPServerViewType | null>(null);
+  const hasSelfImprovement = useIsSelfImprovementAvailable();
 
   const { field: instructionsField, fieldState: instructionsFieldState } =
     useController<SkillBuilderFormData, typeof INSTRUCTIONS_FIELD_NAME>({
@@ -332,12 +330,11 @@ export function SkillBuilderInstructionsEditor({
   const displayError =
     !!instructionsFieldState.error || !!attachedKnowledgeFieldState.error;
   const hasInstructionReferenceSummary =
-    enableSkillReferences &&
-    ((attachedKnowledgeField.value?.length ?? 0) > 0 ||
-      referencedSkills.length > 0 ||
-      tools.length > 0 ||
-      (instructionsField.value?.includes("<knowledge ") ?? false) ||
-      (instructionsField.value?.includes("<tool ") ?? false));
+    (attachedKnowledgeField.value?.length ?? 0) > 0 ||
+    referencedSkills.length > 0 ||
+    tools.length > 0 ||
+    (instructionsField.value?.includes("<knowledge ") ?? false) ||
+    (instructionsField.value?.includes("<tool ") ?? false);
 
   const syncAttachedKnowledgeFromEditor = useCallback(
     (editor: Editor) => {
@@ -402,15 +399,12 @@ export function SkillBuilderInstructionsEditor({
         postProcessMarkdown(editor.getMarkdown()).trim()
       );
       instructionsHtmlField.onChange(
-        sanitizeSkillInstructionsHtml(editor.getHTML(), {
-          enableSkillReferences,
-        })
+        sanitizeSkillInstructionsHtml(editor.getHTML())
       );
       syncAttachedKnowledgeFromEditor(editor);
       syncInlineReferencesFromEditor(editor);
     },
     [
-      enableSkillReferences,
       instructionsField.onChange,
       instructionsHtmlField.onChange,
       syncAttachedKnowledgeFromEditor,
@@ -496,11 +490,22 @@ export function SkillBuilderInstructionsEditor({
     [onReferencedSkillIdsChange, onReferencedSkillsChange]
   );
 
+  const handleSkillDetails = useCallback(
+    (skill: SlashCommandSkillSuggestion) => {
+      setSelectedSkillIdForDetails(skill.sId);
+    },
+    []
+  );
+
+  const handleToolDetails = useCallback((tool: MCPServerViewType) => {
+    setSelectedServerViewForDetails(tool);
+  }, []);
+
   const { suggestions, isSuggestionsLoading } = useSkillSuggestions({
     skillId,
     states: ["pending"],
     workspaceId: owner.sId,
-    disabled: !skillId || !hasReinforcementFeature,
+    disabled: !skillId || !hasSelfImprovement,
   });
 
   const hasSuggestions = suggestions.length > 0;
@@ -511,9 +516,11 @@ export function SkillBuilderInstructionsEditor({
     isReadOnly: hasSuggestions,
     skillReferences: {
       currentSkillId: skillId,
-      enableSkillReferences,
+      onSkillDetails: handleSkillDetails,
+      onSkillNodeDetails: setSelectedSkillIdForDetails,
       onSelectSkill: handleSelectSkillReference,
       onSelectTool: handleSelectToolReference,
+      onToolDetails: handleToolDetails,
       owner,
     },
     onUpdate: handleUpdate,
@@ -572,12 +579,12 @@ export function SkillBuilderInstructionsEditor({
   }, [editor, handleAddKnowledge, onAddKnowledge]);
 
   const handleOpenCapabilities = useCallback(() => {
-    if (!editor || !enableSkillReferences) {
+    if (!editor) {
       return;
     }
 
     editor.commands.openCapabilitiesSlashCommand();
-  }, [editor, enableSkillReferences]);
+  }, [editor]);
 
   const handleReferenceClick = useCallback(
     (target: ReferenceSummaryItem) => {
@@ -624,15 +631,10 @@ export function SkillBuilderInstructionsEditor({
   );
 
   useEffect(() => {
-    if (editor && enableSkillReferences && onOpenCapabilities) {
+    if (editor && onOpenCapabilities) {
       onOpenCapabilities(handleOpenCapabilities);
     }
-  }, [
-    editor,
-    enableSkillReferences,
-    handleOpenCapabilities,
-    onOpenCapabilities,
-  ]);
+  }, [editor, handleOpenCapabilities, onOpenCapabilities]);
 
   // Register a callback that the suggestions panel can call to accept a
   // suggestion directly via the editor's ProseMirror commands.
@@ -798,13 +800,11 @@ export function SkillBuilderInstructionsEditor({
     }
 
     const incomingHtml = instructionsHtmlField.value;
-    const currentHtml = sanitizeSkillInstructionsHtml(editor.getHTML(), {
-      enableSkillReferences,
-    });
+    const currentHtml = sanitizeSkillInstructionsHtml(editor.getHTML());
     if (currentHtml !== incomingHtml) {
       editor.commands.setContent(incomingHtml, { emitUpdate: false });
     }
-  }, [editor, enableSkillReferences, isDiffMode, instructionsHtmlField.value]);
+  }, [editor, isDiffMode, instructionsHtmlField.value]);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
@@ -824,22 +824,13 @@ export function SkillBuilderInstructionsEditor({
         const compareText = compareVersion.instructions ?? "";
         const currentText = instructionsField.value ?? "";
 
-        editor.commands.setContent(
-          preprocessMarkdownForEditor(currentText, {
-            enableSkillReferences,
-          }),
-          {
-            emitUpdate: false,
-            contentType: "markdown",
-          }
-        );
+        editor.commands.setContent(preprocessMarkdownForEditor(currentText), {
+          emitUpdate: false,
+          contentType: "markdown",
+        });
         editor.commands.applyDiff(
-          preprocessMarkdownForEditor(compareText, {
-            enableSkillReferences,
-          }),
-          preprocessMarkdownForEditor(currentText, {
-            enableSkillReferences,
-          })
+          preprocessMarkdownForEditor(compareText),
+          preprocessMarkdownForEditor(currentText)
         );
         editor.setEditable(false);
       } else if (editor.storage.agentInstructionDiff?.isDiffMode) {
@@ -852,9 +843,7 @@ export function SkillBuilderInstructionsEditor({
           });
         } else {
           editor.commands.setContent(
-            preprocessMarkdownForEditor(instructionsField.value ?? "", {
-              enableSkillReferences,
-            }),
+            preprocessMarkdownForEditor(instructionsField.value ?? ""),
             {
               emitUpdate: false,
               contentType: "markdown",
@@ -872,19 +861,18 @@ export function SkillBuilderInstructionsEditor({
   }, [
     compareVersion,
     editor,
-    enableSkillReferences,
     instructionsField.value,
     instructionsHtmlField.value,
   ]);
 
   return (
-    <div className="space-y-1 p-px">
-      <div className="group relative overflow-hidden rounded-xl">
-        <SkillInstructionsEditorContent
-          editor={editor}
-          isReadOnly={hasSuggestions}
-        />
-        {enableSkillReferences && (
+    <>
+      <div className="space-y-1 p-px">
+        <div className="group relative overflow-hidden rounded-xl">
+          <SkillInstructionsEditorContent
+            editor={editor}
+            isReadOnly={hasSuggestions}
+          />
           <SkillBuilderInstructionsReferenceSummary
             attachedKnowledge={attachedKnowledgeField.value}
             containerRef={instructionReferenceSummaryRef}
@@ -894,14 +882,23 @@ export function SkillBuilderInstructionsEditor({
             referencedSkills={referencedSkills}
             tools={tools}
           />
+        </div>
+
+        {instructionsFieldState.error && (
+          <div className="dark:text-warning-night ml-2 text-xs text-warning">
+            {instructionsFieldState.error.message}
+          </div>
         )}
       </div>
 
-      {instructionsFieldState.error && (
-        <div className="dark:text-warning-night ml-2 text-xs text-warning">
-          {instructionsFieldState.error.message}
-        </div>
-      )}
-    </div>
+      <CapabilityDetailsSheets
+        owner={owner}
+        user={user}
+        selectedSkillId={selectedSkillIdForDetails}
+        selectedMCPServerView={selectedServerViewForDetails}
+        onCloseSkill={() => setSelectedSkillIdForDetails(null)}
+        onCloseTool={() => setSelectedServerViewForDetails(null)}
+      />
+    </>
   );
 }

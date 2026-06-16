@@ -1,6 +1,6 @@
 import { getSkillIcon } from "@app/lib/skill";
 import { UNAVAILABLE_SKILL_LABEL } from "@app/lib/skills/format";
-import { Chip, ExclamationCircleIcon, Tooltip } from "@dust-tt/sparkle";
+import { AlertCircle, Chip, Tooltip } from "@dust-tt/sparkle";
 import { NodeViewWrapper } from "@tiptap/react";
 
 const UNAVAILABLE_SKILL_TOOLTIP_LABEL =
@@ -15,9 +15,15 @@ interface SkillNodeComponentProps {
       skillUnavailable?: boolean;
     };
   };
+  onDetails?: (skillId: string) => void;
+  onRemove?: () => void;
 }
 
-export function SkillNodeComponent({ node }: SkillNodeComponentProps) {
+export function SkillNodeComponent({
+  node,
+  onDetails,
+  onRemove,
+}: SkillNodeComponentProps) {
   if (node.attrs.skillUnavailable === true) {
     return (
       <NodeViewWrapper className="inline-flex align-middle">
@@ -29,9 +35,10 @@ export function SkillNodeComponent({ node }: SkillNodeComponentProps) {
             <span className="inline-flex">
               <Chip
                 label={UNAVAILABLE_SKILL_LABEL}
-                icon={ExclamationCircleIcon}
+                icon={AlertCircle}
                 color="warning"
                 size="xs"
+                onRemove={onRemove}
               />
             </span>
           }
@@ -42,6 +49,9 @@ export function SkillNodeComponent({ node }: SkillNodeComponentProps) {
 
   const skillIcon = node.attrs.skillIcon ?? null;
   const skillName = node.attrs.skillName ?? "Skill";
+  const skillId = node.attrs.skillId;
+  const handleClick =
+    skillId && onDetails ? () => onDetails(skillId) : undefined;
 
   return (
     <NodeViewWrapper className="inline-flex align-middle">
@@ -49,6 +59,8 @@ export function SkillNodeComponent({ node }: SkillNodeComponentProps) {
         label={skillName}
         icon={getSkillIcon(skillIcon)}
         color="white"
+        onClick={handleClick}
+        onRemove={onRemove}
         size="xs"
       />
     </NodeViewWrapper>

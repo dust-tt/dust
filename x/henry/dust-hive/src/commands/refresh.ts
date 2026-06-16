@@ -11,6 +11,8 @@ import { installAllDependencies } from "../lib/setup";
 const WORKSPACE_DIRS = [
   "sdks/js",
   "front",
+  "front-api",
+  "marketing",
   "connectors",
   "sparkle",
   "front-spa",

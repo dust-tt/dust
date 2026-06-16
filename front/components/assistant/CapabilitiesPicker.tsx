@@ -1,6 +1,5 @@
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
-import { MCPServerDetails } from "@app/components/actions/mcp/MCPServerDetails";
-import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
+import { CapabilityDetailsSheets } from "@app/components/shared/CapabilityDetailsSheets";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
@@ -15,10 +14,7 @@ import {
   useAvailableMCPServers,
   useMCPServerViewsFromSpaces,
 } from "@app/lib/swr/mcp_servers";
-import {
-  useSkills,
-  useSkillWithRelations,
-} from "@app/lib/swr/skill_configurations";
+import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
@@ -26,10 +22,7 @@ import {
   TRACKING_AREAS,
   trackEvent,
 } from "@app/lib/tracking";
-import type {
-  SkillWithoutInstructionsAndToolsType,
-  SkillWithRelationsType,
-} from "@app/types/assistant/skill_configuration";
+import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -37,22 +30,17 @@ import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
   Button,
   Chip,
-  cn,
+  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSearchbar,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownTooltipTrigger,
   LoadingBlock,
-  MoreIcon,
-  ToolsIcon,
+  ShapesPlus,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
-
-// Rare case where we need a Tailwind arbitrary value: after the fixed search bar, the scrollable list should fit
-// exactly seven 3.25rem rows without showing a partial row or leaving extra bottom space.
-const CAPABILITIES_PICKER_LIST_MAX_HEIGHT_CLASS_NAME = "max-h-[22.75rem]";
 
 interface CapabilityPickerItemBase {
   description?: string;
@@ -130,65 +118,7 @@ function CapabilitiesPickerItemsList({
   onSkillDetails,
   onToolDetails,
 }: CapabilitiesPickerItemsListProps) {
-  const [scrollFadeState, setScrollFadeState] = useState({
-    hasContentAbove: false,
-    hasContentBelow: false,
-  });
   const listRef = useRef<HTMLDivElement>(null);
-  const topScrollSentinelRef = useRef<HTMLDivElement>(null);
-  const bottomScrollSentinelRef = useRef<HTMLDivElement>(null);
-  const itemCount = items.length;
-
-  useEffect(() => {
-    const list = listRef.current;
-    const topScrollSentinel = topScrollSentinelRef.current;
-    const bottomScrollSentinel = bottomScrollSentinelRef.current;
-
-    if (
-      itemCount === 0 ||
-      !list ||
-      !topScrollSentinel ||
-      !bottomScrollSentinel ||
-      typeof IntersectionObserver === "undefined"
-    ) {
-      setScrollFadeState((previousState) =>
-        previousState.hasContentAbove || previousState.hasContentBelow
-          ? {
-              hasContentAbove: false,
-              hasContentBelow: false,
-            }
-          : previousState
-      );
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        setScrollFadeState((previousState) => {
-          const nextState = { ...previousState };
-
-          for (const entry of entries) {
-            if (entry.target === topScrollSentinel) {
-              nextState.hasContentAbove = !entry.isIntersecting;
-            } else if (entry.target === bottomScrollSentinel) {
-              nextState.hasContentBelow = !entry.isIntersecting;
-            }
-          }
-
-          return previousState.hasContentAbove === nextState.hasContentAbove &&
-            previousState.hasContentBelow === nextState.hasContentBelow
-            ? previousState
-            : nextState;
-        });
-      },
-      { root: list }
-    );
-
-    observer.observe(topScrollSentinel);
-    observer.observe(bottomScrollSentinel);
-
-    return () => observer.disconnect();
-  }, [itemCount]);
 
   if (items.length === 0) {
     return (
@@ -199,104 +129,44 @@ function CapabilitiesPickerItemsList({
   }
 
   return (
-    <div className="relative">
-      <div
-        ref={listRef}
-        className={cn(
-          "overflow-y-auto",
-          CAPABILITIES_PICKER_LIST_MAX_HEIGHT_CLASS_NAME
-        )}
-      >
-        <div className="relative">
-          <div
-            ref={topScrollSentinelRef}
-            className="pointer-events-none absolute left-0 top-0 h-px w-px"
-            aria-hidden
+    <div ref={listRef}>
+      {items.map((item) => {
+        const endComponent =
+          item.kind === "uninstalled_tool" ? (
+            <Chip size="xs" color="golden" label="Configure" />
+          ) : (
+            <Button
+              icon={DotsHorizontal}
+              variant="outline"
+              size="mini"
+              className="opacity-0 group-data-[highlighted]:opacity-100 group-focus-within:opacity-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+
+                if (item.kind === "skill") {
+                  onSkillDetails(item.skill.sId);
+                } else {
+                  onToolDetails(item.serverView);
+                }
+              }}
+            />
+          );
+
+        return (
+          <DropdownMenuItem
+            key={item.id}
+            icon={item.icon}
+            itemId={item.id}
+            label={item.label}
+            description={item.description}
+            truncateText
+            endComponent={endComponent}
+            className="group"
+            onClick={() => onItemSelect(item)}
           />
-          <div
-            ref={bottomScrollSentinelRef}
-            className="pointer-events-none absolute bottom-0 left-0 h-px w-px"
-            aria-hidden
-          />
-          {items.map((item) => {
-            const endComponent =
-              item.kind === "uninstalled_tool" ? (
-                <Chip size="xs" color="golden" label="Configure" />
-              ) : (
-                <Button
-                  icon={MoreIcon}
-                  variant="outline"
-                  size="mini"
-                  className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-
-                    if (item.kind === "skill") {
-                      onSkillDetails(item.skill.sId);
-                    } else {
-                      onToolDetails(item.serverView);
-                    }
-                  }}
-                />
-              );
-
-            if (item.kind !== "uninstalled_tool" && item.description) {
-              return (
-                <DropdownTooltipTrigger
-                  key={item.id}
-                  description={item.description}
-                  side="right"
-                  sideOffset={8}
-                >
-                  <DropdownMenuItem
-                    icon={item.icon}
-                    itemId={item.id}
-                    label={item.label}
-                    description={item.description}
-                    truncateText
-                    endComponent={endComponent}
-                    className="group"
-                    onClick={() => onItemSelect(item)}
-                  />
-                </DropdownTooltipTrigger>
-              );
-            }
-
-            return (
-              <DropdownMenuItem
-                key={item.id}
-                icon={item.icon}
-                itemId={item.id}
-                label={item.label}
-                description={item.description}
-                truncateText
-                endComponent={endComponent}
-                className="group"
-                onClick={() => onItemSelect(item)}
-              />
-            );
-          })}
-        </div>
-      </div>
-      <div
-        className={cn(
-          "pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-t",
-          "from-transparent via-background/65 to-background opacity-0 transition-opacity duration-200",
-          "dark:via-muted-background-night/65 dark:to-muted-background-night",
-          scrollFadeState.hasContentAbove && "opacity-100"
-        )}
-        aria-hidden
-      />
-      <div
-        className={cn(
-          "pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-b",
-          "from-transparent via-background/65 to-background opacity-0 transition-opacity duration-200",
-          "dark:via-muted-background-night/65 dark:to-muted-background-night",
-          scrollFadeState.hasContentBelow && "opacity-100"
-        )}
-        aria-hidden
-      />
+        );
+      })}
     </div>
   );
 }
@@ -336,15 +206,11 @@ export function CapabilitiesPicker({
   const [pendingServerToAdd, setPendingServerToAdd] =
     useState<MCPServerType | null>(null);
 
-  // Detail sheet state
-  const [selectedSkillForDetails, setSelectedSkillForDetails] =
-    useState<SkillWithRelationsType | null>(null);
+  const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
+    string | null
+  >(null);
   const [selectedServerViewForDetails, setSelectedServerViewForDetails] =
     useState<MCPServerViewType | null>(null);
-
-  const { fetchSkillWithRelations } = useSkillWithRelations(owner, {
-    onSuccess: ({ skill }) => setSelectedSkillForDetails(skill),
-  });
 
   const shouldFetchToolsData =
     isOpen || isClosing || isSettingUpServer || !!pendingServerToAdd;
@@ -504,7 +370,7 @@ export function CapabilitiesPicker({
           kind: "skill",
           skill,
           id: `skills-picker-${skill.sId}`,
-          icon: getSkillAvatarIcon(skill.icon),
+          icon: getSkillAvatarIcon(skill),
           label: skill.name,
           sortName: skill.name.toLowerCase(),
           description,
@@ -613,7 +479,7 @@ export function CapabilitiesPicker({
       >
         <DropdownMenuTrigger asChild>
           <Button
-            icon={ToolsIcon}
+            icon={ShapesPlus}
             variant="ghost-secondary"
             size={buttonSize}
             tooltip="Capabilities"
@@ -628,14 +494,19 @@ export function CapabilitiesPicker({
               setIsClosing(false);
             }
           }}
+          dropdownHeaders={
+            <>
+              <DropdownMenuSearchbar
+                autoFocus={!isMobile}
+                name="search-capabilities"
+                placeholder="Search capabilities"
+                value={searchText}
+                onChange={setSearchText}
+              />
+              <DropdownMenuSeparator />
+            </>
+          }
         >
-          <DropdownMenuSearchbar
-            autoFocus={!isMobile}
-            name="search-capabilities"
-            placeholder="Search capabilities"
-            value={searchText}
-            onChange={setSearchText}
-          />
           {(!isSkillsDataReady || !isToolsDataReady) && (
             <CapabilitiesPickerLoading />
           )}
@@ -650,7 +521,7 @@ export function CapabilitiesPicker({
               items={capabilityPickerItems}
               onItemSelect={selectCapabilityPickerItem}
               onSkillDetails={(skillId) => {
-                void fetchSkillWithRelations(skillId);
+                setSelectedSkillIdForDetails(skillId);
                 setIsOpen(false);
               }}
               onToolDetails={(serverView) => {
@@ -708,21 +579,13 @@ export function CapabilitiesPicker({
         />
       )}
 
-      {user && (
-        <SkillDetailsSheet
-          skill={selectedSkillForDetails}
-          onClose={() => setSelectedSkillForDetails(null)}
-          owner={owner}
-          user={user}
-        />
-      )}
-
-      <MCPServerDetails
+      <CapabilityDetailsSheets
         owner={owner}
-        mcpServerView={selectedServerViewForDetails}
-        isOpen={!!selectedServerViewForDetails}
-        onClose={() => setSelectedServerViewForDetails(null)}
-        readOnly
+        user={user}
+        selectedSkillId={selectedSkillIdForDetails}
+        selectedMCPServerView={selectedServerViewForDetails}
+        onCloseSkill={() => setSelectedSkillIdForDetails(null)}
+        onCloseTool={() => setSelectedServerViewForDetails(null)}
       />
     </>
   );

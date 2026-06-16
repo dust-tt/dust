@@ -23,6 +23,9 @@ import { Worker } from "@temporalio/worker";
 
 import { QUEUE_NAME } from "./config";
 
+// Must match the deployment's terminationGracePeriodSeconds minus 10s buffer.
+const SHUTDOWN_GRACE_TIME_MS = 70 * 1_000;
+
 export async function runReinforcementWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
 
@@ -43,6 +46,7 @@ export async function runReinforcementWorker() {
     maxConcurrentActivityTaskExecutions: 8,
     connection,
     namespace,
+    shutdownGraceTime: SHUTDOWN_GRACE_TIME_MS,
     interceptors: {
       workflowModules: removeNulls([
         !isDevelopment() || process.env.USE_TEMPORAL_BUNDLES === "true"

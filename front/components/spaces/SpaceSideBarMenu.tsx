@@ -48,16 +48,16 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  BoltIcon,
   Button,
-  CloudArrowLeftRightIcon,
-  CommandLineIcon,
+  CloudArrowLeftRight,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
-  PlusIcon,
-  ToolsIcon,
+  Plus,
+  ShapesPlus,
+  Terminal,
   Tree,
+  Zap,
 } from "@dust-tt/sparkle";
 import sortBy from "lodash/sortBy";
 import uniqBy from "lodash/uniqBy";
@@ -152,46 +152,45 @@ export default function SpaceSideBarMenu({
 
   return (
     <div className="flex h-0 min-h-full w-full overflow-y-auto">
-      <NavigationList className="w-full px-3">
-        {sortedGroupedSpaces.map(({ section, spaces }, index) => {
-          if (section === "restricted" && !spaces.length && !isAdmin) {
-            return null;
-          }
+      <NavigationList className="w-full">
+        <div className="mx-sidebar-side-spacing">
+          {sortedGroupedSpaces.map(({ section, spaces }, index) => {
+            if (section === "restricted" && !spaces.length && !isAdmin) {
+              return null;
+            }
 
-          const sectionDetails = getSpaceSectionDetails(section);
+            const sectionDetails = getSpaceSectionDetails(section);
 
-          return (
-            <Fragment key={`space-section-${index}`}>
-              <div className="flex items-center justify-between pr-1">
-                <NavigationListLabel
-                  label={sectionDetails.label}
-                  variant="primary"
-                />
-                {sectionDetails.displayCreateSpaceButton &&
-                  isAdmin &&
-                  openSpaceCreationModal && (
-                    <Button
-                      className="mt-1"
-                      size="xs"
-                      variant="ghost"
-                      label="New"
-                      icon={PlusIcon}
-                      onClick={() =>
-                        openSpaceCreationModal({
-                          defaultRestricted: sectionDetails.defaultRestricted,
-                        })
-                      }
-                    />
-                  )}
-              </div>
-              {renderSpaceItems(
-                spaces.toSorted(compareSpaces),
-                spacesAsUser,
-                owner
-              )}
-            </Fragment>
-          );
-        })}
+            return (
+              <Fragment key={`space-section-${index}`}>
+                <div className="flex items-center justify-between pr-1">
+                  <NavigationListLabel label={sectionDetails.label} />
+                  {sectionDetails.displayCreateSpaceButton &&
+                    isAdmin &&
+                    openSpaceCreationModal && (
+                      <Button
+                        className="mt-1"
+                        size="xs"
+                        variant="ghost"
+                        label="New"
+                        icon={Plus}
+                        onClick={() =>
+                          openSpaceCreationModal({
+                            defaultRestricted: sectionDetails.defaultRestricted,
+                          })
+                        }
+                      />
+                    )}
+                </div>
+                {renderSpaceItems(
+                  spaces.toSorted(compareSpaces),
+                  spacesAsUser,
+                  owner
+                )}
+              </Fragment>
+            );
+          })}
+        </div>
       </NavigationList>
     </div>
   );
@@ -245,19 +244,19 @@ const SYSTEM_SPACE_ITEMS: {
 }[] = [
   {
     label: "Connections",
-    visual: CloudArrowLeftRightIcon,
+    visual: CloudArrowLeftRight,
     category: "managed",
     flag: null,
   },
   {
     label: "Tools",
-    visual: ToolsIcon,
+    visual: ShapesPlus,
     category: "actions",
     flag: null,
   },
   {
     label: "Triggers",
-    visual: BoltIcon,
+    visual: Zap,
     category: "triggers",
     flag: null,
   },
@@ -672,7 +671,7 @@ const SpaceAppItem = ({
         void router.push(appPath);
       }}
       label={app.name}
-      visual={CommandLineIcon}
+      visual={Terminal}
       areActionsFading={false}
     />
   );

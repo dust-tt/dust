@@ -1,18 +1,16 @@
 import {
   getSkillSlashCommandItem,
-  matchesSlashCommandQuery,
-  sortSlashCommandMatches,
-} from "@app/components/editor/extensions/shared/SlashCommandSkillItems";
+  getToolSlashCommandItem,
+  getToolSlashCommandLabel,
+  matchesSlashCommandCapabilityQuery,
+  sortSlashCommandCapabilityMatches,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type {
   SlashCommand,
   SlashCommandDropdownRef,
 } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
-import {
-  getMcpServerViewDescription,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
-import { getAvatar } from "@app/lib/actions/mcp_icons";
+import { ResourceAvatar } from "@app/components/resources/resources_icons";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
@@ -29,18 +27,28 @@ import {
   useMemo,
   useRef,
 } from "react";
-import type { InputBarSlashSuggestionCapability } from "./InputBarSlashSuggestionTypes";
+import {
+  INPUT_BAR_SLASH_COMMANDS,
+  type InputBarSlashCommand,
+  type InputBarSlashSuggestionCapability,
+  isInputBarSlashSuggestionCapability,
+} from "./InputBarSlashSuggestionTypes";
 
 // Rare case where we need a Tailwind arbitrary value: after the fixed search bar, the scrollable list should fit
 // exactly seven 3.25rem rows without showing a partial row or leaving extra bottom space.
 const LIST_MAX_HEIGHT_CLASS_NAME = "max-h-[22.75rem]";
 
+const COMMANDS_SECTION_LABEL = "Commands";
+const CAPABILITIES_SECTION_LABEL = "Capabilities";
+
 export function filterInputBarSlashSuggestions({
+  commands,
   query,
   selectedMCPServerViewIds,
   serverViews,
   skills,
 }: {
+  commands: InputBarSlashCommand[];
   query: string;
   selectedMCPServerViewIds: Set<string>;
   serverViews: MCPServerViewType[];
@@ -48,12 +56,29 @@ export function filterInputBarSlashSuggestions({
 }): InputBarSlashSuggestionCapability[] {
   const normalizedQuery = query.trim().toLowerCase();
 
+  // Static commands form their own section ahead of capabilities; both are filtered by the query
+  // but sorted independently so command relevance is never weighed against capability names.
+  const commandMatches: (InputBarSlashSuggestionCapability & {
+    sortName: string;
+  })[] = commands
+    .filter((command) =>
+      matchesSlashCommandCapabilityQuery({
+        label: command.label,
+        query: normalizedQuery,
+      })
+    )
+    .map((command) => ({
+      kind: "command" as const,
+      command,
+      sortName: command.label.toLowerCase(),
+    }));
+
   const capabilities: (InputBarSlashSuggestionCapability & {
     sortName: string;
   })[] = [
     ...skills
       .filter((skill) =>
-        matchesSlashCommandQuery({
+        matchesSlashCommandCapabilityQuery({
           label: skill.name,
           query: normalizedQuery,
         })
@@ -67,37 +92,58 @@ export function filterInputBarSlashSuggestions({
       .filter((serverView) => isJITMCPServerView(serverView))
       .filter((serverView) => !selectedMCPServerViewIds.has(serverView.sId))
       .filter((serverView) =>
-        matchesSlashCommandQuery({
-          label: getMcpServerViewDisplayName(serverView),
+        matchesSlashCommandCapabilityQuery({
+          label: getToolSlashCommandLabel(serverView),
           query: normalizedQuery,
         })
       )
       .map((serverView) => ({
         kind: "tool" as const,
         serverView,
-        sortName: getMcpServerViewDisplayName(serverView).toLowerCase(),
+        sortName: getToolSlashCommandLabel(serverView).toLowerCase(),
       })),
   ];
 
-  return sortSlashCommandMatches({
-    items: capabilities,
-    normalizedQuery,
-  }).map(({ sortName: _sortName, ...capability }) => capability);
+  return [
+    ...sortSlashCommandCapabilityMatches({
+      items: commandMatches,
+      normalizedQuery,
+    }),
+    ...sortSlashCommandCapabilityMatches({
+      items: capabilities,
+      normalizedQuery,
+    }),
+  ].map(({ sortName: _sortName, ...capability }) => capability);
 }
 
 export const InputBarSlashSuggestionDropdown = forwardRef<
   SlashCommandDropdownRef,
   Pick<
     SuggestionProps<InputBarSlashSuggestionCapability>,
-    "clientRect" | "command" | "query"
+    "clientRect" | "command" | "editor" | "query" | "range"
   > & {
+    conversationIdRef?: RefObject<string | null>;
     onClose: () => void;
+    onDetailsRef?: RefObject<
+      ((capability: InputBarSlashSuggestionCapability) => void) | undefined
+    >;
     owner: LightWorkspaceType;
     selectedMCPServerViewIdsRef: RefObject<Set<string>>;
   }
 >(
   (
-    { clientRect, command, query, onClose, owner, selectedMCPServerViewIdsRef },
+    {
+      clientRect,
+      command,
+      conversationIdRef,
+      editor,
+      query,
+      range,
+      onClose,
+      onDetailsRef,
+      owner,
+      selectedMCPServerViewIdsRef,
+    },
     ref
   ) => {
     const dropdownRef = useRef<SlashCommandDropdownRef>(null);
@@ -116,44 +162,63 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
     const { serverViews, isLoading: isServerViewsLoading } =
       useMCPServerViewsFromSpaces(owner, globalSpaces, { disabled: !isOpen });
 
+    // Static commands operate on the current conversation, so they are only offered once one
+    // exists.
+    const hasConversation = Boolean(conversationIdRef?.current);
+
     const filteredCapabilities = useMemo(
       () =>
         filterInputBarSlashSuggestions({
+          commands: hasConversation ? INPUT_BAR_SLASH_COMMANDS : [],
           query,
           selectedMCPServerViewIds:
             selectedMCPServerViewIdsRef.current ?? new Set<string>(),
           serverViews,
           skills,
         }),
-      [query, selectedMCPServerViewIdsRef, serverViews, skills]
+      [hasConversation, query, selectedMCPServerViewIdsRef, serverViews, skills]
     );
 
+    // Items carry their capability in `data` so selection and details handlers can recover it
+    // without a reverse lookup. Ids are prefixed by kind to stay unique across capability kinds.
     const capabilityItems = useMemo<SlashCommand[]>(
       () =>
-        filteredCapabilities.flatMap((capability) => {
+        filteredCapabilities.flatMap((capability): SlashCommand[] => {
           switch (capability.kind) {
-            case "skill":
-              return [getSkillSlashCommandItem(capability.skill)];
-            case "tool": {
-              const description = getMcpServerViewDescription(
-                capability.serverView
-              );
-
+            case "command":
               return [
                 {
-                  action: "select-tool",
-                  description,
-                  icon: () => getAvatar(capability.serverView.server),
-                  id: capability.serverView.sId,
-                  label: getMcpServerViewDisplayName(capability.serverView),
-                  tooltip: description
-                    ? {
-                        description,
-                      }
-                    : undefined,
+                  action: "run-command",
+                  data: capability,
+                  description: capability.command.description,
+                  icon: () => (
+                    <ResourceAvatar icon={capability.command.icon} size="sm" />
+                  ),
+                  id: `command-${capability.command.id}`,
+                  label: capability.command.label,
+                  sectionLabel: COMMANDS_SECTION_LABEL,
                 },
               ];
-            }
+            case "skill":
+              return [
+                {
+                  ...getSkillSlashCommandItem(capability.skill, {
+                    sectionLabel: CAPABILITIES_SECTION_LABEL,
+                  }),
+                  data: capability,
+                  id: `skill-${capability.skill.sId}`,
+                },
+              ];
+            case "tool":
+              return [
+                {
+                  ...getToolSlashCommandItem(capability.serverView, {
+                    sectionLabel: CAPABILITIES_SECTION_LABEL,
+                  }),
+                  data: capability,
+                  id: `tool-${capability.serverView.sId}`,
+                },
+              ];
             default:
               assertNeverAndIgnore(capability);
               return [];
@@ -169,9 +234,11 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       ref,
       () => ({
         onKeyDown: ({ event }) => {
+          // Static commands are shown while capabilities load, so selection is only blocked when
+          // the list has nothing to select.
           if (
             (event.key === "Enter" || event.key === "Tab") &&
-            (isCapabilitiesLoading || capabilityItems.length === 0)
+            capabilityItems.length === 0
           ) {
             event.preventDefault();
             return true;
@@ -180,7 +247,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           return dropdownRef.current?.onKeyDown({ event }) ?? false;
         },
       }),
-      [capabilityItems.length, isCapabilitiesLoading]
+      [capabilityItems.length]
     );
 
     return (
@@ -193,26 +260,29 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
         ref={dropdownRef}
         items={capabilityItems}
         command={(item) => {
-          const capability = filteredCapabilities.find((capability) =>
-            capability.kind === "skill"
-              ? capability.skill.sId === item.id
-              : capability.serverView.sId === item.id
-          );
-
-          if (capability) {
-            command(capability);
+          if (isInputBarSlashSuggestionCapability(item.data)) {
+            command(item.data);
           }
         }}
         clientRect={clientRect}
         emptyMessage={
-          isCapabilitiesLoading
-            ? "Loading capabilities…"
-            : "No capabilities found"
+          isCapabilitiesLoading ? "Loading capabilities…" : "No matches found"
         }
-        header="Capabilities"
         listMaxHeightClassName={LIST_MAX_HEIGHT_CLASS_NAME}
         onClose={onClose}
-        showScrollFade
+        onItemDetails={
+          onDetailsRef
+            ? (item) => {
+                if (!isInputBarSlashSuggestionCapability(item.data)) {
+                  return;
+                }
+
+                editor.chain().focus().deleteRange(range).run();
+                onDetailsRef.current?.(item.data);
+                onClose();
+              }
+            : undefined
+        }
         size="wide"
       />
     );

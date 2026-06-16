@@ -19,7 +19,8 @@ import {
   getCreditTypeAwuId,
   getProductPrepaidCommitId,
 } from "@app/lib/metronome/constants";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { USAGE_TAG } from "@app/lib/metronome/setup_common";
+import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import { getStripeClient } from "@app/lib/plans/stripe";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
@@ -50,9 +51,19 @@ export type AwuPurchaseInfo =
       remainingCycleCredits: number;
       currency: SupportedCurrency;
       discountPercent: number;
+      paymentMethod:
+        | { type: "card"; brand: string; last4: string }
+        | { type: "sepa_debit"; last4: string }
+        | null;
     };
 
 export type AwuPurchaseResult = {
+  amountCredits: number;
+};
+
+export type GetAwuPurchaseInfoResponseBody = AwuPurchaseInfo;
+
+export type PostAwuPurchaseResponseBody = {
   amountCredits: number;
 };
 
@@ -114,7 +125,7 @@ async function checkAwuPurchaseEligibility(
     return new Err({ code: "legacy_plan" });
   }
 
-  if (isEntreprisePlanPrefix(subscription.plan.code)) {
+  if (isEnterprisePlanPrefix(subscription.plan.code)) {
     return new Err({ code: "enterprise_plan" });
   }
 
@@ -164,6 +175,36 @@ export async function getAwuPurchaseInfo(
 
   const discountPercent = await resolveAwuPurchaseDiscountPercent(auth);
 
+  // Fetch default payment method for display.
+  let paymentMethod:
+    | { type: "card"; brand: string; last4: string }
+    | { type: "sepa_debit"; last4: string }
+    | null = null;
+  try {
+    const customer = await stripe.customers.retrieve(stripeCustomerId, {
+      expand: ["invoice_settings.default_payment_method"],
+    });
+    if (!("deleted" in customer)) {
+      const pmRaw = customer.invoice_settings?.default_payment_method;
+      const pm: Stripe.PaymentMethod | null =
+        pmRaw && typeof pmRaw !== "string" ? pmRaw : null;
+      if (pm?.type === "card" && pm.card) {
+        paymentMethod = {
+          type: "card",
+          brand: pm.card.brand ?? "unknown",
+          last4: pm.card.last4 ?? "",
+        };
+      } else if (pm?.type === "sepa_debit" && pm.sepa_debit) {
+        paymentMethod = {
+          type: "sepa_debit",
+          last4: pm.sepa_debit.last4 ?? "",
+        };
+      }
+    }
+  } catch {
+    // Non-fatal — display without payment method info.
+  }
+
   const billingCycle = getBillingCycle(subscription.startDate);
   if (!billingCycle) {
     return {
@@ -171,6 +212,7 @@ export async function getAwuPurchaseInfo(
       remainingCycleCredits: MAX_AWU_PURCHASE_CREDITS_PER_CYCLE,
       currency,
       discountPercent,
+      paymentMethod,
     };
   }
 
@@ -195,6 +237,7 @@ export async function getAwuPurchaseInfo(
     ),
     currency,
     discountPercent,
+    paymentMethod,
   };
 }
 
@@ -299,6 +342,7 @@ export async function purchaseAwuCredits(
     invoiceCreditTypeId: CURRENCY_TO_CREDIT_TYPE_ID[currency],
     invoiceTimestamp: now,
     priority: AWU_PRIORITY_PURCHASED_COMMIT,
+    applicableProducTags: [USAGE_TAG],
     name:
       discountPercent > 0
         ? `Credit top-up: ${amountCredits.toLocaleString()} credits (${discountPercent}% discount)`

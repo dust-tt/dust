@@ -14,12 +14,11 @@ matched requests go to Hono, the rest fall through to Next.
 
 ## ROUTING
 
-### [API1] One file per Next path; mirror Next layout exactly
+### [API1] One file per route; mirror the URL layout exactly
 
-`front-api/routes/<path>.ts` mirrors `front/pages/api/<path>.ts` 1:1,
-including dynamic segments (`[wId]`, `[spaceId]`, etc.) as literal directory
-names. The path mapping is deterministic and used by DangerJS to enforce the
-migration sync check (see [BACK17]).
+`front-api/routes/<path>.ts` maps 1:1 to the `/api/<path>` URL, including
+dynamic segments (`[wId]`, `[spaceId]`, etc.) as literal directory names. The
+path mapping is deterministic.
 
 ```
 front-api/routes/

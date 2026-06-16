@@ -879,6 +879,7 @@ impl Connection {
     pub async fn access_token(
         &mut self,
         store: Box<dyn OAuthStore + Sync + Send>,
+        force_refresh: bool,
     ) -> Result<(String, Option<serde_json::Value>), ConnectionError> {
         if self.status != ConnectionStatus::Finalized {
             return Err(ConnectionError {
@@ -886,23 +887,26 @@ impl Connection {
                 message: "Connection is not finalized".to_string(),
             });
         }
-        if let Some(access_token) = self.valid_access_token()? {
-            return Ok((
-                access_token,
-                self.scrubbed_raw_json().map_err(|e| {
-                    error!(error = ?e, "Failed to retrieve and scrub raw_json");
-                    ConnectionError {
-                        code: ConnectionErrorCode::InternalError,
-                        message: "Failed to retrieve and scrub raw_json".to_string(),
-                    }
-                })?,
-            ));
+        if !force_refresh {
+            if let Some(access_token) = self.valid_access_token()? {
+                return Ok((
+                    access_token,
+                    self.scrubbed_raw_json().map_err(|e| {
+                        error!(error = ?e, "Failed to retrieve and scrub raw_json");
+                        ConnectionError {
+                            code: ConnectionErrorCode::InternalError,
+                            message: "Failed to retrieve and scrub raw_json".to_string(),
+                        }
+                    })?,
+                ));
+            }
         }
 
         info!(
             connection_id = self.connection_id(),
             provider = self.provider.to_string(),
             access_token_expiry = self.access_token_expiry,
+            force_refresh,
             "Refreshing access token",
         );
 

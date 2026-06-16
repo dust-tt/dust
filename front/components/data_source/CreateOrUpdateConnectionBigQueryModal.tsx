@@ -1,11 +1,11 @@
 // Okay to use public API types because it's front/connectors communication.
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { PostCredentialsBody } from "@app/lib/api/oauth";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { clientFetch } from "@app/lib/egress/client";
 import { useBigQueryLocations } from "@app/lib/swr/bigquery";
-import type { PostCredentialsBody } from "@app/pages/api/w/[wId]/credentials";
 import type {
   ConnectorProvider,
   ConnectorType,
@@ -20,11 +20,11 @@ import type { WorkspaceType } from "@app/types/user";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { isConnectorsAPIError } from "@dust-tt/client";
 import {
-  BookOpenIcon,
+  BookOpen01,
   Button,
   ContentMessage,
   Icon,
-  InformationCircleIcon,
+  InfoCircle,
   Label,
   Page,
   RadioGroup,
@@ -333,7 +333,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
                 variant="outline"
                 target="_blank"
                 rel="noopener noreferrer"
-                icon={BookOpenIcon}
+                icon={BookOpen01}
               />
 
               {connectorUIConfiguration.limitations && (
@@ -391,7 +391,7 @@ export function CreateOrUpdateConnectionBigQueryModal({
                               className="flex cursor-pointer items-center gap-1"
                             >
                               <span className="font-semibold">{location}</span>{" "}
-                              - {tables.length} tables <InformationCircleIcon />
+                              - {tables.length} tables <InfoCircle />
                             </Label>
                           }
                         />

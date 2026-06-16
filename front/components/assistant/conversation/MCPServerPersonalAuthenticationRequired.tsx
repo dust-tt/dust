@@ -17,12 +17,7 @@ import {
 import type { OAuthProvider } from "@app/types/oauth/lib";
 import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import {
-  ActionCardBlock,
-  Button,
-  CheckIcon,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
+import { ActionCardBlock, Button, Check, XClose } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
 interface MCPServerPersonalAuthenticationRequiredProps {
@@ -206,7 +201,7 @@ export function MCPServerPersonalAuthenticationRequired({
           variant="outline"
           size="xs"
           label="Skip"
-          icon={XMarkIcon}
+          icon={XClose}
           disabled={isConnecting || isResolving}
           onClick={() => void onSkipClick()}
         />
@@ -214,7 +209,7 @@ export function MCPServerPersonalAuthenticationRequired({
           variant="highlight"
           size="xs"
           label={connectionError ? "Retry" : "Connect"}
-          icon={CheckIcon}
+          icon={Check}
           disabled={
             isConnecting ||
             isResolving ||

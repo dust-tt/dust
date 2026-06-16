@@ -1,6 +1,8 @@
+import type {
+  PokeGetWebhookRequestsResponseBody,
+  PokeListTriggers,
+} from "@app/lib/api/poke/triggers";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PokeListTriggers } from "@app/pages/api/poke/workspaces/[wId]/triggers";
-import type { PokeGetWebhookRequestsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/triggers/[tId]/webhook_requests";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers";
 import type { LightWorkspaceType } from "@app/types/user";

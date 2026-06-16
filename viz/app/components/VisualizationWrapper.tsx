@@ -28,6 +28,7 @@ import * as shadcnAll from "@viz/components/ui";
 import * as utilsAll from "@viz/lib/utils";
 import { toBlob, toSvg } from "html-to-image";
 import * as lucideAll from "lucide-react";
+import * as motionAll from "motion/react";
 import * as papaparseAll from "papaparse";
 import * as reactAll from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -431,6 +432,7 @@ export function VisualizationWrapper({
           // New location for utils.
           "@viz/lib/utils": utilsAll,
           "lucide-react": lucideAll,
+          "motion/react": motionAll,
           "@dust/slideshow/v1": dustSlideshowV1,
           "@dust/slideshow/v2": dustSlideshowV2,
           "@dust/react-hooks": {

@@ -14,7 +14,7 @@ export type DefaultRemoteMCPServerConfig = {
   authMethod: "bearer" | "oauth-dynamic" | "oauth-static" | null;
   supportedOAuthUseCases?: MCPOAuthUseCase[];
   scope?: string;
-  toolStakes?: Record<string, "high" | "low" | "never_ask">;
+  toolStakes?: Record<string, "high" | "low" | "medium" | "never_ask">;
   toolDisplayLabels?: Record<string, ToolDisplayLabels>;
   featureFlag?: WhitelistableFeature;
 };
@@ -1925,6 +1925,152 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       "apify--rag-web-browser": {
         running: "Browsing the web with Apify",
         done: "Browsed the web with Apify",
+      },
+    },
+  },
+  {
+    id: 10024,
+    name: "Gamma",
+    description:
+      "Create and manage Gamma presentations directly from your conversations.",
+    url: "https://mcp.gamma.app/mcp",
+    icon: "GammaLogo",
+    documentationUrl: "https://developers.gamma.app",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      get_gammas: "never_ask",
+      read_gamma: "never_ask",
+      get_themes: "never_ask",
+      get_folders: "never_ask",
+      get_generation_status: "never_ask",
+      generate: "low",
+      generate_from_template: "low",
+    },
+    toolDisplayLabels: {
+      get_gammas: {
+        running: "Browsing Gammas",
+        done: "Browsed Gammas",
+      },
+      read_gamma: {
+        running: "Reading Gamma",
+        done: "Read Gamma",
+      },
+      get_themes: {
+        running: "Loading Gamma themes",
+        done: "Loaded Gamma themes",
+      },
+      get_folders: {
+        running: "Loading Gamma folders",
+        done: "Loaded Gamma folders",
+      },
+      get_generation_status: {
+        running: "Checking generation status",
+        done: "Checked generation status",
+      },
+      generate: {
+        running: "Generating Gamma presentation",
+        done: "Generated Gamma presentation",
+      },
+      generate_from_template: {
+        running: "Generating Gamma from template",
+        done: "Generated Gamma from template",
+      },
+    },
+  },
+  {
+    id: 10025,
+    name: "Napta",
+    description:
+      "Napta tools for resource management and staffing — search employees, skills, and allocations, then create, update, and confirm assignments on projects.",
+    url: "https://mcp.napta.io/mcp",
+    icon: "NaptaLogo",
+    documentationUrl: "https://docs.dust.tt/docs/remote-mcp-server",
+    connectionInstructions:
+      "Napta uses OAuth. You will be prompted to sign in with your Napta account in a browser window to authorize access.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      greet: "never_ask",
+      get_business_units: "never_ask",
+      get_positions: "never_ask",
+      get_locations: "never_ask",
+      get_tags: "never_ask",
+      search_employees: "never_ask",
+      search_skills: "never_ask",
+      search_assignment: "never_ask",
+      search_requests: "never_ask",
+      find_employees_matching_requirements: "never_ask",
+      create_request: "low",
+      simulate_prebooking: "low",
+      simulate_assignment: "low",
+
+      create_assignment: "medium",
+      update_assignment_workload: "medium",
+      confirm_assignment: "high",
+    },
+    toolDisplayLabels: {
+      greet: {
+        running: "Connecting to Napta",
+        done: "Connected to Napta",
+      },
+      get_business_units: {
+        running: "Loading business units from Napta",
+        done: "Loaded business units from Napta",
+      },
+      get_positions: {
+        running: "Loading positions from Napta",
+        done: "Loaded positions from Napta",
+      },
+      get_locations: {
+        running: "Loading locations from Napta",
+        done: "Loaded locations from Napta",
+      },
+      get_tags: {
+        running: "Loading tags from Napta",
+        done: "Loaded tags from Napta",
+      },
+      search_employees: {
+        running: "Searching employees on Napta",
+        done: "Searched employees on Napta",
+      },
+      search_skills: {
+        running: "Searching skills on Napta",
+        done: "Searched skills on Napta",
+      },
+      search_assignment: {
+        running: "Searching assignments on Napta",
+        done: "Searched assignments on Napta",
+      },
+      search_requests: {
+        running: "Searching requests on Napta",
+        done: "Searched requests on Napta",
+      },
+      find_employees_matching_requirements: {
+        running: "Ranking contributors on Napta",
+        done: "Ranked contributors on Napta",
+      },
+      create_request: {
+        running: "Creating request on Napta",
+        done: "Created request on Napta",
+      },
+      simulate_prebooking: {
+        running: "Simulating prebooking on Napta",
+        done: "Simulated prebooking on Napta",
+      },
+      simulate_assignment: {
+        running: "Simulating assignment on Napta",
+        done: "Simulated assignment on Napta",
+      },
+      create_assignment: {
+        running: "Creating assignment on Napta",
+        done: "Created assignment on Napta",
+      },
+      update_assignment_workload: {
+        running: "Updating workload on Napta",
+        done: "Updated workload on Napta",
+      },
+      confirm_assignment: {
+        running: "Confirming assignment on Napta",
+        done: "Confirmed assignment on Napta",
       },
     },
   },

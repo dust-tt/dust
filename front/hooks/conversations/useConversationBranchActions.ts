@@ -1,7 +1,7 @@
 import { useOpenConversationBranch } from "@app/hooks/conversations/useOpenConversationBranch";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { CloseConversationBranchResponse } from "@app/lib/api/assistant/conversation/branches";
 import { clientFetch } from "@app/lib/egress/client";
-import type { CloseConversationBranchResponse } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/branches/[bId]/close";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";
 

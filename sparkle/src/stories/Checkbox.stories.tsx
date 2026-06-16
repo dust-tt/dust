@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
+import { expect } from "storybook/test";
 
 import { CHECKBOX_SIZES } from "@sparkle/components/Checkbox";
 
@@ -22,10 +23,25 @@ type ExtendedCheckboxProps = CheckboxProps & {
 };
 
 const meta = {
-  title: "Primitives/Checkbox",
+  title: "Forms & Inputs/Checkbox",
   component: Checkbox as React.ComponentType<ExtendedCheckboxProps>,
   parameters: {
     layout: "centered",
+    docs: {
+      description: {
+        component: `Lets users turn an individual option on or off, or pick several options from a list. The checkbox supports **checked**, **unchecked**, and an indeterminate (**partial**) state, with optional inline **text** and **description**.
+
+**When to use**
+- For independent on/off options, or to select multiple items from a set.
+- For a "select all" control whose children are partially selected (use the **partial** state).
+
+**Guidelines**
+- For a single choice among mutually exclusive options, use **RadioGroup** instead.
+- For a setting that takes effect immediately, consider **SliderToggle**.
+- Reserve the **partial** state for a parent that controls a partially-selected group.
+- Always associate a label (via **text** or a **Label** with \`htmlFor\`) for clarity and accessibility.`,
+      },
+    },
   },
   argTypes: {
     size: {
@@ -113,5 +129,31 @@ export const Default: Story = {
       return <CheckboxWithText text={text} {...props} />;
     }
     return <Checkbox {...props} />;
+  },
+};
+
+export const Checked: Story = {
+  args: { checked: true },
+  tags: ["ai-generated", "needs-work"],
+};
+
+export const Indeterminate: Story = {
+  args: { checked: "partial" },
+  tags: ["ai-generated", "needs-work"],
+};
+
+export const Disabled: Story = {
+  args: { checked: true, disabled: true },
+  tags: ["ai-generated", "needs-work"],
+};
+
+// Interaction: an uncontrolled checkbox must flip its aria-checked state on click.
+export const Interactive: Story = {
+  tags: ["ai-generated", "needs-work"],
+  play: async ({ canvas, userEvent }) => {
+    const checkbox = canvas.getByRole("checkbox");
+    await expect(checkbox).toHaveAttribute("aria-checked", "false");
+    await userEvent.click(checkbox);
+    await expect(checkbox).toHaveAttribute("aria-checked", "true");
   },
 };

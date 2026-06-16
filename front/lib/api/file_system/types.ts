@@ -37,7 +37,7 @@ export type FileSystemMount = {
   legacyPrefix: string | null;
 
   /**
-   * Legacy sandbox mount point (`/files/conversation` or `/files/project`).
+   * Legacy sandbox mount point (`/files/conversation` or `/files/pod`).
    * The sandbox adapter symlinks this to `sandboxMountPoint` after mounting.
    * Null when there is no legacy counterpart.
    */
@@ -92,3 +92,36 @@ export class DustFileSystemError extends Error {
     this.name = "DustFileSystemError";
   }
 }
+
+export function isDustFileSystemError(
+  err: unknown,
+  code?: DustFileSystemErrorCode
+): err is DustFileSystemError {
+  return (
+    err instanceof DustFileSystemError &&
+    (code === undefined || err.code === code)
+  );
+}
+
+// Do not import types in the generic file system.
+export function conversationScopedPath({
+  conversationId,
+  rel,
+}: {
+  conversationId: string;
+  rel: string;
+}): string {
+  return `${SCOPED_PREFIX_CONVERSATION}${conversationId}/${rel}`;
+}
+
+export function podScopedPath(spaceId: string, rel: string): string {
+  return `${SCOPED_PREFIX_POD}${spaceId}/${rel}`;
+}
+
+export type GetSpaceFilesResponseBody = {
+  files: FileSystemEntry[];
+};
+
+export type PostSpaceFolderResponseBody = {
+  folder: FileSystemDirectoryEntry;
+};

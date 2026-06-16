@@ -226,7 +226,7 @@ export function ProcessingMethodSection() {
         </DropdownMenu>
       </div>
 
-      <span className="text-sm text-muted-foreground dark:text-muted-foreground">
+      <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
         {mcpServerView?.server.description}
       </span>
 

@@ -1,28 +1,35 @@
+import { SEAT_TYPE_ICONS } from "@app/components/workspace/billing/seatTypeUtils";
+import { buildMemberNameColumn } from "@app/components/workspace/member_name_column";
+import {
+  getSeatBarClasses,
+  getSeatIconColorClass,
+  MUTED_BAR_CLASSES,
+  OVERAGE_BAR_CLASSES,
+} from "@app/components/workspace/seat_styles";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import type { BillingFrequency } from "@app/lib/metronome/types";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { formatCredits } from "@app/lib/client/credits";
+import { useDefaultUserSpendLimit } from "@app/lib/swr/usage_settings";
 import {
-  isMembershipSeatType,
   type MembershipSeatType,
+  SEAT_TYPE_ORDER,
+  toBaseSeatType,
 } from "@app/types/memberships";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import {
-  ActionCreditCoinsIcon,
+  Clock,
   DataTable,
   Icon,
   LoadingBlock,
   type MenuItem,
-  SeatFreeIcon,
-  SeatMaxIcon,
-  SeatProIcon,
+  Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
 import type {
   CellContext,
   ColumnDef,
   PaginationState,
+  SortingState,
 } from "@tanstack/react-table";
-import type React from "react";
 import { useMemo } from "react";
 
 type RowData = {
@@ -36,31 +43,40 @@ type RowData = {
   consumedFromAllowanceAwuCredits: number;
   consumedFromPoolAwuCredits: number;
   spendLimitAwuCredits: number | null;
-  billingFrequency: BillingFrequency | null;
   scheduledSeatType: MembershipSeatType | null;
   scheduledSeatChangeAt: string | null;
+  isTotalAllowedUsagePending: boolean;
+  isSeatChangePending: boolean;
   menuItems: MenuItem[];
 };
 
 type Info = CellContext<RowData, string>;
 
-const SEAT_TYPE_ICONS: Partial<
-  Record<MembershipSeatType, React.ComponentType>
-> = {
-  max: SeatMaxIcon,
-  pro: SeatProIcon,
-  free: SeatFreeIcon,
-};
-
-// Yearly seat types are billed yearly but render in the table identically to
-// their monthly counterpart — the billing cadence is shown in the dedicated
-// billing frequency column. Strip the suffix for icon lookup and display.
-function getDisplaySeatType(seatType: MembershipSeatType): MembershipSeatType {
-  if (seatType.endsWith("_yearly")) {
-    const stripped = seatType.slice(0, -"_yearly".length);
-    return isMembershipSeatType(stripped) ? stripped : seatType;
-  }
-  return seatType;
+// Builds the tooltip explaining a scheduled seat change, e.g.
+// "This user will be downgraded to Free at the end of the billing period (July 1)".
+function getScheduledSeatChangeLabel(
+  currentSeatType: MembershipSeatType | null,
+  scheduledSeatType: MembershipSeatType,
+  scheduledSeatChangeAt: string | null
+): string {
+  const currentRank = currentSeatType ? SEAT_TYPE_ORDER[currentSeatType] : 0;
+  const scheduledRank = SEAT_TYPE_ORDER[scheduledSeatType];
+  const verb =
+    scheduledRank > currentRank
+      ? "upgraded"
+      : scheduledRank < currentRank
+        ? "downgraded"
+        : "changed";
+  const target = toBaseSeatType(scheduledSeatType);
+  const targetLabel = target.charAt(0).toUpperCase() + target.slice(1);
+  const dateSuffix = scheduledSeatChangeAt
+    ? ` (${new Date(scheduledSeatChangeAt).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        timeZone: "UTC",
+      })})`
+    : "";
+  return `This user will be ${verb} to ${targetLabel} at the end of the billing period${dateSuffix}`;
 }
 
 interface SeatTypeIconProps {
@@ -71,15 +87,18 @@ function SeatTypeIcon({ seatType }: SeatTypeIconProps) {
   if (!seatType) {
     return null;
   }
-  const Icon = SEAT_TYPE_ICONS[getDisplaySeatType(seatType)];
-  if (!Icon) {
+  const displaySeatType = toBaseSeatType(seatType);
+  const visual = SEAT_TYPE_ICONS[displaySeatType];
+  if (!visual) {
     return null;
   }
-  return <Icon />;
-}
-
-function formatCredits(credits: number): string {
-  return credits.toLocaleString("en-US", { maximumFractionDigits: 1 });
+  return (
+    <Icon
+      visual={visual}
+      size="sm"
+      className={getSeatIconColorClass(displaySeatType)}
+    />
+  );
 }
 
 interface AwuUsageBarProps {
@@ -92,27 +111,7 @@ interface AwuUsageBarProps {
   memberUsageLimit: number | null;
   limit: number | null;
   seatType: MembershipSeatType | null;
-}
-
-const MUTED_BAR_CLASSES = {
-  track: "bg-muted-background dark:bg-muted-background-night",
-  fill: "bg-muted-foreground dark:bg-muted-foreground-night",
-};
-
-function getSeatBarClasses(seatType: MembershipSeatType | null) {
-  if (seatType?.startsWith("pro")) {
-    return {
-      track: "bg-blue-100 dark:bg-blue-100-night",
-      fill: "bg-highlight dark:bg-highlight-night",
-    };
-  }
-  if (seatType?.startsWith("max")) {
-    return {
-      track: "bg-golden-100 dark:bg-golden-100-night",
-      fill: "bg-brand-orange-golden",
-    };
-  }
-  return MUTED_BAR_CLASSES;
+  isTotalAllowedUsagePending: boolean;
 }
 
 function AwuUsageBar({
@@ -122,22 +121,42 @@ function AwuUsageBar({
   memberUsageLimit,
   limit,
   seatType,
+  isTotalAllowedUsagePending: isPending,
 }: AwuUsageBarProps) {
+  const { sId: workspaceId } = useWorkspace();
+  const { defaultUserSpendLimit } = useDefaultUserSpendLimit({ workspaceId });
+
   const seatColors = getSeatBarClasses(seatType);
   const allowance = memberUsageLimit ?? 0;
 
-  // The bar is up to four contiguous sections, each with its own tooltip:
-  //   seat consumed · seat remaining · pool consumed · pool remaining
-  // Zero-width sections are skipped, so in practice it renders as:
-  //   - within allowance:   seat consumed · seat remaining · pool remaining
-  //   - overflowed to pool: seat consumed · pool consumed · pool remaining
-  //   - no seat allowance:  pool consumed · pool remaining
-  // `pool remaining` is omitted when the user is uncapped (no finite headroom).
+  // When no Metronome cap alert exists for this user (`limit` is null), fall
+  // back to displaying the workspace default: seat allowance + default pool.
+  const effectiveLimit =
+    limit ??
+    (defaultUserSpendLimit?.awuCredits != null
+      ? allowance + defaultUserSpendLimit.awuCredits
+      : null);
+
+  // The bar splits consumption into seat → pool → overage:
+  //   seat consumed · seat remaining · pool consumed · pool remaining · overage
+  // `poolLimit` is the headroom on top of the seat allowance (null = uncapped).
+  // A seat with no pool (poolLimit === 0, e.g. free) shows no pool section —
+  // any spend beyond the seat allowance is overage. Zero-width sections are
+  // skipped. `pool remaining` is omitted when uncapped (no finite headroom).
   const seatConsumed = consumedFromAllowance;
   const seatRemaining = Math.max(0, allowance - seatConsumed);
-  const poolConsumed = consumedFromPool;
+  const poolLimit =
+    effectiveLimit !== null ? Math.max(0, effectiveLimit - allowance) : null;
+  // Of the pool consumption, the part within the pool limit vs. the overage
+  // beyond it (only capped seats can have overage).
+  const poolConsumed =
+    poolLimit !== null
+      ? Math.min(consumedFromPool, poolLimit)
+      : consumedFromPool;
   const poolRemaining =
-    limit !== null ? Math.max(0, limit - allowance - poolConsumed) : null;
+    poolLimit !== null ? Math.max(0, poolLimit - poolConsumed) : null;
+  const overage =
+    poolLimit !== null ? Math.max(0, consumedFromPool - poolLimit) : 0;
 
   const sections: Array<{
     key: string;
@@ -177,33 +196,88 @@ function AwuUsageBar({
       label: `${formatCredits(poolRemaining)} credits remaining before spend limit`,
     });
   }
+  // Overage is surfaced in the tooltip only, not as a bar segment.
 
   const total = sections.reduce((sum, s) => sum + s.value, 0);
 
-  return (
-    <div className="flex w-full flex-col gap-1">
-      <div className="flex justify-between text-xs tabular-nums text-foreground dark:text-foreground-night">
-        <span>{formatCredits(consumed)}</span>
-        <span>{limit === null ? "∞" : formatCredits(limit)}</span>
+  const hasSeatSections = seatConsumed > 0 || seatRemaining > 0;
+  // Only surface the pool when there's actually a pool to spend from: a finite
+  // positive limit, or uncapped (null). A zero pool limit (free) has no pool.
+  const hasPoolSections =
+    (poolLimit === null || poolLimit > 0) &&
+    (poolConsumed > 0 || (poolRemaining !== null && poolRemaining > 0));
+
+  const tooltipLines: Array<{
+    track: string;
+    fill: string;
+    legend: string;
+    usage: string;
+  }> = [];
+  if (hasSeatSections) {
+    tooltipLines.push({
+      track: seatColors.track,
+      fill: seatColors.fill,
+      legend: "Seat usage",
+      usage: `${formatCredits(seatConsumed)} credits used out of ${formatCredits(allowance)}`,
+    });
+  }
+  if (hasPoolSections) {
+    tooltipLines.push({
+      track: MUTED_BAR_CLASSES.track,
+      fill: MUTED_BAR_CLASSES.fill,
+      legend: "Pool usage",
+      usage:
+        poolLimit !== null
+          ? `${formatCredits(poolConsumed)} credits used out of ${formatCredits(poolLimit)}`
+          : `${formatCredits(poolConsumed)} credits used`,
+    });
+  }
+  if (overage > 0) {
+    tooltipLines.push({
+      track: OVERAGE_BAR_CLASSES.track,
+      fill: OVERAGE_BAR_CLASSES.fill,
+      legend: "Overage",
+      usage: `${formatCredits(overage)} credits over the spend limit`,
+    });
+  }
+
+  const tooltipContent =
+    tooltipLines.length > 0 ? (
+      <div className="flex flex-col gap-1">
+        {tooltipLines.map((line) => (
+          <div key={line.legend} className="flex items-center gap-2">
+            <div className="relative h-2.5 w-2.5 overflow-hidden rounded-sm">
+              <div
+                className={`absolute inset-0 ${line.track}`}
+                style={{ clipPath: "polygon(0 0, 100% 0, 0 100%)" }}
+              />
+              <div
+                className={`absolute inset-0 ${line.fill}`}
+                style={{ clipPath: "polygon(100% 0, 100% 100%, 0 100%)" }}
+              />
+            </div>
+            <span>
+              {line.legend} — {line.usage}
+            </span>
+          </div>
+        ))}
       </div>
+    ) : null;
+
+  const bar = (
+    <div className="flex w-full items-center">
       <div className="flex w-full items-center gap-px">
         {total > 0 ? (
           sections.map((s) => (
-            <Tooltip
+            <div
               key={s.key}
-              tooltipTriggerAsChild
-              label={s.label}
-              trigger={
-                <div
-                  className="flex h-3 items-center"
-                  style={{ width: `${(s.value / total) * 100}%` }}
-                >
-                  <div
-                    className={`h-1 w-full rounded-full ${s.className} transition-all`}
-                  />
-                </div>
-              }
-            />
+              className="flex h-3 items-center"
+              style={{ width: `${(s.value / total) * 100}%` }}
+            >
+              <div
+                className={`h-1 w-full rounded-full ${s.className} transition-all`}
+              />
+            </div>
           ))
         ) : (
           <div
@@ -213,107 +287,78 @@ function AwuUsageBar({
       </div>
     </div>
   );
-}
 
-const nameColumn: ColumnDef<RowData, string> = {
-  id: "name" as const,
-  header: "Name",
-  accessorFn: (row) => row.name,
-  cell: (info: Info) => (
-    <DataTable.CellContent
-      avatarUrl={info.row.original.image ?? ANONYMOUS_USER_IMAGE_URL}
-      roundedAvatar
-    >
-      <div>
-        <div>{info.row.original.name}</div>
-        {info.row.original.email && (
-          <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-            {info.row.original.email}
-          </div>
+  return (
+    <div className="flex w-full flex-col gap-1">
+      <div className="flex justify-between text-xs tabular-nums text-foreground dark:text-foreground-night">
+        <span>{formatCredits(consumed)}</span>
+        {isPending ? (
+          <Spinner size="xs" />
+        ) : (
+          <span>
+            {effectiveLimit === null ? "∞" : formatCredits(effectiveLimit)}
+          </span>
         )}
       </div>
-    </DataTable.CellContent>
-  ),
-};
+      {tooltipContent ? (
+        <Tooltip tooltipTriggerAsChild label={tooltipContent} trigger={bar} />
+      ) : (
+        bar
+      )}
+    </div>
+  );
+}
+
+const nameColumn = buildMemberNameColumn<RowData>();
 
 const seatTypeColumn: ColumnDef<RowData, string> = {
   id: "seatType" as const,
   header: "Seat",
+  enableSorting: false,
   accessorFn: (row) => row.seatType ?? "",
   cell: (info: Info) => {
+    if (info.row.original.isSeatChangePending) {
+      return (
+        <DataTable.CellContent>
+          <Spinner size="xs" />
+        </DataTable.CellContent>
+      );
+    }
     const seatType = info.row.original.seatType;
     const scheduledSeatType = info.row.original.scheduledSeatType;
     const scheduledSeatChangeAt = info.row.original.scheduledSeatChangeAt;
-    const scheduledDate = scheduledSeatChangeAt
-      ? new Date(scheduledSeatChangeAt).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          timeZone: "UTC",
-        })
-      : null;
     return (
       <DataTable.CellContent>
-        <span className="flex flex-col">
-          <span className="flex items-center gap-1.5 text-sm font-semibold capitalize text-muted-foreground dark:text-muted-foreground-night">
-            <SeatTypeIcon seatType={seatType} />
-            {seatType ? getDisplaySeatType(seatType) : "—"}
-          </span>
-          {scheduledSeatType && scheduledDate && (
-            <span className="text-xs capitalize text-amber-600 dark:text-amber-400">
-              → {getDisplaySeatType(scheduledSeatType)} on {scheduledDate}
-            </span>
+        <span className="flex items-center gap-1.5 text-sm font-semibold capitalize text-muted-foreground dark:text-muted-foreground-night">
+          <SeatTypeIcon seatType={seatType} />
+          {seatType ? toBaseSeatType(seatType) : "—"}
+          {scheduledSeatType && (
+            <Tooltip
+              label={getScheduledSeatChangeLabel(
+                seatType,
+                scheduledSeatType,
+                scheduledSeatChangeAt
+              )}
+              tooltipTriggerAsChild
+              trigger={
+                <span className="cursor-default">
+                  <Icon visual={Clock} size="xs" />
+                </span>
+              }
+            />
           )}
         </span>
       </DataTable.CellContent>
     );
   },
   meta: {
-    className: "w-28",
-  },
-};
-
-const billingFrequencyColumn: ColumnDef<RowData, string> = {
-  id: "billingFrequency" as const,
-  header: "Period",
-  accessorFn: (row) => row.billingFrequency ?? "",
-  cell: (info: Info) => {
-    const freq = info.row.original.billingFrequency;
-    let label: string;
-    switch (freq) {
-      case "MONTHLY":
-        label = "Monthly";
-        break;
-      case "ANNUAL":
-        label = "Annual";
-        break;
-      case null:
-        label = "—";
-        break;
-      default:
-        assertNeverAndIgnore(freq);
-        label = "—";
-    }
-    return (
-      <DataTable.CellContent>
-        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          {label}
-        </span>
-      </DataTable.CellContent>
-    );
-  },
-  meta: {
-    className: "w-24",
+    className: "w-36",
   },
 };
 
 const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
   id: "consumedAwuCredits" as const,
-  header: () => (
-    <span className="flex items-center gap-1.5">
-      <Icon visual={ActionCreditCoinsIcon} size="xs" />
-      Credits usage
-    </span>
-  ),
+  header: () => <span>Credits usage</span>,
   accessorFn: (row) => row.consumedAwuCredits.toString(),
   cell: (info: Info) => (
     <div className="w-full pr-3">
@@ -326,20 +371,24 @@ const consumedAwuCreditsColumn: ColumnDef<RowData, string> = {
         memberUsageLimit={info.row.original.memberUsageLimit}
         limit={info.row.original.spendLimitAwuCredits}
         seatType={info.row.original.seatType}
+        isTotalAllowedUsagePending={
+          info.row.original.isTotalAllowedUsagePending
+        }
       />
     </div>
   ),
   meta: {
     className: "w-64",
   },
-  enableSorting: true,
-  sortingFn: (a, b) =>
-    a.original.consumedAwuCredits - b.original.consumedAwuCredits,
+  // Consumed is computed per-page from Metronome usage, not a server-sortable
+  // field, so it can't participate in server-side sorting.
+  enableSorting: false,
 };
 
 const actionsColumn: ColumnDef<RowData, string> = {
   id: "actions" as const,
   header: "",
+  enableSorting: false,
   accessorKey: "actions",
   cell: (info: Info) => (
     <DataTable.MoreButton menuItems={info.row.original.menuItems} />
@@ -351,17 +400,12 @@ const actionsColumn: ColumnDef<RowData, string> = {
 
 function buildColumns({
   isSeatBased,
-  displayPeriodColumn,
 }: {
   isSeatBased: boolean;
-  displayPeriodColumn: boolean;
 }): ColumnDef<RowData, string>[] {
   const optionalColumns = [];
   if (isSeatBased) {
     optionalColumns.push(seatTypeColumn);
-  }
-  if (displayPeriodColumn) {
-    optionalColumns.push(billingFrequencyColumn);
   }
   return [
     nameColumn,
@@ -374,49 +418,41 @@ function buildColumns({
 interface MembersUsageTableProps {
   members: MemberUsageType[];
   isLoading: boolean;
-  seatTypeFilter: MembershipSeatType | "none" | null;
+  totalAllowedUsagePendingMemberIds: ReadonlySet<string>;
+  seatChangePendingMemberIds: ReadonlySet<string>;
   isSeatBased: boolean;
+  showSpendLimit: boolean;
+  readOnly: boolean;
   onChangeSeat: (member: MemberUsageType) => void;
+  onRemoveSeat: (member: MemberUsageType) => void;
   onEditSpendLimit: (member: MemberUsageType) => void;
   pagination: PaginationState;
   setPagination: (pagination: PaginationState) => void;
   totalRowCount: number;
+  sorting: SortingState;
+  setSorting: (sorting: SortingState) => void;
 }
 
 export function MembersUsageTable({
   members,
   isLoading,
-  seatTypeFilter,
+  totalAllowedUsagePendingMemberIds,
+  seatChangePendingMemberIds,
   isSeatBased,
+  showSpendLimit,
+  readOnly,
   onChangeSeat,
+  onRemoveSeat,
   onEditSpendLimit,
   pagination,
   setPagination,
   totalRowCount,
+  sorting,
+  setSorting,
 }: MembersUsageTableProps) {
-  // Name/email search is handled server-side; only filter by seat type here.
-  const filtered = useMemo(
-    () =>
-      members.filter((m) => {
-        if (seatTypeFilter === "none" && m.seatType !== null) {
-          return false;
-        }
-        if (
-          seatTypeFilter !== null &&
-          seatTypeFilter !== "none" &&
-          m.seatType &&
-          !m.seatType.startsWith(seatTypeFilter)
-        ) {
-          return false;
-        }
-        return true;
-      }),
-    [members, seatTypeFilter]
-  );
-
   const rows: RowData[] = useMemo(
     () =>
-      filtered.map((m) => ({
+      members.map((m) => ({
         sId: m.sId,
         name: m.name,
         email: m.email,
@@ -427,38 +463,61 @@ export function MembersUsageTable({
         consumedFromAllowanceAwuCredits: m.consumedFromAllowanceAwuCredits,
         consumedFromPoolAwuCredits: m.consumedFromPoolAwuCredits,
         spendLimitAwuCredits: m.spendLimitAwuCredits,
-        billingFrequency: m.billingFrequency,
         scheduledSeatType: m.scheduledSeatType,
         scheduledSeatChangeAt: m.scheduledSeatChangeAt,
+        isTotalAllowedUsagePending: totalAllowedUsagePendingMemberIds.has(
+          m.sId
+        ),
+        isSeatChangePending: seatChangePendingMemberIds.has(m.sId),
         menuItems: [
           ...(isSeatBased
             ? [
                 {
                   kind: "item" as const,
-                  label: "Change seat type",
+                  label: m.seatType ? "Change seat type" : "Assign seat",
+                  disabled: readOnly,
                   onClick: () => onChangeSeat(m),
                 },
               ]
             : []),
-          {
-            kind: "item" as const,
-            label: "Edit spend limit",
-            onClick: () => onEditSpendLimit(m),
-          },
+          ...(showSpendLimit
+            ? [
+                {
+                  kind: "item" as const,
+                  label: "Edit spend limit",
+                  disabled: readOnly,
+                  onClick: () => onEditSpendLimit(m),
+                },
+              ]
+            : []),
+          // Only members who currently hold a billable seat can have it removed.
+          ...(isSeatBased && m.seatType && m.seatType !== "none"
+            ? [
+                {
+                  kind: "item" as const,
+                  label: "Remove seat",
+                  variant: "warning" as const,
+                  disabled: readOnly,
+                  onClick: () => onRemoveSeat(m),
+                },
+              ]
+            : []),
         ],
       })),
-    [filtered, isSeatBased, onChangeSeat, onEditSpendLimit]
+    [
+      members,
+      totalAllowedUsagePendingMemberIds,
+      seatChangePendingMemberIds,
+      isSeatBased,
+      showSpendLimit,
+      readOnly,
+      onChangeSeat,
+      onRemoveSeat,
+      onEditSpendLimit,
+    ]
   );
 
-  const displayPeriodColumn = useMemo(
-    () => rows.some((row) => !!row.billingFrequency),
-    [rows]
-  );
-
-  const columns = useMemo(
-    () => buildColumns({ isSeatBased, displayPeriodColumn }),
-    [isSeatBased, displayPeriodColumn]
-  );
+  const columns = useMemo(() => buildColumns({ isSeatBased }), [isSeatBased]);
 
   if (isLoading) {
     return (
@@ -477,6 +536,9 @@ export function MembersUsageTable({
       pagination={pagination}
       setPagination={setPagination}
       totalRowCount={totalRowCount}
+      sorting={sorting}
+      setSorting={setSorting}
+      isServerSideSorting
     />
   );
 }

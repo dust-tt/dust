@@ -69,6 +69,18 @@ vi.mock("@anthropic-ai/sdk", async (importOriginal) => {
   };
 });
 
+// The mock authenticator has no workspace, so the real getFeatureFlags (used by
+// getLLM for Vertex routing) would throw. No flags means no Vertex routing,
+// which is what we want: tests hit the providers' APIs directly.
+vi.mock("@app/lib/auth", async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    // @ts-expect-error actual is unknown
+    ...actual,
+    getFeatureFlags: async () => [],
+  };
+});
+
 // Read configuration from environment variables (set in vite.config.js)
 const FILTER_CONVERSATION_IDS: ConversationId[] = process.env
   .FILTER_CONVERSATION_IDS

@@ -17,14 +17,14 @@ import type {
   DatasetViewType,
 } from "@app/types/dataset";
 import {
-  ArrowDownOnSquareIcon,
-  ArrowUpOnSquareIcon,
   Button,
+  Download01,
   Input,
   Label,
-  PlusCircleIcon,
-  PlusIcon,
-  XCircleIcon,
+  Plus,
+  PlusCircle,
+  Upload01,
+  XCircle,
 } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
@@ -616,8 +616,8 @@ export default function DatasetView({
                                 <Button
                                   size="icon"
                                   variant="ghost"
-                                  className="text-muted-foreground"
-                                  icon={XCircleIcon}
+                                  className="text-muted-foreground dark:text-muted-foreground-night"
+                                  icon={XCircle}
                                   tooltip="Delete property"
                                   onClick={() => {
                                     handleDeleteKey(j);
@@ -627,8 +627,8 @@ export default function DatasetView({
                                 <Button
                                   size="icon"
                                   variant="ghost"
-                                  className="text-muted-foreground"
-                                  icon={PlusCircleIcon}
+                                  className="text-muted-foreground dark:text-muted-foreground-night"
+                                  icon={PlusCircle}
                                   onClick={() => {
                                     handleNewKey(j);
                                   }}
@@ -642,7 +642,7 @@ export default function DatasetView({
                     </div>
                     <div className="bg-muted-background dark:bg-muted-background-night sm:col-span-7">
                       {readOnly ? (
-                        <span className="block cursor-pointer whitespace-nowrap px-4 py-2 text-sm text-muted-foreground">
+                        <span className="block cursor-pointer whitespace-nowrap px-4 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                           {datasetTypes[j] ? datasetTypes[j] : "string"}
                         </span>
                       ) : (
@@ -777,7 +777,7 @@ export default function DatasetView({
                                 "w-full resize-none border-0 bg-transparent px-1 py-0 font-mono font-normal ring-0 focus:ring-0",
                                 readOnly
                                   ? "text-primary-500"
-                                  : "dark:text-text-muted-foreground-night text-muted-foreground"
+                                  : "dark:text-text-muted-foreground-night text-muted-foreground dark:text-muted-foreground-night"
                               )}
                               readOnly={readOnly}
                               value={d[k]}
@@ -793,7 +793,7 @@ export default function DatasetView({
                       <div className="flex items-center justify-end gap-1 p-1 text-xs">
                         {datasetData.length > 1 ? (
                           <Button
-                            icon={XCircleIcon}
+                            icon={XCircle}
                             size="icon"
                             variant="ghost"
                             onClick={() => {
@@ -802,7 +802,7 @@ export default function DatasetView({
                           />
                         ) : null}
                         <Button
-                          icon={PlusCircleIcon}
+                          icon={PlusCircle}
                           size="icon"
                           variant="ghost"
                           onClick={() => {
@@ -823,7 +823,7 @@ export default function DatasetView({
                     onClick={() => {
                       handleNewEntry(datasetData.length - 1);
                     }}
-                    icon={PlusIcon}
+                    icon={Plus}
                     label="New Entry"
                   />
                 ) : null}
@@ -849,7 +849,7 @@ export default function DatasetView({
                       downloadAnchorNode.click();
                       downloadAnchorNode.remove();
                     }}
-                    icon={ArrowDownOnSquareIcon}
+                    icon={Download01}
                     label="Download"
                   />
                 </div>
@@ -873,7 +873,7 @@ export default function DatasetView({
                           fileInputRef.current.click();
                         }
                       }}
-                      icon={ArrowUpOnSquareIcon}
+                      icon={Upload01}
                       label="JSONL"
                     />
                   ) : null}

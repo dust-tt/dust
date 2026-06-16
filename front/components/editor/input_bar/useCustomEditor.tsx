@@ -205,10 +205,16 @@ export interface CustomEditorProps {
     ((agentId: string) => void) | undefined
   >;
   slashSuggestion?: {
+    // The conversation may only exist after the editor is initialized, hence the ref.
+    conversationIdRef?: React.RefObject<string | null>;
     enabledRef: React.RefObject<boolean>;
     onSelectRef: React.RefObject<
       ((capability: InputBarSlashSuggestionCapability) => void) | undefined
     >;
+    onDetailsRef?: React.RefObject<
+      ((capability: InputBarSlashSuggestionCapability) => void) | undefined
+    >;
+    onSkillDetails?: (skillId: string) => void;
     selectedMCPServerViewIdsRef: React.RefObject<Set<string>>;
   };
   // Override the default editor placeholder (e.g. to show a blocked-state reason).
@@ -328,7 +334,9 @@ export const buildEditorExtensions = ({
         onActiveChange: notifySuggestionActiveChange,
       }),
     }),
-    SkillNode,
+    SkillNode.configure({
+      onSkillDetails: slashSuggestion?.onSkillDetails,
+    }),
     createEmojiExtension({ onActiveChange: notifySuggestionActiveChange }),
     Placeholder.configure({
       placeholder: ({ node }) => {
@@ -350,8 +358,10 @@ export const buildEditorExtensions = ({
     extensions.push(
       InputBarSlashSuggestionExtension.configure({
         owner,
+        conversationIdRef: slashSuggestion.conversationIdRef,
         enabledRef: slashSuggestion.enabledRef,
         onSelectRef: slashSuggestion.onSelectRef,
+        onDetailsRef: slashSuggestion.onDetailsRef,
         selectedMCPServerViewIdsRef:
           slashSuggestion.selectedMCPServerViewIdsRef,
         onActiveChangeRef: onSuggestionActiveChangeRef,

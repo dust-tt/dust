@@ -17,7 +17,7 @@ import { extractFromString } from "@app/lib/mentions/format";
 import type { MentionStatusType } from "@app/lib/models/agent/conversation";
 import { MentionModel } from "@app/lib/models/agent/conversation";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
-import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/project-added-as-member";
+import { notifyPodMembersAdded } from "@app/lib/notifications/workflows/pod-added-as-member";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -53,7 +53,22 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 import uniqBy from "lodash/uniqBy";
 import type { Transaction } from "sequelize";
+import { z } from "zod";
 import { getConversation } from "./fetch";
+
+export const PostMentionActionRequestBodySchema = z.object({
+  type: z.enum(["agent", "user"]),
+  id: z.string(),
+  action: z.enum(["approved", "rejected", "dismissed"]),
+});
+
+export type PostMentionActionRequestBody = z.infer<
+  typeof PostMentionActionRequestBodySchema
+>;
+
+export type PostMentionActionResponseBody = {
+  success: boolean;
+};
 
 export async function getMentionStatus(
   auth: Authenticator,
@@ -278,8 +293,8 @@ export async function validateUserMention(
     }
 
     // Notify the user they were added to the project.
-    notifyProjectMembersAdded(auth, {
-      project: space.toJSON(),
+    notifyPodMembersAdded(auth, {
+      pod: space.toJSON(),
       addedUserIds: [userId],
     });
   }

@@ -10,7 +10,6 @@ import { SkillBuilderInstructionsSection } from "@app/components/skill_builder/S
 import { SkillBuilderRequestedSpacesSection } from "@app/components/skill_builder/SkillBuilderRequestedSpacesSection";
 import { SkillBuilderSettingsSection } from "@app/components/skill_builder/SkillBuilderSettingsSection";
 import { SkillBuilderSuggestionsPanel } from "@app/components/skill_builder/SkillBuilderSuggestionsPanel";
-import { SkillBuilderToolsSection } from "@app/components/skill_builder/SkillBuilderToolsSection";
 import { SkillVersionHistoryPicker } from "@app/components/skill_builder/SkillBuilderVersionComparisonBanner";
 import { SkillBuilderVersionComparisonFooter } from "@app/components/skill_builder/SkillBuilderVersionComparisonFooter";
 import {
@@ -26,7 +25,7 @@ import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import { useAppRouter } from "@app/lib/platform";
 import { getSkillIcon } from "@app/lib/skill";
 import { useSkillHistory } from "@app/lib/swr/skill_configurations";
@@ -40,7 +39,7 @@ import {
   Button,
   ContentMessage,
   cn,
-  InformationCircleIcon,
+  InfoCircle,
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
@@ -62,7 +61,6 @@ export default function SkillBuilder({
   onSaved,
 }: SkillBuilderProps) {
   const { owner, user } = useSkillBuilderContext();
-  const { hasFeature } = useFeatureFlags();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
@@ -80,9 +78,7 @@ export default function SkillBuilder({
     limit: 30,
   });
 
-  const hasSelfImprovingSkills =
-    hasFeature("reinforced_agents") && hasFeature("reinforcement_ui");
-  const enableSkillReferences = hasFeature("nested_skills");
+  const hasSelfImprovingSkills = useIsSelfImprovementAvailable();
 
   const { suggestions } = useSkillSuggestions({
     skillId: skill?.sId ?? null,
@@ -214,14 +210,14 @@ export default function SkillBuilder({
               size="lg"
             >
               A customized version of {extendedSkill.name} with your own
-              guidelines and {enableSkillReferences ? "capabilities" : "tools"}.
+              guidelines and capabilities.
             </ContentMessage>
           )}
           {skill?.status === "suggested" && (
             <ContentMessage
               title="This is a generated skill suggestion"
               variant="primary"
-              icon={InformationCircleIcon}
+              icon={InfoCircle}
               size="lg"
             >
               This skill was automatically generated based on your workspace's
@@ -229,15 +225,12 @@ export default function SkillBuilder({
               specific needs before saving.
             </ContentMessage>
           )}
+          <SkillBuilderAgentFacingDescriptionSection />
+          <SkillBuilderInstructionsSection />
           <SkillBuilderRequestedSpacesSection
             initialRequestedSpaceIds={skill?.requestedSpaceIds}
           />
-          <SkillBuilderAgentFacingDescriptionSection />
-          <SkillBuilderInstructionsSection />
-          {hasFeature("sandbox_tools") && <SkillBuilderFilesSection />}
-          {!enableSkillReferences && (
-            <SkillBuilderToolsSection extendedSkill={extendedSkill} />
-          )}
+          <SkillBuilderFilesSection />
           <SkillBuilderSettingsOrComparisonFooter
             skill={skill}
             hasSelfImprovingSkills={hasSelfImprovingSkills}

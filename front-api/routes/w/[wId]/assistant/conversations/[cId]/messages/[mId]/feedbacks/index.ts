@@ -25,6 +25,104 @@ const MessageFeedbackRequestBodySchema = z.object({
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/feedbacks.
 const app = workspaceApp();
 
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/feedbacks:
+ *   post:
+ *     summary: Submit message feedback
+ *     description: Create or update feedback (thumbs up/down) for a specific agent message.
+ *     tags:
+ *       - Private Messages
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: mId
+ *         required: true
+ *         description: ID of the message
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - thumbDirection
+ *             properties:
+ *               thumbDirection:
+ *                 type: string
+ *                 enum: [up, down]
+ *               feedbackContent:
+ *                 type: string
+ *                 nullable: true
+ *               isConversationShared:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Successfully submitted feedback
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       401:
+ *         description: Unauthorized
+ *   delete:
+ *     summary: Delete message feedback
+ *     description: Remove the authenticated user's feedback for a specific agent message.
+ *     tags:
+ *       - Private Messages
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: mId
+ *         required: true
+ *         description: ID of the message
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully deleted feedback
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       401:
+ *         description: Unauthorized
+ */
+
 app.post(
   "/",
   validate("param", ParamsSchema),

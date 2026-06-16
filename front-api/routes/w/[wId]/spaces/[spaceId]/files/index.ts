@@ -1,9 +1,14 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import type { FileSystemEntry } from "@app/lib/api/file_system/types";
-import { SCOPED_PREFIX_POD } from "@app/lib/api/file_system/types";
+import type {
+  FileSystemEntry,
+  GetSpaceFilesResponseBody,
+  PostSpaceFolderResponseBody,
+} from "@app/lib/api/file_system/types";
+import {
+  isDustFileSystemError,
+  SCOPED_PREFIX_POD,
+} from "@app/lib/api/file_system/types";
 import { enrichListWithFileResourceIds } from "@app/lib/api/files/file_system_ops";
-import { isGCSMountDirectoryAlreadyExistsError } from "@app/lib/api/files/gcs_mount/errors";
-import type { GCSMountDirectoryEntry } from "@app/lib/api/files/gcs_mount/files";
 import { createProjectFolder } from "@app/lib/api/projects/context";
 import { PostPodFolderRequestBodySchema } from "@app/lib/api/projects/pod_mount_schemas";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -14,19 +19,12 @@ import { withSpace } from "@front-api/middlewares/with_space";
 
 import rel from "./[...rel]";
 
-export type { FileSystemEntry, GCSMountDirectoryEntry };
-
-export type GetSpaceFilesResponseBody = {
-  files: FileSystemEntry[];
-};
-
-export type PostSpaceFolderResponseBody = {
-  folder: GCSMountDirectoryEntry;
-};
+export type { FileSystemEntry };
 
 // Mounted under /api/w/:wId/spaces/:spaceId/files.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   withSpace({ requireCanRead: true }),
@@ -56,10 +54,21 @@ app.get(
     }
 
     const dustFs = fsResult.value;
+    const listResult = await dustFs.list(`${SCOPED_PREFIX_POD}${space.sId}`);
+    if (listResult.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to list space files.",
+        },
+      });
+    }
+
     const files = await enrichListWithFileResourceIds(
       auth,
       dustFs,
-      await dustFs.list(`${SCOPED_PREFIX_POD}${space.sId}`)
+      listResult.value
     );
 
     return ctx.json({ files });
@@ -103,7 +112,7 @@ app.post(
     });
     if (createResult.isErr()) {
       return apiError(c, {
-        status_code: isGCSMountDirectoryAlreadyExistsError(createResult.error)
+        status_code: isDustFileSystemError(createResult.error, "already_exists")
           ? 409
           : 400,
         api_error: {

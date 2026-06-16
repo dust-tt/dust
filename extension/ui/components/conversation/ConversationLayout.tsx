@@ -4,10 +4,10 @@ import { SidebarBanners } from "@app/components/navigation/AppStatusBanner";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
-  ArrowLeftIcon,
+  ArrowLeft,
   BarHeader,
   Button,
-  MenuIcon,
+  Menu01,
   Sheet,
   SheetContent,
   SheetHeader,
@@ -39,10 +39,7 @@ export const ConversationLayout = ({
   return (
     <FileDropProvider>
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-        <SheetContent
-          side="left"
-          className="flex w-full max-w-72 flex-1 bg-muted-background dark:bg-muted-background-night"
-        >
+        <SheetContent side="left" className="flex w-full max-w-72 flex-1">
           <SheetHeader className="bg-muted-background p-0" hideButton>
             <SheetTitle className="hidden" />
           </SheetHeader>
@@ -62,14 +59,14 @@ export const ConversationLayout = ({
             {backHref ? (
               <Button
                 variant="ghost"
-                icon={ArrowLeftIcon}
+                icon={ArrowLeft}
                 onClick={() => navigate(backHref)}
                 tooltip="Go back to Pod homepage"
               />
             ) : (
               <Button
                 variant="ghost"
-                icon={MenuIcon}
+                icon={Menu01}
                 onClick={() => setSidebarOpen(true)}
               />
             )}

@@ -1,3 +1,5 @@
+import { MCPServerSpaceAvailabilityTable } from "@app/components/poke/mcp_server_views/space_availability";
+import { ToolsConfigTable } from "@app/components/poke/mcp_server_views/tools_config";
 import { ViewMCPServerViewTable } from "@app/components/poke/mcp_server_views/view";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
@@ -45,25 +47,38 @@ export function MCPServerViewPage() {
     );
   }
 
-  const { mcpServerView } = mcpServerViewDetails;
+  const { mcpServerView, spaceViews } = mcpServerViewDetails;
 
   return (
     <>
       <h3 className="text-xl font-bold">
-        MCP Server View {getMcpServerViewDisplayName(mcpServerView)} in space{" "}
-        <LinkWrapper
-          href={`/poke/${owner.sId}/spaces/${mcpServerView.spaceId}`}
-          className="text-highlight-500"
-        >
-          {mcpServerView.space?.name || mcpServerView.spaceId}
-        </LinkWrapper>{" "}
+        MCP Server {getMcpServerViewDisplayName(mcpServerView)}
+        {mcpServerView.space?.kind !== "system" && (
+          <>
+            {" "}
+            in space{" "}
+            <LinkWrapper
+              href={`/poke/${owner.sId}/spaces/${mcpServerView.spaceId}`}
+              className="text-highlight-500"
+            >
+              {mcpServerView.space?.name || mcpServerView.spaceId}
+            </LinkWrapper>
+          </>
+        )}{" "}
         within workspace{" "}
         <LinkWrapper href={`/poke/${owner.sId}`} className="text-highlight-500">
           {owner.name}
         </LinkWrapper>
       </h3>
       <div className="flex flex-row gap-x-6">
-        <ViewMCPServerViewTable mcpServerView={mcpServerView} owner={owner} />
+        <div className="flex flex-col">
+          <ViewMCPServerViewTable mcpServerView={mcpServerView} owner={owner} />
+          <MCPServerSpaceAvailabilityTable
+            owner={owner}
+            spaceViews={spaceViews}
+          />
+          <ToolsConfigTable mcpServerView={mcpServerView} />
+        </div>
         <div className="mt-4 flex grow flex-col gap-y-4">
           <PluginList
             pluginResourceTarget={{

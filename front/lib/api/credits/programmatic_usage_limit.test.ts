@@ -46,7 +46,7 @@ beforeEach(() => {
 
 describe("syncProgrammaticUsageLimit audit", () => {
   it("emits an audit event with previous and new cap", async () => {
-    const workspace = await WorkspaceFactory.metronome({
+    const workspace = await WorkspaceFactory.creditPriced({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
@@ -72,7 +72,7 @@ describe("syncProgrammaticUsageLimit audit", () => {
   });
 
   it("records previous as 'unset' when no cap existed", async () => {
-    const workspace = await WorkspaceFactory.metronome({
+    const workspace = await WorkspaceFactory.creditPriced({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
@@ -94,7 +94,7 @@ describe("syncProgrammaticUsageLimit audit", () => {
   });
 
   it("records new as 'unset' when clearing the cap", async () => {
-    const workspace = await WorkspaceFactory.metronome({
+    const workspace = await WorkspaceFactory.creditPriced({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
@@ -119,7 +119,7 @@ describe("syncProgrammaticUsageLimit audit", () => {
   });
 
   it("skips audit when upsert fails", async () => {
-    const workspace = await WorkspaceFactory.metronome({
+    const workspace = await WorkspaceFactory.creditPriced({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);

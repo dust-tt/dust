@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Input,
-  UserIcon,
+  User01,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -133,7 +133,7 @@ function TaskRowAssigneeMenu({
                 }
               />
             ) : (
-              UserIcon
+              User01
             )
           }
         />
@@ -190,7 +190,7 @@ function TaskRowAssigneeMenu({
               ))}
             </>
           ) : (
-            <div className="px-3 py-2 text-sm text-muted-foreground">
+            <div className="px-3 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
               No members found
             </div>
           )}

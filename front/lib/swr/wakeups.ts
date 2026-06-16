@@ -1,8 +1,8 @@
 import { useConversations } from "@app/hooks/conversations/useConversations";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { GetConversationWakeUpsResponseBody } from "@app/lib/api/assistant/conversation/wakeups";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetConversationWakeUpsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/wakeups";
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import { isActiveWakeUp } from "@app/types/assistant/wakeups";
 import type { LightWorkspaceType } from "@app/types/user";

@@ -1,19 +1,16 @@
 import { setCacheSource } from "../lib/cache";
 import { withEnvironments } from "../lib/commands";
 import { startDocker } from "../lib/docker";
-import type { Environment } from "../lib/environment";
 import { isInitialized, markInitialized } from "../lib/environment";
 import { startForwarder } from "../lib/forward";
 import { FORWARDER_PORTS } from "../lib/forwarderConfig";
 import { createTemporalNamespaces, runAllDbInits, runSeedScript } from "../lib/init";
 import { logger } from "../lib/logger";
-import { getEnvFilePath, getWorktreeDir } from "../lib/paths";
 import { cleanupServicePorts, formatBlockedPorts } from "../lib/ports";
 import { isServiceRunning, readPid } from "../lib/process";
 import { startService, waitForServiceReady } from "../lib/registry";
 import { CommandError, Err, Ok } from "../lib/result";
-import { type ServiceName, getFrontService } from "../lib/services";
-import { buildShell } from "../lib/shell";
+import type { ServiceName } from "../lib/services";
 import { isDockerRunning } from "../lib/state";
 
 interface WarmOptions {
@@ -21,7 +18,7 @@ interface WarmOptions {
   forcePorts?: boolean;
 }
 
-// Routes to pre-compile when warming the front service
+// Routes to pre-compile when warming front-api
 // These compile in parallel with the health check to minimize total wait time
 const CRITICAL_ROUTES = [
   "/api/auth-context", // Auth context API (no workspace)
@@ -30,22 +27,14 @@ const CRITICAL_ROUTES = [
   "/api/poke/workspaces/precompile/auth-context", // Poke auth context API (with workspace)
 ];
 
-const ENSURE_MCP_SERVER_VIEWS_COMMAND =
-  "npx tsx ./scripts/ensure_all_mcp_server_views_created.ts --execute";
-const MCP_SERVER_VIEWS_ERROR_SUMMARY_PATTERN = /Migration completed with \d+ errors/;
+// Marketing routes to pre-compile.
+const MARKETING_ROUTES = ["/", "/home"];
 
-// Start pre-warming critical Next.js routes immediately (with retry)
-// Uses curl --retry to wait for server to be available, then triggers compilation
-// This runs IN PARALLEL with health check, so all routes compile simultaneously
-function startPreWarmingImmediately(port: number): void {
-  logger.step("Pre-compiling critical pages (parallel with health check)...");
-
+// Spawn a detached curl that retries until the server accepts the connection,
+// then triggers route compilation. Output is discarded; failures are silent.
+function preWarmRoutes(port: number, routes: readonly string[]): void {
   const baseUrl = `http://localhost:${port}`;
-
-  // Spawn detached curl processes with retry - they'll wait for server then compile
-  // --retry 60 --retry-delay 1 = retry every 1s for up to 60s
-  // --retry-connrefused = retry on connection refused (server not ready yet)
-  for (const route of CRITICAL_ROUTES) {
+  for (const route of routes) {
     Bun.spawn(
       [
         "curl",
@@ -79,48 +68,6 @@ async function isTemporalRunning(): Promise<boolean> {
   return proc.exitCode === 0;
 }
 
-async function ensureAllMCPServerViewsCreated(env: Environment): Promise<void> {
-  const envShPath = getEnvFilePath(env.name);
-  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
-
-  const command = buildShell({
-    sourceEnv: envShPath,
-    sourceNvm: true,
-    run: ENSURE_MCP_SERVER_VIEWS_COMMAND,
-  });
-
-  const proc = Bun.spawn(["bash", "-c", command], {
-    cwd: `${worktreePath}/front`,
-    env: process.env,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-
-  const stdout = await new Response(proc.stdout).text();
-  const stderr = await new Response(proc.stderr).text();
-  await proc.exited;
-
-  if (proc.exitCode !== 0) {
-    logger.warn("Failed to ensure MCP server views are created. Continuing.");
-    if (stdout.trim()) {
-      logger.info(`MCP server views ensure stdout:\n${stdout.trim()}`);
-    }
-    if (stderr.trim()) {
-      logger.warn(`MCP server views ensure stderr:\n${stderr.trim()}`);
-    }
-    return;
-  }
-
-  if (MCP_SERVER_VIEWS_ERROR_SUMMARY_PATTERN.test(stdout + stderr)) {
-    logger.warn(
-      "MCP server view ensure script completed with workspace errors. Check script logs for details."
-    );
-    return;
-  }
-
-  logger.success("Ensured MCP server views are created for all workspaces");
-}
-
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: orchestration function with necessary complexity
 export const warmCommand = withEnvironments("warm", async (env, options: WarmOptions) => {
   const startTime = Date.now();
@@ -152,11 +99,10 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
 
   // Check if already warm
   const dockerRunning = await isDockerRunning(env.name);
-  const frontService = getFrontService();
 
   if (dockerRunning) {
-    const frontRunning = await isServiceRunning(env.name, frontService);
-    if (frontRunning) {
+    const proxyRunning = await isServiceRunning(env.name, "proxy");
+    if (proxyRunning) {
       logger.info(`Environment '${env.name}' is already warm`);
       return Ok(undefined);
     }
@@ -166,7 +112,14 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
   console.log();
 
   // Clean up orphaned processes on service ports
-  const portServices: ServiceName[] = [frontService, "core", "connectors", "oauth"];
+  const portServices: ServiceName[] = [
+    "proxy",
+    "front-api",
+    "marketing",
+    "core",
+    "connectors",
+    "oauth",
+  ];
   const servicePids = await Promise.all(portServices.map((service) => readPid(env.name, service)));
   const allowedPids = new Set(servicePids.filter((pid): pid is number => pid !== null));
   const { killedPorts, blockedPorts } = await cleanupServicePorts(env.ports, {
@@ -190,8 +143,8 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
   // Check if first warm (needs initialization)
   const needsInit = !(await isInitialized(env.name));
 
-  // Start Docker + front + pre-warming all in parallel
-  // Front can compile pages while Docker starts and init runs
+  // Start Docker + front-api + marketing + proxy + pre-warming all in parallel
+  // Next.js can compile pages while Docker starts and init runs
   // This maximizes parallelism - by the time init is done, pages are compiled
   logger.info("Starting Docker, services, and page compilation (all parallel)...");
   console.log();
@@ -199,13 +152,20 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
   // Start Docker (don't await - let it run in background)
   const dockerPromise = startDocker(env);
 
-  // Start front immediately to begin page compilation
-  // It will retry connections to DB/Redis until they're ready
-  await startService(env, frontService);
+  // Start front-api and marketing immediately to begin page compilation
+  // They will retry connections to DB/Redis until they're ready
+  await Promise.all([startService(env, "front-api"), startService(env, "marketing")]);
 
   // Start pre-warming immediately - curls will retry until Next.js is ready
   // Pages compile while Docker containers start and init runs
-  startPreWarmingImmediately(env.ports.front);
+  logger.step("Pre-compiling critical pages (parallel with health check)...");
+  preWarmRoutes(env.ports.frontApi, CRITICAL_ROUTES);
+  preWarmRoutes(env.ports.marketing, MARKETING_ROUTES);
+
+  // Start the proxy. It listens on ports.front and routes /api/* to front-api,
+  // /m/api/* and /* to marketing. It does not need its upstreams healthy to
+  // start (it returns 502 until they are).
+  await startService(env, "proxy");
 
   // Now wait for Docker and start other services
   await dockerPromise;
@@ -279,29 +239,28 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
 
   // Wait for services with health checks
   // Pre-warming is already running in parallel (started above)
-  // Start forwarder as soon as front is healthy (don't wait for core/oauth)
+  // Start forwarder as soon as the proxy is healthy (it owns ports.front).
   logger.step("Waiting for services to be healthy...");
   await Promise.all([
-    waitForServiceReady(env, frontService).then(async () => {
+    waitForServiceReady(env, "proxy").then(async () => {
       if (!noForward) {
         await startForwarder(env.ports.base, env.name);
       }
     }),
+    waitForServiceReady(env, "front-api"),
+    waitForServiceReady(env, "marketing"),
     waitForServiceReady(env, "core"),
     waitForServiceReady(env, "oauth"),
   ]);
   logger.success("All services healthy");
 
-  if (needsInit) {
-    logger.step("Ensuring MCP server views are created for all workspaces...");
-    await ensureAllMCPServerViewsCreated(env);
-  }
-
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
   console.log();
   logger.success(`Environment '${env.name}' is now warm! (${elapsed}s)`);
   console.log();
-  console.log(`  ${`${frontService}:`.padEnd(13)}http://localhost:${env.ports.front}`);
+  console.log(`  Proxy:       http://localhost:${env.ports.front}    (public entry)`);
+  console.log(`  Marketing:   http://localhost:${env.ports.marketing}`);
+  console.log(`  front-api:   http://localhost:${env.ports.frontApi}`);
   console.log(`  Core:        http://localhost:${env.ports.core}`);
   console.log(`  Connectors:  http://localhost:${env.ports.connectors}`);
   console.log(`  Front app:   http://localhost:${env.ports.frontSpaApp}`);

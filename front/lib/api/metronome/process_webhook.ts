@@ -1,17 +1,29 @@
-import { maybeNotifyAdminsBalanceThresholdReached } from "@app/lib/api/credits/balance_threshold_alert";
+import {
+  handleSubscriptionActivationFailure,
+  handleSubscriptionActivationSuccess,
+} from "@app/lib/api/checkout/business_activation";
+import {
+  maybeClearAdminsBalanceThresholdReached,
+  maybeNotifyAdminsBalanceThresholdReached,
+} from "@app/lib/api/credits/balance_threshold_alert";
 import {
   dispatchCreditsAdded,
   dispatchLowBalance,
   dispatchPaygCapReached,
   dispatchPerUserCapReached,
   dispatchPerUserCapResolved,
+  dispatchPerUserCapWarning,
   dispatchPoolExhausted,
   dispatchProgrammaticCapReached,
   dispatchProgrammaticCapReset,
   dispatchProgrammaticLowBalance,
   dispatchProgrammaticWarning,
+  dispatchSeatBalanceExhausted,
+  dispatchSeatBalanceResolved,
+  dispatchSeatLowBalance,
   syncPoolCreditStateFromBalance,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
+import { reconcileWorkspaceUserCreditStates } from "@app/lib/api/metronome/reconcile_credit_state";
 import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { Authenticator } from "@app/lib/auth";
@@ -25,6 +37,7 @@ import {
   grantFreeCreditFromMetronomeSegment,
   YEARLY_MULTIPLIER,
 } from "@app/lib/credits/free";
+import { resolvePerUserCreditAlertUserId } from "@app/lib/metronome/alerts/per_user_credit_balance";
 import {
   CRITICAL_BALANCE_OFFSET,
   LOW_BALANCE_OFFSET,
@@ -34,8 +47,8 @@ import {
   PROGRAMMATIC_WARNING_BALANCE_ALERT_NAME,
 } from "@app/lib/metronome/alerts/programmatic_cap";
 import {
-  getMetronomeDefaultUserCapAlert,
-  getMetronomeDefaultUserWarningAlert,
+  getMetronomeDefaultUserCapAlertForSeatType,
+  getMetronomeDefaultUserWarningAlertForSeatType,
   getMetronomePerUserCap,
   getMetronomePerUserWarningAlert,
 } from "@app/lib/metronome/alerts/spend_limits";
@@ -45,6 +58,7 @@ import {
   getMetronomeContractById,
   getMetronomeCredit,
   listMetronomeContracts,
+  setMetronomeCommitCustomFields,
   setMetronomeContractCreditCustomFields,
   updateMetronomeCreditSegmentAmount,
 } from "@app/lib/metronome/client";
@@ -54,6 +68,8 @@ import {
   CONTRACT_CREDIT_TYPE_POOL,
   getCreditTypeAwuId,
   getProductExcessCreditsId,
+  PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY,
+  PAYMENT_GATE_TYPE_SUBSCRIPTION_ACTIVATION,
   PLAN_CODE_CUSTOM_FIELD_KEY,
   USAGE_TYPE_GROUP_KEY,
   USAGE_TYPE_PROGRAMMATIC,
@@ -61,14 +77,11 @@ import {
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import type { ProgrammaticCreditEvent } from "@app/lib/metronome/programmatic_credit_state_machine";
 import { isMetronomeFreeCredit } from "@app/lib/metronome/types";
-import {
-  clearUserAwuWarned,
-  setUserAwuWarned,
-} from "@app/lib/metronome/user_block";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { PlanModel } from "@app/lib/models/plan";
 import { notifyUserAwuCapReached } from "@app/lib/notifications/workflows/user-awu-cap-reached";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -76,13 +89,11 @@ import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
+import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Commit, Credit } from "@metronome/sdk/resources";
-import type { CustomerAlert } from "@metronome/sdk/resources/v1/customers";
-
-type MetronomeAlertState = CustomerAlert["customer_status"];
 
 // Programmatic cap alerts share the AWU credit type with PAYG cap alerts;
 // the `usage_type=programmatic` group filter is what distinguishes them.
@@ -153,12 +164,14 @@ export class ProcessMetronomeWebhookError extends Error {
  *   - everything else (incl. customer-level credits) → "pool" (counted)
  */
 async function stampContractCreditType({
+  workspaceId,
   customerId,
   contractId,
   creditId,
   creditCustomFields,
   eventType,
 }: {
+  workspaceId: string;
   customerId: string;
   contractId: string | null | undefined;
   creditId: string;
@@ -180,7 +193,13 @@ async function stampContractCreditType({
     });
     if (contractResult.isErr()) {
       logger.error(
-        { customerId, contractId, creditId, error: contractResult.error },
+        {
+          workspaceId,
+          customerId,
+          contractId,
+          creditId,
+          error: contractResult.error,
+        },
         `[Metronome Webhook] ${eventType}: failed to fetch contract for stamping`
       );
       return new Err(
@@ -194,7 +213,7 @@ async function stampContractCreditType({
     const credit = contractResult.value.credits?.find((c) => c.id === creditId);
     if (!credit) {
       logger.info(
-        { customerId, contractId, creditId },
+        { workspaceId, customerId, contractId, creditId },
         `[Metronome Webhook] ${eventType}: credit not found on contract, skipping stamp`
       );
       return new Ok(undefined);
@@ -210,6 +229,10 @@ async function stampContractCreditType({
     if (credit.subscription_config?.allocation === "INDIVIDUAL") {
       return new Ok(undefined);
     }
+
+    // Per-user free-seat credits are stamped "free_seat" at creation (see
+    // `addPerUserCreditToContract`), so they hit the already-stamped early
+    // return above and are never re-stamped "pool" here.
 
     if (credit.product.id === getProductExcessCreditsId()) {
       value = CONTRACT_CREDIT_TYPE_EXCESS;
@@ -231,8 +254,58 @@ async function stampContractCreditType({
     );
   }
   logger.info(
-    { customerId, contractId, creditId, value, eventType },
+    { workspaceId, customerId, contractId, creditId, value, eventType },
     `[Metronome Webhook] ${eventType}: stamped DUST_CONTRACT_CREDIT_TYPE`
+  );
+  return new Ok(undefined);
+}
+
+// Stamp `DUST_CONTRACT_CREDIT_TYPE=pool` on an AWU commit so the pool balance
+// alert's Commit filter counts it alongside pool credits. The key is shared with
+// contract credits — Metronome requires every entity in an alert's
+// custom_field_filters to use the same key/value. Idempotent — bails if already
+// stamped. Commits have no excess or per-seat variants (unlike contract credits),
+// so AWU commits are always "pool"; non-AWU commits (e.g. programmatic USD)
+// belong to other pools and are left unstamped.
+async function stampCommitCreditType({
+  workspaceId,
+  commit,
+  commitCustomFields,
+  eventType,
+}: {
+  workspaceId: string;
+  commit: Commit;
+  commitCustomFields?: Record<string, string> | null;
+  eventType: string;
+}): Promise<Result<void, ProcessMetronomeWebhookError>> {
+  if (
+    commitCustomFields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY] ||
+    commit.custom_fields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]
+  ) {
+    return new Ok(undefined);
+  }
+
+  if (commit.access_schedule?.credit_type?.id !== getCreditTypeAwuId()) {
+    return new Ok(undefined);
+  }
+
+  const setResult = await setMetronomeCommitCustomFields({
+    commitId: commit.id,
+    customFields: {
+      [CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]: CONTRACT_CREDIT_TYPE_POOL,
+    },
+  });
+  if (setResult.isErr()) {
+    return new Err(
+      new ProcessMetronomeWebhookError(
+        "processing_failed",
+        `Error stamping commit custom field: ${setResult.error.message}`
+      )
+    );
+  }
+  logger.info(
+    { workspaceId, commitId: commit.id, eventType },
+    `[Metronome Webhook] ${eventType}: stamped DUST_CONTRACT_CREDIT_TYPE=pool on commit`
   );
   return new Ok(undefined);
 }
@@ -286,6 +359,7 @@ async function handleFreeCreditSegmentGrant({
   if (contractResult.isErr()) {
     logger.error(
       {
+        workspaceId: workspace.sId,
         metronomeCustomerId,
         contractId,
         creditId,
@@ -304,7 +378,7 @@ async function handleFreeCreditSegmentGrant({
   const credit = contractResult.value.credits?.find((c) => c.id === creditId);
   if (!credit) {
     logger.info(
-      { metronomeCustomerId, contractId, creditId },
+      { workspaceId: workspace.sId, metronomeCustomerId, contractId, creditId },
       "[Metronome Webhook] credit.segment.start: credit not found on contract, ignoring"
     );
     return new Ok(undefined);
@@ -313,6 +387,7 @@ async function handleFreeCreditSegmentGrant({
   if (!isMetronomeFreeCredit(credit)) {
     logger.info(
       {
+        workspaceId: workspace.sId,
         metronomeCustomerId,
         creditId,
         productId: credit.product.id,
@@ -504,27 +579,33 @@ async function ensureWorkOSOrganizationForPaidPlan({
  * webhook arriving later either re-confirms the state or skips (when
  * Metronome is still in `evaluating`).
  */
-async function handlePerUserSpendThresholdEvent({
+type UserSpendAlerts = {
+  capAlertId: string | null;
+  warningAlertId: string | null;
+  capThreshold: number;
+  source: "override" | "default" | "none";
+};
+
+/**
+ * Resolve the Metronome alert IDs that govern this user's spend cap.
+ *
+ * Priority: per-user override > per-seat-type default > none.
+ */
+async function resolveUserSpendAlerts({
+  metronomeCustomerId,
+  workspaceId,
   workspace,
   userId,
-  event,
 }: {
+  metronomeCustomerId: string;
+  workspaceId: string;
   workspace: WorkspaceResource;
   userId: string;
-  event: MetronomeWebhookEvent;
-}): Promise<Result<undefined, ProcessMetronomeWebhookError>> {
-  const metronomeCustomerId = workspace.metronomeCustomerId;
-  if (!metronomeCustomerId) {
-    logger.warn(
-      { eventId: event.id, eventType: event.type, workspaceId: workspace.sId },
-      "[Metronome Webhook] per-user spend threshold event for workspace without metronomeCustomerId, skipping"
-    );
-    return new Ok(undefined);
-  }
-
+}): Promise<Result<UserSpendAlerts, ProcessMetronomeWebhookError>> {
+  // Check for a per-user override first.
   const userCapResult = await getMetronomePerUserCap({
     metronomeCustomerId,
-    workspaceId: workspace.sId,
+    workspaceId,
     userId,
   });
   if (userCapResult.isErr()) {
@@ -536,80 +617,125 @@ async function handlePerUserSpendThresholdEvent({
     );
   }
 
-  let effectiveCapState: MetronomeAlertState;
-  let effectiveWarningState: MetronomeAlertState;
-  let source: "override" | "default" | "none";
-  let capThreshold: number | null | undefined;
-
   if (userCapResult.value) {
-    effectiveCapState = userCapResult.value.customer_status;
-    capThreshold = userCapResult.value.alert.threshold;
-    source = "override";
-
     const userWarningResult = await getMetronomePerUserWarningAlert({
       metronomeCustomerId,
-      workspaceId: workspace.sId,
+      workspaceId,
       userId,
     });
-    if (userWarningResult.isErr()) {
-      logger.warn(
-        {
-          eventId: event.id,
-          workspaceId: workspace.sId,
-          userId,
-          err: userWarningResult.error,
-        },
-        "[Metronome Webhook] per-user spend threshold: failed to read warning alert, skipping notification"
-      );
-      effectiveWarningState = "ok";
-    } else {
-      effectiveWarningState = userWarningResult.value?.customer_status ?? "ok";
-    }
-  } else {
-    const defaultResult = await getMetronomeDefaultUserCapAlert({
-      metronomeCustomerId,
-      workspaceId: workspace.sId,
+    return new Ok({
+      capAlertId: userCapResult.value.alert.id,
+      capThreshold: userCapResult.value.alert.threshold,
+      warningAlertId: userWarningResult.isOk()
+        ? (userWarningResult.value?.alert.id ?? null)
+        : null,
+      source: "override",
     });
-    if (defaultResult.isErr()) {
-      return new Err(
-        new ProcessMetronomeWebhookError(
-          "processing_failed",
-          `Error reading default user cap: ${defaultResult.error.message}`
-        )
-      );
-    }
-    if (defaultResult.value) {
-      effectiveCapState = defaultResult.value.customer_status;
-      capThreshold = defaultResult.value.alert.threshold;
-      source = "default";
-
-      const warningResult = await getMetronomeDefaultUserWarningAlert({
-        metronomeCustomerId,
-        workspaceId: workspace.sId,
-      });
-      if (warningResult.isErr()) {
-        logger.warn(
-          {
-            eventId: event.id,
-            workspaceId: workspace.sId,
-            userId,
-            err: warningResult.error,
-          },
-          "[Metronome Webhook] per-user spend threshold: failed to read default warning alert, skipping notification"
-        );
-        effectiveWarningState = "ok";
-      } else {
-        effectiveWarningState = warningResult.value?.customer_status ?? "ok";
-      }
-    } else {
-      effectiveCapState = "ok";
-      effectiveWarningState = "ok";
-      source = "none";
-    }
   }
 
-  switch (effectiveCapState) {
-    case "in_alarm": {
+  // No override — resolve user's seat type and find the matching default.
+  const user = await UserResource.fetchById(userId);
+  const lightWorkspace = renderLightWorkspaceType({ workspace });
+  const membership = user
+    ? await MembershipResource.getActiveMembershipOfUserInWorkspace({
+        user,
+        workspace: lightWorkspace,
+      })
+    : null;
+  const normalizedSeatType = normalizeToPoolLimitSeatType(membership?.seatType);
+
+  if (!normalizedSeatType) {
+    return new Ok({
+      capAlertId: null,
+      warningAlertId: null,
+      capThreshold: 0,
+      source: "none",
+    });
+  }
+
+  const [defaultCapResult, defaultWarningResult] = await Promise.all([
+    getMetronomeDefaultUserCapAlertForSeatType({
+      metronomeCustomerId,
+      workspaceId,
+      seatType: normalizedSeatType,
+    }),
+    getMetronomeDefaultUserWarningAlertForSeatType({
+      metronomeCustomerId,
+      workspaceId,
+      seatType: normalizedSeatType,
+    }),
+  ]);
+  if (defaultCapResult.isErr()) {
+    return new Err(
+      new ProcessMetronomeWebhookError(
+        "processing_failed",
+        `Error reading default user cap for seat type ${normalizedSeatType}: ${defaultCapResult.error.message}`
+      )
+    );
+  }
+
+  if (!defaultCapResult.value) {
+    return new Ok({
+      capAlertId: null,
+      warningAlertId: null,
+      capThreshold: 0,
+      source: "none",
+    });
+  }
+
+  return new Ok({
+    capAlertId: defaultCapResult.value.alert.id,
+    capThreshold: defaultCapResult.value.alert.threshold,
+    warningAlertId: defaultWarningResult.isOk()
+      ? (defaultWarningResult.value?.alert.id ?? null)
+      : null,
+    source: "default",
+  });
+}
+
+type SpendThresholdEvent = Extract<
+  MetronomeWebhookEvent,
+  {
+    type: "alerts.spend_threshold_reached" | "alerts.spend_threshold_resolved";
+  }
+>;
+
+async function handlePerUserSpendThresholdEvent({
+  workspace,
+  userId,
+  event,
+}: {
+  workspace: WorkspaceResource;
+  userId: string;
+  event: SpendThresholdEvent;
+}): Promise<Result<undefined, ProcessMetronomeWebhookError>> {
+  const metronomeCustomerId = workspace.metronomeCustomerId;
+  if (!metronomeCustomerId) {
+    logger.warn(
+      { eventId: event.id, eventType: event.type, workspaceId: workspace.sId },
+      "[Metronome Webhook] per-user spend threshold event for workspace without metronomeCustomerId, skipping"
+    );
+    return new Ok(undefined);
+  }
+
+  const alertsResult = await resolveUserSpendAlerts({
+    metronomeCustomerId,
+    workspaceId: workspace.sId,
+    workspace,
+    userId,
+  });
+  if (alertsResult.isErr()) {
+    return alertsResult;
+  }
+
+  const { capAlertId, warningAlertId, capThreshold, source } =
+    alertsResult.value;
+  const eventAlertId = event.properties.alert_id;
+  const isReached = event.type === "alerts.spend_threshold_reached";
+
+  if (eventAlertId === capAlertId) {
+    // Cap alert fired for this user.
+    if (isReached) {
       const dispatchResult = await dispatchPerUserCapReached({
         workspace,
         userId,
@@ -618,7 +744,6 @@ async function handlePerUserSpendThresholdEvent({
         logger.error(
           {
             eventId: event.id,
-            eventType: event.type,
             workspaceId: workspace.sId,
             userId,
             source,
@@ -634,24 +759,21 @@ async function handlePerUserSpendThresholdEvent({
         );
       }
       // Notify the user (email + in-app) that they are now hard-blocked.
-      const capAwuCreditsBlocked = capThreshold ?? 0;
-      const blockedUser = await UserResource.fetchById(userId);
-      if (blockedUser) {
+      const user = await UserResource.fetchById(userId);
+      if (user) {
         const lightWorkspace = renderLightWorkspaceType({ workspace });
         notifyUserAwuCapReached({
-          userSId: blockedUser.sId,
-          userEmail: blockedUser.email,
-          userFirstName: blockedUser.firstName,
-          userLastName: blockedUser.lastName,
+          userSId: user.sId,
+          userEmail: user.email,
+          userFirstName: user.firstName,
+          userLastName: user.lastName,
           workspaceId: workspace.sId,
           workspaceName: lightWorkspace.name,
-          capAwuCredits: capAwuCreditsBlocked,
+          capAwuCredits: capThreshold,
           isBlocked: true,
         });
       }
-      break;
-    }
-    case "ok": {
+    } else {
       const dispatchResult = await dispatchPerUserCapResolved({
         workspace,
         userId,
@@ -660,7 +782,6 @@ async function handlePerUserSpendThresholdEvent({
         logger.error(
           {
             eventId: event.id,
-            eventType: event.type,
             workspaceId: workspace.sId,
             userId,
             source,
@@ -675,31 +796,10 @@ async function handlePerUserSpendThresholdEvent({
           )
         );
       }
-      void clearUserAwuWarned(workspace.sId, userId);
-      break;
     }
-    case "evaluating":
-    case null:
-      // No-op: Metronome hasn't settled yet (or the alert is archived). The
-      // eager dispatch from `setUserSpendLimit` / `setDefaultUserSpendLimit`
-      // already set the right state; a follow-up event will reconcile.
-      break;
-    default:
-      assertNever(effectiveCapState);
-  }
-
-  // Notify the user (email + in-app) when they've crossed 80% of their AWU cap
-  // but have not yet been hard-blocked. The cap alert fires at 100% and is
-  // handled above; the warning alert fires at 80% and triggers notifications only.
-  if (
-    effectiveWarningState === "in_alarm" &&
-    effectiveCapState !== "in_alarm"
-  ) {
-    logger.info(
-      "[Metronome Webhook] per-user spend threshold warning: handling..."
-    );
-    void setUserAwuWarned(workspace.sId, userId);
-    const capAwuCredits = capThreshold ?? 0;
+  } else if (eventAlertId === warningAlertId && isReached) {
+    // Warning alert (80%) fired — notify but don't block.
+    void dispatchPerUserCapWarning({ workspace, userId });
     const user = await UserResource.fetchById(userId);
     if (user) {
       const lightWorkspace = renderLightWorkspaceType({ workspace });
@@ -710,24 +810,25 @@ async function handlePerUserSpendThresholdEvent({
         userLastName: user.lastName,
         workspaceId: workspace.sId,
         workspaceName: lightWorkspace.name,
-        capAwuCredits,
+        capAwuCredits: capThreshold,
         isBlocked: false,
       });
     }
+  } else {
+    // Event is from an unrelated alert (e.g. a different seat type) — ignore.
+    logger.info(
+      {
+        eventId: event.id,
+        eventType: event.type,
+        workspaceId: workspace.sId,
+        userId,
+        eventAlertId,
+        source,
+      },
+      "[Metronome Webhook] per-user spend threshold: event does not match user's alerts, ignoring"
+    );
   }
 
-  logger.info(
-    {
-      eventId: event.id,
-      eventType: event.type,
-      workspaceId: workspace.sId,
-      userId,
-      effectiveCapState,
-      effectiveWarningState,
-      source,
-    },
-    "[Metronome Webhook] per-user spend threshold: handled"
-  );
   return new Ok(undefined);
 }
 
@@ -916,6 +1017,14 @@ export async function processMetronomeWebhook({
         workspace,
         newBalanceAwu: event.properties.remaining_balance ?? 0,
       });
+
+      // If this is the workspace's own configured balance-threshold alert,
+      // clear the warning banner now that the balance has recovered.
+      await maybeClearAdminsBalanceThresholdReached({
+        metronomeCustomerId: workspace.metronomeCustomerId,
+        workspaceId: workspace.sId,
+        alertId: event.properties.alert_id ?? null,
+      });
       logger.info(
         {
           eventId: event.id,
@@ -926,32 +1035,180 @@ export async function processMetronomeWebhook({
       );
       break;
     }
-    // Handled by custom alerts above
-    case "alerts.low_remaining_seat_balance_reached":
-    case "alerts.low_remaining_seat_balance_resolved":
+    case "alerts.low_remaining_seat_balance_reached": {
+      const userId = event.properties.seat_filter?.seat_group_value;
+      if (!userId) {
+        logger.warn(
+          { eventId: event.id, workspaceId: workspace.sId },
+          "[Metronome Webhook] low_remaining_seat_balance_reached: no seat_group_value in payload, skipping"
+        );
+        break;
+      }
+      const threshold = event.properties.threshold;
+      if (threshold === null || threshold === undefined) {
+        break;
+      }
+      if (threshold === 0) {
+        await dispatchSeatBalanceExhausted({ workspace, userId });
+        logger.info(
+          {
+            eventId: event.id,
+            workspaceId: workspace.sId,
+            userId,
+            remaining: threshold,
+          },
+          "[Metronome Webhook] low_remaining_seat_balance_reached: seat balance exhausted dispatched"
+        );
+      } else {
+        await dispatchSeatLowBalance({ workspace, userId, threshold });
+        logger.info(
+          {
+            eventId: event.id,
+            workspaceId: workspace.sId,
+            userId,
+            remaining: threshold,
+          },
+          "[Metronome Webhook] low_remaining_seat_balance_reached: seat low balance dispatched"
+        );
+      }
       break;
+    }
+    case "alerts.low_remaining_seat_balance_resolved": {
+      const userId = event.properties.seat_filter?.seat_group_value;
+      if (!userId) {
+        logger.warn(
+          { eventId: event.id, workspaceId: workspace.sId },
+          "[Metronome Webhook] low_remaining_seat_balance_resolved: no seat_group_value in payload, skipping"
+        );
+        break;
+      }
+      await dispatchSeatBalanceResolved({ workspace, userId });
+      logger.info(
+        { eventId: event.id, workspaceId: workspace.sId, userId },
+        "[Metronome Webhook] low_remaining_seat_balance_resolved: seat balance resolved dispatched"
+      );
+      break;
+    }
+
+    // Per-user free-seat credit balance. These alerts are scoped (via the
+    // `DUST_PER_USER_CREDIT_USER` custom field) to a single free user's credit,
+    // so they drive that user's seat↔capped transitions — the seat-balance
+    // alert can't, because the free credit isn't a seat balance. The event
+    // carries no `credit_id` for a custom-field-filtered alert, so the user is
+    // resolved from the alert's enforced `custom_field_filters` via its
+    // `alert_id` (see `resolvePerUserCreditAlertUserId`); events for any other
+    // alert return null and are ignored. Two thresholds mirror the seat bands:
+    // `threshold === 0` → exhausted (→ capped), else → low balance.
+    case "alerts.low_remaining_contract_credit_balance_reached": {
+      const { alert_id: alertId, threshold } = event.properties;
+      const userId = await resolvePerUserCreditAlertUserId({
+        metronomeCustomerId: event.properties.customer_id,
+        alertId,
+      });
+      if (!userId || threshold === null || threshold === undefined) {
+        break;
+      }
+      if (threshold === 0) {
+        await dispatchSeatBalanceExhausted({ workspace, userId });
+        logger.info(
+          { eventId: event.id, workspaceId: workspace.sId, userId },
+          "[Metronome Webhook] low_remaining_contract_credit_balance_reached: per-user credit exhausted dispatched"
+        );
+      } else {
+        await dispatchSeatLowBalance({ workspace, userId, threshold });
+        logger.info(
+          {
+            eventId: event.id,
+            workspaceId: workspace.sId,
+            userId,
+            remaining: threshold,
+          },
+          "[Metronome Webhook] low_remaining_contract_credit_balance_reached: per-user credit low balance dispatched"
+        );
+      }
+      break;
+    }
+    case "alerts.low_remaining_contract_credit_balance_resolved": {
+      const userId = await resolvePerUserCreditAlertUserId({
+        metronomeCustomerId: event.properties.customer_id,
+        alertId: event.properties.alert_id,
+      });
+      if (!userId) {
+        break;
+      }
+      await dispatchSeatBalanceResolved({ workspace, userId });
+      logger.info(
+        { eventId: event.id, workspaceId: workspace.sId, userId },
+        "[Metronome Webhook] low_remaining_contract_credit_balance_resolved: per-user credit resolved dispatched"
+      );
+      break;
+    }
 
     case "alerts.invoice_total_reached":
     case "alerts.invoice_total_resolved":
     case "alerts.low_remaining_commit_balance_reached":
     case "alerts.low_remaining_commit_balance_resolved":
-    case "alerts.low_remaining_contract_credit_balance_reached":
-    case "alerts.low_remaining_contract_credit_balance_resolved":
     case "alerts.low_remaining_credit_balance_reached":
     case "alerts.low_remaining_credit_balance_resolved":
     case "alerts.usage_threshold_reached":
     case "alerts.usage_threshold_resolved":
     case "commit.archive":
-    case "commit.create":
     case "commit.segment.end":
     case "contract.archive":
     case "contract.create":
-    case "contract.edit":
     case "credit.archive":
     case "credit.segment.end":
     case "invoice.billing_provider_error":
     case "invoice.finalized":
       break;
+
+    // Editing a live contract (e.g. entitling a new seat type, changing
+    // overrides or subscriptions) keeps it active — so no contract.start /
+    // contract.end fires. The active-contract cache has no TTL and is only
+    // invalidated on those lifecycle events, so without this it would serve
+    // the pre-edit contract indefinitely (e.g. seats/plan and seat sync would
+    // never see a newly-enabled free seat). Invalidate so the next read
+    // refetches the edited contract.
+    case "contract.edit": {
+      await invalidateContractCache(workspace.sId);
+      logger.info(
+        {
+          contractId: event.contract_id,
+          customerId: event.customer_id,
+          workspaceId: workspace.sId,
+        },
+        "[Metronome Webhook] contract.edit: invalidated active-contract cache"
+      );
+      break;
+    }
+
+    case "commit.create": {
+      const { customer_id: metronomeCustomerId, commit_id: commitId } = event;
+      const commitResult = await getMetronomeCommit({
+        metronomeCustomerId,
+        commitId,
+      });
+      if (commitResult.isErr()) {
+        return new Err(
+          new ProcessMetronomeWebhookError(
+            "processing_failed",
+            `Error fetching commit: ${commitResult.error.message}`
+          )
+        );
+      }
+      if (commitResult.value) {
+        const stampResult = await stampCommitCreditType({
+          workspaceId: workspace.sId,
+          commit: commitResult.value,
+          commitCustomFields: event.commit_custom_fields,
+          eventType: "commit.create",
+        });
+        if (stampResult.isErr()) {
+          return stampResult;
+        }
+      }
+      break;
+    }
 
     case "credit.create": {
       logger.info(
@@ -964,6 +1221,7 @@ export async function processMetronomeWebhook({
         "[Metronome Webhook] credit.create: handler entered"
       );
       const stampResult = await stampContractCreditType({
+        workspaceId: workspace.sId,
         customerId: event.customer_id,
         contractId: event.contract_id ?? null,
         creditId: event.credit_id,
@@ -991,7 +1249,13 @@ export async function processMetronomeWebhook({
       } = event.properties;
       if (paymentStatus === "paid") {
         logger.info(
-          { customerId, contractId, invoiceId, paymentStatus },
+          {
+            workspaceId: workspace.sId,
+            customerId,
+            contractId,
+            invoiceId,
+            paymentStatus,
+          },
           "[Metronome Webhook] Payment-gated commit paid"
         );
         // Resolve the AWU purchase attempt the UI is polling for. The
@@ -1002,9 +1266,16 @@ export async function processMetronomeWebhook({
           contractId,
           invoiceId,
         });
+        // Resolve a subscription activation if one is pending on this contract.
+        await handleSubscriptionActivationSuccess({
+          workspace,
+          contractId,
+          invoiceId,
+        });
       } else if (paymentStatus === "failed") {
         logger.warn(
           {
+            workspaceId: workspace.sId,
             customerId,
             contractId,
             invoiceId,
@@ -1019,11 +1290,18 @@ export async function processMetronomeWebhook({
           errorMessage: errorMessage ?? "Payment failed",
           invoiceId: invoiceId || undefined,
         });
+        await handleSubscriptionActivationFailure({
+          workspace,
+          contractId,
+          invoiceId: invoiceId || undefined,
+          errorMessage: errorMessage ?? "Payment failed",
+        });
       } else {
         // Non-terminal `payment_status` values — log and leave the attempt
         // pending; the terminal "paid" / "failed" event will follow.
         logger.info(
           {
+            workspaceId: workspace.sId,
             customerId,
             contractId,
             invoiceId,
@@ -1073,6 +1351,15 @@ export async function processMetronomeWebhook({
           metronomeCustomerId,
           commitOrCredit: commitResult.value,
         });
+        const stampResult = await stampCommitCreditType({
+          workspaceId: workspace.sId,
+          commit: commitResult.value,
+          commitCustomFields: event.commit_custom_fields,
+          eventType: event.type,
+        });
+        if (stampResult.isErr()) {
+          return stampResult;
+        }
       }
       break;
     }
@@ -1141,6 +1428,21 @@ export async function processMetronomeWebhook({
         metronomeCustomerId: customerId,
       });
 
+      // Reconcile per-user credit states against the new contract's live
+      // per-seat balances. Seats were synced to this contract at provision
+      // time (`syncContractQuantities` → `syncSeatCount`), but that path does
+      // not touch per-user credit states; now that the contract is active the
+      // balances are live, so this lands each user in the right seat↔pool
+      // state. Without it, a switch that changes seat allocations (e.g. moving
+      // onto a business plan) leaves users stuck in their previous state.
+      // Mirrors the pool reconcile above; pass the new contract id directly
+      // since the subscription swap below may not have happened yet.
+      await reconcileWorkspaceUserCreditStates({
+        workspace: renderLightWorkspaceType({ workspace }),
+        metronomeCustomerId: customerId,
+        metronomeContractId: contractId,
+      });
+
       // Read the PLAN_CODE custom field to know which plan to swap the
       // workspace subscription onto. The actual swap is gated below on
       // `isMetronomeOnlyBilled` — other billing paths (shadow, pure
@@ -1175,6 +1477,21 @@ export async function processMetronomeWebhook({
         logger.info(
           { contractId, workspaceId: workspace.sId },
           `[Metronome Webhook] contract.start: no ${PLAN_CODE_CUSTOM_FIELD_KEY} custom field, leaving subscription alone`
+        );
+        break;
+      }
+
+      // Payment-gated subscription activation: skip the automatic swap here.
+      // The payment_gate.payment_status webhook handles the plan switch once
+      // payment succeeds, ensuring the workspace stays on CP_FREE_PLAN until paid.
+      const paymentGateType =
+        contractResult.value.custom_fields?.[
+          PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY
+        ];
+      if (paymentGateType === PAYMENT_GATE_TYPE_SUBSCRIPTION_ACTIVATION) {
+        logger.info(
+          { contractId, workspaceId: workspace.sId },
+          "[Metronome Webhook] contract.start: payment-gated activation contract, skipping — payment_gate.payment_status will activate"
         );
         break;
       }
@@ -1223,8 +1540,8 @@ export async function processMetronomeWebhook({
         pendingSubscription.status === "created_backend_only"
       ) {
         const previousPlanCode = activeSubscription.getPlan().code;
+        // `activatePending` flushes the contract cache itself.
         await pendingSubscription.activatePending();
-        await invalidateContractCache(workspace.sId);
         const auth = await Authenticator.internalAdminForWorkspace(
           workspace.sId
         );
@@ -1273,12 +1590,11 @@ export async function processMetronomeWebhook({
       // End the current subscription as `ended_backend_only` and create
       // a new active subscription on the target plan + new contract.
       const legacyPreviousPlanCode = activeSubscription.getPlan().code;
+      // `swapMetronomeContract` flushes the contract cache itself.
       await activeSubscription.swapMetronomeContract({
         metronomeContractId: contractId,
         planCode: targetPlan.code,
       });
-
-      await invalidateContractCache(workspace.sId);
 
       // Cancel any scheduled scrub workflow, unpause connectors, re-enable
       // triggers. Idempotent — safe to call regardless of prior state.
@@ -1443,7 +1759,7 @@ export async function processMetronomeWebhook({
 
     default:
       logger.info(
-        { eventType: event.type },
+        { eventType: event.type, workspaceId: workspace.sId },
         "[Metronome Webhook] Unhandled event type"
       );
       break;

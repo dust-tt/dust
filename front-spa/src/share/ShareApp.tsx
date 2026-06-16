@@ -2,6 +2,7 @@ import { PostHogTracker } from "@dust-tt/front/components/app/PostHogTracker";
 import { ErrorBoundary } from "@dust-tt/front/components/error_boundary/ErrorBoundary";
 import { SharedFilePage } from "@dust-tt/front/components/pages/share/SharedFilePage";
 import { SharedFramePage } from "@dust-tt/front/components/pages/share/SharedFramePage";
+import { ShareOgPage } from "@dust-tt/front/components/pages/share/ShareOgPage";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
 import { FetcherProvider } from "@dust-tt/front/lib/swr/FetcherContext";
 import { fetcher, fetcherWithBody } from "@dust-tt/front/lib/swr/fetcher";
@@ -24,6 +25,11 @@ const router = createBrowserRouter(
         {
           path: "/share/file/:token",
           element: <SharedFilePage />,
+        },
+        // OG card: /share/og/:wId, rendered by Gotenberg for og:image generation
+        {
+          path: "/share/og/:wId",
+          element: <ShareOgPage />,
         },
       ],
     },

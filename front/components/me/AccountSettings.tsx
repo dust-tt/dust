@@ -17,14 +17,13 @@ import {
   DropdownMenuPortal,
   DropdownMenuShortcut,
   DropdownMenuTrigger,
+  Edit04,
   Input,
   Label,
-  LightModeIcon,
-  MoonIcon,
+  Moon01,
   Page,
-  PencilSquareIcon,
   Spinner,
-  SunIcon,
+  Sun,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -255,7 +254,7 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
           <Button
             variant="outline"
             size="sm"
-            icon={PencilSquareIcon}
+            icon={Edit04}
             type="button"
             onClick={() => fileInputRef.current?.click()}
             className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
@@ -293,10 +292,10 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
                   variant="outline"
                   icon={
                     themeField.value === "light"
-                      ? SunIcon
+                      ? Sun
                       : themeField.value === "dark"
-                        ? MoonIcon
-                        : LightModeIcon
+                        ? Moon01
+                        : Sun
                   }
                   label={
                     themeField.value === "light"
@@ -312,17 +311,17 @@ export function AccountSettings({ owner }: AccountSettingsProps) {
               <DropdownMenuPortal>
                 <DropdownMenuContent>
                   <DropdownMenuItem
-                    icon={SunIcon}
+                    icon={Sun}
                     onClick={() => themeField.onChange("light")}
                     label="Light"
                   />
                   <DropdownMenuItem
-                    icon={MoonIcon}
+                    icon={Moon01}
                     onClick={() => themeField.onChange("dark")}
                     label="Dark"
                   />
                   <DropdownMenuItem
-                    icon={LightModeIcon}
+                    icon={Sun}
                     onClick={() => themeField.onChange("system")}
                     label="System"
                   />

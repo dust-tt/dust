@@ -179,3 +179,7 @@ export async function generateAgentObservabilitySummary({
   }
   return new Ok({ summaryText });
 }
+
+export type GetAgentSummaryResponseBody = {
+  summaryText: string;
+};

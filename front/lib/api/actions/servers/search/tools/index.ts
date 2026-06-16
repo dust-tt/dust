@@ -8,7 +8,7 @@ import {
   applyNodeIdsFilterToCoreSearchArgs,
   getCoreSearchArgs,
 } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { AgentLoopContextType, StepContext } from "@app/lib/actions/types";
 import {
   SEARCH_TOOL_METADATA_WITH_TAGS,
   SEARCH_TOOL_NAME,
@@ -44,6 +44,7 @@ export async function searchFunction(
     tagsIn,
     tagsNot,
     agentLoopContext,
+    stepContext,
   }: {
     query: string;
     relativeTimeFrame: string;
@@ -53,6 +54,7 @@ export async function searchFunction(
     tagsIn?: string[];
     tagsNot?: string[];
     agentLoopContext?: AgentLoopContextType;
+    stepContext?: StepContext;
   }
 ): Promise<Result<CallToolResult["content"], MCPError>> {
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
@@ -60,14 +62,14 @@ export async function searchFunction(
   const credentials = await getLlmCredentials(auth);
   const timeFrame = parseTimeFrame(relativeTimeFrame);
 
-  if (!agentLoopContext?.runContext) {
+  if (!agentLoopContext?.runContext?.stepContext && !stepContext) {
     throw new Error(
-      "agentLoopRunContext is required where the tool is called."
+      "agentLoopRunContext.stepContext or stepContext is required where the tool is called."
     );
   }
 
   const { retrievalTopK, citationsOffset } =
-    agentLoopContext.runContext.stepContext;
+    agentLoopContext?.runContext?.stepContext ?? stepContext!;
 
   // Get the core search args for each data source, fail if any of them are invalid.
   const coreSearchArgsResults = await getCoreSearchArgs(auth, dataSources);

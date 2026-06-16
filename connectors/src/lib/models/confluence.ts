@@ -1,7 +1,10 @@
 import { connectorsSequelize } from "@connectors/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@connectors/resources/storage/data_types";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
 
 export class ConfluenceConfigurationModel extends ConnectorBaseModel<ConfluenceConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -152,7 +155,7 @@ ConfluencePageModel.init(
       allowNull: false,
     },
     title: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     externalUrl: {
@@ -230,7 +233,7 @@ ConfluenceFolderModel.init(
       allowNull: false,
     },
     title: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     externalUrl: {

@@ -74,18 +74,6 @@ describe("POST /api/w/:wId/subscriptions", () => {
     const data = await response.json();
     expect(data.mode).toEqual("hosted");
     expect(data.checkoutUrl).toEqual(TEST_CHECKOUT_URL);
-    expect(data.plan).toEqual(
-      expect.objectContaining({
-        code: expect.any(String),
-        name: expect.any(String),
-        limits: expect.objectContaining({
-          users: expect.objectContaining({
-            maxUsers: expect.any(Number),
-          }),
-          dataSources: expect.any(Object),
-        }),
-      })
-    );
   });
 
   it("handles yearly billing period for legacy subscription when metronome billing is killed", async () => {
@@ -104,10 +92,28 @@ describe("POST /api/w/:wId/subscriptions", () => {
     const data = await response.json();
     expect(data.mode).toEqual("hosted");
     expect(data.checkoutUrl).toEqual(TEST_CHECKOUT_URL);
-    expect(data.plan).toBeDefined();
   });
 
   it("returns embedded clientSecret and sessionId by default", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    const response = await post(workspace, {
+      billingPeriod: "monthly",
+      seatType: "pro",
+      targetUserId: user.sId,
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.mode).toEqual("embedded");
+    expect(data.clientSecret).toEqual(TEST_CLIENT_SECRET);
+    expect(data.sessionId).toEqual(TEST_SESSION_ID);
+  });
+
+  it("returns 400 when seat fields are missing while metronome billing is enabled", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
@@ -115,21 +121,11 @@ describe("POST /api/w/:wId/subscriptions", () => {
 
     const response = await post(workspace, { billingPeriod: "monthly" });
 
-    expect(response.status).toBe(200);
-    const data = await response.json();
-    expect(data.mode).toEqual("embedded");
-    expect(data.clientSecret).toEqual(TEST_CLIENT_SECRET);
-    expect(data.sessionId).toEqual(TEST_SESSION_ID);
-    expect(data.plan).toEqual(
-      expect.objectContaining({
-        code: expect.any(String),
-        name: expect.any(String),
-      })
-    );
+    expect(response.status).toBe(400);
   });
 
   it("returns embedded clientSecret when metronome_billing flag overrides the kill switch", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest({
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
     });
@@ -139,7 +135,11 @@ describe("POST /api/w/:wId/subscriptions", () => {
     );
     await FeatureFlagFactory.basic(auth, "metronome_billing");
 
-    const response = await post(workspace, { billingPeriod: "monthly" });
+    const response = await post(workspace, {
+      billingPeriod: "monthly",
+      seatType: "pro",
+      targetUserId: user.sId,
+    });
 
     expect(response.status).toBe(200);
     const data = await response.json();

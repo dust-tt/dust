@@ -11,20 +11,36 @@ import {
   CitationImage,
   CitationIndex,
   CitationTitle,
-  DocumentIcon,
-  ExternalLinkIcon,
+  File02,
+  LinkExternal01,
   FaviconIcon,
-  GlobeAltIcon,
+  Globe01,
   Icon,
   NotionLogo,
   Popover,
   SlackLogo,
-  TableIcon,
+  Table,
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Conversation/Citation",
+  title: "Product/Conversation/Citation",
   component: Citation,
+  parameters: {
+    docs: {
+      description: {
+        component: `A clickable source reference shown alongside agent answers. **Citation** is a composable surface filled with **CitationIcons** (source logo / favicon via **FaviconIcon**, plus an optional **CitationIndex** for numbered references), **CitationTitle**, and **CitationDescription**; use **CitationImage** for image sources and a **CitationClose** \`action\` to make it dismissable. Wrap citations in **CitationGrid** for a responsive grid or its \`list\` \`variant\`.
+
+**When to use**
+- To attribute an agent's answer to a document, web page, Slack thread, or table.
+- As numbered inline references (via **CitationIndex**) that expand in a **Popover**.
+
+**Guidelines**
+- Always include **CitationIcons** so the source type is recognizable; add a **FaviconIcon** for web sources.
+- Lay out multiple citations with **CitationGrid** rather than ad-hoc flex; use the \`list\` variant for interactive-content references.
+- For a paginated, fixed-size set of link citations, use **PaginatedCitationsGrid**; for plain file attachments, use **AttachmentChip**.`,
+      },
+    },
+  },
 } satisfies Meta<typeof Citation>;
 
 export default meta;
@@ -63,7 +79,7 @@ export const CitationsExample = () => (
       </Citation>
       <Citation onClick={() => alert("Card clicked")} className="s-w-48">
         <CitationIcons>
-          <Icon visual={TableIcon} size="sm" />
+          <Icon visual={Table} size="sm" />
         </CitationIcons>
         <CitationTitle>extract_financa.csv</CitationTitle>
       </Citation>
@@ -118,7 +134,7 @@ export const CitationsExample = () => (
         action={<CitationClose onClick={() => alert("Close clicked")} />}
       >
         <CitationIcons>
-          <Icon visual={TableIcon} size="sm" />
+          <Icon visual={Table} size="sm" />
         </CitationIcons>
         <CitationTitle>extract_financa.csv</CitationTitle>
       </Citation>
@@ -128,7 +144,7 @@ export const CitationsExample = () => (
         action={<CitationClose onClick={() => alert("Close clicked")} />}
       >
         <CitationIcons>
-          <Icon visual={GlobeAltIcon} size="sm" />
+          <Icon visual={Globe01} size="sm" />
         </CitationIcons>
         <CitationTitle>Linkedin, Edouard Wautier</CitationTitle>
       </Citation>
@@ -154,7 +170,7 @@ export const CitationsExample = () => (
             <CitationTitle>Hello</CitationTitle>
             <Button
               variant={"ghost"}
-              icon={ExternalLinkIcon}
+              icon={LinkExternal01}
               className="s-absolute s-right-2 s-top-2"
             />
           </>
@@ -180,7 +196,7 @@ export const CitationsExample = () => (
       <Citation onClick={() => alert("Close action clicked")}>
         <CitationIcons>
           <CitationIndex>3</CitationIndex>
-          <Icon visual={DocumentIcon} size="sm" />
+          <Icon visual={File02} size="sm" />
         </CitationIcons>
         <CitationTitle>Hello</CitationTitle>
       </Citation>

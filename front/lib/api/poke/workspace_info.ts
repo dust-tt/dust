@@ -2,14 +2,22 @@ import config from "@app/lib/api/config";
 import { isMetronomeBillingEnabled } from "@app/lib/api/subscription";
 import { getWorkspaceCreationDate } from "@app/lib/api/workspace";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
+import type { DefaultMetronomeAlerts } from "@app/lib/metronome/alerts/default_alerts";
+import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
+import { getCachedWorkspaceMetronomeAlerts } from "@app/lib/metronome/alerts/workspace_alerts";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
 import { getCustomerId, getStripeSubscription } from "@app/lib/plans/stripe";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
+import type {
+  WorkspacePoolCreditState,
+  WorkspaceProgrammaticCreditState,
+} from "@app/types/credits";
 import type { ExtensionConfigurationType } from "@app/types/extension";
 import type { SubscriptionType } from "@app/types/plan";
 import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
@@ -32,15 +40,41 @@ export type PokeStripeSubscriptionWire = {
   current_period_end: number;
 };
 
+export type PokeCreditUsageConfig = ReturnType<
+  CreditUsageConfigurationResource["toJSON"]
+>;
+
+// The four programmatic alerts (cap / 80% warning / low / critical) — id and
+// current status — for deep-linking and display from Poke. Null per slot when
+// that alert isn't configured.
+export type PokeProgrammaticAlerts = {
+  cap: MetronomeAlertRef | null;
+  warning: MetronomeAlertRef | null;
+  low: MetronomeAlertRef | null;
+  critical: MetronomeAlertRef | null;
+};
+
 export type PokeWorkspaceInfo = {
   activeSubscription: SubscriptionType;
   baseUrl: string;
+  creditUsageConfig: PokeCreditUsageConfig | null;
   extensionConfig: ExtensionConfigurationType | null;
   hasDummyFeature: boolean;
   hasMetronomeFeature: boolean;
   membersCount: number;
   metronomeCustomerId: string | null;
   pendingSubscription: SubscriptionType | null;
+  poolCreditState: WorkspacePoolCreditState;
+  // The Metronome alerts backing each credit dimension — id and current status —
+  // for deep-linking and display from Poke. Null when not configured / not
+  // Metronome-billed.
+  poolAlert: MetronomeAlertRef | null;
+  programmaticAlerts: PokeProgrammaticAlerts;
+  usageCapAlert: MetronomeAlertRef | null;
+  // Account-wide default alerts (pool empty/low/critical, seat empty/low),
+  // created by the Metronome setup script and shared across all customers.
+  defaultAlerts: DefaultMetronomeAlerts;
+  programmaticCreditState: WorkspaceProgrammaticCreditState;
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
   stripeCustomerId: string | null;
   stripeSubscription: PokeStripeSubscriptionWire | null;
@@ -51,6 +85,8 @@ export type PokeWorkspaceInfo = {
   workspaceVerifiedDomains: WorkspaceDomain[];
   workosEnvironmentId: string;
 };
+
+export type PokeGetWorkspaceInfo = PokeWorkspaceInfo;
 
 /**
  * Assembles the workspace-info payload shown in the poke admin UI: every
@@ -86,6 +122,44 @@ export async function getPokeWorkspaceInfo(
 
   const programmaticUsageConfig =
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+
+  const creditUsageConfig =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+
+  // Resolve the Metronome alert ids backing each credit dimension so Poke can
+  // deep-link to the dashboard. Best-effort: any failure degrades to null
+  // rather than breaking the workspace-info page.
+  const { metronomeCustomerId } = workspaceResource;
+  let poolAlert: MetronomeAlertRef | null = null;
+  let programmaticAlerts: PokeProgrammaticAlerts = {
+    cap: null,
+    warning: null,
+    low: null,
+    critical: null,
+  };
+  let usageCapAlert: MetronomeAlertRef | null = null;
+  let defaultAlerts: DefaultMetronomeAlerts = {
+    poolEmpty: null,
+    poolLow: null,
+    poolCritical: null,
+    seatEmpty: null,
+    seatLowMax: null,
+    seatLowPro: null,
+  };
+  if (metronomeCustomerId) {
+    // One Redis-cached alert-list scan resolves every alert below, instead of a
+    // separate Metronome lookup per dimension.
+    const alerts = await getCachedWorkspaceMetronomeAlerts({
+      metronomeCustomerId,
+      workspaceId: owner.sId,
+    }).catch(() => null);
+    if (alerts) {
+      poolAlert = alerts.poolBalance;
+      programmaticAlerts = alerts.programmatic;
+      usageCapAlert = alerts.usageCap;
+      defaultAlerts = alerts.default;
+    }
+  }
 
   const hasDummyFeature = await hasFeatureFlag(
     auth,
@@ -140,6 +214,12 @@ export async function getPokeWorkspaceInfo(
     membersCount,
     metronomeCustomerId: workspaceResource.metronomeCustomerId ?? null,
     pendingSubscription,
+    poolCreditState: workspaceResource.poolCreditState,
+    poolAlert,
+    programmaticAlerts,
+    usageCapAlert,
+    defaultAlerts,
+    programmaticCreditState: workspaceResource.programmaticCreditState,
     stripeCustomerId,
     stripeSubscription: stripeSubscription
       ? {
@@ -153,6 +233,7 @@ export async function getPokeWorkspaceInfo(
     workspaceVerifiedDomains,
     workspaceCreationDay: format(workspaceCreationDay, "yyyy-MM-dd"),
     extensionConfig: extensionConfig?.toJSON() ?? null,
+    creditUsageConfig: creditUsageConfig?.toJSON() ?? null,
     programmaticUsageConfig: programmaticUsageConfig?.toJSON() ?? null,
     baseUrl: config.getApiBaseUrl(),
     workosEnvironmentId: config.getWorkOSEnvironmentId(),

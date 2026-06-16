@@ -1,0 +1,25 @@
+{
+  "action": "tool.approval_requested",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "agent"
+    },
+    {
+      "type": "tool"
+    }
+  ],
+  "metadata": {
+    "tool_name": "string",
+    "mcp_server_name": "string",
+    "stake_level": "string",
+    "conversation_id": "string",
+    "agent_message_id": "string",
+    "action_id": "string",
+    "initiating_user_id": "string",
+    "initiating_user_email": "string",
+    "actor_type": "string"
+  }
+}

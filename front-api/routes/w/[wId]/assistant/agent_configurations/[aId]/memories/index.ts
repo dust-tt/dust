@@ -26,6 +26,7 @@ export type GetAgentMemoriesResponseBody = {
 // Mounted under /api/w/:wId/assistant/agent_configurations/:aId/memories.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

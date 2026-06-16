@@ -24,6 +24,7 @@ export interface PokeUpgradeEnterpriseSuccessResponseBody {
 // Mounted at /api/poke/workspaces/:wId/upgrade_enterprise.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   async (ctx): HandlerResult<PokeUpgradeEnterpriseSuccessResponseBody> => {

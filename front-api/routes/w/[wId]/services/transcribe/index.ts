@@ -22,6 +22,7 @@ export type PostTranscribeResponseBody = { text: string };
 // streamed the multipart body through formidable from the raw request.
 const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 
+/** @ignoreswagger */
 app.post("/", async (ctx) => {
   const auth = ctx.get("auth");
 

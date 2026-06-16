@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { logger } from "../logger";
 import { getInstallInstructions as getPlatformInstallInstructions } from "../platform";
-import { getActiveServices } from "../services";
+import { ALL_SERVICES } from "../services";
 import { shellQuote } from "../shell";
 import type {
   InstallCheckResult,
@@ -219,7 +219,7 @@ export class TmuxAdapter implements MultiplexerAdapter {
       );
     } else {
       // Individual service windows
-      for (const service of getActiveServices()) {
+      for (const service of ALL_SERVICES) {
         const tabName = getTabName(service);
         lines.push(
           `# Create ${service} logs window`,

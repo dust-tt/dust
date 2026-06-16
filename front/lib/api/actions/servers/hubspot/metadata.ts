@@ -645,12 +645,12 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   create_communication: {
     description:
-      "Creates a new communication (WhatsApp, LinkedIn, SMS) in Hubspot as an engagement. Requires hs_communication_channel_type in properties.",
+      "Creates a new communication (WhatsApp, LinkedIn, SMS) in Hubspot. Requires hs_communication_channel_type in properties.",
     schema: {
       properties: z
         .record(z.any())
         .describe(
-          "Properties, including hs_engagement_type (e.g., 'COMMUNICATION'), hs_communication_channel_type, and message content (e.g., hs_communication_body)."
+          "Properties, including hs_communication_channel_type (e.g., 'SMS', 'WHATS_APP', 'LINKEDIN'), message content (e.g., hs_communication_body), and hs_timestamp."
         ),
       associations: engagementAssociationsSchema
         .optional()
@@ -664,12 +664,12 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
   },
   create_meeting: {
     description:
-      "Creates a new meeting in Hubspot as an engagement. Ensure hs_engagement_type='MEETING' and meeting details are in properties.",
+      "Creates a new meeting in Hubspot. Meeting details are in properties.",
     schema: {
       properties: z
         .record(z.any())
         .describe(
-          "Properties, including hs_engagement_type='MEETING', hs_meeting_title, hs_meeting_start_time, etc."
+          "Properties, including hs_meeting_title, hs_meeting_start_time, hs_meeting_end_time, hs_timestamp, etc."
         ),
       associations: engagementAssociationsSchema
         .optional()

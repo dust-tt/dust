@@ -132,7 +132,7 @@ export function FileExplorerContent({
 
   return (
     <ScrollArea className="min-h-0 flex-1">
-      <div className="flex flex-col gap-5 px-4">
+      <div className="flex flex-col gap-5 px-4 pb-4">
         {viewMode === "list" ? (
           <div className="flex flex-col gap-0.5">{items}</div>
         ) : (

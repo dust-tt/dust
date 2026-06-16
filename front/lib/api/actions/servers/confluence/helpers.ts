@@ -62,6 +62,7 @@ async function confluenceApiCall<T extends z.ZodTypeAny>(
     }
 
     const responseText = await response.text();
+
     if (!responseText) {
       return new Ok(undefined);
     }
@@ -412,7 +413,7 @@ export async function getPage(
 ): Promise<Result<ConfluencePage | null, string>> {
   const searchParams = new URLSearchParams();
   if (includeBody) {
-    searchParams.append("body-format", "storage");
+    searchParams.append("body-format", "view");
   }
 
   const endpoint = `/wiki/api/v2/pages/${pageId}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
@@ -432,6 +433,7 @@ export async function getPage(
     if (result.error.includes("404")) {
       return new Ok(null);
     }
+
     return new Err(result.error);
   }
 

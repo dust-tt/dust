@@ -1,7 +1,5 @@
 import type { ModelConfigurationType } from "./types";
 
-export const FIREWORKS_DEEPSEEK_R1_MODEL_ID =
-  "accounts/fireworks/models/deepseek-r1-0528" as const;
 export const FIREWORKS_DEEPSEEK_V3P2_MODEL_ID =
   "accounts/fireworks/models/deepseek-v3p2" as const;
 export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID =
@@ -14,34 +12,6 @@ export const FIREWORKS_MINIMAX_M2P5_MODEL_ID =
   "accounts/fireworks/models/minimax-m2p5" as const;
 export const FIREWORKS_GLM_5_MODEL_ID =
   "accounts/fireworks/models/glm-5" as const;
-export const FIREWORKS_DEEPSEEK_R1_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "fireworks",
-  modelId: FIREWORKS_DEEPSEEK_R1_MODEL_ID,
-  displayName: "DeepSeek R1 (Fireworks)",
-  contextSize: 164_000,
-  recommendedTopK: 32,
-  recommendedExhaustiveTopK: 64,
-  largeModel: true,
-  description:
-    "DeepSeek's reasoning model (164k context, served via Fireworks).",
-  shortDescription: "DeepSeek R1 (reasoning model).",
-  isLegacy: false,
-  isLatest: false,
-  generationTokensCount: 2048,
-  supportsVision: false,
-  supportedReasoningEfforts: {
-    none: true,
-    light: false,
-    medium: false,
-    high: false,
-  },
-  defaultReasoningEffort: "none",
-  tokenizer: { type: "tiktoken", base: "o200k_base" },
-  regionalAvailability: {
-    "us-central1": true,
-    "europe-west1": false,
-  },
-};
 export const FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
   modelId: FIREWORKS_DEEPSEEK_V3P2_MODEL_ID,

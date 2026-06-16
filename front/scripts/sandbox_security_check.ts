@@ -269,13 +269,16 @@ async function checkBasicSandboxFunctionality(
 set -euo pipefail
 echo "shell-ok"
 /opt/bin/dsbx version >/dev/null
-for dir in /files/conversation /files/pod; do
-  test -d "$dir"
-  proof="$dir/dust-security-smoke-$$"
-  printf 'file-ok' > "$proof"
-  test "$(cat "$proof")" = "file-ok"
-  rm -f "$proof"
-done
+# /files/conversation and /files/pod no longer exist in the image. They are
+# created at runtime as mount points by the GCS mount adapter. Test /files
+# itself and verify that a subdirectory created there mimics the runtime
+# mkdir-p and is accessible, exercising the setgid and default-ACL inheritance.
+test -d /files
+tmpdir=$(mktemp -d /files/dust-security-smoke-XXXXXX)
+proof="$tmpdir/file-ok"
+printf 'file-ok' > "$proof"
+test "$(cat "$proof")" = "file-ok"
+rm -rf "$tmpdir"
 `,
     { user: AGENT_PROXIED_USER }
   );

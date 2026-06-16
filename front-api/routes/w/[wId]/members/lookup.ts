@@ -1,6 +1,10 @@
+import type {
+  MembersLookupAdminResponseBody,
+  MembersLookupResponseBody,
+} from "@app/lib/api/members";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import type { UserType } from "@app/types/user";
+import { toLightUser } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -17,17 +21,18 @@ const MembersLookupQuerySchema = z.object({
   ids: z.union([z.coerce.number(), z.array(z.coerce.number())]),
 });
 
-export type MembersLookupResponseBody = {
-  users: UserType[];
-};
-
 // Mounted at /api/w/:wId/members/lookup.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("query", MembersLookupQuerySchema),
-  async (ctx): HandlerResult<MembersLookupResponseBody> => {
+  async (
+    ctx
+  ): HandlerResult<
+    MembersLookupResponseBody | MembersLookupAdminResponseBody
+  > => {
     const auth = ctx.get("auth");
     const { ids: rawIds } = ctx.req.valid("query");
     const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
@@ -62,8 +67,18 @@ app.get(
     const validUserIds = new Set(memberships.map((m) => m.userId));
     const filteredUsers = users.filter((user) => validUserIds.has(user.id));
 
+    // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
+    if (auth.isAdmin()) {
+      return ctx.json({
+        users: filteredUsers.map((user) => user.toJSON()),
+      });
+    }
+
     return ctx.json({
-      users: filteredUsers.map((user) => user.toJSON()),
+      users: filteredUsers.map((user) => ({
+        ...toLightUser(user.toJSON()),
+        id: user.id,
+      })),
     });
   }
 );

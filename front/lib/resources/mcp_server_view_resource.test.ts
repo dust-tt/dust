@@ -16,7 +16,7 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { PlanType } from "@app/types/plan";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { WorkspaceType } from "@app/types/user";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("MCPServerViewResource", () => {
   describe("listByWorkspace", () => {
@@ -413,6 +413,81 @@ describe("MCPServerViewResource", () => {
 
       expect(systemView).not.toBeNull();
       expect(globalView).not.toBeNull();
+    });
+
+    it("tolerates concurrent creation races", async () => {
+      const freshWorkspace = await WorkspaceFactory.basic();
+      const freshAdminAuth = await Authenticator.internalAdminForWorkspace(
+        freshWorkspace.sId
+      );
+      await SpaceFactory.defaults(freshAdminAuth);
+
+      // Two concurrent calls race on the same inserts; the unique constraint
+      // makes the loser a no-op instead of an error.
+      await Promise.all([
+        MCPServerViewResource.ensureAllAutoToolsAreCreated(freshAdminAuth),
+        MCPServerViewResource.ensureAllAutoToolsAreCreated(freshAdminAuth),
+      ]);
+
+      const freshMCPServerId = autoInternalMCPServerNameToSId({
+        name: "common_utilities",
+        workspaceId: freshWorkspace.id,
+      });
+      const views = await MCPServerViewResource.listByMCPServer(
+        freshAdminAuth,
+        freshMCPServerId
+      );
+      expect(views).toHaveLength(2);
+      expect(views.map((v) => v.space.kind).sort()).toEqual([
+        "global",
+        "system",
+      ]);
+    });
+  });
+
+  describe("unsafeEnsureAutoViewsForWorkspace", () => {
+    it("only runs the underlying ensure once per workspace", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await SpaceFactory.defaults(adminAuth);
+
+      const ensureSpy = vi.spyOn(
+        MCPServerViewResource,
+        "ensureAllAutoToolsAreCreated"
+      );
+
+      await MCPServerViewResource.unsafeEnsureAutoViewsForWorkspace(adminAuth);
+      await MCPServerViewResource.unsafeEnsureAutoViewsForWorkspace(adminAuth);
+
+      expect(ensureSpy).toHaveBeenCalledTimes(1);
+      ensureSpy.mockRestore();
+    });
+
+    it("creates missing auto views on reads from a regular member", async () => {
+      const workspace = await WorkspaceFactory.basic();
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await SpaceFactory.defaults(adminAuth);
+
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+      const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      // No views exist yet; the member read hydrates them just in time.
+      const view =
+        await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+          memberAuth,
+          "common_utilities"
+        );
+
+      expect(view).not.toBeNull();
+      expect(view?.space.kind).toBe("global");
     });
   });
 

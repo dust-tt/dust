@@ -5,6 +5,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { metronomeAmount } from "@app/lib/metronome/amounts";
 import {
+  addCreditToContract,
   ceilToHourISO,
   createMetronomeCredit,
   floorToHourISO,
@@ -15,10 +16,11 @@ import {
 import {
   CURRENCY_TO_CREDIT_TYPE_ID,
   getProductSeatSubscriptionCreditsId,
-  getProductWorkspaceSeatId,
+  SEAT_PRIORITY_COUPON_CREDIT,
 } from "@app/lib/metronome/constants";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
+import { SEAT_TAG } from "@app/lib/metronome/setup_common";
 import { CouponRedemptionResource } from "@app/lib/resources/coupon_redemption_resource";
 import type {
   CouponResource,
@@ -92,12 +94,12 @@ export async function getCreditTypeFromPackage(
   return getCreditTypeFromRateCardId(pkg.rateCardId);
 }
 
-function getApplicableProductIdsForDiscountType(
+function getApplicableProductTagsForDiscountType(
   discountType: CouponDiscountType
 ): string[] {
   switch (discountType) {
     case "seat":
-      return [getProductWorkspaceSeatId()];
+      return [SEAT_TAG];
     default:
       return assertNever(discountType);
   }
@@ -105,6 +107,7 @@ function getApplicableProductIdsForDiscountType(
 
 export async function createCouponCredit({
   metronomeCustomerId,
+  metronomeContractId,
   coupon,
   redemptionId,
   redeemedAt,
@@ -112,6 +115,7 @@ export async function createCouponCredit({
   currency,
 }: {
   metronomeCustomerId: string;
+  metronomeContractId?: string;
   coupon: CouponResource;
   redemptionId: string;
   redeemedAt: Date;
@@ -119,7 +123,7 @@ export async function createCouponCredit({
   currency: SupportedCurrency;
 }): Promise<Result<string[], Error>> {
   const durationMonths = coupon.durationMonths ?? 1;
-  const result = await createMetronomeCredit({
+  const sharedParams = {
     metronomeCustomerId,
     productId: getProductSeatSubscriptionCreditsId(),
     creditTypeId,
@@ -127,11 +131,27 @@ export async function createCouponCredit({
     startingAt: floorToHourISO(redeemedAt),
     endingBefore: ceilToHourISO(addMonths(redeemedAt, durationMonths)),
     name: `Coupon: ${coupon.code}`,
-    idempotencyKey: `coupon-${redemptionId}-0`,
-    priority: 0,
-    applicableProductIds: getApplicableProductIdsForDiscountType(
+    priority: SEAT_PRIORITY_COUPON_CREDIT,
+    applicableProductTags: getApplicableProductTagsForDiscountType(
       coupon.discountType
     ),
+  };
+
+  if (metronomeContractId) {
+    const result = await addCreditToContract({
+      ...sharedParams,
+      metronomeContractId,
+      uniquenessKey: `coupon-${redemptionId}-0`,
+    });
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+    return new Ok(result.value !== null ? [result.value.creditId] : []);
+  }
+
+  const result = await createMetronomeCredit({
+    ...sharedParams,
+    idempotencyKey: `coupon-${redemptionId}-0`,
   });
 
   if (result.isErr()) {

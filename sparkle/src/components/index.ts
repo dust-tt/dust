@@ -137,6 +137,8 @@ export { Hoverable } from "./Hoverable";
 export { HoveringBar } from "./HoveringBar";
 export { DoubleIcon, Icon } from "./Icon";
 export { IconButton } from "./IconButton";
+export type { ImageGenerationPlaceholderProps } from "./ImageGenerationPlaceholder";
+export { ImageGenerationPlaceholder } from "./ImageGenerationPlaceholder";
 export type {
   ImagePreviewProps,
   ImagePreviewTitlePositionType,
@@ -150,6 +152,8 @@ export {
 export type { ImageZoomDialogProps } from "./ImageZoomDialog";
 export { downloadFile, ImageZoomDialog } from "./ImageZoomDialog";
 export { Input } from "./Input";
+export type { InputWithSaveProps } from "./InputWithSave";
+export { InputWithSave } from "./InputWithSave";
 export { InteractiveImageGrid } from "./InteractiveImageGrid";
 export { KeyboardShortcut } from "./KeyboardShortcut";
 export { Label } from "./Label";
@@ -181,6 +185,12 @@ export {
 export * from "./markdown";
 export { markdownStyles } from "./markdown/styles";
 export * from "./NavigationList";
+export {
+  NavTabPill,
+  NavTabPillContent,
+  NavTabPillList,
+  NavTabPillTrigger,
+} from "./NavTabPill";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
 export { NotificationButton } from "./NotificationButton";

@@ -1,4 +1,5 @@
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
+import { getWorkspaceLimitForSubmitError } from "@app/components/app/ReachedLimitPopup";
 import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import { ConversationBranchApprovalModal } from "@app/components/assistant/conversation/ConversationBranchApprovalModal";
@@ -111,6 +112,7 @@ interface ConversationViewerProps {
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
   setLimitReachedCode?: (code: WorkspaceLimit) => void;
+  limitReachedCode?: WorkspaceLimit | null;
   owner: WorkspaceType;
   user: UserType;
   clientSideMCPServerIds?: string[];
@@ -323,6 +325,7 @@ export const ConversationViewer = ({
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
   setLimitReachedCode,
+  limitReachedCode,
   clientSideMCPServerIds,
 }: ConversationViewerProps) => {
   const virtuosoMessageListRef =
@@ -558,7 +561,13 @@ export const ConversationViewer = ({
     const branchMessages = convertLightMessageTypeToVirtuosoMessages(
       openBranch.messages
     );
+    const existingMessageIds = new Set(
+      virtuosoMessageListRef.current.data.get().map((message) => message.sId)
+    );
     for (const msg of branchMessages) {
+      if (existingMessageIds.has(msg.sId)) {
+        continue;
+      }
       const insertIdx = getBranchedInsertIndex(
         virtuosoMessageListRef.current.data.get(),
         msg
@@ -1219,12 +1228,9 @@ export const ConversationViewer = ({
         const result = await submitMessage(messageData);
 
         if (result.isErr()) {
-          if (result.error.type === "plan_limit_reached_error") {
-            setLimitReachedCode?.("message_limit");
-          } else if (result.error.type === "credits_exhausted_error") {
-            setLimitReachedCode?.("pool_credits_exhausted");
-          } else if (result.error.type === "user_cap_reached_error") {
-            setLimitReachedCode?.("user_credits_exhausted");
+          const limitCode = getWorkspaceLimitForSubmitError(result.error.type);
+          if (limitCode) {
+            setLimitReachedCode?.(limitCode);
           } else {
             sendNotification({
               title: result.error.title,
@@ -1233,7 +1239,15 @@ export const ConversationViewer = ({
             });
           }
 
-          // If the API errors, the original data will be rolled back by SWR automatically.
+          // Remove optimistic placeholders — SWR rolls back the server cache but
+          // Virtuoso's in-memory list must be cleaned up manually.
+          const failedPlaceholderSids = [
+            placeholderUserMsg.sId,
+            ...placeholderAgentMessages.map((m) => m.sId),
+          ];
+          virtuosoMessageListRef.current.data.findAndDelete((m) =>
+            failedPlaceholderSids.includes(m.sId)
+          );
           logger.error({ err: result.error }, "Failed to post message");
           return new Err({
             code: "internal_error",
@@ -1409,6 +1423,7 @@ export const ConversationViewer = ({
       branchIdToApprove: branchIdToApprove ?? undefined,
       setBranchIdToApprove,
       isAutoScrollEnabledRef,
+      isNoSeat: limitReachedCode === "no_seat",
     };
   }, [
     user,
@@ -1426,6 +1441,7 @@ export const ConversationViewer = ({
     spaceInfo?.archivedAt,
     spaceInfo?.name,
     branchIdToApprove,
+    limitReachedCode,
   ]);
 
   return (

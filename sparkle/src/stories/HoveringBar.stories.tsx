@@ -2,23 +2,37 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import {
-  BoldIcon,
+  Bold01,
   Button,
-  CodeBlockIcon,
-  CodeSlashIcon,
-  HeadingIcon,
+  CodeSquare01,
+  Code01,
+  Heading01,
   HoveringBar,
-  ItalicIcon,
-  LinkIcon,
-  ListCheckIcon,
-  ListOrdered2Icon,
-  QuoteTextIcon,
-  SparklesIcon,
+  Italic01,
+  Link01,
+  CheckDone01,
+  List,
+  DoubleQuotes,
+  Stars02,
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "WIP/HoveringBar",
+  title: "Lab/HoveringBar",
   component: HoveringBar,
+  parameters: {
+    docs: {
+      description: {
+        component: `A compact floating toolbar that groups contextual actions, typically surfaced over a selection or hovered element (e.g. a rich-text formatting bar). Compose it from **Button** children and insert **HoveringBar.Separator** to visually group related actions; the bar handles overflow gracefully when space is tight.
+
+**When to use**
+- For inline, contextual action clusters such as text-formatting controls or selection menus.
+
+**Guidelines**
+- Use icon **Button**s with the \`ghost-secondary\` variant for a quiet, toolbar-appropriate look, and add \`tooltip\` for icon-only actions.
+- Separate logical groups with **HoveringBar.Separator** rather than spacing alone.`,
+      },
+    },
+  },
 } satisfies Meta<typeof HoveringBar>;
 
 export default meta;
@@ -28,11 +42,11 @@ export const Default: Story = {
   args: {
     children: (
       <>
-        <Button icon={HeadingIcon} size="icon" variant="ghost-secondary" />
-        <Button icon={BoldIcon} size="icon" variant="ghost-secondary" />
-        <Button icon={ItalicIcon} size="icon" variant="ghost-secondary" />
+        <Button icon={Heading01} size="icon" variant="ghost-secondary" />
+        <Button icon={Bold01} size="icon" variant="ghost-secondary" />
+        <Button icon={Italic01} size="icon" variant="ghost-secondary" />
         <HoveringBar.Separator />
-        <Button icon={LinkIcon} size="icon" variant="ghost-secondary" />
+        <Button icon={Link01} size="icon" variant="ghost-secondary" />
       </>
     ),
   },
@@ -40,77 +54,67 @@ export const Default: Story = {
 
 export const WithLabel = () => (
   <HoveringBar>
-    <Button
-      label="Ask Sidekick"
-      size="sm"
-      variant="ghost"
-      icon={SparklesIcon}
-    />
+    <Button label="Ask Sidekick" size="sm" variant="ghost" icon={Stars02} />
     <HoveringBar.Separator />
-    <Button
-      icon={BoldIcon}
-      size="sm"
-      variant="ghost-secondary"
-      tooltip="Bold"
-    />
+    <Button icon={Bold01} size="sm" variant="ghost-secondary" tooltip="Bold" />
   </HoveringBar>
 );
 
 export const FullFormattingToolbar = () => (
   <HoveringBar>
     <Button
-      icon={HeadingIcon}
+      icon={Heading01}
       size="icon"
       variant="ghost-secondary"
       tooltip="Heading"
     />
     <Button
-      icon={BoldIcon}
+      icon={Bold01}
       size="icon"
       variant="ghost-secondary"
       tooltip="Bold"
     />
     <Button
-      icon={ItalicIcon}
+      icon={Italic01}
       size="icon"
       variant="ghost-secondary"
       tooltip="Italic"
     />
     <HoveringBar.Separator />
     <Button
-      icon={LinkIcon}
+      icon={Link01}
       size="icon"
       variant="ghost-secondary"
       tooltip="Link"
     />
     <HoveringBar.Separator />
     <Button
-      icon={ListCheckIcon}
+      icon={CheckDone01}
       size="icon"
       variant="ghost-secondary"
       tooltip="Bulleted list"
     />
     <Button
-      icon={ListOrdered2Icon}
+      icon={List}
       size="icon"
       variant="ghost-secondary"
       tooltip="Ordered list"
     />
     <Button
-      icon={QuoteTextIcon}
+      icon={DoubleQuotes}
       size="icon"
       variant="ghost-secondary"
       tooltip="Blockquote"
     />
     <HoveringBar.Separator />
     <Button
-      icon={CodeSlashIcon}
+      icon={Code01}
       size="icon"
       variant="ghost-secondary"
       tooltip="Inline code"
     />
     <Button
-      icon={CodeBlockIcon}
+      icon={CodeSquare01}
       size="icon"
       variant="ghost-secondary"
       tooltip="Code block"
@@ -121,18 +125,18 @@ export const FullFormattingToolbar = () => (
 export const WithOverflow = () => (
   <div style={{ maxWidth: "200px" }}>
     <HoveringBar className="s-w-full">
-      <Button icon={HeadingIcon} size="icon" variant="ghost-secondary" />
-      <Button icon={BoldIcon} size="icon" variant="ghost-secondary" />
-      <Button icon={ItalicIcon} size="icon" variant="ghost-secondary" />
+      <Button icon={Heading01} size="icon" variant="ghost-secondary" />
+      <Button icon={Bold01} size="icon" variant="ghost-secondary" />
+      <Button icon={Italic01} size="icon" variant="ghost-secondary" />
       <HoveringBar.Separator />
-      <Button icon={LinkIcon} size="icon" variant="ghost-secondary" />
+      <Button icon={Link01} size="icon" variant="ghost-secondary" />
       <HoveringBar.Separator />
-      <Button icon={ListCheckIcon} size="icon" variant="ghost-secondary" />
-      <Button icon={ListOrdered2Icon} size="icon" variant="ghost-secondary" />
-      <Button icon={QuoteTextIcon} size="icon" variant="ghost-secondary" />
+      <Button icon={CheckDone01} size="icon" variant="ghost-secondary" />
+      <Button icon={List} size="icon" variant="ghost-secondary" />
+      <Button icon={DoubleQuotes} size="icon" variant="ghost-secondary" />
       <HoveringBar.Separator />
-      <Button icon={CodeSlashIcon} size="icon" variant="ghost-secondary" />
-      <Button icon={CodeBlockIcon} size="icon" variant="ghost-secondary" />
+      <Button icon={Code01} size="icon" variant="ghost-secondary" />
+      <Button icon={CodeSquare01} size="icon" variant="ghost-secondary" />
     </HoveringBar>
   </div>
 );

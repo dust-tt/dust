@@ -9,7 +9,22 @@ import {
 import { Button, Notification } from "../index_with_tw_base";
 
 const meta: Meta<typeof Notification> = {
-  title: "Modules/Notification",
+  title: "Feedback & Status/Notification",
+  parameters: {
+    docs: {
+      description: {
+        component: `A transient toast that confirms the outcome of an action. Toasts are dispatched imperatively with the **useSendNotification** hook ( \`title\`, \`description\`, and **type** — \`success\`, \`error\`, \`info\`, or \`hello\`) and rendered inside a **Notification.Area** mounted near the app root. **NotificationContent** is the underlying presentational card, useful for inline previews.
+
+**When to use**
+- For brief, self-dismissing feedback after an action completes (saved, failed, copied).
+
+**Guidelines**
+- Mount a single **Notification.Area** high in the tree, then call **useSendNotification** wherever an action resolves.
+- Match \`type\` to the outcome and keep \`title\`/\`description\` concise — long copy is line-clamped.
+- For persistent, inline status attached to a region, use a **ContentMessage** instead.`,
+      },
+    },
+  },
 } satisfies Meta<typeof Notification>;
 
 export default meta;

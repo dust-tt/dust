@@ -1,11 +1,8 @@
+import type { SearchMemberWithWorkspaceType } from "@app/components/members/MemberSelectionTable";
 import { MembersList } from "@app/components/members/MembersList";
 import { useEditors, useUpdateEditors } from "@app/lib/swr/agent_editors";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type {
-  UserType,
-  UserTypeWithWorkspace,
-  WorkspaceType,
-} from "@app/types/user";
+import type { UserType, WorkspaceType } from "@app/types/user";
 
 type AgentEditorsTabProps = {
   owner: WorkspaceType;
@@ -30,7 +27,7 @@ export function AgentEditorsTab({
   const isCurrentUserEditor =
     editors.findIndex((u) => u.sId === user.sId) !== -1;
 
-  const onRemoveMember = async (user: UserTypeWithWorkspace) => {
+  const onRemoveMember = async (user: SearchMemberWithWorkspaceType) => {
     if (isCurrentUserEditor) {
       await updateEditors({ removeEditorIds: [user.sId], addEditorIds: [] });
     }

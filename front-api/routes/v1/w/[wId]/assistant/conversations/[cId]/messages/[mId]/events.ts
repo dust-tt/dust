@@ -10,6 +10,71 @@ import { publicApiApp } from "@front-api/middlewares/ctx";
 // contract matches the Next middleware redirect at the same path.
 const app = publicApiApp();
 
+/**
+ * @swagger
+ * /api/v1/w/{wId}/assistant/conversations/{cId}/messages/{mId}/events:
+ *   get:
+ *     summary: Get events for a message
+ *     description: Get events for a message in the workspace identified by {wId}.
+ *     tags:
+ *       - Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: mId
+ *         required: true
+ *         description: ID of the message
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: lastEventId
+ *         description: ID of the last event received
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: The events
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 events:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                         description: ID of the event
+ *                       type:
+ *                         type: string
+ *                         description: Type of the event
+ *                       data:
+ *                         $ref: '#/components/schemas/Message'
+ *       400:
+ *         description: Bad Request
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Not Found
+ *       500:
+ *         description: Internal Server Error
+ */
+
 app.get("/", redirectToSse);
 
 export default app;

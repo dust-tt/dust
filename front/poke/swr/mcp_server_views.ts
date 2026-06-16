@@ -1,10 +1,11 @@
+import type { PokeListMCPServerViews } from "@app/lib/api/poke/mcp_server_views";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { PokeListMCPServerViews } from "@app/pages/api/poke/workspaces/[wId]/mcp/views";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { Fetcher } from "swr";
 
 interface UsePokeMCPServerViewsProps extends PokeConditionalFetchProps {
   globalSpaceOnly?: boolean;
+  systemSpaceOnly?: boolean;
 }
 
 /*
@@ -14,6 +15,7 @@ export function usePokeMCPServerViews({
   disabled,
   owner,
   globalSpaceOnly,
+  systemSpaceOnly,
 }: UsePokeMCPServerViewsProps) {
   const { fetcher } = useFetcher();
   const mcpServerViewsFetcher: Fetcher<PokeListMCPServerViews> = fetcher;
@@ -21,6 +23,9 @@ export function usePokeMCPServerViews({
   const params = new URLSearchParams();
   if (globalSpaceOnly) {
     params.set("globalSpaceOnly", "true");
+  }
+  if (systemSpaceOnly) {
+    params.set("systemSpaceOnly", "true");
   }
 
   const { data, error, mutate } = useSWRWithDefaults(
@@ -35,4 +40,10 @@ export function usePokeMCPServerViews({
     isError: error,
     mutate,
   };
+}
+
+export function usePokeSystemSpaceMCPServerViews(
+  props: PokeConditionalFetchProps
+) {
+  return usePokeMCPServerViews({ ...props, systemSpaceOnly: true });
 }

@@ -11,11 +11,11 @@ import type {
 import { isVisualizationRPCRequest } from "@app/types/assistant/visualization";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
+  AlertCircle,
   Button,
   CodeBlock,
   ContentMessage,
   cn,
-  ExclamationCircleIcon,
   Markdown,
   Sheet,
   SheetContainer,
@@ -436,7 +436,12 @@ export const VisualizationActionIframe = forwardRef<
               />
             </div>
           ) : (
-            <div className="relative flex h-full w-full shrink-0 items-center justify-center">
+            <div
+              className={cn(
+                "relative flex w-full shrink-0 items-center justify-center",
+                isInDrawer ? "h-full" : "h-panel"
+              )}
+            >
               {codeFullyGenerated && !isErrored && (
                 <div
                   style={
@@ -465,11 +470,16 @@ export const VisualizationActionIframe = forwardRef<
               )}
 
               {isErrored && !retryClicked && !isPublic && (
-                <div className="flex h-full w-full items-center justify-center p-6">
+                <div
+                  className={cn(
+                    "flex w-full items-center justify-center p-6",
+                    isInDrawer ? "h-full" : "h-panel"
+                  )}
+                >
                   <ContentMessage
                     title="Visualization failed"
                     variant="warning"
-                    icon={ExclamationCircleIcon}
+                    icon={AlertCircle}
                     className="max-w-md"
                   >
                     <div className="mb-4 text-sm">
@@ -500,7 +510,7 @@ export const VisualizationActionIframe = forwardRef<
                   <div className="flex flex-col gap-3 text-center">
                     <div className="flex flex-col items-center gap-2 text-center">
                       <div className="flex flex-col items-center gap-2">
-                        <ExclamationCircleIcon className="h-8 w-8" />
+                        <AlertCircle className="h-8 w-8" />
                         <p className="heading-xl leading-7 text-foreground dark:text-foreground-night">
                           Visualization Error
                         </p>
@@ -520,7 +530,7 @@ export const VisualizationActionIframe = forwardRef<
         </div>
       </div>
       {showSpinner && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background dark:bg-background-night">
+        <div className="absolute inset-0 flex items-center justify-center bg-panel-background dark:bg-panel-background-night">
           <Spinner size="xl" variant="color" />
         </div>
       )}

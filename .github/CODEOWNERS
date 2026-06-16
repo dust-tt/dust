@@ -9,3 +9,5 @@
 /front/lib/models/                    @dust-tt/data-model-owners
 /front/lib/resources/storage/models/  @dust-tt/data-model-owners
 /front/migrations/db/                 @dust-tt/data-model-owners
+
+/front/lib/api/llm/                   @dust-tt/llm-router-owners

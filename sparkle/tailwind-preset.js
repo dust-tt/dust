@@ -26,6 +26,21 @@ const customColors = {
     100: "#EEEEEF",
     50: "#F7F7F7",
   },
+  stone: {
+    950: "#0C0A09",
+    900: "#1C1917",
+    800: "#292524",
+    700: "#44403B",
+    600: "#57534D",
+    500: "#79716B",
+    400: "#A6A09B",
+    300: "#D6D3D1",
+    200: "#E7E5E4",
+    150: "#EEEEEC",
+    100: "#F5F5F4",
+    50: "#FBFAF9",
+    25: "#FDFDFC",
+  },
   golden: {
     950: "#331606",
     900: "#70350C",
@@ -162,6 +177,7 @@ Object.assign(colors, {
   green: customColors.green,
   blue: customColors.blue,
   gray: customColors.gray,
+  stone: customColors.stone,
   rose: customColors.rose,
   golden: customColors.golden,
   //For compatibility, to be removed after all direct color ref are edited for golden
@@ -211,19 +227,19 @@ const typographyPlugin = plugin(function ({ addComponents, theme }) {
     fontSize: theme(`fontSize.${size}[0]`),
     lineHeight: theme(`fontSize.${size}[1].lineHeight`),
     letterSpacing: theme(`fontSize.${size}[1].letterSpacing`),
-    fontWeight: "600",
+    fontWeight: "500",
   });
   const headingHeavy = (size) => ({
     fontSize: theme(`fontSize.${size}[0]`),
     lineHeight: theme(`fontSize.${size}[1].lineHeight`),
     letterSpacing: theme(`fontSize.${size}[1].letterSpacing`),
-    fontWeight: "600",
+    fontWeight: "550",
   });
   const headingLight = (size) => ({
     fontSize: theme(`fontSize.${size}[0]`),
     lineHeight: theme(`fontSize.${size}[1].lineHeight`),
     letterSpacing: theme(`fontSize.${size}[1].letterSpacing`),
-    fontWeight: "500",
+    fontWeight: "450",
   });
   const headingMono = (size) => ({
     fontSize: theme(`fontSize.${size}[0]`),
@@ -348,25 +364,33 @@ module.exports = {
     },
     fontSize,
     extend: {
+      spacing: {
+        "sidebar-side-spacing": "0.75rem",
+      },
       transitionTimingFunction: {
+        "out-quad": "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+        "out-cubic": "cubic-bezier(0.215, 0.61, 0.355, 1)",
+        "out-quart": "cubic-bezier(0.165, 0.84, 0.44, 1)",
+        "out-quint": "cubic-bezier(0.23, 1, 0.32, 1)",
+        "out-expo": "cubic-bezier(0.19, 1, 0.22, 1)",
+        "in-out-quad": "cubic-bezier(0.455, 0.03, 0.515, 0.955)",
+        "in-out-cubic": "cubic-bezier(0.645, 0.045, 0.355, 1)",
+        "in-out-quint": "cubic-bezier(0.86, 0, 0.07, 1)",
+        enter: "cubic-bezier(0.215, 0.61, 0.355, 1)",
+        emphasized: "cubic-bezier(0.23, 1, 0.32, 1)",
+        move: "cubic-bezier(0.455, 0.03, 0.515, 0.955)",
         "in-quad": "cubic-bezier(.55, .085, .68, .53)",
         "in-cubic": "cubic-bezier(.550, .055, .675, .19)",
         "in-quart": "cubic-bezier(.895, .03, .685, .22)",
         "in-quint": "cubic-bezier(.755, .05, .855, .06)",
         "in-expo": "cubic-bezier(.95, .05, .795, .035)",
         "in-circ": "cubic-bezier(.6, .04, .98, .335)",
-        "out-quad": "cubic-bezier(.25, .46, .45, .94)",
-        "out-cubic": "cubic-bezier(.215, .61, .355, 1)",
-        "out-quart": "cubic-bezier(.165, .84, .44, 1)",
-        "out-quint": "cubic-bezier(.23, 1, .32, 1)",
-        "out-expo": "cubic-bezier(.19, 1, .22, 1)",
-        "out-circ": "cubic-bezier(.075, .82, .165, 1)",
-        "in-out-quad": "cubic-bezier(.455, .03, .515, .955)",
-        "in-out-cubic": "cubic-bezier(.645, .045, .355, 1)",
-        "in-out-quart": "cubic-bezier(.77, 0, .175, 1)",
-        "in-out-quint": "cubic-bezier(.86, 0, .07, 1)",
-        "in-out-expo": "cubic-bezier(1, 0, 0, 1)",
-        "in-out-circ": "cubic-bezier(.785, .135, .15, .86)",
+      },
+      transitionDuration: {
+        enter: "200ms",
+        exit: "160ms",
+        "modal-enter": "300ms",
+        "modal-exit": "240ms",
       },
       borderRadius: {
         "4xl": "2rem",
@@ -586,6 +610,16 @@ module.exports = {
           },
         },
         background: { DEFAULT: colors.white, night: colors.gray[950] },
+        "app-background": {
+          DEFAULT: customColors.stone[50],
+          night: colors.gray[900], // to be updated
+        },
+        panel: {
+          background: {
+            DEFAULT: "#FFF",
+            night: colors.gray[950],
+          },
+        },
         foreground: {
           DEFAULT: colors.gray[950],
           night: colors.gray[200],
@@ -684,6 +718,16 @@ module.exports = {
           900: { DEFAULT: colors.green[900], night: colors.green[100] },
           950: { DEFAULT: colors.green[950], night: colors.green[50] },
           50: { DEFAULT: colors.green[50], night: colors.green[950] },
+        },
+        sidebar: {
+          primary: {
+            DEFAULT: customColors.stone[800],
+            night: "#D6D3D1",
+          },
+          foreground: {
+            DEFAULT: customColors.stone[150],
+            night: colors.gray[800],
+          },
         },
         info: {
           DEFAULT: customColors.golden[500],

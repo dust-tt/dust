@@ -12,6 +12,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/assistant/conversations/:cId/actions/blocked.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { cId } = ctx.req.valid("param");

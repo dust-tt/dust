@@ -4,8 +4,23 @@ import React from "react";
 import { OptionCard } from "../index_with_tw_base";
 
 const meta = {
-  title: "Conversation/OptionCard",
+  title: "Product/Conversation/OptionCard",
   component: OptionCard,
+  parameters: {
+    docs: {
+      description: {
+        component: `A selectable card representing one choice the user can pick in response to an agent prompt. Shows a \`label\`, optional \`description\`, and an optional \`counterValue\` badge; \`selected\` toggles its active styling and \`disabled\` makes it non-interactive. Becomes clickable when an \`onClick\` handler is provided.
+
+**When to use**
+- To present a small set of mutually understandable options (e.g. which sources to include) that the user selects before the agent continues.
+
+**Guidelines**
+- Provide \`onClick\` to make the card interactive; without it the card is display-only.
+- Use \`counterValue\` to convey ordering or quantity, and \`selected\` to reflect the current choice (it sets \`aria-pressed\`).
+- Stack multiple cards in a column; for one-tap suggested prompts that send immediately, use **QuickReplyBlock** instead.`,
+      },
+    },
+  },
   tags: ["autodocs"],
   args: {
     label: "Summarize today's emails",

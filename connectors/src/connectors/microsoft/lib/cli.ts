@@ -40,10 +40,9 @@ import {
   microsoftIncrementalSyncWorkflowId,
 } from "@connectors/types";
 import { isString } from "@connectors/types/shared/utils/general";
-import { isLeft } from "fp-ts/lib/Either";
 import fs from "fs";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 /**
  * Parse internal IDs from either a JSON file or a single internal ID argument
@@ -62,15 +61,15 @@ function parseInternalIds(idsFile?: string, internalId?: string): string[] {
       const fileContent = fs.readFileSync(idsFile, "utf8");
       const parsedIds = JSON.parse(fileContent);
 
-      // Validate using io-ts schema
-      const validation = t.array(t.string).decode(parsedIds);
+      const validation = z.array(z.string()).safeParse(parsedIds);
 
-      if (isLeft(validation)) {
-        const pathError = reporter.formatValidationErrors(validation.left);
-        throw new Error(`Invalid permissions file format: ${pathError}`);
+      if (!validation.success) {
+        throw new Error(
+          `Invalid ids file format: ${fromError(validation.error).toString()}`
+        );
       }
 
-      return validation.right;
+      return validation.data;
     } catch (error) {
       if (error instanceof SyntaxError) {
         throw new Error(`Invalid JSON in permissions file: ${error.message}`);

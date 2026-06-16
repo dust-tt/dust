@@ -6,7 +6,8 @@ const { mockCreateSpaceAndGroup } = vi.hoisted(() => ({
   mockCreateSpaceAndGroup: vi.fn(),
 }));
 
-vi.mock("@app/lib/api/spaces", () => ({
+vi.mock("@app/lib/api/spaces", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@app/lib/api/spaces")>()),
   createSpaceAndGroup: mockCreateSpaceAndGroup,
 }));
 

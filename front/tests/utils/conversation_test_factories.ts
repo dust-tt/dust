@@ -114,6 +114,7 @@ export function mockAgentMessage(
     richMentions: [],
     completionDurationMs: null,
     reactions: [],
+    costCredits: null,
     configuration: {
       sId: "",
       name: params.agentName ?? "Agent",

@@ -1,6 +1,8 @@
 // Types.
+import type { DustError } from "@app/lib/error";
 import { z } from "zod";
 
+import { assertNever } from "./shared/utils/assert_never";
 import { removeNulls } from "./shared/utils/general";
 import type { UserType } from "./user";
 
@@ -29,7 +31,9 @@ export type FileUseCase =
   | "project_context"
   // Skill attachment: file attached to a skill configuration, synced to the
   // sandbox at /dust/skills/<skill-name>/<filename>.
-  | "skill_attachment";
+  | "skill_attachment"
+  // Workspace branding: logo/favicon uploaded by workspace admins.
+  | "workspace_branding";
 
 // Audit trail for a plan-mode approval. Recorded on `plan.md.useCaseMetadata` when the user
 // approves a `request_plan_approval` call.
@@ -62,6 +66,8 @@ export type FileUseCaseMetadata = {
   isPlanFile?: boolean;
   planModeLastApproval?: PlanModeApproval | null;
   isPlanClosed?: boolean;
+  // Which branding asset this file was uploaded for (workspace_branding use case only).
+  asset?: string;
 };
 
 export function isConversationFileUseCase(
@@ -80,6 +86,166 @@ export const fileShareScopeSchema = z.enum([
 ]);
 
 export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
+
+/**
+ * Allowlist of files a shared Frame may load via useFile().
+ * AuthorizedFileAccessModel stores one row per authorized file; active rows have
+ * revokedAt = null.
+ */
+export const authorizedFileAccessKindSchema = z.enum([
+  "file_id",
+  "canonical_path",
+  "unverifiable",
+]);
+
+export type AuthorizedFileAccessKind = z.infer<
+  typeof authorizedFileAccessKindSchema
+>;
+
+const authorizedFileAccessEntryBaseSchema = {
+  shareScope: fileShareScopeSchema,
+  computedByUserId: z.string(),
+  frameContentHash: z.string(),
+  allowedAt: z.string(),
+  revokedAt: z.string().nullable().optional(),
+};
+
+const authorizedFileIdAccessEntrySchema = z
+  .object({
+    kind: z.literal("file_id"),
+    ref: z.string(),
+    fileName: z.string().optional(),
+    ...authorizedFileAccessEntryBaseSchema,
+  })
+  .strict();
+
+const authorizedCanonicalPathAccessEntrySchema = z
+  .object({
+    kind: z.literal("canonical_path"),
+    ref: z.string(),
+    legacyPath: z.string().optional(),
+    fileName: z.string().optional(),
+    ...authorizedFileAccessEntryBaseSchema,
+  })
+  .strict();
+
+const authorizedUnverifiableAccessEntrySchema = z
+  .object({
+    kind: z.literal("unverifiable"),
+    ref: z.string(),
+    ...authorizedFileAccessEntryBaseSchema,
+  })
+  .strict();
+
+export const authorizedFileAccessEntrySchema = z.discriminatedUnion("kind", [
+  authorizedFileIdAccessEntrySchema,
+  authorizedCanonicalPathAccessEntrySchema,
+  authorizedUnverifiableAccessEntrySchema,
+]);
+
+export type AuthorizedFileAccessEntry = z.infer<
+  typeof authorizedFileAccessEntrySchema
+>;
+
+const authorizedFileIdRefSchema = z
+  .object({
+    kind: z.literal("file_id"),
+    ref: z.string(),
+    fileName: z.string().optional(),
+  })
+  .strict();
+
+const authorizedCanonicalPathRefSchema = z
+  .object({
+    kind: z.literal("canonical_path"),
+    ref: z.string(),
+    legacyPath: z.string().optional(),
+    fileName: z.string().optional(),
+  })
+  .strict();
+
+export const authorizedFileRefSchema = z.discriminatedUnion("kind", [
+  authorizedFileIdRefSchema,
+  authorizedCanonicalPathRefSchema,
+]);
+
+export type AuthorizedFileRef = z.infer<typeof authorizedFileRefSchema>;
+
+export function getAuthorizedFileRefLabel(ref: AuthorizedFileRef): string {
+  if (ref.fileName) {
+    return ref.fileName;
+  }
+  if (ref.kind === "file_id") {
+    return ref.ref;
+  }
+  return ref.ref.split("/").pop() ?? ref.ref;
+}
+
+export function entryToAuthorizedFileRef(
+  entry: AuthorizedFileAccessEntry
+): AuthorizedFileRef | null {
+  switch (entry.kind) {
+    case "unverifiable":
+      return null;
+    case "file_id":
+      return {
+        kind: "file_id",
+        ref: entry.ref,
+        ...(entry.fileName ? { fileName: entry.fileName } : {}),
+      };
+    case "canonical_path":
+      return {
+        kind: "canonical_path",
+        ref: entry.ref,
+        ...(entry.legacyPath ? { legacyPath: entry.legacyPath } : {}),
+        ...(entry.fileName ? { fileName: entry.fileName } : {}),
+      };
+    default:
+      return assertNever(entry);
+  }
+}
+
+/** Active allowlist view derived from non-revoked DB rows. */
+export type AuthorizedFileAccessAllowlist = {
+  computedByUserId: string;
+  frameContentHash: string;
+  refs: AuthorizedFileRef[];
+};
+
+/** Result of scanning frame content before persisting rows. */
+export type ComputedAuthorizedFileAccess = AuthorizedFileAccessAllowlist & {
+  unverifiableRefs?: string[];
+};
+
+export function parseAuthorizedFileAccessEntry(
+  data: unknown
+): AuthorizedFileAccessEntry {
+  return authorizedFileAccessEntrySchema.parse(data);
+}
+
+export function getActiveAuthorizedFileAccessEntries(
+  entries: AuthorizedFileAccessEntry[]
+): AuthorizedFileAccessEntry[] {
+  return entries.filter((entry) => entry.revokedAt == null);
+}
+
+export type AuthorizedFileAccessShareError = Omit<DustError, "code"> & {
+  code: "invalid_request_error" | "internal_error";
+  unverifiableRefs?: string[];
+};
+
+export function isUnverifiableFrameFileRefsShareError(
+  error: AuthorizedFileAccessShareError
+): error is AuthorizedFileAccessShareError & {
+  code: "invalid_request_error";
+  unverifiableRefs: string[];
+} {
+  return (
+    error.code === "invalid_request_error" &&
+    Array.isArray(error.unverifiableRefs) &&
+    error.unverifiableRefs.length > 0
+  );
+}
 
 export interface SharingGrantType {
   id: number;
@@ -233,6 +399,10 @@ type FileFormat = {
    * - Any file type that could contain executable code
    */
   isSafeToDisplay: boolean;
+  // When set, restricts which upload use cases expose this format in their file picker.
+  // Possible values: conversation, avatar, tool_output, skill_attachment, upsert_document,
+  // folders_document, upsert_table, project_context. Omit to allow in all contexts.
+  allowedFileUploadUseCases?: readonly FileUseCase[];
 };
 
 // NOTE: if we add more content types, we need to update the public api package. (but the
@@ -249,6 +419,12 @@ export const FILE_FORMATS = {
   "image/webp": { cat: "image", exts: [".webp"], isSafeToDisplay: true },
   "image/svg+xml": { cat: "image", exts: [".svg"], isSafeToDisplay: false },
   "image/bmp": { cat: "image", exts: [".bmp"], isSafeToDisplay: true },
+  "image/x-icon": {
+    cat: "image",
+    exts: [".ico"],
+    isSafeToDisplay: true,
+    allowedFileUploadUseCases: ["workspace_branding"],
+  },
 
   // Structured.
   "text/csv": { cat: "delimited", exts: [".csv"], isSafeToDisplay: true },
@@ -432,6 +608,38 @@ export const FILE_FORMATS = {
   // Chrome sometimes uses video/webm for audio files, and we can still process them as audio only files
   "video/webm": { cat: "audio", exts: [".webm"], isSafeToDisplay: true },
 
+  // Fonts — skill attachments only.
+  "font/woff": {
+    cat: "data",
+    exts: [".woff"],
+    isSafeToDisplay: false,
+    allowedFileUploadUseCases: ["skill_attachment"],
+  },
+  "font/woff2": {
+    cat: "data",
+    exts: [".woff2"],
+    isSafeToDisplay: false,
+    allowedFileUploadUseCases: ["skill_attachment"],
+  },
+  "font/otf": {
+    cat: "data",
+    exts: [".otf"],
+    isSafeToDisplay: false,
+    allowedFileUploadUseCases: ["skill_attachment"],
+  },
+  "font/ttf": {
+    cat: "data",
+    exts: [".ttf"],
+    isSafeToDisplay: false,
+    allowedFileUploadUseCases: ["skill_attachment"],
+  },
+  "font/collection": {
+    cat: "data",
+    exts: [".ttc", ".otc"],
+    isSafeToDisplay: false,
+    allowedFileUploadUseCases: ["skill_attachment"],
+  },
+
   // Unknown.
   "application/octet-stream": {
     cat: "data",
@@ -601,6 +809,25 @@ export function isSupportedAudioContentType(
   return false;
 }
 
+export type SupportedFontContentType =
+  | "font/woff"
+  | "font/woff2"
+  | "font/otf"
+  | "font/ttf"
+  | "font/collection";
+
+export function isSupportedFontContentType(
+  contentType: string
+): contentType is SupportedFontContentType {
+  return (
+    contentType === "font/woff" ||
+    contentType === "font/woff2" ||
+    contentType === "font/otf" ||
+    contentType === "font/ttf" ||
+    contentType === "font/collection"
+  );
+}
+
 export function getFileFormatCategory(
   contentType: string
 ): FileFormatCategory | null {
@@ -636,33 +863,53 @@ export function extensionsForContentType(
   return [];
 }
 
+function isFormatAllowedForUseCase(
+  format: (typeof FILE_FORMATS)[keyof typeof FILE_FORMATS],
+  useCase?: FileUseCase
+): boolean {
+  if (!("allowedFileUploadUseCases" in format)) {
+    return true;
+  }
+  return useCase
+    ? format.allowedFileUploadUseCases.some((uc) => uc === useCase)
+    : false;
+}
+
 export function getSupportedFileExtensions(
-  cat: FileFormatCategory | undefined = undefined
+  cat?: FileFormatCategory,
+  useCase?: FileUseCase
 ) {
   return uniq(
     removeNulls(
       Object.values(FILE_FORMATS).flatMap((format) =>
-        !cat || format.cat === cat ? format.exts : []
+        isFormatAllowedForUseCase(format, useCase) &&
+        (!cat || format.cat === cat)
+          ? format.exts
+          : []
       )
     )
   );
 }
 
-export function getSupportedNonImageFileExtensions() {
+export function getSupportedNonImageFileExtensions(useCase?: FileUseCase) {
   return uniq(
     removeNulls(
       Object.values(FILE_FORMATS).flatMap((format) =>
-        format.cat !== "image" ? format.exts : []
+        isFormatAllowedForUseCase(format, useCase) && format.cat !== "image"
+          ? format.exts
+          : []
       )
     )
   );
 }
 
-export function getSupportedNonImageMimeTypes() {
+export function getSupportedNonImageMimeTypes(useCase?: FileUseCase) {
   return uniq(
     removeNulls(
       Object.entries(FILE_FORMATS).map(([key, value]) =>
-        value.cat !== "image" ? (key as SupportedNonImageContentType) : null
+        isFormatAllowedForUseCase(value, useCase) && value.cat !== "image"
+          ? (key as SupportedNonImageContentType)
+          : null
       )
     )
   );
@@ -680,6 +927,12 @@ const EXTENSION_CONTENT_TYPE_OVERRIDES: Record<
   ".tsv": "text/tsv",
   ".xls": "application/vnd.ms-excel",
   ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".otf": "font/otf",
+  ".ttf": "font/ttf",
+  ".ttc": "font/collection",
+  ".otc": "font/collection",
 };
 
 export function stripMimeParameters(contentType: string): string {

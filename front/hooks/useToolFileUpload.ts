@@ -1,8 +1,8 @@
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import type { ToolUploadRequestBody } from "@app/lib/search/tools/search";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
-import type { ToolUploadRequestBody } from "@app/pages/api/w/[wId]/search/tools/upload";
 import type { FileUseCaseMetadata } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useState } from "react";

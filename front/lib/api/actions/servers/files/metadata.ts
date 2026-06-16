@@ -6,6 +6,7 @@ import {
   EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   INTERACTIVE_CONTENT_SERVER_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
+import { frameContentType, frameSlideshowContentType } from "@app/types/files";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -15,15 +16,19 @@ export const FILES_LIST_ACTION_NAME = "list" as const;
 export const FILES_CAT_ACTION_NAME = "cat" as const;
 export const FILES_GREP_ACTION_NAME = "grep" as const;
 export const FILES_CREATE_ACTION_NAME = "create" as const;
+export const FILES_UPLOAD_FROM_URL_ACTION_NAME = "upload_from_url" as const;
 export const FILES_DELETE_ACTION_NAME = "delete" as const;
 export const FILES_COPY_ACTION_NAME = "copy" as const;
 export const FILES_MOVE_ACTION_NAME = "move" as const;
 export const FILES_RESOLVE_ACTION_NAME = "resolve" as const;
+export const FILES_EXTRACT_TEXT_ACTION_NAME = "extract_text" as const;
 
 export const CAT_LINES_DEFAULT = 200;
 export const CAT_LINES_MAX = 500;
 export const GREP_MATCHES_MAX = 50;
 export const CREATE_CONTENT_MAX_BYTES = 50 * 1024; // 50 KB (~12K tokens).
+
+const FRAME_FILES_UNSUPPORTED = `Does not support Frame files (\`${frameContentType}\`, \`${frameSlideshowContentType}\`)`;
 
 // Shared `list` description that opens with the generic file-system listing capability and is
 // followed by a context-specific suffix injected by the conversation-only or pod-aware
@@ -34,10 +39,7 @@ const LIST_DESCRIPTION_PREFIX =
   "content type, and size in KB. " +
   "Scoped paths can be used to reference or display a file in a response, " +
   "or passed to other tools that accept a file path. " +
-  "Some files have an auto-generated `*.processed.<ext>` sibling carrying a " +
-  "model-friendly representation of their source: a resized version for images, " +
-  "a transcript for audio, or extracted text for PDFs and other documents. " +
-  `Read the sibling with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` to access the content of binary sources.`;
+  "Processed siblings (e.g. audio transcripts) are listed alongside their source with an annotation.";
 
 const SCOPED_PATH_HINT =
   "Paths use `conversation-<id>/...` or `pod-<id>/...` for any conversation or Pod you can access; " +
@@ -175,8 +177,8 @@ const FILES_TOOLS_COMMON_METADATA = {
       "Use `offset` to start at a specific line and `limit` to control how many lines to return. " +
       "When the output is truncated, a footer indicates the next offset to use. " +
       "For images (JPEG, PNG, GIF), returns a vision block the model can inspect directly. " +
-      "For binary sources such as PDFs, scanned documents, or audio files, prefer the " +
-      `\`*.processed.<ext>\` sibling listed in \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_LIST_ACTION_NAME)}\`. It carries the extracted text or transcript.`,
+      "For binary documents (PDF, DOCX, PPTX, etc.), call " +
+      `\`${getPrefixedToolName(FILES_SERVER_NAME, FILES_EXTRACT_TEXT_ACTION_NAME)}\` first to extract their text content.`,
     schema: {
       path: z
         .string()
@@ -235,8 +237,7 @@ const FILES_TOOLS_COMMON_METADATA = {
       "Accepts UTF-8 text content only. Binary files cannot be created via this tool. " +
       `Content is capped at ${CREATE_CONTENT_MAX_BYTES / 1024} KB. ` +
       "If the file already exists it is silently overwritten (shell \`>\` semantics). " +
-      "Does not support Frame files (`application/vnd.dust.frame`, " +
-      "`application/vnd.dust.frame.slideshow`); use " +
+      `${FRAME_FILES_UNSUPPORTED}; use ` +
       `\`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` to create or ` +
       `\`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` to edit them. ` +
       "Returns whether the file was created or updated, along with its path and size.",
@@ -259,6 +260,37 @@ const FILES_TOOLS_COMMON_METADATA = {
       done: "Write file",
     },
   },
+  [FILES_UPLOAD_FROM_URL_ACTION_NAME]: {
+    description:
+      "Download a file from a public HTTP(S) URL and store it in a conversation or Pod file system. " +
+      "Use this for binary files (PDF, images, spreadsheets, etc.) that cannot be created with " +
+      `\`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CREATE_ACTION_NAME)}\`. ` +
+      "If the file already exists it is silently overwritten. " +
+      `${FRAME_FILES_UNSUPPORTED}. ` +
+      "Returns whether the file was created or updated, along with its path and size.",
+    schema: {
+      path: z
+        .string()
+        .describe(
+          "Scoped destination path (e.g. `conversation-<id>/report.pdf`, `pod-<id>/assets/logo.png`)"
+        ),
+      url: z
+        .string()
+        .url()
+        .describe("Public HTTP(S) URL of the file to download and store"),
+      content_type: z
+        .string()
+        .optional()
+        .describe(
+          "Optional MIME content type override when the remote server does not send a reliable Content-Type header"
+        ),
+    },
+    stake: "never_ask" as const,
+    displayLabels: {
+      running: "Uploading file from URL",
+      done: "Uploaded file from URL",
+    },
+  },
   [FILES_DELETE_ACTION_NAME]: {
     description:
       "Delete a file from a conversation or Pod file system. " +
@@ -278,9 +310,31 @@ const FILES_TOOLS_COMMON_METADATA = {
   },
 };
 
+const EXTRACT_TEXT_TOOL = {
+  description:
+    "Extract text from a binary document (PDF, DOCX, DOC, PPTX, PPT, XLSX, XLS) " +
+    "and save the result as a plain-text file next to the source. " +
+    "Returns the scoped path of the extracted file. " +
+    `Use this before \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` or \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_GREP_ACTION_NAME)}\` ` +
+    "on binary documents that cannot be read as text.",
+  schema: {
+    path: z
+      .string()
+      .describe(
+        `Scoped path to the binary document (e.g. \`conversation-<id>/report.pdf\`)`
+      ),
+  },
+  stake: "never_ask" as const,
+  displayLabels: {
+    running: "Extracting text from document",
+    done: "Extracted text from document",
+  },
+};
+
 export const FILES_TOOLS_METADATA = createToolsRecord({
   [FILES_LIST_ACTION_NAME]: LIST_TOOL,
   ...FILES_TOOLS_COMMON_METADATA,
+  [FILES_EXTRACT_TEXT_ACTION_NAME]: EXTRACT_TEXT_TOOL,
   [FILES_COPY_ACTION_NAME]: COPY_TOOL,
   [FILES_MOVE_ACTION_NAME]: MOVE_TOOL,
 });
@@ -295,10 +349,7 @@ export const FILES_SERVER = {
       "Files include user uploads, sandbox outputs, and tool results. " +
       "Scoped paths such as `conversation-<id>/chart.png` or `pod-<id>/spec.md` identify files " +
       "and can be used to reference, display, or link them in responses. " +
-      "Files whose name follows the `*.processed.<ext>` pattern are auto-generated " +
-      "model-friendly representations of their source (resized image, audio transcript, " +
-      "or text extracted from a document). Read those siblings to access the content " +
-      "of binary uploads.",
+      "Processed siblings (resized images, audio transcripts) are listed alongside their source with an annotation.",
     authorization: null,
     icon: "ActionDocumentTextIcon" as const,
     documentationUrl: null,

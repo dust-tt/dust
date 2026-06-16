@@ -98,7 +98,7 @@ export async function runToolActivity(
     runIds?: string[];
   }
 ): Promise<ToolExecutionResult> {
-  const auth = await Authenticator.fromJSON(authType);
+  const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
   const deferredEvents: ToolExecutionResult["deferredEvents"] = [];
 
   const [runAgentDataRes, action] = await startActiveObservation(
@@ -427,6 +427,7 @@ async function executeToolStreaming(
               : "internal",
             mcp_server_name: action.toolConfiguration.mcpServerName,
             conversation_id: conversation.sId,
+            agent_message_id: agentMessage.sId,
             ...(conversation.triggerId
               ? { trigger_id: conversation.triggerId }
               : {}),

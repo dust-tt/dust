@@ -13,7 +13,7 @@ export const codeInlineVariants = cva(
     "s-mx-0.5 s-my-0.5 s-cursor-text s-rounded-md s-border s-px-0.5 s-py-0",
     "s-border-border dark:s-border-border-night",
     "s-text-[0.90em]",
-    "s-text-golden-600 dark:s-text-golden-600-night",
+    "s-text-golden-700 dark:s-text-golden-700-night",
   ],
   {
     variants: {

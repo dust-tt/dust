@@ -1,5 +1,5 @@
+import type { GetBlockedActionsResponseType } from "@app/lib/api/assistant/conversation/blocked_actions";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetBlockedActionsResponseType } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/actions/blocked";
 import type { Fetcher } from "swr";
 
 export function useBlockedActions({

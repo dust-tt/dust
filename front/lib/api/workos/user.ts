@@ -21,11 +21,6 @@ import type {
   User as WorkOSUser,
 } from "@workos-inc/node";
 import { sealData, unsealData } from "iron-session";
-import type {
-  GetServerSidePropsContext,
-  NextApiRequest,
-  NextApiResponse,
-} from "next";
 
 export type SessionCookie = {
   sessionData: string;
@@ -39,23 +34,9 @@ export function getUserNicknameFromEmail(email: string) {
   return email.split("@")[0] ?? "";
 }
 
-export async function getWorkOSSession(
-  req: NextApiRequest | GetServerSidePropsContext["req"],
-  res: NextApiResponse | GetServerSidePropsContext["res"]
-): Promise<SessionWithUser | undefined> {
-  const { session, setCookies } = await getWorkOSSessionWithSetCookies(
-    req.cookies["workos_session"]
-  );
-  if (setCookies.length > 0) {
-    res.setHeader("Set-Cookie", setCookies);
-  }
-  return session;
-}
-
-// Framework-agnostic variant of getWorkOSSession: takes the raw cookie value
-// and returns the session along with any Set-Cookie header values that should
-// be added to the response. Used by Hono middlewares (which can't expose a
-// Next req/res pair).
+// Framework-agnostic session resolver: takes the raw cookie value and returns
+// the session along with any Set-Cookie header values that should be added to
+// the response. Used by Hono middlewares.
 export async function getWorkOSSessionWithSetCookies(
   workOSSessionCookie: string | undefined
 ): Promise<{

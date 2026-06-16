@@ -1,7 +1,11 @@
+import type {
+  SearchMembersAdminResponseBody,
+  SearchMembersResponseBody,
+} from "@app/lib/api/workspace";
 import { searchMembers } from "@app/lib/api/workspace";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { GROUP_KINDS } from "@app/types/groups";
-import type { UserTypeWithWorkspace } from "@app/types/user";
+import { toLightUserWithWorkspace } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -22,18 +26,18 @@ const SearchMembersQuerySchema = z.object({
     .optional(),
 });
 
-export type SearchMembersResponseBody = {
-  members: UserTypeWithWorkspace[];
-  total: number;
-};
-
 // Mounted at /api/w/:wId/members/search.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("query", SearchMembersQuerySchema),
-  async (ctx): HandlerResult<SearchMembersResponseBody> => {
+  async (
+    ctx
+  ): HandlerResult<
+    SearchMembersResponseBody | SearchMembersAdminResponseBody
+  > => {
     const auth = ctx.get("auth");
     const query = ctx.req.valid("query");
 
@@ -59,7 +63,16 @@ app.get(
       query
     );
 
-    return ctx.json({ members, total });
+    // Callers without member-management permission receive only minimal
+    // essential user data (LightUserType).
+    if (auth.hasPermission("workspace:manage_members")) {
+      return ctx.json({ members, total });
+    }
+
+    return ctx.json({
+      members: members.map(toLightUserWithWorkspace),
+      total,
+    });
   }
 );
 

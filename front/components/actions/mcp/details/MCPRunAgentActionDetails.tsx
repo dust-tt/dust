@@ -49,9 +49,9 @@ import {
   Button,
   CitationGrid,
   ContentMessage,
-  ExternalLinkIcon,
+  LinkExternal01,
   Markdown,
-  RobotIcon,
+  Robot,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
@@ -323,7 +323,7 @@ function MCPRunAgentActionDetailsDisplay({
           ? () => (
               <Avatar visual={childAgent.pictureUrl} size="xs" busy={isBusy} />
             )
-          : RobotIcon
+          : Robot
       }
     >
       {displayContext === "conversation" ? (
@@ -342,7 +342,7 @@ function MCPRunAgentActionDetailsDisplay({
                     content={query}
                     isStreaming={false}
                     forcedTextSize="text-sm"
-                    textColor="text-muted-foreground"
+                    textColor="text-muted-foreground dark:text-muted-foreground-night"
                     isLastMessage={false}
                     additionalMarkdownPlugins={additionalMarkdownPlugins}
                     additionalMarkdownComponents={additionalMarkdownComponents}
@@ -396,7 +396,7 @@ function MCPRunAgentActionDetailsDisplay({
                     </span>
                     {conversationUrl && (
                       <Button
-                        icon={ExternalLinkIcon}
+                        icon={LinkExternal01}
                         label="View full conversation"
                         variant="outline"
                         onClick={() => window.open(conversationUrl, "_blank")}
@@ -436,8 +436,6 @@ function MCPRunAgentActionDetailsDisplay({
                                   attachmentCitation={markdownCitationToAttachmentCitation(
                                     document
                                   )}
-                                  owner={owner}
-                                  conversationId={null}
                                 />
                               ))}
                           </CitationGrid>
@@ -450,11 +448,7 @@ function MCPRunAgentActionDetailsDisplay({
             {generatedFiles.length > 0 && (
               <div className="flex flex-col gap-2">
                 {generatedFiles.map((file) => (
-                  <ToolGeneratedFileDetails
-                    key={file.fileId}
-                    resource={file}
-                    owner={owner}
-                  />
+                  <ToolGeneratedFileDetails key={file.fileId} resource={file} />
                 ))}
               </div>
             )}

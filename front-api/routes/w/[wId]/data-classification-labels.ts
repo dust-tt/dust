@@ -1,5 +1,6 @@
 import config from "@app/lib/api/config";
 import {
+  type DataClassificationLabelsResponseBody,
   getMicrosoftSensitivityLabels,
   type MicrosoftSensitivityLabel,
   parseAllowedLabelsConfig,
@@ -72,11 +73,6 @@ const PostBodySchema = z
     }
   );
 
-interface GetDataClassificationLabelsResponseBody {
-  labels: MicrosoftSensitivityLabel[];
-  allowedLabels: MicrosoftAllowedLabel[];
-}
-
 interface PostDataClassificationLabelsResponseBody {
   config: WorkspaceSensitivityLabelConfigType;
 }
@@ -84,11 +80,12 @@ interface PostDataClassificationLabelsResponseBody {
 // Mounted at /api/w/:wId/data-classification-labels.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   ensureIsAdmin(),
   validate("query", SourceQuerySchema),
-  async (ctx): HandlerResult<GetDataClassificationLabelsResponseBody> => {
+  async (ctx): HandlerResult<DataClassificationLabelsResponseBody> => {
     const auth = ctx.get("auth");
 
     const featureFlags = await getFeatureFlags(auth);

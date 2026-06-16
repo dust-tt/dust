@@ -1,15 +1,15 @@
 import {
-  BoldIcon,
+  Bold01,
   Button,
-  CheckIcon,
-  CodeBlockIcon,
-  HeadingIcon,
-  ItalicIcon,
-  ListCheckIcon,
-  ListOrdered2Icon,
+  Check,
+  CheckDone01,
+  CodeSquare01,
+  Heading01,
+  Italic01,
+  List,
   Separator,
-  TagBlockIcon,
-  XMarkIcon,
+  TagBlock,
+  XClose,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import type { ReactNode } from "react";
@@ -38,14 +38,14 @@ export function InstructionsMenuBar({
   return (
     <div className="flex flex-1 flex-wrap items-center gap-2 px-3 py-2">
       <Button
-        icon={HeadingIcon}
+        icon={Heading01}
         size="icon"
         variant="ghost-secondary"
         tooltip="Heading"
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
       />
       <Button
-        icon={BoldIcon}
+        icon={Bold01}
         size="icon"
         variant="ghost-secondary"
         tooltip="Bold"
@@ -53,7 +53,7 @@ export function InstructionsMenuBar({
         onClick={() => editor.chain().focus().toggleBold().run()}
       />
       <Button
-        icon={ItalicIcon}
+        icon={Italic01}
         size="icon"
         variant="ghost-secondary"
         tooltip="Italic"
@@ -62,14 +62,14 @@ export function InstructionsMenuBar({
       />
       <Separator orientation="vertical" />
       <Button
-        icon={ListCheckIcon}
+        icon={CheckDone01}
         size="icon"
         variant="ghost-secondary"
         tooltip="Bulleted list"
         onClick={() => editor.chain().focus().toggleBulletList().run()}
       />
       <Button
-        icon={ListOrdered2Icon}
+        icon={List}
         size="icon"
         variant="ghost-secondary"
         tooltip="Ordered list"
@@ -77,7 +77,7 @@ export function InstructionsMenuBar({
       />
       <Separator orientation="vertical" />
       <Button
-        icon={CodeBlockIcon}
+        icon={CodeSquare01}
         size="icon"
         variant="ghost-secondary"
         tooltip="Code Block"
@@ -85,7 +85,7 @@ export function InstructionsMenuBar({
       />
       <Separator orientation="vertical" />
       <Button
-        icon={TagBlockIcon}
+        icon={TagBlock}
         size="icon"
         variant="ghost-secondary"
         tooltip="XML tag"
@@ -99,14 +99,14 @@ export function InstructionsMenuBar({
           <Button
             size="xs"
             variant="outline"
-            icon={XMarkIcon}
+            icon={XClose}
             label="Reject all"
             tooltip="Reject all suggestions"
             onClick={onRejectAll}
           />
           <Button
             size="xs"
-            icon={CheckIcon}
+            icon={Check}
             variant="highlight-secondary"
             label="Accept all"
             tooltip="Accept all suggestions"

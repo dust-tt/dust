@@ -1,16 +1,85 @@
+import { sourceLabelForOrigin } from "@app/lib/api/analytics/source_labels";
 import {
   bucketsToArray,
-  formatUTCDateFromMillis,
+  formatDateFromMillis,
   searchAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
 
+// Missing context_origin values are bucketed under this sentinel by the
+// aggregations, and the backfill (20251116_backfill_context_origin_analytics)
+// writes it as a literal value too. Filtering by it must therefore match both
+// the literal string and the absent-field case.
+export const UNKNOWN_CONTEXT_ORIGIN = "unknown";
+
+export function contextOriginFilter(
+  value: string | string[] | undefined
+): estypes.QueryDslQueryContainer[] {
+  if (value === undefined) {
+    return [];
+  }
+  const values = (Array.isArray(value) ? value : [value]).filter(
+    (v) => v.length > 0
+  );
+  if (values.length === 0) {
+    return [];
+  }
+
+  const valueClause: estypes.QueryDslQueryContainer =
+    values.length === 1
+      ? { term: { context_origin: values[0] } }
+      : { terms: { context_origin: values } };
+
+  if (!values.includes(UNKNOWN_CONTEXT_ORIGIN)) {
+    return [valueClause];
+  }
+
+  // "unknown" also covers rows with no context_origin, so OR the literal match
+  // with a missing-field clause.
+  return [
+    {
+      bool: {
+        should: [
+          valueClause,
+          { bool: { must_not: { exists: { field: "context_origin" } } } },
+        ],
+        minimum_should_match: 1,
+      },
+    },
+  ];
+}
+
 export type ContextOriginBucket = {
   origin: string;
   count: number;
 };
+
+export type LabeledSource = {
+  label: string;
+  count: number;
+};
+
+// Maps raw context_origin buckets to the dashboard's display labels, merging
+// origins that share a label (e.g. triggered + triggered_programmatic ->
+// "Trigger"). Origins outside the visible set — including the "unknown"
+// sentinel — are dropped, mirroring the usage page's source chart.
+export function toLabeledSources(
+  buckets: ContextOriginBucket[]
+): LabeledSource[] {
+  const countByLabel = new Map<string, number>();
+  for (const bucket of buckets) {
+    const label = sourceLabelForOrigin(bucket.origin);
+    if (!label) {
+      continue;
+    }
+    countByLabel.set(label, (countByLabel.get(label) ?? 0) + bucket.count);
+  }
+  return Array.from(countByLabel.entries())
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count);
+}
 
 type ContextOriginAggs = {
   by_origin?: estypes.AggregationsMultiBucketAggregateBase<{
@@ -27,7 +96,7 @@ export async function fetchContextOriginBreakdown(
       terms: {
         field: "context_origin",
         size: 20,
-        missing: "unknown",
+        missing: UNKNOWN_CONTEXT_ORIGIN,
       },
     },
   };
@@ -92,7 +161,7 @@ export async function fetchContextOriginDailyBreakdown(
           terms: {
             field: "context_origin",
             size: 20,
-            missing: "unknown",
+            missing: UNKNOWN_CONTEXT_ORIGIN,
           },
         },
       },
@@ -115,7 +184,7 @@ export async function fetchContextOriginDailyBreakdown(
   const points: ContextOriginDailyPoint[] = [];
 
   for (const dateBucket of dateBuckets) {
-    const date = formatUTCDateFromMillis(dateBucket.key);
+    const date = formatDateFromMillis(dateBucket.key, timezone);
     const originBuckets = bucketsToArray<OriginSubBucket>(
       dateBucket.by_origin?.buckets
     );
@@ -131,3 +200,19 @@ export async function fetchContextOriginDailyBreakdown(
 
   return new Ok(points);
 }
+
+export type GetContextOriginResponse = {
+  total: number;
+  buckets: {
+    origin: string;
+    count: number;
+  }[];
+};
+
+export type GetWorkspaceContextOriginResponse = {
+  total: number;
+  buckets: {
+    origin: string;
+    count: number;
+  }[];
+};

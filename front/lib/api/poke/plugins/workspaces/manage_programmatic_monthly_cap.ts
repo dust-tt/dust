@@ -10,6 +10,7 @@ import {
   upsertMetronomeProgrammaticCapAlerts,
 } from "@app/lib/metronome/alerts/programmatic_cap";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { isCreditPricedPlan } from "@app/types/plan";
 import { Err, Ok } from "@app/types/shared/result";
 import { z } from "zod";
 
@@ -47,6 +48,14 @@ export const manageProgrammaticMonthlyCapPlugin = createPlugin({
         async: true,
       },
     },
+  },
+
+  // Programmatic cap alerts are AWU-credit based: only meaningful on
+  // credit-priced (new-pricing) plans. Legacy programmatic usage is billed in
+  // USD via Stripe PAYG and must never create Metronome alerts.
+  isApplicableTo: (auth) => {
+    const plan = auth.plan();
+    return plan !== null && isCreditPricedPlan(plan);
   },
 
   populateAsyncArgs: async (_auth, workspace) => {
@@ -96,6 +105,16 @@ export const manageProgrammaticMonthlyCapPlugin = createPlugin({
   execute: async (auth, workspace, rawArgs) => {
     if (!workspace) {
       return new Err(new Error("Cannot find workspace."));
+    }
+
+    const plan = auth.plan();
+    if (!plan || !isCreditPricedPlan(plan)) {
+      return new Err(
+        new Error(
+          "Programmatic monthly cap only applies to credit-priced plans. " +
+            "Legacy programmatic usage is billed in USD via Stripe PAYG."
+        )
+      );
     }
 
     const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);

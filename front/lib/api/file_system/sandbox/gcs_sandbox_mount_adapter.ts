@@ -17,6 +17,11 @@ import type { SandboxMountAdapter } from "./sandbox_mount_adapter";
 
 const MOUNT_TIMEOUT_MS = 30_000;
 
+const TOKEN_SERVER_URL = "http://127.0.0.1:9876";
+const TOKEN_SERVER_POLL_ATTEMPTS = 100;
+const TOKEN_SERVER_POLL_INTERVAL_SECONDS = 0.05;
+const TOKEN_SERVER_EXEC_TIMEOUT_MS = 10_000;
+
 export type GCSMountTarget = {
   /**
    * GCS object prefix, no trailing slash, e.g. `w/{wId}/conversations/{cId}/files`.
@@ -26,7 +31,7 @@ export type GCSMountTarget = {
   sandboxMountPoint: string;
   /**
    * When set, a symlink is created from this path to `sandboxMountPoint` after mounting
-   * so that old hardcoded paths (`/files/conversation`, `/files/project`) keep working.
+   * so that old hardcoded paths (`/files/conversation`, `/files/pod`) keep working.
    */
   legacySandboxMountPoint: string | null;
 };
@@ -82,40 +87,36 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
       return tokenResult;
     }
 
-    // 2. Write token file into the sandbox.
+    // 2-3. Write the token file, start the token server, and poll it ready in
+    // ONE exec. Polling every 50ms returns the instant the server is listening
+    // instead of a flat sleep 1, and folds three round-trips into one.
     const tokenJson = buildTokenJson(tokenResult.value);
-    const writeResult = await sandbox.exec(
+    const tokenServerResult = await sandbox.exec(
       auth,
-      `printf '%s' '${escapeSingleQuotes(tokenJson)}' > /tmp/token.json`
+      `printf '%s' '${escapeSingleQuotes(tokenJson)}' > /tmp/token.json; ` +
+        "nohup bash /home/agent/.bin/token-server.sh > /tmp/server.log 2>&1 & " +
+        `i=0; while [ $i -lt ${TOKEN_SERVER_POLL_ATTEMPTS} ]; do ` +
+        `curl -sf ${TOKEN_SERVER_URL} > /dev/null 2>&1 && exit 0; ` +
+        `sleep ${TOKEN_SERVER_POLL_INTERVAL_SECONDS}; i=$((i+1)); ` +
+        "done; exit 1",
+      { timeoutMs: TOKEN_SERVER_EXEC_TIMEOUT_MS }
     );
-    if (writeResult.isErr()) {
+    if (tokenServerResult.isErr()) {
       childLogger.error(
-        { err: writeResult.error },
-        "GCS sandbox mount: failed to write token file"
+        { err: tokenServerResult.error },
+        "GCS sandbox mount: token server exec failed"
       );
-      return writeResult;
+      return tokenServerResult;
     }
-
-    // 3. Start the token HTTP server (baked into the image at token-server.sh) and wait for :9876.
-    const startResult = await sandbox.exec(
-      auth,
-      "bash /home/agent/.bin/token-server.sh > /tmp/server.log 2>&1 &"
-    );
-    if (startResult.isErr()) {
+    if (tokenServerResult.value.exitCode !== 0) {
+      const msg = "GCS token server not ready in time";
       childLogger.error(
-        { err: startResult.error },
-        "GCS sandbox mount: failed to start token server"
+        {
+          stdout: tokenServerResult.value.stdout,
+          stderr: tokenServerResult.value.stderr,
+        },
+        msg
       );
-      return startResult;
-    }
-
-    const checkResult = await sandbox.exec(
-      auth,
-      "sleep 1 && curl -sf http://127.0.0.1:9876 > /dev/null 2>&1"
-    );
-    if (checkResult.isErr() || checkResult.value.exitCode !== 0) {
-      const msg = "GCS token server not ready after 1s";
-      childLogger.error({}, msg);
       return new Err(new Error(msg));
     }
 
@@ -260,7 +261,7 @@ function buildMountCommand({
 }): RootCommand {
   const flags = [
     "--token-url",
-    "http://127.0.0.1:9876",
+    TOKEN_SERVER_URL,
     // Disable token caching so gcsfuse fetches a fresh credential on every GCS API request.
     "--reuse-token-from-url=false",
     "--only-dir",

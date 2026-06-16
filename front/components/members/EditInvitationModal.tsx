@@ -8,7 +8,7 @@ import type { MembershipInvitationType } from "@app/types/membership_invitation"
 import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
 import {
   Button,
-  MovingMailIcon,
+  Mail01,
   Page,
   Sheet,
   SheetContainer,
@@ -16,7 +16,7 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  XMarkIcon,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useContext, useEffect, useState } from "react";
 
@@ -120,7 +120,7 @@ export function EditInvitationModal({
                 <Button
                   variant="primary"
                   label="Send invitation again"
-                  icon={MovingMailIcon}
+                  icon={Mail01}
                   onClick={async () => {
                     await sendInvitations({
                       owner,
@@ -134,7 +134,7 @@ export function EditInvitationModal({
                 <Button
                   variant="warning"
                   label="Revoke invitation"
-                  icon={XMarkIcon}
+                  icon={XClose}
                   disabled={owner.ssoEnforced}
                   onClick={async () => {
                     await updateInvitation({

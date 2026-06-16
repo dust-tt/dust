@@ -1,0 +1,13 @@
+{
+  "action": "dust_mcp_server.settings_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    }
+  ],
+  "metadata": {
+    "disabled": "string",
+    "accept_all_redirect_uris": "string",
+    "allowed_redirect_uris": "string"
+  }
+}

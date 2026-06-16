@@ -2,6 +2,7 @@ import {
   MCPServerInstanceLimitError,
   registerMCPServer,
 } from "@app/lib/api/actions/mcp/client_side_registry";
+import { maybePersistDustDesktopClientSideMCPServerRegistration } from "@app/lib/api/actions/mcp/dust_desktop";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -28,6 +29,7 @@ export type PostMCPRegisterRequestBody = z.infer<
 // Mounted at /api/w/:wId/mcp/register.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostMCPRegisterRequestBodySchema),
@@ -53,6 +55,11 @@ app.post(
         api_error: { type: "internal_server_error", message: error.message },
       });
     }
+
+    await maybePersistDustDesktopClientSideMCPServerRegistration(auth, {
+      serverName,
+      serverId: registration.value.serverId,
+    });
 
     return ctx.json(registration.value);
   }

@@ -5,10 +5,22 @@ import { Button } from "@sparkle/components/Button";
 import { AnchoredPopover } from "@sparkle/components/Popover";
 
 const meta = {
-  title: "Components/AnchoredPopover",
+  title: "Overlays/AnchoredPopover",
   component: AnchoredPopover,
   parameters: {
     layout: "centered",
+    docs: {
+      description: {
+        component: `A **Popover** variant positioned against an arbitrary element rather than its own trigger. Pass an \`anchorRef\` (a ref to the element to attach to) along with \`open\`, \`side\`, \`align\`, and \`sideOffset\` to control placement; the anchor can be changed at runtime to move the popover between targets.
+
+**When to use**
+- When the popover must point at an element that is not the control that opened it (e.g. floating over a canvas item or a moving target).
+
+**Guidelines**
+- You own the \`open\` state and the \`anchorRef\` — wire them up explicitly.
+- For the common case where the popover is anchored to its own trigger, use **Popover** / **PopoverRoot** instead.`,
+      },
+    },
   },
   tags: ["autodocs"],
 } satisfies Meta<typeof AnchoredPopover>;

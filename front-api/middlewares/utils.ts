@@ -1,4 +1,3 @@
-import { getClientIp } from "@app/lib/utils/request";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
@@ -8,7 +7,9 @@ import type {
   APIErrorType,
   APIErrorWithContentfulStatusCode,
 } from "@app/types/error";
+import { EXPECTED_API_ERROR_TYPES } from "@app/types/error";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { getClientIpFromContext } from "@front-api/lib/request";
 import type { Context, ErrorHandler, TypedResponse } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { routePath } from "hono/route";
@@ -42,10 +43,17 @@ export function apiError(
     stack: error?.stack ?? callstack,
   };
 
-  logger.error(
+  // Some error types are expected outcomes of normal operation (e.g. a region
+  // redirect) rather than failures. Log those at `info` so they don't pollute
+  // error monitoring.
+  const logLevel = EXPECTED_API_ERROR_TYPES.has(err.api_error.type)
+    ? "info"
+    : "error";
+
+  logger[logLevel](
     {
       method: ctx.req.method,
-      url: ctx.req.url,
+      url: ctx.req.path,
       statusCode: err.status_code,
       apiError: { ...err, callstack },
       error: errorAttrs,
@@ -114,14 +122,9 @@ export const unhandledErrorHandler: ErrorHandler = (err, ctx) => {
   const error = normalizeError(err);
   const sequelizeDetails = getSequelizeErrorDetails(error);
 
-  const headers: Record<string, string | string[] | undefined> = {};
-  ctx.req.raw.headers.forEach((value, key) => {
-    headers[key] = value;
-  });
-
   logger.error(
     {
-      clientIp: getClientIp({ headers }),
+      clientIp: getClientIpFromContext(ctx),
       method: ctx.req.method,
       route: routePath(ctx) ?? ctx.req.path,
       url: ctx.req.path,
@@ -129,6 +132,10 @@ export const unhandledErrorHandler: ErrorHandler = (err, ctx) => {
         name: error.name,
         message: error.message || "unknown",
         stack: error.stack,
+        // `TypeError: fetch failed` and similar wrappers carry the real reason
+        // (ECONNREFUSED, ENOTFOUND, timeouts, ...) on `cause` — log it so these
+        // are diagnosable from the message alone.
+        ...(error.cause ? { cause: error.cause } : {}),
         ...(sequelizeDetails ? { sequelizeDetails } : {}),
       },
       error_stack: error.stack,

@@ -2,25 +2,12 @@
 import {
   downloadAndUploadToolFile,
   getToolAccessToken,
+  ToolUploadRequestBodySchema,
 } from "@app/lib/search/tools/search";
 import type { FileType } from "@app/types/files";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { z } from "zod";
-
-const ToolUploadRequestBodySchema = z.object({
-  serverViewId: z.string().min(1, "serverViewId is required"),
-  externalId: z.string().min(1, "externalId is required"),
-  conversationId: z.string().optional(), // TODO(seb): remove after the next extension release + a few days.
-  useCase: z.enum(["conversation", "project_context"]).default("conversation"),
-  useCaseMetadata: z.object({
-    conversationId: z.string().optional(),
-    spaceId: z.string().optional(),
-  }),
-  serverName: z.string().optional(),
-  serverIcon: z.string().optional(),
-});
 
 interface ToolUploadResponseBody {
   file: FileType;

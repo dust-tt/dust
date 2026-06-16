@@ -19,6 +19,7 @@ const QuerySchema = z.object({
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/observability/datasource-retrieval.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

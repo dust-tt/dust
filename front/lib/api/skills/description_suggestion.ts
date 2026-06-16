@@ -5,6 +5,16 @@ import type { Authenticator } from "@app/lib/auth";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { z } from "zod";
+
+export const PostSkillSuggestionsRequestBodySchema = z.object({
+  instructions: z.string(),
+  agentFacingDescription: z.string(),
+  tools: z.array(z.object({ name: z.string(), description: z.string() })),
+});
+export type PostSkillSuggestionsRequestBody = z.infer<
+  typeof PostSkillSuggestionsRequestBodySchema
+>;
 
 const FUNCTION_NAME = "send_suggestion";
 

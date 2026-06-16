@@ -178,3 +178,8 @@ export type PluginListItem = Pick<
   PluginManifest<PluginArgs, SupportedResourceType>,
   "id" | "name" | "description" | "readonly"
 >;
+
+export interface SandboxKillRequestResponseBody {
+  workflowId: string;
+  temporalLink: string;
+}

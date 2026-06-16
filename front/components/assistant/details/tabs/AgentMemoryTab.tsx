@@ -16,7 +16,7 @@ import {
   DialogTitle,
   Page,
   Spinner,
-  TrashIcon,
+  Trash01,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -125,7 +125,7 @@ export function AgentMemoryTab({
         ) : (
           <>
             {memories.length === 0 ? (
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 No memories yet.
               </div>
             ) : (
@@ -138,7 +138,7 @@ export function AgentMemoryTab({
                     action={
                       <CardActionButton
                         size="icon"
-                        icon={TrashIcon}
+                        icon={Trash01}
                         onClick={() => {
                           setMemoryToDelete(memory.sId);
                         }}
@@ -146,7 +146,7 @@ export function AgentMemoryTab({
                     }
                   >
                     <div className="flex flex-col gap-2">
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
                         {timeAgoFrom(new Date(memory.lastUpdated).getTime())}{" "}
                         ago
                       </div>

@@ -1,14 +1,10 @@
 import config from "@app/lib/api/config";
+import type { SandboxKillRequestResponseBody } from "@app/lib/api/poke/types";
 import { launchSandboxKillRequesterWorkflow } from "@app/temporal/sandbox_reaper/kill_requester/client";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export interface SandboxKillRequestResponseBody {
-  workflowId: string;
-  temporalLink: string;
-}
 
 const RequestBodySchema = z.object({
   baseImage: z.string().min(1),
@@ -25,6 +21,7 @@ function buildTemporalLink(workflowId: string): string {
 // Mounted at /api/poke/sandbox_kill/request.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", RequestBodySchema),

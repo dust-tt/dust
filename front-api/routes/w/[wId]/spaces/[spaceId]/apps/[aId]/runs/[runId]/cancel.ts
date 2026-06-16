@@ -1,3 +1,4 @@
+import type { PostRunCancelResponseBody } from "@app/lib/api/apps";
 import config from "@app/lib/api/config";
 import { AppResource } from "@app/lib/resources/app_resource";
 import logger from "@app/logger/logger";
@@ -14,13 +15,10 @@ const ParamsSchema = z.object({
   runId: z.string(),
 });
 
-export type PostRunCancelResponseBody = {
-  success: boolean;
-};
-
 // Mounted under /api/w/:wId/spaces/:spaceId/apps/:aId/runs/:runId/cancel.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

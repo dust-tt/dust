@@ -1,14 +1,33 @@
 import type { Authenticator } from "@app/lib/auth";
-import {
-  getCachedDefaultCapThreshold,
-  getCachedPerUserCapThresholds,
-  getMetronomeDefaultUserCapAlert,
-  listMetronomePerUserCapsForWorkspace,
+import { listPerUserCreditBalanceAlertsForWorkspace } from "@app/lib/metronome/alerts/per_user_credit_balance";
+import type {
+  MetronomeCapAlertIds,
+  MetronomeCapAlertInfo,
 } from "@app/lib/metronome/alerts/spend_limits";
 import {
+  getCachedDefaultCapThresholdsBySeatType,
+  getCachedPerUserCapAlertIds,
+  getMetronomeDefaultUserCapAlertForSeatType,
+  getMetronomeDefaultUserWarningAlertForSeatType,
+  listMetronomePerUserCapsForWorkspace,
+  listMetronomePerUserWarningAlertsForWorkspace,
+} from "@app/lib/metronome/alerts/spend_limits";
+import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
+import {
+  listContractPerUserCreditBalances,
+  listMetronomeSeatBalances,
+} from "@app/lib/metronome/client";
+import {
+  CONTRACT_CREDIT_TYPE_FREE_SEAT,
+  FREE_SEAT_LIFETIME_AWU_CREDITS,
+  getCreditTypeAwuId,
+} from "@app/lib/metronome/constants";
+import {
   fetchPerUserAwuUsage,
-  getCachedPerUserAwuUsage,
+  getPerUserAwuUsage,
 } from "@app/lib/metronome/per_user_usage";
+import { getActiveContract } from "@app/lib/metronome/plan_type";
+import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
 import {
   buildSeatDataByUserId,
   getCachedSeatDataByUserId,
@@ -17,10 +36,25 @@ import {
 import type { BillingFrequency } from "@app/lib/metronome/types";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { resolveEffectiveSpendLimitAwuCredits } from "@app/lib/spend_limits/effective";
+import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
+import {
+  resolveEffectiveSpendLimitAwuCredits,
+  resolveEffectiveSpendLimitSource,
+} from "@app/lib/spend_limits/effective";
 import logger from "@app/logger/logger";
-import type { MembershipSeatType } from "@app/types/memberships";
+import type {
+  MembershipSeatType,
+  NormalizedPoolLimitSeatType,
+  UserCreditState,
+} from "@app/types/memberships";
+import {
+  MEMBERSHIP_SEAT_TYPES,
+  NORMALIZED_POOL_LIMIT_SEAT_TYPES,
+  normalizeToPoolLimitSeatType,
+  toBaseSeatType,
+} from "@app/types/memberships";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 import { z } from "zod";
 
 export type MemberUsageType = {
@@ -32,6 +66,13 @@ export type MemberUsageType = {
   // Per-user AWU allocation granted by the seat (in credits). Null when the
   // user has no seat or the seat carries no allocation.
   memberUsageLimit: number | null;
+  // Live Metronome per-seat AWU balance remaining (the amount Metronome has
+  // not yet drained from the seat grant). Null when the user has no individual
+  // seat allocation (pool-based seat) or seat balances couldn't be read. This
+  // is the same signal the seat-balance alerts fire on, so it can differ from
+  // `memberUsageLimit - consumedFromAllowanceAwuCredits` when usage isn't fully
+  // drawn from the seat grant.
+  seatBalanceAwu: number | null;
   // Total user AWU consumption for the period, regardless of whether it
   // was covered by the seat allocation or overflowed into the workspace
   // pool.
@@ -53,12 +94,46 @@ export type MemberUsageType = {
   scheduledSeatChangeAt: string | null;
   // Per-user total spend cap in AWU credits for the billing period
   spendLimitAwuCredits: number | null;
+  // Where `spendLimitAwuCredits` comes from: a user-specific `override`, the
+  // seat-type `default`, or `none` (no cap configured / unlimited).
+  spendLimitSource: EffectiveSpendLimitSource;
+  // Id of the Metronome alert backing the effective cap (override or default),
+  // for deep-linking to the dashboard. Null when uncapped.
+  spendLimitAlertId: string | null;
+  // Id of the companion 80% warning alert for the effective cap. Null when
+  // uncapped or no warning alert exists.
+  spendLimitWarningAlertId: string | null;
+  // Per-user free-credit balance alerts (low at 20%, empty at 0), each with its
+  // current Metronome status for the `AlertChip` badges. Free seats only, and
+  // only populated when alert links are requested (poke). Null otherwise.
+  freeCreditLowAlert: MetronomeAlertRef | null;
+  freeCreditEmptyAlert: MetronomeAlertRef | null;
+  // Per-user credit state machine state (personal-credits → pool → capped
+  // progression) persisted on the membership. Surfaced for debugging.
+  creditState: UserCreditState;
 };
 
 export type GetMembersUsageResponseBody = {
   members: MemberUsageType[];
   total: number;
 };
+
+// Workspace seats have a zero AWU allocation, so `buildSeatDataByUserId` skips
+// them and we never get a Metronome-derived billing frequency. The cadence is
+// still encoded in the seat type itself, so derive it from there as a fallback
+// to display the period like for other seats.
+function deriveWorkspaceSeatBillingFrequency(
+  seatType: MembershipSeatType | null
+): BillingFrequency | null {
+  switch (seatType) {
+    case "workspace":
+      return "MONTHLY";
+    case "workspace_yearly":
+      return "ANNUAL";
+    default:
+      return null;
+  }
+}
 
 export const DEFAULT_MEMBERS_USAGE_PAGE_LIMIT = 50;
 export const MAX_MEMBERS_USAGE_PAGE_LIMIT = 150;
@@ -72,6 +147,13 @@ export const MembersUsagePaginationSchema = z.object({
     .catch(DEFAULT_MEMBERS_USAGE_PAGE_LIMIT),
   offset: z.coerce.number().int().min(0).catch(0),
   search: z.string().optional().catch(undefined),
+  // Members are ordered by name (ascending) by default, giving a stable order
+  // for pagination instead of relevance ranking.
+  orderColumn: z.enum(["name", "email"]).catch("name"),
+  orderDirection: z.enum(["asc", "desc"]).catch("asc"),
+  // Optional seat-type filter. A base seat type (e.g. "pro") matches its
+  // monthly and yearly variants; "none" matches members with no seat.
+  seatType: z.enum(MEMBERSHIP_SEAT_TYPES).optional().catch(undefined),
 });
 
 export type MembersUsagePaginationInput = z.infer<
@@ -81,13 +163,16 @@ export type MembersUsagePaginationInput = z.infer<
 async function fetchPerUserUsageCreditsForMembersTableUncached({
   metronomeCustomerId,
   metronomeContractId,
+  userIds,
 }: {
   metronomeCustomerId: string;
   metronomeContractId: string;
+  userIds: string[];
 }): Promise<Map<string, number>> {
   const result = await fetchPerUserAwuUsage({
     metronomeCustomerId,
     metronomeContractId,
+    userIds,
   });
   if (result.isErr()) {
     logger.warn(
@@ -102,22 +187,21 @@ async function fetchPerUserUsageCreditsForMembersTableUncached({
 async function fetchPerUserUsageCreditsForMembersTable({
   metronomeCustomerId,
   metronomeContractId,
+  userIds,
 }: {
   metronomeCustomerId: string | null;
   metronomeContractId: string | null;
+  userIds: string[];
 }): Promise<Map<string, number>> {
-  if (!metronomeCustomerId || !metronomeContractId) {
+  if (!metronomeCustomerId || !metronomeContractId || userIds.length === 0) {
     return new Map();
   }
   try {
-    return new Map(
-      Object.entries(
-        await getCachedPerUserAwuUsage({
-          metronomeCustomerId,
-          metronomeContractId,
-        })
-      )
-    );
+    return await getPerUserAwuUsage({
+      metronomeCustomerId,
+      metronomeContractId,
+      userIds,
+    });
   } catch (err) {
     logger.warn(
       { err: normalizeError(err), metronomeCustomerId },
@@ -126,6 +210,7 @@ async function fetchPerUserUsageCreditsForMembersTable({
     return fetchPerUserUsageCreditsForMembersTableUncached({
       metronomeCustomerId,
       metronomeContractId,
+      userIds,
     });
   }
 }
@@ -137,10 +222,18 @@ async function fetchSeatDataForMembersTableUncached({
   metronomeCustomerId: string;
   metronomeContractId: string;
 }): Promise<Map<string, SeatData>> {
-  return buildSeatDataByUserId({
+  const seatDataResult = await buildSeatDataByUserId({
     metronomeCustomerId,
     contractId: metronomeContractId,
   });
+  if (seatDataResult.isErr()) {
+    logger.warn(
+      { err: seatDataResult.error, metronomeCustomerId },
+      "[MembersUsage] Failed to build seat data, degrading to empty map"
+    );
+    return new Map();
+  }
+  return seatDataResult.value;
 }
 
 async function fetchSeatDataForMembersTable({
@@ -174,98 +267,216 @@ async function fetchSeatDataForMembersTable({
   }
 }
 
-async function fetchPerUserCapOverridesUncached({
+// Live per-seat AWU balance remaining, keyed by userId. Degrades to an empty
+// map on any read failure so the members table still renders (the column just
+// shows "-"). Mirrors how the seat-balance alerts read the same source.
+async function fetchSeatBalancesForMembersTable({
   metronomeCustomerId,
-  workspaceId,
+  metronomeContractId,
 }: {
-  metronomeCustomerId: string;
-  workspaceId: string;
+  metronomeCustomerId: string | null;
+  metronomeContractId: string | null;
 }): Promise<Map<string, number>> {
-  const result = await listMetronomePerUserCapsForWorkspace({
+  if (!metronomeCustomerId || !metronomeContractId) {
+    return new Map();
+  }
+  const result = await listMetronomeSeatBalances({
     metronomeCustomerId,
-    workspaceId,
+    metronomeContractId,
   });
   if (result.isErr()) {
     logger.warn(
-      { err: result.error, workspaceId },
-      "[MembersUsage] Failed to fetch per-user spend caps"
+      { err: result.error, metronomeCustomerId },
+      "[MembersUsage] Failed to fetch seat balances, degrading to empty map"
     );
     return new Map();
   }
-
-  const thresholds = new Map<string, number>();
-  for (const [userId, entry] of result.value) {
-    thresholds.set(userId, entry.alert.threshold);
+  const awuCreditTypeId = getCreditTypeAwuId();
+  const balanceByUserId = new Map<string, number>();
+  for (const seat of result.value) {
+    const awu = seat.balances.find((b) => b.credit_type_id === awuCreditTypeId);
+    if (awu) {
+      balanceByUserId.set(seat.seat_id, awu.balance);
+    }
   }
 
-  return thresholds;
+  // Free seats hold a per-user contract credit rather than a seat balance, so
+  // they're absent from `listMetronomeSeatBalances`. Fill their remaining
+  // balance in from the per-user credits — but only when the user has no seat
+  // balance: a user who switched free → pro/max still has a leftover free
+  // credit, and it must not overwrite their (real) pro/max seat balance.
+  // Degrades silently on read failure.
+  const perUserCreditBalances = await listContractPerUserCreditBalances({
+    metronomeCustomerId,
+    metronomeContractId,
+    contractCreditType: CONTRACT_CREDIT_TYPE_FREE_SEAT,
+  });
+  if (perUserCreditBalances.isOk()) {
+    for (const [userId, { balanceAwu }] of perUserCreditBalances.value) {
+      if (!balanceByUserId.has(userId)) {
+        balanceByUserId.set(userId, balanceAwu);
+      }
+    }
+  } else {
+    logger.warn(
+      { err: perUserCreditBalances.error, metronomeCustomerId },
+      "[MembersUsage] Failed to fetch per-user credit balances, skipping"
+    );
+  }
+
+  return balanceByUserId;
 }
 
-async function fetchDefaultCapUncached({
+async function fetchPerUserCapAlertIdsUncached({
   metronomeCustomerId,
   workspaceId,
 }: {
   metronomeCustomerId: string;
   workspaceId: string;
-}): Promise<number | null> {
-  const result = await getMetronomeDefaultUserCapAlert({
-    metronomeCustomerId,
-    workspaceId,
-  });
-  if (result.isErr()) {
+}): Promise<Map<string, MetronomeCapAlertIds>> {
+  const [capsResult, warningsResult] = await Promise.all([
+    listMetronomePerUserCapsForWorkspace({ metronomeCustomerId, workspaceId }),
+    listMetronomePerUserWarningAlertsForWorkspace({
+      metronomeCustomerId,
+      workspaceId,
+    }),
+  ]);
+  if (capsResult.isErr()) {
     logger.warn(
-      { err: result.error, workspaceId },
-      "[MembersUsage] Failed to fetch default spend cap"
+      { err: capsResult.error, workspaceId },
+      "[MembersUsage] Failed to fetch per-user spend cap alerts"
     );
-    return null;
+    return new Map();
+  }
+  const warnings = warningsResult.isErr() ? new Map() : warningsResult.value;
+
+  const caps = new Map<string, MetronomeCapAlertIds>();
+  for (const [userId, entry] of capsResult.value) {
+    caps.set(userId, {
+      alertId: entry.alert.id,
+      warningAlertId: warnings.get(userId)?.alert.id ?? null,
+    });
   }
 
-  return result.value?.alert.threshold ?? null;
+  return caps;
+}
+
+async function fetchDefaultCapsBySeatTypeUncached({
+  metronomeCustomerId,
+  workspaceId,
+}: {
+  metronomeCustomerId: string;
+  workspaceId: string;
+}): Promise<
+  Partial<Record<NormalizedPoolLimitSeatType, MetronomeCapAlertInfo>>
+> {
+  const caps: Partial<
+    Record<NormalizedPoolLimitSeatType, MetronomeCapAlertInfo>
+  > = {};
+  for (const seatType of NORMALIZED_POOL_LIMIT_SEAT_TYPES) {
+    const [capResult, warningResult] = await Promise.all([
+      getMetronomeDefaultUserCapAlertForSeatType({
+        metronomeCustomerId,
+        workspaceId,
+        seatType,
+      }),
+      getMetronomeDefaultUserWarningAlertForSeatType({
+        metronomeCustomerId,
+        workspaceId,
+        seatType,
+      }),
+    ]);
+    if (capResult.isErr()) {
+      logger.warn(
+        { err: capResult.error, workspaceId, seatType },
+        "[MembersUsage] Failed to fetch default spend cap for seat type"
+      );
+      continue;
+    }
+    if (capResult.value) {
+      caps[seatType] = {
+        threshold: capResult.value.alert.threshold,
+        alertId: capResult.value.alert.id,
+        warningAlertId: warningResult.isOk()
+          ? (warningResult.value?.alert.id ?? null)
+          : null,
+      };
+    }
+  }
+  return caps;
 }
 
 /**
- * Resolve the effective per-user spend limit for the members table:
- *   - if the user has a per-user override, the override threshold wins
- *   - otherwise, the workspace default (if any) applies
- *   - otherwise, the user is uncapped (`null`)
- *
- * Returns a `{ perUser, default }` pair so the caller can compute the
- * effective value with `perUser.get(userId) ?? default` for each member —
- * including members that don't appear in the overrides map.
+ * Resolve the inputs needed to compute the effective per-user spend limit for
+ * the members table:
+ *   - the per-seat-type default cap thresholds (Metronome alerts)
+ *   - the per-seat-type seat allowances, used to derive the total threshold
+ *     from the pool-only override persisted on each membership
+ *   - the per-user override alerts, fetched from Metronome only when alert
+ *     deep links are requested (the override *threshold* comes from the DB)
  */
 async function fetchEffectivePerUserSpendLimits({
   metronomeCustomerId,
   workspaceId,
+  includeAlertLinks,
 }: {
   metronomeCustomerId: string | null;
   workspaceId: string;
+  includeAlertLinks: boolean;
 }): Promise<{
-  perUserOverrides: Map<string, number>;
-  defaultAwuCredits: number | null;
+  perUserOverrideAlerts: Map<string, MetronomeCapAlertIds>;
+  defaultAwuCreditsBySeatType: Partial<
+    Record<NormalizedPoolLimitSeatType, MetronomeCapAlertInfo>
+  >;
+  seatAllowanceBySeatType: Partial<Record<NormalizedPoolLimitSeatType, number>>;
 }> {
   if (!metronomeCustomerId) {
-    return { perUserOverrides: new Map(), defaultAwuCredits: null };
+    return {
+      perUserOverrideAlerts: new Map(),
+      defaultAwuCreditsBySeatType: {},
+      seatAllowanceBySeatType: {},
+    };
   }
 
-  const [perUserOverrides, defaultAwuCredits] = await Promise.all([
-    fetchPerUserCapOverrides({ metronomeCustomerId, workspaceId }),
-    fetchDefaultCap({ metronomeCustomerId, workspaceId }),
-  ]);
+  const [perUserOverrideAlerts, defaultAwuCreditsBySeatType] =
+    await Promise.all([
+      includeAlertLinks
+        ? fetchPerUserCapAlertIds({ metronomeCustomerId, workspaceId })
+        : Promise.resolve(new Map<string, MetronomeCapAlertIds>()),
+      fetchDefaultCapsBySeatType({ metronomeCustomerId, workspaceId }),
+    ]);
 
-  return { perUserOverrides, defaultAwuCredits };
+  let seatAllowanceBySeatType: Partial<
+    Record<NormalizedPoolLimitSeatType, number>
+  > = {};
+  try {
+    seatAllowanceBySeatType =
+      await getSeatAllowancesByNormalizedSeatType(workspaceId);
+  } catch (err) {
+    logger.warn(
+      { err: normalizeError(err), workspaceId },
+      "[MembersUsage] Failed to resolve seat allowances, degrading to pool-only override thresholds"
+    );
+  }
+
+  return {
+    perUserOverrideAlerts,
+    defaultAwuCreditsBySeatType,
+    seatAllowanceBySeatType,
+  };
 }
 
-async function fetchPerUserCapOverrides({
+async function fetchPerUserCapAlertIds({
   metronomeCustomerId,
   workspaceId,
 }: {
   metronomeCustomerId: string;
   workspaceId: string;
-}): Promise<Map<string, number>> {
+}): Promise<Map<string, MetronomeCapAlertIds>> {
   try {
     return new Map(
       Object.entries(
-        await getCachedPerUserCapThresholds({
+        await getCachedPerUserCapAlertIds({
           metronomeCustomerId,
           workspaceId,
         })
@@ -274,56 +485,306 @@ async function fetchPerUserCapOverrides({
   } catch (err) {
     logger.warn(
       { err: normalizeError(err), workspaceId },
-      "[MembersUsage] Failed to read cached per-user spend caps, falling back to uncached fetch"
+      "[MembersUsage] Failed to read cached per-user spend cap alert ids, falling back to uncached fetch"
     );
-    return fetchPerUserCapOverridesUncached({
+    return fetchPerUserCapAlertIdsUncached({
       metronomeCustomerId,
       workspaceId,
     });
   }
 }
 
-async function fetchDefaultCap({
+async function fetchDefaultCapsBySeatType({
   metronomeCustomerId,
   workspaceId,
 }: {
   metronomeCustomerId: string;
   workspaceId: string;
-}): Promise<number | null> {
+}): Promise<
+  Partial<Record<NormalizedPoolLimitSeatType, MetronomeCapAlertInfo>>
+> {
   try {
-    const { threshold } = await getCachedDefaultCapThreshold({
+    return await getCachedDefaultCapThresholdsBySeatType({
       metronomeCustomerId,
       workspaceId,
     });
-    return threshold;
   } catch (err) {
     logger.warn(
       { err: normalizeError(err), workspaceId },
-      "[MembersUsage] Failed to read cached default spend cap, falling back to uncached fetch"
+      "[MembersUsage] Failed to read cached default spend caps by seat type, falling back to uncached fetch"
     );
-    return fetchDefaultCapUncached({
+    return fetchDefaultCapsBySeatTypeUncached({
       metronomeCustomerId,
       workspaceId,
     });
   }
 }
 
+/**
+ * Compute the fraction of per-user cap credits still available for `userId`
+ * in the current billing period (0–1). Returns `null` when no cap is
+ * configured for this user (treat as unlimited).
+ *
+ * Reuses the same cached fetchers as `getMembersUsage` so repeated calls
+ * within the same cache window are free.
+ */
+export async function fetchRemainingCapCreditsPercentageForUser({
+  metronomeCustomerId,
+  workspaceId,
+  userId,
+  seatType,
+  poolCapOverrideAwuCredits,
+}: {
+  metronomeCustomerId: string | null;
+  workspaceId: string;
+  userId: string;
+  seatType: MembershipSeatType | null | undefined;
+  poolCapOverrideAwuCredits: number | null;
+}): Promise<number | null> {
+  const contract = metronomeCustomerId
+    ? await getActiveContract(workspaceId)
+    : null;
+  const metronomeContractId = contract?.id ?? null;
+
+  const [
+    perUserTotalConsumedCredits,
+    { defaultAwuCreditsBySeatType, seatAllowanceBySeatType },
+  ] = await Promise.all([
+    fetchPerUserUsageCreditsForMembersTable({
+      metronomeCustomerId,
+      metronomeContractId,
+      userIds: [userId],
+    }),
+    fetchEffectivePerUserSpendLimits({
+      metronomeCustomerId,
+      workspaceId,
+      includeAlertLinks: false,
+    }),
+  ]);
+
+  const normalizedSeatType = normalizeToPoolLimitSeatType(seatType);
+  const defaultCap = normalizedSeatType
+    ? (defaultAwuCreditsBySeatType[normalizedSeatType] ?? null)
+    : null;
+
+  // Mirror `getMembersUsage`: the override threshold stored on the membership is
+  // the pool-only portion; add the seat allowance to get the total threshold.
+  const overrideAwuCredits =
+    poolCapOverrideAwuCredits !== null
+      ? poolCapOverrideAwuCredits +
+        (normalizedSeatType
+          ? (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
+          : 0)
+      : null;
+
+  const spendLimitAwuCredits = resolveEffectiveSpendLimitAwuCredits({
+    overrideAwuCredits,
+    defaultAwuCredits: defaultCap?.threshold ?? null,
+  });
+
+  if (!spendLimitAwuCredits) {
+    return null;
+  }
+
+  const consumed = perUserTotalConsumedCredits.get(userId) ?? 0;
+  return Math.max(0, (spendLimitAwuCredits - consumed) / spendLimitAwuCredits);
+}
+
+export type GetMemberUsageResponseBody = {
+  member: MemberUsageType | null;
+};
+
+export async function getMemberUsage({
+  auth,
+}: {
+  auth: Authenticator;
+}): Promise<GetMemberUsageResponseBody> {
+  const workspace = auth.getNonNullableWorkspace();
+  const subscription = auth.subscription();
+  const userResource = auth.user();
+
+  if (!userResource) {
+    return { member: null };
+  }
+
+  const { metronomeCustomerId } = workspace;
+  const metronomeContractId = subscription?.metronomeContractId ?? null;
+  const userId = userResource.sId;
+
+  const [
+    membershipsResult,
+    perUserTotalConsumedCredits,
+    seatDataByUserId,
+    perUserSpendLimits,
+  ] = await Promise.all([
+    MembershipResource.getActiveMemberships({
+      workspace,
+      users: [userResource],
+    }),
+    fetchPerUserUsageCreditsForMembersTable({
+      metronomeCustomerId: metronomeCustomerId ?? null,
+      metronomeContractId,
+      userIds: [userId],
+    }),
+    fetchSeatDataForMembersTable({
+      metronomeCustomerId: metronomeCustomerId ?? null,
+      metronomeContractId,
+    }),
+    fetchEffectivePerUserSpendLimits({
+      metronomeCustomerId: metronomeCustomerId ?? null,
+      workspaceId: workspace.sId,
+      includeAlertLinks: false,
+    }),
+  ]);
+
+  const { defaultAwuCreditsBySeatType, seatAllowanceBySeatType } =
+    perUserSpendLimits;
+  const { memberships } = membershipsResult;
+  const membership = memberships.find((m) => m.userId === userResource.id);
+
+  if (!membership) {
+    return { member: null };
+  }
+
+  const totalConsumedCredits = perUserTotalConsumedCredits.get(userId) ?? 0;
+  const seatData = seatDataByUserId.get(userId);
+  const awuAllocation = seatData?.awuAllocation ?? 0;
+
+  const consumedFromAllowanceAwuCredits = Math.min(
+    totalConsumedCredits,
+    awuAllocation
+  );
+  const consumedFromPoolAwuCredits =
+    totalConsumedCredits - consumedFromAllowanceAwuCredits;
+
+  const normalizedSeatType = normalizeToPoolLimitSeatType(membership.seatType);
+  const defaultCap = normalizedSeatType
+    ? (defaultAwuCreditsBySeatType[normalizedSeatType] ?? null)
+    : null;
+  const overrideAwuCredits =
+    membership.poolCapOverrideAwuCredits !== null
+      ? membership.poolCapOverrideAwuCredits +
+        (normalizedSeatType
+          ? (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
+          : 0)
+      : null;
+  // Free seats have no pool, so their total spend cap is just the seat
+  // allowance (allowance + 0 pool) — like every other seat the cap includes the
+  // allowance, it just has no pool headroom on top. There's no default cap alert
+  // for free (normalizeToPoolLimitSeatType is null), so we supply it explicitly.
+  const effectiveDefaultAwuCredits =
+    membership.seatType === "free"
+      ? FREE_SEAT_LIFETIME_AWU_CREDITS
+      : (defaultCap?.threshold ?? null);
+
+  const spendLimitSource = resolveEffectiveSpendLimitSource({
+    overrideAwuCredits,
+    defaultAwuCredits: effectiveDefaultAwuCredits,
+  });
+
+  return {
+    member: {
+      sId: userId,
+      name: userResource.fullName() || userResource.name,
+      email: userResource.email ?? null,
+      image: userResource.imageUrl ?? null,
+      seatType: membership.seatType ?? null,
+      memberUsageLimit: awuAllocation > 0 ? awuAllocation : null,
+      seatBalanceAwu: null,
+      consumedAwuCredits: totalConsumedCredits,
+      consumedFromAllowanceAwuCredits,
+      consumedFromPoolAwuCredits,
+      billingFrequency:
+        seatData?.billingFrequency ??
+        deriveWorkspaceSeatBillingFrequency(membership.seatType ?? null),
+      scheduledSeatType: null,
+      scheduledSeatChangeAt: null,
+      spendLimitAwuCredits: resolveEffectiveSpendLimitAwuCredits({
+        overrideAwuCredits,
+        defaultAwuCredits: effectiveDefaultAwuCredits,
+      }),
+      spendLimitSource,
+      spendLimitAlertId: null,
+      spendLimitWarningAlertId: null,
+      freeCreditLowAlert: null,
+      freeCreditEmptyAlert: null,
+      creditState: membership.creditState,
+    },
+  };
+}
+
+// Resolve the member user sIds matching a base seat-type filter, querying the
+// memberships table directly (a base tier matches its monthly + yearly
+// variants). Seat type isn't held in the user search index, so we hand these
+// ids to Elasticsearch as an allowlist and let it own search/sort/pagination
+// over the filtered set. We don't do it in ES because seats can be effective
+// at the end of the billing period so it would add a lot of complexity to
+// keep the index up to date with the effective seat type for each user.
+async function resolveSeatTypeFilterUserIds({
+  workspace,
+  seatType,
+}: {
+  workspace: LightWorkspaceType;
+  seatType: MembershipSeatType;
+}): Promise<string[]> {
+  const seatTypes = MEMBERSHIP_SEAT_TYPES.filter(
+    (t) => toBaseSeatType(t) === seatType
+  );
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    workspace,
+    seatTypes,
+  });
+  return (
+    memberships
+      .map((m) => m.user?.sId)
+      // defensive typecheck: in practice this should never happen because the
+      // memberships are inner-joined to users, but the type system doesn't
+      // know that.
+      .filter((sId): sId is string => Boolean(sId))
+  );
+}
+
 export async function getMembersUsage({
   auth,
   paginationParams,
+  includeAlertLinks = false,
+  includeSeatBalance = false,
 }: {
   auth: Authenticator;
   paginationParams: MembersUsagePaginationInput;
+  includeAlertLinks?: boolean;
+  // Live per-seat balance read (an extra Metronome call). Poke-only — the
+  // customer usage page doesn't surface it, so it stays off there.
+  includeSeatBalance?: boolean;
 }): Promise<GetMembersUsageResponseBody> {
   const workspace = auth.getNonNullableWorkspace();
   const subscription = auth.subscription();
   const { metronomeCustomerId } = workspace;
   const metronomeContractId = subscription?.metronomeContractId ?? null;
 
+  // When a seat-type filter is active, resolve the matching user sIds up front
+  // and restrict the search to them so pagination and the returned `total`
+  // reflect the filtered set. No match means an empty page.
+  let restrictToUserIds: string[] | undefined;
+  if (paginationParams.seatType) {
+    restrictToUserIds = await resolveSeatTypeFilterUserIds({
+      workspace,
+      seatType: paginationParams.seatType,
+    });
+    if (restrictToUserIds.length === 0) {
+      return { members: [], total: 0 };
+    }
+  }
+
   const usersResult = await UserResource.searchUsers(auth, {
     searchTerm: paginationParams.search ?? "",
     offset: paginationParams.offset,
     limit: paginationParams.limit,
+    orderBy: {
+      field: paginationParams.orderColumn,
+      direction: paginationParams.orderDirection,
+    },
+    restrictToUserIds,
   });
 
   if (usersResult.isErr()) {
@@ -342,23 +803,50 @@ export async function getMembersUsage({
     membershipsResult,
     perUserTotalConsumedCredits,
     seatDataByUserId,
+    seatBalanceByUserId,
     perUserSpendLimits,
+    freeCreditAlertIdsByUserId,
   ] = await Promise.all([
     MembershipResource.getActiveMemberships({ workspace, users }),
     fetchPerUserUsageCreditsForMembersTable({
       metronomeCustomerId: metronomeCustomerId ?? null,
       metronomeContractId,
+      userIds: users.map((u) => u.sId),
     }),
     fetchSeatDataForMembersTable({
       metronomeCustomerId: metronomeCustomerId ?? null,
       metronomeContractId,
     }),
+    includeSeatBalance
+      ? fetchSeatBalancesForMembersTable({
+          metronomeCustomerId: metronomeCustomerId ?? null,
+          metronomeContractId,
+        })
+      : Promise.resolve(new Map<string, number>()),
     fetchEffectivePerUserSpendLimits({
       metronomeCustomerId: metronomeCustomerId ?? null,
       workspaceId: workspace.sId,
+      includeAlertLinks,
     }),
+    // Free-seat balance-alert ids (low + empty) for deep-linking — poke-only,
+    // gated on `includeAlertLinks` so the customer page doesn't pay the extra
+    // alert-list call.
+    includeAlertLinks && metronomeCustomerId
+      ? listPerUserCreditBalanceAlertsForWorkspace({
+          metronomeCustomerId,
+          workspaceId: workspace.sId,
+        })
+      : Promise.resolve(null),
   ]);
-  const { perUserOverrides, defaultAwuCredits } = perUserSpendLimits;
+  const freeCreditAlertIds =
+    freeCreditAlertIdsByUserId?.isOk() === true
+      ? freeCreditAlertIdsByUserId.value
+      : null;
+  const {
+    perUserOverrideAlerts,
+    defaultAwuCreditsBySeatType,
+    seatAllowanceBySeatType,
+  } = perUserSpendLimits;
 
   const { memberships } = membershipsResult;
 
@@ -390,24 +878,85 @@ export async function getMembersUsage({
     const consumedFromPoolAwuCredits =
       totalConsumedCredits - consumedFromAllowanceAwuCredits;
 
+    // Resolve the default cap for this member's seat type, and the user's
+    // override if any. The override threshold is derived from the pool-only
+    // value persisted on the membership plus the seat allowance; the
+    // Metronome alert ids are only resolved for deep links.
+    const normalizedSeatType = normalizeToPoolLimitSeatType(
+      membership.seatType
+    );
+    const defaultCap = normalizedSeatType
+      ? (defaultAwuCreditsBySeatType[normalizedSeatType] ?? null)
+      : null;
+    const overrideAwuCredits =
+      membership.poolCapOverrideAwuCredits !== null
+        ? membership.poolCapOverrideAwuCredits +
+          (normalizedSeatType
+            ? (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
+            : 0)
+        : null;
+    // Free seats have no pool, so their total spend cap is just the seat
+    // allowance (allowance + 0 pool) — the cap includes the allowance like every
+    // other seat, it just has no pool headroom on top.
+    const effectiveDefaultAwuCredits =
+      membership.seatType === "free"
+        ? FREE_SEAT_LIFETIME_AWU_CREDITS
+        : (defaultCap?.threshold ?? null);
+
+    const spendLimitSource = resolveEffectiveSpendLimitSource({
+      overrideAwuCredits,
+      defaultAwuCredits: effectiveDefaultAwuCredits,
+    });
+    const effectiveCapAlert =
+      spendLimitSource === "override"
+        ? (perUserOverrideAlerts.get(userId) ?? null)
+        : spendLimitSource === "default"
+          ? defaultCap
+          : null;
+    const spendLimitAlertId = includeAlertLinks
+      ? (effectiveCapAlert?.alertId ?? null)
+      : null;
+    const spendLimitWarningAlertId = includeAlertLinks
+      ? (effectiveCapAlert?.warningAlertId ?? null)
+      : null;
+
+    // Free-seat balance-alert deep links (poke-only). Only free seats have
+    // these per-user credit-balance alerts.
+    const freeCreditAlerts =
+      membership.seatType === "free"
+        ? (freeCreditAlertIds?.get(userId) ?? null)
+        : null;
+
     return [
       {
         sId: userId,
-        name: u.name,
+        // Prefer the first/last name; fall back to the `name` column (which can
+        // be the email for users provisioned without a display name).
+        name: u.fullName() || u.name,
         email: u.email ?? null,
         image: u.imageUrl ?? null,
         seatType: membership.seatType ?? null,
         memberUsageLimit: awuAllocation > 0 ? awuAllocation : null,
+        seatBalanceAwu:
+          awuAllocation > 0 ? (seatBalanceByUserId.get(userId) ?? null) : null,
         consumedAwuCredits: totalConsumedCredits,
         consumedFromAllowanceAwuCredits,
         consumedFromPoolAwuCredits,
-        billingFrequency: seatData?.billingFrequency ?? null,
+        billingFrequency:
+          seatData?.billingFrequency ??
+          deriveWorkspaceSeatBillingFrequency(membership.seatType ?? null),
         scheduledSeatType: scheduled?.seatType ?? null,
         scheduledSeatChangeAt: scheduled?.startAt.toISOString() ?? null,
         spendLimitAwuCredits: resolveEffectiveSpendLimitAwuCredits({
-          overrideAwuCredits: perUserOverrides.get(userId) ?? null,
-          defaultAwuCredits,
+          overrideAwuCredits,
+          defaultAwuCredits: effectiveDefaultAwuCredits,
         }),
+        spendLimitSource,
+        spendLimitAlertId,
+        spendLimitWarningAlertId,
+        freeCreditLowAlert: freeCreditAlerts?.low ?? null,
+        freeCreditEmptyAlert: freeCreditAlerts?.empty ?? null,
+        creditState: membership.creditState,
       },
     ];
   });

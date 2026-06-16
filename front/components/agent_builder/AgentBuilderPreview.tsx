@@ -39,7 +39,9 @@ function EmptyState({ message, description }: EmptyStateProps) {
         <div className="mb-2 text-lg font-medium text-foreground">
           {message}
         </div>
-        <div className="max-w-sm text-muted-foreground">{description}</div>
+        <div className="max-w-sm text-muted-foreground dark:text-muted-foreground-night">
+          {description}
+        </div>
       </div>
     </div>
   );
@@ -54,7 +56,9 @@ function LoadingState({ message }: LoadingStateProps) {
     <div className="flex h-full min-h-0 items-center justify-center">
       <div className="flex items-center gap-3">
         <Spinner />
-        <span className="text-muted-foreground">{message}</span>
+        <span className="text-muted-foreground dark:text-muted-foreground-night">
+          {message}
+        </span>
       </div>
     </div>
   );
@@ -114,7 +118,7 @@ function PreviewContent({
           )}
           {!conversation && (
             <div className="flex h-full items-center justify-center px-6 text-center">
-              <div className="text-base font-medium text-muted-foreground">
+              <div className="text-base font-medium text-muted-foreground dark:text-muted-foreground-night">
                 Preview your agent here
               </div>
             </div>
@@ -260,7 +264,7 @@ export function AgentBuilderPreview() {
     if (!hasContent) {
       return (
         <div className="flex h-full flex-1 items-center justify-center px-6 text-center">
-          <div className="text-base font-medium text-muted-foreground">
+          <div className="text-base font-medium text-muted-foreground dark:text-muted-foreground-night">
             Preview your agent here
           </div>
         </div>

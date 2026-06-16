@@ -4,8 +4,23 @@ import React, { useState } from "react";
 import { TextArea } from "../index_with_tw_base";
 
 const meta = {
-  title: "Primitives/TextArea",
+  title: "Forms & Inputs/TextArea",
   component: TextArea,
+  parameters: {
+    docs: {
+      description: {
+        component: `A multi-line text field for longer freeform input such as a prompt, instructions, or a comment. Supports an auto-growing minimum height via **minRows**, validation through **error** and **showErrorLabel**, a **disabled** state, and a read-only **isDisplay** rendering for showing static text.
+
+**When to use**
+- To collect or display text spanning multiple lines.
+
+**Guidelines**
+- Surface validation by passing an **error** message and enabling **showErrorLabel**.
+- Use **isDisplay** (with **disabled**) to present non-editable content in the same visual style.
+- For a single line of text such as a name or email use **Input**; for search use **SearchInput**.`,
+      },
+    },
+  },
 } satisfies Meta<typeof TextArea>;
 
 export default meta;

@@ -2,6 +2,7 @@ import {
   DEEP_DIVE_DESC,
   DEEP_DIVE_NAME,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
+import type { Authenticator } from "@app/lib/auth";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
@@ -22,21 +23,53 @@ import {
 import {
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
+  GPT_5_4_MINI_MODEL_CONFIG,
+  GPT_5_4_NANO_MODEL_CONFIG,
   GPT_5_5_MODEL_CONFIG,
-  GPT_5_MINI_MODEL_CONFIG,
-  GPT_5_NANO_MODEL_CONFIG,
   O1_MINI_MODEL_CONFIG,
   O1_MODEL_CONFIG,
   O3_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
+export const GLOBAL_AGENT_AUDIENCES = [
+  "everyone",
+  "builders",
+  "admins",
+] as const;
+export type GlobalAgentAudience = (typeof GLOBAL_AGENT_AUDIENCES)[number];
+
 type AgentMetadata = {
   sId: string;
   name: string;
   description: string;
   pictureUrl: string;
+  audience?: GlobalAgentAudience;
 };
+
+export function canRoleSeeAudience(
+  audience: GlobalAgentAudience,
+  auth: Authenticator
+): boolean {
+  switch (audience) {
+    case "everyone":
+      return true;
+    case "builders":
+      return auth.isBuilder();
+    case "admins":
+      return auth.isAdmin();
+    default:
+      return assertNever(audience);
+  }
+}
+
+export function canRoleSeeGlobalAgent(
+  sId: GLOBAL_AGENTS_SID,
+  auth: Authenticator
+): boolean {
+  const { audience = "everyone" } = getGlobalAgentMetadata(sId);
+  return canRoleSeeAudience(audience, auth);
+}
 
 export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
   switch (sId) {
@@ -80,14 +113,14 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.GPT5_NANO,
         name: "gpt5-nano",
-        description: GPT_5_NANO_MODEL_CONFIG.description,
+        description: GPT_5_4_NANO_MODEL_CONFIG.description,
         pictureUrl: "https://dust.tt/static/systemavatar/gpt5_avatar_full.png",
       };
     case GLOBAL_AGENTS_SID.GPT5_MINI:
       return {
         sId: GLOBAL_AGENTS_SID.GPT5_MINI,
         name: "gpt5-mini",
-        description: GPT_5_MINI_MODEL_CONFIG.description,
+        description: GPT_5_4_MINI_MODEL_CONFIG.description,
         pictureUrl: "https://dust.tt/static/systemavatar/gpt5_avatar_full.png",
       };
     case GLOBAL_AGENTS_SID.O1:
@@ -212,15 +245,6 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: GEMINI_2_5_PRO_MODEL_CONFIG.description,
         pictureUrl:
           "https://dust.tt/static/systemavatar/gemini_avatar_full.png",
-      };
-    case GLOBAL_AGENTS_SID.DEEPSEEK_R1:
-      return {
-        sId: GLOBAL_AGENTS_SID.DEEPSEEK_R1,
-        name: "DeepSeek R1",
-        description:
-          "DeepSeek's reasoning model. Served from a US inference provider. Cannot use any tools",
-        pictureUrl:
-          "https://dust.tt/static/systemavatar/deepseek_avatar_full.png",
       };
     case GLOBAL_AGENTS_SID.SLACK:
       return {
@@ -364,6 +388,13 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "Same as dust-soupinou but with high reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE,
+        name: "dust-soupinou-none",
+        description: "Same as dust-soupinou but with no reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST_SUNDAE:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_SUNDAE,
@@ -428,6 +459,27 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
         name: "dust-chalom-high",
         description: "Same as dust-chalom but with high reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_LIONEL:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_LIONEL,
+        name: "dust-lionel",
+        description: "Same as dust but running Claude Fable 5.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_LIONEL_MEDIUM,
+        name: "dust-lionel-medium",
+        description: "Same as dust-lionel but with medium reasoning effort.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_LIONEL_HIGH,
+        name: "dust-lionel-high",
+        description: "Same as dust-lionel but with high reasoning effort.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_GOOG:
@@ -687,6 +739,16 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "A no-op agent that does nothing.",
         pictureUrl:
           "https://dust.tt/static/systemavatar/dust-task_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.ANALYST:
+      return {
+        sId: GLOBAL_AGENTS_SID.ANALYST,
+        name: "analyst",
+        description:
+          "Admin-only agent that answers questions about how your workspace " +
+          "is being used.",
+        pictureUrl: DUST_AVATAR_URL,
+        audience: "admins",
       };
     default:
       assertNever(sId);

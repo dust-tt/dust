@@ -6,15 +6,15 @@ import type { PodTaskSourceType } from "@app/types/project_task";
 import { POD_TASK_NO_ASSIGNEE_LABEL } from "@app/types/project_task";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
-  BookOpenIcon,
-  ChatBubbleLeftRightIcon,
+  BookOpen01,
   Checkbox,
   Chip,
   ConfluenceLogo,
   DriveLogo,
-  ExternalLinkIcon,
   GithubLogo,
   Icon,
+  LinkExternal01,
+  MessageChatSquare,
   MicrosoftLogo,
   NotionLogo,
   SlackLogo,
@@ -26,8 +26,8 @@ const SOURCE_ICON_BY_TYPE: Record<
   PodTaskSourceType,
   ComponentType<{ className?: string }>
 > = {
-  project_conversation: ChatBubbleLeftRightIcon,
-  project_knowledge: BookOpenIcon,
+  project_conversation: MessageChatSquare,
+  project_knowledge: BookOpen01,
   slack: SlackLogo,
   notion: NotionLogo,
   gdrive: DriveLogo,
@@ -185,7 +185,7 @@ export function PodTasksCreateValidationDetails({
                             className="shrink-0"
                           />
                           <span className="truncate">{source.title}</span>
-                          <ExternalLinkIcon className="h-3 w-3 shrink-0 opacity-60" />
+                          <LinkExternal01 className="h-3 w-3 shrink-0 opacity-60" />
                         </a>
                       );
                     })}

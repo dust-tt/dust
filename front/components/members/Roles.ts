@@ -1,7 +1,13 @@
 import type { ActiveRoleType, RoleType } from "@app/types/user";
 
 export function displayRole(role: RoleType): string {
-  return role === "user" ? "member" : role;
+  if (role === "user") {
+    return "member";
+  }
+  if (role === "business_admin") {
+    return "business admin";
+  }
+  return role;
 }
 
 export const ROLES_DATA: Record<
@@ -12,6 +18,10 @@ export const ROLES_DATA: Record<
     description:
       "Can use and create agents, manage settings, members, spaces, connections, and tools.",
     color: "rose",
+  },
+  business_admin: {
+    description: "Business administrator.",
+    color: "primary",
   },
   builder: {
     description:

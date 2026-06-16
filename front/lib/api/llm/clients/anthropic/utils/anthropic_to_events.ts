@@ -24,7 +24,10 @@ import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
 import logger from "@app/logger/logger";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 import { isRecord } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import cloneDeep from "lodash/cloneDeep";
@@ -117,6 +120,9 @@ function* handleMessageStreamEvent(
   metadata: LLMClientMetadata,
   tokenUsageAccumulator: Required<TokenUsage>
 ): Generator<LLMEvent> {
+  // Captured for logging in the default branch, where messageStreamEvent is
+  // narrowed to `never` and its properties can no longer be accessed.
+  const eventType = messageStreamEvent.type;
   switch (messageStreamEvent.type) {
     case "message_start":
       yield {
@@ -165,7 +171,15 @@ function* handleMessageStreamEvent(
       );
       break;
     default:
-      assertNever(messageStreamEvent);
+      // Anthropic may emit new top-level stream event types (e.g. the
+      // server-side fallback event) before the SDK types and this client are
+      // updated. Log and ignore rather than crashing the stream with a throw.
+      // Only log the event type to avoid dumping prompt/response content.
+      logger.warn(
+        { eventType, ...metadata },
+        "Unhandled Anthropic message stream event type, ignoring."
+      );
+      assertNeverAndIgnore(messageStreamEvent);
   }
 }
 
@@ -227,7 +241,14 @@ function* handleContentBlockStart(
       // We don't use these Anthropic tools
       return;
     default:
-      assertNever(blockType);
+      // New content block types may appear (e.g. via a new beta) before the
+      // SDK types and this client are updated. Ignore rather than crash.
+      logger.warn(
+        { blockType, ...metadata },
+        "Unhandled Anthropic content block type, ignoring."
+      );
+      assertNeverAndIgnore(blockType);
+      return;
   }
 }
 
@@ -237,6 +258,9 @@ function* handleContentBlockDelta(
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
   validateContentBlockIndex(stateContainer.state, event);
+  // Captured for logging in the default branch, where event.delta is narrowed
+  // to `never` and its properties can no longer be accessed.
+  const deltaType = event.delta.type;
   switch (event.delta.type) {
     case "text_delta":
       stateContainer.state.accumulator += event.delta.text;
@@ -262,7 +286,14 @@ function* handleContentBlockDelta(
       // We don't use Anthropic citations, as we have our own citations implementation
       break;
     default:
-      assertNever(event.delta);
+      // New delta types may appear (e.g. via a new beta) before the SDK types
+      // and this client are updated. Ignore rather than crash.
+      logger.warn(
+        { deltaType, ...metadata },
+        "Unhandled Anthropic content block delta type, ignoring."
+      );
+      assertNeverAndIgnore(event.delta);
+      break;
   }
 }
 
@@ -271,6 +302,12 @@ function* handleContentBlockStop(
   stateContainer: { state: StreamState },
   metadata: LLMClientMetadata
 ): Generator<LLMEvent> {
+  // A null state here means the block's content_block_start was ignored (e.g.
+  // the server-side fallback boundary block, or a server tool block we don't
+  // use). Ignore the matching stop instead of failing the index validation.
+  if (stateContainer.state === null) {
+    return;
+  }
   validateContentBlockIndex(stateContainer.state, event);
   switch (stateContainer.state.accumulatorType) {
     case "text":

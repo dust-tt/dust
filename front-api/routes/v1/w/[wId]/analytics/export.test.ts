@@ -37,12 +37,18 @@ vi.mock(
   })
 );
 
-vi.mock("@app/lib/api/assistant/observability/context_origin", async () => ({
-  fetchContextOriginDailyBreakdown: vi.fn(
-    async () =>
-      new Ok([{ date: "2024-06-01", origin: "web", messageCount: 10 }])
-  ),
-}));
+vi.mock(
+  "@app/lib/api/assistant/observability/context_origin",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@app/lib/api/assistant/observability/context_origin")
+    >()),
+    fetchContextOriginDailyBreakdown: vi.fn(
+      async () =>
+        new Ok([{ date: "2024-06-01", origin: "web", messageCount: 10 }])
+    ),
+  })
+);
 
 vi.mock("@app/lib/api/analytics/agents_export", async () => ({
   AGENT_EXPORT_HEADERS: ["agentId", "name", "messages"],

@@ -9,6 +9,9 @@ import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 import { QUEUE_NAME } from "./config";
 
+// Must match the deployment's terminationGracePeriodSeconds minus 10s buffer.
+const SHUTDOWN_GRACE_TIME_MS = 70 * 1_000;
+
 export async function runUpsertTableQueueWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
 
@@ -23,6 +26,7 @@ export async function runUpsertTableQueueWorker() {
     maxConcurrentActivityTaskExecutions: 20,
     connection,
     namespace,
+    shutdownGraceTime: SHUTDOWN_GRACE_TIME_MS,
     interceptors: {
       activity: [
         (ctx: Context) => {

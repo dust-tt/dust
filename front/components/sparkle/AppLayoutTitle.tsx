@@ -10,11 +10,12 @@ export function AppLayoutTitle({ children, className }: AppLayoutTitleProps) {
   return (
     <div
       className={cn(
-        "flex h-[58px] w-full shrink-0 flex-col border-b border-separator px-4 pl-14 lg:pl-4",
-        "bg-background dark:bg-background-night",
+        "h-title",
+        "flex w-full shrink-0 flex-col border-b border-separator px-4 pl-14 md:pl-3",
+        "bg-panel-background dark:bg-panel-background-night",
         "dark:border-separator-night",
         // When no children, only show on mobile for hamburger menu alignment.
-        !children && "block lg:hidden",
+        !children && "block md:hidden",
         className
       )}
     >

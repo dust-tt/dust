@@ -17,6 +17,7 @@ import { createHono } from "@front-api/lib/hono";
  */
 const app = createHono();
 
+/** @ignoreswagger */
 app.get("/", (ctx) => {
   const startMs = performance.now();
 

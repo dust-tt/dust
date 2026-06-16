@@ -61,6 +61,7 @@ function makeSkillType(config: MockSkillConfig): SkillType {
     reinforcement: "auto",
     selfImprovementLock: false,
     selfImprovementCostsCapMicroUsd: null,
+    selfImprovementCostsCapAwuCredits: null,
     requestedSpaceIds: [],
     tools: (config.tools ?? []).map((t) => ({
       id: 0,
@@ -101,16 +102,13 @@ function buildPromptForTestCase(testCase: TestCase): {
   if (isAnalysisTestCase(testCase)) {
     const skillTypes = testCase.skillConfigs.map(makeSkillType);
     const conversationText = buildConversationText(testCase.conversation);
-    return buildSkillAnalysisPrompt(conversationText, skillTypes, {
-      useInlineTools: testCase.useInlineTools,
-    });
+    return buildSkillAnalysisPrompt(conversationText, skillTypes);
   }
   const skillType = makeSkillType(testCase.skillConfig);
   return buildSkillAggregationPrompt(
     skillType,
     testCase.syntheticSuggestions,
-    testCase.existingSuggestions ?? { pending: [], rejected: [] },
-    { useInlineTools: testCase.useInlineTools }
+    testCase.existingSuggestions ?? { pending: [], rejected: [] }
   );
 }
 
@@ -330,9 +328,7 @@ export async function executeReinforced(
   const operationType = isAggregationTestCase(testCase)
     ? "reinforcement_aggregate_suggestions"
     : "reinforcement_analyze_conversation";
-  const params = buildReinforcedSkillsLLMParams(prompt, operationType, {
-    useInlineTools: testCase.useInlineTools,
-  });
+  const params = buildReinforcedSkillsLLMParams(prompt, operationType);
 
   return executeMultiStep(
     llm,
@@ -385,9 +381,7 @@ export async function executeBatch(
       : "reinforcement_analyze_conversation";
     pendingParams.set(
       tc.scenarioId,
-      buildReinforcedSkillsLLMParams(prompt, operationType, {
-        useInlineTools: tc.useInlineTools,
-      })
+      buildReinforcedSkillsLLMParams(prompt, operationType)
     );
   }
 

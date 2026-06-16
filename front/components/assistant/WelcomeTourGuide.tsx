@@ -5,17 +5,17 @@ import type { ConnectorProvider } from "@app/types/data_source";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
-  ActionBrainIcon,
-  ActionGlobeIcon,
-  ActionImageIcon,
-  ActionMagnifyingGlassIcon,
-  ActionScanIcon,
-  ActionTableIcon,
   AnchoredPopover,
   Avatar,
+  Brain,
   Button,
   ConfettiBackground,
   cn,
+  Globe01,
+  Image01,
+  Scan,
+  SearchMd,
+  Table,
   Tooltip,
   TypingAnimation,
 } from "@dust-tt/sparkle";
@@ -42,27 +42,27 @@ const CONNECTIONS_IN_TOUR_GUIDE: ConnectorProvider[] = [
 const ACTIONS_IN_TOUR_GUIDE = [
   {
     label: "Search data",
-    icon: ActionMagnifyingGlassIcon,
+    icon: SearchMd,
   },
   {
     label: "Table query",
-    icon: ActionTableIcon,
+    icon: Table,
   },
   {
     label: "Extract data",
-    icon: ActionScanIcon,
+    icon: Scan,
   },
   {
     label: "Image generation",
-    icon: ActionImageIcon,
+    icon: Image01,
   },
   {
     label: "Web search and browsing",
-    icon: ActionGlobeIcon,
+    icon: Globe01,
   },
   {
     label: "Reasoning",
-    icon: ActionBrainIcon,
+    icon: Brain,
   },
 ] as const;
 

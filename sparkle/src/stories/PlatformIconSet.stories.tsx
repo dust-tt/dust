@@ -4,7 +4,14 @@ import { Icon } from "../index_with_tw_base";
 import * as PlatformIcons from "../logo/platforms";
 
 export default {
-  title: "Assets/PlatformLogos",
+  title: "Assets/Platform Logos",
+  parameters: {
+    docs: {
+      description: {
+        component: `Catalog of third-party platform and connector logos (\`@sparkle/logo/platforms\`) — Slack, Notion, Google Drive, GitHub, and the rest. Render them through the **Icon** component, and use these official marks when surfacing integrations rather than sourcing logos elsewhere.`,
+      },
+    },
+  },
 };
 
 const gridStyle = {

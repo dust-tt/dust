@@ -141,20 +141,20 @@ export function extractAttachments(
 }
 
 /**
- * Search payload for specific attachment data by partId
+ * Search payload for the part matching partId (partIds are unique within a
+ * message).
  */
-export function findAttachmentData(
+function findPartByPartId(
   payload: GmailMessagePayload | undefined,
   partId: string
-): string | null {
+): GmailMessagePart | null {
   if (!payload) {
     return null;
   }
 
-  const traverse = (part: GmailMessagePart): string | null => {
-    // Match by partId to find inline attachment data
-    if (part.partId === partId && part.body?.data) {
-      return part.body.data;
+  const traverse = (part: GmailMessagePart): GmailMessagePart | null => {
+    if (part.partId === partId) {
+      return part;
     }
     if (part.parts) {
       for (const nested of part.parts) {
@@ -168,6 +168,28 @@ export function findAttachmentData(
   };
 
   return traverse(payload);
+}
+
+/**
+ * Search payload for specific inline attachment data by partId
+ */
+export function findAttachmentData(
+  payload: GmailMessagePayload | undefined,
+  partId: string
+): string | null {
+  return findPartByPartId(payload, partId)?.body?.data ?? null;
+}
+
+/**
+ * Search payload for a part's attachment ID by partId. Gmail attachment IDs
+ * are short-lived tokens, so this is used to get a fresh ID from a re-fetched
+ * message when a previously obtained ID has expired.
+ */
+export function findAttachmentIdByPartId(
+  payload: GmailMessagePayload | undefined,
+  partId: string
+): string | null {
+  return findPartByPartId(payload, partId)?.body?.attachmentId ?? null;
 }
 
 /**

@@ -7,6 +7,10 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
+export type GetSimilarSkillsResponseBody = {
+  similar_skills: string[];
+};
+
 // Safeguards to avoid sending a huge number of skills to the LLM
 const MAX_SKILLS_SENT_TO_LLM = 100;
 const MAX_DESCRIPTION_LENGTH = 500;

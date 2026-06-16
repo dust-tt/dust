@@ -2,10 +2,24 @@ import type { Meta } from "@storybook/react";
 import React from "react";
 
 import { NotificationButton } from "@sparkle/components";
-import { InformationCircleIcon } from "@sparkle/icons";
+import { InfoCircle } from "@sparkle/icons";
 
 const meta = {
-  title: "Components/NotificationButton",
+  title: "Feedback & Status/NotificationButton",
+  parameters: {
+    docs: {
+      description: {
+        component: `A button with an overlaid counter badge for surfacing a pending count, such as unread notifications. Configure the trigger through **buttonProps** (a **Button** config — \`variant\`, \`size\`, \`icon\`, \`label\`) and the badge through **counterProps** (a **Counter** config — \`value\`, \`variant\` like \`highlight\` or \`warning\`, \`size\`).
+
+**When to use**
+- For a toolbar or header affordance that opens notifications/messages and shows how many are pending.
+
+**Guidelines**
+- Use the \`counterProps.variant\` to signal urgency (e.g. \`warning\` for items needing attention).
+- For the toast messages themselves, use **Notification**; for a standalone count without a button, use **Counter**.`,
+      },
+    },
+  },
 } satisfies Meta<typeof NotificationButton>;
 
 export default meta;
@@ -17,8 +31,8 @@ export const Example = () => {
         buttonProps={{
           variant: "outline",
           size: "md",
-          icon: InformationCircleIcon,
-          label: "InformationCircleIcon",
+          icon: InfoCircle,
+          label: "InfoCircle",
         }}
         counterProps={{
           value: 1,
@@ -28,7 +42,7 @@ export const Example = () => {
       />
       <NotificationButton
         buttonProps={{
-          icon: InformationCircleIcon,
+          icon: InfoCircle,
           size: "sm",
           variant: "ghost",
         }}

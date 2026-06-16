@@ -7,6 +7,8 @@ import type { ModelIdType } from "@app/types/assistant/models/types";
 
 export function getInferenceClient(
   useVertex: boolean,
+  // Temporary while we get quotas for haiku
+  region: "eu" | "europe-west1",
   { anthropicClient }: { anthropicClient: Anthropic }
 ): Anthropic | AnthropicVertex {
   if (!useVertex) {
@@ -14,7 +16,7 @@ export function getInferenceClient(
   }
 
   return new AnthropicVertex({
-    region: "europe-west1",
+    region,
     projectId: config.getVertexAiProjectId(),
   });
 }

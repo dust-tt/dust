@@ -8,21 +8,38 @@ import {
   CardActionButton,
   CardGrid,
 } from "@sparkle/components/Card";
+import { Planet } from "@sparkle/icons/v2-stroke";
 import {
-  BookOpenIcon,
-  BracesIcon,
-  CommandLineIcon,
-  MagnifyingGlassIcon,
-  PlanetIcon,
-  ScanIcon,
-  TableIcon,
-  XMarkIcon,
-} from "@sparkle/icons/app";
+  BookOpen01,
+  Scan,
+  SearchMd,
+  Table,
+  Terminal,
+  XClose,
+} from "@sparkle/icons/v2-stroke";
+import { Brackets } from "@sparkle/icons/v2-stroke";
 
 const meta = {
-  title: "Primitives/Card",
+  title: "Data Display/Card",
   component: Card,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `A container that groups related content onto a single, optionally interactive surface. Cards support **primary** / **secondary** / **tertiary** variants, **sizes**, **selected** and **disabled** states, a pulsing attention state, and an **action** slot. Use **CardGrid** to lay several out responsively.
+
+**When to use**
+- As selectable options or entry points (tools, data sources, agents).
+- To group a small unit of related content into a tappable surface.
+
+**Guidelines**
+- When a card represents a single action, make the whole card clickable rather than nesting a button.
+- Use **selected** for single- or multi-select grids; pair with **CardGrid** for layout.
+- Reserve **isPulsing** for drawing attention to one element at a time.
+- Put dismiss/secondary controls in the **action** slot (e.g. a **CardActionButton**).`,
+      },
+    },
+  },
   argTypes: {
     variant: {
       options: CARD_VARIANTS,
@@ -182,37 +199,37 @@ interface CardData {
 
 const cardData: CardData[] = [
   {
-    icon: MagnifyingGlassIcon,
+    icon: SearchMd,
     title: "Search",
     description: "Architecture Projects Descriptions",
   },
   {
-    icon: TableIcon,
+    icon: Table,
     title: "Table Query",
     description: "Find product references",
   },
   {
-    icon: PlanetIcon,
+    icon: Planet,
     title: "Web",
     description: "Search & browse the web",
   },
   {
-    icon: BracesIcon,
+    icon: Brackets,
     title: "Code Interpreter",
     description: "Write a description for it",
   },
   {
-    icon: CommandLineIcon,
+    icon: Terminal,
     title: "Dust App",
     description: "Dust App Name",
   },
   {
-    icon: BookOpenIcon,
+    icon: BookOpen01,
     title: "Include",
     description: "Description of the Data",
   },
   {
-    icon: ScanIcon,
+    icon: Scan,
     title: "Extract Data",
     description: "Description of the Data",
   },
@@ -229,7 +246,7 @@ export const WithActions: Story = {
           onClick={() => {
             alert(`You clicked on ${card.title}`);
           }}
-          action={<CardActionButton size="icon" icon={XMarkIcon} />}
+          action={<CardActionButton size="icon" icon={XClose} />}
         >
           <div className="s-flex s-w-full s-flex-col s-gap-1 s-text-sm">
             <div className="s-flex s-w-full s-gap-1 s-font-semibold s-text-foreground">
@@ -259,7 +276,7 @@ export const SelectableGrid: Story = {
             size="md"
             selected={selected === index}
             onClick={() => setSelected(index)}
-            action={<CardActionButton size="icon" icon={XMarkIcon} />}
+            action={<CardActionButton size="icon" icon={XClose} />}
           >
             <div className="s-flex s-w-full s-flex-col s-gap-1 s-text-sm">
               <div className="s-flex s-w-full s-gap-1 s-font-semibold s-text-foreground">

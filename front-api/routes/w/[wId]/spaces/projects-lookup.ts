@@ -1,17 +1,16 @@
-import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
+import {
+  enrichProjectsWithMetadata,
+  type SpacesLookupResponseBody,
+} from "@app/lib/api/projects/list";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { PodType } from "@app/types/space";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 
-export type SpacesLookupResponseBody = {
-  spaces: PodType[];
-};
-
 // Mounted under /api/w/:wId/spaces/projects-lookup.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<SpacesLookupResponseBody> => {
   const auth = ctx.get("auth");
   const ids = ctx.req.queries("ids");

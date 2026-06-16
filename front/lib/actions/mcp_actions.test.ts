@@ -570,6 +570,7 @@ describe("tryCallMCPTool", () => {
       rank: messageRow.rank,
       branchId: messageRow.getBranchId(),
       richMentions: [],
+      costCredits: null,
     };
 
     // Create tool configuration

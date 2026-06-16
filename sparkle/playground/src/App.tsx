@@ -6,8 +6,8 @@ import {
   DropdownMenuTrigger,
   ListGroup,
   ListItem,
-  MoonIcon,
-  SunIcon,
+  Moon01,
+  Sun,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
@@ -54,18 +54,18 @@ function StoryList({
                 size="sm"
                 variant="outline"
                 isSelect
-                icon={theme === "dark" ? MoonIcon : SunIcon}
+                icon={theme === "dark" ? Moon01 : Sun}
                 label={theme === "dark" ? "Dark" : "Light"}
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem
-                icon={SunIcon}
+                icon={Sun}
                 label="Light"
                 onClick={() => setTheme("light")}
               />
               <DropdownMenuItem
-                icon={MoonIcon}
+                icon={Moon01}
                 label="Dark"
                 onClick={() => setTheme("dark")}
               />

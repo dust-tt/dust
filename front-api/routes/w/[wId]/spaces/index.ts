@@ -4,7 +4,15 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { enrichProjectsWithMetadata } from "@app/lib/api/projects/list";
-import { createSpaceAndGroup } from "@app/lib/api/spaces";
+import type {
+  GetSpacesResponseBody,
+  PostSpaceRequestBodyType,
+  PostSpacesResponseBody,
+} from "@app/lib/api/spaces";
+import {
+  createSpaceAndGroup,
+  PostSpaceRequestBodySchema,
+} from "@app/lib/api/spaces";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -13,45 +21,125 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { z } from "zod";
 import spaceId from "./[spaceId]";
 import checkName from "./check-name";
 import projectsLookup from "./projects-lookup";
 import searchProjects from "./search_projects";
 
-const PostSpaceRequestBodySchema = z.intersection(
-  z.object({
-    isRestricted: z.boolean(),
-    name: z.string(),
-    spaceKind: z.enum(["regular", "project"]),
-  }),
-  z.discriminatedUnion("managementMode", [
-    z.object({
-      memberIds: z.array(z.string()),
-      managementMode: z.literal("manual"),
-    }),
-    z.object({
-      groupIds: z.array(z.string()),
-      managementMode: z.literal("group"),
-    }),
-  ])
-);
-
-export type PostSpaceRequestBodyType = z.infer<
-  typeof PostSpaceRequestBodySchema
->;
-
-export type GetSpacesResponseBody = {
-  spaces: (SpaceType | PodType)[];
-};
-
-export type PostSpacesResponseBody = {
-  space: SpaceType;
+export type {
+  GetSpacesResponseBody,
+  PostSpaceRequestBodyType,
+  PostSpacesResponseBody,
 };
 
 // Mounted under /api/w/:wId/spaces. workspaceAuth is applied by the parent
 // workspace sub-app, so ctx.get("auth") is always available here.
 const app = workspaceApp();
+
+/**
+ * @swagger
+ * /api/w/{wId}/spaces:
+ *   get:
+ *     summary: List spaces
+ *     description: Returns all spaces in the workspace.
+ *     tags:
+ *       - Private Spaces
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: role
+ *         required: false
+ *         description: Filter by role (e.g. admin to list all workspace spaces)
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: kind
+ *         required: false
+ *         description: Filter by space kind (e.g. system)
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 spaces:
+ *                   type: array
+ *                   items:
+ *                     oneOf:
+ *                       - $ref: '#/components/schemas/PrivateSpace'
+ *                       - $ref: '#/components/schemas/PrivateProject'
+ *       401:
+ *         description: Unauthorized
+ *   post:
+ *     summary: Create a space
+ *     description: Creates a new space in the workspace.
+ *     tags:
+ *       - Private Spaces
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - isRestricted
+ *               - name
+ *               - spaceKind
+ *               - managementMode
+ *             properties:
+ *               isRestricted:
+ *                 type: boolean
+ *               name:
+ *                 type: string
+ *               spaceKind:
+ *                 type: string
+ *                 enum: [regular, project]
+ *               managementMode:
+ *                 type: string
+ *                 enum: [manual, group]
+ *               memberIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Required when managementMode is manual
+ *               groupIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Required when managementMode is group
+ *     responses:
+ *       201:
+ *         description: Successfully created space
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 space:
+ *                   $ref: '#/components/schemas/PrivateSpace'
+ *       401:
+ *         description: Unauthorized
+ */
 
 app.get("/", async (ctx): HandlerResult<GetSpacesResponseBody> => {
   const auth = ctx.get("auth");

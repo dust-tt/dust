@@ -27,6 +27,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { UserModel } from "@app/lib/resources/storage/models/user";
+import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -34,10 +35,12 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import logger from "@app/logger/logger";
 import { launchIndexConversationEsWorkflow } from "@app/temporal/es_indexation/client";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
+  AgentMessageStatus,
   ConversationForkedChildType,
   ConversationForkedFromType,
   ConversationForkingDataType,
@@ -48,12 +51,17 @@ import type {
   ConversationVisibility,
   ConversationWithoutContentType,
   ParticipantActionType,
+  UserMessageOrigin,
 } from "@app/types/assistant/conversation";
 import {
   ConversationError,
   getConversationDisplayTitle,
   getConversationUrlAccessMode,
 } from "@app/types/assistant/conversation";
+import {
+  ACTIVE_WAKE_UP_STATUSES,
+  type WakeUpScheduleConfig,
+} from "@app/types/assistant/wakeups";
 import type { ContentFragmentVersion } from "@app/types/content_fragment";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -657,6 +665,171 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       result.set(row.conversationId, parseInt(row.get("count") as string, 10));
     }
     return result;
+  }
+
+  /**
+   * Fetches everything needed to compute an agent message's credit cost: the
+   * agent message model id (used to look up its runs and actions), its tracking
+   * status, its runIds, and the origin of the user message that triggered it
+   * (used to detect free-origin usage). Returns null when the agent message
+   * cannot be found.
+   */
+  static async fetchAgentMessageCreditContext(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<{
+    agentMessageModelId: ModelId;
+    status: AgentMessageStatus;
+    runIds: string[] | null;
+    triggeringUserMessageOrigin: UserMessageOrigin | null;
+  } | null> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const messageRow = await MessageModel.findOne({
+      where: { sId: agentMessageId, workspaceId },
+      include: [
+        { model: AgentMessageModel, as: "agentMessage", required: true },
+      ],
+    });
+
+    const agentMessage = messageRow?.agentMessage;
+    if (!agentMessage) {
+      return null;
+    }
+
+    let triggeringUserMessageOrigin: UserMessageOrigin | null = null;
+    if (messageRow.parentId !== null) {
+      const parentRow = await MessageModel.findOne({
+        where: { id: messageRow.parentId, workspaceId },
+        include: [
+          { model: UserMessageModel, as: "userMessage", required: false },
+        ],
+      });
+      triggeringUserMessageOrigin =
+        parentRow?.userMessage?.userContextOrigin ?? null;
+    }
+
+    return {
+      agentMessageModelId: agentMessage.id,
+      status: agentMessage.status,
+      runIds: agentMessage.runIds,
+      triggeringUserMessageOrigin,
+    };
+  }
+
+  static async updateAgentMessageCostCredits(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      costCredits,
+    }: { agentMessageModelId: ModelId; costCredits: number | null }
+  ): Promise<void> {
+    await AgentMessageModel.update(
+      { costCredits },
+      {
+        where: {
+          id: agentMessageModelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+  }
+
+  /**
+   * Recursively sums the `costCredits` of every sub-agent spawned by a single
+   * origin agent message (one recursive query, `maxDepth`-bounded). Only counts
+   * sub-agents whose triggering user message is a `run_agent` agentic origin
+   * (`agent_handover` and non-agentic origins are excluded). Single-message by
+   * design (and avoids an N+1); returns `0` when there are no sub-agents.
+   */
+  static async sumSubAgentCostCreditsByMessageId(
+    auth: Authenticator,
+    {
+      agentMessageId,
+      maxDepth = 10,
+    }: { agentMessageId: string; maxDepth?: number }
+  ): Promise<number> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const query = `
+      WITH RECURSIVE sub_agents AS (
+        -- Direct sub-agent replies of the origin agent message.
+        SELECT
+          reply."sId"      AS agent_message_sid,
+          am."costCredits" AS cost_credits,
+          1                AS depth
+        FROM user_messages um
+        JOIN messages user_msg
+          ON user_msg."userMessageId" = um.id
+         AND user_msg."workspaceId" = um."workspaceId"
+        JOIN messages reply
+          ON reply."parentId" = user_msg.id
+         AND reply."workspaceId" = um."workspaceId"
+         AND reply."agentMessageId" IS NOT NULL
+        JOIN agent_messages am
+          ON am.id = reply."agentMessageId"
+         AND am."workspaceId" = um."workspaceId"
+        WHERE um."workspaceId" = :workspaceId
+          AND um."agenticOriginMessageId" = :agentMessageId
+          AND um."agenticMessageType" = 'run_agent'
+
+        UNION ALL
+
+        -- Sub-agents spawned (recursively) by previously found sub-agent replies.
+        SELECT
+          reply."sId",
+          am."costCredits",
+          s.depth + 1
+        FROM sub_agents s
+        JOIN user_messages um
+          ON um."agenticOriginMessageId" = s.agent_message_sid
+         AND um."workspaceId" = :workspaceId
+         AND um."agenticMessageType" = 'run_agent'
+        JOIN messages user_msg
+          ON user_msg."userMessageId" = um.id
+         AND user_msg."workspaceId" = :workspaceId
+        JOIN messages reply
+          ON reply."parentId" = user_msg.id
+         AND reply."workspaceId" = :workspaceId
+         AND reply."agentMessageId" IS NOT NULL
+        JOIN agent_messages am
+          ON am.id = reply."agentMessageId"
+         AND am."workspaceId" = :workspaceId
+        WHERE s.depth < :maxDepth
+      )
+      SELECT
+        SUM(COALESCE(cost_credits, 0))::float AS total_credits,
+        MAX(depth)::int                       AS max_depth
+      FROM sub_agents
+    `;
+
+    // biome-ignore lint/plugin/noRawSql: recursive CTE has no Sequelize equivalent.
+    const rows = await frontSequelize.query<{
+      total_credits: number | null;
+      max_depth: number | null;
+    }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: { workspaceId, agentMessageId, maxDepth },
+    });
+
+    // No sub-agents: the CTE is empty and SUM/MAX over zero rows return NULL.
+    const row = rows[0];
+    if (!row || row.total_credits === null) {
+      return 0;
+    }
+
+    if (row.max_depth !== null && row.max_depth >= maxDepth) {
+      logger.warn(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          agentMessageId,
+          maxDepth,
+        },
+        "[Credits] Sub-agent cost aggregation hit the depth cap; total may be truncated."
+      );
+    }
+
+    return row.total_credits;
   }
 
   private static getOptions(
@@ -1826,11 +1999,82 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       auth,
       pagination
     );
+    const nextWakeupAtByConversationId =
+      await this.fetchNextWakeupAtByConversationId(
+        auth,
+        result.conversations.map((c) => c.id)
+      );
+
     return {
-      conversations: result.conversations.map((c) => c.toListItem()),
+      conversations: result.conversations.map((c) => ({
+        ...c.toListItem(),
+        nextWakeupAt: nextWakeupAtByConversationId.get(c.id) ?? null,
+      })),
       hasMore: result.hasMore,
       lastValue: result.lastValue,
     };
+  }
+
+  /**
+   * This wake-up hydration lives here instead of `WakeUpResource` because `WakeUpResource` already
+   * depends on `ConversationResource` to reuse the established conversation ES reindexing path.
+   * This is all to avoid import cycles.
+   */
+  private static async fetchNextWakeupAtByConversationId(
+    auth: Authenticator,
+    conversationIds: ModelId[]
+  ): Promise<Map<ModelId, number>> {
+    if (conversationIds.length === 0) {
+      return new Map();
+    }
+
+    const wakeUps = await WakeUpModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: { [Op.in]: conversationIds },
+        status: ACTIVE_WAKE_UP_STATUSES,
+      },
+      order: [
+        ["createdAt", "ASC"],
+        ["id", "ASC"],
+      ],
+    });
+
+    const nextWakeupAtByConversationId = new Map<ModelId, number>();
+    for (const wakeUp of wakeUps) {
+      const scheduleConfig: WakeUpScheduleConfig | null = (() => {
+        switch (wakeUp.scheduleType) {
+          case "one_shot":
+            return wakeUp.fireAt
+              ? { type: "one_shot", fireAt: wakeUp.fireAt.getTime() }
+              : null;
+          case "cron":
+            return wakeUp.cronExpression && wakeUp.cronTimezone
+              ? {
+                  type: "cron",
+                  cron: wakeUp.cronExpression,
+                  timezone: wakeUp.cronTimezone,
+                }
+              : null;
+          default:
+            return assertNever(wakeUp.scheduleType);
+        }
+      })();
+
+      const nextWakeupAt = scheduleConfig
+        ? getNextWakeUpFireAtFromScheduleConfig(scheduleConfig)
+        : null;
+      if (nextWakeupAt === null) {
+        continue;
+      }
+
+      const previous = nextWakeupAtByConversationId.get(wakeUp.conversationId);
+      if (previous === undefined || nextWakeupAt < previous) {
+        nextWakeupAtByConversationId.set(wakeUp.conversationId, nextWakeupAt);
+      }
+    }
+
+    return nextWakeupAtByConversationId;
   }
 
   static async listSpaceUnreadConversationsAndActivityForUser(
@@ -2413,6 +2657,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Err(new ConversationError("conversation_not_found"));
     }
 
+    return this.clearActionRequiredForConversation(auth, conversation);
+  }
+
+  static async clearActionRequiredForConversation(
+    auth: Authenticator,
+    conversation: ConversationResource
+  ) {
     const updated = await ConversationParticipantModel.update(
       { actionRequired: false },
       {

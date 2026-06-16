@@ -1,3 +1,4 @@
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
@@ -674,8 +675,6 @@ describe("SkillResource", () => {
         name: "Parent Skill",
         instructions: `Use ${skillReferenceTag}.`,
         instructionsHtml: `<p>Use ${skillReferenceHtmlTag}.</p>`,
-        enableSkillReferences: true,
-        referencedSkillIds: [childSkill.sId],
       });
 
       expect(parentSkill.instructions).toContain(
@@ -702,8 +701,6 @@ describe("SkillResource", () => {
         mcpServerViews: [],
         attachedKnowledge: [],
         requestedSpaceIds: parentSkill.requestedSpaceIds,
-        enableSkillReferences: true,
-        referencedSkillIds: [childSkill.sId],
       });
 
       const updatedParentSkill = await SkillResource.fetchById(
@@ -741,8 +738,6 @@ describe("SkillResource", () => {
       const parentSkill = await SkillFactory.create(testContext.authenticator, {
         name: "Parent Skill",
         instructions: `Use ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
-        enableSkillReferences: true,
-        referencedSkillIds: [childSkill.sId],
       });
 
       expect(parentSkill.instructions).toContain(
@@ -759,8 +754,6 @@ describe("SkillResource", () => {
         mcpServerViews: [],
         attachedKnowledge: [],
         requestedSpaceIds: [restrictedSpace.id],
-        enableSkillReferences: true,
-        referencedSkillIds: [childSkill.sId],
       });
 
       const updatedParentSkill = await SkillResource.fetchById(
@@ -773,7 +766,7 @@ describe("SkillResource", () => {
       );
     });
 
-    it("preserves nested skill references when referencedSkillIds is omitted", async () => {
+    it("recomputes nested skill references from instructions on update", async () => {
       const { childSkill, parentSkill, skillReferenceTag } =
         await SkillFactory.createWithNestedSkill(testContext.authenticator, {
           childOverrides: { name: "Omitted References Child Skill" },
@@ -790,7 +783,6 @@ describe("SkillResource", () => {
         mcpServerViews: [],
         attachedKnowledge: [],
         requestedSpaceIds: parentSkill.requestedSpaceIds,
-        enableSkillReferences: true,
       });
 
       const updatedParentSkill = await SkillResource.fetchById(
@@ -816,8 +808,6 @@ describe("SkillResource", () => {
         mcpServerViews: [],
         attachedKnowledge: [],
         requestedSpaceIds: updatedParentSkill!.requestedSpaceIds,
-        enableSkillReferences: true,
-        referencedSkillIds: [],
       });
 
       const clearedParentSkill = await SkillResource.fetchById(
@@ -830,6 +820,28 @@ describe("SkillResource", () => {
       ).resolves.toHaveLength(0);
     });
 
+    it("keeps nested skill self-references", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Self Referencing Skill",
+      });
+
+      await skill.updateSkill(testContext.authenticator, {
+        name: skill.name,
+        agentFacingDescription: skill.agentFacingDescription,
+        userFacingDescription: skill.userFacingDescription,
+        instructions: `Recurse with ${SkillFactory.serializeSkillReferenceTag(skill)}.`,
+        instructionsHtml: skill.instructionsHtml,
+        icon: skill.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: skill.requestedSpaceIds,
+      });
+
+      await expect(
+        skill.fetchChildSkills(testContext.authenticator)
+      ).resolves.toEqual([expect.objectContaining({ sId: skill.sId })]);
+    });
+
     it("updates parent skill references when child requested spaces change", async () => {
       const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
       const childSkill = await SkillFactory.create(testContext.authenticator, {
@@ -838,8 +850,6 @@ describe("SkillResource", () => {
       const parentSkill = await SkillFactory.create(testContext.authenticator, {
         name: "Parent Skill",
         instructions: `Use ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
-        enableSkillReferences: true,
-        referencedSkillIds: [childSkill.sId],
       });
 
       expect(parentSkill.instructions).toContain(
@@ -856,8 +866,6 @@ describe("SkillResource", () => {
         mcpServerViews: [],
         attachedKnowledge: [],
         requestedSpaceIds: [restrictedSpace.id],
-        enableSkillReferences: true,
-        referencedSkillIds: [],
       });
 
       const unavailableParentSkill = await SkillResource.fetchById(
@@ -879,8 +887,6 @@ describe("SkillResource", () => {
         mcpServerViews: [],
         attachedKnowledge: [],
         requestedSpaceIds: [],
-        enableSkillReferences: true,
-        referencedSkillIds: [],
       });
 
       const availableParentSkill = await SkillResource.fetchById(
@@ -893,14 +899,153 @@ describe("SkillResource", () => {
       );
     });
 
+    it("updates parent skill references when child status changes", async () => {
+      const { parentSkill, childSkill, skillReferenceTag } =
+        await SkillFactory.createWithNestedSkill(testContext.authenticator, {
+          childOverrides: {
+            name: "Child Status Skill",
+          },
+          parentOverrides: {
+            name: "Parent Status Skill",
+          },
+        });
+
+      await childSkill.updateSkill(testContext.authenticator, {
+        name: childSkill.name,
+        agentFacingDescription: childSkill.agentFacingDescription,
+        userFacingDescription: childSkill.userFacingDescription,
+        instructions: childSkill.instructions,
+        instructionsHtml: childSkill.instructionsHtml,
+        icon: childSkill.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: childSkill.requestedSpaceIds,
+        status: "archived",
+      });
+
+      const unavailableParentSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        parentSkill.sId
+      );
+      expect(unavailableParentSkill?.instructions).toContain(
+        `<unavailable_skill id="${childSkill.sId}" />`
+      );
+
+      await childSkill.updateSkill(testContext.authenticator, {
+        name: childSkill.name,
+        agentFacingDescription: childSkill.agentFacingDescription,
+        userFacingDescription: childSkill.userFacingDescription,
+        instructions: childSkill.instructions,
+        instructionsHtml: childSkill.instructionsHtml,
+        icon: childSkill.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: childSkill.requestedSpaceIds,
+        status: "active",
+      });
+
+      const availableParentSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        parentSkill.sId
+      );
+      expect(availableParentSkill?.instructions).toContain(skillReferenceTag);
+    });
+
+    it("updates parent skill references when child icon changes", async () => {
+      const { parentSkill, childSkill, skillReferenceTag } =
+        await SkillFactory.createWithNestedSkill(testContext.authenticator, {
+          childOverrides: {
+            name: "Child Icon Skill",
+          },
+          parentOverrides: {
+            name: "Parent Icon Skill",
+          },
+        });
+
+      const newIcon = "ActionRocketIcon";
+      expect(childSkill.icon).not.toBe(newIcon);
+
+      await childSkill.updateSkill(testContext.authenticator, {
+        name: childSkill.name,
+        agentFacingDescription: childSkill.agentFacingDescription,
+        userFacingDescription: childSkill.userFacingDescription,
+        instructions: childSkill.instructions,
+        instructionsHtml: childSkill.instructionsHtml,
+        icon: newIcon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: childSkill.requestedSpaceIds,
+      });
+
+      const updatedParentSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        parentSkill.sId
+      );
+      expect(updatedParentSkill?.instructions).not.toContain(skillReferenceTag);
+      expect(updatedParentSkill?.instructions).toContain(
+        SkillFactory.serializeSkillReferenceTag({
+          sId: childSkill.sId,
+          icon: newIcon,
+          name: childSkill.name,
+        })
+      );
+    });
+
+    it("normalizes missing nested skill references as unavailable", async () => {
+      const MISSING_SKILL_MODEL_ID = 999_999;
+      const missingSkillId = SkillResource.modelIdToSId({
+        id: MISSING_SKILL_MODEL_ID,
+        workspaceId: testContext.workspace.id,
+      });
+      const missingSkillReferenceTag = serializeSkillTag({
+        id: missingSkillId,
+        icon: null,
+        name: "Deleted Skill",
+      });
+
+      const parentSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Parent With Missing Skill Reference",
+        instructions: `Use ${missingSkillReferenceTag}.`,
+      });
+
+      expect(parentSkill.instructions).toContain(
+        `<unavailable_skill id="${missingSkillId}" />`
+      );
+      await expect(
+        parentSkill.fetchChildSkills(testContext.authenticator)
+      ).resolves.toHaveLength(0);
+    });
+
+    it("normalizes archived nested skill references as unavailable", async () => {
+      const archivedChildSkill = await SkillFactory.create(
+        testContext.authenticator,
+        {
+          name: "Archived Child Skill",
+          status: "archived",
+        }
+      );
+      const skillReferenceTag =
+        SkillFactory.serializeSkillReferenceTag(archivedChildSkill);
+
+      const parentSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Parent With Archived Skill Reference",
+        instructions: `Use ${skillReferenceTag}.`,
+      });
+
+      expect(parentSkill.instructions).toContain(
+        `<unavailable_skill id="${archivedChildSkill.sId}" />`
+      );
+      await expect(
+        parentSkill.fetchChildSkills(testContext.authenticator)
+      ).resolves.toHaveLength(0);
+    });
+
     it("syncs global skill references", async () => {
       const globalSkillReferenceTag =
         GlobalSkillsRegistry.serializeSkillTag("frames");
       const parentSkill = await SkillFactory.create(testContext.authenticator, {
         name: "Parent With Global Skill Reference",
         instructions: `Use ${globalSkillReferenceTag}.`,
-        enableSkillReferences: true,
-        referencedSkillIds: ["frames"],
       });
 
       const childSkills = await parentSkill.fetchChildSkills(
@@ -949,14 +1094,16 @@ describe("SkillResource", () => {
         name: parentSkill.name,
         agentFacingDescription: parentSkill.agentFacingDescription,
         userFacingDescription: parentSkill.userFacingDescription,
-        instructions: parentSkill.instructions,
+        instructions: `Use ${serializeSkillTag({
+          id: missingSkillId,
+          icon: null,
+          name: "Deleted Skill",
+        })}.`,
         instructionsHtml: parentSkill.instructionsHtml,
         icon: parentSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
         requestedSpaceIds: parentSkill.requestedSpaceIds,
-        enableSkillReferences: true,
-        referencedSkillIds: [missingSkillId],
       });
 
       await expect(
@@ -1013,6 +1160,175 @@ describe("SkillResource", () => {
       expect(membershipsAfterRestore.every((m) => m.status === "active")).toBe(
         true
       );
+    });
+
+    it("removes the skill's space requirements from agents when archiving and adds them back when restoring", async () => {
+      const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
+      await GroupSpaceFactory.associate(
+        restrictedSpace,
+        testContext.globalGroup
+      );
+
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With Space To Archive",
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        {
+          name: "Agent With Skill Space",
+          requestedSpaceIds: [restrictedSpace.id],
+        }
+      );
+
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skill.id,
+        agentConfigurationId: agent.id,
+      });
+
+      // Archiving the skill should drop its space from the agent's requirements.
+      await skill.archive(testContext.authenticator);
+
+      const agentAfterArchive = await getAgentConfiguration(
+        testContext.authenticator,
+        { agentId: agent.sId, variant: "light" }
+      );
+      expect(agentAfterArchive?.requestedSpaceIds).not.toContain(
+        restrictedSpace.sId
+      );
+
+      // Restoring the skill should add its space back to the agent's requirements.
+      await skill.restore(testContext.authenticator);
+
+      const agentAfterRestore = await getAgentConfiguration(
+        testContext.authenticator,
+        { agentId: agent.sId, variant: "light" }
+      );
+      expect(agentAfterRestore?.requestedSpaceIds).toContain(
+        restrictedSpace.sId
+      );
+    });
+
+    it("keeps a space on the agent when archiving a skill if another active skill still requires it", async () => {
+      const sharedSpace = await SpaceFactory.regular(testContext.workspace);
+      await GroupSpaceFactory.associate(sharedSpace, testContext.globalGroup);
+
+      const skill1 = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill 1 Sharing Space",
+        requestedSpaceIds: [sharedSpace.id],
+      });
+      const skill2 = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill 2 Sharing Space",
+        requestedSpaceIds: [sharedSpace.id],
+      });
+
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        {
+          name: "Agent With Two Skills",
+          requestedSpaceIds: [sharedSpace.id],
+        }
+      );
+
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skill1.id,
+        agentConfigurationId: agent.id,
+      });
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skill2.id,
+        agentConfigurationId: agent.id,
+      });
+
+      // Archiving skill1 must not remove sharedSpace because skill2 still requires it.
+      await skill1.archive(testContext.authenticator);
+
+      const agentAfter = await getAgentConfiguration(
+        testContext.authenticator,
+        {
+          agentId: agent.sId,
+          variant: "light",
+        }
+      );
+      expect(agentAfter?.requestedSpaceIds).toContain(sharedSpace.sId);
+    });
+
+    it("marks parent skill references unavailable while a child skill is archived", async () => {
+      const childSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Archived Child Skill",
+      });
+      const skillReferenceTag =
+        SkillFactory.serializeSkillReferenceTag(childSkill);
+      const skillReferenceHtmlTag = serializeSkillTag(
+        {
+          icon: childSkill.icon,
+          id: childSkill.sId,
+          name: childSkill.name,
+        },
+        { html: true }
+      );
+      const parentSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Parent Skill",
+        instructions: `Use ${skillReferenceTag}.`,
+        instructionsHtml: `<p>Use ${skillReferenceHtmlTag}.</p>`,
+      });
+
+      const { affectedCount: archiveCount } = await childSkill.archive(
+        testContext.authenticator
+      );
+      expect(archiveCount).toBe(1);
+
+      const archivedParentSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        parentSkill.sId
+      );
+      expect(archivedParentSkill?.instructions).toContain(
+        `<unavailable_skill id="${childSkill.sId}" />`
+      );
+      expect(archivedParentSkill?.instructionsHtml).toContain(
+        `<unavailable_skill id="${childSkill.sId}"></unavailable_skill>`
+      );
+      await expect(
+        archivedParentSkill!.fetchChildSkills(testContext.authenticator)
+      ).resolves.toHaveLength(0);
+
+      await archivedParentSkill!.updateSkill(testContext.authenticator, {
+        name: archivedParentSkill!.name,
+        agentFacingDescription: archivedParentSkill!.agentFacingDescription,
+        userFacingDescription: archivedParentSkill!.userFacingDescription,
+        instructions: archivedParentSkill!.instructions,
+        instructionsHtml: archivedParentSkill!.instructionsHtml,
+        icon: archivedParentSkill!.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: archivedParentSkill!.requestedSpaceIds,
+      });
+
+      const updatedArchivedParentSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        parentSkill.sId
+      );
+      expect(updatedArchivedParentSkill?.instructions).toContain(
+        `<unavailable_skill id="${childSkill.sId}" />`
+      );
+
+      const { affectedCount: restoreCount } = await childSkill.restore(
+        testContext.authenticator
+      );
+      expect(restoreCount).toBe(1);
+
+      const restoredParentSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        parentSkill.sId
+      );
+      expect(restoredParentSkill?.instructions).toContain(skillReferenceTag);
+      await expect(
+        restoredParentSkill!.fetchChildSkills(testContext.authenticator)
+      ).resolves.toEqual([
+        expect.objectContaining({
+          sId: childSkill.sId,
+        }),
+      ]);
     });
   });
 
@@ -1105,6 +1421,32 @@ describe("SkillResource", () => {
       expect(skillsForAgentAfter.some((s) => s.id === skillResource.id)).toBe(
         false
       );
+    });
+
+    it("marks parent skill references unavailable before deleting a child skill", async () => {
+      const { parentSkill, childSkill } =
+        await SkillFactory.createWithNestedSkill(testContext.authenticator, {
+          childOverrides: {
+            name: "Deleted Child Skill",
+          },
+          parentOverrides: {
+            name: "Parent Skill",
+          },
+        });
+
+      const result = await childSkill.delete(testContext.authenticator);
+      expect(result.isOk()).toBe(true);
+
+      const parentSkillAfterDelete = await SkillResource.fetchById(
+        testContext.authenticator,
+        parentSkill.sId
+      );
+      expect(parentSkillAfterDelete?.instructions).toContain(
+        `<unavailable_skill id="${childSkill.sId}" />`
+      );
+      await expect(
+        parentSkillAfterDelete!.fetchChildSkills(testContext.authenticator)
+      ).resolves.toHaveLength(0);
     });
   });
 

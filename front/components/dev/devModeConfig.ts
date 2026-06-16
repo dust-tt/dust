@@ -297,6 +297,20 @@ function typo(
 
 export const TYPO_GROUPS: TypoGroup[] = [
   {
+    label: "Text",
+    tokens: [
+      typo("text-xs", ".s-text-xs", "12px", "16px", "normal", "400"),
+      typo("text-sm", ".s-text-sm", "14px", "20px", "-0.28px", "400"),
+      typo("text-base", ".s-text-base", "16px", "24px", "-0.32px", "400"),
+      typo("text-lg", ".s-text-lg", "18px", "26px", "-0.36px", "400"),
+      typo("text-xl", ".s-text-xl", "20px", "28px", "-0.4px", "400"),
+      typo("text-2xl", ".s-text-2xl", "24px", "30px", "-0.96px", "400"),
+      typo("text-3xl", ".s-text-3xl", "32px", "36px", "-1.28px", "400"),
+      typo("text-4xl", ".s-text-4xl", "40px", "42px", "-2.4px", "400"),
+      typo("text-5xl", ".s-text-5xl", "48px", "52px", "-2.88px", "400"),
+    ],
+  },
+  {
     label: "Labels",
     tokens: [
       typo("label-xs", ".s-label-xs", "12px", "16px", "normal", "600"),
@@ -355,6 +369,15 @@ export const TYPO_GROUPS: TypoGroup[] = [
         "-0.96px",
         "400"
       ),
+    ],
+  },
+  {
+    label: "Font Weight",
+    tokens: [
+      typo("font-normal", ".s-font-normal", "", "", "", "400"),
+      typo("font-medium", ".s-font-medium", "", "", "", "450"),
+      typo("font-semibold", ".s-font-semibold", "", "", "", "550"),
+      typo("font-bold", ".s-font-bold", "", "", "", "700"),
     ],
   },
 ];

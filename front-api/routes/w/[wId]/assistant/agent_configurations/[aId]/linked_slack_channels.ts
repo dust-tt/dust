@@ -25,6 +25,7 @@ const PatchLinkedSlackChannelsRequestBodySchema = z.object({
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/linked_slack_channels.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.patch(
   "/",
   validate("param", ParamsSchema),

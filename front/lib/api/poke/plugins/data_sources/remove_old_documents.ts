@@ -2,6 +2,7 @@ import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import tracer from "@app/logger/tracer";
 import { CoreAPI } from "@app/types/core/core_api";
 import { Err, Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -140,29 +141,39 @@ export const removeOldDocumentsPlugin = createPlugin({
     }
 
     // Actually delete the documents
-    const deleteResults = await concurrentExecutor(
-      documentsToDelete,
-      async ({ documentId }) => {
-        const delRes = await coreAPI.deleteDataSourceDocument({
-          projectId: dataSource.dustAPIProjectId,
-          dataSourceId: dataSource.dustAPIDataSourceId,
-          documentId,
-        });
+    const deleteResults = await tracer.trace(
+      "poke.remove_old_documents.bulk_delete",
+      async (span) => {
+        span?.setTag("workspace.id", auth.workspace()?.sId ?? "unknown");
+        span?.setTag("data_source.s_id", dataSource.sId);
+        span?.setTag("documents.count", documentsToDelete.length);
+        span?.setTag("cutoff_date", cutoffDate);
+        return concurrentExecutor(
+          documentsToDelete,
+          async ({ documentId }) => {
+            const delRes = await coreAPI.deleteDataSourceDocument({
+              projectId: dataSource.dustAPIProjectId,
+              dataSourceId: dataSource.dustAPIDataSourceId,
+              documentId,
+              caller: "poke-remove-old-documents",
+            });
 
-        if (delRes.isErr()) {
-          return {
-            documentId,
-            success: false,
-            error: delRes.error.message,
-          };
-        }
+            if (delRes.isErr()) {
+              return {
+                documentId,
+                success: false,
+                error: delRes.error.message,
+              };
+            }
 
-        return {
-          documentId,
-          success: true,
-        };
-      },
-      { concurrency: 10 }
+            return {
+              documentId,
+              success: true,
+            };
+          },
+          { concurrency: 10 }
+        );
+      }
     );
 
     const successCount = deleteResults.filter((r) => r.success).length;

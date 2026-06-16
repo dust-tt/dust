@@ -32,6 +32,10 @@ import {
   GROK_4_MODEL_CONFIG,
 } from "@app/types/assistant/models/xai";
 
+export type GetEnabledModelsResponseType = {
+  models: ModelConfigurationType[];
+};
+
 export function getWhitelistedProviders(
   auth: Authenticator
 ): Set<ModelProviderIdType> {

@@ -1,22 +1,22 @@
 import {
-  ArrowUpIcon,
-  AttachmentIcon,
+  ArrowUp,
+  Attachment01,
   Button,
   cn,
-  DocumentIcon,
+  File02,
   Icon,
-  ImageIcon,
+  Image01,
   ImageZoomDialog,
-  MicIcon,
-  PlusIcon,
-  RobotIcon,
+  Microphone01,
+  Plus,
+  Robot,
   Sheet,
   SheetContainer,
   SheetContent,
   SheetHeader,
   SheetTitle,
-  ToolsIcon,
-  XMarkIcon,
+  Tool02,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -216,7 +216,7 @@ export function InputBar({
     >
       {onClose && (
         <Button
-          icon={XMarkIcon}
+          icon={XClose}
           size="sm"
           variant="ghost"
           aria-label="Close"
@@ -238,7 +238,7 @@ export function InputBar({
                 key={attachment.id}
                 label={attachment.label}
                 size="lg"
-                visual={attachment.visual ?? DocumentIcon}
+                visual={attachment.visual ?? File02}
                 variant="secondary"
                 tooltip={attachment.tooltip}
                 onClose={() => {
@@ -257,9 +257,7 @@ export function InputBar({
                 key={id}
                 label={file.name}
                 size="lg"
-                visual={
-                  file.type.startsWith("image/") ? ImageIcon : DocumentIcon
-                }
+                visual={file.type.startsWith("image/") ? Image01 : File02}
                 variant="secondary"
                 imgSrc={objectUrl}
                 onClick={() => {
@@ -312,7 +310,7 @@ export function InputBar({
         <div className="s-flex s-w-full s-gap-2 s-p-2 s-pl-4">
           <Button
             variant="outline"
-            icon={PlusIcon}
+            icon={Plus}
             size="sm"
             tooltip="Attach a document"
             className="md:s-hidden"
@@ -320,20 +318,20 @@ export function InputBar({
           <div className="s-hidden s-gap-0 md:s-flex">
             <Button
               variant="ghost-secondary"
-              icon={RobotIcon}
+              icon={Robot}
               size="xs"
               label="Dust"
               tooltip="Mention an Agent"
             />
             <Button
               variant="ghost-secondary"
-              icon={AttachmentIcon}
+              icon={Attachment01}
               size="xs"
               tooltip="Attach a document"
             />
             <Button
               variant="ghost-secondary"
-              icon={ToolsIcon}
+              icon={Tool02}
               size="xs"
               tooltip="Add functionality"
             />
@@ -342,13 +340,13 @@ export function InputBar({
           <div className="s-flex s-items-center s-gap-2 md:s-gap-1">
             <Button
               variant="ghost-secondary"
-              icon={MicIcon}
+              icon={Microphone01}
               size="xs"
               isRounded
             />
             <Button
               variant="highlight"
-              icon={ArrowUpIcon}
+              icon={ArrowUp}
               size="xs"
               tooltip="Send message"
               isRounded
@@ -386,9 +384,7 @@ export function InputBar({
             <SheetTitle>
               <div className="s-flex s-flex-1 s-flex-col s-w-full s-items-start s-gap-4">
                 <div className="s-flex s-items-center s-gap-2">
-                  {selectedDroppedFile && (
-                    <Icon visual={DocumentIcon} size="md" />
-                  )}
+                  {selectedDroppedFile && <Icon visual={File02} size="md" />}
                   <span>
                     {selectedDroppedFile?.file.name || "Document preview"}
                   </span>

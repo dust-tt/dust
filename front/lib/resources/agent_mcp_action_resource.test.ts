@@ -1,16 +1,10 @@
-import type {
-  LightMCPToolConfigurationType,
-  LightServerSideMCPToolConfigurationType,
-} from "@app/lib/actions/mcp";
+import type { LightServerSideMCPToolConfigurationType } from "@app/lib/actions/mcp";
+import type { ToolGeneratedFilePathType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
-import {
-  AgentMCPActionModel,
-  AgentMCPActionOutputItemModel,
-} from "@app/lib/models/agent/actions/mcp";
-import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
+import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import {
   GCS_CONTENT_CACHE_TTL_MS,
   gcsContentCacheKey,
@@ -18,8 +12,8 @@ import {
 } from "@app/lib/resources/agent_mcp_action/output_storage";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -28,7 +22,8 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 
 // In-memory GCS mock: writes persist content that reads can return.
 const gcsStore = new Map<string, Buffer>();
@@ -77,11 +72,7 @@ describe("listBlockedActionsForConversation", () => {
   let auth: Authenticator;
   let conversation: ConversationType;
 
-  let stepContentIndex = 0;
-
   beforeEach(async () => {
-    stepContentIndex = 0;
-
     const setup = await createResourceTest({});
     workspace = setup.workspace;
     auth = setup.authenticator;
@@ -94,82 +85,18 @@ describe("listBlockedActionsForConversation", () => {
   });
 
   async function createBlockedAction({
-    agentMessageId,
+    agentMessageModelId,
     status = "blocked_validation_required",
   }: {
-    agentMessageId: number;
+    agentMessageModelId: number;
     status?: ToolExecutionStatus;
   }) {
-    const functionCallId = generateRandomModelSId();
-    const currentIndex = stepContentIndex++;
-
-    const stepContent = await AgentStepContentModel.create({
-      workspaceId: workspace.id,
-      agentMessageId,
-      step: 1,
-      index: currentIndex,
-      version: 0,
-      type: "function_call",
-      value: {
-        type: "function_call",
-        value: {
-          id: functionCallId,
-          name: "test_tool",
-          arguments: "{}",
-        },
-      },
-    });
-
-    const toolConfiguration: LightMCPToolConfigurationType = {
-      id: 1,
-      sId: generateRandomModelSId(),
-      type: "mcp_configuration",
-      name: "test_tool",
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      timeFrame: null,
-      jsonSchema: null,
-      additionalConfiguration: {},
-      mcpServerViewId: "test-server-view",
-      dustAppConfiguration: null,
-      secretName: null,
-      dustProject: null,
-      internalMCPServerId: null,
-      availability: "auto",
-      permission: "low",
-      toolServerId: "test-server",
-      retryPolicy: "no_retry",
-      originalName: "test_tool",
-      mcpServerName: "test_server",
-    };
-
-    const action = await AgentMCPActionModel.create({
-      workspaceId: workspace.id,
-      agentMessageId,
-      mcpServerConfigurationId: generateRandomModelSId(),
+    return AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId,
       status,
-      citationsAllocated: 0,
-      augmentedInputs: {},
-      toolConfiguration,
-      stepContext: {
-        citationsCount: 0,
-        citationsOffset: 0,
-        resumeState: null,
-        retrievalTopK: 10,
-        websearchResultCount: 5,
-      },
     });
-
-    await AgentStepContentToolExecutionModel.create({
-      workspaceId: workspace.id,
-      conversationId: conversation.id,
-      agentMessageId,
-      agentMCPActionId: action.id,
-      stepContentId: stepContent.id,
-    });
-
-    return { action, stepContent };
   }
 
   it("should return empty array for conversation with no agent messages", async () => {
@@ -214,7 +141,7 @@ describe("listBlockedActionsForConversation", () => {
       });
 
     await createBlockedAction({
-      agentMessageId: agentMessageRow.agentMessageId!,
+      agentMessageModelId: agentMessageRow.agentMessageId!,
     });
 
     const conversationResource = await ConversationResource.fetchById(
@@ -261,10 +188,10 @@ describe("listBlockedActionsForConversation", () => {
 
     // Create one blocked action and one succeeded action on the same agent message.
     await createBlockedAction({
-      agentMessageId: agentMessageRow.agentMessageId!,
+      agentMessageModelId: agentMessageRow.agentMessageId!,
     });
     await createBlockedAction({
-      agentMessageId: agentMessageRow.agentMessageId!,
+      agentMessageModelId: agentMessageRow.agentMessageId!,
       status: "succeeded",
     });
 
@@ -283,6 +210,58 @@ describe("listBlockedActionsForConversation", () => {
     // Only the blocked action should be returned, not the succeeded one.
     expect(result).toHaveLength(1);
     expect(result[0].status).toBe("blocked_validation_required");
+  });
+
+  it("should not return blocked actions whose agent message can no longer resume", async () => {
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Test Agent",
+    });
+
+    // Create user message at rank 0.
+    const userMessageRow = await ConversationFactory.createUserMessageWithRank({
+      auth,
+      workspace,
+      conversationId: conversation.id,
+      rank: 0,
+      content: "Test message",
+    });
+
+    // Create agent message at rank 1 with a blocked action.
+    const agentMessageRow =
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversation.id,
+        rank: 1,
+        agentConfigurationId: agentConfig.sId,
+        agentConfigurationVersion: agentConfig.version,
+        parentId: userMessageRow.id,
+      });
+
+    await createBlockedAction({
+      agentMessageModelId: agentMessageRow.agentMessageId!,
+    });
+
+    // Interrupt the agent message (e.g. the user skipped it), leaving the blocked action behind.
+    await ConversationFactory.setAgentMessageStatus({
+      workspace,
+      agentMessageModelId: agentMessageRow.agentMessageId!,
+      status: "interrupted",
+    });
+
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    expect(conversationResource).not.toBeNull();
+
+    const result =
+      await AgentMCPActionResource.listBlockedActionsForConversation(
+        auth,
+        conversationResource!
+      );
+
+    // The blocked action is not actionable anymore: it must not be returned.
+    expect(result).toEqual([]);
   });
 
   it("should only return blocked actions from the latest agent message version at a given rank", async () => {
@@ -312,7 +291,7 @@ describe("listBlockedActionsForConversation", () => {
       });
 
     await createBlockedAction({
-      agentMessageId: agentMessageV0Row.agentMessageId!,
+      agentMessageModelId: agentMessageV0Row.agentMessageId!,
     });
 
     // Create agent message v1 at the same rank (simulating a retry) with its own blocked action.
@@ -328,7 +307,7 @@ describe("listBlockedActionsForConversation", () => {
       });
 
     const { action: v1Action } = await createBlockedAction({
-      agentMessageId: agentMessageV1Row.agentMessageId!,
+      agentMessageModelId: agentMessageV1Row.agentMessageId!,
     });
 
     const conversationResource = await ConversationResource.fetchById(
@@ -347,11 +326,30 @@ describe("listBlockedActionsForConversation", () => {
     expect(result).toHaveLength(1);
 
     // Verify the returned action belongs to the v1 agent message (not v0).
-    const expectedActionId = AgentMCPActionResource.modelIdToSId({
-      id: v1Action.id,
+    expect(result[0].actionId).toBe(v1Action.sId);
+  });
+
+  it("returns zero and leaves the action unchanged when the expected status does not match", async () => {
+    const agentMessage = await AgentMessageModel.create({
       workspaceId: workspace.id,
+      agentConfigurationId: "test-agent",
+      agentConfigurationVersion: 0,
+      status: "created",
+      skipToolsValidation: false,
     });
-    expect(result[0].actionId).toBe(expectedActionId);
+    const { action } = await createBlockedAction({
+      agentMessageModelId: agentMessage.id,
+    });
+    const [affectedCount] = await action.updateStatusFromExpected(auth, {
+      status: "denied",
+      expectedStatus: "blocked_authentication_required",
+    });
+    expect(affectedCount).toBe(0);
+    const reloadedAction = await AgentMCPActionResource.fetchById(
+      auth,
+      action.sId
+    );
+    expect(reloadedAction?.status).toBe("blocked_validation_required");
   });
 });
 
@@ -585,6 +583,83 @@ describe("Output items with GCS storage", () => {
     expect(items![0].id).toBe(outputItems[0].id);
     expect(items![0].content).toBeUndefined();
     expect(items![0].contentGcsPath).toBeUndefined();
+  });
+
+  it("should store generatedFilePath and generatedFileContentType for path-based output items", async () => {
+    const { action } = await ConversationFactory.createAgentMessage(auth, {
+      workspace,
+      conversation,
+      agentConfig,
+      mcpAction: { toolConfiguration },
+    });
+    assert(action, "action should be defined");
+
+    const outputResourceItem: ToolGeneratedFilePathType = {
+      text: "file written",
+      uri: "conversation-abc123/analysis.csv",
+      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH,
+      path: "conversation-abc123/analysis.csv",
+      title: "analysis.csv",
+      contentType: "text/csv",
+    };
+
+    const outputItems = await action.createOutputItems(auth, [
+      {
+        content: {
+          type: "resource",
+          resource: outputResourceItem,
+        },
+      },
+    ]);
+
+    expect(outputItems).toHaveLength(1);
+    expect(outputItems[0].generatedFilePath).toBe(
+      "conversation-abc123/analysis.csv"
+    );
+    expect(outputItems[0].generatedFileContentType).toBe("text/csv");
+  });
+
+  it("should return generatedFilePath and generatedFileContentType when ignoreContent is true", async () => {
+    const { action } = await ConversationFactory.createAgentMessage(auth, {
+      workspace,
+      conversation,
+      agentConfig,
+      mcpAction: { toolConfiguration },
+    });
+    assert(action, "action should be defined");
+
+    const outputResourceItem: ToolGeneratedFilePathType = {
+      text: "file written",
+      uri: "conversation-abc123/analysis.csv",
+      mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH,
+      path: "conversation-abc123/analysis.csv",
+      title: "analysis.csv",
+      contentType: "text/csv",
+    };
+
+    await action.createOutputItems(auth, [
+      {
+        content: {
+          type: "resource",
+          resource: outputResourceItem,
+        },
+      },
+    ]);
+
+    const map = await AgentMCPActionResource.fetchOutputItemsByActionIds(auth, {
+      actionIds: [action.id],
+      ignoreContent: true,
+    });
+
+    const items = map.get(action.id);
+    assert(items !== undefined, "items should be defined");
+    expect(items).toHaveLength(1);
+    // content and contentGcsPath are excluded by ignoreContent.
+    expect(items[0].content).toBeUndefined();
+    expect(items[0].contentGcsPath).toBeUndefined();
+    // Path-based file metadata survives.
+    expect(items[0].generatedFilePath).toBe("conversation-abc123/analysis.csv");
+    expect(items[0].generatedFileContentType).toBe("text/csv");
   });
 
   it("fetchOutputItemsByActionIds mixes metadata-only and full-content actions in one call", async () => {

@@ -17,15 +17,16 @@ import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
+import { formatMicroUsdCompact } from "@app/lib/client/credits";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { clientFetch } from "@app/lib/egress/client";
 import { useWorkspaceProgrammaticCost } from "@app/lib/swr/workspaces";
 import {
-  ArrowDownOnSquareIcon,
   Button,
-  ChevronLeftIcon,
-  ChevronRightIcon,
+  ChevronLeft,
+  ChevronRight,
   Chip,
+  Download01,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -585,7 +586,7 @@ export function BaseProgrammaticCostChart({
         <div className="flex items-center gap-2">
           <span>Usage cost graph</span>
           <Button
-            icon={ChevronLeftIcon}
+            icon={ChevronLeft}
             size="xs"
             variant="ghost"
             onClick={handlePreviousPeriod}
@@ -597,7 +598,7 @@ export function BaseProgrammaticCostChart({
           </span>
           {canGoNext && (
             <Button
-              icon={ChevronRightIcon}
+              icon={ChevronRight}
               size="xs"
               variant="ghost"
               onClick={handleNextPeriod}
@@ -605,7 +606,7 @@ export function BaseProgrammaticCostChart({
             />
           )}
           <Button
-            icon={ArrowDownOnSquareIcon}
+            icon={Download01}
             size="xs"
             variant="ghost"
             onClick={handleExportCsv}
@@ -760,7 +761,7 @@ export function BaseProgrammaticCostChart({
           tickLine={false}
           axisLine={false}
           tickMargin={8}
-          tickFormatter={(value) => `$${(value / 1_000_000).toFixed(0)}`}
+          tickFormatter={(value) => formatMicroUsdCompact(value)}
         />
         <Tooltip
           content={(props: TooltipContentProps<number, string>) =>

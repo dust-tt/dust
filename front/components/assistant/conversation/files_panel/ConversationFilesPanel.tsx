@@ -25,7 +25,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-  XMarkIcon,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useRef, useState } from "react";
 
@@ -164,7 +164,7 @@ export function ConversationFilesPanel({
   if (!hasSandbox) {
     return (
       <>
-        <div className="flex h-full flex-col">
+        <div className="flex h-panel flex-col">
           <AppLayoutTitle>
             <div className="flex h-full items-center justify-between">
               <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
@@ -174,7 +174,7 @@ export function ConversationFilesPanel({
                 variant="ghost"
                 size="sm"
                 onClick={closePanel}
-                icon={XMarkIcon}
+                icon={XClose}
               />
             </div>
           </AppLayoutTitle>
@@ -193,7 +193,7 @@ export function ConversationFilesPanel({
 
   return (
     <>
-      <div className="flex h-full flex-col">
+      <div className="flex h-panel flex-col">
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
@@ -211,7 +211,7 @@ export function ConversationFilesPanel({
                   variant="ghost"
                   size="sm"
                   onClick={closePanel}
-                  icon={XMarkIcon}
+                  icon={XClose}
                 />
               </div>
             </div>

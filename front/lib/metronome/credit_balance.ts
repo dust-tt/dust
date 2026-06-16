@@ -1,4 +1,4 @@
-import { listMetronomeBalances } from "@app/lib/metronome/client";
+import { getNetBalance } from "@app/lib/metronome/client";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import { getCreditTypeAwuId } from "./constants";
@@ -32,7 +32,9 @@ async function fetchPoolCredits(
   workspaceId: string,
   metronomeCustomerId: string
 ): Promise<number> {
-  const result = await listMetronomeBalances(metronomeCustomerId);
+  const result = await getNetBalance(metronomeCustomerId, {
+    creditTypeId: getCreditTypeAwuId(),
+  });
   if (result.isErr()) {
     logger.warn(
       { workspaceId, metronomeCustomerId, error: result.error },
@@ -42,13 +44,7 @@ async function fetchPoolCredits(
     return 1;
   }
 
-  return result.value.reduce((sum, entry) => {
-    const creditTypeId = entry.access_schedule?.credit_type?.id;
-    if (creditTypeId !== getCreditTypeAwuId()) {
-      return sum; // skip non-AWU credits
-    }
-    return sum + (entry.balance ?? 0);
-  }, 0);
+  return result.value;
 }
 
 const getCachedPoolCredits = cacheWithRedis(

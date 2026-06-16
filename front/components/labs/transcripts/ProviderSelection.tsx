@@ -1,4 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/lib/api/labs/transcripts";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -6,7 +7,6 @@ import {
   useLabsTranscriptsIsConnectorConnected,
 } from "@app/lib/swr/labs";
 import datadogLogger from "@app/logger/datadogLogger";
-import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type {
   LabsTranscriptsConfigurationType,
   LabsTranscriptsProviderType,

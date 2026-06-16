@@ -43,23 +43,52 @@ import type {
 import { normalizePrompt } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { CLAUDE_4_5_HAIKU_20251001_MODEL_ID } from "@app/types/assistant/models/anthropic";
+import type { ReasoningEffort } from "@app/types/assistant/models/types";
+import { getMinimumReasoningEffort } from "@app/types/assistant/models/types";
 import assert from "assert";
 
 const MESSAGE_CONVERSION_CONCURRENCY = 10;
 const BATCH_PAYLOAD_BUILD_CONCURRENCY = 10;
 
+// Required (with exactly this date) for the `fallbacks` request param; any
+// other server-side-fallback-* value gets the request rejected with a 400.
+// https://platform.claude.com/docs/en/build-with-claude/refusals-and-fallback#server-side-fallback
+const SERVER_SIDE_FALLBACK_BETA_HEADER = "server-side-fallback-2026-06-01";
+
+// Server-side fallback is a beta param not yet typed by the SDK (0.100.1). We
+// forward it as an extra body param on the streaming request. The list of
+// fallback model ids is driven by modelConfig.fallbackModels, so no fallback
+// target is hardcoded here. Scoped to the streaming path only: the Message
+// Batches API rejects the fallbacks param.
+type AnthropicStreamPayload = BetaMessageStreamParams & {
+  fallbacks?: { model: string }[];
+};
+
 /**
  * Maps prompt tiers to Anthropic system blocks with cache breakpoints.
  *
- * Each non-empty tier becomes a separate text block. Cache breakpoints are placed
+ * Anthropic allows at most 4 cache breakpoints per request (system + messages combined).
+ * Automatic caching (top-level cache_control on the request) consumes one slot.
+ * The full 4-slot budget across the request is:
+ *
+ *  Slot 1 – system: instructions block    (1h TTL, stable per agent config), only targets some global agents
+ *  Slot 2 – system: shared context block  (5min TTL, shared across callers)
+ *  Slot 3 – messages[0]: equipped skills  (5min TTL, stable per agent within a workspace;
+ *                                          set in conversation_to_anthropic.ts when name="system")
+ *  Slot 4 – Anthropic API: automatic cache_control (5min TTL, auto-placed at last cacheable block;
+ *                                          added as top-level field in buildStreamRequestPayload;
+ *                                          NOT added on Vertex AI to stay within the 4-slot limit)
+ *         – Vertex AI:     explicit last-message breakpoint (5min TTL; Vertex does not support
+ *                                          automatic caching, so the last message is marked
+ *                                          explicitly via isLast in buildBaseRequestPayload)
+ *
+ * Each non-empty system tier becomes a separate text block. Breakpoints are placed
  * between tiers so that stable prefixes can be reused even when later tiers change:
  *  1. Instructions      – long TTL (1h), stable per agent config.
  *  2. Shared context    – default ephemeral (5min), shared across callers.
- *  3. Ephemeral context – no breakpoint needed (last block).
+ *  3. Ephemeral context – no breakpoint (covered by automatic caching as last block).
  *
- * IMPORTANT: Anthropic allows at most 4 cache breakpoints per request (system + messages combined).
- * This function uses up to 2 (instructions + shared context).
- * The remaining budget is for the global + conversation message breakpoints.
  * /!\ Do not add breakpoints here without auditing total usage across the request.
  */
 function buildSystemBlocks(
@@ -101,7 +130,7 @@ function buildSystemBlocks(
   return system;
 }
 
-export class AnthropicLLM extends LLM<LLMStreamParameters> {
+export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
   private client: Anthropic;
   private inferenceClient: Anthropic | AnthropicVertex;
   private omittedThinking: boolean;
@@ -124,16 +153,25 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
       this.metadata = {
         ...this.metadata,
         inferenceProvider: "google_vertex_ai",
+        inferenceRegion: "eu",
       };
     }
     this.client = new Anthropic({
       apiKey: ANTHROPIC_API_KEY,
     });
 
+    const vertexInferenceRegion =
+      this.modelId === CLAUDE_4_5_HAIKU_20251001_MODEL_ID
+        ? "europe-west1"
+        : "eu";
     // Vertex does not support batches.
-    this.inferenceClient = getInferenceClient(this.useVertex, {
-      anthropicClient: this.client,
-    });
+    this.inferenceClient = getInferenceClient(
+      this.useVertex,
+      vertexInferenceRegion,
+      {
+        anthropicClient: this.client,
+      }
+    );
   }
 
   private async buildBaseRequestPayload({
@@ -147,23 +185,36 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
       conversation.messages,
       (msg, index) =>
         toMessage(msg, {
-          isLast: index === conversation.messages.length - 1,
+          isFirst: index === 0,
+          // Vertex AI does not support automatic caching, so we need an explicit breakpoint on the
+          // last message. On the Anthropic API the top-level cache_control handles this.
+          isLast: this.useVertex && index === conversation.messages.length - 1,
           omittedThinking: this.omittedThinking,
           convertToBase64: this.useVertex,
         }),
       { concurrency: MESSAGE_CONVERSION_CONCURRENCY }
     );
 
+    // Clamp the reasoning effort to the model's supported range. Some callers
+    // default to "none" when no effort is set, but models like Claude Fable 5
+    // reject the explicit disabled thinking that "none" maps to, so an
+    // unsupported effort falls back to the model's minimum supported one.
+    const supportedEfforts = this.modelConfig.supportedReasoningEfforts;
+    const reasoningEffort: ReasoningEffort | null =
+      this.reasoningEffort !== null && !supportedEfforts[this.reasoningEffort]
+        ? getMinimumReasoningEffort(supportedEfforts)
+        : this.reasoningEffort;
+
     // Build thinking config, use custom type if specified.
     const thinkingConfig =
       this.modelConfig.customThinkingType === "auto"
         ? toAutoThinkingConfig(
-            this.reasoningEffort,
+            reasoningEffort,
             this.modelConfig.useNativeLightReasoning,
             this.omittedThinking
           )
         : toThinkingConfig(
-            this.reasoningEffort,
+            reasoningEffort,
             this.modelConfig.useNativeLightReasoning
           );
 
@@ -183,32 +234,54 @@ export class AnthropicLLM extends LLM<LLMStreamParameters> {
     };
   }
 
-  protected buildStreamRequestPayload(
-    streamParameters: LLMStreamParameters
-  ): LLMStreamParameters {
-    // Just capture the parameters; message conversion (async) happens in sendRequest.
-    return streamParameters;
+  // Builds the server-side fallback param from modelConfig.fallbackModels, or
+  // undefined when none are configured (so the param is omitted entirely).
+  // Server-side fallback is not available on Vertex AI, so it is never attached
+  // to Vertex requests.
+  private buildFallbacksParam(): { model: string }[] | undefined {
+    const fallbackModels = this.modelConfig.fallbackModels;
+    if (this.useVertex || !fallbackModels || fallbackModels.length === 0) {
+      return undefined;
+    }
+    return fallbackModels.map((model) => ({ model }));
   }
 
-  protected async *sendRequest(
+  protected async buildStreamRequestPayload(
     streamParameters: LLMStreamParameters
-  ): AsyncGenerator<LLMEvent> {
-    const betas = this.modelConfig.customBetas;
-
+  ): Promise<BetaMessageStreamParams> {
     const basePayload = await this.buildBaseRequestPayload(streamParameters);
     const outputFormat = toOutputFormatParam(this.responseFormat);
+    const fallbacks = this.buildFallbacksParam();
 
-    const payload: BetaMessageStreamParams = {
+    // The fallbacks param is rejected unless the request carries the
+    // server-side fallback beta header, so the header is attached here rather
+    // than left to customBetas (which could drift out of sync).
+    const betas = fallbacks
+      ? [
+          ...(this.modelConfig.customBetas ?? []),
+          SERVER_SIDE_FALLBACK_BETA_HEADER,
+        ]
+      : this.modelConfig.customBetas;
+
+    const payload: AnthropicStreamPayload = {
       ...basePayload,
       stream: true,
       betas,
       output_config: outputFormat
         ? { ...basePayload.output_config, format: outputFormat }
         : basePayload.output_config,
-      cache_control: { type: "ephemeral" },
+      // Automatic caching is not supported on Vertex AI; the explicit breakpoints in
+      // buildBaseRequestPayload (isFirst and isLast) cover Vertex instead.
+      ...(!this.useVertex ? { cache_control: { type: "ephemeral" } } : {}),
       model: getModel(this.useVertex, { modelId: this.modelId }),
+      ...(fallbacks ? { fallbacks } : {}),
     };
+    return payload;
+  }
 
+  protected async *sendRequest(
+    payload: BetaMessageStreamParams
+  ): AsyncGenerator<LLMEvent> {
     try {
       const events = this.inferenceClient.beta.messages.stream(payload);
 

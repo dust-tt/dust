@@ -1,5 +1,5 @@
 import { Button } from "@sparkle/components/Button";
-import { ChatBubbleLeftRightIcon } from "@sparkle/icons/app";
+import { MessageChatSquare } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import React, { useContext, useState } from "react";
 import type { Node } from "unist";
@@ -58,7 +58,7 @@ export function QuickReplyBlock({
   onSend,
   onTrack,
   disabled = false,
-  icon = ChatBubbleLeftRightIcon,
+  icon = MessageChatSquare,
   className,
   buttonClassName,
 }: QuickReplyBlockProps) {

@@ -1,6 +1,10 @@
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
-import type { ContentNode } from "@app/types/connectors/connectors_api";
+import type {
+  ConnectorPermission,
+  ContentNode,
+  ContentNodeWithParent,
+} from "@app/types/connectors/connectors_api";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { ContentNodesViewTypeCodec } from "@app/types/connectors/content_nodes";
 import type { Result } from "@app/types/shared/result";
@@ -25,6 +29,16 @@ export type ManagedPermissionsError =
   | { type: "connector_rate_limit" }
   | { type: "connector_authorization_error" }
   | { type: "internal_error" };
+
+export type GetDataSourcePermissionsResponseBody<
+  T extends ConnectorPermission = ConnectorPermission,
+> = {
+  resources: (T extends "read" ? ContentNodeWithParent : ContentNode)[];
+};
+
+export type SetDataSourcePermissionsResponseBody = {
+  success: true;
+};
 
 export async function getManagedDataSourcePermissions(
   connectorId: string,

@@ -250,6 +250,16 @@ export const AGENT_MESSAGE_STATUSES_TO_TRACK: AgentMessageStatus[] = [
   "gracefully_stopped",
 ];
 
+// Terminal statuses from which an agent message can never resume. Tools of such a message that
+// are still blocked on user input (e.g. a manual tool approval that was skipped when the message
+// got interrupted) are not actionable anymore. "gracefully_stopped" is not included: a graceful
+// stop keeps pending approvals actionable and approving them resumes the loop.
+export const UNRESUMABLE_AGENT_MESSAGE_STATUSES: AgentMessageStatus[] = [
+  "failed",
+  "cancelled",
+  "interrupted",
+];
+
 export function isTerminalAgentMessageStatus(
   status: AgentMessageStatus
 ): boolean {
@@ -302,6 +312,13 @@ export type BaseAgentMessageType = {
   completionDurationMs: number | null;
   reactions: MessageReactionType[];
   prunedContext?: boolean;
+  costCredits: number | null;
+  // Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned
+  // (recursively) by this message, separate from `costCredits` (this message's own
+  // intelligence + tools). Computed lazily on single-message fetches only, so it is
+  // `null` everywhere else (e.g. conversation list rendering). Optional during
+  // rollout. See [BACK12].
+  subAgentCostCredits?: number | null;
 };
 
 export type InlineActivityStep =
@@ -672,6 +689,7 @@ export type SubmitMessageError = {
     | "plan_limit_reached_error"
     | "credits_exhausted_error"
     | "user_cap_reached_error"
+    | "no_seat_error"
     | "content_too_large";
   title: string;
   message: string;

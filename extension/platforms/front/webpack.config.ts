@@ -53,6 +53,13 @@ export const getConfig = ({ env }: { env: Environment }) => {
           exclude: /node_modules/,
         },
         {
+          test: /\.woff2$/i,
+          type: "asset/resource",
+          generator: {
+            filename: "static/fonts/[name][ext]",
+          },
+        },
+        {
           test: /\.css$/,
           use: [
             "style-loader",

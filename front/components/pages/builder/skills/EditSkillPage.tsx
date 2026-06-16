@@ -1,10 +1,10 @@
+import Custom404 from "@app/components/pages/Custom404";
 import SkillBuilder from "@app/components/skill_builder/SkillBuilder";
 import { SkillBuilderProvider } from "@app/components/skill_builder/SkillBuilderContext";
 import { useDocumentTitle } from "@app/hooks/useDocumentTitle";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { useSkill } from "@app/lib/swr/skill_configurations";
-import Custom404 from "@app/pages/404";
 import { Spinner } from "@dust-tt/sparkle";
 
 export function EditSkillPage() {

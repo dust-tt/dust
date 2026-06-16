@@ -1,10 +1,8 @@
-import { apiError } from "@app/logger/withlogging";
 import type { ConversationErrorType } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { isOverflowingDBString } from "@app/types/shared/utils/general";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import type { NextApiRequest, NextApiResponse } from "next";
 
 const STATUS_FOR_ERROR_TYPE: Record<
   ConversationErrorType,
@@ -23,8 +21,7 @@ const STATUS_FOR_ERROR_TYPE: Record<
 
 /**
  * Maps a conversation error to the standard `{ status_code, api_error }`
- * shape. Use this from any framework (Next or Hono) — only the response
- * dispatch differs.
+ * shape. Framework-agnostic — only the response dispatch differs.
  */
 export function getConversationApiError(
   error: Error
@@ -45,18 +42,6 @@ export function getConversationApiError(
       message: "An internal server error occurred.",
     },
   };
-}
-
-export function apiErrorForConversation(
-  req: NextApiRequest,
-  res: NextApiResponse,
-  error: Error
-) {
-  const apiErr = getConversationApiError(error);
-  if (error instanceof ConversationError) {
-    return apiError(req, res, apiErr);
-  }
-  return apiError(req, res, apiErr, error);
 }
 
 export function isUserMessageContextOverflowing(context: {

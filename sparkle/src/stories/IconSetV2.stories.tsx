@@ -1,19 +1,20 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import * as V2StrokeIcons from "@sparkle/icons/v2-stroke";
+import * as StrokeIcons from "@sparkle/icons/v2-stroke";
 
 import { Icon } from "../index_with_tw_base";
 
-type IconModule = {
-  [key: string]: React.ComponentType<{ className?: string }> & {
-    default?: React.ComponentType<{ className?: string }>;
-  };
-};
-
 const meta = {
-  title: "Assets/IconsV2",
+  title: "Assets/Icons/All Icons",
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `The complete v2 stroke icon set (\`@sparkle/icons/v2-stroke\`). Use this exhaustive grid to find any available icon by name, then render it via the **Icon** component or a component's \`icon\` prop.`,
+      },
+    },
+  },
 } satisfies Meta;
 
 export default meta;
@@ -33,16 +34,20 @@ const itemStyle: React.CSSProperties = {
   width: "100%",
 };
 
-const renderIconGrid = (icons: IconModule) => (
+const isIconComponent = (
+  v: unknown
+): v is React.ComponentType<{ className?: string }> => typeof v === "function";
+
+const renderIconGrid = () => (
   <div style={gridStyle}>
-    {Object.entries(icons).map(([iconName, IconComponent]) => {
-      const CurrentIcon = (
-        "default" in IconComponent ? IconComponent.default : IconComponent
-      ) as React.ComponentType<{ className?: string }>;
+    {Object.entries(StrokeIcons).map(([iconName, IconComponent]) => {
+      if (!isIconComponent(IconComponent)) {
+        return null;
+      }
       return (
         <div key={iconName}>
           <Icon
-            visual={CurrentIcon}
+            visual={IconComponent}
             size="md"
             className="s-text-foreground dark:s-text-foreground-night"
           />
@@ -59,5 +64,5 @@ const renderIconGrid = (icons: IconModule) => (
 );
 
 export const StrokeIconSet: Story = {
-  render: () => renderIconGrid(V2StrokeIcons as IconModule),
+  render: () => renderIconGrid(),
 };

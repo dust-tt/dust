@@ -1,0 +1,308 @@
+import {
+  getProcessedContentType,
+  hasProcessedVersion,
+  isUploadSupportedForContentType,
+  processAndStoreFile,
+} from "@app/lib/api/files/processing";
+import { FileFactory } from "@app/tests/utils/FileFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { assert, describe, expect, it, vi } from "vitest";
+
+// Mock config to provide required env vars.
+vi.mock("@app/lib/api/config", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("@app/lib/api/config")>();
+  return {
+    ...mod,
+    default: {
+      ...mod.default,
+      getTextExtractionUrl: () => "http://fake-tika:9998",
+      getApiBaseUrl: () => "http://localhost:3000",
+    },
+  };
+});
+
+describe("hasProcessedVersion", () => {
+  it("should return false for plain text files", () => {
+    expect(hasProcessedVersion("text/plain")).toBe(false);
+  });
+
+  it("should return false for Python files", () => {
+    expect(hasProcessedVersion("text/x-python")).toBe(false);
+  });
+
+  it("should return false for JSON files", () => {
+    expect(hasProcessedVersion("application/json")).toBe(false);
+  });
+
+  it("should return false for CSV files", () => {
+    expect(hasProcessedVersion("text/csv")).toBe(false);
+  });
+
+  it("should return true for SVG files (rasterized to PNG)", () => {
+    expect(hasProcessedVersion("image/svg+xml")).toBe(true);
+  });
+
+  it("should return false for PDF files (lazy extraction via extract_text tool)", () => {
+    expect(hasProcessedVersion("application/pdf")).toBe(false);
+  });
+
+  it("should return false for Word documents (lazy extraction via extract_text tool)", () => {
+    expect(
+      hasProcessedVersion(
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      )
+    ).toBe(false);
+  });
+
+  it("should return true for image files (resize)", () => {
+    expect(hasProcessedVersion("image/png")).toBe(true);
+  });
+
+  it("should return true for Excel files (text extraction required for table upsert)", () => {
+    expect(
+      hasProcessedVersion(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      )
+    ).toBe(true);
+  });
+
+  it("should return true for audio files (transcription)", () => {
+    expect(hasProcessedVersion("audio/mpeg")).toBe(true);
+  });
+});
+
+describe("getProcessedContentType", () => {
+  it("should return undefined for content types without processing", () => {
+    expect(getProcessedContentType("text/plain")).toBeUndefined();
+    expect(getProcessedContentType("application/json")).toBeUndefined();
+  });
+
+  it("should return undefined for PDFs (no pre-processing; use extract_text tool)", () => {
+    expect(getProcessedContentType("application/pdf")).toBeUndefined();
+  });
+
+  it("should return undefined for Word documents (no pre-processing; use extract_text tool)", () => {
+    expect(
+      getProcessedContentType(
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      )
+    ).toBeUndefined();
+  });
+
+  it("should return text/plain for audio files", () => {
+    expect(getProcessedContentType("audio/mpeg")).toBe("text/plain");
+  });
+
+  it("should return the same content type for raster images", () => {
+    expect(getProcessedContentType("image/png")).toBe("image/png");
+    expect(getProcessedContentType("image/jpeg")).toBe("image/jpeg");
+  });
+
+  it("should return image/png for SVG files (rasterized)", () => {
+    expect(getProcessedContentType("image/svg+xml")).toBe("image/png");
+  });
+});
+
+describe("isUploadSupportedForContentType", () => {
+  it("should return true for plain text files (uploadable without processing)", () => {
+    expect(
+      isUploadSupportedForContentType({
+        contentType: "text/plain",
+        useCase: "conversation",
+      })
+    ).toBe(true);
+  });
+
+  it("should return true for Python files (uploadable without processing)", () => {
+    expect(
+      isUploadSupportedForContentType({
+        contentType: "text/x-python",
+        useCase: "conversation",
+      })
+    ).toBe(true);
+  });
+
+  it("should return true for CSV files (uploadable without processing)", () => {
+    expect(
+      isUploadSupportedForContentType({
+        contentType: "text/csv",
+        useCase: "conversation",
+      })
+    ).toBe(true);
+  });
+
+  it("should return true for PDF files (uploadable with processing)", () => {
+    expect(
+      isUploadSupportedForContentType({
+        contentType: "application/pdf",
+        useCase: "conversation",
+      })
+    ).toBe(true);
+  });
+
+  it("should return true for SVG files in conversation", () => {
+    expect(
+      isUploadSupportedForContentType({
+        contentType: "image/svg+xml",
+        useCase: "conversation",
+      })
+    ).toBe(true);
+  });
+
+  it("should return true for image files as skill_attachment", () => {
+    expect(
+      isUploadSupportedForContentType({
+        contentType: "image/png",
+        useCase: "skill_attachment",
+      })
+    ).toBe(true);
+  });
+
+  it("should return true for Slack thread attachments", () => {
+    expect(
+      isUploadSupportedForContentType({
+        contentType: "text/vnd.dust.attachment.slack.thread",
+        useCase: "conversation",
+      })
+    ).toBe(true);
+  });
+
+  it("should return true for section JSON as tool_output", () => {
+    expect(
+      isUploadSupportedForContentType({
+        contentType: "application/vnd.dust.section.json",
+        useCase: "tool_output",
+      })
+    ).toBe(true);
+  });
+
+  it("should return false for unsupported content type / use case combo", () => {
+    expect(
+      isUploadSupportedForContentType({
+        contentType: "image/png",
+        useCase: "upsert_table",
+      })
+    ).toBe(false);
+  });
+
+  it("should return true for supported image types with workspace_branding", () => {
+    for (const contentType of [
+      "image/jpeg",
+      "image/png",
+      "image/svg+xml",
+      "image/webp",
+    ] as const) {
+      expect(
+        isUploadSupportedForContentType({
+          contentType,
+          useCase: "workspace_branding",
+        })
+      ).toBe(true);
+    }
+  });
+
+  it("should return false for non-image types with workspace_branding", () => {
+    expect(
+      isUploadSupportedForContentType({
+        contentType: "text/plain",
+        useCase: "workspace_branding",
+      })
+    ).toBe(false);
+  });
+});
+
+describe("processAndStoreFile", () => {
+  it("should store PDF as original only (no pre-processing; extraction is lazy via extract_text tool)", async () => {
+    const { authenticator: auth } = await createResourceTest({
+      role: "admin",
+    });
+
+    const file = await FileFactory.create(auth, null, {
+      contentType: "application/pdf",
+      fileName: "document.pdf",
+      fileSize: 1000,
+      status: "created",
+      useCase: "conversation",
+    });
+
+    const result = await processAndStoreFile(auth, {
+      file,
+      content: { type: "string", value: "fake pdf bytes" },
+    });
+
+    assert(
+      result.isOk(),
+      `Expected Ok, got: ${result.isErr() ? JSON.stringify(result.error) : ""}`
+    );
+
+    // Only one write: original (application/pdf). No processed version is created at upload time.
+    const writes = fileStorageMock.writeStreamCalls;
+    expect(writes).toHaveLength(1);
+    expect(writes[0].contentType).toBe("application/pdf");
+  });
+
+  it("should not create a processed version for plain text files", async () => {
+    const { authenticator: auth } = await createResourceTest({
+      role: "admin",
+    });
+
+    const file = await FileFactory.create(auth, null, {
+      contentType: "text/plain",
+      fileName: "readme.txt",
+      fileSize: 100,
+      status: "created",
+      useCase: "conversation",
+    });
+
+    const result = await processAndStoreFile(auth, {
+      file,
+      content: { type: "string", value: "hello world" },
+    });
+
+    assert(
+      result.isOk(),
+      `Expected Ok, got: ${result.isErr() ? JSON.stringify(result.error) : ""}`
+    );
+
+    // Only one write: the original. No processed version created.
+    const writes = fileStorageMock.writeStreamCalls;
+    expect(writes).toHaveLength(1);
+    expect(writes[0].contentType).toBe("text/plain");
+  });
+
+  it("should skip processed version creation for raw sandbox spreadsheets", async () => {
+    const { authenticator: auth } = await createResourceTest({
+      role: "admin",
+    });
+
+    const contentType =
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    const file = await FileFactory.create(auth, null, {
+      contentType,
+      fileName: "large.xlsx",
+      fileSize: 100,
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: {
+        conversationId: "conv-raw",
+        skipDataSourceIndexing: true,
+        skipFileProcessing: true,
+      },
+    });
+
+    const result = await processAndStoreFile(auth, {
+      file,
+      content: { type: "string", value: "fake xlsx bytes" },
+    });
+
+    assert(
+      result.isOk(),
+      `Expected Ok, got: ${result.isErr() ? JSON.stringify(result.error) : ""}`
+    );
+
+    const writes = fileStorageMock.writeStreamCalls;
+    expect(writes).toHaveLength(1);
+    expect(writes[0].contentType).toBe(contentType);
+  });
+});

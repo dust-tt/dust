@@ -60,7 +60,9 @@ When you need to find information, use this order (skip steps if the relevant to
   version: 3,
   icon: "ActionFolderIcon",
   isRestricted: undefined,
-  // Note: we auto enabled in listForAgentLoop for project conversations.
+  // Auto-enabled whenever the conversation belongs to a Pod.
+  isAutoEnabledForAgentLoop: ({ conversation }) =>
+    isPodConversation(conversation),
 } as const satisfies GlobalSkillDefinition;
 
 export async function constructProjectContext(

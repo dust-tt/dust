@@ -39,6 +39,7 @@ export interface MetricDef {
     name: string;
     exists?: boolean;
     in_values?: string[];
+    not_in_values?: string[];
   }>;
   aggregation_type: "SUM" | "COUNT" | "max";
   aggregation_key?: string;
@@ -128,14 +129,24 @@ export interface RecurringCreditDef {
   }>;
   recurrence_frequency?: "MONTHLY" | "QUARTERLY" | "ANNUAL" | "WEEKLY";
   // Optional. Offset relative to the recurring credit start that determines
-  // when the contract will stop creating recurring commits. Use a very small
-  // value (e.g. 1 day) to make the credit one-shot — Metronome fires the
-  // first commit on contract start, then the duration expires before the
-  // next would be issued.
+  // when the contract will stop creating recurring commits. Set the duration to
+  // exactly one recurrence period (e.g. 1 year for an ANNUAL credit) to make the
+  // credit one-shot: Metronome fires the first commit on contract start, and the
+  // schedule closes before the next occurrence would be issued.
+  //
+  // A duration SHORTER than the recurrence period also stops recurrence, but
+  // prorates the single commit down to the duration's fraction of the period
+  // (e.g. ANNUAL + 1 DAY granted 1/365 of the amount). Pair a sub-period
+  // duration with `proration: "NONE"` if you need the full amount.
   duration?: {
     unit: "DAYS" | "WEEKS" | "MONTHS" | "YEARS";
     value: number;
   };
+  // Whether the first and/or last commit is prorated by time. Metronome
+  // defaults to "FIRST_AND_LAST" when omitted, which prorates the first commit
+  // to its share of the recurrence period — set "NONE" to grant the full
+  // `access_amount` on a one-shot credit.
+  proration?: "NONE" | "FIRST" | "LAST" | "FIRST_AND_LAST";
   name?: string;
   // Attach the credit to a SEAT_BASED subscription so each seat gets its own
   // allocation (INDIVIDUAL) or all seats share one pool (POOLED).
@@ -223,7 +234,7 @@ export const getOverageAwuRate = (currency: SupportedCurrency) => {
 // Setup-only display names. Runtime code identifies seat-style subscriptions
 // via the `DUST_SEAT_TYPE` custom field on the product (see
 // SEAT_TYPE_CUSTOM_FIELD_KEY), not by name comparison.
-export const WORKSPACE_SEAT_PRODUCT_NAME = "Workspace Seat";
+export const WORKSPACE_SEAT_PRODUCT_NAME = "Platform Seat";
 export const PRO_SEAT_PRODUCT_NAME = "Pro Seat";
 export const MAX_SEAT_PRODUCT_NAME = "Max Seat";
 export const FREE_SEAT_PRODUCT_NAME = "Free Seat";
@@ -237,7 +248,7 @@ export const USAGE_TAG = "usage";
 
 // Tag shared by all seat SUBSCRIPTION products (Workspace / Pro / Max / Free,
 // monthly + yearly).
-const SEAT_TAG = "seat";
+export const SEAT_TAG = "seat";
 
 // Billing-frequency tags stamped on seat products alongside SEAT_TAG so credits
 // / commits can target a single cadence (e.g. `applicable_product_tags:
@@ -424,6 +435,10 @@ export const PRODUCTS: ProductDef[] = [
   },
   {
     name: "Seat Subscription Credits",
+    type: "FIXED",
+  },
+  {
+    name: "Seat Subscription Commit",
     type: "FIXED",
   },
 ];

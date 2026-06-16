@@ -28,6 +28,7 @@ const ParamsSchema = z.object({
 // update the data source settings.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

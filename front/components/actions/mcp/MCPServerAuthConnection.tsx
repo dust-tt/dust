@@ -28,9 +28,9 @@ import {
   Icon,
   Input,
   Label,
-  PlanetIcon,
+  Planet,
   Tooltip,
-  UserIcon,
+  User01,
 } from "@dust-tt/sparkle";
 import type {
   ForwardRefExoticComponent,
@@ -427,7 +427,7 @@ function UseCaseCard({
   toolName,
   onSelect,
 }: UseCaseCardProps) {
-  const icon = useCaseType === "personal_actions" ? UserIcon : PlanetIcon;
+  const icon = useCaseType === "personal_actions" ? User01 : Planet;
   const supportLabel =
     useCaseType === "personal_actions" ? "individual" : "shared";
 

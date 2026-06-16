@@ -166,7 +166,13 @@ vi.mock("@app/lib/file_storage", async () => {
   const { fileStorageMock } = await import(
     "@app/tests/utils/mocks/file_storage"
   );
-  return fileStorageMock.mock();
+  // Spread the actual module so plain re-exports (constants) keep their real
+  // values; the mock only replaces the GCS-backed functions. Safe because the
+  // real module only reads SERVICE_ACCOUNT inside the FileStorage constructor.
+  const actual = await vi.importActual<typeof import("@app/lib/file_storage")>(
+    "@app/lib/file_storage"
+  );
+  return { ...actual, ...fileStorageMock.mock() };
 });
 
 // Mock TextExtraction (Tika) - must be at module level to avoid connecting to Tika.

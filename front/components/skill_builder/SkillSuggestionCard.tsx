@@ -1,7 +1,6 @@
 import { useMaybeMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { getBlockOuterHtml } from "@app/components/shared/utils";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { buildSkillInstructionsExtensions } from "@app/lib/editor/build_skill_instructions_extensions";
 import type {
   SkillAgentFacingDescriptionEditType,
@@ -123,8 +122,6 @@ function InstructionEditDiffBlock({
   getSkillInstructionsHtml,
 }: InstructionEditDiffBlockProps) {
   const { targetBlockId, content } = edit;
-  const { hasFeature } = useFeatureFlags();
-  const enableSkillReferences = hasFeature("nested_skills");
 
   const blockHtml = useMemo(() => {
     const instructionsHtml = getSkillInstructionsHtml();
@@ -136,11 +133,7 @@ function InstructionEditDiffBlock({
 
   const editor = useEditor(
     {
-      extensions: [
-        ...buildSkillInstructionsExtensions(true, [], {
-          enableSkillReferences,
-        }),
-      ],
+      extensions: [...buildSkillInstructionsExtensions(true)],
       editable: false,
       content: blockHtml,
       immediatelyRender: false,
@@ -156,7 +149,7 @@ function InstructionEditDiffBlock({
         e.commands.setHighlightedSuggestion(targetBlockId);
       },
     },
-    [blockHtml, enableSkillReferences]
+    [blockHtml]
   );
 
   return <DiffBlock>{editor && <EditorContent editor={editor} />}</DiffBlock>;

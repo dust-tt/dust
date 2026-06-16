@@ -14,6 +14,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/skills/:sId/files/:fileId/content.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { sId, fileId } = ctx.req.valid("param");

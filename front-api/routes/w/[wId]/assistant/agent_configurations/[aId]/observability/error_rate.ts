@@ -1,10 +1,8 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { fetchMessageMetrics } from "@app/lib/api/assistant/observability/messages_metrics";
-import {
-  buildAgentAnalyticsBaseQuery,
-  timezoneSchema,
-} from "@app/lib/api/assistant/observability/utils";
+import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import { timezoneSchema } from "@app/lib/api/timezone";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -24,6 +22,7 @@ const QuerySchema = z.object({
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/observability/error_rate.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

@@ -32,13 +32,25 @@ export const PER_SKILL_CONVERSATION_CAP = 20;
 // $100 = 100_000_000 microUSD.
 export const DEFAULT_REINFORCEMENT_CAP_MICRO_USD = 100_000_000;
 
+// Default monthly cap for reinforcement cost for the whole workspace, in AWU
+// credits (workspaces billed by Metronome). ~$100.
+export const DEFAULT_REINFORCEMENT_CAP_AWU_CREDITS = 10_000;
+
 // Default per-skill cap for self-improvement cost (in microUSD).
 // $20 = 20_000_000 microUSD.
 export const DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_MICRO_USD = 20_000_000;
 
+// Default per-skill cap for self-improvement cost, in AWU credits (workspaces
+// billed by Metronome). ~$20.
+export const DEFAULT_SELF_IMPROVEMENT_CAP_PER_SKILL_AWU_CREDITS = 2_000;
+
 // Estimated cost per conversation analysis (in microUSD).
 // $0.10 = 100_000 microUSD.
 const ESTIMATED_COST_PER_CONVERSATION_MICRO_USD = 100_000;
+
+// Estimated cost per conversation analysis (in AWU credits).
+// ~$0.10.
+const ESTIMATED_COST_PER_CONVERSATION_AWU_CREDITS = 10;
 
 /**
  * Compute the maximum number of conversations to analyze based on the
@@ -66,6 +78,41 @@ export function getMaxConversationsForBudget({
 
   const fromBudget = Math.floor(
     remainingMicroUsd / ESTIMATED_COST_PER_CONVERSATION_MICRO_USD
+  );
+
+  return Math.min(fromBudget, DEFAULT_MAX_CONVERSATIONS_PER_RUN);
+}
+
+/**
+ * AWU credits variant of getMaxConversationsForBudget, for workspaces billed
+ * by Metronome. All amounts are in AWU credits (margin baked in). The budget
+ * is the most restrictive of the reinforcement cap headroom, the programmatic
+ * cap headroom, and the remaining workspace credit pool.
+ */
+export function getMaxConversationsForBudgetAwuCredits({
+  globalConsumptionAwuCredits,
+  globalCapAwuCredits,
+  remainingProgrammaticCreditsAwuCredits,
+  remainingPoolCreditsAwuCredits,
+}: {
+  globalConsumptionAwuCredits: number;
+  globalCapAwuCredits: number;
+  remainingProgrammaticCreditsAwuCredits: number;
+  remainingPoolCreditsAwuCredits: number;
+}): number {
+  const remainingReinforcementAwuCredits =
+    globalCapAwuCredits - globalConsumptionAwuCredits;
+  const remainingAwuCredits = Math.min(
+    remainingReinforcementAwuCredits,
+    remainingProgrammaticCreditsAwuCredits,
+    remainingPoolCreditsAwuCredits
+  );
+  if (remainingAwuCredits <= 0) {
+    return 0;
+  }
+
+  const fromBudget = Math.floor(
+    remainingAwuCredits / ESTIMATED_COST_PER_CONVERSATION_AWU_CREDITS
   );
 
   return Math.min(fromBudget, DEFAULT_MAX_CONVERSATIONS_PER_RUN);

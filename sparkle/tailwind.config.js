@@ -8,6 +8,10 @@ module.exports = {
   content: ["./src/**/*.{html,js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      fontWeight: {
+        medium: "450",
+        semibold: "550",
+      },
       height: {
         175: "700px",
         // Semantic height classes matching dialog widths

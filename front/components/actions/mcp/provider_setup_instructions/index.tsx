@@ -1,5 +1,5 @@
 import type { MCPOAuthUseCase, OAuthProvider } from "@app/types/oauth/lib";
-import { Icon, InformationCircleIcon } from "@dust-tt/sparkle";
+import { Icon, InfoCircle } from "@dust-tt/sparkle";
 
 import { NetSuiteSetupInstructions } from "./NetSuiteSetupInstructions";
 import { PowerBiSetupInstructions } from "./PowerBiSetupInstructions";
@@ -55,7 +55,7 @@ export function ProviderAuthNote({ provider }: ProviderAuthNoteProps) {
       return (
         <div className="flex w-full items-start gap-2 rounded-lg border border-border-dark/50 bg-muted-background p-3 dark:border-border-dark-night/50 dark:bg-muted-background-night">
           <Icon
-            visual={InformationCircleIcon}
+            visual={InfoCircle}
             size="sm"
             className="mt-0.5 shrink-0 text-muted-foreground dark:text-muted-foreground-night"
           />

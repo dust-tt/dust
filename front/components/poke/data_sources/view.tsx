@@ -6,6 +6,7 @@ import {
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { CheckStuckResponseBody } from "@app/lib/api/data_sources/check_stuck";
 import { isWebhookBasedProvider } from "@app/lib/connector_providers";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -13,7 +14,6 @@ import {
   formatTimestampToFriendlyDate,
   timeAgoFrom,
 } from "@app/lib/utils";
-import type { CheckStuckResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/check-stuck";
 import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
 import type { CoreAPIDataSource } from "@app/types/core/data_source";
 import type { DataSourceType } from "@app/types/data_source";
@@ -21,7 +21,7 @@ import type { DataSourceViewType } from "@app/types/data_source_view";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  BracesIcon,
+  Brackets,
   Button,
   Chip,
   ContentMessage,
@@ -32,11 +32,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  ExternalLinkIcon,
+  LinkExternal01,
   LinkWrapper,
-  MagnifyingGlassIcon,
   ScrollArea,
   ScrollBar,
+  SearchMd,
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -93,7 +93,7 @@ export function ViewDataSourceTable({
                 variant="outline"
                 size="sm"
                 onClick={() => setShowRawObjectsModal(true)}
-                icon={BracesIcon}
+                icon={Brackets}
                 label="Show raw objects"
               />
             </div>
@@ -413,7 +413,7 @@ function CheckConnectorStuck({
       <Button
         variant="outline"
         label={isLoading ? "Checking..." : "Check"}
-        icon={isLoading ? Spinner : MagnifyingGlassIcon}
+        icon={isLoading ? Spinner : SearchMd}
         disabled={isLoading}
         onClick={!isLoading ? checkStuck : undefined}
         size="xs"
@@ -508,7 +508,7 @@ function StuckActivitiesDialog({
                   hasSeparator={false}
                   action={
                     <Button
-                      icon={ExternalLinkIcon}
+                      icon={LinkExternal01}
                       variant="outline"
                       href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows/${workflow.workflowId}`}
                       size="xs"
@@ -533,7 +533,7 @@ function StuckActivitiesDialog({
                     }
                     action={
                       <Button
-                        icon={ExternalLinkIcon}
+                        icon={LinkExternal01}
                         variant="outline"
                         href={
                           "https://app.datadoghq.eu/logs?query=%40dd.env%3Aprod%20%40dd.service%3Aconnectors-worker" +

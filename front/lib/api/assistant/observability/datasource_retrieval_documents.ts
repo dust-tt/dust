@@ -342,3 +342,6 @@ export async function fetchDatasourceRetrievalDocumentsMetrics(
 
   return new Ok({ documents: enrichedDocuments, groups, total });
 }
+
+export type GetDatasourceRetrievalDocumentsResponse =
+  DatasourceRetrievalDocuments;

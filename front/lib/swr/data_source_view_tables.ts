@@ -1,4 +1,12 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type {
+  ListTablesResponseBody,
+  SearchTablesResponseBody,
+} from "@app/lib/api/data_source_view";
+import type {
+  GetDataSourceViewTableResponseBody,
+  PatchTableResponseBody,
+} from "@app/lib/api/tables";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import {
@@ -7,10 +15,6 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { ListTablesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables";
-import type { GetDataSourceViewTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/[tableId]";
-import type { SearchTablesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/search";
-import type { PatchTableResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/tables/[tableId]";
 import type { PatchDataSourceTableRequestBody } from "@app/types/api/public/data_sources";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";

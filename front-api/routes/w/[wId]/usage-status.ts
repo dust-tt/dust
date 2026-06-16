@@ -1,47 +1,56 @@
+import { getUpgradeRequestAvailabilityForUser } from "@app/lib/api/credits/upgrade_requests";
+import type {
+  GetWorkspaceUsageStatusResponseBody,
+  ProgrammaticCreditStatus,
+} from "@app/lib/metronome/user_block";
 import {
   getWorkspaceCreditPoolStatus,
   getWorkspaceProgrammaticCreditStatus,
   isUserAwuWarned,
   isUserBlocked,
-  isWorkspaceProgrammaticWarned,
+  isWorkspaceBalanceThresholdReached,
 } from "@app/lib/metronome/user_block";
-import type { WorkspacePoolCreditState } from "@app/types/credits";
+import { isCreditPricedPlan } from "@app/types/plan";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-
-export type ProgrammaticCreditStatus = "active" | "warned" | "depleted";
-
-export type GetWorkspaceUsageStatusResponseBody = {
-  awuStatus: "normal" | "warned" | "blocked";
-  poolCreditState: WorkspacePoolCreditState;
-  programmaticCreditStatus: ProgrammaticCreditStatus;
-};
 
 // Mounted at /api/w/:wId/usage-status.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   async (ctx): HandlerResult<GetWorkspaceUsageStatusResponseBody> => {
     const auth = ctx.get("auth");
     const workspace = auth.getNonNullableWorkspace();
     const user = auth.getNonNullableUser();
+    const plan = auth.plan();
 
+    const isCreditPriced = plan && isCreditPricedPlan(plan);
     // Workspaces not on Metronome billing have no usage status to report.
-    if (!workspace.metronomeCustomerId) {
+    if (!workspace.metronomeCustomerId || !isCreditPriced) {
       return ctx.json({
         awuStatus: "normal",
         poolCreditState: "active",
         programmaticCreditStatus: "active",
+        balanceThresholdReached: false,
+        noSeat: false,
+        canRequestUpgrade: false,
+        hasPendingUpgradeRequest: false,
       });
     }
 
-    const [poolCreditState, blockedReason, programmaticState] =
-      await Promise.all([
-        getWorkspaceCreditPoolStatus(workspace.sId),
-        isUserBlocked(workspace.sId, user.sId),
-        getWorkspaceProgrammaticCreditStatus(workspace.sId),
-      ]);
+    const [
+      poolCreditState,
+      blockedReason,
+      programmaticState,
+      balanceThresholdReached,
+    ] = await Promise.all([
+      getWorkspaceCreditPoolStatus(workspace.sId),
+      isUserBlocked(workspace, user),
+      getWorkspaceProgrammaticCreditStatus(workspace.sId),
+      isWorkspaceBalanceThresholdReached(workspace.sId),
+    ]);
 
     let awuStatus: GetWorkspaceUsageStatusResponseBody["awuStatus"] = "normal";
     if (blockedReason === "user_cap_reached") {
@@ -50,14 +59,32 @@ app.get(
       awuStatus = "warned";
     }
 
+    const noSeat = blockedReason === "no_seat";
+
     let programmaticCreditStatus: ProgrammaticCreditStatus = "active";
     if (programmaticState === "depleted") {
       programmaticCreditStatus = "depleted";
-    } else if (await isWorkspaceProgrammaticWarned(workspace.sId)) {
+    } else if (
+      programmaticState === "active_low_balance" ||
+      programmaticState === "active_critical_balance"
+    ) {
       programmaticCreditStatus = "warned";
     }
 
-    return ctx.json({ awuStatus, poolCreditState, programmaticCreditStatus });
+    const { canRequestUpgrade, hasPendingUpgradeRequest } =
+      await getUpgradeRequestAvailabilityForUser(auth, {
+        isNearOrAtLimit: awuStatus !== "normal",
+      });
+
+    return ctx.json({
+      awuStatus,
+      poolCreditState,
+      programmaticCreditStatus,
+      balanceThresholdReached,
+      noSeat,
+      canRequestUpgrade,
+      hasPendingUpgradeRequest,
+    });
   }
 );
 

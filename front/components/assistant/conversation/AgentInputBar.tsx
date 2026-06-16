@@ -39,7 +39,7 @@ import {
   ContentMessageAction,
   ContentMessageInline,
   EmptyCTA,
-  InformationCircleIcon,
+  InfoCircle,
 } from "@dust-tt/sparkle";
 import {
   useVirtuosoLocation,
@@ -394,7 +394,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     context.projectSpaceName
   ) {
     return (
-      <div className="relative z-20 mx-auto flex max-h-dvh w-full flex-col py-4 sm:w-full sm:max-w-conversation">
+      <div className="relative z-20 mx-auto flex w-full flex-col pt-4 pb-6 sm:w-full sm:max-w-conversation">
         <PodJoinCTA
           owner={context.owner}
           podId={context.projectId}
@@ -483,7 +483,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   return (
     <div
       className={classNames(
-        "relative z-20 mx-auto flex max-h-dvh w-full flex-col py-4 sm:w-full sm:max-w-conversation"
+        "relative z-20 mx-auto flex w-full flex-col pt-4 pb-6 sm:w-full sm:max-w-conversation"
       )}
     >
       <div className="flex w-full justify-center gap-2">
@@ -496,7 +496,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       </div>
       {blockedActions.length > 0 && (
         <ContentMessageInline
-          icon={InformationCircleIcon}
+          icon={InfoCircle}
           variant="primary"
           className="mb-5 flex max-h-dvh w-full"
         >

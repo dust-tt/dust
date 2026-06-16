@@ -186,6 +186,8 @@ const DEFAULT_CONFIG: DependencyConfig = {
 const WORKSPACE_NODE_MODULES = [
   { name: "sdks/js", dir: "sdks/js" },
   { name: "front", dir: "front" },
+  { name: "front-api", dir: "front-api" },
+  { name: "marketing", dir: "marketing" },
   { name: "connectors", dir: "connectors" },
   { name: "sparkle", dir: "sparkle" },
   { name: "front-spa", dir: "front-spa" },

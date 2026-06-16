@@ -2,9 +2,14 @@ import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 const meta = {
-  title: "Theme/Shadows",
+  title: "Foundations/Shadows",
   parameters: {
     layout: "centered",
+    docs: {
+      description: {
+        component: `The elevation scale: box shadows (\`s-shadow\` through \`s-shadow-2xl\`) for surfaces and drop shadows (\`s-drop-shadow-*\`) for irregular shapes. Apply these Tailwind utilities to convey elevation consistently, reserving larger shadows for higher, more transient surfaces like popovers and dialogs.`,
+      },
+    },
   },
 } satisfies Meta;
 

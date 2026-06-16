@@ -32,6 +32,7 @@ function statusForKind(kind: CancelPendingContractErrorKind): {
 // Mounted at /api/poke/workspaces/:wId/cancel_pending_contract.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   async (ctx): HandlerResult<PokeCancelPendingContractSuccessResponseBody> => {

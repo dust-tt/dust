@@ -24,6 +24,7 @@ export type SetConfigResponseBody = {
 // Mounted at /api/poke/workspaces/:wId/data_sources/:dsId/config.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

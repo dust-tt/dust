@@ -1,0 +1,14 @@
+{
+  "action": "membership.upgrade_request_created",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "user"
+    }
+  ],
+  "metadata": {
+    "request_sid": "string"
+  }
+}

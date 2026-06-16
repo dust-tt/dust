@@ -45,6 +45,7 @@ const PostStartVerificationRequestBody = z.object({
 // Mounted at /api/w/:wId/verification/start.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   ensureIsAdmin(),

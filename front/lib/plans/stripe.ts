@@ -1,3 +1,4 @@
+import type { CheckoutSeatType } from "@app/lib/api/checkout/types";
 import config from "@app/lib/api/config";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
@@ -286,6 +287,8 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
   pricePerSeatCents,
   couponCode,
   user,
+  seatType,
+  targetUserId,
 }: {
   allowedPaymentMethods?: SupportedPaymentMethod[];
   metronomePackageAlias: string;
@@ -296,6 +299,8 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
   pricePerSeatCents?: number;
   couponCode?: string;
   user: UserType;
+  seatType?: CheckoutSeatType;
+  targetUserId?: string;
 }): Promise<{ clientSecret: string; sessionId: string }> => {
   const stripe = getStripeClient();
 
@@ -315,6 +320,12 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
   if (couponCode) {
     metadata.couponCode = couponCode;
   }
+  if (seatType) {
+    metadata.seatType = seatType;
+  }
+  if (targetUserId) {
+    metadata.targetUserId = targetUserId;
+  }
 
   const session = await stripe.checkout.sessions.create({
     ui_mode: "embedded",
@@ -324,12 +335,24 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
     customer_creation: "always",
     payment_method_types: allowedPaymentMethods,
     metadata,
-    billing_address_collection: "auto",
+    billing_address_collection: "required",
     tax_id_collection: {
       enabled: true,
     },
     redirect_on_completion: "if_required",
-    return_url: `${config.getAppUrl()}/w/${owner.sId}/subscription/checkout?billingPeriod=${billingPeriod}&setup_session_id={CHECKOUT_SESSION_ID}`,
+    return_url: (() => {
+      const params = new URLSearchParams({
+        billingPeriod,
+        setup_session_id: "{CHECKOUT_SESSION_ID}",
+      });
+      if (seatType) {
+        params.set("seatType", seatType);
+      }
+      if (targetUserId) {
+        params.set("targetUserId", targetUserId);
+      }
+      return `${config.getAppUrl()}/w/${owner.sId}/subscription/checkout?${params.toString()}`;
+    })(),
     consent_collection: {
       terms_of_service: "required",
     },
@@ -385,88 +408,6 @@ export async function calculateTax({
   }
 }
 
-async function makeFirstPeriodInvoiceForCustomer({
-  stripeCustomerId,
-  paymentMethodId,
-  billingPeriod,
-  pricePerSeatCents,
-  seatCount,
-  couponAmountCents,
-  setupSessionId,
-  workspaceId,
-  currency,
-  couponCode,
-}: {
-  stripeCustomerId: string;
-  paymentMethodId: string;
-  billingPeriod: string;
-  pricePerSeatCents: number;
-  seatCount: number;
-  couponAmountCents?: number;
-  setupSessionId: string;
-  workspaceId: string;
-  currency: SupportedCurrency;
-  couponCode?: string;
-}): Promise<Result<Stripe.Invoice, { error_message: string }>> {
-  const stripe = getStripeClient();
-  try {
-    const invoice = await stripe.invoices.create(
-      {
-        customer: stripeCustomerId,
-        collection_method: "charge_automatically",
-        default_payment_method: paymentMethodId,
-        currency,
-        automatic_tax: { enabled: true },
-        auto_advance: false,
-        metadata: {
-          metronome_first_period: "true",
-          setup_session_id: setupSessionId,
-          workspace_id: workspaceId,
-          ...(couponCode ? { coupon_code: couponCode } : {}),
-        },
-      },
-      { idempotencyKey: `first-period-invoice-${setupSessionId}` }
-    );
-
-    await stripe.invoiceItems.create({
-      customer: stripeCustomerId,
-      unit_amount: pricePerSeatCents,
-      quantity: seatCount,
-      currency,
-      description: `Workspace seat (${billingPeriod})`,
-      invoice: invoice.id,
-    });
-
-    if (couponCode && couponAmountCents && couponAmountCents > 0) {
-      const effectiveCouponAmountCents = Math.min(
-        pricePerSeatCents * seatCount,
-        couponAmountCents
-      );
-      await stripe.invoiceItems.create({
-        customer: stripeCustomerId,
-        amount: -effectiveCouponAmountCents,
-        currency,
-        description: `Coupon: ${couponCode}`,
-        invoice: invoice.id,
-      });
-    }
-
-    return new Ok(invoice);
-  } catch (error) {
-    logger.error(
-      {
-        stripeCustomerId,
-        stripeError: true,
-        error: normalizeError(error).message,
-      },
-      "[Stripe] Failed to create first-period invoice"
-    );
-    return new Err({
-      error_message: `Failed to create invoice: ${normalizeError(error).message}`,
-    });
-  }
-}
-
 export async function setStripeCustomerDefaultPaymentMethod({
   stripeCustomerId,
   paymentMethodId,
@@ -496,108 +437,6 @@ export async function setStripeCustomerDefaultPaymentMethod({
       error_message: normalizeError(error).message,
     });
   }
-}
-
-export async function chargeFirstPeriodInvoice({
-  stripeCustomerId,
-  paymentMethodId,
-  billingPeriod,
-  pricePerSeatCents,
-  seatCount,
-  couponAmountCents,
-  setupSessionId,
-  workspaceId,
-  currency,
-  couponCode,
-}: {
-  stripeCustomerId: string;
-  paymentMethodId: string;
-  billingPeriod: string;
-  pricePerSeatCents: number;
-  seatCount: number;
-  couponAmountCents?: number;
-  setupSessionId: string;
-  workspaceId: string;
-  currency: SupportedCurrency;
-  couponCode?: string;
-}): Promise<Result<void, { error_message: string }>> {
-  const invoiceResult = await makeFirstPeriodInvoiceForCustomer({
-    stripeCustomerId,
-    paymentMethodId,
-    billingPeriod,
-    pricePerSeatCents,
-    seatCount,
-    couponAmountCents,
-    setupSessionId,
-    workspaceId,
-    currency,
-    couponCode,
-  });
-  if (invoiceResult.isErr()) {
-    logger.error(
-      {
-        workspaceId,
-        error: normalizeError(invoiceResult.error).message,
-      },
-      "[Checkout] Failed to create first-period invoice"
-    );
-    return invoiceResult;
-  }
-
-  const finalizeResult = await finalizeInvoice(invoiceResult.value);
-  if (finalizeResult.isErr()) {
-    logger.error(
-      {
-        workspaceId,
-        error: normalizeError(finalizeResult.error).message,
-        invoiceId: invoiceResult.value.id,
-      },
-      "[Checkout] Failed to finalize first-period invoice"
-    );
-    return finalizeResult;
-  }
-
-  // If invoice corresponds to a zero amount (for example with coupon applied)
-  // then it is automatically set as paid by Stripe and we do not need to pay it.
-  if (finalizeResult.value.status == "paid") {
-    return new Ok(undefined);
-  }
-
-  const stripe = getStripeClient();
-  try {
-    const payResult = await stripe.invoices.pay(finalizeResult.value.id, {
-      expand: ["payment_intent"],
-    });
-
-    const paymentIntent = payResult.payment_intent;
-    if (payResult.status !== "paid") {
-      logger.error(
-        {
-          workspaceId,
-          invoiceId: finalizeResult.value.id,
-          invoiceStatus: payResult.status,
-          paymentIntentStatus:
-            paymentIntent && !isString(paymentIntent)
-              ? paymentIntent.status
-              : paymentIntent,
-        },
-        "[Checkout] First-period invoice payment failed"
-      );
-      return new Err({ error_message: "Invoice payment failed" });
-    }
-  } catch (payError) {
-    logger.error(
-      {
-        workspaceId,
-        error: normalizeError(payError).message,
-        invoiceId: finalizeResult.value.id,
-      },
-      "[Checkout] First-period invoice payment failed"
-    );
-    return new Err({ error_message: normalizeError(payError).message });
-  }
-
-  return new Ok(undefined);
 }
 
 /**
@@ -871,25 +710,6 @@ export async function cancelSubscriptionAtPeriodEnd({
 }
 
 /**
- * Cancel a subscription immediately without generating any additional invoice.
- * Pending proration items (e.g. from mid-period seat changes) are discarded.
- * Used to handle takeover to Metronome, Metronome will handle the proration items.
- */
-export async function cancelSubscriptionImmediatelyNoInvoice({
-  stripeSubscriptionId,
-}: {
-  stripeSubscriptionId: string;
-}) {
-  const stripe = getStripeClient();
-  await stripe.subscriptions.cancel(stripeSubscriptionId, {
-    invoice_now: false,
-    prorate: false,
-  });
-
-  return true;
-}
-
-/**
  * Schedule a subscription to cancel at a future timestamp. Used by the
  * switch_contract flow when migrating a Stripe-billed workspace to Metronome:
  * the Stripe sub stops at the new Metronome contract's start time, so the two
@@ -1063,10 +883,12 @@ export function isCreditPurchaseInvoice(invoice: Stripe.Invoice): boolean {
 }
 
 /**
- * Checks if a Stripe invoice is for a Metronome first-period charge.
+ * Checks if a Stripe invoice is for a Metronome subscription activation.
  */
-export function isFirstPeriodInvoice(invoice: Stripe.Invoice): boolean {
-  return invoice.metadata?.metronome_first_period === "true";
+export function isSubscriptionActivationInvoice(
+  invoice: Stripe.Invoice
+): boolean {
+  return invoice.metadata?.subscription_activation === "true";
 }
 
 /**
@@ -1074,6 +896,15 @@ export function isFirstPeriodInvoice(invoice: Stripe.Invoice): boolean {
  */
 export function isAwuPurchaseInvoice(invoice: Stripe.Invoice): boolean {
   return invoice.metadata?.awu_purchase === "true";
+}
+
+/**
+ * Any invoice Metronome generated and pushed to Stripe — identified by the
+ * `metronome_customer_id` metadata Metronome stamps on every invoice it pushes.
+ * Scopes the line-cleaning flow to Metronome invoices only.
+ */
+export function isMetronomePushedInvoice(invoice: Stripe.Invoice): boolean {
+  return invoice.metadata?.metronome_customer_id != null;
 }
 
 /**
@@ -1506,6 +1337,173 @@ export async function finalizeInvoice(
     );
     return new Err({
       error_message: `Failed to finalize invoice: ${normalizeError(error).message}`,
+    });
+  }
+}
+
+/**
+ * Metadata flag stamped on a Metronome draft invoice once we have normalized its
+ * line items, so redeliveries / Temporal retries don't clean it twice.
+ */
+const METRONOME_INVOICE_LINES_CLEANED_FLAG = "lines_cleaned";
+
+/**
+ * Removes from a Metronome-pushed Stripe draft invoice the line items that
+ * should not appear on the customer-facing invoice, mirroring the filters
+ * applied by the /invoice/lines API endpoint:
+ *
+ * 1. Negative lines
+ * 2. Lines with an applied commit or credit — usage/subscription lines whose
+ *    cost is covered by a commit/credit (identified by `metronome_commit_id`
+ *    in the Stripe line item metadata).
+ * 3. Wrong-currency lines — non-fiat lines (e.g. AWU-priced) that Metronome may
+ *    not transfer to Stripe; guard retained for safety.
+ *
+ * Filters 1 and 2 cancel each other out: every negative credit line is paired
+ * with a positive usage line of the same absolute amount, so removing both
+ * leaves the invoice total unchanged.
+ */
+async function cleanMetronomeInvoiceLines(
+  stripe: Stripe,
+  invoice: Stripe.Invoice
+): Promise<void> {
+  const invoiceCurrency = invoice.currency;
+
+  // `invoice.lines` only holds the first page; iterate the list endpoint so we
+  // see every line. The Stripe SDK list result auto-paginates when iterated.
+  for await (const line of stripe.invoices.listLineItems(invoice.id, {
+    limit: 100,
+  })) {
+    const isNegative = line.amount < 1;
+    const hasAppliedCommitOrCredit = !!line.metadata?.metronome_commit_id;
+    const isWrongCurrency = line.currency !== invoiceCurrency;
+    const shouldRemove =
+      isNegative || hasAppliedCommitOrCredit || isWrongCurrency;
+
+    logger.info(
+      {
+        stripeInvoiceId: invoice.id,
+        lineId: line.id,
+        amount: line.amount,
+        currency: line.currency,
+        metadata: line.metadata,
+        isNegative,
+        hasAppliedCommitOrCredit,
+        isWrongCurrency,
+        shouldRemove,
+        line,
+      },
+      "[Stripe] Metronome invoice line item"
+    );
+
+    if (!shouldRemove) {
+      continue;
+    }
+
+    const invoiceItemId =
+      typeof line.invoice_item === "string"
+        ? line.invoice_item
+        : line.invoice_item?.id;
+
+    if (!invoiceItemId) {
+      logger.warn(
+        { stripeInvoiceId: invoice.id, lineId: line.id },
+        "[Stripe] Cannot remove line item: not backed by an invoice item"
+      );
+      continue;
+    }
+
+    await stripe.invoiceItems.del(invoiceItemId);
+  }
+}
+
+/**
+ * Re-fetches a Metronome-pushed draft invoice, normalizes its line items, then
+ * finalizes it. Invoked ~1 minute after Stripe's `invoice.created` (via Temporal)
+ * so Metronome has finished writing all line items before we touch the draft.
+ *
+ * Idempotent and self-gating: re-asserts the invoice is still a Metronome draft
+ * we have not cleaned yet, so Stripe redeliveries and Temporal retries collapse to
+ * a single effective run. `auto_advance` is disabled up-front so Stripe cannot
+ * finalize the draft out from under us while we edit; we finalize explicitly at
+ * the end.
+ */
+export async function cleanAndFinalizeMetronomeDraftInvoice({
+  invoiceId,
+  workspaceId,
+}: {
+  invoiceId: string;
+  workspaceId: string;
+}): Promise<
+  Result<{ outcome: "cleaned" | "skipped" }, { error_message: string }>
+> {
+  const stripe = getStripeClient();
+
+  try {
+    const invoice = await stripe.invoices.retrieve(invoiceId);
+
+    if (!isMetronomePushedInvoice(invoice)) {
+      logger.info(
+        { stripeInvoiceId: invoiceId, workspaceId },
+        "[Stripe] Skipping invoice clean: not a Metronome-pushed invoice"
+      );
+      return new Ok({ outcome: "skipped" });
+    }
+
+    if (invoice.status !== "draft") {
+      logger.info(
+        { stripeInvoiceId: invoiceId, workspaceId, status: invoice.status },
+        "[Stripe] Skipping invoice clean: invoice is no longer a draft"
+      );
+      return new Ok({ outcome: "skipped" });
+    }
+
+    if (invoice.metadata?.[METRONOME_INVOICE_LINES_CLEANED_FLAG] === "true") {
+      logger.info(
+        { stripeInvoiceId: invoiceId, workspaceId },
+        "[Stripe] Skipping invoice clean: already cleaned"
+      );
+      return new Ok({ outcome: "skipped" });
+    }
+
+    // Freeze the draft so Stripe's auto-advance can't finalize it while we edit.
+    await stripe.invoices.update(invoiceId, { auto_advance: false });
+
+    await cleanMetronomeInvoiceLines(stripe, invoice);
+
+    await stripe.invoices.update(invoiceId, {
+      metadata: {
+        ...invoice.metadata,
+        [METRONOME_INVOICE_LINES_CLEANED_FLAG]: "true",
+      },
+    });
+
+    // Finalization is intentionally disabled for now: while we are still
+    // inspecting line shapes and designing the transform, leave the invoice as a
+    // draft so it can be reviewed manually rather than charged. Re-enable once
+    // the line transform is in place.
+    const finalizeResult = await finalizeInvoice(invoice);
+    if (finalizeResult.isErr()) {
+      return finalizeResult;
+    }
+
+    logger.info(
+      { stripeInvoiceId: invoiceId, workspaceId },
+      "[Stripe] Cleaned Metronome draft invoice (finalization disabled)"
+    );
+    return new Ok({ outcome: "cleaned" });
+  } catch (error) {
+    logger.error(
+      {
+        stripeInvoiceId: invoiceId,
+        workspaceId,
+        stripeError: true,
+        error: normalizeError(error).message,
+      },
+      "[Stripe] Failed to clean and finalize Metronome draft invoice"
+    );
+    return new Err({
+      error_message: `Failed to clean and finalize invoice: ${normalizeError(error).message}`,
     });
   }
 }

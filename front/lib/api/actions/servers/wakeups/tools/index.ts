@@ -226,7 +226,7 @@ export function createWakeupsTools(
       const result = await WakeUpResource.makeNew(
         auth,
         blob,
-        conversation,
+        conversation.toJSON(),
         agentConfiguration
       );
       if (result.isErr()) {

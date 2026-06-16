@@ -65,8 +65,10 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
         .string()
         .max(MAX_FILE_SIZE_BYTES)
         .describe(
-          "When mode='template': the ID of an existing content node to use as a template " +
-            "(e.g., 'template_node_id'). The node's content will be fetched server-side without consuming tokens. " +
+          "When mode='template': a reference to an existing document to use as a template. " +
+            "Accepts either a knowledge base node ID or a scoped file system path " +
+            "(e.g. `pod-<id>/templates/my_template.tsx` or `conversation-<id>/my_template.tsx`). " +
+            "Content is fetched server-side without consuming tokens. " +
             "When mode='inline': the actual content for the Interactive Content file. " +
             "Should be complete and ready for execution or interaction."
         ),

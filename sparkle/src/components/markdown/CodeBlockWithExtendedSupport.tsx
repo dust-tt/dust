@@ -13,7 +13,7 @@ import {
   type MarkdownNode,
   sameNodePosition,
 } from "@sparkle/components/markdown/utils";
-import { CommandLineIcon, SparklesIcon } from "@sparkle/icons/app";
+import { Stars02, Terminal } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import React, { memo, useContext, useEffect, useRef, useState } from "react";
 import {
@@ -407,7 +407,7 @@ export const CodeBlockWithExtendedSupport = memo(
               size="xs"
               variant={"outline"}
               label={showMermaid ? "Markdown" : "Mermaid"}
-              icon={showMermaid ? CommandLineIcon : SparklesIcon}
+              icon={showMermaid ? Terminal : Stars02}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -439,7 +439,7 @@ export const CodeBlockWithExtendedSupport = memo(
               size="xs"
               variant={"outline"}
               label={showPrettyJson ? "Raw JSON" : "Pretty JSON"}
-              icon={showPrettyJson ? CommandLineIcon : SparklesIcon}
+              icon={showPrettyJson ? Terminal : Stars02}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.preventDefault();
                 e.stopPropagation();

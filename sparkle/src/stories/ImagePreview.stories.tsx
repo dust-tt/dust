@@ -11,9 +11,24 @@ import { ImagePreview } from "../index_with_tw_base";
 const SAMPLE_IMAGE = "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg";
 
 const meta = {
-  title: "Conversation/ImagePreview",
+  title: "Product/Conversation/ImagePreview",
   component: ImagePreview,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `Displays a single image from a conversation with hover affordances. Supports a **variant** (\`standalone\` / \`embedded\`), a hover \`title\` whose **titlePosition** can be \`bottom\` or \`center\`, an \`isLoading\` skeleton state, an optional \`onClose\` (remove) or \`downloadUrl\` (download) button, and \`manageZoomDialog\` to open a zoom view on click.
+
+**When to use**
+- To render an image attachment or an agent-generated image inline in a message.
+
+**Guidelines**
+- Always set \`alt\` for accessibility and a \`title\` for the hover label.
+- Provide \`downloadUrl\` for saving and \`onClose\` for removal; they render mutually distinct hover buttons.
+- For multiple images, use **InteractiveImageGrid**, which composes this component into a responsive layout.`,
+      },
+    },
+  },
   argTypes: {
     variant: {
       description: "Layout variant of the image preview",

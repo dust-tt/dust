@@ -18,6 +18,7 @@ export type DeleteProjectContextFileResponseBody = Record<string, never>;
 // we keep the same checks here.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.delete(
   "/",
   validate("param", ParamsSchema),

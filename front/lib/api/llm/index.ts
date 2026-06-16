@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import { AnthropicLLM } from "@app/lib/api/llm/clients/anthropic";
 import {
   isAnthropicVertexWhitelistedModelId,
@@ -6,10 +7,7 @@ import {
 import { FireworksLLM } from "@app/lib/api/llm/clients/fireworks";
 import { isFireworksWhitelistedModelId } from "@app/lib/api/llm/clients/fireworks/types";
 import { GoogleLLM } from "@app/lib/api/llm/clients/google";
-import {
-  isGoogleAIStudioWhitelistedModelId,
-  isGoogleVertexWhitelistedModelId,
-} from "@app/lib/api/llm/clients/google/types";
+import { isGoogleVertexWhitelistedModelId } from "@app/lib/api/llm/clients/google/types";
 import { MistralLLM } from "@app/lib/api/llm/clients/mistral";
 import { isMistralWhitelistedModelId } from "@app/lib/api/llm/clients/mistral/types";
 import { NoopLLM } from "@app/lib/api/llm/clients/noop";
@@ -20,9 +18,33 @@ import { XaiLLM } from "@app/lib/api/llm/clients/xai";
 import { isXaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
+import { config as regionConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
+import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
+import type { ModelIdType } from "@app/types/assistant/models/types";
+import type { LLMCredentialsType } from "@app/types/provider_credential";
+
+// EAP (Early Access Program) models are served through a dedicated Anthropic
+// workspace key (ANTHROPIC_EAP_API_KEY) rather than the workspace's
+// Dust-managed / BYOK credentials.
+//
+// Invariant: the env key must be set before any model opts into `useEapKey`
+// (see deploy plan). We throw rather than degrade to "unsupported" so the
+// misconfiguration is loud instead of silently falling back to the standard key.
+function withEapAnthropicKey(
+  modelId: ModelIdType,
+  credentials: LLMCredentialsType
+): LLMCredentialsType {
+  const eapApiKey = config.getAnthropicEapApiKey();
+  if (!eapApiKey) {
+    throw new Error(
+      `ANTHROPIC_EAP_API_KEY is not configured but model ${modelId} requires the EAP Anthropic key.`
+    );
+  }
+  return { ...credentials, ANTHROPIC_API_KEY: eapApiKey };
+}
 
 export async function getLLM(
   auth: Authenticator,
@@ -110,18 +132,11 @@ export async function getLLM(
     });
   }
 
-  const featureFlags = await getFeatureFlags(auth);
+  const plan = auth.getNonNullablePlan();
 
-  const useVertexPrerequisite =
-    featureFlags.includes("use_vertex_for_supported_models") &&
-    !auth.getNonNullablePlan().isByok;
-
-  if (isGoogleAIStudioWhitelistedModelId(modelId)) {
-    const useVertex =
-      useVertexPrerequisite && isGoogleVertexWhitelistedModelId(modelId);
-
+  if (isGoogleVertexWhitelistedModelId(modelId)) {
     return new GoogleLLM(auth, {
-      useVertex,
+      useVertex: !plan.isByok,
       credentials,
       getTraceInput,
       getTraceOutput,
@@ -134,13 +149,32 @@ export async function getLLM(
     });
   }
 
+  const featureFlags = await getFeatureFlags(auth);
+
+  const useVertexPrerequisite =
+    !plan.isByok &&
+    regionConfig.getCurrentRegion() === "europe-west1" &&
+    (isCreditPricedPlanPrefix(plan.code) ||
+      featureFlags.includes("use_vertex_for_supported_models"));
+
   if (isAnthropicWhitelistedModelId(modelId)) {
+    const useEapKey = modelConfig.useEapKey ?? false;
+
+    // EAP models must hit the Anthropic API directly with the EAP key. Vertex
+    // authenticates via GCP project creds and ignores ANTHROPIC_API_KEY, so
+    // routing an EAP model through Vertex would silently drop the EAP key.
     const useVertex =
-      useVertexPrerequisite && isAnthropicVertexWhitelistedModelId(modelId);
+      !useEapKey &&
+      useVertexPrerequisite &&
+      isAnthropicVertexWhitelistedModelId(modelId);
+
+    const anthropicCredentials = useEapKey
+      ? withEapAnthropicKey(modelId, credentials)
+      : credentials;
 
     return new AnthropicLLM(auth, {
       useVertex,
-      credentials,
+      credentials: anthropicCredentials,
       getTraceInput,
       getTraceOutput,
       modelId,

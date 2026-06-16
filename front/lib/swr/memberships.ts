@@ -1,21 +1,23 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
-import { clientFetch } from "@app/lib/egress/client";
-import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import { debounce } from "@app/lib/utils/debounce";
-import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
-import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
+import type { GetWorkspaceInvitationsResponseBody } from "@app/lib/api/invitation";
+import type { MembersLookupResponseBody } from "@app/lib/api/members";
 import type {
   GetUserSpendLimitResponseBody,
   PutUserSpendLimitResponseBody,
-} from "@app/pages/api/w/[wId]/members/[uId]/spend_limit";
-import type { MembersLookupResponseBody } from "@app/pages/api/w/[wId]/members/lookup";
-import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
+} from "@app/lib/api/users/spend_limit";
+import type { GetMembersResponseBody } from "@app/lib/api/workspace";
+import { clientFetch } from "@app/lib/egress/client";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { debounce } from "@app/lib/utils/debounce";
 import type { GroupKind } from "@app/types/groups";
 import { isGroupKind } from "@app/types/groups";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { LightWorkspaceType } from "@app/types/user";
+import type {
+  LightUserTypeWithWorkspace,
+  LightWorkspaceType,
+} from "@app/types/user";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 import { mutate } from "swr";
@@ -118,7 +120,9 @@ export function useWorkspaceInvitations(
   };
 }
 
-export function useSearchMembers({
+export function useSearchMembers<
+  T extends LightUserTypeWithWorkspace = LightUserTypeWithWorkspace,
+>({
   workspaceId,
   searchTerm,
   pageIndex,
@@ -136,7 +140,10 @@ export function useSearchMembers({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const searchMembersFetcher: Fetcher<SearchMembersResponseBody> = fetcher;
+  const searchMembersFetcher: Fetcher<{
+    members: T[];
+    total: number;
+  }> = fetcher;
   const debounceHandle = useRef<NodeJS.Timeout | undefined>(undefined);
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
 
@@ -231,12 +238,18 @@ export function useMembersUsage({
   searchTerm = "",
   pageIndex,
   pageSize,
+  orderColumn,
+  orderDirection,
+  seatType,
   disabled,
 }: {
   workspaceId: string;
   searchTerm?: string;
   pageIndex: number;
   pageSize: number;
+  orderColumn?: "name" | "email";
+  orderDirection?: "asc" | "desc";
+  seatType?: MembershipSeatType | "none";
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -254,6 +267,15 @@ export function useMembersUsage({
   });
   if (debouncedSearchTerm.trim().length > 0) {
     searchParams.set("search", debouncedSearchTerm.trim());
+  }
+  if (orderColumn) {
+    searchParams.set("orderColumn", orderColumn);
+  }
+  if (orderDirection) {
+    searchParams.set("orderDirection", orderDirection);
+  }
+  if (seatType) {
+    searchParams.set("seatType", seatType);
   }
 
   const { data, error } = useSWRWithDefaults(
@@ -316,17 +338,14 @@ export function useUpdateMemberSeatType({
 
       const body = await res.json();
       const isDeferred = !!body?.scheduledSeatChangeAt;
-      sendNotification({
-        type: "success",
-        title: isDeferred ? "Seat change scheduled" : "Seat updated",
-        description: isDeferred
-          ? `${memberName}'s seat will change to ${seatType} at the next credit refresh.`
-          : isCancellingScheduledChange
-            ? `${memberName}'s scheduled seat change has been cancelled.`
-            : hasSeatPool
-              ? `${memberName}'s seat has been updated to ${seatType}. The seat pool will be provisioned shortly.`
-              : `${memberName}'s seat has been updated to ${seatType}.`,
+      const notification = getSeatUpdateNotification({
+        seatType,
+        isDeferred,
+        isCancellingScheduledChange,
+        hasSeatPool,
+        memberName,
       });
+      sendNotification({ type: "success", ...notification });
 
       await invalidateMembersUsage(workspaceId);
       return true;
@@ -335,6 +354,39 @@ export function useUpdateMemberSeatType({
   );
 
   return { doUpdateSeatType };
+}
+
+function getSeatUpdateNotification({
+  seatType,
+  isDeferred,
+  isCancellingScheduledChange,
+  hasSeatPool,
+  memberName,
+}: {
+  seatType: MembershipSeatType;
+  isDeferred: boolean;
+  isCancellingScheduledChange: boolean;
+  hasSeatPool: boolean;
+  memberName: string;
+}): { title: string; description: string } {
+  if (seatType === "none") {
+    return {
+      title: isDeferred ? "Seat removal scheduled" : "Seat removed",
+      description: isDeferred
+        ? `${memberName}'s seat will be removed at the next billing period. They keep full access until then.`
+        : `${memberName}'s seat has been removed.`,
+    };
+  }
+  return {
+    title: isDeferred ? "Seat change scheduled" : "Seat updated",
+    description: isDeferred
+      ? `${memberName}'s seat will change to ${seatType} at the next credit refresh.`
+      : isCancellingScheduledChange
+        ? `${memberName}'s scheduled seat change has been cancelled.`
+        : hasSeatPool
+          ? `${memberName}'s seat has been updated to ${seatType}. The seat pool will be provisioned shortly.`
+          : `${memberName}'s seat has been updated to ${seatType}.`,
+  };
 }
 
 function spendLimitUrl(workspaceId: string, memberId: string): string {

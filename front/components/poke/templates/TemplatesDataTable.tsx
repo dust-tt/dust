@@ -1,4 +1,4 @@
-import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
+import type { FetchAssistantTemplatesResponse } from "@app/lib/resources/template_resource";
 import { usePokeAssistantTemplates, usePokePullTemplates } from "@app/poke/swr";
 import type {
   TemplateTagCodeType,

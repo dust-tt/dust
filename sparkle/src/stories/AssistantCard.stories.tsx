@@ -14,8 +14,23 @@ import {
 } from "@sparkle/components";
 
 const meta: Meta<typeof AssistantCard> = {
-  title: "Modules/AssistantCard",
+  title: "Product/Agent/AssistantCard",
   component: AssistantCard,
+  parameters: {
+    docs: {
+      description: {
+        component: `A card that presents an agent for browsing or selection, showing its \`title\`, \`pictureUrl\` avatar, \`subtitle\` (authors), and \`description\`, with an optional \`action\` slot (commonly **AssistantCardMore** opening a **DropdownMenu**) and a \`variant\`. The family includes **CompactAssistantCard** (denser tile), **LargeAssistantCard** (wide list row), and the minimal **AssistantCard**; lay them out with **CardGrid**.
+
+**When to use**
+- To display agents in galleries, pickers, or lists where the user browses or selects one.
+
+**Guidelines**
+- Pick the size to match the layout: **CompactAssistantCard** and minimal **AssistantCard** for grids, **LargeAssistantCard** for two-column lists.
+- Wire \`onClick\` for selection and reserve the \`action\` slot for secondary controls (edit, duplicate, remove) via **AssistantCardMore**.
+- Arrange cards with **CardGrid** rather than ad-hoc grids; long titles and descriptions truncate automatically.`,
+      },
+    },
+  },
 };
 
 export default meta;

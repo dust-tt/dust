@@ -76,7 +76,6 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   agent_router: "basic",
   agent_sidekick_agent_state: "basic",
   agent_sidekick_context: "basic",
-  agent_management: "basic",
   agent_memory: "basic",
   run_dust_app: "basic",
   common_utilities: "basic",
@@ -85,6 +84,7 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   missing_action_catcher: "basic",
   primitive_types_debugger: "basic",
   jit_testing: "basic",
+  skill_authoring: "basic",
   skill_management: "basic",
   schedules_management: "basic",
   pod_manager: "basic",
@@ -113,6 +113,7 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   interactive_content: "advanced",
   confluence: "advanced",
   databricks: "advanced",
+  exa_people_and_company: "advanced",
   fathom: "advanced",
   freshservice: "advanced",
   github: "advanced",
@@ -129,6 +130,7 @@ const TOOL_CATEGORY_MAP: Record<InternalMCPServerNameType, ToolCategory> = {
   monday: "advanced",
   notion: "advanced",
   openai_usage: "advanced",
+  workspace_analytics: "advanced",
   outlook_calendar: "advanced",
   outlook: "advanced",
   productboard: "advanced",
@@ -169,7 +171,9 @@ export function getToolCategory(
 
 // Origins whose entire conversation is free (platform-assistive, not
 // user-requested output).
-const FREE_ORIGINS: ReadonlySet<string> = new Set<string>(["agent_sidekick"]);
+export const FREE_ORIGINS: ReadonlySet<string> = new Set<string>([
+  "agent_sidekick",
+]);
 
 // Internal MCP servers whose tool invocations are always free regardless of
 // the message-level usage type (platform plumbing, not user output).
@@ -180,24 +184,94 @@ const FREE_TOOL_SERVERS: ReadonlySet<string> = new Set<string>([
   "agent_memory",
 ]);
 
+export function isFreeOrigin(origin: string): boolean {
+  return FREE_ORIGINS.has(origin);
+}
+
 export function getUsageType(
   isProgrammaticUsage: boolean,
   origin: string
 ): UsageType {
-  if (FREE_ORIGINS.has(origin)) {
+  if (isFreeOrigin(origin)) {
     return USAGE_TYPE_FREE;
   }
   return isProgrammaticUsage ? USAGE_TYPE_PROGRAMMATIC : USAGE_TYPE_USER;
+}
+
+// A tool invocation is always free (priced at 0 in the rate card) when its
+// internal MCP server is platform plumbing — see FREE_TOOL_SERVERS.
+export function isFreeToolServer(
+  internalMCPServerName: string | null
+): boolean {
+  return (
+    internalMCPServerName !== null &&
+    FREE_TOOL_SERVERS.has(internalMCPServerName)
+  );
 }
 
 function getToolUsageType(
   baseUsageType: UsageType,
   internalMCPServerName: string | null
 ): UsageType {
-  if (internalMCPServerName && FREE_TOOL_SERVERS.has(internalMCPServerName)) {
+  if (isFreeToolServer(internalMCPServerName)) {
     return USAGE_TYPE_FREE;
   }
   return baseUsageType;
+}
+
+// ---------------------------------------------------------------------------
+// AWU credit conversion helpers
+// ---------------------------------------------------------------------------
+// These are the single source of truth for converting raw usage into AWU
+// credits. They are used both when emitting Metronome billing events (below)
+// and when surfacing the cost of a message/conversation to the frontend, so
+// the displayed credits always match what is billed.
+
+// Convert a raw model-compute cost in microUSD into AWU credits.
+// 1 AWU credit = $0.0085 of compute (margin baked in), so 1 credit = 8500
+// microUSD. Rounded up, matching the Metronome event conversion.
+export function awuFromMicroUsd(microUsd: number): number {
+  return Math.ceil(microUsd / 0.85 / 10_000);
+}
+
+// Intelligence (AI compute) credits for a set of run usages. Usages are
+// grouped by (providerId, modelId) and converted per group before summing —
+// this mirrors `buildLlmUsageEvents` so the total equals the billed amount.
+export function intelligenceAwuFromRunUsages(
+  runUsages: RunUsageType[]
+): number {
+  const costByModel = new Map<string, number>();
+  for (const usage of runUsages) {
+    // Need this grouping to rightfully apply the Math.ceil in awuFromMicroUsd
+    const key = `${usage.providerId}|${usage.modelId}`;
+    costByModel.set(key, (costByModel.get(key) ?? 0) + usage.costMicroUsd);
+  }
+
+  let total = 0;
+  for (const costMicroUsd of costByModel.values()) {
+    total += awuFromMicroUsd(costMicroUsd);
+  }
+  return total;
+}
+
+// Tool (platform action) credits for a set of executed actions. Each action
+// costs a fixed number of credits depending on its category (basic = 1,
+// advanced = 3), except free tools (FREE_TOOL_SERVERS, e.g. agent_memory) which
+// are priced at 0 in the rate card and therefore contribute nothing. Callers
+// should pass only final-status actions (matching the usage_queue extraction)
+// so this equals the billed amount.
+export function toolAwuFromActions(
+  actions: { internalMCPServerName: string | null }[]
+): number {
+  return actions.reduce((total, action) => {
+    if (isFreeToolServer(action.internalMCPServerName)) {
+      return total;
+    }
+    return (
+      total +
+      TOOL_CATEGORY_AWU_WEIGHTS[getToolCategory(action.internalMCPServerName)]
+    );
+  }, 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -218,6 +292,7 @@ export function buildLlmUsageEvents({
   userId,
   agentMessageId,
   agentId,
+  subAgentId,
   parentAgentMessageId,
   runKey,
   runUsages,
@@ -235,6 +310,7 @@ export function buildLlmUsageEvents({
   userId: string | null;
   agentMessageId: string;
   agentId: string | null;
+  subAgentId: string | null;
   parentAgentMessageId: string | null;
   runKey: string;
   runUsages: RunUsageType[];
@@ -295,6 +371,7 @@ export function buildLlmUsageEvents({
       agent_message_id: agentMessageId,
       conversation_id: conversationId,
       agent_id: agentId ?? "unknown",
+      sub_agent_id: subAgentId ?? "none",
       parent_agent_message_id: parentAgentMessageId ?? "none",
       provider_id: group.providerId,
       model_id: group.modelId,
@@ -305,7 +382,7 @@ export function buildLlmUsageEvents({
       // Provider cost without markup — markup is applied in Metronome rate card. Only used for legacy rates.
       cost_micro_usd: group.costMicroUsd,
       // 1 AWU credit = $0.0085
-      cost_awu: Math.ceil(group.costMicroUsd / 0.85 / 10_000),
+      cost_awu: awuFromMicroUsd(group.costMicroUsd),
       // TODO: Remove is_programmatic_usage & is_free_usage, this is replaced by single property "usage type"
       is_programmatic_usage:
         usageType === USAGE_TYPE_PROGRAMMATIC ? "true" : "false",
@@ -346,6 +423,7 @@ export function buildToolUseEvents({
   userId,
   agentMessageId,
   agentId,
+  subAgentId,
   parentAgentMessageId,
   runKey,
   actions,
@@ -362,6 +440,7 @@ export function buildToolUseEvents({
   userId: string | null;
   agentMessageId: string;
   agentId: string | null;
+  subAgentId: string | null;
   parentAgentMessageId: string | null;
   runKey: string;
   actions: ToolAction[];
@@ -411,6 +490,7 @@ export function buildToolUseEvents({
         agent_message_id: agentMessageId,
         conversation_id: conversationId,
         agent_id: agentId ?? "unknown",
+        sub_agent_id: subAgentId ?? "none",
         parent_agent_message_id: parentAgentMessageId ?? "none",
         auth_method: authMethod ?? "unknown",
         api_key_name: apiKeyName ?? "unknown",

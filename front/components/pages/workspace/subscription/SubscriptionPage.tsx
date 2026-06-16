@@ -1,12 +1,15 @@
+import { BillingPeriodSwitch } from "@app/components/pages/onboarding/SubscriptionPlans";
 import { MetronomeSubscriptionPanel } from "@app/components/pages/workspace/subscription/MetronomeSubscriptionPanel";
 import { SubscriptionPlanCards } from "@app/components/plans/SubscriptionPlanCards";
+import { SubscriptionProvider } from "@app/components/workspace/billing/SubscriptionContext";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { PatchSubscriptionRequestBody } from "@app/lib/api/subscription";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import {
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
   isProPlan,
   isUpgraded,
   isWhitelistedBusinessPlan,
@@ -18,7 +21,6 @@ import {
   useWorkspaceSeatsCount,
 } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type {
   BillingPeriod,
   SubscriptionPerSeatPricing,
@@ -27,11 +29,9 @@ import type {
 import { isSubscriptionMetronomeBilled } from "@app/types/plan";
 import {
   Button,
-  ButtonsSwitch,
-  ButtonsSwitchList,
-  CardIcon,
   Chip,
   ContentMessage,
+  CreditCard01,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -413,7 +413,7 @@ export function SubscriptionPage() {
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="Subscription"
-          icon={CardIcon}
+          icon={CreditCard01}
           description="Manage your plan."
         />
         <Page.Vertical align="stretch" gap="md">
@@ -424,7 +424,7 @@ export function SubscriptionPage() {
               title={`Your subscription ends on ${endDate}.`}
               variant="warning"
             >
-              {isEntreprisePlanPrefix(plan.code) ? (
+              {isEnterprisePlanPrefix(plan.code) ? (
                 <>
                   Please reach out to your account manager to ensure continuity.
                 </>
@@ -445,10 +445,9 @@ export function SubscriptionPage() {
             </ContentMessage>
           )}
           {useMetronomePanel ? (
-            <MetronomeSubscriptionPanel
-              owner={owner}
-              subscription={subscription}
-            />
+            <SubscriptionProvider owner={owner} subscription={subscription}>
+              <MetronomeSubscriptionPanel />
+            </SubscriptionProvider>
           ) : (
             <>
               <div>
@@ -544,7 +543,7 @@ export function SubscriptionPage() {
                   )}
                   <div className="my-5">
                     <Button
-                      icon={CardIcon}
+                      icon={CreditCard01}
                       label="Your billing dashboard on Stripe"
                       variant="ghost"
                       onClick={withTracking(
@@ -589,21 +588,11 @@ export function SubscriptionPage() {
                       <Page.P>Pick a plan that best suits your team.</Page.P>
                     </div>
                     {!isWorkspaceWhitelistedBusinessPlan && (
-                      <ButtonsSwitchList
+                      <BillingPeriodSwitch
                         defaultValue={billingPeriod}
                         size="xs"
-                        onValueChange={(v) => {
-                          if (v === "monthly" || v === "yearly") {
-                            setBillingPeriod(v);
-                          }
-                        }}
-                      >
-                        <ButtonsSwitch
-                          value="monthly"
-                          label="Monthly billing"
-                        />
-                        <ButtonsSwitch value="yearly" label="Yearly billing" />
-                      </ButtonsSwitchList>
+                        onValueChange={setBillingPeriod}
+                      />
                     )}
                   </div>
                   <div className="pt-4">

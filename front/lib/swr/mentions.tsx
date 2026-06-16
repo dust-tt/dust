@@ -1,4 +1,8 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type {
+  PostMentionActionRequestBody,
+  PostMentionActionResponseBody,
+} from "@app/lib/api/assistant/conversation/mentions";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   getErrorFromResponse,
@@ -6,10 +10,6 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
-import type {
-  PostMentionActionRequestBody,
-  PostMentionActionResponseBody,
-} from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]/mentions";
 import type { RichMentionWithStatus } from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import { useCallback, useEffect, useRef, useState } from "react";

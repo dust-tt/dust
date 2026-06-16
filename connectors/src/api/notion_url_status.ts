@@ -11,6 +11,20 @@ import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { Request, Response } from "express";
 
+// Notion content can be reached through several domains: the classic notion.so,
+// published sites on notion.site, and the newer notion.com (e.g. app.notion.com).
+const VALID_NOTION_HOSTS = ["notion.so", "notion.site", "notion.com"];
+
+function isValidNotionUrl(url: string): boolean {
+  if (!URL.canParse(url)) {
+    return false;
+  }
+  const { hostname } = new URL(url);
+  return VALID_NOTION_HOSTS.some(
+    (host) => hostname === host || hostname.endsWith(`.${host}`)
+  );
+}
+
 type NotionUrlStatus = {
   notion: {
     exists: boolean;
@@ -40,7 +54,7 @@ export const getNotionUrlStatusHandler = withLogging(
       }
 
       // Validate it's a Notion URL
-      if (!url.includes("notion.so") && !url.includes("notion.site")) {
+      if (!isValidNotionUrl(url)) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {

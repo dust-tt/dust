@@ -1,8 +1,10 @@
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
+import { useHashParam } from "@app/hooks/useHashParams";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import type { LightWorkspaceType } from "@app/types/user";
 import { cn, ResizableHandle, ResizablePanel } from "@dust-tt/sparkle";
 import { useEffect, useRef } from "react";
@@ -20,6 +22,8 @@ export default function ConversationSidePanelContainer({
   const { currentPanel, setPanelRef, onPanelClosed } =
     useConversationSidePanelContext();
   const panelRef = useRef<ImperativePanelHandle | null>(null);
+  const [fullScreenHash] = useHashParam(FULL_SCREEN_HASH_PARAM);
+  const isFullScreen = fullScreenHash === "true";
 
   const isMobile = useIsMobile();
 
@@ -37,12 +41,13 @@ export default function ConversationSidePanelContainer({
 
   return (
     <>
-      {/* Resizable Handle for Panels - Always render but control visibility */}
-      <ResizableHandle
-        withHandle={currentPanel && !isMobile}
-        disabled={!currentPanel || isMobile}
-        className="z-50"
-      />
+      {!!conversation && (
+        <ResizableHandle
+          withHandle={currentPanel && !isMobile && !isFullScreen}
+          disabled={!currentPanel || isMobile || isFullScreen}
+          className="z-50"
+        />
+      )}
       {/* Panel Container - either Interactive Content or Actions */}
       <ResizablePanel
         ref={panelRef}
@@ -62,7 +67,7 @@ export default function ConversationSidePanelContainer({
           // On mobile: overlay full screen with absolute positioning.
           "md:relative",
           currentPanel &&
-            "absolute inset-0 bg-background dark:bg-background-night md:relative md:inset-auto"
+            "absolute inset-0 bg-panel-background dark:bg-panel-background-night md:relative md:inset-auto"
         )}
       >
         {currentPanel && conversation && (

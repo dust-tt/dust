@@ -1,4 +1,4 @@
-import { ArrowDownOnSquareIcon, Button } from "@dust-tt/sparkle";
+import { Button, Download01 } from "@dust-tt/sparkle";
 
 interface CsvDownloadButtonProps {
   isDownloading: boolean;
@@ -13,7 +13,7 @@ export function CsvDownloadButton({
 }: CsvDownloadButtonProps) {
   return (
     <Button
-      icon={ArrowDownOnSquareIcon}
+      icon={Download01}
       variant="outline"
       size="xs"
       tooltip="Download CSV"

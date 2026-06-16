@@ -1,9 +1,9 @@
+import type { GetConversationsResponseBody } from "@app/lib/api/assistant/conversation/types";
 import {
   emptyArray,
   useFetcher,
   useSWRInfiniteWithDefaults,
 } from "@app/lib/swr/swr";
-import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";

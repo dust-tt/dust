@@ -1,4 +1,8 @@
 import { USED_MODEL_CONFIGS } from "@app/components/providers/model_configs";
+import type {
+  PokeCreateTemplateResponseBody,
+  PokeFetchAssistantTemplateResponse,
+} from "@app/lib/api/poke/templates";
 import { buildSharedTemplateAttributes } from "@app/lib/api/poke/templates";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { TemplateResource } from "@app/lib/resources/template_resource";
@@ -15,14 +19,6 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import { z } from "zod";
 
-export type PokeFetchAssistantTemplateResponse = ReturnType<
-  TemplateResource["toJSON"]
->;
-
-interface PokeCreateTemplateResponseBody {
-  success: boolean;
-}
-
 const ParamsSchema = z.object({
   tId: z.string(),
 });
@@ -31,6 +27,7 @@ const ParamsSchema = z.object({
 // sub-app.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

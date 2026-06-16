@@ -1,27 +1,124 @@
+import type {
+  GetUserPodNotificationPreferenceResponseBody,
+  PatchUserPodNotificationPreferenceResponseBody,
+} from "@app/lib/api/projects/preferences";
+import { PatchUserPodNotificationPreferenceBodySchema } from "@app/lib/api/projects/preferences";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
-import type { UserPodNotificationPreference } from "@app/types/notification_preferences";
-import { NOTIFICATION_CONDITION_OPTIONS } from "@app/types/notification_preferences";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
-import { z } from "zod";
-
-export type GetUserPodNotificationPreferenceResponseBody = {
-  userProjectNotificationPreference: UserPodNotificationPreference | null;
-};
-
-export type PatchUserPodNotificationPreferenceResponseBody = {
-  userProjectNotificationPreference: UserPodNotificationPreference | null;
-};
-
-const PatchUserPodNotificationPreferenceBodySchema = z.object({
-  preference: z.enum(NOTIFICATION_CONDITION_OPTIONS),
-});
 
 // Mounted under /api/w/:wId/spaces/:spaceId/project_notification_preferences.
 const app = workspaceApp();
+
+/**
+ * @swagger
+ * /api/w/{wId}/spaces/{spaceId}/project_notification_preferences:
+ *   get:
+ *     summary: Get project notification preference
+ *     description: Returns the current user's notification preference for a project space.
+ *     tags:
+ *       - Private Spaces
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: spaceId
+ *         required: true
+ *         description: ID of the project space
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 userProjectNotificationPreference:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     sId:
+ *                       type: string
+ *                     spaceId:
+ *                       type: string
+ *                     userId:
+ *                       type: string
+ *                     preference:
+ *                       type: string
+ *                       enum: [all_messages, only_mentions, never]
+ *       400:
+ *         description: Bad request (space is not a project)
+ *       401:
+ *         description: Unauthorized
+ *   patch:
+ *     summary: Set project notification preference
+ *     description: Sets the current user's notification preference for a project space.
+ *     tags:
+ *       - Private Spaces
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: spaceId
+ *         required: true
+ *         description: ID of the project space
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - preference
+ *             properties:
+ *               preference:
+ *                 type: string
+ *                 enum: [all_messages, only_mentions, never]
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 userProjectNotificationPreference:
+ *                   type: object
+ *                   nullable: true
+ *                   properties:
+ *                     sId:
+ *                       type: string
+ *                     spaceId:
+ *                       type: string
+ *                     userId:
+ *                       type: string
+ *                     preference:
+ *                       type: string
+ *                       enum: [all_messages, only_mentions, never]
+ *       400:
+ *         description: Bad request (space is not a project or invalid body)
+ *       401:
+ *         description: Unauthorized
+ */
 
 app.get(
   "/",

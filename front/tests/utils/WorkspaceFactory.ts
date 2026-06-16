@@ -1,6 +1,7 @@
 import { PlanModel } from "@app/lib/models/plan";
 import { upsertFreePlans } from "@app/lib/plans/free_plans";
 import {
+  CREDIT_PRICED_BUSINESS_PLAN_CODE,
   FREE_BYOK_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
   PRO_PLAN_SEAT_29_CODE,
@@ -11,6 +12,7 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import { PlanFactory } from "@app/tests/utils/PlanFactory";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import type { WorkspaceType } from "@app/types/user";
 import { faker } from "@faker-js/faker";
@@ -45,10 +47,46 @@ export class WorkspaceFactory {
     });
   }
 
+  // A Metronome credit-priced workspace (plan code prefixed `CP_`), used to
+  // exercise credit-priced gating such as the per-user credit cap or the
+  // `none`-seat message block.
+  static async creditPriced(
+    overrides?: WorkspaceOverrides
+  ): Promise<WorkspaceType> {
+    return this.create(
+      CREDIT_PRICED_BUSINESS_PLAN_CODE,
+      { metronomeCustomerId: "cus_test_credit_priced", ...overrides },
+      { metronomeContractId: "test-metronome-contract-id" }
+    );
+  }
+
+  static async withBrandedFrames(
+    overrides?: WorkspaceOverrides
+  ): Promise<WorkspaceType> {
+    const plan = await PlanFactory.enterprise("ENT_BRANDED_FRAMES_TEST", {
+      isBrandedFramesAllowed: true,
+    });
+
+    return this.createWithPlan(plan, overrides);
+  }
+
   // Plans are seeded by the DB init script (admin/db.ts) to avoid deadlocks
   // from concurrent upserts in parallel test workers.
   private static async create(
     planCode: string,
+    overrides?: WorkspaceOverrides,
+    subscriptionOverrides?: { metronomeContractId?: string }
+  ): Promise<WorkspaceType> {
+    const plan = await PlanModel.findOne({ where: { code: planCode } });
+    if (!plan) {
+      throw new Error(`Plan ${planCode} not found`);
+    }
+
+    return this.createWithPlan(plan, overrides, subscriptionOverrides);
+  }
+
+  private static async createWithPlan(
+    plan: PlanModel,
     overrides?: WorkspaceOverrides,
     subscriptionOverrides?: { metronomeContractId?: string }
   ): Promise<WorkspaceType> {
@@ -68,11 +106,6 @@ export class WorkspaceFactory {
         whiteListedProviders: overrides.whiteListedProviders,
       }),
     });
-
-    const plan = await PlanModel.findOne({ where: { code: planCode } });
-    if (!plan) {
-      throw new Error(`Plan ${planCode} not found`);
-    }
 
     await SubscriptionResource.makeNew(
       {

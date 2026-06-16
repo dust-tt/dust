@@ -21,6 +21,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import { formatUserFullName } from "@app/types/user";
 import { Op } from "sequelize";
 
+export type FetchConversationParticipantsResponse = {
+  participants: ConversationParticipantsType;
+};
+
 async function fetchAllUsersById(userIds: ModelId[]) {
   const users = await UserResource.fetchByModelIds(userIds);
 
@@ -140,10 +144,17 @@ export async function fetchConversationParticipants(
     fetchAllAgentsById(auth, [...agentConfigurationIds]),
   ]);
 
-  // if less agents than agentConfigurationIds, it means some agents are forbidden
-  // to the user
+  // `agents` may contain fewer entries than `agentConfigurationIds` when an agent used in the
+  // conversation later moved to a space the user can no longer read. In that case we still return
+  // the participants list to actual participants (so they can leave/delete the conversation), but
+  // keep treating it as an access restriction for everyone else.
   if (agents.length < agentConfigurationIds.size) {
-    return new Err(new ConversationError("conversation_access_restricted"));
+    const currentUser = auth.user();
+    const isParticipant =
+      currentUser !== null && userIds.includes(currentUser.id);
+    if (!isParticipant) {
+      return new Err(new ConversationError("conversation_access_restricted"));
+    }
   }
 
   const userIdToAction = new Map<ModelId, ParticipantActionType>(

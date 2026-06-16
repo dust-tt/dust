@@ -7,8 +7,9 @@ const documentationAckLabel = "documentation-ack";
 const rawSqlAckLabel = "raw-sql-ack";
 const sparkleVersionAckLabel = "sparkle-version-ack";
 const sseAckLabel = "sse-ack";
-const skipMigrationCheckLabel = "skip-migration-check";
 const sandboxImageAckLabel = "sandbox-image-ack";
+const auditLogAckLabel = "audit-log-ack";
+const marketingSnapshotAckLabel = "marketing-snapshot-ack";
 
 const REMOVE_INDEX_WARNING =
   "\n\nBefore deleting an index, make sure it is actually not used by running:" +
@@ -170,19 +171,19 @@ function checkDocumentationLabel() {
 
 function failDocumentationAck() {
   fail(
-    "Files in `**/api/v1/` have been modified. " +
-      `Please add the \`${documentationAckLabel}\` label to acknowledge that if anything changes 
-      in a public endpoint, you need to edit the JSDoc comment 
-      above the handler definition and/or the swagger_schemas.ts file and regenerate the documentation using \`npm run docs\``
+    "Files in `front-api/routes/` have been modified. " +
+      `Please add the \`${documentationAckLabel}\` label to acknowledge that if anything changes
+      in a documented endpoint, you need to edit the JSDoc comment
+      above the handler definition and/or the swagger_schemas.ts file and regenerate the documentation using \`npm -w front-api run docs\``
   );
 }
 
 function warnDocumentationAck(documentationAckLabel: string) {
   warn(
-    "Files in `**/api/v1/` have been modified and the PR has the `" +
+    "Files in `front-api/routes/` have been modified and the PR has the `" +
       documentationAckLabel +
       "` label. \n" +
-      "Don't forget to run `npm run docs` and use the `Deploy OpenAPI Docs` Github action to update https://docs.dust.tt/reference."
+      "Don't forget to run `npm -w front-api run docs` and use the `Deploy OpenAPI Docs` Github action to update https://docs.dust.tt/reference."
   );
 }
 
@@ -363,88 +364,176 @@ function warnTriggersWorkflowChanges() {
   );
 }
 
-function failMigrationSync(file: string, counterpart: string) {
-  fail(
-    `\`${file}\` was modified but its migration counterpart \`${counterpart}\` was not. ` +
-      `Both sides of a migrated handler must be updated together (see BACK17). ` +
-      `Add the \`${skipMigrationCheckLabel}\` label if this is intentional.`
-  );
-}
+const AUDIT_SCHEMAS_PREFIX = "front/admin/audit_log_schemas/";
+const AUDIT_VERSION_MAP_REPO_PATH = "front/lib/api/audit/schema_versions.json";
+const AUDIT_VERSION_MAP_LOCAL_PATH = "lib/api/audit/schema_versions.json";
 
-function warnMigrationSync(file: string, counterpart: string) {
-  warn(
-    `\`${file}\` was modified but its migration counterpart \`${counterpart}\` was not. ` +
-      `The \`${skipMigrationCheckLabel}\` label is set — ensure this is intentional.`
-  );
-}
-
-// Returns true if the Next handler at `nextLocalPath` (cwd-relative) is
-// marked as migrated to Hono via the `@migration-status: MIGRATED_TO_HONO`
-// marker.
-function isMigratedToHono(nextLocalPath: string): boolean {
-  let content: string;
+// Parses a schema_versions.json blob into an action -> version map. Returns an
+// empty map for missing/unparseable content (e.g. the base ref before the file
+// existed) so callers can treat unknown actions as "no prior version".
+function parseVersionMap(content: string | null | undefined): {
+  [action: string]: number;
+} {
+  if (!content) {
+    return {};
+  }
   try {
-    content = fs.readFileSync(nextLocalPath, "utf8");
+    const parsed = JSON.parse(content);
+    return parsed && typeof parsed === "object" ? parsed : {};
   } catch {
-    // File does not exist (or unreadable) — treat as not migrated.
+    return {};
+  }
+}
+
+function failAuditSchemaVersions(violations: string[]) {
+  fail(
+    "Audit log schema(s) changed but the version in " +
+      `\`${AUDIT_VERSION_MAP_REPO_PATH}\` was not bumped:\n` +
+      violations.map((v) => `- ${v}`).join("\n") +
+      "\n\nRun `npx tsx front/admin/register_audit_log_schemas.ts --execute " +
+      "--changed` to register the updated schema(s) with WorkOS, then commit " +
+      "the regenerated `schema_versions.json` in this PR. WorkOS validates " +
+      "each event against the version we send, so a stale version causes " +
+      "validation failures once deployed.\n\nIf the change is a no-op that " +
+      `WorkOS treats as identical (no new version created), add the ` +
+      `\`${auditLogAckLabel}\` label to override.`
+  );
+}
+
+function warnAuditSchemaVersions(violations: string[]) {
+  warn(
+    "Audit log schema(s) changed without a version bump, and the " +
+      `\`${auditLogAckLabel}\` label is set:\n` +
+      violations.map((v) => `- ${v}`).join("\n") +
+      "\nEnsure WorkOS genuinely treats the change as identical."
+  );
+}
+
+// When a schema file under `front/admin/audit_log_schemas/` changes, its
+// version in `schema_versions.json` must be bumped (WorkOS bumps it when the
+// registration script re-registers a changed schema). We compare the version
+// on this branch against the base ref; a missing or non-incremented version
+// means the registration step was skipped.
+async function checkAuditSchemaVersions(changedActions: string[]) {
+  let headMap: { [action: string]: number };
+  try {
+    headMap = parseVersionMap(
+      fs.readFileSync(AUDIT_VERSION_MAP_LOCAL_PATH, "utf8")
+    );
+  } catch {
+    // Version map unreadable — the vitest consistency test covers presence;
+    // nothing to diff against here.
+    return;
+  }
+
+  // Danger runs with cwd=`front/`; `danger.git.*` paths are repo-root relative.
+  const versionDiff = await danger.git.diffForFile(AUDIT_VERSION_MAP_REPO_PATH);
+  // If the map wasn't touched in this PR, the base equals head, so any changed
+  // schema will correctly read as "not incremented".
+  const baseMap = versionDiff ? parseVersionMap(versionDiff.before) : headMap;
+
+  const violations: string[] = [];
+  for (const action of changedActions) {
+    const headVersion = headMap[action];
+    const baseVersion = baseMap[action];
+    if (typeof headVersion !== "number") {
+      violations.push(`\`${action}\` has no entry in schema_versions.json`);
+    } else if (typeof baseVersion === "number" && headVersion <= baseVersion) {
+      violations.push(
+        `\`${action}\` is still at v${headVersion} (schema changed but version not incremented)`
+      );
+    }
+  }
+
+  if (violations.length === 0) {
+    return;
+  }
+
+  if (hasLabel(auditLogAckLabel)) {
+    warnAuditSchemaVersions(violations);
+  } else {
+    failAuditSchemaVersions(violations);
+  }
+}
+
+// The `/home/api-pricing` page is served by the `marketing` workspace, which
+// cannot import front's model/pricing modules (they pull in a deep dependency
+// graph: io-ts, zod, GCS-generated custom models, ...). Instead, marketing keeps
+// hand-maintained snapshots of the data the page needs. When the front sources
+// of truth change, those snapshots must be re-synced or the page silently
+// renders stale/incomplete prices.
+const MARKETING_SNAPSHOT_FILES = [
+  "marketing/lib/api/assistant/token_pricing.ts",
+  "marketing/types/assistant/models/models.ts",
+  "marketing/types/assistant/models/providers.ts",
+  "marketing/types/assistant/models/types.ts",
+];
+
+// Front files mirrored into the marketing snapshots above. We watch the pricing
+// data and the model-config/provider source files, but skip front-only files
+// under `front/types/assistant/models/` that the snapshot doesn't reflect.
+function isWatchedMarketingSourceFile(path: string) {
+  if (path === "front/lib/api/assistant/token_pricing.ts") {
+    return true;
+  }
+  if (
+    !path.startsWith("front/types/assistant/models/") ||
+    !path.endsWith(".ts") ||
+    path.endsWith(".test.ts")
+  ) {
     return false;
   }
-  return /^\s*\/\/\s*@migration-status:\s*MIGRATED_TO_HONO\s*$/m.test(content);
+  const frontOnlyFiles = [
+    "custom_models.generated.ts",
+    "embedding.ts",
+    "reasoning.ts",
+    "utils.ts",
+  ];
+  return !frontOnlyFiles.some((f) => path.endsWith(`/${f}`));
 }
 
-function checkHonoMigrationSync() {
-  const diffFiles = danger.git.modified_files.concat(danger.git.created_files);
+function failMarketingSnapshotAck(frontFiles: string[]) {
+  fail(
+    "Model/pricing source files in `front` changed but the hand-maintained " +
+      "`marketing` snapshots were not updated:\n" +
+      frontFiles.map((f) => `- ${f}`).join("\n") +
+      "\n\nThe `/home/api-pricing` page is served by `marketing`, which keeps " +
+      "its own copies of the model configs and token pricing. Re-sync:\n" +
+      MARKETING_SNAPSHOT_FILES.map((f) => `- \`${f}\``).join("\n") +
+      "\n\nso the pricing table stays correct, or add the " +
+      `\`${marketingSnapshotAckLabel}\` label if this change does not affect ` +
+      "the marketing snapshots (e.g. it only touches fields the snapshot " +
+      "ignores, such as `contextSize` or descriptions)."
+  );
+}
 
-  // For each modified API file, derive its migration counterpart from the
-  // 1:1 path mapping (Next `pages/api/<path>` ↔ Hono `front-api/routes/<path>`)
-  // and check the counterpart is also in the diff.
-  //
-  // A pair is considered migrated when:
-  //   - both files exist on disk, AND
-  //   - the Next file carries `@migration-status: MIGRATED_TO_HONO`.
-  //
-  // Danger runs with cwd=`front/`; `danger.git.modified_files` is
-  // repo-root relative. We prepend `front/` when crossing that boundary.
-  const checks: { file: string; counterpart: string }[] = [];
+function warnMarketingSnapshotAck() {
+  warn(
+    "Model/pricing source files in `front` changed and the " +
+      `\`${marketingSnapshotAckLabel}\` label is set. Confirm the marketing ` +
+      "snapshots under `marketing/lib/api/assistant/token_pricing.ts` and " +
+      "`marketing/types/assistant/models/` genuinely don't need updating."
+  );
+}
 
-  for (const file of diffFiles) {
-    let nextRepoPath: string | null = null;
-    let honoRepoPath: string | null = null;
+function warnMarketingSnapshotUpdated() {
+  warn(
+    "Both `front` model/pricing sources and the `marketing` snapshots changed. " +
+      "Double-check the marketing copies match front (model ids, display names, " +
+      "providers, prices) — they are mirrored by hand."
+  );
+}
 
-    if (file.startsWith("front/pages/api/")) {
-      nextRepoPath = file;
-      honoRepoPath = file.replace(/^front\/pages\/api\//, "front-api/routes/");
-    } else if (file.startsWith("front-api/routes/")) {
-      honoRepoPath = file;
-      nextRepoPath = file.replace(/^front-api\/routes\//, "front/pages/api/");
-    } else {
-      continue;
-    }
-
-    const nextLocalPath = nextRepoPath.replace(/^front\//, "");
-    const honoLocalPath = `../${honoRepoPath}`;
-
-    if (!fs.existsSync(nextLocalPath) || !fs.existsSync(honoLocalPath)) {
-      continue;
-    }
-
-    if (!isMigratedToHono(nextLocalPath)) {
-      continue;
-    }
-
-    const counterpart = file === nextRepoPath ? honoRepoPath : nextRepoPath;
-    checks.push({ file, counterpart });
-  }
-
-  for (const { file, counterpart } of checks) {
-    if (diffFiles.includes(counterpart)) {
-      continue;
-    }
-    if (hasLabel(skipMigrationCheckLabel)) {
-      warnMigrationSync(file, counterpart);
-    } else {
-      failMigrationSync(file, counterpart);
-    }
+function checkMarketingSnapshotSync(
+  changedFrontFiles: string[],
+  changedMarketingFiles: string[]
+) {
+  if (changedMarketingFiles.length > 0) {
+    warnMarketingSnapshotUpdated();
+  } else if (hasLabel(marketingSnapshotAckLabel)) {
+    warnMarketingSnapshotAck();
+  } else {
+    failMarketingSnapshotAck(changedFrontFiles);
   }
 }
 
@@ -469,12 +558,12 @@ async function checkDiffFiles() {
     await checkWorkspaceAwareModels(modifiedModelFiles);
   }
 
-  // Public API files
-  const modifiedPublicApiFiles = diffFiles.filter((path) => {
-    return path.startsWith("front/pages/api/v1/");
+  // Documented API files (front-api owns OpenAPI generation).
+  const modifiedDocumentedApiFiles = diffFiles.filter((path) => {
+    return path.startsWith("front-api/routes/");
   });
 
-  if (modifiedPublicApiFiles.length > 0) {
+  if (modifiedDocumentedApiFiles.length > 0) {
     checkDocumentationLabel();
   }
 
@@ -501,6 +590,21 @@ async function checkDiffFiles() {
   });
   if (modifiedFrontFiles.length > 0) {
     await checkRawSqlRegistry(modifiedFrontFiles);
+  }
+
+  // Model/pricing sources mirrored into the marketing snapshots that back the
+  // `/home/api-pricing` page.
+  const modifiedMarketingSourceFiles = diffFiles.filter(
+    isWatchedMarketingSourceFile
+  );
+  if (modifiedMarketingSourceFiles.length > 0) {
+    const modifiedMarketingSnapshotFiles = diffFiles.filter((path) =>
+      MARKETING_SNAPSHOT_FILES.includes(path)
+    );
+    checkMarketingSnapshotSync(
+      modifiedMarketingSourceFiles,
+      modifiedMarketingSnapshotFiles
+    );
   }
 
   // Sparkle version consistency check
@@ -530,17 +634,11 @@ async function checkDiffFiles() {
     checkSandboxImageLabel();
   }
 
-  // SSE endpoint files — changes here require a front-sse deploy too.
-  const sseEndpointFiles = [
-    "front/pages/api/w/[wId]/assistant/conversations/[cId]/events.ts",
-    "front/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events.ts",
-    "front/pages/api/v1/w/[wId]/assistant/conversations/[cId]/events.ts",
-    "front/pages/api/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/events.ts",
-    "front/pages/api/w/[wId]/mcp/requests.ts",
-    "front/pages/api/v1/w/[wId]/mcp/requests.ts",
-  ];
+  // SSE endpoint files — changes here require a front-sse deploy too. These
+  // handlers live under `front-api/routes/sse/` and are served by front-sse
+  // pods via the `/api/sse/` prefix.
   const modifiedSseFiles = diffFiles.filter((path) =>
-    sseEndpointFiles.includes(path)
+    path.startsWith("front-api/routes/sse/")
   );
   if (modifiedSseFiles.length > 0) {
     checkSSEEndpointLabel();
@@ -578,8 +676,19 @@ async function checkDiffFiles() {
     checkSSESharedModelsLabel();
   }
 
-  // Hono migration sync check (self-gates on diff contents).
-  checkHonoMigrationSync();
+  // Audit log schema changes must ship with a bumped version in
+  // schema_versions.json (deletions don't need a bump, so use add/modify only).
+  const changedSchemaFiles = danger.git.modified_files
+    .concat(danger.git.created_files)
+    .filter(
+      (path) => path.startsWith(AUDIT_SCHEMAS_PREFIX) && path.endsWith(".json")
+    );
+  if (changedSchemaFiles.length > 0) {
+    const changedActions = changedSchemaFiles.map((path) =>
+      path.slice(AUDIT_SCHEMAS_PREFIX.length).replace(/\.json$/, "")
+    );
+    await checkAuditSchemaVersions(changedActions);
+  }
 }
 
 void checkDiffFiles();

@@ -37,11 +37,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div
-      className={cn(
-        "flex h-full w-full flex-col items-center overflow-y-auto pt-4"
-      )}
+      className={cn("flex h-full w-full flex-col items-center pt-4 sm:pt-8")}
     >
-      <div className="flex w-full max-w-6xl grow flex-col px-4 sm:px-8">
+      <div className="flex w-full max-w-6xl grow flex-col px-4 sm:px-8 pb-4 sm:pb-8">
         {children}
       </div>
     </div>

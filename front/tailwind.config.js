@@ -10,6 +10,14 @@ module.exports = {
   ],
   theme: {
     extend: {
+      height: {
+        title: "3rem",
+        panel: "var(--panel-height)", // defined in global.css,
+      },
+      fontWeight: {
+        medium: "450",
+        semibold: "550",
+      },
       containers: {
         xxxs: "16rem",
       },

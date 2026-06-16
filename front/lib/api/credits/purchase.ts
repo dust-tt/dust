@@ -9,7 +9,7 @@ import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
 import { getCreditPurchaseLimits } from "@app/lib/credits/limits";
 import { getMetronomeCustomerStripeCustomerId } from "@app/lib/metronome/client";
 import { resolveCurrencyForExistingMetronomeCustomer } from "@app/lib/metronome/contracts";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import {
   getCreditPurchasePriceId,
   getStripePricingData,
@@ -24,6 +24,11 @@ import { isSupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { StripePricingData } from "@app/types/stripe/pricing";
+import { z } from "zod";
+
+export const PostCreditPurchaseRequestBody = z.object({
+  amountDollars: z.number().positive(),
+});
 
 export type CreditPurchaseInfo = {
   isEnterprise: boolean;
@@ -33,6 +38,8 @@ export type CreditPurchaseInfo = {
   creditPurchaseLimits: CreditPurchaseLimits | null;
   billingCycleStartDay: number | null;
 };
+
+export type GetCreditPurchaseInfoResponseBody = CreditPurchaseInfo;
 
 export class CreditPurchaseInfoError extends Error {
   constructor(readonly type: "subscription_not_found" | "internal") {
@@ -82,7 +89,7 @@ export async function getCreditPurchaseInfo(
   let billingCycleStartDay: number | null = null;
 
   if (isMetronomeOnly) {
-    isEnterprise = isEntreprisePlanPrefix(subscription.getPlan().code);
+    isEnterprise = isEnterprisePlanPrefix(subscription.getPlan().code);
     creditPurchaseLimits = await getCreditPurchaseLimits(auth, {
       type: "metronome",
       subscription,
@@ -182,7 +189,7 @@ export async function createCreditPurchase(
   let metronomeCurrency: SupportedCurrency = "usd";
 
   if (isMetronomeOnly) {
-    isEnterprise = isEntreprisePlanPrefix(subscription.getPlan().code);
+    isEnterprise = isEnterprisePlanPrefix(subscription.getPlan().code);
     limits = await getCreditPurchaseLimits(auth, {
       type: "metronome",
       subscription,

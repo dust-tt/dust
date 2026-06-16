@@ -19,6 +19,7 @@ const PatchBodySchema = z.object({
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/feedbacks/:fId.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.patch(
   "/",
   validate("param", ParamsSchema),

@@ -2,6 +2,7 @@ import type { GCSMountTarget } from "@app/lib/api/file_system/sandbox/gcs_sandbo
 import { GCSSandboxMountAdapter } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
 import type { SandboxMountAdapter } from "@app/lib/api/file_system/sandbox/sandbox_mount_adapter";
 import type {
+  FileSystemDirectoryEntry,
   FileSystemEntry,
   FileSystemMount,
 } from "@app/lib/api/file_system/types";
@@ -20,6 +21,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type { Readable } from "stream";
+import { pipeline } from "stream/promises";
 
 import type { FileSystemBackend } from "./file_system_backend";
 
@@ -138,7 +140,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       maxFiles,
       includeProcessed = false,
     }: { maxFiles?: number; includeProcessed?: boolean } = {}
-  ): Promise<FileSystemEntry[]> {
+  ): Promise<Result<FileSystemEntry[], DustFileSystemError>> {
     const normalised = scopedPath.endsWith("/") ? scopedPath : `${scopedPath}/`;
     const gcsPrefix = this.toGCSPath(normalised);
 
@@ -148,36 +150,42 @@ export class GCSFileSystemBackend implements FileSystemBackend {
         "GCSFileSystemBackend.list: unrecognised scoped path"
       );
 
-      return [];
+      return new Ok([]);
     }
 
     const bucket = getPrivateUploadBucket();
     let rawFiles: { name: string; metadata: Record<string, unknown> }[];
 
-    if (maxFiles !== undefined) {
-      rawFiles = await bucket.getFiles({
-        prefix: gcsPrefix,
-        maxResults: maxFiles,
-      });
-    } else {
-      const result = await bucket.getAllFilesByPrefix({
-        prefix: gcsPrefix,
-        pageSize: GCS_LIST_PAGE_SIZE,
-      });
+    try {
+      if (maxFiles !== undefined) {
+        rawFiles = await bucket.getFiles({
+          prefix: gcsPrefix,
+          maxResults: maxFiles,
+        });
+      } else {
+        const result = await bucket.getAllFilesByPrefix({
+          prefix: gcsPrefix,
+          pageSize: GCS_LIST_PAGE_SIZE,
+        });
 
-      if (result.pageFetchCount > 1) {
-        logger.warn(
-          {
-            workspaceId: this.workspaceId,
-            prefix: gcsPrefix,
-            pageFetchCount: result.pageFetchCount,
-            objectCount: result.files.length,
-          },
-          "GCSFileSystemBackend.list: multiple GCS list requests, prefix has many objects"
-        );
+        if (result.pageFetchCount > 1) {
+          logger.warn(
+            {
+              workspaceId: this.workspaceId,
+              prefix: gcsPrefix,
+              pageFetchCount: result.pageFetchCount,
+              objectCount: result.files.length,
+            },
+            "GCSFileSystemBackend.list: multiple GCS list requests, prefix has many objects"
+          );
+        }
+
+        rawFiles = result.files;
       }
-
-      rawFiles = result.files;
+    } catch (err) {
+      return new Err(
+        new DustFileSystemError("internal", normalizeError(err).message)
+      );
     }
 
     const folderPlaceholders = rawFiles.filter((f) => f.name.endsWith("/"));
@@ -246,7 +254,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       };
     });
 
-    return [...folderEntries, ...fileEntries];
+    return new Ok([...folderEntries, ...fileEntries]);
   }
 
   async read(
@@ -318,9 +326,32 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     }
   }
 
+  async exists(
+    scopedPath: string
+  ): Promise<Result<boolean, DustFileSystemError>> {
+    const gcsPath = this.toGCSPath(scopedPath);
+    if (!gcsPath) {
+      return new Err(
+        new DustFileSystemError(
+          "invalid_path",
+          `GCSFileSystemBackend.exists: unrecognised scoped path: ${scopedPath}`
+        )
+      );
+    }
+
+    try {
+      const [exists] = await getPrivateUploadBucket().file(gcsPath).exists();
+      return new Ok(exists);
+    } catch (err) {
+      return new Err(
+        new DustFileSystemError("internal", normalizeError(err).message)
+      );
+    }
+  }
+
   async write(
     scopedPath: string,
-    content: Buffer | string,
+    content: Buffer | string | Readable,
     contentType: string
   ): Promise<Result<void, DustFileSystemError>> {
     const gcsPath = this.toGCSPath(scopedPath);
@@ -334,10 +365,64 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     }
 
     try {
-      const buf = isString(content) ? Buffer.from(content) : content;
-      await getPrivateUploadBucket().file(gcsPath).save(buf, { contentType });
+      const file = getPrivateUploadBucket().file(gcsPath);
+
+      if (isString(content) || Buffer.isBuffer(content)) {
+        const buf = isString(content) ? Buffer.from(content) : content;
+        await file.save(buf, { contentType });
+      } else {
+        await pipeline(
+          content,
+          file.createWriteStream({ contentType, resumable: false })
+        );
+      }
 
       return new Ok(undefined);
+    } catch (err) {
+      return new Err(
+        new DustFileSystemError("internal", normalizeError(err).message)
+      );
+    }
+  }
+
+  async mkdir(
+    scopedPath: string
+  ): Promise<Result<FileSystemDirectoryEntry, DustFileSystemError>> {
+    const gcsPath = this.toGCSPath(scopedPath);
+    if (!gcsPath) {
+      return new Err(
+        new DustFileSystemError(
+          "invalid_path",
+          `GCSFileSystemBackend.mkdir: unrecognised scoped path: ${scopedPath}`
+        )
+      );
+    }
+
+    const dirGcsPath = `${gcsPath}/`;
+    try {
+      const bucket = getPrivateUploadBucket();
+      const [exists] = await bucket.file(dirGcsPath).exists();
+      if (exists) {
+        return new Err(
+          new DustFileSystemError(
+            "already_exists",
+            "A directory already exists at this path."
+          )
+        );
+      }
+
+      await bucket.file(dirGcsPath).save(Buffer.alloc(0), {
+        contentType: "application/x-directory",
+      });
+
+      const fileName = gcsPath.split("/").pop() ?? "";
+      return new Ok({
+        isDirectory: true as const,
+        fileName,
+        path: scopedPath,
+        sizeBytes: 0,
+        lastModifiedMs: Date.now(),
+      });
     } catch (err) {
       return new Err(
         new DustFileSystemError("internal", normalizeError(err).message)

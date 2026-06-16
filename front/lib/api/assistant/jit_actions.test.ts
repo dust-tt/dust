@@ -12,6 +12,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -259,6 +260,44 @@ describe("getJITServers", () => {
       });
 
       expect(enabledSkills.some((s) => s.sId === "projects")).toBe(false);
+    });
+  });
+
+  describe("sandbox (Computer) auto-enable", () => {
+    it("auto-enables the sandbox system skill for any agent when sandbox_tools is on", async () => {
+      await FeatureFlagFactory.basic(auth, "sandbox_tools");
+      await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+
+      // The test agent does not list the sandbox skill in its configuration.
+      const { systemSkills } = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+      });
+
+      expect(systemSkills.some((s) => s.sId === "sandbox")).toBe(true);
+    });
+
+    it("does not enable the sandbox skill when sandbox_tools is off", async () => {
+      const { systemSkills } = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+      });
+
+      expect(systemSkills.some((s) => s.sId === "sandbox")).toBe(false);
+    });
+
+    it("keeps the sandbox skill enabled for nested sub-agent conversations", async () => {
+      await FeatureFlagFactory.basic(auth, "sandbox_tools");
+      await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+
+      // run_agent sub-agents run in a child conversation (depth > 0); they get
+      // their own Computer too.
+      const { systemSkills } = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: agentConfig,
+        conversation: { ...conversation, depth: 1 },
+      });
+
+      expect(systemSkills.some((s) => s.sId === "sandbox")).toBe(true);
     });
   });
 

@@ -3,48 +3,184 @@ import {
   getDefaultSeatTypeForContract,
   getSeatSubscriptionsFromContract,
 } from "@app/lib/metronome/seat_types";
+import type { SeatLimit } from "@app/lib/resources/workspace_seat_limit_resource";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { describe, expect, it } from "vitest";
 
 // Drives new-member seat assignment (`resolveSeatTypeForNewMembership`).
 describe("getDefaultSeatTypeForContract — entitlement", () => {
   const productSeatTypes = new Map<string, MembershipSeatType>([
-    ["workspace-product", "workspace"],
-    ["workspace-yearly-product", "workspace_yearly"],
+    ["pro-product", "pro"],
+    ["pro-yearly-product", "pro_yearly"],
   ]);
 
-  // Contract carries both the monthly and yearly workspace seat subscriptions,
-  // but only `workspace_yearly` is entitled (the monthly one is dormant).
+  // Contract carries both the monthly and yearly pro seat subscriptions,
+  // but only `pro_yearly` is entitled (the monthly one is dormant).
   const contract = {
     subscriptions: [
       {
-        id: "sub_ws",
+        id: "sub_pro",
         subscription_rate: {
-          product: { id: "workspace-product", name: "workspace" },
+          product: { id: "pro-product", name: "Pro" },
         },
       },
       {
-        id: "sub_ws_yearly",
+        id: "sub_pro_yearly",
         subscription_rate: {
-          product: {
-            id: "workspace-yearly-product",
-            name: "Workspace Seat (Yearly)",
-          },
+          product: { id: "pro-yearly-product", name: "Pro (Yearly)" },
         },
       },
     ],
     recurring_credits: [],
+    overrides: [{ entitled: true, product: { id: "pro-yearly-product" } }],
+  } as unknown as CachedContract;
+
+  it("assigns the entitled committed seat, not a dormant lower-name subscription", () => {
+    // Both seats are 0 AWU; without entitlement filtering the tie-break would
+    // pick "pro" (< "pro_yearly"). Entitlement must win: only pro_yearly is in
+    // onContract, so its committed slot is assigned.
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro_yearly", { minSeats: 10, maxSeats: null }],
+    ]);
+    const seatCounts: Partial<Record<MembershipSeatType, number>> = {
+      pro_yearly: 0,
+    };
+    expect(
+      getDefaultSeatTypeForContract(contract, productSeatTypes, {
+        seatLimits,
+        seatCounts,
+      })
+    ).toBe("pro_yearly");
+  });
+});
+
+// Committed-seat assignment: fills minSeats slots first, then falls through to
+// free, then none.
+describe("getDefaultSeatTypeForContract — committed seats", () => {
+  const productSeatTypes = new Map<string, MembershipSeatType>([
+    ["pro-product", "pro"],
+    ["free-product", "free"],
+  ]);
+
+  // Contract bills both `pro` and `free`.
+  const contract = {
+    subscriptions: [
+      {
+        id: "sub_pro",
+        subscription_rate: { product: { id: "pro-product", name: "Pro" } },
+      },
+      {
+        id: "sub_free",
+        subscription_rate: { product: { id: "free-product", name: "Free" } },
+      },
+    ],
+    recurring_credits: [],
     overrides: [
-      { entitled: true, product: { id: "workspace-yearly-product" } },
+      { entitled: true, product: { id: "pro-product" } },
+      { entitled: true, product: { id: "free-product" } },
     ],
   } as unknown as CachedContract;
 
-  it("assigns the entitled seat, not a dormant lower-name subscription", () => {
-    // Both seats are 0 AWU; without entitlement filtering the tie-break would
-    // pick "workspace" (< "workspace_yearly"). Entitlement must win.
+  it("assigns a committed seat when slots remain", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 5, maxSeats: null }],
+    ]);
+    const seatCounts: Partial<Record<MembershipSeatType, number>> = { pro: 3 };
+    expect(
+      getDefaultSeatTypeForContract(contract, productSeatTypes, {
+        seatLimits,
+        seatCounts,
+      })
+    ).toBe("pro");
+  });
+
+  it("falls through to free when all committed slots are taken", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 5, maxSeats: null }],
+    ]);
+    const seatCounts: Partial<Record<MembershipSeatType, number>> = { pro: 5 };
+    expect(
+      getDefaultSeatTypeForContract(contract, productSeatTypes, {
+        seatLimits,
+        seatCounts,
+      })
+    ).toBe("free");
+  });
+
+  it("returns none when committed exhausted and free blocked (returning member)", () => {
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["pro", { minSeats: 5, maxSeats: null }],
+    ]);
+    const seatCounts: Partial<Record<MembershipSeatType, number>> = { pro: 5 };
+    expect(
+      getDefaultSeatTypeForContract(contract, productSeatTypes, {
+        isReturningMember: true,
+        seatLimits,
+        seatCounts,
+      })
+    ).toBe("none");
+  });
+
+  it("returns none when no committed seats configured and free not available", () => {
+    // No seatLimits — committed phase skipped entirely → free → none (returning)
+    expect(
+      getDefaultSeatTypeForContract(contract, productSeatTypes, {
+        isReturningMember: true,
+      })
+    ).toBe("none");
+  });
+
+  it("assigns free (no committed seats, new member)", () => {
+    // No committed seat configured; free is the only option and the member is new.
     expect(getDefaultSeatTypeForContract(contract, productSeatTypes)).toBe(
-      "workspace_yearly"
+      "free"
     );
+  });
+
+  it("skips max even when it has committed slots, falls through to free", () => {
+    // max is not auto-assignable regardless of committed configuration.
+    const maxProductSeatTypes = new Map<string, MembershipSeatType>([
+      ["max-product", "max"],
+      ["free-product", "free"],
+    ]);
+    const maxContract = {
+      subscriptions: [
+        {
+          id: "sub_max",
+          subscription_rate: { product: { id: "max-product", name: "Max" } },
+        },
+        {
+          id: "sub_free",
+          subscription_rate: { product: { id: "free-product", name: "Free" } },
+        },
+      ],
+      recurring_credits: [],
+      overrides: [
+        { entitled: true, product: { id: "max-product" } },
+        { entitled: true, product: { id: "free-product" } },
+      ],
+    } as unknown as CachedContract;
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["max", { minSeats: 5, maxSeats: null }],
+    ]);
+    const seatCounts: Partial<Record<MembershipSeatType, number>> = { max: 0 };
+    expect(
+      getDefaultSeatTypeForContract(maxContract, maxProductSeatTypes, {
+        seatLimits,
+        seatCounts,
+      })
+    ).toBe("free");
+  });
+
+  it("legacy: no-seat-subscription contract returns none", () => {
+    const legacyContract = {
+      subscriptions: [],
+      recurring_credits: [],
+      overrides: [],
+    } as unknown as CachedContract;
+    expect(
+      getDefaultSeatTypeForContract(legacyContract, productSeatTypes)
+    ).toBe("none");
   });
 });
 

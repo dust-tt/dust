@@ -2,6 +2,7 @@ import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_re
 import { isSidekickConversation } from "@app/lib/api/actions/servers/helpers";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import type { PostMessagesResponseBody } from "@app/lib/api/assistant/messages";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -12,10 +13,8 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { InternalPostMessagesRequestBodySchema } from "@app/types/api/internal/assistant";
 import type {
-  AgentMessageType,
   LegacyLightMessageType,
   LightMessageType,
-  UserMessageType,
 } from "@app/types/assistant/conversation";
 import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
@@ -34,12 +33,6 @@ const ParamsSchema = z.object({
   cId: z.string(),
 });
 
-export type PostMessagesResponseBody = {
-  message: UserMessageType;
-  contentFragments: ContentFragmentType[];
-  agentMessages: AgentMessageType[];
-};
-
 // TODO remove after monday 2025-12-01 (once everyone has likely reloaded their browser)
 interface LegacyFetchConversationMessagesResponse {
   hasMore: boolean;
@@ -55,6 +48,131 @@ export interface FetchConversationMessagesResponse {
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages.
 const app = workspaceApp();
+
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}/messages:
+ *   get:
+ *     summary: List messages in a conversation
+ *     description: Retrieve a paginated list of messages for a specific conversation.
+ *     tags:
+ *       - Private Messages
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved messages
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 messages:
+ *                   type: array
+ *                   items:
+ *                     oneOf:
+ *                       - $ref: '#/components/schemas/PrivateUserMessage'
+ *                       - $ref: '#/components/schemas/PrivateLightAgentMessage'
+ *                       - $ref: '#/components/schemas/PrivateContentFragment'
+ *                 hasMore:
+ *                   type: boolean
+ *                 lastValue:
+ *                   type: integer
+ *                   nullable: true
+ *       401:
+ *         description: Unauthorized
+ *   post:
+ *     summary: Post a message to a conversation
+ *     description: Post a new user message to an existing conversation, triggering agent responses.
+ *     tags:
+ *       - Private Messages
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - content
+ *               - context
+ *               - mentions
+ *             properties:
+ *               content:
+ *                 type: string
+ *               mentions:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/PrivateMention'
+ *               context:
+ *                 type: object
+ *                 properties:
+ *                   timezone:
+ *                     type: string
+ *                   profilePictureUrl:
+ *                     type: string
+ *                     nullable: true
+ *                   origin:
+ *                     type: string
+ *                     nullable: true
+ *                   clientSideMCPServerIds:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                   selectedMCPServerViewIds:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *               skipToolsValidation:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Successfully posted message
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   $ref: '#/components/schemas/PrivateUserMessage'
+ *                 contentFragments:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/PrivateContentFragment'
+ *                 agentMessages:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/PrivateAgentMessage'
+ *       401:
+ *         description: Unauthorized
+ */
 
 app.get(
   "/",

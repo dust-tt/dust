@@ -1,8 +1,8 @@
 import type { SensitivityLabelSource } from "@app/components/shared/labels/types";
+import type { DataClassificationLabelsResponseBody } from "@app/lib/api/data_classification_labels";
 import { clientFetch } from "@app/lib/egress/client";
 import type { MicrosoftAllowedLabel } from "@app/lib/models/workspace_sensitivity_label_config";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { DataClassificationLabelsResponseBody } from "@app/pages/api/w/[wId]/data-classification-labels";
 import type { LightWorkspaceType } from "@app/types/user";
 
 function buildKey(

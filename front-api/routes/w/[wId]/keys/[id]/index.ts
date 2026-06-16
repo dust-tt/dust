@@ -33,6 +33,7 @@ const app = workspaceApp();
 // disable route is not swallowed by anything later.
 app.route("/disable", disable);
 
+/** @ignoreswagger */
 app.patch(
   "/",
   ensureIsAdmin(),

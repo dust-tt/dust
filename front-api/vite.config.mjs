@@ -11,7 +11,7 @@ export default defineConfig({
     // jsdom mirrors front's vitest config; some test factories rely on
     // jsdom-provided globals (e.g. globalThis.name).
     environment: "jsdom",
-    setupFiles: "../front/vite.setup.ts",
+    setupFiles: "./vite.setup.ts",
     globalSetup: "../front/vite.globalSetup.ts",
     passWithNoTests: true,
     exclude: ["**/node_modules/**", "**/dist/**"],

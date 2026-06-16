@@ -45,6 +45,14 @@ import type { InboundEmailDkimResult } from "./inbound_auth";
 const REDIS_ORIGIN: RedisUsageTagsType = "email_context";
 const EMAIL_REPLY_CONTEXT_PREFIX = "email-reply-context";
 const EMAIL_REPLY_CONTEXT_TTL_SECONDS = 3 * 60 * 60; // 3 hours
+// Maps inbound email Message-IDs to conversation sIds so that replies in the same email thread
+// continue the existing conversation. Long TTL: users may reply to an agent email days later.
+const EMAIL_THREAD_CONVERSATION_PREFIX = "email-thread-conversation";
+const EMAIL_THREAD_CONVERSATION_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
+const EMAIL_THREAD_LOOKUP_MAX_MESSAGE_IDS = 10;
+// Same-email multi-workspace routing is rare and mostly specific to Dust, so a
+// single hardcoded priority workspace is enough for now.
+const EMAIL_PRIORITY_WORKSPACE_IDS = ["0ec9852c2f"] as const;
 
 /**
  * Data needed to reply to an email after agent message completion.
@@ -193,6 +201,108 @@ export async function deleteEmailReplyContext(
   await redis.del(key);
 }
 
+/**
+ * Normalize an RFC 5322 Message-ID to a canonical form (no angle brackets) used for both
+ * storing and looking up thread-to-conversation mappings.
+ */
+function normalizeMessageId(rawMessageId: string): string | null {
+  let messageId = rawMessageId.trim();
+  if (messageId.startsWith("<")) {
+    messageId = messageId.slice(1);
+  }
+  if (messageId.endsWith(">")) {
+    messageId = messageId.slice(0, -1);
+  }
+  return messageId.length > 0 ? messageId : null;
+}
+
+function makeEmailThreadConversationKey(
+  workspaceId: string,
+  messageId: string
+): string {
+  return `${EMAIL_THREAD_CONVERSATION_PREFIX}:${workspaceId}:${messageId}`;
+}
+
+/**
+ * Map an inbound email Message-ID to a conversation sId so later replies in the same email
+ * thread can continue the conversation.
+ */
+export async function storeEmailThreadConversation({
+  workspaceId,
+  messageId,
+  conversationId,
+}: {
+  workspaceId: string;
+  messageId: string;
+  conversationId: string;
+}): Promise<void> {
+  const normalizedMessageId = normalizeMessageId(messageId);
+  if (!normalizedMessageId) {
+    return;
+  }
+
+  const redis = await getRedisStreamClient({ origin: REDIS_ORIGIN });
+  const key = makeEmailThreadConversationKey(workspaceId, normalizedMessageId);
+
+  await redis.set(key, conversationId, {
+    EX: EMAIL_THREAD_CONVERSATION_TTL_SECONDS,
+  });
+}
+
+/**
+ * Message-IDs to look up when matching an inbound email to an existing conversation, most
+ * recent first: In-Reply-To, then References reversed (References is oldest-first per RFC 5322).
+ */
+export function getThreadingLookupMessageIds(
+  threadingHeaders: EmailThreadingHeaders
+): string[] {
+  const referenceTokens = (threadingHeaders.references ?? "")
+    .split(/\s+/)
+    .reverse();
+  const candidates = [threadingHeaders.inReplyTo ?? "", ...referenceTokens];
+
+  const seen = new Set<string>();
+  const messageIds: string[] = [];
+  for (const candidate of candidates) {
+    const messageId = normalizeMessageId(candidate);
+    if (!messageId || seen.has(messageId)) {
+      continue;
+    }
+    seen.add(messageId);
+    messageIds.push(messageId);
+    if (messageIds.length >= EMAIL_THREAD_LOOKUP_MAX_MESSAGE_IDS) {
+      break;
+    }
+  }
+
+  return messageIds;
+}
+
+/**
+ * Find the conversation associated with the email thread an inbound email belongs to, if any.
+ */
+export async function findConversationIdFromThreadingHeaders(
+  workspaceId: string,
+  threadingHeaders: EmailThreadingHeaders
+): Promise<string | null> {
+  const messageIds = getThreadingLookupMessageIds(threadingHeaders);
+  if (messageIds.length === 0) {
+    return null;
+  }
+
+  const redis = await getRedisStreamClient({ origin: REDIS_ORIGIN });
+  for (const messageId of messageIds) {
+    const conversationId = await redis.get(
+      makeEmailThreadConversationKey(workspaceId, messageId)
+    );
+    if (conversationId) {
+      return conversationId;
+    }
+  }
+
+  return null;
+}
+
 export { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
 
 export type EmailAttachment = {
@@ -246,6 +356,39 @@ export type EmailTriggerError = {
 
 export const EMAIL_BLACKLISTED_AGENT_IDS_METADATA_KEY =
   "emailBlacklistedAgentIds";
+
+// Error factories shared between the local lookup and the cross-region relay
+// reply resolution, so both paths reply with the same message for a given type.
+export function makeUserNotFoundEmailTriggerError(
+  email: string
+): EmailTriggerError {
+  return {
+    type: "user_not_found",
+    message:
+      `Failed to match a valid Dust user for email: ${email}. ` +
+      `Please sign up for Dust at https://dust.tt to interact with assistants over email.`,
+  };
+}
+
+export function makeWorkspaceNotFoundEmailTriggerError(
+  email: string
+): EmailTriggerError {
+  return {
+    type: "workspace_not_found",
+    message:
+      `Failed to match a valid Dust workspace associated with email: ${email}. ` +
+      `Please sign up for Dust at https://dust.tt to interact with agents over email.`,
+  };
+}
+
+export function makeEmailAgentsDisabledEmailTriggerError(): EmailTriggerError {
+  return {
+    type: "email_agents_disabled",
+    message:
+      "Email agents are disabled for all workspaces associated with your email. " +
+      "Ask a workspace admin to enable Email Agents in workspace settings before interacting with agents over email.",
+  };
+}
 
 function normalizeEmailAddress(email: string): string {
   return email.trim().toLowerCase();
@@ -475,12 +618,7 @@ export async function userAndWorkspaceFromEmail({
   const user = await UserResource.fetchByEmail(email);
 
   if (!user) {
-    return new Err({
-      type: "user_not_found",
-      message:
-        `Failed to match a valid Dust user for email: ${email}. ` +
-        `Please sign up for Dust at https://dust.tt to interact with assistants over email.`,
-    });
+    return new Err(makeUserNotFoundEmailTriggerError(email));
   }
   const workspaceModels = await WorkspaceModel.findAll({
     include: [
@@ -498,12 +636,7 @@ export async function userAndWorkspaceFromEmail({
   });
 
   if (workspaceModels.length === 0) {
-    return new Err({
-      type: "workspace_not_found",
-      message:
-        `Failed to match a valid Dust workspace associated with email: ${email}. ` +
-        `Please sign up for Dust at https://dust.tt to interact with agents over email.`,
-    });
+    return new Err(makeWorkspaceNotFoundEmailTriggerError(email));
   }
 
   const eligibleWorkspaceModels = workspaceModels.filter(
@@ -513,17 +646,27 @@ export async function userAndWorkspaceFromEmail({
   );
 
   if (eligibleWorkspaceModels.length === 0) {
-    // The user exists locally, so this should not use a relay-eligible error type.
-    return new Err({
-      type: "email_agents_disabled",
-      message:
-        "Email agents are disabled for all workspaces associated with your email. " +
-        "Ask a workspace admin to enable Email Agents in workspace settings before interacting with agents over email.",
+    // The user exists locally without an enabled workspace, but they may have an
+    // enabled workspace in the other region: the error is relay-eligible and the
+    // relayed region resolves the final reply (see resolveRelayedErrorReply).
+    return new Err(makeEmailAgentsDisabledEmailTriggerError());
+  }
+
+  // Pick the best workspace: prefer priority workspaces, then paying plans,
+  // then upgraded free plans, then fall back to the most recently created workspace.
+  const priorityWorkspace = EMAIL_PRIORITY_WORKSPACE_IDS.map((workspaceId) =>
+    eligibleWorkspaceModels.find(
+      (workspaceModel) => workspaceModel.sId === workspaceId
+    )
+  ).find((workspaceModel) => workspaceModel !== undefined);
+
+  if (priorityWorkspace) {
+    return new Ok({
+      workspace: renderLightWorkspaceType({ workspace: priorityWorkspace }),
+      user,
     });
   }
 
-  // Pick the best workspace: prefer paying plans, then upgraded free plans,
-  // then fall back to the most recently created workspace.
   const subscriptionsByWorkspaceId =
     await SubscriptionResource.fetchActiveByWorkspacesModelId(
       eligibleWorkspaceModels.map((w) => w.id)
@@ -609,18 +752,14 @@ export async function splitThreadContent(content: string) {
       firstSeparatorIndex = match.index;
     }
   }
-  const conversationIdRegex =
-    /Open in Dust <https?:\/\/[^/]+\/w\/[^/]+\/assistant\/([^>]+)>/;
-  const conversationIdMatch = content.match(conversationIdRegex);
-  const conversationId = conversationIdMatch ? conversationIdMatch[1] : null;
-
   const newMessage =
     firstSeparatorIndex > -1
       ? content.slice(0, firstSeparatorIndex).trim()
       : content.trim();
   const thread =
     firstSeparatorIndex > -1 ? content.slice(firstSeparatorIndex).trim() : "";
-  return { userMessage: newMessage, restOfThread: thread, conversationId };
+
+  return { userMessage: newMessage, restOfThread: thread };
 }
 
 /**
@@ -656,24 +795,43 @@ export async function triggerFromEmail(
     });
   }
 
-  const { userMessage, restOfThread, conversationId } =
-    await splitThreadContent(email.text);
+  const { userMessage, restOfThread } = await splitThreadContent(email.text);
 
-  let conversation;
-  if (conversationId) {
-    const conversationRes = await getConversation(auth, conversationId);
-    if (conversationRes.isErr()) {
-      return new Err({
-        type: "unexpected_error",
-        message: "Failed to find conversation with given id.",
-      });
+  const threadConversationId = await findConversationIdFromThreadingHeaders(
+    workspace.sId,
+    email.threadingHeaders
+  );
+
+  let conversation: ConversationType | null = null;
+  if (threadConversationId) {
+    const conversationRes = await getConversation(auth, threadConversationId);
+    if (conversationRes.isOk()) {
+      conversation = conversationRes.value;
+    } else {
+      localLogger.warn(
+        {
+          conversationId: threadConversationId,
+          errorType: conversationRes.error.type,
+        },
+        "[email] Cannot access conversation matching inbound email, creating a new one."
+      );
     }
-    conversation = conversationRes.value;
-  } else {
+  }
+  if (!conversation) {
     conversation = await createConversation(auth, {
       title: `Email: ${email.subject}`,
       visibility: "unlisted",
       spaceId: null,
+    });
+  }
+
+  // Map this email's Message-ID to the conversation (on create and on continue) so any later
+  // reply in the thread keeps routing to it.
+  if (email.threadingHeaders.messageId) {
+    await storeEmailThreadConversation({
+      workspaceId: workspace.sId,
+      messageId: email.threadingHeaders.messageId,
+      conversationId: conversation.sId,
     });
   }
 

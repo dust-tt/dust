@@ -32,24 +32,25 @@ vi.mock("@dust-tt/sparkle", () => {
       <button onClick={onClick}>{label}</button>
     </div>
   );
-  const ChatBubbleBottomCenterPlusIcon = () => null;
-  const EyeIcon = () => null;
+  const MessagePlusCircle = () => null;
+  const Eye = () => null;
   return {
     DropdownMenu,
     DropdownMenuTrigger,
     DropdownMenuContent,
     DropdownMenuItem,
-    ChatBubbleBottomCenterPlusIcon,
-    EyeIcon,
+    MessagePlusCircle,
+    Eye,
   };
 });
 
 // Mock router utilities and hooks.
 const pushMock = vi.fn();
-vi.mock("next/router", () => ({
-  useRouter: () => ({
+vi.mock("@app/lib/platform", () => ({
+  useAppRouter: () => ({
     push: pushMock,
   }),
+  LinkWrapper: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 const openChangeMock = vi.fn();

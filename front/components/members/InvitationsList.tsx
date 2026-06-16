@@ -8,11 +8,11 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
-  ChevronRightIcon,
+  ChevronRight,
   Chip,
   cn,
   DataTable,
-  MovingMailIcon,
+  Mail01,
   Page,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
@@ -76,7 +76,7 @@ export function InvitationsList({
                   <Button
                     size="xs"
                     variant="outline"
-                    icon={MovingMailIcon}
+                    icon={Mail01}
                     label="Resend"
                     onClick={async (e: React.MouseEvent) => {
                       e.stopPropagation();
@@ -146,7 +146,7 @@ export function InvitationsList({
                 <Chip size="xs">Loading...</Chip>
               </div>
               <div className="hidden sm:block">
-                <ChevronRightIcon />
+                <ChevronRight />
               </div>
             </div>
           </div>

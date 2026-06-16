@@ -12,46 +12,64 @@ import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
+import type {
+  GetWorkspaceSkillUsageResponse,
+  GetWorkspaceTopUsersResponse,
+} from "@app/lib/api/analytics/workspace_analytics";
+import type { GetWorkspaceActiveUsersResponse } from "@app/lib/api/assistant/observability/active_users_metrics";
+import type { GetWorkspaceContextOriginResponse } from "@app/lib/api/assistant/observability/context_origin";
+import type { GetWorkspaceUsageMetricsResponse } from "@app/lib/api/assistant/observability/messages_metrics";
+import type { GetWorkspaceSkillsResponse } from "@app/lib/api/assistant/observability/skill_usage";
+import type {
+  GetWorkspaceToolsResponse,
+  GetWorkspaceToolUsageResponse,
+} from "@app/lib/api/assistant/observability/tool_usage";
+import type {
+  GetNoWorkspaceAuthContextResponseType,
+  GetWorkspaceAuthContextResponseType,
+} from "@app/lib/api/auth_context";
 import type { GetBillingInfoResponseBody } from "@app/lib/api/billing/info";
 import type { GetBillingInvoicesResponseBody } from "@app/lib/api/billing/invoices";
+import type {
+  GetBusinessActivationResponseBody,
+  PostBusinessActivationResponseBody,
+} from "@app/lib/api/checkout/business_activation";
+import type { GetPreparePaymentResponseBody } from "@app/lib/api/checkout/prepare_payment";
+import type { GetMetronomeContractResponseBody } from "@app/lib/api/credits/metronome_contract";
+import type { GetPendingInvitationsLookupResponseBody } from "@app/lib/api/invitation";
+import type {
+  GetCheckoutStatusResponseBody,
+  GetSubscriptionsResponseBody,
+  GetSubscriptionTrialInfoResponseBody,
+  PostSubscriptionResponseBody,
+} from "@app/lib/api/subscription";
+import type {
+  GetSeatAvailabilityResponseBody,
+  GetWelcomeResponseBody,
+  GetWorkspaceLookupResponseBody,
+  GetWorkspaceResponseBody,
+  GetWorkspaceSeatsCountResponseBody,
+  GetWorkspaceVerifiedDomainsResponseBody,
+} from "@app/lib/api/workspace";
+import type {
+  GetWorkspaceAnalyticsOverviewResponse,
+  GetWorkspaceTopAgentsResponse,
+} from "@app/lib/api/workspace/analytics";
+import type { GetWorkspaceAnalyticsResponse } from "@app/lib/api/workspace_analytics";
 import { useRegionContext } from "@app/lib/auth/RegionContext";
 import { clientFetch } from "@app/lib/egress/client";
-import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetNoWorkspaceAuthContextResponseType } from "@app/pages/api/auth-context";
-import type { GetPendingInvitationsLookupResponseBody } from "@app/pages/api/invitations";
-import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
-import type { GetWorkspaceActiveUsersResponse } from "@app/pages/api/w/[wId]/analytics/active-users";
-import type { GetWorkspaceAnalyticsOverviewResponse } from "@app/pages/api/w/[wId]/analytics/overview";
-import type { GetWorkspaceSkillUsageResponse } from "@app/pages/api/w/[wId]/analytics/skill-usage";
-import type { GetWorkspaceSkillsResponse } from "@app/pages/api/w/[wId]/analytics/skills";
-import type { GetWorkspaceContextOriginResponse } from "@app/pages/api/w/[wId]/analytics/source";
-import type { GetWorkspaceToolUsageResponse } from "@app/pages/api/w/[wId]/analytics/tool-usage";
-import type { GetWorkspaceToolsResponse } from "@app/pages/api/w/[wId]/analytics/tools";
-import type { GetWorkspaceTopAgentsResponse } from "@app/pages/api/w/[wId]/analytics/top-agents";
-import type { GetWorkspaceTopUsersResponse } from "@app/pages/api/w/[wId]/analytics/top-users";
-import type { GetWorkspaceUsageMetricsResponse } from "@app/pages/api/w/[wId]/analytics/usage-metrics";
-import type { GetWorkspaceAuthContextResponseType } from "@app/pages/api/w/[wId]/auth-context";
-import type { GetCouponValidateResponseBody } from "@app/pages/api/w/[wId]/coupon/validate";
-import type { GetJoinResponseBody } from "@app/pages/api/w/[wId]/join";
-import type { GetMetronomeContractResponseBody } from "@app/pages/api/w/[wId]/metronome/contract";
-import type { GetMetronomeInvoiceResponseBody } from "@app/pages/api/w/[wId]/metronome/invoice";
-import type { GetSeatAvailabilityResponseBody } from "@app/pages/api/w/[wId]/seats/availability";
-import type { GetWorkspaceSeatsCountResponseBody } from "@app/pages/api/w/[wId]/seats/count";
 import type {
-  GetSubscriptionsResponseBody,
-  PostSubscriptionResponseBody,
-} from "@app/pages/api/w/[wId]/subscriptions";
-import type { PostCheckoutPaymentResponseBody } from "@app/pages/api/w/[wId]/subscriptions/checkout/payment";
-import type { GetPreparePaymentResponseBody } from "@app/pages/api/w/[wId]/subscriptions/checkout/prepare-payment";
-import type { GetCheckoutStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/checkout-status";
-import type { GetSubscriptionPricingResponseBody } from "@app/pages/api/w/[wId]/subscriptions/pricing";
-import type { GetSubscriptionStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/status";
-import type { GetSubscriptionTrialInfoResponseBody } from "@app/pages/api/w/[wId]/subscriptions/trial-info";
-import type { GetWorkspaceVerifiedDomainsResponseBody } from "@app/pages/api/w/[wId]/verified-domains";
-import type { GetVerifyResponseBody } from "@app/pages/api/w/[wId]/verify";
-import type { GetWelcomeResponseBody } from "@app/pages/api/w/[wId]/welcome";
-import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
-import type { GetWorkspaceLookupResponseBody } from "@app/pages/api/workspace-lookup";
+  GetMetronomeInvoiceLinesResponseBody,
+  GetMetronomeInvoiceResponseBody,
+} from "@app/lib/metronome/invoice";
+import type { GetVerifyResponseBody } from "@app/lib/plans/trial/index";
+import type { GetCouponValidateResponseBody } from "@app/lib/resources/coupon_resource";
+import type {
+  GetSubscriptionPricingResponseBody,
+  GetSubscriptionStatusResponseBody,
+} from "@app/lib/resources/subscription_resource";
+import type { GetJoinResponseBody } from "@app/lib/signup";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { APIErrorResponse, RegionRedirectError } from "@app/types/error";
 import type { BillingPeriod } from "@app/types/plan";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
@@ -127,7 +145,8 @@ export function useUpdateWorkspaceRegionalModelsOnly({
           sendNotification({
             type: "error",
             title: "Update failed",
-            description: "Failed to update regional models setting.",
+            description:
+              "Some active agents may not be eligible for regional models.",
           });
           return false;
         }
@@ -785,6 +804,32 @@ export function useMetronomeInvoice({
   };
 }
 
+export function useMetronomeInvoiceLines({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const linesFetcher: Fetcher<GetMetronomeInvoiceLinesResponseBody> = fetcher;
+
+  const url = `/api/w/${workspaceId}/metronome/invoice/lines`;
+
+  const { data, error, mutate } = useSWRWithDefaults(url, linesFetcher, {
+    disabled,
+    revalidateOnFocus: false,
+    dedupingInterval: 60_000,
+  });
+
+  return {
+    invoiceLines: data ?? null,
+    isMetronomeInvoiceLinesLoading: !error && !data && !disabled,
+    isMetronomeInvoiceLinesError: error,
+    mutateMetronomeInvoiceLines: mutate,
+  };
+}
+
 export function useBillingInfo({
   workspaceId,
   disabled,
@@ -1195,16 +1240,25 @@ export function useCreateCheckoutSession({
     async ({
       billingPeriod,
       couponCode,
+      seatType,
+      targetUserId,
     }: {
       billingPeriod: BillingPeriod;
       couponCode?: string;
+      seatType?: "pro" | "max";
+      targetUserId?: string;
     }): Promise<PostSubscriptionResponseBody | null> => {
       setIsCreating(true);
       try {
         const res = await clientFetch(`/api/w/${workspaceId}/subscriptions`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ billingPeriod, couponCode }),
+          body: JSON.stringify({
+            billingPeriod,
+            couponCode,
+            seatType,
+            targetUserId,
+          }),
         });
         if (!res.ok) {
           sendNotification({
@@ -1224,6 +1278,79 @@ export function useCreateCheckoutSession({
   );
 
   return { createSession, isCreating };
+}
+
+export function useCheckBusinessActivation({
+  workspaceId,
+  contractId,
+  disabled,
+  pollIntervalMs = 0,
+}: {
+  workspaceId: string;
+  contractId: string | null;
+  disabled?: boolean;
+  pollIntervalMs?: number;
+}) {
+  const { fetcher } = useFetcher();
+  const statusFetcher: Fetcher<GetBusinessActivationResponseBody> = fetcher;
+
+  const url =
+    disabled || !contractId
+      ? null
+      : `/api/w/${workspaceId}/subscriptions/checkout/business-activation?contract_id=${contractId}`;
+
+  const { data, error } = useSWRWithDefaults(url, statusFetcher, {
+    refreshInterval: pollIntervalMs,
+    revalidateOnFocus: false,
+  });
+
+  return {
+    checkoutPayment: data?.checkoutPayment ?? null,
+    invoiceUrl: data?.invoiceUrl ?? null,
+    isCheckoutPaymentLoading: !error && !data && !disabled && !!contractId,
+    isCheckoutPaymentError: !!error,
+  };
+}
+
+export function useInitiateBusinessActivation({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const [isInitiating, setIsInitiating] = useState(false);
+
+  const initiateBusinessActivation = useCallback(
+    async ({
+      setupSessionId,
+    }: {
+      setupSessionId: string;
+    }): Promise<PostBusinessActivationResponseBody | null> => {
+      setIsInitiating(true);
+      try {
+        const res = await clientFetch(
+          `/api/w/${workspaceId}/subscriptions/checkout/business-activation`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ setupSessionId }),
+          }
+        );
+        if (!res.ok) {
+          try {
+            return await res.json();
+          } catch {
+            return null;
+          }
+        }
+        return await res.json();
+      } finally {
+        setIsInitiating(false);
+      }
+    },
+    [workspaceId]
+  );
+
+  return { initiateBusinessActivation, isInitiating };
 }
 
 export function usePreparePayment({
@@ -1273,43 +1400,6 @@ export function usePreparePayment({
       (isPending && !pollTimedOut),
     isPreparePaymentError: !!error || pollTimedOut,
   };
-}
-
-export function useConfirmPayment({ workspaceId }: { workspaceId: string }) {
-  const [isConfirming, setIsConfirming] = useState(false);
-
-  const confirmPayment = useCallback(
-    async ({
-      setupSessionId,
-    }: {
-      setupSessionId: string;
-    }): Promise<PostCheckoutPaymentResponseBody | null> => {
-      setIsConfirming(true);
-      try {
-        const res = await clientFetch(
-          `/api/w/${workspaceId}/subscriptions/checkout/payment`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ setupSessionId }),
-          }
-        );
-        if (!res.ok) {
-          try {
-            return await res.json();
-          } catch {
-            return null;
-          }
-        }
-        return res.json();
-      } finally {
-        setIsConfirming(false);
-      }
-    },
-    [workspaceId]
-  );
-
-  return { confirmPayment, isConfirming };
 }
 
 export function useValidateCoupon({ workspaceId }: { workspaceId: string }) {

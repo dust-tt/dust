@@ -7,7 +7,7 @@ import {
 import { getWorkspaceUsageRetentionErrorMessage } from "@app/lib/workspace_usage_retention";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureHasPermission } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { endOfMonth } from "date-fns/endOfMonth";
@@ -54,9 +54,10 @@ const GetUsageQueryParamsSchema = z.discriminatedUnion("mode", [
 // Mounted at /api/w/:wId/workspace-usage.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
-  ensureIsAdmin(),
+  ensureHasPermission("workspace:view_analytics"),
   validate("query", GetUsageQueryParamsSchema),
   async (ctx) => {
     const auth = ctx.get("auth");

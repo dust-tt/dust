@@ -19,6 +19,7 @@ export type PostTrialVerifyResponseBody = {
 // Mounted at /api/w/:wId/trial/start.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   ensureIsAdmin(),

@@ -23,6 +23,7 @@ import {
   upsertDataSourceDocument,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
+import { htmlToMarkdown } from "@connectors/lib/html_to_markdown";
 import type { IntercomHelpCenterModel } from "@connectors/lib/models/intercom";
 import {
   IntercomArticleModel,
@@ -36,9 +37,6 @@ import {
   INTERNAL_MIME_TYPES,
   safeSubstring,
 } from "@connectors/types";
-import TurndownService from "turndown";
-
-const turndownService = new TurndownService();
 
 /**
  * If our rights were revoked or the help center is not on intercom anymore we delete it
@@ -369,9 +367,7 @@ export async function upsertArticle({
       : "";
 
   let articleContentInMarkdown =
-    typeof article.body === "string"
-      ? turndownService.turndown(article.body)
-      : "";
+    typeof article.body === "string" ? htmlToMarkdown(article.body) : "";
 
   if (!articleContentInMarkdown) {
     logger.warn(

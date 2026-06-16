@@ -149,7 +149,7 @@ const ConversationsUnreadEmailTemplate = ({
               ? newProjectConversations.length === 1
                 ? `There's a new conversation in ${uniqueProjectNames[0]}:`
                 : `There are ${newProjectConversations.length} new conversations in ${uniqueProjectNames[0]}:`
-              : `There are ${newProjectConversations.length} new conversations in your projects:`}
+              : `There are ${newProjectConversations.length} new conversations in your Pods:`}
           </p>
           <div>
             {newProjectConversations.map((conversation) => (

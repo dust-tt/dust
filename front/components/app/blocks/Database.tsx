@@ -12,7 +12,7 @@ import type {
 } from "@app/types/app";
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
-import { Button, Label, PlusIcon, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, Label, Plus, XClose } from "@dust-tt/sparkle";
 import last from "lodash/last";
 import { useCallback, useEffect } from "react";
 import Block from "./Block";
@@ -152,7 +152,7 @@ export function TablesManager({
                     "text-muted-foreground dark:text-muted-foreground-night",
                     "hover:text-muted-foreground dark:hover:text-muted-foreground"
                   )}
-                  icon={XMarkIcon}
+                  icon={XClose}
                   size="xs"
                   variant="outline"
                 />
@@ -167,7 +167,7 @@ export function TablesManager({
           type="button"
           onClick={addNewTable}
           className="mt-2"
-          icon={PlusIcon}
+          icon={Plus}
           label="Add Table"
           size="xs"
           variant="outline"

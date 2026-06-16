@@ -1,21 +1,21 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ConfirmContext } from "@app/components/Confirm";
-import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
+import type { FetchAgentTemplateResponse } from "@app/lib/resources/template_resource";
 import type {
   MultiActionPreset,
   TemplateActionPreset,
 } from "@app/types/assistant/templates";
 import {
-  BookOpenIcon,
+  BookOpen01,
   Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  ListAddIcon,
+  Edit04,
+  ListAdd,
   Markdown,
   Page,
-  PencilSquareIcon,
   Separator,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -109,14 +109,14 @@ function TemplateButtons({ assistantTemplate }: TemplateButtonsProps) {
           <DropdownMenuItem
             label="Reset instructions"
             description="Set instructions back to template's default"
-            icon={PencilSquareIcon}
+            icon={Edit04}
             onClick={handleResetInstructions}
             disabled={!assistantTemplate.presetInstructions}
           />
           <DropdownMenuItem
             label="Reset tools"
             description="Remove all tools"
-            icon={ListAddIcon}
+            icon={ListAdd}
             onClick={handleResetActions}
           />
         </DropdownMenuContent>
@@ -140,9 +140,9 @@ function TemplatePresetActions({
       type === "TABLES_QUERY" ||
       type === "PROCESS"
     ) {
-      return BookOpenIcon;
+      return BookOpen01;
     }
-    return ListAddIcon;
+    return ListAdd;
   };
 
   const getActionLabel = (type: MultiActionPreset) => {

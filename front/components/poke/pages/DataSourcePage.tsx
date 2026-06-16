@@ -7,13 +7,13 @@ import {
   PokeAlertDescription,
 } from "@app/components/poke/shadcn/ui/alert";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import type { FeaturesType } from "@app/lib/api/poke/data_sources";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { decodeSqids, timeAgoFrom } from "@app/lib/utils";
-import type { FeaturesType } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/details";
 import { usePokeDocuments, usePokeTables } from "@app/poke/swr";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
@@ -29,15 +29,15 @@ import {
   Button,
   Chip,
   ContextItem,
-  DocumentTextIcon,
-  EyeIcon,
+  Eye,
+  File04,
   Input,
   LinkWrapper,
-  LockIcon,
-  MagnifyingGlassIcon,
+  Lock01,
+  SearchMd,
   SliderToggle,
   Spinner,
-  TableIcon,
+  Table,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
@@ -158,7 +158,7 @@ function FolderDisplay({
                 visual={
                   <ContextItem.Visual
                     visual={({ className }) =>
-                      DocumentTextIcon({
+                      File04({
                         className:
                           className +
                           " text-muted-foreground dark:text-muted-foreground-night",
@@ -170,7 +170,7 @@ function FolderDisplay({
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
-                      icon={EyeIcon}
+                      icon={Eye}
                       onClick={() =>
                         onDisplayDocumentSource(d.document_id, dataSource.sId)
                       }
@@ -180,7 +180,7 @@ function FolderDisplay({
                 }
               >
                 <ContextItem.Description>
-                  <div className="pt-2 text-sm text-muted-foreground">
+                  <div className="pt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                     {Math.floor(d.text_size / 1024)} kb,{" "}
                     {timeAgoFrom(d.timestamp)} ago
                   </div>
@@ -247,7 +247,7 @@ function FolderDisplay({
                 visual={
                   <ContextItem.Visual
                     visual={({ className }) =>
-                      TableIcon({
+                      Table({
                         className:
                           className +
                           " text-muted-foreground dark:text-muted-foreground-night",
@@ -257,7 +257,7 @@ function FolderDisplay({
                 }
               >
                 <ContextItem.Description>
-                  <div className="pt-2 text-sm text-muted-foreground">
+                  <div className="pt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                     {timeAgoFrom(t.timestamp)} ago
                   </div>
                 </ContextItem.Description>
@@ -704,7 +704,7 @@ function ZendeskTicketCheck({
         </div>
         <Button
           variant="outline"
-          icon={idsIsLoading ? Spinner : MagnifyingGlassIcon}
+          icon={idsIsLoading ? Spinner : SearchMd}
           label={idsIsLoading ? undefined : "Check"}
           disabled={!ticketId || idsIsLoading}
           onClick={async () => {
@@ -735,7 +735,7 @@ function ZendeskTicketCheck({
         </div>
         <Button
           variant="outline"
-          icon={urlIsLoading ? Spinner : MagnifyingGlassIcon}
+          icon={urlIsLoading ? Spinner : SearchMd}
           label={urlIsLoading ? undefined : "Check"}
           disabled={!ticketUrl || urlIsLoading}
           onClick={async () => {
@@ -812,7 +812,7 @@ function ZendeskTicketCheck({
               )}
             </div>
             {ticketDetails.ticket && (
-              <div className="ml-4 pt-2 text-xs text-muted-foreground">
+              <div className="ml-4 pt-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
                 <div className="mb-1 font-bold">Details</div>
                 <JsonViewer
                   theme={isDark ? "dark" : "light"}
@@ -1014,7 +1014,7 @@ export function DataSourcePage() {
                 }
               }}
               label="Search Data"
-              icon={LockIcon}
+              icon={Lock01}
             />
             {[
               "bigquery",
@@ -1039,7 +1039,7 @@ export function DataSourcePage() {
                   }
                 }}
                 label="Query Data"
-                icon={LockIcon}
+                icon={Lock01}
               />
             ) : null}
             {dataSource.connectorProvider === "notion" && (
@@ -1058,7 +1058,7 @@ export function DataSourcePage() {
                     }
                   }}
                   label="Notion Requests"
-                  icon={LockIcon}
+                  icon={Lock01}
                 />
                 <NotionUrlCheckOrFind owner={owner} dsId={dataSource.sId} />
               </>

@@ -38,10 +38,7 @@ export type GoogleAIStudioWhitelistedModelId =
 
 // TODO(eu-endpoint): temporary list — remove once availability is per-model, not per-provider.
 export const GOOGLE_VERTEX_WHITELISTED_MODEL_IDS = [
-  GEMINI_2_5_FLASH_MODEL_ID,
-  GEMINI_2_5_FLASH_LITE_MODEL_ID,
-  GEMINI_2_5_PRO_MODEL_ID,
-  // Only available on global endpoint
+  GEMINI_3_1_FLASH_LITE_MODEL_ID,
   GEMINI_3_1_PRO_MODEL_ID,
   GEMINI_3_5_FLASH_MODEL_ID,
 ] as const;

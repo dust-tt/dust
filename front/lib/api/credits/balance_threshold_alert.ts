@@ -5,8 +5,12 @@ import {
   getCachedWorkspaceBalanceThreshold,
   upsertMetronomeBalanceThresholdAlert,
 } from "@app/lib/metronome/alerts/balance_threshold";
+import {
+  clearWorkspaceBalanceThresholdReached,
+  setWorkspaceBalanceThresholdReached,
+} from "@app/lib/metronome/user_block";
 import { notifyAdminsBalanceThresholdReached } from "@app/lib/notifications/workflows/balance-threshold-reached";
-import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -122,6 +126,10 @@ export async function maybeNotifyAdminsBalanceThresholdReached({
       return;
     }
 
+    // Surface the in-app warning banner (admins read this via /usage-status).
+    // Cleared on the matching `..._resolved` event when the balance recovers.
+    void setWorkspaceBalanceThresholdReached(workspaceId);
+
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
     const workspace = auth.workspace();
     if (!workspace) {
@@ -155,13 +163,56 @@ export async function maybeNotifyAdminsBalanceThresholdReached({
       workspaceName: workspace.name,
       balanceThresholdCredits: thresholdCredits,
       remainingBalanceCredits,
-      isEnterprise: isEntreprisePlanPrefix(auth.getNonNullablePlan().code),
+      isEnterprise: isEnterprisePlanPrefix(auth.getNonNullablePlan().code),
       eventId,
     });
   } catch (err) {
     logger.error(
       { workspaceId, error: normalizeError(err).message },
       "[Balance Threshold] Failed to notify admins of balance threshold"
+    );
+  }
+}
+
+/**
+ * Clear the credit-balance-threshold warning banner when the balance recovers,
+ * but only when the firing Metronome alert (`alertId`) is the workspace's own
+ * balance-threshold alert — the same `low_remaining_*` event type also resolves
+ * for unrelated pool alerts, which must not clear this warning prematurely.
+ *
+ * Best-effort: any failure is logged and swallowed so it never disrupts the
+ * webhook's credit-state processing.
+ */
+export async function maybeClearAdminsBalanceThresholdReached({
+  metronomeCustomerId,
+  workspaceId,
+  alertId,
+}: {
+  metronomeCustomerId: string | null;
+  workspaceId: string;
+  alertId: string | null;
+}): Promise<void> {
+  try {
+    if (!metronomeCustomerId || !alertId) {
+      return;
+    }
+
+    const { alertId: configuredAlertId } =
+      await getCachedWorkspaceBalanceThreshold({
+        metronomeCustomerId,
+        workspaceId,
+      });
+
+    // Only clear for the workspace's own configured balance-threshold alert.
+    if (configuredAlertId === null || configuredAlertId !== alertId) {
+      return;
+    }
+
+    void clearWorkspaceBalanceThresholdReached(workspaceId);
+  } catch (err) {
+    logger.error(
+      { workspaceId, error: normalizeError(err).message },
+      "[Balance Threshold] Failed to clear balance threshold warning"
     );
   }
 }

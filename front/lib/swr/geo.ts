@@ -1,4 +1,4 @@
-import type { GeoLocationResponse } from "@app/pages/api/geo/location";
+import type { GeoLocationResponse } from "@app/lib/geo/country-detection";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Fetcher } from "swr";
 

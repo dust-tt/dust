@@ -31,7 +31,7 @@ import {
   fetchToolUsageMetrics,
 } from "@app/lib/api/assistant/observability/tool_usage";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
-import { formatUTCDateFromMillis } from "@app/lib/api/elasticsearch";
+import { formatDateFromMillis } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
@@ -279,7 +279,7 @@ async function exportUsageMetrics({
   }
 
   const rows: UsageMetricsRow[] = result.value.map((point) => ({
-    date: formatUTCDateFromMillis(point.timestamp),
+    date: formatDateFromMillis(point.timestamp, timezone),
     messages: point.count,
     conversations: point.conversations,
     activeUsers: point.activeUsers,

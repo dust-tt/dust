@@ -1,0 +1,83 @@
+import { sqAgentConfig } from "@marketing/components/home/content/SqAgent/config/sqAgentConfig";
+import { FeatureSection } from "@marketing/components/home/content/SqAgent/FeatureSection";
+import { SqAgentHeroSection } from "@marketing/components/home/content/SqAgent/SqAgentHeroSection";
+import { SqCtaSection } from "@marketing/components/home/content/SqAgent/SqCtaSection";
+import { SqTestimonialsSection } from "@marketing/components/home/content/SqAgent/SqTestimonialsSection";
+import type { LandingLayoutProps } from "@marketing/components/home/LandingLayout";
+import LandingLayout from "@marketing/components/home/LandingLayout";
+import { PageMetadata } from "@marketing/components/home/PageMetadata";
+import type { ReactElement } from "react";
+
+export async function getStaticProps() {
+  return {
+    props: {
+      shape: 0,
+      gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      hideNavigation: true,
+    },
+  };
+}
+
+// biome-ignore lint/plugin/nextjsPageComponentNaming: pre-existing
+export default function SqAgentLandingPage() {
+  return (
+    <>
+      <PageMetadata
+        title="Squarespace for AI Agents | Dust"
+        description="Build AI agents in minutes, not months. Dust lets you create custom AI teammates that work across all your tools—no code required."
+        pathname="/landing/sqagent"
+      />
+
+      {/* Hero Section */}
+      <SqAgentHeroSection
+        chip={sqAgentConfig.hero.chip}
+        headline={sqAgentConfig.hero.headline}
+        subheadline={sqAgentConfig.hero.subheadline}
+        ctaButtonText={sqAgentConfig.hero.ctaButtonText}
+        testimonials={sqAgentConfig.hero.testimonials}
+        videos={sqAgentConfig.hero.videos}
+        usersCount={sqAgentConfig.hero.usersCount}
+      />
+
+      {/* Feature Sections */}
+      {sqAgentConfig.sections.map((section, index) => (
+        <FeatureSection
+          key={index}
+          title={section.title}
+          titleHighlight={section.titleHighlight}
+          description={section.description}
+          features={section.features}
+          image={section.image}
+          imagePosition={section.imagePosition}
+          backgroundColor={section.backgroundColor}
+          colorIndex={index}
+          visualComponent={section.visualComponent}
+        />
+      ))}
+
+      {/* Testimonials Section */}
+      <SqTestimonialsSection
+        title={sqAgentConfig.bottomTestimonials.title}
+        subtitle={sqAgentConfig.bottomTestimonials.subtitle}
+        testimonials={sqAgentConfig.bottomTestimonials.testimonials}
+      />
+
+      {/* CTA Section */}
+      <div className="pb-24">
+        <SqCtaSection
+          title={sqAgentConfig.cta.title}
+          subtitle={sqAgentConfig.cta.subtitle}
+          ctaText={sqAgentConfig.cta.ctaText}
+          ctaLink={sqAgentConfig.cta.ctaLink}
+        />
+      </div>
+    </>
+  );
+}
+
+SqAgentLandingPage.getLayout = (
+  page: ReactElement,
+  pageProps: LandingLayoutProps
+) => {
+  return <LandingLayout pageProps={pageProps}>{page}</LandingLayout>;
+};

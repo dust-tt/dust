@@ -23,6 +23,10 @@ import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
 import { createConversation, postUserMessage } from "./conversation";
 
+export type PostSendOnboardingResponseBody = {
+  conversationId: string | null;
+};
+
 function getOnboardingAvailableTools(): Array<{
   sId: string;
   name: string;
@@ -550,10 +554,8 @@ export async function createOnboardingConversationIfNeeded(
 
   // Check for tools with views in the global space (matches what UI considers "configured")
   const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-  const globalSpaceViews = await MCPServerViewResource.listBySpace(
-    auth,
-    globalSpace
-  );
+  const globalSpaceViews =
+    await MCPServerViewResource.listBySpaceEnsuringAutoViews(auth, globalSpace);
   const configuredTools = globalSpaceViews
     .map((v) => getInternalMCPServerNameFromSId(v.internalMCPServerId))
     .filter((name): name is InternalMCPServerNameType => name !== null);

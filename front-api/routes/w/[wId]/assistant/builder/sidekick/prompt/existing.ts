@@ -5,6 +5,7 @@ import { apiError } from "@front-api/middlewares/utils";
 // Mounted at /api/w/:wId/assistant/builder/sidekick/prompt/existing.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");
   const agentConfigurationId = ctx.req.query("agentConfigurationId");

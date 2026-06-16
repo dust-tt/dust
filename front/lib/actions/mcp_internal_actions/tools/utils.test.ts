@@ -3,8 +3,8 @@ import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
-import { setupAgentOwner } from "@app/pages/api/w/[wId]/assistant/agent_configurations/index.test";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
+import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";

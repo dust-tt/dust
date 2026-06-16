@@ -8,16 +8,16 @@ import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import {
-  ActionCodeBoxIcon,
   Avatar,
   Breadcrumbs,
   Button,
   Chip,
+  CodeSquare01,
   ContextItem,
-  ExternalLinkIcon,
   Icon,
+  LinkExternal01,
   Page,
-  RobotIcon,
+  Robot,
   Spinner,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo } from "react";
@@ -86,7 +86,7 @@ export function MCPActionsDashboardPage() {
           <Page>
             <Page.Header
               title="MCP Actions Dashboard"
-              icon={ActionCodeBoxIcon}
+              icon={CodeSquare01}
               description="Monitor and track MCP (Model Context Protocol) actions executed by your agents."
             />
 
@@ -127,7 +127,7 @@ export function MCPActionsDashboardPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              icon={ExternalLinkIcon}
+                              icon={LinkExternal01}
                               onClick={() => handleAgentSelect(agent.sId)}
                               label="View Actions"
                             />
@@ -144,7 +144,7 @@ export function MCPActionsDashboardPage() {
                   ) : (
                     <ContextItem
                       title="No Active Agents Found"
-                      visual={<Icon visual={RobotIcon} />}
+                      visual={<Icon visual={Robot} />}
                     >
                       <ContextItem.Description description="No active agents found in this workspace. Agents must be active to execute MCP actions." />
                     </ContextItem>

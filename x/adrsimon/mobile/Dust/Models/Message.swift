@@ -122,6 +122,7 @@ struct AgentMessage: Codable, Identifiable {
     let configuration: AgentConfiguration
     var generatedFiles: [GeneratedFile]?
     var citations: [String: CitationReference]?
+    var error: StreamingError?
 
     var id: String {
         sId
@@ -171,7 +172,12 @@ enum ToolStake: String, Decodable {
 
 enum ErrorCategory: String, Decodable {
     case retryableModelError = "retryable_model_error"
+    case contextWindowExceeded = "context_window_exceeded"
+    case emptyContent = "empty_content"
+    case providerInternalError = "provider_internal_error"
     case streamError = "stream_error"
+    case unknownError = "unknown_error"
+    case invalidResponseFormatConfiguration = "invalid_response_format_configuration"
 }
 
 struct ToolApprovalInfo: Equatable {
@@ -280,7 +286,7 @@ struct ErrorInfo: Equatable {
     let messageId: String
 
     var isRetryable: Bool {
-        category == .retryableModelError || category == .streamError
+        category == .retryableModelError || category == .streamError || category == .emptyContent
     }
 
     init(from error: StreamingError, messageId: String) {
@@ -292,6 +298,36 @@ struct ErrorInfo: Equatable {
     }
 }
 
+/// What the agent is waiting on the user for. Outlives the stream until resolved.
+enum BlockedState: Equatable {
+    case approval(ToolApprovalInfo)
+    case personalAuth(provider: String, toolName: String)
+    case fileAuth(fileName: String, toolName: String)
+    case userQuestion(UserQuestionInfo)
+}
+
+struct UserQuestionInfo: Equatable {
+    let actionId: String
+    let messageId: String
+    let conversationId: String
+    let question: UserQuestion
+
+    init(from event: ToolAskUserQuestionEvent, fallbackMessageId: String, fallbackConversationId: String) {
+        self.actionId = event.actionId ?? ""
+        self.messageId = event.messageId ?? fallbackMessageId
+        self.conversationId = event.conversationId ?? fallbackConversationId
+        self.question = event.question
+    }
+
+    init(from action: BlockedAction, question: UserQuestion, fallbackConversationId: String) {
+        self.actionId = action.actionId ?? ""
+        self.messageId = action.messageId ?? ""
+        self.conversationId = action.conversationId ?? fallbackConversationId
+        self.question = question
+    }
+}
+
+/// Derived view projection of `Activity` overlaid with any `BlockedState`. Not stored.
 enum AgentStreamingPhase: Equatable {
     case idle
     case thinking
@@ -299,6 +335,18 @@ enum AgentStreamingPhase: Equatable {
     case personalAuthRequired(provider: String, toolName: String)
     case fileAuthRequired(fileName: String, toolName: String)
     case approvalRequired(approval: ToolApprovalInfo)
+    case userQuestionRequired(question: UserQuestionInfo)
+}
+
+extension BlockedState {
+    var asPhase: AgentStreamingPhase {
+        switch self {
+        case let .approval(info): .approvalRequired(approval: info)
+        case let .personalAuth(provider, toolName): .personalAuthRequired(provider: provider, toolName: toolName)
+        case let .fileAuth(fileName, toolName): .fileAuthRequired(fileName: fileName, toolName: toolName)
+        case let .userQuestion(info): .userQuestionRequired(question: info)
+        }
+    }
 }
 
 enum ConversationMessage: Identifiable {

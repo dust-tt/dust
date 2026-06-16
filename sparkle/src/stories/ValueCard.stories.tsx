@@ -2,15 +2,27 @@ import type { Meta, StoryObj } from "@storybook/react";
 import * as React from "react";
 
 import { Avatar } from "@sparkle/components";
-import { HandThumbUpIcon } from "@sparkle/icons/app";
 
 import { ComposableCard, ValueCard } from "../components/ValueCard";
+import { ThumbsUp } from "@sparkle/icons/v2-stroke";
 
 const meta: Meta<typeof ValueCard> = {
-  title: "Modules/ValueCard",
+  title: "Data Display/ValueCard",
   component: ValueCard,
   parameters: {
     layout: "padded",
+    docs: {
+      description: {
+        component: `A compact metric card surfacing a single value with a **title**, optional **subtitle**, and a **content** slot for the figure (number, icon, trend). Supports an **isLoading** state that shows a spinner. For bespoke layouts, compose the parts directly with **ComposableCard** (Header, Title, Subtitle, Content).
+
+**When to use**
+- On dashboards and overviews to highlight a key metric or KPI.
+
+**Guidelines**
+- Keep **content** to a single primary figure; pair it with a small **Icon** for context rather than crowding the card.
+- Use **ComposableCard** when you need a non-standard arrangement of the title, subtitle, and content.`,
+      },
+    },
   },
   argTypes: {
     className: {
@@ -48,7 +60,7 @@ export const WithIcons: Story = {
     title: "Reactions",
     content: (
       <div className="s-flex s-items-center s-gap-2">
-        <HandThumbUpIcon className="s-text-text-muted-foreground s-h-4 s-w-4" />
+        <ThumbsUp className="s-text-text-muted-foreground s-h-4 s-w-4" />
         <div className="s-text-lg s-font-semibold s-text-foreground">12</div>
       </div>
     ),
@@ -65,7 +77,7 @@ export const Composable: Story = {
       </ComposableCard.Header>
       <ComposableCard.Content>
         <div className="s-flex s-items-center s-gap-2">
-          <HandThumbUpIcon className="s-text-text-muted-foreground s-h-4 s-w-4" />
+          <ThumbsUp className="s-text-text-muted-foreground s-h-4 s-w-4" />
           <div className="s-text-lg s-font-semibold">847</div>
         </div>
       </ComposableCard.Content>

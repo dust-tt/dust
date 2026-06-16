@@ -9,7 +9,7 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import {
   ActionCard,
   ActionIcons,
-  BookOpenIcon,
+  BookOpen01,
   Hoverable,
 } from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
@@ -32,7 +32,7 @@ export function MCPServerCard({
 
   const icon = isCustomResourceIconType(view.server.icon)
     ? ActionIcons[view.server.icon]
-    : (InternalActionIcons[view.server.icon] ?? BookOpenIcon);
+    : (InternalActionIcons[view.server.icon] ?? BookOpen01);
 
   // Create a ref to use as portal container for tooltips to prevent click blocking
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -115,7 +115,7 @@ export function MCPServerSelectionPage({
           <div className="mb-2 text-lg font-medium text-foreground">
             No tool matches your search
           </div>
-          <div className="max-w-sm text-muted-foreground">
+          <div className="max-w-sm text-muted-foreground dark:text-muted-foreground-night">
             No tools found. Try a different search term.
           </div>
         </div>

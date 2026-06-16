@@ -10,6 +10,13 @@ export interface SearchUsersResult {
   total: number;
 }
 
+// Optional ordering for browsing/listing use cases. When omitted, results are
+// ranked by relevance (`_score`), which is what free-text search wants.
+export type SearchUsersOrderBy = {
+  field: "name" | "email";
+  direction: "asc" | "desc";
+};
+
 /**
  * Search users by email and full name.
  * - full_name: Uses prefix matching on any word (edge n-grams)
@@ -20,11 +27,15 @@ export async function searchUsers({
   searchTerm,
   offset,
   limit,
+  orderBy,
+  userIds,
 }: {
   owner: LightWorkspaceType;
   searchTerm: string;
   offset: number;
   limit: number;
+  orderBy?: SearchUsersOrderBy;
+  userIds?: string[];
 }): Promise<Result<SearchUsersResult, ElasticsearchError>> {
   return withEs(async (client) => {
     // If searchTerm is empty or only whitespace, return all users from the workspace.
@@ -32,7 +43,10 @@ export async function searchUsers({
 
     const query: estypes.QueryDslQueryContainer = {
       bool: {
-        filter: [{ term: { workspace_id: owner.sId } }],
+        filter: [
+          { term: { workspace_id: owner.sId } },
+          ...(userIds ? [{ terms: { user_id: userIds } }] : []),
+        ],
         ...(hasSearchTerm && {
           should: [
             // Prefix matching on full_name using edge n-grams
@@ -57,12 +71,26 @@ export async function searchUsers({
       },
     };
 
+    // When an explicit order is requested, sort on the keyword sub-field (with
+    // `user_id` as a stable tiebreaker for consistent pagination); otherwise
+    // rank by relevance. `full_name.keyword` / `email.keyword` exist in the
+    // index mapping.
+    const sort: estypes.Sort = orderBy
+      ? [
+          {
+            [orderBy.field === "name" ? "full_name.keyword" : "email.keyword"]:
+              { order: orderBy.direction },
+          },
+          { user_id: { order: "asc" } },
+        ]
+      : [{ _score: { order: "desc" } }];
+
     const response = await client.search<UserSearchDocument>({
       index: USER_SEARCH_ALIAS_NAME,
       query,
       size: limit,
       from: offset,
-      sort: [{ _score: { order: "desc" } }],
+      sort,
     });
 
     const users = response.hits.hits.map((hit) => hit._source!);

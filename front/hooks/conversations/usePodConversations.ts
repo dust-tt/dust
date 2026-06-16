@@ -1,12 +1,14 @@
+import type {
+  GetBySpacesSummaryResponseBody,
+  GetSpaceConversationsResponseBody,
+  GetSpaceUnreadConversationsResponseBody,
+} from "@app/lib/api/assistant/conversation/spaces";
 import {
   emptyArray,
   useFetcher,
   useSWRInfiniteWithDefaults,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces";
-import type { GetSpaceConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces/[spaceId]";
-import type { GetSpaceUnreadConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces/[spaceId]/unread";
 import type { LightConversationType } from "@app/types/assistant/conversation";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";

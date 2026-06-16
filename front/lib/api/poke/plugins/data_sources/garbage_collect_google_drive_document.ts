@@ -2,6 +2,7 @@ import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
+import tracer from "@app/logger/tracer";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -10,30 +11,37 @@ export async function garbageCollectGoogleDriveDocument(
   dataSource: DataSourceResource,
   args: { documentId: string }
 ): Promise<Result<void, Error>> {
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
-  const getRes = await coreAPI.getDataSourceDocument({
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceId: dataSource.dustAPIDataSourceId,
-    documentId: args.documentId,
-  });
-  if (getRes.isErr()) {
-    return new Err(
-      new Error(`Error while getting the document: ` + getRes.error.message)
-    );
-  }
+  return tracer.trace("poke.gc_gdrive_document", async (span) => {
+    span?.setTag("data_source.s_id", dataSource.sId);
+    span?.setTag("document.id", args.documentId);
+    span?.setTag("core.project_id", dataSource.dustAPIProjectId);
+    span?.setTag("core.data_source_id", dataSource.dustAPIDataSourceId);
+    const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
+    const getRes = await coreAPI.getDataSourceDocument({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
+      documentId: args.documentId,
+    });
+    if (getRes.isErr()) {
+      return new Err(
+        new Error(`Error while getting the document: ` + getRes.error.message)
+      );
+    }
 
-  const delRes = await coreAPI.deleteDataSourceDocument({
-    projectId: dataSource.dustAPIProjectId,
-    dataSourceId: dataSource.dustAPIDataSourceId,
-    documentId: args.documentId,
-  });
-  if (delRes.isErr()) {
-    return new Err(
-      new Error(`Error deleting document: ${delRes.error.message}`)
-    );
-  }
+    const delRes = await coreAPI.deleteDataSourceDocument({
+      projectId: dataSource.dustAPIProjectId,
+      dataSourceId: dataSource.dustAPIDataSourceId,
+      documentId: args.documentId,
+      caller: "poke-gc-gdrive",
+    });
+    if (delRes.isErr()) {
+      return new Err(
+        new Error(`Error deleting document: ${delRes.error.message}`)
+      );
+    }
 
-  return new Ok(undefined);
+    return new Ok(undefined);
+  });
 }
 
 export const garbageCollectGoogleDriveDocumentPlugin = createPlugin({

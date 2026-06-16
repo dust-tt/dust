@@ -19,6 +19,7 @@ async function findUserMessageForRetry(
     {
       agentMessageId: string;
       agentMessageVersion: number;
+      branchId: string | null;
       lastStep: number;
       userMessageId: string;
       userMessageVersion: number;
@@ -35,7 +36,14 @@ async function findUserMessageForRetry(
       sId: messageId,
       workspaceId,
     },
-    attributes: ["agentMessageId", "parentId", "version", "sId"],
+    attributes: [
+      "agentMessageId",
+      "parentId",
+      "version",
+      "sId",
+      "branchId",
+      "workspaceId",
+    ],
   });
 
   if (!agentMessage || !agentMessage.parentId || !agentMessage.agentMessageId) {
@@ -65,6 +73,13 @@ async function findUserMessageForRetry(
     return new Err(new Error("No blocked actions found"));
   }
 
+  // Blocked actions of a message that can no longer resume (interrupted, cancelled, failed) are
+  // stale leftovers: retrying them would relaunch an agent loop that was already terminated. All
+  // blocked actions belong to the same agent message, so checking the first one is enough.
+  if (!(await blockedActions[0].canAgentMessageResume(auth))) {
+    return new Err(new Error("Agent message can no longer resume"));
+  }
+
   // Purge blocked actions event message from the stream:
   // - remove tool_approve_execution events (watch out as those events are not republished).
   // - remove tool_personal_auth_required events.
@@ -77,6 +92,7 @@ async function findUserMessageForRetry(
   return new Ok({
     agentMessageId: agentMessage.sId,
     agentMessageVersion: agentMessage.version,
+    branchId: agentMessage.getBranchId(),
     lastStep: blockedActions[blockedActions.length - 1].stepContent.step,
     userMessageId: parentMessage.sId,
     userMessageVersion: parentMessage.version,
@@ -94,11 +110,7 @@ export async function retryBlockedActions(
     waitForCompletion?: boolean;
   }
 ): Promise<Result<void, Error | DustError<"agent_loop_already_running">>> {
-  const {
-    sId: conversationId,
-    title: conversationTitle,
-    branchId: conversationBranchId,
-  } = conversation;
+  const { sId: conversationId, title: conversationTitle } = conversation;
 
   const getUserMessageIdRes = await findUserMessageForRetry(
     auth,
@@ -115,6 +127,7 @@ export async function retryBlockedActions(
   const {
     agentMessageId,
     agentMessageVersion,
+    branchId: conversationBranchId,
     lastStep,
     userMessageId,
     userMessageVersion,

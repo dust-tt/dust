@@ -40,11 +40,8 @@ import {
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
-  ActionGitBranchIcon,
-  ArrowRightIcon,
+  ArrowRight,
   Avatar,
-  ChatBubbleBottomCenterTextIcon,
-  ContactsUserIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -55,16 +52,19 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  ExternalLinkIcon,
-  EyeIcon,
-  EyeSlashIcon,
-  LinkIcon,
-  PencilSquareIcon,
-  PlusCircleIcon,
-  PlusIcon,
-  SidekickIcon,
-  TrashIcon,
-  XMarkIcon,
+  Edit04,
+  Eye,
+  EyeOff,
+  GitBranch01,
+  Link01,
+  LinkExternal01,
+  MessageCircle01,
+  Plus,
+  PlusCircle,
+  Sidekick,
+  Trash01,
+  UserSquare,
+  XClose,
 } from "@dust-tt/sparkle";
 import type React from "react";
 import type { ReactElement } from "react";
@@ -194,7 +194,7 @@ export function ConversationMenu({
         owner.sId,
         activeConversationId,
         `agentDetails=${agentId}`,
-        config.getApiBaseUrl()
+        config.getAppUrl()
       );
       window.open(agentDetailsUrl, "_blank");
       return;
@@ -209,7 +209,7 @@ export function ConversationMenu({
         owner.sId,
         activeConversationId,
         `userDetails=${userId}`,
-        config.getApiBaseUrl()
+        config.getAppUrl()
       );
       window.open(userDetailsUrl, "_blank");
       return;
@@ -295,7 +295,7 @@ export function ConversationMenu({
     owner.sId,
     activeConversationId,
     undefined,
-    config.getApiBaseUrl()
+    config.getAppUrl()
   );
 
   const doDelete = useDeleteConversation(owner);
@@ -419,20 +419,20 @@ export function ConversationMenu({
           <DropdownMenuItem
             label="Rename conversation"
             onClick={() => setShowRenameDialog(true)}
-            icon={PencilSquareIcon}
+            icon={Edit04}
           />
           <DropdownMenuItem
             label="Branch conversation"
             onClick={() => {
               void branchConversation();
             }}
-            icon={ActionGitBranchIcon}
+            icon={GitBranch01}
             disabled={isBranching}
           />
           <DropdownMenuSeparator />
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
-              icon={ArrowRightIcon}
+              icon={ArrowRight}
               label={canMoveOutOfPod ? "Move to..." : "Move to Pod"}
             />
             <DropdownMenuPortal>
@@ -441,7 +441,7 @@ export function ConversationMenu({
                 className="max-w-60"
               >
                 <DropdownMenuItem
-                  icon={PlusIcon}
+                  icon={Plus}
                   label="New Pod"
                   onClick={() => setIsCreatePodModalOpen(true)}
                 />
@@ -449,7 +449,7 @@ export function ConversationMenu({
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      icon={ChatBubbleBottomCenterTextIcon}
+                      icon={MessageCircle01}
                       label="Personal conversations"
                       onClick={async () =>
                         moveConversationOutOfPod(conversation)
@@ -481,7 +481,7 @@ export function ConversationMenu({
           </DropdownMenuSub>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
-              icon={ContactsUserIcon}
+              icon={UserSquare}
               label="Participants"
               disabled={
                 !conversationParticipants?.users.length &&
@@ -496,7 +496,7 @@ export function ConversationMenu({
                     <DropdownMenuItem
                       label="Join"
                       onClick={joinConversation}
-                      icon={PlusCircleIcon}
+                      icon={PlusCircle}
                     />
                     <DropdownMenuSeparator />
                   </>
@@ -539,14 +539,14 @@ export function ConversationMenu({
             <DropdownMenuItem
               label="Open in a browser tab"
               onClick={openConversationInBrowser}
-              icon={ExternalLinkIcon}
+              icon={LinkExternal01}
             />
           )}
           {conversationLink && (
             <DropdownMenuItem
               label="Copy link"
               onClick={copyConversationLink}
-              icon={LinkIcon}
+              icon={Link01}
             />
           )}
           {(canMakeUrlAccessible || canRestrictUrlAccess) && (
@@ -563,14 +563,14 @@ export function ConversationMenu({
                     : "workspace_members"
                 );
               }}
-              icon={canRestrictUrlAccess ? EyeSlashIcon : EyeIcon}
+              icon={canRestrictUrlAccess ? EyeOff : Eye}
               disabled={isUpdatingConversationUrlAccessMode}
             />
           )}
           {canTurnIntoAgent && (
             <DropdownMenuItem
               label="Convert to agent"
-              icon={SidekickIcon}
+              icon={Sidekick}
               disabled={!hasHealthyProviders(providersHealth)}
               onClick={async () => {
                 const confirmed = await confirm({
@@ -594,14 +594,14 @@ export function ConversationMenu({
             <DropdownMenuItem
               label="Leave"
               onClick={() => setShowLeaveDialog(true)}
-              icon={XMarkIcon}
+              icon={XClose}
             />
           )}
           {canDelete && (
             <DropdownMenuItem
               label="Delete"
               onClick={() => setShowDeleteDialog(true)}
-              icon={TrashIcon}
+              icon={Trash01}
               variant="warning"
             />
           )}

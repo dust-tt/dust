@@ -34,7 +34,6 @@ import { usePokeRegion } from "@app/lib/swr/poke";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDataRetention } from "@app/poke/swr/data_retention";
 import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
-import { isCreditPricedPlan } from "@app/types/plan";
 import { isString } from "@app/types/shared/utils/general";
 import type { WorkspaceSegmentationType } from "@app/types/user";
 import {
@@ -135,6 +134,12 @@ export function WorkspacePage() {
     membersCount,
     metronomeCustomerId,
     pendingSubscription,
+    poolCreditState,
+    poolAlert,
+    programmaticAlerts,
+    usageCapAlert,
+    defaultAlerts,
+    programmaticCreditState,
     stripeSubscription,
     stripeCustomerId,
     subscriptions,
@@ -142,14 +147,19 @@ export function WorkspacePage() {
     workspaceVerifiedDomains,
     workspaceCreationDay,
     extensionConfig,
+    creditUsageConfig,
     programmaticUsageConfig,
     workosEnvironmentId,
     temporalFrontNamespace,
   } = workspaceInfo;
 
-  // The Usage tab (AWU usage chart + credit pool) only applies to credit-based
-  // (CP_) pricing workspaces.
-  const isCreditPriced = isCreditPricedPlan(activeSubscription.plan);
+  // The Usage tab (AWU usage chart + credit pool) is backed by Metronome usage
+  // data, so it applies to any workspace with a Metronome contract — both
+  // credit-priced and legacy shadow contracts. There's no need to gate it on a
+  // feature flag in poke: it's staff tooling, not customer-facing exposure.
+  const hasMetronomeUsage =
+    metronomeCustomerId !== null &&
+    activeSubscription.metronomeContractId !== null;
 
   return (
     <div className="ml-8 p-6">
@@ -270,7 +280,7 @@ export function WorkspacePage() {
               <TabsTrigger value="datasourceviews" label="Data Source Views" />
               <TabsTrigger value="featureflags" label="Feature Flags" />
               <TabsTrigger value="groups" label="Groups" />
-              <TabsTrigger value="mcpviews" label="MCP Server Views" />
+              <TabsTrigger value="mcpviews" label="MCP" />
               <TabsTrigger value="pods" label="Pods" />
               <TabsTrigger value="skills" label="Skills" />
               <TabsTrigger value="spaces" label="Spaces" />
@@ -278,7 +288,7 @@ export function WorkspacePage() {
               <TabsTrigger value="triggers" label="Triggers" />
               <TabsTrigger value="webhooksources" label="Webhook Sources" />
               <TabsTrigger value="credits" label="API Usage" />
-              {isCreditPriced && <TabsTrigger value="usage" label="Usage" />}
+              {hasMetronomeUsage && <TabsTrigger value="usage" label="Usage" />}
               <TabsTrigger value="analytics" label="Analytics" />
             </TabsList>
 
@@ -289,7 +299,11 @@ export function WorkspacePage() {
               <DataSourceViewsDataTable owner={owner} loadOnInit />
             </TabsContent>
             <TabsContent value="mcpviews">
-              <MCPServerViewsDataTable owner={owner} loadOnInit />
+              <MCPServerViewsDataTable
+                owner={owner}
+                loadOnInit
+                systemSpaceOnly
+              />
             </TabsContent>
             <TabsContent value="pods">
               <ProjectsDataTable owner={owner} loadOnInit />
@@ -335,12 +349,19 @@ export function WorkspacePage() {
                 loadOnInit
               />
             </TabsContent>
-            {isCreditPriced && (
+            {hasMetronomeUsage && (
               <TabsContent value="usage">
                 <PokeUsageTab
                   owner={owner}
                   subscription={activeSubscription}
                   stripeSubscription={stripeSubscription}
+                  poolCreditState={poolCreditState}
+                  programmaticCreditState={programmaticCreditState}
+                  creditUsageConfig={creditUsageConfig}
+                  poolAlert={poolAlert}
+                  programmaticAlerts={programmaticAlerts}
+                  usageCapAlert={usageCapAlert}
+                  defaultAlerts={defaultAlerts}
                 />
               </TabsContent>
             )}

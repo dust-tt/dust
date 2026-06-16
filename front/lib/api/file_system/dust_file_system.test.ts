@@ -1,4 +1,7 @@
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import {
+  DustFileSystem,
+  sanitizeFileSystemName,
+} from "@app/lib/api/file_system/dust_file_system";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -140,7 +143,7 @@ describe("DustFileSystem.forConversation", () => {
     expect(podMount!.scopedPrefix).toBe(`pod-${projectSpace.sId}`);
     expect(podMount!.sandboxMountPoint).toBe(`/files/pod-${projectSpace.sId}`);
     expect(podMount!.legacyPrefix).toBe("project");
-    expect(podMount!.legacySandboxMountPoint).toBe("/files/project");
+    expect(podMount!.legacySandboxMountPoint).toBe("/files/pod");
   });
 });
 
@@ -875,9 +878,10 @@ describe("DustFileSystem.list thumbnail URLs", () => {
 
     const fsResult = await DustFileSystem.forConversation(auth, conversation);
     assert(fsResult.isOk());
-    const entries = await fsResult.value.list();
+    const listResult = await fsResult.value.list();
+    assert(listResult.isOk());
 
-    const file = entries.find((e) => !e.isDirectory);
+    const file = listResult.value.find((e) => !e.isDirectory);
     assert(file !== undefined && !file.isDirectory);
     expect(file.thumbnailUrl).toBe(
       `https://dust.tt/api/w/${workspaceId}` +
@@ -916,9 +920,10 @@ describe("DustFileSystem.list thumbnail URLs", () => {
 
     const fsResult = await DustFileSystem.forConversation(auth, conversation);
     assert(fsResult.isOk());
-    const entries = await fsResult.value.list();
+    const listResult = await fsResult.value.list();
+    assert(listResult.isOk());
 
-    const file = entries.find((e) => !e.isDirectory);
+    const file = listResult.value.find((e) => !e.isDirectory);
     assert(file !== undefined && !file.isDirectory);
     expect(file.thumbnailUrl).toBeNull();
   });
@@ -1240,16 +1245,18 @@ describe("DustFileSystem.move", () => {
   let auth: Authenticator;
   let conversationId: string;
   let copyFileMock: ReturnType<typeof vi.fn>;
-  let existsMock: ReturnType<typeof vi.fn>;
+  let fileExists: (filePath: string) => boolean;
   let deleteMock: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     copyFileMock = vi.fn().mockResolvedValue(undefined);
-    existsMock = vi.fn().mockResolvedValue([true]);
+    fileExists = (filePath: string) => filePath.endsWith("/src.txt");
     deleteMock = vi.fn().mockResolvedValue(undefined);
     vi.mocked(getPrivateUploadBucket).mockReturnValue({
       copyFile: copyFileMock,
-      file: vi.fn(() => ({ exists: existsMock })),
+      file: vi.fn((filePath: string) => ({
+        exists: () => Promise.resolve([fileExists(filePath)]),
+      })),
       delete: deleteMock,
     } as unknown as ReturnType<typeof getPrivateUploadBucket>);
 
@@ -1283,6 +1290,28 @@ describe("DustFileSystem.move", () => {
     expect(result.value.sourceDeletionFailed).toBe(false);
     expect(copyFileMock).toHaveBeenCalledOnce();
     expect(deleteMock).toHaveBeenCalledOnce();
+  });
+
+  it("returns Err(already_exists) when the destination file already exists", async () => {
+    fileExists = (filePath: string) =>
+      filePath.endsWith("/src.txt") || filePath.endsWith("/dest.txt");
+
+    const convRes = await ConversationResource.fetchById(auth, conversationId);
+    assert(convRes !== null);
+    const fs = await DustFileSystem.forConversation(auth, convRes.toJSON());
+    assert(fs.isOk());
+
+    const result = await fs.value.move({
+      src: `conversation-${conversationId}/src.txt`,
+      dest: `conversation-${conversationId}/dest.txt`,
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("already_exists");
+    }
+    expect(copyFileMock).not.toHaveBeenCalled();
+    expect(deleteMock).not.toHaveBeenCalled();
   });
 
   it("returns Ok with sourceDeletionFailed true when delete fails after a successful copy", async () => {
@@ -1353,7 +1382,9 @@ describe("DustFileSystem.rename", () => {
     deleteMock = vi.fn().mockResolvedValue(undefined);
     vi.mocked(getPrivateUploadBucket).mockReturnValue({
       copyFile: copyFileMock,
-      file: vi.fn(() => ({ exists: vi.fn().mockResolvedValue([true]) })),
+      file: vi.fn((filePath: string) => ({
+        exists: vi.fn().mockResolvedValue([filePath.endsWith("/report.pdf")]),
+      })),
       delete: deleteMock,
     } as unknown as ReturnType<typeof getPrivateUploadBucket>);
 
@@ -1482,107 +1513,55 @@ describe("DustFileSystem.rename", () => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// forShareToken
-// ---------------------------------------------------------------------------
-
-describe("DustFileSystem.forShareToken", () => {
-  it("creates a single conversation mount with canRead:true when only a conversationId is given", async () => {
-    const { authenticator: auth } = await createResourceTest({});
-
-    const conversationId = "conv_abc123";
-    const fs = DustFileSystem.forShareToken(auth, {
-      conversationId,
-      spaceId: null,
-    });
-    const mounts = fs.getMounts();
-
-    expect(mounts).toHaveLength(1);
-    expect(mounts[0]).toMatchObject({
-      kind: "conversation",
-      id: conversationId,
-      scopedPrefix: `conversation-${conversationId}`,
-      permissions: { canRead: true, canWrite: false },
-    });
+describe("sanitizeFileSystemName", () => {
+  it("leaves a plain ASCII name unchanged", () => {
+    expect(sanitizeFileSystemName("quarterly-report.pdf")).toBe(
+      "quarterly-report.pdf"
+    );
   });
 
-  it("creates a single pod mount with canRead:true when only a spaceId is given", async () => {
-    const { authenticator: auth } = await createResourceTest({});
-
-    const spaceId = "vlt_pod456";
-    const fs = DustFileSystem.forShareToken(auth, {
-      conversationId: null,
-      spaceId,
-    });
-    const mounts = fs.getMounts();
-
-    expect(mounts).toHaveLength(1);
-    expect(mounts[0]).toMatchObject({
-      kind: "pod",
-      id: spaceId,
-      scopedPrefix: `pod-${spaceId}`,
-      permissions: { canRead: true, canWrite: false },
-    });
+  it("strips leading control characters", () => {
+    expect(sanitizeFileSystemName("\n\tsummary.txt")).toBe("summary.txt");
   });
 
-  it("creates both conversation and pod mounts when both IDs are provided", async () => {
-    const { authenticator: auth } = await createResourceTest({});
-
-    const conversationId = "conv_abc123";
-    const spaceId = "vlt_pod456";
-    const fs = DustFileSystem.forShareToken(auth, { conversationId, spaceId });
-    const mounts = fs.getMounts();
-
-    expect(mounts).toHaveLength(2);
-    expect(mounts[0]).toMatchObject({
-      kind: "conversation",
-      id: conversationId,
-      permissions: { canRead: true, canWrite: false },
-    });
-    expect(mounts[1]).toMatchObject({
-      kind: "pod",
-      id: spaceId,
-      permissions: { canRead: true, canWrite: false },
-    });
+  it("strips embedded control characters", () => {
+    expect(sanitizeFileSystemName("my\x00file\x1Fname.txt")).toBe(
+      "myfilename.txt"
+    );
   });
 
-  it("creates no mounts when both IDs are null", async () => {
-    const { authenticator: auth } = await createResourceTest({});
-
-    const fs = DustFileSystem.forShareToken(auth, {
-      conversationId: null,
-      spaceId: null,
-    });
-    const mounts = fs.getMounts();
-
-    expect(mounts).toHaveLength(0);
+  it("trims surrounding whitespace", () => {
+    expect(sanitizeFileSystemName("  notes.md  ")).toBe("notes.md");
   });
 
-  it("sets the legacy conversation prefix for the conversation mount", async () => {
-    const { authenticator: auth } = await createResourceTest({});
-
-    const conversationId = "conv_abc123";
-    const fs = DustFileSystem.forShareToken(auth, {
-      conversationId,
-      spaceId: null,
-    });
-    const mounts = fs.getMounts();
-
-    expect(mounts[0].legacyPrefix).toBe("conversation");
-    expect(mounts[0].legacySandboxMountPoint).toBe("/files/conversation");
+  it("preserves accented and non-ASCII printable characters", () => {
+    const name = "données — résumé.csv";
+    expect(sanitizeFileSystemName(name)).toBe(name);
   });
 
-  it("sets the legacy project prefix for the pod mount", async () => {
-    const { authenticator: auth } = await createResourceTest({});
+  it("NFC-normalizes the result", () => {
+    const nfd = "café".normalize("NFD");
+    const nfc = "café".normalize("NFC");
+    expect(sanitizeFileSystemName(nfd)).toBe(nfc);
+  });
+});
 
-    const spaceId = "vlt_pod456";
-    const fs = DustFileSystem.forShareToken(auth, {
-      conversationId: null,
-      spaceId,
-    });
-    const mounts = fs.getMounts();
+describe("DustFileSystem.normalizeScopedPath strips control characters", () => {
+  it("strips leading control characters from the filename segment", () => {
+    expect(
+      DustFileSystem.normalizeScopedPath("conversation-abc/\n\tsummary.txt")
+    ).toBe("conversation-abc/summary.txt");
+  });
 
-    expect(mounts[0].legacyPrefix).toBe("project");
-    expect(mounts[0].legacySandboxMountPoint).toBe("/files/project");
+  it("strips control characters embedded in the mount prefix", () => {
+    expect(
+      DustFileSystem.normalizeScopedPath("conversation-abc\x00/notes.txt")
+    ).toBe("conversation-abc/notes.txt");
+  });
+
+  it("still rejects path traversal after stripping controls", () => {
+    expect(
+      DustFileSystem.normalizeScopedPath("conversation-abc/\n../../etc/passwd")
+    ).toBeNull();
   });
 });

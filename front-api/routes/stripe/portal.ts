@@ -19,6 +19,7 @@ const app = sessionApp();
 
 app.use("*", sessionAuth);
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", PostStripePortalRequestBody),

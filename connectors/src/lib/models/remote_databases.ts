@@ -1,7 +1,10 @@
 import { connectorsSequelize } from "@connectors/resources/storage";
+import {
+  DANGEROUSLY_UNBOUNDED_TEXT,
+  DataTypes,
+} from "@connectors/resources/storage/data_types";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
 
 type AllowedPermissions = "selected" | "unselected" | "inherited";
 
@@ -116,19 +119,19 @@ export class RemoteTableModel extends ConnectorBaseModel<RemoteTableModel> {
 RemoteTableModel.init(
   {
     internalId: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     name: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     schemaName: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     databaseName: {
-      type: DataTypes.TEXT,
+      type: DANGEROUSLY_UNBOUNDED_TEXT,
       allowNull: false,
     },
     permission: {

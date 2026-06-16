@@ -19,7 +19,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-  EyeIcon,
+  Eye,
 } from "@dust-tt/sparkle";
 
 export function PodTaskScopeFilter() {
@@ -56,14 +56,14 @@ export function PodTaskScopeFilter() {
             type="button"
             size="sm"
             variant="outline"
-            icon={EyeIcon}
+            icon={Eye}
             isSelect
             label={isMobile ? undefined : periodLabel}
             tooltip={isMobile ? periodLabel : undefined}
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
-          <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+          <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
             Status
           </div>
           <DropdownMenuRadioGroup

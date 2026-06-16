@@ -32,3 +32,10 @@ export function getMetronomeCommitOrCreditUrl(
 ): string {
   return `${metronomeDashboardCustomerBase(metronomeCustomerId)}/commits-and-credits/${commitOrCreditId}?tab=ledger`;
 }
+
+// Alerts (a.k.a. notifications) are global config objects in Metronome, so they
+// deep-link at the top level by alert id rather than under a customer.
+export function getMetronomeAlertUrl(alertId: string): string {
+  const envPrefix = isDevelopment() ? "sandbox/" : "";
+  return `${METRONOME_DASHBOARD_BASE_URL}/${envPrefix}connections/notifications/${alertId}`;
+}

@@ -36,6 +36,8 @@ if (isDevelopment() || isTest()) {
     name: "Pro",
     maxMessages: -1,
     maxMessagesTimeframe: "lifetime",
+    maxAwuCredits: -1,
+    maxAwuCreditsTimeframe: "lifetime",
     isDeepDiveAllowed: true,
     maxImagesPerWeek: 100,
     maxUsersInWorkspace: 1000,
@@ -60,12 +62,15 @@ if (isDevelopment() || isTest()) {
     trialPeriodDays: 14,
     canUseProduct: true,
     isByok: false,
+    isBrandedFramesAllowed: false,
   });
   PRO_PLANS_DATA.push({
     code: PRO_PLAN_SEAT_39_CODE,
     name: "Pro Business",
     maxMessages: -1,
     maxMessagesTimeframe: "lifetime",
+    maxAwuCredits: -1,
+    maxAwuCreditsTimeframe: "lifetime",
     isDeepDiveAllowed: true,
     maxImagesPerWeek: 100,
     maxUsersInWorkspace: 1000,
@@ -90,12 +95,15 @@ if (isDevelopment() || isTest()) {
     trialPeriodDays: 14,
     canUseProduct: true,
     isByok: false,
+    isBrandedFramesAllowed: false,
   });
   PRO_PLANS_DATA.push({
     code: FREE_BYOK_PLAN_CODE,
     name: "Free (BYOK)",
     maxMessages: -1,
     maxMessagesTimeframe: "lifetime",
+    maxAwuCredits: -1,
+    maxAwuCreditsTimeframe: "lifetime",
     isDeepDiveAllowed: true,
     maxImagesPerWeek: 50,
     maxUsersInWorkspace: -1,
@@ -120,12 +128,15 @@ if (isDevelopment() || isTest()) {
     trialPeriodDays: 0,
     canUseProduct: true,
     isByok: true,
+    isBrandedFramesAllowed: false,
   });
   PRO_PLANS_DATA.push({
     code: FREE_BYOK_TRANSITIONING_PLAN_CODE,
     name: "Free (BYOK Transitioning)",
     maxMessages: -1,
     maxMessagesTimeframe: "lifetime",
+    maxAwuCredits: -1,
+    maxAwuCreditsTimeframe: "lifetime",
     isDeepDiveAllowed: true,
     maxImagesPerWeek: 50,
     maxUsersInWorkspace: -1,
@@ -150,6 +161,7 @@ if (isDevelopment() || isTest()) {
     trialPeriodDays: 0,
     canUseProduct: true,
     isByok: true,
+    isBrandedFramesAllowed: false,
   });
 }
 

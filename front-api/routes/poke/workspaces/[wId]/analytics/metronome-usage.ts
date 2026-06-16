@@ -13,6 +13,7 @@ export type { GetMetronomeUsageResponse };
 // Mounted at /api/poke/workspaces/:wId/analytics/metronome-usage.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", validate("query", MetronomeUsageQuerySchema), async (ctx) => {
   const auth = ctx.get("auth");
 

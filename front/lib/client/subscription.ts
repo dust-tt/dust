@@ -1,7 +1,9 @@
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getBillingCurrencyForCountry } from "@app/lib/plans/billing_currency";
+import type { KillSwitchType } from "@app/lib/poke/types";
 import { useGeolocation } from "@app/lib/swr/geo";
 import type { SupportedCurrency } from "@app/types/currency";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { useKillSwitches } from "../swr/kill";
 
 // If mention the price of the PRO plan in a few different places in the code base,
@@ -11,6 +13,47 @@ import { useKillSwitches } from "../swr/kill";
 export const PRO_PLAN_COST_MONTHLY = 29;
 export const PRO_PLAN_COST_YEARLY = 27;
 export const BUSINESS_PLAN_COST_MONTHLY = 45;
+
+// Credit-priced (CP) self-serve seat prices
+export const CP_PRO_SEAT_COST_MONTHLY = 30;
+export const CP_PRO_SEAT_COST_YEARLY = 24;
+export const CP_MAX_SEAT_COST_MONTHLY = 150;
+export const CP_MAX_SEAT_COST_YEARLY = 120;
+
+// Lifetime AWU credits granted once per seat on the credit-priced Free plan.
+// Mirrors the server-side source of truth `FREE_SEAT_LIFETIME_AWU_CREDITS` in
+// `front/lib/metronome/setup_new_pricing.ts` (that module is server-only and
+// cannot be imported client-side).
+export const CP_FREE_PLAN_CREDITS = 300;
+
+/**
+ * Client-side mirror of the server-side `isMetronomeBillingEnabled` gate: the
+ * credit-priced checkout flow follows Metronome billing, which is enabled by
+ * default for all workspaces. The `global_disable_metronome_billing` kill
+ * switch turns it off globally; the `metronome_billing` feature flag
+ * re-enables it for individual workspaces.
+ *
+ * Prefer the `useIsMetronomeCheckout` hook; this helper is for components that
+ * render outside the auth context provider (e.g. the SPA workspace layout).
+ */
+export function computeIsMetronomeCheckout({
+  featureFlags,
+  killSwitches,
+}: {
+  featureFlags: WhitelistableFeature[];
+  killSwitches: KillSwitchType[] | null | undefined;
+}): boolean {
+  return (
+    featureFlags.includes("metronome_billing") ||
+    !killSwitches?.includes("global_disable_metronome_billing")
+  );
+}
+
+export function useIsMetronomeCheckout(): boolean {
+  const { featureFlags } = useFeatureFlags();
+  const { killSwitches } = useKillSwitches();
+  return computeIsMetronomeCheckout({ featureFlags, killSwitches });
+}
 
 export function formatPriceWithCurrency(
   price: number,

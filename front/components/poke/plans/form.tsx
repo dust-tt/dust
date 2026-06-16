@@ -1,7 +1,9 @@
 import { classNames } from "@app/lib/utils";
 import type { PlanType } from "@app/types/plan";
 import {
+  isMaxAwuCreditsTimeframeType,
   isMaxMessagesTimeframeType,
+  MAX_AWU_CREDITS_TIMEFRAMES,
   MAX_MESSAGE_TIMEFRAMES,
 } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -10,7 +12,7 @@ import {
   ConfluenceLogo,
   DriveLogo,
   GithubLogo,
-  GlobeAltIcon,
+  Globe01,
   Input,
   IntercomLogo,
   NotionLogo,
@@ -38,9 +40,12 @@ export type EditingPlanType = {
   isSCIMAllowed: boolean;
   isByok: boolean;
   isAuditLogsAllowed: boolean;
+  isBrandedFramesAllowed: boolean;
   maxImagesPerWeek: string | number;
   maxMessages: string | number;
   maxMessagesTimeframe: string;
+  maxAwuCredits: string | number;
+  maxAwuCreditsTimeframe: string;
   isDeepDiveAllowed: boolean;
   maxUsers: string | number;
   maxFreeUsers: string | number;
@@ -67,8 +72,11 @@ export const fromPlanType = (plan: PlanType): EditingPlanType => {
     isSCIMAllowed: plan.limits.users.isSCIMAllowed,
     isByok: plan.isByok,
     isAuditLogsAllowed: plan.isAuditLogsAllowed,
+    isBrandedFramesAllowed: plan.isBrandedFramesAllowed,
     maxMessages: plan.limits.assistant.maxMessages,
     maxMessagesTimeframe: plan.limits.assistant.maxMessagesTimeframe,
+    maxAwuCredits: plan.limits.assistant.maxAwuCredits,
+    maxAwuCreditsTimeframe: plan.limits.assistant.maxAwuCreditsTimeframe,
     isDeepDiveAllowed: plan.limits.assistant.isDeepDiveAllowed,
     dataSourcesCount: plan.limits.dataSources.count,
     dataSourcesDocumentsCount: plan.limits.dataSources.documents.count,
@@ -92,6 +100,9 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
   if (!isMaxMessagesTimeframeType(editingPlan.maxMessagesTimeframe)) {
     throw new Error("Invalid maxMessagesTimeframe");
   }
+  if (!isMaxAwuCreditsTimeframeType(editingPlan.maxAwuCreditsTimeframe)) {
+    throw new Error("Invalid maxAwuCreditsTimeframe");
+  }
 
   return {
     code: editingPlan.code.trim(),
@@ -101,6 +112,8 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
         isSlackBotAllowed: editingPlan.isSlackBotAllowed,
         maxMessages: parseMaybeNumber(editingPlan.maxMessages),
         maxMessagesTimeframe: editingPlan.maxMessagesTimeframe,
+        maxAwuCredits: parseMaybeNumber(editingPlan.maxAwuCredits),
+        maxAwuCreditsTimeframe: editingPlan.maxAwuCreditsTimeframe,
         isDeepDiveAllowed: editingPlan.isDeepDiveAllowed,
       },
       connections: {
@@ -142,6 +155,7 @@ export const toPlanType = (editingPlan: EditingPlanType): PlanType => {
     trialPeriodDays: parseMaybeNumber(editingPlan.trialPeriodDays),
     isByok: editingPlan.isByok,
     isAuditLogsAllowed: editingPlan.isAuditLogsAllowed,
+    isBrandedFramesAllowed: editingPlan.isBrandedFramesAllowed,
   };
 };
 
@@ -164,9 +178,12 @@ const getEmptyPlan = (): EditingPlanType => ({
   isSCIMAllowed: false,
   isByok: false,
   isAuditLogsAllowed: false,
+  isBrandedFramesAllowed: false,
   maxImagesPerWeek: "",
   maxMessages: "",
   maxMessagesTimeframe: "day",
+  maxAwuCredits: "",
+  maxAwuCreditsTimeframe: "day",
   isDeepDiveAllowed: true,
   maxUsers: "",
   maxFreeUsers: -1,
@@ -258,7 +275,7 @@ export const PLAN_FIELDS = {
     type: "boolean",
     width: "tiny",
     title: "Websites",
-    IconComponent: () => <GlobeAltIcon className="h-4 w-4" />,
+    IconComponent: () => <Globe01 className="h-4 w-4" />,
   },
   isSalesforceAllowed: {
     type: "boolean",
@@ -269,7 +286,7 @@ export const PLAN_FIELDS = {
   maxMessages: {
     type: "number",
     width: "small",
-    title: "# Messages",
+    title: "Messages (pooled) fair use",
     error: (plan: EditingPlanType) => errorCheckNumber(plan.maxMessages),
   },
   maxMessagesTimeframe: {
@@ -278,6 +295,19 @@ export const PLAN_FIELDS = {
     title: "/ Timeframe / Seat",
     error: (plan: EditingPlanType) =>
       errorCheckMaxMessageTimeframe(plan.maxMessagesTimeframe),
+  },
+  maxAwuCredits: {
+    type: "number",
+    width: "small",
+    title: "AWUCredits (unpooled) fair use",
+    error: (plan: EditingPlanType) => errorCheckNumber(plan.maxAwuCredits),
+  },
+  maxAwuCreditsTimeframe: {
+    type: "string",
+    width: "medium",
+    title: "/ Timeframe / Seat",
+    error: (plan: EditingPlanType) =>
+      errorCheckMaxAwuCreditsTimeframe(plan.maxAwuCreditsTimeframe),
   },
   isDeepDiveAllowed: {
     type: "boolean",
@@ -342,6 +372,11 @@ export const PLAN_FIELDS = {
     type: "boolean",
     width: "tiny",
     title: "Audit",
+  },
+  isBrandedFramesAllowed: {
+    type: "boolean",
+    width: "tiny",
+    title: "Branded Frames",
   },
   maxVaults: {
     type: "number",
@@ -493,6 +528,16 @@ const errorCheckNumber = (value: string | number | undefined | null) => {
 const errorCheckMaxMessageTimeframe = (value: string) => {
   if (!isMaxMessagesTimeframeType(value)) {
     return `Invalid messages timeframe. Must be one of ${MAX_MESSAGE_TIMEFRAMES.join(
+      ", "
+    )}. Is: ${value}`;
+  }
+
+  return null;
+};
+
+const errorCheckMaxAwuCreditsTimeframe = (value: string) => {
+  if (!isMaxAwuCreditsTimeframeType(value)) {
+    return `Invalid AWU credits timeframe. Must be one of ${MAX_AWU_CREDITS_TIMEFRAMES.join(
       ", "
     )}. Is: ${value}`;
   }

@@ -16,13 +16,13 @@ import type {
 } from "@app/types/user";
 import {
   Avatar,
-  BookOpenIcon,
-  ChatBubbleLeftRightIcon,
+  BookOpen01,
   ConfluenceLogo,
   cn,
   DriveLogo,
   GithubLogo,
   Icon,
+  MessageChatSquare,
   MicrosoftLogo,
   NotionLogo,
   SlackLogo,
@@ -155,8 +155,8 @@ function getSourceDisplay(source: PodTaskType["sources"][number]) {
     PodTaskType["sources"][number]["sourceType"],
     React.ComponentType
   > = {
-    project_conversation: ChatBubbleLeftRightIcon,
-    project_knowledge: BookOpenIcon,
+    project_conversation: MessageChatSquare,
+    project_knowledge: BookOpen01,
     slack: SlackLogo,
     notion: NotionLogo,
     gdrive: DriveLogo,

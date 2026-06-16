@@ -1,3 +1,4 @@
+import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
 import { AgentHandle } from "@app/components/assistant/conversation/AgentHandle";
 import { AgentMessageInteractiveContentGeneratedFiles } from "@app/components/assistant/conversation/AgentMessageGeneratedFiles";
@@ -10,6 +11,7 @@ import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMe
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
+import { useAutoOpenFilesPanel } from "@app/components/assistant/conversation/files_panel/useAutoOpenFilesPanel";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import type {
@@ -24,6 +26,7 @@ import {
   isUserMessage,
   makeInitialMessageStreamState,
 } from "@app/components/assistant/conversation/types";
+import { useCreditCostMenuItem } from "@app/components/assistant/conversation/useCreditCostMenuItem";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   CitationsContext,
@@ -39,6 +42,7 @@ import {
 import {
   useBranchConversation,
   useCancelMessage,
+  useConversationMessage,
   usePostOnboardingFollowUp,
 } from "@app/hooks/conversations";
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
@@ -49,7 +53,9 @@ import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
+import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
+import type { FetchConversationMessageResponseLight } from "@app/lib/api/assistant/messages";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -58,9 +64,8 @@ import { FILE_ID_PATTERN } from "@app/lib/files";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
-import { getNextWakeUpFireAt } from "@app/lib/utils/wakeup_description";
+import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import datadogLogger from "@app/logger/datadogLogger";
-import type { FetchConversationMessageResponseLight } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]";
 import {
   canShowAgentConversationActions,
   isGlobalAgentId,
@@ -85,27 +90,32 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
-import type { DropdownMenuItemProps } from "@dust-tt/sparkle";
 import {
-  ActionGitBranchIcon,
-  ArrowPathIcon,
   Button,
   ButtonGroup,
   ButtonGroupDropdown,
   Chip,
-  ClipboardCheckIcon,
-  ClipboardIcon,
+  Clipboard,
+  ClipboardCheck,
   ConversationMessageAvatar,
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
-  InformationCircleIcon,
+  DotsHorizontal,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  type DropdownMenuItemProps,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  GitBranch01,
+  InfoCircle,
   InteractiveImageGrid,
-  LinkIcon,
-  MoreIcon,
-  StopIcon,
+  Link01,
+  RefreshCw02,
+  Stop,
   Tooltip,
-  TrashIcon,
+  Trash01,
   TruncatedContent,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
@@ -122,6 +132,8 @@ import {
 } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
+
+const RUN_AGENT_TOOL_NAME = "run_agent";
 
 function PrunedContextChip() {
   return (
@@ -161,49 +173,26 @@ function PrunedContextChip() {
           label="Context limit reached"
           size="xs"
           color="white"
-          icon={InformationCircleIcon}
+          icon={InfoCircle}
         />
       }
     />
   );
 }
 
-function buildMountFilePreviewHref({
-  apiBaseUrl,
-  ownerId,
-  conversationId,
-  spaceId,
-  filePath,
-}: {
-  apiBaseUrl: string;
-  ownerId: string;
-  conversationId: string;
-  spaceId: string | null;
-  filePath: string;
-}): string | undefined {
-  // Canonical paths go straight to the global file-path endpoint.
-  if (filePath.startsWith("conversation-") || filePath.startsWith("pod-")) {
-    return `${apiBaseUrl}/api/w/${ownerId}/files/path/${filePath}`;
-  }
-
-  // Normalize legacy "conversation/<rel>" to canonical before routing.
-  if (filePath.startsWith("conversation/")) {
-    const rel = filePath.slice("conversation/".length);
-    return `${apiBaseUrl}/api/w/${ownerId}/files/path/conversation-${conversationId}/${rel}`;
-  }
-
-  // Normalize legacy "pod/<rel>" and "project/<rel>" to canonical before routing.
-  if (filePath.startsWith("pod/") || filePath.startsWith("project/")) {
-    if (!spaceId) {
-      return undefined;
-    }
-    const rel = filePath.startsWith("pod/")
-      ? filePath.slice("pod/".length)
-      : filePath.slice("project/".length);
-    return `${apiBaseUrl}/api/w/${ownerId}/files/path/pod-${spaceId}/${rel}`;
-  }
-
-  return undefined;
+function hasMessageSpawnedSubAgent(
+  agentMessage: AgentMessageWithStreaming
+): boolean {
+  return (
+    agentMessage.actions.some(
+      (action) => action.internalMCPServerName === RUN_AGENT_TOOL_NAME
+    ) ||
+    agentMessage.activitySteps.some(
+      (step) =>
+        step.type === "action" &&
+        step.internalMCPServerName === RUN_AGENT_TOOL_NAME
+    )
+  );
 }
 
 interface AgentMessageProps {
@@ -260,6 +249,31 @@ export function AgentMessage({
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  // Re-fetch (on menu open) only if a cost we want to show is still missing:
+  // - Own cost: null until the agentic loop finishes; absent while streaming/listed.
+  // - Sub-agent cost: only aggregated by the single-message fetch, and only exists
+  //   when a `run_agent` action is present (it triggers both run_agent and handover).
+  // Messages with no sub-agents only fetch if their own cost is still missing.
+  const needsCostFetch =
+    agentMessage.costCredits == null ||
+    (hasMessageSpawnedSubAgent(agentMessage) &&
+      agentMessage.subAgentCostCredits == null);
+  const { message: refreshedMessage } = useConversationMessage({
+    conversationId,
+    workspaceId: owner.sId,
+    messageId: agentMessage.sId,
+    options: {
+      disabled: !isMenuOpen || !needsCostFetch,
+    },
+  });
+  const refreshedAgentMessage =
+    refreshedMessage?.type === "agent_message" ? refreshedMessage : null;
+  const creditCostItem = useCreditCostMenuItem({
+    credits: refreshedAgentMessage?.costCredits ?? agentMessage.costCredits,
+    subAgentCredits:
+      refreshedAgentMessage?.subAgentCostCredits ??
+      agentMessage.subAgentCostCredits,
+  });
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
@@ -434,7 +448,9 @@ export function AgentMessage({
                 const activeWakeUp =
                   updated?.wakeUps.find(isActiveWakeUp) ?? null;
                 const nextWakeupAt = activeWakeUp
-                  ? getNextWakeUpFireAt(activeWakeUp)
+                  ? getNextWakeUpFireAtFromScheduleConfig(
+                      activeWakeUp.scheduleConfig
+                    )
                   : null;
                 void mutateConversations(
                   (currentData: ConversationListItemType[] | undefined) =>
@@ -474,9 +490,7 @@ export function AgentMessage({
   });
 
   const isDeleted = agentMessage.visibility === "deleted";
-  const isCancelled = agentMessage.status === "cancelled";
   const isGracefullyStopped = agentMessage.status === "gracefully_stopped";
-  const isCancelledOrDeleted = isDeleted || isCancelled;
   const cancelMessage = useCancelMessage({ owner, conversationId });
 
   const references = useMemo(
@@ -662,8 +676,8 @@ export function AgentMessage({
         onClick={async () => {
           await cancelMessage([sId]);
         }}
-        icon={StopIcon}
-        className="text-muted-foreground"
+        icon={Stop}
+        className="text-muted-foreground dark:text-muted-foreground-night"
       />
     );
   }
@@ -839,14 +853,14 @@ export function AgentMessage({
     const dropdownItems: DropdownMenuItemProps[] = [
       {
         label: "Copy message link",
-        icon: LinkIcon,
+        icon: Link01,
         onSelect: handleCopyMessageLink,
       },
     ];
 
     dropdownItems.push({
       label: "Branch from here",
-      icon: ActionGitBranchIcon,
+      icon: GitBranch01,
       onSelect: () => {
         void branchConversation(agentMessage.sId);
       },
@@ -856,7 +870,7 @@ export function AgentMessage({
     if (shouldShowRetry) {
       dropdownItems.push({
         label: "Retry",
-        icon: ArrowPathIcon,
+        icon: RefreshCw02,
         onSelect: () => {
           void retryHandler({
             conversationId,
@@ -870,7 +884,7 @@ export function AgentMessage({
     if (canDeleteAgentMessage) {
       dropdownItems.push({
         label: "Delete message",
-        icon: TrashIcon,
+        icon: Trash01,
         onSelect: handleDeleteAgentMessage,
         disabled: isDeleting,
         variant: "warning" as const,
@@ -884,22 +898,30 @@ export function AgentMessage({
           variant="outline"
           size="xs"
           onClick={handleCopyToClipboard}
-          icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-          className="text-muted-foreground"
+          icon={isCopied ? ClipboardCheck : Clipboard}
+          className="text-muted-foreground dark:text-muted-foreground-night"
         />
-        <ButtonGroupDropdown
-          trigger={
+        <DropdownMenu onOpenChange={setIsMenuOpen}>
+          <DropdownMenuTrigger asChild>
             <Button
               variant="outline"
               size="xs"
-              icon={MoreIcon}
-              className="text-muted-foreground"
+              icon={DotsHorizontal}
+              className="text-muted-foreground dark:text-muted-foreground-night"
             />
-          }
-          items={dropdownItems}
-          align="end"
-          onOpenChange={setIsMenuOpen}
-        />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {creditCostItem && (
+              <>
+                <DropdownMenuItem {...creditCostItem} />
+                <DropdownMenuSeparator />
+              </>
+            )}
+            {dropdownItems.map((item, index) => (
+              <DropdownMenuItem key={index} {...item} />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </ButtonGroup>
     );
   }
@@ -1011,7 +1033,7 @@ export function AgentMessage({
     </ConversationMessageContent>
   );
 
-  const footerButtons = !isCancelledOrDeleted &&
+  const footerButtons = !isDeleted &&
     !isGracefullyStopped &&
     (alwaysVisibleButtons.length > 0 || hoverButtons.length > 0) && (
       <div className="flex items-center gap-2">
@@ -1033,7 +1055,7 @@ export function AgentMessage({
           className="flex flex-col gap-5"
           defaultCollapsed={!isLastMessage}
           footer={footerButtons}
-          buttonClassName="text-muted-foreground"
+          buttonClassName="text-muted-foreground dark:text-muted-foreground-night"
         >
           {messageContent}
         </TruncatedContent>
@@ -1247,8 +1269,16 @@ function AgentMessageContent({
     isLastMessage,
   });
 
+  // Auto-open file explorer panel when regular generated files are available.
+  useAutoOpenFilesPanel({ agentMessage, isLastMessage });
+
   const blockedActionElement = blockedAction ? (
     <BlockedAction
+      // Key on the action id so that when the queue advances to the next
+      // blocked action of the same type, React mounts a fresh component
+      // instead of reusing the previous instance's local state (e.g. the
+      // "connected" state of a resolved personal authentication card).
+      key={blockedAction.actionId}
       blockedAction={blockedAction}
       triggeringUser={triggeringUser}
       owner={owner}
@@ -1326,6 +1356,29 @@ function AgentMessageContent({
     .filter((file) => isSupportedImageContentType(file.contentType))
     .filter((file) => file.fileId && !referencedFileIds.has(file.fileId));
 
+  const inProgressImageCount = Array.from(
+    agentMessage.streaming.actionProgress.values()
+  ).filter(({ progress }) => {
+    const output = progress?._meta?.data?.output;
+    return output !== undefined && isImageProgressOutput(output);
+  }).length;
+
+  const allImages = [
+    ...completedImages.map((image) => ({
+      imageUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=view&version=processed`,
+      downloadUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=download`,
+      alt: image.title,
+      title: image.title,
+      isLoading: false,
+    })),
+    ...Array.from({ length: inProgressImageCount }, (_, i) => ({
+      imageUrl: "",
+      alt: `Generating image ${i + 1}`,
+      title: `Generating image ${i + 1}`,
+      isGenerating: true,
+    })),
+  ];
+
   const generatedFiles = filesFromMessage.filter(
     (file) =>
       !isSupportedImageContentType(file.contentType) &&
@@ -1352,17 +1405,7 @@ function AgentMessageContent({
         <AgentMessageInteractiveContentGeneratedFiles
           files={interactiveFiles}
         />
-        {completedImages.length > 0 && (
-          <InteractiveImageGrid
-            images={completedImages.map((image) => ({
-              imageUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=view&version=processed`,
-              downloadUrl: `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${image.fileId}?action=download`,
-              alt: image.title,
-              title: image.title,
-              isLoading: false,
-            }))}
-          />
-        )}
+        {allImages.length > 0 && <InteractiveImageGrid images={allImages} />}
 
         {agentMessage.content !== null &&
           agentMessage.content !== "" &&
@@ -1382,41 +1425,30 @@ function AgentMessageContent({
           )}
         {generatedFiles.length > 0 && (
           <div className="mt-2 grid grid-cols-2 gap-2 @xs:grid-cols-3 @sm:grid-cols-4 @md:grid-cols-5">
-            {getCitations({
-              activeReferences: generatedFiles.map((file) => {
-                const href = file.fileId
-                  ? `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${file.fileId}`
-                  : file.filePath
-                    ? buildMountFilePreviewHref({
-                        apiBaseUrl: config.getApiBaseUrl(),
-                        ownerId: owner.sId,
-                        conversationId,
-                        spaceId,
-                        filePath: file.filePath,
-                      })
-                    : undefined;
-                return {
-                  index: -1,
-                  document: {
-                    fileId: file.fileId ?? undefined,
-                    contentType: file.contentType,
-                    href,
-                    title: file.title,
-                  },
-                };
-              }),
-              owner,
-              conversationId,
-            })}
+            {generatedFiles.map((file) => (
+              <ToolGeneratedFileDetails
+                key={
+                  file.fileId ??
+                  ("filePath" in file ? file.filePath : file.title)
+                }
+                resource={file}
+              />
+            ))}
           </div>
         )}
-        {(agentMessage.status === "cancelled" ||
-          agentMessage.status === "interrupted") && (
+        {/*
+         * Cancelled messages render the standard message footer (feedback + full menu,
+         * including Retry), so we only show the "Generation stopped." note here.
+         */}
+        {agentMessage.status === "cancelled" && (
+          <div className="text-sm text-faint dark:text-faint-night">
+            Generation stopped.
+          </div>
+        )}
+        {agentMessage.status === "interrupted" && (
           <div className="flex flex-col gap-2">
             <div className="text-sm text-faint dark:text-faint-night">
-              {agentMessage.status === "interrupted"
-                ? "Skipped. Running your next message."
-                : "Generation stopped."}
+              Skipped. Running your next message.
             </div>
             <div>
               <ButtonGroupDropdown
@@ -1424,14 +1456,14 @@ function AgentMessageContent({
                   <Button
                     variant="outline"
                     size="xs"
-                    icon={MoreIcon}
-                    className="text-muted-foreground"
+                    icon={DotsHorizontal}
+                    className="text-muted-foreground dark:text-muted-foreground-night"
                   />
                 }
                 items={[
                   {
                     label: "Retry",
-                    icon: ArrowPathIcon,
+                    icon: RefreshCw02,
                     onSelect: () => {
                       void retryHandler({
                         conversationId,
@@ -1472,8 +1504,6 @@ function getCitations({
         key={index}
         attachmentCitation={attachmentCitation}
         compact
-        owner={owner}
-        conversationId={conversationId}
       />
     );
   });

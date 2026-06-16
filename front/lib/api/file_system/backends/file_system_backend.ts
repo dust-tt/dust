@@ -1,6 +1,7 @@
 import type { SandboxMountAdapter } from "@app/lib/api/file_system/sandbox/sandbox_mount_adapter";
 import type {
   DustFileSystemError,
+  FileSystemDirectoryEntry,
   FileSystemEntry,
   FileSystemMount,
 } from "@app/lib/api/file_system/types";
@@ -24,11 +25,12 @@ export interface FileSystemBackend {
    * List entries under `scopedPath` (should end with `/` to list a prefix).
    * Returns an empty array when nothing exists under that path.
    * `.processed.*` siblings are filtered out unless `includeProcessed` is true.
+   * Returns `Err` on storage errors (e.g. network failure).
    */
   list(
     scopedPath: string,
     opts?: { maxFiles?: number; includeProcessed?: boolean }
-  ): Promise<FileSystemEntry[]>;
+  ): Promise<Result<FileSystemEntry[], DustFileSystemError>>;
 
   /**
    * Returns `Ok(null)` when the file does not exist, `Ok(Readable)` on success.
@@ -52,11 +54,30 @@ export interface FileSystemBackend {
     >
   >;
 
+  /**
+   * Returns `Ok(true)` when a file exists at `scopedPath`, `Ok(false)` otherwise.
+   * Unlike `stat`, this never fetches metadata, so it is cheaper for pure existence checks.
+   * Returns `Err` on path or permission errors (including `invalid_path`).
+   */
+  exists(scopedPath: string): Promise<Result<boolean, DustFileSystemError>>;
+
+  /**
+   * When `content` is a `Readable`, the data is streamed to storage without buffering it in
+   * memory; the stream is consumed (or destroyed on error) by the backend.
+   */
   write(
     scopedPath: string,
-    content: Buffer | string,
+    content: Buffer | string | Readable,
     contentType: string
   ): Promise<Result<void, DustFileSystemError>>;
+
+  /**
+   * Create a directory placeholder at `scopedPath`.
+   * Returns `Err("already_exists")` when a directory already exists there.
+   */
+  mkdir(
+    scopedPath: string
+  ): Promise<Result<FileSystemDirectoryEntry, DustFileSystemError>>;
 
   /**
    * Returns `Err("not_found")` when the path does not exist and `ignoreNotFound` is false.

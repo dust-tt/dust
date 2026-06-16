@@ -10,8 +10,9 @@ import {
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import {
-  ChatBubbleLeftRightIcon,
-  CheckCircleIcon,
+  CheckCircle,
+  Folder,
+  MessageChatSquare,
   Spinner,
   Tabs,
   TabsList,
@@ -87,10 +88,26 @@ export const PodMainPage = () => {
             <TabsList border={false}>
               <TabsTrigger
                 value="conversations"
-                label="Conversations"
-                icon={ChatBubbleLeftRightIcon}
+                label={
+                  currentTab === "conversations" ? "Conversations" : undefined
+                }
+                tooltip={
+                  currentTab !== "conversations" ? "Conversations" : undefined
+                }
+                icon={MessageChatSquare}
               />
-              <TabsTrigger value="tasks" label="Tasks" icon={CheckCircleIcon} />
+              <TabsTrigger
+                value="tasks"
+                label={currentTab === "tasks" ? "Tasks" : undefined}
+                tooltip={currentTab !== "tasks" ? "Tasks" : undefined}
+                icon={CheckCircle}
+              />
+              <TabsTrigger
+                value="files"
+                label={currentTab === "files" ? "Files" : undefined}
+                tooltip={currentTab !== "files" ? "Files" : undefined}
+                icon={Folder}
+              />
             </TabsList>
           </div>
         }

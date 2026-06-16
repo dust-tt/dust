@@ -2,26 +2,65 @@ import { BillingInformation } from "@app/components/workspace/billing/BillingInf
 import { BillingOverview } from "@app/components/workspace/billing/BillingOverview";
 import { BillingSeatsOverview } from "@app/components/workspace/billing/BillingSeatsOverview";
 import { BillingUpgrade } from "@app/components/workspace/billing/BillingUpgrade";
+import { FreePlanBilling } from "@app/components/workspace/billing/FreePlanBilling";
+import { NextInvoiceOverview } from "@app/components/workspace/billing/NextInvoiceOverview";
+import { NextInvoicePreview } from "@app/components/workspace/billing/NextInvoicePreview";
 import { RecentInvoices } from "@app/components/workspace/billing/RecentInvoices";
+import { SubscriptionProvider } from "@app/components/workspace/billing/SubscriptionContext";
 import { useAuth } from "@app/lib/auth/AuthContext";
-import { CardIcon, Page } from "@dust-tt/sparkle";
+import { isCreditPricedFreePlan } from "@app/lib/plans/plan_codes";
+import {
+  CreditCard01,
+  Page,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
 
 export function BillingPage() {
   const { workspace: owner, subscription } = useAuth();
-  // const router = useAppRouter();
+  const freePlan = isCreditPricedFreePlan(subscription.plan.code);
 
   return (
     <Page.Vertical gap="xl" align="stretch">
       <Page.Header
         title="Billing"
-        icon={CardIcon}
-        description="Edit your subscription and billing information."
+        icon={CreditCard01}
+        description="Change your subscription and edit your billing information."
       />
-      <BillingOverview owner={owner} subscription={subscription} />
-      <BillingSeatsOverview owner={owner} />
-      <BillingUpgrade owner={owner} subscription={subscription} />
-      <BillingInformation owner={owner} />
-      <RecentInvoices owner={owner} />
+      <SubscriptionProvider owner={owner} subscription={subscription}>
+        {freePlan ? (
+          <FreePlanBilling owner={owner} subscription={subscription} />
+        ) : (
+          <Tabs defaultValue="billing-information">
+            <TabsList>
+              <TabsTrigger
+                value="billing-information"
+                label="Billing information"
+              />
+              <TabsTrigger value="invoices" label="Invoices" />
+            </TabsList>
+            <TabsContent value="billing-information">
+              <div className="flex flex-col mt-8 gap-8">
+                <div className="flex flex-col gap-4">
+                  <BillingOverview />
+                  <BillingSeatsOverview owner={owner} />
+                </div>
+                <BillingUpgrade />
+                <BillingInformation />
+              </div>
+            </TabsContent>
+            <TabsContent value="invoices">
+              <div className="flex flex-col mt-8 gap-8">
+                <NextInvoiceOverview />
+                <NextInvoicePreview />
+                <RecentInvoices />
+              </div>
+            </TabsContent>
+          </Tabs>
+        )}
+      </SubscriptionProvider>
     </Page.Vertical>
   );
 }

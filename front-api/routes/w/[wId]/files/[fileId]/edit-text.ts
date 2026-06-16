@@ -23,6 +23,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/files/:fileId/edit-text.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

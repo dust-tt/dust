@@ -1,5 +1,5 @@
+import type { GetConversationSandboxResponseBody } from "@app/lib/api/assistant/conversation/sandbox";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetConversationSandboxResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/sandbox";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 

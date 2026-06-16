@@ -82,7 +82,9 @@ export function AgentTemplateModal({
           </SheetContainer>
         ) : (
           <div className="flex h-full items-center justify-center">
-            <span className="text-muted-foreground">Template not found</span>
+            <span className="text-muted-foreground dark:text-muted-foreground-night">
+              Template not found
+            </span>
           </div>
         )}
       </SheetContent>

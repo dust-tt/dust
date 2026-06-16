@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@sparkle/components/Dropdown";
 import { IconButton } from "@sparkle/components/IconButton";
-import { MoreIcon } from "@sparkle/icons/app";
+import { DotsHorizontal } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import React from "react";
@@ -215,7 +215,7 @@ const ConversationMessageHeader = React.forwardRef<
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <IconButton
-                    icon={MoreIcon}
+                    icon={DotsHorizontal}
                     size="xs"
                     variant="highlight-secondary"
                     aria-label="Message actions"

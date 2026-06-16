@@ -1,9 +1,9 @@
 import {
-  ChatBubbleLeftRightIcon,
-  CheckCircleIcon,
-  Cog6ToothIcon,
-  DocumentIcon,
-  FolderIcon,
+  MessageChatSquare,
+  CheckCircle,
+  Settings01,
+  File02,
+  Folder,
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
@@ -79,10 +79,10 @@ export function getBasePodTabOptions(_variant: PodVariant): PodTabOption[] {
     {
       value: "conversations",
       label: "Conversations",
-      icon: ChatBubbleLeftRightIcon,
+      icon: MessageChatSquare,
     },
-    { value: "todos", label: "Tasks", icon: CheckCircleIcon },
-    { value: "knowledge", label: "Files", icon: FolderIcon },
+    { value: "todos", label: "Tasks", icon: CheckCircle },
+    { value: "knowledge", label: "Files", icon: Folder },
   ];
 }
 
@@ -104,7 +104,7 @@ export function buildPodTabOptions(
       {
         value: tab.value,
         label: tab.label,
-        icon: DocumentIcon,
+        icon: File02,
         removable: true,
       },
     ])
@@ -119,7 +119,7 @@ export function buildPodTabOptions(
       ...mainOptions,
       {
         value: "settings",
-        icon: Cog6ToothIcon,
+        icon: Settings01,
         tooltip: "Pod settings",
         pinned: "end",
       },

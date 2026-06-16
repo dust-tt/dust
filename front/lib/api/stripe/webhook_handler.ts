@@ -34,7 +34,7 @@ import {
 } from "@app/lib/plans/billing_currency";
 import {
   isDustCompanyPlan,
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
@@ -44,7 +44,8 @@ import {
   isAwuPurchaseInvoice,
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
-  isFirstPeriodInvoice,
+  isMetronomePushedInvoice,
+  isSubscriptionActivationInvoice,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -56,6 +57,7 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { launchCleanMetronomeInvoiceWorkflow } from "@app/temporal/metronome_events_queue/client";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import { launchWorkOSWorkspaceSubscriptionCreatedWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
@@ -183,7 +185,7 @@ interface SubscriptionInvoiceCtx {
 function isAuthOnEnterprisePlan(auth: Authenticator): boolean {
   const subscription = auth.subscription();
   return (
-    subscription !== null && isEntreprisePlanPrefix(subscription.plan.code)
+    subscription !== null && isEnterprisePlanPrefix(subscription.plan.code)
   );
 }
 
@@ -519,7 +521,7 @@ async function notifyAdminsOfPaymentFailure({
     );
   }
   if (
-    isEntreprisePlanPrefix(subscriptionType.plan.code) ||
+    isEnterprisePlanPrefix(subscriptionType.plan.code) ||
     isDustCompanyPlan(subscriptionType.plan.code)
   ) {
     logger.info(
@@ -732,7 +734,7 @@ async function handleStripeCheckoutCompleted({
 }
 
 /**
- * Process a verified Stripe webhook event. The caller (Next or Hono handler)
+ * Process a verified Stripe webhook event. The caller (the Hono webhook route)
  * is responsible for reading the raw body and verifying the signature; once
  * the event is constructed, this function does everything else.
  *
@@ -835,6 +837,49 @@ export async function processStripeWebhookEvent({
       break;
     }
 
+    case "invoice.created": {
+      const invoice = event.data.object as Stripe.Invoice;
+
+      // Only Metronome-pushed draft invoices are eligible for line cleaning.
+      if (!isMetronomePushedInvoice(invoice) || invoice.status !== "draft") {
+        break;
+      }
+
+      const metronomeCustomerId = invoice.metadata?.metronome_customer_id;
+      const workspace = metronomeCustomerId
+        ? await WorkspaceResource.fetchByMetronomeCustomerId(
+            metronomeCustomerId
+          )
+        : null;
+      if (!workspace) {
+        logger.warn(
+          { invoiceId: invoice.id, metronomeCustomerId },
+          "[Stripe Webhook] invoice.created: workspace not found for Metronome invoice, skipping clean"
+        );
+        break;
+      }
+
+      // Defer cleaning so Metronome finishes writing all line items before we
+      // touch the draft; the workflow re-fetches and self-gates (draft +
+      // not-yet-cleaned) and finalizes explicitly.
+      const launchResult = await launchCleanMetronomeInvoiceWorkflow({
+        invoiceId: invoice.id,
+        workspaceId: workspace.sId,
+      });
+      if (launchResult.isErr()) {
+        logger.error(
+          {
+            invoiceId: invoice.id,
+            workspaceId: workspace.sId,
+            error: launchResult.error,
+            stripeError: true,
+          },
+          "[Stripe Webhook] Failed to launch invoice clean workflow"
+        );
+      }
+      break;
+    }
+
     case "invoice.finalized": {
       logger.info(
         { event },
@@ -844,19 +889,13 @@ export async function processStripeWebhookEvent({
       const invoice = event.data.object as Stripe.Invoice;
       const isMetronomeInvoice = typeof invoice.subscription !== "string";
       const isCreditPurchase = isCreditPurchaseInvoice(invoice);
-      const isFirstPeriod = isFirstPeriodInvoice(invoice);
       const isAwuPurchase = isAwuPurchaseInvoice(invoice);
 
       // Only Metronome subscription invoices need the force-charge.
       // Stripe-subscription invoices have their own auto-charge flow;
       // credit-purchase, first-period, and AWU purchase invoices have
       // their own flow too.
-      if (
-        isMetronomeInvoice &&
-        !isCreditPurchase &&
-        !isFirstPeriod &&
-        !isAwuPurchase
-      ) {
+      if (isMetronomeInvoice && !isCreditPurchase && !isAwuPurchase) {
         await forceChargeMetronomeFinalizedInvoice(invoice, stripe);
       }
 
@@ -880,9 +919,9 @@ export async function processStripeWebhookEvent({
         break;
       }
 
-      // First-invoice failures during metronomone checkout are handled
-      // directly in return to failure of pay API — nothing to do.
-      if (isFirstPeriodInvoice(invoice)) {
+      // Subscription activation invoices are directly handled using
+      // Metronome "payment_gate.payment_status" webhook
+      if (isSubscriptionActivationInvoice(invoice)) {
         break;
       }
 

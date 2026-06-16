@@ -68,6 +68,11 @@ const ToolGeneratedFileSchema = z.object({
   hidden: z.boolean().optional(),
 });
 
+export const TOOL_GENERATED_FILE_MIME_TYPE =
+  INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE;
+export const TOOL_GENERATED_FILE_PATH_MIME_TYPE =
+  INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH;
+
 export type ToolGeneratedFileType = z.infer<typeof ToolGeneratedFileSchema>;
 
 export function isToolGeneratedFile(
@@ -560,46 +565,6 @@ export const isToolsetsResultResourceType = (
   );
 };
 
-// Agent creation results.
-
-export const AgentCreationResultResourceSchema = z.object({
-  mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_CREATION_RESULT),
-  text: z.string(), // Required by MCP SDK
-  uri: z.string(),
-  mainAgent: z.object({
-    id: z.string(),
-    name: z.string(),
-    description: z.string(),
-    pictureUrl: z.string(),
-    url: z.string(),
-  }),
-  subAgent: z.optional(
-    z.object({
-      id: z.string(),
-      name: z.string(),
-      description: z.string(),
-      pictureUrl: z.string(),
-      url: z.string(),
-    })
-  ),
-});
-
-export type AgentCreationResultResourceType = z.infer<
-  typeof AgentCreationResultResourceSchema
->;
-
-export const isAgentCreationResultResourceType = (
-  outputBlock: CallToolResult["content"][number]
-): outputBlock is {
-  type: "resource";
-  resource: AgentCreationResultResourceType;
-} => {
-  return (
-    outputBlock.type === "resource" &&
-    AgentCreationResultResourceSchema.safeParse(outputBlock.resource).success
-  );
-};
-
 export const RunAgentResultResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_RESULT),
   conversationId: z.string(),
@@ -685,7 +650,8 @@ export const ExtractResultResourceSchema = z.object({
   text: z.string(),
 
   // File metadata
-  fileId: z.string(),
+  path: z.string().optional(), // scoped DustFileSystem path (new records)
+  fileId: z.string().optional(), // legacy FileResource sId (old records)
   title: z.string(),
   contentType: z.string(),
   snippet: z.string().nullable(),
@@ -943,62 +909,6 @@ export function isRunAgentQueryProgressOutput(
   );
 }
 
-const NotificationRunAgentChainOfThoughtSchema = z.object({
-  type: z.literal("run_agent_chain_of_thought"),
-  childAgentId: z.string(),
-  conversationId: z.string(),
-  chainOfThought: z.string(),
-});
-
-const NotificationRunAgentGenerationTokensSchema = z.object({
-  type: z.literal("run_agent_generation_tokens"),
-  childAgentId: z.string(),
-  conversationId: z.string(),
-  text: z.string(),
-});
-
-type RunAgentChainOfThoughtProgressOutput = z.infer<
-  typeof NotificationRunAgentChainOfThoughtSchema
->;
-
-export function isRunAgentChainOfThoughtProgressOutput(
-  output: ProgressNotificationOutput
-): output is RunAgentChainOfThoughtProgressOutput {
-  return (
-    output !== undefined &&
-    output.type === "run_agent_chain_of_thought" &&
-    "chainOfThought" in output
-  );
-}
-
-type RunAgentGenerationTokensProgressOutput = z.infer<
-  typeof NotificationRunAgentGenerationTokensSchema
->;
-
-export function isRunAgentGenerationTokensProgressOutput(
-  output: ProgressNotificationOutput
-): output is RunAgentGenerationTokensProgressOutput {
-  return (
-    output !== undefined &&
-    output.type === "run_agent_generation_tokens" &&
-    "text" in output &&
-    !("chainOfThought" in output)
-  );
-}
-
-export function isRunAgentProgressOutput(
-  output: ProgressNotificationOutput
-): output is
-  | RunAgentQueryProgressOutput
-  | RunAgentChainOfThoughtProgressOutput
-  | RunAgentGenerationTokensProgressOutput {
-  return (
-    isRunAgentQueryProgressOutput(output) ||
-    isRunAgentChainOfThoughtProgressOutput(output) ||
-    isRunAgentGenerationTokensProgressOutput(output)
-  );
-}
-
 type StoreResourceProgressOutput = z.infer<
   typeof NotificationStoreResourceContentSchema
 >;
@@ -1013,9 +923,7 @@ export const ProgressNotificationOutputSchema = z
   .union([
     NotificationImageContentSchema,
     NotificationInteractiveContentFileContentSchema,
-    NotificationRunAgentChainOfThoughtSchema,
     NotificationRunAgentContentSchema,
-    NotificationRunAgentGenerationTokensSchema,
     NotificationStoreResourceContentSchema,
     NotificationTextContentSchema,
     NotificationToolApproveBubbleUpContentSchema,

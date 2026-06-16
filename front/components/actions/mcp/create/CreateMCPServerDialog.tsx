@@ -41,13 +41,13 @@ import { validateOAuthCredentials } from "@app/types/oauth/lib";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
+  AlertCircle,
   ContentMessage,
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  ExclamationCircleIcon,
   Input,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -541,7 +541,7 @@ export function CreateMCPServerDialog({
               {serverError && (
                 <ContentMessage
                   variant="warning"
-                  icon={ExclamationCircleIcon}
+                  icon={AlertCircle}
                   size="lg"
                   title={
                     serverError.isRemoteServerError

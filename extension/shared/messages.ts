@@ -75,11 +75,20 @@ export type AttachSelectionMessage = {
   type: "EXT_ATTACH_TAB";
 } & CaptureOptions;
 
+export type SaveToPodMessage = {
+  type: "EXT_SAVE_TO_POD";
+};
+
 export type RouteChangeMesssage = {
   type: "EXT_ROUTE_CHANGE";
   pathname: string;
   search: string;
 };
+
+export type ExtensionAppMessage =
+  | AttachSelectionMessage
+  | RouteChangeMesssage
+  | SaveToPodMessage;
 
 export type CaptureFullPageMessage = {
   type: "PAGE_CAPTURE_FULL_PAGE";

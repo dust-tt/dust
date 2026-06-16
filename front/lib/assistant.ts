@@ -1,6 +1,6 @@
 import {
   isDustCompanyPlan,
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
   isUpgraded,
 } from "@app/lib/plans/plan_codes";
 import { isByokProviderId } from "@app/types/assistant/models/providers";
@@ -15,7 +15,7 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 export function isEnterpriseOrDust(plan: PlanType | null): boolean {
   return (
     plan !== null &&
-    (isEntreprisePlanPrefix(plan.code) || isDustCompanyPlan(plan.code))
+    (isEnterprisePlanPrefix(plan.code) || isDustCompanyPlan(plan.code))
   );
 }
 

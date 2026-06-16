@@ -15,6 +15,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/poke/workspaces/:wId/data_sources/:dsId/check-stuck.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

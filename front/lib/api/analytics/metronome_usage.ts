@@ -99,15 +99,25 @@ export function getMetronomeWindowSize(
   }
 }
 
-export function aggregateToFourHourBuckets(
-  hourlyMap: Map<number, number>
+// Re-bucket a timestamp→value map by flooring each timestamp to a `windowMs`
+// boundary. Works for HOUR/FOUR_HOURS/DAY because the unix epoch is itself
+// midnight-aligned and those windows divide the day evenly.
+export function aggregateToWindowBuckets(
+  map: Map<number, number>,
+  windowMs: number
 ): Map<number, number> {
   const aggregated = new Map<number, number>();
-  for (const [ts, value] of hourlyMap) {
-    const bucket = ts - (ts % FOUR_HOURS_MS);
+  for (const [ts, value] of map) {
+    const bucket = ts - (ts % windowMs);
     aggregated.set(bucket, (aggregated.get(bucket) ?? 0) + value);
   }
   return aggregated;
+}
+
+export function aggregateToFourHourBuckets(
+  hourlyMap: Map<number, number>
+): Map<number, number> {
+  return aggregateToWindowBuckets(hourlyMap, FOUR_HOURS_MS);
 }
 
 interface ParsedBalance {

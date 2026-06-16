@@ -23,6 +23,7 @@ export type PostOnboardingFollowupResponseBody = {
 // Mounted at /api/w/:wId/assistant/conversations/:cId/onboarding-followup.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("param", ParamsSchema),

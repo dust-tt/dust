@@ -6,6 +6,7 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
+import { cleanupDeniedBlockedActions } from "@app/lib/api/assistant/conversation/blocked_actions";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import {
   getConversationRankVersionLock,
@@ -34,6 +35,7 @@ import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_MINUTE,
   MESSAGE_RATE_LIMIT_WINDOW_SECONDS,
   makeAgentMentionsRateLimitKeyForWorkspace,
+  makeFairUseAwuCreditsRateLimitKeyForUser,
   makeKeyCapRateLimitKey,
   makeMessageRateLimitKeyForWorkspace,
   makeMessageRateLimitKeyForWorkspaceActor,
@@ -48,6 +50,7 @@ import {
 import type { ConversationEvents } from "@app/lib/api/assistant/streaming/types";
 import {
   buildAuditLogTarget,
+  deriveAgentTriggerType,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
@@ -85,6 +88,7 @@ import {
 import { notifyNewProjectConversation } from "@app/lib/notifications/triggers/project-new-conversation";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -100,6 +104,7 @@ import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
+  getRateLimiterCount,
   getTimeframeSecondsFromLiteral,
   rateLimiter,
 } from "@app/lib/utils/rate_limiter";
@@ -140,6 +145,7 @@ import {
   isCompactionMessageType,
   isPodConversation,
   isUserMessageType,
+  UNRESUMABLE_AGENT_MESSAGE_STATUSES,
 } from "@app/types/assistant/conversation";
 import type { MentionType } from "@app/types/assistant/mentions";
 import {
@@ -151,6 +157,7 @@ import type {
   ContentFragmentContextType,
   ContentFragmentType,
 } from "@app/types/content_fragment";
+import { isContentFragmentType } from "@app/types/content_fragment";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -834,62 +841,75 @@ export async function postUserMessage(
         logger.info(
           "Message has user mentions, for now we do not support branching with user mentions."
         );
-      } else if (conversation.content.length === 0) {
-        // Create an invisible anchor message so the branch has a previousMessageId
-        // to reference.
-        const anchorMessage = await createUserMessage(auth, {
-          conversation,
-          content: "",
-          metadata: {
-            type: "create",
-            user: user.toJSON(),
-            rank: 0,
-            context: {
-              ...context,
-              origin: "branch_anchor",
-            },
-          },
-          transaction: t,
-        });
-
-        const branch = await ConversationBranchResource.makeNew(
-          auth,
-          {
-            conversationId: conversation.id,
-            previousMessageId: anchorMessage.id,
-            state: "open",
-            userId: user.id,
-          },
-          t
-        );
-
-        conversation.branchId = branch.sId;
-        nextMessageRank = 1;
       } else {
-        // Get the last message in the conversation.
-        const previousMessage =
-          conversation.content[conversation.content.length - 1].at(-1);
-        if (!previousMessage) {
-          logger.error(
-            "Last message in conversation has no content, cannot create branch."
-          );
-        } else {
-          // Create a new branch for the conversation.
+        const latestMessages = removeNulls(
+          conversation.content.map((versions) => versions.at(-1))
+        );
+        const shouldCreateAnchorMessage =
+          latestMessages.length === 0 ||
+          latestMessages.every(isContentFragmentType);
+
+        if (shouldCreateAnchorMessage) {
+          // Create an invisible anchor message so the branch has a previousMessageId
+          // to reference. If the conversation only contains content fragments, keep
+          // them before the anchor so they remain attached to the branch context.
+          const anchorMessageRank =
+            latestMessages.length > 0
+              ? Math.max(...latestMessages.map((m) => m.rank)) + 1
+              : 0;
+          const anchorMessage = await createUserMessage(auth, {
+            conversation,
+            content: "",
+            metadata: {
+              type: "create",
+              user: user.toJSON(),
+              rank: anchorMessageRank,
+              context: {
+                ...context,
+                origin: "branch_anchor",
+              },
+            },
+            transaction: t,
+          });
+
           const branch = await ConversationBranchResource.makeNew(
             auth,
             {
               conversationId: conversation.id,
-              previousMessageId: previousMessage.id,
+              previousMessageId: anchorMessage.id,
               state: "open",
               userId: user.id,
             },
             t
           );
 
-          // Update the conversation with the new branch id so the rest of the functions will operate on the branch.
           conversation.branchId = branch.sId;
-          // Set the next message rank to the rank of the previous message plus one.
-          nextMessageRank = previousMessage.rank + 1;
+          nextMessageRank = anchorMessageRank + 1;
+        } else {
+          // Get the last message in the conversation.
+          const previousMessage = latestMessages.at(-1);
+          if (!previousMessage) {
+            logger.error(
+              "Last message in conversation has no content, cannot create branch."
+            );
+          } else {
+            // Create a new branch for the conversation.
+            const branch = await ConversationBranchResource.makeNew(
+              auth,
+              {
+                conversationId: conversation.id,
+                previousMessageId: previousMessage.id,
+                state: "open",
+                userId: user.id,
+              },
+              t
+            );
+
+            // Update the conversation with the new branch id so the rest of the functions will operate on the branch.
+            conversation.branchId = branch.sId;
+            // Set the next message rank to the rank of the previous message plus one.
+            nextMessageRank = previousMessage.rank + 1;
+          }
         }
       }
     }
@@ -910,10 +930,13 @@ export async function postUserMessage(
       transaction: t,
     });
 
-    // Enrich context with auth data for analytics tracking.
+    // Enrich context with auth data for analytics tracking. When an attribution
+    // key is set (internal system-key calls like run_agent forward the original
+    // caller's key name), attribute usage to it instead of the request's own key;
+    // this drives api_key_name in usage analytics without affecting authorization.
     const enrichedContext: UserMessageContext = {
       ...context,
-      apiKeyId: auth.key()?.id ?? null,
+      apiKeyId: auth.attributionKeyModelId() ?? auth.key()?.id ?? null,
       authMethod: auth.authMethod(),
     };
 
@@ -1044,6 +1067,15 @@ export async function postUserMessage(
     agentMessages,
   });
 
+  // Run-correlation and lineage fields shared by every agent invoked by this
+  // user message. `agentMessage.sId` is the durable run id (1:1 with an agent
+  // execution); sub-agent runs (run_agent / handover) carry the parent agent
+  // message id via `agenticMessageData` (the function parameter).
+  const triggerType = deriveAgentTriggerType(
+    agenticMessageData,
+    conversation.triggerId
+  );
+
   // Emit agent.executed for each agent being invoked.
   for (const agentMessage of agentMessages) {
     void emitAuditLogEvent({
@@ -1056,9 +1088,15 @@ export async function postUserMessage(
       metadata: {
         conversation_id: conversation.sId,
         agent_name: agentMessage.configuration.name,
+        agent_message_id: agentMessage.sId,
         origin: context.origin,
+        trigger_type: triggerType,
+        depth: String(conversation.depth),
         ...(conversation.triggerId
           ? { trigger_id: conversation.triggerId }
+          : {}),
+        ...(agenticMessageData
+          ? { parent_agent_message_id: agenticMessageData.originMessageId }
           : {}),
         initiating_user_id: auth.user()?.sId ?? "unknown",
         initiating_user_email: auth.user()?.email ?? "unknown",
@@ -1184,6 +1222,14 @@ export async function editUserMessage(
   );
   if (canInteractRes.isErr()) {
     return canInteractRes;
+  }
+
+  const editLimitResult = await checkMessagesLimit(auth, {
+    mentions,
+    context: message.context,
+  });
+  if (editLimitResult.isErr()) {
+    return editLimitResult;
   }
 
   let userMessage: UserMessageType | null = null;
@@ -2428,12 +2474,23 @@ async function checkMessagesLimit(
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.subscription()?.plan;
   const user = auth.user();
+
   if (owner.metronomeCustomerId && plan && isCreditPricedPlan(plan)) {
     const blockedReason = user
-      ? await isUserBlocked(owner.sId, user.sId)
+      ? await isUserBlocked(owner, user)
       : (await isApiBlocked(owner.sId))
         ? ("credits_exhausted" as const)
         : null;
+    if (blockedReason === "no_seat") {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "no_seat",
+          message:
+            "You don't have a seat in this workspace. Contact your admin to be assigned one.",
+        },
+      });
+    }
     if (blockedReason === "user_cap_reached") {
       return new Err({
         status_code: 403,
@@ -2852,7 +2909,42 @@ async function isMessagesLimitReached(
   }
 
   // Checking plan limit
-  const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
+  const {
+    maxAwuCredits,
+    maxAwuCreditsTimeframe,
+    maxMessages,
+    maxMessagesTimeframe,
+  } = plan.limits.assistant;
+
+  const user = auth.user();
+  if (user && maxAwuCredits !== -1) {
+    const result = await getRateLimiterCount({
+      key: makeFairUseAwuCreditsRateLimitKeyForUser(
+        owner,
+        user.toJSON(),
+        maxAwuCreditsTimeframe
+      ),
+      timeframeSeconds: getTimeframeSecondsFromLiteral(maxAwuCreditsTimeframe),
+    });
+
+    if (result.isOk() && result.value >= maxAwuCredits) {
+      return {
+        isLimitReached: true,
+        limitType: "plan_message_limit_exceeded",
+      };
+    }
+
+    if (result.isErr()) {
+      logger.error(
+        {
+          workspaceId: owner.sId,
+          userId: user.sId,
+          error: result.error,
+        },
+        "Failed to read fair-use AWU credits rate limit."
+      );
+    }
+  }
 
   if (plan.limits.assistant.maxMessages === -1) {
     return {
@@ -2976,6 +3068,7 @@ export async function updateAgentMessageWithFinalStatus(
     promotedUserMessages,
     promotedAuth,
     agentMessage: newAgentMessage,
+    deniedActions,
   } = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
@@ -3000,6 +3093,13 @@ export async function updateAgentMessageWithFinalStatus(
       }
     );
 
+    const deniedActions = UNRESUMABLE_AGENT_MESSAGE_STATUSES.includes(status)
+      ? await AgentMCPActionResource.denyBlockedActionsForAgentMessage(auth, {
+          agentMessageId: agentMessage.agentMessageId,
+          transaction: t,
+        })
+      : [];
+
     // Promote *all* pending messages when the agent loop ends. If a pending message exists it
     // will be promoted and will trigger the ending agentMessage. The `enableSteering` invariants
     // of postUserMessage ensure that we have only one running agentic loop so we can just
@@ -3020,6 +3120,7 @@ export async function updateAgentMessageWithFinalStatus(
         promotedUserMessages: [] as UserMessageTypeWithoutMentions[],
         promotedAuth: auth,
         agentMessage: null as AgentMessageType | null,
+        deniedActions,
       };
     }
 
@@ -3075,6 +3176,7 @@ export async function updateAgentMessageWithFinalStatus(
         promotedUserMessages,
         promotedAuth,
         agentMessage: null,
+        deniedActions,
       };
     }
 
@@ -3086,6 +3188,7 @@ export async function updateAgentMessageWithFinalStatus(
         promotedUserMessages,
         promotedAuth,
         agentMessage: null,
+        deniedActions,
       };
     }
 
@@ -3112,6 +3215,7 @@ export async function updateAgentMessageWithFinalStatus(
       promotedUserMessages,
       promotedAuth,
       agentMessage: agentMessages[0] ?? null,
+      deniedActions,
     };
   });
 
@@ -3156,6 +3260,20 @@ export async function updateAgentMessageWithFinalStatus(
       agentMessages: [newAgentMessage],
       conversation,
       userMessage: promotedUserMessages[promotedUserMessages.length - 1],
+    });
+  }
+
+  // The agent message will never resume: tools still waiting on user input (e.g. a manual
+  // approval that the user skipped by interrupting the message) will never run. They were
+  // denied with the terminal status update; clean up side effects so the conversation doesn't
+  // stay flagged as requiring an action in the inbox. Runs last so a cleanup failure cannot
+  // strand the promoted messages above (the cleanup itself is
+  // idempotent, so an activity retry converges).
+  if (UNRESUMABLE_AGENT_MESSAGE_STATUSES.includes(status)) {
+    await cleanupDeniedBlockedActions(auth, {
+      conversation,
+      agentMessage,
+      deniedActions,
     });
   }
 

@@ -19,17 +19,17 @@ import type { FileSystemFileEntry } from "@app/lib/api/file_system/types";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
-  ArrowDownOnSquareIcon,
   Button,
-  CloudArrowLeftRightIcon,
+  CloudArrowLeftRight,
+  DotsHorizontal,
+  Download01,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  FolderIcon,
-  FolderOpenIcon,
+  Folder,
+  FolderOpen,
   Icon,
-  MoreIcon,
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -118,7 +118,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
         <Button
           variant="ghost"
           size="xs"
-          icon={MoreIcon}
+          icon={DotsHorizontal}
           onClick={(e: React.MouseEvent) => e.stopPropagation()}
         />
       </DropdownMenuTrigger>
@@ -126,7 +126,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
         {onDownload && (
           <DropdownMenuItem
             label={isDownloading ? "Downloading…" : "Download"}
-            icon={ArrowDownOnSquareIcon}
+            icon={Download01}
             disabled={isDownloading}
             onClick={handleDownload}
           />
@@ -295,7 +295,7 @@ export function FileExplorerFolderCard({
       {({ surfaceClassName }) => (
         <FileExplorerItem
           kind="icon"
-          visual={FolderIcon}
+          visual={Folder}
           viewMode={viewMode}
           title={node.name}
           titleClassName="font-semibold"
@@ -431,7 +431,7 @@ export function ContentNodeCard({
 }: ContentNodeCardProps) {
   const ProviderIcon = getConnectorProviderLogoWithFallback({
     provider: entry.connectorProvider,
-    fallback: CloudArrowLeftRightIcon,
+    fallback: CloudArrowLeftRight,
   });
 
   return (
@@ -451,7 +451,7 @@ export function FileExplorerEmptyState() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3">
       <Icon
-        visual={FolderOpenIcon}
+        visual={FolderOpen}
         size="lg"
         className="text-muted-foreground dark:text-muted-foreground-night"
       />

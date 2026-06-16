@@ -53,6 +53,7 @@ export async function streamMcpRequests(
 const app = publicApiApp();
 
 app.use("*", streamingTag);
+/** @ignoreswagger */
 app.get("/", validate("query", PostMCPRequestsRequestQuerySchema), (ctx) =>
   streamMcpRequests(ctx, ctx.var.auth, ctx.req.valid("query"))
 );

@@ -10,13 +10,12 @@ import {
 import { DEFAULT_REMOTE_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
-import apiConfig from "@app/lib/api/config";
+import { getMCPConnectionAccessToken } from "@app/lib/actions/mcp_oauth_access_token";
 import type {
   MCPServerType,
   MCPServerTypeWithViews,
   MCPServerViewType,
 } from "@app/lib/api/mcp";
-import { getOAuthConnectionAccessToken } from "@app/lib/api/oauth_access_token";
 import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
@@ -24,7 +23,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import { getOverridablePersonalAuthInputs } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
@@ -102,9 +100,7 @@ export async function createRemoteMCPServer(
   // If a connectionId is provided, we use it to fetch the access token that must
   // have been created by the admin.
   if (connectionId) {
-    const token = await getOAuthConnectionAccessToken({
-      config: apiConfig.getOAuthAPIConfig(),
-      logger,
+    const token = await getMCPConnectionAccessToken(auth, {
       connectionId,
     });
     if (token.isErr()) {

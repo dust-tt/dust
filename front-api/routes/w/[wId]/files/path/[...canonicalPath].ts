@@ -1,11 +1,11 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { DustFileSystemError } from "@app/lib/api/file_system/types";
 import {
+  deleteCanonicalFile,
   moveCanonicalFile,
   renameCanonicalFile,
   streamThumbnail,
 } from "@app/lib/api/files/file_system_ops";
-import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
@@ -31,8 +31,6 @@ const ParamsSchema = z.object({
  *   PATCH  /api/w/:wId/files/path/{...canonicalPath}  { action:"rename", fileName }
  *   PATCH  /api/w/:wId/files/path/{...canonicalPath}  { action:"move",   dest }
  *   DELETE /api/w/:wId/files/path/{...canonicalPath}
- *
- * Mirrors pages/api/w/[wId]/files/path/[...canonicalPath].ts
  */
 const app = workspaceApp();
 
@@ -81,6 +79,7 @@ async function resolveFs(
   return { fs: fsResult.value, err: null };
 }
 
+/** @ignoreswagger */
 app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
   const auth = ctx.get("auth");
   const { canonicalPath } = ctx.req.valid("param");
@@ -163,21 +162,11 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
   }
 
   const nodeStream = readResult.value;
-  const webStream = new ReadableStream({
-    start(controller) {
-      nodeStream.on("data", (chunk) => controller.enqueue(chunk));
-      nodeStream.on("end", () => controller.close());
-      nodeStream.on("error", (err) => {
-        logger.error({ err, canonicalPath }, "Error streaming canonical file");
-        controller.error(err);
-      });
-    },
-    cancel() {
-      nodeStream.destroy();
-    },
-  });
 
-  return new Response(webStream, { status: 200, headers });
+  return new Response(readableToReadableStream(nodeStream), {
+    status: 200,
+    headers,
+  });
 });
 
 app.on(
@@ -291,13 +280,14 @@ app.delete(
   "/:canonicalPath{.+}",
   validate("param", ParamsSchema),
   async (ctx) => {
+    const auth = ctx.get("auth");
     const { canonicalPath } = ctx.req.valid("param");
     const { fs: dustFs, err } = await resolveFs(ctx, canonicalPath);
     if (err) {
       return err;
     }
 
-    const deleteResult = await dustFs.delete(canonicalPath);
+    const deleteResult = await deleteCanonicalFile(auth, dustFs, canonicalPath);
     if (deleteResult.isErr()) {
       return apiError(ctx, mapDustFsError(deleteResult.error));
     }

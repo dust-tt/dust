@@ -1,17 +1,17 @@
 import {
-  ArchiveIcon,
-  AttachmentIcon,
+  Archive,
+  Attachment01,
   Avatar,
-  BellIcon,
-  BoltOffIcon,
+  Bell01,
+  ZapOff,
   Breadcrumbs,
   Button,
   Card,
-  ChatBubbleBottomCenterTextIcon,
-  ChatBubbleLeftRightIcon,
-  CheckDoubleIcon,
-  Cog6ToothIcon,
-  ContactsUserIcon,
+  MessageCircle01,
+  MessageChatSquare,
+  CheckDouble,
+  Settings01,
+  UserSquare,
   Dialog,
   DialogContent,
   DropdownMenu,
@@ -26,31 +26,31 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  EyeIcon,
-  HeartIcon,
-  LightbulbIcon,
-  LinkIcon,
-  LogoutIcon,
-  MoreIcon,
+  Eye,
+  Heart,
+  Lightbulb04,
+  Link01,
+  LogOut01,
+  DotsHorizontal,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListCompactLabel,
   NavigationListItem,
   NavigationListItemAction,
-  PencilSquareIcon,
-  PlanetIcon,
-  PlusIcon,
-  PuzzleIcon,
+  Edit04,
+  Planet,
+  Plus,
+  PuzzlePiece01,
   ScrollArea,
   ScrollBar,
   SearchInput,
   SlackLogo,
-  SpaceClosedIcon,
-  SpaceOpenIcon,
-  TrashIcon,
-  UserGroupIcon,
-  UserIcon,
-  XMarkIcon,
+  SpaceClosed,
+  SpaceOpen,
+  Trash01,
+  Users01,
+  User01,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -557,16 +557,16 @@ function Pods() {
         contextMenuItems: [
           {
             label: "Start a conversation with document",
-            icon: ChatBubbleBottomCenterTextIcon,
+            icon: MessageCircle01,
           },
           {
             label: "Show in files",
-            icon: EyeIcon,
+            icon: Eye,
             onClick: () => handleShowFileInFiles(option.value),
           },
           {
             label: "Remove from topbar",
-            icon: XMarkIcon,
+            icon: XClose,
             variant: "warning",
             onClick: () => handlePodRemoveTab(option.value),
           },
@@ -628,7 +628,7 @@ function Pods() {
         <DropdownMenuContent>
           <DropdownMenuItem
             label="Rename"
-            icon={PencilSquareIcon}
+            icon={Edit04}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
@@ -636,7 +636,7 @@ function Pods() {
           />
           <DropdownMenuSub>
             <DropdownMenuSubTrigger
-              icon={ContactsUserIcon}
+              icon={UserSquare}
               label="Participant list"
             />
             <DropdownMenuPortal>
@@ -684,7 +684,7 @@ function Pods() {
           </DropdownMenuSub>
           <DropdownMenuItem
             label="Delete"
-            icon={TrashIcon}
+            icon={Trash01}
             variant="warning"
             onClick={(e) => {
               e.preventDefault();
@@ -849,10 +849,10 @@ function Pods() {
       <Button
         size="sm"
         variant="ghost-secondary"
-        icon={AttachmentIcon}
+        icon={Attachment01}
         isSelect
       />
-      <Button size="sm" variant="ghost-secondary" icon={MoreIcon} />
+      <Button size="sm" variant="ghost-secondary" icon={DotsHorizontal} />
     </>
   );
 
@@ -973,9 +973,9 @@ function Pods() {
       value={activeTab}
       onValueChange={setActiveTab}
       options={[
-        { value: "chat", label: "Chat", icon: ChatBubbleLeftRightIcon },
-        { value: "spaces", label: "Spaces", icon: PlanetIcon },
-        { value: "admin", icon: Cog6ToothIcon },
+        { value: "chat", label: "Chat", icon: MessageChatSquare },
+        { value: "spaces", label: "Spaces", icon: Planet },
+        { value: "admin", icon: Settings01 },
       ]}
     />
   );
@@ -1000,7 +1000,7 @@ function Pods() {
                 variant="primary"
                 tooltip="New Conversation"
                 size="sm"
-                icon={ChatBubbleBottomCenterTextIcon}
+                icon={MessageCircle01}
                 label="New"
               />
               <DropdownMenu
@@ -1011,7 +1011,7 @@ function Pods() {
                   <Button
                     variant="ghost-secondary"
                     size="sm"
-                    icon={MoreIcon}
+                    icon={DotsHorizontal}
                     aria-label="More options"
                     onClick={(e) => {
                       e.preventDefault();
@@ -1023,12 +1023,12 @@ function Pods() {
                   <DropdownMenuLabel label="Agents" />
                   <DropdownMenuSub>
                     <DropdownMenuSubTrigger
-                      icon={PlusIcon}
+                      icon={Plus}
                       label="Build an agent"
                     />
                     <DropdownMenuSubContent>
                       <DropdownMenuItem
-                        icon={PencilSquareIcon}
+                        icon={Edit04}
                         label="From scratch"
                         onClick={(e) => {
                           e.preventDefault();
@@ -1036,7 +1036,7 @@ function Pods() {
                         }}
                       />
                       <DropdownMenuItem
-                        icon={LightbulbIcon}
+                        icon={Lightbulb04}
                         label="Browse templates"
                         onClick={(e) => {
                           e.preventDefault();
@@ -1050,7 +1050,7 @@ function Pods() {
                   </DropdownMenuSub>
                   <DropdownMenuItem
                     label="Manage agents"
-                    icon={ContactsUserIcon}
+                    icon={UserSquare}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -1060,7 +1060,7 @@ function Pods() {
                   <DropdownMenuLabel label="Skills" />
                   <DropdownMenuItem
                     label="New skill"
-                    icon={PlusIcon}
+                    icon={Plus}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -1068,7 +1068,7 @@ function Pods() {
                   />
                   <DropdownMenuItem
                     label="Manage skills"
-                    icon={PuzzleIcon}
+                    icon={PuzzlePiece01}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -1078,7 +1078,7 @@ function Pods() {
                   <DropdownMenuLabel label="Conversations" />
                   <DropdownMenuItem
                     label="Clear conversation history"
-                    icon={TrashIcon}
+                    icon={Trash01}
                     variant="warning"
                     onClick={(e) => {
                       e.preventDefault();
@@ -1099,7 +1099,7 @@ function Pods() {
                   <>
                     <Button
                       size="xmini"
-                      icon={CheckDoubleIcon}
+                      icon={CheckDouble}
                       variant="ghost-secondary"
                       tooltip="Mark all as read"
                       onClick={(e) => {
@@ -1111,7 +1111,7 @@ function Pods() {
                       <DropdownMenuTrigger asChild>
                         <Button
                           size="xmini"
-                          icon={MoreIcon}
+                          icon={DotsHorizontal}
                           variant="ghost-secondary"
                           onClick={(e) => {
                             e.preventDefault();
@@ -1126,7 +1126,7 @@ function Pods() {
                               ? "Show triggered"
                               : "Hide triggered"
                           }
-                          icon={BoltOffIcon}
+                          icon={ZapOff}
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -1173,7 +1173,7 @@ function Pods() {
                     <>
                       <Button
                         size="xmini"
-                        icon={PlusIcon}
+                        icon={Plus}
                         variant="ghost-secondary"
                         onClick={(e) => {
                           e.preventDefault();
@@ -1185,7 +1185,7 @@ function Pods() {
                         <DropdownMenuTrigger asChild>
                           <Button
                             size="xmini"
-                            icon={MoreIcon}
+                            icon={DotsHorizontal}
                             variant="ghost-secondary"
                             onClick={(e) => {
                               e.preventDefault();
@@ -1195,7 +1195,7 @@ function Pods() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
                           <DropdownMenuItem
-                            icon={PlusIcon}
+                            icon={Plus}
                             label="Create"
                             onClick={(e) => {
                               e.preventDefault();
@@ -1219,7 +1219,7 @@ function Pods() {
                       <NavigationListItem
                         key={space.id}
                         label={space.name}
-                        icon={isRestricted ? SpaceOpenIcon : SpaceClosedIcon}
+                        icon={isRestricted ? SpaceOpen : SpaceClosed}
                         selected={
                           p2View.kind === "space" && p2View.spaceId === space.id
                         }
@@ -1234,7 +1234,7 @@ function Pods() {
                               <DropdownMenuLabel label="My settings" />
                               <DropdownMenuItem
                                 label="Leave"
-                                icon={XMarkIcon}
+                                icon={XClose}
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
@@ -1243,7 +1243,7 @@ function Pods() {
                               <DropdownMenuSub>
                                 <DropdownMenuSubTrigger
                                   label="Notifications"
-                                  icon={BellIcon}
+                                  icon={Bell01}
                                 />
                                 <DropdownMenuSubContent>
                                   <DropdownMenuRadioGroup
@@ -1280,7 +1280,7 @@ function Pods() {
                               <DropdownMenuLabel label="Pod" />
                               <DropdownMenuItem
                                 label="Rename"
-                                icon={PencilSquareIcon}
+                                icon={Edit04}
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
@@ -1289,12 +1289,12 @@ function Pods() {
                               <DropdownMenuSub>
                                 <DropdownMenuSubTrigger
                                   label="Member list"
-                                  icon={ContactsUserIcon}
+                                  icon={UserSquare}
                                 />
                                 <DropdownMenuSubContent>
                                   <DropdownMenuItem
                                     label="Manage members"
-                                    icon={UserGroupIcon}
+                                    icon={Users01}
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
@@ -1323,7 +1323,7 @@ function Pods() {
                               </DropdownMenuSub>
                               <DropdownMenuItem
                                 label="Archive"
-                                icon={ArchiveIcon}
+                                icon={Archive}
                                 variant="warning"
                                 onClick={(e) => {
                                   e.preventDefault();
@@ -1334,7 +1334,7 @@ function Pods() {
                               <DropdownMenuLabel label="Share" />
                               <DropdownMenuItem
                                 label="Copy link"
-                                icon={LinkIcon}
+                                icon={Link01}
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
@@ -1363,7 +1363,7 @@ function Pods() {
                     <>
                       <Button
                         size="xmini"
-                        icon={ChatBubbleLeftRightIcon}
+                        icon={MessageChatSquare}
                         variant="ghost-secondary"
                         tooltip="New Conversation"
                         onClick={(e) => {
@@ -1375,7 +1375,7 @@ function Pods() {
                         <DropdownMenuTrigger asChild>
                           <Button
                             size="xmini"
-                            icon={MoreIcon}
+                            icon={DotsHorizontal}
                             variant="ghost-secondary"
                             onClick={(e) => {
                               e.preventDefault();
@@ -1386,7 +1386,7 @@ function Pods() {
                         <DropdownMenuContent>
                           <DropdownMenuItem
                             label="Hide triggered"
-                            icon={BoltOffIcon}
+                            icon={ZapOff}
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -1395,7 +1395,7 @@ function Pods() {
                           <DropdownMenuItem
                             label="Clear history"
                             variant="warning"
-                            icon={TrashIcon}
+                            icon={Trash01}
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -1550,7 +1550,7 @@ function Pods() {
           <DropdownMenuContent>
             <DropdownMenuItem
               label="Profile"
-              icon={UserIcon}
+              icon={User01}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1561,19 +1561,19 @@ function Pods() {
             />
             <DropdownMenuItem
               label="Administration"
-              icon={Cog6ToothIcon}
+              icon={Settings01}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
               }}
             />
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger icon={HeartIcon} label="Help & Support" />
+              <DropdownMenuSubTrigger icon={Heart} label="Help & Support" />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
                   <DropdownMenuItem
                     label="Quickstart Guide"
-                    icon={LightbulbIcon}
+                    icon={Lightbulb04}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -1593,7 +1593,7 @@ function Pods() {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               label="Signout"
-              icon={LogoutIcon}
+              icon={LogOut01}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();

@@ -5,6 +5,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { describe, expect, it } from "vitest";
 
 import { filterInputBarSlashSuggestions } from "./InputBarSlashSuggestionDropdown";
+import { INPUT_BAR_SLASH_COMMANDS } from "./InputBarSlashSuggestionTypes";
 
 describe("filterInputBarSlashSuggestions", () => {
   it("filters capabilities by name only", async () => {
@@ -25,6 +26,7 @@ describe("filterInputBarSlashSuggestions", () => {
     );
 
     const result = filterInputBarSlashSuggestions({
+      commands: [],
       query: "spreadsheet",
       selectedMCPServerViewIds: new Set(),
       serverViews: [calendarServerView.toJSON()],
@@ -46,6 +48,7 @@ describe("filterInputBarSlashSuggestions", () => {
     });
 
     const result = filterInputBarSlashSuggestions({
+      commands: [],
       query: "gd",
       selectedMCPServerViewIds: new Set(),
       serverViews: [],
@@ -60,5 +63,52 @@ describe("filterInputBarSlashSuggestions", () => {
         capability.kind === "skill" ? capability.skill.name : ""
       )
     ).toEqual(["Google Drive", "Generate Daily Report"]);
+  });
+
+  it("lists commands ahead of capabilities", async () => {
+    const { auth } = await createPrivateApiMockRequest();
+    const skill = await SkillFactory.create(auth, {
+      name: "Aardvark Facts",
+      userFacingDescription: "",
+    });
+
+    const result = filterInputBarSlashSuggestions({
+      commands: INPUT_BAR_SLASH_COMMANDS,
+      query: "",
+      selectedMCPServerViewIds: new Set(),
+      serverViews: [],
+      skills: [skill.toJSON(auth)],
+    });
+
+    expect(result.map((capability) => capability.kind)).toEqual([
+      "command",
+      "skill",
+    ]);
+  });
+
+  it("filters commands by the query", async () => {
+    const result = filterInputBarSlashSuggestions({
+      commands: INPUT_BAR_SLASH_COMMANDS,
+      query: "comp",
+      selectedMCPServerViewIds: new Set(),
+      serverViews: [],
+      skills: [],
+    });
+
+    expect(
+      result.map((capability) =>
+        capability.kind === "command" ? capability.command.id : ""
+      )
+    ).toEqual(["compact"]);
+
+    expect(
+      filterInputBarSlashSuggestions({
+        commands: INPUT_BAR_SLASH_COMMANDS,
+        query: "zzz",
+        selectedMCPServerViewIds: new Set(),
+        serverViews: [],
+        skills: [],
+      })
+    ).toEqual([]);
   });
 });

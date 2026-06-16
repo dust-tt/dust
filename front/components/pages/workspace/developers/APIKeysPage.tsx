@@ -14,13 +14,7 @@ import type { KeyType } from "@app/types/key";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
-import {
-  BookOpenIcon,
-  Button,
-  Page,
-  ShapesIcon,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { BookOpen01, Button, Lock01, Page, Spinner } from "@dust-tt/sparkle";
 import get from "lodash/get";
 import { useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -160,7 +154,7 @@ export function APIKeys({ owner }: APIKeysProps) {
           label="Read the API reference"
           size="sm"
           variant="outline"
-          icon={BookOpenIcon}
+          icon={BookOpen01}
           onClick={() => {
             window.open("https://docs.dust.tt/reference", "_blank");
           }}
@@ -203,7 +197,7 @@ export function APIKeysPage() {
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="API Keys"
-          icon={ShapesIcon}
+          icon={Lock01}
           description="API Keys allow you to securely connect to Dust from other applications and work with your data programmatically."
         />
         <Page.Vertical align="stretch" gap="md">

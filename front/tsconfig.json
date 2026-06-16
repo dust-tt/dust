@@ -16,25 +16,18 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
     "paths": {
       "@app/*": ["./*"]
     }
   },
   "include": [
     "global.d.ts",
-    "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
     "**/*.jsx",
     "**/*.js",
     "**/*.mjs",
-    "./.eslintrc.js",
-    ".next/types/**/*.ts"
+    "./.eslintrc.js"
   ],
-  "exclude": ["node_modules", ".next", "dist", "app"]
+  "exclude": ["node_modules", "dist", "app"]
 }

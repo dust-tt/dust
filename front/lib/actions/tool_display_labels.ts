@@ -590,6 +590,13 @@ function getDynamicToolDisplayLabels({
           done: `Create “${t}”`,
         };
       }
+      if (toolName === "create_folder" && isString(inputs.name)) {
+        const t = truncateQuery(inputs.name);
+        return {
+          running: `Creating folder “${t}”`,
+          done: `Create folder “${t}”`,
+        };
+      }
       if (toolName === "get_worksheet" && isString(inputs.range)) {
         const range = truncateQuery(inputs.range);
         return {
@@ -985,11 +992,11 @@ function getDynamicToolDisplayLabels({
     // All other servers: no dynamic labels.
     case "agent_sidekick_agent_state":
     case "agent_sidekick_context":
-    case "agent_management":
     case "agent_memory":
     case "agent_router":
     case "ashby":
     case "databricks":
+    case "exa_people_and_company":
     case "fathom":
     case "freshservice":
     case "gong":
@@ -1006,6 +1013,7 @@ function getDynamicToolDisplayLabels({
     case "jit_testing":
     case "run_dust_app":
     case "salesloft":
+    case "skill_authoring":
     case "slab":
     case "snowflake":
     case "sound_studio":

@@ -1,10 +1,18 @@
-import type { SlashCommandSkillSuggestion } from "@app/components/editor/extensions/shared/SlashCommandSkillItems";
-import type { SlashCommandToolSuggestion } from "@app/components/editor/extensions/shared/SlashCommandToolItems";
+import type {
+  SlashCommandSkillSuggestion,
+  SlashCommandToolSuggestion,
+} from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { describe, expect, it } from "vitest";
+import { Editor } from "@tiptap/react";
+import { StarterKit } from "@tiptap/starter-kit";
+import { afterEach, describe, expect, it } from "vitest";
 
 import type { SlashCommand } from "./SlashCommandDropdown";
-import { buildSkillBuilderSlashCommandItems } from "./SlashCommandExtension";
+import {
+  buildSkillBuilderSlashCommandItems,
+  SlashCommandExtension,
+  slashCommandPluginKey,
+} from "./SlashCommandExtension";
 
 const attachKnowledgeItem: SlashCommand = {
   action: "insert-knowledge-node",
@@ -14,12 +22,14 @@ const attachKnowledgeItem: SlashCommand = {
 };
 
 const skillSuggestion = ({
+  editedBy = 1,
   icon = null,
   requestedSpaceIds = [],
   userFacingDescription = "",
   ...skill
 }: Pick<SlashCommandSkillSuggestion, "name" | "sId"> &
   Partial<SlashCommandSkillSuggestion>): SlashCommandSkillSuggestion => ({
+  editedBy,
   icon,
   requestedSpaceIds,
   userFacingDescription,
@@ -106,11 +116,8 @@ describe("buildSkillBuilderSlashCommandItems", () => {
       ],
     });
 
-    expect(result.map((item) => item.id)).toEqual([
-      "add-knowledge",
-      "skill_create_memo",
-    ]);
-    expect(result[1]).toMatchObject({
+    expect(result.map((item) => item.id)).toEqual(["skill_create_memo"]);
+    expect(result[0]).toMatchObject({
       action: "select-skill",
       data: {
         skill: {
@@ -183,5 +190,59 @@ describe("buildSkillBuilderSlashCommandItems", () => {
       id: "mcp_server_view_search",
       sectionLabel: "Capabilities",
     });
+  });
+});
+
+describe("SlashCommandExtension", () => {
+  let editor: Editor | null = null;
+
+  afterEach(() => {
+    editor?.destroy();
+    editor = null;
+  });
+
+  function createEditor() {
+    editor = new Editor({
+      extensions: [
+        StarterKit,
+        SlashCommandExtension.configure({
+          includeSkillSuggestions: false,
+        }),
+      ],
+    });
+
+    return editor;
+  }
+
+  it("opens capabilities after marked text", () => {
+    const editor = createEditor();
+    editor.commands.setContent("<p><em>Italic text</em></p>");
+    editor.commands.focus("end");
+
+    editor.commands.openCapabilitiesSlashCommand();
+
+    expect(editor.getText()).toBe("Italic text /");
+    expect(slashCommandPluginKey.getState(editor.state)?.active).toBe(true);
+  });
+
+  it("opens capabilities after regular text", () => {
+    const editor = createEditor();
+    editor.commands.setContent("<p>regular text</p>");
+    editor.commands.focus("end");
+
+    editor.commands.openCapabilitiesSlashCommand();
+
+    expect(editor.getText()).toBe("regular text /");
+    expect(slashCommandPluginKey.getState(editor.state)?.active).toBe(true);
+  });
+
+  it("keeps typed slash closed after regular text", () => {
+    const editor = createEditor();
+    editor.commands.setContent("<p>regular text</p>");
+    editor.commands.focus("end");
+
+    editor.commands.insertContent("/");
+
+    expect(slashCommandPluginKey.getState(editor.state)?.active).toBe(false);
   });
 });

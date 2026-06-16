@@ -6,8 +6,7 @@ import {
   getWhitelistedProviders,
 } from "@app/lib/api/assistant/models";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
-import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
@@ -80,9 +79,7 @@ export async function ensureConversationTitleFromAgentLoop(
     throw runAgentDataRes.error;
   }
 
-  const { conversation, userMessage } = runAgentDataRes.value;
-
-  const auth = await Authenticator.fromJSON(authType);
+  const { conversation, userMessage, auth } = runAgentDataRes.value;
 
   return ensureConversationTitle(auth, { conversation, userMessage });
 }

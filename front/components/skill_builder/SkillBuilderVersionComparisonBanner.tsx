@@ -5,7 +5,7 @@ import type {
   SkillType,
   SkillWithVersionType,
 } from "@app/types/assistant/skill_configuration";
-import { Button, XMarkIcon } from "@dust-tt/sparkle";
+import { Button, XClose } from "@dust-tt/sparkle";
 
 interface SkillVersionHistoryPickerProps {
   skill: SkillType;
@@ -35,7 +35,7 @@ export function SkillVersionHistoryPicker({
       />
       {compareVersion && (
         <Button
-          icon={XMarkIcon}
+          icon={XClose}
           variant="outline"
           size="sm"
           onClick={exitDiffMode}

@@ -10,6 +10,7 @@ const ParamsSchema = z.object({
 
 const app = createHono();
 
+/** @ignoreswagger */
 app.post("/", validate("param", ParamsSchema), async (ctx) => {
   const { preStopSecret } = ctx.req.valid("param");
   const { PRESTOP_SECRET } = process.env;

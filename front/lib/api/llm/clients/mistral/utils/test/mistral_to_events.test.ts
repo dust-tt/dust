@@ -143,6 +143,7 @@ const modelOutputFinishToolCallEvents: CompletionEvent[] = [
 const metadata = {
   clientId: "mistral",
   inferenceProvider: "mistral",
+  inferenceRegion: "global",
   modelId: "mistral-large-latest",
 } as const;
 

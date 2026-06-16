@@ -10,7 +10,7 @@ import {
   BarHeader,
   Button,
   ScrollArea,
-  XMarkIcon,
+  XClose,
 } from "@dust-tt/sparkle";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React from "react";
@@ -45,7 +45,7 @@ export function AgentBuilderLeftPanel({
         title={title}
         rightActions={
           <Button
-            icon={XMarkIcon}
+            icon={XClose}
             onClick={handleCancel}
             variant="ghost"
             type="button"

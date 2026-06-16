@@ -15,33 +15,14 @@ describe("skill instructions preprocessing", () => {
     editor = null;
   });
 
-  it("escapes skill tags by default", () => {
-    expect(
-      preprocessMarkdownForEditor(
-        'Use <skill id="skill_123" name="Create memo" /> here.'
-      )
-    ).toContain("<\u200Bskill");
-  });
-
-  it("escapes tool tags by default", () => {
-    expect(
-      preprocessMarkdownForEditor(
-        '<tool id="mcp_server_view_123" name="GitHub Search" />'
-      )
-    ).toContain("<\u200Btool");
-  });
-
-  it("preserves skill tags when skill references are enabled", () => {
+  it("preserves skill tags", () => {
     editor = new Editor({
-      extensions: buildSkillInstructionsExtensions(false, [], {
-        enableSkillReferences: true,
-      }),
+      extensions: buildSkillInstructionsExtensions(false),
     });
 
     editor.commands.setContent(
       preprocessMarkdownForEditor(
-        'Use <skill id="skill_123" name="Create memo" /> here.',
-        { enableSkillReferences: true }
+        'Use <skill id="skill_123" name="Create memo" /> here.'
       ),
       {
         contentType: "markdown",
@@ -65,34 +46,24 @@ describe("skill instructions preprocessing", () => {
     });
 
     editor = new Editor({
-      extensions: buildSkillInstructionsExtensions(false, [], {
-        enableSkillReferences: true,
-      }),
+      extensions: buildSkillInstructionsExtensions(false),
     });
 
-    editor.commands.setContent(
-      preprocessMarkdownForEditor(`Use ${toolTag}.`, {
-        enableSkillReferences: true,
-      }),
-      {
-        contentType: "markdown",
-      }
-    );
+    editor.commands.setContent(preprocessMarkdownForEditor(`Use ${toolTag}.`), {
+      contentType: "markdown",
+    });
 
     expect(postProcessMarkdown(editor.getMarkdown())).toContain(toolTag);
   });
 
-  it("preserves unavailable skill tags when skill references are enabled", () => {
+  it("preserves unavailable skill tags", () => {
     editor = new Editor({
-      extensions: buildSkillInstructionsExtensions(false, [], {
-        enableSkillReferences: true,
-      }),
+      extensions: buildSkillInstructionsExtensions(false),
     });
 
     editor.commands.setContent(
       preprocessMarkdownForEditor(
-        'Use <unavailable_skill id="skill_123" /> here.',
-        { enableSkillReferences: true }
+        'Use <unavailable_skill id="skill_123" /> here.'
       ),
       {
         contentType: "markdown",

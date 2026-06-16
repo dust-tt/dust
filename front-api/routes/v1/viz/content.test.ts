@@ -4,6 +4,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { frameContentType } from "@app/types/files";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { LightWorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -25,6 +26,28 @@ describe("/api/v1/viz/content endpoint tests", () => {
 
   function request(headers: Record<string, string> = {}) {
     return honoApp.request("/api/v1/viz/content", { headers });
+  }
+
+  function mockFetchByShareToken(
+    frameFile: FileResource,
+    opts: {
+      content?: string;
+      shareScope?: "public" | "workspace";
+    } = {}
+  ) {
+    const {
+      content = "<html><h1>Interactive Frame</h1></html>",
+      shareScope = "public",
+    } = opts;
+
+    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
+      file: frameFile,
+      content,
+      shareScope,
+      shareableFileId: 1 as unknown as ModelId,
+      workspace,
+      authorizedFileAccess: null,
+    });
   }
 
   it("should return frame content with valid JWT access token", async () => {
@@ -50,12 +73,7 @@ describe("/api/v1/viz/content endpoint tests", () => {
       shareScope: "public",
     });
 
-    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-      file: frameFile,
-      content: "<html><h1>Interactive Frame</h1></html>",
-      shareScope: "public",
-      conversationSpaceId: null,
-    });
+    mockFetchByShareToken(frameFile);
 
     const response = await request({
       authorization: `Bearer ${accessToken}`,
@@ -236,11 +254,9 @@ describe("/api/v1/viz/content endpoint tests", () => {
       shareScope: "workspace",
     });
 
-    vi.spyOn(FileResource, "fetchByShareTokenWithContent").mockResolvedValue({
-      file: frameFile,
+    mockFetchByShareToken(frameFile, {
       content: "<html><h1>Workspace Frame</h1></html>",
       shareScope: "workspace",
-      conversationSpaceId: null,
     });
 
     const response = await request({

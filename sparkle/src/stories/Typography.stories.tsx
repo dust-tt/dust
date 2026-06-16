@@ -206,11 +206,16 @@ const Typography: React.FC<TypographyProps> = ({ variant }) => {
 };
 
 const meta: Meta<typeof Typography> = {
-  title: "Theme/Typography",
+  title: "Foundations/Typography",
   component: Typography,
   tags: ["autodocs"],
   parameters: {
     layout: "padded",
+    docs: {
+      description: {
+        component: `The Sparkle type scale, rendered in Geist. Covers font sizes (\`s-text-xs\` to \`s-text-9xl\`) with weights, heading styles (\`s-heading-*\` and monospace \`s-heading-mono-*\`), and copy/body styles (\`s-copy-*\`, including italic and mono). Use the **variant** control to switch between the font-size, heading, heading-mono, and copy specimens, and reach for these utilities instead of ad-hoc font sizing.`,
+      },
+    },
   },
   args: {
     variant: "font-size",

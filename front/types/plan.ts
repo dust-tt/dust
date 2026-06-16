@@ -10,6 +10,21 @@ export function isMaxMessagesTimeframeType(
   return (MAX_MESSAGE_TIMEFRAMES as unknown as string[]).includes(value);
 }
 
+export const MAX_AWU_CREDITS_TIMEFRAMES = [
+  "day",
+  "week",
+  "month",
+  "lifetime",
+] as const;
+export type MaxAwuCreditsTimeframeType =
+  (typeof MAX_AWU_CREDITS_TIMEFRAMES)[number];
+
+export function isMaxAwuCreditsTimeframeType(
+  value: string
+): value is MaxAwuCreditsTimeframeType {
+  return (MAX_AWU_CREDITS_TIMEFRAMES as unknown as string[]).includes(value);
+}
+
 /**
  *  Expresses limits for usage of the product
  * Any positive number enforces the limit, -1 means no limit.
@@ -29,6 +44,8 @@ export type LimitsType = {
     isSlackBotAllowed: boolean;
     maxMessages: number;
     maxMessagesTimeframe: MaxMessagesTimeframeType;
+    maxAwuCredits: number;
+    maxAwuCreditsTimeframe: MaxAwuCreditsTimeframeType;
     isDeepDiveAllowed: boolean;
   };
   connections: ManageDataSourcesLimitsType;
@@ -72,6 +89,7 @@ export type PlanType = {
   trialPeriodDays: number;
   isByok: boolean;
   isAuditLogsAllowed: boolean;
+  isBrandedFramesAllowed: boolean;
 };
 
 export type SubscriptionType = {
@@ -171,10 +189,5 @@ export const FreePlanUpgradeFormSchema = z.object({
 export type FreePlanUpgradeFormType = z.infer<typeof FreePlanUpgradeFormSchema>;
 
 export type CheckoutUrlResult =
-  | { mode: "hosted"; checkoutUrl: string; plan: PlanType }
-  | {
-      mode: "embedded";
-      clientSecret: string;
-      sessionId: string;
-      plan: PlanType;
-    };
+  | { mode: "hosted"; checkoutUrl: string }
+  | { mode: "embedded"; clientSecret: string; sessionId: string };

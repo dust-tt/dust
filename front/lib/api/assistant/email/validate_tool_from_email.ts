@@ -228,9 +228,22 @@ export async function validateActionFromEmail(
     );
   }
 
-  const [updatedCount] = await action.updateStatus(
-    getMCPApprovalStateFromUserApprovalState(approvalState)
-  );
+  // A blocked action is only actionable while its agent message can still resume: resolving one
+  // from a stale email link after interruption, cancellation or failure would relaunch an agent
+  // loop that was already terminated.
+  if (!(await action.canAgentMessageResume(auth))) {
+    return new Err(
+      new DustError(
+        "action_not_blocked",
+        "Action belongs to an agent message that can no longer resume"
+      )
+    );
+  }
+
+  const [updatedCount] = await action.updateStatusFromExpected(auth, {
+    status: getMCPApprovalStateFromUserApprovalState(approvalState),
+    expectedStatus: "blocked_validation_required",
+  });
 
   if (updatedCount === 0) {
     logger.info(

@@ -96,7 +96,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base image tag", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.35",
+      tag: "0.8.37",
     });
   });
 
@@ -113,16 +113,16 @@ describe("sandbox image registry", () => {
           "useradd --create-home --uid 1003 --gid agent --shell /bin/bash agent-proxied"
         ),
         expect.stringContaining(
-          "chgrp agent /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation"
+          "chgrp agent /home/agent /home/agent/.local /home/agent/.local/bin /files"
         ),
         expect.stringContaining(
-          "chmod g+ws /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation"
+          "chmod g+ws /home/agent /home/agent/.local /home/agent/.local/bin /files"
         ),
         expect.stringContaining(
-          "setfacl -R -d -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation"
+          "setfacl -R -d -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files"
         ),
         expect.stringContaining(
-          "setfacl -R -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files/conversation"
+          "setfacl -R -m g::rwx /home/agent /home/agent/.local /home/agent/.local/bin /files"
         ),
         expect.stringContaining(
           "useradd --system --no-create-home --gid dust-egress-resolver --shell /usr/sbin/nologin dust-egress-resolver"
@@ -341,7 +341,7 @@ describe("sandbox image registry", () => {
     expect(runCommands).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.25/dsbx-linux-x86_64"
+          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.26/dsbx-linux-x86_64"
         ),
         expect.stringContaining(
           "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx"

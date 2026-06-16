@@ -116,6 +116,25 @@ describe("WorkspaceResource", () => {
     workspace = await WorkspaceFactory.basic();
   });
 
+  describe("unsafeListWorkspaceIdBatchAfterModelId", () => {
+    it("lists workspaces in ascending model id order after the checkpoint", async () => {
+      const firstWorkspace = await WorkspaceFactory.basic();
+      const secondWorkspace = await WorkspaceFactory.basic();
+
+      await expect(
+        WorkspaceResource.unsafeListWorkspaceIdBatchAfterModelId({
+          lastWorkspaceModelId: firstWorkspace.id,
+          limit: 1,
+        })
+      ).resolves.toEqual([
+        {
+          workspaceId: secondWorkspace.sId,
+          workspaceModelId: secondWorkspace.id,
+        },
+      ]);
+    });
+  });
+
   describe("caching behavior", () => {
     beforeEach(() => {
       inMemoryCache.clear();

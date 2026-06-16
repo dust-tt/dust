@@ -1,3 +1,0 @@
-// @migration-status: MIGRATED_TO_HONO
-/** @ignoreswagger */
-export { default } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/events";

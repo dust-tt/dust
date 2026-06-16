@@ -1,10 +1,10 @@
 import {
-  ArrowLeftIcon,
+  ArrowLeft,
   Button,
-  MenuIcon,
-  SidebarLeftCloseIcon,
-  SidebarLeftOpenIcon,
-  XMarkIcon,
+  Menu01,
+  LayoutLeft,
+  LayoutRight,
+  XClose,
 } from "@dust-tt/sparkle";
 import { customColors } from "@dust-tt/sparkle/lib/colors";
 import {
@@ -352,13 +352,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
     <Button
       variant="ghost"
       size="sm"
-      icon={
-        isMobile
-          ? MenuIcon
-          : showNavOverlay
-            ? SidebarLeftCloseIcon
-            : SidebarLeftOpenIcon
-      }
+      icon={isMobile ? Menu01 : showNavOverlay ? LayoutLeft : LayoutRight}
       onClick={isMobile ? () => setNavIntent(true) : toggleNav}
       tooltip={showNavOverlay ? "Hide navigation" : "Show navigation"}
     />
@@ -401,7 +395,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      icon={SidebarLeftCloseIcon}
+                      icon={LayoutLeft}
                       onClick={() => setNavIntent(false)}
                       tooltip="Hide navigation"
                     />
@@ -460,7 +454,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    icon={ArrowLeftIcon}
+                    icon={ArrowLeft}
                     onClick={p3.props.onClose}
                     tooltip="Back"
                   />
@@ -478,7 +472,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      icon={XMarkIcon}
+                      icon={XClose}
                       onClick={p3.props.onClose}
                       tooltip="Close"
                     />
@@ -510,7 +504,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    icon={ArrowLeftIcon}
+                    icon={ArrowLeft}
                     onClick={p4.props.onClose}
                     tooltip="Back"
                   />
@@ -525,7 +519,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      icon={XMarkIcon}
+                      icon={XClose}
                       onClick={p4.props.onClose}
                       tooltip="Close"
                     />
@@ -577,7 +571,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    icon={XMarkIcon}
+                    icon={XClose}
                     onClick={() => {
                       setNavOverlay(false);
                       setNavPeek(false);

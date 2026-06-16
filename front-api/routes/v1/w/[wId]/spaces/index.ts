@@ -15,6 +15,45 @@ const app = publicApiApp();
 
 app.route("/:spaceId", spaceId);
 
+/**
+ * @swagger
+ * /api/v1/w/{wId}/spaces:
+ *   get:
+ *     summary: List available spaces.
+ *     description: Retrieves a list of accessible spaces for the authenticated workspace.
+ *     tags:
+ *       - Spaces
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: Unique string identifier for the workspace
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Spaces of the workspace
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 spaces:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Space'
+ *       400:
+ *         description: Bad Request. Missing or invalid parameters.
+ *       401:
+ *         description: Unauthorized. Invalid or missing authentication token.
+ *       404:
+ *         description: Workspace not found.
+ *       500:
+ *         description: Internal Server Error.
+ */
+
 app.get("/", async (ctx): HandlerResult<GetPublicSpacesResponseBody> => {
   const auth = ctx.get("auth");
 

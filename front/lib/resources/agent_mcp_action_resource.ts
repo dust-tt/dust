@@ -63,8 +63,10 @@ import type {
   AgentMCPActionType,
   AgentMCPActionWithOutputType,
 } from "@app/types/actions";
+import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentFunctionCallContentType } from "@app/types/assistant/agent_message_content";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { UNRESUMABLE_AGENT_MESSAGE_STATUSES } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -83,6 +85,15 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 import { AgentStepContentModel } from "../models/agent/agent_step_content";
+
+export type GetMCPActionsResult = {
+  actions: (AgentMCPActionType & {
+    conversationId: string;
+    messageId: string;
+  })[];
+  nextCursor: string | null;
+  totalCount: number;
+};
 
 // Batch size for fetching output items to avoid loading too many large rows at once.
 const OUTPUT_ITEMS_BATCH_SIZE = 32;
@@ -302,7 +313,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
     // Scope by agentMessageId to fully use the (workspaceId, agentMessageId, status) index,
     // avoiding a broad scan + join through messages to filter by conversationId.
-    const blockedActions = await AgentMCPActionModel.findAll({
+    const blockedActionRows = await AgentMCPActionModel.findAll({
       include: [
         {
           model: AgentMessageModel,
@@ -312,6 +323,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
             "id",
             "agentConfigurationId",
             "agentConfigurationVersion",
+            "status",
           ],
           include: [
             {
@@ -332,6 +344,15 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       },
       order: [["createdAt", "ASC"]],
     });
+
+    // A blocked action is only actionable while its agent message can still resume: exclude
+    // actions left behind by messages that were interrupted, cancelled or failed before their
+    // blocked tools got resolved. Filtered application-side: agent_messages has no index on
+    // status, and the rows are already narrowed to the conversation's latest agent messages.
+    const blockedActions = blockedActionRows.filter(
+      (a) =>
+        !UNRESUMABLE_AGENT_MESSAGE_STATUSES.includes(a.agentMessage!.status)
+    );
 
     const parentUserMessageIds = removeNulls(
       blockedActions.map((a) => a.agentMessage!.message!.parentId)
@@ -708,16 +729,23 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   static async listBlockedActionsForAgentMessage(
     auth: Authenticator,
-    { agentMessageId }: { agentMessageId: ModelId }
+    {
+      agentMessageId,
+      transaction,
+    }: { agentMessageId: ModelId; transaction?: Transaction }
   ): Promise<AgentMCPActionResource[]> {
-    const actions = await this.baseFetch(auth, {
-      where: {
-        agentMessageId,
-        status: {
-          [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES,
+    const actions = await this.baseFetch(
+      auth,
+      {
+        where: {
+          agentMessageId,
+          status: {
+            [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES,
+          },
         },
       },
-    });
+      transaction
+    );
 
     if (actions.length === 0) {
       return [];
@@ -735,6 +763,71 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   }
 
   /**
+   * Denies all still-blocked actions of an agent message. Must run inside the same
+   * transaction as the message's terminal status update so that "message terminal" and
+   * "blocked actions denied" commit atomically. Guarded on blocked statuses so a concurrent
+   * approval that already transitioned the action is not clobbered. Returns the actions
+   * actually denied, with their pre-deny resources.
+   */
+  static async denyBlockedActionsForAgentMessage(
+    auth: Authenticator,
+    {
+      agentMessageId,
+      transaction,
+    }: { agentMessageId: ModelId; transaction: Transaction }
+  ): Promise<AgentMCPActionResource[]> {
+    const blockedActions = await this.listBlockedActionsForAgentMessage(auth, {
+      agentMessageId,
+      transaction,
+    });
+
+    if (blockedActions.length === 0) {
+      return [];
+    }
+
+    const [, affectedRows] = await AgentMCPActionModel.update(
+      { status: "denied" },
+      {
+        where: {
+          // Scoping by agentMessageId lets the (workspaceId, agentMessageId, status) index
+          // drive the update; the id list keeps it restricted to the rows fetched above.
+          agentMessageId,
+          id: { [Op.in]: blockedActions.map((a) => a.id) },
+          workspaceId: auth.getNonNullableWorkspace().id,
+          status: { [Op.in]: TOOL_EXECUTION_BLOCKED_STATUSES },
+        },
+        returning: true,
+        transaction,
+      }
+    );
+
+    const deniedActionIds = new Set(affectedRows.map((a) => a.id));
+
+    return blockedActions.filter((a) => deniedActionIds.has(a.id));
+  }
+
+  /**
+   * Whether the agent message owning this action can still resume, i.e. has not reached a
+   * terminal status (interrupted, cancelled, failed). Resolving a blocked action (approving,
+   * denying, answering, retrying) is only allowed while the message can resume: otherwise it
+   * would relaunch an agent loop that was already terminated.
+   */
+  async canAgentMessageResume(auth: Authenticator): Promise<boolean> {
+    const agentMessage = await AgentMessageModel.findOne({
+      attributes: ["status"],
+      where: {
+        id: this.agentMessageId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+
+    return (
+      agentMessage !== null &&
+      !UNRESUMABLE_AGENT_MESSAGE_STATUSES.includes(agentMessage.status)
+    );
+  }
+
+  /**
    * Creates output items in DB and writes their content to GCS.
    * Content is also written to DB to ease rollback during the migration period.
    */
@@ -746,14 +839,26 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     }>
   ): Promise<AgentMCPActionOutputItemModel[]> {
     const outputItems = await AgentMCPActionOutputItemModel.bulkCreate(
-      contents.map((c) => ({
-        agentMCPActionId: this.id,
-        // Write content to DB (kept during migration period to ease rollback).
-        content: c.content,
-        citations: getCitationsFromToolOutput([c.content]),
-        fileId: c.fileId,
-        workspaceId: this.workspaceId,
-      }))
+      contents.map((c) => {
+        const { generatedFilePath, generatedFileContentType } =
+          isToolGeneratedFilePath(c.content)
+            ? {
+                generatedFilePath: c.content.resource.path,
+                generatedFileContentType: c.content.resource.contentType,
+              }
+            : { generatedFilePath: null, generatedFileContentType: null };
+
+        return {
+          agentMCPActionId: this.id,
+          // Write content to DB (kept during migration period to ease rollback).
+          content: c.content,
+          citations: getCitationsFromToolOutput([c.content]),
+          fileId: c.fileId,
+          workspaceId: this.workspaceId,
+          generatedFilePath,
+          generatedFileContentType,
+        };
+      })
     );
 
     const gcsResult = await batchWriteContentsToGcs(
@@ -1101,6 +1206,19 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
                   };
                 }
 
+                // Fallback for light rendering (ignoreContent: true excludes the content column).
+                if (o.generatedFilePath && o.generatedFileContentType) {
+                  const filePath = o.generatedFilePath;
+                  return {
+                    fileId: null,
+                    filePath,
+                    title: filePath.split("/").pop() ?? filePath,
+                    contentType: o.generatedFileContentType,
+                    snippet: null,
+                    hidden: false,
+                  };
+                }
+
                 return null;
               })
             ),
@@ -1176,6 +1294,64 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return this.update({
       status,
     });
+  }
+
+  /**
+   * Updates only if the action still has the expected status. Combined with the invariant that
+   * blocked actions are denied in the same transaction as their message's terminal status update
+   * (see updateAgentMessageWithFinalStatus), a blocked-status transition implies resumability.
+   */
+  async updateStatusFromExpected(
+    auth: Authenticator,
+    {
+      status,
+      expectedStatus,
+    }: {
+      status: ToolExecutionStatus;
+      expectedStatus: ToolExecutionStatus;
+    }
+  ): Promise<[affectedCount: number]> {
+    return AgentMCPActionModel.update(
+      { status },
+      {
+        where: {
+          id: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          status: expectedStatus,
+        },
+      }
+    );
+  }
+
+  /**
+   * Resolves the (light) agent configuration that owns this action, via the
+   * action's agent message. Returns null if the agent message can't be found.
+   * Keeps the agent-message model lookup inside the resource layer.
+   */
+  async getLightAgentConfiguration(
+    auth: Authenticator
+  ): Promise<LightAgentConfigurationType | null> {
+    const agentMessage = await AgentMessageModel.findOne({
+      attributes: ["agentConfigurationId", "agentConfigurationVersion"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        id: this.agentMessageId,
+      },
+    });
+    if (!agentMessage) {
+      return null;
+    }
+    const [agentConfiguration] = await getAgentConfigurationsWithVersion(
+      auth,
+      [
+        {
+          agentId: agentMessage.agentConfigurationId,
+          agentVersion: agentMessage.agentConfigurationVersion,
+        },
+      ],
+      { variant: "light" }
+    );
+    return agentConfiguration ?? null;
   }
 
   async markAsErrored({

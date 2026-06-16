@@ -1,0 +1,153 @@
+import type { PlanType } from "@marketing/types/plan";
+import type { WorkspaceType } from "@marketing/types/user";
+
+// Current free plans:
+export const FREE_NO_PLAN_CODE = "FREE_NO_PLAN";
+export const FREE_UPGRADED_PLAN_CODE = "FREE_UPGRADED_PLAN";
+export const FREE_TEST_PLAN_CODE = "FREE_TEST_PLAN"; // Old free plan that's no longer used
+export const FREE_TRIAL_PHONE_PLAN_CODE = "FREE_TRIAL_PHONE_PLAN";
+
+// Current pro plans:
+export const PRO_PLAN_SEAT_29_CODE = "PRO_PLAN_SEAT_29";
+export const PRO_PLAN_LARGE_FILES_CODE = "PRO_PLAN_LARGE_FILES";
+export const PRO_PLAN_SEAT_39_CODE = "PRO_PLAN_SEAT_39";
+
+// Credit-priced plans:
+export const CREDIT_PRICED_BUSINESS_PLAN_CODE = "CP_BUSINESS_PLAN";
+export const CREDIT_PRICED_FREE_PLAN_CODE = "CP_FREE_PLAN";
+export const CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE = "CP_ENT_DEFAULT_PLAN";
+export const CREDIT_PRICED_DUST_COMPANY_PLAN_CODE = "CP_DUST_COMPANY";
+
+// BYOK plan:
+export const FREE_BYOK_TRANSITIONING_PLAN_CODE = "FREE_BYOK_TRANSITIONING";
+export const FREE_BYOK_PLAN_CODE = "FREE_BYOK";
+
+/**
+ * ENT_PLAN_FAKE is not subscribable and is only used to display the Enterprise plan in the UI (hence it's not stored on the db).
+ */
+export const ENT_PLAN_FAKE_CODE = "ENT_PLAN_FAKE_CODE";
+
+// Dust's own workspace plan.
+export const DUST_COMPANY_PLAN_CODE = "DUST_COMPANY";
+
+/** Plan codes excluded from reinforcement-related batch operations. */
+export const REINFORCEMENT_EXCLUDED_PLAN_CODES = new Set([
+  FREE_TRIAL_PHONE_PLAN_CODE,
+]);
+
+// Credit priced plan billed/tracked through Metronome and not legacy.
+export const isCreditPricedPlanPrefix = (planCode: string) =>
+  planCode.startsWith("CP_");
+
+// If the plan code starts with ENT_, it's an enterprise plan
+export const isEnterprisePlanPrefix = (planCode: string) =>
+  planCode.startsWith("ENT_") || planCode.startsWith("CP_ENT_");
+
+export const isDustCompanyPlan = (planCode: string) =>
+  planCode === DUST_COMPANY_PLAN_CODE ||
+  planCode === CREDIT_PRICED_DUST_COMPANY_PLAN_CODE;
+
+// If the plan code starts with PRO_, it's a pro plan
+export const isProPlanPrefix = (planCode: string) =>
+  planCode.startsWith("PRO_");
+
+// If the plan code is FREE_FRIENDSAMILY, it's a free friends and family plan
+export const isFriendsAndFamilyPlan = (planCode: string) =>
+  planCode === "FREE_FRIENDSAMILY";
+
+export const isCreditPricedBusinessPlan = (planCode: string) =>
+  planCode === CREDIT_PRICED_BUSINESS_PLAN_CODE;
+
+export const isBusinessPlanPrefix = (planCode: string) =>
+  planCode.startsWith("CP_BUSINESS_");
+
+// Everything else is free
+export const isFreePlan = (planCode: string) =>
+  !isEnterprisePlanPrefix(planCode) &&
+  !isProPlanPrefix(planCode) &&
+  !isCreditPricedBusinessPlan(planCode);
+
+export const isFreeTrialPhonePlan = (planCode: string) =>
+  planCode === FREE_TRIAL_PHONE_PLAN_CODE;
+
+// Early plan when anyone could create a dust account
+export const isOldFreePlan = (planCode: string) =>
+  planCode === FREE_TEST_PLAN_CODE;
+
+// Sort priority for plan-code buckets. Lower number sorts first.
+// Used by the poke workspaces list to surface enterprise / pro tenants
+// ahead of free / old-free ones when the result set is over the requested
+// limit.
+export const getPlanCodeSortPriority = (planCode: string): number => {
+  if (isEnterprisePlanPrefix(planCode)) {
+    return 1;
+  }
+  if (isFriendsAndFamilyPlan(planCode)) {
+    return 2;
+  }
+  if (isProPlanPrefix(planCode)) {
+    return 3;
+  }
+  if (isFreePlan(planCode)) {
+    return 4;
+  }
+  if (isOldFreePlan(planCode)) {
+    return 5;
+  }
+  return 6;
+};
+
+export function isProPlan(plan?: PlanType) {
+  return (
+    plan?.code === PRO_PLAN_SEAT_29_CODE ||
+    plan?.code === PRO_PLAN_LARGE_FILES_CODE
+  );
+}
+
+export const isByokTransitioningPlan = (plan?: PlanType) =>
+  plan?.code === FREE_BYOK_TRANSITIONING_PLAN_CODE;
+
+export function isBusinessPlan(plan?: PlanType) {
+  return plan?.code === PRO_PLAN_SEAT_39_CODE;
+}
+
+export function isProOrBusinessPlanCode(plan?: PlanType) {
+  return isProPlan(plan) || isBusinessPlan(plan);
+}
+
+/**
+ * Returns the implicit default pool credit limit for a plan when no explicit
+ * limit has been configured in Metronome.
+ *
+ *   - Enterprise plans → `null` (unlimited pool access)
+ *   - Everything else (business, pro, free) → `0` (no pool access)
+ */
+export function getPlanDefaultPoolLimitAwuCredits(
+  planCode: string
+): number | null {
+  if (isEnterprisePlanPrefix(planCode)) {
+    return null;
+  }
+  return 0;
+}
+
+/**
+ * `isUpgraded` returns true if the plan has access to all features of Dust, including large
+ * language models (meaning it's either a paid plan or free plan with (eg friends and family, or
+ * free trial plan)).
+ *
+ * Note: We didn't go for isFree or isPayingWorkspace as we have "upgraded" plans that are free.
+ */
+export const isUpgraded = (plan: PlanType | null): boolean => {
+  if (!plan) {
+    return false;
+  }
+  return ![FREE_TEST_PLAN_CODE, FREE_NO_PLAN_CODE].includes(plan.code);
+};
+
+export const isWhitelistedBusinessPlan = (owner?: WorkspaceType) => {
+  if (!owner) {
+    return false;
+  }
+  return owner.metadata?.isBusiness === true;
+};

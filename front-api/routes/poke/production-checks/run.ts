@@ -16,6 +16,7 @@ const RunCheckRequestSchema = z.object({
 // Mounted at /api/poke/production-checks/run.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   validate("json", RunCheckRequestSchema),

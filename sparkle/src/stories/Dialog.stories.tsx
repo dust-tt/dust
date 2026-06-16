@@ -16,9 +16,25 @@ import {
 } from "../index_with_tw_base";
 
 const meta: Meta<typeof Dialog> = {
-  title: "Components/Dialog",
+  title: "Overlays/Dialog",
   component: Dialog,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `A modal surface that interrupts the flow to focus the user on a single task or decision — confirmations, short forms, or tool-permission prompts. Compose it from **DialogTrigger**, **DialogContent**, **DialogHeader** (with **DialogTitle** / **DialogDescription**), **DialogContainer**, and **DialogFooter**.
+
+**When to use**
+- To require a decision or confirmation before continuing.
+- To confirm a destructive or irreversible action.
+
+**Guidelines**
+- Keep a dialog to a single, focused task; for multi-step flows use **MultiPageDialog**.
+- Label footer buttons with the action they perform ("Save changes", "Delete") rather than "OK".
+- For non-blocking, contextual information use **ContentMessage**; for transient feedback use **Notification**.`,
+      },
+    },
+  },
 };
 
 export default meta;

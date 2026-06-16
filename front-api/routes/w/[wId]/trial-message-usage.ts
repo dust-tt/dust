@@ -1,14 +1,11 @@
+import type { GetTrialMessageUsageResponseType } from "@app/lib/api/assistant/rate_limits";
 import { getMessageUsageCount } from "@app/lib/api/assistant/rate_limits";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-
-export type GetTrialMessageUsageResponseType = {
-  count: number;
-  limit: number;
-};
 
 // Mounted at /api/w/:wId/trial-message-usage.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx) => {
   const auth = ctx.get("auth");
   const usage = await getMessageUsageCount(auth);

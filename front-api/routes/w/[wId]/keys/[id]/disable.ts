@@ -3,17 +3,13 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import type { PostKeysResponseBody } from "@app/lib/api/keys";
 import { KeyResource } from "@app/lib/resources/key_resource";
-import type { KeyType } from "@app/types/key";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type PostKeysResponseBody = {
-  key: KeyType;
-};
 
 const KeyIdParamSchema = z.object({
   id: z.string(),
@@ -22,6 +18,7 @@ const KeyIdParamSchema = z.object({
 // Mounted at /api/w/:wId/keys/:id/disable.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.post(
   "/",
   ensureIsAdmin(),

@@ -12,19 +12,14 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
-import {
-  ClipboardIcon,
-  DataTable,
-  EyeIcon,
-  PencilSquareIcon,
-  TrashIcon,
-} from "@dust-tt/sparkle";
+import { DataTable, Edit04, Eye, Trash01 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
 type RowData = {
   name: string;
   icon: string | null;
+  editedBy: number | null;
   description: string;
   editors: UserType[] | null;
   usage: SkillUsageType;
@@ -38,7 +33,7 @@ const nameColumn = {
   header: "Name",
   accessorKey: "name",
   cell: (info: CellContext<RowData, string>) => {
-    const SkillAvatar = getSkillAvatarIcon(info.row.original.icon);
+    const SkillAvatar = getSkillAvatarIcon(info.row.original);
 
     return (
       <DataTable.CellContent>
@@ -186,6 +181,7 @@ export function SkillsTable({
       skills.map((skill) => ({
         name: skill.name,
         icon: skill.icon,
+        editedBy: skill.editedBy,
         description: skill.userFacingDescription,
         editors: skill.relations.editors,
         usage: skill.relations.usage,
@@ -199,7 +195,7 @@ export function SkillsTable({
             ? [
                 {
                   label: "Edit",
-                  icon: PencilSquareIcon,
+                  icon: Edit04,
                   disabled: !skill.canWrite,
                   onClick: (e: React.MouseEvent) => {
                     e.stopPropagation();
@@ -211,7 +207,7 @@ export function SkillsTable({
                 },
                 {
                   label: "More info",
-                  icon: EyeIcon,
+                  icon: Eye,
                   onClick: (e: React.MouseEvent) => {
                     e.stopPropagation();
                     onSkillClick(skill);
@@ -219,24 +215,8 @@ export function SkillsTable({
                   kind: "item" as const,
                 },
                 {
-                  label: "Customize (New)",
-                  icon: ClipboardIcon,
-                  disabled: !skill.isExtendable,
-                  onClick: (e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    void router.push(
-                      getSkillBuilderRoute(
-                        owner.sId,
-                        "new",
-                        `extends=${skill.sId}`
-                      )
-                    );
-                  },
-                  kind: "item" as const,
-                },
-                {
                   label: "Archive",
-                  icon: TrashIcon,
+                  icon: Trash01,
                   disabled: !skill.canWrite,
                   variant: "warning" as const,
                   onClick: (e: React.MouseEvent) => {

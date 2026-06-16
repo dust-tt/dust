@@ -62,19 +62,16 @@ import type { PodType, SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import { isBuilder } from "@app/types/user";
 import {
-  ActionTimeIcon,
-  ArrowRightIcon,
+  ArrowRight,
   Avatar,
-  BoltIcon,
-  BoltOffIcon,
-  BracesIcon,
+  Brackets,
   Button,
-  ChatBubbleBottomCenterPlusIcon,
   Checkbox,
-  CheckDoubleIcon,
+  CheckDone01,
   Chip,
+  Clock,
   cn,
-  DocumentIcon,
+  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -86,24 +83,27 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  FolderOpenIcon,
+  Edit04,
+  File02,
+  FolderOpen,
   Icon,
   Label,
-  ListCheckIcon,
-  MagicIcon,
-  MoreIcon,
+  MagicWand02,
+  MessagePlusCircle,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListItem,
   NavigationListItemAction,
   NavigationListLabel,
-  PencilSquareIcon,
-  PlusIcon,
-  RobotIcon,
+  Plus,
+  Robot,
+  ScrollArea,
   Spinner,
-  StarIcon,
-  TrashIcon,
-  XMarkIcon,
+  Star01,
+  Trash01,
+  XClose,
+  Zap,
+  ZapOff,
 } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -275,7 +275,7 @@ function SearchResults({
 
   return (
     <div className="h-full overflow-y-auto">
-      <NavigationList className="px-2">
+      <NavigationList className="mx-sidebar-side-spacing">
         <NavigationListCollapsibleSection
           label="Pods"
           type="collapse"
@@ -285,9 +285,9 @@ function SearchResults({
             <>
               <Button
                 size="xs"
-                icon={PlusIcon}
+                icon={Plus}
                 label="New"
-                variant="ghost"
+                variant="ghost-secondary"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -303,7 +303,7 @@ function SearchResults({
               <Spinner size="sm" />
             </div>
           ) : allPods.length === 0 ? (
-            <div className="px-3 py-2 text-sm text-muted-foreground">
+            <div className="px-3 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
               No results found
             </div>
           ) : (
@@ -320,7 +320,7 @@ function SearchResults({
               {hasMorePods && (
                 <div className="flex justify-center py-2">
                   <Button
-                    variant="ghost"
+                    variant="ghost-secondary"
                     size="xs"
                     label={isLoadingMorePods ? "Loading..." : "Show more"}
                     onClick={handleShowMorePods}
@@ -333,17 +333,16 @@ function SearchResults({
         </NavigationListCollapsibleSection>
       </NavigationList>
 
-      <NavigationList className="px-2">
+      <NavigationList className="mx-sidebar-side-spacing">
         <NavigationListCollapsibleSection
           label="Conversations"
-          defaultOpen
           action={
             <>
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     size="xmini"
-                    icon={MoreIcon}
+                    icon={DotsHorizontal}
                     variant="ghost"
                     aria-label="Conversations options"
                     onClick={(e) => {
@@ -360,7 +359,7 @@ function SearchResults({
                         ? "Show triggered"
                         : "Hide triggered"
                     }
-                    icon={hideTriggeredConversations ? BoltIcon : BoltOffIcon}
+                    icon={hideTriggeredConversations ? Zap : ZapOff}
                     disabled={!hasTriggeredConversations}
                     onClick={() =>
                       setHideTriggeredConversations(!hideTriggeredConversations)
@@ -372,7 +371,7 @@ function SearchResults({
           }
         >
           {allConversations.length === 0 && !showConversationsLoading ? (
-            <div className="px-3 py-2 text-sm text-muted-foreground">
+            <div className="px-3 py-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
               No results found
             </div>
           ) : (
@@ -391,7 +390,7 @@ function SearchResults({
           {hasMorePrivateConversations && (
             <div className="flex justify-center py-2">
               <Button
-                variant="ghost"
+                variant="ghost-secondary"
                 size="xs"
                 label={
                   isLoadingMorePrivateConversations ? "Loading..." : "Show more"
@@ -718,10 +717,10 @@ export function AgentSidebarMenu({
     );
 
     return (
-      <NavigationList className="px-2">
+      <NavigationList className="mx-sidebar-side-spacing">
         <NavigationListCollapsibleSection
           label={showCount ? `Starred (${starredCountInSummary})` : "Starred"}
-          icon={StarIcon}
+          icon={Star01}
           type="collapse"
           visibleItems={VISIBLE_STARRED}
           overflowCount={hiddenOverflowCount}
@@ -766,7 +765,7 @@ export function AgentSidebarMenu({
     );
 
     return (
-      <NavigationList className="px-2">
+      <NavigationList className="mx-sidebar-side-spacing flex-shrink-0">
         <NavigationListCollapsibleSection
           label={showCount ? `Pods (${podCountInSummary})` : "Pods"}
           type="collapse"
@@ -780,9 +779,9 @@ export function AgentSidebarMenu({
               {nonStarredSummary.length > 0 && (
                 <Button
                   size="xs"
-                  icon={PlusIcon}
+                  icon={Plus}
                   label="New"
-                  variant="ghost"
+                  variant="ghost-secondary"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -808,7 +807,7 @@ export function AgentSidebarMenu({
           ) : (
             <NavigationListItem
               label="Create a Pod"
-              icon={PlusIcon}
+              icon={Plus}
               onClick={() => setIsCreatePodModalOpen(true)}
             />
           )}
@@ -907,14 +906,14 @@ export function AgentSidebarMenu({
         <div className="flex h-0 min-h-full w-full">
           <div className="flex w-full flex-col">
             {isMultiSelect ? (
-              <div className="z-50 flex justify-between gap-2 border-b border-border-dark/60 p-2 dark:border-border-dark/60">
+              <div className="z-50 flex justify-between gap-2 border-b border-border-dark/60 p-2 dark:border-border-dark/60 mb-4">
                 <div className="flex gap-2">
                   <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="outline"
                         label="Move to Pod"
-                        icon={ArrowRightIcon}
+                        icon={ArrowRight}
                         disabled={selectedConversations.length === 0}
                         isLoading={isMoving}
                       />
@@ -924,7 +923,7 @@ export function AgentSidebarMenu({
                       onFocusOutside={(e) => e.preventDefault()}
                     >
                       <DropdownMenuItem
-                        icon={PlusIcon}
+                        icon={Plus}
                         label="New Pod"
                         onClick={() => {
                           setPendingMoveToNewPod(true);
@@ -959,12 +958,12 @@ export function AgentSidebarMenu({
                 </div>
                 <Button
                   variant="ghost"
-                  icon={XMarkIcon}
+                  icon={XClose}
                   onClick={toggleMultiSelect}
                 />
               </div>
             ) : (
-              <div className="z-50 flex justify-end gap-2 p-2">
+              <div className="z-50 flex justify-end gap-2 p-sidebar-side-spacing">
                 <div className="flex-1">
                   <SidebarSearch
                     titleFilter={titleFilter}
@@ -975,7 +974,7 @@ export function AgentSidebarMenu({
                   <Button
                     label="New"
                     href={getConversationRoute(owner.sId)}
-                    icon={ChatBubbleBottomCenterPlusIcon}
+                    icon={MessagePlusCircle}
                     className="shrink-0"
                     tooltip="Create a new conversation"
                     onClick={handleNewClick}
@@ -983,7 +982,11 @@ export function AgentSidebarMenu({
                   {!hideActions && (
                     <DropdownMenu modal={false}>
                       <DropdownMenuTrigger asChild>
-                        <Button size="sm" icon={MoreIcon} variant="outline" />
+                        <Button
+                          size="sm"
+                          icon={DotsHorizontal}
+                          variant="outline"
+                        />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
                         {!isRestrictedFromAgentCreation && (
@@ -991,7 +994,7 @@ export function AgentSidebarMenu({
                             <DropdownMenuLabel>Agents</DropdownMenuLabel>
                             <DropdownMenuSub>
                               <DropdownMenuSubTrigger
-                                icon={PlusIcon}
+                                icon={Plus}
                                 label="New agent"
                                 disabled={noHealthyProviders}
                               />
@@ -1002,7 +1005,7 @@ export function AgentSidebarMenu({
                                       owner.sId,
                                       "new"
                                     )}
-                                    icon={DocumentIcon}
+                                    icon={File02}
                                     label="From scratch"
                                     data-gtm-label="assistantCreationButton"
                                     data-gtm-location="sidebarMenu"
@@ -1016,7 +1019,7 @@ export function AgentSidebarMenu({
                                       owner.sId,
                                       "create"
                                     )}
-                                    icon={MagicIcon}
+                                    icon={MagicWand02}
                                     label="From template"
                                     data-gtm-label="assistantCreationButton"
                                     data-gtm-location="sidebarMenu"
@@ -1030,7 +1033,7 @@ export function AgentSidebarMenu({
                                       isUploadingYAML ? (
                                         <Spinner size="xs" />
                                       ) : (
-                                        BracesIcon
+                                        Brackets
                                       )
                                     }
                                     label={
@@ -1049,7 +1052,7 @@ export function AgentSidebarMenu({
                             {editableAgents.length > 0 && (
                               <DropdownMenuSub>
                                 <DropdownMenuSubTrigger
-                                  icon={PencilSquareIcon}
+                                  icon={Edit04}
                                   label="Edit agent"
                                   disabled={noHealthyProviders}
                                 />
@@ -1087,7 +1090,7 @@ export function AgentSidebarMenu({
                             )}
                             <DropdownMenuItem
                               href={getAgentBuilderRoute(owner.sId, "manage")}
-                              icon={RobotIcon}
+                              icon={Robot}
                               label="Manage agents"
                               data-gtm-label="assistantManagementButton"
                               data-gtm-location="sidebarMenu"
@@ -1103,7 +1106,7 @@ export function AgentSidebarMenu({
                             <DropdownMenuLabel>Skills</DropdownMenuLabel>
                             <DropdownMenuSub>
                               <DropdownMenuSubTrigger
-                                icon={PlusIcon}
+                                icon={Plus}
                                 label="New skill"
                               />
                               <DropdownMenuSubContent>
@@ -1113,7 +1116,7 @@ export function AgentSidebarMenu({
                                   label="From scratch"
                                 />
                                 <DropdownMenuItem
-                                  icon={FolderOpenIcon}
+                                  icon={FolderOpen}
                                   label="From existing"
                                   onClick={() =>
                                     setIsImportSkillDialogOpen(true)
@@ -1132,13 +1135,13 @@ export function AgentSidebarMenu({
                         <DropdownMenuItem
                           label="Edit conversations"
                           onClick={toggleMultiSelect}
-                          icon={ListCheckIcon}
+                          icon={CheckDone01}
                           disabled={filteredConversations.length === 0}
                         />
                         <DropdownMenuItem
                           label="Clear conversation history"
                           onClick={() => setShowDeleteDialog("all")}
-                          icon={TrashIcon}
+                          icon={Trash01}
                           disabled={filteredConversations.length === 0}
                         />
                       </DropdownMenuContent>
@@ -1243,22 +1246,23 @@ function UnreadConversationsSection({
 
   return (
     <NavigationListCollapsibleSection
-      label={`${label} (${totalCount})`}
-      className="border-b border-t border-border bg-background/50 px-2 pb-2 dark:border-border-night dark:bg-background-night/50"
-      defaultOpen
-      actionOnHover={false}
+      label={label}
+      count={totalCount}
+      className="bg-background dark:bg-background-night rounded-xl border border-border dark:border-border-night p-1 mx-sidebar-side-spacing"
       action={
         shouldShowMarkAllAsReadButton ? (
           <Button
             size="xmini"
-            variant="ghost"
-            icon={CheckDoubleIcon}
-            tooltip="Mark all as read"
+            variant="ghost-secondary"
+            label="Mark as read"
             onClick={() => onMarkAllAsRead(conversations.map((c) => c.sId))}
             isLoading={isMarkingAllAsRead}
+            hasLighterFont
+            className="hover:s-bg-sidebar-foreground dark:hover:s-bg-sidebar-foreground-night active:s-bg-sidebar-foreground dark:active:s-bg-sidebar-foreground-night"
           />
         ) : null
       }
+      actionOnHover={false}
     >
       <AnimatePresence initial={false}>
         {conversations.map((conversation) => (
@@ -1278,6 +1282,7 @@ function UnreadConversationsSection({
                 toggleConversationSelection={toggleConversationSelection}
                 activeConversationId={activeConversationId}
                 owner={owner}
+                showStatusDot={false}
               />
             </div>
           </motion.div>
@@ -1307,11 +1312,7 @@ const ConversationList = ({
   return (
     <ConversationListContainer>
       {dateLabel !== "Today" && (
-        <NavigationListLabel
-          label={dateLabel}
-          isSticky
-          className="bg-muted-background dark:bg-muted-background-night"
-        />
+        <NavigationListLabel label={dateLabel} isSticky />
       )}
 
       {conversations.map((conversation) => (
@@ -1332,7 +1333,7 @@ interface WakeUpSuffixProps {
 function WakeUpSuffix({ nextWakeupAt }: WakeUpSuffixProps) {
   return (
     <span className="copy-xs flex items-center gap-1 text-muted-foreground dark:text-muted-foreground-night">
-      <Icon visual={ActionTimeIcon} size="xs" />
+      <Icon visual={Clock} size="xs" />
       {formatWakeUpSidebarLabel(nextWakeupAt)}
     </span>
   );
@@ -1346,6 +1347,7 @@ const ConversationListItem = memo(
     toggleConversationSelection,
     activeConversationId,
     owner,
+    showStatusDot = true,
   }: {
     conversation: ConversationListItemType;
     isMultiSelect: boolean;
@@ -1353,6 +1355,7 @@ const ConversationListItem = memo(
     toggleConversationSelection: (c: ConversationListItemType) => void;
     activeConversationId: string | null;
     owner: WorkspaceType;
+    showStatusDot?: boolean;
   }) => {
     const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
     const {
@@ -1402,7 +1405,7 @@ const ConversationListItem = memo(
     );
 
     return isMultiSelect ? (
-      <div className="flex items-center px-2 py-2">
+      <div className="flex items-center mx-2 py-2">
         <Checkbox
           id={`conversation-${conversation.sId}`}
           className="bg-background dark:bg-background-night"
@@ -1420,7 +1423,7 @@ const ConversationListItem = memo(
       <NavigationListItem
         key={conversation.sId}
         selected={activeConversationId === conversation.sId}
-        status={getConversationDotStatus(conversation)}
+        status={showStatusDot ? getConversationDotStatus(conversation) : "idle"}
         label={conversationLabel}
         labelAnimation={
           showTypingAnimation
@@ -1563,116 +1566,121 @@ function NavigationListWithInbox({
   );
 
   return (
-    <div
+    <ScrollArea
       ref={scrollContainerRef}
-      className="dd-privacy-mask h-full w-full overflow-y-auto"
+      className="dd-privacy-mask h-full w-full"
     >
-      <AnimatePresence initial={false}>
-        {skillSuggestionConversations.length > 0 && (
-          <motion.div
-            key="skill-suggestions"
-            style={GRID_STYLE}
-            animate={GRID_ANIMATE}
-            exit={GRID_EXIT}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+      <div className="flex flex-col gap-4">
+        <AnimatePresence initial={false}>
+          {skillSuggestionConversations.length > 0 && (
+            <motion.div
+              key="skill-suggestions"
+              style={GRID_STYLE}
+              animate={GRID_ANIMATE}
+              exit={GRID_EXIT}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              <div className="overflow-hidden">
+                <UnreadConversationsSection
+                  label="Skill suggestions"
+                  conversations={skillSuggestionConversations}
+                  isMultiSelect={isMultiSelect}
+                  isMarkingAllAsRead={isMarkingAllAsRead}
+                  titleFilter={titleFilter}
+                  onMarkAllAsRead={markAllAsRead}
+                  selectedConversations={selectedConversations}
+                  toggleConversationSelection={toggleConversationSelection}
+                  activeConversationId={activeConversationId}
+                  owner={owner}
+                />
+              </div>
+            </motion.div>
+          )}
+          {inboxConversations.length > 0 && (
+            <motion.div
+              key="inbox"
+              style={GRID_STYLE}
+              animate={{ gridTemplateRows: "1fr" }}
+              exit={{ gridTemplateRows: "0fr" }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+            >
+              <div className="overflow-hidden">
+                <UnreadConversationsSection
+                  label="Inbox"
+                  conversations={inboxConversations}
+                  isMultiSelect={isMultiSelect}
+                  isMarkingAllAsRead={isMarkingAllAsRead}
+                  titleFilter={titleFilter}
+                  onMarkAllAsRead={markAllAsRead}
+                  selectedConversations={selectedConversations}
+                  toggleConversationSelection={toggleConversationSelection}
+                  activeConversationId={activeConversationId}
+                  owner={owner}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {starredSection}
+        {podsSection}
+        <NavigationList className="mx-sidebar-side-spacing">
+          <NavigationListCollapsibleSection
+            label="Conversations"
+            action={
+              <>
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="xmini"
+                      icon={DotsHorizontal}
+                      variant="ghost"
+                      aria-label="Conversations options"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    onFocusOutside={(e) => e.preventDefault()}
+                  >
+                    <DropdownMenuLabel label="Conversations" />
+                    <DropdownMenuItem
+                      label={
+                        hideTriggeredConversations
+                          ? "Show triggered"
+                          : "Hide triggered"
+                      }
+                      icon={hideTriggeredConversations ? Zap : ZapOff}
+                      disabled={!hasTriggeredConversations}
+                      onClick={() =>
+                        setHideTriggeredConversations(
+                          !hideTriggeredConversations
+                        )
+                      }
+                    />
+                    <DropdownMenuItem
+                      label="Edit history"
+                      icon={CheckDone01}
+                      onClick={toggleMultiSelect}
+                      disabled={conversations.length === 0}
+                    />
+                    <DropdownMenuItem
+                      label="Clear history"
+                      variant="warning"
+                      icon={Trash01}
+                      onClick={() => setShowDeleteDialog("all")}
+                      disabled={conversations.length === 0}
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            }
           >
-            <div className="overflow-hidden">
-              <UnreadConversationsSection
-                label="Skill suggestions"
-                conversations={skillSuggestionConversations}
-                isMultiSelect={isMultiSelect}
-                isMarkingAllAsRead={isMarkingAllAsRead}
-                titleFilter={titleFilter}
-                onMarkAllAsRead={markAllAsRead}
-                selectedConversations={selectedConversations}
-                toggleConversationSelection={toggleConversationSelection}
-                activeConversationId={activeConversationId}
-                owner={owner}
-              />
-            </div>
-          </motion.div>
-        )}
-        {inboxConversations.length > 0 && (
-          <motion.div
-            key="inbox"
-            style={GRID_STYLE}
-            animate={{ gridTemplateRows: "1fr" }}
-            exit={{ gridTemplateRows: "0fr" }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-          >
-            <div className="overflow-hidden">
-              <UnreadConversationsSection
-                label="Inbox"
-                conversations={inboxConversations}
-                isMultiSelect={isMultiSelect}
-                isMarkingAllAsRead={isMarkingAllAsRead}
-                titleFilter={titleFilter}
-                onMarkAllAsRead={markAllAsRead}
-                selectedConversations={selectedConversations}
-                toggleConversationSelection={toggleConversationSelection}
-                activeConversationId={activeConversationId}
-                owner={owner}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      {starredSection}
-      {podsSection}
-      <NavigationList className="px-2">
-        <NavigationListCollapsibleSection
-          label="Conversations"
-          defaultOpen
-          action={
-            <>
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="xmini"
-                    icon={MoreIcon}
-                    variant="ghost"
-                    aria-label="Conversations options"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent onFocusOutside={(e) => e.preventDefault()}>
-                  <DropdownMenuLabel label="Conversations" />
-                  <DropdownMenuItem
-                    label={
-                      hideTriggeredConversations
-                        ? "Show triggered"
-                        : "Hide triggered"
-                    }
-                    icon={hideTriggeredConversations ? BoltIcon : BoltOffIcon}
-                    disabled={!hasTriggeredConversations}
-                    onClick={() =>
-                      setHideTriggeredConversations(!hideTriggeredConversations)
-                    }
-                  />
-                  <DropdownMenuItem
-                    label="Edit history"
-                    icon={ListCheckIcon}
-                    onClick={toggleMultiSelect}
-                    disabled={conversations.length === 0}
-                  />
-                  <DropdownMenuItem
-                    label="Clear history"
-                    variant="warning"
-                    icon={TrashIcon}
-                    onClick={() => setShowDeleteDialog("all")}
-                    disabled={conversations.length === 0}
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          }
-        >
-          {conversationsContent}
-        </NavigationListCollapsibleSection>
-      </NavigationList>
-    </div>
+            {conversationsContent}
+          </NavigationListCollapsibleSection>
+        </NavigationList>
+      </div>
+    </ScrollArea>
   );
 }

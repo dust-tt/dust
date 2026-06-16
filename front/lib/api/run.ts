@@ -21,6 +21,15 @@ import { recomputeIndents, restoreTripleBackticks } from "../specification";
 
 export type RunTrace = [[BlockType, string], TraceType[][]];
 
+export type {
+  GetRunBlockResponseBody,
+  GetRunResponseBody,
+  GetRunStatusResponseBody,
+  GetRunsResponseBody,
+  PostRunCancelResponseBody,
+  PostRunsResponseBody,
+} from "@app/lib/api/apps";
+
 /**
  * Walks an app-run's `block_execution` traces and emits one `RunUsageType` per trace that carries
  * `meta.token_usage`, attaching the block's provider/model and the computed cost in micro-USD.

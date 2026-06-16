@@ -3,18 +3,34 @@ import React from "react";
 
 import {
   Button,
-  CloudArrowDownIcon,
-  FolderIcon,
+  DownloadCloud01,
+  Folder,
   Icon,
   Label,
-  LockIcon,
+  Lock01,
   RadioGroup,
   RadioGroupCustomItem,
   RadioGroupItem,
 } from "@sparkle/index_with_tw_base";
 
 const meta = {
-  title: "Primitives/RadioGroup",
+  title: "Forms & Inputs/RadioGroup",
+  parameters: {
+    docs: {
+      description: {
+        component: `Presents a set of mutually exclusive options where exactly one can be selected at a time. Use **RadioGroupItem** for standard labelled options (with optional icon, tooltip, and sizes), or **RadioGroupCustomItem** to render richer custom content per option.
+
+**When to use**
+- To choose a single value from a small set (roughly 2–6 options) that are all worth showing at once.
+
+**Guidelines**
+- For many options, or to save space, use a **Dropdown** instead.
+- To select more than one value, use **Checkbox**.
+- Give the group a sensible **defaultValue** so one option is always selected.
+- Keep option labels parallel in length and phrasing.`,
+      },
+    },
+  },
 } satisfies Meta;
 
 export default meta;
@@ -41,7 +57,7 @@ export const RadioGroupExample = () => {
             value="option-three"
             id="option-three"
             label="Option Three"
-            icon={CloudArrowDownIcon}
+            icon={DownloadCloud01}
           />
         </div>
       </RadioGroup>
@@ -98,13 +114,13 @@ export const RadioGroupWithChildrenExample = () => {
             iconPosition="start"
             customItem={
               <div className="s-flex s-items-center s-gap-2">
-                <Icon visual={LockIcon} />
+                <Icon visual={Lock01} />
                 <Label>{choice.label}</Label>
               </div>
             }
           >
             <div className="s-flex s-items-center s-gap-2 s-border s-border-red-500 s-p-2">
-              <Icon visual={FolderIcon} />
+              <Icon visual={Folder} />
               <Label>{choice.label}</Label>
               <Button label="Click me" />
             </div>

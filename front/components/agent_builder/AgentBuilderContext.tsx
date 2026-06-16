@@ -3,7 +3,7 @@ import { PreviewPanelProvider } from "@app/components/agent_builder/PreviewPanel
 import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
 import { SkillsProvider } from "@app/components/shared/skills/SkillsContext";
 import { MCPServerViewsProvider } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
+import type { FetchAgentTemplateResponse } from "@app/lib/resources/template_resource";
 import type { TemplateActionPreset } from "@app/types/assistant/templates";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import type { ReactNode } from "react";

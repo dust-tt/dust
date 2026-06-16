@@ -19,6 +19,8 @@ on:
           - core
           - front
           - front-edge
+          - marketing
+          - marketing-edge
           - metabase
           - oauth
           - prodbox

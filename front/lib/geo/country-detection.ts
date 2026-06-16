@@ -3,6 +3,12 @@ import logger from "@app/logger/logger";
 
 import { untrustedFetch } from "../egress/server";
 
+export type GeoLocationResponse = {
+  isGDPR: boolean;
+  countryCode?: string;
+  dev?: boolean;
+};
+
 export async function resolveCountryCode(ip: string): Promise<string> {
   // Handle localhost IPs in development (including IPv4-mapped IPv6 format)
   if (

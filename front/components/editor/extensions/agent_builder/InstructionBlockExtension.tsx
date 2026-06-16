@@ -7,7 +7,7 @@ import {
 import { INSTRUCTIONS_ROOT_NODE_NAME } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { ChevronDownIcon, ChevronRightIcon, Chip, cn } from "@dust-tt/sparkle";
+import { ChevronDown, ChevronRight, Chip, cn } from "@dust-tt/sparkle";
 import type { MarkdownLexerConfiguration, MarkdownToken } from "@tiptap/core";
 import { InputRule, mergeAttributes, Node } from "@tiptap/core";
 import { Slice } from "@tiptap/pm/model";
@@ -109,7 +109,7 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
     }
   };
 
-  const ChevronIcon = isCollapsed ? ChevronRightIcon : ChevronDownIcon;
+  const ChevronIcon = isCollapsed ? ChevronRight : ChevronDown;
 
   const handleBlockClick = (e: React.MouseEvent) => {
     if (isCollapsed) {

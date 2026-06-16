@@ -1,20 +1,17 @@
+import type { GetWorkspaceVerifiedDomainsResponseBody } from "@app/lib/api/workspace";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import type { WorkspaceDomain } from "@app/types/workspace";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureHasPermission } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
-
-export type GetWorkspaceVerifiedDomainsResponseBody = {
-  verifiedDomains: WorkspaceDomain[];
-};
 
 // Mounted at /api/w/:wId/verified-domains.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
-  ensureIsAdmin(),
+  ensureHasPermission("workspace:manage_members"),
   async (ctx): HandlerResult<GetWorkspaceVerifiedDomainsResponseBody> => {
     const auth = ctx.get("auth");
 

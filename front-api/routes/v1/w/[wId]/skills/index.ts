@@ -2,6 +2,7 @@ import {
   importSkillsFromFiles,
   isImportConflictStrategy,
 } from "@app/lib/api/skills/detection/files/import_skills";
+import type { ImportSkillsResponseBody } from "@app/lib/api/skills/detection/github/import_skills";
 import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_skills";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -17,12 +18,6 @@ import { z } from "zod";
 
 export type GetPublicSkillsResponseBody = {
   skills: SkillType[];
-};
-
-export type ImportSkillsResponseBody = {
-  imported: SkillType[];
-  updated: SkillType[];
-  skipped: { name: string; message: string }[];
 };
 
 const GetSkillsQuerySchema = z.object({
@@ -78,8 +73,6 @@ const app = createHono<PublicApiCtx & { Bindings: HttpBindings }>();
  *         description: Unauthorized. Invalid or missing authentication token.
  *       404:
  *         description: Workspace not found.
- *       405:
- *         description: Method not supported.
  *   post:
  *     summary: Import skills from uploaded files
  *     description: Imports skills from uploaded files or ZIP archives into the workspace.
@@ -149,8 +142,6 @@ const app = createHono<PublicApiCtx & { Bindings: HttpBindings }>();
  *         description: Unauthorized. Invalid or missing authentication token.
  *       404:
  *         description: Workspace not found.
- *       405:
- *         description: Method not supported.
  */
 app.get(
   "/",

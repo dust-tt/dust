@@ -3,21 +3,36 @@ import { useNotionLastSyncedUrls } from "@app/lib/swr/data_sources";
 import { GetPostNotionSyncResponseBodySchema } from "@app/types/api/internal/spaces";
 import type { DataSourceType } from "@app/types/data_source";
 import type { WorkspaceType } from "@app/types/user";
-import type { DropdownMenu, NotificationType } from "@dust-tt/sparkle";
 import {
-  ArrowPathIcon,
   Button,
-  CheckCircleIcon,
+  CheckCircle,
   DataTable,
+  type DropdownMenu,
   Icon,
   Input,
+  type NotificationType,
+  RefreshCw02,
   TextArea,
   Tooltip,
-  TrashIcon,
-  XCircleIcon,
+  Trash01,
+  XCircle,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
+
+// Notion content can be reached through several domains: the classic notion.so,
+// published sites on notion.site, and the newer notion.com (e.g. app.notion.com).
+const VALID_NOTION_HOSTS = ["notion.so", "notion.site", "notion.com"];
+
+function isValidNotionUrl(url: string): boolean {
+  if (!URL.canParse(url)) {
+    return false;
+  }
+  const { hostname } = new URL(url);
+  return VALID_NOTION_HOSTS.some(
+    (host) => hostname === host || hostname.endsWith(`.${host}`)
+  );
+}
 
 interface TableData {
   url: string;
@@ -72,14 +87,10 @@ export function AdvancedNotionManagement({
         setError("You must enter at least one URL");
         return false;
       }
-      if (
-        !urls.every((url) => url.includes("notion.so") && URL.canParse(url))
-      ) {
+      if (!urls.every((url) => isValidNotionUrl(url))) {
         setError(
           `Invalid Notion URL format: ${
-            urls.filter(
-              (url) => !url.includes("notion.so") || !URL.canParse(url)
-            )[0]
+            urls.filter((url) => !isValidNotionUrl(url))[0]
           }`
         );
         return false;
@@ -127,23 +138,19 @@ export function AdvancedNotionManagement({
         <DataTable.CellContent>
           <div className="flex items-center gap-2">
             {info.row.original.method === "delete" ? (
-              <Icon visual={TrashIcon} size="sm" />
+              <Icon visual={Trash01} size="sm" />
             ) : (
-              <Icon visual={ArrowPathIcon} size="sm" />
+              <Icon visual={RefreshCw02} size="sm" />
             )}
 
             {info.row.original.success ? (
               <Icon
-                visual={CheckCircleIcon}
+                visual={CheckCircle}
                 size="sm"
                 className="text-success-500"
               />
             ) : (
-              <Icon
-                visual={XCircleIcon}
-                size="sm"
-                className="text-warning-500"
-              />
+              <Icon visual={XCircle} size="sm" className="text-warning-500" />
             )}
           </div>
         </DataTable.CellContent>
@@ -183,7 +190,7 @@ export function AdvancedNotionManagement({
       return;
     }
 
-    if (!statusUrl.includes("notion.so") || !URL.canParse(statusUrl)) {
+    if (!isValidNotionUrl(statusUrl)) {
       sendNotification({
         type: "error",
         title: "Invalid URL",
@@ -338,7 +345,7 @@ export function AdvancedNotionManagement({
                 {urlStatus.notion.exists ? (
                   <>
                     <Icon
-                      visual={CheckCircleIcon}
+                      visual={CheckCircle}
                       size="xs"
                       className="inline text-success-500"
                     />{" "}
@@ -347,7 +354,7 @@ export function AdvancedNotionManagement({
                 ) : (
                   <>
                     <Icon
-                      visual={XCircleIcon}
+                      visual={XCircle}
                       size="xs"
                       className="inline text-warning-500"
                     />{" "}
@@ -360,7 +367,7 @@ export function AdvancedNotionManagement({
                 {urlStatus.dust.synced ? (
                   <>
                     <Icon
-                      visual={CheckCircleIcon}
+                      visual={CheckCircle}
                       size="xs"
                       className="inline text-success-500"
                     />{" "}
@@ -376,7 +383,7 @@ export function AdvancedNotionManagement({
                 ) : (
                   <>
                     <Icon
-                      visual={XCircleIcon}
+                      visual={XCircle}
                       size="xs"
                       className="inline text-warning-500"
                     />{" "}
@@ -439,7 +446,7 @@ export function AdvancedNotionManagement({
           <div className="p-1 text-xs">
             An{" "}
             <Icon
-              visual={CheckCircleIcon}
+              visual={CheckCircle}
               size="xs"
               className="inline-block text-success-500"
             />{" "}
@@ -451,7 +458,7 @@ export function AdvancedNotionManagement({
             columns={columns}
             data={lastSyncedUrls.map((url) => ({
               ...url,
-              url: url.url.replace(/^.*?notion\.so\//, ""),
+              url: url.url.replace(/^.*?notion\.(so|site|com)\//, ""),
             }))}
           />
         </>

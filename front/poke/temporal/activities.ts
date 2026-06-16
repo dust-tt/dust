@@ -778,7 +778,7 @@ export async function deleteWorkspaceActivity({
   await ProgrammaticUsageConfigurationResource.deleteAllForWorkspace(auth);
   await SelfImprovingSkillsUsageResource.deleteAllForWorkspace(auth);
   await WorkspaceVerificationAttemptResource.deleteAllForWorkspace(auth);
-  await WorkspaceSeatLimitResource.deleteAllForWorkspace(auth);
+  await WorkspaceSeatLimitResource.deleteAllForWorkspace({ workspace });
 
   hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
 

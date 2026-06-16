@@ -1,17 +1,17 @@
 import { FirstSyncTaskLookbackForm } from "@app/components/assistant/conversation/space/FirstSyncTaskLookbackForm";
 import { ConfirmContext } from "@app/components/Confirm";
 import { PodSettingsOptionLabel } from "@app/components/pod/settings/PodSettingsOptionLabel";
+import type { RichSpaceType } from "@app/lib/api/spaces";
 import type { InitialTasksSyncLookbackValue } from "@app/lib/project_task/analyze_document/types";
 import { useUpdatePodMetadata } from "@app/lib/swr/pods";
 import { timeAgoFrom } from "@app/lib/utils";
-import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Chip,
   Icon,
-  InformationCircleIcon,
+  InfoCircle,
   SliderToggle,
-  SparklesIcon,
+  Stars02,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { useCallback, useContext, useRef, useState } from "react";
@@ -135,7 +135,7 @@ export function SuggestedTasksGenerationTile({
   return (
     <div className="flex items-center justify-between gap-4">
       <PodSettingsOptionLabel
-        icon={SparklesIcon}
+        icon={Stars02}
         title="Suggest tasks"
         description="Automatic task suggestions from Pod activity"
         trailingInTitle={
@@ -151,7 +151,7 @@ export function SuggestedTasksGenerationTile({
               className="inline-flex rounded-md p-1 text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
               aria-label="Last automatic task suggestion scan"
             >
-              <Icon visual={InformationCircleIcon} size="sm" />
+              <Icon visual={InfoCircle} size="sm" />
             </button>
           }
         />

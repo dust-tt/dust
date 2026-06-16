@@ -1,6 +1,8 @@
 import config from "@app/lib/api/config";
+import type { GetShareFrameMetadataResponseBody } from "@app/lib/api/files/share";
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { lookupShareToken } from "@app/lib/api/regions/lookup";
+import { getWorkspaceBrandingPublicUrls } from "@app/lib/api/workspace_branding";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -11,21 +13,13 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
-export interface GetShareFrameMetadataResponseBody {
-  requiresEmailVerification: boolean;
-  shareUrl: string;
-  title: string;
-  vizUrl: string;
-  workspaceId: string;
-  workspaceName: string;
-}
-
 const ParamsSchema = z.object({
   token: z.string(),
 });
 
 const app = createHono();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),
@@ -119,7 +113,13 @@ app.get(
       : false;
     const requiresEmailVerification = isEmailScope && hasActiveGrants;
 
+    const { faviconUrl, logoUrl, ogImageUrl } =
+      await getWorkspaceBrandingPublicUrls(workspace);
+
     return ctx.json({
+      faviconUrl,
+      logoUrl,
+      ogImageUrl,
       requiresEmailVerification,
       shareUrl,
       title: file.fileName,

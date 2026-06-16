@@ -8,15 +8,15 @@ import type {
 import type { BlockType, RunType } from "@app/types/run";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ArrowPathIcon,
   Button,
-  ChevronDownIcon,
-  ChevronUpIcon,
+  ChevronDown,
+  ChevronUp,
   Chip,
   Input,
+  LayersThree01,
+  RefreshCw02,
   Spinner,
-  Square3Stack3DIcon,
-  TrashIcon,
+  Trash01,
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
@@ -124,8 +124,8 @@ export default function Block({
                 size="icon"
                 icon={
                   block.config && block.config.use_cache
-                    ? Square3Stack3DIcon
-                    : ArrowPathIcon
+                    ? LayersThree01
+                    : RefreshCw02
                 }
                 onClick={() => handleUseCacheChange(!block.config?.use_cache)}
               />
@@ -141,19 +141,19 @@ export default function Block({
                 />
                 <Button
                   variant="ghost-secondary"
-                  icon={ChevronUpIcon}
+                  icon={ChevronUp}
                   onClick={onBlockUp}
                   size="icon"
                 />
                 <Button
                   variant="ghost-secondary"
-                  icon={ChevronDownIcon}
+                  icon={ChevronDown}
                   onClick={onBlockDown}
                   size="icon"
                 />
                 <Button
                   variant="ghost-secondary"
-                  icon={TrashIcon}
+                  icon={Trash01}
                   onClick={onBlockDelete}
                   size="icon"
                 />

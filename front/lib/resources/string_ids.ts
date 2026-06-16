@@ -40,6 +40,7 @@ export const RESOURCES_PREFIX = {
   credit: "crd",
   coupon: "cpn",
   coupon_redemption: "cpr",
+  membership_upgrade_request: "mur",
 
   // Resource relative to triggers.
   trigger: "trg",

@@ -18,7 +18,7 @@ import {
   CURRENCY_TO_CREDIT_TYPE_ID,
   getCreditTypeAwuId,
   getProductPrepaidCommitId,
-  getProductSeatSubscriptionCreditsId,
+  getProductSeatSubscriptionCommitId,
 } from "@app/lib/metronome/constants";
 import {
   applySeatRateOverrides,
@@ -36,7 +36,7 @@ import {
 import { resolveCurrencyFromStripe } from "@app/lib/plans/billing_currency";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
   isProPlanPrefix,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
@@ -155,7 +155,7 @@ export type SwitchContractSuccess = {
 };
 
 function classifyPlanCode(planCode: string): MetronomePackageTier {
-  if (isEntreprisePlanPrefix(planCode)) {
+  if (isEnterprisePlanPrefix(planCode)) {
     return "enterprise";
   }
   if (
@@ -452,11 +452,14 @@ export async function switchContract({
     }
     // A deselected seat carries no billing floor — clear any existing one.
     if (seat.selected && seat.minSeats > 0) {
-      await WorkspaceSeatLimitResource.upsert({
+      const upsertResult = await WorkspaceSeatLimitResource.upsert({
         workspace: owner,
         seatType: seat.seatType,
         minSeats: seat.minSeats,
       });
+      if (upsertResult.isErr()) {
+        throw upsertResult.error;
+      }
     } else {
       await WorkspaceSeatLimitResource.remove({
         workspace: owner,
@@ -465,6 +468,11 @@ export async function switchContract({
     }
   }
 
+  // Disable the internal seat sync — switchContract always runs its own
+  // remap + sync at the end (after seat-rate overrides), so the contract sees
+  // the final effective entitlements. Running the sync here first (on package
+  // defaults) then again after overrides would produce an incorrect intermediate
+  // remap that could briefly assign the wrong seat type to members.
   const provisionResult = await provisionMetronomeContract({
     metronomeCustomerId,
     workspace: renderLightWorkspaceType({ workspace: owner }),
@@ -473,6 +481,8 @@ export async function switchContract({
     swapAt,
     enableStripeBilling: body.stripeCustomerId !== undefined,
     planCode: body.planCode,
+    fromContractId: currentSubscription?.metronomeContractId ?? undefined,
+    enableSeatSync: false,
   });
   if (provisionResult.isErr()) {
     return new Err(
@@ -688,9 +698,7 @@ export async function switchContract({
         const commitResult = await addPrepaidCommitToContract({
           metronomeCustomerId,
           metronomeContractId,
-          // "Seat Individual Credits" — the fiat seat-credit product (named
-          // "credit" but denominated in the contract's fiat currency).
-          productId: getProductSeatSubscriptionCreditsId(),
+          productId: getProductSeatSubscriptionCommitId(),
           accessAmount: accessAmountNative,
           accessCreditTypeId: fiatCreditTypeId,
           accessStartingAt: alignedStart,
@@ -773,59 +781,47 @@ export async function switchContract({
         )
       );
     }
+  }
 
-    // Re-remap memberships and re-sync seat quantities now that entitlements
-    // have changed. Both ran inside `provisionMetronomeContract` BEFORE these
-    // overrides were applied, so they only saw the package's default-entitled
-    // seats. Without re-running:
-    //  - a membership on a seat the operator just DISABLED (e.g. pro_yearly,
-    //    swapped for pro) would stay on that now-unbilled seat type, and
-    //  - a seat the operator just ENTITLED would stay at quantity 0 (unbilled).
-    // The remap moves members off disabled seats onto an entitled one; the sync
-    // then reconciles quantities. Both re-fetch the contract fresh (no cache),
-    // so the new effective entitlements are visible. Skipped when no override
-    // changed entitlement.
-    if (seatRateOverrides.length > 0) {
-      const ownerLight = renderLightWorkspaceType({ workspace: owner });
-      const remapResult = await remapMembershipSeatTypesForContract({
-        metronomeCustomerId,
-        contractId: metronomeContractId,
-        workspace: ownerLight,
-        swapAt,
-        startingAt: alignedStart,
-      });
-      if (remapResult.isErr()) {
-        return new Err(
-          new SwitchContractError(
-            "provision_inconsistent",
-            `Provisioned Metronome contract ${metronomeContractId} and applied ` +
-              `seat entitlement overrides, but failed to re-map membership seat ` +
-              `types: ${remapResult.error.message}. Members may remain on a seat ` +
-              "type the new contract no longer bills. Manual reconciliation may " +
-              "be required."
-          )
-        );
-      }
-
-      const resyncResult = await syncContractQuantities(
-        metronomeCustomerId,
-        metronomeContractId,
-        ownerLight,
-        alignedStart.toISOString()
-      );
-      if (resyncResult.isErr()) {
-        return new Err(
-          new SwitchContractError(
-            "provision_inconsistent",
-            `Provisioned Metronome contract ${metronomeContractId} and applied ` +
-              `seat entitlement overrides, but failed to re-sync seat ` +
-              `quantities: ${resyncResult.error.message}. The newly entitled ` +
-              "seats may bill at quantity 0 until the next sync. Manual " +
-              "reconciliation may be required."
-          )
-        );
-      }
-    }
+  // Remap memberships and sync seat quantities against the final contract state
+  // (all overrides already applied). This is the single authoritative seat sync
+  // for switchContract — provisionMetronomeContract runs with enableSeatSync:false
+  // to avoid an incorrect intermediate remap on package-default entitlements.
+  const ownerLight = renderLightWorkspaceType({ workspace: owner });
+  const remapResult = await remapMembershipSeatTypesForContract({
+    metronomeCustomerId,
+    contractId: metronomeContractId,
+    workspace: ownerLight,
+    swapAt,
+    startingAt: alignedStart,
+  });
+  if (remapResult.isErr()) {
+    return new Err(
+      new SwitchContractError(
+        "provision_inconsistent",
+        `Provisioned Metronome contract ${metronomeContractId} but failed to ` +
+          `map membership seat types: ${remapResult.error.message}. Members may ` +
+          "remain on a seat type the new contract no longer bills. Manual " +
+          "reconciliation may be required."
+      )
+    );
+  }
+  const resyncResult = await syncContractQuantities(
+    metronomeCustomerId,
+    metronomeContractId,
+    ownerLight,
+    alignedStart.toISOString()
+  );
+  if (resyncResult.isErr()) {
+    return new Err(
+      new SwitchContractError(
+        "provision_inconsistent",
+        `Provisioned Metronome contract ${metronomeContractId} but failed to ` +
+          `sync seat quantities: ${resyncResult.error.message}. Seats may bill ` +
+          "at incorrect quantities until the next sync. Manual reconciliation " +
+          "may be required."
+      )
+    );
   }
 
   // The operator supplies the AWU usage cap in credits directly — no fiat

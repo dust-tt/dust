@@ -1,4 +1,4 @@
-import Custom404 from "@dust-tt/front/pages/404";
+import Custom404 from "@dust-tt/front/components/pages/Custom404";
 import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
 import { AppContentRouterLayout } from "@spa/app/layouts/AppContentRouterLayout";
 import { RootRouterLayout } from "@spa/app/layouts/RootRouterLayout";

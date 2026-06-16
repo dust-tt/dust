@@ -102,7 +102,7 @@ export async function createHandler(
   > = [
     {
       type: "text",
-      text: `${verb} \`${path}\` (${content_type}, ${sizeKb} KB)`,
+      text: `${verb} \`${path}\` (${content_type}, ${sizeKb} KB). The user is presented with an attachment to download the file, do not attempt to generate a link to it.`,
     },
   ];
 

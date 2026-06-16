@@ -1,7 +1,11 @@
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
-import { publishMCPResults } from "@app/lib/api/assistant/mcp_events";
+import {
+  MCP_RESULTS_MAX_SIZE_BYTES,
+  publishMCPResults,
+} from "@app/lib/api/assistant/mcp_events";
 import type { PostMCPResultsResponseType } from "@dust-tt/client";
 import { PublicPostMCPResultsRequestBodySchema } from "@dust-tt/client";
+import { bodyLimit } from "@front-api/middlewares/body_limit";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -62,6 +66,7 @@ const app = publicApiApp();
  */
 app.post(
   "/",
+  bodyLimit(MCP_RESULTS_MAX_SIZE_BYTES),
   validate("json", PublicPostMCPResultsRequestBodySchema),
   async (ctx): HandlerResult<PostMCPResultsResponseType> => {
     const auth = ctx.get("auth");

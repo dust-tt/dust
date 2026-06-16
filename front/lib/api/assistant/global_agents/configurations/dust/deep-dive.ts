@@ -33,7 +33,7 @@ import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import {
-  CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+  CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
   CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
 } from "@app/types/assistant/models/anthropic";
 import { GPT_5_5_MODEL_CONFIG } from "@app/types/assistant/models/openai";
@@ -170,7 +170,7 @@ For complex requests that require a lot of research, you should default to produ
 
 function getSubAgentGuidelines({ hasSandbox }: { hasSandbox?: boolean }) {
   const sandboxNote = hasSandbox
-    ? `\nIMPORTANT: Sub-agents do NOT have access to the Sandbox environment. Any task requiring code execution, running scripts, or shell commands in the sandbox must be performed by you directly — do not delegate it to a sub-agent.\n`
+    ? `\nIMPORTANT: Each sub-agent runs in its OWN Computer, isolated from yours. Files in your Computer are not visible to sub-agents, and files a sub-agent creates in its Computer do not come back to you (only its text output does). So any code execution, scripts, or shell commands whose inputs or outputs live in your Computer must be run by you directly, not delegated to a sub-agent.\n`
     : "";
 
   return `<sub_agent_guidelines>
@@ -421,6 +421,7 @@ export function _getDeepDiveGlobalAgent(
     settings,
     preFetchedDataSources,
     mcpServerViews,
+    hasSandbox,
     excludeProviders,
   }: {
     settings: GlobalAgentSettingsModel | null;
@@ -430,9 +431,6 @@ export function _getDeepDiveGlobalAgent(
     excludeProviders: ReadonlySet<ModelProviderIdType>;
   }
 ): AgentConfigurationType | null {
-  // TODO(2026-04-15 sandbox): re-enable sandbox for deep-dive once fully ready.
-  const hasSandbox = false;
-
   const {
     run_agent: runAgentMCPServerView,
     ask_user_question: askUserQuestionMCPServerView,
@@ -445,7 +443,7 @@ export function _getDeepDiveGlobalAgent(
     shouldUseOpus(auth) &&
     isProviderWhitelisted(auth, "anthropic")
       ? {
-          modelConfiguration: CLAUDE_OPUS_4_6_DEFAULT_MODEL_CONFIG,
+          modelConfiguration: CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG,
           reasoningEffort: modelConfig?.reasoningEffort ?? ("medium" as const),
         }
       : null;
@@ -603,9 +601,10 @@ export function _getDeepDiveGlobalAgent(
     ...deepAgent,
     status,
     actions,
-    skills: hasSandbox
-      ? ["frames", "discover_skills", "sandbox"]
-      : ["frames", "discover_skills"],
+    // The "sandbox" (Computer) skill is auto-enabled for all agents when the
+    // `sandbox_tools` feature flag is on (see SkillResource.listForAgentLoop),
+    // so it no longer needs to be listed here.
+    skills: ["frames", "discover_skills", "skill-authoring"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
   };
 }

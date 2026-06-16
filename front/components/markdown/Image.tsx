@@ -1,3 +1,4 @@
+import { PreviewableCitation } from "@app/components/assistant/conversation/attachment/PreviewableCitation";
 import config from "@app/lib/api/config";
 import { FILE_ID_REGEX } from "@app/lib/files";
 import {
@@ -37,7 +38,7 @@ export function Img({ src, alt, owner }: ImgProps) {
   const viewURL = new URL(viewSuffix, baseUrl);
   const downloadURL = new URL(downloadSuffix, baseUrl);
 
-  // Show loading state while fetching metadata.
+  // Loading state while fetching metadata: render a CitationImage placeholder.
   if (isFileMetadataLoading) {
     return (
       <Citation containerClassName="aspect-square w-48">
@@ -57,14 +58,14 @@ export function Img({ src, alt, owner }: ImgProps) {
   }
 
   return (
-    <Citation containerClassName="aspect-square w-48">
-      <CitationImage
-        imgSrc={viewURL.toString()}
-        downloadUrl={downloadURL.toString()}
-        title={fileMetadata.fileName}
-        alt={alt || fileMetadata.fileName}
-      />
-    </Citation>
+    <PreviewableCitation
+      fileId={fileId}
+      contentType={fileMetadata.contentType}
+      title={fileMetadata.fileName}
+      thumbnailUrl={viewURL.toString()}
+      downloadUrl={downloadURL.toString()}
+      containerClassName="aspect-square w-48"
+    />
   );
 }
 

@@ -1,14 +1,10 @@
+import type { PokeListPluginRunsResponseBody } from "@app/lib/api/poke/plugin_manager";
 import { Authenticator } from "@app/lib/auth";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
-import type { PluginRunType } from "@app/types/poke/plugins";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export interface PokeListPluginRunsResponseBody {
-  pluginRuns: PluginRunType[];
-}
 
 const ListPluginRunsQuerySchema = z.object({
   workspaceId: z.string().optional(),
@@ -19,6 +15,7 @@ const ListPluginRunsQuerySchema = z.object({
 // Mounted at /api/poke/plugins/runs.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("query", ListPluginRunsQuerySchema),

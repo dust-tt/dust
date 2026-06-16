@@ -26,6 +26,7 @@ const {
   mockSyncMauCount,
   mockSyncSeatCount,
   mockRemapMembershipSeatTypesForContract,
+  mockBuildSeatDataByUserId,
 } = vi.hoisted(() => {
   const mockPrices = { retrieve: vi.fn() };
 
@@ -45,6 +46,7 @@ const {
     mockSyncMauCount: vi.fn(),
     mockSyncSeatCount: vi.fn(),
     mockRemapMembershipSeatTypesForContract: vi.fn(),
+    mockBuildSeatDataByUserId: vi.fn(),
   };
 });
 
@@ -79,6 +81,7 @@ vi.mock("@app/lib/metronome/seats", () => ({
   hasContractSeatSubscription: mockHasContractSeatSubscription,
   syncSeatCount: mockSyncSeatCount,
   remapMembershipSeatTypesForContract: mockRemapMembershipSeatTypesForContract,
+  buildSeatDataByUserId: mockBuildSeatDataByUserId,
 }));
 
 vi.mock("@app/lib/api/metronome/credit_state_dispatcher", () => ({
@@ -174,6 +177,9 @@ beforeEach(() => {
 
   mockRemapMembershipSeatTypesForContract.mockReset();
   mockRemapMembershipSeatTypesForContract.mockResolvedValue(new Ok(undefined));
+
+  mockBuildSeatDataByUserId.mockReset();
+  mockBuildSeatDataByUserId.mockResolvedValue(new Ok(new Map()));
 });
 
 function makeSubscription(
@@ -814,6 +820,47 @@ describe("provisionMetronomeContract — overlap sunset", () => {
         metronomeCustomerId: "m-customer",
         contractId: "overlap-1",
       })
+    );
+  });
+
+  it("forwards fromContractId and skips it in the sunset pass", async () => {
+    mockListMetronomeContracts.mockResolvedValue(
+      new Ok([
+        // the prior contract the transition renews from — ended by Metronome,
+        // so it must NOT be sunset again here.
+        {
+          id: "prior-contract",
+          starting_at: "2026-03-01T00:00:00.000Z",
+          ending_before: null,
+          archived_at: null,
+        },
+        // an unrelated stray overlap — still sunset.
+        {
+          id: "overlap-1",
+          starting_at: "2026-03-01T00:00:00.000Z",
+          ending_before: null,
+          archived_at: null,
+        },
+      ])
+    );
+
+    const result = await provisionMetronomeContract({
+      metronomeCustomerId: "m-customer",
+      workspace: WORKSPACE,
+      packageAlias: "legacy-pro-monthly",
+      uniquenessKey: "uniq_123",
+      startingAt: new Date(START_DATE),
+      planCode: "PRO_PLAN_SEAT_29",
+      fromContractId: "prior-contract",
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockCreateMetronomeContract).toHaveBeenCalledWith(
+      expect.objectContaining({ fromContractId: "prior-contract" })
+    );
+    expect(mockScheduleMetronomeContractEnd).toHaveBeenCalledTimes(1);
+    expect(mockScheduleMetronomeContractEnd).toHaveBeenCalledWith(
+      expect.objectContaining({ contractId: "overlap-1" })
     );
   });
 

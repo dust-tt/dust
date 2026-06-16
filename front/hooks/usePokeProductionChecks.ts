@@ -1,8 +1,10 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type {
+  GetCheckHistoryResponseBody,
+  GetProductionChecksResponseBody,
+} from "@app/lib/api/poke/production_checks";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher } from "@app/lib/swr/swr";
-import type { GetProductionChecksResponseBody } from "@app/pages/api/poke/production-checks";
-import type { GetCheckHistoryResponseBody } from "@app/pages/api/poke/production-checks/[checkName]/history";
 import { useState } from "react";
 import type { Fetcher } from "swr";
 import useSWR from "swr";

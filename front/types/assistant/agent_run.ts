@@ -149,7 +149,7 @@ export async function getAgentLoopData(
     AgentLoopDataError | Error
   >
 > {
-  const auth = await Authenticator.fromJSON(authType);
+  const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
   return getAgentLoopDataWithAuth(auth, agentLoopArgs);
 }

@@ -29,12 +29,12 @@ export type MinimalFileForPreview = {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  ArrowDownOnSquareIcon,
   Button,
-  ClipboardCheckIcon,
-  ClipboardIcon,
+  Clipboard,
+  ClipboardCheck,
   CodeBlock,
-  ExternalLinkIcon,
+  Download01,
+  LinkExternal01,
   Markdown,
   Sheet,
   SheetContainer,
@@ -185,14 +185,14 @@ function AudioFileRenderer({
       </audio>
       {content.text && (
         <div className="flex flex-col gap-2">
-          <h4 className="text-sm font-semibold text-muted-foreground">
+          <h4 className="text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
             Transcript
           </h4>
           <TextContent text={content.text} />
         </div>
       )}
       {!content.text && (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
           No transcript available.
         </p>
       )}
@@ -426,7 +426,7 @@ export function FilePreviewSheet({
 
     if (hasError) {
       return (
-        <div className="flex h-48 w-full items-center justify-center text-muted-foreground">
+        <div className="flex h-48 w-full items-center justify-center text-muted-foreground dark:text-muted-foreground-night">
           <p>Unable to preview this file. You can download it instead.</p>
         </div>
       );
@@ -469,14 +469,14 @@ export function FilePreviewSheet({
                       tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
                       variant="outline"
                       size="icon-xs"
-                      icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                      icon={isCopied ? ClipboardCheck : Clipboard}
                       onClick={() => copy(processedContent?.text ?? "")}
                     />
                   )}
                   <Button
                     variant="outline"
                     size="icon-xs"
-                    icon={ArrowDownOnSquareIcon}
+                    icon={Download01}
                     tooltip="Download"
                     onClick={handleDownload}
                   />
@@ -484,7 +484,7 @@ export function FilePreviewSheet({
                     <Button
                       variant="outline"
                       size="icon-xs"
-                      icon={ExternalLinkIcon}
+                      icon={LinkExternal01}
                       tooltip="Open in browser"
                       onClick={handleOpenInBrowser}
                     />

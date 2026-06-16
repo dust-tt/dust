@@ -10,6 +10,7 @@ import {
   CLAUDE_4_5_SONNET_20250929_MODEL_ID,
   CLAUDE_4_OPUS_20250514_MODEL_ID,
   CLAUDE_4_SONNET_20250514_MODEL_ID,
+  CLAUDE_FABLE_5_MODEL_ID,
   CLAUDE_OPUS_4_6_MODEL_ID,
   CLAUDE_OPUS_4_7_MODEL_ID,
   CLAUDE_OPUS_4_8_MODEL_ID,
@@ -28,6 +29,7 @@ export const ANTHROPIC_WHITELISTED_MODEL_IDS = [
   CLAUDE_4_5_SONNET_20250929_MODEL_ID,
   CLAUDE_4_OPUS_20250514_MODEL_ID,
   CLAUDE_4_SONNET_20250514_MODEL_ID,
+  CLAUDE_FABLE_5_MODEL_ID,
   CLAUDE_OPUS_4_6_MODEL_ID,
   CLAUDE_OPUS_4_7_MODEL_ID,
   CLAUDE_OPUS_4_8_MODEL_ID,
@@ -79,6 +81,9 @@ const STATIC_ANTHROPIC_MODEL_CONFIGS: Partial<
   [CLAUDE_OPUS_4_8_MODEL_ID]: {
     overwrites: THINKING_OVERWRITES,
   },
+  [CLAUDE_FABLE_5_MODEL_ID]: {
+    overwrites: THINKING_OVERWRITES,
+  },
   [CLAUDE_SONNET_4_6_MODEL_ID]: {
     overwrites: THINKING_OVERWRITES,
   },
@@ -106,14 +111,12 @@ export const isAnthropicWhitelistedModelId = (
   );
 };
 
-// Typed as `${string}@${string}` so the model id and version can be split on `@`
-// — the Vertex token counting API only requires the name.
-export const VERTEX_MODEL_ID_MAP: Partial<
-  Record<ModelIdType, `${string}@${string}`>
-> = {
+export const VERTEX_MODEL_ID_MAP: Partial<Record<ModelIdType, string>> = {
   [CLAUDE_4_5_SONNET_20250929_MODEL_ID]: "claude-sonnet-4-5@20250929",
-  [CLAUDE_SONNET_4_6_MODEL_ID]: "claude-sonnet-4-6@default",
-  [CLAUDE_OPUS_4_6_MODEL_ID]: "claude-opus-4-6@default",
+  [CLAUDE_SONNET_4_6_MODEL_ID]: "claude-sonnet-4-6",
+  [CLAUDE_OPUS_4_6_MODEL_ID]: "claude-opus-4-6",
+  [CLAUDE_OPUS_4_7_MODEL_ID]: "claude-opus-4-7",
+  [CLAUDE_OPUS_4_8_MODEL_ID]: "claude-opus-4-8",
   [CLAUDE_4_5_OPUS_20251101_MODEL_ID]: "claude-opus-4-5@20251101",
   [CLAUDE_4_5_HAIKU_20251001_MODEL_ID]: "claude-haiku-4-5@20251001",
 };

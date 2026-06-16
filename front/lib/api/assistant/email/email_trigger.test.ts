@@ -4,8 +4,10 @@ import {
   ASSISTANT_EMAIL_SUBDOMAIN,
   buildEmailUserMessage,
   buildReplyThreadingHeaders,
+  getThreadingLookupMessageIds,
   parseEmailReplyContext,
   sendToolValidationEmail,
+  splitThreadContent,
 } from "@app/lib/api/assistant/email/email_trigger";
 import { sendEmail } from "@app/lib/api/email";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -220,6 +222,71 @@ describe("buildReplyThreadingHeaders", () => {
       inReplyTo: "<incoming-message-id@dust.tt>",
       references: "<older-message-id@dust.tt> <incoming-message-id@dust.tt>",
     });
+  });
+});
+
+describe("splitThreadContent", () => {
+  it("splits the fresh reply from the quoted thread", async () => {
+    const { userMessage, restOfThread } = await splitThreadContent(
+      "Can you go deeper on point 2?\n" +
+        "\n" +
+        "On Mon, Jun 8, 2026 at 10:12 AM agent (Dust agent)\n" +
+        "<agent@dust.team> wrote:\n" +
+        "> Here is my answer.\n"
+    );
+
+    expect(userMessage).toBe("Can you go deeper on point 2?");
+    expect(restOfThread).toContain("Here is my answer.");
+  });
+});
+
+describe("getThreadingLookupMessageIds", () => {
+  it("orders message-ids most recent first: in-reply-to, then references reversed", () => {
+    const messageIds = getThreadingLookupMessageIds({
+      messageId: "<reply@mail.gmail.com>",
+      inReplyTo: "<agent-reply@sendgrid.net>",
+      references: "<original@mail.gmail.com> <agent-reply@sendgrid.net>",
+    });
+
+    expect(messageIds).toEqual([
+      "agent-reply@sendgrid.net",
+      "original@mail.gmail.com",
+    ]);
+  });
+
+  it("normalizes brackets and whitespace and deduplicates", () => {
+    const messageIds = getThreadingLookupMessageIds({
+      messageId: null,
+      inReplyTo: " <a@x.com> ",
+      references: "<a@x.com>   b@x.com\n <c@x.com>",
+    });
+
+    expect(messageIds).toEqual(["a@x.com", "c@x.com", "b@x.com"]);
+  });
+
+  it("caps the number of lookup candidates", () => {
+    const references = Array.from(
+      { length: 20 },
+      (_, i) => `<ref-${i}@x.com>`
+    ).join(" ");
+    const messageIds = getThreadingLookupMessageIds({
+      messageId: null,
+      inReplyTo: null,
+      references,
+    });
+
+    expect(messageIds).toHaveLength(10);
+    expect(messageIds[0]).toBe("ref-19@x.com");
+  });
+
+  it("returns an empty array when no threading headers are set", () => {
+    const messageIds = getThreadingLookupMessageIds({
+      messageId: null,
+      inReplyTo: null,
+      references: null,
+    });
+
+    expect(messageIds).toEqual([]);
   });
 });
 

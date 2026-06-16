@@ -15,6 +15,10 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
+export type GetCouponValidateResponseBody = {
+  coupon: CouponType;
+};
+
 export type CouponValidationError =
   | { code: "expired"; expirationDate: Date }
   | { code: "exhausted"; maxRedemptions: number }

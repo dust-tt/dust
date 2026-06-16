@@ -4,8 +4,23 @@ import React from "react";
 import { Input, SettingsList, SliderToggle } from "../index_with_tw_base";
 
 const meta = {
-  title: "Components/SettingsList",
+  title: "Lists/SettingsList",
   component: SettingsList,
+  parameters: {
+    docs: {
+      description: {
+        component: `A vertically stacked list of settings, where each **SettingsList.Row** pairs a **title** and optional **description** with a trailing **action** control. The container handles dividers and spacing so rows line up consistently.
+
+**When to use**
+- For a settings or preferences panel where each row exposes a single labelled control.
+
+**Guidelines**
+- Compose rows with **SettingsList.Row**; both **description** and **action** are optional, so rows can be title-only.
+- Use a **SliderToggle** for instant on/off settings or an **Input** for value entry in the **action** slot.
+- For list rows that need a leading visual or hover-revealed controls, use **ContextItem** instead.`,
+      },
+    },
+  },
   args: {
     children: null,
   },

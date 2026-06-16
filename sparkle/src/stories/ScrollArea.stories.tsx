@@ -5,10 +5,22 @@ import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
 import { Separator } from "@sparkle/components/Separator";
 
 const meta = {
-  title: "Primitives/ScrollArea",
+  title: "Layout/ScrollArea",
   component: ScrollArea,
   parameters: {
     layout: "centered",
+    docs: {
+      description: {
+        component: `A styled, cross-browser scroll container that replaces the native scrollbar with a custom **ScrollBar**. Render a **ScrollBar** child with an **orientation** (\`vertical\` / \`horizontal\`); the bar supports compact and classic styles.
+
+**When to use**
+- To give bounded, scrollable regions (lists, panels, popovers) a consistent scrollbar across browsers.
+
+**Guidelines**
+- Constrain the **ScrollArea** with an explicit height or width so it actually scrolls.
+- Include a **ScrollBar** per scrolling axis; many layout wrappers like **Container** already embed a ScrollArea, so avoid nesting another.`,
+      },
+    },
   },
   tags: ["autodocs"],
 } satisfies Meta<typeof ScrollArea>;
@@ -121,14 +133,7 @@ export const ScrollWithActiveState: Story = {
   render: () => {
     return (
       <div className="s-flex s-flex-col s-gap-4">
-        <ScrollArea
-          className="s-h-[200px] s-w-[350px] s-rounded-xl s-border s-bg-white"
-          scrollStyles={{
-            active:
-              "s-shadow-md s-border-highlight-200 dark:s-border-highlight-200-night",
-            inactive: "s-border-border dark:s-border-border-night",
-          }}
-        >
+        <ScrollArea className="s-h-[200px] s-w-[350px] s-rounded-xl s-border s-bg-white">
           <div>
             {Array.from({ length: 20 }).map((_, i) => (
               <div key={i} className="s-px-4 s-py-2 s-text-sm">

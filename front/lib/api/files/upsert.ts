@@ -22,11 +22,13 @@ import logger from "@app/logger/logger";
 import type { CoreAPIDataSourceDocumentSection } from "@app/types/core/data_source";
 import type {
   AllSupportedFileContentType,
+  FileType,
   FileUseCase,
 } from "@app/types/files";
 import {
   isInteractiveContentType,
   isSupportedAudioContentType,
+  isSupportedFontContentType,
   isSupportedImageContentType,
   TABLE_PREFIX,
 } from "@app/types/files";
@@ -40,6 +42,32 @@ import {
   isSupportedPlainTextContentType,
   // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 } from "@dust-tt/client";
+
+// User-facing message for CSVs that core cannot decode to UTF-8 (e.g. exotic encodings that
+// charset detection cannot transcode). Surfaced as-is by the file upload endpoints and the
+// conversation attachment flow.
+export const CSV_UNSUPPORTED_ENCODING_ERROR_MESSAGE =
+  "This CSV file uses an unsupported encoding. In Excel, use File > Save As > 'CSV UTF-8 (Comma delimited)' and upload the file again.";
+
+// /!\ Matches on the wording of core's CSV decode errors (`decode_to_utf8` in
+// core/src/databases/csv.rs), which all mention "UTF-8". Keep both sides in sync.
+function isNonUtf8CsvError(error: DustError): boolean {
+  return error.code === "invalid_csv_content" && /utf-?8/i.test(error.message);
+}
+
+export interface UpsertFileToDataSourceRequestBody {
+  fileId: string;
+  upsertArgs?:
+    | Pick<UpsertDocumentArgs, "document_id" | "title" | "tags">
+    | Pick<
+        UpsertTableArgs,
+        "name" | "title" | "description" | "tags" | "tableId"
+      >;
+}
+
+export interface UpsertFileToDataSourceResponseBody {
+  file: FileType;
+}
 
 // Upload to dataSource
 const upsertDocumentToDatasource: ProcessingFunction = async (
@@ -506,6 +534,11 @@ const getProcessingFunction = ({
     return undefined;
   }
 
+  // Fonts are binary assets used as-is — no processing needed.
+  if (isSupportedFontContentType(contentType)) {
+    return undefined;
+  }
+
   assertNever(contentType);
 };
 
@@ -538,6 +571,30 @@ const maybeApplyProcessing: ProcessingFunction = async (
       upsertArgs,
     });
     if (res.isErr()) {
+      if (
+        file.useCase === "conversation" &&
+        res.error.code === "data_source_quota_error"
+      ) {
+        logger.warn(
+          {
+            workspaceId: auth.workspace()?.sId,
+            fileId: file.sId,
+            contentType: file.contentType,
+            fileSizeBytes: file.fileSize,
+            errorCode: res.error.code,
+            err: res.error,
+          },
+          "Conversation file exceeds data source indexing quota; skipping indexing and keeping the attachment available."
+        );
+
+        await file.setUseCaseMetadata(auth, {
+          ...(file.useCaseMetadata ?? {}),
+          skipDataSourceIndexing: true,
+        });
+
+        return new Ok(undefined);
+      }
+
       return res;
     }
 
@@ -604,6 +661,24 @@ export async function processAndUpsertToDataSource(
   ]);
 
   if (processingRes.isErr()) {
+    // Replace core's raw CSV parse error with an actionable message for the user.
+    if (isNonUtf8CsvError(processingRes.error)) {
+      // The original message carries the detected charset; keep it in the logs.
+      logger.info(
+        {
+          workspaceId: auth.workspace()?.sId,
+          fileId: file.sId,
+          coreErrorMessage: processingRes.error.message,
+        },
+        "Rewriting non-UTF-8 CSV error to user-facing message."
+      );
+      return new Err(
+        new DustError(
+          "invalid_csv_content",
+          CSV_UNSUPPORTED_ENCODING_ERROR_MESSAGE
+        )
+      );
+    }
     return new Err<DustError>(processingRes.error);
   }
 

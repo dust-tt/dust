@@ -17,7 +17,7 @@ import { getMetronomeContractUrl } from "@app/lib/metronome/urls";
 import {
   FREE_NO_PLAN_CODE,
   isDustCompanyPlan,
-  isEntreprisePlanPrefix,
+  isEnterprisePlanPrefix,
   isProPlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
@@ -33,7 +33,7 @@ import {
   ConfluenceLogo,
   cn,
   GithubLogo,
-  GlobeAltIcon,
+  Globe01,
   GoogleLogo,
   IntercomLogo,
   LinkWrapper,
@@ -393,7 +393,7 @@ export function ActiveSubscriptionTable({
               </div>
               <CancelPendingSubscriptionButton owner={owner} />
             </div>
-            <p className="pb-2 text-xs text-muted-foreground">
+            <p className="pb-2 text-xs text-muted-foreground dark:text-muted-foreground-night">
               Provisioned in DB. The `contract.start` Metronome webhook will
               flip it to active and end the current subscription.
             </p>
@@ -460,7 +460,7 @@ export function PlanLimitationsTable({
                       <ConfluenceLogo />
                     ) : null}
                     {activePlan.limits.connections.isWebCrawlerAllowed ? (
-                      <GlobeAltIcon />
+                      <Globe01 />
                     ) : null}
                     {activePlan.limits.connections.isSalesforceAllowed ? (
                       <SalesforceLogo />
@@ -488,11 +488,20 @@ export function PlanLimitationsTable({
               </PokeTableRow>
 
               <PokeTableRow>
-                <PokeTableCell>Max number of messages</PokeTableCell>
+                <PokeTableCell>Messages (pooled) fair use</PokeTableCell>
                 <PokeTableCell>
                   {activePlan.limits.assistant.maxMessages === -1
                     ? "unlimited"
                     : `${activePlan.limits.assistant.maxMessages} / ${activePlan.limits.assistant.maxMessagesTimeframe}`}
+                </PokeTableCell>
+              </PokeTableRow>
+
+              <PokeTableRow>
+                <PokeTableCell>AWUCredits (unpooled) fair use</PokeTableCell>
+                <PokeTableCell>
+                  {activePlan.limits.assistant.maxAwuCredits === -1
+                    ? "unlimited"
+                    : `${activePlan.limits.assistant.maxAwuCredits} / ${activePlan.limits.assistant.maxAwuCreditsTimeframe}`}
                 </PokeTableCell>
               </PokeTableRow>
 
@@ -507,7 +516,7 @@ export function PlanLimitationsTable({
                 <PokeTableCell>Is Opus enabled?</PokeTableCell>
                 <PokeTableCell>
                   {isDustCompanyPlan(activePlan.code) ||
-                  isEntreprisePlanPrefix(activePlan.code)
+                  isEnterprisePlanPrefix(activePlan.code)
                     ? "✅"
                     : "❌"}
                 </PokeTableCell>

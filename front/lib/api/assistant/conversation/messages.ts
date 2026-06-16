@@ -552,6 +552,7 @@ export const createAgentMessages = async (
             ),
             richMentions: [],
             reactions: [],
+            costCredits: null,
           };
         }
       }
@@ -602,7 +603,7 @@ export async function getUserMessageIdFromMessageId(
       sId: messageId,
       agentMessageId: { [Op.ne]: null },
     },
-    attributes: ["parentId", "version", "sId"],
+    attributes: ["parentId", "version", "sId", "branchId", "workspaceId"],
   });
 
   assert(

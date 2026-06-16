@@ -4,6 +4,7 @@ import SwiftUI
 struct InputBarView: View {
     @ObservedObject var viewModel: InputBarViewModel
     var conversationId: String?
+    var autoFocus: Bool = false
     var onConversationCreated: ((Conversation) -> Void)?
     var onMessageSent: (() -> Void)?
     var onWillSendReply: ((String) -> Void)?
@@ -13,6 +14,10 @@ struct InputBarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            if let error = viewModel.error {
+                errorBanner(error)
+            }
+
             if !viewModel.selectedCapabilities.isEmpty || !viewModel.selectedKnowledgeItems.isEmpty {
                 selectionChipsBar
             }
@@ -87,6 +92,38 @@ struct InputBarView: View {
             )
             .presentationDetents([.medium, .large])
         }
+        .task {
+            // A task hop is needed; setting @FocusState in onAppear doesn't take.
+            if autoFocus {
+                isTextFieldFocused = true
+            }
+        }
+    }
+
+    // MARK: - Error Banner
+
+    private func errorBanner(_ message: String) -> some View {
+        HStack(spacing: 8) {
+            SparkleIcon.exclamationCircle.image
+                .resizable()
+                .frame(width: 14, height: 14)
+                .foregroundStyle(Color.warning)
+            Text(message)
+                .sparkleCopySm()
+                .foregroundStyle(Color.dustForeground)
+                .lineLimit(2)
+            Spacer()
+            Button {
+                viewModel.error = nil
+            } label: {
+                SparkleIcon.xMark.image
+                    .resizable()
+                    .frame(width: 10, height: 10)
+                    .foregroundStyle(Color.dustForeground.opacity(0.5))
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
     }
 
     // MARK: - Selection Chips
@@ -274,7 +311,8 @@ struct InputBarView: View {
 
     private var sendButton: some View {
         Button {
-            Task {
+            // @MainActor so callbacks after the await (e.g. navigation) run on the main actor.
+            Task { @MainActor in
                 isTextFieldFocused = false
                 if let conversationId {
                     let pendingText = viewModel.messageText.trimmingCharacters(in: .whitespacesAndNewlines)

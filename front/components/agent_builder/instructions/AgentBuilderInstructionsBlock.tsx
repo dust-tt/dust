@@ -7,11 +7,11 @@ import { AgentInstructionsHistory } from "@app/components/agent_builder/instruct
 import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import {
-  ArrowPathIcon,
   Button,
   Label,
+  RefreshCw02,
   Separator,
-  XMarkIcon,
+  XClose,
 } from "@dust-tt/sparkle";
 import { format } from "date-fns/format";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
@@ -68,7 +68,7 @@ export function AgentBuilderInstructionsBlock({
           )}
           <div className="flex gap-2">
             <Button
-              icon={XMarkIcon}
+              icon={XClose}
               variant="outline"
               size="sm"
               onClick={() => {
@@ -80,7 +80,7 @@ export function AgentBuilderInstructionsBlock({
             <Button
               variant="warning"
               size="sm"
-              icon={ArrowPathIcon}
+              icon={RefreshCw02}
               onClick={restoreVersion}
               label="Restore this version"
             />

@@ -11,7 +11,7 @@ import {
 } from "@app/types/notification_preferences";
 import type { WorkspaceType } from "@app/types/user";
 import {
-  BellIcon,
+  Bell01,
   DropdownMenuPortal,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -109,7 +109,7 @@ export function PodNotificationMenu({
     <DropdownMenuSub>
       <DropdownMenuSubTrigger
         disabled={isLoading || shouldWaitBeforeFetching}
-        icon={BellIcon}
+        icon={Bell01}
         label="Notifications"
       />
       <DropdownMenuPortal>

@@ -1,14 +1,14 @@
-import { getRegisteredImages } from "@app/lib/api/sandbox/image";
+import {
+  getRegisteredImages,
+  type SandboxKillImagesResponseBody,
+} from "@app/lib/api/sandbox/image";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
-
-export interface SandboxKillImagesResponseBody {
-  images: Array<{ baseImage: string; version: string }>;
-}
 
 // Mounted at /api/poke/sandbox_kill/images.
 const app = pokeApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<SandboxKillImagesResponseBody> => {
   const images = getRegisteredImages()
     .map((image) => image.imageId)

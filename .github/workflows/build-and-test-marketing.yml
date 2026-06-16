@@ -1,0 +1,36 @@
+name: Lint & Build (marketing)
+
+on:
+  push:
+    paths:
+      - package-lock.json
+      - marketing/**
+      - front/**
+      - sparkle/**
+      - .github/workflows/build-and-test-marketing.yml
+
+permissions:
+  contents: read
+
+jobs:
+  tsgo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          node-version: "24.14.0"
+          build-sparkle: "true"
+      - name: Typecheck
+        run: npm -w marketing run tsgo -- --version && npm -w marketing run tsgo
+      - name: Build
+        working-directory: marketing
+        # NEXT_PUBLIC_* vars are inlined by `next build`. config.getAppUrl()
+        # / getApiBaseUrl() throw at build time when these are unset, so we
+        # pass placeholders here — the real values are injected by the Docker
+        # build via .github/configs/<region>/.env.{prod,edge}.
+        env:
+          NEXT_PUBLIC_DUST_APP_URL: https://app.dust.tt
+          NEXT_PUBLIC_DUST_API_URL: https://dust.tt
+        run: npm run build

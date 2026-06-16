@@ -1,97 +1,115 @@
+import { LockedSection } from "@app/components/workspace/usage/LockedSection";
 import {
   useDefaultUserSpendLimit,
   useUpdateDefaultUserSpendLimit,
+  useUpdateUsageSettings,
+  useUsageSettings,
 } from "@app/lib/swr/usage_settings";
 import {
   MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
 } from "@app/types/credits";
 import {
-  ActionCreditCoinsIcon,
-  Icon,
-  Input,
+  InputWithSave,
   Page,
   SettingsList,
+  SliderToggle,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface UsageSettingsCardProps {
   workspaceId: string;
+  readOnly: boolean;
+  hasPool: boolean;
 }
 
-export function UsageSettingsCard({ workspaceId }: UsageSettingsCardProps) {
+export function UsageSettingsCard({
+  workspaceId,
+  readOnly,
+  hasPool,
+}: UsageSettingsCardProps) {
   const { defaultUserSpendLimit, isDefaultUserSpendLimitLoading } =
     useDefaultUserSpendLimit({ workspaceId });
   const { doUpdateDefaultUserSpendLimit } = useUpdateDefaultUserSpendLimit({
     workspaceId,
   });
+  const { usageSettings, isUsageSettingsLoading } = useUsageSettings({
+    workspaceId,
+  });
+  const { doUpdateUsageSettings } = useUpdateUsageSettings({ workspaceId });
 
-  const [defaultLimitInput, setDefaultLimitInput] = useState<string>("");
-  const [isSavingLimit, setIsSavingLimit] = useState(false);
+  const [isSavingAllowUpgradeRequest, setIsSavingAllowUpgradeRequest] =
+    useState(false);
 
-  useEffect(() => {
-    if (defaultUserSpendLimit?.awuCredits !== undefined) {
-      setDefaultLimitInput(
-        defaultUserSpendLimit.awuCredits !== null
-          ? String(defaultUserSpendLimit.awuCredits)
-          : ""
-      );
+  const handleToggleAllowUpgradeRequest = async () => {
+    setIsSavingAllowUpgradeRequest(true);
+    try {
+      await doUpdateUsageSettings({
+        allowUpgradeRequest: !usageSettings.allowUpgradeRequest,
+      });
+    } finally {
+      setIsSavingAllowUpgradeRequest(false);
     }
-  }, [defaultUserSpendLimit]);
+  };
 
-  const handleCommitDefaultLimit = async () => {
-    const parsed = Number(defaultLimitInput);
-    const current = defaultUserSpendLimit?.awuCredits ?? null;
+  const currentDefaultLimit = defaultUserSpendLimit?.awuCredits ?? null;
+
+  const handleSaveDefaultLimit = async (newValue: string) => {
+    const parsed = Number(newValue);
     if (
       !Number.isInteger(parsed) ||
       parsed < MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS ||
       parsed > MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS ||
-      parsed === current
+      parsed === currentDefaultLimit
     ) {
-      setDefaultLimitInput(current !== null ? String(current) : "");
+      // The component reverts to the current value when nothing is persisted.
       return;
     }
-    setIsSavingLimit(true);
-    try {
-      const result = await doUpdateDefaultUserSpendLimit(parsed);
-      if (!result) {
-        setDefaultLimitInput(current !== null ? String(current) : "");
-      }
-    } finally {
-      setIsSavingLimit(false);
-    }
+    await doUpdateDefaultUserSpendLimit(parsed);
   };
-
-  const isDefaultLimitInputDisabled =
-    isSavingLimit || isDefaultUserSpendLimitLoading;
 
   return (
     <Page.Vertical gap="sm" align="stretch">
-      <span className="heading-2xl text-foreground dark:text-foreground-night">
-        Settings
+      <span className="heading-base text-foreground dark:text-foreground-night">
+        Spending policies
       </span>
       <SettingsList>
-        <SettingsList.Row
-          title="Default usage limit"
-          description="Define the default usage limit for all the users in your workspace"
-          action={
-            <div className="relative w-32">
-              <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground dark:text-muted-foreground-night">
-                <Icon visual={ActionCreditCoinsIcon} size="xs" />
+        <LockedSection locked={!hasPool}>
+          <SettingsList.Row
+            title="Default Workspace Credit Pool limit"
+            description="Define the Workspace Credit Pool credit limit for users in your workspace. This limit is added on top of each seat's built-in allowance. Can be overridden per user in the members table."
+            action={
+              <div className="w-52">
+                <InputWithSave
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={
+                    currentDefaultLimit !== null
+                      ? String(currentDefaultLimit)
+                      : ""
+                  }
+                  unit="credits"
+                  normalizeValue={(value) => value.replace(/[^\d]/g, "")}
+                  onSave={handleSaveDefaultLimit}
+                  disabled={readOnly || isDefaultUserSpendLimitLoading}
+                />
               </div>
-              <Input
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={defaultLimitInput}
-                onChange={(e) =>
-                  setDefaultLimitInput(e.target.value.replace(/[^\d]/g, ""))
-                }
-                onBlur={() => void handleCommitDefaultLimit()}
-                disabled={isDefaultLimitInputDisabled}
-                className="pl-8 text-right"
-              />
-            </div>
+            }
+          />
+        </LockedSection>
+        <SettingsList.Row
+          title="Upgrade request"
+          description="Allow members who reach their limit to request an upgrade. Workspace admins review requests on the this page."
+          action={
+            <SliderToggle
+              selected={usageSettings.allowUpgradeRequest}
+              disabled={
+                readOnly ||
+                isSavingAllowUpgradeRequest ||
+                isUsageSettingsLoading
+              }
+              onClick={() => void handleToggleAllowUpgradeRequest()}
+            />
           }
         />
       </SettingsList>

@@ -2228,14 +2228,16 @@ impl Store for PostgresStore {
             _ => unreachable!(),
         };
 
+        let started_ms = utils::now();
+
         let stmt = tx
             .prepare(
                 "DELETE FROM data_sources_nodes \
                    WHERE data_source = $1 AND node_id = $2 AND document IS NOT NULL",
             )
             .await?;
-        let _ = tx
-            .query(&stmt, &[&data_source_row_id, &document_id])
+        let nodes_deleted = tx
+            .execute(&stmt, &[&data_source_row_id, &document_id])
             .await?;
         let stmt = tx
             .prepare(
@@ -2243,11 +2245,22 @@ impl Store for PostgresStore {
                    WHERE data_source = $1 AND document_id = $2",
             )
             .await?;
-        let _ = tx
-            .query(&stmt, &[&data_source_row_id, &document_id])
+        let documents_soft_deleted = tx
+            .execute(&stmt, &[&data_source_row_id, &document_id])
             .await?;
 
         tx.commit().await?;
+
+        info!(
+            project_id,
+            data_source_id = data_source_id.as_str(),
+            data_source_row_id,
+            document_id = document_id.as_str(),
+            nodes_deleted,
+            documents_soft_deleted,
+            duration_ms = (utils::now() - started_ms) as i64,
+            "delete_data_source_document"
+        );
 
         Ok(())
     }

@@ -1,0 +1,63 @@
+import { Meta } from "@storybook/addon-docs/blocks";
+
+<Meta title="Getting Started/Introduction" />
+
+# Sparkle
+
+**Sparkle is Dust's design system** — the shared library of React components,
+icons, and design tokens that powers Dust's product surfaces. This Storybook is
+the living reference for what's available, how each piece looks and behaves, and
+when to reach for it.
+
+## How this Storybook is organized
+
+The sidebar is grouped by purpose, from foundations up to product-specific UI:
+
+- **Foundations** — design tokens: colors, typography, shadows, and motion.
+- **Assets** — brand assets and reference catalogs: the logo, platform logos,
+  icon sets, and avatar sets.
+- **Actions** — buttons and action triggers (Button, SplitButton, IconButton,
+  SliderToggle, …).
+- **Forms & Inputs** — controls for entering and selecting data (Input, TextArea,
+  Checkbox, RadioGroup, Dropdown, …).
+- **Data Display** — presentational components (Avatar, Icon, Card, Chip, Counter,
+  DataTable, Tree, …).
+- **Feedback & Status** — spinners, loading states, content messages, and
+  notifications.
+- **Navigation** — breadcrumbs, tabs, toolbars, and navigation lists.
+- **Overlays** — dialogs, sheets, popovers, and tooltips.
+- **Layout** — page scaffolding and spacing utilities (Page, Container, ScrollArea,
+  Separator, …).
+- **Lists** — list and item components for displaying collections.
+- **Product** — app-specific UI for the **Conversation** experience (messages,
+  citations, code blocks) and **Agent** surfaces.
+- **Effects & Motion** — animated and decorative effects.
+- **Lab** — work-in-progress components, not yet stable.
+
+## Reading a component page
+
+Each component page opens with a short description covering **what it is**,
+**when to use it**, and a few **guidelines**, followed by interactive examples
+and an auto-generated props table. Use the **Controls** below the primary story
+to experiment with props live.
+
+## Theming
+
+Every component supports light and dark themes. Toggle the theme from the
+toolbar at the top of the canvas to preview a component on a `light` or `dark`
+background.
+
+## Using Sparkle
+
+Install the package and import components from the package root:
+
+```tsx
+import { Button, Input } from "@dust-tt/sparkle";
+
+export function Example() {
+  return <Button variant="highlight" label="Get started" />;
+}
+```
+
+Sparkle's Tailwind preset (`@dust-tt/sparkle/tailwind-preset`) provides the
+design tokens used throughout these components.

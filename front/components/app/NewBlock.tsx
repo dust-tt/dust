@@ -8,7 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  PlusIcon,
+  Plus,
 } from "@dust-tt/sparkle";
 
 export default function NewBlock({
@@ -127,7 +127,7 @@ export default function NewBlock({
       <DropdownMenuTrigger asChild>
         {small ? (
           <Button
-            icon={PlusIcon}
+            icon={Plus}
             disabled={disabled}
             variant="ghost-secondary"
             size="icon"
@@ -136,7 +136,7 @@ export default function NewBlock({
           <Button
             variant="ghost-secondary"
             label="Add Block"
-            icon={PlusIcon}
+            icon={Plus}
             disabled={disabled}
           />
         )}

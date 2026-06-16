@@ -1,10 +1,10 @@
 import {
   Avatar,
-  BellIcon,
-  BoltIcon,
+  Bell01,
+  Zap,
   Button,
   Chip,
-  ClockIcon,
+  Clock,
   Collapsible,
   CollapsibleContent,
   DataTable,
@@ -16,19 +16,18 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
-  LightModeIcon,
-  MoonIcon,
+  Sun,
+  Moon01,
   Notification,
   Page,
-  PencilSquareIcon,
+  Edit04,
   SearchInput,
   Separator,
-  SunIcon,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-  TrashIcon,
+  Trash01,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -315,11 +314,7 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
               <Avatar
                 size="xs"
                 visual={
-                  row.original.kind === "schedule" ? (
-                    <ClockIcon />
-                  ) : (
-                    <BellIcon />
-                  )
+                  row.original.kind === "schedule" ? <Clock /> : <Bell01 />
                 }
               />
               <div className="s-flex s-min-w-0 s-flex-col s-gap-0">
@@ -346,13 +341,13 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
               <Button
                 variant="outline"
                 size="sm"
-                icon={PencilSquareIcon}
+                icon={Edit04}
                 label="Manage"
               />
               <Button
                 variant="outline"
                 size="sm"
-                icon={TrashIcon}
+                icon={Trash01}
                 label="Delete"
               />
             </div>
@@ -364,8 +359,7 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
     []
   );
 
-  const themeIcon =
-    theme === "light" ? SunIcon : theme === "dark" ? MoonIcon : LightModeIcon;
+  const themeIcon = theme === "light" ? Sun : theme === "dark" ? Moon01 : Sun;
   const themeLabel =
     theme === "light" ? "Light" : theme === "dark" ? "Dark" : "System";
 
@@ -456,17 +450,17 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuItem
-                  icon={SunIcon}
+                  icon={Sun}
                   onClick={() => setTheme("light")}
                   label="Light"
                 />
                 <DropdownMenuItem
-                  icon={MoonIcon}
+                  icon={Moon01}
                   onClick={() => setTheme("dark")}
                   label="Dark"
                 />
                 <DropdownMenuItem
-                  icon={LightModeIcon}
+                  icon={Sun}
                   onClick={() => setTheme("system")}
                   label="System"
                 />
@@ -619,8 +613,8 @@ function ProfileContent({ initialUser }: ProfileContentProps) {
         <Page.SectionHeader title="Tools & Triggers" />
         <Tabs defaultValue="tools" className="s-w-full">
           <TabsList>
-            <TabsTrigger value="tools" label="Tools" icon={BoltIcon} />
-            <TabsTrigger value="triggers" label="Triggers" icon={BellIcon} />
+            <TabsTrigger value="tools" label="Tools" icon={Zap} />
+            <TabsTrigger value="triggers" label="Triggers" icon={Bell01} />
           </TabsList>
           <TabsContent value="tools" className="s-mt-4">
             <div className="s-relative s-my-4">

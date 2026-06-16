@@ -106,13 +106,17 @@ vi.mock("@app/lib/resources/workspace_sandbox_env_var_resource", () => ({
   },
 }));
 
-vi.mock("@app/logger/logger", () => ({
-  default: {
+vi.mock("@app/logger/logger", () => {
+  const child = vi.fn();
+  const mock = {
     error: mockLoggerError,
     info: mockLoggerInfo,
     warn: mockLoggerWarn,
-  },
-}));
+    child,
+  };
+  child.mockReturnValue(mock);
+  return { default: mock };
+});
 
 import {
   addEgressDomainTool,

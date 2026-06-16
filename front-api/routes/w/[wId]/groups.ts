@@ -18,6 +18,7 @@ const GetGroupsQuerySchema = z.object({
 // Mounted at /api/w/:wId/groups.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("query", GetGroupsQuerySchema),

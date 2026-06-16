@@ -43,6 +43,7 @@ function seatPlanErrorToApi(ctx: Context, err: SeatPlanError) {
 // Mounted at /api/w/:wId/seats/plan.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<SeatPlanResponseBody> => {
   const auth = ctx.get("auth");
 

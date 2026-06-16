@@ -5,6 +5,7 @@ import { PodSettingsOptionLabel } from "@app/components/pod/settings/PodSettings
 import { SuggestedTasksGenerationTile } from "@app/components/pod/settings/SuggestedTasksGenerationTile";
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useArchivePod } from "@app/hooks/useArchivePod";
+import type { RichSpaceType } from "@app/lib/api/spaces";
 import {
   useCheckPodName,
   usePodMetadata,
@@ -13,23 +14,22 @@ import {
 import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
-import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type { PatchPodMetadataBodyType } from "@app/types/api/internal/spaces";
 import { PatchPodMetadataBodySchema } from "@app/types/api/internal/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  ArchiveIcon,
-  ArrowUpOnSquareIcon,
+  Archive,
   Button,
   ContentMessage,
-  GlobeAltIcon,
+  Globe01,
   Input,
   ScrollArea,
   SearchInput,
   SliderToggle,
   TextArea,
   Tooltip,
-  UserGroupIcon,
+  Upload01,
+  Users01,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useContext, useEffect, useState } from "react";
@@ -295,7 +295,7 @@ export function PodSettingsTab({
           <div className="flex flex-col border-y border-border">
             <div className="flex items-center justify-between gap-4 py-4">
               <PodSettingsOptionLabel
-                icon={GlobeAltIcon}
+                icon={Globe01}
                 title="Open to everyone"
                 description="Anyone in the workspace can find and join the Pod."
               />
@@ -338,7 +338,7 @@ export function PodSettingsTab({
               <Button
                 label="Manage"
                 variant="outline"
-                icon={UserGroupIcon}
+                icon={Users01}
                 onClick={onOpenMembersPanel}
               />
             )}
@@ -382,7 +382,7 @@ export function PodSettingsTab({
                   .
                 </p>
                 <Button
-                  icon={ArrowUpOnSquareIcon}
+                  icon={Upload01}
                   variant="outline"
                   label="Unarchive"
                   onClick={handleArchiveToggle}
@@ -396,7 +396,7 @@ export function PodSettingsTab({
                   intact and can still be used as a data source.
                 </p>
                 <Button
-                  icon={ArchiveIcon}
+                  icon={Archive}
                   variant="warning-secondary"
                   label="Archive"
                   onClick={handleArchiveToggle}

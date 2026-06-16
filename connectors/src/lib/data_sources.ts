@@ -119,7 +119,7 @@ async function _upsertDataSourceDocument({
       });
 
       const endpoint =
-        `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+        `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
         `/data_sources/${dataSourceConfig.dataSourceId}/documents/${documentId}`;
 
       const localLogger = logger.child({
@@ -257,7 +257,7 @@ export async function getDataSourceDocument({
   });
 
   const endpoint =
-    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/documents?document_ids=${documentId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -292,7 +292,7 @@ export async function getDataSourceDocumentBlob({
   });
 
   const endpoint =
-    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/documents/${documentId}/blob`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -319,16 +319,18 @@ export async function getDataSourceDocumentBlob({
 export async function deleteDataSourceDocument(
   dataSourceConfig: DataSourceConfig,
   documentId: string,
-  loggerArgs: Record<string, string | number> = {}
+  loggerArgs: Record<string, string | number> = {},
+  caller?: string
 ) {
   const localLogger = logger.child({ ...loggerArgs, documentId });
 
   const endpoint =
-    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/documents/${documentId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
       Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+      ...(caller ? { "X-Dust-Caller": caller } : {}),
     },
   };
 
@@ -422,7 +424,7 @@ async function _updateDocumentOrTableParentsField({
       ? logger.child({ ...loggerArgs, documentId: id })
       : logger.child({ ...loggerArgs, tableId: id });
   const endpoint =
-    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/${tableOrDocument}s/${id}/parents`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -533,7 +535,7 @@ async function tokenize(text: string, ds: DataSourceConfig) {
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TOKENIZE_TIMEOUT_MS);
-  const tokensRes = await getDustAPI(ds, { useInternalAPI: true }).tokenize(
+  const tokensRes = await getDustAPI(ds).tokenize(
     sanitizedText,
     ds.dataSourceId,
     { signal: controller.signal }
@@ -868,7 +870,7 @@ export async function upsertDataSourceRemoteTable({
   const now = new Date();
 
   const endpoint =
-    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables`;
   const dustRequestPayload: UpsertDatabaseTableRequestType = {
     name: tableName,
@@ -1072,7 +1074,7 @@ export async function upsertDataSourceTableFromCsv({
     );
   }
 
-  const dustAPI = getDustAPI(dataSourceConfig, { useInternalAPI: true });
+  const dustAPI = getDustAPI(dataSourceConfig);
 
   const fileRes = await dustAPI.uploadFile({
     contentType: "text/csv",
@@ -1086,7 +1088,7 @@ export async function upsertDataSourceTableFromCsv({
   }
 
   const endpoint =
-    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/csv`;
   const dustRequestPayload: UpsertTableFromCsvRequestType = {
     name: tableName,
@@ -1263,7 +1265,7 @@ export async function deleteDataSourceTableRow({
   const now = new Date();
 
   const endpoint =
-    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/${tableId}/rows/${rowId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -1347,7 +1349,7 @@ async function _getDataSourceTable({
   });
 
   const endpoint =
-    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/${tableId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -1402,7 +1404,7 @@ export async function deleteDataSourceTable({
   const now = new Date();
 
   const endpoint =
-    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/tables/${tableId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -1486,7 +1488,7 @@ export async function _getDataSourceFolder({
   });
 
   const endpoint =
-    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/folders/${folderId}`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {
@@ -1541,9 +1543,7 @@ export async function _upsertDataSourceFolder({
 }) {
   const now = new Date();
 
-  const r = await getDustAPI(dataSourceConfig, {
-    useInternalAPI: true,
-  }).upsertFolder({
+  const r = await getDustAPI(dataSourceConfig).upsertFolder({
     dataSourceId: dataSourceConfig.dataSourceId,
     folderId,
     timestamp: timestampMs ? timestampMs : now.getTime(),
@@ -1568,9 +1568,7 @@ export async function deleteDataSourceFolder({
   folderId: string;
   loggerArgs?: Record<string, string | number>;
 }) {
-  const r = await getDustAPI(dataSourceConfig, {
-    useInternalAPI: true,
-  }).deleteFolder({
+  const r = await getDustAPI(dataSourceConfig).deleteFolder({
     dataSourceId: dataSourceConfig.dataSourceId,
     folderId,
   });
@@ -1598,7 +1596,7 @@ export async function checkDataSourceUpsertQueueStatus({
   });
 
   const endpoint =
-    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `${apiConfig.getDustFrontAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
     `/data_sources/${dataSourceConfig.dataSourceId}/check_upsert_queue`;
   const dustRequestConfig: AxiosRequestConfig = {
     headers: {

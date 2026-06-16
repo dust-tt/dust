@@ -165,7 +165,7 @@ export function ActionDetailsWrapper({
   }
 
   return (
-    <div>
+    <>
       <div
         className={cn(
           "text-foreground dark:text-foreground-night",
@@ -185,6 +185,6 @@ export function ActionDetailsWrapper({
         {headerAction}
       </div>
       {children}
-    </div>
+    </>
   );
 }

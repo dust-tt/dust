@@ -4,7 +4,6 @@ import {
   RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { AGENT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/agent_management/metadata";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import {
   AGENT_ROUTER_SERVER,
@@ -21,6 +20,7 @@ import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversa
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
 import { DATABRICKS_SERVER } from "@app/lib/api/actions/servers/databricks/metadata";
+import { EXA_SERVER } from "@app/lib/api/actions/servers/exa/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FATHOM_SERVER } from "@app/lib/api/actions/servers/fathom/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
@@ -67,6 +67,7 @@ import { SALESLOFT_SERVER } from "@app/lib/api/actions/servers/salesloft/metadat
 import { SANDBOX_SERVER } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { SCHEDULES_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
+import { SKILL_AUTHORING_SERVER } from "@app/lib/api/actions/servers/skill_authoring/metadata";
 import { SKILL_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/skill_management/metadata";
 import { SLAB_SERVER } from "@app/lib/api/actions/servers/slab/metadata";
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
@@ -87,6 +88,7 @@ import {
   WEB_SEARCH_BROWSE_SERVER,
   WEB_SEARCH_BROWSE_SERVER_NAME,
 } from "@app/lib/api/actions/servers/web_search_browse/metadata";
+import { WORKSPACE_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
 import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import type {
   InternalMCPServerDefinitionType,
@@ -121,6 +123,7 @@ export const TOOLSETS_ENABLE_TOOL_NAME = "enable";
 export const TOOLSETS_LIST_TOOL_NAME = "list";
 
 export const SKILL_MANAGEMENT_SERVER_NAME = "skill_management";
+export const SKILL_AUTHORING_SERVER_NAME = "skill_authoring";
 
 export const GENERATE_IMAGE_TOOL_NAME = "generate_image";
 // Kept for backward compatibility with existing actions in conversations.
@@ -143,7 +146,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // It's okay to change the name of the server as we don't refer to it directly.
   "agent_sidekick_agent_state",
   "agent_sidekick_context",
-  "agent_management",
   "agent_memory",
   "agent_router",
   ASHBY_SERVER_NAME,
@@ -155,6 +157,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "data_sources_file_system",
   DATA_WAREHOUSE_SERVER_NAME,
   "extract_data",
+  "exa_people_and_company",
   "file_generation",
   "fathom",
   "freshservice",
@@ -206,6 +209,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "zendesk",
   SEARCH_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
+  SKILL_AUTHORING_SERVER_NAME,
   "skill_management",
   "schedules_management",
   "pod_manager",
@@ -215,6 +219,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "ask_user_question",
   "wakeups",
   "plan_mode",
+  "workspace_analytics",
 ] as const;
 
 export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
@@ -892,19 +897,6 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: DATA_SOURCES_FILE_SYSTEM_SERVER,
   },
-  agent_management: {
-    id: 1011,
-    availability: "auto",
-    allowMultipleInstances: false,
-    isPreview: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("agent_management_tool");
-    },
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: AGENT_MANAGEMENT_SERVER,
-  },
   [DATA_WAREHOUSE_SERVER_NAME]: {
     id: 1012,
     availability: "auto_hidden_builder",
@@ -985,6 +977,17 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: SKILL_MANAGEMENT_SERVER,
+  },
+  [SKILL_AUTHORING_SERVER_NAME]: {
+    id: 1034,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: undefined,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: SKILL_AUTHORING_SERVER,
   },
   schedules_management: {
     id: 1020,
@@ -1105,9 +1108,8 @@ export const INTERNAL_MCP_SERVERS = {
     id: 1030,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) =>
-      !featureFlags.includes("clari_copilot_mcp"),
-    isPreview: true,
+    isRestricted: undefined,
+    isPreview: false,
     requiresBearerToken: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
@@ -1135,6 +1137,33 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: FILES_SERVER,
+  },
+  workspace_analytics: {
+    id: 1035,
+    // Gated by the workspace_analytics feature flag (off by default) and hidden
+    // from the builder tool-picker; the skill wires it by name. Data access is
+    // enforced per-tool via auth.isAdmin().
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) =>
+      !featureFlags.includes("workspace_analytics"),
+    isPreview: false,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: WORKSPACE_ANALYTICS_SERVER,
+  },
+  exa_people_and_company: {
+    id: 1036,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: ({ featureFlags }) =>
+      !featureFlags.includes("exa_people_and_company"),
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: EXA_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {

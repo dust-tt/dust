@@ -15,6 +15,8 @@ export class PlanFactory {
       name: "Test Enterprise",
       maxMessages: -1,
       maxMessagesTimeframe: "lifetime",
+      maxAwuCredits: -1,
+      maxAwuCreditsTimeframe: "lifetime",
       isDeepDiveAllowed: true,
       maxImagesPerWeek: 1000,
       maxUsersInWorkspace: 1000,
@@ -39,6 +41,7 @@ export class PlanFactory {
       trialPeriodDays: 0,
       canUseProduct: true,
       isByok: false,
+      isBrandedFramesAllowed: false,
       ...overrides,
     });
     return plan;

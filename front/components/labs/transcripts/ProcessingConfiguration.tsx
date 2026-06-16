@@ -1,7 +1,7 @@
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/lib/api/labs/transcripts";
 import { useUpdateTranscriptsConfiguration } from "@app/lib/swr/labs";
-import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { LabsTranscriptsConfigurationType } from "@app/types/labs";
 import type { LightWorkspaceType } from "@app/types/user";

@@ -6,16 +6,6 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import { getMembershipInvitationToken } from "@app/lib/utils/invitation_token";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import type {
-  InvitationsLookupRequestBodyType,
-  InvitationsLookupResponse,
-  ShareTokenLookupRequestBodyType,
-  ShareTokenLookupResponse,
-  UserLookupRequestBodyType,
-  UserLookupResponse,
-  WorkspaceLookupRequestBodyType,
-  WorkspaceLookupResponse,
-} from "@app/pages/api/lookup/[resource]";
 import type { RegionRedirectError } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
@@ -23,6 +13,60 @@ import type { RegionType } from "@app/types/region";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { z } from "zod";
+
+export type WorkspaceLookupResponse = {
+  workspace: {
+    sId: string;
+  } | null;
+};
+
+export type UserLookupResponse = {
+  exists: boolean;
+};
+
+export type InvitationsLookupResponse = {
+  pendingInvitations: PendingInvitationOption[];
+};
+
+export type ShareTokenLookupResponse = {
+  exists: boolean;
+};
+
+const ExternalUserCodec = z.object({
+  email: z.string(),
+  email_verified: z.boolean(),
+});
+
+export const UserLookupSchema = z.object({
+  user: ExternalUserCodec,
+});
+
+export const WorkspaceLookupSchema = z.object({
+  workspace: z.string(),
+});
+
+export const InvitationsLookupSchema = z.object({
+  email: z.string(),
+});
+
+export const ShareTokenLookupSchema = z.object({
+  token: z.string(),
+});
+
+export type UserLookupRequestBodyType = z.infer<typeof UserLookupSchema>;
+
+export type WorkspaceLookupRequestBodyType = z.infer<
+  typeof WorkspaceLookupSchema
+>;
+
+export type InvitationsLookupRequestBodyType = z.infer<
+  typeof InvitationsLookupSchema
+>;
+
+export type ShareTokenLookupRequestBodyType = z.infer<
+  typeof ShareTokenLookupSchema
+>;
 
 interface UserLookup {
   email: string;

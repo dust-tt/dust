@@ -3,6 +3,7 @@ import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilder
 import type { BuilderFlow } from "@app/components/agent_builder/types";
 import { BUILDER_FLOWS } from "@app/components/agent_builder/types";
 import { NotAvailableErrorPage } from "@app/components/pages/builder/agents/NotAvailableErrorPage";
+import Custom404 from "@app/components/pages/Custom404";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
 import {
   useAuth,
@@ -15,7 +16,6 @@ import {
   useAssistantTemplate,
 } from "@app/lib/swr/assistants";
 import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
-import Custom404 from "@app/pages/404";
 import type {
   AgentConfigurationScope,
   AgentConfigurationType,

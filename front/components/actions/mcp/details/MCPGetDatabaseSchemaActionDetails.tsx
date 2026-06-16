@@ -16,7 +16,7 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-  TableIcon,
+  Table,
 } from "@dust-tt/sparkle";
 
 export function MCPGetDatabaseSchemaActionDetails({
@@ -38,7 +38,7 @@ export function MCPGetDatabaseSchemaActionDetails({
           ? "Getting database schema"
           : "Get database schema"
       }
-      visual={TableIcon}
+      visual={Table}
     >
       {displayContext !== "conversation" && (
         <div className="flex flex-col gap-4 pl-6 pt-4">

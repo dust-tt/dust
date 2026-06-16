@@ -5,8 +5,8 @@ import { ProjectConnectorKnowledgeDataTable } from "@app/components/poke/project
 import { ProjectTasksDataTable } from "@app/components/poke/projects/tasks/table";
 import { ViewProjectWorkflowTable } from "@app/components/poke/projects/workflow/view";
 import { ViewSpaceViewTable } from "@app/components/poke/spaces/view";
+import type { PokeGetSpaceDetails } from "@app/lib/api/poke/spaces";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
-import type { PokeGetSpaceDetails } from "@app/pages/api/poke/workspaces/[wId]/spaces/[spaceId]/details";
 import { LinkWrapper } from "@dust-tt/sparkle";
 
 interface ProjectPageProps {
@@ -27,7 +27,7 @@ export function ProjectPage({ details }: ProjectPageProps) {
         </LinkWrapper>
       </h3>
       {metadata?.description && (
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
           {metadata.description}
         </p>
       )}

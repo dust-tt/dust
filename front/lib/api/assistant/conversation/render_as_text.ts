@@ -134,13 +134,23 @@ export function renderConversationAsText(
     }
   }
 
-  if (truncatedByTotalChars) {
-    parts.unshift(
-      `(conversation content truncated at ${options.truncateTotalChars} chars)\n`
-    );
+  let join = parts.join("\n");
+
+  if (
+    options.truncateTotalChars !== undefined &&
+    (truncatedByTotalChars || join.length > options.truncateTotalChars)
+  ) {
+    // If we exceeded, reduce the string by removing the first characters.
+    join =
+      options.truncateTotalChars === 0
+        ? ""
+        : join.slice(-options.truncateTotalChars);
+    join =
+      `(conversation content truncated at ${options.truncateTotalChars} chars)\n` +
+      join;
   }
 
-  return parts.join("\n");
+  return join;
 }
 
 /**

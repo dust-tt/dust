@@ -1,7 +1,10 @@
+import type {
+  CreateTagResponseBody,
+  GetTagsResponseBody,
+} from "@app/lib/api/tags";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { TagResource } from "@app/lib/resources/tags_resource";
-import type { TagType } from "@app/types/tag";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -12,14 +15,6 @@ import tagById from "./[tId]";
 import suggestFromAgents from "./suggest_from_agents";
 import usage from "./usage";
 
-export type GetTagsResponseBody = {
-  tags: TagType[];
-};
-
-export type CreateTagResponseBody = {
-  tag: TagType;
-};
-
 const PostBodySchema = z.object({
   name: z.string(),
   agentIds: z.array(z.string()).optional(),
@@ -28,6 +23,7 @@ const PostBodySchema = z.object({
 // Mounted at /api/w/:wId/tags.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetTagsResponseBody> => {
   const auth = ctx.get("auth");
 

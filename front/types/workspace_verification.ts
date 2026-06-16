@@ -72,6 +72,9 @@ export type PhoneLookupResult = {
 export type PhoneLookupErrorCode =
   | "invalid_phone_number"
   | "lookup_failed"
+  // Persona accepted the report but did not finish risk analysis within our
+  // poll window. Transient (Persona latency), not an error on our side.
+  | "lookup_timeout"
   | "not_mobile"
   | "prepaid_not_accepted"
   | "high_risk_blocked"

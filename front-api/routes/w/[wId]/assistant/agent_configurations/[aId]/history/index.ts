@@ -22,6 +22,7 @@ export type GetAgentConfigurationsResponseBody = {
 // Mounted at /api/w/:wId/assistant/agent_configurations/:aId/history.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),

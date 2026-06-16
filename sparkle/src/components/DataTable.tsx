@@ -25,12 +25,12 @@ import { Spinner } from "@sparkle/components/Spinner";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { useCopyToClipboard } from "@sparkle/hooks";
 import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  ClipboardCheckIcon,
-  ClipboardIcon,
-  MoreIcon,
-} from "@sparkle/icons/app";
+  ArrowDown,
+  ArrowUp,
+  Clipboard,
+  ClipboardCheck,
+  DotsHorizontal,
+} from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import {
   type Column,
@@ -50,7 +50,6 @@ import {
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import React, { type ReactNode, useEffect, useRef, useState } from "react";
-
 import { breakpoints, useWindowSize } from "./WindowUtility";
 
 const cellHeight = "s-h-12";
@@ -61,6 +60,7 @@ declare module "@tanstack/react-table" {
     className?: string;
     tooltip?: string;
     sizeRatio?: number;
+    headerAlign?: "left" | "right" | "center";
   }
 }
 
@@ -247,7 +247,17 @@ export function DataTable<TData extends TBaseData>({
                       header.column.getCanSort() && "s-cursor-pointer"
                     )}
                   >
-                    <div className="s-flex s-items-center s-space-x-1 s-whitespace-nowrap">
+                    <div
+                      className={cn(
+                        "s-flex s-items-center s-space-x-1 s-whitespace-nowrap",
+                        header.column.columnDef.meta?.headerAlign === "right"
+                          ? "s-justify-end"
+                          : header.column.columnDef.meta?.headerAlign ===
+                              "center"
+                            ? "s-justify-center"
+                            : undefined
+                      )}
+                    >
                       {flexRender(
                         header.column.columnDef.header,
                         header.getContext()
@@ -256,8 +266,8 @@ export function DataTable<TData extends TBaseData>({
                         <Icon
                           visual={
                             header.column.getIsSorted() === "asc"
-                              ? ArrowUpIcon
-                              : ArrowDownIcon
+                              ? ArrowUp
+                              : ArrowDown
                           }
                           size="xs"
                           className={cn(
@@ -608,8 +618,8 @@ export function ScrollableDataTable<TData extends TBaseData>({
                           <Icon
                             visual={
                               header.column.getIsSorted() === "asc"
-                                ? ArrowUpIcon
-                                : ArrowDownIcon
+                                ? ArrowUp
+                                : ArrowDown
                             }
                             size="xs"
                             className={cn(
@@ -785,7 +795,12 @@ DataTable.Head = function Head({
   return (
     <th
       className={cn(
-        "s-heading-xs s-py-2 s-pl-2 s-pr-3 s-text-left s-capitalize",
+        "s-heading-xs s-py-2 s-px-2 s-capitalize",
+        column.columnDef.meta?.headerAlign === "right"
+          ? "s-text-right"
+          : column.columnDef.meta?.headerAlign === "center"
+            ? "s-text-center"
+            : "s-text-left",
         "s-text-foreground dark:s-text-foreground-night",
         column.columnDef.meta?.className,
         className
@@ -1021,7 +1036,7 @@ DataTable.MoreButton = function MoreButton({
         asChild
       >
         <Button
-          icon={MoreIcon}
+          icon={DotsHorizontal}
           size="icon"
           variant="ghost-secondary"
           disabled={disabled}
@@ -1056,7 +1071,7 @@ DataTable.Cell = function Cell({
     <td
       className={cn(
         cellHeight,
-        "s-truncate s-pl-2",
+        "s-truncate s-px-2",
         column.columnDef.meta?.className,
         className
       )}
@@ -1224,7 +1239,7 @@ DataTable.BasicCellContent = function BasicCellContent({
               <span className="s-truncate">{label}</span>
               {textToCopy && (
                 <Button
-                  icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+                  icon={isCopied ? ClipboardCheck : Clipboard}
                   className="s-hidden group-hover:s-block"
                   variant="outline"
                   onClick={async (e) => {
@@ -1253,7 +1268,7 @@ DataTable.BasicCellContent = function BasicCellContent({
           <span className="s-truncate">{label}</span>
           {textToCopy && (
             <Button
-              icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+              icon={isCopied ? ClipboardCheck : Clipboard}
               className="s-hidden group-hover:s-block"
               variant="outline"
               onClick={async (e) => {
@@ -1296,7 +1311,7 @@ DataTable.CellContentWithCopy = function CellContentWithCopy({
     <div className={cn("s-flex s-items-center s-space-x-2", className)}>
       <span className="s-truncate">{children}</span>
       <IconButton
-        icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+        icon={isCopied ? ClipboardCheck : Clipboard}
         variant="outline"
         onClick={async (e) => {
           e.stopPropagation();

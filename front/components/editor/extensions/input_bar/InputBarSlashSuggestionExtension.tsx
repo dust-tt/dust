@@ -42,8 +42,12 @@ function isAllowedSlashQuery(state: EditorState, range: Range) {
 
 export interface InputBarSlashSuggestionExtensionOptions {
   owner?: WorkspaceType;
+  conversationIdRef?: RefObject<string | null>;
   enabledRef: RefObject<boolean>;
   onSelectRef: RefObject<
+    ((capability: InputBarSlashSuggestionCapability) => void) | undefined
+  >;
+  onDetailsRef?: RefObject<
     ((capability: InputBarSlashSuggestionCapability) => void) | undefined
   >;
   selectedMCPServerViewIdsRef: RefObject<Set<string>>;
@@ -68,8 +72,10 @@ export const InputBarSlashSuggestionExtension =
     addOptions() {
       return {
         owner: undefined,
+        conversationIdRef: { current: null },
         enabledRef: { current: false },
         onSelectRef: { current: undefined },
+        onDetailsRef: { current: undefined },
         selectedMCPServerViewIdsRef: { current: new Set<string>() },
       };
     },
@@ -132,7 +138,9 @@ export const InputBarSlashSuggestionExtension =
                 component = new ReactRenderer(InputBarSlashSuggestionDropdown, {
                   props: {
                     ...props,
+                    conversationIdRef: extensionOptions.conversationIdRef,
                     onClose: closeSuggestionDropdown,
+                    onDetailsRef: extensionOptions.onDetailsRef,
                     owner,
                     selectedMCPServerViewIdsRef:
                       extensionOptions.selectedMCPServerViewIdsRef,
@@ -155,7 +163,9 @@ export const InputBarSlashSuggestionExtension =
                 activeTriggerStart = props.range.from;
                 component?.updateProps({
                   ...props,
+                  conversationIdRef: extensionOptions.conversationIdRef,
                   onClose: closeSuggestionDropdown,
+                  onDetailsRef: extensionOptions.onDetailsRef,
                   owner,
                   selectedMCPServerViewIdsRef:
                     extensionOptions.selectedMCPServerViewIdsRef,

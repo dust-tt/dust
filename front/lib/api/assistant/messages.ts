@@ -1,12 +1,8 @@
-import { contentsToActivitySteps } from "@app/lib/api/assistant/activity_steps";
+import { renderAgentMessageContentView } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getMessagesReactions } from "@app/lib/api/assistant/reaction";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  AgentMessageContentParser,
-  getCoTDelimitersConfiguration,
-} from "@app/lib/llms/agent_message_content_parser";
 import {
   MentionModel,
   MessageModel,
@@ -22,10 +18,7 @@ import logger from "@app/logger/logger";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
-  AgentReasoningContentType,
-  AgentTextContentType,
-} from "@app/types/assistant/agent_message_content";
-import type {
+  AgentMessageStatus,
   AgentMessageType,
   CompactionMessageType,
   LegacyLightMessageType,
@@ -47,6 +40,7 @@ import {
   toRichAgentMentionType,
   toRichUserMentionType,
 } from "@app/types/assistant/mentions";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -153,32 +147,6 @@ export function getRichMentionsWithStatusForMessage(
         }
       })
   );
-}
-
-// Ensure at least one whitespace boundary between adjacent text fragments when
-// reconstructing content from step contents. If neither the previous fragment
-// ends with whitespace nor the next fragment starts with whitespace, insert a
-// single "\n" between them. This avoids words being concatenated across step
-// boundaries without altering content that already contains spacing.
-function interleaveConditionalNewlines(parts: string[]): string[] {
-  if (parts.length === 0) {
-    return [];
-  }
-  const out: string[] = [];
-  out.push(parts[0]);
-  for (let i = 1; i < parts.length; i++) {
-    const prev = parts[i - 1];
-    const curr = parts[i];
-    const prevLast = prev.length ? prev[prev.length - 1] : "";
-    const currFirst = curr.length ? curr[0] : "";
-    const prevEndsWs = /\s/.test(prevLast);
-    const currStartsWs = /\s/.test(currFirst);
-    if (!prevEndsWs && !currStartsWs) {
-      out.push("\n");
-    }
-    out.push(curr);
-  }
-  return out;
 }
 
 /**
@@ -632,6 +600,15 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
       );
     }
   }
+  // Sub-agent cost credits are only aggregated when rendering a single agent
+  // message (e.g. the single-message endpoint), never in bulk conversation
+  // rendering, to avoid fanning out into an N+1 of recursive queries.
+  const subAgentCostCredits =
+    agentMessages.length === 1
+      ? await ConversationResource.sumSubAgentCostCreditsByMessageId(auth, {
+          agentMessageId: agentMessages[0].sId,
+        })
+      : null;
 
   const renderedMessages: Array<
     Result<RenderedAgentMessage, ConversationError>
@@ -649,6 +626,7 @@ export async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         mentionsByMessageId,
         reactionsByMessageId,
         stepContentsByMessageId,
+        subAgentCostCredits,
         usersById,
         viewType,
       })
@@ -679,6 +657,7 @@ type RenderSingleAgentMessageContext = {
   mentionsByMessageId: Map<ModelId, MentionModel[]>;
   reactionsByMessageId: Record<ModelId, MessageReactionType[]>;
   stepContentsByMessageId: Record<string, AgentStepContentResource[]>;
+  subAgentCostCredits: number | null;
   usersById: Map<ModelId, UserType>;
   viewType: RenderMessageVariant;
 };
@@ -695,6 +674,7 @@ async function renderSingleAgentMessage(
     mentionsByMessageId,
     reactionsByMessageId,
     stepContentsByMessageId,
+    subAgentCostCredits,
     usersById,
     viewType,
   }: RenderSingleAgentMessageContext
@@ -752,59 +732,16 @@ async function renderSingleAgentMessage(
         content: sc.value,
       })) ?? [];
 
-  const textContents: Array<{
-    step: number;
-    content: AgentTextContentType;
-  }> = [];
-  for (const content of agentStepContents) {
-    if (content.content.type === "text_content") {
-      textContents.push({ step: content.step, content: content.content });
-    }
-  }
-
-  const reasoningContents: Array<{
-    step: number;
-    content: AgentReasoningContentType;
-  }> = [];
-  for (const content of agentStepContents) {
-    if (content.content.type === "reasoning") {
-      reasoningContents.push({
-        step: content.step,
-        content: content.content,
-      });
-    }
-  }
-
-  const { content, chainOfThought } = await (async () => {
-    const textFragments = interleaveConditionalNewlines(
-      textContents.map((c) => c.content.value)
+  // Single source of truth for the body, chain of thought, and activity steps:
+  // the body/steps boundary rule lives in `renderAgentMessageContentView` only. The
+  // terminal streaming events derive their display state from the same function.
+  const { content, chainOfThought, activitySteps } =
+    await renderAgentMessageContentView(
+      agentStepContents,
+      actions,
+      agentConfiguration,
+      message.sId
     );
-
-    if (reasoningContents.length > 0) {
-      return {
-        content:
-          // For mutliple steps outputing text content, we want to display only the last one as the final answer.
-          textFragments.length > 0
-            ? textFragments[textFragments.length - 1]
-            : "",
-        chainOfThought: reasoningContents
-          .map((sc) => sc.content.value.reasoning)
-          .filter((r) => !!r)
-          .join("\n\n"),
-      };
-    } else {
-      const contentParser = new AgentMessageContentParser(
-        agentConfiguration,
-        message.sId,
-        getCoTDelimitersConfiguration({ agentConfiguration })
-      );
-      const parsedContent = await contentParser.parseContents(textFragments);
-      return {
-        content: parsedContent.content,
-        chainOfThought: parsedContent.chainOfThought,
-      };
-    }
-  })();
 
   assert(message.parentId !== null, "Agent message must have a parentId.");
 
@@ -871,18 +808,15 @@ async function renderSingleAgentMessage(
     completionDurationMs: getCompletionDuration(created, completedTs, actions),
     reactions: reactionsByMessageId[message.id] ?? [],
     prunedContext: agentMessage.prunedContext ?? false,
+    costCredits: agentMessage.costCredits ?? null,
+    // Aggregated only when rendering a single agent message (see
+    // batchRenderAgentMessages), so it is `null` for bulk conversation rendering.
+    subAgentCostCredits,
   } satisfies AgentMessageType;
 
   if (viewType === "full") {
     return new Ok(renderedMessage);
   }
-
-  const activitySteps = await contentsToActivitySteps(
-    agentStepContents,
-    actions,
-    agentConfiguration,
-    message.sId
-  );
 
   return new Ok({
     ...getLightAgentMessageFromAgentMessage(renderedMessage),
@@ -1125,3 +1059,39 @@ export async function fetchConversationMessages<V extends MessageVariant>(
         : never,
   });
 }
+
+export type PostMessagesResponseBody = {
+  message: UserMessageType;
+  contentFragments: ContentFragmentType[];
+  agentMessages: AgentMessageType[];
+};
+
+// TODO remove after monday 2025-12-01 (once everyone has likely reloaded their browser)
+export interface LegacyFetchConversationMessagesResponse {
+  hasMore: boolean;
+  lastValue: number | null;
+  messages: LegacyLightMessageType[];
+}
+
+export interface FetchConversationMessagesResponse {
+  hasMore: boolean;
+  lastValue: number | null;
+  messages: LightMessageType[];
+}
+
+export type FetchConversationMessageResponse = {
+  message: MessageType;
+};
+
+export type FetchConversationMessageResponseLight = {
+  message: LightMessageType;
+};
+
+export type FetchConversationMessageActionResponse = {
+  action: AgentMCPActionWithOutputType;
+  messageStatus: AgentMessageStatus;
+};
+
+export type GetAgentMessageSkillsResponseBody = {
+  skills: SkillType[];
+};

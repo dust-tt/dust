@@ -8,46 +8,38 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
+  CreateMCPServerResponseBody,
+  DeleteMCPServerResponseBody,
+  GetMCPServerResponseBody,
+  GetMCPServersResponseBody,
+  GetMCPServersUsageResponseBody,
+  GetMCPServerViewsListResponseBody,
+  GetMCPServerViewsNotActivatedResponseBody,
   MCPServerType,
   MCPServerTypeWithViews,
   MCPServerViewType,
-} from "@app/lib/api/mcp";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
-import { clientFetch } from "@app/lib/egress/client";
-import type {
-  MCPServerConnectionConnectionType,
-  MCPServerConnectionType,
-} from "@app/lib/resources/mcp_server_connection_resource";
-import { useSpaceInfo, useSpacesAsAdmin } from "@app/lib/swr/spaces";
-import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type {
-  CreateMCPServerResponseBody,
-  GetMCPServersResponseBody,
-} from "@app/pages/api/w/[wId]/mcp";
-import type {
-  DeleteMCPServerResponseBody,
-  GetMCPServerResponseBody,
   PatchMCPServerBody,
   PatchMCPServerResponseBody,
-} from "@app/pages/api/w/[wId]/mcp/[serverId]";
-import type { SyncMCPServerResponseBody } from "@app/pages/api/w/[wId]/mcp/[serverId]/sync";
-import type {
   PatchMCPServerToolsPermissionsResponseBody,
+  SyncMCPServerResponseBody,
   UpdateMCPToolSettingsBodyType,
-} from "@app/pages/api/w/[wId]/mcp/[serverId]/tools/[toolName]";
-import type {
-  GetConnectionsResponseBody,
-  PostConnectionResponseBody,
-} from "@app/pages/api/w/[wId]/mcp/connections/[connectionType]";
-import type { DiscoverOAuthMetadataResponseBody } from "@app/pages/api/w/[wId]/mcp/discover_oauth_metadata";
-import type { GetMCPServersUsageResponseBody } from "@app/pages/api/w/[wId]/mcp/usage";
-import type { GetMCPServerViewsListResponseBody } from "@app/pages/api/w/[wId]/mcp/views";
+} from "@app/lib/api/mcp";
 import type {
   PatchMCPServerViewBody,
   PatchMCPServerViewResponseBody,
-} from "@app/pages/api/w/[wId]/mcp/views/[viewId]";
-import type { GetMCPServerViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views";
-import type { GetMCPServerViewsNotActivatedResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/mcp_views/not_activated";
+} from "@app/lib/api/mcp/views";
+import type { DiscoverOAuthMetadataResponseBody } from "@app/lib/api/oauth/providers/mcp";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { clientFetch } from "@app/lib/egress/client";
+import type {
+  GetConnectionsResponseBody,
+  MCPServerConnectionConnectionType,
+  MCPServerConnectionType,
+  PostConnectionResponseBody,
+} from "@app/lib/resources/mcp_server_connection_resource";
+import type { GetMCPServerViewsResponseBody } from "@app/lib/resources/mcp_server_view_resource";
+import { useSpaceInfo, useSpacesAsAdmin } from "@app/lib/swr/spaces";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { WithAPIErrorResponse } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";

@@ -31,19 +31,19 @@ import type {
 import { DocumentViewRawContentKey } from "@app/types/sheets";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  BracesIcon,
+  Brackets,
   Button,
   Chip,
-  ExternalLinkIcon,
-  FolderIcon,
+  Folder,
   IconButton,
   Label,
+  LinkExternal01,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
-  SparklesIcon,
   Spinner,
-  TableIcon,
+  Stars02,
+  Table,
   Tree,
 } from "@dust-tt/sparkle";
 import uniq from "lodash/uniq";
@@ -245,7 +245,7 @@ export function AssistantKnowledgeSection({
     <>
       {hasConnections && connectionItems}
       {hasFolders && (
-        <Tree.Item label="Folders" visual={FolderIcon}>
+        <Tree.Item label="Folders" visual={Folder}>
           {folderItems}
         </Tree.Item>
       )}
@@ -265,10 +265,10 @@ export function AssistantKnowledgeSection({
       </div>
       {hasDocuments && hasTables ? (
         <Tree isBoxed className="max-h-[400px] overflow-y-auto">
-          <Tree.Item label="Documents" visual={FolderIcon}>
+          <Tree.Item label="Documents" visual={Folder}>
             {documentItems}
           </Tree.Item>
-          <Tree.Item label="Tables" visual={TableIcon}>
+          <Tree.Item label="Tables" visual={Table}>
             {tableItems}
           </Tree.Item>
         </Tree>
@@ -378,7 +378,7 @@ function DataSourceViewsSection({
                   canBeExpanded(dataSourceView?.dataSource) ? "node" : "leaf"
                 }
                 label={dataSourceName}
-                visual={dsLogo ?? FolderIcon}
+                visual={dsLogo ?? Folder}
                 className="whitespace-nowrap"
                 actions={
                   <RetrievalActionTagsFilterPopover
@@ -500,12 +500,7 @@ function RetrievalActionTagsFilterPopover({
             <div className="flex flex-col gap-2">
               <Label>In-Conversation filtering</Label>
               <div className="flex flex-row flex-wrap gap-1">
-                <Chip
-                  color="success"
-                  label="Activated"
-                  icon={SparklesIcon}
-                  isBusy
-                />
+                <Chip color="success" label="Activated" icon={Stars02} isBusy />
               </div>
             </div>
           )}
@@ -550,7 +545,7 @@ function DataSourceViewSelectedNodes({
         <div className="mr-8 flex flex-row gap-2">
           <IconButton
             size="xs"
-            icon={ExternalLinkIcon}
+            icon={LinkExternal01}
             onClick={() => {
               if (node.sourceUrl) {
                 window.open(node.sourceUrl, "_blank");
@@ -564,7 +559,7 @@ function DataSourceViewSelectedNodes({
           />
           <IconButton
             size="xs"
-            icon={BracesIcon}
+            icon={Brackets}
             onClick={() => {
               if (node.type === "document") {
                 setDataSourceViewToDisplay(dataSourceView);

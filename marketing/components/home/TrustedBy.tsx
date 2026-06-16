@@ -1,0 +1,330 @@
+// biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
+import { H4 } from "@marketing/components/home/ContentComponents";
+import { cn } from "@marketing/components/poke/shadcn/lib/utils";
+import { isEUCountry } from "@marketing/lib/geo/eu-detection";
+import { useGeolocation } from "@marketing/lib/swr/geo";
+import { TRACKING_AREAS, trackEvent } from "@marketing/lib/tracking";
+import { appendUTMParams } from "@marketing/lib/utils/utm";
+import { Button } from "@dust-tt/sparkle";
+import Image from "next/image";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+
+const CASE_STUDIES: Record<string, string> = {
+  alan: "/customers/alans-pmm-team-transforms-sales-conversations-into-intelligence-with-ai-agents",
+  assembled: "/customers/part-1-assembled-ai-operating-system",
+  backmarket:
+    "/customers/back-markets-fraud-team-builds-ai-detection-system-in-one-week-contributing",
+  blueground: "/customers/customer-support-blueground",
+  clay: "/customers/clay-scaling-gtme-team",
+  doctolib:
+    "/customers/why-doctolib-made-company-wide-enterprise-ai-a-national-cause",
+  fleet: "/customers/how-valentine-head-of-marketing-at-fleet-uses-dust",
+  kyriba: "/customers/kyriba-accelerating-innovation-with-dust",
+  malt: "/customers/malt-customer-support",
+  mirakl: "/customers/why-mirakl-chose-dust-as-its-go-to-agentic-solution",
+  payfit: "/customers/dust-ai-payfit-efficiency",
+  pennylane: "/customers/pennylane-customer-support-journey",
+  persona: "/customers/how-persona-hit-80-ai-agent-adoption-with-dust",
+  profound: "/customers/profound-post-sales-team-reclaimed-1800-hours",
+  qonto: "/customers/qonto-dust-ai-partnership",
+  wakam:
+    "/customers/how-wakam-cut-legal-contract-analysis-time-by-50-with-dust",
+  watershed:
+    "/customers/how-watershed-got-90-of-its-team-to-leverage-dust-agents",
+  vanta:
+    "/customers/how-vantas-gtm-team-saves-thousands-of-hours-annually-with-dust",
+};
+
+const LOGO_SETS = {
+  default: {
+    us: [
+      { name: "datadog", src: "/static/landing/logos/gray/datadog.svg" },
+      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+      //  { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
+      { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
+      { name: "decagon", src: "/static/landing/logos/gray/decagon.svg" },
+      { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
+      { name: "evenup", src: "/static/landing/logos/gray/evenup.svg" },
+      { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
+      { name: "1password", src: "/static/landing/logos/gray/1password.svg" },
+      { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
+      { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
+      { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
+      { name: "profound", src: "/static/landing/logos/gray/profound.svg" },
+    ],
+    eu: [
+      { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
+      { name: "backmarket", src: "/static/landing/logos/gray/backmarket.svg" },
+      { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
+      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+      //  { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
+      { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
+      { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
+      { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
+      { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
+      { name: "datadog", src: "/static/landing/logos/gray/datadog.svg" },
+      { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
+      { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
+    ],
+  },
+  landing: {
+    us: [
+      { name: "datadog", src: "/static/landing/logos/gray/datadog.svg" },
+      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+      { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
+      { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
+      { name: "decagon", src: "/static/landing/logos/gray/decagon.svg" },
+      { name: "evenup", src: "/static/landing/logos/gray/evenup.svg" },
+      { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
+      { name: "1password", src: "/static/landing/logos/gray/1password.svg" },
+      { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
+      { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
+      { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
+      { name: "profound", src: "/static/landing/logos/gray/profound.svg" },
+    ],
+    eu: [
+      { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
+      { name: "backmarket", src: "/static/landing/logos/gray/backmarket.svg" },
+      { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
+      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+      //  { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
+      { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
+      { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
+      { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
+      { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
+      { name: "datadog", src: "/static/landing/logos/gray/datadog.svg" },
+      { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
+      { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
+    ],
+  },
+  b2bSaas: {
+    us: [
+      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+      {
+        name: "contentsquare",
+        src: "/static/landing/logos/gray/contentsquare.svg",
+      },
+      // { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
+      { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
+      { name: "spendesk", src: "/static/landing/logos/gray/spendesk.svg" },
+      { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
+    ],
+    eu: [
+      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
+      {
+        name: "contentsquare",
+        src: "/static/landing/logos/gray/contentsquare.svg",
+      },
+      { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
+      {
+        name: "gitguardian",
+        src: "/static/landing/logos/gray/gitguardian.svg",
+      },
+      { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
+      { name: "spendesk", src: "/static/landing/logos/gray/spendesk.svg" },
+    ],
+  },
+  marketplace: {
+    us: [
+      { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
+      { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
+      { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
+      { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
+      {
+        name: "wttj",
+        src: "/static/landing/logos/gray/welcometothejungle.svg",
+      },
+    ],
+    eu: [
+      { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
+      { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
+      { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
+      { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
+      {
+        name: "wttj",
+        src: "/static/landing/logos/gray/welcometothejungle.svg",
+      },
+    ],
+  },
+  finance: {
+    us: [
+      { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
+      { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
+      { name: "spendesk", src: "/static/landing/logos/gray/spendesk.svg" },
+      { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
+    ],
+    eu: [
+      { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
+      { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
+      { name: "spendesk", src: "/static/landing/logos/gray/spendesk.svg" },
+      { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
+    ],
+  },
+  insurance: {
+    us: [
+      { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
+      { name: "wakam", src: "/static/landing/logos/gray/wakam.svg" },
+    ],
+    eu: [
+      { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
+      { name: "wakam", src: "/static/landing/logos/gray/wakam.svg" },
+    ],
+  },
+  retail: {
+    us: [
+      { name: "backmarket", src: "/static/landing/logos/gray/backmarket.svg" },
+      { name: "fleet", src: "/static/landing/logos/gray/fleet.svg" },
+      { name: "jumia", src: "/static/landing/logos/gray/Jumia.svg" },
+      { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
+      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
+      { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
+      { name: "profound", src: "/static/landing/logos/gray/profound.svg" },
+    ],
+    eu: [
+      { name: "backmarket", src: "/static/landing/logos/gray/backmarket.svg" },
+      { name: "fleet", src: "/static/landing/logos/gray/fleet.svg" },
+      { name: "jumia", src: "/static/landing/logos/gray/Jumia.svg" },
+      { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
+      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
+      { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
+    ],
+  },
+} as const;
+
+type LogoSetKey = keyof typeof LOGO_SETS;
+type SizeKey = "default" | "large";
+
+interface TrustedByProps {
+  logoSet?: LogoSetKey;
+  size?: SizeKey;
+  showTitle?: boolean;
+}
+
+export default function TrustedBy({
+  logoSet = "default",
+  size = "default",
+  showTitle = true,
+}: TrustedByProps) {
+  const { geoData } = useGeolocation();
+  const searchParams = useSearchParams();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // Use requestAnimationFrame to avoid ESLint warning about synchronous setState in effect.
+    const frameId = requestAnimationFrame(() => {
+      setMounted(true);
+    });
+    return () => cancelAnimationFrame(frameId);
+  }, []);
+
+  const regionParam = searchParams?.get("region");
+  const region =
+    regionParam === "us" || regionParam === "eu"
+      ? regionParam
+      : mounted && geoData?.countryCode && isEUCountry(geoData.countryCode)
+        ? "eu"
+        : "us";
+
+  const logos = LOGO_SETS[logoSet][region];
+
+  const isLarge = size === "large";
+
+  return (
+    <div
+      className={cn(
+        "col-span-12 flex flex-col items-center",
+        isLarge ? "py-6 sm:py-10" : "py-4 sm:py-8",
+        "lg:col-span-12 lg:col-start-1",
+        "xl:col-span-10 xl:col-start-2"
+      )}
+    >
+      {showTitle && (
+        <H4 className="mb-6 w-full text-center text-foreground">
+          Trusted by <span className="text-blue-500">3,000+</span> organizations
+        </H4>
+      )}
+
+      <div className="w-full">
+        <div
+          className={cn(
+            "flex flex-wrap justify-center",
+            isLarge
+              ? "gap-x-8 gap-y-6 sm:gap-x-10 lg:gap-x-14 xl:gap-x-16"
+              : "gap-x-6 gap-y-4 sm:gap-x-8 lg:gap-x-10 xl:gap-x-12"
+          )}
+        >
+          {logos.map((logo, index) => {
+            const caseStudyPath = CASE_STUDIES[logo.name];
+            const caseStudyUrl =
+              caseStudyPath && (logo.name !== "profound" || region === "us")
+                ? caseStudyPath
+                : undefined;
+            return (
+              <div
+                key={`${logo.name}-${index}`}
+                className={cn(
+                  "flex flex-col items-center",
+                  isLarge
+                    ? "w-40 sm:w-56 lg:w-52 xl:w-48"
+                    : "w-36 sm:w-48 lg:w-44 xl:w-40"
+                )}
+              >
+                <div
+                  className={cn(
+                    "flex items-center justify-center",
+                    isLarge ? "h-14 sm:h-16" : "h-12 sm:h-14"
+                  )}
+                >
+                  <Image
+                    alt={logo.name}
+                    src={logo.src}
+                    width={200}
+                    height={80}
+                    className={cn(
+                      "h-auto w-auto object-contain",
+                      isLarge
+                        ? "max-h-20 sm:max-h-24 lg:max-h-28"
+                        : "max-h-16 sm:max-h-20 lg:max-h-24"
+                    )}
+                  />
+                </div>
+                {caseStudyUrl ? (
+                  <Link
+                    href={caseStudyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="-mt-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                    onClick={() =>
+                      trackEvent({
+                        area: TRACKING_AREAS.HOME,
+                        object: "case_study",
+                        extra: { company: logo.name },
+                      })
+                    }
+                  >
+                    Case study &rarr;
+                  </Link>
+                ) : (
+                  <div className="h-4" />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <Button
+        variant="highlight"
+        size="md"
+        label="Join them"
+        className="mt-8"
+        onClick={() => {
+          window.location.href = appendUTMParams(
+            "/api/workos/login?screenHint=sign-up"
+          );
+        }}
+      />
+    </div>
+  );
+}

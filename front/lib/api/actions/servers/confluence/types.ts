@@ -108,16 +108,7 @@ export const ConfluenceV1SearchPageSchema = z
         })
       )
       .optional(),
-    body: z
-      .object({
-        storage: z
-          .object({
-            value: z.string(),
-            representation: z.literal("storage"),
-          })
-          .optional(),
-      })
-      .optional(),
+    body: ConfluencePageBodySchema.optional(),
   })
   .passthrough();
 

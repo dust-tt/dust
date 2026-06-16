@@ -1,7 +1,6 @@
-import { CheckIcon, DashIcon, XMarkIcon } from "@sparkle/icons/app";
+import { Check, Minus, XClose } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import React, { type ReactNode } from "react";
-
 import { Icon } from "./Icon";
 
 interface PriceTableProps {
@@ -126,9 +125,9 @@ export function PriceTable({
 }
 
 const iconTable = {
-  check: CheckIcon,
-  dash: DashIcon,
-  xmark: XMarkIcon,
+  check: Check,
+  dash: Minus,
+  xmark: XClose,
 };
 
 const iconColorTable = {

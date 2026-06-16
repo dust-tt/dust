@@ -1,5 +1,5 @@
+import type { GetNoWorkspaceAuthContextResponseType } from "@app/lib/api/auth_context";
 import { useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { GetNoWorkspaceAuthContextResponseType } from "@app/pages/api/auth-context";
 
 // A fetcher that does NOT redirect to login on auth errors.
 // The global fetcher in fetcher.ts redirects to /api/workos/login on

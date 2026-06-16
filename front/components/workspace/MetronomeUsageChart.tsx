@@ -17,12 +17,13 @@ import type {
   GetMetronomeUsageResponse,
   MetronomeUsageGroupByType,
 } from "@app/lib/api/analytics/metronome_usage";
+import { formatMicroUsdCompact } from "@app/lib/client/credits";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { useMetronomeUsage } from "@app/lib/swr/workspaces";
 import {
   Button,
-  ChevronLeftIcon,
-  ChevronRightIcon,
+  ChevronLeft,
+  ChevronRight,
   Chip,
   DropdownMenu,
   DropdownMenuContent,
@@ -446,7 +447,7 @@ export function BaseMetronomeUsageChart({
             Metronome
           </Chip>
           <Button
-            icon={ChevronLeftIcon}
+            icon={ChevronLeft}
             size="xs"
             variant="ghost"
             onClick={() => setSelectedPeriod(formatPeriod(previousPeriodDate))}
@@ -457,7 +458,7 @@ export function BaseMetronomeUsageChart({
           </span>
           {canGoNext && (
             <Button
-              icon={ChevronRightIcon}
+              icon={ChevronRight}
               size="xs"
               variant="ghost"
               onClick={() => setSelectedPeriod(formatPeriod(nextPeriodDate))}
@@ -604,7 +605,7 @@ export function BaseMetronomeUsageChart({
           tickLine={false}
           axisLine={false}
           tickMargin={8}
-          tickFormatter={(value) => `$${(value / 1_000_000).toFixed(0)}`}
+          tickFormatter={(value) => formatMicroUsdCompact(value)}
         />
         <Tooltip
           content={(props: TooltipContentProps<number, string>) =>

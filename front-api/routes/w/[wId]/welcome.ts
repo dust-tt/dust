@@ -1,17 +1,13 @@
+import type { GetWelcomeResponseBody } from "@app/lib/api/workspace";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import { detectEmailProvider } from "@app/lib/utils/email_provider_detection";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
-export type GetWelcomeResponseBody = {
-  isFirstAdmin: boolean;
-  emailProvider: EmailProviderType;
-};
-
 // Mounted at /api/w/:wId/welcome.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetWelcomeResponseBody> => {
   const auth = ctx.get("auth");
 

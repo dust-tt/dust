@@ -33,6 +33,14 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { randomBytes } from "crypto";
 import type { Attributes, Includeable, Transaction } from "sequelize";
 
+export type DeleteWorkspaceSandboxEnvVarResponseBody = {
+  success: true;
+};
+
+export type PatchWorkspaceSandboxEnvVarResponseBody = {
+  envVar: WorkspaceSandboxEnvVarType;
+};
+
 const USER_JOIN_INCLUDES: Includeable[] = [
   {
     association: "createdByUser",

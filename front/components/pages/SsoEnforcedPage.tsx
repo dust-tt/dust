@@ -1,7 +1,7 @@
+import Custom404 from "@app/components/pages/Custom404";
 import config from "@app/lib/api/config";
 import { useSearchParam } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
-import Custom404 from "@app/pages/404";
 import { Button, Logo } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 

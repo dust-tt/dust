@@ -1,4 +1,4 @@
-import { AdminRouterLayout } from "@spa/app/layouts/AdminRouterLayout";
+import { RequirePermissionLayout } from "@spa/app/layouts/RequirePermissionLayout";
 import { withSuspense } from "@spa/app/routes/withSuspense";
 import type { RouteObject } from "react-router-dom";
 
@@ -50,6 +50,13 @@ const MembersPage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/MembersPage"),
   "MembersPage"
 );
+const WorkspaceIdentityProvisioningPage = withSuspense(
+  () =>
+    import(
+      "@dust-tt/front/components/pages/workspace/WorkspaceIdentityProvisioningPage.js"
+    ),
+  "WorkspaceIdentityProvisioningPage"
+);
 const ManageSubscriptionPage = withSuspense(
   () =>
     import(
@@ -68,6 +75,11 @@ const WorkspaceSettingsPage = withSuspense(
   () =>
     import("@dust-tt/front/components/pages/workspace/WorkspaceSettingsPage"),
   "WorkspaceSettingsPage"
+);
+const WorkspaceBrandingPage = withSuspense(
+  () =>
+    import("@dust-tt/front/components/pages/workspace/WorkspaceBrandingPage"),
+  "WorkspaceBrandingPage"
 );
 const ModelProvidersPage = withSuspense(
   () =>
@@ -88,12 +100,25 @@ const BillingPage = withSuspense(
 export const adminRoutes: RouteObject[] = [
   { path: "me", element: <ProfilePage /> },
   {
-    element: <AdminRouterLayout />,
+    // People page: accessible to admins and business admins.
+    element: <RequirePermissionLayout permission="workspace:manage_members" />,
+    children: [{ path: "members", element: <MembersPage /> }],
+  },
+  {
+    element: <RequirePermissionLayout permission="workspace:view_analytics" />,
+    children: [{ path: "analytics", element: <AnalyticsPage /> }],
+  },
+  {
+    // Admin-only areas.
+    element: <RequirePermissionLayout permission="workspace:admin" />,
     children: [
-      { path: "members", element: <MembersPage /> },
+      {
+        path: "identity-and-provisioning",
+        element: <WorkspaceIdentityProvisioningPage />,
+      },
       { path: "model-providers", element: <ModelProvidersPage /> },
       { path: "workspace", element: <WorkspaceSettingsPage /> },
-      { path: "analytics", element: <AnalyticsPage /> },
+      { path: "branding", element: <WorkspaceBrandingPage /> },
       { path: "usage", element: <UsagePage /> },
       { path: "subscription", element: <SubscriptionPage /> },
       { path: "billing", element: <BillingPage /> },

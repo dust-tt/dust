@@ -7,7 +7,7 @@ import type { StripePricingData } from "@app/types/stripe/pricing";
 import {
   Button,
   Checkbox,
-  CheckCircleIcon,
+  CheckCircle,
   ContentMessage,
   Dialog,
   DialogContainer,
@@ -16,13 +16,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  ExternalLinkIcon,
   Hoverable,
   Icon,
-  InformationCircleIcon,
+  InfoCircle,
   Input,
+  LinkExternal01,
   Spinner,
-  XCircleIcon,
+  XCircle,
 } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useState } from "react";
 
@@ -181,11 +181,7 @@ export function BuyCreditDialog({
       case "success":
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <Icon
-              visual={CheckCircleIcon}
-              size="lg"
-              className="text-success-500"
-            />
+            <Icon visual={CheckCircle} size="lg" className="text-success-500" />
             <div className="text-center">
               <p className="text-lg font-medium text-foreground dark:text-foreground-night">
                 Credits purchased successfully!
@@ -206,7 +202,7 @@ export function BuyCreditDialog({
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
             <Icon
-              visual={ExternalLinkIcon}
+              visual={LinkExternal01}
               size="lg"
               className="text-primary dark:text-primary-night"
             />
@@ -225,7 +221,7 @@ export function BuyCreditDialog({
       case "error":
         return (
           <div className="flex flex-col items-center justify-center gap-4 py-8">
-            <Icon visual={XCircleIcon} size="lg" className="text-warning-500" />
+            <Icon visual={XCircle} size="lg" className="text-warning-500" />
             <div className="text-center">
               <p className="text-lg font-medium text-foreground dark:text-foreground-night">
                 Something went wrong
@@ -246,7 +242,7 @@ export function BuyCreditDialog({
             {showPaygCapWarning && (
               <ContentMessage
                 variant="info"
-                icon={InformationCircleIcon}
+                icon={InfoCircle}
                 title="You still have pay-as-you-go capacity"
               >
                 You're still under {PAYG_CAP_WARNING_THRESHOLD_PERCENT}% of your
@@ -508,7 +504,7 @@ export function BuyCreditDialog({
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col gap-4">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Credit purchases become available once you upgrade to a paid
                 plan. If you need credits during your trial, please contact our
                 support team.
@@ -554,7 +550,7 @@ export function BuyCreditDialog({
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col gap-4">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Please ensure your subscription is active and your payment
                 method is up to date. If you need assistance, please contact our
                 support team.
@@ -600,7 +596,7 @@ export function BuyCreditDialog({
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col gap-4">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Please complete your pending payment before making a new
                 purchase or contact support to cancel your pending payments.{" "}
                 <a
@@ -650,7 +646,7 @@ export function BuyCreditDialog({
           </DialogHeader>
           <DialogContainer>
             <div className="flex flex-col gap-4">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                 Your credit purchase limit resets at the start of your next
                 billing cycle. If you need additional credits before then,
                 please contact our support team.

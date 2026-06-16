@@ -1,5 +1,8 @@
 use crate::{
-    http::proxy_client::create_untrusted_egress_client_builder,
+    http::proxy_client::{
+        is_egress_proxy_configured, try_build_direct_client, try_build_static_ip_client,
+        try_build_untrusted_egress_client,
+    },
     oauth::{
         connection::{
             Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
@@ -13,7 +16,7 @@ use crate::{
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use super::utils::ProviderHttpRequestError;
 
@@ -54,6 +57,16 @@ pub struct MCPConnectionMetadata {
     pub scope: Option<String>,
     pub resource: Option<String>,
     pub token_endpoint_auth_method: Option<String>,
+    #[serde(default)]
+    pub use_static_ip_proxy: Option<String>,
+}
+
+impl MCPConnectionMetadata {
+    /// Whether token requests for this connection should egress through the static IP proxy.
+    /// `front` persists this as the string `"true"`/`"false"`; anything else means untrusted egress.
+    fn use_static_ip(&self) -> bool {
+        self.use_static_ip_proxy.as_deref() == Some("true")
+    }
 }
 
 pub struct MCPConnectionProvider {}
@@ -112,6 +125,7 @@ impl MCPConnectionProvider {
     /// Extracted to allow retrying without the `resource` parameter on failure.
     async fn execute_refresh_request(
         &self,
+        client: &reqwest::Client,
         token_endpoint: &str,
         refresh_token: &str,
         client_id: &str,
@@ -142,8 +156,7 @@ impl MCPConnectionProvider {
             form_data.push(("scope", scope));
         }
 
-        let mut req = self
-            .reqwest_client()
+        let mut req = client
             .post(token_endpoint)
             .header("Content-Type", "application/x-www-form-urlencoded")
             .form(&form_data);
@@ -160,6 +173,50 @@ impl MCPConnectionProvider {
 
         execute_request(ConnectionProvider::Mcp, req).await
     }
+
+    fn client_for_builders(
+        use_static_ip: bool,
+        allow_direct: bool,
+        build_static_ip_client: impl FnOnce() -> Option<reqwest::Client>,
+        build_untrusted_egress_client: impl FnOnce() -> Option<reqwest::Client>,
+        build_direct_client: impl FnOnce() -> Option<reqwest::Client>,
+    ) -> Result<reqwest::Client, ProviderError> {
+        if use_static_ip {
+            if let Some(client) = build_static_ip_client() {
+                return Ok(client);
+            }
+
+            warn!("Static IP requested for MCP OAuth token request but unavailable; falling back to untrusted egress");
+        }
+
+        if let Some(client) = build_untrusted_egress_client() {
+            return Ok(client);
+        }
+
+        // Direct (un-proxied) egress is only allowed when no egress proxy is configured at all,
+        // i.e. local development. In a deployed environment a proxy is always configured, so a
+        // build failure here means a misconfiguration and we fail closed rather than silently
+        // egressing directly.
+        if allow_direct {
+            if let Some(client) = build_direct_client() {
+                return Ok(client);
+            }
+        }
+
+        Err(ProviderError::from(anyhow!(
+            "failed to build a client for MCP OAuth token request"
+        )))
+    }
+
+    fn client_for(&self, use_static_ip: bool) -> Result<reqwest::Client, ProviderError> {
+        Self::client_for_builders(
+            use_static_ip,
+            !is_egress_proxy_configured(),
+            try_build_static_ip_client,
+            try_build_untrusted_egress_client,
+            try_build_direct_client,
+        )
+    }
 }
 
 #[async_trait]
@@ -169,14 +226,16 @@ impl Provider for MCPConnectionProvider {
     }
 
     fn reqwest_client(&self) -> reqwest::Client {
-        // MCP provider makes requests to user-provided URLs, so we use the untrusted egress proxy.
-        match create_untrusted_egress_client_builder().build() {
-            Ok(client) => client,
-            Err(e) => {
-                error!(error = ?e, "Failed to create client with untrusted egress proxy");
-                reqwest::Client::new()
-            }
+        // MCP token activity uses `client_for`; this remains for the default `Provider` trait
+        // surface. Prefer the untrusted egress proxy. If none is configured we fall back to a
+        // direct connection (expected in local development), but log it so we don't silently
+        // egress unproxied in a deployed environment where a proxy should always be set.
+        if let Some(client) = try_build_untrusted_egress_client() {
+            return client;
         }
+
+        error!("MCP provider using an unproxied client; no egress proxy configured (misconfiguration?)");
+        try_build_direct_client().unwrap_or_else(reqwest::Client::new)
     }
 
     async fn finalize(
@@ -190,6 +249,7 @@ impl Provider for MCPConnectionProvider {
 
         let metadata: MCPConnectionMetadata = serde_json::from_value(connection.metadata().clone())
             .map_err(|e| ProviderError::InvalidMetadataError(e.to_string()))?;
+        let use_static_ip = metadata.use_static_ip();
 
         let grant_type = "authorization_code";
 
@@ -219,8 +279,8 @@ impl Provider for MCPConnectionProvider {
             form_data.push(("resource", resource));
         }
 
-        let mut req = self
-            .reqwest_client()
+        let client = self.client_for(use_static_ip)?;
+        let mut req = client
             .post(metadata.token_endpoint)
             .header("Content-Type", "application/x-www-form-urlencoded")
             .form(&form_data);
@@ -289,11 +349,13 @@ impl Provider for MCPConnectionProvider {
 
         let metadata: MCPConnectionMetadata = serde_json::from_value(connection.metadata().clone())
             .map_err(|e| ProviderError::InvalidMetadataError(e.to_string()))?;
+        let use_static_ip = metadata.use_static_ip();
 
         let use_basic_auth = matches!(
             metadata.token_endpoint_auth_method.as_deref(),
             Some("client_secret_basic")
         ) && client_secret.is_some();
+        let client = self.client_for(use_static_ip)?;
 
         // First try with resource parameter (if any) but without scope.
         // On failure:
@@ -301,6 +363,7 @@ impl Provider for MCPConnectionProvider {
         //   - If there was no resource, retry with scope (needed for e.g. Azure Entra v2).
         let raw_json = match self
             .execute_refresh_request(
+                &client,
                 &metadata.token_endpoint,
                 &refresh_token,
                 &client_id,
@@ -323,6 +386,7 @@ impl Provider for MCPConnectionProvider {
                         "MCP refresh failed with resource parameter, retrying without it"
                     );
                     self.execute_refresh_request(
+                        &client,
                         &metadata.token_endpoint,
                         &refresh_token,
                         &client_id,
@@ -339,6 +403,7 @@ impl Provider for MCPConnectionProvider {
                         "MCP refresh failed without scope, retrying with scope"
                     );
                     self.execute_refresh_request(
+                        &client,
                         &metadata.token_endpoint,
                         &refresh_token,
                         &client_id,
@@ -469,5 +534,90 @@ impl Provider for MCPConnectionProvider {
                 self.default_handle_provider_request_error(error)
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{MCPConnectionMetadata, MCPConnectionProvider};
+    use serde_json::json;
+
+    fn test_client() -> Option<reqwest::Client> {
+        reqwest::Client::builder()
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .ok()
+    }
+
+    #[test]
+    fn metadata_deserializes_string_static_ip_proxy_flag() {
+        let metadata: MCPConnectionMetadata = serde_json::from_value(json!({
+            "client_id": "client",
+            "token_endpoint": "https://api.example.com/oauth/token",
+            "authorization_endpoint": "https://api.example.com/oauth/authorize",
+            "code_verifier": "verifier",
+            "code_challenge": "challenge",
+            "use_static_ip_proxy": "true"
+        }))
+        .expect("metadata should deserialize");
+
+        assert_eq!(metadata.use_static_ip_proxy.as_deref(), Some("true"));
+    }
+
+    #[test]
+    fn metadata_deserializes_without_static_ip_proxy_flag() {
+        let metadata: MCPConnectionMetadata = serde_json::from_value(json!({
+            "client_id": "client",
+            "token_endpoint": "https://api.example.com/oauth/token",
+            "authorization_endpoint": "https://api.example.com/oauth/authorize",
+            "code_verifier": "verifier",
+            "code_challenge": "challenge"
+        }))
+        .expect("metadata should deserialize");
+
+        assert_eq!(metadata.use_static_ip_proxy, None);
+    }
+
+    #[test]
+    fn client_for_falls_back_to_untrusted_egress_when_static_ip_is_unavailable() {
+        let client =
+            MCPConnectionProvider::client_for_builders(true, false, || None, test_client, || None);
+
+        assert!(client.is_ok());
+    }
+
+    #[test]
+    fn client_for_uses_untrusted_egress_without_static_ip() {
+        let client =
+            MCPConnectionProvider::client_for_builders(false, false, || None, test_client, || None);
+
+        assert!(client.is_ok());
+    }
+
+    #[test]
+    fn client_for_falls_back_to_direct_when_no_proxy_is_configured() {
+        // allow_direct = true models local development (no egress proxy configured).
+        let client =
+            MCPConnectionProvider::client_for_builders(false, true, || None, || None, test_client);
+
+        assert!(client.is_ok());
+    }
+
+    #[test]
+    fn client_for_fails_closed_when_proxy_configured_but_unavailable() {
+        // allow_direct = false models a deployed environment: a proxy is configured but failed to
+        // build, so we must not silently egress directly.
+        let client =
+            MCPConnectionProvider::client_for_builders(false, false, || None, || None, test_client);
+
+        assert!(client.is_err());
+    }
+
+    #[test]
+    fn client_for_errors_when_no_client_can_be_built() {
+        let client =
+            MCPConnectionProvider::client_for_builders(false, true, || None, || None, || None);
+
+        assert!(client.is_err());
     }
 }

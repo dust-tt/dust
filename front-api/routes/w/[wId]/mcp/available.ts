@@ -12,6 +12,7 @@ export type GetMCPServersResponseBody = {
 // Mounted at /api/w/:wId/mcp/available.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetMCPServersResponseBody> => {
   const auth = ctx.get("auth");
 

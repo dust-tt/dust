@@ -1,5 +1,10 @@
 import { deleteOrLeaveConversation } from "@app/lib/api/assistant/conversation";
+import { clearActionRequiredIfNoBlockedActions } from "@app/lib/api/assistant/conversation/blocked_actions";
 import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
+import type {
+  GetConversationResponseBody,
+  PatchConversationResponseBody,
+} from "@app/lib/api/assistant/conversation/types";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
@@ -10,7 +15,6 @@ import {
   moveConversationToProject,
 } from "@app/lib/api/projects/conversations";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { ConversationError } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
@@ -19,14 +23,6 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
-export type GetConversationResponseBody = {
-  conversation: ConversationWithoutContentType;
-};
-
-export type PatchConversationResponseBody = {
-  success: boolean;
-};
 
 import actions from "./actions";
 import attachments from "./attachments";
@@ -67,6 +63,133 @@ const PatchConversationsRequestBodySchema = z.union([
 // Mounted under /api/w/:wId/assistant/conversations/:cId. The bare `/`
 // handles GET, DELETE, and PATCH on the conversation resource itself.
 const app = workspaceApp();
+
+/**
+ * @swagger
+ * /api/w/{wId}/assistant/conversations/{cId}:
+ *   get:
+ *     summary: Get a conversation
+ *     description: Retrieve a specific conversation by its ID.
+ *     tags:
+ *       - Private Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved conversation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 conversation:
+ *                   $ref: '#/components/schemas/PrivateConversation'
+ *       401:
+ *         description: Unauthorized
+ *   delete:
+ *     summary: Delete or leave a conversation
+ *     description: Delete a conversation or leave it if it is shared.
+ *     tags:
+ *       - Private Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully deleted or left conversation
+ *       401:
+ *         description: Unauthorized
+ *   patch:
+ *     summary: Update a conversation
+ *     description: Update a conversation's title, mark it as read, move it to a different space, or control URL access mode.
+ *     tags:
+ *       - Private Conversations
+ *     parameters:
+ *       - in: path
+ *         name: wId
+ *         required: true
+ *         description: ID of the workspace
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: cId
+ *         required: true
+ *         description: ID of the conversation
+ *         schema:
+ *           type: string
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             oneOf:
+ *               - type: object
+ *                 required:
+ *                   - title
+ *                 properties:
+ *                   title:
+ *                     type: string
+ *               - type: object
+ *                 required:
+ *                   - read
+ *                 properties:
+ *                   read:
+ *                     type: boolean
+ *               - type: object
+ *                 required:
+ *                   - spaceId
+ *                 properties:
+ *                   spaceId:
+ *                     type: string
+ *               - type: object
+ *                 required:
+ *                   - accessMode
+ *                 properties:
+ *                   accessMode:
+ *                     type: string
+ *                     enum:
+ *                       - participants_only
+ *                       - workspace_members
+ *     responses:
+ *       200:
+ *         description: Successfully updated conversation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *       401:
+ *         description: Unauthorized
+ */
 
 app.get(
   "/",
@@ -163,6 +286,16 @@ app.patch(
         await ConversationResource.markAsReadForAuthUser(auth, {
           conversation,
         });
+
+        // A stale `actionRequired` flag (e.g. left behind by a manual tool approval whose
+        // message got interrupted before blocked actions were resolved on termination) would
+        // keep the conversation stuck in the unread inbox: self-heal it when no actionable
+        // blocked action remains.
+        if (conversation.actionRequired) {
+          await clearActionRequiredIfNoBlockedActions(auth, {
+            conversationId: conversation.sId,
+          });
+        }
       } else {
         await ConversationResource.markAsUnreadForAuthUser(auth, {
           conversation,

@@ -22,6 +22,7 @@ const ParamsSchema = z.object({
 // Mounted at /api/w/:wId/files/:fileId/rename.
 const app = workspaceApp();
 
+/** @ignoreswagger */
 app.patch(
   "/",
   validate("param", ParamsSchema),

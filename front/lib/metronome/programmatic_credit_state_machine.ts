@@ -1,16 +1,11 @@
 import { CRITICAL_BALANCE_OFFSET } from "@app/lib/metronome/alerts/programmatic_cap";
-import {
-  clearWorkspaceProgrammaticDepleted,
-  setWorkspaceProgrammaticCreditStatus,
-  setWorkspaceProgrammaticDepleted,
-} from "@app/lib/metronome/user_block";
+import { setWorkspaceProgrammaticCreditStatus } from "@app/lib/metronome/user_block";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { WorkspaceProgrammaticCreditState } from "@app/types/credits";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { Transaction } from "sequelize";
 
 export type ProgrammaticCreditEvent =
@@ -21,6 +16,42 @@ export type ProgrammaticCreditEvent =
   | { type: "programmatic_cap_reached" }
   /** Cap reset (new billing period or cap removed/raised). */
   | { type: "programmatic_cap_reset" };
+
+/**
+ * The canonical programmatic credit state implied purely by which of the
+ * monthly-cap spend-threshold alerts are currently in alarm. This mirrors what
+ * the webhook routing produces by dispatching `programmatic_cap_reached` /
+ * `programmatic_low_balance` / `programmatic_cap_reset` through the machine,
+ * expressed as a pure function so callers can *check* whether the persisted
+ * `workspace.programmaticCreditState` has drifted from reality without mutating
+ * anything.
+ *
+ *   cap in alarm        -> depleted
+ *   critical in alarm   -> active_critical_balance
+ *   low in alarm        -> active_low_balance
+ *   none in alarm (or
+ *   no cap configured)  -> active
+ */
+export function expectedProgrammaticCreditStateFromAlerts({
+  capInAlarm,
+  criticalInAlarm,
+  lowInAlarm,
+}: {
+  capInAlarm: boolean;
+  criticalInAlarm: boolean;
+  lowInAlarm: boolean;
+}): WorkspaceProgrammaticCreditState {
+  if (capInAlarm) {
+    return "depleted";
+  }
+  if (criticalInAlarm) {
+    return "active_critical_balance";
+  }
+  if (lowInAlarm) {
+    return "active_low_balance";
+  }
+  return "active";
+}
 
 type ProgrammaticCreditGuard = (event: ProgrammaticCreditEvent) => boolean;
 
@@ -35,37 +66,6 @@ function remainingAtMost(threshold: number): ProgrammaticCreditGuard {
   return (event) =>
     event.type === "programmatic_low_balance" &&
     event.remainingCredits <= threshold;
-}
-
-function syncProgrammaticCacheForState(
-  state: WorkspaceProgrammaticCreditState,
-  workspaceId: string,
-  transaction: Transaction | undefined
-): void {
-  switch (state) {
-    case "active":
-    case "active_low_balance":
-    case "active_critical_balance":
-      invalidateCacheAfterCommit(transaction, () =>
-        clearWorkspaceProgrammaticDepleted(workspaceId)
-      );
-      invalidateCacheAfterCommit(transaction, () =>
-        setWorkspaceProgrammaticCreditStatus(workspaceId, state)
-      );
-      return;
-
-    case "depleted":
-      invalidateCacheAfterCommit(transaction, () =>
-        setWorkspaceProgrammaticDepleted(workspaceId)
-      );
-      invalidateCacheAfterCommit(transaction, () =>
-        setWorkspaceProgrammaticCreditStatus(workspaceId, state)
-      );
-      return;
-
-    default:
-      assertNever(state);
-  }
 }
 
 const TRANSITIONS: ProgrammaticCreditTransition[] = [
@@ -163,7 +163,9 @@ export async function transitionProgrammaticCreditState(
   if (currentState !== match.to) {
     await workspace.updateProgrammaticCreditState(match.to, transaction);
   }
-  syncProgrammaticCacheForState(match.to, workspaceId, transaction);
+  invalidateCacheAfterCommit(transaction, () =>
+    setWorkspaceProgrammaticCreditStatus(workspaceId, match.to)
+  );
   logger.info(
     {
       workspaceId,
@@ -176,4 +178,37 @@ export async function transitionProgrammaticCreditState(
   );
 
   return new Ok(match.to);
+}
+
+/**
+ * Authoritatively set the workspace programmatic credit state to `targetState`,
+ * bypassing the event/transition graph. Used by reconciliation, which computes
+ * the expected state directly from the cap alert evaluation via
+ * `expectedProgrammaticCreditStateFromAlerts` — simpler and less fragile than
+ * re-deriving it by replaying reset + low-balance events. Persists the new
+ * state and syncs the same caches the transitions do.
+ */
+export async function setProgrammaticCreditStateReconciled(
+  workspace: WorkspaceResource,
+  targetState: WorkspaceProgrammaticCreditState,
+  { transaction }: { transaction?: Transaction } = {}
+): Promise<WorkspaceProgrammaticCreditState> {
+  const workspaceId = workspace.sId;
+  const currentState = workspace.programmaticCreditState;
+  if (currentState !== targetState) {
+    await workspace.updateProgrammaticCreditState(targetState, transaction);
+  }
+  invalidateCacheAfterCommit(transaction, () =>
+    setWorkspaceProgrammaticCreditStatus(workspaceId, targetState)
+  );
+  logger.info(
+    {
+      workspaceId,
+      fromState: currentState,
+      toState: targetState,
+      wasStateChanged: currentState !== targetState,
+    },
+    "[ProgrammaticCreditStateMachine] State reconciled"
+  );
+  return targetState;
 }

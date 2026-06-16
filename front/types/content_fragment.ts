@@ -80,6 +80,7 @@ export type ContentNodeContentFragmentType = BaseContentFragmentType & {
 export type FileContentFragmentType = BaseContentFragmentType & {
   contentFragmentType: "file";
   path?: string | null;
+  skipDataSourceIndexing?: boolean;
   skipFileProcessing?: boolean;
 } & (
     | {

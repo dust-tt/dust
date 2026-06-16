@@ -3,7 +3,7 @@ import {
   type GCSAPIError,
   isGCSNotFoundError,
 } from "@app/lib/file_storage/types";
-import { setTimeoutAsync } from "@app/lib/utils/async_utils";
+import { setTimeoutAsync, withRetry } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { frameContentType } from "@app/types/files";
@@ -11,20 +11,18 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { stripNullBytes } from "@app/types/shared/utils/string_utils";
-import type {
-  ApiError,
-  Bucket,
-  File,
-  SaveOptions,
-} from "@google-cloud/storage";
+import type { Bucket, File, SaveOptions } from "@google-cloud/storage";
 import { RETRYABLE_ERR_FN_DEFAULT, Storage } from "@google-cloud/storage";
 import type formidable from "formidable";
 import fs from "fs";
 import isNumber from "lodash/isNumber";
 import { pipeline } from "stream/promises";
 
-const GCS_COPY_MAX_RETRIES = 3;
-const GCS_COPY_BASE_DELAY_MS = 500;
+const GCS_TRANSIENT_RETRY_MAX_ATTEMPTS = 3;
+const GCS_TRANSIENT_RETRY_BASE_DELAY_MS = 500;
+// Preserves the 500ms, 2000ms backoff curve of the copyFile retry loop
+// (delayMs = base * attempt²).
+const GCS_TRANSIENT_RETRY_BACKOFF_MULTIPLIER = 4;
 const GCS_MAX_RETRIES = 3; // Same as the SDK default.
 const GCS_EXTRA_RETRYABLE_ERROR_MESSAGE_REGEX = /socket hang up/i;
 // GCS generations are object versions. Matching generation 0 means "create only
@@ -32,6 +30,14 @@ const GCS_EXTRA_RETRYABLE_ERROR_MESSAGE_REGEX = /socket hang up/i;
 const GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH = 0;
 
 const DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS = 5 * 60 * 1000; // 5 minutes.
+
+// Threshold above which file uploads switch from a single multipart POST to a
+// resumable upload (see FileResource.getWriteStream). Below it, uploads are
+// buffered in memory and written with retry (see parseUploadRequest). Chunk
+// size must be a multiple of 256 KiB; GCS recommends at least 8 MiB for
+// performance.
+export const GCS_RESUMABLE_UPLOAD_THRESHOLD_BYTES = 8 * 1024 * 1024;
+export const GCS_RESUMABLE_UPLOAD_CHUNK_SIZE_BYTES = 8 * 1024 * 1024;
 
 interface FileStorageOptions {
   useServiceAccount?: boolean;
@@ -48,11 +54,60 @@ type RawContentSaveOptions = Pick<
   "preconditionOpts" | "resumable"
 >;
 
-function isRetryableGCSError(err: ApiError): boolean {
+function isRetryableGCSError(err: unknown): boolean {
+  // ApiError only adds optional fields on top of Error, so a normalized Error
+  // is safe to hand to the SDK's default retryable check.
+  const error = normalizeError(err);
+
   return (
-    RETRYABLE_ERR_FN_DEFAULT(err) ||
-    GCS_EXTRA_RETRYABLE_ERROR_MESSAGE_REGEX.test(err.message)
+    RETRYABLE_ERR_FN_DEFAULT(error) ||
+    GCS_EXTRA_RETRYABLE_ERROR_MESSAGE_REGEX.test(error.message)
   );
+}
+
+/**
+ * Retry an operation that fails with a transient GCS error ("socket hang up"
+ * and other errors the SDK considers retryable).
+ *
+ * Needed for streamed uploads, which bypass the SDK's built-in retryOptions.
+ * Only use when the operation can safely be re-run from scratch (e.g. the
+ * source stream can be re-created on each attempt).
+ */
+export async function withRetryOnTransientGCSError<T>(
+  operation: () => Promise<T>,
+  {
+    operationName,
+    logContext,
+  }: { operationName: string; logContext: Record<string, unknown> }
+): Promise<T> {
+  const result = await withRetry(operation, {
+    maxRetries: GCS_TRANSIENT_RETRY_MAX_ATTEMPTS - 1,
+    initialDelayMs: GCS_TRANSIENT_RETRY_BASE_DELAY_MS,
+    backoffMultiplier: GCS_TRANSIENT_RETRY_BACKOFF_MULTIPLIER,
+    shouldRetry: (err, attempt) => {
+      if (!isRetryableGCSError(err)) {
+        return false;
+      }
+
+      logger.warn(
+        {
+          err: normalizeError(err),
+          ...logContext,
+          attempt: attempt + 1,
+          maxAttempts: GCS_TRANSIENT_RETRY_MAX_ATTEMPTS,
+        },
+        `GCS ${operationName} failed, retrying.`
+      );
+
+      return true;
+    },
+  });
+
+  if (result.isErr()) {
+    throw result.error;
+  }
+
+  return result.value;
 }
 
 export class FileStorage {
@@ -79,16 +134,48 @@ export class FileStorage {
    */
 
   async uploadFileToBucket(file: formidable.File, destPath: string) {
-    const gcsFile = this.file(destPath);
-    const fileStream = fs.createReadStream(file.filepath);
+    // Stream-based uploads via pipeline() + createWriteStream() bypass the
+    // SDK's built-in retryOptions, so we need application-level retry.
+    // Since the source is a local file we can safely re-create the read stream.
+    await withRetryOnTransientGCSError(
+      async () => {
+        const gcsFile = this.file(destPath);
+        const fileStream = fs.createReadStream(file.filepath);
 
-    await pipeline(
-      fileStream,
-      gcsFile.createWriteStream({
-        metadata: {
-          contentType: file.mimetype ?? undefined,
-        },
-      })
+        await pipeline(
+          fileStream,
+          gcsFile.createWriteStream({
+            metadata: {
+              contentType: file.mimetype ?? undefined,
+            },
+          })
+        );
+      },
+      {
+        operationName: "file upload (stream)",
+        logContext: { destPath },
+      }
+    );
+  }
+
+  async uploadBufferToBucket({
+    buffer,
+    contentType,
+    filePath,
+  }: {
+    buffer: Buffer;
+    contentType: AllSupportedFileContentType;
+    filePath: string;
+  }) {
+    // A single-request upload without preconditions is not retried by the
+    // SDK (conditional idempotency), so retry transient errors at the
+    // application level: the buffer is replayable.
+    await withRetryOnTransientGCSError(
+      () => this.file(filePath).save(buffer, { contentType, resumable: false }),
+      {
+        operationName: "file upload (buffer)",
+        logContext: { filePath },
+      }
     );
   }
 
@@ -146,6 +233,11 @@ export class FileStorage {
     }
 
     return content.toString();
+  }
+
+  async fetchFileBuffer(filePath: string): Promise<Uint8Array<ArrayBuffer>> {
+    const [buffer] = await this.file(filePath).download();
+    return Uint8Array.from(buffer);
   }
 
   private isTextBasedContentType(contentType?: string): boolean {
@@ -332,16 +424,20 @@ export class FileStorage {
       ? this.bucket.file(srcPath, { generation: sourceGeneration })
       : this.file(srcPath);
 
-    for (let attempt = 1; attempt <= GCS_COPY_MAX_RETRIES; attempt++) {
+    for (
+      let attempt = 1;
+      attempt <= GCS_TRANSIENT_RETRY_MAX_ATTEMPTS;
+      attempt++
+    ) {
       try {
         await sourceFile.copy(destinationFile);
         return;
       } catch (err) {
-        if (attempt === GCS_COPY_MAX_RETRIES) {
+        if (attempt === GCS_TRANSIENT_RETRY_MAX_ATTEMPTS) {
           throw err;
         }
 
-        const delayMs = GCS_COPY_BASE_DELAY_MS * attempt ** 2;
+        const delayMs = GCS_TRANSIENT_RETRY_BASE_DELAY_MS * attempt ** 2;
 
         logger.warn(
           {
@@ -351,7 +447,7 @@ export class FileStorage {
             destBucket: destinationStorage.name,
             destPath,
             attempt,
-            maxRetries: GCS_COPY_MAX_RETRIES,
+            maxRetries: GCS_TRANSIENT_RETRY_MAX_ATTEMPTS,
             delayMs,
           },
           "GCS copy failed, retrying."

@@ -2,6 +2,7 @@ import { createHono } from "@front-api/lib/hono";
 
 import { cors } from "./middlewares/cors";
 import { requestLogger } from "./middlewares/request_logger";
+import { spaRedirect } from "./middlewares/spa_redirect";
 import { unhandledErrorHandler } from "./middlewares/utils";
 import preStopApp from "./routes/[preStopSecret]";
 import { appStatusApp } from "./routes/app-status";
@@ -18,6 +19,9 @@ import { invitationsApp } from "./routes/invitations";
 import { killApp } from "./routes/kill";
 import privateLoginApp from "./routes/login";
 import lookupApp from "./routes/lookup";
+import marketingApp from "./routes/marketing";
+import { mcpApp } from "./routes/mcp/index";
+import { mcpWellKnownApp } from "./routes/mcp/well-known";
 import metronomeApp from "./routes/metronome";
 import novuApp from "./routes/novu";
 import oauthApp from "./routes/oauth";
@@ -25,6 +29,7 @@ import pokeApp from "./routes/poke";
 import shareApp from "./routes/share";
 import sseApp from "./routes/sse";
 import stripeApp from "./routes/stripe";
+import subtle1App from "./routes/subtle1";
 import tApp from "./routes/t";
 import templatesApp from "./routes/templates";
 import userApp from "./routes/user";
@@ -52,6 +57,7 @@ apiApp.route("/invitations", invitationsApp);
 apiApp.route("/kill", killApp);
 apiApp.route("/login", privateLoginApp);
 apiApp.route("/lookup", lookupApp);
+apiApp.route("/marketing", marketingApp);
 apiApp.route("/metronome", metronomeApp);
 apiApp.route("/novu", novuApp);
 apiApp.route("/oauth", oauthApp);
@@ -83,5 +89,15 @@ apiApp.route("/:preStopSecret", preStopApp);
 export const honoApp = createHono();
 honoApp.use("*", requestLogger);
 honoApp.use("*", cors);
+honoApp.use("*", spaRedirect);
+
+// Dust as MCP Server — inbound from remote clients (Inspector, Cursor, etc.).
+// Mounted at root level so /.well-known/* and /mcp are not under /api/.
+honoApp.route("/mcp", mcpApp);
+honoApp.route("/", mcpWellKnownApp);
+
 honoApp.route("/api", apiApp);
+// PostHog reverse proxy lives at the domain root (not under /api), matching
+// the `/subtle1` rewrites in front/next.config.js.
+honoApp.route("/subtle1", subtle1App);
 honoApp.onError(unhandledErrorHandler);

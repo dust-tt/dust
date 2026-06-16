@@ -13,6 +13,7 @@ import { apiError } from "@front-api/middlewares/utils";
 // Mounted at /api/email/validate-action.
 const app = createHono();
 
+/** @ignoreswagger */
 app.post("/", async (ctx) => {
   const body = await ctx.req.json().catch(() => ({}));
   const { token } = body ?? {};

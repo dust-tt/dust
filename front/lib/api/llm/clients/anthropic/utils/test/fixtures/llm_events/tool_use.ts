@@ -8,6 +8,7 @@ export const toolUseLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "anthropic" as const,
       inferenceProvider: "anthropic",
+      inferenceRegion: "global",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
@@ -19,6 +20,7 @@ export const toolUseLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "anthropic" as const,
       inferenceProvider: "anthropic",
+      inferenceRegion: "global",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
@@ -30,6 +32,7 @@ export const toolUseLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "anthropic" as const,
       inferenceProvider: "anthropic",
+      inferenceRegion: "global",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
@@ -41,6 +44,7 @@ export const toolUseLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "anthropic" as const,
       inferenceProvider: "anthropic",
+      inferenceRegion: "global",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
@@ -54,6 +58,7 @@ export const toolUseLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "anthropic" as const,
       inferenceProvider: "anthropic",
+      inferenceRegion: "global",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
@@ -62,6 +67,7 @@ export const toolUseLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "anthropic" as const,
       inferenceProvider: "anthropic",
+      inferenceRegion: "global",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
@@ -75,6 +81,7 @@ export const toolUseLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "anthropic" as const,
       inferenceProvider: "anthropic",
+      inferenceRegion: "global",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
@@ -92,6 +99,7 @@ export const toolUseLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "anthropic" as const,
       inferenceProvider: "anthropic",
+      inferenceRegion: "global",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },
@@ -106,6 +114,7 @@ export const toolUseLLMEvents: LLMEvent[] = [
         metadata: {
           clientId: "anthropic" as const,
           inferenceProvider: "anthropic",
+          inferenceRegion: "global",
           modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
         },
       },
@@ -119,6 +128,7 @@ export const toolUseLLMEvents: LLMEvent[] = [
         metadata: {
           clientId: "anthropic" as const,
           inferenceProvider: "anthropic",
+          inferenceRegion: "global",
           modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
         },
       },
@@ -131,6 +141,7 @@ export const toolUseLLMEvents: LLMEvent[] = [
       metadata: {
         clientId: "anthropic" as const,
         inferenceProvider: "anthropic",
+        inferenceRegion: "global",
         modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
       },
     },
@@ -145,6 +156,7 @@ export const toolUseLLMEvents: LLMEvent[] = [
         metadata: {
           clientId: "anthropic" as const,
           inferenceProvider: "anthropic",
+          inferenceRegion: "global",
           modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
         },
       },
@@ -152,6 +164,7 @@ export const toolUseLLMEvents: LLMEvent[] = [
     metadata: {
       clientId: "anthropic" as const,
       inferenceProvider: "anthropic",
+      inferenceRegion: "global",
       modelId: CLAUDE_4_SONNET_20250514_MODEL_ID,
     },
   },

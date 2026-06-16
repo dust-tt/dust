@@ -15,7 +15,7 @@ export interface LinkWrapperProps {
 
 export const LinkWrapper = React.forwardRef<
   HTMLAnchorElement,
-  LinkWrapperProps
+  LinkWrapperProps & { [key: `data-${string}`]: string | undefined }
 >(
   (
     {
@@ -28,6 +28,7 @@ export const LinkWrapper = React.forwardRef<
       prefetch,
       className,
       tabIndex,
+      ...rest
     },
     ref
   ) => {
@@ -45,6 +46,7 @@ export const LinkWrapper = React.forwardRef<
           prefetch={prefetch}
           className={className}
           tabIndex={tabIndex}
+          {...rest}
         >
           {children}
         </components.link>

@@ -1,16 +1,15 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { MembershipSeatType } from "@app/types/memberships";
 import type { CreationOptional } from "sequelize";
-import { DataTypes } from "sequelize";
 
 /**
  * Per-(workspace, seat-type) seat configuration.
  *
  * - `minSeats`: billing floor for that seat type — the minimum count billed to
  *   Metronome even when the actual headcount on the seat type is lower.
- *
- * (`maxSeats` — a hard cap on assignments — will be added later.)
+ * - `maxSeats`: hard assignment cap — null means no cap.
  */
 export class WorkspaceSeatLimitModel extends WorkspaceAwareModel<WorkspaceSeatLimitModel> {
   declare createdAt: CreationOptional<Date>;
@@ -18,6 +17,7 @@ export class WorkspaceSeatLimitModel extends WorkspaceAwareModel<WorkspaceSeatLi
 
   declare seatType: MembershipSeatType;
   declare minSeats: CreationOptional<number>;
+  declare maxSeats: CreationOptional<number | null>;
 }
 
 WorkspaceSeatLimitModel.init(
@@ -40,6 +40,10 @@ WorkspaceSeatLimitModel.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
+    },
+    maxSeats: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
   },
   {

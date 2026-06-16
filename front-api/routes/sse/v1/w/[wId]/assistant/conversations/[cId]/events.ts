@@ -50,6 +50,7 @@ export const V1_OPTIONS: ConversationEventsOptions = {
 const app = publicApiApp();
 
 app.use("*", streamingTag);
+/** @ignoreswagger */
 app.get(
   "/",
   validate("param", ConversationParamSchema),

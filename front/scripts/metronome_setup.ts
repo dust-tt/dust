@@ -12,11 +12,16 @@
  * Requires: METRONOME_API_KEY env var
  */
 
+import { baseUniquenessKey } from "@app/lib/metronome/alerts";
+import { DEFAULT_ALERT_UNIQUENESS_KEYS } from "@app/lib/metronome/alerts/default_alerts";
 import { getMetronomeClient } from "@app/lib/metronome/client";
 import {
   CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+  CONTRACT_CREDIT_TYPE_POOL,
   CREDIT_TYPE_USD_ID,
   DEV_CREDIT_TYPE_AWU_ID,
+  PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY,
+  PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY,
   PLAN_CODE_CUSTOM_FIELD_KEY,
   PROD_CREDIT_TYPE_AWU_ID,
   SEAT_TYPE_CUSTOM_FIELD_KEY,
@@ -40,7 +45,9 @@ import {
 import {
   getNewPackages,
   getNewRateCards,
+  MAX_SEAT_MONTHLY_AWU_CREDITS,
   NEW_METRICS,
+  PRO_SEAT_MONTHLY_AWU_CREDITS,
 } from "@app/lib/metronome/setup_new_pricing";
 
 if (!process.env.METRONOME_API_KEY) {
@@ -49,6 +56,13 @@ if (!process.env.METRONOME_API_KEY) {
 }
 
 const EXECUTE = process.argv.includes("--execute");
+// Archive the existing account-level default pool alerts before syncing so
+// `syncAlerts` recreates them with the current `custom_field_filters` from the
+// code (`upsertMetronomeAlert`-style filter changes don't otherwise propagate —
+// `syncAlerts` no-ops on a 409). Use after changing POOL_CREDIT_AND_COMMIT_FILTERS.
+const RECREATE_POOL_DEFAULTS = process.argv.includes(
+  "--recreate-pool-defaults"
+);
 
 const client = getMetronomeClient();
 
@@ -146,13 +160,28 @@ async function syncMetrics(): Promise<void> {
     const eventTypeMatch =
       JSON.stringify(ex?.event_type_filter?.in_values?.sort() ?? []) ===
       JSON.stringify([...desired.event_type_filter.in_values].sort());
+    // Sort filters by name AND normalize each filter to a canonical key order.
+    // The JSON.stringify comparison below is key-order-sensitive, and Metronome
+    // returns filter object keys in a different order than our literals
+    // (e.g. `not_in_values` before `exists`). Mapping every filter through a
+    // fixed key order — and letting JSON.stringify drop the `undefined` keys —
+    // makes the comparison depend only on content, not key order.
     const sortFilters = (
       filters: Array<{
         name: string;
         exists?: boolean;
         in_values?: string[];
+        not_in_values?: string[];
       }>
-    ) => [...filters].sort((a, b) => a.name.localeCompare(b.name));
+    ) =>
+      [...filters]
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((f) => ({
+          name: f.name,
+          exists: f.exists,
+          in_values: f.in_values,
+          not_in_values: f.not_in_values,
+        }));
     const propertyFiltersMatch =
       JSON.stringify(sortFilters(ex?.property_filters ?? [])) ===
       JSON.stringify(sortFilters(desired.property_filters ?? []));
@@ -199,11 +228,8 @@ async function syncMetrics(): Promise<void> {
           );
         }
         console.log(
-          `  ↻ ${desired.name} — config changed${EXECUTE ? ", archiving" : ""} ${ex.id}`
+          `  ↻ ${desired.name} — config changed${EXECUTE ? ", recreating" : ""} ${ex.id}`
         );
-        if (EXECUTE) {
-          await client.v1.billableMetrics.archive({ id: ex.id });
-        }
       }
       if (EXECUTE) {
         console.log(`  + Creating: ${desired.name}`);
@@ -213,6 +239,10 @@ async function syncMetrics(): Promise<void> {
         const id = (created as { data: { id: string } }).data.id;
         console.log(`    → ${id}`);
         ids.metrics[desired.name] = id;
+        if (ex) {
+          console.log(`    archiving old ${ex.id}`);
+          await client.v1.billableMetrics.archive({ id: ex.id });
+        }
       } else {
         console.log(`  + [DRYRUN] Would create: ${desired.name}`);
         // Use existing ID if available (for cascading checks), otherwise placeholder.
@@ -418,16 +448,8 @@ async function syncProducts(): Promise<boolean> {
     } else {
       if (ex) {
         console.log(
-          `  ↻ ${desired.name} — config changed${EXECUTE ? ", archiving" : ""} ${ex.id}`
+          `  ↻ ${desired.name} — config changed${EXECUTE ? ", recreating" : ""} ${ex.id}`
         );
-        if (EXECUTE) {
-          try {
-            await client.v1.contracts.products.archive({ product_id: ex.id });
-            mutated = true;
-          } catch {
-            console.log(`    (archive failed)`);
-          }
-        }
       }
 
       if (EXECUTE) {
@@ -454,6 +476,14 @@ async function syncProducts(): Promise<boolean> {
         console.log(`    → ${id}`);
         ids.products[desired.name] = id;
         mutated = true;
+        if (ex) {
+          try {
+            console.log(`    archiving old ${ex.id}`);
+            await client.v1.contracts.products.archive({ product_id: ex.id });
+          } catch {
+            console.log(`    (archive failed)`);
+          }
+        }
       } else {
         console.log(`  + [DRYRUN] Would create: ${desired.name}`);
         ids.products[desired.name] = ex?.id ?? `dryrun-${desired.name}`;
@@ -728,15 +758,8 @@ async function syncRateCards(): Promise<void> {
     } else {
       if (ex) {
         console.log(
-          `  ↻ ${desired.name} — config changed${EXECUTE ? ", archiving" : ""} ${ex.id}`
+          `  ↻ ${desired.name} — config changed${EXECUTE ? ", recreating" : ""} ${ex.id}`
         );
-        if (EXECUTE) {
-          try {
-            await client.v1.contracts.rateCards.archive({ id: ex.id });
-          } catch {
-            console.log(`    (archive failed)`);
-          }
-        }
       }
 
       if (EXECUTE) {
@@ -775,6 +798,14 @@ async function syncRateCards(): Promise<void> {
               | "WEEKLY"
               | undefined,
           });
+        }
+        if (ex) {
+          try {
+            console.log(`    archiving old ${ex.id}`);
+            await client.v1.contracts.rateCards.archive({ id: ex.id });
+          } catch {
+            console.log(`    (archive failed)`);
+          }
         }
       } else {
         console.log(
@@ -834,6 +865,8 @@ interface ExistingPackage {
     starting_at_offset: { unit: string; value: number };
     applicable_product_tags?: string[];
     recurrence_frequency?: string;
+    duration?: { unit: string; value: number };
+    proration?: "NONE" | "FIRST" | "LAST" | "FIRST_AND_LAST";
     name?: string;
     // Metronome returns the resolved subscription identifier (post-create) plus
     // the allocation mode for credits attached to a SEAT_BASED subscription.
@@ -1091,6 +1124,29 @@ function packageMatches(ex: ExistingPackage, desired: PackageDef): boolean {
       );
       return false;
     }
+    if (
+      (match.duration?.unit ?? undefined) !==
+        (desiredCredit.duration?.unit ?? undefined) ||
+      (match.duration ? Number(match.duration.value) : undefined) !==
+        (desiredCredit.duration ? desiredCredit.duration.value : undefined)
+    ) {
+      console.log(
+        `    [diff] ${desired.name}: recurring credit "${desiredCredit.name}" duration ${match.duration?.unit}:${match.duration?.value} → ${desiredCredit.duration?.unit}:${desiredCredit.duration?.value}`
+      );
+      return false;
+    }
+    // Metronome defaults an unset proration to "FIRST_AND_LAST", so compare
+    // against that default on both sides to avoid a spurious diff (and to detect
+    // a credit still on the prorated default vs. our desired "NONE").
+    if (
+      (match.proration ?? "FIRST_AND_LAST") !==
+      (desiredCredit.proration ?? "FIRST_AND_LAST")
+    ) {
+      console.log(
+        `    [diff] ${desired.name}: recurring credit "${desiredCredit.name}" proration ${match.proration ?? "FIRST_AND_LAST"} → ${desiredCredit.proration ?? "FIRST_AND_LAST"}`
+      );
+      return false;
+    }
     // Compare subscription_config presence and allocation mode. We can't match
     // the subscription_id directly (the existing credit holds a resolved ID
     // while the desired def references a temporary_id), but the allocation mode
@@ -1217,15 +1273,8 @@ async function syncPackages(): Promise<void> {
 
       if (ex) {
         console.log(
-          `  ↻ ${versionedName} — config changed${EXECUTE ? ", archiving" : ""} ${ex.name} (${ex.id})`
+          `  ↻ ${versionedName} — config changed${EXECUTE ? ", recreating" : ""} ${ex.name} (${ex.id})`
         );
-        if (EXECUTE) {
-          try {
-            await client.v1.packages.archive({ package_id: ex.id });
-          } catch {
-            console.log(`    (archive failed)`);
-          }
-        }
       }
 
       if (EXECUTE) {
@@ -1295,6 +1344,7 @@ async function syncPackages(): Promise<void> {
                 ? { recurrence_frequency: credit.recurrence_frequency }
                 : {}),
               ...(credit.duration ? { duration: credit.duration } : {}),
+              ...(credit.proration ? { proration: credit.proration } : {}),
               ...(credit.name ? { name: credit.name } : {}),
               ...(subscriptionConfig
                 ? { subscription_config: subscriptionConfig }
@@ -1365,6 +1415,14 @@ async function syncPackages(): Promise<void> {
         const id = (created as { data: { id: string } }).data.id;
         console.log(`    → ${id}`);
         ids.packages[desired.name] = id;
+        if (ex) {
+          try {
+            console.log(`    archiving old ${ex.id}`);
+            await client.v1.packages.archive({ package_id: ex.id });
+          } catch {
+            console.log(`    (archive failed)`);
+          }
+        }
       } else {
         console.log(`  + [DRYRUN] Would create: ${versionedName}`);
         ids.packages[desired.name] = ex?.id ?? `dryrun-${desired.name}`;
@@ -1388,6 +1446,7 @@ const CUSTOM_FIELD_KEYS: Array<{
   { entity: "contract", key: "MAU_TIERS" },
   { entity: "contract", key: "MAU_THRESHOLD" },
   { entity: "contract", key: PLAN_CODE_CUSTOM_FIELD_KEY },
+  { entity: "contract", key: PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY },
   // Stamped on individual contract_credit instances to identify excess
   // recurring credits ("excess") vs. workspace-pool credits ("pool"). Lets
   // the default ContractCredit-balance alerts filter on value="pool" to
@@ -1401,6 +1460,25 @@ const CUSTOM_FIELD_KEYS: Array<{
   {
     entity: "contract_credit",
     key: CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+  },
+  // Same key on commits: AWU commits are stamped "pool" so the pool balance
+  // alert's Commit filter counts them alongside pool credits (a ContractCredit-
+  // only filter drops commits). The key must be shared with the contract_credit
+  // registration above — Metronome requires every entity in an alert's
+  // custom_field_filters to use the same key/value.
+  {
+    entity: "commit",
+    key: CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+  },
+  // Stamped per-instance on each free-seat per-user credit, carrying the seat's
+  // user sId (see `addPerUserCreditToContract`). Lets a per-user
+  // `low_remaining_contract_credit_balance_reached` alert filter on the
+  // custom field (the only filter a credit-balance alert supports — presentation
+  // specifiers can't be filtered) so it fires as each free user depletes their
+  // individual credit.
+  {
+    entity: "contract_credit",
+    key: PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY,
   },
   // Stamped on each seat-style product (Workspace / Pro / Max / Free).
   // Runtime code reads `product.custom_fields.DUST_SEAT_TYPE` (cached in
@@ -1468,13 +1546,21 @@ interface AlertDef {
   alert_type:
     | "low_remaining_contract_credit_balance_reached"
     | "low_remaining_commit_balance_reached"
-    | "low_remaining_contract_credit_and_commit_balance_reached";
+    | "low_remaining_contract_credit_and_commit_balance_reached"
+    | "low_remaining_seat_balance_reached";
   threshold: number;
   // Idempotency key — Metronome rejects duplicate creates with the same key.
   uniqueness_key: string;
   // Tag identifying which credit type the threshold tracks. Resolved at sync
   // time (AWU ID differs per environment).
   credit_type: "AWU";
+  // Required for `low_remaining_seat_balance_reached` alerts. Scopes the alert
+  // to a seat group key; omitting `seat_group_value` fans the alert out across
+  // all seats (allocation-independent — e.g. a 0-balance exhaustion alert).
+  seat_filter?: {
+    seat_group_key: string;
+    seat_group_value?: string;
+  };
   // Custom field filters scoped to ContractCredit / Commit / Contract. Used
   // here to exclude excess recurring credits from contract-credit-balance
   // alerts (those credits exist solely to absorb over-consumption and would
@@ -1486,17 +1572,29 @@ interface AlertDef {
   }>;
 }
 
-// Filter that excludes the "excess" recurring credit from
-// contract-credit-balance alerts. The inverse marker ("pool") is stamped on
-// workspace-pool recurring credits in the package definitions; excess credits
-// get "excess" so they don't match this filter.
-const POOL_CONTRACT_CREDIT_FILTER: NonNullable<
+// Filters that keep only workspace-pool balances in contract-credit-and-commit
+// balance alerts: one per entity, since a ContractCredit-only filter drops
+// commits from the balance. Both filters use the SAME key/value — Metronome
+// rejects an alert whose custom_field_filters use different key/value pairs per
+// entity type. The ContractCredit filter excludes excess recurring credits
+// (stamped "excess") and unstamped per-seat credits; the Commit filter includes
+// AWU commits stamped "pool" by the commit webhook handlers. (The single-filter
+// ContractCreditOrCommit equivalent is gated behind Metronome's
+// `ff:alert-specifiers-enabled` feature flag, so we use two per-entity filters.)
+const POOL_CREDIT_AND_COMMIT_FILTERS: NonNullable<
   AlertDef["custom_field_filters"]
->[number] = {
-  entity: "ContractCredit",
-  key: CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
-  value: "pool",
-};
+> = [
+  {
+    entity: "ContractCredit",
+    key: CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+    value: CONTRACT_CREDIT_TYPE_POOL,
+  },
+  {
+    entity: "Commit",
+    key: CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
+    value: CONTRACT_CREDIT_TYPE_POOL,
+  },
+];
 
 // Default alerts applied to all customers (no `customer_id` set on create):
 // fire when AWU credit / contract-credit / commit balance reaches thresholds.
@@ -1505,30 +1603,116 @@ const ALERTS: AlertDef[] = [
     name: "Default: Empty contract credit + commit balance (AWU)",
     alert_type: "low_remaining_contract_credit_and_commit_balance_reached",
     threshold: 0,
-    uniqueness_key:
-      "default-low-contract-credit-and-commit-balance-zero-awu-pooled",
+    uniqueness_key: DEFAULT_ALERT_UNIQUENESS_KEYS.poolEmpty,
     credit_type: "AWU",
-    custom_field_filters: [POOL_CONTRACT_CREDIT_FILTER],
+    custom_field_filters: POOL_CREDIT_AND_COMMIT_FILTERS,
   },
   {
     name: "Default: Low balance 100 credits (AWU)",
     alert_type: "low_remaining_contract_credit_and_commit_balance_reached",
     threshold: 100,
-    uniqueness_key:
-      "default-low-contract-credit-and-commit-balance-100-awu-pooled",
+    uniqueness_key: DEFAULT_ALERT_UNIQUENESS_KEYS.poolLow,
     credit_type: "AWU",
-    custom_field_filters: [POOL_CONTRACT_CREDIT_FILTER],
+    custom_field_filters: POOL_CREDIT_AND_COMMIT_FILTERS,
   },
   {
     name: "Default: Critical balance 10 credits (AWU)",
     alert_type: "low_remaining_contract_credit_and_commit_balance_reached",
     threshold: 10,
-    uniqueness_key:
-      "default-low-contract-credit-and-commit-balance-10-awu-pooled",
+    uniqueness_key: DEFAULT_ALERT_UNIQUENESS_KEYS.poolCritical,
     credit_type: "AWU",
-    custom_field_filters: [POOL_CONTRACT_CREDIT_FILTER],
+    custom_field_filters: POOL_CREDIT_AND_COMMIT_FILTERS,
+  },
+  {
+    // Seat exhaustion: fires at 0 remaining seat balance. Allocation-independent
+    // (no `seat_group_value`) so the single default alert fans out across every
+    // seat of every customer. Seat ids in Metronome are user sIds, hence the
+    // "user_id" group key.
+    name: "Default: Empty seat balance (AWU)",
+    alert_type: "low_remaining_seat_balance_reached",
+    threshold: 0,
+    uniqueness_key: DEFAULT_ALERT_UNIQUENESS_KEYS.seatEmpty,
+    credit_type: "AWU",
+    seat_filter: { seat_group_key: "user_id" },
+  },
+  {
+    // Low-balance warning for max seats (8 000 AWU remaining).
+    name: `Default: Low seat balance max seats (${0.2 * MAX_SEAT_MONTHLY_AWU_CREDITS} AWU)`,
+    alert_type: "low_remaining_seat_balance_reached",
+    threshold: 0.2 * MAX_SEAT_MONTHLY_AWU_CREDITS,
+    uniqueness_key: DEFAULT_ALERT_UNIQUENESS_KEYS.seatLowMax,
+    credit_type: "AWU",
+    seat_filter: { seat_group_key: "user_id" },
+  },
+  {
+    // Low-balance warning for pro seats (1 600 AWU remaining).
+    name: `Default: Low seat balance pro seats (${0.2 * PRO_SEAT_MONTHLY_AWU_CREDITS} AWU)`,
+    alert_type: "low_remaining_seat_balance_reached",
+    threshold: 0.2 * PRO_SEAT_MONTHLY_AWU_CREDITS,
+    uniqueness_key: DEFAULT_ALERT_UNIQUENESS_KEYS.seatLowPro,
+    credit_type: "AWU",
+    seat_filter: { seat_group_key: "user_id" },
   },
 ];
+
+// The account-level default pool alerts. Archiving these (which releases their
+// uniqueness keys) lets `syncAlerts` recreate them with the current filter.
+const POOL_DEFAULT_ALERT_KEYS: string[] = [
+  DEFAULT_ALERT_UNIQUENESS_KEYS.poolEmpty,
+  DEFAULT_ALERT_UNIQUENESS_KEYS.poolLow,
+  DEFAULT_ALERT_UNIQUENESS_KEYS.poolCritical,
+];
+
+// Archive the account-level default pool alerts so the subsequent `syncAlerts`
+// recreates them with the current `custom_field_filters`. Default alerts carry
+// no `customer_id`, and the SDK only lists alerts per customer — but a default
+// alert is evaluated against (and returned for) every customer, so we probe one
+// customer's alert list to discover them, then archive by id (which releases
+// the uniqueness key globally).
+async function archivePoolDefaultAlerts(): Promise<void> {
+  console.log("\n=== Archiving default pool alerts (for recreation) ===");
+
+  let probeCustomerId: string | undefined;
+  for await (const customer of client.v1.customers.list()) {
+    probeCustomerId = customer.id;
+    break;
+  }
+  if (!probeCustomerId) {
+    console.log(
+      "  ! No Metronome customer found to probe alerts from — skipping. " +
+        "Default alerts can only be enumerated via a customer's alert list."
+    );
+    return;
+  }
+
+  let matched = 0;
+  for await (const entry of client.v1.customers.alerts.list({
+    customer_id: probeCustomerId,
+    alert_statuses: ["ENABLED", "DISABLED"],
+  })) {
+    const key = entry.alert.uniqueness_key;
+    if (!key || !POOL_DEFAULT_ALERT_KEYS.includes(baseUniquenessKey(key))) {
+      continue;
+    }
+    matched++;
+    console.log(
+      `  ! ${EXECUTE ? "Archiving" : "[DRYRUN] Would archive"} default pool alert: ${entry.alert.name} (${entry.alert.id}, uniqueness_key="${key}")`
+    );
+    if (EXECUTE) {
+      await client.v1.alerts.archive({
+        id: entry.alert.id,
+        release_uniqueness_key: true,
+      });
+    }
+  }
+
+  if (matched === 0) {
+    console.log(
+      `  (no existing default pool alerts found for probe customer ${probeCustomerId} — ` +
+        `syncAlerts will create them fresh with the current filter)`
+    );
+  }
+}
 
 async function syncAlerts(): Promise<void> {
   console.log("\n=== Syncing Alerts ===");
@@ -1537,9 +1721,13 @@ async function syncAlerts(): Promise<void> {
     const creditTypeId =
       desired.credit_type === "AWU" ? getCreditTypeAwuId() : undefined;
 
+    const filterDesc = desired.custom_field_filters
+      ? ` custom_field_filters=${JSON.stringify(desired.custom_field_filters)}`
+      : "";
+
     if (!EXECUTE) {
       console.log(
-        `  + [DRYRUN] Would create alert: ${desired.name} (${desired.alert_type}, threshold=${desired.threshold})`
+        `  + [DRYRUN] Would create alert: ${desired.name} (${desired.alert_type}, threshold=${desired.threshold})${filterDesc}`
       );
       continue;
     }
@@ -1554,15 +1742,20 @@ async function syncAlerts(): Promise<void> {
         ...(desired.custom_field_filters
           ? { custom_field_filters: desired.custom_field_filters }
           : {}),
+        ...(desired.seat_filter ? { seat_filter: desired.seat_filter } : {}),
       });
       const id = (created as { data: { id: string } }).data.id;
-      console.log(`  + Created: ${desired.name} → ${id}`);
+      console.log(`  + Created: ${desired.name} → ${id}${filterDesc}`);
     } catch (err) {
-      // Metronome returns 409 when uniqueness_key already exists.
+      // Metronome returns 409 when uniqueness_key already exists. The existing
+      // alert is NOT updated — its custom_field_filters stay whatever they were
+      // at creation. To apply changed filters, archive the alert first (for the
+      // pool defaults: re-run with --recreate-pool-defaults).
       const status = (err as { status?: number })?.status;
       if (status === 409) {
         console.log(
-          `  ✓ ${desired.name} — already exists (uniqueness_key="${desired.uniqueness_key}")`
+          `  ✓ ${desired.name} — already exists (uniqueness_key="${desired.uniqueness_key}"), NOT updated (existing filters kept). ` +
+            `Re-run with --recreate-pool-defaults --execute to apply current filters to pool defaults.`
         );
       } else {
         throw err;
@@ -1587,6 +1780,9 @@ async function main(): Promise<void> {
   const productsMutated = await syncProducts();
   await syncRateCards();
   await syncPackages();
+  if (RECREATE_POOL_DEFAULTS) {
+    await archivePoolDefaultAlerts();
+  }
   await syncAlerts();
 
   // Drop the cached `productId → seatType` map so live processes pick up

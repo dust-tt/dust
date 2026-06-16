@@ -85,6 +85,7 @@ import { CreditModel } from "@app/lib/resources/storage/models/credits";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import {
+  AuthorizedFileAccessModel,
   ExternalViewerSessionModel,
   FileModel,
   ShareableFileModel,
@@ -101,6 +102,7 @@ import {
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { MembershipUpgradeRequestModel } from "@app/lib/resources/storage/models/membership_upgrade_requests";
 import { OnboardingTaskModel } from "@app/lib/resources/storage/models/onboarding_tasks";
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import { ProgrammaticUsageConfigurationModel } from "@app/lib/resources/storage/models/programmatic_usage_configurations";
@@ -150,6 +152,7 @@ export function loadAllModels() {
     UserMetadataModel,
     WorkspaceHasDomainModel,
     MembershipModel,
+    MembershipUpgradeRequestModel,
     MembershipInvitationModel,
     GroupModel,
     GroupMembershipModel,
@@ -163,6 +166,7 @@ export function loadAllModels() {
     KeyModel,
     FileModel,
     ShareableFileModel,
+    AuthorizedFileAccessModel,
     SharingGrantModel,
     ExternalViewerSessionModel,
     DustAppSecretModel,

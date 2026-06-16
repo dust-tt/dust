@@ -1,12 +1,12 @@
+import type { GetNotionWebhookConfigResponseBody } from "@app/lib/api/data_sources/managed_notion";
 import { clientFetch } from "@app/lib/egress/client";
-import type { GetNotionWebhookConfigResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/notion/webhook_config";
 import type { DataSourceType } from "@app/types/data_source";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { NotificationType } from "@dust-tt/sparkle";
 import {
   Button,
-  ClipboardCheckIcon,
-  ClipboardIcon,
+  Clipboard,
+  ClipboardCheck,
   Dialog,
   DialogContent,
   DialogFooter,
@@ -162,7 +162,7 @@ export function SetupNotionPrivateIntegrationModal({
             <>
               <div>
                 <Page.SectionHeader title="Integration Token" />
-                <p className="mb-4 mt-2 text-sm text-muted-foreground">
+                <p className="mb-4 mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                   Paste your Notion integration token below.
                 </p>
                 <Input
@@ -190,7 +190,7 @@ export function SetupNotionPrivateIntegrationModal({
                 <>
                   <div>
                     <Page.SectionHeader title="Webhook URL" />
-                    <p className="mb-4 mt-2 text-sm text-muted-foreground">
+                    <p className="mb-4 mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                       Use this URL to set up Notion webhooks.
                     </p>
                     <div className="relative w-full">
@@ -209,11 +209,7 @@ export function SetupNotionPrivateIntegrationModal({
                       />
                       <div className="absolute inset-y-0 right-0 flex items-center pr-2">
                         <Button
-                          icon={
-                            isCopiedWebhookUrl
-                              ? ClipboardCheckIcon
-                              : ClipboardIcon
-                          }
+                          icon={isCopiedWebhookUrl ? ClipboardCheck : Clipboard}
                           onClick={() =>
                             copyWebhookUrl(webhookConfig.webhookUrl)
                           }
@@ -229,7 +225,7 @@ export function SetupNotionPrivateIntegrationModal({
 
                   <div>
                     <Page.SectionHeader title="Verification Token" />
-                    <p className="mb-4 mt-2 text-sm text-muted-foreground">
+                    <p className="mb-4 mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
                       {webhookConfig.verificationToken
                         ? "Use this token to verify your webhook in Notion."
                         : "Set the webhook URL in your Notion integration and come back here to get the token."}
@@ -251,9 +247,7 @@ export function SetupNotionPrivateIntegrationModal({
                         />
                         <div className="absolute inset-y-0 right-0 flex items-center pr-2">
                           <Button
-                            icon={
-                              isCopiedToken ? ClipboardCheckIcon : ClipboardIcon
-                            }
+                            icon={isCopiedToken ? ClipboardCheck : Clipboard}
                             onClick={() =>
                               copyToken(webhookConfig.verificationToken!)
                             }

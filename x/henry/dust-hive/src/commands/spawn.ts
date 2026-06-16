@@ -84,7 +84,8 @@ async function tryCreateTestDatabase(name: string): Promise<void> {
 // Phase 1: Create environment files
 async function setupEnvironmentFiles(
   metadata: EnvironmentMetadata,
-  ports: PortAllocation
+  ports: PortAllocation,
+  settings: Settings
 ): Promise<Result<void, CommandError>> {
   try {
     await createEnvironment(metadata);
@@ -102,7 +103,9 @@ async function setupEnvironmentFiles(
   }
 
   try {
-    await writeEnvSh(metadata.name, ports);
+    await writeEnvSh(metadata.name, ports, {
+      dynamicWorkosRedirect: settings.dynamicWorkosRedirect ?? false,
+    });
   } catch (error) {
     await deleteEnvironmentDir(metadata.name).catch((e) =>
       logger.warn(`Cleanup failed: ${errorMessage(e)}`)
@@ -288,7 +291,7 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
   };
 
   // Phase 1: Setup environment files
-  const filesResult = await setupEnvironmentFiles(metadata, ports);
+  const filesResult = await setupEnvironmentFiles(metadata, ports, settings);
   if (!filesResult.ok) return filesResult;
 
   // Phase 1.5: Create test database (if test postgres is running)

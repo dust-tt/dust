@@ -26,6 +26,7 @@ export function PokeAwuUsageChart({
   const [filter, setFilter] = useState<
     Partial<Record<AwuUsageGroupByType, string[]>>
   >({});
+  const [includeFreeUsage, setIncludeFreeUsage] = useState<boolean>(false);
 
   const [selectedPeriod, setSelectedPeriod] = useState<string>(() => {
     const currentBillingCycle = getBillingCycleFromDay(
@@ -43,6 +44,7 @@ export function PokeAwuUsageChart({
     groupBy,
     groupByCount,
     windowSize: displayMode === "cumulative" ? "HOUR" : "DAY",
+    includeFreeUsage,
   });
 
   return (
@@ -61,6 +63,8 @@ export function PokeAwuUsageChart({
       billingCycleStartDay={billingCycleStartDay}
       displayMode={displayMode}
       setDisplayMode={setDisplayMode}
+      includeFreeUsage={includeFreeUsage}
+      setIncludeFreeUsage={setIncludeFreeUsage}
     />
   );
 }

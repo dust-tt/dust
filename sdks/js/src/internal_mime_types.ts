@@ -295,7 +295,7 @@ const TOOL_MIME_TYPES = {
       "RUN_AGENT_HANDOVER",
       "RUN_AGENT_QUERY",
       "WARNING",
-      "AGENT_CREATION_RESULT",
+      "SKILL_AUTHORING_RESULT",
       "TOOLSET_LIST_RESULT",
       "TOOLSET_DESCRIBE_RESULT",
       // Legacy, kept for backwards compatibility.

@@ -34,7 +34,7 @@ import type {
   ParsedContentItem,
 } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Chip, Spinner, XMarkIcon } from "@dust-tt/sparkle";
+import { Chip, Spinner, XClose } from "@dust-tt/sparkle";
 
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
@@ -398,7 +398,7 @@ function AgentSingleActionPanel({
   messageId,
   actionId,
   virtuosoMsg,
-  closeIcon = XMarkIcon,
+  closeIcon = XClose,
   onClose,
 }: AgentSingleActionPanelProps) {
   const {
@@ -459,7 +459,7 @@ function AgentSingleActionPanel({
   }
 
   return (
-    <div className="flex h-full flex-col bg-background dark:bg-background-night">
+    <div className="flex h-panel flex-col bg-panel-background dark:bg-panel-background-night">
       <AgentActionsPanelHeader
         title="Tool detail"
         closeIcon={closeIcon}
@@ -484,7 +484,7 @@ export function AgentActionsPanelForMessage({
   owner,
   messageId,
   virtuosoMsg,
-  closeIcon = XMarkIcon,
+  closeIcon = XClose,
   onClose,
 }: AgentActionsPanelProps & {
   messageId: string;

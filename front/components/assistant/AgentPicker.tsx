@@ -7,14 +7,14 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
+  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  MoreIcon,
-  RobotIcon,
+  Robot,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -72,7 +72,7 @@ export function AgentPicker({
           pickerButton
         ) : (
           <Button
-            icon={RobotIcon}
+            icon={Robot}
             variant="ghost-secondary"
             isSelect={showDropdownArrow}
             size={size}
@@ -121,7 +121,7 @@ export function AgentPicker({
               endComponent={
                 onAgentDetailsClick && clientType !== "extension" ? (
                   <Button
-                    icon={MoreIcon}
+                    icon={DotsHorizontal}
                     variant="outline"
                     size="mini"
                     className="opacity-0 group-hover:opacity-100"
@@ -142,7 +142,7 @@ export function AgentPicker({
             />
           ))
         ) : (
-          <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+          <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
             No results found
           </div>
         )}

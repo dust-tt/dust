@@ -1,4 +1,8 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type {
+  GetPokeSkillsResponseBody,
+  PostSkillSuggestionBodyType,
+} from "@app/lib/api/poke/skills";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -6,8 +10,6 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { GetPokeSkillsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/skills";
-import type { PostSkillSuggestionBodyType } from "@app/pages/api/poke/workspaces/[wId]/skills/suggestions";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";

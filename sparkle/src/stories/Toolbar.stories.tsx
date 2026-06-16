@@ -3,14 +3,14 @@ import React, { useState } from "react";
 
 import type { ToolbarProps } from "../index_with_tw_base";
 import {
-  BoldIcon,
-  CodeBlockIcon,
-  CodeSlashIcon,
-  HeadingIcon,
-  ItalicIcon,
-  ListCheckIcon,
-  ListOrdered2Icon,
-  QuoteTextIcon,
+  Bold01,
+  CodeSquare01,
+  Code01,
+  Heading01,
+  Italic01,
+  CheckDone01,
+  List,
+  DoubleQuotes,
   Toolbar,
   ToolbarContent,
   ToolbarIcon,
@@ -57,7 +57,7 @@ function ToolbarPreview({ variant, scroll, onClose }: ToolbarPreviewProps) {
       items: [
         <ToolbarIcon
           key="heading"
-          icon={HeadingIcon}
+          icon={Heading01}
           onClick={handleToolbarAction}
           active
           tooltip="Heading"
@@ -65,7 +65,7 @@ function ToolbarPreview({ variant, scroll, onClose }: ToolbarPreviewProps) {
         />,
         <ToolbarIcon
           key="bold"
-          icon={BoldIcon}
+          icon={Bold01}
           onClick={handleToolbarAction}
           active
           tooltip="Bold"
@@ -73,7 +73,7 @@ function ToolbarPreview({ variant, scroll, onClose }: ToolbarPreviewProps) {
         />,
         <ToolbarIcon
           key="italic"
-          icon={ItalicIcon}
+          icon={Italic01}
           onClick={handleToolbarAction}
           tooltip="Italic"
           size={buttonSize}
@@ -104,21 +104,21 @@ function ToolbarPreview({ variant, scroll, onClose }: ToolbarPreviewProps) {
       items: [
         <ToolbarIcon
           key="bulleted-list"
-          icon={ListCheckIcon}
+          icon={CheckDone01}
           onClick={handleToolbarAction}
           tooltip="Bulleted list"
           size={buttonSize}
         />,
         <ToolbarIcon
           key="ordered-list"
-          icon={ListOrdered2Icon}
+          icon={List}
           onClick={handleToolbarAction}
           tooltip="Ordered list"
           size={buttonSize}
         />,
         <ToolbarIcon
           key="blockquote"
-          icon={QuoteTextIcon}
+          icon={DoubleQuotes}
           onClick={handleToolbarAction}
           tooltip="Blockquote"
           size={buttonSize}
@@ -130,14 +130,14 @@ function ToolbarPreview({ variant, scroll, onClose }: ToolbarPreviewProps) {
       items: [
         <ToolbarIcon
           key="inline-code"
-          icon={CodeSlashIcon}
+          icon={Code01}
           onClick={handleToolbarAction}
           tooltip="Inline code"
           size={buttonSize}
         />,
         <ToolbarIcon
           key="code-block"
-          icon={CodeBlockIcon}
+          icon={CodeSquare01}
           onClick={handleToolbarAction}
           tooltip="Code block"
           size={buttonSize}
@@ -172,9 +172,24 @@ function handleOverlayClose(
 ): void {}
 
 const meta = {
-  title: "Components/Toolbar",
+  title: "Navigation/Toolbar",
   component: Toolbar,
   tags: ["autodocs"],
+  parameters: {
+    docs: {
+      description: {
+        component: `A formatting toolbar for rich-text editing, typically driving a text editor's commands. Use **variant** \`inline\` to sit within the editor flow or \`overlay\` for a floating bubble menu, with an optional \`onClose\` and a **scroll** flag for horizontally scrollable actions. **ToolbarContent** lays out actions as **groups** with separators; **ToolbarIcon** renders an icon button (with \`active\`, \`tooltip\`, \`size\`) and **ToolbarLink** provides a link-insertion control with its own dialog state.
+
+**When to use**
+- To present text-formatting controls (bold, italic, lists, code, links) for an editor.
+
+**Guidelines**
+- Group related actions in **ToolbarContent**'s \`groups\` so separators fall in sensible places.
+- Set the \`active\` prop on **ToolbarIcon** to reflect the formatting applied at the current selection.
+- For general page-level actions rather than text formatting, use a **Bar** or **HoveringBar**.`,
+      },
+    },
+  },
   argTypes: {
     variant: {
       options: TOOLBAR_VARIANTS,

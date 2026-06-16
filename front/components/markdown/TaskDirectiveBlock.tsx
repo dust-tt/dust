@@ -1,5 +1,6 @@
 import { ConversationSidebarStatusDot } from "@app/components/assistant/conversation/ConversationSidebarStatusDot";
 import { PodTaskStartWorkingDropdown } from "@app/components/pod/tasks/PodTaskStartWorkingDropdown";
+import type { GetWorkspacePodTaskResponseBody } from "@app/lib/api/projects/tasks";
 import { useAppRouter } from "@app/lib/platform";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
@@ -9,7 +10,6 @@ import {
 import { timeAgoFrom } from "@app/lib/utils";
 import type { ConversationDotStatus } from "@app/lib/utils/conversation_dot_status";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
-import type { GetWorkspacePodTaskResponseBody } from "@app/pages/api/w/[wId]/project_tasks/[taskSId]/index";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { compareAgentsForSort } from "@app/types/assistant/assistant";
 import type { PodTaskStatus, PodTaskType } from "@app/types/project_task";
@@ -18,7 +18,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   AttachmentChip,
   Avatar,
-  CheckCircleIcon,
+  CheckCircle,
   LinkWrapper,
   PopoverContent,
   PopoverRoot,
@@ -382,7 +382,7 @@ function TaskDirectiveChipInner({
           >
             <AttachmentChip
               label={displayLabel}
-              icon={{ visual: CheckCircleIcon }}
+              icon={{ visual: CheckCircle }}
               color="green"
               className="min-w-0 max-w-full transition-opacity group-hover:opacity-90"
             />
