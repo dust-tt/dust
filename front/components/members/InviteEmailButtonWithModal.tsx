@@ -73,24 +73,19 @@ const useGetEmailsListAndError = (
   }, [inviteEmails]);
 };
 
-// Remaining assignable seats for a tier; null means unlimited (no maxSeats cap).
-function seatAvailability(info: SeatTypeInfo): number | null {
-  return info.maxSeats === null
-    ? null
-    : Math.max(0, info.maxSeats - info.assignedCount);
+// Pre-paid slots remaining for the free seat type (minSeats floor not yet consumed).
+function freeSeatAvailability(info: SeatTypeInfo): number {
+  return Math.max(0, info.minSeats - info.assignedCount);
 }
 
-// Free seats are capped and shown as unavailable once exhausted. Paid tiers stay
-// selectable even at their cap.
 function isSeatSelectable(
   seatType: MembershipSeatType,
   info: SeatTypeInfo
 ): boolean {
   if (seatType === "free") {
-    const available = seatAvailability(info);
-    return available === null || available > 0;
+    return freeSeatAvailability(info) > 0;
   }
-  return true;
+  return info.maxSeats === null || info.assignedCount < info.maxSeats;
 }
 
 function seatBadge(
@@ -99,8 +94,8 @@ function seatBadge(
 ): ReactNode {
   let label: string;
   if (seatType === "free") {
-    const available = seatAvailability(info);
-    label = available === null ? "Available" : `${available} available`;
+    const available = freeSeatAvailability(info);
+    label = `${available} available`;
   } else {
     label = formatPriceCents(
       info.priceCents,
