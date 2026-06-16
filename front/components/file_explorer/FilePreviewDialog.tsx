@@ -1,5 +1,5 @@
-import type { FileEntry } from "@app/components/file_explorer/types";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
+import type { FileEntry } from "@app/components/file_explorer/types";
 import { getFilePreviewConfig } from "@app/components/spaces/FilePreviewSheet";
 import { useFileContent } from "@app/hooks/useFileContent";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
@@ -181,11 +181,14 @@ function FilePreviewDialogContent({
       );
 
     case "pdf":
-      return <PDFViewer url={`${fileUrl}?v=${entry.lastModifiedMs}`} />;
+      return (
+        <PDFViewer key={fileUrl} url={`${fileUrl}?v=${entry.lastModifiedMs}`} />
+      );
 
     case "viewer":
       return (
         <PDFViewer
+          key={fileUrl}
           url={`${fileUrl}?preview=pdf&v=${entry.lastModifiedMs}`}
         />
       );

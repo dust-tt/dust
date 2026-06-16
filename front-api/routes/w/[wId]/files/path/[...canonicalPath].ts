@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { DustFileSystemError } from "@app/lib/api/file_system/types";
 import {
@@ -7,7 +8,6 @@ import {
   renameCanonicalFile,
   streamThumbnail,
 } from "@app/lib/api/files/file_system_ops";
-import config from "@app/lib/api/config";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";

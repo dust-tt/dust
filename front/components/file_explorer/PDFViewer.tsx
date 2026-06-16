@@ -1,6 +1,7 @@
 import { clientFetch } from "@app/lib/egress/client";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Button, Spinner } from "@dust-tt/sparkle";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useReducer, useRef } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
@@ -14,29 +15,78 @@ const ZOOM_LEVELS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 const DEFAULT_ZOOM_IDX = 2;
 const BASE_PAGE_WIDTH = 680;
 
+type State = {
+  isFetching: boolean;
+  hasError: boolean;
+  objectUrl: string | null;
+  numPages: number | null;
+  currentPage: number;
+  zoomIdx: number;
+};
+
+type Action =
+  | { type: "fetch_success"; objectUrl: string }
+  | { type: "fetch_error" }
+  | { type: "document_loaded"; numPages: number }
+  | { type: "document_error" }
+  | { type: "set_current_page"; page: number }
+  | { type: "zoom_in" }
+  | { type: "zoom_out" };
+
+const initialState: State = {
+  isFetching: true,
+  hasError: false,
+  objectUrl: null,
+  numPages: null,
+  currentPage: 1,
+  zoomIdx: DEFAULT_ZOOM_IDX,
+};
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case "fetch_success":
+      return { ...state, isFetching: false, objectUrl: action.objectUrl };
+
+    case "fetch_error":
+      return { ...state, isFetching: false, hasError: true };
+
+    case "document_loaded":
+      return { ...state, numPages: action.numPages };
+
+    case "document_error":
+      return { ...state, hasError: true };
+
+    case "set_current_page":
+      return { ...state, currentPage: action.page };
+
+    case "zoom_in":
+      return {
+        ...state,
+        zoomIdx: Math.min(state.zoomIdx + 1, ZOOM_LEVELS.length - 1),
+      };
+
+    case "zoom_out":
+      return { ...state, zoomIdx: Math.max(state.zoomIdx - 1, 0) };
+
+    default:
+      assertNeverAndIgnore(action);
+      return state;
+  }
+}
+
 interface PDFViewerProps {
   url: string;
 }
 
 export function PDFViewer({ url }: PDFViewerProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [numPages, setNumPages] = useState<number | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [zoomIdx, setZoomIdx] = useState(DEFAULT_ZOOM_IDX);
-  const [objectUrl, setObjectUrl] = useState<string | null>(null);
-  const [isFetching, setIsFetching] = useState(true);
-  const [hasError, setHasError] = useState(false);
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const { isFetching, hasError, objectUrl, numPages, currentPage, zoomIdx } =
+    state;
 
   useEffect(() => {
     let cancelled = false;
     let createdObjectUrl: string | null = null;
-
-    setIsFetching(true);
-    setObjectUrl(null);
-    setHasError(false);
-    setNumPages(null);
-    setCurrentPage(1);
-    setZoomIdx(DEFAULT_ZOOM_IDX);
 
     void (async () => {
       try {
@@ -45,7 +95,7 @@ export function PDFViewer({ url }: PDFViewerProps) {
           return;
         }
         if (!res.ok) {
-          setHasError(true);
+          dispatch({ type: "fetch_error" });
           return;
         }
 
@@ -55,14 +105,10 @@ export function PDFViewer({ url }: PDFViewerProps) {
         }
 
         createdObjectUrl = URL.createObjectURL(blob);
-        setObjectUrl(createdObjectUrl);
+        dispatch({ type: "fetch_success", objectUrl: createdObjectUrl });
       } catch {
         if (!cancelled) {
-          setHasError(true);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsFetching(false);
+          dispatch({ type: "fetch_error" });
         }
       }
     })();
@@ -92,7 +138,7 @@ export function PDFViewer({ url }: PDFViewerProps) {
         if (topVisible && topVisible.target instanceof HTMLElement) {
           const pageNum = Number(topVisible.target.dataset.pageNumber);
           if (!isNaN(pageNum)) {
-            setCurrentPage(pageNum);
+            dispatch({ type: "set_current_page", page: pageNum });
           }
         }
       },
@@ -138,7 +184,7 @@ export function PDFViewer({ url }: PDFViewerProps) {
                   size="sm"
                   label="-"
                   disabled={zoomIdx <= 0}
-                  onClick={() => setZoomIdx((i) => i - 1)}
+                  onClick={() => dispatch({ type: "zoom_out" })}
                   tooltip="Zoom out"
                 />
                 <span className="w-10 text-center text-xs text-muted-foreground dark:text-muted-foreground-night">
@@ -149,7 +195,7 @@ export function PDFViewer({ url }: PDFViewerProps) {
                   size="sm"
                   label="+"
                   disabled={zoomIdx >= ZOOM_LEVELS.length - 1}
-                  onClick={() => setZoomIdx((i) => i + 1)}
+                  onClick={() => dispatch({ type: "zoom_in" })}
                   tooltip="Zoom in"
                 />
               </div>
@@ -165,8 +211,10 @@ export function PDFViewer({ url }: PDFViewerProps) {
           >
             <Document
               file={objectUrl}
-              onLoadSuccess={({ numPages: n }) => setNumPages(n)}
-              onLoadError={() => setHasError(true)}
+              onLoadSuccess={({ numPages: n }) =>
+                dispatch({ type: "document_loaded", numPages: n })
+              }
+              onLoadError={() => dispatch({ type: "document_error" })}
               loading={null}
               error={null}
             >

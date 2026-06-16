@@ -13,12 +13,12 @@ import {
 } from "@app/lib/api/file_system/types";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import logger from "@app/logger/logger";
 import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
 import { isSupportedImageContentType } from "@app/types/files";
+import { DocumentRenderer } from "@app/types/shared/document_renderer";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { DocumentRenderer } from "@app/types/shared/document_renderer";
-import logger from "@app/logger/logger";
 import path from "path";
 import type { Readable } from "stream";
 
