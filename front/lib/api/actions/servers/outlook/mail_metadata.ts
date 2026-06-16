@@ -192,6 +192,12 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Whether to reply to all recipients. Only used when replyToMessageId is set. Defaults to false."
         ),
+      attachmentFilePath: z
+        .string()
+        .optional()
+        .describe(
+          "Optional. Scoped path of the file to attach to the email (e.g. `conversation-<id>/report.pdf` or `pod-<id>/data.csv`)."
+        ),
       sharedMailboxAddress: z
         .string()
         .optional()
@@ -291,6 +297,12 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
         .optional()
         .describe(
           "Whether to reply to all recipients. Only used when replyToMessageId is set. Defaults to false."
+        ),
+      attachmentFilePath: z
+        .string()
+        .optional()
+        .describe(
+          "Optional. Scoped path of the file to attach to the email (e.g. `conversation-<id>/report.pdf` or `pod-<id>/data.csv`)."
         ),
     },
     stake: "high",
