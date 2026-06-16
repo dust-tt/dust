@@ -45,7 +45,7 @@ export function apiError(
   logger.error(
     {
       method: ctx.req.method,
-      url: ctx.req.url,
+      url: ctx.req.path,
       statusCode: err.status_code,
       apiError: { ...err, callstack },
       error: errorAttrs,
