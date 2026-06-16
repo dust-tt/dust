@@ -235,8 +235,9 @@ describe("GCSFileSystemBackend.list", () => {
   });
 
   it("returns empty array for unrecognised scoped path prefix", async () => {
-    const entries = await makeBackend().list("unknown-prefix/foo");
-    expect(entries).toEqual([]);
+    const result = await makeBackend().list("unknown-prefix/foo");
+    assert(result.isOk());
+    expect(result.value).toEqual([]);
   });
 });
 
