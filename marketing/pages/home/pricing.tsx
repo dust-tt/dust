@@ -5,6 +5,10 @@ import type { LandingLayoutProps } from "@marketing/components/home/LandingLayou
 import LandingLayout from "@marketing/components/home/LandingLayout";
 import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import {
+  formatPriceWithCurrency,
+  useUserBillingCurrency,
+} from "@marketing/lib/client/subscription";
+import {
   TRACKING_ACTIONS,
   TRACKING_AREAS,
   trackEvent,
@@ -105,8 +109,8 @@ const SEAT_TIERS: SeatTier[] = [
   {
     id: "max",
     name: "Max seat",
-    priceYearDollars: 120,
-    priceMonthDollars: 150,
+    priceYearDollars: 100,
+    priceMonthDollars: 125,
     credits: "40,000 credits /seat/mo",
   },
 ];
@@ -144,7 +148,7 @@ const PLANS: Plan[] = [
       "Connect Slack, Notion, GitHub, Drive + 20 more — or any tool via MCP",
       "Team collaboration workspaces",
       "SSO with Okta, Entra ID & Jumpcloud",
-      "EU data residency",
+      "US & EU data residency",
     ],
   },
   {
@@ -313,64 +317,77 @@ const COMPARISON: ComparisonSectionData[] = [
   },
 ];
 
+function SeatTiersFAQAnswer() {
+  const currency = useUserBillingCurrency();
+  const formatSeatPrice = (priceDollars: number) =>
+    formatPriceWithCurrency(priceDollars, currency);
+
+  const pro = SEAT_TIERS.find((tier) => tier.id === "pro");
+  const max = SEAT_TIERS.find((tier) => tier.id === "max");
+
+  return (
+    <>
+      <p className="mb-3">
+        These are seat types within the Business plan. Admins assign one to each
+        user based on that individual's expected usage:
+      </p>
+      <ul>
+        <li>
+          <strong>Free:</strong> {formatSeatPrice(0)}, 300 credits lifetime.
+          Best for occasional users or people trying Dust.
+        </li>
+        <li>
+          <strong>Pro:</strong> {formatSeatPrice(pro?.priceMonthDollars ?? 30)}
+          /month, or {formatSeatPrice(pro?.priceYearDollars ?? 24)}/month billed
+          yearly, with 8,000 credits/month. Best for most team members.
+        </li>
+        <li>
+          <strong>Max:</strong> {formatSeatPrice(max?.priceMonthDollars ?? 125)}
+          /month, or {formatSeatPrice(max?.priceYearDollars ?? 100)}/month
+          billed yearly, with 40,000 credits/month. Best for power users running
+          complex automations, Deep research, or tool-heavy workflows regularly.
+        </li>
+      </ul>
+      <p className="mt-3">
+        You can mix and match seat types across your workspace and reassign them
+        anytime as usage changes.
+      </p>
+    </>
+  );
+}
+
 const FAQS: FAQItemData[] = [
   {
     q: "What is a credit?",
-    a: "A credit is Dust's unit of AI usage. Every interaction with an AI model consumes credits based on two things: the intelligence cost (which model you use and how complex the task is) and the tools involved (search, data retrieval, writing back to connected apps). Simple messages with standard models are free. Advanced models like Claude Opus or GPT-5 and tool-heavy workflows cost more. Think of credits as a transparent way to pay for exactly the AI work being done on your behalf.",
+    a: "A credit is Dust's unit for measuring AI usage. Credit consumption depends on the model used, the complexity of the task, and any tools the agent uses, such as search, data retrieval, code execution, or actions in connected apps.",
   },
   {
     q: "How are credits consumed?",
-    a: "Credits are charged per message, based on the model used and the actions performed. A straightforward question to Claude Sonnet costs very little. A Deep Research task that spawns multiple agents, searches your connected data, and synthesizes a report costs more because it's doing more work. Every message shows its credit cost, so there are no surprises. Most standard conversations consume between 5 and 50 credits per exchange.",
+    a: "Credits are charged per message, based on the model used and the actions performed. Basic chat with a token-efficient model like Claude Sonnet will consume few credits, while a deep research task that requires complex, multi-step orchestration and tool use will consume more. You'll be able to track your credit usage in Dust so that you can understand how different workflows consume credits.",
   },
   {
     q: "Do unused credits roll over?",
-    a: "No. Each seat's monthly credit allocation resets at the start of every billing period. This keeps pricing simple and predictable: you always know exactly what your team's monthly budget is.",
+    a: "No. Each seat's monthly credit allocation resets at the start of every billing period. This keeps pricing predictable and makes it easier for teams to plan.",
   },
   {
     q: "What happens when I run out of credits?",
-    a: "You won't be cut off mid-sentence. If an agent is already generating a response, it will finish. After that, Pro seats can go into overage up to a capped amount (2× the monthly seat price), so you'll never face a runaway bill. Once the cap is hit, the admin is prompted to upgrade the seat to Max. Free seats are blocked and prompted to request an upgrade from their admin.",
+    a: "If an agent is already generating a response, it will finish; you won't be cut off mid-response. After that, additional usage depends on your seat type and workspace settings. Pro and Max users will be able to continue through workspace overage if enabled by an admin up to a capped amount. Free users are prompted to request an upgrade.",
   },
   {
     q: "What's the difference between Free, Pro, and Max seats?",
-    a: (
-      <>
-        <p className="mb-3">
-          These are seat types within the Business plan. Admins assign one to
-          each user based on their expected usage:
-        </p>
-        <ul>
-          <li>
-            <strong>Free:</strong> $0, 300 credits (lifetime). Great for people
-            who want to try Dust or use it occasionally.
-          </li>
-          <li>
-            <strong>Pro:</strong> $30/mo ($24/mo billed yearly), 8,000
-            credits/month. The right fit for most team members.
-          </li>
-          <li>
-            <strong>Max:</strong> for power users and heavy builders, 40,000
-            credits/month. Ideal for people running complex automations or Deep
-            Research daily.
-          </li>
-        </ul>
-        <p className="mt-3">
-          You can mix and match seat types across your workspace and reassign
-          them anytime as workloads change.
-        </p>
-      </>
-    ),
+    a: <SeatTiersFAQAnswer />,
   },
   {
     q: "How does billing work when I add or remove members?",
-    a: "Adding a member mid-cycle is prorated: they get their full credit allocation immediately, and you're charged only for the remaining days in the period on your next invoice. Removing a member frees the seat for reassignment. Monthly seats can be cancelled anytime; annual seats stay available for reassignment until their commitment ends. You can switch between monthly and annual billing per seat.",
+    a: "Adding a member mid-cycle is prorated: they get their full credit allocation immediately, and you're charged only for the remaining days in the period on your next invoice. Removing a member frees the seat for reassignment. Monthly seats can be cancelled anytime; annual seats stay available for reassignment until their commitment ends.",
   },
   {
     q: "Which AI models are included?",
-    a: "All plans include access to 20+ models from OpenAI (GPT-5), Anthropic (Claude), Google (Gemini), Mistral, and DeepSeek. You choose the model per agent. More powerful models consume more credits per message, but there's no model locked behind a higher plan.",
+    a: "All plans include access to 20+ models from OpenAI, Anthropic, Google, Mistral, and DeepSeek. You choose the model per agent. No model is locked behind a higher plan, though higher-capability models may consume more credits per message.",
   },
   {
     q: "When should I consider Enterprise?",
-    a: "Enterprise is for organizations ready to make AI a core part of how they work. You get a dedicated Customer Success Manager, a hands-on onboarding program, and Solution Engineering resources to help you design and scale your AI workflows across teams. Enterprise also includes the security and compliance infrastructure (SSO, SCIM, audit logs, SLA) that larger organizations require. Contact sales when you're ready to talk.",
+    a: "Enterprise is best for organizations that need advanced security and admin controls, dedicated support, custom terms, or more flexible usage arrangements at scale. This includes needs like SCIM, audit logs, SLAs, hands-on onboarding, and Customer Success support.",
   },
 ];
 
@@ -466,6 +483,8 @@ function PlanCard({
   onBusinessStart,
   onEnterpriseContact,
 }: PlanCardProps) {
+  const currency = useUserBillingCurrency();
+
   const handleClick = () => {
     if (plan.id === "business") {
       onBusinessStart();
@@ -551,7 +570,10 @@ function PlanCard({
                             }}
                             className="heading-sm tabular-nums text-foreground"
                           >
-                            ${tierPriceDollars}
+                            {formatPriceWithCurrency(
+                              tierPriceDollars,
+                              currency
+                            )}
                           </motion.span>
                         </AnimatePresence>
                       </div>
@@ -600,7 +622,7 @@ function Hero({
   onEnterpriseContact,
 }: HeroProps) {
   return (
-    <section className="flex flex-col items-center pt-6 text-center md:pt-10 lg:pt-14">
+    <section className="-mx-6 flex flex-col items-center px-4 pt-6 text-center md:mx-0 md:px-0 md:pt-10 lg:pt-14">
       <h1
         className={classNames(
           "heading-5xl md:heading-6xl lg:heading-7xl",
@@ -740,7 +762,7 @@ function ComparisonTable({
             {/* top-16 matches the ScrollingHeader scrolled height (h-16). */}
             <thead className="sticky top-16 z-10">
               <tr className="grid grid-cols-2 bg-background md:table-row">
-                <th className="hidden border-b border-border bg-background px-2 text-left md:table-cell md:py-5">
+                <th className="hidden border-b border-border bg-background px-2 text-left align-bottom md:table-cell md:py-5">
                   <SearchInput
                     name="features-search"
                     placeholder="Search features…"
@@ -923,7 +945,7 @@ export default function Pricing() {
     <MotionConfig reducedMotion="user">
       <PageMetadata
         title="Dust Pricing: Business and Enterprise Plans for AI Agents"
-        description="Dust scales from a single builder to thousands of seats. Business self-serve with Pro ($24/seat/mo yearly) and Max ($120/seat/mo yearly) seats, Enterprise for organizations at scale."
+        description="Dust scales from a single builder to thousands of seats. Business self-serve with Pro ($24/seat/mo yearly) and Max ($100/seat/mo yearly) seats, Enterprise for organizations at scale."
         pathname={router.asPath}
       />
       <Hero
