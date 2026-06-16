@@ -125,6 +125,7 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       allowMemberUpgradeRequests: boolean;
       upgradeRequestEmailEnabled: boolean;
       defaultPoolCapAwuCredits: number | null;
+      programmaticMonthlyCapAwuCredits: number | null;
     }>,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
@@ -187,6 +188,7 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       allowMemberUpgradeRequests: this.allowMemberUpgradeRequests,
       upgradeRequestEmailEnabled: this.upgradeRequestEmailEnabled,
       defaultPoolCapAwuCredits: this.defaultPoolCapAwuCredits,
+      programmaticMonthlyCapAwuCredits: this.programmaticMonthlyCapAwuCredits,
     };
   }
 
@@ -200,6 +202,7 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       allowMemberUpgradeRequests: String(this.allowMemberUpgradeRequests),
       upgradeRequestEmailEnabled: String(this.upgradeRequestEmailEnabled),
       defaultPoolCapAwuCredits: this.defaultPoolCapAwuCredits,
+      programmaticMonthlyCapAwuCredits: this.programmaticMonthlyCapAwuCredits,
     };
   }
 }

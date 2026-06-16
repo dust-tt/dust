@@ -3,7 +3,6 @@ import { recalculatePerUserCapAlertForSeatChange } from "@app/lib/api/membership
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
-import { getMetronomeProgrammaticCap } from "@app/lib/metronome/alerts/programmatic_cap";
 import { getNetBalance } from "@app/lib/metronome/client";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
 import { invalidateWorkspacePoolCredits } from "@app/lib/metronome/credit_balance";
@@ -710,11 +709,12 @@ async function notifyAdminsProgrammaticCapAboutStatus({
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const lightWorkspace = renderLightWorkspaceType({ workspace });
 
-    const capResult = await getMetronomeProgrammaticCap({
-      metronomeCustomerId,
-      workspaceId: workspace.sId,
-    });
-    const monthlyCapCredits = capResult.isOk() ? capResult.value : null;
+    const creditUsageConfig =
+      await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
+        workspace.id
+      );
+    const monthlyCapCredits =
+      creditUsageConfig?.programmaticMonthlyCapAwuCredits ?? null;
 
     const { members: admins } = await getMembers(auth, {
       roles: ["admin"],

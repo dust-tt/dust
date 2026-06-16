@@ -29,6 +29,10 @@ import type { CreationOptional } from "sequelize";
  *   workspace-pool AWU consumption, in AWU credits, excluding the seat
  *   allowance. NULL means no default is configured (the plan-tier default
  *   applies).
+ * - programmaticMonthlyCapAwuCredits: Workspace monthly cap on programmatic
+ *   (API) AWU consumption, in AWU credits. Source of truth for the cap; the
+ *   four Metronome programmatic alerts (cap/warning/low/critical) are derived
+ *   from it. NULL means no cap is configured; 0 is a meaningful hard cap.
  *
  * The credit-cap-warning notification settings (whether to warn, and at which
  * balance) are NOT stored here: they are derived from the workspace's Metronome
@@ -44,6 +48,7 @@ export class CreditUsageConfigurationModel extends WorkspaceAwareModel<CreditUsa
   declare allowMemberUpgradeRequests: CreationOptional<boolean>;
   declare upgradeRequestEmailEnabled: CreationOptional<boolean>;
   declare defaultPoolCapAwuCredits: number | null;
+  declare programmaticMonthlyCapAwuCredits: number | null;
 }
 
 CreditUsageConfigurationModel.init(
@@ -97,6 +102,11 @@ CreditUsageConfigurationModel.init(
       defaultValue: true,
     },
     defaultPoolCapAwuCredits: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
+    programmaticMonthlyCapAwuCredits: {
       type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: null,
