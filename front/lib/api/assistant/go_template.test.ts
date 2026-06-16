@@ -1,6 +1,7 @@
 import { resolveGoTemplateDraft } from "@app/lib/api/assistant/go_template";
 import type { Authenticator } from "@app/lib/auth";
 import { getConversationDraftBySlug } from "@app/lib/contentful/client";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import { Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
 
@@ -59,7 +60,7 @@ describe("resolveGoTemplateDraft", () => {
         fileName: "file.pdf",
         contentType: "application/pdf",
         fileSize: 1234,
-      })
+      } as unknown as FileResource)
     );
 
     const result = await resolveGoTemplateDraft(auth, "abcd");
