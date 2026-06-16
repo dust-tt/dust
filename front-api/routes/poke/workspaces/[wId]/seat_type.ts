@@ -41,6 +41,7 @@ app.post(
       workspace: owner,
       newSeatType: seatType,
       author: auth.user()?.toJSON() ?? "no-author",
+      immediate: true,
     });
 
     if (updateRes.isErr()) {

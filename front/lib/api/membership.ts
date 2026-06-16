@@ -536,11 +536,14 @@ export async function updateMembershipSeatAndTrack({
   workspace,
   newSeatType,
   author,
+  immediate = false,
 }: {
   user: UserResource;
   workspace: LightWorkspaceType;
   newSeatType: MembershipSeatType;
   author: UserType | "no-author";
+  // When true, skip billing-period scheduling and apply the change right now.
+  immediate?: boolean;
 }): Promise<
   Result<
     {
@@ -642,19 +645,23 @@ export async function updateMembershipSeatAndTrack({
   }
 
   const productSeatTypes = await getProductSeatTypes();
-  const outcome = classifySeatChange({
-    contract,
-    productSeatTypes,
-    now: new Date(),
-    change: {
-      userId: user.sId,
-      previousSeatType,
-      newSeatType,
-      pendingScheduledChange: scheduledRow
-        ? { seatType: scheduledRow.seatType, at: scheduledRow.startAt }
-        : undefined,
-    },
-  });
+  const outcome = immediate
+    ? previousSeatType === newSeatType
+      ? { kind: "noop" as const }
+      : { kind: "immediate" as const }
+    : classifySeatChange({
+        contract,
+        productSeatTypes,
+        now: new Date(),
+        change: {
+          userId: user.sId,
+          previousSeatType,
+          newSeatType,
+          pendingScheduledChange: scheduledRow
+            ? { seatType: scheduledRow.seatType, at: scheduledRow.startAt }
+            : undefined,
+        },
+      });
   if (!outcome) {
     logger.error(
       {
