@@ -1,6 +1,7 @@
 import { ContextUsageIndicator } from "@app/components/assistant/conversation/input_bar/ContextUsageIndicator";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarButtons } from "@app/components/assistant/conversation/input_bar/InputBarButtons";
+import type { PendingInputText } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
   INPUT_BAR_COMPACT_CONTENT_ENTER_ANIMATION_CLASSES,
   INPUT_BAR_COMPACT_PILL_INNER_CLASSES,
@@ -139,7 +140,7 @@ export interface InputBarContainerProps {
   onResetMCPServerViews: () => void;
   owner: WorkspaceType;
   saveDraft: (markdown: string, agentMention?: RichAgentMention | null) => void;
-  pendingInputText: string | null;
+  pendingInputText: PendingInputText | null;
   selectedAgent: RichAgentMention | null;
   selectedMCPServerViews: MCPServerViewType[];
   stickyMentions?: RichMention[];
@@ -197,7 +198,7 @@ const InputBarContainer = ({
   );
   const { subscription } = useAuth();
   const isMobile = useIsMobile();
-  const { selectedSingleAgent, setSelectedSingleAgent } =
+  const { selectedSingleAgent, setSelectedSingleAgent, isLoadingGoTemplate } =
     useContext(InputBarContext);
 
   const [startsWithUserMention, setStartsWithUserMention] = useState(false);
@@ -994,6 +995,47 @@ const InputBarContainer = ({
     };
   }, [clientType, editorService]);
 
+  useEffect(() => {
+    editorService.setLoading(isLoadingGoTemplate);
+  }, [editorService, isLoadingGoTemplate]);
+
+  const pendingReplaceInputRef = useRef<PendingInputText | null>(null);
+
+  // Apply replace-mode pending text once the editor is ready. The async /go
+  // template fetch often completes before TipTap initializes; applying earlier
+  // would no-op and the pending payload is already consumed by InputBar.
+  useEffect(() => {
+    if (pendingInputText?.replace) {
+      pendingReplaceInputRef.current = pendingInputText;
+    }
+
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      !editor.isEditable ||
+      !editor.isInitialized
+    ) {
+      return;
+    }
+
+    const pending = pendingReplaceInputRef.current;
+    if (!pending?.replace) {
+      return;
+    }
+
+    pendingReplaceInputRef.current = null;
+    queueMicrotask(() =>
+      editorService.setContent(pending.text, { focus: !disableAutoFocus })
+    );
+  }, [
+    pendingInputText,
+    editor,
+    editor?.isInitialized,
+    editor?.isEditable,
+    editorService,
+    disableAutoFocus,
+  ]);
+
   // Restore draft text when switching conversations (including new conversations).
   // Agent selection is handled by useHandleMention.
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -1004,6 +1046,10 @@ const InputBarContainer = ({
       !editor.isEditable ||
       !editor.isInitialized
     ) {
+      return;
+    }
+
+    if (pendingReplaceInputRef.current?.replace) {
       return;
     }
 
