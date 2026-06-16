@@ -262,8 +262,8 @@ function getProviderIdFilter(auth: Authenticator): ValueFilter<ProviderId> {
   );
   const byok = auth.getNonNullablePlan().isByok;
   const providerIds = byok
-    ? whitelistedProviderIds
-    : intersection(whitelistedProviderIds, BYOK_MODEL_PROVIDER_IDS);
+    ? intersection(whitelistedProviderIds, BYOK_MODEL_PROVIDER_IDS)
+    : whitelistedProviderIds;
 
   return { in: providerIds };
 }
