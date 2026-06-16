@@ -81,12 +81,6 @@ export const resetProvisionedMembersNotInDirectoryPlugin = createPlugin({
     }
 
     const directories = directoriesResult.value;
-    if (directories.length === 0) {
-      return new Ok({
-        display: "text",
-        value: "No WorkOS directories found for this workspace.",
-      });
-    }
 
     if (directories.length > 1) {
       return new Err(
@@ -95,8 +89,6 @@ export const resetProvisionedMembersNotInDirectoryPlugin = createPlugin({
         )
       );
     }
-
-    const [directory] = directories;
 
     // Get all active memberships with users included
     const { memberships } = await MembershipResource.getActiveMemberships({
@@ -116,24 +108,35 @@ export const resetProvisionedMembersNotInDirectoryPlugin = createPlugin({
       });
     }
 
-    // List all users in the directory
-    const directoryUserEmails = await getDirectoryUserEmails(directory.id);
-
-    // Check which provisioned members are not in the directory
+    // When no directory exists, all provisioned members should be reset.
+    // When a directory exists, only reset members not present in it.
     const membersToReset: Array<{
       membership: MembershipResource;
       userEmail: string;
     }> = [];
 
-    for (const membership of provisionedMemberships) {
-      const user = membership.user;
-      if (!user || !user.email) {
-        continue;
-      }
-
-      const userEmail = user.email.toLowerCase();
-      if (!directoryUserEmails.has(userEmail)) {
+    if (directories.length === 0) {
+      for (const membership of provisionedMemberships) {
+        const user = membership.user;
+        if (!user || !user.email) {
+          continue;
+        }
         membersToReset.push({ membership, userEmail: user.email });
+      }
+    } else {
+      const [directory] = directories;
+      const directoryUserEmails = await getDirectoryUserEmails(directory.id);
+
+      for (const membership of provisionedMemberships) {
+        const user = membership.user;
+        if (!user || !user.email) {
+          continue;
+        }
+
+        const userEmail = user.email.toLowerCase();
+        if (!directoryUserEmails.has(userEmail)) {
+          membersToReset.push({ membership, userEmail: user.email });
+        }
       }
     }
 
@@ -149,7 +152,7 @@ export const resetProvisionedMembersNotInDirectoryPlugin = createPlugin({
         display: "json",
         value: {
           mode: "dry_run",
-          message: `Found ${membersToReset.length} provisioned member${pluralize(membersToReset.length)} not in directory that would be reset`,
+          message: `Found ${membersToReset.length} provisioned member${pluralize(membersToReset.length)} that would be reset`,
           members: membersToReset.map(({ membership, userEmail }) => ({
             email: userEmail,
             role: membership.role,
