@@ -122,6 +122,9 @@ export default function AgentBuilder({
   const [isCreatedDialogOpen, setIsCreatedDialogOpen] = useState(false);
   const [pendingAgentId, setPendingAgentId] = useState<string | null>(null);
   const hasPendingCreationRef = useRef(false);
+  // Synchronous guard: React state batching means isSaving won't disable the button before
+  // a second rapid click fires. This ref is checked/set synchronously in handleSave.
+  const isSavingRef = useRef(false);
 
   const { actions, isActionsLoading, mutateActions } =
     useAgentConfigurationActions(
@@ -379,7 +382,6 @@ export default function AgentBuilder({
       setIsSaving(true);
       const confirmed = await showDialog();
       if (!confirmed) {
-        setIsSaving(false);
         return;
       }
 
@@ -410,7 +412,6 @@ export default function AgentBuilder({
           description: result.error.message,
           type: "error",
         });
-        setIsSaving(false);
         return;
       }
 
@@ -457,12 +458,12 @@ export default function AgentBuilder({
           keepValues: true,
         });
       }
-
-      setIsSaving(false);
     } catch (error) {
       datadogLogger.error("Unexpected error:", {
         error: normalizeError(error),
       });
+    } finally {
+      isSavingRef.current = false;
       setIsSaving(false);
     }
   };
@@ -500,10 +501,15 @@ export default function AgentBuilder({
       description: "There was an error validating the form.",
       type: "error",
     });
+    isSavingRef.current = false;
     setIsSaving(false);
   };
 
   const handleSave = () => {
+    if (isSavingRef.current) {
+      return;
+    }
+    isSavingRef.current = true;
     void form.handleSubmit(handleSubmit, handleFormErrors)();
   };
 
@@ -522,7 +528,7 @@ export default function AgentBuilder({
 
   const isSaveDisabled = duplicateAgentId
     ? false
-    : isSubmitting || isActionsLoading || isTriggersLoading;
+    : isSaving || isSubmitting || isActionsLoading || isTriggersLoading;
 
   const saveLabel = isSubmitting ? "Saving..." : "Save";
 
