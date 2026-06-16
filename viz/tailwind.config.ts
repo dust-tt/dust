@@ -1,6 +1,11 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: ["class"],
+  content: [
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
   theme: {
     fontFamily: {
       sans: ["var(--font-geist)", "sans-serif"],
@@ -79,9 +84,50 @@ const config: Config = {
         xl: "var(--shadow-xl)",
         "2xl": "var(--shadow-2xl)",
       },
-      /* Container query breakpoints are now defined via @custom-variant in CSS. */
+      containers: {
+        xxxs: "16rem",
+        xxs: "24rem",
+        xs: "32rem",
+        sm: "40rem",
+        md: "48rem",
+        lg: "64rem",
+        xl: "80rem",
+      },
+      backgroundImage: {
+        "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
+        "gradient-conic":
+          "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
+      },
     },
   },
+  plugins: [
+    require("tailwindcss-animate"),
+    require("@tailwindcss/container-queries"),
+  ],
+  // We don't generate css based on generated contents so we try to include as many classes as possible.
+  safelist: [
+    {
+      pattern: /./, // This includes all the utility classes.
+    },
+    {
+      pattern: /text-(xs|sm|base|lg|xl|2xl|3xl)/,
+      variants: ["sm", "md", "lg"],
+    },
+    {
+      pattern: /(flex|grid|block|inline|hidden)/,
+      variants: ["sm", "md", "lg"],
+    },
+    {
+      pattern:
+        /bg-(slate|gray|zinc|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(50|100|200|300|400|500|600|700|800|900)/,
+      variants: ["hover"],
+    },
+    {
+      pattern:
+        /text-(slate|gray|zinc|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(50|100|200|300|400|500|600|700|800|900)/,
+      variants: ["hover"],
+    },
+  ],
 };
 
 export default config;
