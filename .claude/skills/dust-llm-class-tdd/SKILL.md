@@ -90,8 +90,8 @@ ls lib/model_constructors/providers/<provider>/ lib/model_constructors/stream/cl
 ```
 
 If the converters/client/model-config are missing, building them is a **separate, multi-file
-job** (~1500 lines for a full provider, mirroring the sibling provider and porting from the legacy
-`lib/api/llm/` integration) — effectively the equivalent of several PRs, not a single TDD loop.
+job** (mirroring the sibling provider and porting from the legacy `lib/api/llm/` integration) —
+effectively the equivalent of several PRs, not a single TDD loop.
 **Stop and confirm scope with the user** before building a whole provider; don't silently expand a
 "add an endpoint" request into a provider port. Once the layer exists, the per-endpoint TDD loop
 below is the small final step.
@@ -105,7 +105,10 @@ in a prior PR, mirroring an existing provider — see Step 0):
 - [ ] `providerId` in `types/provider_ids.ts`, `api` in `types/provider_apis.ts`, `region` in `types/regions.ts`
 - [ ] credential field in `types/credentials.ts` (e.g. `ANTHROPIC_API_KEY`, `AGENT_PLATFORM_PROJECT_ID`)
 - [ ] input + output converter mixins under `providers/<provider>/converters/`
-- [ ] model-config mixin `providers/<provider>/models/<model>.ts` (`WithXModelConfig`)
+- [ ] model-config mixin `providers/<provider>/models/<model>.ts` (`WithXModelConfig`) — **only if
+  the model is reachable through multiple endpoints** and the config is worth sharing. If the model
+  has a single endpoint, skip the mixin and set the statics (`modelId`, `configSchema`,
+  `contextSize`, `maxOutputTokens`) directly on the endpoint class.
 - [ ] API client `stream/clients/<api>.ts` (abstract; constructor takes `Credentials`)
 
 **Test credentials / env** (the harness reads `process.env`, defaulting to `""`):
@@ -148,6 +151,22 @@ export class AgentPlatformEuropeClaudeSonnetFourDotSixStream extends WithAnthrop
 }
 AgentPlatformEuropeClaudeSonnetFourDotSixStream satisfies StreamEndpointConstructor;
 ```
+
+**Verify every model static against the official documentation** (`modelId`, `contextSize`,
+`maxOutputTokens`, supported reasoning efforts, pricing) and leave a comment linking the page you
+read — these values drift and a stale guess silently mis-prices or mis-truncates:
+
+```typescript
+// Verified against https://docs.anthropic.com/en/docs/about-claude/models/overview (2026-06-16)
+static readonly contextSize = 1_000_000;
+```
+
+| Provider | Docs URL |
+|----------|----------|
+| OpenAI | `https://developers.openai.com/api/docs/models/{model-id}` |
+| Anthropic | `https://docs.anthropic.com/en/docs/about-claude/models/overview` |
+| Google | `https://ai.google.dev/gemini-api/docs/models` |
+| Mistral | `https://docs.mistral.ai/getting-started/models/models_overview/` |
 
 ### Step 2 — Create the test file, every case `null`
 
@@ -254,6 +273,9 @@ import { INPUT_CONFIGURATION_ERROR } from "@app/lib/model_constructors/test/case
 - Re-run the full suite → all cases pass.
 - Confirm the Step 1 scaffold override is gone (`git diff` the endpoint file — ideally it matches
   the sibling's shape with only pricing/region/id differing).
+- **If the model is reachable through multiple endpoints**, check whether the final `configSchema`
+  can be mutualized one level up (into the model-config mixin or another shared spot) instead of
+  living on each endpoint. Hoist it if so, then re-run the full suite to confirm nothing regressed.
 - Remove any `debug: true` and stray `*_input.json` / `*_payload.json` / `*_output.json` artifacts.
 - `npx tsgo --noEmit 2>&1 | grep -v node_modules` is clean; `npm run format:changed` from the repo root.
 
