@@ -3,7 +3,7 @@ import {
   getIcon,
   ResourceAvatar,
 } from "@marketing/components/resources/resources_icons";
-import { Chip } from "@dust-tt/sparkle";
+import { Chip, cn } from "@dust-tt/sparkle";
 
 import type { BenefitCard, BenefitCardColor } from "../types";
 
@@ -61,16 +61,17 @@ export function IntegrationBenefitsSection({
       </H2>
 
       <div
-        className={`mx-auto grid max-w-5xl gap-6 md:gap-8 ${
+        className={cn(
+          "mx-auto grid gap-6 md:gap-8",
           benefits.length === 1
             ? "max-w-md"
             : benefits.length === 2
-              ? "md:grid-cols-2"
-              : "md:grid-cols-3"
-        }`}
+              ? "max-w-5xl md:grid-cols-2"
+              : "max-w-5xl md:grid-cols-3"
+        )}
       >
-        {benefits.map((benefit, index) => (
-          <BenefitCardView key={index} benefit={benefit} />
+        {benefits.map((benefit) => (
+          <BenefitCardView key={benefit.title} benefit={benefit} />
         ))}
       </div>
     </div>

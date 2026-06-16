@@ -315,7 +315,7 @@ function AgentResponseBubble({
 
             {storyline.responseSections.map((section, sectionIndex) => (
               <motion.div
-                key={sectionIndex}
+                key={section.heading}
                 initial={prefersReducedMotion ? false : { opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{
@@ -332,8 +332,8 @@ function AgentResponseBubble({
                   {section.heading}
                 </h4>
                 <ul className="space-y-2">
-                  {section.bullets.map((bullet, bulletIndex) => (
-                    <li key={bulletIndex} className="flex gap-2">
+                  {section.bullets.map((bullet) => (
+                    <li key={bullet.title} className="flex gap-2">
                       <span className="mt-2 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-green-500" />
                       <span>
                         <span className="font-medium text-foreground">
