@@ -10,10 +10,10 @@ export type EndpointFilter = {
 };
 
 export type WorkspaceFilter = {
-  regions: Region[];
-  providerIds: ProviderId[];
-  modelIds: ModelId[];
-  providerApis: ProviderApi[];
+  region: Region[];
+  providerId: ProviderId[];
+  modelId: ModelId[];
+  providerApi: ProviderApi[];
 };
 
 export type ArrayValueFilter<T> = {

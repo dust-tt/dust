@@ -233,36 +233,36 @@ describe("matchesWhere", () => {
     // Mimics an endpoint description that exposes the WorkspaceFilter shape:
     // which providers / regions / models / apis it covers.
     const description: WorkspaceFilter = {
-      regions: ["eu", "global"],
-      providerIds: ["anthropic"],
-      modelIds: ["claude-sonnet-4-6"],
-      providerApis: ["anthropic", "agent-platform"],
+      region: ["eu", "global"],
+      providerId: ["anthropic"],
+      modelId: ["claude-sonnet-4-6"],
+      providerApi: ["anthropic", "agent-platform"],
     };
 
     it("matches provider and region membership", () => {
       expect(
-        matchesWhere(description, { providerIds: { contains: "anthropic" } })
+        matchesWhere(description, { providerId: { contains: "anthropic" } })
       ).toBe(true);
       expect(
-        matchesWhere(description, { regions: { containsAny: ["us", "eu"] } })
+        matchesWhere(description, { region: { containsAny: ["us", "eu"] } })
       ).toBe(true);
       expect(
-        matchesWhere(description, { regions: { contains: "us" } })
+        matchesWhere(description, { region: { contains: "us" } })
       ).toBe(false);
     });
 
     it("matches multiple list fields together", () => {
       expect(
         matchesWhere(description, {
-          providerIds: { contains: "anthropic" },
-          providerApis: { containsAll: ["anthropic", "agent-platform"] },
-          regions: { containsAny: ["eu"] },
+          providerId: { contains: "anthropic" },
+          providerApi: { containsAll: ["anthropic", "agent-platform"] },
+          region: { containsAny: ["eu"] },
         })
       ).toBe(true);
       expect(
         matchesWhere(description, {
-          providerIds: { contains: "anthropic" },
-          providerApis: { contains: "openai-responses" },
+          providerId: { contains: "anthropic" },
+          providerApi: { contains: "openai-responses" },
         })
       ).toBe(false);
     });
