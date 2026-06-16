@@ -1,4 +1,4 @@
-import { getLLM } from "@app/lib/api/llm";
+import { getLegacyLLM, getLLM } from "@app/lib/api/llm";
 import type { LlmConversationOptions } from "@app/lib/api/llm/batch_llm";
 import {
   downloadBatchResultFromLlm,
@@ -59,7 +59,7 @@ function makeConversationOptions(
   };
 }
 
-async function setupTest(): Promise<{
+async function setupTest(surface: "stream" | "batch" = "batch"): Promise<{
   authenticator: Authenticator;
   workspace: LightWorkspaceType;
   llm: LLM;
@@ -73,11 +73,15 @@ async function setupTest(): Promise<{
     skipEmbeddingApiKeyRequirement: true,
   });
 
-  const llm = await getLLM(authenticator, {
+  const llmParameters = {
     modelId: CLAUDE_SONNET_4_6_MODEL_ID,
     bypassFeatureFlag: true,
     credentials,
-  });
+  };
+  const llm =
+    surface === "batch"
+      ? await getLegacyLLM(authenticator, llmParameters)
+      : await getLLM(authenticator, llmParameters);
   if (!llm) {
     throw new Error("Failed to create LLM");
   }
@@ -243,7 +247,7 @@ describe.skipIf(process.env.RUN_LLM_TEST !== "true")(
       "writeBatchUserMessages + storeLlmResult stores data for a streamed call",
       async () => {
         const { authenticator, workspace, llm, agentConfigurationId } =
-          await setupTest();
+          await setupTest("stream");
 
         // Create conversation and user message.
         const writeResult = await writeBatchUserMessages(

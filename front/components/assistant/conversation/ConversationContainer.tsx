@@ -96,7 +96,9 @@ export function ConversationContainerVirtuoso({
   // A seatless member can never send a message. We surface this up-front rather
   // than relying on the deferred background message-post failure, which lands
   // after navigation and would otherwise leave behind an empty conversation.
-  const { noSeat } = useWorkspaceUsageStatus({ owner });
+  const { noSeat, awuStatus, poolCreditState } = useWorkspaceUsageStatus({
+    owner,
+  });
 
   // Maps a message-send failure to the right surface: blocking limits (no seat,
   // credits, per-user cap, plan limit) open the dedicated popup, everything else
@@ -132,15 +134,31 @@ export function ConversationContainerVirtuoso({
         });
       }
 
-      // Block seatless members before creating the conversation: the backend
-      // would reject the message anyway, and doing it here shows the popup
-      // immediately without leaving an empty conversation behind.
+      // Pre-check blocking conditions before creating the conversation.
+      // With deferMessage:true the message posts after navigation, so backend
+      // errors arrive too late and leave an empty conversation behind.
       if (noSeat) {
         setLimitReachedCode("no_seat");
         return new Err({
           code: "internal_error",
           name: "NoSeat",
           message: "You don't have a seat in this workspace.",
+        });
+      }
+      if (awuStatus === "blocked") {
+        setLimitReachedCode("user_credits_exhausted");
+        return new Err({
+          code: "internal_error",
+          name: "UserCapReached",
+          message: "You have reached your personal usage cap.",
+        });
+      }
+      if (poolCreditState === "depleted") {
+        setLimitReachedCode("pool_credits_exhausted");
+        return new Err({
+          code: "internal_error",
+          name: "CreditsExhausted",
+          message: "Your workspace has run out of credits.",
         });
       }
 
@@ -196,6 +214,8 @@ export function ConversationContainerVirtuoso({
     [
       isSubmitting,
       noSeat,
+      awuStatus,
+      poolCreditState,
       mutateConversations,
       owner,
       router,

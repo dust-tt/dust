@@ -1,4 +1,7 @@
-import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import {
+  InputBarContext,
+  type PendingInputText,
+} from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -23,7 +26,7 @@ interface UseHandleMentionsOptions {
     agentMention?: RichAgentMention | null;
   } | null;
   isAgentBuilder: boolean;
-  pendingInputText?: string | null;
+  pendingInputText?: PendingInputText | null;
   selectedAgent: RichAgentMention | null;
   stickyMentions?: RichMention[];
 }
@@ -110,8 +113,8 @@ const useHandleMentions = ({
       // @TODO we should handle this in each event handler and not inside the useEffect
       setSelectedSingleAgent(selectedAgent);
       externalAgentSetRef.current = true;
-    } else if (pendingInputText) {
-      queueMicrotask(() => editorService.insertText(pendingInputText));
+    } else if (pendingInputText && !pendingInputText.replace) {
+      queueMicrotask(() => editorService.insertText(pendingInputText.text));
     }
   }, [selectedAgent, pendingInputText, editorService, setSelectedSingleAgent]);
 

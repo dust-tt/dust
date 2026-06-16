@@ -132,6 +132,33 @@ export type ContractCreditType =
   | typeof CONTRACT_CREDIT_TYPE_POOL
   | typeof CONTRACT_CREDIT_TYPE_FREE_SEAT;
 
+// Custom field stamped on the non-recurring, contract-level commits/credits
+// whose unused balance must survive a RENEWAL transition (initial credits,
+// AWU top-ups, business-activation seat prepayment). On renewal the
+// `contract.start` webhook reads the source contract's flagged entries, derives
+// the balance left at the transition from their expiration ledger entry, and
+// re-grants it on the successor contract (see `carryOverContractBalancesOnRenewal`).
+//
+// The field VALUE is either `CARRY_ON_RENEWAL_FOREVER_VALUE` (the entry never
+// expires and carries indefinitely) or an ISO timestamp (a finite expiry).
+// Metronome clamps a commit's live access window to the contract end when a
+// RENEWAL ends the source, so by the time the webhook runs the original expiry
+// is gone — we stamp it here so it survives. The carried grant re-stamps the
+// same value, preserving the policy across any number of renewals.
+//
+// This replaces Metronome's `rollover_fraction`: a rolled-over commit becomes a
+// "rollover" commit, and Metronome consumes rollover commits before all prepaid
+// commits regardless of priority ("commit type takes precedence over priority").
+// Since these are non-seat-based, that ordering trips our client-level rule that
+// a non-seat-based commit may not be prioritized over a seat-based one, so the
+// transition is rejected. Re-granting as a plain prepaid commit keeps it in the
+// prepaid tier, ordered after the seat allocation by priority.
+export const CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY = "DUST_CARRY_ON_RENEWAL";
+
+export const CARRY_ON_RENEWAL_FOREVER_VALUE = "forever";
+
+export const FOREVER_ENDING_BEFORE = new Date("2999-01-01T00:00:00.000Z");
+
 // Custom field stamped on a per-user (free) seat credit, carrying the seat's
 // user sId. Metronome alerts can filter on custom fields but not on a credit's
 // presentation specifier, so this is what lets a per-user

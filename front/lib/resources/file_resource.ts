@@ -28,15 +28,14 @@ import {
   getDefaultFrameShareScope,
   sendFrameSharedEmail,
 } from "@app/lib/api/share/frame_sharing";
-import { computeFrameContentHash } from "@app/lib/api/viz/authorized_file_access_policy";
+import {
+  computeFrameContentHash,
+  isVerifiableAuthorizedFileIdRefUseCase,
+} from "@app/lib/api/viz/authorized_file_access_policy";
 import {
   extractFileRefs,
   type FileRef,
 } from "@app/lib/api/viz/extract_file_refs";
-import {
-  canAccessFileInConversation,
-  canAccessFileInProject,
-} from "@app/lib/api/viz/file_access";
 import type { ShareFrameViewerFile } from "@app/lib/api/viz/share_frame_viewer_files";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -1558,10 +1557,8 @@ export class FileResource extends BaseResource<FileModel> {
     auth: Authenticator,
     {
       fileId,
-      frameContext,
     }: {
       fileId: string;
-      frameContext: FrameScopedPathContext;
     }
   ): Promise<{ verified: true; file: FileResource } | { verified: false }> {
     const file = await FileResource.fetchById(auth, fileId);
@@ -1569,27 +1566,38 @@ export class FileResource extends BaseResource<FileModel> {
       return { verified: false };
     }
 
-    const owner = renderLightWorkspaceType({
-      workspace: auth.getNonNullableWorkspace(),
-    });
-
-    let hasAccess: Result<true, Error>;
-    if (frameContext.conversationId) {
-      hasAccess = await canAccessFileInConversation(owner, {
-        file,
-        requestedConversationId: frameContext.conversationId,
-      });
-    } else if (frameContext.spaceId) {
-      hasAccess = await canAccessFileInProject(owner, {
-        file,
-        requestedProjectId: frameContext.spaceId,
-      });
-    } else {
+    if (!isVerifiableAuthorizedFileIdRefUseCase(file.useCase)) {
       return { verified: false };
     }
 
-    if (hasAccess.isErr()) {
+    // We cannot verify the file access if we don't have a conversation or space id associated with the file.
+    if (
+      !file.useCaseMetadata?.conversationId &&
+      !file.useCaseMetadata?.spaceId
+    ) {
       return { verified: false };
+    }
+
+    // Check if the file has a conversation and if the conversation is accessible to the auth user.
+    if (file.useCaseMetadata?.conversationId) {
+      const conversation = await ConversationResource.fetchById(
+        auth,
+        file.useCaseMetadata.conversationId
+      );
+      if (!conversation) {
+        return { verified: false };
+      }
+    }
+
+    // Check if the file has a space and if the space is accessible to the auth user.
+    if (file.useCaseMetadata?.spaceId) {
+      const space = await SpaceResource.fetchById(
+        auth,
+        file.useCaseMetadata.spaceId
+      );
+      if (!space || !space.canRead(auth)) {
+        return { verified: false };
+      }
     }
 
     return { verified: true, file };
@@ -1617,7 +1625,6 @@ export class FileResource extends BaseResource<FileModel> {
       case "fileId": {
         const verifyResult = await this.verifyAuthorizedFileIdRef(auth, {
           fileId: fileRef.fileId,
-          frameContext,
         });
         if (!verifyResult.verified) {
           return { verified: false };

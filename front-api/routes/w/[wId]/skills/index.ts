@@ -5,7 +5,10 @@ import type {
 } from "@app/lib/api/skills";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
-import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
+import {
+  getReferencedSkillSpaceModelIds,
+  resolveAdditionalRequestedSpaceModelIds,
+} from "@app/lib/api/skills/space_requirements";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -304,6 +307,10 @@ app.post(
         mcpServerViews,
         attachedKnowledge: attachedKnowledgeWithDataSourceViews,
       });
+    const referencedSkillSpaceIds = await getReferencedSkillSpaceModelIds(
+      auth,
+      body.instructions
+    );
 
     const additionalRequestedSpaceIdsRes =
       await resolveAdditionalRequestedSpaceModelIds(
@@ -323,6 +330,7 @@ app.post(
 
     const requestedSpaceIds = uniq([
       ...computedRequestedSpaceIds,
+      ...referencedSkillSpaceIds,
       ...additionalRequestedSpaceIdsRes.value,
     ]);
 

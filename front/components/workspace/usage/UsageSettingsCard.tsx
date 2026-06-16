@@ -1,3 +1,4 @@
+import { LockedSection } from "@app/components/workspace/usage/LockedSection";
 import {
   useDefaultUserSpendLimit,
   useUpdateDefaultUserSpendLimit,
@@ -19,11 +20,13 @@ import { useState } from "react";
 interface UsageSettingsCardProps {
   workspaceId: string;
   readOnly: boolean;
+  hasPool: boolean;
 }
 
 export function UsageSettingsCard({
   workspaceId,
   readOnly,
+  hasPool,
 }: UsageSettingsCardProps) {
   const { defaultUserSpendLimit, isDefaultUserSpendLimitLoading } =
     useDefaultUserSpendLimit({ workspaceId });
@@ -67,34 +70,36 @@ export function UsageSettingsCard({
 
   return (
     <Page.Vertical gap="sm" align="stretch">
-      <span className="heading-2xl text-foreground dark:text-foreground-night">
-        Settings
+      <span className="heading-base text-foreground dark:text-foreground-night">
+        Spending policies
       </span>
       <SettingsList>
-        <SettingsList.Row
-          title="Default pool credit limit"
-          description="Define the pool credit limit for users in your workspace. This limit is added on top of each seat's built-in allowance."
-          action={
-            <div className="w-52">
-              <InputWithSave
-                inputMode="numeric"
-                pattern="[0-9]*"
-                value={
-                  currentDefaultLimit !== null
-                    ? String(currentDefaultLimit)
-                    : ""
-                }
-                unit="credits"
-                normalizeValue={(value) => value.replace(/[^\d]/g, "")}
-                onSave={handleSaveDefaultLimit}
-                disabled={readOnly || isDefaultUserSpendLimitLoading}
-              />
-            </div>
-          }
-        />
+        <LockedSection locked={!hasPool}>
+          <SettingsList.Row
+            title="Default Workspace Credit Pool limit"
+            description="Define the Workspace Credit Pool credit limit for users in your workspace. This limit is added on top of each seat's built-in allowance. Can be overridden per user in the members table."
+            action={
+              <div className="w-52">
+                <InputWithSave
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={
+                    currentDefaultLimit !== null
+                      ? String(currentDefaultLimit)
+                      : ""
+                  }
+                  unit="credits"
+                  normalizeValue={(value) => value.replace(/[^\d]/g, "")}
+                  onSave={handleSaveDefaultLimit}
+                  disabled={readOnly || isDefaultUserSpendLimitLoading}
+                />
+              </div>
+            }
+          />
+        </LockedSection>
         <SettingsList.Row
           title="Upgrade request"
-          description="Allow members who reach their pool credit limit to request an upgrade. Workspace admins review requests on the Usage page."
+          description="Allow members who reach their limit to request an upgrade. Workspace admins review requests on the this page."
           action={
             <SliderToggle
               selected={usageSettings.allowUpgradeRequest}

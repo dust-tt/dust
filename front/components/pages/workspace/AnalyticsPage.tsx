@@ -1,6 +1,7 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { ActivityReport } from "@app/components/workspace/ActivityReport";
+import { AwuUsageChart } from "@app/components/workspace/AwuUsageChart";
 import { WorkspaceAnalyticsOverviewCards } from "@app/components/workspace/analytics/WorkspaceAnalyticsOverviewCards";
 import { WorkspaceAnalyticsTimeRangeSelector } from "@app/components/workspace/analytics/WorkspaceAnalyticsTimeRangeSelector";
 import { WorkspaceSkillUsageChart } from "@app/components/workspace/analytics/WorkspaceSkillUsageChart";
@@ -11,6 +12,7 @@ import { WorkspaceTopUsersTable } from "@app/components/workspace/analytics/Work
 import { WorkspaceUsageChart } from "@app/components/workspace/analytics/WorkspaceUsageChart";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
+import { useCreditPurchaseInfo } from "@app/lib/swr/credits";
 import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
 import datadogLogger from "@app/logger/datadogLogger";
 import { isAPIErrorResponse } from "@app/types/error";
@@ -31,6 +33,9 @@ export function AnalyticsPage() {
     owner,
     disabled: !canSeeAnalytics,
   });
+
+  const { billingCycleStartDay, isCreditPurchaseInfoLoading } =
+    useCreditPurchaseInfo({ workspaceId: owner.sId });
 
   const handleDownload = async (selectedMonth: string | null) => {
     if (!selectedMonth) {
@@ -173,6 +178,15 @@ export function AnalyticsPage() {
         period={period}
       />
       <div className="flex flex-col pb-8 gap-8">
+        {billingCycleStartDay !== null &&
+          (isCreditPurchaseInfoLoading ? (
+            <div className="h-64 animate-pulse rounded bg-muted-foreground/20" />
+          ) : (
+            <AwuUsageChart
+              workspaceId={owner.sId}
+              billingCycleStartDay={billingCycleStartDay}
+            />
+          ))}
         <WorkspaceUsageChart workspaceId={owner.sId} period={period} />
         <WorkspaceSourceChart workspaceId={owner.sId} period={period} />
         <WorkspaceToolUsageChart workspaceId={owner.sId} period={period} />

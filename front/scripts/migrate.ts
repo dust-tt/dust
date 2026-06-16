@@ -89,7 +89,13 @@ function createUmzug(phase: Phase) {
           }
           execFileSync(
             "psql",
-            [dbConfig.getRequiredFrontDatabaseURI(), "-f", filePath],
+            [
+              dbConfig.getRequiredFrontDatabaseURI(),
+              "-v",
+              "ON_ERROR_STOP=1",
+              "-f",
+              filePath,
+            ],
             { stdio: "inherit" }
           );
         },

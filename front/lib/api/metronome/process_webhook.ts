@@ -76,6 +76,7 @@ import {
 } from "@app/lib/metronome/constants";
 import { invalidateContractCache } from "@app/lib/metronome/plan_type";
 import type { ProgrammaticCreditEvent } from "@app/lib/metronome/programmatic_credit_state_machine";
+import { carryOverContractBalancesOnRenewal } from "@app/lib/metronome/renewal_carry_over";
 import { isMetronomeFreeCredit } from "@app/lib/metronome/types";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { PlanModel } from "@app/lib/models/plan";
@@ -1417,6 +1418,69 @@ export async function processMetronomeWebhook({
     case "contract.start": {
       const { contract_id: contractId, customer_id: customerId } = event;
 
+      // Read the PLAN_CODE custom field to know which plan to swap the
+      // workspace subscription onto. The actual swap is gated below on
+      // `isMetronomeOnlyBilled` — other billing paths (shadow, pure
+      // Stripe) handle their own state transitions, and contracts whose
+      // start aligns with a synchronous DB flip get caught by the
+      // idempotency check. Fetched up-front because the carry-over below also
+      // needs the contract's transition lineage and start.
+      const contractResult = await getMetronomeContractById({
+        metronomeCustomerId: customerId,
+        metronomeContractId: contractId,
+      });
+      if (contractResult.isErr()) {
+        logger.error(
+          {
+            contractId,
+            customerId,
+            error: contractResult.error,
+            workspaceId: workspace.sId,
+          },
+          "[Metronome Webhook] contract.start: failed to fetch contract"
+        );
+        return new Err(
+          new ProcessMetronomeWebhookError(
+            "processing_failed",
+            `Error fetching contract: ${contractResult.error.message}`
+          )
+        );
+      }
+
+      const renewalTransition = contractResult.value.transitions?.find(
+        (t) => t.to_contract_id === contractId
+      );
+      logger.info(
+        {
+          contractId,
+          customerId,
+          workspaceId: workspace.sId,
+          transitions: contractResult.value.transitions,
+          renewalFromContractId: renewalTransition?.from_contract_id ?? null,
+        },
+        "[Metronome Webhook] contract.start: renewal transition lookup"
+      );
+      if (renewalTransition) {
+        const carryResult = await carryOverContractBalancesOnRenewal({
+          metronomeCustomerId: customerId,
+          fromContractId: renewalTransition.from_contract_id,
+          toContractId: contractId,
+          toContractStart: new Date(contractResult.value.starting_at),
+        });
+        if (carryResult.isErr()) {
+          logger.error(
+            {
+              contractId,
+              customerId,
+              fromContractId: renewalTransition.from_contract_id,
+              error: carryResult.error,
+              workspaceId: workspace.sId,
+            },
+            "[Metronome Webhook] contract.start: failed to carry over balances"
+          );
+        }
+      }
+
       // Reconcile the workspace pool credit state against the new contract's
       // live AWU balance. Replaces the in-process call we previously made
       // from `provisionMetronomeContract` (removed to break a dependency
@@ -1442,34 +1506,6 @@ export async function processMetronomeWebhook({
         metronomeCustomerId: customerId,
         metronomeContractId: contractId,
       });
-
-      // Read the PLAN_CODE custom field to know which plan to swap the
-      // workspace subscription onto. The actual swap is gated below on
-      // `isMetronomeOnlyBilled` — other billing paths (shadow, pure
-      // Stripe) handle their own state transitions, and contracts whose
-      // start aligns with a synchronous DB flip get caught by the
-      // idempotency check.
-      const contractResult = await getMetronomeContractById({
-        metronomeCustomerId: customerId,
-        metronomeContractId: contractId,
-      });
-      if (contractResult.isErr()) {
-        logger.error(
-          {
-            contractId,
-            customerId,
-            error: contractResult.error,
-            workspaceId: workspace.sId,
-          },
-          "[Metronome Webhook] contract.start: failed to fetch contract"
-        );
-        return new Err(
-          new ProcessMetronomeWebhookError(
-            "processing_failed",
-            `Error fetching contract: ${contractResult.error.message}`
-          )
-        );
-      }
 
       const targetPlanCode =
         contractResult.value.custom_fields?.[PLAN_CODE_CUSTOM_FIELD_KEY];

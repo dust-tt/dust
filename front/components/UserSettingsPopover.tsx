@@ -1,4 +1,4 @@
-import { RequestUpgradeButton } from "@app/components/credits/RequestUpgradeButton";
+import { UsageUpgradeButton } from "@app/components/credits/UsageUpgradeButton";
 import type { NotificationPreferencesRefProps } from "@app/components/me/NotificationPreferences";
 import { NotificationPreferences } from "@app/components/me/NotificationPreferences";
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
@@ -188,21 +188,13 @@ function UsageSection({ owner, onClose }: UsageSectionProps) {
               {seatName}
             </span>
           </span>
-          {isAdmin ? (
-            <Button
-              variant="primary"
-              size="xs"
-              label="Go to workspace usage"
-              href={`/w/${owner.sId}/usage`}
-              onClick={onClose}
-            />
-          ) : (
-            <RequestUpgradeButton
-              owner={owner}
-              hasPendingUpgradeRequest={hasPendingUpgradeRequest}
-              variant="button"
-            />
-          )}
+          <UsageUpgradeButton
+            owner={owner}
+            hasPendingUpgradeRequest={hasPendingUpgradeRequest}
+            variant="button"
+            isAdmin={isAdmin}
+            onAdminNavigate={onClose}
+          />
         </div>
         <Separator />
         {isLoading ? (

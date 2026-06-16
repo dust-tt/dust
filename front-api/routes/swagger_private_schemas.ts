@@ -802,6 +802,52 @@
  *               type: integer
  *             down:
  *               type: integer
+ *     GetGoTemplateDraftResponseBody:
+ *       type: object
+ *       description: Composer draft resolved from a Contentful conversation go template.
+ *       required:
+ *         - title
+ *         - prompt
+ *         - attachments
+ *         - attachmentErrors
+ *       properties:
+ *         title:
+ *           type: string
+ *         prompt:
+ *           type: string
+ *         attachments:
+ *           type: array
+ *           items:
+ *             type: object
+ *             required:
+ *               - fileId
+ *               - name
+ *               - contentType
+ *               - size
+ *               - url
+ *             properties:
+ *               fileId:
+ *                 type: string
+ *               name:
+ *                 type: string
+ *               contentType:
+ *                 type: string
+ *               size:
+ *                 type: integer
+ *               url:
+ *                 type: string
+ *         attachmentErrors:
+ *           type: array
+ *           items:
+ *             type: object
+ *             required:
+ *               - url
+ *               - message
+ *             properties:
+ *               url:
+ *                 type: string
+ *               message:
+ *                 type: string
  *     PrivateFileWithUploadUrl:
  *       type: object
  *       description: File record with a pre-signed upload URL.

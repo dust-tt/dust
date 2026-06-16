@@ -320,6 +320,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to admin governance features, including assigning the business_admin role from the UI",
     stage: "dust_only",
   },
+  use_new_llm_router: {
+    description: "Use the new LLM router for model selection and routing",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

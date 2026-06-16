@@ -1,6 +1,8 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationAsTextWithFeedback } from "@app/lib/api/assistant/conversation/render_conversation_with_feedback";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
+import { getLargeWhitelistedModel } from "@app/lib/api/assistant/models";
+import { getLLM } from "@app/lib/api/llm";
 import type { LlmConversationOptions } from "@app/lib/api/llm/batch_llm";
 import {
   downloadBatchResultFromLlm,
@@ -13,6 +15,7 @@ import type { LLMStreamParameters } from "@app/lib/api/llm/types/options";
 import { getWorkspacePoolAwuBalance } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { getRemainingDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/daily_cap";
 import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
+import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { intelligenceAwuFromRunUsages } from "@app/lib/metronome/events";
 import { getRemainingProgrammaticUsageFromMetronome } from "@app/lib/metronome/programmatic_awu_usage";
@@ -200,12 +203,47 @@ async function runReinforcedSkillsStep({
   approvedSourceSuggestionIds: string[];
   toolActionInfo?: ReinforcedToolActionInfo;
 }> {
-  const llm = await getReinforcedSkillsLLM(auth, operationType, {
-    forBatch: false,
+  const owner = auth.workspace();
+  if (!owner) {
+    logger.error({ contextId }, "ReinforcedSkills: no Workspace found");
+    return {
+      isTerminal: true,
+      suggestionsCreated: 0,
+      approvedSourceSuggestionIds: [],
+    };
+  }
+
+  const model = getLargeWhitelistedModel(auth);
+
+  if (!model) {
+    logger.error(
+      { contextId, workspaceId: owner.sId },
+      "ReinforcedSkills: no model configuration available for step activity"
+    );
+    return {
+      isTerminal: true,
+      suggestionsCreated: 0,
+      approvedSourceSuggestionIds: [],
+    };
+  }
+
+  const credentials = await getLlmCredentials(auth, {
+    skipEmbeddingApiKeyRequirement: true,
   });
+  const llmParameters = {
+    modelId: model.modelId,
+    credentials,
+    context: {
+      operationType,
+      workspaceId: owner.sId,
+      userId: auth.user()?.sId,
+    },
+  };
+
+  const llm = await getLLM(auth, llmParameters);
   if (!llm) {
     logger.error(
-      { contextId, workspaceId: auth.getNonNullableWorkspace().sId },
+      { contextId, workspaceId: owner.sId },
       "ReinforcedSkills: no LLM available for step activity"
     );
     return {
@@ -1012,8 +1050,7 @@ export async function checkBatchStatusActivity({
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforcement_analyze_conversation",
-    { forBatch: true }
+    "reinforcement_analyze_conversation"
   );
   if (!llm) {
     throw ApplicationFailure.nonRetryable(
@@ -1051,8 +1088,7 @@ export async function startSkillConversationAnalysisBatchActivity({
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforcement_analyze_conversation",
-    { forBatch: true }
+    "reinforcement_analyze_conversation"
   );
   if (!llm) {
     logger.warn(
@@ -1184,8 +1220,7 @@ export async function processSkillConversationAnalysisBatchResultActivity({
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforcement_analyze_conversation",
-    { forBatch: true }
+    "reinforcement_analyze_conversation"
   );
   if (!llm) {
     return [];
@@ -1348,8 +1383,7 @@ export async function startSkillAggregationBatchActivity({
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforcement_aggregate_suggestions",
-    { forBatch: true }
+    "reinforcement_aggregate_suggestions"
   );
   if (!llm) {
     logger.warn(
@@ -1459,8 +1493,7 @@ export async function processSkillAggregationBatchResultActivity({
 
   const llm = await getReinforcedSkillsLLM(
     auth,
-    "reinforcement_aggregate_suggestions",
-    { forBatch: true }
+    "reinforcement_aggregate_suggestions"
   );
   if (!llm) {
     return {

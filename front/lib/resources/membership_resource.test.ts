@@ -744,4 +744,84 @@ describe("MembershipResource", () => {
       expect(future[0].creditState).toBe("on_pool");
     });
   });
+
+  describe("resetAllSeatsToNoneForWorkspace", () => {
+    let workspace: WorkspaceType;
+    let lightWorkspace: LightWorkspaceType;
+
+    beforeEach(async () => {
+      workspace = await WorkspaceFactory.basic();
+      lightWorkspace = renderLightWorkspaceType({ workspace });
+    });
+
+    it("resets every active membership to the none seat type", async () => {
+      const userA = await UserFactory.basic();
+      const userB = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, userA, {
+        role: "admin",
+        seatType: "workspace",
+      });
+      await MembershipFactory.associate(workspace, userB, {
+        role: "user",
+        seatType: "max",
+      });
+
+      await MembershipResource.resetAllSeatsToNoneForWorkspace({
+        workspace: lightWorkspace,
+      });
+
+      const counts =
+        await MembershipResource.getActiveSeatTypeCountsForWorkspace({
+          workspace: lightWorkspace,
+        });
+      expect(counts).toEqual({ none: 2 });
+
+      const membershipA =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user: userA,
+          workspace: lightWorkspace,
+        });
+      expect(membershipA?.seatType).toBe("none");
+      expect(membershipA?.creditState).toBe("on_pool");
+    });
+
+    it("leaves already-ended memberships untouched", async () => {
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, {
+        role: "user",
+        seatType: "max",
+      });
+      await MembershipResource.revokeMembership({
+        user,
+        workspace: lightWorkspace,
+      });
+
+      await MembershipResource.resetAllSeatsToNoneForWorkspace({
+        workspace: lightWorkspace,
+      });
+
+      const ended =
+        await MembershipResource.getLatestMembershipOfUserInWorkspace({
+          user,
+          workspace: lightWorkspace,
+        });
+      expect(ended?.seatType).toBe("max");
+    });
+
+    it("invalidates the active seats cache", async () => {
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, {
+        role: "user",
+        seatType: "workspace",
+      });
+
+      deletedKeys.length = 0;
+      await MembershipResource.resetAllSeatsToNoneForWorkspace({
+        workspace: lightWorkspace,
+      });
+
+      const seatsCacheKey = `cacheWithRedis-_countActiveSeatsInWorkspaceUncached-count-active-seats-in-workspace:${workspace.sId}`;
+      expect(deletedKeys).toContain(seatsCacheKey);
+    });
+  });
 });

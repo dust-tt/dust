@@ -644,6 +644,42 @@ describe("POST /api/w/:wId/skills", () => {
     ]);
   });
 
+  it("adds requested spaces from nested skill references", async () => {
+    const { auth, workspace, globalGroup } = await setupTest("admin");
+
+    const openSpace = await SpaceFactory.regular(workspace);
+    await GroupSpaceFactory.associate(openSpace, globalGroup);
+
+    const childSkill = await SkillFactory.create(auth, {
+      name: "Referenced Pod Skill",
+      requestedSpaceIds: [openSpace.id],
+    });
+
+    const response = await postSkill(workspace, {
+      name: "Parent Skill",
+      agentFacingDescription: "To use with another skill",
+      userFacingDescription: "A skill with a nested reference",
+      instructions: `Start with ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
+      icon: "PuzzleIcon",
+      tools: [],
+      extendedSkillId: null,
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.skill.requestedSpaceIds).toContain(openSpace.sId);
+    expect(data.skill.instructions).not.toContain("<unavailable_skill");
+
+    const createdSkill = await SkillResource.fetchById(auth, data.skill.sId);
+    if (!createdSkill) {
+      throw new Error("Expected created skill to be found.");
+    }
+    expect(createdSkill.requestedSpaceIds).toContain(openSpace.id);
+    expect(createdSkill.instructions).not.toContain("<unavailable_skill");
+  });
+
   it("drops missing nested skill references", async () => {
     const { auth, workspace } = await setupTest("admin");
 

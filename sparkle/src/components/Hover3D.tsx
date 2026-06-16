@@ -2,6 +2,7 @@ import React, {
   createContext,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -153,10 +154,13 @@ function Hover3D({
     range,
   ]);
 
+  const hover3DContextValue = useMemo(
+    () => ({ isHovered, setHovered, isTouchDevice: isTouch }),
+    [isHovered, isTouch]
+  );
+
   return (
-    <Hover3DContext.Provider
-      value={{ isHovered, setHovered, isTouchDevice: isTouch }}
-    >
+    <Hover3DContext.Provider value={hover3DContextValue}>
       <div
         ref={elementRef}
         style={{

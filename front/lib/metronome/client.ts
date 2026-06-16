@@ -789,9 +789,11 @@ export async function createMetronomeContract({
   // automatic subscription swap.
   additionalCustomFields?: Record<string, string>;
   // When set, the contract is created as a RENEWAL transition from this prior
-  // contract: Metronome records the lineage and automatically ends the prior
-  // contract at `startingAt`. Unused commit balance only carries over for
-  // commits that were created with a `rollover_fraction`
+  // contract: Metronome records the lineage (exposed on the successor's
+  // `transitions`) and automatically ends the prior contract at `startingAt`.
+  // Unused balance does NOT roll over automatically — the `contract.start`
+  // webhook carries flagged non-recurring balances forward (see
+  // `carryOverContractBalancesOnRenewal` / `CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY`).
   fromContractId?: string;
 }): Promise<Result<{ contractId: string }, Error>> {
   if (!packageAlias === !packageId) {
@@ -1789,6 +1791,7 @@ export async function addPaymentGatedCommitToContract({
   name,
   uniquenessKey,
   stripeInvoiceMetadata,
+  customFields,
 }: {
   metronomeCustomerId: string;
   metronomeContractId: string;
@@ -1806,6 +1809,10 @@ export async function addPaymentGatedCommitToContract({
   name: string;
   uniquenessKey: string;
   stripeInvoiceMetadata: Record<string, string>;
+  // Custom fields stamped on the commit (e.g. CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY
+  // so its balance is carried into the successor contract on renewal). Keys must
+  // be registered for the `commit` entity in `scripts/metronome_setup.ts`.
+  customFields?: Record<string, string>;
 }): Promise<Result<{ editId: string }, Error>> {
   try {
     const response = await getMetronomeClient().v2.contracts.edit({
@@ -1819,6 +1826,7 @@ export async function addPaymentGatedCommitToContract({
           name,
           priority,
           applicable_product_tags: applicableProducTags,
+          ...(customFields ? { custom_fields: customFields } : {}),
           access_schedule: {
             credit_type_id: accessCreditTypeId,
             schedule_items: [
@@ -1918,6 +1926,7 @@ export async function addPrepaidCommitToContract({
   uniquenessKey,
   applicableProductIds,
   applicableProductTags,
+  customFields,
 }: {
   metronomeCustomerId: string;
   metronomeContractId: string;
@@ -1935,6 +1944,7 @@ export async function addPrepaidCommitToContract({
   uniquenessKey: string;
   applicableProductIds?: string[];
   applicableProductTags?: string[];
+  customFields?: Record<string, string>;
 }): Promise<Result<{ editId: string }, Error>> {
   try {
     const response = await getMetronomeClient().v2.contracts.edit({
@@ -1953,6 +1963,7 @@ export async function addPrepaidCommitToContract({
           ...(applicableProductTags && applicableProductTags.length > 0
             ? { applicable_product_tags: applicableProductTags }
             : {}),
+          ...(customFields ? { custom_fields: customFields } : {}),
           access_schedule: {
             credit_type_id: accessCreditTypeId,
             schedule_items: [
@@ -2010,6 +2021,107 @@ export async function addPrepaidCommitToContract({
         invoiceQuantity,
       },
       "[Metronome] Failed to add prepaid commit to contract"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * Add a complimentary PREPAID commit (access only, no invoice) to a contract.
+ *
+ * Used to carry a non-recurring commit/credit's leftover balance into a renewed
+ * contract: the customer already paid for it on the prior contract, so the
+ * carried grant must not re-charge. Omitting `invoice_schedule` makes Metronome
+ * treat it as a complimentary commit. It stays a PREPAID commit (not a rollover
+ * commit), so it lands in the prepaid burn tier ordered by `priority` (after
+ * the seat allocation) instead of jumping ahead of seat-based commits the way a
+ * rollover commit would (see `CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY`).
+ */
+export async function addComplimentaryCommitToContract({
+  metronomeCustomerId,
+  metronomeContractId,
+  productId,
+  accessAmount,
+  accessCreditTypeId,
+  accessStartingAt,
+  accessEndingBefore,
+  priority,
+  name,
+  uniquenessKey,
+  applicableProductIds,
+  applicableProductTags,
+  customFields,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  productId: string;
+  accessAmount: number;
+  accessCreditTypeId: string;
+  accessStartingAt: Date;
+  accessEndingBefore: Date;
+  priority: number;
+  name: string;
+  uniquenessKey: string;
+  applicableProductIds?: string[];
+  applicableProductTags?: string[];
+  customFields?: Record<string, string>;
+}): Promise<Result<{ editId: string }, Error>> {
+  try {
+    const response = await getMetronomeClient().v2.contracts.edit({
+      customer_id: metronomeCustomerId,
+      contract_id: metronomeContractId,
+      uniqueness_key: uniquenessKey,
+      add_commits: [
+        {
+          product_id: productId,
+          type: "PREPAID",
+          name,
+          priority,
+          ...(applicableProductIds && applicableProductIds.length > 0
+            ? { applicable_product_ids: applicableProductIds }
+            : {}),
+          ...(applicableProductTags && applicableProductTags.length > 0
+            ? { applicable_product_tags: applicableProductTags }
+            : {}),
+          ...(customFields ? { custom_fields: customFields } : {}),
+          access_schedule: {
+            credit_type_id: accessCreditTypeId,
+            schedule_items: [
+              {
+                amount: accessAmount,
+                starting_at: floorToHourISO(accessStartingAt),
+                ending_before: floorToHourISO(accessEndingBefore),
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    logger.info(
+      {
+        metronomeCustomerId,
+        metronomeContractId,
+        editId: response.data.id,
+        accessAmount,
+      },
+      "[Metronome] Complimentary commit added to contract"
+    );
+
+    return new Ok({ editId: response.data.id });
+  } catch (err) {
+    if (err instanceof ConflictError) {
+      logger.info(
+        { metronomeCustomerId, metronomeContractId, uniquenessKey },
+        "[Metronome] Complimentary commit edit already exists (idempotent)"
+      );
+      return new Ok({ editId: "" });
+    }
+
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, metronomeContractId, accessAmount },
+      "[Metronome] Failed to add complimentary commit to contract"
     );
     return new Err(error);
   }
@@ -2813,6 +2925,7 @@ export async function addCreditToContract({
   uniquenessKey,
   applicableProductTags,
   priority,
+  customFields,
 }: {
   metronomeCustomerId: string;
   metronomeContractId: string;
@@ -2825,6 +2938,7 @@ export async function addCreditToContract({
   uniquenessKey: string;
   applicableProductTags?: string[];
   priority: number;
+  customFields?: Record<string, string>;
 }): Promise<Result<{ creditId: string } | null, Error>> {
   const roundedStartingAt = floorToHourISO(new Date(startingAt));
   const roundedEndingBefore = floorToHourISO(new Date(endingBefore));
@@ -2842,6 +2956,7 @@ export async function addCreditToContract({
           ...(applicableProductTags && applicableProductTags.length > 0
             ? { applicable_product_tags: applicableProductTags }
             : {}),
+          ...(customFields ? { custom_fields: customFields } : {}),
           access_schedule: {
             credit_type_id: creditTypeId,
             schedule_items: [
@@ -3040,6 +3155,85 @@ export async function listMetronomeCustomerCommits({
     logger.error(
       { error, metronomeCustomerId, commitId },
       "[Metronome] Failed to list customer commits"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * List a contract's commits with their ledgers and balances, for renewal
+ * carry-over.
+ *
+ * No `covering_date` filter: by the time the `contract.start` webhook runs, the
+ * source contract has ended, and the carried entry may have started arbitrarily
+ * close to the switch — a point-in-time filter can miss it. We list across the
+ * customer (`include_archived` covers ended/archived contracts) and filter to
+ * the source contract here. `include_ledgers` surfaces the
+ * `PREPAID_COMMIT_EXPIRATION` entry that records the balance left at expiry;
+ * `include_balance` is a fallback for entries not yet expired.
+ */
+export async function listContractCommitsWithLedger({
+  metronomeCustomerId,
+  contractId,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+}): Promise<Result<Commit[], Error>> {
+  try {
+    const commits: Commit[] = [];
+    for await (const entry of getMetronomeClient().v1.customers.commits.list({
+      customer_id: metronomeCustomerId,
+      include_contract_commits: true,
+      include_ledgers: true,
+      include_balance: true,
+      include_archived: true,
+    })) {
+      if (entry.contract?.id === contractId) {
+        commits.push(entry);
+      }
+    }
+    return new Ok(commits);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, contractId },
+      "[Metronome] Failed to list contract commits with ledger"
+    );
+    return new Err(error);
+  }
+}
+
+/**
+ * List a contract's credits with their ledgers and balances, for renewal
+ * carry-over. Mirrors `listContractCommitsWithLedger`; the relevant ledger
+ * entry is `CREDIT_EXPIRATION`.
+ */
+export async function listContractCreditsWithLedger({
+  metronomeCustomerId,
+  contractId,
+}: {
+  metronomeCustomerId: string;
+  contractId: string;
+}): Promise<Result<Credit[], Error>> {
+  try {
+    const credits: Credit[] = [];
+    for await (const entry of getMetronomeClient().v1.customers.credits.list({
+      customer_id: metronomeCustomerId,
+      include_contract_credits: true,
+      include_ledgers: true,
+      include_balance: true,
+      include_archived: true,
+    })) {
+      if (entry.contract?.id === contractId) {
+        credits.push(entry);
+      }
+    }
+    return new Ok(credits);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId, contractId },
+      "[Metronome] Failed to list contract credits with ledger"
     );
     return new Err(error);
   }

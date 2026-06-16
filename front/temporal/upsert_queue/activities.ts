@@ -1,4 +1,5 @@
 import config from "@app/lib/api/config";
+import { decodeBuffer } from "@app/lib/api/files/utils";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -14,7 +15,10 @@ import { fromError } from "zod-validation-error";
 
 const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
 
-function cleanUtf8Content(content: string): string {
+export function cleanUtf8Content(content: string): string {
+  // Strip null bytes (invalid in PostgreSQL text columns and JSON strings per RFC4627)
+  content = content.replace(/\0/g, "");
+
   // Early exit if no \uD sequences found.
   if (!/[\uD800-\uDFFF]/.test(content)) {
     return content;
@@ -39,9 +43,11 @@ export async function upsertDocumentActivity(
 
   const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
   const bucket = storage.bucket(DUST_UPSERT_QUEUE_BUCKET);
-  const content = await bucket.file(`${upsertQueueId}.json`).download();
-
-  const upsertDocument = JSON.parse(cleanUtf8Content(content.toString()));
+  // GCS bucket.file().download() returns a `DownloadResponse = [Buffer]` — it's defined as a tuple with exactly one element.
+  // It's a quirk of the GCS SDK's callback-style API converted to a promise
+  // There's never more than one Buffer => destructuring is fine
+  const [fileBuffer] = await bucket.file(`${upsertQueueId}.json`).download();
+  const upsertDocument = JSON.parse(cleanUtf8Content(decodeBuffer(fileBuffer)));
 
   const documentItemValidation =
     EnqueueUpsertDocument.safeParse(upsertDocument);

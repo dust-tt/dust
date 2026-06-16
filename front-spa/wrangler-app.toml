@@ -6,3 +6,6 @@ main = "./worker/app.ts"
 directory = "./dist/app"
 not_found_handling = "none"
 binding = "ASSETS"
+
+[vars]
+DUST_API_URL = "https://dust.tt"

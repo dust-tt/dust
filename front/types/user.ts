@@ -6,7 +6,7 @@ import type {
   EmbeddingProviderIdType,
   ModelProviderIdType,
 } from "./assistant/models/types";
-import type { MembershipOriginType } from "./memberships";
+import type { MembershipOriginType, MembershipSeatType } from "./memberships";
 import type { ModelId } from "./shared/model_id";
 import { DbModelIdSchema } from "./shared/model_id";
 import { assertNever } from "./shared/utils/assert_never";
@@ -158,6 +158,7 @@ export type UserTypeWithWorkspaces = UserType & {
   workspaces: WorkspaceType[];
   organizations?: WorkOSOrganizationType[];
   origin?: MembershipOriginType;
+  seatType?: MembershipSeatType;
   selectedWorkspace?: string;
 };
 

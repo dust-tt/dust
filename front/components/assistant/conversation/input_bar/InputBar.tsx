@@ -113,6 +113,7 @@ export const InputBar = React.memo(function InputBar({
     selectedSingleAgent,
     getAndClearPendingInputText,
     fileUploaderService,
+    isLoadingGoTemplate,
   } = useContext(InputBarContext);
 
   // We use this specific hook because this component is involved in the new conversation page.
@@ -128,6 +129,12 @@ export const InputBar = React.memo(function InputBar({
     draftKey,
     shouldUseDraft: !isAgentBuilder,
   });
+
+  useEffect(() => {
+    if (isLoadingGoTemplate) {
+      clearDraft();
+    }
+  }, [isLoadingGoTemplate, clearDraft]);
 
   useEffect(() => {
     if (droppedFiles.length > 0) {
@@ -488,7 +495,9 @@ export const InputBar = React.memo(function InputBar({
             stickyMentions={stickyMentions}
             fileUploaderService={fileUploaderService}
             isSubmitting={
-              isLocalSubmitting || fileUploaderService.isProcessingFiles
+              isLocalSubmitting ||
+              fileUploaderService.isProcessingFiles ||
+              isLoadingGoTemplate
             }
             onNodeSelect={handleNodesAttachmentSelect}
             onNodeUnselect={handleNodesAttachmentRemove}

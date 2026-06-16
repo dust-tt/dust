@@ -187,17 +187,20 @@ export const Markdown: React.FC<MarkdownProps> = ({
     []
   );
 
+  const contentContextValue = useMemo(
+    () => ({
+      content: processedContent,
+      isStreaming: effectiveStreamingState === "streaming",
+      isLastMessage,
+    }),
+    [processedContent, effectiveStreamingState, isLastMessage]
+  );
+
   try {
     return (
       <div className="s-w-full">
         <MarkdownStyleContext.Provider value={styleContextValue}>
-          <MarkdownContentContext.Provider
-            value={{
-              content: processedContent,
-              isStreaming: effectiveStreamingState === "streaming",
-              isLastMessage,
-            }}
-          >
+          <MarkdownContentContext.Provider value={contentContextValue}>
             <ReactMarkdown
               linkTarget="_blank"
               components={markdownComponents}

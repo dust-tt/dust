@@ -47,6 +47,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   cacheWithRedis,
@@ -756,6 +757,18 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     const workspace = await this.findWorkspaceOrThrow(workspaceId);
 
     await this.endActiveSubscription(workspace);
+
+    // No plan anymore: clear billed seat assignments and plan-level seat caps.
+    await withTransaction(async (t) => {
+      await MembershipResource.resetAllSeatsToNoneForWorkspace({
+        workspace,
+        transaction: t,
+      });
+      await WorkspaceSeatLimitResource.deleteAllForWorkspace({
+        workspace,
+        transaction: t,
+      });
+    });
 
     await SubscriptionResource.invalidateSubscriptionCache(workspace.id);
 

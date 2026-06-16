@@ -33,6 +33,7 @@ import { FetcherProvider } from "@marketing/components/swr/FetcherContext";
 import { fetcher, fetcherWithBody } from "@marketing/lib/swr/fetcher";
 import { initDatadogLogs } from "@marketing/logger/datadogLogger";
 import { SparkleContext } from "@dust-tt/sparkle";
+import { useMemo } from "react";
 
 if (DATADOG_CLIENT_TOKEN) {
   initDatadogLogs({
@@ -114,13 +115,15 @@ type AppPropsWithLayout = AppProps & {
 export default function App({ Component, pageProps }: AppPropsWithLayout) {
   // Use the layout defined at the page level, if available.
   const getLayout = Component.getLayout ?? ((page) => page);
+  const sparkleContextValue = useMemo(
+    () => ({ components: { link: NextLinkWrapper } }),
+    []
+  );
 
   return (
     <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
       <PostHogTracker>
-        <SparkleContext.Provider
-          value={{ components: { link: NextLinkWrapper } }}
-        >
+        <SparkleContext.Provider value={sparkleContextValue}>
           {getLayout(<Component {...pageProps} />, pageProps)}
         </SparkleContext.Provider>
       </PostHogTracker>

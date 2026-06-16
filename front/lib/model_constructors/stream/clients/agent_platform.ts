@@ -4,7 +4,7 @@ import type {
   RawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import AnthropicVertex from "@anthropic-ai/vertex-sdk";
-import type { BaseModelConfiguration } from "@app/lib/model_constructors/configuration";
+import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
 import { WithAnthropicInputConverter } from "@app/lib/model_constructors/providers/anthropic/converters/input";
 import { WithAnthropicOutputConverter } from "@app/lib/model_constructors/providers/anthropic/converters/output";
 import { rawOutputToEvents } from "@app/lib/model_constructors/providers/anthropic/converters/output/utils";
@@ -38,7 +38,7 @@ export abstract class AgentPlatformStream extends WithAnthropicInputConverter(
   )
 ) {
   // Narrow `this.constructor` so the per-endpoint static below is visible.
-  declare ["constructor"]: BaseModelConfiguration & {
+  declare ["constructor"]: BaseEndpointConfiguration & {
     regionalEndpoint: AgentPlatformRegionalEndpoint;
   };
 

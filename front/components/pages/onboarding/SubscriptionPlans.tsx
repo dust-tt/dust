@@ -121,24 +121,29 @@ export function PlanCard({
 interface BillingPeriodSwitchProps {
   defaultValue?: BillingPeriod;
   onValueChange: (period: BillingPeriod) => void;
+  size?: React.ComponentProps<typeof ButtonsSwitchList>["size"];
 }
 
 export function BillingPeriodSwitch({
   defaultValue = "monthly",
   onValueChange,
+  size,
 }: BillingPeriodSwitchProps) {
   return (
     <ButtonsSwitchList
       defaultValue={defaultValue}
+      size={size}
       onValueChange={(value) =>
         onValueChange(value === "yearly" ? "yearly" : "monthly")
       }
     >
       <ButtonsSwitch value="monthly" label="Monthly" />
-      <div className="flex items-center gap-1.5">
-        <ButtonsSwitch value="yearly" label="Yearly" />
-        <Chip size="xs" color="blue" label="Save 20%" />
-      </div>
+      <ButtonsSwitch
+        value="yearly"
+        label="Yearly"
+        className="flex-row-reverse"
+        icon={<Chip size="xs" color="blue" label="Save 20%" />}
+      />
     </ButtonsSwitchList>
   );
 }

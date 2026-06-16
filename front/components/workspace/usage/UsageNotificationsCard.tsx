@@ -71,8 +71,8 @@ export function UsageNotificationsCard({
       </div>
       <SettingsList>
         <SettingsList.Row
-          title="Credit balance threshold"
-          description="Email all workspace admins when your remaining credit balance drops below this amount (in credits). Set to 0 to disable."
+          title="Workspace credit pool threshold"
+          description="Email all workspace admins when your remaining workspace credit pool balance drops below this amount (in credits). Set to 0 to disable."
           action={
             <div className="w-52">
               <InputWithSave
@@ -88,7 +88,7 @@ export function UsageNotificationsCard({
           }
         />
         <SettingsList.Row
-          title="Upgrade request"
+          title="Upgrade request emails"
           description="Email all workspace admins when a member requests a spend-limit upgrade."
           action={
             <SliderToggle

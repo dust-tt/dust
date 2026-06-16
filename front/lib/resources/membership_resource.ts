@@ -818,6 +818,34 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return counts;
   }
 
+  static async resetAllSeatsToNoneForWorkspace({
+    workspace,
+    transaction,
+  }: {
+    workspace: LightWorkspaceType;
+    transaction?: Transaction;
+  }): Promise<void> {
+    const now = new Date();
+    await MembershipModel.update(
+      {
+        seatType: "none",
+        creditState: initialCreditStateForSeatType("none"),
+      },
+      {
+        where: {
+          workspaceId: workspace.id,
+          endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gt]: now }] },
+        },
+        transaction,
+      }
+    );
+
+    const workspaceId = workspace.sId;
+    invalidateCacheAfterCommit(transaction, () =>
+      MembershipResource.invalidateActiveSeatsCache(workspaceId)
+    );
+  }
+
   /**
    * Counts used to enforce the plan-level `free`-seat caps
    * (`plan.limits.users.maxFreeUsers` / `maxLifetimeFreeUsers`).

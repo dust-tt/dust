@@ -205,6 +205,8 @@ export interface CustomEditorProps {
     ((agentId: string) => void) | undefined
   >;
   slashSuggestion?: {
+    // The conversation may only exist after the editor is initialized, hence the ref.
+    conversationIdRef?: React.RefObject<string | null>;
     enabledRef: React.RefObject<boolean>;
     onSelectRef: React.RefObject<
       ((capability: InputBarSlashSuggestionCapability) => void) | undefined
@@ -356,6 +358,7 @@ export const buildEditorExtensions = ({
     extensions.push(
       InputBarSlashSuggestionExtension.configure({
         owner,
+        conversationIdRef: slashSuggestion.conversationIdRef,
         enabledRef: slashSuggestion.enabledRef,
         onSelectRef: slashSuggestion.onSelectRef,
         onDetailsRef: slashSuggestion.onDetailsRef,

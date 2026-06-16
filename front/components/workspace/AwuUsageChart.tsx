@@ -468,7 +468,7 @@ export function BaseAwuUsageChart({
     <ChartContainer
       title={
         <div className="flex items-center gap-2">
-          <span>Usage</span>
+          <span>Credit usage</span>
           {canGoPrevious && (
             <Button
               icon={ChevronLeft}

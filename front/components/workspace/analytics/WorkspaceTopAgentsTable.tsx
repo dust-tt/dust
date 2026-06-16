@@ -1,6 +1,7 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
+import { formatCreditsCompact } from "@app/lib/client/credits";
 import { LinkWrapper } from "@app/lib/platform";
 import { useWorkspaceTopAgents } from "@app/lib/swr/workspaces";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
@@ -15,6 +16,7 @@ interface TopAgentRowData {
   pictureUrl: string | null;
   messageCount: number;
   userCount: number;
+  totalCostCredits: number | null;
   onClick?: () => void;
   onDoubleClick?: () => void;
 }
@@ -77,6 +79,22 @@ function makeColumns(workspaceId: string): ColumnDef<TopAgentRowData>[] {
         />
       ),
     },
+    {
+      id: "totalCostCredits",
+      accessorKey: "totalCostCredits",
+      header: "Total cost",
+      meta: {
+        sizeRatio: 15,
+      },
+      cell: (info: TopAgentInfo) => {
+        const cost = info.row.original.totalCostCredits;
+        return (
+          <DataTable.BasicCellContent
+            label={cost != null ? `${formatCreditsCompact(cost)} credits` : "-"}
+          />
+        );
+      },
+    },
   ];
 }
 
@@ -106,6 +124,7 @@ export function WorkspaceTopAgentsTable({
       pictureUrl: agent.pictureUrl,
       messageCount: agent.messageCount,
       userCount: agent.userCount,
+      totalCostCredits: agent.totalCostCredits,
     }));
   }, [topAgents]);
 

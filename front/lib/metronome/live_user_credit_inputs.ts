@@ -10,7 +10,6 @@
 // reconcile module imports the dispatcher, so the dispatcher cannot import the
 // reconcile module back.
 
-import { getMetronomeDefaultUserCapAlertForSeatType } from "@app/lib/metronome/alerts/spend_limits";
 import {
   listContractPerUserCreditBalances,
   listMetronomeSeatBalances,
@@ -65,10 +64,12 @@ export type LiveUserCreditInputs = {
  * derive the actual state — this only reads the numbers.
  *
  * `poolCapOverrideAwuCredits` is the pool-only override persisted on the
- * membership (`memberships.poolCapOverrideAwuCredits`) — the source of truth
- * for per-user overrides. When set, the seat allowance is added back to get
- * the total cap threshold; the seat-type default alert is only consulted when
- * no override is set.
+ * membership (`memberships.poolCapOverrideAwuCredits`) and
+ * `defaultPoolCapAwuCredits` the pool-only workspace default persisted on the
+ * credit-usage configuration
+ * (`credit_usage_configurations.defaultPoolCapAwuCredits`) — the DB sources of
+ * truth for the cap. The override wins; the seat allowance is added back to get
+ * the total cap threshold.
  *
  * Surfaces Metronome read failures as `Err` so callers can fall back.
  */
@@ -77,6 +78,7 @@ export async function fetchLiveUserCreditInputs({
   userId,
   seatType,
   poolCapOverrideAwuCredits,
+  defaultPoolCapAwuCredits,
   metronomeCustomerId,
   metronomeContractId,
 }: {
@@ -84,6 +86,7 @@ export async function fetchLiveUserCreditInputs({
   userId: string;
   seatType: MembershipSeatType | null;
   poolCapOverrideAwuCredits: number | null;
+  defaultPoolCapAwuCredits: number | null;
   metronomeCustomerId: string;
   metronomeContractId: string | null;
 }): Promise<Result<LiveUserCreditInputs, Error>> {
@@ -133,14 +136,23 @@ export async function fetchLiveUserCreditInputs({
 
   // Resolve the effective per-user cap threshold (in AWU credits, seat
   // allowance included): the user-specific override if present, otherwise the
-  // seat-type default. `null` means no cap is configured for this user. The
-  // override is the pool-only value persisted on the membership; the seat
-  // allowance is added back to get the total threshold.
+  // workspace default for pool-limit seat types. `null` means no cap is
+  // configured for this user. Both are pool-only values persisted in the DB;
+  // the seat allowance is added back to get the total threshold.
   let effectiveCapAwuCredits: number | null = null;
   let capSource: LiveUserCreditInputs["capSource"] = "none";
 
   const normalizedSeatType = normalizeToPoolLimitSeatType(seatType);
+  let poolCapAwuCredits: number | null = null;
   if (poolCapOverrideAwuCredits !== null) {
+    poolCapAwuCredits = poolCapOverrideAwuCredits;
+    capSource = "override";
+  } else if (normalizedSeatType && defaultPoolCapAwuCredits !== null) {
+    poolCapAwuCredits = defaultPoolCapAwuCredits;
+    capSource = "default";
+  }
+
+  if (poolCapAwuCredits !== null) {
     let seatAllowance = 0;
     if (normalizedSeatType) {
       try {
@@ -155,25 +167,7 @@ export async function fetchLiveUserCreditInputs({
         );
       }
     }
-    effectiveCapAwuCredits = poolCapOverrideAwuCredits + seatAllowance;
-    capSource = "override";
-  } else if (normalizedSeatType) {
-    const defaultResult = await getMetronomeDefaultUserCapAlertForSeatType({
-      metronomeCustomerId,
-      workspaceId,
-      seatType: normalizedSeatType,
-    });
-    if (defaultResult.isErr()) {
-      return new Err(
-        new Error(
-          `Failed to read default per-user cap: ${defaultResult.error.message}`
-        )
-      );
-    }
-    if (defaultResult.value) {
-      effectiveCapAwuCredits = defaultResult.value.alert.threshold;
-      capSource = "default";
-    }
+    effectiveCapAwuCredits = poolCapAwuCredits + seatAllowance;
   }
 
   // Consumption is only needed for the cap bands (capped / on_pool_low_balance),

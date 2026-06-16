@@ -20,7 +20,10 @@ import {
   scheduleMetronomeContractEnd,
 } from "@app/lib/metronome/client";
 import {
+  CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
+  CARRY_ON_RENEWAL_FOREVER_VALUE,
   CURRENCY_TO_CREDIT_TYPE_ID,
+  FOREVER_ENDING_BEFORE,
   getProductSeatSubscriptionCommitId,
   PAYMENT_GATE_TYPE_CUSTOM_FIELD_KEY,
   PAYMENT_GATE_TYPE_SUBSCRIPTION_ACTIVATION,
@@ -292,9 +295,6 @@ export async function createPaymentGatedBusinessActivation({
   const fiatCreditTypeId = CURRENCY_TO_CREDIT_TYPE_ID[currency];
   const amountNative = metronomeAmount(effectiveAmountCents, currency);
 
-  const accessEndingBefore = new Date(now);
-  accessEndingBefore.setUTCFullYear(accessEndingBefore.getUTCFullYear() + 1);
-
   const commitResult = await addPaymentGatedCommitToContract({
     metronomeCustomerId,
     metronomeContractId,
@@ -302,7 +302,7 @@ export async function createPaymentGatedBusinessActivation({
     accessAmount: amountNative,
     accessCreditTypeId: fiatCreditTypeId,
     accessStartingAt: now,
-    accessEndingBefore,
+    accessEndingBefore: FOREVER_ENDING_BEFORE,
     invoiceUnitPrice: amountNative,
     invoiceQuantity: 1,
     invoiceCreditTypeId: fiatCreditTypeId,
@@ -311,6 +311,9 @@ export async function createPaymentGatedBusinessActivation({
     applicableProducTags: [SEAT_TAG],
     name: `Business subscription activation (${seatType} ${billingPeriod})`,
     uniquenessKey,
+    customFields: {
+      [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: CARRY_ON_RENEWAL_FOREVER_VALUE,
+    },
     stripeInvoiceMetadata: {
       subscription_activation: "true",
       workspace_id: workspace.sId,

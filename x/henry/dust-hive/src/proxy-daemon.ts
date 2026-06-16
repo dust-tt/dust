@@ -30,6 +30,7 @@ type Target = "front-api" | "marketing";
 const ROUTES: ReadonlyArray<{ pattern: RegExp; target: Target }> = [
   { pattern: /^\/m\/api(\/.*)?$/, target: "marketing" }, // /m/api/*
   { pattern: /^\/api(\/.*)?$/, target: "front-api" }, //   /api/*
+  { pattern: /^\/oauth(\/.*)?$/, target: "front-api" }, // /oauth/*
 ];
 
 const DEFAULT_TARGET: Target = "marketing";

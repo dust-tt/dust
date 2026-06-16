@@ -11,6 +11,7 @@ import { ExtensionFetcherProvider } from "@extension/shared/lib/ExtensionFetcher
 import { ReactRouterLinkWrapper } from "@extension/shared/ReactRouterLinkWrapper";
 import { ExtensionAuthProvider } from "@extension/ui/components/auth/AuthProvider";
 import { routes } from "@extension/ui/pages/routes";
+import { useMemo } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { FirefoxExtensionWrapper } from "./FirefoxExtensionWrapper";
 
@@ -19,6 +20,16 @@ export const FirefoxApp = () => {
   platformService.useCaptureActions = useCaptureActions;
   const router = createBrowserRouter(routes);
 
+  const sparkleContextValue = useMemo(
+    () => ({
+      components: {
+        link: ReactRouterLinkWrapper,
+        image: AuthenticatedImage,
+      },
+    }),
+    []
+  );
+
   return (
     <ClientTypeProvider value="extension">
       <PlatformProvider platformService={platformService}>
@@ -26,14 +37,7 @@ export const FirefoxApp = () => {
           <RegionProvider>
             <ExtensionAuthProvider>
               <ExtensionFetcherProvider>
-                <SparkleContext.Provider
-                  value={{
-                    components: {
-                      link: ReactRouterLinkWrapper,
-                      image: AuthenticatedImage,
-                    },
-                  }}
-                >
+                <SparkleContext.Provider value={sparkleContextValue}>
                   <RootLayout>
                     <FirefoxExtensionWrapper>
                       <RouterProvider router={router} />

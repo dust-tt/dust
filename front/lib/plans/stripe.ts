@@ -710,25 +710,6 @@ export async function cancelSubscriptionAtPeriodEnd({
 }
 
 /**
- * Cancel a subscription immediately without generating any additional invoice.
- * Pending proration items (e.g. from mid-period seat changes) are discarded.
- * Used to handle takeover to Metronome, Metronome will handle the proration items.
- */
-export async function cancelSubscriptionImmediatelyNoInvoice({
-  stripeSubscriptionId,
-}: {
-  stripeSubscriptionId: string;
-}) {
-  const stripe = getStripeClient();
-  await stripe.subscriptions.cancel(stripeSubscriptionId, {
-    invoice_now: false,
-    prorate: false,
-  });
-
-  return true;
-}
-
-/**
  * Schedule a subscription to cancel at a future timestamp. Used by the
  * switch_contract flow when migrating a Stripe-billed workspace to Metronome:
  * the Stripe sub stops at the new Metronome contract's start time, so the two

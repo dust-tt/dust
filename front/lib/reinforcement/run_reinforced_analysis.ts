@@ -1,6 +1,5 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
-import { getLargeWhitelistedModel } from "@app/lib/api/assistant/models";
-import { getLLM } from "@app/lib/api/llm";
+import { getLegacyLLM } from "@app/lib/api/llm";
 import { writeBatchUserMessages } from "@app/lib/api/llm/batch_llm";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
@@ -263,24 +262,22 @@ export async function createReinforcedSkillsConversation(
  */
 export async function getReinforcedSkillsLLM(
   auth: Authenticator,
-  operationType: ReinforcedSkillsOperationType,
-  { forBatch }: { forBatch?: boolean } = {}
+  operationType: ReinforcedSkillsOperationType
 ): Promise<LLM | null> {
   const owner = auth.workspace();
   if (!owner) {
     return null;
   }
 
-  const model = forBatch
-    ? await getLargeWhitelistedModelWithBatchMode(auth)
-    : getLargeWhitelistedModel(auth);
+  const model = await getLargeWhitelistedModelWithBatchMode(auth);
   if (!model) {
     return null;
   }
+
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,
   });
-  return getLLM(auth, {
+  const llmParameters = {
     modelId: model.modelId,
     credentials,
     context: {
@@ -288,7 +285,11 @@ export async function getReinforcedSkillsLLM(
       workspaceId: owner.sId,
       userId: auth.user()?.sId,
     },
-  });
+  };
+
+  const batchLLM = await getLegacyLLM(auth, llmParameters);
+
+  return batchLLM;
 }
 
 /**
