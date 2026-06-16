@@ -324,6 +324,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Use the new LLM router for model selection and routing",
     stage: "dust_only",
   },
+  pod_default_agent: {
+    description:
+      "Per-pod default agent: pre-select an agent for new conversations started in a project (pod).",
+    stage: "on_demand",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

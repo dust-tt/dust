@@ -4,6 +4,7 @@ import type {
   PatchPodMetadataResponseBody,
 } from "@app/lib/api/projects/metadata";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
+import { getFeatureFlags } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import {
   launchOrSignalProjectTodoWorkflow,
@@ -76,6 +77,9 @@ app.patch(
 
     const body = ctx.req.valid("json");
 
+    const featureFlags = await getFeatureFlags(auth);
+    const defaultAgentEnabled = featureFlags.includes("pod_default_agent");
+
     if (body.pinnedFramePath !== undefined) {
       const validation = await validatePinnedFramePath(
         auth,
@@ -95,7 +99,8 @@ app.patch(
 
     // Validate the default agent exists and is usable (handles both global agents like
     // "claude-4.5-sonnet" and workspace agents). A null value clears the default (@dust).
-    if (body.defaultAgentSId) {
+    // Gated behind the pod_default_agent feature flag.
+    if (defaultAgentEnabled && body.defaultAgentSId) {
       const agent = await getAgentConfiguration(auth, {
         agentId: body.defaultAgentSId,
         variant: "extra_light",
@@ -128,7 +133,9 @@ app.patch(
         todoGenerationEnabled: body.todoGenerationEnabled ?? false,
         initialTodoAnalysisLookback: body.initialTodoAnalysisLookback ?? null,
         pinnedFramePath: body.pinnedFramePath ?? null,
-        defaultAgentSId: body.defaultAgentSId ?? null,
+        defaultAgentSId: defaultAgentEnabled
+          ? (body.defaultAgentSId ?? null)
+          : null,
       });
       if (!body.archive) {
         void launchOrSignalProjectTodoWorkflow({
@@ -175,7 +182,7 @@ app.patch(
       if (body.pinnedFramePath !== undefined) {
         await metadata.updatePinnedFramePath(body.pinnedFramePath);
       }
-      if (body.defaultAgentSId !== undefined) {
+      if (defaultAgentEnabled && body.defaultAgentSId !== undefined) {
         await metadata.updateDefaultAgentSId(body.defaultAgentSId);
       }
       if (body.todoGenerationEnabled === true && !priorTodoGenerationEnabled) {

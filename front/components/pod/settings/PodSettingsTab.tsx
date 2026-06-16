@@ -7,6 +7,7 @@ import { SuggestedTasksGenerationTile } from "@app/components/pod/settings/Sugge
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useArchivePod } from "@app/hooks/useArchivePod";
 import type { RichSpaceType } from "@app/lib/api/spaces";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useCheckPodName,
@@ -64,6 +65,8 @@ export function PodSettingsTab({
   const [searchSelectedMembers, setSearchSelectedMembers] = useState("");
 
   const confirm = useContext(ConfirmContext);
+  const { hasFeature } = useFeatureFlags();
+  const isDefaultAgentEnabled = hasFeature("pod_default_agent");
 
   const { podMetadata, isPodMetadataLoading } = usePodMetadata({
     workspaceId: owner.sId,
@@ -328,66 +331,68 @@ export function PodSettingsTab({
           </div>
         </div>
 
-        <div className="flex w-full flex-col gap-2">
-          <div className="heading-lg">Default agent</div>
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            The agent pre-selected when anyone starts a new conversation in this
-            Pod. Defaults to @dust.
-          </p>
-          <div className="flex items-center gap-2">
-            {isPodEditor ? (
-              <AgentPicker
-                owner={owner}
-                agents={agentConfigurations}
-                showFooterButtons={false}
-                onItemClick={(agent) => saveDefaultAgent(agent.sId)}
-                pickerButton={
-                  <Button
-                    variant="outline"
-                    isSelect
-                    className="w-fit"
-                    icon={
-                      displayedDefaultAgent
-                        ? () => (
-                            <Avatar
-                              size="xs"
-                              visual={displayedDefaultAgent.pictureUrl}
-                            />
-                          )
-                        : Robot
-                    }
-                    label={displayedDefaultAgent?.name ?? "Dust"}
-                  />
-                }
-              />
-            ) : (
-              <Button
-                variant="outline"
-                disabled
-                className="w-fit"
-                icon={
-                  displayedDefaultAgent
-                    ? () => (
-                        <Avatar
-                          size="xs"
-                          visual={displayedDefaultAgent.pictureUrl}
-                        />
-                      )
-                    : Robot
-                }
-                label={displayedDefaultAgent?.name ?? "Dust"}
-              />
-            )}
-            {isPodEditor && podMetadata?.defaultAgentSId && (
-              <Button
-                variant="ghost"
-                size="sm"
-                label="Reset to default"
-                onClick={() => saveDefaultAgent(null)}
-              />
-            )}
+        {isDefaultAgentEnabled && (
+          <div className="flex w-full flex-col gap-2">
+            <div className="heading-lg">Default agent</div>
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              The agent pre-selected when anyone starts a new conversation in
+              this Pod. Defaults to @dust.
+            </p>
+            <div className="flex items-center gap-2">
+              {isPodEditor ? (
+                <AgentPicker
+                  owner={owner}
+                  agents={agentConfigurations}
+                  showFooterButtons={false}
+                  onItemClick={(agent) => saveDefaultAgent(agent.sId)}
+                  pickerButton={
+                    <Button
+                      variant="outline"
+                      isSelect
+                      className="w-fit"
+                      icon={
+                        displayedDefaultAgent
+                          ? () => (
+                              <Avatar
+                                size="xs"
+                                visual={displayedDefaultAgent.pictureUrl}
+                              />
+                            )
+                          : Robot
+                      }
+                      label={displayedDefaultAgent?.name ?? "Dust"}
+                    />
+                  }
+                />
+              ) : (
+                <Button
+                  variant="outline"
+                  disabled
+                  className="w-fit"
+                  icon={
+                    displayedDefaultAgent
+                      ? () => (
+                          <Avatar
+                            size="xs"
+                            visual={displayedDefaultAgent.pictureUrl}
+                          />
+                        )
+                      : Robot
+                  }
+                  label={displayedDefaultAgent?.name ?? "Dust"}
+                />
+              )}
+              {isPodEditor && podMetadata?.defaultAgentSId && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  label="Reset to default"
+                  onClick={() => saveDefaultAgent(null)}
+                />
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="flex w-full flex-col gap-2">
           <div className="flex flex-col border-y border-border">

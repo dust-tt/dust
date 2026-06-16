@@ -12,6 +12,7 @@ import type { PodConversationListFilter } from "@app/hooks/conversations/usePodC
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSearchPodConversations } from "@app/hooks/useSearchPodConversations";
 import type { GetSpaceResponseBody } from "@app/lib/api/spaces";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import { useAppRouter } from "@app/lib/platform";
 import { usePodMetadata } from "@app/lib/swr/pods";
@@ -87,6 +88,7 @@ export function PodConversationsTab({
   onNavigateToTasks,
 }: PodConversationsTabProps) {
   const { isEditor } = podInfo;
+  const { hasFeature } = useFeatureFlags();
   const router = useAppRouter();
   const hasHistory = useMemo(() => conversations.length > 0, [conversations]);
 
@@ -205,7 +207,11 @@ export function PodConversationsTab({
                 space={podInfo}
                 disableAutoFocus={false}
                 placeholder={`Get work done in ${podInfo.name}`}
-                defaultAgentSId={podMetadata?.defaultAgentSId ?? null}
+                defaultAgentSId={
+                  hasFeature("pod_default_agent")
+                    ? (podMetadata?.defaultAgentSId ?? null)
+                    : null
+                }
                 isDefaultAgentLoading={isPodMetadataLoading}
               />
             ) : (
