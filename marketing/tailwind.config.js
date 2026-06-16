@@ -1,35 +1,20 @@
 /** @type {import('tailwindcss').Config} */
-const colors = require("tailwindcss/colors");
 const preset = require("@dust-tt/sparkle/tailwind-preset");
 
 module.exports = {
   presets: [preset],
-  // DO NOT EXTEND THIS LIST. Tailwind scans these paths to find class names —
-  // anything outside them won't get its utilities emitted (e.g. a bare `pl-6`
-  // used in a file under `lib/` would silently fail to render). React/JSX
-  // belongs in `components/` or `pages/`; if you're tempted to add another
-  // root here, the file is in the wrong place and should be moved instead.
-  content: [
-    "./pages/**/*.{js,ts,jsx,tsx}",
-    "./components/**/*.{js,ts,jsx,tsx}",
-  ],
   theme: {
     extend: {
       fontWeight: {
         medium: "450",
         semibold: "550",
       },
-      containers: {
-        xxxs: "16rem",
+      minWidth: {
+        ...preset.sizeScale,
       },
-      minWidth: (theme) => ({
-        ...theme("spacing"),
+      minHeight: {
         ...preset.sizeScale,
-      }),
-      minHeight: (theme) => ({
-        ...theme("spacing"),
-        ...preset.sizeScale,
-      }),
+      },
       maxWidth: {
         48: "12rem",
         ...preset.sizeScale,
@@ -41,8 +26,8 @@ module.exports = {
       colors: {
         border: {
           darker: {
-            DEFAULT: colors.gray[150],
-            night: colors.gray[800],
+            DEFAULT: "var(--color-gray-150)",
+            night: "var(--color-gray-800)",
           },
         },
       },
@@ -93,10 +78,4 @@ module.exports = {
       },
     },
   },
-  safelist: [
-    ...preset.buildSafelist({ avatarProps: "(bg|text)" }),
-    "grid-rows-6",
-    "grid-rows-7",
-    "grid-rows-8",
-  ],
 };

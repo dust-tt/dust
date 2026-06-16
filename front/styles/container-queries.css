@@ -1,0 +1,37 @@
+/* Shared container query breakpoints — canonical source of truth.
+   NOTE: @tailwindcss/postcss does NOT resolve @custom-variant from @import'ed files,
+   so every CSS entry point must inline these definitions. When adding or changing
+   variants here, update ALL CSS entry points:
+   - front/styles/components.css
+   - front-spa/src/index.css
+   - extension/ui/css/components.css
+   - sparkle/src/styles/tailwind.css
+   - marketing/styles/components.css
+   - viz/app/styles/globals.css */
+
+/* Anonymous container variants — match the nearest ancestor with container-type set. */
+@custom-variant @xxxs (@container (width >= 16rem));
+@custom-variant @xxs (@container (width >= 24rem));
+@custom-variant @xs (@container (width >= 32rem));
+@custom-variant @sm (@container (width >= 40rem));
+@custom-variant @md (@container (width >= 48rem));
+@custom-variant @lg (@container (width >= 64rem));
+@custom-variant @xl (@container (width >= 80rem));
+
+/* Named-container variants. The anonymous variants above cannot carry a /<name>
+   modifier — Tailwind v4 silently drops utilities like @sm/conversation:*. So bake
+   the container name into the variant and target it with @<size>-<name>:*. */
+@custom-variant @xxxs-conversation (@container conversation (width >= 16rem));
+@custom-variant @xxs-conversation (@container conversation (width >= 24rem));
+@custom-variant @xs-conversation (@container conversation (width >= 32rem));
+@custom-variant @sm-conversation (@container conversation (width >= 40rem));
+@custom-variant @md-conversation (@container conversation (width >= 48rem));
+@custom-variant @lg-conversation (@container conversation (width >= 64rem));
+@custom-variant @xl-conversation (@container conversation (width >= 80rem));
+@custom-variant @xxxs-table (@container table (width >= 16rem));
+@custom-variant @xxs-table (@container table (width >= 24rem));
+@custom-variant @xs-table (@container table (width >= 32rem));
+@custom-variant @sm-table (@container table (width >= 40rem));
+@custom-variant @md-table (@container table (width >= 48rem));
+@custom-variant @lg-table (@container table (width >= 64rem));
+@custom-variant @xl-table (@container table (width >= 80rem));

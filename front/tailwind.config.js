@@ -1,13 +1,8 @@
 /** @type {import('tailwindcss').Config} */
-const colors = require("tailwindcss/colors");
 const preset = require("@dust-tt/sparkle/tailwind-preset");
 
 module.exports = {
   presets: [preset],
-  content: [
-    "./pages/**/*.{js,ts,jsx,tsx}",
-    "./components/**/*.{js,ts,jsx,tsx}",
-  ],
   theme: {
     extend: {
       height: {
@@ -18,17 +13,12 @@ module.exports = {
         medium: "450",
         semibold: "550",
       },
-      containers: {
-        xxxs: "16rem",
+      minWidth: {
+        ...preset.sizeScale,
       },
-      minWidth: (theme) => ({
-        ...theme("spacing"),
+      minHeight: {
         ...preset.sizeScale,
-      }),
-      minHeight: (theme) => ({
-        ...theme("spacing"),
-        ...preset.sizeScale,
-      }),
+      },
       maxWidth: {
         48: "12rem",
         ...preset.sizeScale,
@@ -41,8 +31,8 @@ module.exports = {
         // Legacy duplicate of `border.dark` kept while callers migrate off.
         border: {
           darker: {
-            DEFAULT: colors.gray[150],
-            night: colors.gray[800],
+            DEFAULT: "var(--color-gray-150)",
+            night: "var(--color-gray-800)",
           },
         },
       },
@@ -143,10 +133,4 @@ module.exports = {
       },
     },
   },
-  safelist: [
-    ...preset.buildSafelist({ avatarProps: "(bg|text)" }),
-    "grid-rows-6",
-    "grid-rows-7",
-    "grid-rows-8",
-  ],
 };
