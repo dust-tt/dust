@@ -110,7 +110,7 @@ app.patch(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Agent "${body.defaultAgentId}" was not found or is not usable in this workspace.`,
+            message: `Agent "${body.defaultAgentId}" was not found or is not usable by the authenticated user.`,
           },
         });
       }

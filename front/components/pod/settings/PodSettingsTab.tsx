@@ -25,10 +25,13 @@ import {
   Archive,
   Avatar,
   Button,
+  ChevronDown,
   ContentMessage,
+  cn,
   Globe01,
+  Icon,
+  InfoCircle,
   Input,
-  Robot,
   ScrollArea,
   SearchInput,
   SliderToggle,
@@ -80,18 +83,34 @@ export function PodSettingsTab({
   // Default agent for new conversations started in this pod. Stored on pod metadata
   // (shared across pod members). Resolved downstream in `useHandleMentions`, falling
   // back to @dust.
-  const { agentConfigurations } = useUnifiedAgentConfigurations({
-    workspaceId: owner.sId,
-  });
+  const { agentConfigurations, isLoading: isAgentConfigurationsLoading } =
+    useUnifiedAgentConfigurations({
+      workspaceId: owner.sId,
+    });
+  const dustAgent =
+    agentConfigurations.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST) ?? null;
+  // Fall back to @dust when the pod's configured default agent isn't available
+  // to the current user (e.g. unpublished/deleted). This is the agent shown in
+  // the input bar and pod settings.
   const displayedDefaultAgent =
-    agentConfigurations.find(
-      (a) => a.sId === (podMetadata?.defaultAgentId || GLOBAL_AGENTS_SID.DUST)
-    ) ?? null;
+    (podMetadata?.defaultAgentId &&
+      agentConfigurations.find((a) => a.sId === podMetadata.defaultAgentId)) ||
+    dustAgent;
+  // The configured default may be an agent the current user can't access (e.g.
+  // an unpublished agent). `agentConfigurations` only contains viewable agents,
+  // so when the stored default is missing it falls back to @dust for this user.
+  // Surface the same notice as the conversations input bar.
+  const isDefaultAgentUnavailable =
+    !isAgentConfigurationsLoading &&
+    !isPodMetadataLoading &&
+    !!podMetadata?.defaultAgentId &&
+    podMetadata.defaultAgentId !== GLOBAL_AGENTS_SID.DUST &&
+    !agentConfigurations.some((a) => a.sId === podMetadata.defaultAgentId);
   const saveDefaultAgent = useCallback(
-    async (agentId: string | null) => {
-      // Warn about the implications of using another default agentbefore switching.
-      // Resetting back to @dust needs no confirmation.
-      if (agentId && agentId !== GLOBAL_AGENTS_SID.DUST) {
+    async (agentId: string) => {
+      // Warn about the implications of using another default agent before switching.
+      // Selecting @dust stores its sId (never null) and needs no confirmation.
+      if (agentId !== GLOBAL_AGENTS_SID.DUST) {
         const confirmed = await confirm({
           title: "Warning",
           message:
@@ -107,6 +126,58 @@ export function PodSettingsTab({
       await doUpdateMetadata({ defaultAgentId: agentId });
     },
     [confirm, doUpdateMetadata]
+  );
+
+  // Trigger pill for the default agent, mirroring the conversations input bar:
+  // @dust logo + name, with the warning icon + tooltip inline when the
+  // configured agent isn't viewable by the current user. `interactive` is true
+  // when used as the AgentPicker dropdown trigger (pod editors).
+  const renderDefaultAgentPill = (interactive: boolean) => (
+    <div
+      role="button"
+      tabIndex={interactive ? 0 : -1}
+      aria-label={`Default agent: ${displayedDefaultAgent?.name ?? "Dust"}`}
+      aria-disabled={!interactive}
+      className={cn(
+        "inline-flex box-border w-fit items-center rounded-xl h-9 px-3 gap-2 border border-border dark:border-border-night bg-background dark:bg-background-night text-sm text-primary dark:text-primary-night transition-colors duration-200",
+        interactive
+          ? "cursor-pointer hover:bg-primary-100 hover:border-primary-150 dark:hover:bg-primary-900 dark:hover:border-border-night"
+          : "opacity-50 pointer-events-none"
+      )}
+    >
+      <Avatar size="xs" visual={displayedDefaultAgent?.pictureUrl} />
+      <span className="grow truncate notranslate">
+        {displayedDefaultAgent?.name ?? "Dust"}
+      </span>
+      {isDefaultAgentUnavailable && (
+        <Tooltip
+          tooltipTriggerAsChild
+          trigger={
+            <span
+              className="flex items-center text-warning dark:text-warning-night"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+            >
+              <Icon visual={InfoCircle} size="xs" />
+            </span>
+          }
+          label="This Pod's default agent isn't available to you, so @dust is used instead. Contact the editor of the pod for more information."
+        />
+      )}
+      {interactive && (
+        <Icon
+          visual={ChevronDown}
+          size="xs"
+          className="-mr-1 text-faint dark:text-faint-night"
+        />
+      )}
+    </div>
   );
 
   const [podName, setPodName] = useState(pod.name);
@@ -345,50 +416,10 @@ export function PodSettingsTab({
                   agents={agentConfigurations}
                   showFooterButtons={false}
                   onItemClick={(agent) => saveDefaultAgent(agent.sId)}
-                  pickerButton={
-                    <Button
-                      variant="outline"
-                      isSelect
-                      className="w-fit"
-                      icon={
-                        displayedDefaultAgent
-                          ? () => (
-                              <Avatar
-                                size="xs"
-                                visual={displayedDefaultAgent.pictureUrl}
-                              />
-                            )
-                          : Robot
-                      }
-                      label={displayedDefaultAgent?.name ?? "Dust"}
-                    />
-                  }
+                  pickerButton={renderDefaultAgentPill(true)}
                 />
               ) : (
-                <Button
-                  variant="outline"
-                  disabled
-                  className="w-fit"
-                  icon={
-                    displayedDefaultAgent
-                      ? () => (
-                          <Avatar
-                            size="xs"
-                            visual={displayedDefaultAgent.pictureUrl}
-                          />
-                        )
-                      : Robot
-                  }
-                  label={displayedDefaultAgent?.name ?? "Dust"}
-                />
-              )}
-              {isPodEditor && podMetadata?.defaultAgentId && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  label="Reset to default"
-                  onClick={() => saveDefaultAgent(null)}
-                />
+                renderDefaultAgentPill(false)
               )}
             </div>
           </div>
