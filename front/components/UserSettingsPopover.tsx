@@ -168,9 +168,23 @@ function UsageSection({ owner, onClose }: UsageSectionProps) {
     0,
     totalActiveCredits - totalRemainingCredits
   );
-  const consumedPercentage =
+  const workspaceConsumedPercentage =
     totalActiveCredits > 0
       ? Math.min((totalConsumedCredits / totalActiveCredits) * 100, 100)
+      : 0;
+
+  // User-level usage: prefer the total spend cap when set, otherwise use the
+  // seat allocation. The numerator must match the denominator choice.
+  const userLimit =
+    myUsage?.spendLimitAwuCredits ?? myUsage?.memberUsageLimit ?? null;
+  const userConsumed =
+    myUsage?.spendLimitAwuCredits != null
+      ? myUsage.consumedAwuCredits
+      : (myUsage?.consumedFromAllowanceAwuCredits ?? 0);
+  const hasPersonalUsage = userLimit !== null;
+  const userConsumedPercentage =
+    hasPersonalUsage && userLimit > 0
+      ? Math.min((userConsumed / userLimit) * 100, 100)
       : 0;
 
   return (
@@ -207,49 +221,54 @@ function UsageSection({ owner, onClose }: UsageSectionProps) {
           </p>
         ) : (
           <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-foreground dark:text-foreground-night">
-                Workspace Credits Pool
-              </span>
-              <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                {formatCredits(totalConsumedCredits)} /{" "}
-                {formatCredits(totalActiveCredits)}
-              </span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10 dark:bg-muted-foreground-night/10">
-              <div
-                className="h-full bg-highlight transition-all dark:bg-highlight-night"
-                style={{ width: `${consumedPercentage}%` }}
-              />
-            </div>
-            <div className="flex items-center justify-between text-xs text-muted-foreground dark:text-muted-foreground-night">
-              {overageCredits !== null && overageCredits > 0 ? (
-                <span>{formatCredits(overageCredits)} overage credits</span>
-              ) : (
-                <span />
-              )}
-            </div>
-            {myUsage && myUsage.memberUsageLimit !== null && (
+            {hasPersonalUsage && userLimit !== null ? (
               <>
-                <Separator />
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col gap-0.5">
-                    <span className="flex items-center gap-1.5 text-sm font-medium text-foreground dark:text-foreground-night">
-                      <User01 className="h-3.5 w-3.5" />
-                      Personal Credit
+                    <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+                      Your Credits
                     </span>
                     {billingCycleStartDay !== null && (
                       <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                        Every {ordinalDay(billingCycleStartDay)} of the month
+                        Resets every {ordinalDay(billingCycleStartDay)} of the
+                        month
                       </span>
                     )}
                   </div>
-                  <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-                    {formatCredits(myUsage.consumedFromAllowanceAwuCredits)}
-                    <span className="font-medium">
-                      /{formatCredits(myUsage.memberUsageLimit)}
-                    </span>
+                  <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                    {formatCredits(userConsumed)} / {formatCredits(userLimit)}
                   </span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10 dark:bg-muted-foreground-night/10">
+                  <div
+                    className="h-full bg-highlight transition-all dark:bg-highlight-night"
+                    style={{ width: `${userConsumedPercentage}%` }}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-foreground dark:text-foreground-night">
+                    Workspace Credits Pool
+                  </span>
+                  <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                    {formatCredits(totalConsumedCredits)} /{" "}
+                    {formatCredits(totalActiveCredits)}
+                  </span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10 dark:bg-muted-foreground-night/10">
+                  <div
+                    className="h-full bg-highlight transition-all dark:bg-highlight-night"
+                    style={{ width: `${workspaceConsumedPercentage}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-xs text-muted-foreground dark:text-muted-foreground-night">
+                  {overageCredits !== null && overageCredits > 0 ? (
+                    <span>{formatCredits(overageCredits)} overage credits</span>
+                  ) : (
+                    <span />
+                  )}
                 </div>
               </>
             )}
