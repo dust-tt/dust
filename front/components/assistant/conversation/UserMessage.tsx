@@ -240,6 +240,9 @@ export function UserMessage({
     .filter((m) => isUserMessage(m) && m.visibility === "pending").length;
   const isEmpty = !message.content;
   const isCurrentUser = message.user?.sId === currentUserId;
+  const hasCitations = (citations?.length ?? 0) > 0;
+  const shouldHideMessageContent =
+    isEmpty && hasCitations && !isDeleted && !isPending;
   const canDelete =
     (isCurrentUser || isAdmin) && !isDeleted && !isProjectArchived;
   const canEdit = isCurrentUser && !isDeleted && !isProjectArchived;
@@ -398,6 +401,7 @@ export function UserMessage({
                 type="user"
                 className={cn(shouldShowBiggerUserMessage && "@sm:min-w-100")}
                 reversed={isCurrentUser}
+                showContent={!shouldHideMessageContent}
               >
                 <div
                   className={cn(
