@@ -29,7 +29,7 @@ import {
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
-import { INTERNAL_MIME_TYPES } from "@connectors/types";
+import { INTERNAL_MIME_TYPES, stripNullBytes } from "@connectors/types";
 export async function deleteTeamAndConversations({
   connectorId,
   dataSourceConfig,
@@ -218,7 +218,9 @@ export async function syncConversation({
 
   // Building the markdown content for the conversation
   let markdown = "";
-  let convoTitle = conversation.title;
+  let convoTitle = conversation.title
+    ? stripNullBytes(conversation.title)
+    : null;
 
   if (!convoTitle) {
     const formattedDate = createdAtDate.toLocaleDateString("en-US", {
@@ -230,34 +232,38 @@ export async function syncConversation({
   }
   const customAttributes = conversation.custom_attributes;
   const tags = conversation.tags?.tags ?? [];
-  const tagsAsString = tags.map((tag: IntercomTagType) => tag.name).join(", ");
+  const tagsAsString = tags
+    .map((tag: IntercomTagType) => stripNullBytes(tag.name))
+    .join(", ");
   const source = conversation.source?.type ?? null;
   const firstMessageAuthor = conversation.source?.author ?? null;
   const firstMessageContent = conversation.source?.body
-    ? htmlToMarkdown(conversation.source.body)
+    ? stripNullBytes(htmlToMarkdown(conversation.source.body))
     : null;
 
   markdown += `# ${convoTitle}\n\n`;
   markdown += `**TAGS: ${tagsAsString ?? "no tags"}**\n`;
   markdown += `**SOURCE: ${source || "unknown"}**\n`;
-  markdown += `**CUSTOM ATTRIBUTES: ${JSON.stringify(customAttributes)}**\n\n`;
+  markdown += `**CUSTOM ATTRIBUTES: ${stripNullBytes(JSON.stringify(customAttributes))}**\n\n`;
 
   if (firstMessageAuthor && firstMessageContent) {
-    markdown += `**[Message] ${firstMessageAuthor.name} (${firstMessageAuthor.type})**\n`;
+    markdown += `**[Message] ${stripNullBytes(firstMessageAuthor.name)} (${firstMessageAuthor.type})**\n`;
     markdown += `${firstMessageContent}\n\n`;
   }
 
   conversation.conversation_parts.conversation_parts.forEach(
     (part: ConversationPartType) => {
       const messageAuthor = part.author;
-      const messageContent = part.body ? htmlToMarkdown(part.body) : null;
+      const messageContent = part.body
+        ? stripNullBytes(htmlToMarkdown(part.body))
+        : null;
       const type = part.part_type === "note" ? "Internal note" : "Message";
 
       const shouldSync =
         part.part_type !== "note" || intercomWorkspace.shouldSyncNotes;
 
       if (messageContent && shouldSync) {
-        markdown += `**[${type}] ${messageAuthor.name} (${messageAuthor.type})**\n`;
+        markdown += `**[${type}] ${stripNullBytes(messageAuthor.name)} (${messageAuthor.type})**\n`;
         markdown += `${messageContent}\n\n`;
       }
     }
@@ -270,7 +276,7 @@ export async function syncConversation({
 
   const renderedPage = await renderDocumentTitleAndContent({
     dataSourceConfig,
-    title: conversation.title,
+    title: convoTitle,
     content: renderedMarkdown,
     createdAt: createdAtDate,
     updatedAt: updatedAtDate,
@@ -295,13 +301,13 @@ export async function syncConversation({
       typeof value === "number" ||
       typeof value === "boolean"
     ) {
-      systemTags.push(`attribute:${name}:${value}`);
+      systemTags.push(stripNullBytes(`attribute:${name}:${value}`));
     }
   });
 
   const customTags: string[] = [];
   tags.forEach((tag) => {
-    customTags.push(`tag:${tag.name}`);
+    customTags.push(stripNullBytes(`tag:${tag.name}`));
   });
 
   const datasourceTags = [
