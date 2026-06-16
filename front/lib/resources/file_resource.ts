@@ -659,7 +659,9 @@ export class FileResource extends BaseResource<FileModel> {
       return "original";
     }
 
-    return hasProcessedVersion(this.contentType, this.useCase) ? "processed" : "original";
+    return hasProcessedVersion(this.contentType, this.useCase)
+      ? "processed"
+      : "original";
   }
 
   /**
@@ -1330,7 +1332,10 @@ export class FileResource extends BaseResource<FileModel> {
     // Only delete processed mount file if this file type has real processing.
     const processedMountPath = makeProcessedMountFileName({
       mountFilePath: gcsMountFilePath,
-      processedContentType: getProcessedContentType(this.contentType, this.useCase),
+      processedContentType: getProcessedContentType(
+        this.contentType,
+        this.useCase
+      ),
     });
     await bucket.delete(processedMountPath, { ignoreNotFound: true });
 
