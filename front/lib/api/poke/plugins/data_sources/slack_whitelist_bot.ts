@@ -28,6 +28,7 @@ export const slackIndexBotMessagesPlugin = createPlugin({
         description: "Name of the Slack bot or workflow to whitelist",
       },
     },
+    requiredRoles: ["support"],
   },
   isApplicableTo: (_auth, resource) => {
     if (!resource) {
@@ -102,6 +103,7 @@ export const slackWhitelistBotPlugin = createPlugin({
         multiple: true,
       },
     },
+    requiredRoles: ["support"],
   },
   isApplicableTo: (_auth, resource) => {
     if (!resource) {

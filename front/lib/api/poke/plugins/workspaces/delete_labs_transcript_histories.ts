@@ -28,6 +28,7 @@ export const deleteLabsTranscriptHistoriesPlugin = createPlugin({
         values: [],
       },
     },
+    requiredRoles: ["support"],
   },
   populateAsyncArgs: async (auth) => {
     const workspace = auth.getNonNullableWorkspace();

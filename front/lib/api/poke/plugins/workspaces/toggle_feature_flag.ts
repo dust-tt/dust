@@ -31,6 +31,7 @@ export const toggleFeatureFlagPlugin = createPlugin({
         multiple: true,
       },
     },
+    requiredRoles: ["engineering"],
   },
   populateAsyncArgs: async (auth) => {
     const workspace = auth.getNonNullableWorkspace();

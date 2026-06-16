@@ -142,6 +142,7 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
         dependsOn: { field: "isFreeCredit", value: false },
       },
     },
+    requiredRoles: ["billing"],
   },
   isApplicableTo: (auth) => {
     const plan = auth.plan();

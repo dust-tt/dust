@@ -25,6 +25,7 @@ export const createSpacePlugin = createPlugin({
         description: "Ignore workspace limit",
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, _, args) => {
     const { name, isRestricted } = args;

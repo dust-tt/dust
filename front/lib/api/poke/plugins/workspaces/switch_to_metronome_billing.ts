@@ -111,6 +111,7 @@ export const switchToMetronomeBillingPlugin = createPlugin({
       "Cancels the Stripe subscription immediately (no proration invoice) and enables Metronome as the billing provider.",
     resourceTypes: ["workspaces"],
     args: {},
+    requiredRoles: ["billing"],
   },
   execute: async (auth) => {
     return switchWorkspaceToMetronomeBilling(auth);

@@ -15,6 +15,7 @@ export const resetMessageRateLimitPlugin = createPlugin({
         description: "Confirm you want to reset the message rate limit",
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, resource, args) => {
     const subscription = auth.subscription();

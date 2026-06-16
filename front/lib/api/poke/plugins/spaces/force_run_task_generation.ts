@@ -16,6 +16,7 @@ export const forceRunTaskGenerationPlugin = createPlugin({
         description: "Reason for forcing a task generation run",
       },
     },
+    requiredRoles: ["support"],
   },
   isApplicableTo: (_auth, space) => space?.isProject() ?? false,
   execute: async (auth, space, args) => {

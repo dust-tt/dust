@@ -57,6 +57,7 @@ export const resetProvisionedMembersNotInDirectoryPlugin = createPlugin({
           "If disabled, will only show what members would be reset without actually updating them",
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, _, args) => {
     const workspace = auth.getNonNullableWorkspace();

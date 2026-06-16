@@ -48,6 +48,7 @@ export const manageProgrammaticMonthlyCapPlugin = createPlugin({
         async: true,
       },
     },
+    requiredRoles: ["billing"],
   },
 
   // Programmatic cap alerts are AWU-credit based: only meaningful on

@@ -38,6 +38,7 @@ export const auditLogsKillSwitchPlugin = createPlugin({
         multiple: false,
       },
     },
+    requiredRoles: ["engineering"],
   },
   execute: async (auth, workspace, args) => {
     if (!workspace) {

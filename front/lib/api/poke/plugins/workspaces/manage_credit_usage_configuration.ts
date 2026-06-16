@@ -65,6 +65,7 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
         async: true,
       },
     },
+    requiredRoles: ["billing"],
   },
 
   isApplicableTo: (auth) => {

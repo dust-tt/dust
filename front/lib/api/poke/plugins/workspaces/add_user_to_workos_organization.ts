@@ -20,6 +20,7 @@ export const addUserToWorkOSOrganization = createPlugin({
         description: "Email of the user to add to the WorkOS organization",
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, _, args) => {
     const workspace = auth.getNonNullableWorkspace();

@@ -13,6 +13,7 @@ export const notionUpdateOrphanedParents = createPlugin({
       "Update the parents of all orphaned resources of a notion connector.",
     resourceTypes: ["data_sources"],
     args: {},
+    requiredRoles: ["support"],
   },
   isApplicableTo: (auth, dataSource) => {
     if (!dataSource) {
