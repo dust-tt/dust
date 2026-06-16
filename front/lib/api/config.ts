@@ -462,6 +462,12 @@ const config = {
   getContentfulAccessToken: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("CONTENTFUL_ACCESS_TOKEN");
   },
+  getContentfulEnvironment: (): string => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("CONTENTFUL_ENVIRONMENT") ??
+      "master"
+    );
+  },
   getContentfulPreviewSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable(
       "CONTENTFUL_PREVIEW_SECRET"

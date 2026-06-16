@@ -30,7 +30,7 @@ function getClient() {
     client = createClient({
       space: spaceId,
       accessToken,
-      environment: process.env.CONTENTFUL_ENVIRONMENT ?? "master",
+      environment: config.getContentfulEnvironment(),
     });
   }
   return client.withoutUnresolvableLinks;
