@@ -327,7 +327,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   pod_default_agent: {
     description:
       "Per-pod default agent: pre-select an agent for new conversations started in a project (pod).",
-    stage: "on_demand",
+    stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;
 
