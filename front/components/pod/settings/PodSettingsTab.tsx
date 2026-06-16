@@ -107,10 +107,10 @@ export function PodSettingsTab({
     podMetadata.defaultAgentId !== GLOBAL_AGENTS_SID.DUST &&
     !agentConfigurations.some((a) => a.sId === podMetadata.defaultAgentId);
   const saveDefaultAgent = useCallback(
-    async (agentId: string) => {
-      // Warn about the implications of using another default agent before switching.
-      // Selecting @dust stores its sId (never null) and needs no confirmation.
-      if (agentId !== GLOBAL_AGENTS_SID.DUST) {
+    async (agentId: string | null) => {
+      // Warn about the implications of using another default agentbefore switching.
+      // Resetting back to @dust needs no confirmation.
+      if (agentId && agentId !== GLOBAL_AGENTS_SID.DUST) {
         const confirmed = await confirm({
           title: "Warning",
           message:
@@ -129,9 +129,6 @@ export function PodSettingsTab({
   );
 
   // Trigger pill for the default agent, mirroring the conversations input bar:
-  // @dust logo + name, with the warning icon + tooltip inline when the
-  // configured agent isn't viewable by the current user. `interactive` is true
-  // when used as the AgentPicker dropdown trigger (pod editors).
   const renderDefaultAgentPill = (interactive: boolean) => (
     <div
       role="button"
