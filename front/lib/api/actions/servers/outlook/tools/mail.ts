@@ -64,6 +64,21 @@ async function fetchAttachment(
   return new Ok({ buffer, filename, contentType });
 }
 
+// Builds the Microsoft Graph fileAttachment payload shared by the direct-send
+// (inline) and draft (POST /attachments) paths.
+function buildFileAttachmentPayload(attachment: {
+  buffer: Buffer;
+  filename: string;
+  contentType: string;
+}): Record<string, unknown> {
+  return {
+    "@odata.type": "#microsoft.graph.fileAttachment",
+    name: sanitizeFilename(attachment.filename),
+    contentType: attachment.contentType,
+    contentBytes: attachment.buffer.toString("base64"),
+  };
+}
+
 const DEFAULT_MESSAGE_FIELDS = [
   "id",
   "conversationId",
@@ -575,12 +590,7 @@ async function createOutlookDraft({
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          "@odata.type": "#microsoft.graph.fileAttachment",
-          name: sanitizeFilename(attachment.filename),
-          contentType: attachment.contentType,
-          contentBytes: attachment.buffer.toString("base64"),
-        }),
+        body: JSON.stringify(buildFileAttachmentPayload(attachment)),
       }
     );
 
@@ -654,14 +664,7 @@ async function sendDirectMail({
     }));
   }
   if (attachment) {
-    message.attachments = [
-      {
-        "@odata.type": "#microsoft.graph.fileAttachment",
-        name: sanitizeFilename(attachment.filename),
-        contentType: attachment.contentType,
-        contentBytes: attachment.buffer.toString("base64"),
-      },
-    ];
+    message.attachments = [buildFileAttachmentPayload(attachment)];
   }
 
   const response = await fetchFromOutlook(`${basePath}/sendMail`, accessToken, {
