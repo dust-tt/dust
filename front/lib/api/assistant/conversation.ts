@@ -53,6 +53,7 @@ import {
   deriveAgentTriggerType,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
+import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
 import {
@@ -2484,6 +2485,13 @@ async function checkMessagesLimit(
         ? ("credits_exhausted" as const)
         : null;
     if (blockedReason === "no_seat") {
+      // If the workspace opted into auto-upgrades, try to assign a seat
+      // (none → workspace) so the member is unblocked on their next attempt.
+      // Fire-and-forget: it no-ops unless eligible, and we don't block this
+      // request on the Metronome seat sync.
+      if (user) {
+        void maybeAutoUpgradeSeat({ workspaceId: owner.sId, userId: user.sId });
+      }
       return new Err({
         status_code: 403,
         api_error: {

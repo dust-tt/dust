@@ -1,3 +1,4 @@
+import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
 import { fetchRemainingCapCreditsPercentageForUser } from "@app/lib/api/credits/members_usage";
 import { recalculatePerUserCapAlertForSeatChange } from "@app/lib/api/membership";
 import { getMembers } from "@app/lib/api/workspace";
@@ -146,6 +147,15 @@ export async function dispatchSeatBalanceExhausted({
       },
       "[CreditStateDispatcher] dispatchSeatBalanceExhausted: transition skipped"
     );
+    return;
+  }
+
+  // Free seats have no pool fallback, so an exhausted balance lands them in
+  // `capped`. If the workspace opted into auto-upgrades, bump their seat one
+  // tier (free → pro) so they stay unblocked. Pro/max seats fall back to the
+  // pool (`on_pool`) instead and are left alone here.
+  if (result.value === "capped") {
+    void maybeAutoUpgradeSeat({ workspaceId: workspace.sId, userId });
   }
 }
 
@@ -260,6 +270,13 @@ export async function dispatchPerUserCapReached({
   if (result.isErr()) {
     return result;
   }
+
+  // The member just hit their per-user cap. If the workspace opted into
+  // auto-upgrades, bump their seat one tier so they stay unblocked.
+  if (result.value === "capped") {
+    void maybeAutoUpgradeSeat({ workspaceId: workspace.sId, userId });
+  }
+
   return new Ok(undefined);
 }
 

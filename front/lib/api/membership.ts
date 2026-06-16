@@ -592,6 +592,7 @@ export async function updateMembershipSeatAndTrack({
   newSeatType,
   author,
   immediate = false,
+  skipSeatLimitCheck = false,
 }: {
   user: UserResource;
   workspace: LightWorkspaceType;
@@ -599,6 +600,10 @@ export async function updateMembershipSeatAndTrack({
   author: UserType | "no-author";
   // When true, skip billing-period scheduling and apply the change right now.
   immediate?: boolean;
+  // When true, bypass the per-seat-type hard cap. Used by the auto-seat-upgrade
+  // flow, which intentionally exceeds committed seat counts (making the
+  // subscription more expensive) to keep a capped member unblocked.
+  skipSeatLimitCheck?: boolean;
 }): Promise<
   Result<
     {
@@ -644,8 +649,13 @@ export async function updateMembershipSeatAndTrack({
   }
 
   // Enforce the per-seat-type hard cap. Assigning to `none` (removing a seat)
-  // is always allowed. Same-type noops are also allowed (no net change).
-  if (newSeatType !== "none" && newSeatType !== previousSeatType) {
+  // is always allowed. Same-type noops are also allowed (no net change). The
+  // auto-seat-upgrade flow skips this check on purpose.
+  if (
+    !skipSeatLimitCheck &&
+    newSeatType !== "none" &&
+    newSeatType !== previousSeatType
+  ) {
     const seatLimits = await WorkspaceSeatLimitResource.fetchByWorkspace({
       workspace,
     });
