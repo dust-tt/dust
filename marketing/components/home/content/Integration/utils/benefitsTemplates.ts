@@ -76,7 +76,7 @@ function buildSlot(
   slot: BenefitSlot,
   shape: ToolShape,
   partner: string,
-  alreadyUsed: Set<string>
+  alreadyUsed: ReadonlySet<string>
 ): BenefitCard | null {
   // Pull extra candidates so we can skip tools already used by earlier slots
   // (so the cards don't all show the same 3 search tools).
@@ -87,9 +87,6 @@ function buildSlot(
   const picked = fresh.slice(0, slot.maxTools);
   if (picked.length < slot.minTools) {
     return null;
-  }
-  for (const t of picked) {
-    alreadyUsed.add(t);
   }
   const base = slot.build(partner);
   return { ...base, toolMatches: picked };
@@ -103,6 +100,9 @@ function generateGenericBenefits(integration: IntegrationBase): BenefitCard[] {
     const card = buildSlot(slot, shape, integration.name, alreadyUsed);
     if (card) {
       cards.push(card);
+      for (const t of card.toolMatches) {
+        alreadyUsed.add(t);
+      }
     }
   }
   return cards;

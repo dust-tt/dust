@@ -1,3 +1,5 @@
+import { assertNever } from "@marketing/types/shared/utils/assert_never";
+
 import type { IntegrationTool } from "../types";
 
 // Token sets used to classify a tool by name. The lists are intentionally
@@ -150,19 +152,35 @@ export function pickToolsForIntent(
   intent: ToolIntent,
   count: number
 ): string[] {
-  const source: IntegrationTool[] =
-    intent === "read"
-      ? shape.readTools
-      : intent === "write"
-        ? shape.writeTools
-        : shape.summaryTools;
+  let source: IntegrationTool[];
+  switch (intent) {
+    case "read":
+      source = shape.readTools;
+      break;
+    case "write":
+      source = shape.writeTools;
+      break;
+    case "summary":
+      source = shape.summaryTools;
+      break;
+    default:
+      assertNever(intent);
+  }
 
-  const tokens: ReadonlyArray<string> =
-    intent === "read"
-      ? READ_TOKENS
-      : intent === "write"
-        ? WRITE_TOKENS
-        : SUMMARY_TOKENS;
+  let tokens: ReadonlyArray<string>;
+  switch (intent) {
+    case "read":
+      tokens = READ_TOKENS;
+      break;
+    case "write":
+      tokens = WRITE_TOKENS;
+      break;
+    case "summary":
+      tokens = SUMMARY_TOKENS;
+      break;
+    default:
+      assertNever(intent);
+  }
 
   // Sort a copy to respect [GEN5] (no mutation of params).
   const sorted = [...source].sort(
