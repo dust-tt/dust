@@ -33,6 +33,10 @@ import type { CreationOptional } from "sequelize";
  *   (API) AWU consumption, in AWU credits. Source of truth for the cap; the
  *   four Metronome programmatic alerts (cap/warning/low/critical) are derived
  *   from it. NULL means no cap is configured; 0 is a meaningful hard cap.
+ * - autoSeatUpgradeEnabled: Whether members who hit their per-user credit limit
+ *   are automatically bumped to the next entitled seat tier (free→pro, pro→max,
+ *   none→workspace) instead of being blocked. May increase the bill. Defaults to
+ *   false.
  *
  * The credit-cap-warning notification settings (whether to warn, and at which
  * balance) are NOT stored here: they are derived from the workspace's Metronome
@@ -49,6 +53,7 @@ export class CreditUsageConfigurationModel extends WorkspaceAwareModel<CreditUsa
   declare upgradeRequestEmailEnabled: CreationOptional<boolean>;
   declare defaultPoolCapAwuCredits: number | null;
   declare programmaticMonthlyCapAwuCredits: number | null;
+  declare autoSeatUpgradeEnabled: CreationOptional<boolean>;
 }
 
 CreditUsageConfigurationModel.init(
@@ -110,6 +115,11 @@ CreditUsageConfigurationModel.init(
       type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: null,
+    },
+    autoSeatUpgradeEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {
