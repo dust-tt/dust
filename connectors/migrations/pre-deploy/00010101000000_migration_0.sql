@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS "connectors"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "connectors_workspace_id_data_source_id" ON "connectors" ("workspaceId", "dataSourceId")
+CREATE UNIQUE INDEX IF NOT EXISTS "connectors_workspace_id_data_source_id" ON "connectors" ("workspaceId", "dataSourceId");
 
 CREATE TABLE IF NOT EXISTS "confluence_configurations"
 (
@@ -36,8 +36,8 @@ CREATE TABLE IF NOT EXISTS "confluence_configurations"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "confluence_configurations_connector_id" ON "confluence_configurations" ("connectorId")
-CREATE INDEX "confluence_configurations_user_account_id" ON "confluence_configurations" ("userAccountId")
+CREATE UNIQUE INDEX IF NOT EXISTS "confluence_configurations_connector_id" ON "confluence_configurations" ("connectorId");
+CREATE INDEX IF NOT EXISTS "confluence_configurations_user_account_id" ON "confluence_configurations" ("userAccountId");
 
 CREATE TABLE IF NOT EXISTS "confluence_folders"
 (
@@ -57,9 +57,9 @@ CREATE TABLE IF NOT EXISTS "confluence_folders"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "confluence_folders_connector_id_folder_id" ON "confluence_folders" ("connectorId", "folderId")
-CREATE INDEX "confluence_folders_connector_id_space_id_parent_id" ON "confluence_folders" ("connectorId", "spaceId", "parentId")
-CREATE INDEX "confluence_folders_connector_id_last_visited_at" ON "confluence_folders" ("connectorId", "lastVisitedAt")
+CREATE UNIQUE INDEX IF NOT EXISTS "confluence_folders_connector_id_folder_id" ON "confluence_folders" ("connectorId", "folderId");
+CREATE INDEX IF NOT EXISTS "confluence_folders_connector_id_space_id_parent_id" ON "confluence_folders" ("connectorId", "spaceId", "parentId");
+CREATE INDEX IF NOT EXISTS "confluence_folders_connector_id_last_visited_at" ON "confluence_folders" ("connectorId", "lastVisitedAt");
 
 CREATE TABLE IF NOT EXISTS "confluence_pages"
 (
@@ -79,9 +79,9 @@ CREATE TABLE IF NOT EXISTS "confluence_pages"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "confluence_pages_connector_id_page_id" ON "confluence_pages" ("connectorId", "pageId")
-CREATE INDEX "confluence_pages_connector_id_space_id_parent_id" ON "confluence_pages" ("connectorId", "spaceId", "parentId")
-CREATE INDEX "confluence_pages_connector_id_last_visited_at" ON "confluence_pages" ("connectorId", "lastVisitedAt")
+CREATE UNIQUE INDEX IF NOT EXISTS "confluence_pages_connector_id_page_id" ON "confluence_pages" ("connectorId", "pageId");
+CREATE INDEX IF NOT EXISTS "confluence_pages_connector_id_space_id_parent_id" ON "confluence_pages" ("connectorId", "spaceId", "parentId");
+CREATE INDEX IF NOT EXISTS "confluence_pages_connector_id_last_visited_at" ON "confluence_pages" ("connectorId", "lastVisitedAt");
 
 CREATE TABLE IF NOT EXISTS "confluence_spaces"
 (
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS "confluence_spaces"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "confluence_spaces_connector_id_space_id" ON "confluence_spaces" ("connectorId", "spaceId")
+CREATE UNIQUE INDEX IF NOT EXISTS "confluence_spaces_connector_id_space_id" ON "confluence_spaces" ("connectorId", "spaceId");
 
 CREATE TABLE IF NOT EXISTS "discord_configurations"
 (
@@ -109,9 +109,9 @@ CREATE TABLE IF NOT EXISTS "discord_configurations"
     PRIMARY KEY ("id")
 );
 
-CREATE INDEX "discord_configurations_guild_id" ON "discord_configurations" ("guildId")
-CREATE UNIQUE INDEX "discord_configurations_connector_id" ON "discord_configurations" ("connectorId")
-CREATE UNIQUE INDEX "discord_configurations_guild_id_bot_enabled" ON "discord_configurations" ("guildId", "botEnabled") WHERE "botEnabled" = true
+CREATE INDEX IF NOT EXISTS "discord_configurations_guild_id" ON "discord_configurations" ("guildId");
+CREATE UNIQUE INDEX IF NOT EXISTS "discord_configurations_connector_id" ON "discord_configurations" ("connectorId");
+CREATE UNIQUE INDEX IF NOT EXISTS "discord_configurations_guild_id_bot_enabled" ON "discord_configurations" ("guildId", "botEnabled") WHERE "botEnabled" = true;
 
 CREATE TABLE IF NOT EXISTS "slack_configurations"
 (
@@ -129,9 +129,9 @@ CREATE TABLE IF NOT EXISTS "slack_configurations"
     PRIMARY KEY ("id")
 );
 
-CREATE INDEX "slack_configurations_slack_team_id" ON "slack_configurations" ("slackTeamId")
-CREATE UNIQUE INDEX "slack_configurations_connector_id" ON "slack_configurations" ("connectorId")
-CREATE UNIQUE INDEX "slack_configurations_slack_team_id_bot_enabled" ON "slack_configurations" ("slackTeamId", "botEnabled") WHERE "botEnabled" = true
+CREATE INDEX IF NOT EXISTS "slack_configurations_slack_team_id" ON "slack_configurations" ("slackTeamId");
+CREATE UNIQUE INDEX IF NOT EXISTS "slack_configurations_connector_id" ON "slack_configurations" ("connectorId");
+CREATE UNIQUE INDEX IF NOT EXISTS "slack_configurations_slack_team_id_bot_enabled" ON "slack_configurations" ("slackTeamId", "botEnabled") WHERE "botEnabled" = true;
 
 CREATE TABLE IF NOT EXISTS "slack_messages"
 (
@@ -146,7 +146,7 @@ CREATE TABLE IF NOT EXISTS "slack_messages"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "slack_messages_connector_id_channel_id_document_id" ON "slack_messages" ("connectorId", "channelId", "documentId")
+CREATE UNIQUE INDEX IF NOT EXISTS "slack_messages_connector_id_channel_id_document_id" ON "slack_messages" ("connectorId", "channelId", "documentId");
 
 CREATE TABLE IF NOT EXISTS "slack_channels"
 (
@@ -164,8 +164,8 @@ CREATE TABLE IF NOT EXISTS "slack_channels"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "slack_channels_connector_id_slack_channel_id" ON "slack_channels" ("connectorId", "slackChannelId")
-CREATE INDEX "slack_channels_connector_id" ON "slack_channels" ("connectorId")
+CREATE UNIQUE INDEX IF NOT EXISTS "slack_channels_connector_id_slack_channel_id" ON "slack_channels" ("connectorId", "slackChannelId");
+CREATE INDEX IF NOT EXISTS "slack_channels_connector_id" ON "slack_channels" ("connectorId");
 
 CREATE TABLE IF NOT EXISTS "slack_chat_bot_messages"
 (
@@ -190,7 +190,7 @@ CREATE TABLE IF NOT EXISTS "slack_chat_bot_messages"
     PRIMARY KEY ("id")
 );
 
-CREATE INDEX "slack_chat_bot_messages_connector_id_channel_id_thread_ts" ON "slack_chat_bot_messages" ("connectorId", "channelId", "threadTs")
+CREATE INDEX IF NOT EXISTS "slack_chat_bot_messages_connector_id_channel_id_thread_ts" ON "slack_chat_bot_messages" ("connectorId", "channelId", "threadTs");
 
 CREATE TABLE IF NOT EXISTS "slack_bot_whitelist"
 (
@@ -205,7 +205,7 @@ CREATE TABLE IF NOT EXISTS "slack_bot_whitelist"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "slack_bot_whitelist_connector_id_bot_name" ON "slack_bot_whitelist" ("connectorId", "botName")
+CREATE UNIQUE INDEX IF NOT EXISTS "slack_bot_whitelist_connector_id_bot_name" ON "slack_bot_whitelist" ("connectorId", "botName");
 
 CREATE TABLE IF NOT EXISTS "notion_pages"
 (
@@ -226,12 +226,12 @@ CREATE TABLE IF NOT EXISTS "notion_pages"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "notion_pages_notion_page_id_connector_id" ON "notion_pages" ("notionPageId", "connectorId")
-CREATE INDEX "notion_pages_parent_id" ON "notion_pages" ("parentId")
-CREATE INDEX "notion_pages_last_created_or_moved_run_ts" ON "notion_pages" ("lastCreatedOrMovedRunTs")
-CREATE INDEX "notion_pages_title_search_vector_gist_idx" ON "notion_pages" USING gist ("titleSearchVector")
-CREATE INDEX CONCURRENTLY "notion_pages_connector_id" ON "notion_pages" ("connectorId")
-CREATE INDEX CONCURRENTLY "notion_pages_connector_id_last_seen_ts" ON "notion_pages" ("connectorId", "lastSeenTs")
+CREATE UNIQUE INDEX IF NOT EXISTS "notion_pages_notion_page_id_connector_id" ON "notion_pages" ("notionPageId", "connectorId");
+CREATE INDEX IF NOT EXISTS "notion_pages_parent_id" ON "notion_pages" ("parentId");
+CREATE INDEX IF NOT EXISTS "notion_pages_last_created_or_moved_run_ts" ON "notion_pages" ("lastCreatedOrMovedRunTs");
+CREATE INDEX IF NOT EXISTS "notion_pages_title_search_vector_gist_idx" ON "notion_pages" USING gist ("titleSearchVector");
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "notion_pages_connector_id" ON "notion_pages" ("connectorId");
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "notion_pages_connector_id_last_seen_ts" ON "notion_pages" ("connectorId", "lastSeenTs");
 
 CREATE TABLE IF NOT EXISTS "notion_databases"
 (
@@ -256,14 +256,14 @@ CREATE TABLE IF NOT EXISTS "notion_databases"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "notion_databases_notion_database_id_connector_id" ON "notion_databases" ("notionDatabaseId", "connectorId")
-CREATE INDEX "notion_databases_connector_id_skip_reason" ON "notion_databases" ("connectorId", "skipReason")
-CREATE INDEX "notion_databases_last_seen_ts" ON "notion_databases" ("lastSeenTs")
-CREATE INDEX "notion_databases_last_created_or_moved_run_ts" ON "notion_databases" ("lastCreatedOrMovedRunTs")
-CREATE INDEX "notion_databases_parent_id" ON "notion_databases" ("parentId")
-CREATE INDEX "notion_databases_title_search_vector_gist_idx" ON "notion_databases" USING gist ("titleSearchVector")
-CREATE INDEX CONCURRENTLY "notion_databases_connector_id" ON "notion_databases" ("connectorId")
-CREATE INDEX CONCURRENTLY "notion_databases_connector_id_last_seen_ts" ON "notion_databases" ("connectorId", "lastSeenTs")
+CREATE UNIQUE INDEX IF NOT EXISTS "notion_databases_notion_database_id_connector_id" ON "notion_databases" ("notionDatabaseId", "connectorId");
+CREATE INDEX IF NOT EXISTS "notion_databases_connector_id_skip_reason" ON "notion_databases" ("connectorId", "skipReason");
+CREATE INDEX IF NOT EXISTS "notion_databases_last_seen_ts" ON "notion_databases" ("lastSeenTs");
+CREATE INDEX IF NOT EXISTS "notion_databases_last_created_or_moved_run_ts" ON "notion_databases" ("lastCreatedOrMovedRunTs");
+CREATE INDEX IF NOT EXISTS "notion_databases_parent_id" ON "notion_databases" ("parentId");
+CREATE INDEX IF NOT EXISTS "notion_databases_title_search_vector_gist_idx" ON "notion_databases" USING gist ("titleSearchVector");
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "notion_databases_connector_id" ON "notion_databases" ("connectorId");
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "notion_databases_connector_id_last_seen_ts" ON "notion_databases" ("connectorId", "lastSeenTs");
 
 CREATE TABLE IF NOT EXISTS "notion_connector_states"
 (
@@ -279,7 +279,7 @@ CREATE TABLE IF NOT EXISTS "notion_connector_states"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "notion_connector_states_connector_id" ON "notion_connector_states" ("connectorId")
+CREATE UNIQUE INDEX IF NOT EXISTS "notion_connector_states_connector_id" ON "notion_connector_states" ("connectorId");
 
 CREATE TABLE IF NOT EXISTS "github_connector_states"
 (
@@ -293,8 +293,8 @@ CREATE TABLE IF NOT EXISTS "github_connector_states"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "github_connector_states_connector_id" ON "github_connector_states" ("connectorId")
-CREATE INDEX "github_connector_states_installation_id" ON "github_connector_states" ("installationId")
+CREATE UNIQUE INDEX IF NOT EXISTS "github_connector_states_connector_id" ON "github_connector_states" ("connectorId");
+CREATE INDEX IF NOT EXISTS "github_connector_states_installation_id" ON "github_connector_states" ("installationId");
 
 CREATE TABLE IF NOT EXISTS "github_issues"
 (
@@ -308,9 +308,9 @@ CREATE TABLE IF NOT EXISTS "github_issues"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "github_issues_repo_id_issue_number_connector_id" ON "github_issues" ("repoId", "issueNumber", "connectorId")
-CREATE INDEX "github_issues_connector_id" ON "github_issues" ("connectorId")
-CREATE INDEX "github_issues_repo_id_updated_at" ON "github_issues" ("repoId", "updatedAt")
+CREATE UNIQUE INDEX IF NOT EXISTS "github_issues_repo_id_issue_number_connector_id" ON "github_issues" ("repoId", "issueNumber", "connectorId");
+CREATE INDEX IF NOT EXISTS "github_issues_connector_id" ON "github_issues" ("connectorId");
+CREATE INDEX IF NOT EXISTS "github_issues_repo_id_updated_at" ON "github_issues" ("repoId", "updatedAt");
 
 CREATE TABLE IF NOT EXISTS "github_discussions"
 (
@@ -323,9 +323,9 @@ CREATE TABLE IF NOT EXISTS "github_discussions"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "github_discussions_repo_id_discussion_number_connector_id" ON "github_discussions" ("repoId", "discussionNumber", "connectorId")
-CREATE INDEX "github_discussions_connector_id" ON "github_discussions" ("connectorId")
-CREATE INDEX "github_discussions_repo_id_updated_at" ON "github_discussions" ("repoId", "updatedAt")
+CREATE UNIQUE INDEX IF NOT EXISTS "github_discussions_repo_id_discussion_number_connector_id" ON "github_discussions" ("repoId", "discussionNumber", "connectorId");
+CREATE INDEX IF NOT EXISTS "github_discussions_connector_id" ON "github_discussions" ("connectorId");
+CREATE INDEX IF NOT EXISTS "github_discussions_repo_id_updated_at" ON "github_discussions" ("repoId", "updatedAt");
 
 CREATE TABLE IF NOT EXISTS "github_code_repositories"
 (
@@ -344,7 +344,7 @@ CREATE TABLE IF NOT EXISTS "github_code_repositories"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "github_code_repositories_connector_id_repo_id" ON "github_code_repositories" ("connectorId", "repoId")
+CREATE UNIQUE INDEX IF NOT EXISTS "github_code_repositories_connector_id_repo_id" ON "github_code_repositories" ("connectorId", "repoId");
 
 CREATE TABLE IF NOT EXISTS "github_code_files"
 (
@@ -364,8 +364,8 @@ CREATE TABLE IF NOT EXISTS "github_code_files"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "github_code_files_connector_id_repo_id_document_id" ON "github_code_files" ("connectorId", "repoId", "documentId")
-CREATE INDEX "github_code_files_connector_id_repo_id_last_seen_at" ON "github_code_files" ("connectorId", "repoId", "lastSeenAt")
+CREATE UNIQUE INDEX IF NOT EXISTS "github_code_files_connector_id_repo_id_document_id" ON "github_code_files" ("connectorId", "repoId", "documentId");
+CREATE INDEX IF NOT EXISTS "github_code_files_connector_id_repo_id_last_seen_at" ON "github_code_files" ("connectorId", "repoId", "lastSeenAt");
 
 CREATE TABLE IF NOT EXISTS "github_code_directories"
 (
@@ -383,8 +383,8 @@ CREATE TABLE IF NOT EXISTS "github_code_directories"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "github_code_directories_connector_id_repo_id_internal_id" ON "github_code_directories" ("connectorId", "repoId", "internalId")
-CREATE INDEX "github_code_directories_connector_id_repo_id_last_seen_at" ON "github_code_directories" ("connectorId", "repoId", "lastSeenAt")
+CREATE UNIQUE INDEX IF NOT EXISTS "github_code_directories_connector_id_repo_id_internal_id" ON "github_code_directories" ("connectorId", "repoId", "internalId");
+CREATE INDEX IF NOT EXISTS "github_code_directories_connector_id_repo_id_last_seen_at" ON "github_code_directories" ("connectorId", "repoId", "lastSeenAt");
 
 CREATE TABLE IF NOT EXISTS "google_drive_folders"
 (
@@ -396,7 +396,7 @@ CREATE TABLE IF NOT EXISTS "google_drive_folders"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "google_drive_folders_connector_id_folder_id" ON "google_drive_folders" ("connectorId", "folderId")
+CREATE UNIQUE INDEX IF NOT EXISTS "google_drive_folders_connector_id_folder_id" ON "google_drive_folders" ("connectorId", "folderId");
 
 CREATE TABLE IF NOT EXISTS "google_drive_files"
 (
@@ -415,8 +415,8 @@ CREATE TABLE IF NOT EXISTS "google_drive_files"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "google_drive_files_connector_id_drive_file_id" ON "google_drive_files" ("connectorId", "driveFileId")
-CREATE INDEX CONCURRENTLY "google_drive_files_connector_id_parent_id" ON "google_drive_files" ("connectorId", "parentId")
+CREATE UNIQUE INDEX IF NOT EXISTS "google_drive_files_connector_id_drive_file_id" ON "google_drive_files" ("connectorId", "driveFileId");
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "google_drive_files_connector_id_parent_id" ON "google_drive_files" ("connectorId", "parentId");
 
 CREATE TABLE IF NOT EXISTS "google_drive_sheets"
 (
@@ -431,7 +431,7 @@ CREATE TABLE IF NOT EXISTS "google_drive_sheets"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "google_drive_sheets_connector_id_drive_file_id_drive_sheet_id" ON "google_drive_sheets" ("connectorId", "driveFileId", "driveSheetId")
+CREATE UNIQUE INDEX IF NOT EXISTS "google_drive_sheets_connector_id_drive_file_id_drive_sheet_id" ON "google_drive_sheets" ("connectorId", "driveFileId", "driveSheetId");
 
 CREATE TABLE IF NOT EXISTS "google_drive_sync_tokens"
 (
@@ -446,7 +446,7 @@ CREATE TABLE IF NOT EXISTS "google_drive_sync_tokens"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "google_drive_sync_tokens_connector_id_drive_id" ON "google_drive_sync_tokens" ("connectorId", "driveId")
+CREATE UNIQUE INDEX IF NOT EXISTS "google_drive_sync_tokens_connector_id_drive_id" ON "google_drive_sync_tokens" ("connectorId", "driveId");
 
 CREATE TABLE IF NOT EXISTS "microsoft_configurations"
 (
@@ -463,7 +463,7 @@ CREATE TABLE IF NOT EXISTS "microsoft_configurations"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "microsoft_configurations_connector_id" ON "microsoft_configurations" ("connectorId")
+CREATE UNIQUE INDEX IF NOT EXISTS "microsoft_configurations_connector_id" ON "microsoft_configurations" ("connectorId");
 
 CREATE TABLE IF NOT EXISTS "microsoft_roots"
 (
@@ -476,8 +476,8 @@ CREATE TABLE IF NOT EXISTS "microsoft_roots"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "microsoft_roots_connector_id_internal_id" ON "microsoft_roots" ("connectorId", "internalId")
-CREATE INDEX "microsoft_roots_connector_id_node_type" ON "microsoft_roots" ("connectorId", "nodeType")
+CREATE UNIQUE INDEX IF NOT EXISTS "microsoft_roots_connector_id_internal_id" ON "microsoft_roots" ("connectorId", "internalId");
+CREATE INDEX IF NOT EXISTS "microsoft_roots_connector_id_node_type" ON "microsoft_roots" ("connectorId", "nodeType");
 
 CREATE TABLE IF NOT EXISTS "microsoft_nodes"
 (
@@ -498,10 +498,10 @@ CREATE TABLE IF NOT EXISTS "microsoft_nodes"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "microsoft_nodes_internal_id_connector_id" ON "microsoft_nodes" ("internalId", "connectorId")
-CREATE INDEX "microsoft_nodes_connector_id_node_type" ON "microsoft_nodes" ("connectorId", "nodeType")
-CREATE INDEX "microsoft_nodes_connector_id_id" ON "microsoft_nodes" ("connectorId", "id")
-CREATE INDEX CONCURRENTLY "microsoft_nodes_parent_internal_id_connector_id" ON "microsoft_nodes" ("parentInternalId", "connectorId")
+CREATE UNIQUE INDEX IF NOT EXISTS "microsoft_nodes_internal_id_connector_id" ON "microsoft_nodes" ("internalId", "connectorId");
+CREATE INDEX IF NOT EXISTS "microsoft_nodes_connector_id_node_type" ON "microsoft_nodes" ("connectorId", "nodeType");
+CREATE INDEX IF NOT EXISTS "microsoft_nodes_connector_id_id" ON "microsoft_nodes" ("connectorId", "id");
+CREATE INDEX CONCURRENTLY IF NOT EXISTS "microsoft_nodes_parent_internal_id_connector_id" ON "microsoft_nodes" ("parentInternalId", "connectorId");
 
 CREATE TABLE IF NOT EXISTS "microsoft_bot_configurations"
 (
@@ -514,8 +514,8 @@ CREATE TABLE IF NOT EXISTS "microsoft_bot_configurations"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "microsoft_bot_configurations_connector_id" ON "microsoft_bot_configurations" ("connectorId")
-CREATE UNIQUE INDEX "microsoft_bot_configurations_tenant_id" ON "microsoft_bot_configurations" ("tenantId")
+CREATE UNIQUE INDEX IF NOT EXISTS "microsoft_bot_configurations_connector_id" ON "microsoft_bot_configurations" ("connectorId");
+CREATE UNIQUE INDEX IF NOT EXISTS "microsoft_bot_configurations_tenant_id" ON "microsoft_bot_configurations" ("tenantId");
 
 CREATE TABLE IF NOT EXISTS "microsoft_bot_messages"
 (
@@ -534,9 +534,9 @@ CREATE TABLE IF NOT EXISTS "microsoft_bot_messages"
     PRIMARY KEY ("id")
 );
 
-CREATE INDEX "microsoft_bot_messages_connector_id" ON "microsoft_bot_messages" ("connectorId")
-CREATE INDEX "microsoft_bot_messages_connector_id_conversation_id" ON "microsoft_bot_messages" ("connectorId", "conversationId")
-CREATE INDEX "microsoft_bot_messages_connector_id_dust_conversation_id" ON "microsoft_bot_messages" ("connectorId", "dustConversationId")
+CREATE INDEX IF NOT EXISTS "microsoft_bot_messages_connector_id" ON "microsoft_bot_messages" ("connectorId");
+CREATE INDEX IF NOT EXISTS "microsoft_bot_messages_connector_id_conversation_id" ON "microsoft_bot_messages" ("connectorId", "conversationId");
+CREATE INDEX IF NOT EXISTS "microsoft_bot_messages_connector_id_dust_conversation_id" ON "microsoft_bot_messages" ("connectorId", "dustConversationId");
 
 CREATE TABLE IF NOT EXISTS "notion_connector_block_cache_entries"
 (
@@ -555,10 +555,10 @@ CREATE TABLE IF NOT EXISTS "notion_connector_block_cache_entries"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "uq_notion_block_id_conn_id_page_id_wf_id" ON "notion_connector_block_cache_entries" ("notionBlockId", "connectorId", "notionPageId", "workflowId")
-CREATE INDEX "notion_connector_block_cache_entries_connector_id" ON "notion_connector_block_cache_entries" ("connectorId")
-CREATE INDEX "notion_connector_block_cache_entries_connector_id_workflow_id" ON "notion_connector_block_cache_entries" ("connectorId", "workflowId")
-CREATE INDEX "notion_connector_block_cache_entries_connector_page_workflow" ON "notion_connector_block_cache_entries" ("connectorId", "notionPageId", "workflowId")
+CREATE UNIQUE INDEX IF NOT EXISTS "uq_notion_block_id_conn_id_page_id_wf_id" ON "notion_connector_block_cache_entries" ("notionBlockId", "connectorId", "notionPageId", "workflowId");
+CREATE INDEX IF NOT EXISTS "notion_connector_block_cache_entries_connector_id" ON "notion_connector_block_cache_entries" ("connectorId");
+CREATE INDEX IF NOT EXISTS "notion_connector_block_cache_entries_connector_id_workflow_id" ON "notion_connector_block_cache_entries" ("connectorId", "workflowId");
+CREATE INDEX IF NOT EXISTS "notion_connector_block_cache_entries_connector_page_workflow" ON "notion_connector_block_cache_entries" ("connectorId", "notionPageId", "workflowId");
 
 CREATE TABLE IF NOT EXISTS "notion_connector_page_cache_entries"
 (
@@ -580,10 +580,10 @@ CREATE TABLE IF NOT EXISTS "notion_connector_page_cache_entries"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "uq_notion_page_id_conn_id_wf_id" ON "notion_connector_page_cache_entries" ("notionPageId", "connectorId", "workflowId")
-CREATE INDEX "notion_connector_page_cache_entries_connector_id" ON "notion_connector_page_cache_entries" ("connectorId")
-CREATE INDEX "notion_connector_page_cache_entries_parent_id" ON "notion_connector_page_cache_entries" ("parentId")
-CREATE INDEX "notion_connector_page_cache_entries_workflow_id" ON "notion_connector_page_cache_entries" ("workflowId")
+CREATE UNIQUE INDEX IF NOT EXISTS "uq_notion_page_id_conn_id_wf_id" ON "notion_connector_page_cache_entries" ("notionPageId", "connectorId", "workflowId");
+CREATE INDEX IF NOT EXISTS "notion_connector_page_cache_entries_connector_id" ON "notion_connector_page_cache_entries" ("connectorId");
+CREATE INDEX IF NOT EXISTS "notion_connector_page_cache_entries_parent_id" ON "notion_connector_page_cache_entries" ("parentId");
+CREATE INDEX IF NOT EXISTS "notion_connector_page_cache_entries_workflow_id" ON "notion_connector_page_cache_entries" ("workflowId");
 
 CREATE TABLE IF NOT EXISTS "notion_connector_resources_to_check_cache_entries"
 (
@@ -597,9 +597,9 @@ CREATE TABLE IF NOT EXISTS "notion_connector_resources_to_check_cache_entries"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "uq_notion_to_check_notion_id_conn_id_wf_id" ON "notion_connector_resources_to_check_cache_entries" ("notionId", "connectorId", "workflowId")
-CREATE INDEX "notion_connector_resources_to_check_cache_entries_connector_id" ON "notion_connector_resources_to_check_cache_entries" ("connectorId")
-CREATE INDEX "notion_connector_resources_to_check_cache_entries_workflow_id" ON "notion_connector_resources_to_check_cache_entries" ("workflowId")
+CREATE UNIQUE INDEX IF NOT EXISTS "uq_notion_to_check_notion_id_conn_id_wf_id" ON "notion_connector_resources_to_check_cache_entries" ("notionId", "connectorId", "workflowId");
+CREATE INDEX IF NOT EXISTS "notion_connector_resources_to_check_cache_entries_connector_id" ON "notion_connector_resources_to_check_cache_entries" ("connectorId");
+CREATE INDEX IF NOT EXISTS "notion_connector_resources_to_check_cache_entries_workflow_id" ON "notion_connector_resources_to_check_cache_entries" ("workflowId");
 
 CREATE TABLE IF NOT EXISTS "google_drive_configs"
 (
@@ -613,7 +613,7 @@ CREATE TABLE IF NOT EXISTS "google_drive_configs"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "google_drive_configs_connector_id" ON "google_drive_configs" ("connectorId")
+CREATE UNIQUE INDEX IF NOT EXISTS "google_drive_configs_connector_id" ON "google_drive_configs" ("connectorId");
 
 CREATE TABLE IF NOT EXISTS "intercom_workspaces"
 (
@@ -630,7 +630,7 @@ CREATE TABLE IF NOT EXISTS "intercom_workspaces"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "intercom_connector_workspace_idx" ON "intercom_workspaces" ("connectorId", "intercomWorkspaceId")
+CREATE UNIQUE INDEX IF NOT EXISTS "intercom_connector_workspace_idx" ON "intercom_workspaces" ("connectorId", "intercomWorkspaceId");
 
 CREATE TABLE IF NOT EXISTS "intercom_help_centers"
 (
@@ -648,9 +648,9 @@ CREATE TABLE IF NOT EXISTS "intercom_help_centers"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "intercom_connector_help_center_idx" ON "intercom_help_centers" ("connectorId", "helpCenterId")
-CREATE INDEX "intercom_help_centers_connector_id" ON "intercom_help_centers" ("connectorId")
-CREATE INDEX "intercom_help_centers_help_center_id" ON "intercom_help_centers" ("helpCenterId")
+CREATE UNIQUE INDEX IF NOT EXISTS "intercom_connector_help_center_idx" ON "intercom_help_centers" ("connectorId", "helpCenterId");
+CREATE INDEX IF NOT EXISTS "intercom_help_centers_connector_id" ON "intercom_help_centers" ("connectorId");
+CREATE INDEX IF NOT EXISTS "intercom_help_centers_help_center_id" ON "intercom_help_centers" ("helpCenterId");
 
 CREATE TABLE IF NOT EXISTS "intercom_collections"
 (
@@ -670,9 +670,9 @@ CREATE TABLE IF NOT EXISTS "intercom_collections"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "intercom_connector_collection_idx" ON "intercom_collections" ("connectorId", "collectionId")
-CREATE INDEX "intercom_collections_connector_id" ON "intercom_collections" ("connectorId")
-CREATE INDEX "intercom_collections_collection_id" ON "intercom_collections" ("collectionId")
+CREATE UNIQUE INDEX IF NOT EXISTS "intercom_connector_collection_idx" ON "intercom_collections" ("connectorId", "collectionId");
+CREATE INDEX IF NOT EXISTS "intercom_collections_connector_id" ON "intercom_collections" ("connectorId");
+CREATE INDEX IF NOT EXISTS "intercom_collections_collection_id" ON "intercom_collections" ("collectionId");
 
 CREATE TABLE IF NOT EXISTS "intercom_articles"
 (
@@ -694,9 +694,9 @@ CREATE TABLE IF NOT EXISTS "intercom_articles"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "intercom_connector_article_idx" ON "intercom_articles" ("connectorId", "articleId")
-CREATE INDEX "intercom_articles_connector_id" ON "intercom_articles" ("connectorId")
-CREATE INDEX "intercom_articles_article_id" ON "intercom_articles" ("articleId")
+CREATE UNIQUE INDEX IF NOT EXISTS "intercom_connector_article_idx" ON "intercom_articles" ("connectorId", "articleId");
+CREATE INDEX IF NOT EXISTS "intercom_articles_connector_id" ON "intercom_articles" ("connectorId");
+CREATE INDEX IF NOT EXISTS "intercom_articles_article_id" ON "intercom_articles" ("articleId");
 
 CREATE TABLE IF NOT EXISTS "intercom_teams"
 (
@@ -711,7 +711,7 @@ CREATE TABLE IF NOT EXISTS "intercom_teams"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "intercom_connector_team_idx" ON "intercom_teams" ("connectorId", "teamId")
+CREATE UNIQUE INDEX IF NOT EXISTS "intercom_connector_team_idx" ON "intercom_teams" ("connectorId", "teamId");
 
 CREATE TABLE IF NOT EXISTS "intercom_conversations"
 (
@@ -726,7 +726,7 @@ CREATE TABLE IF NOT EXISTS "intercom_conversations"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "intercom_connector_conversation_idx" ON "intercom_conversations" ("connectorId", "conversationId")
+CREATE UNIQUE INDEX IF NOT EXISTS "intercom_connector_conversation_idx" ON "intercom_conversations" ("connectorId", "conversationId");
 
 CREATE TABLE IF NOT EXISTS "webcrawler_configurations"
 (
@@ -746,7 +746,7 @@ CREATE TABLE IF NOT EXISTS "webcrawler_configurations"
     PRIMARY KEY ("id")
 );
 
-CREATE INDEX "webcrawler_configurations_connector_id" ON "webcrawler_configurations" ("connectorId")
+CREATE INDEX IF NOT EXISTS "webcrawler_configurations_connector_id" ON "webcrawler_configurations" ("connectorId");
 
 CREATE TABLE IF NOT EXISTS "webcrawler_folders"
 (
@@ -763,8 +763,8 @@ CREATE TABLE IF NOT EXISTS "webcrawler_folders"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "webcrawler_folders_url_md5_connector_id_webcrawler_configuratio" ON "webcrawler_folders" ("urlMd5", "connectorId", "webcrawlerConfigurationId")
-CREATE UNIQUE INDEX "webcrawler_folders_connector_id_internal_id" ON "webcrawler_folders" ("connectorId", "internalId")
+CREATE UNIQUE INDEX IF NOT EXISTS "webcrawler_folders_url_md5_connector_id_webcrawler_configuratio" ON "webcrawler_folders" ("urlMd5", "connectorId", "webcrawlerConfigurationId");
+CREATE UNIQUE INDEX IF NOT EXISTS "webcrawler_folders_connector_id_internal_id" ON "webcrawler_folders" ("connectorId", "internalId");
 
 CREATE TABLE IF NOT EXISTS "webcrawler_pages"
 (
@@ -783,8 +783,8 @@ CREATE TABLE IF NOT EXISTS "webcrawler_pages"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "webcrawler_pages_url_md5_connector_id_webcrawler_configuration_" ON "webcrawler_pages" ("urlMd5", "connectorId", "webcrawlerConfigurationId")
-CREATE UNIQUE INDEX "webcrawler_pages_connector_id_document_id" ON "webcrawler_pages" ("connectorId", "documentId")
+CREATE UNIQUE INDEX IF NOT EXISTS "webcrawler_pages_url_md5_connector_id_webcrawler_configuration_" ON "webcrawler_pages" ("urlMd5", "connectorId", "webcrawlerConfigurationId");
+CREATE UNIQUE INDEX IF NOT EXISTS "webcrawler_pages_connector_id_document_id" ON "webcrawler_pages" ("connectorId", "documentId");
 
 CREATE TABLE IF NOT EXISTS "webcrawler_configuration_headers"
 (
@@ -798,7 +798,7 @@ CREATE TABLE IF NOT EXISTS "webcrawler_configuration_headers"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "wch_webcrawlerConfigurationId_key" ON "webcrawler_configuration_headers" ("webcrawlerConfigurationId", "key")
+CREATE UNIQUE INDEX IF NOT EXISTS "wch_webcrawlerConfigurationId_key" ON "webcrawler_configuration_headers" ("webcrawlerConfigurationId", "key");
 
 CREATE TABLE IF NOT EXISTS "snowflake_configurations"
 (
@@ -809,7 +809,7 @@ CREATE TABLE IF NOT EXISTS "snowflake_configurations"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "snowflake_configurations_connector_id" ON "snowflake_configurations" ("connectorId")
+CREATE UNIQUE INDEX IF NOT EXISTS "snowflake_configurations_connector_id" ON "snowflake_configurations" ("connectorId");
 
 CREATE TABLE IF NOT EXISTS "bigquery_configurations"
 (
@@ -821,7 +821,7 @@ CREATE TABLE IF NOT EXISTS "bigquery_configurations"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "bigquery_configurations_connector_id" ON "bigquery_configurations" ("connectorId")
+CREATE UNIQUE INDEX IF NOT EXISTS "bigquery_configurations_connector_id" ON "bigquery_configurations" ("connectorId");
 
 CREATE TABLE IF NOT EXISTS "remote_databases"
 (
@@ -836,7 +836,7 @@ CREATE TABLE IF NOT EXISTS "remote_databases"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "remote_databases_connector_id_internal_id" ON "remote_databases" ("connectorId", "internalId")
+CREATE UNIQUE INDEX IF NOT EXISTS "remote_databases_connector_id_internal_id" ON "remote_databases" ("connectorId", "internalId");
 
 CREATE TABLE IF NOT EXISTS "remote_schemas"
 (
@@ -852,7 +852,7 @@ CREATE TABLE IF NOT EXISTS "remote_schemas"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "remote_schemas_connector_id_internal_id" ON "remote_schemas" ("connectorId", "internalId")
+CREATE UNIQUE INDEX IF NOT EXISTS "remote_schemas_connector_id_internal_id" ON "remote_schemas" ("connectorId", "internalId");
 
 CREATE TABLE IF NOT EXISTS "remote_tables"
 (
@@ -869,7 +869,7 @@ CREATE TABLE IF NOT EXISTS "remote_tables"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "remote_tables_connector_id_internal_id" ON "remote_tables" ("connectorId", "internalId")
+CREATE UNIQUE INDEX IF NOT EXISTS "remote_tables_connector_id_internal_id" ON "remote_tables" ("connectorId", "internalId");
 
 CREATE TABLE IF NOT EXISTS "zendesk_timestamp_cursors"
 (
@@ -881,7 +881,7 @@ CREATE TABLE IF NOT EXISTS "zendesk_timestamp_cursors"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "zendesk_timestamp_cursors_connector_id" ON "zendesk_timestamp_cursors" ("connectorId")
+CREATE UNIQUE INDEX IF NOT EXISTS "zendesk_timestamp_cursors_connector_id" ON "zendesk_timestamp_cursors" ("connectorId");
 
 CREATE TABLE IF NOT EXISTS "zendesk_configurations"
 (
@@ -902,7 +902,7 @@ CREATE TABLE IF NOT EXISTS "zendesk_configurations"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "zendesk_configurations_connector_id" ON "zendesk_configurations" ("connectorId")
+CREATE UNIQUE INDEX IF NOT EXISTS "zendesk_configurations_connector_id" ON "zendesk_configurations" ("connectorId");
 
 CREATE TABLE IF NOT EXISTS "zendesk_brands"
 (
@@ -920,8 +920,8 @@ CREATE TABLE IF NOT EXISTS "zendesk_brands"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "zendesk_brands_connector_brand_idx" ON "zendesk_brands" ("connectorId", "brandId")
-CREATE INDEX "zendesk_brands_connector_id" ON "zendesk_brands" ("connectorId")
+CREATE UNIQUE INDEX IF NOT EXISTS "zendesk_brands_connector_brand_idx" ON "zendesk_brands" ("connectorId", "brandId");
+CREATE INDEX IF NOT EXISTS "zendesk_brands_connector_id" ON "zendesk_brands" ("connectorId");
 
 CREATE TABLE IF NOT EXISTS "zendesk_categories"
 (
@@ -939,9 +939,9 @@ CREATE TABLE IF NOT EXISTS "zendesk_categories"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "zendesk_categories_connector_brand_category_idx" ON "zendesk_categories" ("connectorId", "brandId", "categoryId")
-CREATE INDEX "zendesk_categories_connector_brand_idx" ON "zendesk_categories" ("connectorId", "brandId")
-CREATE INDEX "zendesk_categories_connector_id" ON "zendesk_categories" ("connectorId")
+CREATE UNIQUE INDEX IF NOT EXISTS "zendesk_categories_connector_brand_category_idx" ON "zendesk_categories" ("connectorId", "brandId", "categoryId");
+CREATE INDEX IF NOT EXISTS "zendesk_categories_connector_brand_idx" ON "zendesk_categories" ("connectorId", "brandId");
+CREATE INDEX IF NOT EXISTS "zendesk_categories_connector_id" ON "zendesk_categories" ("connectorId");
 
 CREATE TABLE IF NOT EXISTS "zendesk_articles"
 (
@@ -959,10 +959,10 @@ CREATE TABLE IF NOT EXISTS "zendesk_articles"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "zendesk_articles_connector_brand_article_idx" ON "zendesk_articles" ("connectorId", "brandId", "articleId")
-CREATE INDEX "zendesk_articles_connector_brand_category_idx" ON "zendesk_articles" ("connectorId", "brandId", "categoryId")
-CREATE INDEX "zendesk_articles_connector_brand_idx" ON "zendesk_articles" ("connectorId", "brandId")
-CREATE INDEX "zendesk_articles_connector_id" ON "zendesk_articles" ("connectorId")
+CREATE UNIQUE INDEX IF NOT EXISTS "zendesk_articles_connector_brand_article_idx" ON "zendesk_articles" ("connectorId", "brandId", "articleId");
+CREATE INDEX IF NOT EXISTS "zendesk_articles_connector_brand_category_idx" ON "zendesk_articles" ("connectorId", "brandId", "categoryId");
+CREATE INDEX IF NOT EXISTS "zendesk_articles_connector_brand_idx" ON "zendesk_articles" ("connectorId", "brandId");
+CREATE INDEX IF NOT EXISTS "zendesk_articles_connector_id" ON "zendesk_articles" ("connectorId");
 
 CREATE TABLE IF NOT EXISTS "zendesk_tickets"
 (
@@ -980,9 +980,9 @@ CREATE TABLE IF NOT EXISTS "zendesk_tickets"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "zendesk_tickets_connector_brand_ticket_idx" ON "zendesk_tickets" ("connectorId", "brandId", "ticketId")
-CREATE INDEX "zendesk_tickets_connector_brand_idx" ON "zendesk_tickets" ("connectorId", "brandId")
-CREATE INDEX "zendesk_tickets_connector_id" ON "zendesk_tickets" ("connectorId")
+CREATE UNIQUE INDEX IF NOT EXISTS "zendesk_tickets_connector_brand_ticket_idx" ON "zendesk_tickets" ("connectorId", "brandId", "ticketId");
+CREATE INDEX IF NOT EXISTS "zendesk_tickets_connector_brand_idx" ON "zendesk_tickets" ("connectorId", "brandId");
+CREATE INDEX IF NOT EXISTS "zendesk_tickets_connector_id" ON "zendesk_tickets" ("connectorId");
 
 CREATE TABLE IF NOT EXISTS "salesforce_configurations"
 (
@@ -993,7 +993,7 @@ CREATE TABLE IF NOT EXISTS "salesforce_configurations"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "salesforce_configurations_connector_id" ON "salesforce_configurations" ("connectorId")
+CREATE UNIQUE INDEX IF NOT EXISTS "salesforce_configurations_connector_id" ON "salesforce_configurations" ("connectorId");
 
 CREATE TABLE IF NOT EXISTS "salesforce_synced_queries"
 (
@@ -1010,7 +1010,7 @@ CREATE TABLE IF NOT EXISTS "salesforce_synced_queries"
     PRIMARY KEY ("id")
 );
 
-CREATE INDEX "salesforce_synced_queries_connector_id" ON "salesforce_synced_queries" ("connectorId")
+CREATE INDEX IF NOT EXISTS "salesforce_synced_queries_connector_id" ON "salesforce_synced_queries" ("connectorId");
 
 CREATE TABLE IF NOT EXISTS "gong_configurations"
 (
@@ -1029,7 +1029,7 @@ CREATE TABLE IF NOT EXISTS "gong_configurations"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "gong_configurations_connector_id" ON "gong_configurations" ("connectorId")
+CREATE UNIQUE INDEX IF NOT EXISTS "gong_configurations_connector_id" ON "gong_configurations" ("connectorId");
 
 CREATE TABLE IF NOT EXISTS "gong_transcripts"
 (
@@ -1044,7 +1044,7 @@ CREATE TABLE IF NOT EXISTS "gong_transcripts"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "gong_transcripts_connector_id_call_id" ON "gong_transcripts" ("connectorId", "callId")
+CREATE UNIQUE INDEX IF NOT EXISTS "gong_transcripts_connector_id_call_id" ON "gong_transcripts" ("connectorId", "callId");
 
 CREATE TABLE IF NOT EXISTS "gong_users"
 (
@@ -1059,7 +1059,7 @@ CREATE TABLE IF NOT EXISTS "gong_users"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "gong_users_connector_id_gong_id" ON "gong_users" ("connectorId", "gongId")
+CREATE UNIQUE INDEX IF NOT EXISTS "gong_users_connector_id_gong_id" ON "gong_users" ("connectorId", "gongId");
 
 CREATE TABLE IF NOT EXISTS "dust_project_configurations"
 (
@@ -1072,8 +1072,8 @@ CREATE TABLE IF NOT EXISTS "dust_project_configurations"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "dust_project_configurations_connector_id" ON "dust_project_configurations" ("connectorId")
-CREATE UNIQUE INDEX "dust_project_configurations_project_id" ON "dust_project_configurations" ("projectId")
+CREATE UNIQUE INDEX IF NOT EXISTS "dust_project_configurations_connector_id" ON "dust_project_configurations" ("connectorId");
+CREATE UNIQUE INDEX IF NOT EXISTS "dust_project_configurations_project_id" ON "dust_project_configurations" ("projectId");
 
 CREATE TABLE IF NOT EXISTS "dust_project_conversations"
 (
@@ -1089,10 +1089,10 @@ CREATE TABLE IF NOT EXISTS "dust_project_conversations"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "dust_project_conversations_conversation_id" ON "dust_project_conversations" ("conversationId")
-CREATE UNIQUE INDEX "dust_project_conversations_connector_id_conversation_id" ON "dust_project_conversations" ("connectorId", "conversationId")
-CREATE INDEX "dust_project_conversations_connector_id_source_updated_at" ON "dust_project_conversations" ("connectorId", "sourceUpdatedAt")
-CREATE INDEX "dust_project_conversations_connector_id_project_id_conversation" ON "dust_project_conversations" ("connectorId", "projectId", "conversationId")
+CREATE UNIQUE INDEX IF NOT EXISTS "dust_project_conversations_conversation_id" ON "dust_project_conversations" ("conversationId");
+CREATE UNIQUE INDEX IF NOT EXISTS "dust_project_conversations_connector_id_conversation_id" ON "dust_project_conversations" ("connectorId", "conversationId");
+CREATE INDEX IF NOT EXISTS "dust_project_conversations_connector_id_source_updated_at" ON "dust_project_conversations" ("connectorId", "sourceUpdatedAt");
+CREATE INDEX IF NOT EXISTS "dust_project_conversations_connector_id_project_id_conversation" ON "dust_project_conversations" ("connectorId", "projectId", "conversationId");
 
 CREATE TABLE IF NOT EXISTS "dust_project_mount_files"
 (
@@ -1107,9 +1107,9 @@ CREATE TABLE IF NOT EXISTS "dust_project_mount_files"
     PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "dust_project_mount_files_connector_id_scoped_path" ON "dust_project_mount_files" ("connectorId", "scopedPath")
-CREATE INDEX "dust_project_mount_files_connector_id_source_updated_at" ON "dust_project_mount_files" ("connectorId", "sourceUpdatedAt")
-CREATE INDEX "dust_project_mount_files_connector_project_scoped" ON "dust_project_mount_files" ("connectorId", "projectId", "scopedPath")
+CREATE UNIQUE INDEX IF NOT EXISTS "dust_project_mount_files_connector_id_scoped_path" ON "dust_project_mount_files" ("connectorId", "scopedPath");
+CREATE INDEX IF NOT EXISTS "dust_project_mount_files_connector_id_source_updated_at" ON "dust_project_mount_files" ("connectorId", "sourceUpdatedAt");
+CREATE INDEX IF NOT EXISTS "dust_project_mount_files_connector_project_scoped" ON "dust_project_mount_files" ("connectorId", "projectId", "scopedPath");
 CREATE EXTENSION IF NOT EXISTS unaccent;
 
 CREATE OR REPLACE FUNCTION notion_pages_trigger() RETURNS trigger AS
