@@ -9,7 +9,10 @@ import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/glob
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
-import { serializeSkillTag } from "@app/lib/skills/format";
+import {
+  serializeSkillTag,
+  serializeUnavailableSkillTag,
+} from "@app/lib/skills/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
@@ -647,7 +650,7 @@ describe("SkillResource", () => {
       expect(spaceIds).toContain(skill1OnlySpace.id);
     });
 
-    it("normalizes unavailable nested skill references when creating a parent skill", async () => {
+    it("keeps readable nested skill references when creating a parent skill", async () => {
       const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
       const addAdminToRestrictedSpaceRes = await restrictedSpace.addMembers(
         testContext.authenticator,
@@ -677,12 +680,11 @@ describe("SkillResource", () => {
         instructionsHtml: `<p>Use ${skillReferenceHtmlTag}.</p>`,
       });
 
+      expect(parentSkill.requestedSpaceIds).not.toContain(restrictedSpace.id);
       expect(parentSkill.instructions).toContain(
-        `<unavailable_skill id="${childSkill.sId}" />`
+        SkillFactory.serializeSkillReferenceTag(childSkill)
       );
-      expect(parentSkill.instructionsHtml).toContain(
-        `<unavailable_skill id="${childSkill.sId}"></unavailable_skill>`
-      );
+      expect(parentSkill.instructionsHtml).toContain(skillReferenceHtmlTag);
       await expect(
         parentSkill.fetchChildSkills(testContext.authenticator)
       ).resolves.toEqual([
@@ -708,10 +710,10 @@ describe("SkillResource", () => {
         parentSkill.sId
       );
       expect(updatedParentSkill?.instructions).toContain(
-        `<unavailable_skill id="${childSkill.sId}" />`
+        SkillFactory.serializeSkillReferenceTag(childSkill)
       );
       expect(updatedParentSkill?.instructionsHtml).toContain(
-        `<unavailable_skill id="${childSkill.sId}"></unavailable_skill>`
+        skillReferenceHtmlTag
       );
       await expect(
         updatedParentSkill!.fetchChildSkills(testContext.authenticator)
@@ -722,7 +724,7 @@ describe("SkillResource", () => {
       ]);
     });
 
-    it("normalizes nested skill references when parent requested spaces change", async () => {
+    it("restores unavailable nested skill references when the child is readable", async () => {
       const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
       const addAdminToRestrictedSpaceRes = await restrictedSpace.addMembers(
         testContext.authenticator,
@@ -735,35 +737,30 @@ describe("SkillResource", () => {
         name: "Restricted Child Skill",
         requestedSpaceIds: [restrictedSpace.id],
       });
+      const skillReferenceTag =
+        SkillFactory.serializeSkillReferenceTag(childSkill);
+      const skillReferenceHtmlTag = serializeSkillTag(
+        {
+          icon: childSkill.icon,
+          id: childSkill.sId,
+          name: childSkill.name,
+        },
+        { html: true }
+      );
       const parentSkill = await SkillFactory.create(testContext.authenticator, {
         name: "Parent Skill",
-        instructions: `Use ${SkillFactory.serializeSkillReferenceTag(childSkill)}.`,
+        instructions: `Use ${serializeUnavailableSkillTag({
+          id: childSkill.sId,
+        })}.`,
+        instructionsHtml: `<p>Use ${serializeUnavailableSkillTag(
+          { id: childSkill.sId },
+          { html: true }
+        )}.</p>`,
       });
 
-      expect(parentSkill.instructions).toContain(
-        `<unavailable_skill id="${childSkill.sId}" />`
-      );
-
-      await parentSkill.updateSkill(testContext.authenticator, {
-        name: parentSkill.name,
-        agentFacingDescription: parentSkill.agentFacingDescription,
-        userFacingDescription: parentSkill.userFacingDescription,
-        instructions: parentSkill.instructions,
-        instructionsHtml: parentSkill.instructionsHtml,
-        icon: parentSkill.icon,
-        mcpServerViews: [],
-        attachedKnowledge: [],
-        requestedSpaceIds: [restrictedSpace.id],
-      });
-
-      const updatedParentSkill = await SkillResource.fetchById(
-        testContext.authenticator,
-        parentSkill.sId
-      );
-
-      expect(updatedParentSkill?.instructions).toContain(
-        SkillFactory.serializeSkillReferenceTag(childSkill)
-      );
+      expect(parentSkill.requestedSpaceIds).not.toContain(restrictedSpace.id);
+      expect(parentSkill.instructions).toContain(skillReferenceTag);
+      expect(parentSkill.instructionsHtml).toContain(skillReferenceHtmlTag);
     });
 
     it("recomputes nested skill references from instructions on update", async () => {
@@ -842,7 +839,7 @@ describe("SkillResource", () => {
       ).resolves.toEqual([expect.objectContaining({ sId: skill.sId })]);
     });
 
-    it("updates parent skill references when child requested spaces change", async () => {
+    it("keeps parent skill references available when child requested spaces change", async () => {
       const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
       const childSkill = await SkillFactory.create(testContext.authenticator, {
         name: "Child Skill",
@@ -868,13 +865,13 @@ describe("SkillResource", () => {
         requestedSpaceIds: [restrictedSpace.id],
       });
 
-      const unavailableParentSkill = await SkillResource.fetchById(
+      const parentSkillAfterSpaceChange = await SkillResource.fetchById(
         testContext.authenticator,
         parentSkill.sId
       );
 
-      expect(unavailableParentSkill?.instructions).toContain(
-        `<unavailable_skill id="${childSkill.sId}" />`
+      expect(parentSkillAfterSpaceChange?.instructions).toContain(
+        SkillFactory.serializeSkillReferenceTag(childSkill)
       );
 
       await childSkill.updateSkill(testContext.authenticator, {

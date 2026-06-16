@@ -5,10 +5,7 @@ import type {
   PatchSkillResponseBody,
 } from "@app/lib/api/skills";
 import { AttachedKnowledgeSchema } from "@app/lib/api/skills/schemas";
-import {
-  getReferencedSkillSpaceModelIds,
-  resolveAdditionalRequestedSpaceModelIds,
-} from "@app/lib/api/skills/space_requirements";
+import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
 import { pruneOutdatedSkillEditSuggestions } from "@app/lib/reinforcement/skill_suggestion_pruning";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -276,12 +273,6 @@ app.patch(
         mcpServerViews,
         attachedKnowledge: attachedKnowledgeWithDataSourceViews,
       });
-    const referencedSkillSpaceIds = await getReferencedSkillSpaceModelIds(
-      auth,
-      body.instructions,
-      skill.sId
-    );
-
     let additionalRequestedSpaceIds: ModelId[];
 
     if (body.additionalRequestedSpaceIds !== undefined) {
@@ -309,16 +300,9 @@ app.patch(
           mcpServerViews: skill.mcpServerViews,
           attachedKnowledge: previousAttachedKnowledge,
         });
-      const previousReferencedSkillSpaceIds =
-        await getReferencedSkillSpaceModelIds(
-          auth,
-          skill.instructions,
-          skill.sId
-        );
-      const previousComputedRequestedSpaceIdsSet = new Set([
-        ...previousComputedRequestedSpaceIds,
-        ...previousReferencedSkillSpaceIds,
-      ]);
+      const previousComputedRequestedSpaceIdsSet = new Set(
+        previousComputedRequestedSpaceIds
+      );
 
       additionalRequestedSpaceIds = skill.requestedSpaceIds.filter(
         (spaceId) => !previousComputedRequestedSpaceIdsSet.has(spaceId)
@@ -327,7 +311,6 @@ app.patch(
 
     const requestedSpaceIds = uniq([
       ...computedRequestedSpaceIds,
-      ...referencedSkillSpaceIds,
       ...additionalRequestedSpaceIds,
     ]);
 

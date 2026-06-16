@@ -382,7 +382,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     ).resolves.toHaveLength(0);
   });
 
-  it("adds requested spaces from nested skill references", async () => {
+  it("keeps readable nested skill references without adding child spaces", async () => {
     const { workspace, skill, requestUserAuth, globalGroup } = await setupTest({
       requestUserRole: "admin",
     });
@@ -408,7 +408,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.skill.requestedSpaceIds).toContain(openSpace.sId);
+    expect(data.skill.requestedSpaceIds).not.toContain(openSpace.sId);
     expect(data.skill.instructions).not.toContain("<unavailable_skill");
 
     const updatedSkill = await SkillResource.fetchById(
@@ -418,7 +418,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     if (!updatedSkill) {
       throw new Error("Expected updated skill to be found.");
     }
-    expect(updatedSkill.requestedSpaceIds).toContain(openSpace.id);
+    expect(updatedSkill.requestedSpaceIds).not.toContain(openSpace.id);
     expect(updatedSkill.instructions).not.toContain("<unavailable_skill");
   });
 

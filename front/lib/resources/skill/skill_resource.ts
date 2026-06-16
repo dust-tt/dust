@@ -109,7 +109,6 @@ type SkillReferenceTarget = {
   icon: string | null;
   id: string;
   name: string;
-  requestedSpaceIds: readonly ModelId[];
   status: SkillStatus;
 };
 
@@ -2362,7 +2361,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           {
             icon: this.icon,
             name: this.name,
-            requestedSpaceIds: this.requestedSpaceIds,
             status: "archived",
           },
           { transaction }
@@ -2403,7 +2401,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           {
             icon: this.icon,
             name: this.name,
-            requestedSpaceIds: this.requestedSpaceIds,
             status: "active",
           },
           { transaction }
@@ -2468,14 +2465,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       // Save the current version before updating.
       await this.saveVersion(auth, { transaction });
 
-      // Snapshot the previous requested space IDs before updating.
       const previousRequestedSpaceIds = [...this.requestedSpaceIds];
-      const previousRequestedSpaceIdsSet = new Set(previousRequestedSpaceIds);
-      const requestedSpaceIdsChanged =
-        previousRequestedSpaceIds.length !== requestedSpaceIds.length ||
-        requestedSpaceIds.some(
-          (spaceId) => !previousRequestedSpaceIdsSet.has(spaceId)
-        );
       const statusChanged = status !== undefined && previousStatus !== status;
 
       const editedBy = auth.user()?.id;
@@ -2508,18 +2498,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       await this.normalizeSkillReferenceTags(auth, { transaction });
       await this.syncSkillReferences(auth, { transaction });
 
-      if (
-        name !== previousName ||
-        icon !== previousIcon ||
-        requestedSpaceIdsChanged ||
-        statusChanged
-      ) {
+      if (name !== previousName || icon !== previousIcon || statusChanged) {
         await this.propagateReferenceUpdatesToParentSkills(
           auth,
           {
             icon,
             name,
-            requestedSpaceIds,
             status: status ?? this.status,
           },
           { transaction }
@@ -2552,19 +2536,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   /**
    * Rewrites inline references to this skill in every parent skill so their tag
-   * availability reflects this skill's current status and requested spaces.
+   * availability reflects this skill's current status.
    */
   private async propagateReferenceUpdatesToParentSkills(
     auth: Authenticator,
     {
       icon,
       name,
-      requestedSpaceIds,
       status,
     }: {
       icon: string | null;
       name: string;
-      requestedSpaceIds: readonly ModelId[];
       status: SkillStatus;
     },
     { transaction }: { transaction?: Transaction } = {}
@@ -2587,10 +2569,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return;
     }
 
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(
-      auth,
-      transaction
-    );
     const target = new Map<string, SkillReferenceTarget>([
       [
         this.sId,
@@ -2598,7 +2576,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           icon,
           id: this.sId,
           name,
-          requestedSpaceIds,
           status,
         },
       ],
@@ -2615,10 +2592,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // Each update carries distinct instructions content so it cannot be
     // batched. Bounded by the number of skills referencing this one.
     for (const referencingSkill of referencingSkills) {
-      const parentRequestedSpaceIds = uniq([
-        ...referencingSkill.requestedSpaceIds,
-        globalSpace.id,
-      ]);
       const renamedInstructions = renameSkillReferencesInContent(
         referencingSkill.instructions,
         { skillId: this.sId, newName: name }
@@ -2632,15 +2605,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           : referencingSkill.instructionsHtml;
       const instructions = SkillResource.replaceSkillReferenceTags(
         renamedInstructions,
-        target,
-        parentRequestedSpaceIds
+        target
       );
       const instructionsHtml =
         renamedInstructionsHtml !== null
           ? SkillResource.replaceSkillReferenceTags(
               renamedInstructionsHtml,
               target,
-              parentRequestedSpaceIds,
               { html: true }
             )
           : null;
@@ -3076,7 +3047,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           {
             icon: this.icon,
             name: this.name,
-            requestedSpaceIds: this.requestedSpaceIds,
             status: "archived",
           },
           { transaction }
@@ -3445,14 +3415,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   private static replaceSkillReferenceTags(
     content: string,
     targets: ReadonlyMap<string, SkillReferenceTarget>,
-    parentRequestedSpaceIds: readonly ModelId[],
     { html = false }: ReplaceSkillReferenceTagsOptions = {}
   ): string {
     if (targets.size === 0) {
       return content;
     }
-
-    const parentRequestedSpaceIdsSet = new Set(parentRequestedSpaceIds);
 
     return content.replace(SKILL_REFERENCE_TAG_REGEX, (tag) => {
       const skill = parseSkillReferenceTag(tag);
@@ -3462,13 +3429,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         return tag;
       }
 
-      const isAvailable =
-        target.status === "active" &&
-        target.requestedSpaceIds.every((spaceId) =>
-          parentRequestedSpaceIdsSet.has(spaceId)
-        );
-
-      if (!isAvailable) {
+      if (target.status !== "active") {
         return serializeUnavailableSkillTag({ id: target.id }, { html });
       }
 
@@ -3487,7 +3448,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
-    const workspace = auth.getNonNullableWorkspace();
     const customSkillIdByModelId = new Map<ModelId, string>(
       removeNulls(
         extractUniqueSkillReferenceIds(this.instructions).map((skillId) => {
@@ -3504,33 +3464,29 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return;
     }
 
-    const customSkills = await SkillConfigurationModel.findAll({
-      where: {
-        id: [...customSkillIdByModelId.keys()],
-        workspaceId: workspace.id,
-      },
-      attributes: ["id", "icon", "name", "requestedSpaceIds", "status"],
-      transaction,
-    });
+    const readableSkills = await SkillResource.fetchBySkillReferences(
+      auth,
+      [...customSkillIdByModelId.keys()].map((customSkillId) => ({
+        customSkillId,
+        globalSkillId: null,
+      })),
+      {
+        status: ["active", "archived", "suggested"],
+        transaction,
+        withInstructions: false,
+        withTools: false,
+      }
+    );
     const targets = new Map<string, SkillReferenceTarget>(
-      removeNulls(
-        customSkills.map((skill) => {
-          const sId = customSkillIdByModelId.get(skill.id);
-
-          return sId
-            ? [
-                sId,
-                {
-                  icon: skill.icon,
-                  id: sId,
-                  name: skill.name,
-                  requestedSpaceIds: skill.requestedSpaceIds,
-                  status: skill.status,
-                },
-              ]
-            : null;
-        })
-      )
+      readableSkills.map((skill) => [
+        skill.sId,
+        {
+          icon: skill.icon,
+          id: skill.sId,
+          name: skill.name,
+          status: skill.status,
+        },
+      ])
     );
     for (const skillId of customSkillIdByModelId.values()) {
       if (!targets.has(skillId)) {
@@ -3538,33 +3494,23 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           icon: null,
           id: skillId,
           name: "",
-          requestedSpaceIds: [],
           status: "archived",
         });
       }
     }
 
-    const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(
-      auth,
-      transaction
-    );
-    const parentRequestedSpaceIds = uniq([
-      ...this.requestedSpaceIds,
-      globalSpace.id,
-    ]);
-
     const instructions = SkillResource.replaceSkillReferenceTags(
       this.instructions,
-      targets,
-      parentRequestedSpaceIds
+      targets
     );
     const instructionsHtml =
       this.instructionsHtml !== null
         ? SkillResource.replaceSkillReferenceTags(
             this.instructionsHtml,
             targets,
-            parentRequestedSpaceIds,
-            { html: true }
+            {
+              html: true,
+            }
           )
         : null;
 
