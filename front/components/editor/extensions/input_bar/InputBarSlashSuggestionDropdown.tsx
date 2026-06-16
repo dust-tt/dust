@@ -10,6 +10,7 @@ import type {
   SlashCommandDropdownRef,
 } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/skill_builder/SlashCommandDropdown";
+import { ResourceAvatar } from "@app/components/resources/resources_icons";
 import { isJITMCPServerView } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useMCPServerViewsFromSpaces } from "@app/lib/swr/mcp_servers";
@@ -190,7 +191,9 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
                   action: "run-command",
                   data: capability,
                   description: capability.command.description,
-                  icon: capability.command.icon,
+                  icon: () => (
+                    <ResourceAvatar icon={capability.command.icon} size="sm" />
+                  ),
                   id: `command-${capability.command.id}`,
                   label: capability.command.label,
                   sectionLabel: COMMANDS_SECTION_LABEL,
