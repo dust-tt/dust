@@ -1,5 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { SkillConfigurationModel } from "@app/lib/models/skill";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import {
   type SkillAttachedKnowledge,
   SkillResource,
@@ -15,6 +16,11 @@ export type BackfillUnavailableSkillReferencesStats = {
   totalCandidates: number;
   repaired: number;
   skipped: number;
+};
+
+type BackfillRepairPlan = {
+  skill: SkillResource;
+  requestedSpaceIds: ModelId[];
 };
 
 export async function backfillUnavailableSkillReferencesForWorkspace(
@@ -34,25 +40,49 @@ export async function backfillUnavailableSkillReferencesForWorkspace(
     order: [["id", "ASC"]],
   });
 
-  let repaired = 0;
+  if (skillModels.length === 0) {
+    return {
+      totalCandidates: 0,
+      repaired: 0,
+      skipped: 0,
+    };
+  }
+
+  const skills = await SkillResource.fetchByModelIds(
+    auth,
+    skillModels.map((skillModel) => skillModel.id)
+  );
+  const skillsById = new Map(skills.map((skill) => [skill.id, skill]));
+  const referencedSkillsBySId = await fetchReferencedSkillsBySId(auth, skills);
+  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+
+  const repairPlans: BackfillRepairPlan[] = [];
   let skipped = 0;
 
   for (const skillModel of skillModels) {
-    const skill = await SkillResource.fetchByModelIdWithAuth(
-      auth,
-      skillModel.id
-    );
+    const skill = skillsById.get(skillModel.id);
 
     if (!skill) {
       skipped++;
       continue;
     }
 
-    const {
-      attachedKnowledge,
-      requestedSpaceIds,
-      shouldNormalizeUnavailableReferences,
-    } = await computeBackfilledSkillState(auth, skill);
+    const skillReferences = extractSkillReferenceTags(skill.instructions);
+    const referencedSkills = referencedSkillsForSkill(
+      skillReferences,
+      referencedSkillsBySId
+    );
+    const requestedSpaceIds = computeBackfilledRequestedSpaceIds(
+      skill,
+      referencedSkills
+    );
+    const shouldNormalizeUnavailableReferences =
+      canNormalizeUnavailableReferences({
+        globalSpaceId: globalSpace.id,
+        parentRequestedSpaceIds: requestedSpaceIds,
+        referencedSkills,
+        skillReferences,
+      });
 
     const requestedSpaceIdsChanged = !hasSameSpaceIds(
       skill.requestedSpaceIds,
@@ -63,7 +93,24 @@ export async function backfillUnavailableSkillReferencesForWorkspace(
       continue;
     }
 
-    if (execute) {
+    repairPlans.push({
+      skill,
+      requestedSpaceIds,
+    });
+  }
+
+  if (execute) {
+    const attachedKnowledgeBySkillId = await fetchAttachedKnowledgeBySkillId(
+      auth,
+      repairPlans.map((plan) => plan.skill)
+    );
+
+    for (const { skill, requestedSpaceIds } of repairPlans) {
+      const attachedKnowledge = attachedKnowledgeBySkillId.get(skill.id);
+      if (!attachedKnowledge) {
+        throw new Error(`Missing attached knowledge for skill ${skill.sId}.`);
+      }
+
       await skill.updateSkill(auth, {
         name: skill.name,
         agentFacingDescription: skill.agentFacingDescription,
@@ -76,42 +123,104 @@ export async function backfillUnavailableSkillReferencesForWorkspace(
         requestedSpaceIds,
       });
     }
-
-    repaired++;
   }
 
   return {
     totalCandidates: skillModels.length,
-    repaired,
+    repaired: repairPlans.length,
     skipped,
   };
 }
 
-async function computeBackfilledSkillState(
+async function fetchReferencedSkillsBySId(
   auth: Authenticator,
-  skill: SkillResource
-): Promise<{
-  attachedKnowledge: SkillAttachedKnowledge[];
-  requestedSpaceIds: ModelId[];
-  shouldNormalizeUnavailableReferences: boolean;
-}> {
-  const attachedKnowledge = await skill.getAttachedKnowledge(auth);
-  const skillReferences = extractSkillReferenceTags(skill.instructions);
+  skills: readonly SkillResource[]
+): Promise<Map<string, SkillResource>> {
   const referencedSkillIds = uniq(
-    skillReferences
-      .map((reference) => reference.id)
-      .filter((skillId) => isResourceSId("skill", skillId))
+    skills.flatMap((skill) =>
+      extractSkillReferenceTags(skill.instructions)
+        .map((reference) => reference.id)
+        .filter((skillId) => isResourceSId("skill", skillId))
+    )
   );
+
   const referencedSkills =
     referencedSkillIds.length > 0
       ? await SkillResource.fetchByIds(auth, referencedSkillIds)
       : [];
 
-  const computedRequestedSpaceIds =
-    await SkillResource.computeRequestedSpaceIds(auth, {
-      mcpServerViews: skill.mcpServerViews,
-      attachedKnowledge,
-    });
+  return new Map(referencedSkills.map((skill) => [skill.sId, skill]));
+}
+
+async function fetchAttachedKnowledgeBySkillId(
+  auth: Authenticator,
+  skills: readonly SkillResource[]
+): Promise<Map<ModelId, SkillAttachedKnowledge[]>> {
+  const dataSourceViewIds = uniq(
+    skills.flatMap((skill) =>
+      skill.dataSourceConfigurations.map((config) => config.dataSourceViewId)
+    )
+  );
+  const dataSourceViews =
+    dataSourceViewIds.length > 0
+      ? await DataSourceViewResource.fetchByModelIds(auth, dataSourceViewIds)
+      : [];
+  const dataSourceViewsById = new Map(
+    dataSourceViews.map((view) => [view.id, view])
+  );
+  const attachedKnowledgeBySkillId = new Map<
+    ModelId,
+    SkillAttachedKnowledge[]
+  >();
+
+  for (const skill of skills) {
+    const attachedKnowledge: SkillAttachedKnowledge[] = [];
+
+    for (const config of skill.dataSourceConfigurations) {
+      const dataSourceView = dataSourceViewsById.get(config.dataSourceViewId);
+
+      if (dataSourceView) {
+        for (const nodeId of config.parentsIn) {
+          attachedKnowledge.push({
+            dataSourceView,
+            nodeId,
+          });
+        }
+      }
+    }
+
+    attachedKnowledgeBySkillId.set(skill.id, attachedKnowledge);
+  }
+
+  return attachedKnowledgeBySkillId;
+}
+
+function referencedSkillsForSkill(
+  skillReferences: ReturnType<typeof extractSkillReferenceTags>,
+  referencedSkillsBySId: ReadonlyMap<string, SkillResource>
+): SkillResource[] {
+  const referencedSkillIds = uniq(
+    skillReferences
+      .map((reference) => reference.id)
+      .filter((skillId) => isResourceSId("skill", skillId))
+  );
+  const referencedSkills: SkillResource[] = [];
+
+  for (const skillId of referencedSkillIds) {
+    const referencedSkill = referencedSkillsBySId.get(skillId);
+
+    if (referencedSkill) {
+      referencedSkills.push(referencedSkill);
+    }
+  }
+
+  return referencedSkills;
+}
+
+function computeBackfilledRequestedSpaceIds(
+  skill: SkillResource,
+  referencedSkills: readonly SkillResource[]
+): ModelId[] {
   const referencedSkillSpaceIds = uniq(
     referencedSkills
       .filter(
@@ -121,36 +230,21 @@ async function computeBackfilledSkillState(
       )
       .flatMap((referencedSkill) => referencedSkill.requestedSpaceIds)
   );
-  const requestedSpaceIds = uniq([
-    ...computedRequestedSpaceIds,
-    ...referencedSkillSpaceIds,
-    ...skill.requestedSpaceIds,
-  ]);
 
-  return {
-    attachedKnowledge,
-    requestedSpaceIds,
-    shouldNormalizeUnavailableReferences:
-      await canNormalizeUnavailableReferences(auth, {
-        parentRequestedSpaceIds: requestedSpaceIds,
-        referencedSkills,
-        skillReferences,
-      }),
-  };
+  return uniq([...skill.requestedSpaceIds, ...referencedSkillSpaceIds]);
 }
 
-async function canNormalizeUnavailableReferences(
-  auth: Authenticator,
-  {
-    parentRequestedSpaceIds,
-    referencedSkills,
-    skillReferences,
-  }: {
-    parentRequestedSpaceIds: readonly ModelId[];
-    referencedSkills: SkillResource[];
-    skillReferences: ReturnType<typeof extractSkillReferenceTags>;
-  }
-): Promise<boolean> {
+function canNormalizeUnavailableReferences({
+  globalSpaceId,
+  parentRequestedSpaceIds,
+  referencedSkills,
+  skillReferences,
+}: {
+  globalSpaceId: ModelId;
+  parentRequestedSpaceIds: readonly ModelId[];
+  referencedSkills: readonly SkillResource[];
+  skillReferences: ReturnType<typeof extractSkillReferenceTags>;
+}): boolean {
   const unavailableSkillIds = new Set(
     skillReferences
       .filter(
@@ -164,10 +258,9 @@ async function canNormalizeUnavailableReferences(
     return false;
   }
 
-  const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   const parentRequestedSpaceIdSet = new Set([
     ...parentRequestedSpaceIds,
-    globalSpace.id,
+    globalSpaceId,
   ]);
 
   return referencedSkills.some(
