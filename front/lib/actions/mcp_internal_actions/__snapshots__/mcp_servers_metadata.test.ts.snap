@@ -123,6 +123,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "list": "never_ask",
     "move": "never_ask",
     "resolve": "never_ask",
+    "upload_from_url": "never_ask",
   },
   "freshservice": {
     "add_ticket_note": "low",
