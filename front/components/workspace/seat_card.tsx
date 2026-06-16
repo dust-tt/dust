@@ -10,7 +10,7 @@ import type {
 import { SEAT_PRODUCT_YEARLY_SUFFIX } from "@app/lib/metronome/constants";
 import type { SupportedCurrency } from "@app/types/currency";
 import { CURRENCY_SYMBOLS } from "@app/types/currency";
-import { type MembershipSeatType } from "@app/types/memberships";
+import type { MembershipSeatType } from "@app/types/memberships";
 import {
   AlertCircle,
   Card,
