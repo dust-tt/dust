@@ -7,6 +7,7 @@ import {
 import {
   AWU_PRIORITY_PURCHASED_COMMIT,
   CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
+  FOREVER_ENDING_BEFORE,
 } from "@app/lib/metronome/constants";
 import type {
   MetronomeCommit,
@@ -41,11 +42,6 @@ function carriedAmount(entry: CarryEntry): number {
   }
   return entry.balance ?? 0;
 }
-
-// Metronome commit/credit access schedules require an `ending_before` — there
-// is no true open-ended window — so "forever" (a carry flag with no ISO expiry)
-// is represented with this far-future sentinel.
-const FOREVER_ENDING_BEFORE = new Date("2999-01-01T00:00:00.000Z");
 
 type CarryPlan = {
   amount: number;

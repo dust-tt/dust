@@ -16,7 +16,9 @@ import {
 import {
   AWU_PRIORITY_PURCHASED_COMMIT,
   CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY,
+  CARRY_ON_RENEWAL_FOREVER_VALUE,
   CURRENCY_TO_CREDIT_TYPE_ID,
+  FOREVER_ENDING_BEFORE,
   getCreditTypeAwuId,
   getProductPrepaidCommitId,
   getProductSeatSubscriptionCommitId,
@@ -525,13 +527,10 @@ export async function switchContract({
   );
 
   // Optional one-off initial credits: a contract-level prepaid AWU commit
-  // starting with the contract and lasting one year. `invoiceAmount` is in the
-  // customer's currency major units; convert to Metronome fiat units (cents
-  // for USD, whole units for EUR) for the invoice unit price.
+  // starting with the contract. `invoiceAmount` is in the customer's currency
+  // major units; convert to Metronome fiat units (cents for USD, whole units
+  // for EUR) for the invoice unit price.
   if (body.initialCredits && resolvedCurrency) {
-    const oneYearAfterStart = new Date(alignedStart);
-    oneYearAfterStart.setUTCFullYear(oneYearAfterStart.getUTCFullYear() + 1);
-
     const invoiceAmountCents = Math.round(
       body.initialCredits.invoiceAmount * 100
     );
@@ -547,7 +546,7 @@ export async function switchContract({
       accessAmount: body.initialCredits.amountCredits,
       accessCreditTypeId: getCreditTypeAwuId(),
       accessStartingAt: alignedStart,
-      accessEndingBefore: oneYearAfterStart,
+      accessEndingBefore: FOREVER_ENDING_BEFORE,
       invoiceUnitPrice,
       invoiceQuantity: 1,
       invoiceCreditTypeId: CURRENCY_TO_CREDIT_TYPE_ID[resolvedCurrency],
@@ -560,7 +559,7 @@ export async function switchContract({
       // workspace, start moment, and amount.
       uniquenessKey: `initial-credits-${metronomeContractId}-${body.initialCredits.amountCredits}`,
       customFields: {
-        [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: oneYearAfterStart.toISOString(),
+        [CARRY_ON_RENEWAL_CUSTOM_FIELD_KEY]: CARRY_ON_RENEWAL_FOREVER_VALUE,
       },
     });
     if (commitResult.isErr()) {
