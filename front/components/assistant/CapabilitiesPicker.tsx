@@ -438,6 +438,19 @@ export function CapabilitiesPicker({
       }
     }
 
+    const getSearchRank = (item: CapabilityPickerItem): number => {
+      if (normalizedSearchText.length === 0) {
+        return 0;
+      }
+      if (item.sortName.startsWith(normalizedSearchText)) {
+        return 0;
+      }
+      if (item.sortName.includes(normalizedSearchText)) {
+        return 1;
+      }
+      return 2;
+    };
+
     return items.toSorted((a, b) => {
       const aGroupOrder = a.kind === "uninstalled_tool" ? 1 : 0;
       const bGroupOrder = b.kind === "uninstalled_tool" ? 1 : 0;
@@ -445,6 +458,11 @@ export function CapabilitiesPicker({
 
       if (groupComparison !== 0) {
         return groupComparison;
+      }
+
+      const rankComparison = getSearchRank(a) - getSearchRank(b);
+      if (rankComparison !== 0) {
+        return rankComparison;
       }
 
       return a.sortName.localeCompare(b.sortName);
