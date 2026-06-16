@@ -1,4 +1,5 @@
-import { RequestUpgradeButton } from "@app/components/credits/RequestUpgradeButton";
+import { UsageUpgradeButton } from "@app/components/credits/RequestUpgradeButton";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
 import type { LightWorkspaceType } from "@app/types/user";
 import { cn } from "@dust-tt/sparkle";
@@ -8,13 +9,14 @@ interface InputBarUsageBannerProps {
 }
 
 export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
+  const { isAdmin } = useAuth();
   const { awuStatus, canRequestUpgrade, hasPendingUpgradeRequest } =
     useWorkspaceUsageStatus({
       owner,
     });
 
   const showAwuBanner = awuStatus !== "normal";
-  const showUpgradeCta = canRequestUpgrade;
+  const showUpgradeCta = canRequestUpgrade || isAdmin;
 
   if (!showAwuBanner) {
     return null;
@@ -44,9 +46,10 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
       </span>
       {showUpgradeCta && (
         <div className="shrink-0">
-          <RequestUpgradeButton
+          <UsageUpgradeButton
             owner={owner}
             hasPendingUpgradeRequest={hasPendingUpgradeRequest}
+            isAdmin={isAdmin}
           />
         </div>
       )}

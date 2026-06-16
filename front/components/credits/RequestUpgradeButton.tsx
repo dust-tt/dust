@@ -12,22 +12,26 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-type RequestUpgradeButtonVariant = "link" | "button";
+type UsageUpgradeButtonVariant = "link" | "button";
 
-interface RequestUpgradeButtonProps {
+interface UsageUpgradeButtonProps {
   owner: LightWorkspaceType;
   hasPendingUpgradeRequest: boolean;
-  variant?: RequestUpgradeButtonVariant;
+  variant?: UsageUpgradeButtonVariant;
+  isAdmin?: boolean;
+  onAdminNavigate?: () => void;
 }
 
 // Member-initiated upgrade-request CTA. Opens a confirmation dialog and posts
 // the request via `useRequestUpgrade`. Rendered either as an inline link (usage
 // banner) or as a primary button (personal settings) through `variant`.
-export function RequestUpgradeButton({
+export function UsageUpgradeButton({
   owner,
   hasPendingUpgradeRequest,
   variant = "link",
-}: RequestUpgradeButtonProps) {
+  isAdmin = false,
+  onAdminNavigate,
+}: UsageUpgradeButtonProps) {
   const { doRequestUpgrade } = useRequestUpgrade({ workspaceId: owner.sId });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,6 +53,33 @@ export function RequestUpgradeButton({
   }
 
   function renderTrigger() {
+    if (isAdmin) {
+      const usageHref = `/w/${owner.sId}/usage`;
+
+      if (variant === "button") {
+        return (
+          <Button
+            variant="primary"
+            size="xs"
+            label="Go to workspace usage"
+            href={usageHref}
+            onClick={onAdminNavigate}
+          />
+        );
+      }
+
+      return (
+        <Hoverable
+          variant="primary"
+          className="copy-sm underline underline-offset-2"
+          href={usageHref}
+          onClick={onAdminNavigate}
+        >
+          Go to workspace usage
+        </Hoverable>
+      );
+    }
+
     if (variant === "button") {
       return (
         <Button
