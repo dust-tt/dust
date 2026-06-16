@@ -114,6 +114,7 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
     expect(data.metadata).toEqual({
       archivedAt: null,
       createdAt: expect.anything(),
+      defaultAgentId: null,
       description: "Test project description",
       lastTodoAnalysisAt: null,
       pinnedFramePath: null,
