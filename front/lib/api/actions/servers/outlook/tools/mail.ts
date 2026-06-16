@@ -614,9 +614,10 @@ async function sendReply({
   bcc?: string[];
   replyTo?: string[];
 }): Promise<Ok<null> | Err<MCPError>> {
-  const endpoint = (replyAll ?? false)
-    ? `${basePath}/messages/${encodeURIComponent(replyToMessageId)}/replyAll`
-    : `${basePath}/messages/${encodeURIComponent(replyToMessageId)}/reply`;
+  const endpoint =
+    (replyAll ?? false)
+      ? `${basePath}/messages/${encodeURIComponent(replyToMessageId)}/replyAll`
+      : `${basePath}/messages/${encodeURIComponent(replyToMessageId)}/reply`;
 
   const message: Record<string, unknown> = {
     body: { contentType: "html", content: sanitizeHtml(body) },
