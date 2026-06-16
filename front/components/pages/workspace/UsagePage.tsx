@@ -588,7 +588,7 @@ export function UsagePage() {
       <div className="flex flex-col items-stretch gap-10 pb-20">
         <div className="flex items-center justify-between">
           <Page.Header title="Usage" icon={PieChart01} />
-          {!isReadOnly && !isEnterprise && (
+          {!isReadOnly && !isFreePlanWorkspace && !isEnterprise && (
             <Button
               label="Top up"
               icon={ArrowUp}
