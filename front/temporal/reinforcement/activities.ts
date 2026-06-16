@@ -218,7 +218,7 @@ async function runReinforcedSkillsStep({
   if (!model) {
     logger.error(
       { contextId, workspaceId: owner.sId },
-      "ReinforcedSkills: no model confiuguration available for step activity"
+      "ReinforcedSkills: no model configuration available for step activity"
     );
     return {
       isTerminal: true,
