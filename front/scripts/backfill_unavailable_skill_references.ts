@@ -1,5 +1,5 @@
-import { backfillUnavailableSkillReferencesForWorkspace } from "@app/lib/api/skills/backfill_unavailable_references";
 import { Authenticator } from "@app/lib/auth";
+import { backfillUnavailableSkillReferencesForWorkspace } from "@app/lib/resources/skill/backfill_unavailable_references";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 

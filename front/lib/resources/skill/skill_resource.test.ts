@@ -1,12 +1,15 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { backfillUnavailableSkillReferencesForWorkspace } from "@app/lib/api/skills/backfill_unavailable_references";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
+import {
+  SkillConfigurationModel,
+  SkillDataSourceConfigurationModel,
+} from "@app/lib/models/skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { backfillUnavailableSkillReferencesForWorkspace } from "@app/lib/resources/skill/backfill_unavailable_references";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -808,6 +811,55 @@ describe("SkillResource", () => {
       expect(updatedParentSkill?.requestedSpaceIds).toContain(
         restrictedSpace.id
       );
+      expect(updatedParentSkill?.instructions).toContain(
+        SkillFactory.serializeSkillReferenceTag(childSkill)
+      );
+    });
+
+    it("backfills unavailable nested skill references when parent spaces are already correct", async () => {
+      const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
+      const addAdminToRestrictedSpaceRes = await restrictedSpace.addMembers(
+        testContext.authenticator,
+        { userIds: [testContext.authenticator.getNonNullableUser().sId] }
+      );
+      expect(addAdminToRestrictedSpaceRes.isOk()).toBe(true);
+      await testContext.authenticator.refresh();
+
+      const childSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Already Requested Child Skill",
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+      const parentSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Already Requested Parent Skill",
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+      await SkillConfigurationModel.update(
+        {
+          instructions: `<unavailable_skill id="${childSkill.sId}" />`,
+        },
+        {
+          where: { id: parentSkill.id, workspaceId: testContext.workspace.id },
+        }
+      );
+
+      const backfillAuth = await Authenticator.internalAdminForWorkspace(
+        testContext.workspace.sId,
+        { dangerouslyRequestAllGroups: true }
+      );
+      const stats = await backfillUnavailableSkillReferencesForWorkspace(
+        backfillAuth,
+        { execute: true }
+      );
+
+      expect(stats.repaired).toBe(1);
+
+      const updatedParentSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        parentSkill.sId
+      );
+      expect(updatedParentSkill?.requestedSpaceIds).toEqual([
+        restrictedSpace.id,
+      ]);
       expect(updatedParentSkill?.instructions).toContain(
         SkillFactory.serializeSkillReferenceTag(childSkill)
       );
