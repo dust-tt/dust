@@ -12,6 +12,8 @@ import type { ModelId } from "@app/types/shared/model_id";
 import uniq from "lodash/uniq";
 import { Op } from "sequelize";
 
+const MAX_BACKFILL_PASSES = 20;
+
 export type BackfillUnavailableSkillReferencesStats = {
   totalCandidates: number;
   repaired: number;
@@ -23,10 +25,65 @@ type BackfillRepairPlan = {
   requestedSpaceIds: ModelId[];
 };
 
+type BackfillPlan = {
+  candidateSkillModelIds: ModelId[];
+  repairPlans: BackfillRepairPlan[];
+  skippedSkillModelIds: ModelId[];
+};
+
 export async function backfillUnavailableSkillReferencesForWorkspace(
   auth: Authenticator,
   { execute }: { execute: boolean }
 ): Promise<BackfillUnavailableSkillReferencesStats> {
+  if (!execute) {
+    const plan = await buildBackfillPlan(auth);
+
+    return {
+      totalCandidates: plan.candidateSkillModelIds.length,
+      repaired: plan.repairPlans.length,
+      skipped: plan.skippedSkillModelIds.length,
+    };
+  }
+
+  const candidateSkillModelIds = new Set<ModelId>();
+  const repairedSkillModelIds = new Set<ModelId>();
+  const skippedSkillModelIds = new Set<ModelId>();
+  let repaired = 0;
+
+  for (let pass = 1; pass <= MAX_BACKFILL_PASSES; pass++) {
+    const plan = await buildBackfillPlan(auth);
+
+    for (const skillModelId of plan.candidateSkillModelIds) {
+      candidateSkillModelIds.add(skillModelId);
+    }
+    for (const skillModelId of plan.skippedSkillModelIds) {
+      skippedSkillModelIds.add(skillModelId);
+    }
+
+    if (plan.repairPlans.length === 0) {
+      return {
+        totalCandidates: candidateSkillModelIds.size,
+        repaired,
+        skipped: [...skippedSkillModelIds].filter(
+          (skillModelId) => !repairedSkillModelIds.has(skillModelId)
+        ).length,
+      };
+    }
+
+    await executeRepairPlans(auth, plan.repairPlans);
+
+    repaired += plan.repairPlans.length;
+    for (const { skill } of plan.repairPlans) {
+      repairedSkillModelIds.add(skill.id);
+    }
+  }
+
+  throw new Error(
+    `Unavailable skill reference backfill did not converge after ${MAX_BACKFILL_PASSES} passes.`
+  );
+}
+
+async function buildBackfillPlan(auth: Authenticator): Promise<BackfillPlan> {
   const workspace = auth.getNonNullableWorkspace();
   const skillModels = await SkillConfigurationModel.findAll({
     where: {
@@ -42,9 +99,9 @@ export async function backfillUnavailableSkillReferencesForWorkspace(
 
   if (skillModels.length === 0) {
     return {
-      totalCandidates: 0,
-      repaired: 0,
-      skipped: 0,
+      candidateSkillModelIds: [],
+      repairPlans: [],
+      skippedSkillModelIds: [],
     };
   }
 
@@ -52,25 +109,25 @@ export async function backfillUnavailableSkillReferencesForWorkspace(
     auth,
     skillModels.map((skillModel) => skillModel.id)
   );
-  const skillsById = new Map(skills.map((skill) => [skill.id, skill]));
-  const referencedSkillsBySId = await fetchReferencedSkillsBySId(auth, skills);
+  const skillsByModelId = new Map(skills.map((skill) => [skill.id, skill]));
+  const referencedSkillsById = await fetchReferencedSkillsById(auth, skills);
   const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
 
   const repairPlans: BackfillRepairPlan[] = [];
-  let skipped = 0;
+  const skippedSkillModelIds: ModelId[] = [];
 
   for (const skillModel of skillModels) {
-    const skill = skillsById.get(skillModel.id);
+    const skill = skillsByModelId.get(skillModel.id);
 
     if (!skill) {
-      skipped++;
+      skippedSkillModelIds.push(skillModel.id);
       continue;
     }
 
     const skillReferences = extractSkillReferenceTags(skill.instructions);
     const referencedSkills = referencedSkillsForSkill(
       skillReferences,
-      referencedSkillsBySId
+      referencedSkillsById
     );
     const requestedSpaceIds = computeBackfilledRequestedSpaceIds(
       skill,
@@ -89,7 +146,7 @@ export async function backfillUnavailableSkillReferencesForWorkspace(
       requestedSpaceIds
     );
     if (!requestedSpaceIdsChanged && !shouldNormalizeUnavailableReferences) {
-      skipped++;
+      skippedSkillModelIds.push(skillModel.id);
       continue;
     }
 
@@ -99,40 +156,44 @@ export async function backfillUnavailableSkillReferencesForWorkspace(
     });
   }
 
-  if (execute) {
-    const attachedKnowledgeBySkillId = await fetchAttachedKnowledgeBySkillId(
+  return {
+    candidateSkillModelIds: skillModels.map((skillModel) => skillModel.id),
+    repairPlans,
+    skippedSkillModelIds,
+  };
+}
+
+async function executeRepairPlans(
+  auth: Authenticator,
+  repairPlans: BackfillRepairPlan[]
+): Promise<void> {
+  const attachedKnowledgeBySkillModelId =
+    await fetchAttachedKnowledgeBySkillModelId(
       auth,
       repairPlans.map((plan) => plan.skill)
     );
 
-    for (const { skill, requestedSpaceIds } of repairPlans) {
-      const attachedKnowledge = attachedKnowledgeBySkillId.get(skill.id);
-      if (!attachedKnowledge) {
-        throw new Error(`Missing attached knowledge for skill ${skill.sId}.`);
-      }
-
-      await skill.updateSkill(auth, {
-        name: skill.name,
-        agentFacingDescription: skill.agentFacingDescription,
-        userFacingDescription: skill.userFacingDescription,
-        instructions: skill.instructions,
-        instructionsHtml: skill.instructionsHtml,
-        icon: skill.icon,
-        mcpServerViews: skill.mcpServerViews,
-        attachedKnowledge,
-        requestedSpaceIds,
-      });
+  for (const { skill, requestedSpaceIds } of repairPlans) {
+    const attachedKnowledge = attachedKnowledgeBySkillModelId.get(skill.id);
+    if (!attachedKnowledge) {
+      throw new Error(`Missing attached knowledge for skill ${skill.sId}.`);
     }
-  }
 
-  return {
-    totalCandidates: skillModels.length,
-    repaired: repairPlans.length,
-    skipped,
-  };
+    await skill.updateSkill(auth, {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      instructionsHtml: skill.instructionsHtml,
+      icon: skill.icon,
+      mcpServerViews: skill.mcpServerViews,
+      attachedKnowledge,
+      requestedSpaceIds,
+    });
+  }
 }
 
-async function fetchReferencedSkillsBySId(
+async function fetchReferencedSkillsById(
   auth: Authenticator,
   skills: readonly SkillResource[]
 ): Promise<Map<string, SkillResource>> {
@@ -152,7 +213,7 @@ async function fetchReferencedSkillsBySId(
   return new Map(referencedSkills.map((skill) => [skill.sId, skill]));
 }
 
-async function fetchAttachedKnowledgeBySkillId(
+async function fetchAttachedKnowledgeBySkillModelId(
   auth: Authenticator,
   skills: readonly SkillResource[]
 ): Promise<Map<ModelId, SkillAttachedKnowledge[]>> {
@@ -165,10 +226,10 @@ async function fetchAttachedKnowledgeBySkillId(
     dataSourceViewIds.length > 0
       ? await DataSourceViewResource.fetchByModelIds(auth, dataSourceViewIds)
       : [];
-  const dataSourceViewsById = new Map(
+  const dataSourceViewsByModelId = new Map(
     dataSourceViews.map((view) => [view.id, view])
   );
-  const attachedKnowledgeBySkillId = new Map<
+  const attachedKnowledgeBySkillModelId = new Map<
     ModelId,
     SkillAttachedKnowledge[]
   >();
@@ -177,7 +238,9 @@ async function fetchAttachedKnowledgeBySkillId(
     const attachedKnowledge: SkillAttachedKnowledge[] = [];
 
     for (const config of skill.dataSourceConfigurations) {
-      const dataSourceView = dataSourceViewsById.get(config.dataSourceViewId);
+      const dataSourceView = dataSourceViewsByModelId.get(
+        config.dataSourceViewId
+      );
 
       if (dataSourceView) {
         for (const nodeId of config.parentsIn) {
@@ -189,15 +252,15 @@ async function fetchAttachedKnowledgeBySkillId(
       }
     }
 
-    attachedKnowledgeBySkillId.set(skill.id, attachedKnowledge);
+    attachedKnowledgeBySkillModelId.set(skill.id, attachedKnowledge);
   }
 
-  return attachedKnowledgeBySkillId;
+  return attachedKnowledgeBySkillModelId;
 }
 
 function referencedSkillsForSkill(
   skillReferences: ReturnType<typeof extractSkillReferenceTags>,
-  referencedSkillsBySId: ReadonlyMap<string, SkillResource>
+  referencedSkillsById: ReadonlyMap<string, SkillResource>
 ): SkillResource[] {
   const referencedSkillIds = uniq(
     skillReferences
@@ -207,7 +270,7 @@ function referencedSkillsForSkill(
   const referencedSkills: SkillResource[] = [];
 
   for (const skillId of referencedSkillIds) {
-    const referencedSkill = referencedSkillsBySId.get(skillId);
+    const referencedSkill = referencedSkillsById.get(skillId);
 
     if (referencedSkill) {
       referencedSkills.push(referencedSkill);

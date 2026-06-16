@@ -865,6 +865,66 @@ describe("SkillResource", () => {
       );
     });
 
+    it("backfills transitive unavailable nested skill references", async () => {
+      const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
+      const addAdminToRestrictedSpaceRes = await restrictedSpace.addMembers(
+        testContext.authenticator,
+        { userIds: [testContext.authenticator.getNonNullableUser().sId] }
+      );
+      expect(addAdminToRestrictedSpaceRes.isOk()).toBe(true);
+      await testContext.authenticator.refresh();
+
+      const leafSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Transitive Leaf Skill",
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+      const middleSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Transitive Middle Skill",
+        instructions: `Use ${SkillFactory.serializeSkillReferenceTag(leafSkill)}.`,
+      });
+      const topSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Transitive Top Skill",
+      });
+      await SkillConfigurationModel.update(
+        {
+          instructions: `<unavailable_skill id="${middleSkill.sId}" />`,
+        },
+        {
+          where: { id: topSkill.id, workspaceId: testContext.workspace.id },
+        }
+      );
+
+      const backfillAuth = await Authenticator.internalAdminForWorkspace(
+        testContext.workspace.sId,
+        { dangerouslyRequestAllGroups: true }
+      );
+      const stats = await backfillUnavailableSkillReferencesForWorkspace(
+        backfillAuth,
+        { execute: true }
+      );
+
+      expect(stats.repaired).toBe(3);
+
+      const updatedMiddleSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        middleSkill.sId
+      );
+      const updatedTopSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        topSkill.sId
+      );
+      expect(updatedMiddleSkill?.requestedSpaceIds).toContain(
+        restrictedSpace.id
+      );
+      expect(updatedMiddleSkill?.instructions).toContain(
+        SkillFactory.serializeSkillReferenceTag(leafSkill)
+      );
+      expect(updatedTopSkill?.requestedSpaceIds).toContain(restrictedSpace.id);
+      expect(updatedTopSkill?.instructions).toContain(
+        SkillFactory.serializeSkillReferenceTag(middleSkill)
+      );
+    });
+
     it("recomputes nested skill references from instructions on update", async () => {
       const { childSkill, parentSkill, skillReferenceTag } =
         await SkillFactory.createWithNestedSkill(testContext.authenticator, {
