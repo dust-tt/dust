@@ -2074,6 +2074,42 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10026,
+    name: "Adomik",
+    description:
+      "Adomik tools for ad revenue analytics — explore programmatic advertising performance, reporting, and monetization data across your ad partners.",
+    url: "https://mcp.adomik.com/mcp",
+    icon: "AdomikLogo",
+    documentationUrl: "https://docs.dust.tt/docs/remote-mcp-server",
+    connectionInstructions:
+      "Adomik uses OAuth. You will be prompted to sign in with your Adomik account in a browser window to authorize access.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      jp_market_analyst: "never_ask",
+      confluence_search: "never_ask",
+      confluence_get_page: "never_ask",
+      confluence_get_page_children: "never_ask",
+    },
+    toolDisplayLabels: {
+      jp_market_analyst: {
+        running: "Analyzing market data on Adomik",
+        done: "Analyzed market data on Adomik",
+      },
+      confluence_search: {
+        running: "Searching knowledge base on Adomik",
+        done: "Searched knowledge base on Adomik",
+      },
+      confluence_get_page: {
+        running: "Fetching page from Adomik",
+        done: "Fetched page from Adomik",
+      },
+      confluence_get_page_children: {
+        running: "Fetching sub-pages from Adomik",
+        done: "Fetched sub-pages from Adomik",
+      },
+    },
+  },
 ];
 
 export const isDefaultRemoteMcpServerURL = (url: string | undefined) => {
