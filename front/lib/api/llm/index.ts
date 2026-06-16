@@ -283,11 +283,11 @@ const REGION_MAPPING: Record<RegionType, Region> = {
   "us-central1": GLOBAL,
 };
 
-async function getStreamEndpointLLM(
+function getStreamEndpointLLM(
   auth: Authenticator,
   featureFlags: WhitelistableFeature[],
   llmParameters: LLMParameters
-): Promise<LLM | null> {
+): LLM | null {
   // llmParameters.modelId is ModelIdType — narrow before filtering.
   if (!isModelId(llmParameters.modelId)) {
     return null;
