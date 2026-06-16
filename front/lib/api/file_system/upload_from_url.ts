@@ -86,6 +86,12 @@ export async function uploadFileFromUrlToFileSystem(
     return new Err({ message: "Invalid URL." });
   }
 
+  if (new URL(validUrl.standardized).protocol !== "https:") {
+    return new Err({
+      message: "Only public HTTPS URLs are supported.",
+    });
+  }
+
   const sanitizedUrl = sanitizeUrlForDisplay(validUrl.standardized);
 
   const urlSafetyError = await validateExternalUrl(validUrl.standardized);

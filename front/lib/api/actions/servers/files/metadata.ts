@@ -262,7 +262,7 @@ const FILES_TOOLS_COMMON_METADATA = {
   },
   [FILES_UPLOAD_FROM_URL_ACTION_NAME]: {
     description:
-      "Download a file from a public HTTP(S) URL and store it in a conversation or Pod file system. " +
+      "Download a file from a public HTTPS URL and store it in a conversation or Pod file system. " +
       "Use this for binary files (PDF, images, spreadsheets, etc.) that cannot be created with " +
       `\`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CREATE_ACTION_NAME)}\`. ` +
       "If the file already exists it is silently overwritten. " +
@@ -277,7 +277,10 @@ const FILES_TOOLS_COMMON_METADATA = {
       url: z
         .string()
         .url()
-        .describe("Public HTTP(S) URL of the file to download and store"),
+        .refine((u) => u.startsWith("https://"), {
+          message: "Only public HTTPS URLs are supported.",
+        })
+        .describe("Public HTTPS URL of the file to download and store"),
       content_type: z
         .string()
         .optional()

@@ -19,7 +19,10 @@ const inputSchema = {
   url: z
     .string()
     .url()
-    .describe("Public HTTP(S) URL of the file to download and store."),
+    .refine((u) => u.startsWith("https://"), {
+      message: "Only public HTTPS URLs are supported.",
+    })
+    .describe("Public HTTPS URL of the file to download and store."),
   content_type: z
     .string()
     .optional()
@@ -34,7 +37,7 @@ export function registerFilesUploadFromUrlTool(server: McpServer) {
     "files_upload_from_url",
     {
       description:
-        "Download a file from a public HTTP(S) URL and store it in a conversation or Pod file system. " +
+        "Download a file from a public HTTPS URL and store it in a conversation or Pod file system. " +
         "Supports binary files (PDF, images, spreadsheets, etc.) that cannot be created with `files_create`. " +
         "Overwrites existing files at the destination path. " +
         "Requires an explicit scope with conversation_id or pod_id.",

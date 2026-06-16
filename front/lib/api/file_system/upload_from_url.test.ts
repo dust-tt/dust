@@ -80,18 +80,12 @@ describe("uploadFileFromUrlToFileSystem", () => {
     }
   });
 
-  it("uploads a file from a public HTTP URL", async () => {
+  it("rejects non-HTTPS URLs", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "admin" });
     const conversation = await createConversation(auth, {
       title: "Test",
       visibility: "unlisted",
       spaceId: null,
-    });
-
-    mockFetchResponse({
-      body: "hello from url",
-      contentType: "text/plain",
-      contentLength: "15",
     });
 
     const fsResult = await DustFileSystem.forConversation(auth, conversation);
@@ -100,19 +94,15 @@ describe("uploadFileFromUrlToFileSystem", () => {
       return;
     }
 
-    const path = `conversation-${conversation.sId}/imported-${Date.now()}.txt`;
     const result = await uploadFileFromUrlToFileSystem(fsResult.value, {
-      path,
-      url: "http://example.com/imported.txt",
+      path: `conversation-${conversation.sId}/notes.txt`,
+      url: "http://example.com/file.txt",
     });
 
-    expect(result.isOk()).toBe(true);
-    if (!result.isOk()) {
-      return;
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("HTTPS");
     }
-
-    expect(result.value.contentType).toBe("text/plain");
-    expect(result.value.sizeBytes).toBe(15);
   });
 
   it("uploads a file from a public HTTPS URL", async () => {

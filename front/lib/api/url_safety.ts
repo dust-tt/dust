@@ -34,7 +34,7 @@ function isPrivateIp(address: string, family: 4 | 6): boolean {
 }
 
 /**
- * Validates that a URL is safe to fetch server-side: must use HTTP(S) and must
+ * Validates that a URL is safe to fetch server-side: must use HTTPS and must
  * not resolve to a private/reserved IP. Returns an error message string on
  * failure, or null on success.
  *
@@ -50,8 +50,8 @@ export async function validateExternalUrl(url: string): Promise<string | null> {
     return "Invalid URL format.";
   }
 
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-    return "Only HTTP(S) URLs are allowed.";
+  if (parsed.protocol !== "https:") {
+    return "Only HTTPS URLs are allowed.";
   }
 
   const hostname = parsed.hostname;
