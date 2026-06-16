@@ -638,6 +638,8 @@ const InputBarContainer = ({
   editorServiceRef.current = editorService;
   const saveDraftRef = useRef(saveDraft);
   saveDraftRef.current = saveDraft;
+  // Skip auto-save (especially clearDraft on empty) until initial content is restored.
+  const hasCompletedInitialContentRestoreRef = useRef(false);
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
@@ -810,10 +812,12 @@ const InputBarContainer = ({
     // overwrite the agent mention saved by the single-agent effect.
     const { markdown, mentions: editorMentions } =
       currentEditorService.getMarkdownAndMentions();
-    saveDraftRef.current(
-      editorIsEmpty ? "" : markdown,
-      selectedSingleAgentRef.current
-    );
+    if (hasCompletedInitialContentRestoreRef.current) {
+      saveDraftRef.current(
+        editorIsEmpty ? "" : markdown,
+        selectedSingleAgentRef.current
+      );
+    }
     const userMentioned = editorMentions.some((m) => m.type === "user");
 
     // Check if the very first content node in the editor is a user mention.
@@ -1055,8 +1059,24 @@ const InputBarContainer = ({
   }, [clientType, editorService]);
 
   useEffect(() => {
+    if (!editor || editor.isDestroyed) {
+      return;
+    }
+
+    const shouldBeEditable = !isLoadingGoTemplate;
+    if (editor.isEditable === shouldBeEditable) {
+      // Keep the loading shimmer in sync without toggling editability (which
+      // emits an empty update and would clear the draft before restore runs).
+      if (isLoadingGoTemplate) {
+        editor.view.dom.classList.add("loading-text");
+      } else {
+        editor.view.dom.classList.remove("loading-text");
+      }
+      return;
+    }
+
     editorService.setLoading(isLoadingGoTemplate);
-  }, [editorService, isLoadingGoTemplate]);
+  }, [editor, editorService, isLoadingGoTemplate]);
 
   const pendingReplaceInputRef = useRef<PendingInputText | null>(null);
 
@@ -1083,9 +1103,10 @@ const InputBarContainer = ({
     }
 
     pendingReplaceInputRef.current = null;
-    queueMicrotask(() =>
-      editorService.setContent(pending.text, { focus: !disableAutoFocus })
-    );
+    queueMicrotask(() => {
+      editorService.setContent(pending.text, { focus: !disableAutoFocus });
+      hasCompletedInitialContentRestoreRef.current = true;
+    });
   }, [
     pendingInputText,
     editor,
@@ -1099,6 +1120,8 @@ const InputBarContainer = ({
   // Agent selection is handled by useHandleMention.
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
+    hasCompletedInitialContentRestoreRef.current = false;
+
     if (
       !editor ||
       editor.isDestroyed ||
@@ -1114,6 +1137,7 @@ const InputBarContainer = ({
 
     // Only restore draft if editor is empty to avoid overwriting existing content.
     if (!editorService.isEmpty()) {
+      hasCompletedInitialContentRestoreRef.current = true;
       return;
     }
 
@@ -1121,9 +1145,10 @@ const InputBarContainer = ({
 
     if (draft) {
       // Schedule content restoration to avoid flushing during render lifecycle.
-      queueMicrotask(() =>
-        editorService.setContent(draft.text, { focus: !disableAutoFocus })
-      );
+      queueMicrotask(() => {
+        editorService.setContent(draft.text, { focus: !disableAutoFocus });
+        hasCompletedInitialContentRestoreRef.current = true;
+      });
       return;
     }
 
@@ -1132,6 +1157,8 @@ const InputBarContainer = ({
     if (stickyUserMentions.length > 0) {
       editorService.resetWithMentions(stickyUserMentions, disableAutoFocus);
     }
+
+    hasCompletedInitialContentRestoreRef.current = true;
   }, [
     conversation,
     editor,
