@@ -756,7 +756,7 @@ function RightPane({
             <Spinner size="lg" />
           ) : (
             <>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 pb-4">
                 <h2 className="text-2xl font-semibold text-foreground">
                   Select payment method
                 </h2>
