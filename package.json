@@ -30,7 +30,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.8",
-    "@typescript/native-preview": "^7.0.0-dev.20260420.1",
+    "@typescript/native-preview": "^7.0.0-dev.20260608.1",
     "knip": "^5.80.0",
     "lefthook": "2.1.8",
     "react-doctor": "^0.4.2",
