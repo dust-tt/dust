@@ -620,13 +620,19 @@ describe("isFileTypeUpsertableForUseCase", () => {
   it("only indexes tabular files for the conversation use case", () => {
     for (const contentType of TABULAR_TYPES) {
       expect(
-        isFileTypeUpsertableForUseCase({ contentType, useCase: "conversation" }),
+        isFileTypeUpsertableForUseCase({
+          contentType,
+          useCase: "conversation",
+        }),
         `expected ${contentType} to be upsertable for conversation`
       ).toBe(true);
     }
     for (const contentType of NON_TABULAR_TYPES) {
       expect(
-        isFileTypeUpsertableForUseCase({ contentType, useCase: "conversation" }),
+        isFileTypeUpsertableForUseCase({
+          contentType,
+          useCase: "conversation",
+        }),
         `expected ${contentType} to NOT be upsertable for conversation`
       ).toBe(false);
     }
@@ -655,7 +661,10 @@ describe("isFileTypeUpsertableForUseCase", () => {
 
     for (const contentType of binaryTypes) {
       expect(
-        isFileTypeUpsertableForUseCase({ contentType, useCase: "conversation" }),
+        isFileTypeUpsertableForUseCase({
+          contentType,
+          useCase: "conversation",
+        }),
         `expected ${contentType} to NOT be upsertable for conversation`
       ).toBe(false);
     }
@@ -669,10 +678,7 @@ describe("isFileTypeUpsertableForUseCase", () => {
     ] as const;
 
     for (const contentType of binaryTypes) {
-      for (const useCase of [
-        "upsert_document",
-        "folders_document",
-      ] as const) {
+      for (const useCase of ["upsert_document", "folders_document"] as const) {
         expect(
           isFileTypeUpsertableForUseCase({ contentType, useCase }),
           `expected ${contentType} to be upsertable for ${useCase}`

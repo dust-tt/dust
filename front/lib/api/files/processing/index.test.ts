@@ -115,9 +115,9 @@ describe("conversation use case", () => {
     });
 
     it("DOC (legacy Word) has no processed version", () => {
-      expect(
-        hasProcessedVersion("application/msword", "conversation")
-      ).toBe(false);
+      expect(hasProcessedVersion("application/msword", "conversation")).toBe(
+        false
+      );
     });
 
     it("PPT (legacy PowerPoint) has no processed version", () => {
@@ -326,9 +326,9 @@ describe("upsert_document / folders_document use cases", () => {
     });
 
     it("DOC (legacy Word) has a processed version", () => {
-      expect(
-        hasProcessedVersion("application/msword", "upsert_document")
-      ).toBe(true);
+      expect(hasProcessedVersion("application/msword", "upsert_document")).toBe(
+        true
+      );
     });
 
     it("PPT (legacy PowerPoint) has a processed version", () => {
