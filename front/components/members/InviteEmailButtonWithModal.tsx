@@ -28,7 +28,6 @@ import {
   type MembershipSeatType,
 } from "@app/types/memberships";
 import type { SubscriptionPerSeatPricing } from "@app/types/plan";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -44,7 +43,6 @@ import {
   Plus,
   TextArea,
 } from "@dust-tt/sparkle";
-import type { ReactNode } from "react";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { mutate } from "swr";
 
@@ -73,41 +71,24 @@ const useGetEmailsListAndError = (
   }, [inviteEmails]);
 };
 
-// Pre-paid slots remaining for the free seat type (minSeats floor not yet consumed).
-function freeSeatAvailability(info: SeatTypeInfo): number {
-  return Math.max(0, info.minSeats - info.assignedCount);
+// Remaining assignable seats for a tier; null means unlimited (no maxSeats cap).
+function seatAvailability(info: SeatTypeInfo): number | null {
+  return info.maxSeats === null
+    ? null
+    : Math.max(0, info.maxSeats - info.assignedCount);
 }
 
+// Free seats are capped and shown as unavailable once exhausted. Paid tiers stay
+// selectable even at their cap.
 function isSeatSelectable(
   seatType: MembershipSeatType,
   info: SeatTypeInfo
 ): boolean {
   if (seatType === "free") {
-    return freeSeatAvailability(info) > 0;
+    const available = seatAvailability(info);
+    return available === null || available > 0;
   }
-  return info.maxSeats === null || info.assignedCount < info.maxSeats;
-}
-
-function seatBadge(
-  seatType: MembershipSeatType,
-  info: SeatTypeInfo
-): ReactNode {
-  let label: string;
-  if (seatType === "free") {
-    const available = freeSeatAvailability(info);
-    label = `${available} available`;
-  } else {
-    label = formatPriceCents(
-      info.priceCents,
-      info.currency,
-      info.billingFrequency
-    );
-  }
-  return (
-    <span className="text-xs text-foreground dark:text-foreground-night">
-      {label}
-    </span>
-  );
+  return true;
 }
 
 interface InviteEmailButtonWithModalProps {
@@ -168,15 +149,12 @@ export function InviteEmailButtonWithModal({
       const info = seatPlans[s];
       return info && isSeatSelectable(s, info);
     });
-    const paidSelectable = selectable.filter((s) => s !== "free");
-    const cheapestPaid = paidSelectable.reduce<MembershipSeatType | undefined>(
-      (min, s) =>
-        min === undefined ||
-        (seatPlans[s]?.priceCents ?? 0) < (seatPlans[min]?.priceCents ?? 0)
-          ? s
-          : min,
-      undefined
-    );
+    const cheapestPaid = selectable
+      .filter((s) => s !== "free")
+      .sort(
+        (a, b) =>
+          (seatPlans[a]?.priceCents ?? 0) - (seatPlans[b]?.priceCents ?? 0)
+      )[0];
     const defaultSeat =
       selectable.find((s) => s === "free") ??
       cheapestPaid ??
@@ -202,17 +180,8 @@ export function InviteEmailButtonWithModal({
   // Switch billing cadence; keep the selection valid by falling back to the
   // first selectable tier in the new cadence when the current one isn't offered.
   function handleSeatFrequencyChange(period: "monthly" | "yearly") {
-    let frequency: SeatBillingFrequency;
-    switch (period) {
-      case "yearly":
-        frequency = "annual";
-        break;
-      case "monthly":
-        frequency = "monthly";
-        break;
-      default:
-        assertNever(period);
-    }
+    const frequency: SeatBillingFrequency =
+      period === "yearly" ? "annual" : "monthly";
     setActiveFrequency(frequency);
     const inFrequency = seatTypesByFrequency[frequency];
     if (!selectedSeatType || !inFrequency.includes(selectedSeatType)) {
@@ -225,6 +194,28 @@ export function InviteEmailButtonWithModal({
         null;
       setSelectedSeatType(nextSeat);
     }
+  }
+
+  function seatBadge(
+    seatType: MembershipSeatType,
+    info: SeatTypeInfo
+  ): React.ReactNode {
+    let label: string;
+    if (seatType === "free") {
+      const available = seatAvailability(info);
+      label = available === null ? "Available" : `${available} available`;
+    } else {
+      label = formatPriceCents(
+        info.priceCents,
+        info.currency,
+        info.billingFrequency
+      );
+    }
+    return (
+      <span className="text-xs text-foreground dark:text-foreground-night">
+        {label}
+      </span>
+    );
   }
 
   async function handleSendInvitations(
