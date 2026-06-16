@@ -2,6 +2,7 @@ import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
+import { isEligibleForAutoSeatUpgrade } from "@app/lib/api/credits/auto_seat_upgrade";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import { getMembers } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -200,6 +201,14 @@ export async function getUpgradeRequestAvailabilityForUser(
   }
 
   if (!(await isMemberUpgradeRequestAllowed(auth))) {
+    return unavailable;
+  }
+
+  // When the workspace auto-upgrades seats and this member is eligible (their
+  // seat has an entitled higher tier), they'll be bumped automatically on
+  // limit — so don't surface the manual "request upgrade" CTA. Members already
+  // on the top entitled seat (or workspaces with auto-upgrade off) still see it.
+  if (await isEligibleForAutoSeatUpgrade(auth)) {
     return unavailable;
   }
 
