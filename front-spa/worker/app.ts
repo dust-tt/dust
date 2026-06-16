@@ -21,56 +21,38 @@
  * 4. Fall back to the main index.html for all other paths (SPA routing).
  */
 
+import type { GetShareFrameMetadataResponseBody } from "@dust-tt/front/lib/api/files/share";
+import { z } from "zod";
+
 interface Env {
   ASSETS: Fetcher;
   DUST_API_URL: string;
 }
 
-interface ShareFrameMetadata {
-  title: string;
-  workspaceName: string;
-  ogImageUrl: string | null;
-}
+const ShareFrameMetadataSchema: z.ZodType<
+  Pick<
+    GetShareFrameMetadataResponseBody,
+    "title" | "workspaceName" | "ogImageUrl"
+  >
+> = z.object({
+  title: z.string(),
+  workspaceName: z.string(),
+  ogImageUrl: z.string().nullable(),
+});
 
-interface RegionRedirectError {
-  error: {
-    type: "workspace_in_different_region";
-    redirect: { region: string; url: string };
-  };
-}
+type ShareFrameMetadata = z.infer<typeof ShareFrameMetadataSchema>;
+
+const RegionRedirectErrorSchema = z.object({
+  error: z.object({
+    type: z.literal("workspace_in_different_region"),
+    redirect: z.object({
+      region: z.string(),
+      url: z.string(),
+    }),
+  }),
+});
 
 const SHARE_FRAME_RE = /^\/share\/frame\/([^/]+)$/;
-
-function isShareFrameMetadata(value: unknown): value is ShareFrameMetadata {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v.title === "string" &&
-    typeof v.workspaceName === "string" &&
-    (v.ogImageUrl === null || typeof v.ogImageUrl === "string")
-  );
-}
-
-function isRegionRedirectError(value: unknown): value is RegionRedirectError {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-  const v = value as Record<string, unknown>;
-  if (typeof v.error !== "object" || v.error === null) {
-    return false;
-  }
-  const err = v.error as Record<string, unknown>;
-  if (err.type !== "workspace_in_different_region") {
-    return false;
-  }
-  if (typeof err.redirect !== "object" || err.redirect === null) {
-    return false;
-  }
-  const redirect = err.redirect as Record<string, unknown>;
-  return typeof redirect.url === "string";
-}
 
 function escapeHtml(s: string): string {
   return s
@@ -152,20 +134,22 @@ async function fetchFrameMeta(
   const res = await fetch(`${apiBaseUrl}/api/share/frame/${token}`);
 
   if (res.ok) {
-    const data: unknown = await res.json();
-    return isShareFrameMetadata(data) ? data : null;
+    const parsed = ShareFrameMetadataSchema.safeParse(await res.json());
+    return parsed.success ? parsed.data : null;
   }
 
   // The frame may live in a different region; follow the redirect hint.
   if (res.status === 400) {
-    const body: unknown = await res.json();
-    if (isRegionRedirectError(body)) {
+    const parsed = RegionRedirectErrorSchema.safeParse(await res.json());
+    if (parsed.success) {
       const regionRes = await fetch(
-        `${body.error.redirect.url}/api/share/frame/${token}`
+        `${parsed.data.error.redirect.url}/api/share/frame/${token}`
       );
       if (regionRes.ok) {
-        const regionData: unknown = await regionRes.json();
-        return isShareFrameMetadata(regionData) ? regionData : null;
+        const regionParsed = ShareFrameMetadataSchema.safeParse(
+          await regionRes.json()
+        );
+        return regionParsed.success ? regionParsed.data : null;
       }
     }
   }
