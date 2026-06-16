@@ -1,4 +1,4 @@
-import { UsageUpgradeButton } from "@app/components/credits/RequestUpgradeButton";
+import { UsageUpgradeButton } from "@app/components/credits/UsageUpgradeButton";
 import type { NotificationPreferencesRefProps } from "@app/components/me/NotificationPreferences";
 import { NotificationPreferences } from "@app/components/me/NotificationPreferences";
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
