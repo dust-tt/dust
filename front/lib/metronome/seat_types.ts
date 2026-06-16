@@ -128,6 +128,41 @@ export type FreeSeatCounts = {
   lifetime: number;
 };
 
+type DefaultSeatAssignmentOptions = {
+  isReturningMember?: boolean;
+  freeSeatCounts?: FreeSeatCounts;
+  freeSeatLimits?: FreeSeatLimits;
+  seatLimits?: Map<MembershipSeatType, SeatLimit>;
+  seatCounts?: Partial<Record<MembershipSeatType, number>>;
+};
+
+function canAssignFreeSeat({
+  seatTypesOnContract,
+  isReturningMember = false,
+  freeSeatCounts,
+  freeSeatLimits,
+}: {
+  seatTypesOnContract: MembershipSeatType[];
+  isReturningMember?: boolean;
+  freeSeatCounts?: FreeSeatCounts;
+  freeSeatLimits?: FreeSeatLimits;
+}): boolean {
+  if (!seatTypesOnContract.includes("free") || isReturningMember) {
+    return false;
+  }
+  const activeCapHit =
+    freeSeatLimits !== undefined &&
+    freeSeatCounts !== undefined &&
+    freeSeatLimits.maxActiveFreeUsers !== -1 &&
+    freeSeatCounts.active >= freeSeatLimits.maxActiveFreeUsers;
+  const lifetimeCapHit =
+    freeSeatLimits !== undefined &&
+    freeSeatCounts !== undefined &&
+    freeSeatLimits.maxLifetimeFreeUsers !== -1 &&
+    freeSeatCounts.lifetime >= freeSeatLimits.maxLifetimeFreeUsers;
+  return !activeCapHit && !lifetimeCapHit;
+}
+
 /**
  * Returns the seat type to assign to a new membership on this contract.
  *
@@ -165,13 +200,7 @@ export function getDefaultSeatTypeForContract(
     freeSeatLimits,
     seatLimits,
     seatCounts,
-  }: {
-    isReturningMember?: boolean;
-    freeSeatCounts?: FreeSeatCounts;
-    freeSeatLimits?: FreeSeatLimits;
-    seatLimits?: Map<MembershipSeatType, SeatLimit>;
-    seatCounts?: Partial<Record<MembershipSeatType, number>>;
-  } = {}
+  }: DefaultSeatAssignmentOptions = {}
 ): MembershipSeatType {
   const seatTypesOnContract = [
     ...getSeatSubscriptionsFromContract(contract, productSeatTypes).keys(),
@@ -216,26 +245,89 @@ export function getDefaultSeatTypeForContract(
 
   // Phase 2: committed seats exhausted — try "free" if on the contract and
   // the caller/workspace conditions allow it.
-  if (seatTypesOnContract.includes("free")) {
-    if (!isReturningMember) {
-      const activeCapHit =
-        freeSeatLimits !== undefined &&
-        freeSeatCounts !== undefined &&
-        freeSeatLimits.maxActiveFreeUsers !== -1 &&
-        freeSeatCounts.active >= freeSeatLimits.maxActiveFreeUsers;
-      const lifetimeCapHit =
-        freeSeatLimits !== undefined &&
-        freeSeatCounts !== undefined &&
-        freeSeatLimits.maxLifetimeFreeUsers !== -1 &&
-        freeSeatCounts.lifetime >= freeSeatLimits.maxLifetimeFreeUsers;
-      if (!activeCapHit && !lifetimeCapHit) {
-        return "free";
-      }
-    }
+  if (
+    canAssignFreeSeat({
+      seatTypesOnContract,
+      isReturningMember,
+      freeSeatCounts,
+      freeSeatLimits,
+    })
+  ) {
+    return "free";
   }
 
   // Phase 3: no committed seat or free available.
   return "none";
+}
+
+/**
+ * Resolve an explicit invitation seat request against the contract.
+ *
+ * When `requestedSeatType` is set (a seat carried on an accepted invitation),
+ * the requested tier is honored when the contract entitles it and its `maxSeats` cap is not hit
+ * (`free` is honored subject to free-seat caps). If it cannot be assigned, fallback is `free`
+ * (when allowed) and then `"none"` — never a different committed paid seat.
+ *
+ */
+export function resolveRequestedSeatTypeForContract(
+  contract: CachedContract,
+  productSeatTypes: Map<string, MembershipSeatType>,
+  {
+    requestedSeatType,
+    isReturningMember = false,
+    freeSeatCounts,
+    freeSeatLimits,
+    seatLimits,
+    seatCounts,
+  }: DefaultSeatAssignmentOptions & {
+    requestedSeatType?: MembershipSeatType | null;
+  } = {}
+): MembershipSeatType {
+  if (!requestedSeatType) {
+    return getDefaultSeatTypeForContract(contract, productSeatTypes, {
+      isReturningMember,
+      freeSeatCounts,
+      freeSeatLimits,
+      seatLimits,
+      seatCounts,
+    });
+  }
+
+  const seatTypesOnContract = [
+    ...getSeatSubscriptionsFromContract(contract, productSeatTypes).keys(),
+  ];
+  if (seatTypesOnContract.length === 0) {
+    return "none";
+  }
+
+  if (requestedSeatType === "free") {
+    return canAssignFreeSeat({
+      seatTypesOnContract,
+      isReturningMember,
+      freeSeatCounts,
+      freeSeatLimits,
+    })
+      ? "free"
+      : "none";
+  }
+
+  const entitled = seatTypesOnContract.includes(requestedSeatType);
+  const limit = seatLimits?.get(requestedSeatType);
+  const assignedCount = seatCounts?.[requestedSeatType] ?? 0;
+  const underCap =
+    !limit || limit.maxSeats === null || assignedCount < limit.maxSeats;
+  if (entitled && underCap) {
+    return requestedSeatType;
+  }
+
+  return canAssignFreeSeat({
+    seatTypesOnContract,
+    isReturningMember,
+    freeSeatCounts,
+    freeSeatLimits,
+  })
+    ? "free"
+    : "none";
 }
 
 /**

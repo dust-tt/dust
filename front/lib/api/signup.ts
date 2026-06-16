@@ -106,6 +106,7 @@ export async function handleMembershipInvite({
       user,
       role: membershipInvite.initialRole,
       origin: "invited",
+      requestedSeatType: membershipInvite.seatType,
     });
   }
 
@@ -162,6 +163,7 @@ export async function handleEnterpriseSignUpFlow(
       user,
       role: pendingMembershipInvitation?.initialRole ?? "user",
       origin: pendingMembershipInvitation ? "invited" : "auto-joined",
+      requestedSeatType: pendingMembershipInvitation?.seatType ?? null,
     });
   }
 
