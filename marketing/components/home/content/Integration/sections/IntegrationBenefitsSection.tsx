@@ -1,8 +1,8 @@
-import { H2 } from "@app/components/home/ContentComponents";
+import { H2 } from "@marketing/components/home/ContentComponents";
 import {
   getIcon,
   ResourceAvatar,
-} from "@app/components/resources/resources_icons";
+} from "@marketing/components/resources/resources_icons";
 import { Chip } from "@dust-tt/sparkle";
 
 import type { BenefitCard, BenefitCardColor } from "../types";

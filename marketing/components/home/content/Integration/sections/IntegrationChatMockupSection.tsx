@@ -1,4 +1,3 @@
-import { getIcon } from "@app/components/resources/resources_icons";
 import {
   ArrowUp,
   CheckCircle,
@@ -6,7 +5,9 @@ import {
   ConversationMessageContent,
   cn,
   DustLogoSquare,
+  getPlatformLogo,
   Icon,
+  PuzzlePiece01,
   Tooltip,
 } from "@dust-tt/sparkle";
 import { motion, useReducedMotion } from "framer-motion";
@@ -246,7 +247,7 @@ function ToolCallsStrip({
   startDelaySeconds,
   prefersReducedMotion,
 }: ToolCallsStripProps) {
-  const PartnerIcon = getIcon(integration.icon);
+  const PartnerIcon = getPlatformLogo(integration.icon, PuzzlePiece01);
 
   return (
     <div className="mb-4 rounded-xl bg-muted/60 p-3">
