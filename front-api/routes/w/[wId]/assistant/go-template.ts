@@ -1,11 +1,39 @@
 import {
   type GetGoTemplateDraftResponseBody,
+  type GoTemplateError,
   resolveGoTemplateDraft,
 } from "@app/lib/api/assistant/go_template";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+
+function getGoTemplateApiError(
+  error: GoTemplateError
+): APIErrorWithContentfulStatusCode {
+  switch (error.type) {
+    case "template_not_found":
+      return {
+        status_code: 404,
+        api_error: {
+          type: "template_not_found",
+          message: `Template "${error.slug}" was not found.`,
+        },
+      };
+    case "contentful_fetch_failed":
+      return {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to load template.",
+        },
+      };
+    default:
+      assertNever(error);
+  }
+}
 
 // Mounted at /api/w/:wId/assistant/go-template.
 const app = workspaceApp();
@@ -61,7 +89,7 @@ app.get("/", async (ctx): HandlerResult<GetGoTemplateDraftResponseBody> => {
 
   const result = await resolveGoTemplateDraft(auth, slug);
   if (result.isErr()) {
-    return apiError(ctx, result.error);
+    return apiError(ctx, getGoTemplateApiError(result.error));
   }
 
   return ctx.json(result.value);

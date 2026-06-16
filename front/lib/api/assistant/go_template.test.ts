@@ -1,5 +1,7 @@
 import { resolveGoTemplateDraft } from "@app/lib/api/assistant/go_template";
+import type { Authenticator } from "@app/lib/auth";
 import { getConversationDraftBySlug } from "@app/lib/contentful/client";
+import { Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/contentful/client", () => ({
@@ -13,27 +15,26 @@ vi.mock("@app/lib/api/files/upload", () => ({
 
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 
-describe("resolveGoTemplateDraft", () => {
-  it("returns 404 when template is missing", async () => {
-    vi.mocked(getConversationDraftBySlug).mockResolvedValue({
-      isOk: () => true,
-      isErr: () => false,
-      value: null,
-    } as never);
+const auth = {} as Authenticator;
 
-    const result = await resolveGoTemplateDraft({} as never, "abcd");
+describe("resolveGoTemplateDraft", () => {
+  it("returns template_not_found when template is missing", async () => {
+    vi.mocked(getConversationDraftBySlug).mockResolvedValue(new Ok(null));
+
+    const result = await resolveGoTemplateDraft(auth, "abcd");
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.status_code).toBe(404);
+      expect(result.error).toEqual({
+        type: "template_not_found",
+        slug: "abcd",
+      });
     }
   });
 
   it("returns prompt and skips invalid attachment URLs", async () => {
-    vi.mocked(getConversationDraftBySlug).mockResolvedValue({
-      isOk: () => true,
-      isErr: () => false,
-      value: {
+    vi.mocked(getConversationDraftBySlug).mockResolvedValue(
+      new Ok({
         slug: "abcd",
         title: "RFP Review",
         prompt: "Review this RFP",
@@ -49,21 +50,19 @@ describe("resolveGoTemplateDraft", () => {
             contentType: "application/pdf",
           },
         ],
-      },
-    } as never);
+      })
+    );
 
-    vi.mocked(processAndStoreFromUrl).mockResolvedValue({
-      isOk: () => true,
-      isErr: () => false,
-      value: {
+    vi.mocked(processAndStoreFromUrl).mockResolvedValue(
+      new Ok({
         sId: "file123",
         fileName: "file.pdf",
         contentType: "application/pdf",
         fileSize: 1234,
-      },
-    } as never);
+      })
+    );
 
-    const result = await resolveGoTemplateDraft({} as never, "abcd");
+    const result = await resolveGoTemplateDraft(auth, "abcd");
 
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {

@@ -4,7 +4,6 @@ import {
   getConversationDraftBySlug,
   isHttpsUrl,
 } from "@app/lib/contentful/client";
-import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { SupportedFileContentType } from "@app/types/files";
 import { isSupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
@@ -23,6 +22,10 @@ export type GoTemplateAttachmentError = {
   url: string;
   message: string;
 };
+
+export type GoTemplateError =
+  | { type: "template_not_found"; slug: string }
+  | { type: "contentful_fetch_failed" };
 
 const GoTemplateAttachmentSchema = z.object({
   fileId: z.string(),
@@ -62,29 +65,15 @@ export type GetGoTemplateDraftResponseBody = z.infer<
 export async function resolveGoTemplateDraft(
   auth: Authenticator,
   slug: string
-): Promise<
-  Result<GetGoTemplateDraftResponseBody, APIErrorWithContentfulStatusCode>
-> {
+): Promise<Result<GetGoTemplateDraftResponseBody, GoTemplateError>> {
   const templateResult = await getConversationDraftBySlug(slug);
   if (templateResult.isErr()) {
-    return new Err({
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: "Failed to load template.",
-      },
-    });
+    return new Err({ type: "contentful_fetch_failed" });
   }
 
   const template = templateResult.value;
   if (!template) {
-    return new Err({
-      status_code: 404,
-      api_error: {
-        type: "template_not_found",
-        message: `Template "${slug}" was not found.`,
-      },
-    });
+    return new Err({ type: "template_not_found", slug });
   }
 
   const attachments: GoTemplateAttachment[] = [];
