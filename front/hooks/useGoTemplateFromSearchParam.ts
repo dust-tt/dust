@@ -3,7 +3,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import {
   GetGoTemplateDraftResponseBodySchema,
   GoTemplateApiErrorBodySchema,
-} from "@app/lib/api/assistant/go_template";
+} from "@app/lib/api/assistant/go_template_types";
 import { clientFetch } from "@app/lib/egress/client";
 import { useSearchParam } from "@app/lib/platform";
 import { isSupportedFileContentType } from "@app/types/files";

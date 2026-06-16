@@ -1,66 +1,27 @@
+import type {
+  GetGoTemplateDraftResponseBody,
+  GoTemplateAttachment,
+  GoTemplateAttachmentError,
+} from "@app/lib/api/assistant/go_template_types";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import {
   getConversationDraftBySlug,
   isHttpsUrl,
 } from "@app/lib/contentful/client";
-import type { SupportedFileContentType } from "@app/types/files";
 import { isSupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { z } from "zod";
 
-export type GoTemplateAttachment = {
-  fileId: string;
-  name: string;
-  contentType: SupportedFileContentType;
-  size: number;
-  url: string;
-};
-
-export type GoTemplateAttachmentError = {
-  url: string;
-  message: string;
-};
+export type { GetGoTemplateDraftResponseBody } from "@app/lib/api/assistant/go_template_types";
+export {
+  GetGoTemplateDraftResponseBodySchema,
+  GoTemplateApiErrorBodySchema,
+} from "@app/lib/api/assistant/go_template_types";
 
 export type GoTemplateError =
   | { type: "template_not_found"; slug: string }
   | { type: "contentful_fetch_failed" };
-
-const GoTemplateAttachmentSchema = z.object({
-  fileId: z.string(),
-  name: z.string(),
-  contentType: z.string(),
-  size: z.number(),
-  url: z.string(),
-});
-
-const GoTemplateAttachmentErrorSchema = z.object({
-  url: z.string(),
-  message: z.string(),
-});
-
-export const GetGoTemplateDraftResponseBodySchema = z.object({
-  title: z.string(),
-  prompt: z.string(),
-  attachments: z.array(GoTemplateAttachmentSchema),
-  attachmentErrors: z.array(GoTemplateAttachmentErrorSchema),
-});
-
-export const GoTemplateApiErrorBodySchema = z.object({
-  error: z
-    .object({
-      message: z.string().optional(),
-    })
-    .optional(),
-});
-
-/**
- * @swaggerschema GetGoTemplateDraftResponseBody (swagger_private_schemas.ts)
- */
-export type GetGoTemplateDraftResponseBody = z.infer<
-  typeof GetGoTemplateDraftResponseBodySchema
->;
 
 export async function resolveGoTemplateDraft(
   auth: Authenticator,
