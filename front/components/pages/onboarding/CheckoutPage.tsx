@@ -348,10 +348,8 @@ export function CheckoutPage() {
     setPhase("card_capture");
   }, [resetCoupon]);
 
-  // Called by the "Change" button in payment_review. Preserves the applied coupon and
-  // the stale tax data so the left pane keeps showing a tax breakdown while the user
-  // re-enters their card. Taxes are recomputed automatically once the new session
-  // completes and usePreparePayment re-fetches with the new setupSessionId.
+  // Called by the "Change" button in payment_review.
+  // Preserves the applied coupon.
   const handleChangePaymentMethod = useCallback(() => {
     hasHadSessionRef.current = true;
     setClientSecret(null);
