@@ -6,7 +6,7 @@ import type { Region } from "@app/lib/model_constructors/types/regions";
 import type { TokenPricing } from "@app/lib/model_constructors/types/token_pricing";
 import type { z } from "zod";
 
-export type BaseModelConfiguration<C extends InputConfig = InputConfig> = {
+export type BaseEndpointConfiguration<C extends InputConfig = InputConfig> = {
   // Identity
   id: `${ProviderId}/${ProviderApi}/${Region}/${ModelId}`;
   providerId: ProviderId;

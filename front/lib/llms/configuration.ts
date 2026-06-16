@@ -1,13 +1,13 @@
-import type { BaseModelConfiguration } from "@app/lib/model_constructors/configuration";
+import type { EndpointFilter, Where } from "@app/lib/llms/stream/types/filter";
+import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 type ReasoningEffortOf<C extends InputConfig> = NonNullable<
   C["reasoning"]
 >["effort"];
 
-export type DustModelConfiguration<C extends InputConfig> =
-  BaseModelConfiguration<C> & {
+export type DustEndpointConfiguration<C extends InputConfig> =
+  BaseEndpointConfiguration<C> & {
     // Description
     displayName: string;
     description: string;
@@ -15,7 +15,6 @@ export type DustModelConfiguration<C extends InputConfig> =
     // Behavior
     defaultReasoningEffort: ReasoningEffortOf<C>;
 
-    // Filters
-    byok: boolean;
-    featureFlags: WhitelistableFeature[];
+    // Filter
+    endpointFilter: Where<EndpointFilter>;
   };
