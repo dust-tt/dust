@@ -17,8 +17,6 @@
     "test:ci": "vitest --reporter=junit --outputFile=junit.xml --watch=false",
     "tsgo": "tsgo",
     "cli": "npx tsx src/admin/cli.ts",
-    "initdb": "./admin/init_db.sh",
-    "create-db-migration": "./create_db_migration_file.sh",
     "migration:generate:pre-deploy": "./scripts/generate-migration.sh pre-deploy",
     "migration:generate:post-deploy": "./scripts/generate-migration.sh post-deploy",
     "migration:apply:pre-deploy": "node scripts/run-migrate.cjs --command pre-deploy --execute",
