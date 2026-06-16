@@ -10,26 +10,28 @@ export type EndpointFilter = {
 };
 
 export type WorkspaceFilter = {
-  region: Region[];
-  providerId: ProviderId[];
-  modelId: ModelId[];
-  providerApi: ProviderApi[];
+  region: Region;
+  providerId: ProviderId;
+  modelId: ModelId;
+  providerApi: ProviderApi;
 };
 
 export type ArrayValueFilter<T> = {
   contains?: T;
   containsAny?: T[];
   containsAll?: T[];
-  isEmpty?: boolean;
 };
 
 export type ScalarValueFilter<T> = {
   eq?: T;
-  neq?: T;
   in?: T[];
 };
 
-export type ValueFilter<T> = T extends readonly (infer U)[]
+// Wrap both sides in a tuple to prevent distribution over union types: a naked
+// conditional would turn `ValueFilter<ProviderId>` into a union of
+// `ScalarValueFilter<"openai"> | ScalarValueFilter<"anthropic"> | ...`, forcing
+// `in` to be a homogeneous single-provider array instead of `ProviderId[]`.
+export type ValueFilter<T> = [T] extends [readonly (infer U)[]]
   ? ArrayValueFilter<U>
   : ScalarValueFilter<T>;
 

@@ -83,10 +83,6 @@ function matchesArrayFilter(
     return false;
   }
 
-  if (filter.isEmpty !== undefined && (value.length === 0) !== filter.isEmpty) {
-    return false;
-  }
-
   return true;
 }
 
@@ -95,10 +91,6 @@ function matchesScalarFilter(
   filter: ScalarValueFilter<unknown>
 ): boolean {
   if (filter.eq !== undefined && value !== filter.eq) {
-    return false;
-  }
-
-  if (filter.neq !== undefined && value === filter.neq) {
     return false;
   }
 

@@ -1,14 +1,16 @@
-import { describe, expect, it } from "vitest";
-
 import type {
   EndpointFilter,
   Where,
   WorkspaceFilter,
 } from "@app/lib/llms/stream/types/filter";
 import { matchesWhere } from "@app/lib/llms/stream/utils/matches_where";
+import { describe, expect, it } from "vitest";
 
 const enterpriseWorkspace: EndpointFilter = {
-  featureFlags: ["use_vertex_for_supported_models", "anthropic_vertex_fallback"],
+  featureFlags: [
+    "use_vertex_for_supported_models",
+    "anthropic_vertex_fallback",
+  ],
   enterprise: true,
 };
 
@@ -46,22 +48,13 @@ describe("matchesWhere", () => {
       );
     });
 
-    it("neq excludes a matching value", () => {
-      expect(
-        matchesWhere(enterpriseWorkspace, { enterprise: { neq: false } })
-      ).toBe(true);
-      expect(
-        matchesWhere(enterpriseWorkspace, { enterprise: { neq: true } })
-      ).toBe(false);
-    });
-
     it("in matches when the value is included", () => {
       expect(
         matchesWhere(enterpriseWorkspace, { enterprise: { in: [true] } })
       ).toBe(true);
-      expect(
-        matchesWhere(freeWorkspace, { enterprise: { in: [true] } })
-      ).toBe(false);
+      expect(matchesWhere(freeWorkspace, { enterprise: { in: [true] } })).toBe(
+        false
+      );
       // `enterprise: true` is not in `[false]`, so this excludes it.
       expect(
         matchesWhere(enterpriseWorkspace, { enterprise: { in: [false] } })
@@ -69,7 +62,7 @@ describe("matchesWhere", () => {
     });
 
     it("combines multiple scalar conditions (all must pass)", () => {
-      // Combining eq/neq/in is only meaningful on a non-boolean field, since
+      // Combining eq/in is only meaningful on a non-boolean field, since
       // `ValueFilter<boolean>` distributes into `ScalarValueFilter<true> |
       // ScalarValueFilter<false>` and cannot mix the two literals.
       const item = { providerId: "anthropic" };
@@ -77,7 +70,6 @@ describe("matchesWhere", () => {
         matchesWhere(item, {
           providerId: {
             eq: "anthropic",
-            neq: "openai",
             in: ["anthropic", "google_ai_studio"],
           },
         })
@@ -101,9 +93,9 @@ describe("matchesWhere", () => {
     };
 
     it("eq matches the providerId and region", () => {
-      expect(
-        matchesWhere(endpoint, { providerId: { eq: "anthropic" } })
-      ).toBe(true);
+      expect(matchesWhere(endpoint, { providerId: { eq: "anthropic" } })).toBe(
+        true
+      );
       expect(matchesWhere(endpoint, { providerId: { eq: "openai" } })).toBe(
         false
       );
@@ -163,7 +155,9 @@ describe("matchesWhere", () => {
     it("containsAny matches when at least one flag is present", () => {
       expect(
         matchesWhere(enterpriseWorkspace, {
-          featureFlags: { containsAny: ["audit_logs", "anthropic_vertex_fallback"] },
+          featureFlags: {
+            containsAny: ["audit_logs", "anthropic_vertex_fallback"],
+          },
         })
       ).toBe(true);
       expect(
@@ -193,36 +187,20 @@ describe("matchesWhere", () => {
       ).toBe(false);
     });
 
-    it("isEmpty distinguishes empty and non-empty flag lists", () => {
-      expect(
-        matchesWhere(freeWorkspace, { featureFlags: { isEmpty: true } })
-      ).toBe(true);
-      expect(
-        matchesWhere(freeWorkspace, { featureFlags: { isEmpty: false } })
-      ).toBe(false);
-      expect(
-        matchesWhere(enterpriseWorkspace, { featureFlags: { isEmpty: false } })
-      ).toBe(true);
-      expect(
-        matchesWhere(enterpriseWorkspace, { featureFlags: { isEmpty: true } })
-      ).toBe(false);
-    });
-
     it("combines multiple array conditions (all must pass)", () => {
       expect(
         matchesWhere(enterpriseWorkspace, {
           featureFlags: {
             contains: "anthropic_vertex_fallback",
             containsAny: ["use_vertex_for_supported_models", "audit_logs"],
-            isEmpty: false,
           },
         })
       ).toBe(true);
       expect(
         matchesWhere(enterpriseWorkspace, {
           featureFlags: {
-            contains: "anthropic_vertex_fallback",
-            isEmpty: true,
+            contains: "audit_logs",
+            containsAny: ["use_vertex_for_supported_models"],
           },
         })
       ).toBe(false);
@@ -230,9 +208,14 @@ describe("matchesWhere", () => {
   });
 
   describe("array filters on WorkspaceFilter lists", () => {
-    // Mimics an endpoint description that exposes the WorkspaceFilter shape:
-    // which providers / regions / models / apis it covers.
-    const description: WorkspaceFilter = {
+    // Mimics an endpoint description that covers several values per
+    // WorkspaceFilter field: the set of providers / regions / models / apis it
+    // exposes. `WorkspaceFilter` itself is scalar (one value per field on a real
+    // endpoint), so the coverage shape arrays each field.
+    type WorkspaceFilterCoverage = {
+      [K in keyof WorkspaceFilter]: WorkspaceFilter[K][];
+    };
+    const description: WorkspaceFilterCoverage = {
       region: ["eu", "global"],
       providerId: ["anthropic"],
       modelId: ["claude-sonnet-4-6"],
@@ -246,9 +229,9 @@ describe("matchesWhere", () => {
       expect(
         matchesWhere(description, { region: { containsAny: ["us", "eu"] } })
       ).toBe(true);
-      expect(
-        matchesWhere(description, { region: { contains: "us" } })
-      ).toBe(false);
+      expect(matchesWhere(description, { region: { contains: "us" } })).toBe(
+        false
+      );
     });
 
     it("matches multiple list fields together", () => {
@@ -297,7 +280,7 @@ describe("matchesWhere", () => {
         matchesWhere(freeWorkspace, {
           or: [
             { enterprise: { eq: true } },
-            { featureFlags: { isEmpty: true } },
+            { enterprise: { eq: false } },
           ],
         })
       ).toBe(true);
