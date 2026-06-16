@@ -188,48 +188,36 @@ describe("resolveRemappedSeatType — keep / yearly-convert", () => {
     ).toBe("max");
   });
 
-  it("returns none for returning members when no seat matches", () => {
-    // `free` not on contract, no yearly equivalent, no committed seatLimits → none.
+  it("returns none for free when free is not on the new contract", () => {
+    // `free` not on contract → lapses to none.
     expect(resolveRemappedSeatType("free", contract, productSeatTypes)).toBe(
       "none"
     );
   });
+
+  it("keeps free when the new contract still offers it", () => {
+    const { contract: c, productSeatTypes: pt } = makeContract({
+      seats: [
+        { seatType: "free" },
+        { seatType: "pro_yearly", awu: 8000, frequency: "ANNUAL" },
+        { seatType: "max", awu: 40000, frequency: "MONTHLY" },
+      ],
+    });
+    expect(resolveRemappedSeatType("free", c, pt)).toBe("free");
+  });
 });
 
-describe("resolveRemappedSeatType — fallback via getDefaultSeatTypeForContract", () => {
-  // Contract bills `free` (0 AWU) and `pro` (8000 AWU).
+describe("resolveRemappedSeatType — none stays none", () => {
+  // Contract bills `free` and `pro`. A member on `none` has no seat to
+  // preserve and should stay on `none` regardless of what the contract offers.
   const { contract, productSeatTypes } = makeContract({
     seats: [{ seatType: "free" }, { seatType: "pro", awu: 8000 }],
   });
 
-  it("returns none for returning members (free blocked by one-shot rule)", () => {
-    // Default isReturningMember=true → free blocked → none.
+  it("returns none regardless of what the contract offers", () => {
     expect(resolveRemappedSeatType("none", contract, productSeatTypes)).toBe(
       "none"
     );
-  });
-
-  it("assigns free for members who only ever had none seats", () => {
-    // isReturningMember=false → free on contract → free.
-    expect(
-      resolveRemappedSeatType("none", contract, productSeatTypes, {
-        isReturningMember: false,
-      })
-    ).toBe("free");
-  });
-
-  it("assigns committed seat in fallback when slots available", () => {
-    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
-      ["pro", { minSeats: 5, maxSeats: null }],
-    ]);
-    const seatCounts = { pro: 2 };
-    expect(
-      resolveRemappedSeatType("none", contract, productSeatTypes, {
-        isReturningMember: false,
-        seatLimits,
-        seatCounts,
-      })
-    ).toBe("pro");
   });
 });
 
@@ -262,6 +250,58 @@ describe("resolveRemappedSeatType — entitlement-aware", () => {
     // seatLimits → none.
     expect(resolveRemappedSeatType("max", contract, productSeatTypes)).toBe(
       "none"
+    );
+  });
+});
+
+describe("resolveRemappedSeatType — workspace-tier fallback for enterprise pooled", () => {
+  // Contract bills only `workspace_yearly` (enterprise pooled plan).
+  const { contract, productSeatTypes } = makeContract({
+    seats: [{ seatType: "workspace_yearly", entitled: true }],
+  });
+
+  it("upgrades pro_yearly to workspace_yearly", () => {
+    expect(
+      resolveRemappedSeatType("pro_yearly", contract, productSeatTypes)
+    ).toBe("workspace_yearly");
+  });
+
+  it("upgrades pro to workspace_yearly", () => {
+    expect(resolveRemappedSeatType("pro", contract, productSeatTypes)).toBe(
+      "workspace_yearly"
+    );
+  });
+
+  it("keeps workspace_yearly when already on it", () => {
+    expect(
+      resolveRemappedSeatType("workspace_yearly", contract, productSeatTypes)
+    ).toBe("workspace_yearly");
+  });
+
+  it("leaves none users at none (no real seat to preserve)", () => {
+    expect(resolveRemappedSeatType("none", contract, productSeatTypes)).toBe(
+      "none"
+    );
+  });
+
+  it("prefers committed seat over non-committed when multiple candidates exist", () => {
+    // Contract bills both `pro_yearly` (no commitment) and `workspace_yearly`
+    // (minSeats=25, committed). A `pro_yearly` user re-mapped to this contract
+    // should land on `workspace_yearly` because it has a commitment.
+    const { contract: c, productSeatTypes: pt } = makeContract({
+      seats: [
+        { seatType: "pro_yearly", entitled: true },
+        { seatType: "workspace_yearly", entitled: true },
+      ],
+    });
+    const seatLimits = new Map<MembershipSeatType, SeatLimit>([
+      ["workspace_yearly", { minSeats: 25, maxSeats: null }],
+    ]);
+    // Without seatLimits: cheapest at-or-above tier wins → pro_yearly.
+    expect(resolveRemappedSeatType("pro_yearly", c, pt)).toBe("pro_yearly");
+    // With seatLimits: committed workspace_yearly wins over uncommitted pro_yearly.
+    expect(resolveRemappedSeatType("pro_yearly", c, pt, { seatLimits })).toBe(
+      "workspace_yearly"
     );
   });
 });

@@ -27,7 +27,6 @@ import {
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import {
   getAwuAllocationForSeatType,
-  getDefaultSeatTypeForContract,
   getNextSeatCreditRenewalDate,
   getProductSeatTypes,
   getSeatSubscriptionsFromContract,
@@ -53,7 +52,7 @@ import {
 } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { MembershipSeatType } from "@app/types/memberships";
-import { isMembershipSeatType } from "@app/types/memberships";
+import { isMembershipSeatType, SEAT_TYPE_ORDER } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -266,38 +265,48 @@ export function resolveRemappedSeatType(
   currentSeatType: MembershipSeatType,
   contract: CachedContract,
   productSeatTypes: Map<string, MembershipSeatType>,
-  {
-    isReturningMember = true,
-    seatLimits,
-    seatCounts,
-  }: {
-    isReturningMember?: boolean;
-    seatLimits?: Map<MembershipSeatType, SeatLimit>;
-    seatCounts?: Partial<Record<MembershipSeatType, number>>;
-  } = {}
+  { seatLimits }: { seatLimits?: Map<MembershipSeatType, SeatLimit> } = {}
 ): MembershipSeatType {
   const onContract = new Set(
     getSeatSubscriptionsFromContract(contract, productSeatTypes).keys()
   );
-  if (onContract.has(currentSeatType)) {
-    return currentSeatType;
+  // `free` is kept when the new contract still offers it; otherwise it lapses
+  // to `none` (one-shot grant that doesn't transfer across contracts).
+  if (currentSeatType === "free") {
+    return onContract.has("free") ? "free" : "none";
   }
-  if (!currentSeatType.endsWith("_yearly")) {
-    const yearly = `${currentSeatType}_yearly`;
-    if (isMembershipSeatType(yearly) && onContract.has(yearly)) {
-      return yearly;
-    }
-  } else {
-    const monthly = currentSeatType.slice(0, -"_yearly".length);
-    if (isMembershipSeatType(monthly) && onContract.has(monthly)) {
-      return monthly;
+  // For paid seats, find the closest equivalent on the new contract.
+  // `none` stays `none` (no seat to preserve).
+  if (currentSeatType !== "none") {
+    const currentOrder = SEAT_TYPE_ORDER[currentSeatType];
+    // Candidates: seats on the contract at or above the user's current tier.
+    const candidates = [...onContract].filter(
+      (s) => s !== "none" && s !== "free" && SEAT_TYPE_ORDER[s] >= currentOrder
+    );
+    // Committed seats (`minSeats > 0`) take priority — they represent what the
+    // workspace explicitly signed up for.
+    const committed = candidates.filter(
+      (s) => (seatLimits?.get(s)?.minSeats ?? 0) > 0
+    );
+    const pool = committed.length > 0 ? committed : candidates;
+    if (pool.length > 0) {
+      // Within the pool, prefer: same type > billing-frequency counterpart
+      // (monthly↔yearly) > cheapest remaining (stable sort by name).
+      if (pool.includes(currentSeatType)) {
+        return currentSeatType;
+      }
+      const counterpart = currentSeatType.endsWith("_yearly")
+        ? currentSeatType.slice(0, -"_yearly".length)
+        : `${currentSeatType}_yearly`;
+      if (isMembershipSeatType(counterpart) && pool.includes(counterpart)) {
+        return counterpart;
+      }
+      return pool.sort(
+        (a, b) => SEAT_TYPE_ORDER[a] - SEAT_TYPE_ORDER[b] || a.localeCompare(b)
+      )[0];
     }
   }
-  return getDefaultSeatTypeForContract(contract, productSeatTypes, {
-    isReturningMember,
-    seatLimits,
-    seatCounts,
-  });
+  return "none";
 }
 
 /**
@@ -393,24 +402,11 @@ export async function remapMembershipSeatTypesForContract({
     return new Ok(undefined);
   }
 
-  // Pre-fetch everything resolveRemappedSeatType needs so the per-member loop
-  // makes no extra DB calls.
-  const [users, seatLimits, seatCounts] = await Promise.all([
+  const [users, seatLimits] = await Promise.all([
     UserResource.fetchByModelIds(memberships.map((m) => m.userId)),
     WorkspaceSeatLimitResource.fetchByWorkspace({ workspace }),
-    MembershipResource.getActiveSeatTypeCountsForWorkspace({ workspace }),
   ]);
   const userByModelId = new Map(users.map((u) => [u.id, u]));
-
-  // Determine which members had a real (non-"none") seat at any point. Members
-  // whose entire history is "none" are treated as new members and are eligible
-  // for the "free" starter tier in the fallback.
-  const noneMembers = memberships.filter((m) => m.seatType === "none");
-  const returningMemberIds =
-    await MembershipResource.getUserIdsWithRealSeatHistory({
-      workspace,
-      userIds: noneMembers.map((m) => m.userId),
-    });
 
   // Apply immediately when the contract already started — either the operator
   // swapped at the current hour, or backdated the start to the past. Scheduling
@@ -434,17 +430,12 @@ export async function remapMembershipSeatTypesForContract({
       );
       continue;
     }
-    // A member is "returning" (ineligible for the one-shot free tier) if they
-    // currently hold a real seat OR ever held one in the past.
-    const isReturningMember =
-      membership.seatType !== "none" ||
-      returningMemberIds.has(membership.userId);
 
     const target = resolveRemappedSeatType(
       membership.seatType,
       resolvedContract,
       productSeatTypes,
-      { isReturningMember, seatLimits, seatCounts }
+      { seatLimits }
     );
     if (target === membership.seatType) {
       logger.info(
@@ -472,23 +463,8 @@ export async function remapMembershipSeatTypesForContract({
       "[Metronome][remap] Remapping membership seat type"
     );
     // No try/catch: `updateMembershipSeat` / `scheduleSeatChange` are internal
-    // methods, so we don't catch our own errors (a DB failure throws → 500,
-    // surfacing that the remap didn't fully apply rather than silently leaving
-    // a member on an unbilled seat).
-    // Keep the in-memory seatCounts snapshot in sync so that later members in
-    // this loop see accurate counts when resolveRemappedSeatType checks
-    // committed-slot availability (minSeats). Without this, every member would
-    // see the pre-loop count and all could be assigned the same committed slot.
-    if (target !== membership.seatType) {
-      seatCounts[target] = (seatCounts[target] ?? 0) + 1;
-      const prevSeatType: MembershipSeatType = membership.seatType;
-      if (prevSeatType !== "none") {
-        seatCounts[prevSeatType] = Math.max(
-          0,
-          (seatCounts[prevSeatType] ?? 1) - 1
-        );
-      }
-    }
+    // methods — a DB failure throws → 500, surfacing that the remap didn't
+    // fully apply rather than silently leaving a member on an unbilled seat.
     if (applyImmediately) {
       await membership.updateMembershipSeat({
         user,
