@@ -278,10 +278,7 @@ describe("matchesWhere", () => {
     it("or requires at least one child to match", () => {
       expect(
         matchesWhere(freeWorkspace, {
-          or: [
-            { enterprise: { eq: true } },
-            { enterprise: { eq: false } },
-          ],
+          or: [{ enterprise: { eq: true } }, { enterprise: { eq: false } }],
         })
       ).toBe(true);
       expect(
