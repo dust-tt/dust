@@ -184,6 +184,50 @@ impl TryFrom<QueryResult> for SnowflakeQueryPlanEntry {
     }
 }
 
+fn quote_snowflake_identifier(identifier: &str) -> String {
+    format!("\"{}\"", identifier.replace('"', "\"\""))
+}
+
+fn quote_snowflake_table_identifier(opaque_id: &str) -> String {
+    opaque_id
+        .split('.')
+        .map(|identifier| identifier.replace("__DUST_DOT__", "."))
+        .map(|identifier| quote_snowflake_identifier(&identifier))
+        .collect::<Vec<_>>()
+        .join(".")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::quote_snowflake_table_identifier;
+
+    #[test]
+    fn quote_snowflake_table_identifier_quotes_each_identifier_segment() {
+        assert_eq!(
+            quote_snowflake_table_identifier("MY_DB.PUBLIC.MY_TABLE"),
+            "\"MY_DB\".\"PUBLIC\".\"MY_TABLE\""
+        );
+    }
+
+    #[test]
+    fn quote_snowflake_table_identifier_restores_escaped_dots() {
+        assert_eq!(
+            quote_snowflake_table_identifier(
+                "MY__DUST_DOT__DB.PUBLIC.MY__DUST_DOT__TABLE"
+            ),
+            "\"MY.DB\".\"PUBLIC\".\"MY.TABLE\""
+        );
+    }
+
+    #[test]
+    fn quote_snowflake_table_identifier_escapes_quotes_inside_segments() {
+        assert_eq!(
+            quote_snowflake_table_identifier("MY_DB.PUBLIC.MY\"TABLE"),
+            "\"MY_DB\".\"PUBLIC\".\"MY\"\"TABLE\""
+        );
+    }
+}
+
 impl SnowflakeRemoteDatabase {
     pub fn new(
         credentials: serde_json::Map<String, serde_json::Value>,
@@ -486,9 +530,19 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
 
     async fn get_tables_schema(&self, opaque_ids: &Vec<&str>) -> Result<Vec<Option<TableSchema>>> {
         // Construct a "DESCRIBE TABLE" query for each opaque table ID.
+        //
+        // `opaque_id` ultimately comes from the table's remote identifier, so
+        // never interpolate it as raw SQL. Snowflake does not support binding
+        // identifiers as query parameters, so quote each identifier segment and
+        // escape embedded quotes before building the DESCRIBE statement.
         let queries: Vec<String> = opaque_ids
             .iter()
-            .map(|opaque_id| format!("DESCRIBE TABLE {}", opaque_id))
+            .map(|opaque_id| {
+                format!(
+                    "DESCRIBE TABLE {}",
+                    quote_snowflake_table_identifier(opaque_id)
+                )
+            })
             .collect();
 
         let session = self.get_session().await?;
