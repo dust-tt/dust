@@ -71,6 +71,7 @@ interface PodConversationsTabProps {
     mentions: RichMention[],
     contentFragments: ContentFragmentsType,
     selectedMCPServerViewIds?: string[],
+    selectedSpaceIds?: string[],
     modelSelection?: ModelSelectionType
   ) => Promise<Result<undefined, any>>;
   onNavigateToTasks: () => void;

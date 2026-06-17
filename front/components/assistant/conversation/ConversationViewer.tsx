@@ -1126,6 +1126,7 @@ export const ConversationViewer = ({
       mentions: RichMention[],
       contentFragments: ContentFragmentsType,
       _selectedMCPServerViewIds?: string[],
+      selectedSpaceIds?: string[],
       modelSelection?: ModelSelectionType
     ): Promise<Result<undefined, DustError>> => {
       if (!virtuosoMessageListRef?.current) {
@@ -1154,6 +1155,7 @@ export const ConversationViewer = ({
           clientSideMCPServerIds:
             clientSideMCPServerIds ??
             agentBuilderContext?.clientSideMCPServerIds,
+          selectedSpaceIds,
           skipToolsValidation: agentBuilderContext?.skipToolsValidation,
           modelSelection,
         };
