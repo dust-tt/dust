@@ -28,10 +28,8 @@ export interface ReadTableChunkParams {
   userIdMappingPath?: string | null;
 }
 
-export const CORE_API_CONCURRENCY_LIMIT = 8;
-export const CORE_API_LIST_NODES_BATCH_SIZE = 8;
-// export const CORE_API_CONCURRENCY_LIMIT = 48;
-// export const CORE_API_LIST_NODES_BATCH_SIZE = 64;
+export const CORE_API_CONCURRENCY_LIMIT = 48;
+export const CORE_API_LIST_NODES_BATCH_SIZE = 64;
 export const CORE_API_LIST_TABLES_BATCH_SIZE = 8;
 
 // Core.
