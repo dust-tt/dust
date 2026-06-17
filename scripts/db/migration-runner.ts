@@ -20,7 +20,9 @@ export interface MigrationLogger {
   error: (obj: Record<string, unknown>, msg?: string) => void;
 }
 
-async function ensureSchemaMigrationsTable(sequelize: Sequelize): Promise<void> {
+async function ensureSchemaMigrationsTable(
+  sequelize: Sequelize
+): Promise<void> {
   // biome-ignore lint/plugin/noRawSql: migration runner bootstraps its own table.
   await sequelize.query(
     `CREATE TABLE IF NOT EXISTS "schema_migrations" (
