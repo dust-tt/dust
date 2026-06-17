@@ -28,7 +28,7 @@
     "doctor:full": "npx react-doctor@latest --diff false"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.8",
+    "@biomejs/biome": "2.5.0",
     "@typescript/native-preview": "^7.0.0-dev.20260608.1",
     "knip": "^5.80.0",
     "lefthook": "2.1.8",
