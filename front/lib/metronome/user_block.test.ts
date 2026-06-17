@@ -132,44 +132,8 @@ describe("isUserBlocked", () => {
     expect(blocked).toBeNull();
   });
 
-  it("does not block a 'user_seat_low_balance' user when the pool is depleted", async () => {
-    redisValues.set(
-      "metronome:user_credit_state:ws_test:u_test",
-      "user_seat_low_balance"
-    );
-    redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
-
-    const blocked = await isUserBlocked(workspace, user);
-
-    expect(blocked).toBeNull();
-  });
-
   it("blocks an 'on_pool' user when the pool is depleted", async () => {
     redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
-    redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
-
-    const blocked = await isUserBlocked(workspace, user);
-
-    expect(blocked).toBe("credits_exhausted");
-  });
-
-  it("does not block a warned 'on_pool_low_balance' user when pool is active", async () => {
-    redisValues.set(
-      "metronome:user_credit_state:ws_test:u_test",
-      "on_pool_low_balance"
-    );
-    redisValues.set("metronome:pool_credit_status:ws_test", "active");
-
-    const blocked = await isUserBlocked(workspace, user);
-
-    expect(blocked).toBeNull();
-  });
-
-  it("blocks an 'on_pool_low_balance' user when pool is depleted", async () => {
-    redisValues.set(
-      "metronome:user_credit_state:ws_test:u_test",
-      "on_pool_low_balance"
-    );
     redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
 
     const blocked = await isUserBlocked(workspace, user);

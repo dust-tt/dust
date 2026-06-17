@@ -127,9 +127,7 @@ async function setFlag(key: string, value: string): Promise<void> {
 //   - Admin removes/raises per-user cap (spend_limit.ts).
 //   - Reconciliation: recomputed from live Metronome balance on each reconcile.
 //
-// Cache-miss fallback: infer from the credit state so that existing
-// `on_pool_low_balance` / `user_seat_low_balance` rows continue to show the
-// banner until they are migrated or reconciled.
+// Cache-miss: returns false; reconciliation will set the correct value.
 
 function buildUserNearLimitKey(workspaceId: string, userId: string): string {
   return `metronome:user_near_limit:${workspaceId}:${userId}`;
@@ -156,10 +154,7 @@ async function getUserNearLimit(
   if (cached !== null) {
     return cached === "1";
   }
-  // Cache miss: fall back to credit state for existing rows that haven't been
-  // migrated yet (on_pool_low_balance / user_seat_low_balance).
-  const state = await getUserCreditState(workspaceId, userId);
-  return state === "on_pool_low_balance" || state === "user_seat_low_balance";
+  return false;
 }
 
 export async function isUserAwuWarned(
@@ -340,9 +335,9 @@ export async function isUserBlocked(
 
   let workspacePoolDepleted = poolStatus === "depleted";
 
-  // A user spending from their personal seat balance (`user_seat` /
-  // `user_seat_low_balance`) still has their own credits, so workspace pool
-  // depletion must not block them — only their per-user cap can.
+  // A user spending from their personal seat balance (`user_seat`) still has
+  // their own credits, so workspace pool depletion must not block them — only
+  // their per-user cap can.
   if (workspacePoolDepleted && isSpendingFromPersonalSeat(userCreditState)) {
     workspacePoolDepleted = false;
   }

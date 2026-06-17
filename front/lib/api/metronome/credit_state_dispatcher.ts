@@ -191,7 +191,7 @@ export async function dispatchSeatBalanceResolved({
 
   // The seat balance came back; the band the user lands in depends on how much
   // is left. Read the live balance so the state machine can route to
-  // `user_seat` vs `user_seat_low_balance` (or the pool for non-seat users).
+  // `user_seat` or the pool for non-seat users.
   const liveBalance = await resolveLiveUserBalance({
     workspace,
     userId,
@@ -299,9 +299,9 @@ export async function dispatchPerUserCapResolved({
   // Resolving the per-user cap only clears the cap dimension; the seat↔pool band
   // the user lands in depends on their live balance. Read it from Metronome and
   // pass it into the transition context so the state machine picks the correct
-  // band (a seat-based user with personal balance left → `user_seat` /
-  // `user_seat_low_balance`; otherwise the pool). When the live read isn't
-  // available the transition defaults to `on_pool` and the reconcile / billing
+  // band (a seat-based user with personal balance left → `user_seat`;
+  // otherwise the pool). When the live read isn't available the transition
+  // defaults to `on_pool` and the reconcile / billing
   // webhooks correct it later.
   const liveBalance = await resolveLiveUserBalance({
     workspace,

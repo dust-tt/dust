@@ -1,7 +1,4 @@
-import {
-  FREE_SEAT_LIFETIME_AWU_CREDITS,
-  PRO_SEAT_MONTHLY_AWU_CREDITS,
-} from "@app/lib/metronome/constants";
+import { FREE_SEAT_LIFETIME_AWU_CREDITS } from "@app/lib/metronome/constants";
 import type { UserCreditContext } from "@app/lib/metronome/user_credit_state_machine";
 import {
   setUserCreditStateReconciled,
@@ -309,28 +306,6 @@ describe("UserCreditStateMachine — seat_balance_exhausted", () => {
     );
   });
 
-  it("legacy user_seat_low_balance (alias → user_seat) + free seat → capped", async () => {
-    const membership = makeMembership("user_seat_low_balance", "free");
-    const result = await transitionUserCreditState(
-      membership,
-      { type: "seat_balance_exhausted" },
-      { ...baseCtx, seatType: "free", poolLimitAwuCredits: 0 }
-    );
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      expect(result.value).toBe("capped");
-    }
-    expect(membership.updateCreditState).toHaveBeenCalledWith(
-      "capped",
-      undefined
-    );
-    expect(mockSetUserCreditState).toHaveBeenCalledWith(
-      "ws_test",
-      "u_test",
-      "capped"
-    );
-  });
-
   it("user_seat + pro seat + pool limit > 0 → on_pool", async () => {
     const membership = makeMembership("user_seat", "pro");
     const result = await transitionUserCreditState(
@@ -396,28 +371,6 @@ describe("UserCreditStateMachine — seat_balance_exhausted", () => {
       "capped"
     );
   });
-
-  it("legacy user_seat_low_balance (alias → user_seat) + max seat + pool limit null → on_pool", async () => {
-    const membership = makeMembership("user_seat_low_balance", "max");
-    const result = await transitionUserCreditState(
-      membership,
-      { type: "seat_balance_exhausted" },
-      { ...baseCtx, seatType: "max", poolLimitAwuCredits: null }
-    );
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      expect(result.value).toBe("on_pool");
-    }
-    expect(membership.updateCreditState).toHaveBeenCalledWith(
-      "on_pool",
-      undefined
-    );
-    expect(mockSetUserCreditState).toHaveBeenCalledWith(
-      "ws_test",
-      "u_test",
-      "on_pool"
-    );
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -428,29 +381,6 @@ describe("UserCreditStateMachine — seat_balance_exhausted with remainingCapCre
   // Guard 2: cap fully exhausted (0 %) beats pool room → capped.
   it("user_seat + pro + 0% cap remaining + pool limit > 0 → capped", async () => {
     const membership = makeMembership("user_seat", "pro");
-    const result = await transitionUserCreditState(
-      membership,
-      { type: "seat_balance_exhausted" },
-      {
-        ...baseCtx,
-        seatType: "pro",
-        remainingCapCreditsPercentage: 0,
-        poolLimitAwuCredits: 5000,
-      }
-    );
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      expect(result.value).toBe("capped");
-    }
-    expect(membership.updateCreditState).toHaveBeenCalledWith(
-      "capped",
-      undefined
-    );
-  });
-
-  // Guard 1: same as above from legacy user_seat_low_balance (alias → user_seat).
-  it("legacy user_seat_low_balance + pro + 0% cap remaining + pool limit > 0 → capped", async () => {
-    const membership = makeMembership("user_seat_low_balance", "pro");
     const result = await transitionUserCreditState(
       membership,
       { type: "seat_balance_exhausted" },
@@ -656,28 +586,6 @@ describe("UserCreditStateMachine — seat_balance_resolved", () => {
     );
   });
 
-  it("legacy user_seat_low_balance (alias → user_seat) → user_seat on billing-period renewal", async () => {
-    const membership = makeMembership("user_seat_low_balance", "pro");
-    const result = await transitionUserCreditState(
-      membership,
-      { type: "seat_balance_resolved" },
-      {
-        ...baseCtx,
-        seatType: "pro",
-        liveBalance: {
-          seatBalanceAwu: PRO_SEAT_MONTHLY_AWU_CREDITS,
-          seatStartingBalanceAwu: PRO_SEAT_MONTHLY_AWU_CREDITS,
-          perUserCapAwuCredits: null,
-          consumedAwuCredits: null,
-        },
-      }
-    );
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      expect(result.value).toBe("user_seat");
-    }
-  });
-
   it("free capped → user_seat without a live balance (default)", async () => {
     const membership = makeMembership("capped", "free");
     const result = await transitionUserCreditState(
@@ -738,19 +646,6 @@ describe("UserCreditStateMachine — setUserCreditStateReconciled", () => {
       "ws_test",
       "u_test",
       "user_seat"
-    );
-  });
-
-  it("migrates a legacy 'normal' row to 'on_pool'", async () => {
-    const membership = makeMembership("normal", "workspace");
-    const result = await setUserCreditStateReconciled(membership, "on_pool", {
-      ...baseCtx,
-      seatType: "workspace",
-    });
-    expect(result).toBe("on_pool");
-    expect(membership.updateCreditState).toHaveBeenCalledWith(
-      "on_pool",
-      undefined
     );
   });
 

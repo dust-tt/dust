@@ -101,7 +101,7 @@ type UserReconcileReport = {
   // amount remaining, `seatStartingBalanceAwu` the full allocation granted for
   // the period (e.g. 8000 for a pro seat). Both null for pool-based seats with
   // no individual allocation. The remaining/starting ratio drives the
-  // user_seat ↔ user_seat_low_balance band.
+  // seat↔pool band.
   seatBalanceAwu: number | null;
   seatStartingBalanceAwu: number | null;
   effectiveCapAwuCredits: number | null;
@@ -113,12 +113,6 @@ export type ReconcileCreditStateReport =
   | PoolReconcileReport
   | ProgrammaticReconcileReport
   | UserReconcileReport;
-
-// Treat the legacy "normal" alias as its canonical "on_pool" value when
-// comparing the persisted state with the expected one (see USER_CREDIT_STATES).
-function normalizeUserCreditState(state: UserCreditState): UserCreditState {
-  return state === "normal" ? "on_pool" : state;
-}
 
 /**
  * Debug/reconcile entry point behind the poke "Check & Reconcile Credit State"
@@ -377,7 +371,7 @@ export async function reconcileUser({
     effectiveCapAwuCredits,
     consumedAwuCredits,
   });
-  const wasInvalid = normalizeUserCreditState(previousState) !== expectedState;
+  const wasInvalid = previousState !== expectedState;
 
   let newState = previousState;
   if (execute) {
@@ -397,7 +391,7 @@ export async function reconcileUser({
     expectedState,
     newState,
     wasInvalid,
-    corrected: normalizeUserCreditState(previousState) !== newState,
+    corrected: previousState !== newState,
     executed: execute,
     seatBalanceAwu,
     seatStartingBalanceAwu,
