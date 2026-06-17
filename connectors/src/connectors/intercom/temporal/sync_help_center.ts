@@ -369,7 +369,7 @@ export async function upsertArticle({
 
   let articleContentInMarkdown =
     typeof article.body === "string"
-      ? stripNullBytes(htmlToMarkdown(article.body))
+      ? htmlToMarkdown(stripNullBytes(article.body))
       : "";
 
   if (!articleContentInMarkdown) {
