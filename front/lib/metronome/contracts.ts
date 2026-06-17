@@ -39,7 +39,6 @@ import {
   resolveCurrencyFromStripe,
   resolvePackageAliasForCurrency,
 } from "@app/lib/plans/billing_currency";
-import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import {
   getStripeClient,
   getStripeCustomer,
