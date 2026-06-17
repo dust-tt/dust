@@ -192,15 +192,12 @@ export async function adoptCommand(options: AdoptOptions): Promise<Result<void>>
   }
 
   logger.success(`Environment '${name}' adopted successfully!`);
-  console.log();
-  console.log(`  Worktree: ${worktreePath}`);
-  console.log(`  Branch:   ${workspaceBranch}`);
-  console.log(`  Ports:    ${ports.base}-${ports.base + 999}`);
-  console.log();
-  console.log("Next steps:");
-  console.log(`  dust-hive warm ${name}          # Start all services`);
-  console.log(`  dust-hive unregister ${name}    # Remove Hive resources, keep worktree`);
-  console.log();
+  logger.info(`Worktree: ${worktreePath}`);
+  logger.info(`Branch: ${workspaceBranch}`);
+  logger.info(`Ports: ${ports.base}-${ports.base + 999}`);
+  logger.info("Next steps:");
+  logger.info(`dust-hive warm ${name}          # Start all services`);
+  logger.info(`dust-hive unregister ${name}    # Remove Hive resources, keep worktree`);
 
   return Ok(undefined);
 }
