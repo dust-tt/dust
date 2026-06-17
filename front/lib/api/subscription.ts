@@ -1,5 +1,6 @@
 import apiConfig from "@app/lib/api/config";
 import { getDataSources } from "@app/lib/api/data_sources";
+import { updateMembershipSeatAndTrack } from "@app/lib/api/membership";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { floorToHourISO } from "@app/lib/metronome/client";
@@ -82,6 +83,19 @@ export async function activateCreditPricedFreePlan(
     );
   }
   const { metronomeCustomerId } = customerResult.value;
+
+  const user = auth.getNonNullableUser();
+  const seatResult = await updateMembershipSeatAndTrack({
+    user,
+    workspace: lightWorkspace,
+    newSeatType: "free",
+    author: "no-author",
+  });
+  if (seatResult.isErr()) {
+    throw new Error(
+      `Failed to update user to free seat: ${seatResult.error.type}`
+    );
+  }
 
   const contractResult = await provisionMetronomeContract({
     metronomeCustomerId,
