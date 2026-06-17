@@ -180,18 +180,21 @@ function FilePreviewDialogContent({
         />
       );
 
-    case "pdf":
-      return (
-        <PDFViewer key={fileUrl} url={`${fileUrl}?v=${entry.lastModifiedMs}`} />
-      );
+    case "pdf": {
+      const sep = fileUrl.includes("?") ? "&" : "?";
+      const pdfUrl = entry.lastModifiedMs
+        ? `${fileUrl}${sep}v=${entry.lastModifiedMs}`
+        : fileUrl;
+      return <PDFViewer key={fileUrl} url={pdfUrl} />;
+    }
 
-    case "viewer":
-      return (
-        <PDFViewer
-          key={fileUrl}
-          url={`${fileUrl}?preview=pdf&v=${entry.lastModifiedMs}`}
-        />
-      );
+    case "viewer": {
+      const sep = fileUrl.includes("?") ? "&" : "?";
+      const viewerUrl = entry.lastModifiedMs
+        ? `${fileUrl}${sep}preview=pdf&v=${entry.lastModifiedMs}`
+        : `${fileUrl}${sep}preview=pdf`;
+      return <PDFViewer key={fileUrl} url={viewerUrl} />;
+    }
 
     case "audio":
       return (
