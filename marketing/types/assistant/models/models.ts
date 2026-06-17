@@ -329,6 +329,11 @@ export const SUPPORTED_MODEL_CONFIGS: ReadonlyArray<ModelConfig> = [
     providerId: "fireworks",
   },
   {
+    modelId: "accounts/fireworks/models/glm-5p2",
+    displayName: "GLM-5.2 (Fireworks)",
+    providerId: "fireworks",
+  },
+  {
     modelId: "grok-3-latest",
     displayName: "Grok 3",
     providerId: "xai",
