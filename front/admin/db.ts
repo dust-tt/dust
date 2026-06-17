@@ -120,7 +120,10 @@ import {
   RunModel,
   RunUsageModel,
 } from "@app/lib/resources/storage/models/runs";
-import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
+import {
+  ConversationSandboxModel,
+  SandboxModel,
+} from "@app/lib/resources/storage/models/sandbox";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import {
   TakeawaySourcesModel,
@@ -252,6 +255,7 @@ export function loadAllModels() {
     AcademyQuizAttemptModel,
     AcademyChapterVisitModel,
     SandboxModel,
+    ConversationSandboxModel,
     ConversationBranchModel,
     ConversationForkModel,
     ProjectTaskModel,

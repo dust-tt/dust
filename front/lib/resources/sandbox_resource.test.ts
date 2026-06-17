@@ -52,7 +52,10 @@ vi.mock("@app/lib/lock", () => ({
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import { SandboxModel } from "@app/lib/resources/storage/models/sandbox";
+import {
+  ConversationSandboxModel,
+  SandboxModel,
+} from "@app/lib/resources/storage/models/sandbox";
 import { WorkspaceSandboxEnvVarModel } from "@app/lib/resources/storage/models/workspace_sandbox_env_var";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -680,6 +683,14 @@ describe("SandboxResource.ensureActive", () => {
     );
     expect(persisted?.baseImage).toBe("test-image");
     expect(persisted?.version).toBe("0.0.1");
+
+    const link = await ConversationSandboxModel.findOne({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: authenticator.getNonNullableWorkspace().id,
+      },
+    });
+    expect(link?.sandboxId).toBe(persisted?.id);
   });
 
   it("refreshes baseImage and version when recreating from a deleted row", async () => {
