@@ -5,7 +5,10 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { addSelectedConversationSpaces } from "@app/lib/api/assistant/conversation/selected_spaces";
+import {
+  addSelectedConversationSpaces,
+  validateSelectableRestrictedSpaces,
+} from "@app/lib/api/assistant/conversation/selected_spaces";
 import type {
   GetConversationsResponseBody,
   PostConversationsResponseBody,
@@ -264,6 +267,15 @@ app.post(
             "selectedSpaceIds cannot be used when creating a conversation in a project.",
         },
       });
+    }
+
+    if (selectedRestrictedSpaceIds.length > 0) {
+      const validationResult = await validateSelectableRestrictedSpaces(auth, {
+        spaceIds: selectedRestrictedSpaceIds,
+      });
+      if (validationResult.isErr()) {
+        return apiErrorForSelectedSpaces(ctx, validationResult.error);
+      }
     }
 
     if (message?.context.clientSideMCPServerIds) {

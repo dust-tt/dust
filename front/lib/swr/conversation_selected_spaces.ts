@@ -10,13 +10,35 @@ import type {
   ConversationSelectedSpacesResponse,
   SelectableConversationSpaceType,
 } from "@app/types/assistant/conversation";
+import { SPACE_KINDS } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
+import { z } from "zod";
 
 type GetSelectableConversationSpacesResponseBody = {
   spaces: SelectableConversationSpaceType[];
 };
+
+const ConversationSelectedSpacesResponseSchema = z.object({
+  selectedSpaces: z.array(
+    z.object({
+      createdAt: z.number(),
+      groupIds: z.array(z.string()),
+      isRestricted: z.boolean(),
+      kind: z.enum(SPACE_KINDS),
+      managementMode: z.enum(["manual", "group"]),
+      name: z.string(),
+      sId: z.string(),
+      selected: z.boolean(),
+      updatedAt: z.number(),
+    })
+  ),
+  effectiveAcl: z.object({
+    spaceIds: z.array(z.string()),
+    viewerMustHaveAll: z.literal(true),
+  }),
+}) satisfies z.ZodType<ConversationSelectedSpacesResponse>;
 
 export function useSelectableConversationSpaces({
   conversationId,
@@ -94,7 +116,9 @@ export function useAddConversationSelectedSpaces({
         return null;
       }
 
-      return (await response.json()) as ConversationSelectedSpacesResponse;
+      return ConversationSelectedSpacesResponseSchema.parse(
+        await response.json()
+      );
     },
     [conversationId, owner.sId, sendNotification]
   );

@@ -90,10 +90,6 @@ ConversationSelectedSpaceModel.init(
         concurrently: true,
       },
       {
-        fields: ["workspaceId", "conversationId"],
-        name: "conversation_selected_spaces_wid_cid",
-      },
-      {
         fields: ["conversationId"],
         name: "conversation_selected_spaces_conversation_id",
         concurrently: true,

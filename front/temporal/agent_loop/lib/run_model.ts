@@ -232,6 +232,7 @@ export async function runModel(
     enabledSkills,
     systemSkills,
     equippedSkills,
+    hasSelectedConversationSpaces,
     hasConditionalJITTools,
     mcpActions,
     mcpToolsListingError,
@@ -270,6 +271,12 @@ export async function runModel(
       agentConfiguration,
       conversation,
     });
+    const hasSelectedConversationSpaces =
+      effectiveSpaceIds.length !==
+        agentConfiguration.requestedSpaceIds.length ||
+      effectiveSpaceIds.some(
+        (spaceId) => !agentConfiguration.requestedSpaceIds.includes(spaceId)
+      );
 
     const skillServers = await getSkillServers(auth, {
       agentConfiguration,
@@ -295,6 +302,7 @@ export async function runModel(
 
     return {
       hasConditionalJITTools,
+      hasSelectedConversationSpaces,
       enabledSkills,
       equippedSkills,
       systemSkills,
@@ -423,6 +431,7 @@ export async function runModel(
     isNewFileExplorer,
     hasSandboxTools,
     disableFormattingPrompt,
+    hasSelectedConversationSpaces,
   });
   const leadingMessages = removeNulls([
     renderEquippedSkillsUserMessage(equippedSkills),

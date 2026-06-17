@@ -13,7 +13,6 @@ CREATE TABLE IF NOT EXISTS "conversation_selected_spaces" (
 );
 
 CREATE UNIQUE INDEX CONCURRENTLY "conversation_selected_spaces_wid_cid_sid" ON "conversation_selected_spaces" ("workspaceId", "conversationId", "spaceId");
-CREATE INDEX CONCURRENTLY "conversation_selected_spaces_wid_cid" ON "conversation_selected_spaces" ("workspaceId", "conversationId");
 CREATE INDEX CONCURRENTLY "conversation_selected_spaces_conversation_id" ON "conversation_selected_spaces" ("conversationId");
 CREATE INDEX CONCURRENTLY "conversation_selected_spaces_space_id" ON "conversation_selected_spaces" ("spaceId");
 CREATE INDEX CONCURRENTLY "conversation_selected_spaces_selected_by_user_id" ON "conversation_selected_spaces" ("selectedByUserId");

@@ -100,6 +100,29 @@ const app = workspaceApp();
  *     responses:
  *       200:
  *         description: Selected Spaces and effective ACL summary.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 selectedSpaces:
+ *                   type: array
+ *                   items:
+ *                     allOf:
+ *                       - $ref: '#/components/schemas/PrivateSpace'
+ *                       - type: object
+ *                         properties:
+ *                           selected:
+ *                             type: boolean
+ *                 effectiveAcl:
+ *                   type: object
+ *                   properties:
+ *                     spaceIds:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     viewerMustHaveAll:
+ *                       type: boolean
  *       401:
  *         description: Unauthorized
  */

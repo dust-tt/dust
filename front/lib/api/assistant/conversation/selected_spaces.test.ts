@@ -23,11 +23,11 @@ import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { UserType, WorkspaceType } from "@app/types/user";
 
@@ -42,24 +42,28 @@ describe("selected conversation Spaces", () => {
     auth = setup.authenticator;
     globalSpace = setup.globalSpace;
     user = setup.user.toJSON();
-    workspace = setup.workspace as WorkspaceType;
+    workspace = auth.getNonNullableWorkspace();
     mockEmitAuditLogEvent.mockClear();
   });
 
-  async function createMemberRestrictedRegularSpace() {
+  async function addCurrentUserToRegularGroup(space: SpaceResource) {
     const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    const space = await SpaceFactory.regular(workspace);
     const memberGroup = space.groups.find((group) => group.kind === "regular");
     if (!memberGroup) {
-      throw new Error("Expected regular member group on restricted Space");
+      throw new Error("Expected regular member group on Space");
     }
 
     await memberGroup.dangerouslyAddMembers(internalAdminAuth, {
       users: [user],
     });
     await auth.refresh();
+  }
+
+  async function createMemberRestrictedRegularSpace() {
+    const space = await SpaceFactory.regular(workspace);
+    await addCurrentUserToRegularGroup(space);
 
     return space;
   }
@@ -99,11 +103,42 @@ describe("selected conversation Spaces", () => {
     expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
   });
 
+  it("rejects selected Spaces for project conversations", async () => {
+    await FeatureFlagFactory.basic(auth, "restricted_spaces_in_input_bar");
+    const restrictedSpace = await createMemberRestrictedRegularSpace();
+    const projectSpace = await SpaceFactory.project(workspace, user.id);
+    await addCurrentUserToRegularGroup(projectSpace);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+      spaceId: projectSpace.id,
+      visibility: "unlisted",
+    });
+
+    const result = await addSelectedConversationSpaces(auth, {
+      conversation,
+      origin: "input_bar",
+      spaceIds: [restrictedSpace.sId],
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("conversation_not_mutable");
+    }
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+  });
+
   it("materializes selected restricted Spaces and uses them as effective runtime scope", async () => {
     await FeatureFlagFactory.basic(auth, "restricted_spaces_in_input_bar");
     const restrictedSpace = await createMemberRestrictedRegularSpace();
+    const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
+      auth,
+      {
+        requestedSpaceIds: [globalSpace.id],
+      }
+    );
     const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: "test-agent",
+      agentConfigurationId: agentConfiguration.sId,
       messagesCreatedAt: [],
       visibility: "unlisted",
     });
@@ -158,9 +193,7 @@ describe("selected conversation Spaces", () => {
     );
 
     const effectiveSpaceIds = await getEffectiveSpaceIdsForAgentRun(auth, {
-      agentConfiguration: {
-        requestedSpaceIds: [globalSpace.sId],
-      } as LightAgentConfigurationType,
+      agentConfiguration,
       conversation: updatedConversation,
     });
     expect(effectiveSpaceIds).toEqual(

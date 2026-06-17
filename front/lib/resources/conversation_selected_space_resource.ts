@@ -6,10 +6,10 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { Attributes, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ConversationSelectedSpaceResource
@@ -98,7 +98,9 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
       where: {
         workspaceId: workspace.id,
         conversationId: conversation.id,
-        spaceId: spaceModelIds,
+        spaceId: {
+          [Op.in]: spaceModelIds,
+        },
       },
       transaction,
     });
@@ -110,20 +112,19 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
       (space) => !existingSpaceModelIds.has(space.id)
     );
 
-    const createdRows =
-      newlySelectedSpaces.length > 0
-        ? await this.model.bulkCreate(
-            newlySelectedSpaces.map((space) => ({
-              workspaceId: workspace.id,
-              conversationId: conversation.id,
-              spaceId: space.id,
-              selectedByUserId: user.id,
-              origin,
-              removedAt: null,
-            })),
-            { transaction }
-          )
-        : [];
+    if (newlySelectedSpaces.length > 0) {
+      await this.model.bulkCreate(
+        newlySelectedSpaces.map((space) => ({
+          workspaceId: workspace.id,
+          conversationId: conversation.id,
+          spaceId: space.id,
+          selectedByUserId: user.id,
+          origin,
+          removedAt: null,
+        })),
+        { ignoreDuplicates: true, transaction }
+      );
+    }
 
     const reactivatedRows = existingRows.filter(
       (row) => row.removedAt !== null
@@ -139,8 +140,19 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
       );
     }
 
+    const selectedRows = await this.model.findAll({
+      where: {
+        workspaceId: workspace.id,
+        conversationId: conversation.id,
+        spaceId: {
+          [Op.in]: spaceModelIds,
+        },
+      },
+      transaction,
+    });
+
     return {
-      selectedSpaces: [...existingRows, ...createdRows].map(
+      selectedSpaces: selectedRows.map(
         (row) => new this(this.model, row.get())
       ),
       newlySelectedSpaces,
@@ -152,7 +164,7 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<number, Error>> {
     const deletedCount = await this.model.destroy({
-      where: { id: this.id as ModelId },
+      where: { id: this.id },
       transaction,
     });
 

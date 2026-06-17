@@ -415,6 +415,7 @@ export function constructPromptMultiActions(
     isNewFileExplorer = false,
     hasSandboxTools = false,
     disableFormattingPrompt = false,
+    hasSelectedConversationSpaces = false,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -436,6 +437,7 @@ export function constructPromptMultiActions(
     isNewFileExplorer?: boolean;
     hasSandboxTools?: boolean;
     disableFormattingPrompt?: boolean;
+    hasSelectedConversationSpaces?: boolean;
   }
 ): SystemPromptSections {
   const owner = auth.workspace();
@@ -486,6 +488,8 @@ export function constructPromptMultiActions(
     //
     // Instructions (long cache): stable per agent config — agent instructions,
     // tools (directives + server listing), skills, format docs, and guidelines.
+    // If selected conversation Spaces are active, tools and system skill instructions can depend
+    // on per-conversation scope and must stay out of the long-cache tier.
     //
     // Shared context (short cache): workspace-scoped data shared across users — date, toolsets,
     // workspace info. A cache breakpoint here lets different users in the same workspace share
@@ -494,8 +498,7 @@ export function constructPromptMultiActions(
     // Ephemeral context (no breakpoint): per-call data — branch lineage, memories, user profile.
     const fullInstructions = [
       instructionsContent,
-      toolsSection,
-      skillsSection,
+      ...(hasSelectedConversationSpaces ? [] : [toolsSection, skillsSection]),
       attachmentsSection,
       pastedContentSection,
       guidelinesSection,
@@ -510,6 +513,12 @@ export function constructPromptMultiActions(
     ].filter((s) => s.content.trim() !== "");
 
     const ephemeralContext: SystemPromptContext[] = [
+      ...(hasSelectedConversationSpaces
+        ? ([
+            { role: "context" as const, content: toolsSection },
+            { role: "context" as const, content: skillsSection },
+          ] satisfies SystemPromptContext[])
+        : []),
       { role: "context" as const, content: branchContextSection },
       { role: "context" as const, content: memoriesContext ?? "" },
       { role: "context" as const, content: userContext ?? "" },

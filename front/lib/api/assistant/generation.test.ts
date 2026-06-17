@@ -284,6 +284,62 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(ephemeralContext).toHaveLength(0);
   });
 
+  it("should keep selected-space-scoped tool instructions out of the long-cache tier", () => {
+    const deepDiveConfig = {
+      ...agentConfig1,
+      sId: GLOBAL_AGENTS_SID.DEEP_DIVE,
+      scope: "global" as const,
+    };
+    const scopedServerInstructions = "selected-space-only instructions";
+    const serverToolsAndInstructions = [
+      {
+        serverName: "selected_scope_server",
+        instructions: scopedServerInstructions,
+        tools: [],
+      },
+    ];
+
+    const baseParams = {
+      userMessage: userMessage1,
+      agentConfiguration: deepDiveConfig,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      systemSkills: [],
+      enabledSkills: [],
+      equippedSkills: [],
+      serverToolsAndInstructions,
+    };
+
+    const cachedPrompt = constructPromptMultiActions(
+      authenticator1,
+      baseParams
+    );
+    const cachedSections = normalizePrompt(cachedPrompt);
+    expect(cachedSections.instructions[0]?.content).toContain(
+      scopedServerInstructions
+    );
+    expect(
+      cachedSections.ephemeralContext.some((section) =>
+        section.content.includes(scopedServerInstructions)
+      )
+    ).toBe(false);
+
+    const scopedPrompt = constructPromptMultiActions(authenticator1, {
+      ...baseParams,
+      hasSelectedConversationSpaces: true,
+    });
+    const scopedSections = normalizePrompt(scopedPrompt);
+    expect(scopedSections.instructions[0]?.content).not.toContain(
+      scopedServerInstructions
+    );
+    expect(
+      scopedSections.ephemeralContext.some((section) =>
+        section.content.includes(scopedServerInstructions)
+      )
+    ).toBe(true);
+  });
+
   it("should place workspace context in shared tier and user context in ephemeral tier for sidekick agent", () => {
     const sidekickConfig = {
       ...agentConfig1,

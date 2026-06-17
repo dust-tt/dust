@@ -125,6 +125,28 @@ export async function assertCanUseSelectedSpaces(
     transaction?: Transaction;
   }
 ): Promise<Result<SpaceResource[], SelectedConversationSpacesError>> {
+  if (conversation.spaceId !== null) {
+    return new Err(
+      new SelectedConversationSpacesError(
+        "conversation_not_mutable",
+        "Restricted Spaces cannot be selected from the input bar in project conversations."
+      )
+    );
+  }
+
+  return validateSelectableRestrictedSpaces(auth, { spaceIds, transaction });
+}
+
+export async function validateSelectableRestrictedSpaces(
+  auth: Authenticator,
+  {
+    spaceIds,
+    transaction,
+  }: {
+    spaceIds: string[];
+    transaction?: Transaction;
+  }
+): Promise<Result<SpaceResource[], SelectedConversationSpacesError>> {
   const flagResult = await assertRestrictedSpacesInputBarEnabled(auth);
   if (flagResult.isErr()) {
     return flagResult;
