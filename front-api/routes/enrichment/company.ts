@@ -2,7 +2,6 @@ import {
   ENTERPRISE_THRESHOLD,
   enrichCompanyFromDomain,
 } from "@app/lib/api/enrichment/company";
-import { fetchUsersFromWorkOSWithEmails } from "@app/lib/api/workos/user";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { extractDomain, hasValidMxRecords } from "@app/lib/utils/email";
 import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
@@ -55,15 +54,6 @@ app.post("/", async (ctx): HandlerResult<EnrichmentResponse> => {
   }
 
   const encodedEmail = encodeURIComponent(email);
-
-  // Check if user already exists in WorkOS — if so, redirect to login.
-  const existingUsers = await fetchUsersFromWorkOSWithEmails([email]);
-  if (existingUsers.length > 0) {
-    return ctx.json({
-      success: true,
-      redirectUrl: `/api/workos/login?loginHint=${encodedEmail}`,
-    });
-  }
 
   // Skip enrichment for personal email domains (gmail, outlook, yahoo, etc.).
   if (isPersonalEmailDomain(domain)) {
