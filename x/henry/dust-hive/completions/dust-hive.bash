@@ -320,7 +320,7 @@ _dust_hive_complete() {
     adopt)
       case "$cur" in
         -*)
-          COMPREPLY=($(compgen -W "-n --name -p --path -b --branch-name --base-branch" -- "$cur"))
+          COMPREPLY=($(compgen -W "-n --name -p --path -b --branch-name --base-branch -W --wait" -- "$cur"))
           ;;
         *)
           ;;

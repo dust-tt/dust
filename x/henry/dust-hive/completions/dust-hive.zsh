@@ -343,7 +343,9 @@ _dust-hive() {
             '--path[Existing worktree path]:path:_files -/' \
             '-b[Branch name to display]:branch:' \
             '--branch-name[Branch name to display]:branch:' \
-            '--base-branch[Base branch to record]:branch:'
+            '--base-branch[Base branch to record]:branch:' \
+            '-W[Wait for cold services to finish their initial builds]' \
+            '--wait[Wait for cold services to finish their initial builds]'
           ;;
         open|o)
           _arguments \

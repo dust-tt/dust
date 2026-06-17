@@ -377,21 +377,27 @@ Configure the external tool's workspace root inside the main Dust repo, for exam
 /path/to/dust/.hives/external/<tool-name>
 ```
 
-Then call dust-hive from the tool's setup and teardown hooks:
+Then call dust-hive from the tool's setup, run, and teardown hooks:
 
 ```bash
 dust-hive adopt --path "$WORKSPACE_PATH" --name "$WORKSPACE_NAME"
-dust-hive warm "$WORKSPACE_NAME"
+dust-hive start "$WORKSPACE_NAME"
 dust-hive unregister "$WORKSPACE_NAME"
 ```
 
-For Conductor, set the workspace root to `/path/to/dust/.hives/external/conductor`, then wire the
-same hooks as repository scripts:
+`adopt` registers the worktree and starts the cold services. Use `start` when the workspace is
+opened again so a stopped environment returns to the cold state. Do not run `warm` from workspace
+creation hooks; use it only when the full app stack is needed.
+
+#### Example: Conductor
+
+Set the Conductor workspace root to `/path/to/dust/.hives/external/conductor`, then wire the same
+hooks as repository scripts:
 
 ```toml
 [scripts]
 setup = "dust-hive adopt --path \"$CONDUCTOR_WORKSPACE_PATH\" --name \"$CONDUCTOR_WORKSPACE_NAME\""
-run = "dust-hive warm \"$CONDUCTOR_WORKSPACE_NAME\""
+run = "dust-hive start \"$CONDUCTOR_WORKSPACE_NAME\""
 archive = "dust-hive unregister \"$CONDUCTOR_WORKSPACE_NAME\""
 run_mode = "concurrent"
 ```
@@ -400,6 +406,9 @@ run_mode = "concurrent"
 shallow `node_modules` strategy working: workspace packages resolve through the worktree while
 third-party dependencies can still resolve from the main repo cache. Adopted worktrees are treated
 as externally owned, so `unregister` and `destroy` keep the worktree and branch.
+
+Pass `--wait` to `adopt` only when the external tool must block until the cold services have
+finished their initial builds.
 
 ### Running multiple environments
 

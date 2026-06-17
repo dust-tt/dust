@@ -167,10 +167,30 @@ function isPathAtOrInside(parentPath: string, candidatePath: string): boolean {
   return relativePath === "" || !(relativePath.startsWith("..") || relativePath.startsWith("/"));
 }
 
+export function detectEnvironmentFromMetadata(
+  cwd: string,
+  environments: EnvironmentMetadata[]
+): string | null {
+  let bestMatch: { name: string; pathLength: number } | null = null;
+
+  for (const metadata of environments) {
+    const worktreePath = getEnvironmentWorktreeDir(metadata);
+    if (!isPathAtOrInside(worktreePath, cwd)) {
+      continue;
+    }
+
+    if (!bestMatch || worktreePath.length > bestMatch.pathLength) {
+      bestMatch = { name: metadata.name, pathLength: worktreePath.length };
+    }
+  }
+
+  return bestMatch?.name ?? null;
+}
+
 // Detect if the current working directory is inside a registered dust-hive worktree.
 export async function detectEnvironmentFromCwd(cwd = process.cwd()): Promise<string | null> {
   const envNames = await listEnvironments();
-  let bestMatch: { name: string; pathLength: number } | null = null;
+  const metadataList: EnvironmentMetadata[] = [];
 
   for (const envName of envNames) {
     const metadata = await loadMetadata(envName);
@@ -178,17 +198,10 @@ export async function detectEnvironmentFromCwd(cwd = process.cwd()): Promise<str
       continue;
     }
 
-    const worktreePath = getEnvironmentWorktreeDir(metadata);
-    if (!isPathAtOrInside(worktreePath, cwd)) {
-      continue;
-    }
-
-    if (!bestMatch || worktreePath.length > bestMatch.pathLength) {
-      bestMatch = { name: envName, pathLength: worktreePath.length };
-    }
+    metadataList.push(metadata);
   }
 
-  return bestMatch?.name ?? null;
+  return detectEnvironmentFromMetadata(cwd, metadataList);
 }
 
 // Delete environment directory

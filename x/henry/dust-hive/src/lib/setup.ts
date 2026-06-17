@@ -4,7 +4,7 @@
 // {repoRoot}/.hives/{name}/; adopted worktrees can use any path under
 // {repoRoot}. We only need:
 // 1. A small node_modules/@dust-tt/ override so workspace packages resolve
-//    from the hive (not the main repo).
+//    from the worktree (not the main repo).
 // 2. Shallow copies of workspace-level node_modules (version overrides).
 // NOTE: cargo target is symlinked to share Rust compilation cache.
 
@@ -23,6 +23,7 @@ const USER_CONFIG_DIRS = [".claude"];
 // Configuration for how to install each dependency type
 export interface DependencyConfig {
   rust: "symlink" | "build";
+  copyUserConfig: boolean;
 }
 
 // Setup a shallow copy of node_modules: a real directory with symlinks to
@@ -182,6 +183,7 @@ async function buildRustInWorktree(worktreePath: string): Promise<boolean> {
 // Default config: symlink everything from cache
 const DEFAULT_CONFIG: DependencyConfig = {
   rust: "symlink",
+  copyUserConfig: true,
 };
 
 // Workspace directories that have their own node_modules (version overrides)
@@ -223,9 +225,9 @@ async function linkWorkspaceNodeModules(worktreePath: string, repoRoot: string):
 }
 
 // Install all dependencies for a worktree
-// Since hives are under the repo root, Node module resolution walks up to
+// Since worktrees are under the repo root, Node module resolution walks up to
 // find {repoRoot}/node_modules/ automatically. We only need to:
-// 1. Override @dust-tt/* packages to point to the hive's workspaces
+// 1. Override @dust-tt/* packages to point to the worktree's workspaces
 // 2. Shallow-copy workspace-level node_modules (version overrides)
 export async function installAllDependencies(
   worktreePath: string,
@@ -268,6 +270,10 @@ export async function installAllDependencies(
 
   if (failed.length > 0) {
     throw new Error(`Failed to install dependencies for: ${failed.join(", ")}`);
+  }
+
+  if (!config.copyUserConfig) {
+    return;
   }
 
   // Copy user config files (AGENTS.local.md, AGENTS.override.md, .claude/) if they exist

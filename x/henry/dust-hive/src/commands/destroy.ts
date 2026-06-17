@@ -1,4 +1,5 @@
 import { requireEnvironment } from "../lib/commands";
+import { removeDirenvIntegration } from "../lib/direnv";
 import { removeDockerVolumes, stopDocker } from "../lib/docker";
 import {
   deleteEnvironmentDir,
@@ -194,6 +195,7 @@ async function cleanupGitResources(
   settings: Settings
 ): Promise<void> {
   if (plan.keepWorktree) {
+    await removeDirenvIntegration(env.name, plan.worktreePath);
     logger.info(`Keeping worktree: ${plan.worktreePath}`);
   } else {
     logger.step("Removing git worktree...");

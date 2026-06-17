@@ -144,10 +144,17 @@ cli
   .option("-p, --path <path>", "Existing worktree path (defaults to current directory)")
   .option("-b, --branch-name <branch>", "Branch name to display (defaults to current branch)")
   .option("--base-branch <branch>", "Base branch to record (default: main)")
+  .option("-W, --wait", "Wait for cold services to finish their initial builds")
   .action(
     async (
       name: string | undefined,
-      options: { name?: string; path?: string; branchName?: string; baseBranch?: string }
+      options: {
+        name?: string;
+        path?: string;
+        branchName?: string;
+        baseBranch?: string;
+        wait?: boolean;
+      }
     ) => {
       await prepareAndRun(
         adoptCommand({
@@ -155,6 +162,7 @@ cli
           path: options.path,
           branchName: options.branchName,
           baseBranch: options.baseBranch,
+          wait: options.wait,
         })
       );
     }

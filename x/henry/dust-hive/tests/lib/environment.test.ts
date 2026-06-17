@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
+  detectEnvironmentFromMetadata,
   type EnvironmentMetadata,
   getEnvironmentWorktreeDir,
   isEnvironmentMetadata,
@@ -160,6 +161,46 @@ describe("environment", () => {
       expect(getEnvironmentWorktreeDir(metadata)).toBe(
         "/path/to/repo/.hives/external/tool/workspaces/project/port-louis"
       );
+    });
+  });
+
+  describe("detectEnvironmentFromMetadata", () => {
+    it("chooses the longest matching registered worktree path", () => {
+      const hiveMetadata: EnvironmentMetadata = {
+        name: "external",
+        baseBranch: "main",
+        workspaceBranch: "external",
+        createdAt: "2024-01-01T00:00:00Z",
+        repoRoot: "/path/to/repo",
+      };
+      const adoptedMetadata: EnvironmentMetadata = {
+        name: "port-louis",
+        baseBranch: "main",
+        workspaceBranch: "fontanierh/port-louis",
+        createdAt: "2024-01-01T00:00:00Z",
+        repoRoot: "/path/to/repo",
+        worktreePath: "/path/to/repo/.hives/external/tool/workspaces/project/port-louis",
+        worktreeOwner: "external",
+      };
+
+      expect(
+        detectEnvironmentFromMetadata(
+          "/path/to/repo/.hives/external/tool/workspaces/project/port-louis/front",
+          [hiveMetadata, adoptedMetadata]
+        )
+      ).toBe("port-louis");
+    });
+
+    it("returns null when the cwd is outside registered worktrees", () => {
+      const metadata: EnvironmentMetadata = {
+        name: "test",
+        baseBranch: "main",
+        workspaceBranch: "test",
+        createdAt: "2024-01-01T00:00:00Z",
+        repoRoot: "/path/to/repo",
+      };
+
+      expect(detectEnvironmentFromMetadata("/path/to/other/repo", [metadata])).toBe(null);
     });
   });
 });

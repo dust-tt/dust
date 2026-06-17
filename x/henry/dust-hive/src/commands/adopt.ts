@@ -1,5 +1,6 @@
 import { relative, resolve } from "node:path";
 import { setCacheSource } from "../lib/cache";
+import { removeDirenvIntegration, setupDirenv } from "../lib/direnv";
 import {
   deleteEnvironmentDir,
   type Environment,
@@ -12,6 +13,7 @@ import { logger } from "../lib/logger";
 import { findRepoRoot } from "../lib/paths";
 import type { PortAllocation } from "../lib/ports";
 import { allocateNextPort, calculatePorts } from "../lib/ports";
+import { stopAllServices } from "../lib/process";
 import { startService, waitForServiceReady } from "../lib/registry";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { loadSettings } from "../lib/settings";
@@ -22,13 +24,14 @@ import {
   hasUncommittedChanges,
   isWorktree,
 } from "../lib/worktree";
-import { setupDirenv, setupEnvironmentFiles, tryCreateTestDatabase } from "./spawn";
+import { setupEnvironmentFiles, tryCreateTestDatabase } from "./spawn";
 
 interface AdoptOptions {
   name?: string | undefined;
   path?: string | undefined;
   branchName?: string | undefined;
   baseBranch?: string | undefined;
+  wait?: boolean | undefined;
 }
 
 function errorMessage(error: unknown): string {
@@ -71,7 +74,13 @@ async function resolveWorktreePath(pathArg: string | undefined): Promise<Result<
   return Ok(repoRoot);
 }
 
-async function cleanupAdoptedEnvironment(name: string): Promise<void> {
+async function cleanupAdoptedEnvironment(name: string, worktreePath?: string): Promise<void> {
+  if (worktreePath) {
+    await removeDirenvIntegration(name, worktreePath).catch((error) =>
+      logger.warn(`Direnv cleanup failed: ${errorMessage(error)}`)
+    );
+  }
+
   await deleteEnvironmentDir(name).catch((error) =>
     logger.warn(`Env cleanup failed: ${errorMessage(error)}`)
   );
@@ -82,15 +91,18 @@ async function setupAdoptedWorktree(
   worktreePath: string
 ): Promise<Result<void, CommandError>> {
   try {
-    await setupDirenv(metadata.name, worktreePath);
+    await setupDirenv(metadata.name, worktreePath, { preserveExisting: true });
   } catch (error) {
     logger.warn(`Failed to setup direnv: ${errorMessage(error)}`);
   }
 
   try {
-    await installAllDependencies(worktreePath, metadata.repoRoot);
+    await installAllDependencies(worktreePath, metadata.repoRoot, {
+      rust: "symlink",
+      copyUserConfig: false,
+    });
   } catch (error) {
-    await cleanupAdoptedEnvironment(metadata.name);
+    await cleanupAdoptedEnvironment(metadata.name, worktreePath);
     return Err(new CommandError(`Failed to install dependencies: ${errorMessage(error)}`));
   }
 
@@ -123,12 +135,21 @@ async function createAdoptedEnvironment(
   });
 }
 
-async function startAdoptedBuildWatchers(env: Environment): Promise<Result<void, CommandError>> {
+async function startAdoptedBuildWatchers(
+  env: Environment,
+  worktreePath: string,
+  waitForReady: boolean
+): Promise<Result<void, CommandError>> {
   try {
     await Promise.all([startService(env, "sparkle"), startService(env, "sdk")]);
-    await Promise.all([waitForServiceReady(env, "sparkle"), waitForServiceReady(env, "sdk")]);
+    if (waitForReady) {
+      await Promise.all([waitForServiceReady(env, "sparkle"), waitForServiceReady(env, "sdk")]);
+    }
   } catch (error) {
-    await cleanupAdoptedEnvironment(env.name);
+    await stopAllServices(env.name).catch((e) =>
+      logger.warn(`Service cleanup failed: ${errorMessage(e)}`)
+    );
+    await cleanupAdoptedEnvironment(env.name, worktreePath);
     return Err(new CommandError(`Failed to start build watchers: ${errorMessage(error)}`));
   }
 
@@ -186,7 +207,11 @@ export async function adoptCommand(options: AdoptOptions): Promise<Result<void>>
   const envResult = await createAdoptedEnvironment(metadata, ports, worktreePath);
   if (!envResult.ok) return envResult;
 
-  const buildResult = await startAdoptedBuildWatchers(envResult.value);
+  const buildResult = await startAdoptedBuildWatchers(
+    envResult.value,
+    worktreePath,
+    Boolean(options.wait)
+  );
   if (!buildResult.ok) {
     return buildResult;
   }
@@ -196,7 +221,8 @@ export async function adoptCommand(options: AdoptOptions): Promise<Result<void>>
   logger.info(`Branch: ${workspaceBranch}`);
   logger.info(`Ports: ${ports.base}-${ports.base + 999}`);
   logger.info("Next steps:");
-  logger.info(`dust-hive warm ${name}          # Start all services`);
+  logger.info(`dust-hive start ${name}         # Ensure cold services are running`);
+  logger.info(`dust-hive warm ${name}          # Only when the full app stack is needed`);
   logger.info(`dust-hive unregister ${name}    # Remove Hive resources, keep worktree`);
 
   return Ok(undefined);
