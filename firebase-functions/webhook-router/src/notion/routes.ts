@@ -4,7 +4,10 @@ import { error } from "firebase-functions/logger";
 import { WebhookForwarder } from "../forwarder.js";
 import type { SecretManager } from "../secrets.js";
 import type { WebhookRouterConfigManager } from "../webhook-router-config.js";
-import { ALL_REGIONS } from "../webhook-router-config.js";
+import {
+  ALL_REGIONS,
+  isValidProviderWorkspaceId,
+} from "../webhook-router-config.js";
 import { createNotionVerificationMiddleware } from "./verification.js";
 
 export function createNotionRoutes(
@@ -41,16 +44,15 @@ async function handleNotionWebhook(
   useClientCredentials: boolean
 ): Promise<void> {
   try {
-    // Respond immediately to Notion.
-    res.status(200).send();
-
-    // Get secrets for forwarding (already validated by middleware).
-    const secrets = await secretManager.getSecrets();
-
     let body;
     let rootUrlToken;
     const { providerWorkspaceId } = req.params;
     if (useClientCredentials && req.body.verification_token) {
+      if (!isValidProviderWorkspaceId(providerWorkspaceId)) {
+        res.status(400).send();
+        return;
+      }
+
       // Scenario where user has their own Notion integration, and this is the
       // initial webhook registration request that gives us the signing secret.
       // We send it to the connectors API that saves webhook router entries.
@@ -64,6 +66,12 @@ async function handleNotionWebhook(
       body = req.body;
       rootUrlToken = "webhooks";
     }
+
+    // Respond immediately to Notion.
+    res.status(200).send();
+
+    // Get secrets for forwarding (already validated by middleware).
+    const secrets = await secretManager.getSecrets();
 
     // Forward to regions asynchronously.
     await new WebhookForwarder(secrets).forwardToRegions({

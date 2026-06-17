@@ -9,7 +9,10 @@ import type {
   Region,
   WebhookRouterConfigManager,
 } from "../webhook-router-config.js";
-import { ALL_REGIONS } from "../webhook-router-config.js";
+import {
+  ALL_REGIONS,
+  isValidProviderWorkspaceId,
+} from "../webhook-router-config.js";
 
 class ReceiverAuthenticityError extends Error {
   constructor(message: string) {
@@ -85,6 +88,15 @@ export function createNotionVerificationMiddleware(
       // Parse body as JSON for routes to access the object.
       req.body = JSON.parse(stringBody);
 
+      if (useClientCredentials) {
+        const providerWorkspaceIdParam = req.params.providerWorkspaceId;
+        if (!isValidProviderWorkspaceId(providerWorkspaceIdParam)) {
+          throw new Error("Invalid providerWorkspaceId.");
+        }
+
+        providerWorkspaceId = providerWorkspaceIdParam;
+      }
+
       // Skip signature verification for the initial verification_token request, since
       // that is what gives us the signing secret in the first place. This applies to
       // both private client integrations and standard Dust integrations.
@@ -111,7 +123,10 @@ export function createNotionVerificationMiddleware(
       if (useClientCredentials) {
         // It's a private client integration, so get the signing secret and regions from
         // the webhook router config.
-        providerWorkspaceId = req.params.providerWorkspaceId;
+        if (providerWorkspaceId === undefined) {
+          throw new Error("Missing providerWorkspaceId.");
+        }
+
         const notionWebhookConfig = await webhookRouterConfigManager.getEntry(
           "notion",
           providerWorkspaceId

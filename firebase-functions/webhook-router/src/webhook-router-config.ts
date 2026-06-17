@@ -12,6 +12,17 @@ type WebhookRouterConfigEntry = {
   };
 };
 
+const PROVIDER_WORKSPACE_ID_REGEXP = /^[A-Za-z0-9_-]+$/;
+
+export function isValidProviderWorkspaceId(
+  providerWorkspaceId: unknown
+): boolean {
+  return (
+    typeof providerWorkspaceId === "string" &&
+    PROVIDER_WORKSPACE_ID_REGEXP.test(providerWorkspaceId)
+  );
+}
+
 /**
  * Type guard to validate webhook router configuration entries.
  *
@@ -49,6 +60,10 @@ export class WebhookRouterConfigManager {
     provider: ProviderWithSigningSecret,
     providerWorkspaceId: string
   ): Promise<WebhookRouterConfigEntry> {
+    if (!isValidProviderWorkspaceId(providerWorkspaceId)) {
+      throw new Error(`Invalid providerWorkspaceId for ${provider}`);
+    }
+
     const configSnapshot = await this.client
       .ref(`${provider}/${providerWorkspaceId}`)
       .get();
