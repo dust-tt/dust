@@ -53,15 +53,27 @@ const OVERLAY = cn(
   "after:s-transition-colors disabled:after:s-hidden"
 );
 
+// Press feedback: the content scales down to 0.97 over 150ms ease-out while the
+// button (and tooltip anchor) stays fixed. `group-active` keys off the button's
+// :active state so pressing anywhere — including the padding — animates, with no
+// dead zone. Honors prefers-reduced-motion (no scale, no transition). This also
+// owns the icon/label flex layout, since it is now the button's only child.
+const PRESS_FEEDBACK = cn(
+  "s-inline-flex s-items-center s-justify-center s-gap-1.5",
+  "s-transition-transform s-duration-150 s-ease-out group-active:s-scale-[0.97]",
+  "motion-reduce:s-transition-none motion-reduce:group-active:s-scale-100"
+);
+
 const buttonVariants = cva(
   cn(
-    "s-relative s-isolate s-inline-flex s-shrink-0 s-select-none s-items-center s-justify-center s-whitespace-nowrap",
-    // Press feedback: scale down to 0.97 on :active over 150ms ease-out
-    // (transform-only, no layout shift). Color/background changes share the
-    // same transition. Honors prefers-reduced-motion (no scale, no transition).
-    "s-transition-[color,background-color,border-color,transform] s-duration-150 s-ease-out",
-    "active:s-scale-[0.97]",
-    "motion-reduce:s-transition-none motion-reduce:active:s-scale-100",
+    // `s-group` drives the press animation on the inner content (see
+    // PRESS_FEEDBACK). The button itself must NOT transform: it is the Radix
+    // tooltip anchor, and Floating UI tracks its rendered rect — scaling the
+    // button makes the tooltip slide to follow it. Scaling the content leaves
+    // the anchor box fixed, so the tooltip stays put.
+    "s-group s-relative s-isolate s-inline-flex s-shrink-0 s-select-none s-items-center s-justify-center s-whitespace-nowrap",
+    "s-transition-[color,background-color,border-color] s-duration-150 s-ease-out",
+    "motion-reduce:s-transition-none",
     "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-0",
     // Disabled is a per-variant recipe (lighter fill / muted text / no shadow),
     // applied in each variant below — not a blanket opacity.
@@ -351,7 +363,13 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
         {...pointerEventProps}
       >
-        {shouldUseSlot ? <span>{content}</span> : content}
+        {shouldUseSlot ? (
+          <span>
+            <span className={PRESS_FEEDBACK}>{content}</span>
+          </span>
+        ) : (
+          <span className={PRESS_FEEDBACK}>{content}</span>
+        )}
       </Comp>
     );
 
