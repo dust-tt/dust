@@ -21,15 +21,24 @@ import {
 } from "@app/hooks/conversations";
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
+import {
+  useAddConversationSelectedSpaces,
+  useSelectableConversationSpaces,
+} from "@app/lib/swr/conversation_selected_spaces";
+import { useSpaces } from "@app/lib/swr/spaces";
 import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import {
   compareAgentsForSort,
   isGlobalAgentId,
 } from "@app/types/assistant/assistant";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type {
+  ConversationWithoutContentType,
+  SelectableConversationSpaceType,
+} from "@app/types/assistant/conversation";
 import type { RichMention } from "@app/types/assistant/mentions";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
@@ -47,6 +56,20 @@ import React, {
 } from "react";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
+
+type SelectedRestrictedSpacesState = {
+  key: string;
+  spaceIds: string[];
+};
+
+function sameStringSet(a: string[], b: string[]) {
+  if (a.length !== b.length) {
+    return false;
+  }
+
+  const bSet = new Set(b);
+  return a.every((value) => bSet.has(value));
+}
 
 interface InputBarProps {
   owner: WorkspaceType;
@@ -108,6 +131,7 @@ export const InputBar = React.memo(function InputBar({
 }: InputBarProps) {
   const [isLocalSubmitting, setIsLocalSubmitting] = useState(isSubmitting);
   const [isShaking, setIsShaking] = useState(false);
+  const { featureFlags } = useFeatureFlags();
 
   const [attachedNodes, setAttachedNodes] = useState<
     DataSourceViewContentNode[]
@@ -215,9 +239,8 @@ export const InputBar = React.memo(function InputBar({
   const [selectedMCPServerViews, setSelectedMCPServerViews] = useState<
     MCPServerViewType[]
   >([]);
-  const [selectedRestrictedSpaceIds, setSelectedRestrictedSpaceIds] = useState<
-    string[]
-  >([]);
+  const [selectedRestrictedSpacesState, setSelectedRestrictedSpacesState] =
+    useState<SelectedRestrictedSpacesState | null>(null);
 
   const { conversationTools } = useConversationTools({
     conversationId: conversation?.sId,
@@ -237,6 +260,126 @@ export const InputBar = React.memo(function InputBar({
     () => new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
     [selectedMCPServerViews]
   );
+  const restrictedSpacesSelectionKey = conversation?.sId ?? `draft:${draftKey}`;
+  const draftSelectedRestrictedSpaceIds = useMemo(
+    () => getDraft()?.selectedRestrictedSpaceIds ?? [],
+    [getDraft]
+  );
+  const localSelectedRestrictedSpaceIds =
+    selectedRestrictedSpacesState?.key === restrictedSpacesSelectionKey
+      ? selectedRestrictedSpacesState.spaceIds
+      : null;
+  const inputBarSpaceId = conversation?.spaceId ?? space?.sId ?? undefined;
+  const shouldShowRestrictedSpacesAction =
+    actions.includes("restricted-spaces") &&
+    featureFlags.includes("restricted_spaces_in_input_bar") &&
+    !isAgentBuilder &&
+    !inputBarSpaceId;
+
+  const {
+    spaces: conversationSelectableRestrictedSpaces,
+    isSelectableSpacesLoading,
+    mutateSelectableSpaces,
+  } = useSelectableConversationSpaces({
+    owner,
+    conversationId: conversation?.sId ?? null,
+    disabled: !shouldShowRestrictedSpacesAction || !conversation?.sId,
+  });
+  const addConversationSelectedSpaces = useAddConversationSelectedSpaces({
+    owner,
+    conversationId: conversation?.sId ?? null,
+  });
+
+  const {
+    spaces: workspaceRegularSpaces,
+    isSpacesLoading: isWorkspaceSpacesLoading,
+  } = useSpaces({
+    workspaceId: owner.sId,
+    kinds: ["regular"],
+    disabled: !shouldShowRestrictedSpacesAction || !!conversation?.sId,
+  });
+
+  const conversationSelectedRestrictedSpaceIds = useMemo(() => {
+    const selectedSpaceIds: string[] = [];
+    for (const selectableSpace of conversationSelectableRestrictedSpaces) {
+      if (selectableSpace.selected) {
+        selectedSpaceIds.push(selectableSpace.sId);
+      }
+    }
+
+    return selectedSpaceIds;
+  }, [conversationSelectableRestrictedSpaces]);
+
+  const rawSelectedRestrictedSpaceIds = useMemo(
+    () =>
+      conversation?.sId
+        ? Array.from(
+            new Set([
+              ...conversationSelectedRestrictedSpaceIds,
+              ...(localSelectedRestrictedSpaceIds ?? []),
+            ])
+          )
+        : (localSelectedRestrictedSpaceIds ?? draftSelectedRestrictedSpaceIds),
+    [
+      conversation?.sId,
+      conversationSelectedRestrictedSpaceIds,
+      draftSelectedRestrictedSpaceIds,
+      localSelectedRestrictedSpaceIds,
+    ]
+  );
+  const rawSelectedRestrictedSpaceIdSet = useMemo(
+    () => new Set(rawSelectedRestrictedSpaceIds),
+    [rawSelectedRestrictedSpaceIds]
+  );
+
+  const selectableRestrictedSpaces: SelectableConversationSpaceType[] = useMemo(
+    () =>
+      conversation?.sId
+        ? conversationSelectableRestrictedSpaces
+        : workspaceRegularSpaces
+            .filter((regularSpace) => regularSpace.isRestricted)
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((regularSpace) => ({
+              ...regularSpace,
+              selected: rawSelectedRestrictedSpaceIdSet.has(regularSpace.sId),
+            })),
+    [
+      conversation?.sId,
+      conversationSelectableRestrictedSpaces,
+      rawSelectedRestrictedSpaceIdSet,
+      workspaceRegularSpaces,
+    ]
+  );
+  const selectableRestrictedSpaceIds = useMemo(
+    () => new Set(selectableRestrictedSpaces.map((space) => space.sId)),
+    [selectableRestrictedSpaces]
+  );
+  const selectedRestrictedSpaceIds = useMemo(() => {
+    if (!shouldShowRestrictedSpacesAction) {
+      return [];
+    }
+
+    if (
+      (conversation?.sId && isSelectableSpacesLoading) ||
+      (!conversation?.sId && isWorkspaceSpacesLoading)
+    ) {
+      return rawSelectedRestrictedSpaceIds;
+    }
+
+    return rawSelectedRestrictedSpaceIds.filter((spaceId) =>
+      selectableRestrictedSpaceIds.has(spaceId)
+    );
+  }, [
+    conversation?.sId,
+    isSelectableSpacesLoading,
+    isWorkspaceSpacesLoading,
+    rawSelectedRestrictedSpaceIds,
+    selectableRestrictedSpaceIds,
+    shouldShowRestrictedSpacesAction,
+  ]);
+  const isSelectableRestrictedSpacesLoading = conversation?.sId
+    ? isSelectableSpacesLoading
+    : isWorkspaceSpacesLoading;
 
   const handleMCPServerViewSelect = useCallback(
     (serverView: MCPServerViewType) => {
@@ -266,6 +409,79 @@ export const InputBar = React.memo(function InputBar({
       void deleteTool(serverView.sId);
     },
     [deleteTool, selectedMCPServerViewIds]
+  );
+
+  const handleSelectedRestrictedSpaceIdsChange = useCallback(
+    async (spaceIds: string[]): Promise<string[] | null> => {
+      if (!shouldShowRestrictedSpacesAction) {
+        setSelectedRestrictedSpacesState({
+          key: restrictedSpacesSelectionKey,
+          spaceIds: [],
+        });
+        return [];
+      }
+
+      const nextSpaceIds = Array.from(new Set(spaceIds)).filter((spaceId) =>
+        selectableRestrictedSpaceIds.has(spaceId)
+      );
+      if (sameStringSet(selectedRestrictedSpaceIds, nextSpaceIds)) {
+        return selectedRestrictedSpaceIds;
+      }
+
+      if (conversation?.sId) {
+        const addedSpaceIds = nextSpaceIds.filter(
+          (spaceId) => !selectedRestrictedSpaceIds.includes(spaceId)
+        );
+        if (addedSpaceIds.length === 0) {
+          return selectedRestrictedSpaceIds;
+        }
+
+        const response = await addConversationSelectedSpaces(addedSpaceIds);
+        if (!response) {
+          return null;
+        }
+
+        const persistedSpaceIds = response.selectedSpaces.map(
+          (selectedSpace) => selectedSpace.sId
+        );
+        setSelectedMCPServerViews((previousServerViews) => {
+          previousServerViews.forEach(
+            (serverView) => void deleteTool(serverView.sId)
+          );
+          return [];
+        });
+        setAttachedNodes([]);
+        setSelectedRestrictedSpacesState({
+          key: restrictedSpacesSelectionKey,
+          spaceIds: persistedSpaceIds,
+        });
+        void mutateSelectableSpaces();
+        return persistedSpaceIds;
+      }
+
+      setSelectedMCPServerViews((previousServerViews) => {
+        previousServerViews.forEach(
+          (serverView) => void deleteTool(serverView.sId)
+        );
+        return [];
+      });
+      setAttachedNodes([]);
+      setSelectedRestrictedSpacesState({
+        key: restrictedSpacesSelectionKey,
+        spaceIds: nextSpaceIds,
+      });
+      return nextSpaceIds;
+    },
+    [
+      addConversationSelectedSpaces,
+      conversation?.sId,
+      deleteTool,
+      mutateSelectableSpaces,
+      restrictedSpacesSelectionKey,
+      selectableRestrictedSpaceIds,
+      selectedRestrictedSpaceIds,
+      shouldShowRestrictedSpacesAction,
+    ]
   );
 
   const activeAgents = useMemo(() => {
@@ -355,7 +571,10 @@ export const InputBar = React.memo(function InputBar({
           clearDraft();
           resetEditorText();
           fileUploaderService.resetUpload();
-          setSelectedRestrictedSpaceIds([]);
+          setSelectedRestrictedSpacesState({
+            key: restrictedSpacesSelectionKey,
+            spaceIds: [],
+          });
         }
       } finally {
         setLoading(false);
@@ -521,7 +740,14 @@ export const InputBar = React.memo(function InputBar({
             onNodeUnselect={handleNodesAttachmentRemove}
             selectedMCPServerViews={selectedMCPServerViews}
             selectedRestrictedSpaceIds={selectedRestrictedSpaceIds}
-            onSelectedRestrictedSpaceIdsChange={setSelectedRestrictedSpaceIds}
+            selectableRestrictedSpaces={selectableRestrictedSpaces}
+            shouldShowRestrictedSpacesAction={shouldShowRestrictedSpacesAction}
+            isSelectableRestrictedSpacesLoading={
+              isSelectableRestrictedSpacesLoading
+            }
+            onSelectedRestrictedSpaceIdsChange={
+              handleSelectedRestrictedSpaceIdsChange
+            }
             onMCPServerViewSelect={handleMCPServerViewSelect}
             onMCPServerViewDeselect={handleMCPServerViewDeselect}
             onResetMCPServerViews={handleResetMCPServerViews}

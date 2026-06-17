@@ -33,14 +33,10 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
 import { useClientType } from "@app/lib/context/clientType";
-import {
-  useAddConversationSelectedSpaces,
-  useSelectableConversationSpaces,
-} from "@app/lib/swr/conversation_selected_spaces";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
@@ -107,15 +103,6 @@ import { InputBarContext } from "./InputBarContext";
 
 const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
 
-function sameStringSet(a: string[], b: string[]) {
-  if (a.length !== b.length) {
-    return false;
-  }
-
-  const bSet = new Set(b);
-  return a.every((value) => bSet.has(value));
-}
-
 export const INPUT_BAR_ACTIONS = [
   "capabilities",
   "attachment",
@@ -180,7 +167,12 @@ export interface InputBarContainerProps {
   selectedRestrictedSpaceIds: string[];
   stickyMentions?: RichMention[];
   user: UserType | null;
-  onSelectedRestrictedSpaceIdsChange: (spaceIds: string[]) => void;
+  selectableRestrictedSpaces: SelectableConversationSpaceType[];
+  shouldShowRestrictedSpacesAction: boolean;
+  isSelectableRestrictedSpacesLoading: boolean;
+  onSelectedRestrictedSpaceIdsChange: (
+    spaceIds: string[]
+  ) => Promise<string[] | null>;
 }
 
 const InputBarContainer = ({
@@ -210,6 +202,9 @@ const InputBarContainer = ({
   selectedRestrictedSpaceIds,
   onResetMCPServerViews,
   onSelectedRestrictedSpaceIdsChange,
+  selectableRestrictedSpaces,
+  shouldShowRestrictedSpacesAction,
+  isSelectableRestrictedSpacesLoading,
   saveDraft,
   user,
   disableAgentSelector,
@@ -237,7 +232,6 @@ const InputBarContainer = ({
     null
   );
   const { subscription } = useAuth();
-  const { featureFlags } = useFeatureFlags();
   const isMobile = useIsMobile();
   const { selectedSingleAgent, setSelectedSingleAgent, isLoadingGoTemplate } =
     useContext(InputBarContext);
@@ -327,57 +321,6 @@ const InputBarContainer = ({
   selectedRestrictedSpaceIdsRef.current = selectedRestrictedSpaceIds;
   shouldEnableSlashSuggestionRef.current = shouldEnableSlashSuggestion;
 
-  const shouldShowRestrictedSpacesAction =
-    actions.includes("restricted-spaces") &&
-    featureFlags.includes("restricted_spaces_in_input_bar") &&
-    !isAgentBuilder &&
-    !spaceId;
-
-  const {
-    spaces: conversationSelectableRestrictedSpaces,
-    isSelectableSpacesLoading,
-    mutateSelectableSpaces,
-  } = useSelectableConversationSpaces({
-    owner,
-    conversationId: conversation?.sId ?? null,
-    disabled: !shouldShowRestrictedSpacesAction || !conversation?.sId,
-  });
-  const addConversationSelectedSpaces = useAddConversationSelectedSpaces({
-    owner,
-    conversationId: conversation?.sId ?? null,
-  });
-
-  const {
-    spaces: workspaceRegularSpaces,
-    isSpacesLoading: isWorkspaceSpacesLoading,
-  } = useSpaces({
-    workspaceId: owner.sId,
-    kinds: ["regular"],
-    disabled: !shouldShowRestrictedSpacesAction || !!conversation?.sId,
-  });
-
-  const selectableRestrictedSpaces: SelectableConversationSpaceType[] = useMemo(
-    () =>
-      conversation?.sId
-        ? conversationSelectableRestrictedSpaces
-        : workspaceRegularSpaces
-            .filter((space) => space.isRestricted)
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .map((space) => ({
-              ...space,
-              selected: selectedRestrictedSpaceIds.includes(space.sId),
-            })),
-    [
-      conversation?.sId,
-      conversationSelectableRestrictedSpaces,
-      selectedRestrictedSpaceIds,
-      workspaceRegularSpaces,
-    ]
-  );
-  const selectableRestrictedSpaceIds = useMemo(
-    () => new Set(selectableRestrictedSpaces.map((space) => space.sId)),
-    [selectableRestrictedSpaces]
-  );
   const selectedRestrictedSpaces = useMemo(
     () =>
       selectedRestrictedSpaceIds
@@ -387,77 +330,6 @@ const InputBarContainer = ({
         .filter((space): space is SelectableConversationSpaceType => !!space),
     [selectableRestrictedSpaces, selectedRestrictedSpaceIds]
   );
-  const hasLoadedInitialConversationSelectedSpacesRef = useRef<string | null>(
-    null
-  );
-
-  useEffect(() => {
-    if (!conversation?.sId) {
-      hasLoadedInitialConversationSelectedSpacesRef.current = null;
-      return;
-    }
-
-    if (
-      hasLoadedInitialConversationSelectedSpacesRef.current === conversation.sId
-    ) {
-      return;
-    }
-
-    if (isSelectableSpacesLoading) {
-      return;
-    }
-
-    onSelectedRestrictedSpaceIdsChange(
-      conversationSelectableRestrictedSpaces
-        .filter((space) => space.selected)
-        .map((space) => space.sId)
-    );
-    hasLoadedInitialConversationSelectedSpacesRef.current = conversation.sId;
-  }, [
-    conversation?.sId,
-    conversationSelectableRestrictedSpaces,
-    isSelectableSpacesLoading,
-    onSelectedRestrictedSpaceIdsChange,
-  ]);
-
-  useEffect(() => {
-    if (
-      !shouldShowRestrictedSpacesAction ||
-      conversation?.sId ||
-      isWorkspaceSpacesLoading
-    ) {
-      return;
-    }
-
-    const filteredSelectedSpaceIds = selectedRestrictedSpaceIds.filter(
-      (spaceId) => selectableRestrictedSpaceIds.has(spaceId)
-    );
-    if (!sameStringSet(filteredSelectedSpaceIds, selectedRestrictedSpaceIds)) {
-      onSelectedRestrictedSpaceIdsChange(filteredSelectedSpaceIds);
-    }
-  }, [
-    conversation?.sId,
-    isWorkspaceSpacesLoading,
-    onSelectedRestrictedSpaceIdsChange,
-    selectableRestrictedSpaceIds,
-    selectedRestrictedSpaceIds,
-    shouldShowRestrictedSpacesAction,
-  ]);
-
-  useEffect(() => {
-    if (
-      shouldShowRestrictedSpacesAction ||
-      selectedRestrictedSpaceIds.length === 0
-    ) {
-      return;
-    }
-
-    onSelectedRestrictedSpaceIdsChange([]);
-  }, [
-    onSelectedRestrictedSpaceIdsChange,
-    selectedRestrictedSpaceIds.length,
-    shouldShowRestrictedSpacesAction,
-  ]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const removePastedAttachmentChip = useCallback(
@@ -829,57 +701,15 @@ const InputBarContainer = ({
 
   const handleSelectedRestrictedSpaceIdsChange = useCallback(
     async (spaceIds: string[]) => {
-      const previousSpaceIds = selectedRestrictedSpaceIdsRef.current;
-      const nextSpaceIds = Array.from(new Set(spaceIds)).filter((spaceId) =>
-        selectableRestrictedSpaceIds.has(spaceId)
-      );
-
-      if (sameStringSet(previousSpaceIds, nextSpaceIds)) {
+      const acceptedSpaceIds =
+        await onSelectedRestrictedSpaceIdsChange(spaceIds);
+      if (!acceptedSpaceIds) {
         return;
       }
 
-      if (conversation?.sId) {
-        const addedSpaceIds = nextSpaceIds.filter(
-          (spaceId) => !previousSpaceIds.includes(spaceId)
-        );
-        if (addedSpaceIds.length === 0) {
-          return;
-        }
-
-        const response = await addConversationSelectedSpaces(addedSpaceIds);
-        if (!response) {
-          return;
-        }
-
-        const persistedSpaceIds = response.selectedSpaces.map(
-          (space) => space.sId
-        );
-        onResetMCPServerViews();
-        attachedNodesRef.current.forEach((node) =>
-          onNodeUnselectRef.current(node)
-        );
-        onSelectedRestrictedSpaceIdsChange(persistedSpaceIds);
-        saveCurrentDraftWithSelectedSpaces(persistedSpaceIds);
-        void mutateSelectableSpaces();
-        return;
-      }
-
-      onResetMCPServerViews();
-      attachedNodesRef.current.forEach((node) =>
-        onNodeUnselectRef.current(node)
-      );
-      onSelectedRestrictedSpaceIdsChange(nextSpaceIds);
-      saveCurrentDraftWithSelectedSpaces(nextSpaceIds);
+      saveCurrentDraftWithSelectedSpaces(acceptedSpaceIds);
     },
-    [
-      addConversationSelectedSpaces,
-      conversation?.sId,
-      mutateSelectableSpaces,
-      onResetMCPServerViews,
-      onSelectedRestrictedSpaceIdsChange,
-      saveCurrentDraftWithSelectedSpaces,
-      selectableRestrictedSpaceIds,
-    ]
+    [onSelectedRestrictedSpaceIdsChange, saveCurrentDraftWithSelectedSpaces]
   );
 
   useEffect(() => {
@@ -1373,12 +1203,6 @@ const InputBarContainer = ({
 
     const draft = getDraft();
 
-    if (!conversation?.sId) {
-      onSelectedRestrictedSpaceIdsChange(
-        draft?.selectedRestrictedSpaceIds ?? []
-      );
-    }
-
     // Only restore draft if editor is empty to avoid overwriting existing content.
     if (!editorService.isEmpty()) {
       hasCompletedInitialContentRestoreRef.current = true;
@@ -1402,13 +1226,11 @@ const InputBarContainer = ({
 
     hasCompletedInitialContentRestoreRef.current = true;
   }, [
-    conversation,
     editor,
     editor?.isInitialized,
     editor?.isEditable,
     editorService,
     getDraft,
-    onSelectedRestrictedSpaceIdsChange,
     stickyMentions,
     disableAutoFocus,
   ]);
@@ -1728,11 +1550,7 @@ const InputBarContainer = ({
                         buttonSize={buttonSize}
                         canDeselectSelectedSpaces={!conversation?.sId}
                         disabled={disableInput}
-                        isLoading={
-                          conversation?.sId
-                            ? isSelectableSpacesLoading
-                            : isWorkspaceSpacesLoading
-                        }
+                        isLoading={isSelectableRestrictedSpacesLoading}
                         onOpenChange={(open) =>
                           setOverlayOpen("restricted-spaces-picker", open)
                         }
