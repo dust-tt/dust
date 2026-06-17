@@ -48,6 +48,7 @@ function makeAllowlist(
 ): AuthorizedFileAccessAllowlist {
   return {
     computedByUserId: "usr_test",
+    generatedByUserId: 123,
     frameContentHash: "hash",
     refs: [],
     ...overrides,
@@ -203,6 +204,7 @@ describe("computeAuthorizedFileAccess", () => {
     ]);
     expect(result.unverifiableRefs).toEqual(["fil_ZZZZZZZZZZ"]);
     expect(result.computedByUserId).toBe(auth.user()!.sId);
+    expect(result.generatedByUserId).toBe(auth.user()!.id);
     expect(result.frameContentHash).toBe(computeFrameContentHash(frameContent));
   });
 
@@ -447,6 +449,7 @@ describe("computeAuthorizedFileAccess", () => {
     });
 
     expect(result.computedByUserId).toBe(user.sId);
+    expect(result.generatedByUserId).toBe(user.id);
   });
 
   it("marks file_id refs without conversation or space metadata as unverifiable", async () => {
@@ -870,6 +873,8 @@ describe("ensureAuthorizedFileAccessForShare", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.shareScope).toBe("public");
     expect(rows[0]?.ref).toBe(dataFile.sId);
+    expect(rows[0]?.computedByUserId).toBe(auth.user()!.sId);
+    expect(rows[0]?.generatedByUserId).toBe(auth.user()!.id);
     expect(rows[0]?.frameContentHash).toBe(
       computeFrameContentHash(frameContent)
     );

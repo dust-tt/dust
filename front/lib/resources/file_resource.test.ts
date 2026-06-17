@@ -1303,6 +1303,50 @@ describe("FileResource", () => {
       expect(rows[0]?.kind).toBe("file_id");
       expect(rows[0]?.ref).toBe(dataFile.sId);
       expect(rows[0]?.fileName).toBe("data.txt");
+      expect(rows[0]?.generatedByUserId).toBe(auth.user()!.id);
+    });
+
+    it("getActiveAuthorizedFileAccessAllowlist prefers generatedByUserId FK over legacy sId column", async () => {
+      const { authenticator: auth } = await createResourceTest({});
+
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
+
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameContentType,
+        fileName: "Frame.tsx",
+        fileSize: 100,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { conversationId: conversation.sId },
+      });
+
+      const shareableFile = await FileResource.shareableFileModel.findOne({
+        where: { fileId: frameFile.id, workspaceId: frameFile.workspaceId },
+      });
+      expect(shareableFile).not.toBeNull();
+
+      await AuthorizedFileAccessModel.create({
+        workspaceId: frameFile.workspaceId,
+        shareableFileId: shareableFile!.id,
+        kind: "file_id",
+        ref: "fil_PLACEHOLDER",
+        fileName: null,
+        legacyPath: null,
+        shareScope: shareableFile!.shareScope,
+        computedByUserId: "usr_deleted_user",
+        generatedByUserId: auth.user()!.id,
+        frameContentHash: "hash123",
+        allowedAt: new Date(),
+        revokedAt: null,
+      });
+
+      const allowlist =
+        await frameFile.getActiveAuthorizedFileAccessAllowlist();
+
+      expect(allowlist?.computedByUserId).toBe(auth.user()!.sId);
     });
 
     it("setShareScope updates share scope without recomputing the allowlist", async () => {

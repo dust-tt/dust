@@ -1792,6 +1792,7 @@ export class FileResource extends BaseResource<FileModel> {
         visited: new Set(),
       });
 
+    let generatedByUserId = auth.user()?.id ?? null;
     let computedByUserId = auth.user()?.sId;
     if (!computedByUserId) {
       // Temporary: API keys carry a userId FK to their owner, fall back to it
@@ -1800,6 +1801,7 @@ export class FileResource extends BaseResource<FileModel> {
       if (keyUserModelId) {
         const keyUser = await UserResource.fetchByModelId(keyUserModelId);
         computedByUserId = keyUser?.sId;
+        generatedByUserId = keyUserModelId;
       }
     }
     if (!computedByUserId) {
@@ -1808,6 +1810,7 @@ export class FileResource extends BaseResource<FileModel> {
 
     return {
       computedByUserId,
+      generatedByUserId,
       frameContentHash: computeFrameContentHash(frameContent),
       refs,
       ...(unverifiableRefs.length > 0 ? { unverifiableRefs } : {}),
@@ -1838,9 +1841,9 @@ export class FileResource extends BaseResource<FileModel> {
     }
   }
 
-  private static allowlistFromActiveRows(
+  private static async allowlistFromActiveRows(
     rows: AuthorizedFileAccessModel[]
-  ): AuthorizedFileAccessAllowlist | null {
+  ): Promise<AuthorizedFileAccessAllowlist | null> {
     if (rows.length === 0) {
       return null;
     }
@@ -1850,9 +1853,22 @@ export class FileResource extends BaseResource<FileModel> {
       return ref ? [ref] : [];
     });
 
+    const firstRow = rows[0]!;
+    let computedByUserId = firstRow.computedByUserId;
+    if (firstRow.generatedByUserId) {
+      const user = await UserResource.fetchByModelId(
+        firstRow.generatedByUserId
+      );
+      if (user) {
+        computedByUserId = user.sId;
+      }
+    }
+    const generatedByUserId = firstRow.generatedByUserId;
+
     return {
-      computedByUserId: rows[0]!.computedByUserId,
-      frameContentHash: rows[0]!.frameContentHash,
+      computedByUserId,
+      generatedByUserId,
+      frameContentHash: firstRow.frameContentHash,
       refs,
     };
   }
@@ -1885,7 +1901,7 @@ export class FileResource extends BaseResource<FileModel> {
       },
     });
 
-    return FileResource.allowlistFromActiveRows(rows);
+    return await FileResource.allowlistFromActiveRows(rows);
   }
 
   async getActiveAuthorizedFileAccessShareScope(): Promise<FileShareScope | null> {
@@ -1918,6 +1934,7 @@ export class FileResource extends BaseResource<FileModel> {
       shareableFileId: shareableFile.id,
       shareScope: shareableFile.shareScope,
       computedByUserId: computed.computedByUserId,
+      generatedByUserId: computed.generatedByUserId,
       frameContentHash: computed.frameContentHash,
       allowedAt,
       revokedAt: null,

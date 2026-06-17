@@ -310,6 +310,7 @@ export class AuthorizedFileAccessModel extends WorkspaceAwareModel<AuthorizedFil
   declare legacyPath: string | null;
   declare shareScope: FileShareScope;
   declare computedByUserId: string;
+  declare generatedByUserId: ForeignKey<UserModel["id"]> | null;
   declare frameContentHash: string;
   declare allowedAt: Date;
   declare revokedAt: Date | null;
@@ -317,6 +318,7 @@ export class AuthorizedFileAccessModel extends WorkspaceAwareModel<AuthorizedFil
   declare shareableFileId: ForeignKey<ShareableFileModel["id"]>;
 
   declare shareableFile?: NonAttribute<ShareableFileModel>;
+  declare generatedByUser?: NonAttribute<UserModel | null>;
 }
 
 AuthorizedFileAccessModel.init(
@@ -377,6 +379,7 @@ AuthorizedFileAccessModel.init(
     indexes: [
       { fields: ["workspaceId"], concurrently: true },
       { fields: ["shareableFileId"], concurrently: true },
+      { fields: ["generatedByUserId"], concurrently: true },
       {
         fields: ["shareableFileId"],
         where: { revokedAt: null },
@@ -393,6 +396,16 @@ ShareableFileModel.hasMany(AuthorizedFileAccessModel, {
 });
 AuthorizedFileAccessModel.belongsTo(ShareableFileModel, {
   foreignKey: { name: "shareableFileId", allowNull: false },
+});
+
+UserModel.hasMany(AuthorizedFileAccessModel, {
+  foreignKey: { name: "generatedByUserId", allowNull: true },
+  onDelete: "SET NULL",
+});
+AuthorizedFileAccessModel.belongsTo(UserModel, {
+  as: "generatedByUser",
+  foreignKey: { name: "generatedByUserId", allowNull: true },
+  onDelete: "SET NULL",
 });
 
 /**

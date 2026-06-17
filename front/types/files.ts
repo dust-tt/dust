@@ -208,6 +208,7 @@ export function entryToAuthorizedFileRef(
 /** Active allowlist view derived from non-revoked DB rows. */
 export type AuthorizedFileAccessAllowlist = {
   computedByUserId: string;
+  generatedByUserId: number | null;
   frameContentHash: string;
   refs: AuthorizedFileRef[];
 };
