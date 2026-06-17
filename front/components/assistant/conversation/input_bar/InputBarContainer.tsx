@@ -2,6 +2,7 @@ import { ContextUsageIndicator } from "@app/components/assistant/conversation/in
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarButtons } from "@app/components/assistant/conversation/input_bar/InputBarButtons";
 import type { PendingInputText } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { InputBarSpacesPicker } from "@app/components/assistant/conversation/input_bar/InputBarSpacesPicker";
 import {
   INPUT_BAR_COMPACT_CONTENT_ENTER_ANIMATION_CLASSES,
   INPUT_BAR_COMPACT_PILL_INNER_CLASSES,
@@ -55,7 +56,10 @@ import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type {
+  ConversationWithoutContentType,
+  SelectableConversationSpaceType,
+} from "@app/types/assistant/conversation";
 import type {
   RichAgentMention,
   RichMention,
@@ -89,6 +93,7 @@ import {
   DropdownMenuTrigger,
   FilePlus03,
   Globe01,
+  Lock01,
   Plus,
   Toolbar,
   TooltipContent,
@@ -132,6 +137,9 @@ function narrowToKnownSlashCommand(
 }
 
 const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
+const EMPTY_SPACE_IDS: string[] = [];
+const EMPTY_SELECTABLE_SPACES: SelectableConversationSpaceType[] = [];
+const acceptSelectedSpaceIds = async (spaceIds: string[]) => spaceIds;
 
 export const INPUT_BAR_ACTIONS = [
   "capabilities",
@@ -140,6 +148,7 @@ export const INPUT_BAR_ACTIONS = [
   "agents-list-with-actions",
   "model-picker",
   "turn-into-agent",
+  "spaces",
   "voice",
   "fullscreen",
 ] as const;
@@ -203,6 +212,7 @@ export interface InputBarContainerProps {
   getDraft: () => {
     text: string;
     agentMention?: RichAgentMention | null;
+    selectedSpaceIds?: string[];
   } | null;
   defaultAgentId?: string | null;
   isDefaultAgentLoading?: boolean;
@@ -227,10 +237,19 @@ export interface InputBarContainerProps {
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
   onResetMCPServerViews: () => void;
   owner: WorkspaceType;
-  saveDraft: (markdown: string, agentMention?: RichAgentMention | null) => void;
+  saveDraft: (
+    markdown: string,
+    agentMention?: RichAgentMention | null,
+    selectedSpaceIds?: string[]
+  ) => void;
   pendingInputText: PendingInputText | null;
   selectedAgent: RichAgentMention | null;
   selectedMCPServerViews: MCPServerViewType[];
+  selectedSpaceIds?: string[];
+  selectableSpaces?: SelectableConversationSpaceType[];
+  shouldShowSpacesAction?: boolean;
+  isSelectableSpacesLoading?: boolean;
+  onSelectedSpaceIdsChange?: (spaceIds: string[]) => Promise<string[] | null>;
   stickyMentions?: RichMention[];
   user: UserType | null;
 }
@@ -276,7 +295,12 @@ const InputBarContainer = ({
   onModelSelectionChange,
   onMCPServerViewDeselect,
   selectedMCPServerViews,
+  selectedSpaceIds = EMPTY_SPACE_IDS,
   onResetMCPServerViews,
+  onSelectedSpaceIdsChange = acceptSelectedSpaceIds,
+  selectableSpaces = EMPTY_SELECTABLE_SPACES,
+  shouldShowSpacesAction = false,
+  isSelectableSpacesLoading = false,
   saveDraft,
   user,
   disableAgentSelector,
@@ -371,6 +395,7 @@ const InputBarContainer = ({
     [selectedMCPServerViews]
   );
   const selectedMCPServerViewIdsRef = useRef(selectedMCPServerViewIds);
+  const selectedSpaceIdsRef = useRef(selectedSpaceIds);
   const shouldEnableSlashSuggestionRef = useRef(shouldEnableSlashSuggestion);
   // The slash suggestion extension captures its options at editor initialization, while the
   // conversation may only be created after the first message; the ref keeps it current.
@@ -398,7 +423,20 @@ const InputBarContainer = ({
   const [selectedServerViewForDetails, setSelectedServerViewForDetails] =
     useState<MCPServerViewType | null>(null);
   selectedMCPServerViewIdsRef.current = selectedMCPServerViewIds;
+  selectedSpaceIdsRef.current = selectedSpaceIds;
   shouldEnableSlashSuggestionRef.current = shouldEnableSlashSuggestion;
+
+  const selectableSpacesById = useMemo(
+    () => new Map(selectableSpaces.map((space) => [space.sId, space])),
+    [selectableSpaces]
+  );
+  const selectedSpaces = useMemo(
+    () =>
+      selectedSpaceIds
+        .map((spaceId) => selectableSpacesById.get(spaceId))
+        .filter((space): space is SelectableConversationSpaceType => !!space),
+    [selectableSpacesById, selectedSpaceIds]
+  );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const removePastedAttachmentChip = useCallback(
@@ -771,8 +809,52 @@ const InputBarContainer = ({
   editorServiceRef.current = editorService;
   const saveDraftRef = useRef(saveDraft);
   saveDraftRef.current = saveDraft;
+  const selectedSingleAgentRef = useRef(selectedSingleAgent);
+  selectedSingleAgentRef.current = selectedSingleAgent;
   // Skip auto-save (especially clearDraft on empty) until initial content is restored.
   const hasCompletedInitialContentRestoreRef = useRef(false);
+
+  const saveCurrentDraftWithSelectedSpaces = useCallback(
+    (spaceIds: string[]) => {
+      if (!hasCompletedInitialContentRestoreRef.current) {
+        return;
+      }
+
+      const currentEditorService = editorServiceRef.current;
+      const { markdown } = currentEditorService.getMarkdownAndMentions();
+      saveDraftRef.current(
+        currentEditorService.isEmpty() ? "" : markdown,
+        selectedSingleAgentRef.current,
+        spaceIds
+      );
+    },
+    []
+  );
+
+  const handleSelectedSpaceIdsChange = useCallback(
+    async (spaceIds: string[]) => {
+      const acceptedSpaceIds = await onSelectedSpaceIdsChange(spaceIds);
+      if (!acceptedSpaceIds) {
+        return;
+      }
+
+      saveCurrentDraftWithSelectedSpaces(acceptedSpaceIds);
+    },
+    [onSelectedSpaceIdsChange, saveCurrentDraftWithSelectedSpaces]
+  );
+
+  const handleSelectedSpaceIdsChangeSafely = useCallback(
+    (spaceIds: string[]) => {
+      void handleSelectedSpaceIdsChange(spaceIds).catch((error) => {
+        sendNotification({
+          type: "error",
+          title: "Failed to update Spaces",
+          description: normalizeError(error).message,
+        });
+      });
+    },
+    [handleSelectedSpaceIdsChange, sendNotification]
+  );
 
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
@@ -936,11 +1018,6 @@ const InputBarContainer = ({
     editor.setEditable(!disableInput);
   }, [editor, disableInput]);
 
-  // Ref to expose the current selectedSingleAgent to the editor update listener
-  // without re-registering it on every selection change.
-  const selectedSingleAgentRef = useRef(selectedSingleAgent);
-  selectedSingleAgentRef.current = selectedSingleAgent;
-
   // When a user mention is *newly added* in single-agent mode, deselect the agent
   // and clear side-channel capabilities. Only triggers on the transition from no-user-mention to
   // user-mention so that re-selecting an agent (via card click or URL param) isn't
@@ -978,7 +1055,8 @@ const InputBarContainer = ({
     if (hasCompletedInitialContentRestoreRef.current) {
       saveDraftRef.current(
         editorIsEmpty ? "" : markdown,
-        selectedSingleAgentRef.current
+        selectedSingleAgentRef.current,
+        selectedSpaceIdsRef.current
       );
     }
     const userMentioned = editorMentions.some((m) => m.type === "user");
@@ -1641,6 +1719,26 @@ const InputBarContainer = ({
                   />
                 </React.Fragment>
               ))}
+              {selectedSpaces.map((selectedSpace) => (
+                <Chip
+                  key={selectedSpace.sId}
+                  size="xs"
+                  label={selectedSpace.name}
+                  icon={Lock01}
+                  className="m-0.5 bg-background text-foreground dark:bg-background-night dark:text-foreground-night"
+                  onRemove={
+                    conversation?.sId
+                      ? undefined
+                      : () => {
+                          handleSelectedSpaceIdsChangeSafely(
+                            selectedSpaceIds.filter(
+                              (spaceId) => spaceId !== selectedSpace.sId
+                            )
+                          );
+                        }
+                  }
+                />
+              ))}
             </div>
             <div className="flex min-h-7 w-full items-center">
               <div className={cn("flex w-full items-center px-2")}>
@@ -1688,6 +1786,22 @@ const InputBarContainer = ({
                         setOverlayOpen("attachments-picker", open)
                       }
                     />
+                    {shouldShowSpacesAction && (
+                      <InputBarSpacesPicker
+                        buttonSize={buttonSize}
+                        canDeselectSelectedSpaces={!conversation?.sId}
+                        disabled={disableInput}
+                        isLoading={isSelectableSpacesLoading}
+                        onOpenChange={(open) =>
+                          setOverlayOpen("spaces-picker", open)
+                        }
+                        onSelectedSpaceIdsChange={
+                          handleSelectedSpaceIdsChangeSafely
+                        }
+                        selectedSpaceIds={selectedSpaceIds}
+                        spaces={selectableSpaces}
+                      />
+                    )}
                   </div>
                 )}
                 <div className="grow" />

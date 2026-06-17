@@ -61,6 +61,7 @@ export function useCreateConversationWithMessage({
         contentFragments: ContentFragmentsType;
         clientSideMCPServerIds?: string[];
         selectedMCPServerViewIds?: string[];
+        selectedSpaceIds?: string[];
         origin?: ClientMessageOrigin;
         // Rich mentions used to render optimistic placeholder messages when the
         // first message is deferred and posted from `ConversationViewer`.
@@ -97,11 +98,16 @@ export function useCreateConversationWithMessage({
         contentFragments,
         clientSideMCPServerIds,
         selectedMCPServerViewIds,
+        selectedSpaceIds: requestedSpaceIds,
         origin: messageOrigin,
         richMentions,
         modelSelection,
       } = messageData;
       const origin = messageOrigin ?? contextOrigin;
+      const selectedSpaceIds =
+        requestedSpaceIds && requestedSpaceIds.length > 0
+          ? requestedSpaceIds
+          : undefined;
 
       if (deferMessage) {
         const createBody: z.infer<
@@ -114,6 +120,7 @@ export function useCreateConversationWithMessage({
           skipToolsValidation,
           message: null,
           contentFragments: [],
+          selectedSpaceIds,
         };
 
         try {
@@ -147,6 +154,7 @@ export function useCreateConversationWithMessage({
             contentFragments,
             clientSideMCPServerIds,
             selectedMCPServerViewIds,
+            selectedSpaceIds,
             origin,
             skipToolsValidation,
             profilePictureUrl: user.image,
@@ -176,6 +184,7 @@ export function useCreateConversationWithMessage({
         spaceId: spaceId ?? null,
         metadata,
         skipToolsValidation,
+        selectedSpaceIds,
         message: {
           content: input,
           context: {
@@ -183,6 +192,7 @@ export function useCreateConversationWithMessage({
             profilePictureUrl: user.image,
             clientSideMCPServerIds,
             selectedMCPServerViewIds,
+            selectedSpaceIds,
             origin,
           },
           mentions,
@@ -261,6 +271,7 @@ async function postFirstMessageInBackground({
   contentFragments,
   clientSideMCPServerIds,
   selectedMCPServerViewIds,
+  selectedSpaceIds,
   origin,
   skipToolsValidation,
   profilePictureUrl,
@@ -274,6 +285,7 @@ async function postFirstMessageInBackground({
   contentFragments: ContentFragmentsType;
   clientSideMCPServerIds?: string[];
   selectedMCPServerViewIds?: string[];
+  selectedSpaceIds?: string[];
   origin: ClientMessageOrigin;
   skipToolsValidation: boolean;
   profilePictureUrl: string | null;
@@ -348,6 +360,7 @@ async function postFirstMessageInBackground({
             profilePictureUrl,
             clientSideMCPServerIds,
             selectedMCPServerViewIds,
+            selectedSpaceIds,
             origin,
           },
           mentions,
