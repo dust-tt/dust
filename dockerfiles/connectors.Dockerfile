@@ -1,4 +1,4 @@
-FROM node:24.14.0 as connectors
+FROM node:24.16.0 as connectors
 
 RUN npm install -g npm@11.11.0
 
