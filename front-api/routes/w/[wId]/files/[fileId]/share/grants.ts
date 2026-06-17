@@ -83,6 +83,10 @@ app.post(
       return file;
     }
 
+    if (!file.canManageSharing(auth)) {
+      return sharingAuthError(ctx);
+    }
+
     const { emails: rawEmails } = ctx.req.valid("json");
 
     const workspace = auth.getNonNullableWorkspace();
@@ -134,6 +138,10 @@ app.delete(
       return file;
     }
 
+    if (!file.canManageSharing(auth)) {
+      return sharingAuthError(ctx);
+    }
+
     const { grantId } = ctx.req.valid("json");
     const result = await file.revokeSharingGrant({ grantId });
 
@@ -150,6 +158,17 @@ app.delete(
     return ctx.body(null, 204);
   }
 );
+
+function sharingAuthError(ctx: Context) {
+  return apiError(ctx, {
+    status_code: 403,
+    api_error: {
+      type: "workspace_auth_error",
+      message:
+        "Only the file owner or a workspace admin can manage sharing.",
+    },
+  });
+}
 
 async function fetchShareableFile(
   ctx: Context,

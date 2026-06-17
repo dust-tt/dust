@@ -1433,6 +1433,10 @@ export class FileResource extends BaseResource<FileModel> {
 
   // Sharing logic.
 
+  canManageSharing(auth: Authenticator): boolean {
+    return auth.isAdmin() || this.userId === auth.user()?.id;
+  }
+
   private getShareUrlForShareableFile({
     shareableFileToken,
   }: {

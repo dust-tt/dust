@@ -79,6 +79,17 @@ app.post(
       return file;
     }
 
+    if (!file.canManageSharing(auth)) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message:
+            "Only the file owner or a workspace admin can manage sharing.",
+        },
+      });
+    }
+
     const { shareScope } = ctx.req.valid("json");
 
     await file.setShareScope(auth, shareScope);

@@ -102,6 +102,37 @@ describe("sharing grants endpoint", () => {
     ]);
   });
 
+  it("blocks a non-owner workspace member from adding sharing grants", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
+
+    const file = await FileFactory.create(auth, user, {
+      contentType: frameContentType,
+      fileName: "test-frame.tsx",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "conversation",
+    });
+
+    await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+      workspace,
+    });
+
+    const response = await postGrants(workspace, file.sId, {
+      emails: ["alice@example.com"],
+    });
+
+    expect(response.status).toBe(403);
+    expect((await response.json()).api_error).toMatchObject({
+      type: "workspace_auth_error",
+    });
+    expect(await file.listActiveSharingGrants()).toEqual([]);
+  });
+
   it("should populate grantedBy with the granting user", async () => {
     const { auth, user, workspace } = await createPrivateApiMockRequest({
       method: "POST",
