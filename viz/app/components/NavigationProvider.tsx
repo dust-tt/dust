@@ -1,4 +1,5 @@
 import { useNavigationWarning } from "@viz/app/components/NavigationWarningDialog";
+import { isTrustedNavigationHostname } from "@viz/app/lib/trustedNavigationDomains";
 import * as React from "react";
 
 /**
@@ -45,7 +46,7 @@ export function NavigationProvider({
         const urlObj = new URL(url, window.location.href);
 
         // Allow trusted domains.
-        if (trustedDomains.some((domain) => urlObj.hostname.endsWith(domain))) {
+        if (isTrustedNavigationHostname(urlObj.hostname, trustedDomains)) {
           return originalOpen.call(window, url, target, features);
         }
 
