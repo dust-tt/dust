@@ -26,8 +26,9 @@ async function loadRoles(): Promise<RolesConfig> {
   }
 
   try {
-    const content =
-      await getPokeUserConfigBucket().fetchFileContent(POKE_ROLES_FILE);
+    const content = await getPokeUserConfigBucket({
+      useServiceAccount: false,
+    }).fetchFileContent(POKE_ROLES_FILE);
     const parsed: unknown = JSON.parse(content);
     const result = RolesConfigSchema.safeParse(parsed);
 
