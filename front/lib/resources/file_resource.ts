@@ -1792,24 +1792,19 @@ export class FileResource extends BaseResource<FileModel> {
         visited: new Set(),
       });
 
-    let generatedByUserId = auth.user()?.id ?? null;
-    let computedByUserId = auth.user()?.sId;
-    if (!computedByUserId) {
-      // Temporary: API keys carry a userId FK to their owner, fall back to it
-      // until authorized file access is reworked to not require a user identity.
-      const keyUserModelId = auth.key()?.userModelId;
-      if (keyUserModelId) {
-        const keyUser = await UserResource.fetchByModelId(keyUserModelId);
-        computedByUserId = keyUser?.sId;
-        generatedByUserId = keyUserModelId;
-      }
+    const generatedByUserId =
+      auth.user()?.id ?? auth.key()?.userModelId ?? null;
+    if (!generatedByUserId) {
+      throw new Error("Cannot compute authorized file access without a user");
     }
-    if (!computedByUserId) {
+
+    const generatedByUser =
+      auth.user() ?? (await UserResource.fetchByModelId(generatedByUserId));
+    if (!generatedByUser) {
       throw new Error("Cannot compute authorized file access without a user");
     }
 
     return {
-      computedByUserId,
       generatedByUserId,
       frameContentHash: computeFrameContentHash(frameContent),
       refs,
@@ -1854,20 +1849,13 @@ export class FileResource extends BaseResource<FileModel> {
     });
 
     const firstRow = rows[0]!;
-    let computedByUserId = firstRow.computedByUserId;
-    if (firstRow.generatedByUserId) {
-      const user = await UserResource.fetchByModelId(
-        firstRow.generatedByUserId
-      );
-      if (user) {
-        computedByUserId = user.sId;
-      }
-    }
     const generatedByUserId = firstRow.generatedByUserId;
+    if (!generatedByUserId) {
+      return null;
+    }
 
     return {
-      computedByUserId,
-      generatedByUserId,
+      generatedByUserId: firstRow.generatedByUserId,
       frameContentHash: firstRow.frameContentHash,
       refs,
     };
@@ -1897,7 +1885,6 @@ export class FileResource extends BaseResource<FileModel> {
       where: {
         shareableFileId: shareableFile.id,
         workspaceId: this.workspaceId,
-        revokedAt: null,
       },
     });
 
@@ -1910,7 +1897,6 @@ export class FileResource extends BaseResource<FileModel> {
       where: {
         shareableFileId: shareableFile.id,
         workspaceId: this.workspaceId,
-        revokedAt: null,
       },
       attributes: ["shareScope"],
     });
@@ -1933,11 +1919,9 @@ export class FileResource extends BaseResource<FileModel> {
       workspaceId: this.workspaceId,
       shareableFileId: shareableFile.id,
       shareScope: shareableFile.shareScope,
-      computedByUserId: computed.computedByUserId,
       generatedByUserId: computed.generatedByUserId,
       frameContentHash: computed.frameContentHash,
       allowedAt,
-      revokedAt: null,
     };
 
     const rows = [

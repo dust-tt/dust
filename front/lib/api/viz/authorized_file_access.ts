@@ -7,6 +7,7 @@ import {
 } from "@app/lib/api/viz/authorized_file_access_policy";
 import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { streamToBuffer } from "@app/lib/utils/streams";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import {
@@ -176,10 +177,17 @@ export async function readAllowlistedScopedVizFile({
   canonicalScopedPath: string;
   workspace: LightWorkspaceType;
 }): Promise<Result<AllowlistedScopedVizFile, void>> {
-  const userId = authorizedFileAccess.computedByUserId;
+  const userId = authorizedFileAccess.generatedByUserId;
+  if (!userId) {
+    return new Err(undefined);
+  }
+  const user = await UserResource.fetchByModelId(userId);
+  if (!user) {
+    return new Err(undefined);
+  }
 
   const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    userId,
+    user.sId,
     workspace.sId
   );
 
@@ -250,10 +258,17 @@ export async function reverifyAuthorAccess(
     return false;
   }
 
-  const userId = authorizedFileAccess.computedByUserId;
+  const userId = authorizedFileAccess.generatedByUserId;
+  if (!userId) {
+    return false;
+  }
+  const user = await UserResource.fetchByModelId(userId);
+  if (!user) {
+    return false;
+  }
 
   const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    userId,
+    user.sId,
     workspace.sId
   );
 

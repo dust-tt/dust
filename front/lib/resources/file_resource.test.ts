@@ -1181,10 +1181,9 @@ describe("FileResource", () => {
         fileName: null,
         legacyPath: null,
         shareScope: shareableFile!.shareScope,
-        computedByUserId: auth.user()!.sId,
+        generatedByUserId: auth.user()!.id,
         frameContentHash: "old-hash",
         allowedAt: existingAllowedAt,
-        revokedAt: null,
       });
 
       vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
@@ -1207,7 +1206,6 @@ describe("FileResource", () => {
       });
 
       expect(rows).toHaveLength(1);
-      expect(rows[0]?.revokedAt).toBeNull();
       expect(rows[0]?.kind).toBe("unverifiable");
       expect(rows[0]?.ref).toBe("fil_ABCDEFGHIJ");
     });
@@ -1251,7 +1249,6 @@ describe("FileResource", () => {
         where: {
           shareableFileId: shareableFile!.id,
           workspaceId: frameFile.workspaceId,
-          revokedAt: null,
         },
       });
       expect(rows).toHaveLength(0);
@@ -1296,7 +1293,6 @@ describe("FileResource", () => {
         where: {
           shareableFileId: shareableFile!.id,
           workspaceId: frameFile.workspaceId,
-          revokedAt: null,
         },
       });
       expect(rows).toHaveLength(1);
@@ -1306,7 +1302,7 @@ describe("FileResource", () => {
       expect(rows[0]?.generatedByUserId).toBe(auth.user()!.id);
     });
 
-    it("getActiveAuthorizedFileAccessAllowlist prefers generatedByUserId FK over legacy sId column", async () => {
+    it("getActiveAuthorizedFileAccessAllowlist resolves computedByUserId from generatedByUserId FK", async () => {
       const { authenticator: auth } = await createResourceTest({});
 
       const conversation = await ConversationFactory.create(auth, {
@@ -1336,17 +1332,15 @@ describe("FileResource", () => {
         fileName: null,
         legacyPath: null,
         shareScope: shareableFile!.shareScope,
-        computedByUserId: "usr_deleted_user",
         generatedByUserId: auth.user()!.id,
         frameContentHash: "hash123",
         allowedAt: new Date(),
-        revokedAt: null,
       });
 
       const allowlist =
         await frameFile.getActiveAuthorizedFileAccessAllowlist();
 
-      expect(allowlist?.computedByUserId).toBe(auth.user()!.sId);
+      expect(allowlist?.generatedByUserId).toBe(auth.user()!.id);
     });
 
     it("setShareScope updates share scope without recomputing the allowlist", async () => {
@@ -1379,7 +1373,6 @@ describe("FileResource", () => {
         where: {
           shareableFileId: shareableFile!.id,
           workspaceId: frameFile.workspaceId,
-          revokedAt: null,
         },
       });
       expect(rows).toHaveLength(0);

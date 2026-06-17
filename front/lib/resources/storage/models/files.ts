@@ -309,11 +309,9 @@ export class AuthorizedFileAccessModel extends WorkspaceAwareModel<AuthorizedFil
   declare fileName: string | null;
   declare legacyPath: string | null;
   declare shareScope: FileShareScope;
-  declare computedByUserId: string;
   declare generatedByUserId: ForeignKey<UserModel["id"]> | null;
   declare frameContentHash: string;
   declare allowedAt: Date;
-  declare revokedAt: Date | null;
 
   declare shareableFileId: ForeignKey<ShareableFileModel["id"]>;
 
@@ -355,10 +353,6 @@ AuthorizedFileAccessModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    computedByUserId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
     frameContentHash: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -366,11 +360,6 @@ AuthorizedFileAccessModel.init(
     allowedAt: {
       type: DataTypes.DATE,
       allowNull: false,
-    },
-    revokedAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      defaultValue: null,
     },
   },
   {
@@ -380,12 +369,6 @@ AuthorizedFileAccessModel.init(
       { fields: ["workspaceId"], concurrently: true },
       { fields: ["shareableFileId"], concurrently: true },
       { fields: ["generatedByUserId"], concurrently: true },
-      {
-        fields: ["shareableFileId"],
-        where: { revokedAt: null },
-        name: "authorized_file_accesses_shareable_file_id_non_revoked",
-        concurrently: true,
-      },
     ],
   }
 );
