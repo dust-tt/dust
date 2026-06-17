@@ -40,7 +40,7 @@ import {
   USAGE_TAG,
 } from "@app/lib/metronome/setup_common";
 import type { BillingFrequency } from "@app/lib/metronome/types";
-
+import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { SeatLimit } from "@app/lib/resources/workspace_seat_limit_resource";
@@ -53,7 +53,6 @@ import {
 import logger from "@app/logger/logger";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { isMembershipSeatType, SEAT_TYPE_ORDER } from "@app/types/memberships";
-import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
