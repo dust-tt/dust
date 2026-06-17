@@ -64,6 +64,10 @@ pub static ACCESS_TOKEN_REFRESH_BUFFER_MILLIS: u64 = 5 * 60 * 1000;
 
 pub static CONNECTION_ID_PREFIX: &str = "con";
 
+fn is_access_token_valid(expiry: u64, now: u64) -> bool {
+    expiry.saturating_sub(ACCESS_TOKEN_REFRESH_BUFFER_MILLIS) > now
+}
+
 lazy_static! {
     static ref REDIS_URI: String = env::var("REDIS_URI").unwrap();
 }
@@ -806,7 +810,7 @@ impl Connection {
 
         match self.access_token_expiry {
             Some(expiry) => {
-                if expiry - ACCESS_TOKEN_REFRESH_BUFFER_MILLIS > utils::now() {
+                if is_access_token_valid(expiry, utils::now()) {
                     // Access token is not expired and not within the buffer to refresh.
                     Ok(Some(access_token))
                 } else {
@@ -1042,5 +1046,38 @@ impl Connection {
         );
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{is_access_token_valid, ACCESS_TOKEN_REFRESH_BUFFER_MILLIS};
+
+    #[test]
+    fn access_token_is_invalid_when_expiry_is_smaller_than_refresh_buffer() {
+        assert!(!is_access_token_valid(
+            ACCESS_TOKEN_REFRESH_BUFFER_MILLIS - 1,
+            1,
+        ));
+    }
+
+    #[test]
+    fn access_token_is_invalid_within_refresh_buffer() {
+        let now = 1_000;
+
+        assert!(!is_access_token_valid(
+            now + ACCESS_TOKEN_REFRESH_BUFFER_MILLIS,
+            now,
+        ));
+    }
+
+    #[test]
+    fn access_token_is_valid_after_refresh_buffer() {
+        let now = 1_000;
+
+        assert!(is_access_token_valid(
+            now + ACCESS_TOKEN_REFRESH_BUFFER_MILLIS + 1,
+            now,
+        ));
     }
 }
