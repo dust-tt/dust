@@ -1,3 +1,4 @@
+import { NEAR_LIMIT_FRACTION } from "@app/lib/metronome/constants";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const MEMBERSHIP_ROLE_TYPES = [
@@ -260,13 +261,6 @@ export interface MembershipUpgradeRequestType {
   };
 }
 
-// Fraction of the personal seat balance / per-user cap at which the
-// low-balance warning bands kick in. Mirrors the seat-low-balance guards in
-// `lib/metronome/user_credit_state_machine.ts` (threshold === 0.2 * allowance)
-// and `USER_AWU_WARNING_PERCENTAGE` (0.8) backing the per-user warning alerts.
-export const SEAT_LOW_BALANCE_FRACTION = 0.2;
-export const CAP_WARNING_FRACTION = 0.8;
-
 /**
  * The credit state a freshly-allocated seat should start in, derived purely
  * from the seat type (assumes a full, unspent balance):
@@ -291,12 +285,10 @@ export function initialCreditStateForSeatType(
  *     first — if consumption reached the cap, the personal seat is necessarily
  *     exhausted too.
  *   - the seat↔pool dimension: a seat-based user with personal balance left is
- *     `user_seat` (or `user_seat_low_balance` at ≤20% remaining); once the
- *     personal balance is exhausted — or for pool-based seats that never had
- *     one — they spend from the workspace pool (`on_pool`, or
- *     `on_pool_low_balance` at ≥80% of the cap). Free seats are the exception:
- *     they are seat-based but have no pool fallback, so an exhausted free seat
- *     is `capped`.
+ *     `user_seat`; once the personal balance is exhausted — or for pool-based
+ *     seats that never had one — they spend from the workspace pool (`on_pool`).
+ *     Free seats are the exception: they are seat-based but have no pool
+ *     fallback, so an exhausted free seat is `capped`.
  *
  * `seatBalanceAwu` / `seatStartingBalanceAwu` come from the live per-seat /
  * per-user credit balance; `seatBalanceAwu > 0` means the user still holds
@@ -334,12 +326,6 @@ export function expectedUserCreditState({
 
   // Seat-based user still holding personal credit.
   if (isSeatBased(seatType) && seatBalanceAwu !== null && seatBalanceAwu > 0) {
-    if (
-      seatStartingBalanceAwu !== null &&
-      seatBalanceAwu <= SEAT_LOW_BALANCE_FRACTION * seatStartingBalanceAwu
-    ) {
-      return "user_seat_low_balance";
-    }
     return "user_seat";
   }
 
@@ -354,12 +340,42 @@ export function expectedUserCreditState({
   }
 
   // Pool-backed seats (pro/max with depleted balance) and pool-based seats spend
-  // from the workspace pool. Surface the 80% cap warning when applicable.
-  if (
-    capKnown &&
-    consumedAwuCredits >= CAP_WARNING_FRACTION * perUserCapAwuCredits
-  ) {
-    return "on_pool_low_balance";
-  }
+  // from the workspace pool.
   return "on_pool";
+}
+
+/**
+ * Compute whether a user should see the "near limit" warning banner from their
+ * live Metronome inputs. Two sources:
+ *   - Cap consumption ≥ 80 % of the effective per-user cap (seat allowance +
+ *     pool limit). Applies to pro/max pool users.
+ *   - Free seat: ≥ 80 % of the lifetime credit consumed (≤ 20 % remaining).
+ */
+export function computeUserNearLimit({
+  seatType,
+  seatBalanceAwu,
+  seatStartingBalanceAwu,
+  effectiveCapAwuCredits,
+  consumedAwuCredits,
+}: {
+  seatType: MembershipSeatType | null | undefined;
+  seatBalanceAwu: number | null;
+  seatStartingBalanceAwu: number | null;
+  effectiveCapAwuCredits: number | null;
+  consumedAwuCredits: number | null;
+}): boolean {
+  // Cap-based warning (pro/max with a configured cap).
+  if (effectiveCapAwuCredits !== null && consumedAwuCredits !== null) {
+    return consumedAwuCredits >= NEAR_LIMIT_FRACTION * effectiveCapAwuCredits;
+  }
+  // Free-seat lifetime credit warning (no pool fallback, no cap).
+  if (
+    seatType === "free" &&
+    seatBalanceAwu !== null &&
+    seatStartingBalanceAwu !== null &&
+    seatStartingBalanceAwu > 0
+  ) {
+    return seatBalanceAwu <= (1 - NEAR_LIMIT_FRACTION) * seatStartingBalanceAwu;
+  }
+  return false;
 }

@@ -19,7 +19,6 @@ import {
   dispatchProgrammaticWarning,
   dispatchSeatBalanceExhausted,
   dispatchSeatBalanceResolved,
-  dispatchSeatLowBalance,
   syncPoolCreditStateFromBalance,
 } from "@app/lib/api/metronome/credit_state_dispatcher";
 import { reconcileWorkspaceUserCreditStates } from "@app/lib/api/metronome/reconcile_credit_state";
@@ -1069,24 +1068,8 @@ export async function processMetronomeWebhook({
       if (threshold === 0) {
         await dispatchSeatBalanceExhausted({ workspace, userId });
         logger.info(
-          {
-            eventId: event.id,
-            workspaceId: workspace.sId,
-            userId,
-            remaining: threshold,
-          },
+          { eventId: event.id, workspaceId: workspace.sId, userId },
           "[Metronome Webhook] low_remaining_seat_balance_reached: seat balance exhausted dispatched"
-        );
-      } else {
-        await dispatchSeatLowBalance({ workspace, userId, threshold });
-        logger.info(
-          {
-            eventId: event.id,
-            workspaceId: workspace.sId,
-            userId,
-            remaining: threshold,
-          },
-          "[Metronome Webhook] low_remaining_seat_balance_reached: seat low balance dispatched"
         );
       }
       break;
@@ -1134,14 +1117,13 @@ export async function processMetronomeWebhook({
         );
       } else {
         void setUserNearLimit(workspace.sId, userId, true);
-        await dispatchSeatLowBalance({ workspace, userId, threshold });
         logger.info(
           {
             eventId: event.id,
             workspaceId: workspace.sId,
             userId,
           },
-          "[Metronome Webhook] low_remaining_contract_credit_balance_reached: per-user credit low balance dispatched"
+          "[Metronome Webhook] low_remaining_contract_credit_balance_reached: free seat near-limit flag set"
         );
       }
       break;

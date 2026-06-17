@@ -1,6 +1,5 @@
 import {
   FREE_SEAT_LIFETIME_AWU_CREDITS,
-  MAX_SEAT_MONTHLY_AWU_CREDITS,
   PRO_SEAT_MONTHLY_AWU_CREDITS,
 } from "@app/lib/metronome/constants";
 import type { UserCreditContext } from "@app/lib/metronome/user_credit_state_machine";
@@ -213,7 +212,7 @@ describe("UserCreditStateMachine — transitions", () => {
     );
   });
 
-  it("capped + per_user_cap_resolved with a low personal balance → user_seat_low_balance", async () => {
+  it("capped + per_user_cap_resolved with personal balance (even low) → user_seat", async () => {
     const membership = makeMembership("capped", "max");
     const result = await transitionUserCreditState(
       membership,
@@ -231,10 +230,10 @@ describe("UserCreditStateMachine — transitions", () => {
     );
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      expect(result.value).toBe("user_seat_low_balance");
+      expect(result.value).toBe("user_seat");
     }
     expect(membership.updateCreditState).toHaveBeenCalledWith(
-      "user_seat_low_balance",
+      "user_seat",
       undefined
     );
   });
@@ -310,7 +309,7 @@ describe("UserCreditStateMachine — seat_balance_exhausted", () => {
     );
   });
 
-  it("user_seat_low_balance + free seat → capped", async () => {
+  it("legacy user_seat_low_balance (alias → user_seat) + free seat → capped", async () => {
     const membership = makeMembership("user_seat_low_balance", "free");
     const result = await transitionUserCreditState(
       membership,
@@ -398,7 +397,7 @@ describe("UserCreditStateMachine — seat_balance_exhausted", () => {
     );
   });
 
-  it("user_seat_low_balance + max seat + pool limit null → on_pool", async () => {
+  it("legacy user_seat_low_balance (alias → user_seat) + max seat + pool limit null → on_pool", async () => {
     const membership = makeMembership("user_seat_low_balance", "max");
     const result = await transitionUserCreditState(
       membership,
@@ -449,8 +448,8 @@ describe("UserCreditStateMachine — seat_balance_exhausted with remainingCapCre
     );
   });
 
-  // Guard 2: same as above from user_seat_low_balance.
-  it("user_seat_low_balance + pro + 0% cap remaining + pool limit > 0 → capped", async () => {
+  // Guard 1: same as above from legacy user_seat_low_balance (alias → user_seat).
+  it("legacy user_seat_low_balance + pro + 0% cap remaining + pool limit > 0 → capped", async () => {
     const membership = makeMembership("user_seat_low_balance", "pro");
     const result = await transitionUserCreditState(
       membership,
@@ -472,8 +471,9 @@ describe("UserCreditStateMachine — seat_balance_exhausted with remainingCapCre
     );
   });
 
-  // Guard 3: < 20 % cap remaining → on_pool_low_balance.
-  it("user_seat + pro + 10% cap remaining → on_pool_low_balance", async () => {
+  // Guard 2: pool budget left → on_pool. nearLimit flag is set by the spend
+  // threshold webhook separately; the state machine no longer tracks it.
+  it("user_seat + pro + 10% cap remaining → on_pool (near-limit via flag, not state)", async () => {
     const membership = makeMembership("user_seat", "pro");
     const result = await transitionUserCreditState(
       membership,
@@ -487,16 +487,15 @@ describe("UserCreditStateMachine — seat_balance_exhausted with remainingCapCre
     );
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      expect(result.value).toBe("on_pool_low_balance");
+      expect(result.value).toBe("on_pool");
     }
     expect(membership.updateCreditState).toHaveBeenCalledWith(
-      "on_pool_low_balance",
+      "on_pool",
       undefined
     );
   });
 
-  // Guard 3: boundary — exactly 19 % (just below 0.2) → on_pool_low_balance.
-  it("user_seat + pro + 19% cap remaining → on_pool_low_balance", async () => {
+  it("user_seat + pro + 19% cap remaining → on_pool", async () => {
     const membership = makeMembership("user_seat", "pro");
     const result = await transitionUserCreditState(
       membership,
@@ -510,16 +509,15 @@ describe("UserCreditStateMachine — seat_balance_exhausted with remainingCapCre
     );
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      expect(result.value).toBe("on_pool_low_balance");
+      expect(result.value).toBe("on_pool");
     }
     expect(membership.updateCreditState).toHaveBeenCalledWith(
-      "on_pool_low_balance",
+      "on_pool",
       undefined
     );
   });
 
-  // Guard 4: exactly 20 % is NOT < 0.2, so guard 3 does not fire → on_pool.
-  it("user_seat + pro + exactly 20% cap remaining → on_pool (not low balance)", async () => {
+  it("user_seat + pro + exactly 20% cap remaining → on_pool", async () => {
     const membership = makeMembership("user_seat", "pro");
     const result = await transitionUserCreditState(
       membership,
@@ -541,7 +539,6 @@ describe("UserCreditStateMachine — seat_balance_exhausted with remainingCapCre
     );
   });
 
-  // Guard 4: ample cap remaining → on_pool.
   it("user_seat + pro + 50% cap remaining → on_pool", async () => {
     const membership = makeMembership("user_seat", "pro");
     const result = await transitionUserCreditState(
@@ -564,8 +561,7 @@ describe("UserCreditStateMachine — seat_balance_exhausted with remainingCapCre
     );
   });
 
-  // Guard 4: null percentage (no cap configured) → on_pool (guard 3 skipped).
-  it("user_seat + pro + null cap percentage → on_pool", async () => {
+  it("user_seat + pro + null cap percentage → on_pool (no cap configured)", async () => {
     const membership = makeMembership("user_seat", "pro");
     const result = await transitionUserCreditState(
       membership,
@@ -607,110 +603,6 @@ describe("UserCreditStateMachine — seat_balance_exhausted with remainingCapCre
   });
 });
 
-describe("UserCreditStateMachine — seat_low_balance", () => {
-  it("user_seat + max threshold + max seat → user_seat_low_balance", async () => {
-    const membership = makeMembership("user_seat", "max");
-    const result = await transitionUserCreditState(
-      membership,
-      {
-        type: "seat_low_balance",
-        threshold: 0.2 * MAX_SEAT_MONTHLY_AWU_CREDITS,
-      },
-      { ...baseCtx, seatType: "max" }
-    );
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      expect(result.value).toBe("user_seat_low_balance");
-    }
-    expect(membership.updateCreditState).toHaveBeenCalledWith(
-      "user_seat_low_balance",
-      undefined
-    );
-    expect(mockSetUserCreditState).toHaveBeenCalledWith(
-      "ws_test",
-      "u_test",
-      "user_seat_low_balance"
-    );
-  });
-
-  it("user_seat + pro threshold + pro seat → user_seat_low_balance", async () => {
-    const membership = makeMembership("user_seat", "pro");
-    const result = await transitionUserCreditState(
-      membership,
-      {
-        type: "seat_low_balance",
-        threshold: 0.2 * PRO_SEAT_MONTHLY_AWU_CREDITS,
-      },
-      { ...baseCtx, seatType: "pro" }
-    );
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      expect(result.value).toBe("user_seat_low_balance");
-    }
-    expect(membership.updateCreditState).toHaveBeenCalledWith(
-      "user_seat_low_balance",
-      undefined
-    );
-    expect(mockSetUserCreditState).toHaveBeenCalledWith(
-      "ws_test",
-      "u_test",
-      "user_seat_low_balance"
-    );
-  });
-
-  it("user_seat + free seat → user_seat_low_balance (no threshold matching)", async () => {
-    const membership = makeMembership("user_seat", "free");
-    // The per-user free-credit alert is scoped to this user, so the free guard
-    // matches on seat type alone — the threshold value is not checked.
-    const result = await transitionUserCreditState(
-      membership,
-      { type: "seat_low_balance", threshold: 60 },
-      { ...baseCtx, seatType: "free" }
-    );
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      expect(result.value).toBe("user_seat_low_balance");
-    }
-  });
-
-  it("user_seat + max threshold + pro seat → no transition (guard mismatch)", async () => {
-    const membership = makeMembership("user_seat", "pro");
-    const result = await transitionUserCreditState(
-      membership,
-      {
-        type: "seat_low_balance",
-        threshold: 0.2 * MAX_SEAT_MONTHLY_AWU_CREDITS,
-      },
-      { ...baseCtx, seatType: "pro" }
-    );
-    expect(result.isErr()).toBe(true);
-    expect(membership.updateCreditState).not.toHaveBeenCalled();
-    expect(mockSetUserCreditState).not.toHaveBeenCalled();
-  });
-
-  it("user_seat_low_balance + max threshold + max seat is idempotent", async () => {
-    const membership = makeMembership("user_seat_low_balance", "max");
-    const result = await transitionUserCreditState(
-      membership,
-      {
-        type: "seat_low_balance",
-        threshold: 0.2 * MAX_SEAT_MONTHLY_AWU_CREDITS,
-      },
-      { ...baseCtx, seatType: "max" }
-    );
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      expect(result.value).toBe("user_seat_low_balance");
-    }
-    expect(membership.updateCreditState).not.toHaveBeenCalled();
-    expect(mockSetUserCreditState).toHaveBeenCalledWith(
-      "ws_test",
-      "u_test",
-      "user_seat_low_balance"
-    );
-  });
-});
-
 // ---------------------------------------------------------------------------
 // Seat balance replenished
 // ---------------------------------------------------------------------------
@@ -738,7 +630,7 @@ describe("UserCreditStateMachine — seat_balance_resolved", () => {
     }
   });
 
-  it("free capped → user_seat_low_balance when only a low balance is left", async () => {
+  it("free capped → user_seat when only a low balance is left (near-limit via flag)", async () => {
     const membership = makeMembership("capped", "free");
     const result = await transitionUserCreditState(
       membership,
@@ -756,15 +648,15 @@ describe("UserCreditStateMachine — seat_balance_resolved", () => {
     );
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
-      expect(result.value).toBe("user_seat_low_balance");
+      expect(result.value).toBe("user_seat");
     }
     expect(membership.updateCreditState).toHaveBeenCalledWith(
-      "user_seat_low_balance",
+      "user_seat",
       undefined
     );
   });
 
-  it("pro user_seat_low_balance → user_seat on a full billing-period renewal", async () => {
+  it("legacy user_seat_low_balance (alias → user_seat) → user_seat on billing-period renewal", async () => {
     const membership = makeMembership("user_seat_low_balance", "pro");
     const result = await transitionUserCreditState(
       membership,

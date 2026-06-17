@@ -1,7 +1,3 @@
-import {
-  MAX_SEAT_MONTHLY_AWU_CREDITS,
-  PRO_SEAT_MONTHLY_AWU_CREDITS,
-} from "@app/lib/metronome/constants";
 import { setUserCreditState } from "@app/lib/metronome/user_block";
 import type { MembershipResource } from "@app/lib/resources/membership_resource";
 import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
@@ -10,12 +6,7 @@ import type {
   MembershipSeatType,
   UserCreditState,
 } from "@app/types/memberships";
-import {
-  CAP_WARNING_FRACTION,
-  expectedUserCreditState,
-  isSeatBased,
-  SEAT_LOW_BALANCE_FRACTION,
-} from "@app/types/memberships";
+import { expectedUserCreditState, isSeatBased } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { Transaction } from "sequelize";
@@ -83,11 +74,6 @@ export type UserCreditEvent =
    */
   | { type: "seat_balance_exhausted" }
   /**
-   * This user's personal seat balance crossed a low-balance warning threshold
-   * (balance > 0). Moves `user_seat` → `user_seat_low_balance`.
-   */
-  | { type: "seat_low_balance"; threshold: number }
-  /**
    * Billing-period renewal: Metronome replenished this user's seat balance.
    * Only applies to pro/max seats (workspace seats have no individual seat
    * balance; free seats stay `capped`). Resets any state back to `user_seat`.
@@ -125,165 +111,55 @@ function targetBandFromLiveBalance(ctx: UserCreditContext): UserCreditState {
 
 const TRANSITIONS: UserCreditTransition[] = [
   {
-    from: [
-      "user_seat",
-      "user_seat_low_balance",
-      "on_pool",
-      "on_pool_low_balance",
-      "capped",
-    ],
+    from: ["user_seat", "on_pool", "capped"],
     event: "per_user_cap_reached",
     to: "capped",
   },
   {
-    from: ["on_pool", "on_pool_low_balance", "capped"],
+    from: ["on_pool", "capped"],
     event: "admin_raised_user_cap",
     to: "on_pool",
   },
-  // per_user_cap_resolved: the cap dimension cleared, so re-derive the seat↔pool
-  // band from the live balance snapshot and route to it via guards (same shape
-  // as the seat_balance_exhausted transitions below). A seat-based user who
-  // still has personal balance lands back in `user_seat` /
-  // `user_seat_low_balance`; otherwise they spend from the pool. The unguarded
-  // entry last is the default — also the no-snapshot case (reconcile / billing
-  // webhooks correct it later).
+  // per_user_cap_resolved: the cap dimension cleared — re-derive the seat↔pool
+  // band from the live balance snapshot. A seat-based user with personal balance
+  // lands back in `user_seat`; otherwise `on_pool`. The unguarded entry last is
+  // the default (also the no-snapshot case; reconcile / billing webhooks
+  // correct it later).
   {
-    from: [
-      "user_seat",
-      "user_seat_low_balance",
-      "on_pool",
-      "on_pool_low_balance",
-      "capped",
-    ],
+    from: ["user_seat", "on_pool", "capped"],
     event: "per_user_cap_resolved",
     guard: (ctx) => targetBandFromLiveBalance(ctx) === "user_seat",
     to: "user_seat",
   },
   {
-    from: [
-      "user_seat",
-      "user_seat_low_balance",
-      "on_pool",
-      "on_pool_low_balance",
-      "capped",
-    ],
-    event: "per_user_cap_resolved",
-    guard: (ctx) => targetBandFromLiveBalance(ctx) === "user_seat_low_balance",
-    to: "user_seat_low_balance",
-  },
-  {
-    from: [
-      "user_seat",
-      "user_seat_low_balance",
-      "on_pool",
-      "on_pool_low_balance",
-      "capped",
-    ],
-    event: "per_user_cap_resolved",
-    guard: (ctx) => targetBandFromLiveBalance(ctx) === "on_pool_low_balance",
-    to: "on_pool_low_balance",
-  },
-  {
-    from: [
-      "user_seat",
-      "user_seat_low_balance",
-      "on_pool",
-      "on_pool_low_balance",
-      "capped",
-    ],
+    from: ["user_seat", "on_pool", "capped"],
     event: "per_user_cap_resolved",
     to: "on_pool",
   },
-  // Seat balance exhausted. Routing is driven by `ctx.poolLimitAwuCredits`, not
-  // the seat type — a no-pool seat (free) simply has poolLimit 0. Order matters:
-  // most specific guard first.
-  //  1. No pool budget (poolLimit 0, incl. free) or per-user cap also exhausted
-  //     → capped.
+  // Seat balance exhausted. Routing is driven by `ctx.poolLimitAwuCredits`.
+  // Order matters: most specific guard first.
+  //  1. No pool budget (free seats, poolLimit 0) or per-user cap also exhausted → capped.
   {
-    from: ["user_seat", "user_seat_low_balance", "capped"],
+    from: ["user_seat", "capped"],
     event: "seat_balance_exhausted",
     guard: (ctx) =>
       ctx.poolLimitAwuCredits === 0 || ctx.remainingCapCreditsPercentage === 0,
     to: "capped",
   },
-  //  2. Pool budget left but < 20 % of cap remaining → on_pool_low_balance.
+  //  2. Pool budget left → on_pool.
   {
-    from: ["user_seat", "user_seat_low_balance"],
-    event: "seat_balance_exhausted",
-    guard: (ctx) =>
-      ctx.remainingCapCreditsPercentage != null &&
-      ctx.remainingCapCreditsPercentage < 1 - CAP_WARNING_FRACTION,
-    to: "on_pool_low_balance",
-  },
-  //  3. Pool budget left (poolLimit > 0 or null/unlimited) → on_pool.
-  {
-    from: ["user_seat", "user_seat_low_balance", "on_pool"],
+    from: ["user_seat", "on_pool"],
     event: "seat_balance_exhausted",
     guard: (ctx) => ctx.poolLimitAwuCredits !== 0,
     to: "on_pool",
   },
 
-  // Seat low-balance warning (balance > 0). Guards match threshold to seat
-  // type so only the intended seats transition.
+  // Seat balance replenished — billing-period renewal (pro/max) or fresh credit
+  // for a free seat. Resets any seat-based user from any state, including
+  // `capped`. Workspace seats have no seat balance and are reset by
+  // per_user_cap_resolved instead.
   {
-    from: ["user_seat", "user_seat_low_balance"],
-    event: "seat_low_balance",
-    guard: (ctx, event) =>
-      event.type === "seat_low_balance" &&
-      event.threshold ===
-        SEAT_LOW_BALANCE_FRACTION * MAX_SEAT_MONTHLY_AWU_CREDITS &&
-      (ctx.seatType === "max" || ctx.seatType === "max_yearly"),
-    to: "user_seat_low_balance",
-  },
-  {
-    from: ["user_seat", "user_seat_low_balance"],
-    event: "seat_low_balance",
-    guard: (ctx, event) =>
-      event.type === "seat_low_balance" &&
-      event.threshold === 0.2 * PRO_SEAT_MONTHLY_AWU_CREDITS &&
-      (ctx.seatType === "pro" || ctx.seatType === "pro_yearly"),
-    to: "user_seat_low_balance",
-  },
-  // Free seats: the per-user credit-balance alert is scoped to this one user
-  // (not a workspace-wide fan-out), so it's always relevant — no threshold
-  // disambiguation needed. Match on seat type alone, with no hardcoded
-  // threshold value.
-  {
-    from: ["user_seat", "user_seat_low_balance"],
-    event: "seat_low_balance",
-    guard: (ctx) => ctx.seatType === "free",
-    to: "user_seat_low_balance",
-  },
-
-  // Seat balance replenished — for pro/max a billing-period renewal, for free a
-  // fresh credit clearing its low/empty alert. Reset any seat-based user
-  // (pro/max/free) from any state, including `capped` (a free seat exhausted to
-  // 0 is `capped`, so it must be reachable here). The live balance decides the
-  // band: a partial refill that's still under the low-balance threshold lands
-  // in `user_seat_low_balance`, otherwise `user_seat`. Workspace (pool-based)
-  // seats have no seat balance and are reset by per_user_cap_resolved instead.
-  {
-    from: [
-      "user_seat",
-      "user_seat_low_balance",
-      "on_pool",
-      "on_pool_low_balance",
-      "capped",
-    ],
-    event: "seat_balance_resolved",
-    guard: (ctx) =>
-      isSeatBased(ctx.seatType) &&
-      targetBandFromLiveBalance(ctx) === "user_seat_low_balance",
-    to: "user_seat_low_balance",
-  },
-  {
-    from: [
-      "user_seat",
-      "user_seat_low_balance",
-      "on_pool",
-      "on_pool_low_balance",
-      "capped",
-    ],
+    from: ["user_seat", "on_pool", "capped"],
     event: "seat_balance_resolved",
     guard: (ctx) => isSeatBased(ctx.seatType),
     to: "user_seat",
@@ -312,10 +188,17 @@ export async function transitionUserCreditState(
   { transaction }: { transaction?: Transaction } = {}
 ): Promise<Result<UserCreditState, Error>> {
   const rawState = membership.creditState;
-  // "normal" is the legacy alias of "on_pool" (migration window): match
-  // transitions as if the row were already "on_pool". A matching transition
-  // then persists the canonical value, opportunistically migrating the row.
-  const currentState = rawState === "normal" ? "on_pool" : rawState;
+  // Legacy aliases (migration window): normalize to canonical states so
+  // transitions match correctly, and the next write persists the canonical value.
+  //   "normal"                → "on_pool"
+  //   "on_pool_low_balance"   → "on_pool"
+  //   "user_seat_low_balance" → "user_seat"
+  const currentState =
+    rawState === "normal" || rawState === "on_pool_low_balance"
+      ? "on_pool"
+      : rawState === "user_seat_low_balance"
+        ? "user_seat"
+        : rawState;
   const match = findTransition(currentState, event, ctx);
 
   if (!match) {

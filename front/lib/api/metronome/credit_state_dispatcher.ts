@@ -244,56 +244,6 @@ export async function dispatchSeatBalanceResolved({
   }
 }
 
-export async function dispatchSeatLowBalance({
-  workspace,
-  userId,
-  threshold,
-}: {
-  workspace: WorkspaceResource;
-  userId: string;
-  threshold: number;
-}): Promise<void> {
-  const user = await UserResource.fetchById(userId);
-  if (!user) {
-    logger.warn(
-      { workspaceId: workspace.sId, userId },
-      "[CreditStateDispatcher] dispatchSeatLowBalance: user not found, skipping"
-    );
-    return;
-  }
-
-  const lightWorkspace = renderLightWorkspaceType({ workspace });
-  const membership =
-    await MembershipResource.getActiveMembershipOfUserInWorkspace({
-      user,
-      workspace: lightWorkspace,
-    });
-  if (!membership) {
-    logger.warn(
-      { workspaceId: workspace.sId, userId },
-      "[CreditStateDispatcher] dispatchSeatLowBalance: no active membership, skipping"
-    );
-    return;
-  }
-
-  const result = await transitionUserCreditState(
-    membership,
-    { type: "seat_low_balance", threshold },
-    { workspaceId: workspace.sId, userId, seatType: membership.seatType }
-  );
-  if (result.isErr()) {
-    logger.warn(
-      {
-        workspaceId: workspace.sId,
-        userId,
-        seatType: membership.seatType,
-        creditState: membership.creditState,
-      },
-      "[CreditStateDispatcher] dispatchSeatLowBalance: transition skipped"
-    );
-  }
-}
-
 export async function dispatchPerUserCapReached({
   workspace,
   userId,

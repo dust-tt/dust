@@ -17,6 +17,7 @@ import {
   setProgrammaticCreditStateReconciled,
 } from "@app/lib/metronome/programmatic_credit_state_machine";
 import { getSeatAllowancesByNormalizedSeatType } from "@app/lib/metronome/seat_types";
+import { setUserNearLimit } from "@app/lib/metronome/user_block";
 import { setUserCreditStateReconciled } from "@app/lib/metronome/user_credit_state_machine";
 import {
   expectedPoolCreditStateFromBalance,
@@ -38,6 +39,7 @@ import type {
   UserCreditState,
 } from "@app/types/memberships";
 import {
+  computeUserNearLimit,
   expectedUserCreditState,
   normalizeToPoolLimitSeatType,
 } from "@app/types/memberships";
@@ -330,6 +332,13 @@ async function reconcileUser({
     perUserCapAwuCredits: effectiveCapAwuCredits,
     consumedAwuCredits,
   });
+  const nearLimit = computeUserNearLimit({
+    seatType,
+    seatBalanceAwu,
+    seatStartingBalanceAwu,
+    effectiveCapAwuCredits,
+    consumedAwuCredits,
+  });
   const wasInvalid = normalizeUserCreditState(previousState) !== expectedState;
 
   let newState = previousState;
@@ -339,6 +348,7 @@ async function reconcileUser({
       userId,
       seatType,
     });
+    void setUserNearLimit(workspace.sId, userId, nearLimit);
   }
 
   return new Ok({
@@ -493,13 +503,24 @@ export async function reconcileWorkspaceUserCreditStates({
       awuSeatBalanceForUser(seatBalances, userId) ??
       perUserCreditBalances.get(userId) ??
       null;
+    const seatBalanceAwu = seat?.balanceAwu ?? null;
+    const seatStartingBalanceAwu = seat?.startingBalanceAwu ?? null;
+    const consumedAwuCredits =
+      effectiveCapAwuCredits !== null ? (usageByUser.get(userId) ?? 0) : null;
+
     const expectedState = expectedUserCreditState({
       seatType,
-      seatBalanceAwu: seat?.balanceAwu ?? null,
-      seatStartingBalanceAwu: seat?.startingBalanceAwu ?? null,
+      seatBalanceAwu,
+      seatStartingBalanceAwu,
       perUserCapAwuCredits: effectiveCapAwuCredits,
-      consumedAwuCredits:
-        effectiveCapAwuCredits !== null ? (usageByUser.get(userId) ?? 0) : null,
+      consumedAwuCredits,
+    });
+    const nearLimit = computeUserNearLimit({
+      seatType,
+      seatBalanceAwu,
+      seatStartingBalanceAwu,
+      effectiveCapAwuCredits,
+      consumedAwuCredits,
     });
 
     try {
@@ -511,6 +532,7 @@ export async function reconcileWorkspaceUserCreditStates({
         userId,
         seatType,
       });
+      void setUserNearLimit(workspaceId, userId, nearLimit);
     } catch (err) {
       logger.error(
         { workspaceId, userId, err: normalizeError(err) },

@@ -299,6 +299,11 @@ export const MAX_SEAT_MONTHLY_AWU_CREDITS = 40000;
 export const SEAT_PRIORITY_SUBSCRIPTION_COMMIT = 300;
 export const SEAT_PRIORITY_COUPON_CREDIT = 300;
 
+// 80% threshold for near-limit warnings: applies to both cap consumption
+// (consumed ≥ 80% of effectiveCapAwuCredits) and seat depletion (≤ 20%
+// remaining = 80% used).
+export const NEAR_LIMIT_FRACTION = 0.8;
+
 // tier product accessors — ordered array for indexed access.
 export const MAX_MAU_TIERS = 6;
 
