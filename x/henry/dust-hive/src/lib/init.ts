@@ -3,9 +3,9 @@
 import { binaryExists, getBinaryPath, getCacheSource, type InitBinary } from "./cache";
 import { getServiceContainerId } from "./docker";
 import { buildPostgresUri, loadEnvVars } from "./env-utils";
-import type { Environment } from "./environment";
+import { type Environment, getEnvironmentWorktreeDir } from "./environment";
 import { logger } from "./logger";
-import { getEnvFilePath, getWorktreeDir } from "./paths";
+import { getEnvFilePath } from "./paths";
 import { runSqlSeed } from "./seed";
 import { buildShell } from "./shell";
 import { getTemporalNamespaces, SEARCH_ATTRIBUTES, TEMPORAL_NAMESPACE_CONFIG } from "./temporal";
@@ -304,7 +304,7 @@ async function initAllPostgres(env: Environment): Promise<void> {
 // Initialize Qdrant (runs after qdrant is healthy)
 async function initAllQdrant(env: Environment): Promise<void> {
   const envShPath = getEnvFilePath(env.name);
-  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
+  const worktreePath = getEnvironmentWorktreeDir(env.metadata);
   const envVars = await loadEnvVars(envShPath);
 
   const result = await initQdrant(worktreePath, envVars);
@@ -317,7 +317,7 @@ async function initAllQdrant(env: Environment): Promise<void> {
 // Initialize Elasticsearch (runs after ES is healthy)
 async function initAllElasticsearch(env: Environment): Promise<void> {
   const envShPath = getEnvFilePath(env.name);
-  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
+  const worktreePath = getEnvironmentWorktreeDir(env.metadata);
   const envVars = await loadEnvVars(envShPath);
   envVars["__ENV_SH_PATH__"] = envShPath;
 
@@ -339,7 +339,7 @@ async function initAllElasticsearch(env: Environment): Promise<void> {
 // Run core database init
 async function runCoreDbInit(env: Environment): Promise<{ success: boolean; usedCache: boolean }> {
   const envShPath = getEnvFilePath(env.name);
-  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
+  const worktreePath = getEnvironmentWorktreeDir(env.metadata);
   const envVars = await loadEnvVars(envShPath);
 
   const result = await runBinary("init_db", [], {
@@ -360,7 +360,7 @@ async function runCoreDbInit(env: Environment): Promise<{ success: boolean; used
 // Run front database init
 async function runFrontDbInit(env: Environment): Promise<boolean> {
   const envShPath = getEnvFilePath(env.name);
-  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
+  const worktreePath = getEnvironmentWorktreeDir(env.metadata);
 
   // front/admin/init_db.sh (sequelize sync) was removed as deprecated initdb
   // tooling. Schema setup now goes through the migration tooling, same as
@@ -427,7 +427,7 @@ async function runFrontDbInit(env: Environment): Promise<boolean> {
 // Run connectors database init
 async function runConnectorsDbInit(env: Environment): Promise<boolean> {
   const envShPath = getEnvFilePath(env.name);
-  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
+  const worktreePath = getEnvironmentWorktreeDir(env.metadata);
 
   // connectors/admin/init_db.sh (sequelize sync) was removed as deprecated initdb
   // tooling (#27417). Schema setup now goes through the migration tooling, same as

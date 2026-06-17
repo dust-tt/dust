@@ -1,8 +1,8 @@
 import path from "node:path";
 import * as p from "@clack/prompts";
 import { requireEnvironment } from "../lib/commands";
+import { getEnvironmentWorktreeDir } from "../lib/environment";
 import { logger } from "../lib/logger";
-import { getWorktreeDir } from "../lib/paths";
 import { restoreTerminal } from "../lib/prompt";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { WORKSPACE_ID } from "../lib/seed";
@@ -56,7 +56,7 @@ export async function flagCommand(
     );
   }
 
-  const worktreePath = getWorktreeDir(env.name, env.metadata.repoRoot);
+  const worktreePath = getEnvironmentWorktreeDir(env.metadata);
   const frontPath = path.join(worktreePath, "front");
 
   // Resolve flag name — interactive select if not provided

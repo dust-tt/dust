@@ -65,7 +65,7 @@ function errorMessage(error: unknown): string {
 }
 
 // Try to create test database, logging result (non-fatal if it fails)
-async function tryCreateTestDatabase(name: string): Promise<void> {
+export async function tryCreateTestDatabase(name: string): Promise<void> {
   if (!(await isTestPostgresRunning())) {
     logger.info("Test Postgres not running, skipping test database creation");
     logger.info("Run 'dust-hive up' to start it, then 'cd front && npm test' will work");
@@ -82,7 +82,7 @@ async function tryCreateTestDatabase(name: string): Promise<void> {
 }
 
 // Phase 1: Create environment files
-async function setupEnvironmentFiles(
+export async function setupEnvironmentFiles(
   metadata: EnvironmentMetadata,
   ports: PortAllocation,
   settings: Settings
@@ -126,7 +126,7 @@ async function setupEnvironmentFiles(
 }
 
 // Setup .envrc to source the env.sh file and enable direnv
-async function setupDirenv(name: string, worktreePath: string): Promise<void> {
+export async function setupDirenv(name: string, worktreePath: string): Promise<void> {
   const envShPath = getEnvFilePath(name);
   const envrcPath = join(worktreePath, ".envrc");
 
@@ -204,7 +204,7 @@ async function setupWorktree(
 }
 
 // Phase 3: Start build watchers (sparkle and SDK)
-async function startBuildWatchers(
+export async function startBuildWatchers(
   env: Environment,
   worktreePath: string,
   waitForReady: boolean,
@@ -288,6 +288,7 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
     workspaceBranch,
     createdAt: new Date().toISOString(),
     repoRoot: mainRepoRoot,
+    worktreeOwner: "hive",
   };
 
   // Phase 1: Setup environment files
