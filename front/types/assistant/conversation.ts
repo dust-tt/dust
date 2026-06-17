@@ -252,12 +252,15 @@ export const AGENT_MESSAGE_STATUSES_TO_TRACK: AgentMessageStatus[] = [
 
 // Terminal statuses from which an agent message can never resume. Tools of such a message that
 // are still blocked on user input (e.g. a manual tool approval that was skipped when the message
-// got interrupted) are not actionable anymore. "gracefully_stopped" is not included: a graceful
-// stop keeps pending approvals actionable and approving them resumes the loop.
+// got interrupted or gracefully stopped) are not actionable anymore. "gracefully_stopped" is
+// treated like "succeeded" in most places, but it belongs here for resumption: a graceful stop
+// ends the loop in place, so resolving a leftover approval would relaunch a direction the loop
+// already stopped (and that steering, if any, has since superseded via a newly promoted message).
 export const UNRESUMABLE_AGENT_MESSAGE_STATUSES: AgentMessageStatus[] = [
   "failed",
   "cancelled",
   "interrupted",
+  "gracefully_stopped",
 ];
 
 export function isTerminalAgentMessageStatus(

@@ -384,7 +384,7 @@ describe("blocked actions resolution", () => {
       expect(await getActionRequired()).toBe(false);
     });
 
-    it("leaves blocked actions untouched when the message is gracefully stopped", async () => {
+    it("denies blocked actions when the message is gracefully stopped", async () => {
       const { agentMessage, action } =
         await AgentMCPActionFactory.createWithAgentMessage(auth, {
           workspace,
@@ -399,13 +399,12 @@ describe("blocked actions resolution", () => {
         status: "gracefully_stopped",
       });
 
-      // A graceful stop keeps pending approvals actionable.
       const reloadedAction = await AgentMCPActionResource.fetchById(
         auth,
         action.sId
       );
-      expect(reloadedAction?.status).toBe("blocked_validation_required");
-      expect(await getActionRequired()).toBe(true);
+      expect(reloadedAction?.status).toBe("denied");
+      expect(await getActionRequired()).toBe(false);
     });
   });
 });

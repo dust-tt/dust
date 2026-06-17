@@ -86,8 +86,8 @@ export async function registerUserAnswer(
   }
 
   // A blocked action is only actionable while its agent message can still resume: answering one
-  // left behind by an interrupted, cancelled or failed message would relaunch an agent loop that
-  // was already terminated.
+  // left behind by a non-resumable terminal message would relaunch an agent loop that was already
+  // terminated.
   if (!(await action.canAgentMessageResume(auth))) {
     return new Err(
       new DustError(
