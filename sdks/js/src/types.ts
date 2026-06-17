@@ -91,6 +91,7 @@ export type KnownModelLLMId =
   | "accounts/fireworks/models/kimi-k2p5" // fireworks
   | "accounts/fireworks/models/minimax-m2p5" // fireworks
   | "accounts/fireworks/models/glm-5" // fireworks
+  | "accounts/fireworks/models/glm-5p2" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
   | "grok-4-latest" // xAI
@@ -721,7 +722,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_no_spa"
   | "dust_spa"
   | "fireworks_new_model_feature"
-  | "force_us_api_url"
   | "gemini_3_1_pro_feature"
   | "google_sheets_tool"
   | "gpt_image_2_feature"
@@ -743,6 +743,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "self_improvement_beta_tester"
   | "metronome_billing"
   | "plan_mode"
+  | "pod_default_agent"
   | "poke_mcp"
   | "restrict_agents_publishing"
   | "restrict_agents_publishing_to_admins"
@@ -3347,6 +3348,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "HubspotLogo"
   | "IntercomLogo"
   | "JiraLogo"
+  | "LemlistLogo"
   | "LinearLogo"
   | "LumaLogo"
   | "MicrosoftExcelLogo"

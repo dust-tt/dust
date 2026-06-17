@@ -1435,10 +1435,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // System skills are always treated as enabled when present in the agent configuration.
     const configSystemSkills = allAgentSkills.filter((s) => s.isSystemSkill);
 
-    // Code-defined skills can opt into being auto-enabled for the agent loop without being
-    // added to the agent configuration, either always (e.g. the Computer) or for a given
-    // context (e.g. Pods in a Pod conversation). `findAll` already drops restricted skills, so
-    // a flag-gated skill only shows up once its feature flag is on.
+    // Code-defined skills can opt into being auto-equipped or auto-enabled for the agent loop
+    // without being added to the agent configuration. `findAll` already drops restricted skills,
+    // so a flag-gated skill only shows up once its feature flag is on.
     const enabledGlobalSkillIds = new Set(
       removeNulls([
         ...configSystemSkills.map((s) => s.globalSId),
@@ -1464,6 +1463,30 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         })
       : [];
 
+    const equippedGlobalSkillIds = new Set(
+      removeNulls([
+        ...allAgentSkills.map((s) => s.globalSId),
+        ...conversationEnabledSkills.map((s) => s.globalSId),
+        ...autoEnabledSkills.map((s) => s.globalSId),
+      ])
+    );
+    const autoEquippedRefs = codeDefinedDefs
+      .filter(
+        (def) =>
+          def.isAutoEquippedForAgentLoop?.({
+            agentConfiguration,
+            conversation,
+          }) && !equippedGlobalSkillIds.has(def.sId)
+      )
+      .map((def) => ({ globalSkillId: def.sId, customSkillId: null }));
+    const autoEquippedSkills = autoEquippedRefs.length
+      ? await this.fetchBySkillReferences(auth, autoEquippedRefs, {
+          agentLoopData,
+          withInstructions: false,
+          withTools: false,
+        })
+      : [];
+
     // System skills land in `systemSkills` (always enabled); auto-enabled global skills join
     // the conversation-enabled skills.
     const systemSkills = [
@@ -1481,13 +1504,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       enabledSkills
     );
 
-    // Compute the equipped skills: all non-system agent skills plus
-    // discoverable skills that are not already equipped. Keep this list stable
+    // Compute the equipped skills: all non-system agent skills, auto-equipped skills,
+    // plus discoverable skills that are not already equipped. Keep this list stable
     // even after a skill is enabled.
     const agentEquippedSkills = allAgentSkills.filter((s) => !s.isSystemSkill);
 
     const agentEquippedSkillIds = new Set(
-      agentEquippedSkills.map((s) => s.sId)
+      [...agentEquippedSkills, ...autoEquippedSkills].map((s) => s.sId)
     );
     const discoveredSkills = discoverableSkills.filter(
       (s) => !agentEquippedSkillIds.has(s.sId)
@@ -1495,6 +1518,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     const equippedSkills = removeNulls([
       ...agentEquippedSkills.sort(sortByName),
+      ...autoEquippedSkills.sort(sortByName),
       ...discoveredSkills.sort(sortByName),
     ]);
 

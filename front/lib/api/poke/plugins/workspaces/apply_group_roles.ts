@@ -20,6 +20,7 @@ export const applyGroupRoles = createPlugin({
       "This action will override the existing membership roles based on the dust-admins and dust-builders groups. " +
       "Make sure the user is aware of this and does not want to keep the roles assigned manually.",
     args: {},
+    requiredRoles: ["engineering"],
   },
   execute: async (auth) => {
     const workspace = auth.getNonNullableWorkspace();

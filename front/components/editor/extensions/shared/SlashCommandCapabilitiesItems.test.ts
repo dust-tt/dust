@@ -88,6 +88,25 @@ describe("matchesSlashCommandCapabilityQuery", () => {
       })
     ).toBe(false);
   });
+
+  it("matches against description when label does not match", () => {
+    expect(
+      matchesSlashCommandCapabilityQuery({
+        description: "Search and retrieve documents",
+        label: "Linear",
+        query: "docs",
+      })
+    ).toBe(true);
+  });
+
+  it("does not match against description when description is absent", () => {
+    expect(
+      matchesSlashCommandCapabilityQuery({
+        label: "Linear",
+        query: "docs",
+      })
+    ).toBe(false);
+  });
 });
 
 describe("sortSlashCommandCapabilityMatches", () => {
@@ -113,6 +132,26 @@ describe("sortSlashCommandCapabilityMatches", () => {
     });
 
     expect(result.map((item) => item.id)).toEqual(["longtest", "testlonger"]);
+  });
+
+  it("ranks title matches above description-only matches", () => {
+    const result = sortSlashCommandCapabilityMatches({
+      normalizedQuery: "docs",
+      items: [
+        {
+          id: "desc-only",
+          sortName: "linear",
+          description: "Search and retrieve docs",
+        },
+        {
+          id: "title-match",
+          sortName: "docs viewer",
+          description: "View files",
+        },
+      ],
+    });
+
+    expect(result.map((item) => item.id)).toEqual(["title-match", "desc-only"]);
   });
 });
 

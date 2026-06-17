@@ -28,6 +28,7 @@ export const diagnoseMcpServerViewPlugin = createPlugin({
         serverSideSearch: true,
       },
     },
+    requiredRoles: ["support"],
   },
   isApplicableTo: (_auth, resource) => {
     return !!resource;

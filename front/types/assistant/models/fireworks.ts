@@ -12,6 +12,8 @@ export const FIREWORKS_MINIMAX_M2P5_MODEL_ID =
   "accounts/fireworks/models/minimax-m2p5" as const;
 export const FIREWORKS_GLM_5_MODEL_ID =
   "accounts/fireworks/models/glm-5" as const;
+export const FIREWORKS_GLM_5P2_MODEL_ID =
+  "accounts/fireworks/models/glm-5p2" as const;
 export const FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
   modelId: FIREWORKS_DEEPSEEK_V3P2_MODEL_ID,
@@ -161,6 +163,36 @@ export const FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG: ModelConfigurationType = {
   availableIfOneOf: {
     featureFlag: "fireworks_new_model_feature",
   },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
+};
+// https://fireworks.ai/models/fireworks/glm-5p2
+export const FIREWORKS_GLM_5P2_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "fireworks",
+  modelId: FIREWORKS_GLM_5P2_MODEL_ID,
+  displayName: "GLM-5.2 (Fireworks)",
+  contextSize: 1_000_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "Z.ai's GLM-5.2 Mixture-of-Experts model with advanced coding and long-horizon agentic capabilities (1M context, served via Fireworks).",
+  shortDescription: "GLM-5.2 for coding and agentic tasks.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: false,
+  supportedReasoningEfforts: {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "light",
+  supportsResponseFormat: true,
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": false,

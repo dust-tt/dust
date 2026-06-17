@@ -39,6 +39,7 @@ export const PatchPodMetadataBodySchema = z.object({
   todoGenerationEnabled: z.boolean().optional(),
   initialTodoAnalysisLookback: z.enum(["now", "last_24h", "max"]).optional(),
   pinnedFramePath: z.string().nullable().optional(),
+  defaultAgentId: z.string().nullable().optional(),
 });
 
 export type PatchPodMetadataBodyType = z.infer<

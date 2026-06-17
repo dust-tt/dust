@@ -95,7 +95,6 @@ honoApp.use("*", spaRedirect);
 // Mounted at root level so /.well-known/* and /mcp are not under /api/.
 honoApp.route("/mcp", mcpApp);
 honoApp.route("/", mcpWellKnownApp);
-
 honoApp.route("/api", apiApp);
 // PostHog reverse proxy lives at the domain root (not under /api), matching
 // the `/subtle1` rewrites in front/next.config.js.

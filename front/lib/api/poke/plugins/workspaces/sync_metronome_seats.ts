@@ -14,6 +14,7 @@ export const syncMetronomeSeatsPlugin = createPlugin({
       "change immediately or to repair a drifted seat/unassigned count.",
     resourceTypes: ["workspaces"],
     args: {},
+    requiredRoles: ["billing"],
   },
 
   isApplicableTo: (auth) => {

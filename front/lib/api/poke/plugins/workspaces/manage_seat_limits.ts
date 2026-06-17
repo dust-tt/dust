@@ -68,6 +68,7 @@ export const manageSeatLimitsPlugin = createPlugin({
         dependsOn: { field: "enabled", value: true },
       },
     },
+    requiredRoles: ["billing"],
   },
 
   isApplicableTo: (auth) => {

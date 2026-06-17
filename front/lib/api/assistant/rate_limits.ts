@@ -10,6 +10,7 @@ import type {
   MaxAwuCreditsTimeframeType,
   MaxMessagesTimeframeType,
 } from "@app/types/plan";
+import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 
 export type GetTrialMessageUsageResponseType = {
@@ -95,6 +96,40 @@ export async function resetMessageRateLimitForWorkspace(auth: Authenticator) {
       workspace,
       plan.limits.assistant.maxMessagesTimeframe
     ),
+  });
+}
+
+export async function resetFairUseAwuCreditsRateLimitForUser({
+  auth,
+  user,
+}: {
+  auth: Authenticator;
+  user: UserType;
+}) {
+  const workspace = auth.getNonNullableWorkspace();
+  const plan = auth.getNonNullablePlan();
+
+  const { maxAwuCredits, maxAwuCreditsTimeframe } = plan.limits.assistant;
+
+  if (maxAwuCredits === -1) {
+    return new Err(new Error("The workspace plan has no AWU fair-use limit."));
+  }
+
+  const resetResult = await expireRateLimiterKey({
+    key: makeFairUseAwuCreditsRateLimitKeyForUser(
+      workspace,
+      user,
+      maxAwuCreditsTimeframe
+    ),
+  });
+  if (resetResult.isErr()) {
+    return resetResult;
+  }
+
+  return new Ok({
+    didResetExistingKey: resetResult.value,
+    limit: maxAwuCredits,
+    timeframe: maxAwuCreditsTimeframe,
   });
 }
 

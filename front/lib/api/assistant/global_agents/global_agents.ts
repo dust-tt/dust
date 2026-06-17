@@ -54,6 +54,9 @@ import {
   _getDustOaiHighGlobalAgent,
   _getDustOaiMediumGlobalAgent,
   _getDustOmittedGlobalAgent,
+  _getDustPistacheGlobalAgent,
+  _getDustPistacheHighGlobalAgent,
+  _getDustPistacheMediumGlobalAgent,
   _getDustQuickGlobalAgent,
   _getDustQuickMediumGlobalAgent,
   _getRetiredDustLikeGlobalAgent,
@@ -1062,6 +1065,30 @@ function getGlobalAgent({
         hasDeepDive,
       });
       break;
+    case GLOBAL_AGENTS_SID.DUST_PISTACHE:
+      agentConfiguration = _getDustPistacheGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM:
+      agentConfiguration = _getDustPistacheMediumGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH:
+      agentConfiguration = _getDustPistacheHighGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+      });
+      break;
     case GLOBAL_AGENTS_SID.DUST_MINIMAX:
       agentConfiguration = _getDustMinimaxGlobalAgent(auth, {
         settings,
@@ -1271,9 +1298,6 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.DUST_SUNDAE:
     case GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM:
     case GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH:
-    case GLOBAL_AGENTS_SID.DUST_PISTACHE:
-    case GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM:
-    case GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH:
     case GLOBAL_AGENTS_SID.DUST_CHALOM:
     case GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM:
     case GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH:
@@ -1381,9 +1405,6 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.DUST_SUNDAE,
   GLOBAL_AGENTS_SID.DUST_SUNDAE_MEDIUM,
   GLOBAL_AGENTS_SID.DUST_SUNDAE_HIGH,
-  GLOBAL_AGENTS_SID.DUST_PISTACHE,
-  GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM,
-  GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH,
   GLOBAL_AGENTS_SID.DUST_CHALOM,
   GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM,
   GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,

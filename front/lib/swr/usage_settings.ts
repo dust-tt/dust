@@ -31,7 +31,7 @@ const PutDefaultUserSpendLimitResponseSchema = z.object({
 
 export interface UsageSettings {
   allowUpgradeRequest: boolean;
-  autoUpgradeFreeToPro: boolean;
+  autoSeatUpgradeEnabled: boolean;
 }
 
 export interface UsageNotifications {
@@ -42,7 +42,7 @@ export interface UsageNotifications {
 
 const DEFAULT_USAGE_SETTINGS: UsageSettings = {
   allowUpgradeRequest: true,
-  autoUpgradeFreeToPro: false,
+  autoSeatUpgradeEnabled: false,
 };
 
 const DEFAULT_USAGE_NOTIFICATIONS: UsageNotifications = {
@@ -93,7 +93,10 @@ export function useUsageSettings({ workspaceId }: { workspaceId: string }) {
   const usageSettings: UsageSettings = {
     ...DEFAULT_USAGE_SETTINGS,
     ...(data
-      ? { allowUpgradeRequest: data.configuration.allowMemberUpgradeRequests }
+      ? {
+          allowUpgradeRequest: data.configuration.allowMemberUpgradeRequests,
+          autoSeatUpgradeEnabled: data.configuration.autoSeatUpgradeEnabled,
+        }
       : {}),
   };
 
@@ -121,7 +124,9 @@ export function useUpdateUsageSettings({
       if (patch.allowUpgradeRequest !== undefined) {
         body.allowMemberUpgradeRequests = patch.allowUpgradeRequest;
       }
-      // TODO: `autoUpgradeFreeToPro` is intentionally not persisted (out of scope).
+      if (patch.autoSeatUpgradeEnabled !== undefined) {
+        body.autoSeatUpgradeEnabled = patch.autoSeatUpgradeEnabled;
+      }
 
       if (Object.keys(body).length === 0) {
         return true;
@@ -330,8 +335,10 @@ function programmaticUsageLimitUrl(workspaceId: string): string {
 
 export function useProgrammaticUsageLimit({
   workspaceId,
+  disabled,
 }: {
   workspaceId: string;
+  disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const limitFetcher: Fetcher<GetProgrammaticUsageLimitResponseBody> = async (
@@ -342,12 +349,13 @@ export function useProgrammaticUsageLimit({
   };
   const { data, error } = useSWRWithDefaults(
     programmaticUsageLimitUrl(workspaceId),
-    limitFetcher
+    limitFetcher,
+    { disabled }
   );
 
   return {
     programmaticUsageLimit: data,
-    isProgrammaticUsageLimitLoading: !error && !data,
+    isProgrammaticUsageLimitLoading: !error && !data && !disabled,
     isProgrammaticUsageLimitError: !!error,
   };
 }

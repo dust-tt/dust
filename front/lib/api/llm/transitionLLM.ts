@@ -1,5 +1,6 @@
 import { ANTHROPIC_PROVIDER_ID } from "@app/lib/api/llm/clients/anthropic/types";
 import { LLM } from "@app/lib/api/llm/llm";
+import type { BatchResult } from "@app/lib/api/llm/types/batch";
 import {
   handleGenericError,
   type LLMErrorType,
@@ -23,6 +24,12 @@ import {
   parseResponseFormatSchema,
 } from "@app/lib/api/llm/utils";
 import type { Authenticator } from "@app/lib/auth";
+import type { BatchEndpointConstructor } from "@app/lib/model_constructors/batch/configuration";
+import type {
+  BatchEndpoint,
+  BatchRequest,
+  BatchStatus,
+} from "@app/lib/model_constructors/batch/endpoint";
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import type { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
@@ -42,6 +49,7 @@ import type {
   ReasoningEvent as NewReasoningEvent,
   TextEvent as NewTextEvent,
   ToolCallEvent as NewToolCallEvent,
+  NonDeltaResponseEvent,
 } from "@app/lib/model_constructors/types/output/events";
 import type {
   AgentFunctionCallContentType,
@@ -422,6 +430,17 @@ async function* convertToOldEvents(
 }
 
 /**
+ * Converts a completed batch entry's events (no streaming deltas) to old LLM
+ * events. Shares the per-event mapping with the streaming path.
+ */
+function convertBatchEventsToOld(
+  events: NonDeltaResponseEvent[],
+  metadata: LLMClientMetadata
+): LLMEvent[] {
+  return events.map((event) => convertToOldEvent(event, metadata));
+}
+
+/**
  * Shared base bridging the old LLM system with the new model_constructors one.
  *
  * It extends the old LLM base class (used by the existing agent pipeline) and
@@ -511,7 +530,7 @@ abstract class BaseTransition extends LLM {
 
 /**
  * Streaming transition: wraps a new `StreamEndpoint` and delegates streaming and
- * event parsing to it. Returned by `getLLM` for the streaming surface.
+ * event parsing to it. Returned by `getStreamLLM` for the streaming surface.
  */
 export class StreamEndpointTransition extends BaseTransition {
   private model: StreamEndpoint;
@@ -523,6 +542,13 @@ export class StreamEndpointTransition extends BaseTransition {
   ) {
     super(auth, ANTHROPIC_PROVIDER_ID, llmParameters);
     this.model = new modelConstructor(llmParameters.credentials);
+
+    const { api, region } = this.model.metadata();
+    this.metadata = {
+      ...this.metadata,
+      inferenceProvider: api,
+      region,
+    };
   }
 
   protected buildStreamRequestPayload(streamParameters: LLMStreamParameters) {
@@ -540,5 +566,74 @@ export class StreamEndpointTransition extends BaseTransition {
     } catch (err) {
       yield handleGenericError(err, this.metadata);
     }
+  }
+}
+
+/**
+ * Batch transition: wraps a new `BatchEndpoint` and delegates batch submission,
+ * polling, and result conversion to it. Returned by `getBatchLLM`.
+ */
+export class BatchEndpointTransition extends BaseTransition {
+  private model: BatchEndpoint;
+
+  constructor(
+    auth: Authenticator,
+    llmParameters: LLMParameters,
+    modelConstructor: BatchEndpointConstructor
+  ) {
+    super(auth, ANTHROPIC_PROVIDER_ID, llmParameters);
+    this.model = new modelConstructor(llmParameters.credentials);
+  }
+
+  // Builds the per-request payload for tracing (the base class captures batch
+  // inputs via this hook). Streaming itself is never invoked on a batch LLM.
+  protected buildStreamRequestPayload(streamParameters: LLMStreamParameters) {
+    return this.model.buildRequestPayload(
+      this.buildPayload(streamParameters),
+      this.buildConfig(streamParameters, this.model.constructor.configSchema)
+    );
+  }
+
+  protected async *sendRequest(): AsyncGenerator<LLMEvent> {
+    throw new Error(
+      "Streaming is not supported on a batch transition LLM; use getStreamLLM instead."
+    );
+  }
+
+  protected override async internalSendBatchProcessing(
+    conversations: Map<string, LLMStreamParameters>
+  ): Promise<string> {
+    const requests = new Map<string, BatchRequest>();
+    for (const [customId, streamParameters] of conversations) {
+      requests.set(customId, {
+        payload: this.buildPayload(streamParameters),
+        config: this.buildConfig(
+          streamParameters,
+          this.model.constructor.configSchema
+        ),
+      });
+    }
+
+    return this.model.sendBatch(requests);
+  }
+
+  override async getBatchStatus(batchId: string): Promise<BatchStatus> {
+    return this.model.getBatchStatus(batchId);
+  }
+
+  protected override async internalGetBatchResult(
+    batchId: string
+  ): Promise<BatchResult> {
+    const results = await this.model.getBatchResult(batchId);
+
+    const batchResult: BatchResult = new Map();
+    for (const [customId, events] of results) {
+      batchResult.set(customId, convertBatchEventsToOld(events, this.metadata));
+    }
+    return batchResult;
+  }
+
+  override async deleteBatch(batchId: string): Promise<boolean> {
+    return this.model.deleteBatch(batchId);
   }
 }

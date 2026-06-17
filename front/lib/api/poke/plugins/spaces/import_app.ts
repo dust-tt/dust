@@ -19,6 +19,7 @@ export const importAppPlugin = createPlugin({
         description: "The file to import",
       },
     },
+    requiredRoles: ["support"],
   },
   isApplicableTo: (_auth, space) => !space?.isProject(),
   execute: async (auth, space, args) => {

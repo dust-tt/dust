@@ -16,6 +16,7 @@ export const checkSeatCountPlugin = createPlugin({
         description: "Update the quantity in Stripe (to use with caution!).",
       },
     },
+    requiredRoles: ["billing"],
   },
   execute: async (auth, _, { updateQuantity }) => {
     const workspace = auth.getNonNullableWorkspace();

@@ -529,6 +529,81 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).not.toContain("## AVAILABLE SKILLS");
   });
 
+  it("should point agents to the Computer for uploaded files when sandbox tools are available", () => {
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      systemSkills: [],
+      enabledSkills: [],
+      equippedSkills: [],
+      isNewFileExplorer: true,
+      hasSandboxTools: true,
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const text = systemPromptToText(sections);
+
+    expect(text).toContain(
+      "Files attached as `<file>` tags are mounted under `/files/conversation` when using the Computer."
+    );
+    expect(text).toContain(
+      "You must enable the Computer skill proactively as soon as the user uploads files"
+    );
+    expect(text).toContain("especially PDFs");
+  });
+
+  it("should point legacy attachment prompts to the Computer when sandbox tools are available", () => {
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      systemSkills: [],
+      enabledSkills: [],
+      equippedSkills: [],
+      isNewFileExplorer: false,
+      hasSandboxTools: true,
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const text = systemPromptToText(sections);
+
+    expect(text).toContain(
+      "When using the Computer, conversation files are mounted under `/files/conversation`."
+    );
+    expect(text).toContain(
+      "You must enable the Computer skill proactively as soon as the user uploads files"
+    );
+  });
+
+  it("should not mention the Computer file mount when sandbox tools are unavailable", () => {
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      systemSkills: [],
+      enabledSkills: [],
+      equippedSkills: [],
+      isNewFileExplorer: true,
+      hasSandboxTools: false,
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const text = systemPromptToText(sections);
+
+    expect(text).not.toContain("Computer skill");
+    expect(text).not.toContain("/files/conversation");
+    expect(text).toContain(
+      "Tabular files (CSV, spreadsheets) are queryable via the query tables tool"
+    );
+  });
+
   it("should keep system skill instructions in the system prompt", async () => {
     const discoverSkills = await SkillResource.fetchById(
       authenticator1,

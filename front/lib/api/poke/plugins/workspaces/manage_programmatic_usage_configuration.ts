@@ -207,6 +207,7 @@ export const manageProgrammaticUsageConfigurationPlugin = createPlugin({
         dependsOn: { field: "customDailyCapEnabled", value: true },
       },
     },
+    requiredRoles: ["billing"],
   },
 
   isApplicableTo: (auth) => {

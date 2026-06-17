@@ -384,10 +384,14 @@ const BASE_PREPAID_COMMIT_PARAMS = {
   accessCreditTypeId: "credit-type-awu",
   accessStartingAt: new Date("2026-04-01T00:00:00.000Z"),
   accessEndingBefore: new Date("2027-04-01T00:00:00.000Z"),
-  invoiceUnitPrice: 5_000,
-  invoiceQuantity: 1,
+  invoiceScheduleItems: [
+    {
+      unitPrice: 5_000,
+      quantity: 1,
+      timestamp: new Date("2026-04-01T00:00:00.000Z"),
+    },
+  ],
   invoiceCreditTypeId: "credit-type-usd",
-  invoiceTimestamp: new Date("2026-04-01T00:00:00.000Z"),
   priority: 2,
   name: "Test commit",
   uniquenessKey: "commit-key-1",
@@ -419,6 +423,9 @@ describe("addPrepaidCommitToContract", () => {
 describe("addPaymentGatedCommitToContract", () => {
   const BASE_PAYMENT_GATED_PARAMS = {
     ...BASE_PREPAID_COMMIT_PARAMS,
+    invoiceUnitPrice: 5_000,
+    invoiceQuantity: 1,
+    invoiceTimestamp: new Date("2026-04-01T00:00:00.000Z"),
     applicableProducTags: ["usage"],
     stripeInvoiceMetadata: { workspace_id: "ws-1" },
   };

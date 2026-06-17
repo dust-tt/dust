@@ -242,8 +242,25 @@ function constructSkillsSection({
   return skillsSection;
 }
 
+function constructComputerEnableForFilesPrompt(): string {
+  return (
+    "You must enable the Computer skill proactively as soon as the user uploads files, " +
+    "especially PDFs, spreadsheets, archives, or other files that require inspection, " +
+    "text extraction, code execution, or file manipulation."
+  );
+}
+
 // TODO(20260504 FILE SYSTEM): Remove in favor of constructAttachmentsSectionNewFileExplorer.
-function constructAttachmentsSection(): string {
+function constructAttachmentsSection({
+  hasSandboxTools,
+}: {
+  hasSandboxTools: boolean;
+}): string {
+  const sandboxFilesPrompt = hasSandboxTools
+    ? "When using the Computer, conversation files are mounted under `/files/conversation`. " +
+      `${constructComputerEnableForFilesPrompt()}\n`
+    : "";
+
   return (
     "# ATTACHMENTS\n" +
     'The conversation history may contain file attachments, indicated by attachment tags of the form <attachment id="{FILE_ID}" type="{MIME_TYPE}" title="{TITLE}" version="{VERSION}" isIncludable="{IS_INCLUDABLE}" isQueryable="{IS_QUERYABLE}" isSearchable="{IS_SEARCHABLE}" sourceUrl="{SOURCE_URL}"> . ' +
@@ -254,6 +271,7 @@ function constructAttachmentsSection(): string {
     `- isQueryable: attachment contents are tabular data that can be queried alongside other queryable conversation files' tabular data using \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`;\n` +
     `- isSearchable: attachment contents are available for semantic search, i.e. when semantically searching conversation files' content, using \`${getPrefixedToolName(CONVERSATION_FILES_SERVER_NAME, CONVERSATION_SEARCH_FILES_ACTION_NAME)}\`,` +
     " contents of this attachment will be considered in the search.\n" +
+    sandboxFilesPrompt +
     "Other tools that accept files (referenced by their id) as arguments can be available. Rely on their description and the files' types to decide which tool to use on which file.\n"
   );
 }
@@ -264,7 +282,7 @@ function constructAttachmentsSectionNewFileExplorer({
   hasSandboxTools: boolean;
 }): string {
   const tabularFilesLine = hasSandboxTools
-    ? '- Tabular files (CSV, spreadsheets) attached as `<file>` tags are mounted under /files/conversation; analyze them with code via the sandbox. Tabular files attached as `<attachment isQueryable="true">` tags (for example tool-generated CSVs) remain queryable via the query tables tool;\n'
+    ? `- Files attached as \`<file>\` tags are mounted under \`/files/conversation\` when using the Computer. ${constructComputerEnableForFilesPrompt()} Tabular files attached as \`<attachment isQueryable="true">\` tags (for example tool-generated CSVs) remain queryable via the query tables tool;\n`
     : "- Tabular files (CSV, spreadsheets) are queryable via the query tables tool;\n";
 
   return (
@@ -459,7 +477,7 @@ export function constructPromptMultiActions(
   });
   const attachmentsSection = isNewFileExplorer
     ? constructAttachmentsSectionNewFileExplorer({ hasSandboxTools })
-    : constructAttachmentsSection();
+    : constructAttachmentsSection({ hasSandboxTools });
   const pastedContentSection = constructPastedContentSection();
   const guidelinesSection = constructGuidelinesSection({ agentConfiguration });
 

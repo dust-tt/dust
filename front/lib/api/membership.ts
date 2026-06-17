@@ -15,6 +15,7 @@ import {
   getDefaultSeatTypeForContract,
   getProductSeatTypes,
   getSeatAllowancesByNormalizedSeatType,
+  resolveRequestedSeatTypeForContract,
 } from "@app/lib/metronome/seat_types";
 import {
   classifySeatChange,
@@ -74,7 +75,8 @@ import type { Transaction } from "sequelize";
  */
 async function resolveSeatTypeForNewMembership(
   user: UserResource,
-  workspace: LightWorkspaceType
+  workspace: LightWorkspaceType,
+  requestedSeatType?: MembershipSeatType | null
 ): Promise<MembershipSeatType> {
   if (!workspace.metronomeCustomerId) {
     return "none";
@@ -107,17 +109,23 @@ async function resolveSeatTypeForNewMembership(
     ]);
 
   // Seat counts are needed to check whether committed slots (minSeats) are
-  // still available.
+  // still available, and to enforce the `maxSeats` cap when honoring an explicit
+  // paid-seat request.
+  const requestsPaidSeat =
+    requestedSeatType != null &&
+    requestedSeatType !== "free" &&
+    requestedSeatType !== "none";
   const hasCommittedSeats = [...seatLimits.values()].some(
     (l) => l.minSeats > 0
   );
-  const seatCounts = hasCommittedSeats
-    ? await MembershipResource.getActiveSeatTypeCountsForWorkspace({
-        workspace,
-      })
-    : undefined;
+  const seatCounts =
+    hasCommittedSeats || requestsPaidSeat
+      ? await MembershipResource.getActiveSeatTypeCountsForWorkspace({
+          workspace,
+        })
+      : undefined;
 
-  return getDefaultSeatTypeForContract(contract, productSeatTypes, {
+  const commonSeatResolutionOptions = {
     isReturningMember,
     freeSeatCounts,
     freeSeatLimits: {
@@ -126,7 +134,20 @@ async function resolveSeatTypeForNewMembership(
     },
     seatLimits,
     seatCounts,
-  });
+  };
+
+  if (requestedSeatType != null) {
+    return resolveRequestedSeatTypeForContract(contract, productSeatTypes, {
+      requestedSeatType,
+      ...commonSeatResolutionOptions,
+    });
+  }
+
+  return getDefaultSeatTypeForContract(
+    contract,
+    productSeatTypes,
+    commonSeatResolutionOptions
+  );
 }
 
 /**
@@ -141,12 +162,14 @@ export async function createAndTrackMembership({
   workspace,
   role,
   origin,
+  requestedSeatType,
   auditActor,
 }: {
   user: UserResource;
   workspace: WorkspaceResource | WorkspaceModel | LightWorkspaceType;
   role: ActiveRoleType;
   origin: MembershipOriginType;
+  requestedSeatType?: MembershipSeatType | null;
   // Override for the audit-log actor. Defaults to the user themselves, which
   // is correct for self-signup. SCIM/system-driven provisioning should pass
   // `{ type: "system", id: directoryId, name: "Directory Sync" }` so the
@@ -159,7 +182,11 @@ export async function createAndTrackMembership({
       ? renderLightWorkspaceType({ workspace })
       : workspace;
 
-  const seatType = await resolveSeatTypeForNewMembership(user, w);
+  const seatType = await resolveSeatTypeForNewMembership(
+    user,
+    w,
+    requestedSeatType
+  );
 
   const m = await MembershipResource.createMembership({
     role,
@@ -571,11 +598,20 @@ export async function updateMembershipSeatAndTrack({
 
   const previousSeatType = membership.seatType;
 
-  // `free` is a one-shot starter tier — only assignable when creating a
-  // user's first membership in the workspace. Any subsequent change to
-  // free is rejected, even for users who previously held a free seat
-  // (no twice-free). A free→free noop is unaffected: nothing is written.
-  if (newSeatType === "free" && previousSeatType !== "free") {
+  // `free` is a one-shot starter tier — only assignable when the user has
+  // never held a real seat in this workspace. `none` is not a real seat:
+  // a user whose active seat is `none` and who has no prior real-seat history
+  // is still eligible for `free`. A free→free noop is unaffected.
+  if (newSeatType === "free" && previousSeatType === "none") {
+    const hasPreviousMembership =
+      await MembershipResource.hasAnyMembershipOfUserInWorkspace({
+        user,
+        workspace,
+      });
+    if (hasPreviousMembership) {
+      return new Err({ type: "free_seat_not_allowed" });
+    }
+  } else if (newSeatType === "free" && previousSeatType !== "free") {
     return new Err({ type: "free_seat_not_allowed" });
   }
 

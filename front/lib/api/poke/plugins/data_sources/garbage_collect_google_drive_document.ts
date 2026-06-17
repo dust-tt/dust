@@ -59,6 +59,7 @@ export const garbageCollectGoogleDriveDocumentPlugin = createPlugin({
           "One document ID per line to garbage collect, e.g. gdrive-abc",
       },
     },
+    requiredRoles: ["support"],
   },
   isApplicableTo: (auth, resource) => {
     if (!resource) {

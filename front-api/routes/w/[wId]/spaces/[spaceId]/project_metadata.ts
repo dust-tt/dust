@@ -1,8 +1,10 @@
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type {
   GetPodMetadataResponseBody,
   PatchPodMetadataResponseBody,
 } from "@app/lib/api/projects/metadata";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
+import { getFeatureFlags } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import {
   launchOrSignalProjectTodoWorkflow,
@@ -75,6 +77,9 @@ app.patch(
 
     const body = ctx.req.valid("json");
 
+    const featureFlags = await getFeatureFlags(auth);
+    const defaultAgentEnabled = featureFlags.includes("pod_default_agent");
+
     if (body.pinnedFramePath !== undefined) {
       const validation = await validatePinnedFramePath(
         auth,
@@ -87,6 +92,25 @@ app.patch(
           api_error: {
             type: "invalid_request_error",
             message: validation.error.message,
+          },
+        });
+      }
+    }
+
+    // Validate the default agent exists and is usable (handles both global agents like
+    // "claude-4.5-sonnet" and workspace agents). A null value clears the default (@dust).
+    // Gated behind the pod_default_agent feature flag.
+    if (defaultAgentEnabled && body.defaultAgentId) {
+      const agent = await getAgentConfiguration(auth, {
+        agentId: body.defaultAgentId,
+        variant: "extra_light",
+      });
+      if (!agent || agent.status !== "active") {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Agent "${body.defaultAgentId}" was not found or is not usable by the authenticated user.`,
           },
         });
       }
@@ -109,6 +133,9 @@ app.patch(
         todoGenerationEnabled: body.todoGenerationEnabled ?? false,
         initialTodoAnalysisLookback: body.initialTodoAnalysisLookback ?? null,
         pinnedFramePath: body.pinnedFramePath ?? null,
+        defaultAgentId: defaultAgentEnabled
+          ? (body.defaultAgentId ?? null)
+          : null,
       });
       if (!body.archive) {
         void launchOrSignalProjectTodoWorkflow({
@@ -154,6 +181,9 @@ app.patch(
       }
       if (body.pinnedFramePath !== undefined) {
         await metadata.updatePinnedFramePath(body.pinnedFramePath);
+      }
+      if (defaultAgentEnabled && body.defaultAgentId !== undefined) {
+        await metadata.updateDefaultAgentId(body.defaultAgentId);
       }
       if (body.todoGenerationEnabled === true && !priorTodoGenerationEnabled) {
         void launchOrSignalProjectTodoWorkflow({

@@ -21,6 +21,9 @@ export type CreditUsageConfigurationBody = {
   allowMemberUpgradeRequests: boolean;
   // Whether workspace admins are emailed when a member requests an upgrade.
   upgradeRequestEmailEnabled: boolean;
+  // Whether members who hit their per-user credit limit are automatically bumped
+  // to the next entitled seat tier instead of being blocked.
+  autoSeatUpgradeEnabled: boolean;
 };
 
 export type GetCreditUsageConfigurationResponseBody = {
@@ -36,6 +39,7 @@ export const PatchCreditUsageConfigurationRequestBody = z.object({
   balanceThresholdCredits: z.number().int().min(0).nullable().optional(),
   allowMemberUpgradeRequests: z.boolean().optional(),
   upgradeRequestEmailEnabled: z.boolean().optional(),
+  autoSeatUpgradeEnabled: z.boolean().optional(),
 });
 
 export type PatchCreditUsageConfigurationBody = z.infer<
@@ -44,6 +48,7 @@ export type PatchCreditUsageConfigurationBody = z.infer<
 
 const DEFAULT_ALLOW_MEMBER_UPGRADE_REQUESTS = true;
 const DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED = true;
+const DEFAULT_AUTO_SEAT_UPGRADE_ENABLED = false;
 
 /**
  * Read the full usage configuration for a workspace: the Metronome-derived
@@ -66,14 +71,17 @@ export async function getUsageConfiguration(
     upgradeRequestEmailEnabled:
       config?.upgradeRequestEmailEnabled ??
       DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
+    autoSeatUpgradeEnabled:
+      config?.autoSeatUpgradeEnabled ?? DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
   };
 }
 
-async function setUpgradeRequestToggles(
+async function setConfigurationToggles(
   auth: Authenticator,
   toggles: {
     allowMemberUpgradeRequests?: boolean;
     upgradeRequestEmailEnabled?: boolean;
+    autoSeatUpgradeEnabled?: boolean;
   }
 ): Promise<Result<undefined, Error>> {
   const config =
@@ -93,6 +101,8 @@ async function setUpgradeRequestToggles(
     upgradeRequestEmailEnabled:
       toggles.upgradeRequestEmailEnabled ??
       DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
+    autoSeatUpgradeEnabled:
+      toggles.autoSeatUpgradeEnabled ?? DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
   });
   if (createResult.isErr()) {
     return new Err(createResult.error);
@@ -129,11 +139,13 @@ export async function updateUsageConfiguration(
 
   if (
     patch.allowMemberUpgradeRequests !== undefined ||
-    patch.upgradeRequestEmailEnabled !== undefined
+    patch.upgradeRequestEmailEnabled !== undefined ||
+    patch.autoSeatUpgradeEnabled !== undefined
   ) {
-    const toggleResult = await setUpgradeRequestToggles(auth, {
+    const toggleResult = await setConfigurationToggles(auth, {
       allowMemberUpgradeRequests: patch.allowMemberUpgradeRequests,
       upgradeRequestEmailEnabled: patch.upgradeRequestEmailEnabled,
+      autoSeatUpgradeEnabled: patch.autoSeatUpgradeEnabled,
     });
     if (toggleResult.isErr()) {
       return new Err(toggleResult.error);

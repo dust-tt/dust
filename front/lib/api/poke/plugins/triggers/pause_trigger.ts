@@ -8,6 +8,7 @@ export const pauseTriggerPlugin = createPlugin({
     description: "Pause a trigger to stop its executions",
     resourceTypes: ["triggers"],
     args: {},
+    requiredRoles: ["support"],
   },
   execute: async (auth, resource) => {
     if (!resource) {
@@ -34,6 +35,7 @@ export const unpauseTriggerPlugin = createPlugin({
     description: "Unpause a trigger to resume its executions",
     resourceTypes: ["triggers"],
     args: {},
+    requiredRoles: ["support"],
   },
   execute: async (auth, resource) => {
     if (!resource) {

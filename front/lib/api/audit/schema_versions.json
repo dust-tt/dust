@@ -40,6 +40,7 @@
   "membership.origin_updated": 5,
   "membership.revoked": 4,
   "membership.role_updated": 6,
+  "membership.seat_auto_upgraded": 1,
   "membership.upgrade_request_created": 1,
   "membership.upgrade_request_resolved": 1,
   "oauth.authorized": 3,

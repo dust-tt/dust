@@ -299,12 +299,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Enable the new user settings v2 experience",
     stage: "dust_only",
   },
-  force_us_api_url: {
-    description:
-      "Force the SPA to use the regional API subdomain (us-api/eu-api.dust.tt) " +
-      "as its backend for this workspace",
-    stage: "on_demand",
-  },
   disable_formatting_prompt: {
     description:
       "Skip injecting the OpenAI formatting meta prompt entirely (no markdown/paragraph style guidance)",
@@ -322,6 +316,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   use_new_llm_router: {
     description: "Use the new LLM router for model selection and routing",
+    stage: "dust_only",
+  },
+  pod_default_agent: {
+    description:
+      "Per-pod default agent: pre-select an agent for new conversations started in a project (pod).",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

@@ -22,6 +22,7 @@ export const insertVerifiedWorkspaceVerificationAttemptPlugin = createPlugin({
         redact: true,
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, workspace, args) => {
     if (!workspace) {

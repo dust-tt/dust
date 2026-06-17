@@ -202,6 +202,7 @@ export abstract class LLM<TPayload = unknown> {
       `model_id:${this.modelId}`,
       `client_id:${this.metadata.clientId}`,
       `inference_provider:${this.metadata.inferenceProvider}`,
+      ...(this.metadata.region ? [`region:${this.metadata.region}`] : []),
       `operation_type:${this.context.operationType}`,
     ];
 
@@ -249,6 +250,7 @@ export abstract class LLM<TPayload = unknown> {
               errorContent: currentEvent.content,
               modelId: this.modelId,
               inferenceProvider: this.metadata.inferenceProvider,
+              region: this.metadata.region,
               context: this.context,
               traceId: this.traceId,
             },
@@ -265,6 +267,7 @@ export abstract class LLM<TPayload = unknown> {
               llmEventType: "success",
               modelId: this.modelId,
               inferenceProvider: this.metadata.inferenceProvider,
+              region: this.metadata.region,
               context: this.context,
               traceId: this.traceId,
             },
@@ -578,6 +581,7 @@ export abstract class LLM<TPayload = unknown> {
         `model_id:${this.modelId}`,
         `client_id:${this.metadata.clientId}`,
         `inference_provider:${this.metadata.inferenceProvider}`,
+        ...(this.metadata.region ? [`region:${this.metadata.region}`] : []),
         `operation_type:${this.context!.operationType}`,
       ];
 

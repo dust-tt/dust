@@ -212,7 +212,10 @@ describe("listBlockedActionsForConversation", () => {
     expect(result[0].status).toBe("blocked_validation_required");
   });
 
-  it("should not return blocked actions whose agent message can no longer resume", async () => {
+  it.each([
+    "interrupted",
+    "gracefully_stopped",
+  ] as const)("should not return blocked actions whose agent message is %s", async (status) => {
     const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Test Agent",
     });
@@ -241,11 +244,12 @@ describe("listBlockedActionsForConversation", () => {
       agentMessageModelId: agentMessageRow.agentMessageId!,
     });
 
-    // Interrupt the agent message (e.g. the user skipped it), leaving the blocked action behind.
+    // Finalize the agent message while leaving the blocked action behind, as can happen for stale
+    // historical rows.
     await ConversationFactory.setAgentMessageStatus({
       workspace,
       agentMessageModelId: agentMessageRow.agentMessageId!,
-      status: "interrupted",
+      status,
     });
 
     const conversationResource = await ConversationResource.fetchById(

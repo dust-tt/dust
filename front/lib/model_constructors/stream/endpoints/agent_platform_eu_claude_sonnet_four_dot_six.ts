@@ -13,7 +13,7 @@ export class AgentPlatformEuropeClaudeSonnetFourDotSixStream extends WithAnthrop
     standardOutput: 16.5,
   };
   static readonly region = "eu";
-  static readonly regionalEndpoint = "europe-west1";
+  static readonly regionalEndpoint = "eu";
 
   static readonly id = this.buildId();
 }

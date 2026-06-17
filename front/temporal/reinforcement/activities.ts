@@ -2,7 +2,7 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationAsTextWithFeedback } from "@app/lib/api/assistant/conversation/render_conversation_with_feedback";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { getLargeWhitelistedModel } from "@app/lib/api/assistant/models";
-import { getLLM } from "@app/lib/api/llm";
+import { getStreamLLM } from "@app/lib/api/llm";
 import type { LlmConversationOptions } from "@app/lib/api/llm/batch_llm";
 import {
   downloadBatchResultFromLlm,
@@ -240,7 +240,7 @@ async function runReinforcedSkillsStep({
     },
   };
 
-  const llm = await getLLM(auth, llmParameters);
+  const llm = await getStreamLLM(auth, llmParameters);
   if (!llm) {
     logger.error(
       { contextId, workspaceId: owner.sId },

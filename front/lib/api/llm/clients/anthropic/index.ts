@@ -2,7 +2,6 @@ import Anthropic, { APIError } from "@anthropic-ai/sdk";
 import type { MessageCreateParamsNonStreaming } from "@anthropic-ai/sdk/resources";
 import type { BetaMessageStreamParams } from "@anthropic-ai/sdk/resources/beta/messages";
 import type AnthropicVertex from "@anthropic-ai/vertex-sdk";
-
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import {
   ANTHROPIC_PROVIDER_ID,
@@ -43,7 +42,6 @@ import type {
 import { normalizePrompt } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { CLAUDE_4_5_HAIKU_20251001_MODEL_ID } from "@app/types/assistant/models/anthropic";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { getMinimumReasoningEffort } from "@app/types/assistant/models/types";
 import assert from "assert";
@@ -160,18 +158,10 @@ export class AnthropicLLM extends LLM<BetaMessageStreamParams> {
       apiKey: ANTHROPIC_API_KEY,
     });
 
-    const vertexInferenceRegion =
-      this.modelId === CLAUDE_4_5_HAIKU_20251001_MODEL_ID
-        ? "europe-west1"
-        : "eu";
     // Vertex does not support batches.
-    this.inferenceClient = getInferenceClient(
-      this.useVertex,
-      vertexInferenceRegion,
-      {
-        anthropicClient: this.client,
-      }
-    );
+    this.inferenceClient = getInferenceClient(this.useVertex, "eu", {
+      anthropicClient: this.client,
+    });
   }
 
   private async buildBaseRequestPayload({

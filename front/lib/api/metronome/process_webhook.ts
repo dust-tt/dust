@@ -89,6 +89,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { launchReconcileWorkspaceUserCreditStatesWorkflow } from "@app/temporal/metronome_events_queue/client";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
@@ -309,6 +310,17 @@ async function stampCommitCreditType({
     `[Metronome Webhook] ${eventType}: stamped DUST_CONTRACT_CREDIT_TYPE=pool on commit`
   );
   return new Ok(undefined);
+}
+
+// Returns true when the credit is an individual AWU seat credit — i.e. the
+// per-user recurring credit that backs a Pro/Max seat allocation. Used to
+// decide whether a segment event should trigger a seat sync + user credit state
+// reconciliation.
+function isSeatAwuCredit(credit: Credit): boolean {
+  return (
+    credit.subscription_config?.allocation === "INDIVIDUAL" &&
+    credit.access_schedule?.credit_type?.id === getCreditTypeAwuId()
+  );
 }
 
 // Reconcile the workspace pool credit state from a commit/credit segment or
@@ -1391,6 +1403,23 @@ export async function processMetronomeWebhook({
           metronomeCustomerId,
           commitOrCredit: creditResult.value,
         });
+
+        // A new seat segment starting means a seat type was activated (e.g.
+        // a planned Pro→Max downgrade takes effect). Re-sync the seat count so
+        // the per-user allocation is reassigned and each user's credit state
+        // reflects the new seat type.
+        if (
+          event.type === "credit.segment.start" &&
+          isSeatAwuCredit(creditResult.value)
+        ) {
+          await launchReconcileWorkspaceUserCreditStatesWorkflow({
+            workspaceId: workspace.sId,
+          });
+          logger.info(
+            { metronomeCustomerId, creditId, workspaceId: workspace.sId },
+            "[Metronome Webhook] credit.segment.start: seat credit activated, reconcile triggered"
+          );
+        }
       }
 
       if (event.type === "credit.segment.start") {

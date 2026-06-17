@@ -43,69 +43,111 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-const SwitchContractFormSchema = z.object({
-  metronomePackageId: z.string().min(1, "Required"),
-  planCode: z.string().min(1, "Required"),
-  startingAt: z.string().optional(),
-  // How the enterprise contract's start moment is resolved:
-  //  - "immediately": swap at the current hour (no startingAt sent).
-  //  - "retroactive_first_of_month": backdate to the 1st of the current month,
-  //    00:00 UTC.
-  //  - "select": use the operator-chosen `startingAt` (the only mode that
-  //    surfaces the date picker).
-  startMode: z
-    .enum(["immediately", "retroactive_first_of_month", "select"])
-    .default("select"),
-  stripeCustomerId: z.string(),
-  stripeCollectionMethod: z
-    .enum(["charge_automatically", "send_invoice"])
-    .default("charge_automatically"),
-  // Net payment terms in days (e.g. 30 for "Net 30"). Only relevant for
-  // `send_invoice`; empty leaves Metronome's account default in place.
-  netPaymentTermsDays: z
-    .number()
-    .int("Net payment terms must be a whole number of days")
-    .min(0, "Net payment terms must be ≥ 0")
-    .max(365, "Net payment terms must be ≤ 365")
-    .optional(),
-  paygEnabled: z.boolean().default(false),
-  usageCapCredits: z
-    .number()
-    .int("Usage cap must be an integer number of credits")
-    .min(1, "Usage cap must be at least 1 credit")
-    .optional(),
-  // One-off initial credits (contract-level prepaid commit). Toggled on via
-  // `showInitialCredits`; both fields are then required together and assembled
-  // into `initialCredits` on submit.
-  showInitialCredits: z.boolean().default(false),
-  initialCreditsAmount: z
-    .number()
-    .int("Initial credits must be an integer number of credits")
-    .min(1, "Initial credits must be at least 1 credit")
-    .optional(),
-  initialCreditsInvoiceAmount: z
-    .number()
-    .min(0, "Invoice amount must be zero or more")
-    .optional(),
-  // Per-seat-type settings, keyed by seat type. Every seat type the selected
-  // package knows about is shown; only `selected` ones are submitted. `selected`
-  // is pre-checked for the seats the package entitles by default, and can be
-  // toggled to opt into entitling additional seats. `minSeats` is the billing
-  // floor (0 = none); `rate` is the per-seat rate, prefilled from the package
-  // override default; `commitmentPrice` (optional) creates a prepaid commit of
-  // `minSeats * rate` invoiced at that price.
-  seats: z
-    .record(
-      z.string(),
-      z.object({
-        selected: z.boolean().default(false),
-        minSeats: z.number().int().min(0),
-        rate: z.number().min(0),
-        commitmentPrice: z.number().min(0).optional(),
-      })
-    )
-    .default({}),
-});
+const SwitchContractFormSchema = z
+  .object({
+    metronomePackageId: z.string().min(1, "Required"),
+    planCode: z.string().min(1, "Required"),
+    startingAt: z.string().optional(),
+    // How the enterprise contract's start moment is resolved:
+    //  - "immediately": swap at the current hour (no startingAt sent).
+    //  - "retroactive_first_of_month": backdate to the 1st of the current month,
+    //    00:00 UTC.
+    //  - "select": use the operator-chosen `startingAt` (the only mode that
+    //    surfaces the date picker).
+    startMode: z
+      .enum(["immediately", "retroactive_first_of_month", "select"])
+      .default("select"),
+    stripeCustomerId: z.string(),
+    stripeCollectionMethod: z
+      .enum(["charge_automatically", "send_invoice"])
+      .default("charge_automatically"),
+    // Net payment terms in days (e.g. 30 for "Net 30"). Only relevant for
+    // `send_invoice`; empty leaves Metronome's account default in place.
+    netPaymentTermsDays: z
+      .number()
+      .int("Net payment terms must be a whole number of days")
+      .min(0, "Net payment terms must be ≥ 0")
+      .max(365, "Net payment terms must be ≤ 365")
+      .optional(),
+    paygEnabled: z.boolean().default(false),
+    usageCapCredits: z
+      .number()
+      .int("Usage cap must be an integer number of credits")
+      .min(1, "Usage cap must be at least 1 credit")
+      .optional(),
+    // One-off initial credits (contract-level prepaid commit). Toggled on via
+    // `showInitialCredits`; both fields are then required together and assembled
+    // into `initialCredits` on submit.
+    showInitialCredits: z.boolean().default(false),
+    initialCreditsAmount: z
+      .number()
+      .int("Initial credits must be an integer number of credits")
+      .min(1, "Initial credits must be at least 1 credit")
+      .optional(),
+    initialCreditsInvoiceAmount: z
+      .number()
+      .min(0, "Invoice amount must be zero or more")
+      .optional(),
+    initialCreditsFrequency: z
+      .enum(["one_time", "monthly", "quarterly", "semi_annually", "annually"])
+      .default("one_time"),
+    initialCreditsPeriods: z
+      .number()
+      .int("Number of periods must be a whole number")
+      .min(2, "Number of periods must be at least 2")
+      .max(60, "Number of periods must be at most 60")
+      .optional(),
+    // Per-seat-type settings, keyed by seat type. Every seat type the selected
+    // package knows about is shown; only `selected` ones are submitted. `selected`
+    // is pre-checked for the seats the package entitles by default, and can be
+    // toggled to opt into entitling additional seats. `minSeats` is the billing
+    // floor (0 = none); `rate` is the per-seat rate, prefilled from the package
+    // override default; `commitmentPrice` (optional) creates a prepaid commit of
+    // `minSeats * rate` invoiced at that price.
+    seats: z
+      .record(
+        z.string(),
+        z
+          .object({
+            selected: z.boolean().default(false),
+            minSeats: z.number().int().min(0),
+            rate: z.number().min(0),
+            commitmentPrice: z.number().min(0).optional(),
+            paymentFrequency: z
+              .enum([
+                "one_time",
+                "monthly",
+                "quarterly",
+                "semi_annually",
+                "annually",
+              ])
+              .default("one_time"),
+            paymentPeriods: z
+              .number()
+              .int("Number of periods must be a whole number")
+              .min(2, "Number of periods must be at least 2")
+              .max(60, "Number of periods must be at most 60")
+              .optional(),
+          })
+          .refine(
+            (s) =>
+              s.paymentFrequency === "one_time" ||
+              s.paymentPeriods !== undefined,
+            { message: "Periods required when frequency is not one-time" }
+          )
+      )
+      .default({}),
+  })
+  .refine(
+    (s) =>
+      !s.showInitialCredits ||
+      s.initialCreditsFrequency === "one_time" ||
+      s.initialCreditsPeriods !== undefined,
+    {
+      message: "Periods required when frequency is not one-time",
+      path: ["initialCreditsPeriods"],
+    }
+  );
 type SwitchContractFormValues = z.infer<typeof SwitchContractFormSchema>;
 
 type SwitchContractBodyInput = z.input<typeof SwitchContractBodySchema>;
@@ -188,6 +230,8 @@ export default function SwitchContractDialog({
       showInitialCredits: false,
       initialCreditsAmount: undefined,
       initialCreditsInvoiceAmount: undefined,
+      initialCreditsFrequency: "one_time",
+      initialCreditsPeriods: undefined,
       seats: {},
     },
   });
@@ -255,14 +299,24 @@ export default function SwitchContractDialog({
   useEffect(() => {
     const next: Record<
       string,
-      { selected: boolean; minSeats: number; rate: number }
+      {
+        selected: boolean;
+        minSeats: number;
+        rate: number;
+        paymentFrequency: "one_time";
+      }
     > = {};
     for (const seat of selectedSeats) {
       const rate =
         seat.defaultRate != null && resolvedCurrency
           ? amountCents(seat.defaultRate, resolvedCurrency) / 100
           : (seat.defaultRate ?? 0);
-      next[seat.seatType] = { selected: seat.entitled, minSeats: 0, rate };
+      next[seat.seatType] = {
+        selected: seat.entitled,
+        minSeats: 0,
+        rate,
+        paymentFrequency: "one_time",
+      };
     }
     form.setValue("seats", next);
   }, [selectedSeats, form, resolvedCurrency]);
@@ -364,6 +418,7 @@ export default function SwitchContractDialog({
     selectedTier !== null && isPaygEligibleTier(selectedTier);
 
   const showInitialCredits = form.watch("showInitialCredits");
+  const initialCreditsFrequency = form.watch("initialCreditsFrequency");
   const stripeCollectionMethod = form.watch("stripeCollectionMethod");
   const watchedSeats = form.watch("seats");
 
@@ -405,9 +460,26 @@ export default function SwitchContractDialog({
           setError("Initial credits require a Stripe customer to invoice.");
           return;
         }
+        if (
+          values.initialCreditsFrequency !== "one_time" &&
+          (values.initialCreditsPeriods === undefined ||
+            values.initialCreditsPeriods < 2)
+        ) {
+          setError(
+            "Scheduled payments require a number of periods of at least 2."
+          );
+          return;
+        }
         cleaned.initialCredits = {
           amountCredits: values.initialCreditsAmount,
           invoiceAmount: values.initialCreditsInvoiceAmount,
+          paymentSchedule: {
+            frequency: values.initialCreditsFrequency,
+            periods:
+              values.initialCreditsFrequency !== "one_time"
+                ? values.initialCreditsPeriods
+                : undefined,
+          },
         };
       }
       // Resolve the start moment for enterprise. "immediately" leaves
@@ -440,6 +512,8 @@ export default function SwitchContractDialog({
           entry.commitmentPrice > 0
             ? entry.commitmentPrice
             : undefined;
+        const paymentFrequency = entry?.paymentFrequency ?? "one_time";
+        const paymentPeriods = entry?.paymentPeriods;
         if (selected && !entitled && seatType !== "free" && !(rate > 0)) {
           setError(
             `Seat "${seatType}" is not entitled by the selected package and ` +
@@ -447,7 +521,29 @@ export default function SwitchContractDialog({
           );
           return;
         }
-        seats.push({ seatType, selected, minSeats, rate, commitmentPrice });
+        if (
+          commitmentPrice !== undefined &&
+          paymentFrequency !== "one_time" &&
+          (paymentPeriods === undefined || paymentPeriods < 2)
+        ) {
+          setError(
+            `Seat "${seatType}" has a scheduled payment frequency but no valid ` +
+              "number of periods (minimum 2)."
+          );
+          return;
+        }
+        seats.push({
+          seatType,
+          selected,
+          minSeats,
+          rate,
+          commitmentPrice,
+          paymentSchedule: {
+            frequency: paymentFrequency,
+            periods:
+              paymentFrequency !== "one_time" ? paymentPeriods : undefined,
+          },
+        });
       }
       if (seats.length > 0) {
         cleaned.seats = seats;
@@ -652,7 +748,7 @@ export default function SwitchContractDialog({
                   </div>
                 )}
                 {selectedSeats.length > 0 && (
-                  <div className="space-y-3 border-t pt-4">
+                  <div className="space-y-2 border-t pt-4">
                     <Label className="text-sm">
                       Seats configuration{" "}
                       {resolvedCurrency
@@ -665,12 +761,34 @@ export default function SwitchContractDialog({
                       one to entitle it (a non-zero rate is required, except for
                       the free seat).
                     </div>
+                    {/* Header row */}
+                    <div className="flex items-center gap-3 pb-1 text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+                      <div className="w-32 shrink-0" />
+                      <div className="flex-1">Min seats</div>
+                      <div className="flex-1">
+                        Seat rate
+                        {resolvedCurrency
+                          ? ` (${resolvedCurrency.toUpperCase()})`
+                          : ""}
+                      </div>
+                      <div className="flex-1">
+                        Commitment price
+                        {resolvedCurrency
+                          ? ` (${resolvedCurrency.toUpperCase()})`
+                          : ""}
+                      </div>
+                      <div className="flex-1">Payment schedule</div>
+                      <div className="flex-1">Periods</div>
+                    </div>
                     {selectedSeats.map(({ seatType, entitled }) => {
                       const isSelected =
                         watchedSeats?.[seatType]?.selected ?? false;
+                      const seatPaymentFrequency =
+                        watchedSeats?.[seatType]?.paymentFrequency ??
+                        "one_time";
                       return (
-                        <div key={seatType} className="flex items-end gap-3">
-                          <div className="flex w-32 shrink-0 items-center gap-2 pb-2">
+                        <div key={seatType} className="flex items-center gap-3">
+                          <div className="flex w-32 shrink-0 items-center gap-2">
                             <Checkbox
                               checked={isSelected}
                               onCheckedChange={(checked) =>
@@ -693,7 +811,7 @@ export default function SwitchContractDialog({
                             <InputField
                               control={form.control}
                               name={`seats.${seatType}.minSeats`}
-                              title="Min seats"
+                              hideLabel
                               type="number"
                               placeholder="0"
                               disabled={!isSelected}
@@ -703,11 +821,7 @@ export default function SwitchContractDialog({
                             <InputField
                               control={form.control}
                               name={`seats.${seatType}.rate`}
-                              title={
-                                resolvedCurrency
-                                  ? `Seat rate (${resolvedCurrency.toUpperCase()})`
-                                  : "Seat rate"
-                              }
+                              hideLabel
                               type="number"
                               placeholder="0"
                               disabled={!isSelected}
@@ -717,15 +831,40 @@ export default function SwitchContractDialog({
                             <InputField
                               control={form.control}
                               name={`seats.${seatType}.commitmentPrice`}
-                              title={
-                                resolvedCurrency
-                                  ? `Commitment price (${resolvedCurrency.toUpperCase()})`
-                                  : "Commitment price"
-                              }
+                              hideLabel
                               type="number"
                               placeholder="optional"
                               disabled={!isSelected}
                             />
+                          </div>
+                          <div className="flex-1">
+                            <SelectField
+                              control={form.control}
+                              name={`seats.${seatType}.paymentFrequency`}
+                              hideLabel
+                              mountPortalContainer={portalContainer}
+                              options={[
+                                { value: "one_time", display: "One-time" },
+                                { value: "monthly", display: "Monthly" },
+                                { value: "quarterly", display: "Quarterly" },
+                                {
+                                  value: "semi_annually",
+                                  display: "Semi-annually",
+                                },
+                                { value: "annually", display: "Annually" },
+                              ]}
+                            />
+                          </div>
+                          <div className="flex-1">
+                            {seatPaymentFrequency !== "one_time" && (
+                              <InputField
+                                control={form.control}
+                                name={`seats.${seatType}.paymentPeriods`}
+                                hideLabel
+                                type="number"
+                                placeholder="e.g., 4"
+                              />
+                            )}
                           </div>
                         </div>
                       );
@@ -745,7 +884,7 @@ export default function SwitchContractDialog({
                         }
                       />
                       <Label className="text-sm">
-                        Initial credits (one-off prepaid commit)
+                        Initial credits (prepaid commit)
                       </Label>
                     </div>
                     {showInitialCredits && (
@@ -760,10 +899,47 @@ export default function SwitchContractDialog({
                         <InputField
                           control={form.control}
                           name="initialCreditsInvoiceAmount"
-                          title={`Amount to Invoice (${resolvedCurrency.toUpperCase()})`}
+                          title={`Total Amount to Invoice (${resolvedCurrency.toUpperCase()})`}
                           type="number"
-                          placeholder="e.g., 5000 — amount billed to the customer"
+                          placeholder="e.g., 5000 — total billed to the customer"
                         />
+                        <SelectField
+                          control={form.control}
+                          name="initialCreditsFrequency"
+                          title="Payment schedule"
+                          mountPortalContainer={portalContainer}
+                          options={[
+                            {
+                              value: "one_time",
+                              display: "One-time (single invoice)",
+                            },
+                            {
+                              value: "monthly",
+                              display: "Monthly",
+                            },
+                            {
+                              value: "quarterly",
+                              display: "Quarterly (every 3 months)",
+                            },
+                            {
+                              value: "semi_annually",
+                              display: "Semi-annually (every 6 months)",
+                            },
+                            {
+                              value: "annually",
+                              display: "Annually",
+                            },
+                          ]}
+                        />
+                        {initialCreditsFrequency !== "one_time" && (
+                          <InputField
+                            control={form.control}
+                            name="initialCreditsPeriods"
+                            title="Number of periods"
+                            type="number"
+                            placeholder="e.g., 4 for 4 quarterly installments"
+                          />
+                        )}
                       </>
                     )}
                   </div>

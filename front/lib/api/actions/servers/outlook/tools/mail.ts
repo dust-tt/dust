@@ -1,12 +1,18 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { OUTLOOK_MAIL_FOLDER_LIST_MIME_TYPE } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  ToolHandlerExtra,
+  ToolHandlers,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   extractTextFromBuffer,
   processAttachment,
 } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
-import { sanitizeFilename } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
+import {
+  getFileFromConversationAttachment,
+  sanitizeFilename,
+} from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import { getAllowedLabelsForMCPServer } from "@app/lib/api/actions/servers/microsoft/utils";
 import { OUTLOOK_TOOLS_METADATA } from "@app/lib/api/actions/servers/outlook/mail_metadata";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -14,6 +20,64 @@ import { Err, Ok } from "@app/types/shared/result";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
+
+const MAX_ATTACHMENT_SIZE_BYTES = 3 * 1024 * 1024; // 3MB — Graph API inline attachment limit
+
+async function fetchAttachment(
+  auth: ToolHandlerExtra["auth"],
+  attachmentFilePath: string | undefined,
+  agentLoopContext: ToolHandlerExtra["agentLoopContext"]
+): Promise<
+  | Ok<{ buffer: Buffer; filename: string; contentType: string } | null>
+  | Err<MCPError>
+> {
+  if (!attachmentFilePath) {
+    return new Ok(null);
+  }
+
+  if (!agentLoopContext) {
+    return new Err(new MCPError("No agent context available"));
+  }
+
+  const fileResult = await getFileFromConversationAttachment(
+    auth,
+    attachmentFilePath,
+    agentLoopContext
+  );
+
+  if (fileResult.isErr()) {
+    return new Err(
+      new MCPError(`File not found: ${attachmentFilePath}`, { tracked: false })
+    );
+  }
+
+  const { buffer, filename, contentType } = fileResult.value;
+
+  if (buffer.length > MAX_ATTACHMENT_SIZE_BYTES) {
+    return new Err(
+      new MCPError(
+        `Attachment file size exceeds the ${MAX_ATTACHMENT_SIZE_BYTES / (1024 * 1024)}MB limit.`
+      )
+    );
+  }
+
+  return new Ok({ buffer, filename, contentType });
+}
+
+// Builds the Microsoft Graph fileAttachment payload shared by the direct-send
+// (inline) and draft (POST /attachments) paths.
+function buildFileAttachmentPayload(attachment: {
+  buffer: Buffer;
+  filename: string;
+  contentType: string;
+}): Record<string, unknown> {
+  return {
+    "@odata.type": "#microsoft.graph.fileAttachment",
+    name: sanitizeFilename(attachment.filename),
+    contentType: attachment.contentType,
+    contentBytes: attachment.buffer.toString("base64"),
+  };
+}
 
 const DEFAULT_MESSAGE_FIELDS = [
   "id",
@@ -366,6 +430,7 @@ async function createOutlookDraft({
   bcc,
   replyTo,
   sharedMailboxAddress,
+  attachment,
 }: {
   basePath: string;
   accessToken: string;
@@ -380,6 +445,7 @@ async function createOutlookDraft({
   bcc?: string[];
   replyTo?: string[];
   sharedMailboxAddress?: string;
+  attachment: { buffer: Buffer; filename: string; contentType: string } | null;
 }): Promise<Ok<{ draftId: string; conversationId?: string }> | Err<MCPError>> {
   let draftId: string;
   let conversationId: string | undefined;
@@ -516,6 +582,29 @@ async function createOutlookDraft({
     conversationId = result.conversationId;
   }
 
+  if (attachment) {
+    const encodedDraftId = encodeURIComponent(draftId);
+    const attachmentResponse = await fetchFromOutlook(
+      `${basePath}/messages/${encodedDraftId}/attachments`,
+      accessToken,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildFileAttachmentPayload(attachment)),
+      }
+    );
+
+    if (!attachmentResponse.ok) {
+      void fetchFromOutlook(
+        `${basePath}/messages/${encodedDraftId}`,
+        accessToken,
+        { method: "DELETE" }
+      );
+      const errorText = await getErrorText(attachmentResponse);
+      return new Err(new MCPError(`Failed to add attachment: ${errorText}`));
+    }
+  }
+
   return new Ok({ draftId, conversationId });
 }
 
@@ -532,6 +621,7 @@ async function sendDirectMail({
   importance,
   saveToSentItems,
   sharedMailboxAddress,
+  attachment,
 }: {
   basePath: string;
   accessToken: string;
@@ -545,6 +635,7 @@ async function sendDirectMail({
   importance?: string;
   saveToSentItems: boolean;
   sharedMailboxAddress?: string;
+  attachment: { buffer: Buffer; filename: string; contentType: string } | null;
 }): Promise<Ok<null> | Err<MCPError>> {
   const message: Record<string, unknown> = {
     subject,
@@ -571,6 +662,9 @@ async function sendDirectMail({
     message.replyTo = replyTo.map((email) => ({
       emailAddress: { address: email },
     }));
+  }
+  if (attachment) {
+    message.attachments = [buildFileAttachmentPayload(attachment)];
   }
 
   const response = await fetchFromOutlook(`${basePath}/sendMail`, accessToken, {
@@ -1204,13 +1298,24 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       replyToMessageId,
       replyAll = false,
       sharedMailboxAddress,
+      attachmentFilePath,
     },
-    { authInfo }
+    { authInfo, auth, agentLoopContext }
   ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
       return new Err(new MCPError("Authentication required"));
     }
+
+    const attachmentResult = await fetchAttachment(
+      auth,
+      attachmentFilePath,
+      agentLoopContext
+    );
+    if (attachmentResult.isErr()) {
+      return attachmentResult;
+    }
+    const attachment = attachmentResult.value;
 
     const validationError = validateMailParams({
       replyToMessageId,
@@ -1238,6 +1343,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       bcc,
       replyTo,
       sharedMailboxAddress,
+      attachment,
     });
     if (result.isErr()) {
       return result;
@@ -1306,8 +1412,9 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       sharedMailboxAddress,
       replyToMessageId,
       replyAll = false,
+      attachmentFilePath,
     },
-    { authInfo }
+    { authInfo, auth, agentLoopContext }
   ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
@@ -1323,6 +1430,16 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     if (validationError) {
       return validationError;
     }
+
+    const attachmentResult = await fetchAttachment(
+      auth,
+      attachmentFilePath,
+      agentLoopContext
+    );
+    if (attachmentResult.isErr()) {
+      return attachmentResult;
+    }
+    const attachment = attachmentResult.value;
 
     const basePath = getMailboxBasePath(sharedMailboxAddress);
 
@@ -1340,6 +1457,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
         importance,
         saveToSentItems,
         sharedMailboxAddress,
+        attachment,
       });
       if (result.isErr()) {
         return result;
@@ -1349,6 +1467,55 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       ]);
     }
 
+    // Reply with an attachment: the /reply endpoint doesn't support inline
+    // attachments, so create a reply draft (with the attachment) then send it.
+    if (attachment) {
+      const draftResult = await createOutlookDraft({
+        basePath,
+        accessToken,
+        replyToMessageId,
+        replyAll,
+        body,
+        importance,
+        to,
+        cc,
+        bcc,
+        replyTo,
+        sharedMailboxAddress,
+        attachment,
+      });
+      if (draftResult.isErr()) {
+        return draftResult;
+      }
+      const { draftId } = draftResult.value;
+      const encodedDraftId = encodeURIComponent(draftId);
+
+      const sendResponse = await fetchFromOutlook(
+        `${basePath}/messages/${encodedDraftId}/send`,
+        accessToken,
+        { method: "POST" }
+      );
+
+      if (!sendResponse.ok) {
+        void fetchFromOutlook(
+          `${basePath}/messages/${encodedDraftId}`,
+          accessToken,
+          { method: "DELETE" }
+        );
+        const errorText = await getErrorText(sendResponse);
+        return new Err(
+          new MCPError(
+            `Failed to send email: ${sendResponse.status} ${sendResponse.statusText} - ${errorText}`
+          )
+        );
+      }
+
+      return new Ok([
+        { type: "text" as const, text: "Email sent successfully" },
+      ]);
+    }
+
+    // Reply without an attachment: use the /reply endpoint directly (single call).
     const result = await sendReply({
       basePath,
       accessToken,

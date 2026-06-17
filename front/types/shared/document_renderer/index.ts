@@ -160,6 +160,55 @@ export class DocumentRenderer {
   }
 
   /**
+   * Convert an Office document (DOCX, XLSX, PPTX, …) to PDF using Gotenberg's
+   * LibreOffice route. The file name extension tells LibreOffice the source format.
+   */
+  async convertOfficeToPdf(
+    fileBuffer: Buffer,
+    fileName: string
+  ): Promise<Result<Buffer, DocumentRendererError>> {
+    const formData = new FormData();
+    formData.append("files", new Blob([new Uint8Array(fileBuffer)]), fileName);
+
+    try {
+      // eslint-disable-next-line no-restricted-globals
+      const response = await fetch(
+        `${this.serviceUrl}/forms/libreoffice/convert`,
+        {
+          method: "POST",
+          body: formData,
+          signal: AbortSignal.timeout(this.timeoutMs),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        this.logger.error(
+          { status: response.status, error: errorText },
+          "Office PDF conversion failed"
+        );
+        return new Err(
+          new DocumentRendererError(
+            "render_failed",
+            `Office PDF conversion failed: ${errorText}`,
+            response.status
+          )
+        );
+      }
+
+      return new Ok(Buffer.from(await response.arrayBuffer()));
+    } catch (error) {
+      this.logger.error({ error }, "Office PDF conversion network error");
+      return new Err(
+        new DocumentRendererError(
+          "network_error",
+          normalizeError(error).message
+        )
+      );
+    }
+  }
+
+  /**
    * Capture a screenshot of a self-contained HTML string.
    * The HTML is uploaded directly to Gotenberg so no public URL is required.
    */

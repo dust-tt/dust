@@ -1917,10 +1917,8 @@ export async function addPrepaidCommitToContract({
   accessCreditTypeId,
   accessStartingAt,
   accessEndingBefore,
-  invoiceUnitPrice,
-  invoiceQuantity,
+  invoiceScheduleItems,
   invoiceCreditTypeId,
-  invoiceTimestamp,
   priority,
   name,
   uniquenessKey,
@@ -1935,10 +1933,12 @@ export async function addPrepaidCommitToContract({
   accessCreditTypeId: string;
   accessStartingAt: Date;
   accessEndingBefore: Date;
-  invoiceUnitPrice: number;
-  invoiceQuantity: number;
+  invoiceScheduleItems: {
+    unitPrice: number;
+    quantity: number;
+    timestamp: Date;
+  }[];
   invoiceCreditTypeId: string;
-  invoiceTimestamp: Date;
   priority: number;
   name: string;
   uniquenessKey: string;
@@ -1976,13 +1976,11 @@ export async function addPrepaidCommitToContract({
           },
           invoice_schedule: {
             credit_type_id: invoiceCreditTypeId,
-            schedule_items: [
-              {
-                unit_price: invoiceUnitPrice,
-                quantity: invoiceQuantity,
-                timestamp: floorToHourISO(invoiceTimestamp),
-              },
-            ],
+            schedule_items: invoiceScheduleItems.map((item) => ({
+              unit_price: item.unitPrice,
+              quantity: item.quantity,
+              timestamp: floorToHourISO(item.timestamp),
+            })),
           },
         },
       ],
@@ -1994,8 +1992,7 @@ export async function addPrepaidCommitToContract({
         metronomeContractId,
         editId: response.data.id,
         accessAmount,
-        invoiceUnitPrice,
-        invoiceQuantity,
+        invoiceScheduleItemsCount: invoiceScheduleItems.length,
       },
       "[Metronome] Prepaid commit added to contract"
     );
@@ -2017,8 +2014,7 @@ export async function addPrepaidCommitToContract({
         metronomeCustomerId,
         metronomeContractId,
         accessAmount,
-        invoiceUnitPrice,
-        invoiceQuantity,
+        invoiceScheduleItemsCount: invoiceScheduleItems.length,
       },
       "[Metronome] Failed to add prepaid commit to contract"
     );

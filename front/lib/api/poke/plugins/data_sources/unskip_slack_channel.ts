@@ -18,6 +18,7 @@ export const unskipSlackChannelPlugin = createPlugin({
         description: "Slack channel ID to unskip (e.g., C1234567890)",
       },
     },
+    requiredRoles: ["support"],
   },
   isApplicableTo: (auth, resource) => {
     if (!resource) {

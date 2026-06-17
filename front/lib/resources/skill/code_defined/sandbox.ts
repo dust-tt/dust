@@ -356,6 +356,10 @@ export const sandboxSkill = {
   agentFacingDescription:
     "Execute code and commands in an isolated Linux sandbox. Useful to parse lengthy tool outputs, run code, " +
     "process data, install packages, manipulate files, or perform any task requiring shell access. " +
+    "You must enable this skill proactively as soon as the user uploads files or you need to work with files, " +
+    "including PDFs, spreadsheets, archives, or generated artifacts. Use it to extract text from files, " +
+    "parse lengthy tool outputs, run code and shell commands, process data, manipulate files, or perform " +
+    "any computer-related task. " +
     "Always call this environment 'the Computer' in any text you send to the user.",
   fetchInstructions: async (
     auth: Authenticator,
@@ -378,9 +382,9 @@ export const sandboxSkill = {
   mcpServers: [{ name: "sandbox" }],
   version: 1,
   icon: "CommandLineIcon",
-  // Auto-enabled for every agent when the `sandbox_tools` flag is on (the flag gate lives in
-  // isRestricted), so agents do not need to opt in.
-  isAutoEnabledForAgentLoop: () => true,
+  // Auto-equipped for every agent when the `sandbox_tools` flag is on (the flag gate lives in
+  // isRestricted), but not enabled until the agent decides to use it.
+  isAutoEquippedForAgentLoop: () => true,
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
 

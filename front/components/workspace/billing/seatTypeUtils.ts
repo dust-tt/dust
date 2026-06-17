@@ -10,12 +10,11 @@ import {
 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
-// Display names mirror Metronome product names for consistency with invoices.
 const SEAT_TYPE_DISPLAY_NAMES: Record<string, string> = {
-  free: "Free Seat",
-  pro: "Pro Seat",
-  max: "Max Seat",
-  workspace: "Platform Seat",
+  free: "Free",
+  pro: "Pro",
+  max: "Max",
+  workspace: "Platform",
   none: "None",
 };
 

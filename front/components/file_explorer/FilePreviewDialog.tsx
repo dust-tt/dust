@@ -1,3 +1,4 @@
+import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { getFilePreviewConfig } from "@app/components/spaces/FilePreviewSheet";
 import { useFileContent } from "@app/hooks/useFileContent";
@@ -181,21 +182,15 @@ function FilePreviewDialogContent({
 
     case "pdf":
       return (
-        <iframe
-          src={`${fileUrl}#navpanes=0`}
-          className="h-[70vh] w-full rounded-lg border-0"
-          title={entry.fileName}
-        />
+        <PDFViewer key={fileUrl} url={`${fileUrl}?v=${entry.lastModifiedMs}`} />
       );
 
     case "viewer":
-      // TODO(20260504 FILE_SYSTEM): add Office viewer preview support.
       return (
-        <div className="flex h-48 items-center justify-center">
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Cannot preview this file type. You can download it instead.
-          </p>
-        </div>
+        <PDFViewer
+          key={fileUrl}
+          url={`${fileUrl}?preview=pdf&v=${entry.lastModifiedMs}`}
+        />
       );
 
     case "audio":

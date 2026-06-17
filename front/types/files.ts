@@ -89,8 +89,8 @@ export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
 
 /**
  * Allowlist of files a shared Frame may load via useFile().
- * AuthorizedFileAccessModel stores one row per authorized file; active rows have
- * revokedAt = null.
+ * AuthorizedFileAccessModel stores one row per authorized file ref for the
+ * current frame version (replaced on recompute).
  */
 export const authorizedFileAccessKindSchema = z.enum([
   "file_id",

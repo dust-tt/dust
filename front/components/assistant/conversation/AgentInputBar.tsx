@@ -28,7 +28,6 @@ import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
 import { classNames } from "@app/lib/utils";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   isRichAgentMention,
   isRichUserMention,
@@ -196,25 +195,16 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       return [lastAgentMentionInConversation];
     }
 
-    // Fall back to @dust only for new conversations. In existing conversations
-    // where messages are still loading, don't default — wait for messages.
-    if (!context.conversation) {
-      const dustAgent = agentConfigurations.find(
-        (a) => a.sId === GLOBAL_AGENTS_SID.DUST
-      );
-      if (dustAgent) {
-        return [toRichAgentMentionType(dustAgent)];
-      }
-    }
-
+    // For new conversations, the sticky agent (personal default → @dust) is resolved
+    // downstream in `useHandleMentions` once the default has loaded, so we intentionally
+    // emit no agent mention here. In existing conversations where messages are still
+    // loading, don't default either — wait for messages.
     return [];
   }, [
-    context.conversation,
     draftAgent,
     lastUserMessage,
     lastAgentMentionInConversation,
     accessibleAgentIds,
-    agentConfigurations,
     agentBuilderContext,
   ]);
 

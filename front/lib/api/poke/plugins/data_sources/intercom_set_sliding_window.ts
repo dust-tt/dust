@@ -24,6 +24,7 @@ export const intercomSetSlidingWindowPlugin = createPlugin({
           "Number of days to look back for conversations. Must be 0 or greater.",
       },
     },
+    requiredRoles: ["support"],
   },
   isApplicableTo: (auth, resource) => {
     if (!resource) {

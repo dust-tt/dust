@@ -21,3 +21,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <App />
   </React.StrictMode>
 );
+
+// Register the PWA service worker so the app is installable and launches standalone. The worker
+// does no caching (see front/public/sw.js); failures are non-fatal and intentionally ignored.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    void navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}

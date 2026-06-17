@@ -40,6 +40,7 @@ import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {
   RichAgentMention,
@@ -132,6 +133,8 @@ export interface InputBarContainerProps {
     text: string;
     agentMention?: RichAgentMention | null;
   } | null;
+  defaultAgentId?: string | null;
+  isDefaultAgentLoading?: boolean;
   isAgentBuilder?: boolean;
   isCompact?: boolean;
   onExpandInputBar?: () => void;
@@ -169,6 +172,8 @@ const InputBarContainer = ({
   isSubmitting,
   fileUploaderService,
   getDraft,
+  defaultAgentId,
+  isDefaultAgentLoading,
   isAgentBuilder = false,
   onNodeSelect,
   onNodeUnselect,
@@ -1176,6 +1181,8 @@ const InputBarContainer = ({
     disableAutoFocus,
     editorService,
     getDraft,
+    defaultAgentId,
+    isDefaultAgentLoading,
     isAgentBuilder,
     pendingInputText,
     selectedAgent,
@@ -1195,6 +1202,21 @@ const InputBarContainer = ({
     voiceTranscriberService.status !== "idle";
 
   const hideCapabilities = startsWithUserMention && !selectedSingleAgent;
+
+  // A pod can pre-select a default agent that the current member can't access
+  // (e.g. an unpublished agent). `allAgents` only contains agents the member
+  // can read, so when the configured default is missing from it, the
+  // resolution in `useHandleMentions` silently falls back to @dust. Surface a
+  // notice on the agent pill so the member understands why the pod's default
+  // isn't the one shown. (We can't distinguish "no access" from "deleted"
+  // client-side, so the copy stays neutral.)
+  const isDefaultAgentUnavailable =
+    !conversation &&
+    !isAgentBuilder &&
+    !isDefaultAgentLoading &&
+    !!defaultAgentId &&
+    defaultAgentId !== GLOBAL_AGENTS_SID.DUST &&
+    !agentsById.has(defaultAgentId);
 
   const contentEditableClasses = classNames(
     "inline-block w-full",
@@ -1421,6 +1443,7 @@ const InputBarContainer = ({
                       fileUploaderService={fileUploaderService}
                       handleSingleAgentSelect={handleSingleAgentSelect}
                       hideCapabilities={hideCapabilities}
+                      isDefaultAgentUnavailable={isDefaultAgentUnavailable}
                       isInputDisabled={disableInput}
                       onAgentRemove={() => setSelectedSingleAgent(null)}
                       onMCPServerViewSelect={onMCPServerViewSelect}

@@ -23,6 +23,7 @@ import type {
   PendingInvitationOption,
 } from "@app/types/membership_invitation";
 import type { MembershipSeatType } from "@app/types/memberships";
+import { MEMBERSHIP_SEAT_TYPES } from "@app/types/memberships";
 import type { SubscriptionType } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -62,6 +63,7 @@ export const PostInvitationRequestBodySchema = z.array(
   z.object({
     email: z.string(),
     role: ActiveRoleSchema,
+    seatType: z.enum(MEMBERSHIP_SEAT_TYPES).nullish(),
   })
 );
 

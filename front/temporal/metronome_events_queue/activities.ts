@@ -1,7 +1,10 @@
 import { processMetronomeWebhook } from "@app/lib/api/metronome/process_webhook";
+import { reconcileWorkspaceUserCreditStates } from "@app/lib/api/metronome/reconcile_credit_state";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
 import { cleanAndFinalizeMetronomeDraftInvoice } from "@app/lib/plans/stripe";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 /**
  * Temporal wrapper around `processMetronomeWebhook`. The handler has already
@@ -53,4 +56,43 @@ export async function cleanMetronomeInvoiceActivity({
   if (result.isErr()) {
     throw new Error(result.error.error_message);
   }
+}
+
+/**
+ * Reconcile per-user credit states for a workspace after a seat segment starts.
+ * Extracted as a dedicated activity so it can be launched as a separate,
+ * workspace-scoped workflow (see `reconcileWorkspaceCreditStatesWorkflow`) — this
+ * lets Temporal deduplicate the N concurrent `credit.segment.start` events that
+ * fire during a seat-type change (one per seat) down to a single execution per
+ * workspace.
+ *
+ * Metronome at schedule time (via `syncSeatCount` with a future `startingAt`).
+ * When `credit.segment.start` fires the assignment is already correct; we only
+ * need to invalidate and recalculate each user's credit state.
+ */
+export async function reconcileWorkspaceUserCreditStatesActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<void> {
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    throw new Error(
+      `[Metronome Reconcile] Workspace ${workspaceId} not found at activity start`
+    );
+  }
+  if (!workspace.metronomeCustomerId) {
+    return;
+  }
+  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    workspace.id
+  );
+  if (!subscription?.metronomeContractId) {
+    return;
+  }
+  await reconcileWorkspaceUserCreditStates({
+    workspace: renderLightWorkspaceType({ workspace }),
+    metronomeCustomerId: workspace.metronomeCustomerId,
+    metronomeContractId: subscription.metronomeContractId,
+  });
 }

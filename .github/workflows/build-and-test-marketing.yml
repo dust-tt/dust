@@ -20,7 +20,6 @@ jobs:
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
         with:
-          node-version: "24.14.0"
           build-sparkle: "true"
       - name: Typecheck
         run: npm -w marketing run tsgo -- --version && npm -w marketing run tsgo

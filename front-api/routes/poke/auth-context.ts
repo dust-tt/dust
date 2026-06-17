@@ -17,6 +17,7 @@ app.get(
     return ctx.json({
       user: userResource.toJSON(),
       isSuperUser: true,
+      pokeRoles: ctx.get("pokeRoles"),
     });
   }
 );

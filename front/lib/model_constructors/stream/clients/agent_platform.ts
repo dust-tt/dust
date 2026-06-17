@@ -19,7 +19,7 @@ import { ANTHROPIC_PROVIDER_ID } from "@app/lib/model_constructors/types/provide
 import { z } from "zod";
 
 // Can be extended later (e.g. "us", "asia-east1"...)
-type AgentPlatformRegionalEndpoint = "global" | "europe-west1";
+export type AgentPlatformRegionalEndpoint = "global" | "eu";
 
 const configSchema = inputConfigSchema.extend({
   reasoning: z
@@ -44,6 +44,8 @@ export abstract class AgentPlatformStream extends WithAnthropicInputConverter(
 
   static readonly providerId = ANTHROPIC_PROVIDER_ID;
   static readonly api = AGENT_PLATFORM_API;
+
+  static readonly regionalEndpoint: AgentPlatformRegionalEndpoint;
 
   static readonly configSchema: z.ZodType<z.infer<typeof configSchema>> =
     configSchema;

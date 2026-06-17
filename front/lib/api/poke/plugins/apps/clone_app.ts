@@ -22,6 +22,7 @@ export const cloneAppPlugin = createPlugin({
         description: "ID of the space to clone the app to",
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, app, args) => {
     const { targetSpaceId, targetWorkspaceId } = args;

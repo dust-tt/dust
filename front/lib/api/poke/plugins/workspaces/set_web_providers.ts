@@ -36,6 +36,7 @@ export const setWebProvidersPlugin = createPlugin({
         multiple: false,
       },
     },
+    requiredRoles: ["support"],
   },
   execute: async (auth, workspace, args) => {
     if (!workspace) {

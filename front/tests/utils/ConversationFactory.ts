@@ -173,6 +173,7 @@ export class ConversationFactory {
     conversation,
     content,
     origin = "web",
+    rank = 0,
     agenticMessageType,
     agenticOriginMessageId,
   }: {
@@ -181,6 +182,7 @@ export class ConversationFactory {
     conversation: ConversationWithoutContentType;
     content: string;
     origin?: UserMessageOrigin;
+    rank?: number;
     agenticMessageType?: "run_agent" | "agent_handover";
     agenticOriginMessageId?: string;
   }): Promise<{ messageRow: MessageModel; userMessage: UserMessageType }> {
@@ -201,7 +203,7 @@ export class ConversationFactory {
 
     const messageRow = await MessageModel.create({
       sId: generateRandomModelSId(),
-      rank: 0,
+      rank,
       conversationId: conversation.id,
       parentId: null,
       userMessageId: userMessageRow.id,
