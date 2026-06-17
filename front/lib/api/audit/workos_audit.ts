@@ -133,6 +133,7 @@ export const AUDIT_ACTIONS = [
   "datasource.reauthorized",
   // Files.
   "file.moved",
+  "frame.authorized_files_updated",
   // Audit Logs.
   "audit_log.viewed",
   "audit_log.export_configured",

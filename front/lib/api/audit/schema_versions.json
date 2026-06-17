@@ -28,6 +28,7 @@
   "dsync.connection_deleted": 3,
   "dust_mcp_server.settings_updated": 1,
   "file.moved": 1,
+  "frame.authorized_files_updated": 1,
   "invitation.revoked": 3,
   "invitation.role_updated": 3,
   "mcp_connection.created": 2,

@@ -1795,12 +1795,27 @@ export class FileResource extends BaseResource<FileModel> {
     const generatedByUserId =
       auth.user()?.id ?? auth.key()?.userModelId ?? null;
     if (!generatedByUserId) {
-      throw new Error("Cannot compute authorized file access without a user");
+      logger.error(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          hasApiKey: auth.key() != null,
+        },
+        "Cannot compute authorized file access without a userId"
+      );
+
+      throw new Error("Cannot compute authorized file access without a userId");
     }
 
     const generatedByUser =
       auth.user() ?? (await UserResource.fetchByModelId(generatedByUserId));
     if (!generatedByUser) {
+      logger.error(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          hasApiKey: auth.key() != null,
+        },
+        "Cannot compute authorized file access without a user"
+      );
       throw new Error("Cannot compute authorized file access without a user");
     }
 

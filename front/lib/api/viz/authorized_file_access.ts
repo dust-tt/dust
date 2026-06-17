@@ -5,6 +5,7 @@ import {
   isAllowlistStale,
   isAuthorizedFileRef,
 } from "@app/lib/api/viz/authorized_file_access_policy";
+import { emitFrameAuthorizedFilesUpdatedAuditLog } from "@app/lib/api/viz/frame_authorized_files_audit";
 import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -153,6 +154,13 @@ export async function ensureAuthorizedFileAccessForShare(
   }
 
   await frameFile.persistAuthorizedFileAccess(authorized);
+
+  emitFrameAuthorizedFilesUpdatedAuditLog(
+    auth,
+    frameFile,
+    authorized,
+    currentShareScope
+  );
 
   return new Ok(authorized);
 }
