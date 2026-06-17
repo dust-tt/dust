@@ -7,7 +7,6 @@ import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { heartbeat } from "@temporalio/activity";
-import groupBy from "lodash/groupBy";
 
 import {
   BATCH_SIZE,
@@ -49,33 +48,17 @@ async function fetchAuthMap(
 
 /**
  * Fetch the ConversationResource for each sandbox, keyed by conversation
- * ModelId. `ConversationResource.fetchByModelIds` is workspace-scoped, so we
- * group the conversation ids by workspace and issue one scoped query per
- * workspace (batched — never one query per conversation).
+ * ModelId. The reaper spans every workspace, so we issue a single
+ * cross-workspace query instead of one scoped query per workspace.
  */
 async function fetchConversationMap(
-  sandboxes: SandboxResource[],
-  authMap: Map<ModelId, Authenticator>
+  sandboxes: SandboxResource[]
 ): Promise<Map<ModelId, ConversationResource>> {
-  const sandboxesByWorkspace = groupBy(sandboxes, (s) => s.workspaceId);
-  const conversationMap = new Map<ModelId, ConversationResource>();
+  const conversations = await ConversationResource.dangerouslyFetchByModelIds(
+    sandboxes.map((s) => s.conversationId)
+  );
 
-  for (const [workspaceModelId, auth] of authMap) {
-    const conversationModelIds = (
-      sandboxesByWorkspace[workspaceModelId] ?? []
-    ).map((s) => s.conversationId);
-
-    const conversations = await ConversationResource.fetchByModelIds(
-      auth,
-      conversationModelIds,
-      { includeDeleted: true }
-    );
-    for (const conversation of conversations) {
-      conversationMap.set(conversation.id, conversation);
-    }
-  }
-
-  return conversationMap;
+  return new Map(conversations.map((c) => [c.id, c]));
 }
 
 /**
@@ -93,7 +76,7 @@ async function processSandboxes(
   errorMessage: string
 ): Promise<void> {
   const authMap = await fetchAuthMap(sandboxes);
-  const conversationMap = await fetchConversationMap(sandboxes, authMap);
+  const conversationMap = await fetchConversationMap(sandboxes);
 
   await concurrentExecutor(
     sandboxes,

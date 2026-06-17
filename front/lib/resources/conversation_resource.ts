@@ -263,14 +263,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     {
       transaction,
       excludeTest,
-      includeDeleted,
       updatedAfter,
       includeForkingData,
       loadSpaces,
     }: {
       transaction?: Transaction;
       excludeTest?: boolean;
-      includeDeleted?: boolean;
       updatedAfter?: Date;
       includeForkingData?: boolean;
       loadSpaces?: boolean;
@@ -282,11 +280,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const workspace = auth.getNonNullableWorkspace();
 
-    const excludedVisibilities: ConversationVisibility[] = [];
+    const excludedVisibilities: ConversationVisibility[] = ["deleted"];
 
-    if (!includeDeleted) {
-      excludedVisibilities.push("deleted");
-    }
     if (excludeTest) {
       excludedVisibilities.push("test");
     }
@@ -295,9 +290,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       where: {
         workspaceId: workspace.id,
         id: ids,
-        ...(excludedVisibilities.length > 0
-          ? { visibility: { [Op.notIn]: excludedVisibilities } }
-          : {}),
+        visibility: { [Op.notIn]: excludedVisibilities },
         ...(updatedAfter ? { updatedAt: { [Op.gte]: updatedAfter } } : {}),
       } as WhereOptions<ConversationModel>,
       ...(includeForkingData ? { include: this.getForkedFromInclude() } : {}),
@@ -327,6 +320,33 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           : null
       )
     );
+  }
+
+  /**
+   * Fetch conversations by ModelId across all workspaces (no auth scoping).
+   * Used by the sandbox reaper, which operates across every workspace and only
+   * needs the conversation rows to drive sandbox lifecycle transitions.
+   *
+   * / WORKSPACE_ISOLATION_BYPASS: The reaper operates across all workspaces.
+   */
+  static async dangerouslyFetchByModelIds(
+    ids: ModelId[]
+  ): Promise<ConversationResource[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    // The reaper needs to drive sandbox lifecycle transitions even for deleted
+    // conversations, so we include every visibility here.
+    const conversations = await this.model.findAll({
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+      where: {
+        id: ids,
+      },
+    });
+
+    return conversations.map((c) => this.fromModel(c, null));
   }
 
   get forkingData(): ConversationForkingDataType | undefined {
