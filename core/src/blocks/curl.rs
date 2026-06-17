@@ -10,6 +10,7 @@ use pest::iterators::Pair;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::sync::mpsc::UnboundedSender;
+use url::Url;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Error {
@@ -68,6 +69,16 @@ impl Curl {
             body_code: body_code.unwrap(),
         })
     }
+}
+
+fn is_reentrant_dust_url(url: &str) -> Result<bool> {
+    let parsed_url = Url::parse(url)?;
+    let host = match parsed_url.host_str() {
+        Some(host) => host.trim_end_matches('.').to_lowercase(),
+        None => return Ok(false),
+    };
+
+    Ok(host == "dust.tt" || host.ends_with(".dust.tt"))
 }
 
 #[async_trait]
@@ -131,7 +142,7 @@ impl Block for Curl {
 
         let url = replace_variables_in_string(&self.url, "url", &e)?;
 
-        if url.contains("https://dust.tt") || url.contains("https://www.dust.tt") {
+        if is_reentrant_dust_url(&url)? {
             Err(anyhow!(
                 "Curl block cannot be used for reentrant calls to Dust"
             ))?;
@@ -163,5 +174,32 @@ impl Block for Curl {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_reentrant_dust_url;
+
+    #[test]
+    fn detects_dust_hosts_case_insensitively() {
+        assert!(is_reentrant_dust_url("https://dust.tt/api").unwrap());
+        assert!(is_reentrant_dust_url("https://www.dust.tt/api").unwrap());
+        assert!(is_reentrant_dust_url("https://DUST.TT/api").unwrap());
+    }
+
+    #[test]
+    fn detects_dust_hosts_regardless_of_scheme_or_subdomain() {
+        assert!(is_reentrant_dust_url("http://dust.tt/api").unwrap());
+        assert!(is_reentrant_dust_url("https://front-edge.dust.tt/api").unwrap());
+        assert!(is_reentrant_dust_url("https://eu.front-edge.dust.tt/api").unwrap());
+        assert!(is_reentrant_dust_url("https://eu.dust.tt/api").unwrap());
+    }
+
+    #[test]
+    fn does_not_match_dust_tt_as_a_substring_outside_the_host() {
+        assert!(!is_reentrant_dust_url("https://notdust.tt/https://dust.tt").unwrap());
+        assert!(!is_reentrant_dust_url("https://dust.tt.evil.com/api").unwrap());
+        assert!(!is_reentrant_dust_url("https://dust.tt@evil.com/api").unwrap());
     }
 }
