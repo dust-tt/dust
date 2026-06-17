@@ -15,11 +15,12 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
     canRequestUpgrade,
     hasPendingUpgradeRequest,
     userBlockedReason,
+    willAutoUpgrade,
   } = useWorkspaceUsageStatus({
     owner,
   });
 
-  const showUpgradeCta = canRequestUpgrade || isAdmin;
+  const showUpgradeCta = !willAutoUpgrade && (canRequestUpgrade || isAdmin);
 
   if (userBlockedReason === "no_seat") {
     return (
@@ -52,6 +53,16 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
 
   const isBlocked = userBlockedReason === "user_cap_reached";
 
+  let message: string;
+  if (isBlocked) {
+    message = "You've reached your usage limit";
+  } else {
+    message = "You've used 80% of your usage limit";
+    if (willAutoUpgrade) {
+      message += ". You'll be automatically upgraded when you reach the limit";
+    }
+  }
+
   return (
     <div
       className={cn(
@@ -63,14 +74,12 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
       <span
         className={cn(
           "copy-sm grow truncate",
-          isBlocked
+          isBlocked && !willAutoUpgrade
             ? "text-warning-500 dark:text-warning-500-night"
             : "text-foreground dark:text-foreground-night"
         )}
       >
-        {isBlocked
-          ? "You've reached your usage limit"
-          : "You've used 80% of your usage limit"}
+        {message}
       </span>
       {showUpgradeCta && (
         <div className="shrink-0">

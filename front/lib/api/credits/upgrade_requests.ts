@@ -184,6 +184,7 @@ export async function createUpgradeRequest(
 export type UpgradeRequestAvailability = {
   canRequestUpgrade: boolean;
   hasPendingUpgradeRequest: boolean;
+  willAutoUpgrade: boolean;
 };
 
 export async function getUpgradeRequestAvailabilityForUser(
@@ -193,6 +194,7 @@ export async function getUpgradeRequestAvailabilityForUser(
   const unavailable: UpgradeRequestAvailability = {
     canRequestUpgrade: false,
     hasPendingUpgradeRequest: false,
+    willAutoUpgrade: false,
   };
 
   const user = auth.user();
@@ -200,15 +202,15 @@ export async function getUpgradeRequestAvailabilityForUser(
     return unavailable;
   }
 
-  if (!(await isMemberUpgradeRequestAllowed(auth))) {
-    return unavailable;
+  if (await isEligibleForAutoSeatUpgrade(auth)) {
+    return {
+      canRequestUpgrade: false,
+      hasPendingUpgradeRequest: false,
+      willAutoUpgrade: true,
+    };
   }
 
-  // When the workspace auto-upgrades seats and this member is eligible (their
-  // seat has an entitled higher tier), they'll be bumped automatically on
-  // limit — so don't surface the manual "request upgrade" CTA. Members already
-  // on the top entitled seat (or workspaces with auto-upgrade off) still see it.
-  if (await isEligibleForAutoSeatUpgrade(auth)) {
+  if (!(await isMemberUpgradeRequestAllowed(auth))) {
     return unavailable;
   }
 
@@ -219,6 +221,7 @@ export async function getUpgradeRequestAvailabilityForUser(
   return {
     canRequestUpgrade: true,
     hasPendingUpgradeRequest: pending !== null,
+    willAutoUpgrade: false,
   };
 }
 

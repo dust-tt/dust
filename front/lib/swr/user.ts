@@ -290,6 +290,7 @@ export function useWorkspaceUsageStatus({
     userBlockedReason: data?.userBlockedReason ?? null,
     canRequestUpgrade: data?.canRequestUpgrade ?? false,
     hasPendingUpgradeRequest: data?.hasPendingUpgradeRequest ?? false,
+    willAutoUpgrade: data?.willAutoUpgrade ?? false,
     isUsageStatusLoading: !error && !data && !disabled,
   };
 }

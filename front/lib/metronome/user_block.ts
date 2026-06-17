@@ -81,6 +81,7 @@ export type GetWorkspaceUsageStatusResponseBody = {
   userBlockedReason: UserBlockedReason | null;
   canRequestUpgrade: boolean;
   hasPendingUpgradeRequest: boolean;
+  willAutoUpgrade: boolean;
 };
 
 export type GetFairUseCreditsResponseBody = {

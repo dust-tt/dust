@@ -39,6 +39,7 @@ app.get(
         userBlockedReason: null,
         canRequestUpgrade: false,
         hasPendingUpgradeRequest: false,
+        willAutoUpgrade: false,
       });
     }
 
@@ -62,7 +63,7 @@ app.get(
     const programmaticCreditStatus: ProgrammaticCreditStatus =
       programmaticState === "depleted" ? "depleted" : "active";
 
-    const { canRequestUpgrade, hasPendingUpgradeRequest } =
+    const { canRequestUpgrade, hasPendingUpgradeRequest, willAutoUpgrade } =
       await getUpgradeRequestAvailabilityForUser(auth, {
         isNearOrAtLimit: userNearCreditLimit || userBlockedReason !== null,
       });
@@ -76,6 +77,7 @@ app.get(
       userBlockedReason,
       canRequestUpgrade,
       hasPendingUpgradeRequest,
+      willAutoUpgrade,
     });
   }
 );
