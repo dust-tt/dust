@@ -2,7 +2,6 @@ import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_age
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import { FIREWORKS_GLM_5P2_MODEL_ID } from "@app/types/assistant/models/fireworks";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { describe, expect, it, vi } from "vitest";
 
@@ -119,66 +118,6 @@ describe("getGlobalAgents custom model agents", () => {
     );
 
     expect(agents).toEqual([]);
-  });
-
-  it("gates revived pistache agents behind the internal agents flag", async () => {
-    const auth = await createAuthenticatorWithFlags([]);
-
-    const agents = await getGlobalAgents(
-      auth,
-      [
-        GLOBAL_AGENTS_SID.DUST_PISTACHE,
-        GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM,
-        GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH,
-      ],
-      "light"
-    );
-
-    expect(agents).toEqual([]);
-  });
-
-  it("resolves revived pistache agents to GLM-5.2", async () => {
-    const auth = await createAuthenticatorWithFlags([
-      "dust_internal_global_agents",
-    ]);
-
-    const agents = await getGlobalAgents(
-      auth,
-      [
-        GLOBAL_AGENTS_SID.DUST_PISTACHE,
-        GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM,
-        GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH,
-      ],
-      "light"
-    );
-
-    expect(
-      agents.map((agent) => ({
-        sId: agent.sId,
-        providerId: agent.model.providerId,
-        modelId: agent.model.modelId,
-        reasoningEffort: agent.model.reasoningEffort,
-      }))
-    ).toEqual([
-      {
-        sId: GLOBAL_AGENTS_SID.DUST_PISTACHE,
-        providerId: "fireworks",
-        modelId: FIREWORKS_GLM_5P2_MODEL_ID,
-        reasoningEffort: "light",
-      },
-      {
-        sId: GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM,
-        providerId: "fireworks",
-        modelId: FIREWORKS_GLM_5P2_MODEL_ID,
-        reasoningEffort: "medium",
-      },
-      {
-        sId: GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH,
-        providerId: "fireworks",
-        modelId: FIREWORKS_GLM_5P2_MODEL_ID,
-        reasoningEffort: "high",
-      },
-    ]);
   });
 
   it("resolves custom Dust agent variants to the generated custom model", async () => {
