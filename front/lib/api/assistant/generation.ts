@@ -264,7 +264,7 @@ function constructAttachmentsSectionNewFileExplorer({
   hasSandboxTools: boolean;
 }): string {
   const tabularFilesLine = hasSandboxTools
-    ? '- Tabular files (CSV, spreadsheets) attached as `<file>` tags are mounted under /files/conversation; analyze them with code via the sandbox. Tabular files attached as `<attachment isQueryable="true">` tags (for example tool-generated CSVs) remain queryable via the query tables tool;\n'
+    ? '- Files attached as `<file>` tags are mounted under `/files/conversation` when using the Computer. You must enable the Computer skill proactively as soon as the user uploads files, especially PDFs, spreadsheets, archives, or other files that require inspection, text extraction, code execution, or file manipulation. Tabular files attached as `<attachment isQueryable="true">` tags (for example tool-generated CSVs) remain queryable via the query tables tool;\n'
     : "- Tabular files (CSV, spreadsheets) are queryable via the query tables tool;\n";
 
   return (

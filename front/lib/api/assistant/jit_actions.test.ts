@@ -263,41 +263,66 @@ describe("getJITServers", () => {
     });
   });
 
-  describe("sandbox (Computer) auto-enable", () => {
-    it("auto-enables the sandbox system skill for any agent when sandbox_tools is on", async () => {
+  describe("sandbox (Computer) availability", () => {
+    it("auto-equips the sandbox skill for any agent when sandbox_tools is on", async () => {
       await FeatureFlagFactory.basic(auth, "sandbox_tools");
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
       // The test agent does not list the sandbox skill in its configuration.
-      const { systemSkills } = await SkillResource.listForAgentLoop(auth, {
-        agentConfiguration: agentConfig,
-        conversation,
-      });
-
-      expect(systemSkills.some((s) => s.sId === "sandbox")).toBe(true);
-    });
-
-    it("does not enable the sandbox skill when sandbox_tools is off", async () => {
-      const { systemSkills } = await SkillResource.listForAgentLoop(auth, {
-        agentConfiguration: agentConfig,
-        conversation,
-      });
+      const { enabledSkills, systemSkills, equippedSkills } =
+        await SkillResource.listForAgentLoop(auth, {
+          agentConfiguration: agentConfig,
+          conversation,
+        });
 
       expect(systemSkills.some((s) => s.sId === "sandbox")).toBe(false);
+      expect(enabledSkills.some((s) => s.sId === "sandbox")).toBe(false);
+      const computerSkill = equippedSkills.find((s) => s.sId === "sandbox");
+      expect(computerSkill).toBeDefined();
+      expect(computerSkill?.instructions).toBe("");
     });
 
-    it("keeps the sandbox skill enabled for nested sub-agent conversations", async () => {
+    it("does not equip or enable the sandbox skill when sandbox_tools is off", async () => {
+      const { enabledSkills, systemSkills, equippedSkills } =
+        await SkillResource.listForAgentLoop(auth, {
+          agentConfiguration: agentConfig,
+          conversation,
+        });
+
+      expect(systemSkills.some((s) => s.sId === "sandbox")).toBe(false);
+      expect(enabledSkills.some((s) => s.sId === "sandbox")).toBe(false);
+      expect(equippedSkills.some((s) => s.sId === "sandbox")).toBe(false);
+    });
+
+    it("keeps the sandbox skill available for nested sub-agent conversations", async () => {
       await FeatureFlagFactory.basic(auth, "sandbox_tools");
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
       // run_agent sub-agents run in a child conversation (depth > 0); they get
       // their own Computer too.
-      const { systemSkills } = await SkillResource.listForAgentLoop(auth, {
+      const { systemSkills, equippedSkills } =
+        await SkillResource.listForAgentLoop(auth, {
+          agentConfiguration: agentConfig,
+          conversation: { ...conversation, depth: 1 },
+        });
+
+      expect(systemSkills.some((s) => s.sId === "sandbox")).toBe(false);
+      expect(equippedSkills.some((s) => s.sId === "sandbox")).toBe(true);
+    });
+
+    it("includes skill_management so agents can enable the sandbox skill", async () => {
+      await FeatureFlagFactory.basic(auth, "sandbox_tools");
+      await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+
+      const { servers: jitServers } = await getJITServers(auth, {
         agentConfiguration: agentConfig,
-        conversation: { ...conversation, depth: 1 },
+        conversation,
+        attachments: [],
       });
 
-      expect(systemSkills.some((s) => s.sId === "sandbox")).toBe(true);
+      expect(
+        jitServers.some((server) => server.name === "skill_management")
+      ).toBe(true);
     });
   });
 

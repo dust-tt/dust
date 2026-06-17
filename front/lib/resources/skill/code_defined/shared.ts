@@ -24,10 +24,16 @@ interface BaseSkillDefinition {
   readonly mcpServers?: MCPServerDefinition[];
   readonly inheritAgentConfigurationDataSources?: boolean;
   readonly isRestricted?: (auth: Authenticator) => Promise<boolean>;
+  // Optional callback to auto-equip a code-defined skill for an agent loop (subject to
+  // isRestricted), without enabling it. Return true to make the skill available through
+  // skill_management__enable_skill.
+  readonly isAutoEquippedForAgentLoop?: (params: {
+    agentConfiguration: AgentConfigurationType;
+    conversation: ConversationWithoutContentType;
+  }) => boolean;
   // Optional callback to auto-enable a code-defined skill for an agent loop (subject to
   // isRestricted), without it being added to the agent configuration. Return true to enable.
-  // Used for skills that are on by default, either always (e.g. the Computer) or for a given
-  // context (e.g. Pods in a Pod conversation).
+  // Used for skills that are on by default for a given context (e.g. Pods in a Pod conversation).
   readonly isAutoEnabledForAgentLoop?: (params: {
     agentConfiguration: AgentConfigurationType;
     conversation: ConversationWithoutContentType;
