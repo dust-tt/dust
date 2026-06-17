@@ -193,9 +193,6 @@ export const FIREWORKS_GLM_5P2_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
-  availableIfOneOf: {
-    featureFlag: "fireworks_new_model_feature",
-  },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": false,
