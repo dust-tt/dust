@@ -1,10 +1,12 @@
 import { reconcileWorkspaceUserCreditStates } from "@app/lib/api/metronome/reconcile_credit_state";
+import { syncDefaultPoolCapAlertsForWorkspace } from "@app/lib/api/workspace/default_user_spend_limit";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import {
   hasContractSeatSubscription,
   syncSeatCount,
 } from "@app/lib/metronome/seats";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -90,6 +92,16 @@ export async function syncMetronomeSeatCountForWorkspace({
     metronomeCustomerId: workspace.metronomeCustomerId,
     metronomeContractId: subscription.metronomeContractId,
   });
+
+  // Ensure per-seat-type cap alerts exist with the current default pool limit.
+  // Best-effort: a failure here must not fail the seat sync.
+  const alertSyncResult = await syncDefaultPoolCapAlertsForWorkspace(workspace);
+  if (alertSyncResult.isErr()) {
+    logger.warn(
+      { workspaceId: workspace.sId, err: alertSyncResult.error.message },
+      "[SeatSync] Failed to sync default pool cap alerts; continuing"
+    );
+  }
 
   return new Ok({ status: "synced" });
 }

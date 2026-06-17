@@ -309,8 +309,7 @@ async function reconcileUser({
     // Pool-only values persisted in the DB; the live-inputs helper adds the
     // seat allowance back to get the total threshold.
     poolCapOverrideAwuCredits: membership.poolCapOverrideAwuCredits,
-    defaultPoolCapAwuCredits:
-      creditUsageConfig?.defaultPoolCapAwuCredits ?? null,
+    defaultPoolCapAwuCredits: creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
     metronomeCustomerId,
     metronomeContractId,
   });
@@ -433,7 +432,7 @@ export async function reconcileWorkspaceUserCreditStates({
   // credit-usage configuration (both pool-only values); the seat allowances
   // are needed to derive the total thresholds.
   let seatAllowances: Partial<Record<NormalizedPoolLimitSeatType, number>>;
-  let defaultPoolCapAwuCredits: number | null;
+  let defaultPoolCapAwuCredits: number;
   let memberships: MembershipResource[];
   try {
     seatAllowances = await getSeatAllowancesByNormalizedSeatType(workspaceId);
@@ -441,8 +440,7 @@ export async function reconcileWorkspaceUserCreditStates({
       await CreditUsageConfigurationResource.fetchByWorkspaceModelId(
         workspace.id
       );
-    defaultPoolCapAwuCredits =
-      creditUsageConfig?.defaultPoolCapAwuCredits ?? null;
+    defaultPoolCapAwuCredits = creditUsageConfig?.defaultPoolCapAwuCredits ?? 0;
     ({ memberships } = await MembershipResource.getActiveMemberships({
       workspace,
     }));
@@ -488,7 +486,7 @@ export async function reconcileWorkspaceUserCreditStates({
     const normalizedSeatType = normalizeToPoolLimitSeatType(seatType);
     const poolCapAwuCredits =
       membership.poolCapOverrideAwuCredits ??
-      (normalizedSeatType ? defaultPoolCapAwuCredits : null);
+      (normalizedSeatType ? defaultPoolCapAwuCredits : 0);
     const effectiveCapAwuCredits =
       poolCapAwuCredits !== null
         ? poolCapAwuCredits +

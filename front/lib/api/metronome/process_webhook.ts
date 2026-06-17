@@ -1098,8 +1098,8 @@ export async function processMetronomeWebhook({
     // carries no `credit_id` for a custom-field-filtered alert, so the user is
     // resolved from the alert's enforced `custom_field_filters` via its
     // `alert_id` (see `resolvePerUserCreditAlertUserId`); events for any other
-    // alert return null and are ignored. Two thresholds mirror the seat bands:
-    // `threshold === 0` → exhausted (→ capped), else → low balance.
+    // alert return null and are ignored. Two thresholds:
+    // `threshold === 0` → exhausted (→ capped), else → near-limit flag set.
     case "alerts.low_remaining_contract_credit_balance_reached": {
       const { alert_id: alertId, threshold } = event.properties;
       const userId = await resolvePerUserCreditAlertUserId({

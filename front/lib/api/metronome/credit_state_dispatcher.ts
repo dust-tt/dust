@@ -17,7 +17,6 @@ import { transitionUserCreditState } from "@app/lib/metronome/user_credit_state_
 import type { WorkspaceCreditEvent } from "@app/lib/metronome/workspace_credit_state_machine";
 import { transitionWorkspaceCreditState } from "@app/lib/metronome/workspace_credit_state_machine";
 import { notifyAdminsProgrammaticCapReached } from "@app/lib/notifications/workflows/programmatic-cap-reached";
-import { getPlanDefaultPoolLimitAwuCredits } from "@app/lib/plans/plan_codes";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -26,18 +25,17 @@ import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { MembershipSeatType } from "@app/types/memberships";
-import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
+
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 
 /**
  * Resolve the effective pool credit limit for a user.
  *
- * Priority: per-user Metronome override > per-seat-type workspace default > plan-tier fallback.
+ * Priority: per-user override > workspace default. When nothing is configured,
+ * defaults to 0 (no pool access). Unlimited pool is not supported.
  *
- * Returns `number | null`:
- *   - a number (including 0) when a limit is configured or implied by the plan
- *   - `null` when the user has unlimited pool access (enterprise with no limit)
+ * Returns `number`: the pool credit limit (0 = no pool access).
  */
 async function resolvePoolLimitForUser({
   workspace,
@@ -46,53 +44,32 @@ async function resolvePoolLimitForUser({
 }: {
   workspace: WorkspaceResource;
   membership: MembershipResource;
-  defaultPoolCapAwuCredits: number | null;
-}): Promise<number | null> {
-  const { metronomeCustomerId } = workspace;
-  if (!metronomeCustomerId) {
-    return null;
-  }
-
-  // Free seats have no pool access — their pool limit is always 0, regardless
-  // of any per-user cap override (a cap bounds personal spend; it is not a pool
-  // budget). This is the single source of "free has no pool": downstream
-  // routing (capped vs on_pool) then falls out of `poolLimit === 0` with no
-  // seat-type special-casing.
-  if (membership.seatType === "free") {
+  defaultPoolCapAwuCredits: number;
+}): Promise<number> {
+  if (!workspace.metronomeCustomerId) {
     return 0;
   }
-
-  // 1. Per-user override (pool-only, persisted on the membership).
+  // Seats with no pool access: free (personal lifetime credits only) and none
+  // (no seat at all). Exit early — no point inspecting overrides or defaults.
+  if (membership.seatType === "free" || membership.seatType === "none") {
+    return 0;
+  }
+  // Per-user override takes precedence over the workspace default.
   if (membership.poolCapOverrideAwuCredits !== null) {
     return membership.poolCapOverrideAwuCredits;
   }
-
-  // 2. Workspace default (pool-only, persisted on the credit-usage
-  // configuration), for pool-limit seat types.
-  const normalizedSeatType = normalizeToPoolLimitSeatType(membership.seatType);
-  if (normalizedSeatType && defaultPoolCapAwuCredits !== null) {
-    return defaultPoolCapAwuCredits;
-  }
-
-  // 3. Plan-tier fallback: enterprise → unlimited, everything else → 0.
-  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
-    workspace.id
-  );
-  const planCode = subscription?.getPlan().code;
-  if (!planCode) {
-    return 0;
-  }
-  return getPlanDefaultPoolLimitAwuCredits(planCode);
+  // All remaining seat types (pro/max/workspace) have pool access governed by
+  // the workspace default (0 = no pool if not configured).
+  return defaultPoolCapAwuCredits;
 }
 
 /**
- * Transition a single user from `user_seat` / `user_seat_low_balance` when
- * Metronome fires `alerts.low_remaining_seat_balance_reached` for that user.
+ * Transition a single user from `user_seat` when Metronome fires
+ * `alerts.low_remaining_seat_balance_reached` at threshold 0 for that user.
  *
- * Resolves the user's effective pool credit limit from Metronome alerts, then
- * falls back by plan tier (enterprise → unlimited, business → 0). The state
- * machine uses this limit to decide whether the user goes to `on_pool` or
- * `capped`.
+ * Resolves the user's effective pool credit limit (0 when none is configured).
+ * The state machine uses this limit to decide whether the user goes to
+ * `on_pool` or `capped`.
  */
 export async function dispatchSeatBalanceExhausted({
   workspace,
@@ -129,7 +106,7 @@ export async function dispatchSeatBalanceExhausted({
       workspace.id
     );
   const defaultPoolCapAwuCredits =
-    creditUsageConfig?.defaultPoolCapAwuCredits ?? null;
+    creditUsageConfig?.defaultPoolCapAwuCredits ?? 0;
 
   const poolLimitAwuCredits = await resolvePoolLimitForUser({
     workspace,
@@ -383,8 +360,7 @@ async function resolveLiveUserBalance({
     userId,
     seatType,
     poolCapOverrideAwuCredits,
-    defaultPoolCapAwuCredits:
-      creditUsageConfig?.defaultPoolCapAwuCredits ?? null,
+    defaultPoolCapAwuCredits: creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
     metronomeCustomerId,
     metronomeContractId,
   });

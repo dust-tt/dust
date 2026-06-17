@@ -89,7 +89,7 @@ export function UsageSettingsCard({
         <LockedSection locked={!hasPool}>
           <SettingsList.Row
             title="Default Workspace Credit Pool limit"
-            description="Define the Workspace Credit Pool credit limit for users in your workspace. This limit is added on top of each seat's built-in allowance. Can be overridden per user in the members table."
+            description="Define the Workspace Credit Pool credit limit for users in your workspace. This limit is added on top of each seat's built-in allowance. Set to 0 to prevent pool usage. Can be overridden per user in the members table."
             action={
               <div className="w-52">
                 <InputWithSave

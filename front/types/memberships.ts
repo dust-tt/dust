@@ -319,8 +319,14 @@ export function expectedUserCreditState({
 }): UserCreditState {
   const capKnown = perUserCapAwuCredits !== null && consumedAwuCredits !== null;
 
-  // Hard block first: consumption reached the per-user cap.
-  if (capKnown && consumedAwuCredits >= perUserCapAwuCredits) {
+  // Hard block: consumption reached the per-user cap. Only meaningful when
+  // cap > 0 — cap = 0 means "no pool access" (enforced by the state machine's
+  // seat_balance_exhausted routing), not a cap that users can "hit" by spending.
+  if (
+    capKnown &&
+    perUserCapAwuCredits > 0 &&
+    consumedAwuCredits >= perUserCapAwuCredits
+  ) {
     return "capped";
   }
 

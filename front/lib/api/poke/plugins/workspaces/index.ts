@@ -38,6 +38,7 @@ export * from "./run_reinforcement_workflow";
 export * from "./send_onboarding_conversation";
 export * from "./set_web_providers";
 export * from "./soft_delete_conversation";
+export * from "./sync_default_pool_cap_alerts";
 export * from "./sync_metronome_seats";
 export * from "./sync_missing_transcripts_date_range";
 export * from "./toggle_auto_create_space";
