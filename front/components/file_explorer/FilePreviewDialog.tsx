@@ -142,6 +142,39 @@ function DelimitedPreview({ content, mimeType }: DelimitedPreviewProps) {
   );
 }
 
+interface AudioPreviewProps {
+  fileUrl: string;
+  fileId: string | null;
+}
+
+function AudioPreview({ fileUrl, fileId }: AudioPreviewProps) {
+  const transcriptUrl = fileId ? `${fileUrl}&version=processed` : null;
+  const { fileContent: transcript } = useFileContent({
+    url: transcriptUrl,
+    disabled: !transcriptUrl,
+  });
+
+  return (
+    <div className="flex flex-col gap-4">
+      <audio controls className="w-full" src={fileUrl}>
+        Your browser does not support the audio element.
+      </audio>
+      {transcript ? (
+        <div className="flex flex-col gap-2">
+          <h4 className="text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
+            Transcript
+          </h4>
+          <Markdown content={transcript} isStreaming={false} />
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          No transcript available.
+        </p>
+      )}
+    </div>
+  );
+}
+
 interface FilePreviewDialogContentProps {
   category: ReturnType<typeof getFilePreviewConfig>["category"];
   entry: FileEntry;
@@ -197,13 +230,7 @@ function FilePreviewDialogContent({
     }
 
     case "audio":
-      return (
-        <div className="flex flex-col gap-4">
-          <audio controls className="w-full" src={fileUrl}>
-            Your browser does not support the audio element.
-          </audio>
-        </div>
-      );
+      return <AudioPreview fileUrl={fileUrl} fileId={entry.fileId} />;
 
     case "delimited":
       if (fileContent) {
