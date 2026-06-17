@@ -288,7 +288,7 @@ export const AWU_PRIORITY_PURCHASED_COMMIT = 300;
 // than via a recurring credit, so this constant is also the authoritative
 // source for the free seat's displayed allowance (see
 // `getAwuAllocationInfoForSeatType`).
-export const FREE_SEAT_LIFETIME_AWU_CREDITS = 300;
+export const FREE_SEAT_LIFETIME_AWU_CREDITS = 500;
 
 // Seat commit/credit priorities
 export const SEAT_PRIORITY_SUBSCRIPTION_COMMIT = 300;

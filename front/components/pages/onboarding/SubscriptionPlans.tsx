@@ -3,12 +3,12 @@ import {
   getSeatIconColorClass,
 } from "@app/components/workspace/seat_styles";
 import {
-  CP_FREE_PLAN_CREDITS,
   CP_MAX_SEAT_COST_MONTHLY,
   CP_MAX_SEAT_COST_YEARLY,
   CP_PRO_SEAT_COST_MONTHLY,
   CP_PRO_SEAT_COST_YEARLY,
 } from "@app/lib/client/subscription";
+import { FREE_SEAT_LIFETIME_AWU_CREDITS } from "@app/lib/metronome/constants";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { MembershipSeatType } from "@app/types/memberships";
 import type { BillingPeriod } from "@app/types/plan";
@@ -158,7 +158,7 @@ export function FreePlanCard({ onStartFree }: FreePlanCardProps) {
       icon={LayerSingle}
       seatType="free"
       name="Free"
-      credits={CP_FREE_PLAN_CREDITS.toLocaleString()}
+      credits={FREE_SEAT_LIFETIME_AWU_CREDITS.toLocaleString()}
       creditsLabel="credits"
       priceLabel="One-time · never expires"
       features={["Credits never reset", "Full access to every Dust feature"]}

@@ -1,3 +1,4 @@
+import { FREE_SEAT_LIFETIME_AWU_CREDITS } from "@app/lib/metronome/constants";
 import {
   MAX_SEAT_MONTHLY_AWU_CREDITS,
   PRO_SEAT_MONTHLY_AWU_CREDITS,
@@ -724,8 +725,8 @@ describe("UserCreditStateMachine — seat_balance_resolved", () => {
         ...baseCtx,
         seatType: "free",
         liveBalance: {
-          seatBalanceAwu: 300,
-          seatStartingBalanceAwu: 300,
+          seatBalanceAwu: FREE_SEAT_LIFETIME_AWU_CREDITS,
+          seatStartingBalanceAwu: FREE_SEAT_LIFETIME_AWU_CREDITS,
           perUserCapAwuCredits: null,
           consumedAwuCredits: null,
         },
@@ -747,7 +748,7 @@ describe("UserCreditStateMachine — seat_balance_resolved", () => {
         seatType: "free",
         liveBalance: {
           seatBalanceAwu: 40,
-          seatStartingBalanceAwu: 300,
+          seatStartingBalanceAwu: FREE_SEAT_LIFETIME_AWU_CREDITS,
           perUserCapAwuCredits: null,
           consumedAwuCredits: null,
         },
