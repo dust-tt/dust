@@ -4,7 +4,10 @@ import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_c
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import type { SlackAutoReadPattern } from "@connectors/types";
+import {
+  makeSlackAutoReadPatternRegex,
+  type SlackAutoReadPattern,
+} from "@connectors/types";
 import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
@@ -14,8 +17,8 @@ export function findMatchingChannelPatterns(
   autoReadChannelPatterns: SlackAutoReadPattern[]
 ): SlackAutoReadPattern[] {
   return autoReadChannelPatterns.filter((pattern) => {
-    const regex = new RegExp(`^${pattern.pattern}$`);
-    return regex.test(remoteChannelName);
+    const regex = makeSlackAutoReadPatternRegex(pattern.pattern);
+    return regex ? regex.test(remoteChannelName) : false;
   });
 }
 
