@@ -238,7 +238,7 @@ export async function syncConversation({
   const source = conversation.source?.type ?? null;
   const firstMessageAuthor = conversation.source?.author ?? null;
   const firstMessageContent = conversation.source?.body
-    ? stripNullBytes(htmlToMarkdown(conversation.source.body))
+    ? htmlToMarkdown(stripNullBytes(conversation.source.body))
     : null;
 
   markdown += `# ${convoTitle}\n\n`;
@@ -255,7 +255,7 @@ export async function syncConversation({
     (part: ConversationPartType) => {
       const messageAuthor = part.author;
       const messageContent = part.body
-        ? stripNullBytes(htmlToMarkdown(part.body))
+        ? htmlToMarkdown(stripNullBytes(part.body))
         : null;
       const type = part.part_type === "note" ? "Internal note" : "Message";
 
