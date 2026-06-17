@@ -721,7 +721,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_no_spa"
   | "dust_spa"
   | "fireworks_new_model_feature"
-  | "force_us_api_url"
   | "gemini_3_1_pro_feature"
   | "google_sheets_tool"
   | "gpt_image_2_feature"
