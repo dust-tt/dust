@@ -65,7 +65,11 @@ export function createProxyFetch(
   return async (input, init) => {
     // @ts-expect-error - globalThis.RequestInit and undici.RequestInit are structurally
     // compatible at runtime; the mismatch is only that DOM RequestInit lacks `dispatcher`.
-    const response = await undiciFetch(input, { ...init, ...proxyInit });
+    const response = await undiciFetch(input, {
+      ...init,
+      redirect: init?.redirect ?? "manual",
+      ...proxyInit,
+    });
     return toGlobalResponse(response);
   };
 }

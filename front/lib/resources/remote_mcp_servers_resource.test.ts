@@ -1,7 +1,10 @@
 import type { MCPToolType } from "@app/lib/api/mcp";
 import { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
-import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import {
+  RemoteMCPServerResource,
+  customHeadersForOAuthDiscoveryRequest,
+} from "@app/lib/resources/remote_mcp_servers_resource";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
@@ -28,6 +31,44 @@ describe("RemoteMCPServerResource.updateUrl", () => {
       server.id
     ))!;
     expect(refreshed.url).toBe("https://new.example.com/mcp");
+  });
+});
+
+describe("customHeadersForOAuthDiscoveryRequest", () => {
+  const customHeaders = {
+    Authorization: "Bearer secret-token",
+    "x-api-key": "secret-api-key",
+  };
+
+  it("keeps custom headers for same-origin OAuth discovery requests", () => {
+    expect(
+      customHeadersForOAuthDiscoveryRequest({
+        serverUrl: "https://mcp.example.com/sse",
+        requestUrl: "https://mcp.example.com/.well-known/oauth-protected-resource",
+        customHeaders,
+      })
+    ).toEqual(customHeaders);
+  });
+
+  it("strips custom headers for cross-origin authorization server discovery", () => {
+    expect(
+      customHeadersForOAuthDiscoveryRequest({
+        serverUrl: "https://mcp.example.com/sse",
+        requestUrl:
+          "https://attacker.example.com/.well-known/oauth-authorization-server",
+        customHeaders,
+      })
+    ).toBeUndefined();
+  });
+
+  it("strips custom headers for malformed request URLs", () => {
+    expect(
+      customHeadersForOAuthDiscoveryRequest({
+        serverUrl: "https://mcp.example.com/sse",
+        requestUrl: "not a url",
+        customHeaders,
+      })
+    ).toBeUndefined();
   });
 });
 

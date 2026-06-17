@@ -16,6 +16,7 @@ import type {
   MCPServerTypeWithViews,
   MCPServerViewType,
 } from "@app/lib/api/mcp";
+import { validateExternalUrl } from "@app/lib/api/url_safety";
 import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
@@ -113,17 +114,22 @@ export async function createRemoteMCPServer(
     };
   }
 
-  // Merge custom headers (if any) with Authorization when probing the server.
-  // Authorization from OAuth/sharedSecret takes precedence over custom headers.
-  const sanitizedCustomHeaders = headersArrayToRecord(customHeaders);
-  const headers = bearerToken
-    ? {
-        ...(sanitizedCustomHeaders ?? {}),
-        Authorization: `Bearer ${bearerToken}`,
-      }
-    : sanitizedCustomHeaders;
+  const urlError = await validateExternalUrl(url);
+  if (urlError) {
+    return new Err(new Error(urlError));
+  }
 
-  const metadataRes = await fetchRemoteServerMetaDataByURL(auth, url, headers);
+  // Keep the registration-time metadata probe credential-free for OAuth access
+  // tokens and shared secrets. Those credentials are persisted below and used
+  // for subsequent calls to the verified server, but must not be sent while the
+  // remote MCP server URL is still being probed for metadata.
+  const sanitizedCustomHeaders = headersArrayToRecord(customHeaders);
+
+  const metadataRes = await fetchRemoteServerMetaDataByURL(
+    auth,
+    url,
+    sanitizedCustomHeaders
+  );
   if (metadataRes.isErr()) {
     return metadataRes;
   }

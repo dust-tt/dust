@@ -58,6 +58,44 @@ import { Op } from "sequelize";
 
 const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
 
+function getFetchInputUrl(input: Parameters<FetchLike>[0]): string {
+  if (typeof input === "string") {
+    return input;
+  }
+
+  if (input instanceof URL) {
+    return input.toString();
+  }
+
+  if (input instanceof Request) {
+    return input.url;
+  }
+
+  return String(input);
+}
+
+export function customHeadersForOAuthDiscoveryRequest({
+  serverUrl,
+  requestUrl,
+  customHeaders,
+}: {
+  serverUrl: string;
+  requestUrl: string;
+  customHeaders?: Record<string, string>;
+}): Record<string, string> | undefined {
+  if (!customHeaders) {
+    return undefined;
+  }
+
+  try {
+    return new URL(requestUrl).origin === new URL(serverUrl).origin
+      ? customHeaders
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface RemoteMCPServerResource
@@ -439,13 +477,19 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     // See: https://github.com/modelcontextprotocol/inspector/blob/c2dbff738e582941d6b1af04c4b9f41c28305487/client/src/lib/oauth-state-machine.ts#L31
 
     const fetchFn: FetchLike = async (input, init?) => {
+      const requestUrl = getFetchInputUrl(input);
       // @ts-expect-error - globalThis.RequestInit and undici.RequestInit are structurally
       // compatible at runtime.
-      const response = await untrustedFetch(String(input), {
+      const response = await untrustedFetch(requestUrl, {
         ...init,
+        redirect: "manual",
         headers: {
           ...init?.headers,
-          ...customHeaders,
+          ...customHeadersForOAuthDiscoveryRequest({
+            serverUrl,
+            requestUrl,
+            customHeaders,
+          }),
         },
       });
       return toGlobalResponse(response);

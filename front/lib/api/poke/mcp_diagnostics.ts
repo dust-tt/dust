@@ -29,7 +29,10 @@ import { DustError } from "@app/lib/error";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import {
+  RemoteMCPServerResource,
+  customHeadersForOAuthDiscoveryRequest,
+} from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { OAuthAPIError } from "@app/types/oauth/oauth_api";
@@ -405,17 +408,40 @@ async function runOAuthTokenFetchCheck(
   };
 }
 
+function getFetchInputUrl(input: Parameters<FetchLike>[0]): string {
+  if (typeof input === "string") {
+    return input;
+  }
+
+  if (input instanceof URL) {
+    return input.toString();
+  }
+
+  if (input instanceof Request) {
+    return input.url;
+  }
+
+  return String(input);
+}
+
 function createMCPDiscoveryFetchFn(
+  serverUrl: string,
   customHeaders?: Record<string, string>
 ): FetchLike {
   return async (input, init?) => {
+    const requestUrl = getFetchInputUrl(input);
     // @ts-expect-error - globalThis.RequestInit and undici.RequestInit are structurally
     // compatible at runtime.
-    const response = await untrustedFetch(String(input), {
+    const response = await untrustedFetch(requestUrl, {
       ...init,
+      redirect: "manual",
       headers: {
         ...init?.headers,
-        ...customHeaders,
+        ...customHeadersForOAuthDiscoveryRequest({
+          serverUrl,
+          requestUrl,
+          customHeaders,
+        }),
       },
     });
     return toGlobalResponse(response);
@@ -445,7 +471,7 @@ async function probeOAuthDiscovery({
     DustError<"internal_error">
   >
 > {
-  const fetchFn = createMCPDiscoveryFetchFn(customHeaders);
+  const fetchFn = createMCPDiscoveryFetchFn(serverUrl, customHeaders);
 
   let authServerUrl = new URL("/", serverUrl);
   let resourceMetadata: OAuthProtectedResourceMetadata | null = null;
