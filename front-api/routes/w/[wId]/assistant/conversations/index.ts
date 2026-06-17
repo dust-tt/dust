@@ -5,6 +5,11 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import {
+  addSelectedConversationSpaces,
+  validateSelectableSpaces,
+} from "@app/lib/api/assistant/conversation/selected_spaces";
+import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -25,9 +30,11 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import uniq from "lodash/uniq";
 import { z } from "zod";
 
 import conversation from "./[cId]";
+import { apiErrorForSelectedSpaces } from "./[cId]/selected_spaces_errors";
 import bulkActions from "./bulk-actions";
 import search from "./search";
 import semanticSearch from "./semantic_search";
@@ -150,6 +157,10 @@ const app = workspaceApp();
  *                         type: array
  *                         items:
  *                           type: string
+ *                       selectedSpaceIds:
+ *                         type: array
+ *                         items:
+ *                           type: string
  *               contentFragments:
  *                 type: array
  *                 items:
@@ -157,6 +168,10 @@ const app = workspaceApp();
  *               metadata:
  *                 type: object
  *                 nullable: true
+ *               selectedSpaceIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
  *               skipToolsValidation:
  *                 type: boolean
  *     responses:
@@ -231,8 +246,24 @@ app.post(
       message,
       contentFragments,
       metadata,
+      selectedSpaceIds,
       skipToolsValidation,
     } = ctx.req.valid("json");
+
+    const allSelectedSpaceIds = uniq([
+      ...(selectedSpaceIds ?? []),
+      ...(message?.context.selectedSpaceIds ?? []),
+    ]);
+
+    if (allSelectedSpaceIds.length > 0) {
+      const validationResult = await validateSelectableSpaces(auth, {
+        podId: spaceId,
+        spaceIds: allSelectedSpaceIds,
+      });
+      if (validationResult.isErr()) {
+        return apiErrorForSelectedSpaces(ctx, validationResult.error);
+      }
+    }
 
     if (message?.context.clientSideMCPServerIds) {
       const hasServerAccess = await concurrentExecutor(
@@ -275,6 +306,23 @@ app.post(
       spaceId: spaceModelId,
       metadata,
     });
+
+    if (allSelectedSpaceIds.length > 0) {
+      const selectedSpacesResult = await addSelectedConversationSpaces(auth, {
+        conversation: newConversation,
+        spaceIds: allSelectedSpaceIds,
+        origin: "input_bar",
+        auditContext: getAuditLogContext(auth),
+      });
+      if (selectedSpacesResult.isErr()) {
+        return apiErrorForSelectedSpaces(ctx, selectedSpacesResult.error);
+      }
+
+      newConversation = {
+        ...newConversation,
+        requestedSpaceIds: selectedSpacesResult.value.effectiveAcl.spaceIds,
+      };
+    }
 
     if (newConversation.depth === 0) {
       await ConversationResource.upsertParticipation(auth, {
@@ -401,6 +449,7 @@ app.post(
           profilePictureUrl: message.context.profilePictureUrl,
           origin: message.context.origin ?? "web",
           clientSideMCPServerIds: message.context.clientSideMCPServerIds ?? [],
+          selectedSpaceIds: allSelectedSpaceIds,
         },
         skipToolsValidation: skipToolsValidation ?? false,
         modelSelection: message.modelSelection,

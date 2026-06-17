@@ -2,7 +2,9 @@ import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_re
 import { isSidekickConversation } from "@app/lib/api/actions/servers/helpers";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { addSelectedConversationSpaces } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
+import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -27,6 +29,7 @@ import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
+import { apiErrorForSelectedSpaces } from "../selected_spaces_errors";
 import message from "./[mId]";
 
 const ParamsSchema = z.object({
@@ -147,6 +150,10 @@ const app = workspaceApp();
  *                     items:
  *                       type: string
  *                   selectedMCPServerViewIds:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                   selectedSpaceIds:
  *                     type: array
  *                     items:
  *                       type: string
@@ -303,7 +310,24 @@ app.post(
       });
     }
 
-    const conversation = conversationRes.value;
+    let conversation = conversationRes.value;
+
+    if (context.selectedSpaceIds?.length) {
+      const selectedSpacesResult = await addSelectedConversationSpaces(auth, {
+        conversation,
+        spaceIds: context.selectedSpaceIds,
+        origin: "input_bar",
+        auditContext: getAuditLogContext(auth),
+      });
+      if (selectedSpacesResult.isErr()) {
+        return apiErrorForSelectedSpaces(ctx, selectedSpacesResult.error);
+      }
+
+      conversation = {
+        ...conversation,
+        requestedSpaceIds: selectedSpacesResult.value.effectiveAcl.spaceIds,
+      };
+    }
 
     if (context.selectedMCPServerViewIds?.length) {
       const mcpServerViews = await MCPServerViewResource.fetchByIds(
@@ -393,6 +417,7 @@ app.post(
         profilePictureUrl: context.profilePictureUrl ?? user.imageUrl,
         origin,
         clientSideMCPServerIds: context.clientSideMCPServerIds ?? [],
+        selectedSpaceIds: context.selectedSpaceIds ?? [],
       },
       skipToolsValidation: skipToolsValidation ?? false,
       modelSelection,
