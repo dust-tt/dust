@@ -79,6 +79,12 @@ export async function syncMetronomeBalanceThresholdAlert({
     );
   }
 
+  // Clear the in-app warning banner optimistically. The threshold changed so the
+  // previous "reached" state no longer applies — if the new threshold is still
+  // breached Metronome will re-evaluate immediately and the webhook will re-set
+  // the flag.
+  void clearWorkspaceBalanceThresholdReached(workspace.sId);
+
   return new Ok(undefined);
 }
 
