@@ -198,7 +198,7 @@ export async function getUpgradeRequestAvailabilityForUser(
   };
 
   const user = auth.user();
-  if (auth.isAdmin() || !isNearOrAtLimit || !user) {
+  if (!isNearOrAtLimit || !user) {
     return unavailable;
   }
 
@@ -208,6 +208,10 @@ export async function getUpgradeRequestAvailabilityForUser(
       hasPendingUpgradeRequest: false,
       willAutoUpgrade: true,
     };
+  }
+
+  if (auth.isAdmin()) {
+    return unavailable;
   }
 
   if (!(await isMemberUpgradeRequestAllowed(auth))) {
