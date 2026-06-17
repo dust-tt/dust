@@ -134,6 +134,7 @@ export function ConversationContainerVirtuoso({
       mentions: RichMention[],
       contentFragments: ContentFragmentsType,
       selectedMCPServerViewIds?: string[],
+      selectedSpaceIds?: string[],
       modelSelection?: ModelSelectionType
     ): Promise<Result<undefined, DustError>> => {
       if (isSubmitting) {
@@ -183,6 +184,7 @@ export function ConversationContainerVirtuoso({
           contentFragments,
           clientSideMCPServerIds,
           selectedMCPServerViewIds,
+          selectedSpaceIds,
           richMentions: mentions,
           modelSelection,
         },

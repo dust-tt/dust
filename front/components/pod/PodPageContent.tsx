@@ -100,6 +100,7 @@ export function PodPageContent({
       mentions: RichMention[],
       contentFragments: ContentFragmentsType,
       selectedMCPServerViewIds?: string[],
+      _selectedSpaceIds?: string[],
       modelSelection?: ModelSelectionType
     ): Promise<Result<undefined, DustError>> => {
       if (isSubmitting) {
