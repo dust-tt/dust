@@ -1405,7 +1405,9 @@ export async function getSessionFromBearerToken(
 
   return new Ok({
     type: "workos",
-    sessionId: "bearer-token",
+    sessionId: isString(workOSDecoded.value.sid)
+      ? workOSDecoded.value.sid
+      : "",
     user: {
       email: user.email,
       email_verified: true,

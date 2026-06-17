@@ -32,6 +32,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { validateRelativePath } from "@app/types/shared/utils/url_utils";
 import { createHono } from "@front-api/lib/hono";
+import { resolveSession } from "@front-api/middlewares/session_resolution";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { OauthException } from "@workos-inc/node";
@@ -154,7 +155,8 @@ const app = createHono();
  *     description: Revokes a WorkOS session by session ID. Used by the Chrome extension for logout.
  *     tags:
  *       - Private Authentication
- *     security: []
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -748,11 +750,26 @@ async function handleLogout(ctx: Context) {
  * Used by the Chrome extension which authenticates with Bearer tokens.
  */
 async function handleRevokeSession(ctx: Context) {
+  const session = await resolveSession(ctx);
+  if (session instanceof Response) {
+    return session;
+  }
+
   const body = await ctx.req.json().catch(() => ({}));
   const { session_id } = body;
 
   if (!session_id || !isString(session_id)) {
     return ctx.json({ error: "Invalid session_id" }, 400);
+  }
+
+  if (session.sessionId !== session_id) {
+    return apiError(ctx, {
+      status_code: 403,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Cannot revoke a session other than the authenticated one.",
+      },
+    });
   }
 
   try {
