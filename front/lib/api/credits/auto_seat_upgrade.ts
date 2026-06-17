@@ -199,7 +199,6 @@ export async function maybeAutoUpgradeSeat({
     workspace: lightWorkspace,
     newSeatType,
     author: "no-author",
-    skipSeatLimitCheck: true,
   });
   if (result.isErr()) {
     logger.warn(

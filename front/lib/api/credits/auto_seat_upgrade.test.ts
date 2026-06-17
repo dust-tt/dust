@@ -226,7 +226,6 @@ describe("maybeAutoUpgradeSeat", () => {
       expect.objectContaining({
         newSeatType: "max",
         author: "no-author",
-        skipSeatLimitCheck: true,
       })
     );
     expect(workosAudit.emitAuditLogEventDirect).toHaveBeenCalledWith(
