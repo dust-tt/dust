@@ -142,6 +142,7 @@ describe("syncSeatCount min clamping", () => {
       metronomeCustomerId: "cus_1",
       contractId: "con_1",
       workspace: WORKSPACE,
+      planCode: "CP_BUSINESS_PLAN",
       contract: makeContract([
         { id: "sub_ws", productId: "ws-product", mode: "QUANTITY_ONLY" },
       ]),
@@ -174,6 +175,7 @@ describe("syncSeatCount min clamping", () => {
       metronomeCustomerId: "cus_1",
       contractId: "con_1",
       workspace: WORKSPACE,
+      planCode: "CP_BUSINESS_PLAN",
       contract: makeContract([
         { id: "sub_ws", productId: "ws-product", mode: "QUANTITY_ONLY" },
       ]),
@@ -202,6 +204,7 @@ describe("syncSeatCount min clamping", () => {
       metronomeCustomerId: "cus_1",
       contractId: "con_1",
       workspace: WORKSPACE,
+      planCode: "CP_BUSINESS_PLAN",
       contract: makeContract([
         { id: "sub_pro", productId: "pro-product", mode: "SEAT_BASED" },
       ]),
@@ -241,6 +244,7 @@ describe("syncSeatCount min clamping", () => {
       metronomeCustomerId: "cus_1",
       contractId: "con_1",
       workspace: WORKSPACE,
+      planCode: "CP_BUSINESS_PLAN",
       contract: makeContract([
         { id: "sub_pro", productId: "pro-product", mode: "SEAT_BASED" },
       ]),
@@ -282,6 +286,7 @@ describe("syncSeatCount min clamping", () => {
       metronomeCustomerId: "cus_1",
       contractId: "con_1",
       workspace: WORKSPACE,
+      planCode: "CP_BUSINESS_PLAN",
       contract: makeContract([
         { id: "sub_pro", productId: "pro-product", mode: "SEAT_BASED" },
       ]),
@@ -319,6 +324,7 @@ describe("syncSeatCount min clamping", () => {
       metronomeCustomerId: "cus_1",
       contractId: "con_1",
       workspace: WORKSPACE,
+      planCode: "CP_BUSINESS_PLAN",
       contract: makeContract([
         { id: "sub_pro", productId: "pro-product", mode: "SEAT_BASED" },
       ]),

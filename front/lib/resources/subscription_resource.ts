@@ -947,7 +947,8 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         metronome.metronomeCustomerId,
         metronome.metronomeContractId,
         renderLightWorkspaceType({ workspace: workspaceResource }),
-        metronome.startingAt
+        metronome.startingAt,
+        plan.code
       );
 
       if (syncResult.isErr()) {

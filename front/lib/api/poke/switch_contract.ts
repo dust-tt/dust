@@ -901,7 +901,8 @@ export async function switchContract({
     metronomeCustomerId,
     metronomeContractId,
     ownerLight,
-    alignedStart.toISOString()
+    alignedStart.toISOString(),
+    body.planCode
   );
   if (resyncResult.isErr()) {
     return new Err(
