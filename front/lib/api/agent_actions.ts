@@ -38,14 +38,14 @@ async function getVisibleAgentIds(auth: Authenticator): Promise<ModelId[]> {
  */
 async function buildVisibilityFilter(auth: Authenticator): Promise<{
   clause: string;
-  replacements: Record<string, unknown>;
+  params: Record<string, unknown>;
 }> {
   const workspaceId = auth.getNonNullableWorkspace().id;
 
   if (auth.isAdmin()) {
     return {
       clause: `ac."status" = 'active' AND ac."workspaceId" = :workspace_id`,
-      replacements: { workspace_id: workspaceId },
+      params: { workspace_id: workspaceId },
     };
   }
 
@@ -55,7 +55,7 @@ async function buildVisibilityFilter(auth: Authenticator): Promise<{
     clause: `ac."status" = 'active'
         AND ac."workspaceId" = :workspace_id
         AND (ac."scope" = 'visible' OR ac."id" IN (:agent_ids))`,
-    replacements: {
+    params: {
       workspace_id: workspaceId,
       agent_ids: agentIds.length > 0 ? agentIds : [-1],
     },
@@ -104,7 +104,7 @@ export async function getToolsUsage(
 
   const replicaDb = getFrontReplicaDbConnection();
 
-  const { clause, replacements } = await buildVisibilityFilter(auth);
+  const { clause, params } = await buildVisibilityFilter(auth);
 
 
 
@@ -125,7 +125,7 @@ export async function getToolsUsage(
     WHERE ${clause}
     GROUP BY msv."internalMCPServerId", msv."remoteMCPServerId"
     `,
-    { replacements, type: QueryTypes.SELECT }
+    { replacements: params, type: QueryTypes.SELECT }
   );
 
   const result: MCPServersUsageByAgent = {};
