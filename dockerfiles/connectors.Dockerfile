@@ -1,5 +1,9 @@
 FROM node:24.14.0 as connectors
 
+RUN apt-get update && \
+  apt-get install -y postgresql-client && \
+  rm -rf /var/lib/apt/lists/*
+
 RUN npm install -g npm@11.11.0
 
 WORKDIR /app
