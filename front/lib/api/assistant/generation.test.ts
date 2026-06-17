@@ -555,6 +555,31 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).toContain("especially PDFs");
   });
 
+  it("should point legacy attachment prompts to the Computer when sandbox tools are available", () => {
+    const params = {
+      userMessage: userMessage1,
+      agentConfiguration: agentConfig1,
+      model: modelConfig,
+      hasAvailableActions: true,
+      agentsList: null,
+      systemSkills: [],
+      enabledSkills: [],
+      equippedSkills: [],
+      isNewFileExplorer: false,
+      hasSandboxTools: true,
+    };
+
+    const sections = constructPromptMultiActions(authenticator1, params);
+    const text = systemPromptToText(sections);
+
+    expect(text).toContain(
+      "When using the Computer, conversation files are mounted under `/files/conversation`."
+    );
+    expect(text).toContain(
+      "You must enable the Computer skill proactively as soon as the user uploads files"
+    );
+  });
+
   it("should not mention the Computer file mount when sandbox tools are unavailable", () => {
     const params = {
       userMessage: userMessage1,
