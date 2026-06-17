@@ -127,6 +127,7 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       defaultPoolCapAwuCredits: number | null;
       programmaticMonthlyCapAwuCredits: number | null;
       autoSeatUpgradeEnabled: boolean;
+      balanceThresholdAwuCredits: number | null;
     }>,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
@@ -190,6 +191,7 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       upgradeRequestEmailEnabled: this.upgradeRequestEmailEnabled,
       defaultPoolCapAwuCredits: this.defaultPoolCapAwuCredits,
       programmaticMonthlyCapAwuCredits: this.programmaticMonthlyCapAwuCredits,
+      balanceThresholdAwuCredits: this.balanceThresholdAwuCredits,
     };
   }
 
@@ -204,6 +206,7 @@ export class CreditUsageConfigurationResource extends BaseResource<CreditUsageCo
       upgradeRequestEmailEnabled: String(this.upgradeRequestEmailEnabled),
       defaultPoolCapAwuCredits: this.defaultPoolCapAwuCredits,
       programmaticMonthlyCapAwuCredits: this.programmaticMonthlyCapAwuCredits,
+      balanceThresholdAwuCredits: this.balanceThresholdAwuCredits,
     };
   }
 }

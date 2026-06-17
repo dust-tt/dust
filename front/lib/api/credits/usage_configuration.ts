@@ -1,7 +1,4 @@
-import {
-  getWorkspaceBalanceThreshold,
-  syncMetronomeBalanceThresholdAlert,
-} from "@app/lib/api/credits/balance_threshold_alert";
+import { syncMetronomeBalanceThresholdAlert } from "@app/lib/api/credits/balance_threshold_alert";
 import type { Authenticator } from "@app/lib/auth";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import type { Result } from "@app/types/shared/result";
@@ -9,9 +6,9 @@ import { Err, Ok } from "@app/types/shared/result";
 import { z } from "zod";
 
 // Combined workspace-level usage configuration surfaced to admins on the Usage
-// page. `balanceThresholdCredits` is derived from the workspace's Metronome
-// balance-threshold alert (see `balance_threshold_alert.ts`); the upgrade-request
-// toggles are stored on the `credit_usage_configurations` row.
+// page. All fields are stored on the `credit_usage_configurations` row:
+// `balanceThresholdCredits` is the source of truth from which the Metronome
+// balance-threshold alert is derived (see `balance_threshold_alert.ts`).
 export type CreditUsageConfigurationBody = {
   // Credit balance (in AWU credits) below which workspace admins are emailed.
   // `null` means no threshold is configured (the warning is off).
@@ -51,20 +48,18 @@ const DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED = true;
 const DEFAULT_AUTO_SEAT_UPGRADE_ENABLED = false;
 
 /**
- * Read the full usage configuration for a workspace: the Metronome-derived
- * balance threshold plus the upgrade-request toggles. Toggles fall back to their
- * defaults when no configuration row exists yet.
+ * Read the full usage configuration for a workspace: the balance threshold plus
+ * the upgrade-request toggles, all read from the credit-usage configuration row.
+ * Toggles fall back to their defaults when no configuration row exists yet.
  */
 export async function getUsageConfiguration(
   auth: Authenticator
 ): Promise<CreditUsageConfigurationBody> {
-  const [balanceThresholdCredits, config] = await Promise.all([
-    getWorkspaceBalanceThreshold(auth),
-    CreditUsageConfigurationResource.fetchByWorkspaceId(auth),
-  ]);
+  const config =
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
 
   return {
-    balanceThresholdCredits,
+    balanceThresholdCredits: config?.balanceThresholdAwuCredits ?? null,
     allowMemberUpgradeRequests:
       config?.allowMemberUpgradeRequests ??
       DEFAULT_ALLOW_MEMBER_UPGRADE_REQUESTS,
