@@ -7876,6 +7876,73 @@
         }
       }
     },
+    "/api/w/{wId}/assistant/conversations/{cId}/selectable_spaces": {
+      "get": {
+        "summary": "List selectable Spaces",
+        "description": "Lists regular Spaces the user can select for a conversation, with current selection state.",
+        "tags": [
+          "Private Conversations"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "wId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "cId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Selectable Spaces for the conversation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "spaces": {
+                      "type": "array",
+                      "items": {
+                        "allOf": [
+                          {
+                            "$ref": "#/components/schemas/PrivateSpace"
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "selected": {
+                                "type": "boolean"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    },
     "/api/w/{wId}/assistant/conversations/{cId}/selected_spaces": {
       "post": {
         "summary": "Select Spaces for a conversation",
