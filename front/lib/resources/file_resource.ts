@@ -1913,17 +1913,6 @@ export class FileResource extends BaseResource<FileModel> {
   ): Promise<void> {
     const shareableFile = await this.getShareableFile();
 
-    await FileResource.authorizedFileAccessModel.update(
-      { revokedAt: allowedAt },
-      {
-        where: {
-          shareableFileId: shareableFile.id,
-          workspaceId: this.workspaceId,
-          revokedAt: null,
-        },
-      }
-    );
-
     const baseRow = {
       workspaceId: this.workspaceId,
       shareableFileId: shareableFile.id,
@@ -1934,7 +1923,7 @@ export class FileResource extends BaseResource<FileModel> {
       revokedAt: null,
     };
 
-    await FileResource.authorizedFileAccessModel.bulkCreate([
+    const rows = [
       ...computed.refs.map((ref) => ({
         ...baseRow,
         kind: ref.kind,
@@ -1950,7 +1939,18 @@ export class FileResource extends BaseResource<FileModel> {
         fileName: null,
         legacyPath: null,
       })),
-    ]);
+    ];
+
+    await FileResource.authorizedFileAccessModel.destroy({
+      where: {
+        shareableFileId: shareableFile.id,
+        workspaceId: this.workspaceId,
+      },
+    });
+
+    if (rows.length > 0) {
+      await FileResource.authorizedFileAccessModel.bulkCreate(rows);
+    }
   }
 
   private async readOriginalContent(

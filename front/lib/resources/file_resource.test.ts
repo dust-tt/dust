@@ -1150,7 +1150,7 @@ describe("FileResource", () => {
       });
     });
 
-    it("refreshAuthorizedFileAccess revokes prior rows and persists the refreshed allowlist", async () => {
+    it("refreshAuthorizedFileAccess replaces prior rows with the refreshed allowlist", async () => {
       const { authenticator: auth } = await createResourceTest({});
 
       const conversation = await ConversationFactory.create(auth, {
@@ -1204,15 +1204,12 @@ describe("FileResource", () => {
           shareableFileId: shareableFile!.id,
           workspaceId: frameFile.workspaceId,
         },
-        order: [["allowedAt", "ASC"]],
       });
 
-      expect(rows).toHaveLength(2);
-      expect(rows[0]?.revokedAt).not.toBeNull();
-      expect(rows[0]?.ref).toBe("fil_OLDREF0001");
-      expect(rows[1]?.revokedAt).toBeNull();
-      expect(rows[1]?.kind).toBe("unverifiable");
-      expect(rows[1]?.ref).toBe("fil_ABCDEFGHIJ");
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.revokedAt).toBeNull();
+      expect(rows[0]?.kind).toBe("unverifiable");
+      expect(rows[0]?.ref).toBe("fil_ABCDEFGHIJ");
     });
 
     it("uploadFrameContent blocks when static refs cannot be verified", async () => {
