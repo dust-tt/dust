@@ -1,4 +1,4 @@
-import { getLLM } from "@app/lib/api/llm";
+import { getStreamLLM } from "@app/lib/api/llm";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -101,7 +101,7 @@ export async function evaluateWithJudge(
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,
   });
-  const llm = await getLLM(auth, {
+  const llm = await getStreamLLM(auth, {
     credentials,
     modelId: "gpt-5-mini",
     temperature: 0.2,

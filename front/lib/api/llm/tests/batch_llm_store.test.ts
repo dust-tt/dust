@@ -1,4 +1,4 @@
-import { getLegacyLLM, getLLM } from "@app/lib/api/llm";
+import { getLegacyLLM, getStreamLLM } from "@app/lib/api/llm";
 import type { LlmConversationOptions } from "@app/lib/api/llm/batch_llm";
 import {
   downloadBatchResultFromLlm,
@@ -81,7 +81,7 @@ async function setupTest(surface: "stream" | "batch" = "batch"): Promise<{
   const llm =
     surface === "batch"
       ? await getLegacyLLM(authenticator, llmParameters)
-      : await getLLM(authenticator, llmParameters);
+      : await getStreamLLM(authenticator, llmParameters);
   if (!llm) {
     throw new Error("Failed to create LLM");
   }

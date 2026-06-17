@@ -221,7 +221,7 @@ export async function getLegacyLLM(
 
 // Resolves an LLM for the streaming surface: the new `StreamEndpoint`-backed
 // router when enabled, falling back to the legacy per-provider clients.
-export async function getLLM(
+export async function getStreamLLM(
   auth: Authenticator,
   llmParameters: LLMParameters
 ): Promise<LLM | null> {

@@ -2,7 +2,7 @@ import {
   formatAvailableTools,
   formatMcpDescription,
 } from "@app/lib/api/assistant/global_agents/sidekick_context";
-import { getLegacyLLM, getLLM } from "@app/lib/api/llm";
+import { getLegacyLLM, getStreamLLM } from "@app/lib/api/llm";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { BatchResultWithRunIds } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
@@ -317,7 +317,7 @@ async function getLLMInstance(
   const llm =
     surface === "batch"
       ? await getLegacyLLM(auth, llmParameters)
-      : await getLLM(auth, llmParameters);
+      : await getStreamLLM(auth, llmParameters);
   if (!llm) {
     throw new Error(
       `Failed to initialize LLM for reinforcement eval (model: ${MODEL_ID})`

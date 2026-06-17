@@ -1,4 +1,4 @@
-import { getLLM } from "@app/lib/api/llm";
+import { getStreamLLM } from "@app/lib/api/llm";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
@@ -27,7 +27,7 @@ export async function executeSidekick(
   const credentials = await getLlmCredentials(auth, {
     skipEmbeddingApiKeyRequirement: true,
   });
-  const llm = await getLLM(auth, {
+  const llm = await getStreamLLM(auth, {
     credentials,
     modelId: config.model.modelId,
     temperature: config.model.temperature ?? null,

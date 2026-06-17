@@ -511,7 +511,7 @@ abstract class BaseTransition extends LLM {
 
 /**
  * Streaming transition: wraps a new `StreamEndpoint` and delegates streaming and
- * event parsing to it. Returned by `getLLM` for the streaming surface.
+ * event parsing to it. Returned by `getStreamLLM` for the streaming surface.
  */
 export class StreamEndpointTransition extends BaseTransition {
   private model: StreamEndpoint;
