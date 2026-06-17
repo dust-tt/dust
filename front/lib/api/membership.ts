@@ -571,11 +571,20 @@ export async function updateMembershipSeatAndTrack({
 
   const previousSeatType = membership.seatType;
 
-  // `free` is a one-shot starter tier — only assignable when creating a
-  // user's first membership in the workspace. Any subsequent change to
-  // free is rejected, even for users who previously held a free seat
-  // (no twice-free). A free→free noop is unaffected: nothing is written.
-  if (newSeatType === "free" && previousSeatType !== "free") {
+  // `free` is a one-shot starter tier — only assignable when the user has
+  // never held a real seat in this workspace. `none` is not a real seat:
+  // a user whose active seat is `none` and who has no prior real-seat history
+  // is still eligible for `free`. A free→free noop is unaffected.
+  if (newSeatType === "free" && previousSeatType === "none") {
+    const hasPreviousMembership =
+      await MembershipResource.hasAnyMembershipOfUserInWorkspace({
+        user,
+        workspace,
+      });
+    if (hasPreviousMembership) {
+      return new Err({ type: "free_seat_not_allowed" });
+    }
+  } else if (newSeatType === "free" && previousSeatType !== "free") {
     return new Err({ type: "free_seat_not_allowed" });
   }
 
