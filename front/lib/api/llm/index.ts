@@ -18,7 +18,10 @@ import { isOpenAIResponsesWhitelistedModelId } from "@app/lib/api/llm/clients/op
 import { XaiLLM } from "@app/lib/api/llm/clients/xai";
 import { isXaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import type { LLM } from "@app/lib/api/llm/llm";
-import { StreamEndpointTransition } from "@app/lib/api/llm/transitionLLM";
+import {
+  BatchEndpointTransition,
+  StreamEndpointTransition,
+} from "@app/lib/api/llm/transitionLLM";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
 import {
   config as multiRegionsConfig,
@@ -27,6 +30,7 @@ import {
 import { isEnterpriseOrDust } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { getBatchEndpoints } from "@app/lib/llms/batch";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { getStreamEndpoints } from "@app/lib/llms/stream";
 import type {
@@ -246,6 +250,33 @@ export async function getStreamLLM(
   return legacyLLM;
 }
 
+// Resolves an LLM for the batch surface: the new `BatchEndpoint`-backed router
+// when enabled, falling back to the legacy per-provider clients.
+export async function getBatchLLM(
+  auth: Authenticator,
+  llmParameters: LLMParameters
+): Promise<LLM | null> {
+  const modelConfig = getModelConfigByModelId(llmParameters.modelId);
+  if (!modelConfig) {
+    return null;
+  }
+  const featureFlags = await getFeatureFlags(auth);
+
+  const batchEndpointLLM = await getBatchEndpointLLM(
+    auth,
+    featureFlags,
+    llmParameters
+  );
+
+  if (featureFlags.includes("use_new_llm_router") && batchEndpointLLM) {
+    return batchEndpointLLM;
+  }
+
+  const legacyLLM = await getLegacyLLM(auth, llmParameters);
+
+  return legacyLLM;
+}
+
 function getRegionFilter(auth: Authenticator): ValueFilter<Region> | undefined {
   const dustRegion = multiRegionsConfig.getCurrentRegion();
 
@@ -284,11 +315,21 @@ const REGION_MAPPING: Record<RegionType, Region> = {
   "us-central1": GLOBAL,
 };
 
-function getStreamEndpointLLM(
+// Selects the endpoint best matching the current region for the given model,
+// shared by the stream and batch resolvers. The only thing that varies between
+// the two surfaces is which registry of endpoints we filter over.
+function selectPreferredEndpoint<T extends { region: Region }>(
   auth: Authenticator,
   featureFlags: WhitelistableFeature[],
-  llmParameters: LLMParameters
-): LLM | null {
+  llmParameters: LLMParameters,
+  getEndpoints: (
+    workspaceConfiguration: {
+      featureFlags: WhitelistableFeature[];
+      enterprise: boolean;
+    },
+    inputCondition: Where<WorkspaceFilter>
+  ) => T[]
+): T | null {
   // llmParameters.modelId is ModelIdType — narrow before filtering.
   if (!isModelId(llmParameters.modelId)) {
     return null;
@@ -296,7 +337,7 @@ function getStreamEndpointLLM(
 
   const workspaceFilter = getWorkspaceFilter(auth);
 
-  const endpoints = getStreamEndpoints(
+  const endpoints = getEndpoints(
     {
       featureFlags,
       enterprise: isEnterpriseOrDust(auth.getNonNullablePlan()),
@@ -316,11 +357,43 @@ function getStreamEndpointLLM(
     preferredRegion
   );
 
-  const endpoint = sortedEndpoints[0];
+  return sortedEndpoints[0] ?? null;
+}
+
+function getStreamEndpointLLM(
+  auth: Authenticator,
+  featureFlags: WhitelistableFeature[],
+  llmParameters: LLMParameters
+): LLM | null {
+  const endpoint = selectPreferredEndpoint(
+    auth,
+    featureFlags,
+    llmParameters,
+    getStreamEndpoints
+  );
 
   if (!endpoint) {
     return null;
   }
 
   return new StreamEndpointTransition(auth, llmParameters, endpoint);
+}
+
+export async function getBatchEndpointLLM(
+  auth: Authenticator,
+  featureFlags: WhitelistableFeature[],
+  llmParameters: LLMParameters
+): Promise<LLM | null> {
+  const endpoint = selectPreferredEndpoint(
+    auth,
+    featureFlags,
+    llmParameters,
+    getBatchEndpoints
+  );
+
+  if (!endpoint) {
+    return null;
+  }
+
+  return new BatchEndpointTransition(auth, llmParameters, endpoint);
 }
