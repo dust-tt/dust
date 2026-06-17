@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import { registerSlackWebhookRouterEntry } from "@app/lib/api/data_sources";
+import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import { deleteNovuSlackChannelSetup } from "@app/lib/notifications";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -79,6 +80,20 @@ app.post(
     }
 
     const body = ctx.req.valid("json");
+
+    const checkConnectionOwnershipRes = await checkConnectionOwnership(
+      auth,
+      body.connectionId
+    );
+    if (checkConnectionOwnershipRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Failed to get the access token for the connector.",
+        },
+      });
+    }
 
     const connectorsAPI = new ConnectorsAPI(
       config.getConnectorsAPIConfig(),
