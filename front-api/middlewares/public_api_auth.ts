@@ -4,6 +4,7 @@ import {
   getApiKeyNameFromHeaders,
   getSessionFromBearerToken,
 } from "@app/lib/auth";
+import { sessionSatisfiesWorkspaceSsoEnforcement } from "@app/lib/iam/session";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getClientIp } from "@app/lib/utils/request";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
@@ -140,6 +141,22 @@ export const publicApiAuth = createMiddleware<PublicApiCtx>(
     const session = bearerRes.value;
     if (session?.authenticationMethod === "bearer") {
       const auth = await Authenticator.fromSession(session, wId);
+
+      if (
+        !sessionSatisfiesWorkspaceSsoEnforcement({
+          session,
+          workspace: auth.workspace(),
+        })
+      ) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "sso_enforced",
+            message:
+              "Access requires Single Sign-On (SSO) authentication. Use your SSO provider to sign in.",
+          },
+        });
+      }
 
       if (auth.user() === null) {
         return apiError(ctx, {

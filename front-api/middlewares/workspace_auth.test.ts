@@ -32,6 +32,31 @@ describe("workspaceAuth factory — default options", () => {
 
     expect(response.status).toBe(200);
   });
+
+  it("returns 403 when SSO is enforced and the session is not SSO-authenticated", async () => {
+    const workspace = await WorkspaceFactory.basic({ ssoEnforced: true });
+    await createPrivateApiMockRequest({ workspace, role: "admin" });
+
+    const response = await request(`/w/${workspace.sId}/groups`);
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "sso_enforced",
+        message:
+          "Access requires Single Sign-On (SSO) authentication. Use your SSO provider to sign in.",
+      },
+    });
+  });
+
+  it("returns 200 when SSO is enforced and the session is SSO-authenticated", async () => {
+    const workspace = await WorkspaceFactory.basic({ ssoEnforced: true });
+    await createPrivateApiMockRequest({ workspace, role: "admin", isSSO: true });
+
+    const response = await request(`/w/${workspace.sId}/groups`);
+
+    expect(response.status).toBe(200);
+  });
 });
 
 describe("workspaceAuth factory — doesNotRequireCanUseProduct override", () => {

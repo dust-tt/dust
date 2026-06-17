@@ -4,6 +4,7 @@ import {
   validateWorkspaceAccess,
 } from "@app/lib/api/workspace_validation";
 import { Authenticator } from "@app/lib/auth";
+import { sessionSatisfiesWorkspaceSsoEnforcement } from "@app/lib/iam/session";
 import { getClientIp } from "@app/lib/utils/request";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -116,6 +117,22 @@ export const workspaceAuth = (opts: WorkspaceAuthOptions = {}) =>
     }
 
     const auth = await Authenticator.fromSession(sessionResult, wId);
+
+    if (
+      !sessionSatisfiesWorkspaceSsoEnforcement({
+        session: sessionResult,
+        workspace: auth.workspace(),
+      })
+    ) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "sso_enforced",
+          message:
+            "Access requires Single Sign-On (SSO) authentication. Use your SSO provider to sign in.",
+        },
+      });
+    }
 
     const headers: Record<string, string | string[] | undefined> = {};
     ctx.req.raw.headers.forEach((value, key) => {

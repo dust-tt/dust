@@ -45,11 +45,13 @@ export const createPrivateApiMockRequest = async ({
   role = "user",
   isSuperUser = false,
   workspace: existingWorkspace,
+  isSSO = false,
 }: {
   method?: RequestMethod;
   role?: MembershipRoleType;
   isSuperUser?: boolean;
   workspace?: WorkspaceType;
+  isSSO?: boolean;
 } = {}) => {
   const workspace = existingWorkspace ?? (await WorkspaceFactory.basic());
   const user = await (isSuperUser
@@ -79,8 +81,8 @@ export const createPrivateApiMockRequest = async ({
       nickname: user.username!,
       organizations: [],
     },
-    authenticationMethod: "GoogleOAuth",
-    isSSO: false,
+    authenticationMethod: isSSO ? "sso" : "GoogleOAuth",
+    isSSO,
     workspaceId: workspace.sId,
     organizationId: workspace.workOSOrganizationId ?? undefined,
     region: "us-central1" as const,
