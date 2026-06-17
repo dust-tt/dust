@@ -10,6 +10,7 @@ import {
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { ConversationSelectedSpaceModel } from "@app/lib/models/agent/conversation_selected_space";
 import { getReinforcedSkillsMetadata } from "@app/lib/reinforcement/types";
 import { ConversationBranchResource } from "@app/lib/resources/conversation_branch_resource";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
@@ -745,6 +746,47 @@ describe("destroyConversation", () => {
         where: {
           agentMessageId,
           workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      })
+    ).resolves.toBe(0);
+  });
+
+  it("should delete selected spaces before deleting a conversation", async () => {
+    const conversationType = await ConversationFactory.create(auth, {
+      agentConfigurationId,
+      messagesCreatedAt: [new Date()],
+    });
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      conversationType.sId
+    );
+    if (!conversation) {
+      throw new Error("Conversation should exist");
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const user = auth.user();
+    if (!user) {
+      throw new Error("User should exist");
+    }
+
+    const space = await SpaceFactory.regular(workspace);
+    await ConversationSelectedSpaceModel.create({
+      workspaceId: workspace.id,
+      conversationId: conversation.id,
+      spaceId: space.id,
+      selectedByUserId: user.id,
+      origin: "input_bar",
+    });
+
+    const result = await destroyConversation(auth, { conversation });
+
+    expect(result.isOk()).toBe(true);
+    await expect(
+      ConversationSelectedSpaceModel.count({
+        where: {
+          workspaceId: workspace.id,
+          conversationId: conversation.id,
         },
       })
     ).resolves.toBe(0);
@@ -6795,6 +6837,7 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   "conversation_fork",
   "conversation_mcp_server_view",
   "conversation_participant",
+  "conversation_selected_spaces",
   "conversation_skills",
   "data_source",
   "message",

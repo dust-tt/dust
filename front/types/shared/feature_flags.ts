@@ -300,6 +300,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable ES-backed conversation listing in the sidebar (read path)",
     stage: "dust_only",
   },
+  restricted_spaces_in_input_bar: {
+    description:
+      "Allow users to explicitly select restricted Spaces from the conversation input bar.",
+    stage: "dust_only",
+  },
   new_file_explorer: {
     description:
       "Unified GCS-backed file explorer with folder hierarchy, replacing the two-tab files panel.",

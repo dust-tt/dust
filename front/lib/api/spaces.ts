@@ -6,6 +6,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AppResource } from "@app/lib/resources/app_resource";
+import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -419,6 +420,11 @@ export async function hardDeleteSpace(
         throw res.error;
       }
     }
+
+    await ConversationSelectedSpaceResource.deleteAllBySpace(auth, {
+      spaceModelId: space.id,
+      transaction: t,
+    });
 
     const res = await space.delete(auth, { hardDelete: true, transaction: t });
     if (res.isErr()) {

@@ -20,6 +20,7 @@ import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { ConversationSelectedSpaceResource } from "@app/lib/resources/conversation_selected_space_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import {
@@ -186,6 +187,9 @@ export async function destroyConversation(
 
   await ConversationForkResource.deleteForConversationModelId(auth, {
     conversationModelId: conversation.id,
+  });
+  await ConversationSelectedSpaceResource.deleteForConversation(auth, {
+    conversation,
   });
 
   // Clean up all branches attached to this conversation before deleting messages.
