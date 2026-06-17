@@ -5,6 +5,7 @@ import {
   isDustCompanyPlan,
   isEnterprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
+import { useProgrammaticUsageLimit } from "@app/lib/swr/usage_settings";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useWorkspaceUsageStatus } from "@app/lib/swr/user";
 import { useMetronomeContract } from "@app/lib/swr/workspaces";
@@ -233,8 +234,20 @@ function WorkspaceUsageStatusBanner({
     poolStateWouldBanner &&
     !isMetronomeContractLoading &&
     !contract?.hasPersonalCreditSeats;
-  const showProgrammaticBanner =
+  // A cap of 0 is a deliberate hard block on programmatic API, not an
+  // exhausted budget, so its "cap reached" banner is suppressed. The cap is
+  // only fetched when the banner would otherwise show.
+  const programmaticStateWouldBanner =
     isAdmin(owner) && programmaticCreditStatus !== "active";
+  const { programmaticUsageLimit, isProgrammaticUsageLimitLoading } =
+    useProgrammaticUsageLimit({
+      workspaceId: owner.sId,
+      disabled: !programmaticStateWouldBanner,
+    });
+  const showProgrammaticBanner =
+    programmaticStateWouldBanner &&
+    !isProgrammaticUsageLimitLoading &&
+    programmaticUsageLimit?.monthlyCapCredits !== 0;
   // The admin-configured balance-threshold warning is only relevant before the
   // pool is depleted/overage — those states have their own (stronger) banner.
   const showBalanceThresholdBanner =
