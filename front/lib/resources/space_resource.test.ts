@@ -1587,6 +1587,7 @@ describe("searchProjectsByNamePaginated", () => {
 const KNOWN_SPACE_RELATED_MODELS = [
   "agent_project_configuration",
   "app",
+  "conversation_selected_spaces",
   "content_fragment",
   "conversation",
   "data_source",

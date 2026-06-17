@@ -6730,6 +6730,7 @@ const KNOWN_CONVERSATION_RELATED_MODELS = [
   "conversation_fork",
   "conversation_mcp_server_view",
   "conversation_participant",
+  "conversation_selected_spaces",
   "conversation_skills",
   "data_source",
   "message",

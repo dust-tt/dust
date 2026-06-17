@@ -6,6 +6,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { Attributes, Transaction } from "sequelize";
@@ -157,6 +158,44 @@ export class ConversationSelectedSpaceResource extends BaseResource<Conversation
       ),
       newlySelectedSpaces,
     };
+  }
+
+  static async deleteForConversation(
+    auth: Authenticator,
+    {
+      conversation,
+      transaction,
+    }: {
+      conversation: { id: ModelId };
+      transaction?: Transaction;
+    }
+  ): Promise<number> {
+    return this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: conversation.id,
+      },
+      transaction,
+    });
+  }
+
+  static async deleteAllBySpace(
+    auth: Authenticator,
+    {
+      spaceModelId,
+      transaction,
+    }: {
+      spaceModelId: ModelId;
+      transaction?: Transaction;
+    }
+  ): Promise<number> {
+    return this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        spaceId: spaceModelId,
+      },
+      transaction,
+    });
   }
 
   async delete(
