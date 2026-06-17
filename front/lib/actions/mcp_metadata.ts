@@ -43,8 +43,8 @@ import { isHostUnderVerifiedDomain } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
 import {
   createProxyFetch,
+  getRequiredUntrustedEgressAgent,
   getStaticIPProxyAgent,
-  getUntrustedEgressAgent,
 } from "@app/lib/egress/server";
 import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
@@ -99,10 +99,10 @@ function extractMCPErrorMessage(errorMessage: string): string {
 // disconnected and waiting further won't help.
 const CLIENT_SIDE_CONNECT_TIMEOUT_MS = 5_000;
 
-type MCPProxyKind = "static_ip_proxy" | "untrusted_egress_proxy" | "direct";
+type MCPProxyKind = "static_ip_proxy" | "untrusted_egress_proxy";
 type MCPProxyConfig = {
-  dispatcher?: ReturnType<typeof getUntrustedEgressAgent>;
-  fetch?: FetchLike;
+  dispatcher: ReturnType<typeof getRequiredUntrustedEgressAgent>;
+  fetch: FetchLike;
   proxyKind: MCPProxyKind;
 };
 
@@ -160,7 +160,7 @@ export type MCPConnectionParams =
  * Without a custom `fetch`, those connections fall through to the global fetch
  * which may use a different proxy (e.g. squid-proxy instead of http-proxy).
  */
-async function createMCPProxyConfig(
+export async function createMCPProxyConfig(
   auth: Authenticator,
   host: string
 ): Promise<MCPProxyConfig> {
@@ -192,10 +192,9 @@ async function createMCPProxyConfig(
     );
   }
 
-  const dispatcher = getUntrustedEgressAgent();
-  if (!dispatcher) {
-    return { proxyKind: "direct" as const };
-  }
+  const dispatcher = getRequiredUntrustedEgressAgent(
+    "remote MCP/OAuth metadata fetches"
+  );
 
   return {
     dispatcher,
@@ -569,11 +568,30 @@ export async function connectToMCPServer(
           const { token, oauthConnectionType, oauthConnectionId } =
             tokenRes.value;
 
+          let proxyConfig: MCPProxyConfig;
+          try {
+            proxyConfig = await createMCPProxyConfig(auth, url.hostname);
+          } catch (e: unknown) {
+            logger.error(
+              {
+                mcpServerId: params.mcpServerId,
+                serverType,
+                targetHost: url.hostname,
+                targetUrlOrigin: url.origin,
+                workspaceId: auth.getNonNullableWorkspace().sId,
+                error: e,
+              },
+              "Refusing remote MCP server connection without SSRF-safe egress proxy"
+            );
+            return new Err(
+              new Error("Error establishing connection to remote MCP server.")
+            );
+          }
           const {
             dispatcher,
             fetch: proxyFetch,
             proxyKind,
-          } = await createMCPProxyConfig(auth, url.hostname);
+          } = proxyConfig;
 
           try {
             const req = {
@@ -670,10 +688,27 @@ export async function connectToMCPServer(
           )
         );
       }
-      const { dispatcher, fetch: proxyFetch } = await createMCPProxyConfig(
-        auth,
-        url.hostname
-      );
+      let proxyConfig: MCPProxyConfig;
+      try {
+        proxyConfig = await createMCPProxyConfig(auth, url.hostname);
+      } catch (e: unknown) {
+        logger.error(
+          {
+            connectionType,
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            targetHost: url.hostname,
+            targetUrlOrigin: url.origin,
+            error: e,
+          },
+          "Refusing remote MCP server URL connection without SSRF-safe egress proxy"
+        );
+        return new Err(
+          new RemoteMCPServerError(
+            "Remote MCP metadata fetch requires the untrusted egress proxy to be configured."
+          )
+        );
+      }
+      const { dispatcher, fetch: proxyFetch } = proxyConfig;
       const req = {
         requestInit: {
           dispatcher,

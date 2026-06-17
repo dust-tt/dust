@@ -15,6 +15,23 @@ export function getUntrustedEgressAgent(): ProxyAgent | undefined {
   return undefined;
 }
 
+export class UntrustedEgressProxyRequiredError extends Error {
+  constructor(reason: string) {
+    super(
+      `Untrusted egress proxy is required for ${reason}; refusing to fall back to direct outbound fetch.`
+    );
+    this.name = "UntrustedEgressProxyRequiredError";
+  }
+}
+
+export function getRequiredUntrustedEgressAgent(reason: string): ProxyAgent {
+  const dispatcher = getUntrustedEgressAgent();
+  if (!dispatcher) {
+    throw new UntrustedEgressProxyRequiredError(reason);
+  }
+  return dispatcher;
+}
+
 /**
  * Get a proxy agent for static IP egress.
  * Used for MCP requests to domains that require whitelisted IP addresses.
@@ -68,6 +85,24 @@ export function createProxyFetch(
     const response = await undiciFetch(input, { ...init, ...proxyInit });
     return toGlobalResponse(response);
   };
+}
+
+/**
+ * Fetch helper for app-tier requests to untrusted remote MCP/OAuth metadata.
+ *
+ * Unlike `untrustedFetch`, this helper fails closed when the untrusted egress
+ * proxy is not configured. These metadata requests are attacker/admin-supplied
+ * URLs and may carry Authorization/custom headers; allowing a direct fallback
+ * would bypass the proxy-side DNS resolution, unsafe-IP filtering, redirect
+ * checks, and IP pinning/rebinding protections.
+ */
+export function createRequiredUntrustedProxyFetch(
+  reason: string
+): (
+  input: string | URL,
+  init?: globalThis.RequestInit
+) => Promise<globalThis.Response> {
+  return createProxyFetch(getRequiredUntrustedEgressAgent(reason));
 }
 
 /**
