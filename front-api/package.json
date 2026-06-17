@@ -10,6 +10,16 @@
     "lint:swagger-annotations": "BAD_FILES=$(grep -rlE 'app\\.(get|post|patch|put|delete)\\(' routes --include='*.ts' | grep -v '\\.test\\.ts$' | xargs grep -rL '@swagger\\|@ignoreswagger'); if [ -n \"$BAD_FILES\" ]; then echo \"Error: The following API route files register a handler but are missing the @swagger or @ignoreswagger annotation:\"; echo \"$BAD_FILES\"; exit 1; else echo \"Swagger annotation check: OK.\"; exit 0; fi",
     "docs": "tsx scripts/generate-swagger.ts 2>&1 | tee /dev/stderr | grep -E \"YAML.*Error\" && { echo \"Could not generate swagger because of errors\" && exit 1; } || npx @redocly/cli@1.25.5 lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json",
     "docs:check": "npx @redocly/cli@1.25.5 lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json",
+    "create-db-migration": "./create_db_migration_file.sh",
+    "migration:generate:pre-deploy": "./scripts/generate-migration.sh pre-deploy",
+    "migration:generate:post-deploy": "./scripts/generate-migration.sh post-deploy",
+    "migration:apply:pre-deploy": "node scripts/run-migrate.cjs --command pre-deploy --execute",
+    "migration:apply:post-deploy": "node scripts/run-migrate.cjs --command post-deploy --execute",
+    "migration:apply": "npm run migration:apply:pre-deploy && npm run migration:apply:post-deploy",
+    "migration:status": "node scripts/run-migrate.cjs --command status --execute",
+    "migration:check": "node scripts/run-migrate.cjs --command check --execute",
+    "migration:check:pre-deploy": "node scripts/run-migrate.cjs --command check-pre-deploy --execute",
+    "migration:check:post-deploy": "node scripts/run-migrate.cjs --command check-post-deploy --execute",
     "tsgo": "tsgo"
   },
   "dependencies": {
