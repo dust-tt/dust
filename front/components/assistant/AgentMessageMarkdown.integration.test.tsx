@@ -1,18 +1,15 @@
-import { render } from "@testing-library/react";
-// biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React from "react";
+import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
+import { getFileDownloadMarkdownDirective } from "@app/lib/markdown/file_download";
+import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { AgentMessageMarkdown } from "./AgentMessageMarkdown";
 
-const mockOwner = {
-  id: 1,
+const mockOwner = LightWorkspaceFactory.build({
   sId: "test-workspace",
-  name: "Test Workspace",
   role: "user",
-  createdAt: 123456789,
-  updatedAt: 123456789,
-} as any;
+});
 
 describe("AgentMessageMarkdown - Integration Tests", () => {
   describe("Basic Markdown Rendering", () => {
@@ -112,6 +109,51 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
       expect(a).toBeInTheDocument();
       expect(a?.textContent).toBe("Link text");
       expect(a?.getAttribute("href")).toBe("https://example.com");
+    });
+
+    it("renders scoped file download directives as previewable files", async () => {
+      const { container } = render(
+        <FilePreviewProvider owner={mockOwner}>
+          <AgentMessageMarkdown
+            owner={mockOwner}
+            content={
+              'Download\n::download_file{path="conversation-c1/booklet.pdf" title="booklet.pdf" contentType="application/pdf"}'
+            }
+          />
+        </FilePreviewProvider>
+      );
+
+      expect(screen.getByText("booklet.pdf")).toBeInTheDocument();
+      expect(screen.getByText("PDF")).toBeInTheDocument();
+      expect(container.querySelector("a[href*='download=1']")).toBeNull();
+
+      fireEvent.click(screen.getByText("booklet.pdf"));
+
+      expect(await screen.findByText("Preview Data")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Download" })
+      ).toBeInTheDocument();
+    });
+
+    it("round-trips generated file download directives with escaped attributes", () => {
+      const title = 'report "Q2" [final] `beta`.pdf';
+      const path = `conversation-c1/reports/${title}`;
+      const directive = getFileDownloadMarkdownDirective({
+        contentType: "application/pdf",
+        path,
+        title,
+      });
+
+      const { container } = render(
+        <AgentMessageMarkdown
+          owner={mockOwner}
+          content={`Download\n${directive}`}
+        />
+      );
+
+      expect(container.textContent).toContain(title);
+      expect(container.textContent).toContain("PDF");
+      expect(container.querySelector("a[href*='download=1']")).toBeNull();
     });
 
     it("renders blockquotes", () => {
