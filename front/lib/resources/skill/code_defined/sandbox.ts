@@ -354,6 +354,8 @@ export const sandboxSkill = {
   userFacingDescription:
     "Run code, scripts, and shell commands in the conversation's Computer (a sandboxed Linux environment).",
   agentFacingDescription:
+    "Execute code and commands in an isolated Linux sandbox. Useful to parse lengthy tool outputs, run code, " +
+    "process data, install packages, manipulate files, or perform any task requiring shell access. " +
     "You must enable this skill proactively as soon as the user uploads files or you need to work with files, " +
     "including PDFs, spreadsheets, archives, or generated artifacts. Use it to extract text from files, " +
     "parse lengthy tool outputs, run code and shell commands, process data, manipulate files, or perform " +
