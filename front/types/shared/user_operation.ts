@@ -4,10 +4,14 @@ export async function sendUserOperationMessage({
   message,
   logger,
   channel,
+  mrkdwn,
+  parse,
 }: {
   message: string;
   logger: LoggerInterface;
   channel?: string;
+  mrkdwn?: boolean;
+  parse?: "none" | "full";
 }) {
   const { SLACK_USER_OPERATION_BOT_TOKEN, SLACK_USER_OPERATION_CHANNEL_ID } =
     process.env;
@@ -31,6 +35,8 @@ export async function sendUserOperationMessage({
       body: JSON.stringify({
         channel: channel ?? SLACK_USER_OPERATION_CHANNEL_ID,
         text: message,
+        ...(mrkdwn === undefined ? {} : { mrkdwn }),
+        ...(parse === undefined ? {} : { parse }),
       }),
     });
 

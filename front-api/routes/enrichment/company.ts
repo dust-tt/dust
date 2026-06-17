@@ -4,12 +4,15 @@ import {
 } from "@app/lib/api/enrichment/company";
 import { fetchUsersFromWorkOSWithEmails } from "@app/lib/api/workos/user";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { isEmailValid } from "@app/lib/utils";
 import { extractDomain, hasValidMxRecords } from "@app/lib/utils/email";
 import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
+import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
 import { isString } from "@app/types/shared/utils/general";
 import { createHono } from "@front-api/lib/hono";
+import { getClientIpFromContext } from "@front-api/lib/request";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
 interface EnrichmentResponse {
@@ -21,16 +24,56 @@ interface EnrichmentResponse {
 }
 
 const GTM_LEADS_SLACK_CHANNEL_ID = "C0A1XKES0JY";
+const RATE_LIMIT_MAX_PER_MINUTE = 30;
+const RATE_LIMIT_WINDOW_SECONDS = 60;
+
+function escapeSlackText(text: string): string {
+  // Slack control characters must be HTML-escaped before being sent in a
+  // message body. This prevents user-controlled strings from creating links,
+  // mentions, or special mrkdwn commands such as <!channel>.
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+function formatSlackValue(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === "") {
+    return "Unknown";
+  }
+
+  return escapeSlackText(String(value));
+}
 
 // Mounted at /api/enrichment/company.
 const app = createHono();
 
 /** @ignoreswagger */
 app.post("/", async (ctx): HandlerResult<EnrichmentResponse> => {
+  const clientIp = getClientIpFromContext(ctx);
+  const remaining = await rateLimiter({
+    key: `enrichment_company:ip:${clientIp}`,
+    maxPerTimeframe: RATE_LIMIT_MAX_PER_MINUTE,
+    timeframeSeconds: RATE_LIMIT_WINDOW_SECONDS,
+    logger,
+  });
+  if (remaining <= 0) {
+    return ctx.json(
+      {
+        success: false,
+        redirectUrl: "/home/pricing",
+        error: "Too many requests",
+      },
+      429
+    );
+  }
+
   const body = await ctx.req.json().catch(() => ({}));
   const { email } = body ?? {};
 
-  if (!isString(email)) {
+  const submittedEmail = isString(email) ? email.trim() : null;
+
+  if (!submittedEmail) {
     return ctx.json(
       {
         success: false,
@@ -41,7 +84,18 @@ app.post("/", async (ctx): HandlerResult<EnrichmentResponse> => {
     );
   }
 
-  const domain = extractDomain(email);
+  if (!isEmailValid(submittedEmail)) {
+    return ctx.json(
+      {
+        success: false,
+        redirectUrl: "/home/pricing",
+        error: "Invalid email format",
+      },
+      400
+    );
+  }
+
+  const domain = extractDomain(submittedEmail);
 
   if (!domain) {
     return ctx.json(
@@ -54,10 +108,10 @@ app.post("/", async (ctx): HandlerResult<EnrichmentResponse> => {
     );
   }
 
-  const encodedEmail = encodeURIComponent(email);
+  const encodedEmail = encodeURIComponent(submittedEmail);
 
   // Check if user already exists in WorkOS — if so, redirect to login.
-  const existingUsers = await fetchUsersFromWorkOSWithEmails([email]);
+  const existingUsers = await fetchUsersFromWorkOSWithEmails([submittedEmail]);
   if (existingUsers.length > 0) {
     return ctx.json({
       success: true,
@@ -104,7 +158,7 @@ app.post("/", async (ctx): HandlerResult<EnrichmentResponse> => {
     redirectUrl = `/api/workos/login?screenHint=sign-up&loginHint=${encodedEmail}`;
   } else {
     const params = new URLSearchParams();
-    params.set("email", email);
+    params.set("email", submittedEmail);
     if (name) {
       params.set("company", name);
     }
@@ -134,20 +188,24 @@ app.post("/", async (ctx): HandlerResult<EnrichmentResponse> => {
     : "Self-serve Signup";
 
   const enrichmentDetails = [
-    `*Email submitted:* ${email}`,
-    `*Domain:* ${domain}`,
-    `*Company:* ${name ?? "Unknown"}`,
-    `*Company size:* ${size !== null ? `${size} employees` : "Unknown"}`,
-    `*Region:* ${region ?? "Unknown"}`,
-    `*Funding:* ${funding ?? "Unknown"}`,
-    `*Revenue:* ${revenue ?? "Unknown"}`,
-    `*Routed to:* ${destinationLabel}`,
+    `Email submitted: ${formatSlackValue(submittedEmail)}`,
+    `Domain: ${formatSlackValue(domain)}`,
+    `Company: ${formatSlackValue(name)}`,
+    `Company size: ${
+      size !== null ? `${formatSlackValue(size)} employees` : "Unknown"
+    }`,
+    `Region: ${formatSlackValue(region)}`,
+    `Funding: ${formatSlackValue(funding)}`,
+    `Revenue: ${formatSlackValue(revenue)}`,
+    `Routed to: ${formatSlackValue(destinationLabel)}`,
   ].join("\n");
 
   void sendUserOperationMessage({
     message: `:email: New homepage email submission\n${enrichmentDetails}`,
     logger,
     channel: GTM_LEADS_SLACK_CHANNEL_ID,
+    mrkdwn: false,
+    parse: "none",
   });
 
   return ctx.json({
