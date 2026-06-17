@@ -247,7 +247,7 @@ export async function syncConversation({
   markdown += `**CUSTOM ATTRIBUTES: ${JSON.stringify(customAttributes)}**\n\n`;
 
   if (firstMessageAuthor && firstMessageContent) {
-    markdown += `**[Message] ${firstMessageAuthor.name ? stripNullBytes(firstMessageAuthor.name) : "Unknown"} (${firstMessageAuthor.type})**\n`;
+    markdown += `**[Message] ${firstMessageAuthor.name} (${firstMessageAuthor.type})**\n`;
     markdown += `${firstMessageContent}\n\n`;
   }
 
@@ -263,7 +263,7 @@ export async function syncConversation({
         part.part_type !== "note" || intercomWorkspace.shouldSyncNotes;
 
       if (messageContent && shouldSync) {
-        markdown += `**[${type}] ${messageAuthor.name ? stripNullBytes(messageAuthor.name) : "Unknown"} (${messageAuthor.type})**\n`;
+        markdown += `**[${type}] ${messageAuthor.name} (${messageAuthor.type})**\n`;
         markdown += `${messageContent}\n\n`;
       }
     }
