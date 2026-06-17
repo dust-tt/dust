@@ -523,6 +523,13 @@ export class StreamEndpointTransition extends BaseTransition {
   ) {
     super(auth, ANTHROPIC_PROVIDER_ID, llmParameters);
     this.model = new modelConstructor(llmParameters.credentials);
+
+    const { api, region } = this.model.metadata();
+    this.metadata = {
+      ...this.metadata,
+      inferenceProvider: api,
+      region,
+    };
   }
 
   protected buildStreamRequestPayload(streamParameters: LLMStreamParameters) {

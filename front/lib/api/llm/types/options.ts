@@ -4,6 +4,7 @@ import type {
   LLMTraceContext,
   LLMTraceCustomization,
 } from "@app/lib/api/llm/traces/types";
+import type { Region } from "@app/lib/model_constructors/types/regions";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import type {
   ModelIdType,
@@ -117,8 +118,11 @@ export type LLMParameterOverwrites = Partial<
 
 export type LLMClientMetadata = {
   clientId: ModelProviderIdType;
+  // Holds the inference provider for legacy clients (e.g. "google_vertex_ai")
+  // and the new router's `providerApi` value (e.g. "agent-platform").
   inferenceProvider: string;
   inferenceRegion: InferenceRegionType;
+  region?: Region;
   modelId: ModelIdType;
 };
 
