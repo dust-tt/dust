@@ -53,7 +53,7 @@ export function SelectSubscriptionPage() {
             Choose how you want to start
           </h1>
           <p className="text-lg text-muted-foreground dark:text-muted-foreground-night">
-            Free to begin. Upgrade you and your team anytime.
+            Free to begin. Upgrade anytime.
           </p>
         </div>
 

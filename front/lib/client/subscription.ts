@@ -15,6 +15,7 @@ export const PRO_PLAN_COST_YEARLY = 27;
 export const BUSINESS_PLAN_COST_MONTHLY = 45;
 
 // Credit-priced (CP) self-serve seat prices
+export const CP_ENTERPRISE_BASIS = 20;
 export const CP_PRO_SEAT_COST_MONTHLY = 30;
 export const CP_PRO_SEAT_COST_YEARLY = 24;
 export const CP_MAX_SEAT_COST_MONTHLY = 150;

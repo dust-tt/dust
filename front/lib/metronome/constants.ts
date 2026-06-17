@@ -290,6 +290,11 @@ export const AWU_PRIORITY_PURCHASED_COMMIT = 300;
 // `getAwuAllocationInfoForSeatType`).
 export const FREE_SEAT_LIFETIME_AWU_CREDITS = 500;
 
+// Per-seat monthly AWU allocations for paid seat types. Stamped onto recurring
+// credits at package creation and used as the authoritative displayed allowance.
+export const PRO_SEAT_MONTHLY_AWU_CREDITS = 8000;
+export const MAX_SEAT_MONTHLY_AWU_CREDITS = 40000;
+
 // Seat commit/credit priorities
 export const SEAT_PRIORITY_SUBSCRIPTION_COMMIT = 300;
 export const SEAT_PRIORITY_COUPON_CREDIT = 300;

@@ -1,3 +1,7 @@
+import {
+  MAX_SEAT_MONTHLY_AWU_CREDITS,
+  PRO_SEAT_MONTHLY_AWU_CREDITS,
+} from "@app/lib/metronome/constants";
 import { setUserCreditState } from "@app/lib/metronome/user_block";
 import type { MembershipResource } from "@app/lib/resources/membership_resource";
 import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
@@ -15,10 +19,6 @@ import {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { Transaction } from "sequelize";
-import {
-  MAX_SEAT_MONTHLY_AWU_CREDITS,
-  PRO_SEAT_MONTHLY_AWU_CREDITS,
-} from "./setup_new_pricing";
 
 /**
  * Live per-user balance snapshot used to resolve the seat↔pool band when a

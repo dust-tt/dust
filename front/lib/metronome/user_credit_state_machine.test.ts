@@ -1,8 +1,8 @@
-import { FREE_SEAT_LIFETIME_AWU_CREDITS } from "@app/lib/metronome/constants";
 import {
+  FREE_SEAT_LIFETIME_AWU_CREDITS,
   MAX_SEAT_MONTHLY_AWU_CREDITS,
   PRO_SEAT_MONTHLY_AWU_CREDITS,
-} from "@app/lib/metronome/setup_new_pricing";
+} from "@app/lib/metronome/constants";
 import type { UserCreditContext } from "@app/lib/metronome/user_credit_state_machine";
 import {
   setUserCreditStateReconciled,

@@ -1,3 +1,4 @@
+import { seatTypeDisplayName } from "@app/components/workspace/billing/seatTypeUtils";
 import {
   getSeatBarClasses,
   getSeatIconColorClass,
@@ -7,8 +8,14 @@ import {
   CP_MAX_SEAT_COST_YEARLY,
   CP_PRO_SEAT_COST_MONTHLY,
   CP_PRO_SEAT_COST_YEARLY,
+  formatPriceWithCurrency,
+  useUserBillingCurrency,
 } from "@app/lib/client/subscription";
-import { FREE_SEAT_LIFETIME_AWU_CREDITS } from "@app/lib/metronome/constants";
+import {
+  FREE_SEAT_LIFETIME_AWU_CREDITS,
+  MAX_SEAT_MONTHLY_AWU_CREDITS,
+  PRO_SEAT_MONTHLY_AWU_CREDITS,
+} from "@app/lib/metronome/constants";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { MembershipSeatType } from "@app/types/memberships";
 import type { BillingPeriod } from "@app/types/plan";
@@ -188,12 +195,13 @@ export function PaidPlanCards({
 }: PaidPlanCardsProps) {
   const isYearly = billingPeriod === "yearly";
   const period = isYearly ? "yearly" : "monthly";
-  const proSeatCostDollars = isYearly
+  const proSeatCost = isYearly
     ? CP_PRO_SEAT_COST_YEARLY
     : CP_PRO_SEAT_COST_MONTHLY;
-  const maxSeatCostDollars = isYearly
+  const maxSeatCost = isYearly
     ? CP_MAX_SEAT_COST_YEARLY
     : CP_MAX_SEAT_COST_MONTHLY;
+  const currency = useUserBillingCurrency();
 
   // The cards are returned without a layout/grouping container so each page
   // can decide its own wrapper (e.g. the subtle grouped wrapper only used
@@ -203,10 +211,10 @@ export function PaidPlanCards({
       <PlanCard
         icon={LayersTwo01}
         seatType="pro"
-        name="Pro"
-        credits="8,000"
+        name={seatTypeDisplayName("pro")}
+        credits={PRO_SEAT_MONTHLY_AWU_CREDITS.toLocaleString()}
         creditsLabel="credits/mo"
-        priceLabel={`$${proSeatCostDollars}/seat/mo · billed ${period}`}
+        priceLabel={`${formatPriceWithCurrency(proSeatCost, currency)}/seat/mo · billed ${period}`}
         features={["Refills every month", "Full access to every Dust feature"]}
         action={
           <Button
@@ -227,10 +235,10 @@ export function PaidPlanCards({
       <PlanCard
         icon={LayersThree01}
         seatType="max"
-        name="Max"
-        credits="40,000"
+        name={seatTypeDisplayName("max")}
+        credits={MAX_SEAT_MONTHLY_AWU_CREDITS.toLocaleString()}
         creditsLabel="credits/mo"
-        priceLabel={`$${maxSeatCostDollars}/seat/mo · billed ${period}`}
+        priceLabel={`${formatPriceWithCurrency(maxSeatCost, currency)}/seat/mo · billed ${period}`}
         features={["Refills every month", "Full access to every Dust feature"]}
         action={
           <Button
