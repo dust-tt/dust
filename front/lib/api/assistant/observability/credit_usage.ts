@@ -216,6 +216,44 @@ async function resolveGroupNames(
   }
 }
 
+type SubAgentCostAggs = {
+  sub_agent_cost?: estypes.AggregationsSumAggregate;
+};
+
+// Total credit cost of every sub-agent (run_agent) spawned, recursively, by a
+// single agent message. Aggregated at query time from the analytics index:
+// every sub-agent message carries its ancestor chain in `ancestor_message_ids`,
+// so summing `cost.full_awu` over the docs that list this message as an ancestor
+// rolls up the whole tree at any depth without a recursive query. This is the
+// Elasticsearch counterpart of `ConversationResource.sumSubAgentCostCreditsByMessageId`.
+export async function fetchSubAgentCreditCost(
+  auth: Authenticator,
+  { agentMessageId }: { agentMessageId: string }
+): Promise<Result<number, ElasticsearchError>> {
+  const result = await searchAnalytics<never, SubAgentCostAggs>(
+    {
+      bool: {
+        filter: [
+          { term: { workspace_id: auth.getNonNullableWorkspace().sId } },
+          { term: { ancestor_message_ids: agentMessageId } },
+        ],
+      },
+    },
+    {
+      aggregations: {
+        sub_agent_cost: { sum: { field: "cost.full_awu" } },
+      },
+      size: 0,
+    }
+  );
+
+  if (result.isErr()) {
+    return result;
+  }
+
+  return new Ok(result.value.aggregations?.sub_agent_cost?.value ?? 0);
+}
+
 // Estimates AWU credit consumption from the analytics index, reusing the same
 // conversion as the Metronome billing pipeline: LLM credits from
 // tokens.cost_micro_usd (markup baked in) and tool credits from per-category

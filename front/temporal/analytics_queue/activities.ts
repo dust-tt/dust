@@ -6,6 +6,7 @@ import {
   SEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isSearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
 import {
@@ -17,6 +18,13 @@ import { addTraceToLangfuseDataset } from "@app/lib/api/instrumentation/langfuse
 import { isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
+import {
+  getToolCategory,
+  intelligenceAwuFromRunUsages,
+  isFreeOrigin,
+  isFreeToolServer,
+  TOOL_CATEGORY_AWU_WEIGHTS,
+} from "@app/lib/metronome/events";
 import type { AgentMessageFeedbackModel } from "@app/lib/models/agent/conversation";
 import {
   AgentMessageModel,
@@ -29,9 +37,11 @@ import { AgentMessageSkillModel } from "@app/lib/models/skill/conversation_skill
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMCPServerConfigurationResource } from "@app/lib/resources/agent_mcp_server_configuration_resource";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { GlobalSkillsRegistry } from "@app/lib/resources/skill/code_defined/global_registry";
 import type { SkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
@@ -169,8 +179,12 @@ export async function storeAgentAnalytics(
     agentAgentMessageRow.id,
   ]);
 
+  const isFreeUsage = contextOrigin !== null && isFreeOrigin(contextOrigin);
+
+  const runUsages = await fetchRunUsagesForMessage(auth, agentAgentMessageRow);
+
   // Collect token usage from run data.
-  const tokens = await collectTokenUsage(auth, agentAgentMessageRow);
+  const tokens = aggregateTokenUsage(runUsages);
 
   // Collect skills usage data.
   const skillsUsed = await collectSkillsUsageFromMessage(
@@ -178,8 +192,28 @@ export async function storeAgentAnalytics(
     agentAgentMessageRow.id
   );
 
-  // Collect tool usage data.
-  const toolsUsed = await collectToolUsageFromMessage(auth, actions);
+  // Collect tool usage data (with per-tool credit cost).
+  const toolsUsed = await collectToolUsageFromMessage(auth, actions, {
+    isFreeUsage,
+  });
+
+  const llmAwu = isFreeUsage ? 0 : intelligenceAwuFromRunUsages(runUsages);
+  const toolAwu = toolsUsed.reduce((sum, tool) => sum + tool.cost_awu, 0);
+  const cost = {
+    full_awu: llmAwu + toolAwu,
+    llm_awu: llmAwu,
+    tool_awu: toolAwu,
+  };
+
+  // Denormalize the sub-agent ancestor chain so a sub-agent's cost can be rolled
+  // up to its ancestors via a query-time aggregation (ES has no recursive query).
+  // Only run_agent replies have ancestors — skip the recursive query otherwise.
+  const ancestorMessageIds =
+    userMessageModel.agenticMessageType === "run_agent"
+      ? await ConversationResource.listAncestorAgentMessageIds(auth, {
+          agentMessageId: agentMessageRow.sId,
+        })
+      : [];
 
   // Collect feedback from the agent message.
   const feedbacks = agentAgentMessageRow.feedbacks
@@ -199,7 +233,9 @@ export async function storeAgentAnalytics(
   const document: AgentMessageAnalyticsData = {
     agent_id: agentAgentMessageRow.agentConfigurationId,
     agent_version: agentAgentMessageRow.agentConfigurationVersion.toString(),
+    ancestor_message_ids: ancestorMessageIds,
     conversation_id: conversationRow.sId,
+    cost,
     context_origin: contextOrigin,
     latency_ms: agentAgentMessageRow.modelInteractionDurationMs ?? 0,
     message_id: agentMessageRow.sId,
@@ -231,30 +267,30 @@ export async function storeAgentAnalytics(
 }
 
 /**
- * Collect token usage from runs associated with this agent message.
+ * Fetch the run usages for all runs associated with this agent message.
  */
-async function collectTokenUsage(
+async function fetchRunUsagesForMessage(
   auth: Authenticator,
   agentMessage: AgentMessageModel
-): Promise<AgentMessageAnalyticsTokens> {
+): Promise<RunUsageType[]> {
   if (!agentMessage.runIds || agentMessage.runIds.length === 0) {
-    return {
-      prompt: 0,
-      completion: 0,
-      reasoning: 0,
-      cached: 0,
-      cost_micro_usd: 0,
-    };
+    return [];
   }
 
-  // Get run usages for all runs associated with this agent message.
   const runResources = await RunResource.listByDustRunIds(auth, {
     dustRunIds: agentMessage.runIds,
   });
-  const runUsages = await RunResource.listRunUsagesForRuns(auth, {
+  return RunResource.listRunUsagesForRuns(auth, {
     runs: runResources,
   });
+}
 
+/**
+ * Aggregate token usage from a set of run usages.
+ */
+function aggregateTokenUsage(
+  runUsages: RunUsageType[]
+): AgentMessageAnalyticsTokens {
   return runUsages.reduce(
     (acc, usage) => {
       return {
@@ -280,7 +316,8 @@ async function collectTokenUsage(
  */
 async function collectToolUsageFromMessage(
   auth: Authenticator,
-  actionResources: AgentMCPActionResource[]
+  actionResources: AgentMCPActionResource[],
+  { isFreeUsage }: { isFreeUsage: boolean }
 ): Promise<AgentMessageAnalyticsToolUsed[]> {
   const uniqueConfigIds = Array.from(
     new Set(actionResources.map((a) => a.mcpServerConfigurationId))
@@ -323,6 +360,13 @@ async function collectToolUsageFromMessage(
       mcpServerId ??
       "unknown";
 
+    const cost_awu =
+      !isFreeUsage &&
+      isToolExecutionStatusFinal(actionResource.status) &&
+      !isFreeToolServer(internalMCPServerName)
+        ? TOOL_CATEGORY_AWU_WEIGHTS[getToolCategory(internalMCPServerName)]
+        : 0;
+
     return {
       step_index: actionResource.stepContent.step,
       server_name: serverName,
@@ -333,6 +377,7 @@ async function collectToolUsageFromMessage(
         configIdToSId.get(actionResource.mcpServerConfigurationId) ?? undefined,
       execution_time_ms: actionResource.executionDurationMs,
       status: actionResource.status,
+      cost_awu,
     };
   });
 }

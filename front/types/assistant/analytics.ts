@@ -23,6 +23,13 @@ export interface AgentMessageAnalyticsToolUsed {
   mcp_server_configuration_sid?: string;
   execution_time_ms: number | null;
   status: string;
+  cost_awu: number;
+}
+
+export interface AgentMessageAnalyticsCost {
+  full_awu: number;
+  llm_awu: number;
+  tool_awu: number;
 }
 
 export interface AgentMessageAnalyticsFeedback {
@@ -45,7 +52,9 @@ export interface AgentMessageAnalyticsSkillUsed {
 export interface AgentMessageAnalyticsData extends ElasticsearchBaseDocument {
   agent_id: string;
   agent_version: string;
+  ancestor_message_ids: string[];
   conversation_id: string;
+  cost: AgentMessageAnalyticsCost;
   feedbacks: AgentMessageAnalyticsFeedback[];
   context_origin: UserMessageOrigin | null;
   latency_ms: number;
