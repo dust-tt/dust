@@ -54,7 +54,7 @@ const app = workspaceApp();
  *       - in: query
  *         name: role
  *         required: false
- *         description: Filter by role (e.g. admin to list all workspace spaces)
+ *         description: Filter by role (e.g. admin to list all workspace spaces, requires workspace admin permissions)
  *         schema:
  *           type: string
  *       - in: query
@@ -81,6 +81,8 @@ const app = workspaceApp();
  *                       - $ref: '#/components/schemas/PrivateProject'
  *       401:
  *         description: Unauthorized
+ *       403:
+ *         description: Forbidden. Admin role requested by a non-admin user.
  *   post:
  *     summary: Create a space
  *     description: Creates a new space in the workspace.
@@ -148,6 +150,16 @@ app.get("/", async (ctx): HandlerResult<GetSpacesResponseBody> => {
 
   let spaces: SpaceResource[] = [];
   if (role === "admin") {
+    if (!auth.isAdmin()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "Only users that are `admins` can list spaces as admin.",
+        },
+      });
+    }
+
     if (kind === "system") {
       const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
       spaces = systemSpace ? [systemSpace] : [];
